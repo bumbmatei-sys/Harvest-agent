@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --font-sans: var(--font-sans);
+    --color-primary: #B8860B;
+    --color-secondary: #8E8E93;
+    --color-background-light: #FFFFFF;
+    --color-background-dark: #002147;
+    --color-background-alt: #F5F5F7;
+    --background-image-gold-gradient: linear-gradient(135deg, #B8860B 0%, #D4AF37 100%);
+  }
+}
+
+@layer utilities {
+  .isometric-phone {
+    transform: rotateX(15deg) rotateY(0deg) rotateZ(-15deg) scale(0.9);
+    box-shadow: 0 40px 80px rgba(0, 0, 0, 0.4);
+    transition: transform 0.7s cubic-bezier(0.25, 0.46, 0.45, 0.94), box-shadow 0.7s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
+  .isometric-phone:hover {
+    transform: rotateX(0deg) rotateY(0deg) rotateZ(0deg) scale(1);
+    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.5);
+  }
+  .glass-card {
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+}
