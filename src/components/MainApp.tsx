@@ -1,13 +1,15 @@
 "use client";
 import React, { useState, useEffect, useRef } from 'react';
 import { Home, BookOpen, MessageCircle, Map as MapIcon, User, Play } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
 import Profile from './Profile';
 import PartnerWithUsTab from './PartnerWithUsTab';
 import BlogTab from './BlogTab';
 import NewsTab from './NewsTab';
 import AllNews from './AllNews';
 import SavedContentTab from './SavedContentTab';
+import CoursesTab from './CoursesTab';
+import CourseDetails from './CourseDetails';
 import dynamic from 'next/dynamic';
 
 const ChurchMap = dynamic(() => import('./ChurchMap'), { ssr: false });
@@ -22,7 +24,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
   const [isNavVisible, setIsNavVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
   const [direction, setDirection] = useState(0);
-  const [fullScreenView, setFullScreenView] = useState<{type: 'none' | 'all-news' | 'article', id?: string, data?: any}>({type: 'none'});
+  const [fullScreenView, setFullScreenView] = useState<{type: 'none' | 'all-news' | 'article' | 'course', id?: string, data?: any}>({type: 'none'});
 
   useEffect(() => {
     setIsNavVisible(true);
@@ -120,6 +122,10 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
     return <BlogTab initialPost={fullScreenView.data} onBack={() => setFullScreenView({type: 'none'})} isFullScreen={true} />;
   }
 
+  if (fullScreenView.type === 'course' && fullScreenView.data) {
+    return <CourseDetails course={fullScreenView.data} onBack={() => setFullScreenView({type: 'none'})} />;
+  }
+
   return (
     <div className="flex flex-col h-screen bg-[#f8f9fa] dark:bg-[#1a1d27] font-sans overflow-hidden transition-colors duration-300">
       {/* Top Navigation (only visible when Home is active) */}
@@ -183,7 +189,10 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
                 {activeTopTab === 'saved' && (
                   <SavedContentTab onOpenArticle={(post) => setFullScreenView({type: 'article', data: post})} />
                 )}
-                {activeTopTab !== 'news' && activeTopTab !== 'partner' && activeTopTab !== 'blog' && activeTopTab !== 'saved' && (
+                {activeTopTab === 'courses' && (
+                  <CoursesTab onOpenCourse={(course) => setFullScreenView({type: 'course', data: course})} />
+                )}
+                {activeTopTab !== 'news' && activeTopTab !== 'partner' && activeTopTab !== 'blog' && activeTopTab !== 'saved' && activeTopTab !== 'courses' && (
                   <div className="flex flex-col items-center justify-center h-64 text-gray-400 dark:text-gray-500">
                     <p>{topTabs.find(t => t.id === activeTopTab)?.label} content coming soon.</p>
                   </div>

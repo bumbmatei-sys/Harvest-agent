@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@tailwindcss/typography": "^0.5.19",
     "@tiptap/extension-image": "^2.9.1",
     "@tiptap/extension-link": "^2.9.1",
     "@tiptap/extension-text-align": "^2.9.1",
@@ -18,7 +19,6 @@
     "@tiptap/starter-kit": "^2.9.1",
     "firebase": "^10.14.1",
     "firebase-admin": "^12.6.0",
-    "framer-motion": "^11.11.9",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.453.0",
     "motion": "^12.38.0",

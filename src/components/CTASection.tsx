@@ -17,7 +17,7 @@ const CTASection: React.FC<CTASectionProps> = ({ onNavigate }) => {
           Ready for the Billion Soul Harvest
         </h2>
         <p className="text-xl md:text-2xl font-medium text-background-dark/80 mb-12 max-w-2xl mx-auto">
-          We believe a one-billion soul harvest is coming. For that harvest to last, churches all over the world need to be more than prepared to "vacuum" the millions of converts and bring them to maturity.
+          We believe a one-billion soul harvest is coming. For that harvest to last, churches all over the world need to be more than prepared to &quot;vacuum&quot; the millions of converts and bring them to maturity.
           <br/><br/>
           We are building the infrastructure to turn moments of decision into lifetimes of devotion.
         </p>

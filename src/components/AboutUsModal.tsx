@@ -62,13 +62,13 @@ const AboutUsModal: React.FC<AboutUsModalProps> = ({ isOpen, onClose, onOpenPart
             
             <div className="space-y-4 text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
               <p>
-                Every week, hundreds of thousands of people across the globe raise their hands to accept Jesus as their Savior. This unprecedented momentum is a glorious sign of our times. However, our hearts are focused on a vital question: <strong className="text-gray-900 dark:text-white">"What is the retention percentage?"</strong>
+                Every week, hundreds of thousands of people across the globe raise their hands to accept Jesus as their Savior. This unprecedented momentum is a glorious sign of our times. However, our hearts are focused on a vital question: <strong className="text-gray-900 dark:text-white">&quot;What is the retention percentage?&quot;</strong>
               </p>
               <p>
                 How many of these precious souls remain in Christ? How many grow to full maturity and go on to fulfill the Great Commandment?
               </p>
               <p>
-                We believe that effective discipling is the fastest way to multiply the Church. To sustain this move of God, we must steward the soul as passionately as we seek it. The Harvest App was born from a burden to close the "back door" of the church and provide a digital bridge from the moment of conversion to a lifetime of community.
+                We believe that effective discipling is the fastest way to multiply the Church. To sustain this move of God, we must steward the soul as passionately as we seek it. The Harvest App was born from a burden to close the &quot;back door&quot; of the church and provide a digital bridge from the moment of conversion to a lifetime of community.
               </p>
               
               <div className="pl-4 border-l-4 border-[#fdf8e7] dark:border-[#d4a017]/30 italic text-gray-700 dark:text-gray-400 mt-6">

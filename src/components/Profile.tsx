@@ -24,6 +24,7 @@ import AboutUsModal from './AboutUsModal';
 import ContactModal from './ContactModal';
 import PrivacyTermsModal from './PrivacyTermsModal';
 import FAQModal from './FAQModal';
+import ChurchDetailsModal from './ChurchDetailsModal';
 
 enum OperationType {
   CREATE = 'create',
@@ -88,6 +89,7 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToCourses, onGoToPart
   const [isContactOpen, setIsContactOpen] = useState(false);
   const [isPrivacyTermsOpen, setIsPrivacyTermsOpen] = useState(false);
   const [isFAQOpen, setIsFAQOpen] = useState(false);
+  const [isChurchDetailsOpen, setIsChurchDetailsOpen] = useState(false);
   const [homeChurchId, setHomeChurchId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -97,12 +99,35 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToCourses, onGoToPart
     }
   }, []);
 
-  const [isDarkMode, setIsDarkMode] = useState(() => {
-    if (typeof document !== 'undefined') {
-      return document.documentElement.classList.contains('dark');
+  const handleRemoveHomeChurch = () => {
+    setHomeChurchId(null);
+    localStorage.removeItem('homeChurchId');
+  };
+
+  const [isDarkMode, setIsDarkMode] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setIsDarkMode(document.documentElement.classList.contains('dark'));
     }
-    return false;
-  });
+  }, []);
+
+  const [hasMounted, setHasMounted] = useState(false);
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!hasMounted) return;
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+  }, [isDarkMode, hasMounted]);
+
   const [profilePic, setProfilePic] = useState<string | null>(auth.currentUser?.photoURL || null);
   const [userName, setUserName] = useState<string>('Loading...');
   const [isAdmin, setIsAdmin] = useState(false);
@@ -156,14 +181,6 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToCourses, onGoToPart
       setProfilePic(savedPic);
     }
   }, []);
-
-  useEffect(() => {
-    if (isDarkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  }, [isDarkMode]);
 
   const handleLogout = async () => {
     try {
@@ -313,7 +330,7 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToCourses, onGoToPart
               label={homeChurchId ? "My Church" : "My Home Church"} 
               onClick={() => {
                 if (homeChurchId) {
-                  alert("My Church feature is currently unavailable.");
+                  setIsChurchDetailsOpen(true);
                 } else {
                   alert("You haven't selected a Home Church yet. Go to the Map to select one.");
                 }
@@ -404,6 +421,14 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToCourses, onGoToPart
       <FAQModal
         isOpen={isFAQOpen}
         onClose={() => setIsFAQOpen(false)}
+      />
+      <ChurchDetailsModal
+        isOpen={isChurchDetailsOpen}
+        onClose={() => setIsChurchDetailsOpen(false)}
+        churchId={homeChurchId}
+        isHomeChurch={true}
+        onRemoveHomeChurch={handleRemoveHomeChurch}
+        fullPage={true}
       />
     </div>
   );

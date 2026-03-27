@@ -78,15 +78,6 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
     return url;
   };
 
-  const cleanHtmlContent = (html: string) => {
-    // Replace all non-breaking spaces with standard spaces
-    let cleaned = html.replace(/&nbsp;/g, ' ');
-    // Strip out all inline style attributes
-    cleaned = cleaned.replace(/ style="[^"]*"/gi, '');
-    cleaned = cleaned.replace(/ style='[^']*'/gi, '');
-    return cleaned;
-  };
-
   const handleSave = async (status: 'published' | 'draft' | 'scheduled') => {
     if (!title.trim()) {
       setError('Title is required');
@@ -97,9 +88,7 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
       return;
     }
     
-    const cleanedContent = cleanHtmlContent(content);
-    
-    if (!cleanedContent.trim() || cleanedContent === '<p></p>') {
+    if (!content.trim() || content === '<p></p>') {
       setError('Content is required');
       return;
     }
@@ -116,7 +105,7 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
         title: title.trim(),
         category,
         status,
-        content: cleanedContent,
+        content: content,
         featuredImage: featuredImage.trim() || null,
         tags,
         authorId: auth.currentUser?.uid,

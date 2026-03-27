@@ -18,10 +18,6 @@ interface RichTextEditorProps {
 }
 
 const MenuBar = ({ editor }: { editor: any }) => {
-  if (!editor) {
-    return null;
-  }
-
   const transformImageUrl = (url: string) => {
     if (!url) return url;
     // Transform GitHub blob/raw URLs to raw URLs
@@ -34,6 +30,7 @@ const MenuBar = ({ editor }: { editor: any }) => {
   };
 
   const addImage = useCallback(() => {
+    if (!editor) return;
     const url = window.prompt('URL');
     if (url) {
       editor.chain().focus().setImage({ src: transformImageUrl(url) }).run();
@@ -41,6 +38,7 @@ const MenuBar = ({ editor }: { editor: any }) => {
   }, [editor]);
 
   const setLink = useCallback(() => {
+    if (!editor) return;
     const previousUrl = editor.getAttributes('link').href;
     const url = window.prompt('URL', previousUrl);
     if (url === null) {
@@ -52,6 +50,10 @@ const MenuBar = ({ editor }: { editor: any }) => {
     }
     editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
   }, [editor]);
+
+  if (!editor) {
+    return null;
+  }
 
   return (
     <div className="flex flex-wrap gap-1 p-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-[#1a1d27] rounded-t-xl">

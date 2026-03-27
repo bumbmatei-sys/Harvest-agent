@@ -93,7 +93,7 @@ const ContactSupport: React.FC<ContactSupportProps> = ({ onBack }) => {
                 
                 <h1 className="text-4xl sm:text-5xl font-black text-background-dark mb-6">Contact Support</h1>
                 <p className="text-xl text-gray-600 leading-relaxed mb-12">
-                    Have a question or need assistance? Our team is here to help you. Fill out the form below and we'll get back to you as soon as possible.
+                    Have a question or need assistance? Our team is here to help you. Fill out the form below and we&apos;ll get back to you as soon as possible.
                 </p>
 
                 <div className="bg-white p-8 rounded-2xl shadow-lg border border-gray-100">

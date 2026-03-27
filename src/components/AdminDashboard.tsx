@@ -5,6 +5,7 @@ import AdminBlog from './AdminBlog';
 import AdminPosts from './AdminPosts';
 import AdminInbox from './AdminInbox';
 import AdminChurches from './AdminChurches';
+import AdminCourses from './AdminCourses';
 import { db } from '../firebase';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 
@@ -83,6 +84,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
           <AdminInbox />
         ) : activeTab === 'churches' ? (
           <AdminChurches />
+        ) : activeTab === 'courses' ? (
+          <AdminCourses />
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-gray-400 dark:text-gray-500">
             <p className="text-lg font-medium">{bottomTabs.find(t => t.id === activeTab)?.label || 'Inbox'} coming soon.</p>

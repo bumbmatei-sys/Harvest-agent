@@ -429,7 +429,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onBack, onNavigate }) => {
                 <>
                   <p><strong>1. Acceptance of Terms</strong><br/>By accessing and using the Harvest App, you accept and agree to be bound by the terms and provision of this agreement.</p>
                   <p><strong>2. Description of Service</strong><br/>Harvest provides users with access to a rich collection of resources, including various communications tools, forums, shopping services, and personalized content.</p>
-                  <p><strong>3. User Conduct</strong><br/>You agree to use the service only for lawful purposes and in a way that does not infringe the rights of, restrict or inhibit anyone else's use and enjoyment of the website.</p>
+                  <p><strong>3. User Conduct</strong><br/>You agree to use the service only for lawful purposes and in a way that does not infringe the rights of, restrict or inhibit anyone else&apos;s use and enjoyment of the website.</p>
                   <p><strong>4. Intellectual Property</strong><br/>All content included on this site, such as text, graphics, logos, button icons, images, audio clips, digital downloads, data compilations, and software, is the property of Harvest or its content suppliers.</p>
                 </>
               ) : (

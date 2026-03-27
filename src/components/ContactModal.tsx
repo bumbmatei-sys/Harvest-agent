@@ -268,7 +268,7 @@ const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) => {
         >
           <form onSubmit={(e) => handleSubmit(e, 'feature', featureForm, () => setFeatureForm({ title: '', details: '' }))}>
             <div className="bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-400 text-xs p-3 rounded-xl mb-6 leading-relaxed border border-purple-100 dark:border-purple-900/30">
-              Have an idea to make Harvest better? We'd love to hear about it!
+              Have an idea to make Harvest better? We&apos;d love to hear about it!
             </div>
 
             <InputLabel>FEATURE TITLE</InputLabel>

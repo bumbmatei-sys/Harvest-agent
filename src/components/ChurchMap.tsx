@@ -6,6 +6,7 @@ import L from 'leaflet';
 import { ArrowLeft, LocateFixed, Map as MapIcon, List, Navigation, Home, CheckCircle } from 'lucide-react';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
+import ChurchDetailsModal from './ChurchDetailsModal';
 
 // Fix for default marker icon in react-leaflet
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -159,6 +160,8 @@ const ChurchMap: React.FC<ChurchMapProps> = ({ onBack, onMapInteraction }) => {
   const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
   const [homeChurchId, setHomeChurchId] = useState<string | null>(null);
   const [highlightedChurchId, setHighlightedChurchId] = useState<string | null>(null);
+  const [isChurchDetailsOpen, setIsChurchDetailsOpen] = useState(false);
+  const [selectedChurchId, setSelectedChurchId] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchChurches = async () => {
@@ -308,7 +311,11 @@ const ChurchMap: React.FC<ChurchMapProps> = ({ onBack, onMapInteraction }) => {
                   <div 
                     key={church.id} 
                     id={`church-card-${church.id}`}
-                    className={`bg-white dark:bg-[#252a36] rounded-2xl p-3 flex gap-3 shadow-sm transition-all duration-500 ${
+                    onClick={() => {
+                      setSelectedChurchId(church.id);
+                      setIsChurchDetailsOpen(true);
+                    }}
+                    className={`bg-white dark:bg-[#252a36] rounded-2xl p-3 flex gap-3 shadow-sm transition-all duration-500 cursor-pointer ${
                       isHighlighted 
                         ? 'border-2 border-[#d4a017] ring-4 ring-[#d4a017]/20 scale-[1.02]' 
                         : 'border border-gray-100 dark:border-gray-800'
@@ -320,6 +327,7 @@ const ChurchMap: React.FC<ChurchMapProps> = ({ onBack, onMapInteraction }) => {
                         src={church.imageUrl || `https://picsum.photos/seed/${church.id}/200/200`} 
                         alt={church.name}
                         className="w-full h-full object-cover"
+                        referrerPolicy="no-referrer"
                       />
                     </div>
                     
@@ -343,27 +351,32 @@ const ChurchMap: React.FC<ChurchMapProps> = ({ onBack, onMapInteraction }) => {
 
                       <div className="flex items-center justify-between mt-2">
                         <button 
-                          onClick={() => handleSetHomeChurch(church.id)}
-                          className={`flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold transition-colors ${
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSetHomeChurch(church.id);
+                          }}
+                          className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors shadow-sm ${
                             isHome 
-                              ? 'text-[#10b981] bg-[#10b981]/10' 
-                              : 'text-gray-500 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700'
+                              ? 'bg-[#10b981] text-white' 
+                              : 'bg-white dark:bg-gray-800 text-gray-500 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'
                           }`}
+                          title={isHome ? 'Remove from Home Church' : 'Set as Home Church'}
                         >
-                          <Home size={12} />
-                          {isHome ? 'MY CHURCH' : 'HOME CHURCH'}
+                          <Home size={16} />
                         </button>
 
                         <div className="flex items-center gap-1.5">
                           <button 
-                            onClick={() => openDirections(church.lat, church.lng)}
-                            className="w-7 h-7 rounded-full bg-[#e8f0fe] dark:bg-[#1a73e8]/20 flex items-center justify-center text-[#1a73e8] hover:bg-[#d2e3fc] dark:hover:bg-[#1a73e8]/30 transition-colors"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedChurchId(church.id);
+                              setIsChurchDetailsOpen(true);
+                            }}
+                            className="w-8 h-8 rounded-lg bg-[#d4a017] flex items-center justify-center shadow-sm hover:bg-[#b8860b] transition-colors text-white"
+                            title="Church Information"
                           >
-                            <Navigation size={12} className="transform rotate-45" />
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m18 7 4 2v11a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9l4-2"/><path d="M14 22v-4a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v4"/><path d="M18 22V5l-6-3-6 3v17"/><path d="M12 7v5"/><path d="M10 9h4"/></svg>
                           </button>
-                          <div className="w-8 h-8 rounded-lg bg-[#d4a017] flex items-center justify-center shadow-sm">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m18 7 4 2v11a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9l4-2"/><path d="M14 22v-4a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v4"/><path d="M18 22V5l-6-3-6 3v17"/><path d="M12 7v5"/><path d="M10 9h4"/></svg>
-                          </div>
                         </div>
                       </div>
                     </div>
@@ -380,6 +393,17 @@ const ChurchMap: React.FC<ChurchMapProps> = ({ onBack, onMapInteraction }) => {
           </div>
         </div>
       )}
+
+      <ChurchDetailsModal
+        isOpen={isChurchDetailsOpen}
+        onClose={() => setIsChurchDetailsOpen(false)}
+        churchId={selectedChurchId}
+        isHomeChurch={homeChurchId === selectedChurchId}
+        onRemoveHomeChurch={() => {
+          setHomeChurchId(null);
+          localStorage.removeItem('homeChurchId');
+        }}
+      />
     </div>
   );
 };
