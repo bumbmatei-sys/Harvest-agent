@@ -8,8 +8,7 @@ import BlogTab from './BlogTab';
 import NewsTab from './NewsTab';
 import AllNews from './AllNews';
 import SavedContentTab from './SavedContentTab';
-import CoursesTab from './CoursesTab';
-import CourseDetails from './CourseDetails';
+import CourseExperience from './CourseExperience';
 import dynamic from 'next/dynamic';
 
 const ChurchMap = dynamic(() => import('./ChurchMap'), { ssr: false });
@@ -122,10 +121,6 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
     return <BlogTab initialPost={fullScreenView.data} onBack={() => setFullScreenView({type: 'none'})} isFullScreen={true} />;
   }
 
-  if (fullScreenView.type === 'course' && fullScreenView.data) {
-    return <CourseDetails course={fullScreenView.data} onBack={() => setFullScreenView({type: 'none'})} />;
-  }
-
   return (
     <div className="flex flex-col h-screen bg-[#f8f9fa] dark:bg-[#1a1d27] font-sans overflow-hidden transition-colors duration-300">
       {/* Top Navigation (only visible when Home is active) */}
@@ -190,7 +185,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
                   <SavedContentTab onOpenArticle={(post) => setFullScreenView({type: 'article', data: post})} />
                 )}
                 {activeTopTab === 'courses' && (
-                  <CoursesTab onOpenCourse={(course) => setFullScreenView({type: 'course', data: course})} />
+                  <CourseExperience />
                 )}
                 {activeTopTab !== 'news' && activeTopTab !== 'partner' && activeTopTab !== 'blog' && activeTopTab !== 'saved' && activeTopTab !== 'courses' && (
                   <div className="flex flex-col items-center justify-center h-64 text-gray-400 dark:text-gray-500">

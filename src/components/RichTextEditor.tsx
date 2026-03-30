@@ -6,6 +6,7 @@ import Underline from '@tiptap/extension-underline';
 import Link from '@tiptap/extension-link';
 import Image from '@tiptap/extension-image';
 import TextAlign from '@tiptap/extension-text-align';
+import Placeholder from '@tiptap/extension-placeholder';
 import { 
   Bold, Italic, Underline as UnderlineIcon, Strikethrough, 
   Heading1, Heading2, List, ListOrdered, Link as LinkIcon, 
@@ -15,6 +16,8 @@ import {
 interface RichTextEditorProps {
   content: string;
   onChange: (content: string) => void;
+  minHeight?: string;
+  placeholder?: string;
 }
 
 const MenuBar = ({ editor }: { editor: any }) => {
@@ -168,7 +171,7 @@ const MenuBar = ({ editor }: { editor: any }) => {
   );
 };
 
-const RichTextEditor: React.FC<RichTextEditorProps> = ({ content, onChange }) => {
+const RichTextEditor: React.FC<RichTextEditorProps> = ({ content, onChange, minHeight = '300px', placeholder = 'Write something...' }) => {
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -184,6 +187,9 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({ content, onChange }) =>
       TextAlign.configure({
         types: ['heading', 'paragraph'],
       }),
+      Placeholder.configure({
+        placeholder,
+      }),
     ],
     content,
     onUpdate: ({ editor }) => {
@@ -191,8 +197,8 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({ content, onChange }) =>
     },
     editorProps: {
       attributes: {
-        class: 'prose prose-sm sm:prose lg:prose-lg xl:prose-2xl mx-auto focus:outline-none min-h-[300px] p-4 dark:prose-invert max-w-none',
-        style: 'word-break: normal; overflow-wrap: break-word; white-space: normal;'
+        class: `prose prose-sm sm:prose lg:prose-lg xl:prose-2xl mx-auto focus:outline-none min-h-[${minHeight}] p-4 dark:prose-invert max-w-none`,
+        style: `word-break: normal; overflow-wrap: break-word; white-space: normal; min-height: ${minHeight};`
       },
     },
   });

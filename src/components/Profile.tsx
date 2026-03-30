@@ -291,7 +291,7 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToCourses, onGoToPart
         <div className="bg-white dark:bg-[#252a36] rounded-3xl p-6 shadow-sm border border-gray-100 dark:border-gray-800 text-center transition-colors duration-300">
           <h3 className="text-lg font-bold text-[#1a202c] dark:text-white mb-2">Ready to grow?</h3>
           <p className="text-gray-500 dark:text-gray-400 text-xs mb-6">
-            You haven't started any courses yet. Begin your journey today.
+            You haven&apos;t started any courses yet. Begin your journey today.
           </p>
           <button 
             onClick={onGoToCourses}
