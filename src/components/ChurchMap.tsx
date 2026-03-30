@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -323,10 +324,12 @@ const ChurchMap: React.FC<ChurchMapProps> = ({ onBack, onMapInteraction }) => {
                   >
                     <div className="w-20 h-20 rounded-xl bg-gray-200 dark:bg-gray-700 flex-shrink-0 overflow-hidden relative">
                       {/* Placeholder image for church */}
-                      <img 
+                      <Image 
                         src={church.imageUrl || `https://picsum.photos/seed/${church.id}/200/200`} 
                         alt={church.name}
-                        className="w-full h-full object-cover"
+                        fill
+                        sizes="80px"
+                        className="object-cover"
                         referrerPolicy="no-referrer"
                       />
                     </div>

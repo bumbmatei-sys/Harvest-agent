@@ -7,7 +7,7 @@ interface HeroProps {
 }
 
 const Hero: React.FC<HeroProps> = ({ onNavigate }) => {
-  const imageRef = useRef<HTMLImageElement>(null);
+  const imageRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -99,15 +99,19 @@ const Hero: React.FC<HeroProps> = ({ onNavigate }) => {
 
       {/* New Image with Scroll Rotation Effect */}
       <div className="relative flex justify-center w-full z-20 mt-10 pb-12 [perspective:1000px]">
-        <Image 
-          ref={imageRef}
-          src="https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png"
-          alt="Harvest Spic Logo"
-          width={280}
-          height={280}
+        <div 
+          ref={imageRef} 
           className="w-[240px] sm:w-[280px] h-auto drop-shadow-2xl will-change-transform"
-          style={{ transformStyle: 'preserve-3d' }} 
-        />
+          style={{ transformStyle: 'preserve-3d' }}
+        >
+          <Image 
+            src="https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png"
+            alt="Harvest Spic Logo"
+            width={280}
+            height={280}
+            className="w-full h-auto"
+          />
+        </div>
       </div>
     </section>
   );

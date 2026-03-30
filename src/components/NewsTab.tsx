@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { collection, query, orderBy, onSnapshot, doc, updateDoc, arrayUnion, arrayRemove, limit, where } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { Calendar as CalendarIcon, ThumbsUp, Check, ChevronRight, FileText, Tag, Calendar } from 'lucide-react';
@@ -268,7 +269,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle }) => {
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden flex items-center justify-center font-bold text-gray-600 dark:text-gray-300">
                   {post.authorPhoto ? (
-                    <img src={post.authorPhoto} alt={post.authorName} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                    <Image src={post.authorPhoto} alt={post.authorName} fill sizes="40px" className="object-cover" referrerPolicy="no-referrer" />
                   ) : (
                     post.authorName.charAt(0)
                   )}
@@ -292,8 +293,8 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle }) => {
             </p>
 
             {post.imageUrl && (
-              <div className="rounded-xl overflow-hidden mb-3 max-h-80 bg-gray-100 dark:bg-gray-800">
-                <img src={post.imageUrl} alt="Post attachment" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+              <div className="rounded-xl overflow-hidden mb-3 max-h-80 bg-gray-100 dark:bg-gray-800 relative min-h-[200px]">
+                <Image src={post.imageUrl} alt="Post attachment" fill sizes="100vw" className="object-cover" referrerPolicy="no-referrer" />
               </div>
             )}
 
@@ -408,11 +409,13 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle }) => {
                 className="bg-white dark:bg-[#252a36] rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden flex flex-row items-center gap-3 p-2.5 sm:p-3 transition-transform hover:scale-[1.02] duration-300 cursor-pointer"
               >
                 {post.featuredImage ? (
-                  <div className="w-16 h-16 sm:w-20 sm:h-20 flex-shrink-0 overflow-hidden rounded-lg bg-gray-100 dark:bg-gray-800">
-                    <img 
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 flex-shrink-0 overflow-hidden rounded-lg bg-gray-100 dark:bg-gray-800 relative">
+                    <Image 
                       src={post.featuredImage} 
                       alt={post.title} 
-                      className="w-full h-full object-cover"
+                      fill
+                      sizes="80px"
+                      className="object-cover"
                       referrerPolicy="no-referrer"
                     />
                   </div>

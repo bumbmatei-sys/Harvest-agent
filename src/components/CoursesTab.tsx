@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { db } from '../firebase';
 import { BookOpen, Clock, ChevronRight } from 'lucide-react';
@@ -77,10 +78,12 @@ const CoursesTab: React.FC<CoursesTabProps> = ({ onOpenCourse }) => {
             className="bg-white dark:bg-[#252a36] rounded-2xl overflow-hidden shadow-sm border border-gray-100 dark:border-gray-800 cursor-pointer hover:shadow-md transition-shadow group flex flex-col"
           >
             <div className="relative h-48 w-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
-              <img 
+              <Image 
                 src={course.coverImage || `https://picsum.photos/seed/${course.id}/600/400`} 
                 alt={course.title}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                fill
+                sizes="(max-width: 768px) 100vw, 50vw"
+                className="object-cover group-hover:scale-105 transition-transform duration-500"
                 referrerPolicy="no-referrer"
               />
               <div className="absolute top-3 left-3">

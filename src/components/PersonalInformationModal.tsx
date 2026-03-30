@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useRef, useEffect } from 'react';
+import Image from 'next/image';
 import { X, Edit2, ChevronRight, ArrowLeft } from 'lucide-react';
 import { auth, db } from '../firebase';
 import { updateProfile, updatePassword, deleteUser, EmailAuthProvider, reauthenticateWithCredential, sendPasswordResetEmail } from 'firebase/auth';
@@ -427,9 +428,9 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
         {/* Profile Photo */}
         <div className="flex flex-col items-center mt-2 mb-8">
           <div className="relative">
-            <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-white shadow-sm bg-gray-200">
+            <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-white shadow-sm bg-gray-200 relative">
               {profilePic ? (
-                <img src={profilePic} alt="Profile" className="w-full h-full object-cover" />
+                <Image src={profilePic} alt="Profile" fill sizes="128px" className="object-cover" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-gray-400 text-4xl font-bold">
                   {name.charAt(0) || 'U'}

@@ -1,5 +1,6 @@
 "use client";
 import React from 'react';
+import Image from 'next/image';
 import { ArrowLeft, Clock, User, BookOpen, PlayCircle, CheckCircle2 } from 'lucide-react';
 import { Course } from './AdminCourseEditor';
 
@@ -13,10 +14,12 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ course, onBack }) => {
     <div className="fixed inset-0 z-50 bg-[#f8f9fa] dark:bg-[#1a1d27] overflow-y-auto flex flex-col animate-fade-in">
       {/* Header Image */}
       <div className="relative h-64 sm:h-80 w-full flex-shrink-0">
-        <img 
+        <Image 
           src={course.coverImage || `https://picsum.photos/seed/${course.id}/1200/600`} 
           alt={course.title}
-          className="w-full h-full object-cover"
+          fill
+          sizes="100vw"
+          className="object-cover"
           referrerPolicy="no-referrer"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-[#1a1d27] via-[#1a1d27]/60 to-transparent" />

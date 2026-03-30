@@ -348,11 +348,13 @@ const BlogTab: React.FC<BlogTabProps> = ({ onOpenArticle, initialPost, onBack, i
             className="bg-white dark:bg-[#252a36] rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden flex flex-row items-center gap-3 p-2.5 sm:p-3 transition-transform hover:scale-[1.02] duration-300 cursor-pointer"
           >
             {post.featuredImage ? (
-              <div className="w-16 h-16 sm:w-20 sm:h-20 flex-shrink-0 overflow-hidden rounded-lg bg-gray-100 dark:bg-gray-800">
-                <img 
+              <div className="w-16 h-16 sm:w-20 sm:h-20 flex-shrink-0 overflow-hidden rounded-lg bg-gray-100 dark:bg-gray-800 relative">
+                <Image 
                   src={post.featuredImage} 
                   alt={post.title} 
-                  className="w-full h-full object-cover"
+                  fill
+                  sizes="80px"
+                  className="object-cover"
                   referrerPolicy="no-referrer"
                 />
               </div>

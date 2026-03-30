@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { X, MapPin, User, Clock, Mail, Phone, Globe, Facebook, Instagram, Navigation, Copy, CheckCircle2, Trash2 } from 'lucide-react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -128,10 +129,12 @@ const ChurchDetailsModal: React.FC<ChurchDetailsModalProps> = ({
           <div className="flex flex-col pb-8">
             {/* Header Image & Title */}
             <div className="relative h-72 w-full">
-              <img 
+              <Image 
                 src={church.imageUrl || `https://picsum.photos/seed/${church.id}/800/600`} 
                 alt={church.name}
-                className="w-full h-full object-cover"
+                fill
+                sizes="100vw"
+                className="object-cover"
                 referrerPolicy="no-referrer"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-[#111827] via-[#111827]/60 to-transparent" />
