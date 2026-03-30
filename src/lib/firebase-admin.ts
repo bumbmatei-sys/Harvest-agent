@@ -20,5 +20,5 @@ if (!admin.apps.length) {
   app = admin.app();
 }
 
-export const adminDb = getFirestore(app);
+export const adminDb = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 export const adminAuth = admin.auth();
