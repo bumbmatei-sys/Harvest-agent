@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, CSSProperties, KeyboardEvent, MouseEvent } from "react";
+import Image from 'next/image';
 import { ArrowLeft } from "lucide-react";
 import { collection, addDoc, doc, updateDoc, getDocs, deleteDoc, setDoc } from "firebase/firestore";
 import { db } from "../firebase";
@@ -238,7 +239,7 @@ function AuthorCard({ author, onChange, onRemove, selectable = false, selected =
         )}
         <div onClick={() => setOpen((o) => !o)} style={{ display: "flex", alignItems: "center", gap: 10, flex: 1 }}>
           {author.picture
-            ? <img src={author.picture} alt="" style={s.avatar} onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+            ? <div style={{ position: 'relative', width: 40, height: 40, borderRadius: '50%', overflow: 'hidden' }}><Image src={author.picture} alt="" fill sizes="40px" style={{ objectFit: 'cover' }} onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} /></div>
             : <div style={s.avatarEmpty}>👤</div>}
           <div>
             <div style={{ fontWeight: 700, fontSize: 15, color: TEXT }}>{author.name || "New Author"}</div>
@@ -257,7 +258,7 @@ function AuthorCard({ author, onChange, onRemove, selectable = false, selected =
             <Field label="Title / Role" value={author.title} onChange={(v) => set("title", v)} placeholder="Lead Pastor" />
           </div>
           <Field label="Profile Picture URL" value={author.picture} onChange={(v) => set("picture", v)} placeholder="https://..." />
-          {author.picture && <img src={author.picture} alt="" style={{ width: 60, height: 60, borderRadius: "50%", objectFit: "cover", border: `2px solid ${BORDER}` }} onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />}
+          {author.picture && <div style={{ position: 'relative', width: 60, height: 60, borderRadius: '50%', overflow: 'hidden', border: `2px solid ${BORDER}` }}><Image src={author.picture} alt="" fill sizes="60px" style={{ objectFit: 'cover' }} onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} /></div>}
           <div>
             <label style={s.label}>Bio</label>
             <RichTextEditor content={author.bio} onChange={(v) => set("bio", v)} minHeight="80px" placeholder="Author biography..." />
@@ -507,7 +508,7 @@ function AuthorPickerModal({ authorsLibrary, selectedIds, onConfirm, onClose }: 
                 {selected.has(author.id) && <span style={{ color: "#fff", fontSize: 11, fontWeight: 700 }}>✓</span>}
               </div>
               {author.picture
-                ? <img src={author.picture} alt="" style={s.avatar} onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                ? <div style={{ position: 'relative', width: 40, height: 40, borderRadius: '50%', overflow: 'hidden' }}><Image src={author.picture} alt="" fill sizes="40px" style={{ objectFit: 'cover' }} onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} /></div>
                 : <div style={s.avatarEmpty}>👤</div>}
               <div>
                 <div style={{ fontWeight: 700, fontSize: 14 }}>{author.name || "Unnamed"}</div>
@@ -718,8 +719,9 @@ export default function CourseBuilder({ course: initialCourse, onClose }: Course
           </p>
         </div>
         {course.thumbnail && (
-          <img src={course.thumbnail} alt="" style={{ width: 58, height: 58, borderRadius: 10, objectFit: "cover", border: `1.5px solid ${BORDER}` }}
-            onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+          <div style={{ position: 'relative', width: 58, height: 58, borderRadius: 10, overflow: 'hidden', border: `1.5px solid ${BORDER}` }}>
+            <Image src={course.thumbnail} alt="" fill sizes="58px" style={{ objectFit: 'cover' }} onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+          </div>
         )}
       </div>
 
@@ -786,8 +788,9 @@ export default function CourseBuilder({ course: initialCourse, onClose }: Course
               <div style={s.cardBody}>
                 <Field label="Thumbnail Image URL" value={course.thumbnail} onChange={(v) => set("thumbnail", v)} placeholder="https://..." />
                 {course.thumbnail && (
-                  <img src={course.thumbnail} alt="" style={{ width: "100%", maxHeight: 180, objectFit: "cover", borderRadius: 10, border: `1px solid ${BORDER}` }}
-                    onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                  <div style={{ position: 'relative', width: "100%", height: 180, borderRadius: 10, overflow: 'hidden', border: `1px solid ${BORDER}` }}>
+                    <Image src={course.thumbnail} alt="" fill sizes="100vw" style={{ objectFit: 'cover' }} onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                  </div>
                 )}
               </div>
             </div>
@@ -804,7 +807,7 @@ export default function CourseBuilder({ course: initialCourse, onClose }: Course
                   ? <div style={{ color: TEXT2, fontSize: 13 }}>No authors selected. Pick from the library or create a new one.</div>
                   : selectedAuthors.map((a) => (
                     <div key={a.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", background: GOLD_LIGHT, borderRadius: 12, border: `1.5px solid ${GOLD}`, marginBottom: 8 }}>
-                      {a.picture ? <img src={a.picture} alt="" style={s.avatar} onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} /> : <div style={s.avatarEmpty}>👤</div>}
+                      {a.picture ? <div style={{ position: 'relative', width: 40, height: 40, borderRadius: '50%', overflow: 'hidden' }}><Image src={a.picture} alt="" fill sizes="40px" style={{ objectFit: 'cover' }} onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} /></div> : <div style={s.avatarEmpty}>👤</div>}
                       <div style={{ flex: 1 }}>
                         <div style={{ fontWeight: 700, fontSize: 14 }}>{a.name}</div>
                         {a.title && <div style={{ fontSize: 12, color: TEXT2 }}>{a.title}</div>}

@@ -1,5 +1,6 @@
 "use client";
 import React from 'react';
+import Image from 'next/image';
 
 interface FooterProps {
   onNavigate: (page: string) => void;
@@ -37,9 +38,11 @@ const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
           
           <div className="max-w-md">
             <div className="flex items-center gap-2 mb-6">
-              <img 
+              <Image 
                 src="https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png" 
                 alt="Harvest Logo" 
+                width={32}
+                height={32}
                 className="h-8 w-auto" 
               />
               <span className="text-white text-xl font-bold tracking-tight">Harvest</span>

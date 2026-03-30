@@ -1,5 +1,6 @@
 "use client";
 import React, { useEffect, useRef } from 'react';
+import Image from 'next/image';
 
 interface HeroProps {
   onNavigate?: (page: string) => void;
@@ -48,10 +49,12 @@ const Hero: React.FC<HeroProps> = ({ onNavigate }) => {
     <section className="relative min-h-screen flex flex-col items-center justify-end pt-32 pb-16 overflow-hidden bg-background-dark">
       {/* Background Image & Overlay */}
       <div className="absolute inset-0 z-0">
-        <img 
+        <Image 
           src="https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/No_people_just_2k_202512231746.jpeg" 
           alt="Harvest Background" 
-          className="w-full h-full object-cover"
+          fill
+          priority
+          className="object-cover"
         />
         {/* Dark gradient overlay to ensure text readability */}
         <div className="absolute inset-0 bg-gradient-to-b from-background-dark/80 via-background-dark/60 to-background-dark/95 mix-blend-multiply"></div>
@@ -96,10 +99,12 @@ const Hero: React.FC<HeroProps> = ({ onNavigate }) => {
 
       {/* New Image with Scroll Rotation Effect */}
       <div className="relative flex justify-center w-full z-20 mt-10 pb-12 [perspective:1000px]">
-        <img 
+        <Image 
           ref={imageRef}
           src="https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png"
           alt="Harvest Spic Logo"
+          width={280}
+          height={280}
           className="w-[240px] sm:w-[280px] h-auto drop-shadow-2xl will-change-transform"
           style={{ transformStyle: 'preserve-3d' }} 
         />

@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 
 interface NavbarProps {
     isHome?: boolean;
@@ -92,9 +93,11 @@ const Navbar: React.FC<NavbarProps> = ({ isHome = true, onNavigate }) => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between">
           <a href="#" onClick={handleLogoClick} className="flex items-center gap-2 group cursor-pointer">
-            <img 
+            <Image 
               src="https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png" 
               alt="Harvest Logo" 
+              width={32}
+              height={32}
               className="h-8 w-auto group-hover:scale-110 transition-transform duration-300" 
             />
             <span className="text-white text-xl font-bold tracking-tight">Harvest</span>

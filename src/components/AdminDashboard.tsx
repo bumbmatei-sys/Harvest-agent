@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { LayoutDashboard, Church, FileText, Rss, BrainCircuit, Inbox, ArrowLeft, BookOpen } from 'lucide-react';
 import AdminBlog from './AdminBlog';
 import AdminPosts from './AdminPosts';
@@ -55,9 +56,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
         <div className="flex items-center gap-3">
           <button 
             onClick={() => onNavigate('home')}
-            className="w-8 h-8 flex items-center justify-center rounded-full bg-[#fdf8ed] dark:bg-[#2a2415] text-[#d4a017] hover:bg-[#fcefc7] dark:hover:bg-[#3a301c] transition-colors"
+            className="w-8 h-8 flex items-center justify-center rounded-full bg-[#fdf8ed] dark:bg-[#2a2415] text-[#d4a017] hover:bg-[#fcefc7] dark:hover:bg-[#3a301c] transition-colors relative"
           >
-            <img src="https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png" alt="Harvest Logo" className="w-5 h-5 object-contain" />
+            <Image src="https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png" alt="Harvest Logo" fill sizes="20px" className="object-contain p-1.5" />
           </button>
           <h1 className="text-lg font-bold text-gray-900 dark:text-white">Harvest Admin</h1>
         </div>

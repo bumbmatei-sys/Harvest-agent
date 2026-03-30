@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { ArrowLeft, Eye, Users, HeartHandshake } from 'lucide-react';
 import { auth, db } from '../firebase';
 import { collection, query, where, getDocs } from 'firebase/firestore';
@@ -93,9 +94,9 @@ const AboutUsModal: React.FC<AboutUsModalProps> = ({ isOpen, onClose, onOpenPart
             </p>
             
             <div className="bg-[#f8f9fa] dark:bg-[#1a1d27] rounded-2xl p-4 flex items-center gap-4">
-              <div className="w-14 h-14 rounded-full overflow-hidden bg-gray-200 flex-shrink-0">
+              <div className="w-14 h-14 rounded-full overflow-hidden bg-gray-200 flex-shrink-0 relative">
                 {mateiPic ? (
-                  <img src={mateiPic} alt="Matei Bumb" className="w-full h-full object-cover" />
+                  <Image src={mateiPic} alt="Matei Bumb" fill className="object-cover" sizes="56px" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-gray-400 font-bold text-xl">
                     MB

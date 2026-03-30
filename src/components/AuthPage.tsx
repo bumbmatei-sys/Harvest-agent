@@ -1,5 +1,6 @@
 "use client";
 import React, { useState } from 'react';
+import Image from 'next/image';
 import { auth, db } from '../firebase';
 import { signInWithPopup, GoogleAuthProvider, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVerification, setPersistence, browserLocalPersistence, browserSessionPersistence } from 'firebase/auth';
 import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
@@ -212,10 +213,12 @@ const AuthPage: React.FC<AuthPageProps> = ({ onBack, onNavigate }) => {
     <div className="min-h-screen flex items-center justify-center bg-background-dark px-4 py-12 relative overflow-hidden">
       {/* Background Image & Overlay */}
       <div className="absolute inset-0 z-0">
-        <img 
+        <Image 
           src="https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/No_people_just_2k_202512231746.jpeg" 
           alt="Harvest Background" 
-          className="w-full h-full object-cover"
+          fill
+          priority
+          className="object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-b from-background-dark/80 via-background-dark/60 to-background-dark/95 mix-blend-multiply"></div>
         <div className="absolute inset-0 bg-black/40"></div>
@@ -238,9 +241,11 @@ const AuthPage: React.FC<AuthPageProps> = ({ onBack, onNavigate }) => {
         <div className="p-8 sm:p-12">
           <div className="text-center mb-10">
             <div className="flex justify-center mb-6">
-              <img 
+              <Image 
                 src="https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png" 
                 alt="Harvest Logo" 
+                width={128}
+                height={128}
                 className="h-32 w-auto drop-shadow-2xl"
               />
             </div>
@@ -264,7 +269,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onBack, onNavigate }) => {
             disabled={loading}
             className="w-full flex items-center justify-center gap-3 bg-white/10 border border-white/30 text-white font-bold py-3 px-4 rounded-xl hover:bg-white/20 transition-all duration-100 mb-4 disabled:opacity-50"
           >
-            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-6 h-6" />
+            <Image src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" width={24} height={24} className="w-6 h-6" />
             Continue with Google
           </button>
 

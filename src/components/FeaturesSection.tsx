@@ -1,5 +1,6 @@
 "use client";
 import React from 'react';
+import Image from 'next/image';
 
 interface FeaturesSectionProps {
   onNavigate?: (page: string) => void;
@@ -272,8 +273,8 @@ const FeaturesSection: React.FC<FeaturesSectionProps> = ({ onNavigate }) => {
                       {/* Tooltip */}
                       <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover/pin:opacity-100 transform translate-y-2 group-hover/pin:translate-y-0 transition-all duration-300">
                           <div className="bg-white rounded-xl shadow-xl p-3 w-48 border border-gray-100 text-left">
-                              <div className="h-24 bg-gray-100 rounded-lg mb-2 overflow-hidden">
-                                  <img src="https://images.unsplash.com/photo-1438232992991-995b7058bbb3?q=80&w=2073&auto=format&fit=crop" alt="Church" className="w-full h-full object-cover" />
+                              <div className="h-24 bg-gray-100 rounded-lg mb-2 overflow-hidden relative">
+                                  <Image src="https://images.unsplash.com/photo-1438232992991-995b7058bbb3?q=80&w=2073&auto=format&fit=crop" alt="Church" fill sizes="192px" className="object-cover" />
                               </div>
                               <div className="font-bold text-gray-900 text-sm">Grace Community</div>
                               <div className="text-xs text-gray-500">1.2 miles away • Service 9AM</div>

@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { collection, query, orderBy, onSnapshot, addDoc, deleteDoc, doc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { MessageSquare, BarChart2, Calendar as CalendarIcon, Image as ImageIcon, Send, MoreVertical, ThumbsUp, Check, X } from 'lucide-react';
@@ -420,7 +421,7 @@ const AdminPosts: React.FC = () => {
             
             {imageUrl && (
               <div className="relative h-32 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800">
-                <img src={transformImageUrl(imageUrl)} alt="Preview" className="w-full h-full object-cover" referrerPolicy="no-referrer" onError={(e) => { (e.target as HTMLImageElement).src = 'https://placehold.co/600x400?text=Invalid+Image+URL'; }} />
+                <Image src={transformImageUrl(imageUrl)} alt="Preview" fill sizes="100vw" className="object-cover" referrerPolicy="no-referrer" onError={(e) => { (e.target as HTMLImageElement).src = 'https://placehold.co/600x400?text=Invalid+Image+URL'; }} />
                 <button onClick={() => setImageUrl('')} className="absolute top-2 right-2 p-1 bg-black/50 text-white rounded-full hover:bg-black/70">
                   <X size={14} />
                 </button>
@@ -470,9 +471,9 @@ const AdminPosts: React.FC = () => {
             <div key={post.id} className="bg-white dark:bg-[#252a36] rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-4">
               <div className="flex justify-between items-start mb-3">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden flex items-center justify-center font-bold text-gray-600 dark:text-gray-300">
+                  <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden flex items-center justify-center font-bold text-gray-600 dark:text-gray-300 relative">
                     {post.authorPhoto ? (
-                      <img src={post.authorPhoto} alt={post.authorName} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                      <Image src={post.authorPhoto} alt={post.authorName} fill sizes="40px" className="object-cover" referrerPolicy="no-referrer" />
                     ) : (
                       post.authorName.charAt(0)
                     )}
@@ -521,8 +522,8 @@ const AdminPosts: React.FC = () => {
               </p>
 
               {post.imageUrl && (
-                <div className="rounded-xl overflow-hidden mb-3 max-h-80 bg-gray-100 dark:bg-gray-800">
-                  <img src={post.imageUrl} alt="Post attachment" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                <div className="rounded-xl overflow-hidden mb-3 max-h-80 bg-gray-100 dark:bg-gray-800 relative min-h-[200px]">
+                  <Image src={post.imageUrl} alt="Post attachment" fill sizes="100vw" className="object-cover" referrerPolicy="no-referrer" />
                 </div>
               )}
 

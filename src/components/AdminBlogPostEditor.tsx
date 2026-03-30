@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { ArrowLeft, Upload, X, Plus, Calendar, Save, Send, Trash2 } from 'lucide-react';
 import { collection, addDoc, updateDoc, doc, serverTimestamp } from 'firebase/firestore';
 import { db, auth } from '../firebase';
@@ -246,7 +247,7 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
             </div>
             {featuredImage && (
               <div className="mt-2 relative rounded-lg overflow-hidden h-32 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
-                <img src={featuredImage} alt="Featured preview" className="w-full h-full object-cover" referrerPolicy="no-referrer" onError={(e) => { (e.target as HTMLImageElement).src = 'https://placehold.co/600x400?text=Invalid+Image+URL'; }} />
+                <Image src={featuredImage} alt="Featured preview" fill sizes="100vw" className="object-cover" referrerPolicy="no-referrer" onError={(e) => { (e.target as HTMLImageElement).src = 'https://placehold.co/600x400?text=Invalid+Image+URL'; }} />
               </div>
             )}
           </div>

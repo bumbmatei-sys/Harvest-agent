@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { collection, query, orderBy, onSnapshot, doc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { Calendar as CalendarIcon, ThumbsUp, Check, ArrowLeft } from 'lucide-react';
@@ -199,9 +200,9 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack }) => {
           posts.map(post => (
             <div key={post.id} className="bg-white dark:bg-[#252a36] rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-800">
               <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 rounded-full bg-[#1a1d27] text-white flex items-center justify-center font-bold overflow-hidden">
+                <div className="w-10 h-10 rounded-full bg-[#1a1d27] text-white flex items-center justify-center font-bold overflow-hidden relative">
                   {post.authorPhoto ? (
-                    <img src={post.authorPhoto} alt={post.authorName} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                    <Image src={post.authorPhoto} alt={post.authorName} fill sizes="40px" className="object-cover" referrerPolicy="no-referrer" />
                   ) : (
                     post.authorName.charAt(0)
                   )}
@@ -224,8 +225,8 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack }) => {
               </div>
 
               {post.imageUrl && (
-                <div className="mb-3 rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800">
-                  <img src={post.imageUrl} alt="Post attachment" className="w-full h-auto object-cover max-h-64" referrerPolicy="no-referrer" />
+                <div className="mb-3 rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800 relative min-h-[200px]">
+                  <Image src={post.imageUrl} alt="Post attachment" fill sizes="100vw" className="object-cover" referrerPolicy="no-referrer" />
                 </div>
               )}
 

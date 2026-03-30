@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { collection, query, where, orderBy, onSnapshot, doc, updateDoc, arrayUnion, arrayRemove, getDoc } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { FileText, Calendar, Tag, ArrowLeft, Search, Bookmark } from 'lucide-react';
@@ -196,11 +197,13 @@ const BlogTab: React.FC<BlogTabProps> = ({ onOpenArticle, initialPost, onBack, i
         
         <article className="pb-24">
           {selectedPost.featuredImage && (
-            <div className="w-full h-48 sm:h-64 md:h-80 overflow-hidden">
-              <img 
+            <div className="w-full h-48 sm:h-64 md:h-80 overflow-hidden relative">
+              <Image 
                 src={selectedPost.featuredImage} 
                 alt={selectedPost.title} 
-                className="w-full h-full object-cover"
+                fill
+                sizes="100vw"
+                className="object-cover"
                 referrerPolicy="no-referrer"
               />
             </div>
@@ -260,11 +263,13 @@ const BlogTab: React.FC<BlogTabProps> = ({ onOpenArticle, initialPost, onBack, i
                       className="flex gap-3 bg-white dark:bg-[#252a36] rounded-xl p-3 shadow-sm border border-gray-100 dark:border-gray-800 cursor-pointer hover:border-[#d4a017] transition-colors"
                     >
                       {relatedPost.featuredImage && (
-                        <div className="w-20 h-20 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800">
-                          <img 
+                        <div className="w-20 h-20 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 relative">
+                          <Image 
                             src={relatedPost.featuredImage} 
                             alt={relatedPost.title} 
-                            className="w-full h-full object-cover"
+                            fill
+                            sizes="80px"
+                            className="object-cover"
                             referrerPolicy="no-referrer"
                           />
                         </div>
