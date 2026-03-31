@@ -267,7 +267,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle }) => {
           <div key={post.id} className="bg-white dark:bg-[#252a36] rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-4">
             <div className="flex justify-between items-start mb-3">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden flex items-center justify-center font-bold text-gray-600 dark:text-gray-300">
+                <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden flex items-center justify-center font-bold text-gray-600 dark:text-gray-300 relative">
                   {post.authorPhoto ? (
                     <Image src={post.authorPhoto} alt={post.authorName} fill sizes="40px" className="object-cover" referrerPolicy="no-referrer" />
                   ) : (

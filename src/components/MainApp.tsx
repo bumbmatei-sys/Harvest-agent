@@ -23,7 +23,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
   const [isNavVisible, setIsNavVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
   const [direction, setDirection] = useState(0);
-  const [fullScreenView, setFullScreenView] = useState<{type: 'none' | 'all-news' | 'article' | 'course', id?: string, data?: any}>({type: 'none'});
+  const [fullScreenView, setFullScreenView] = useState<{type: 'none' | 'all-news' | 'article' | 'course' | 'saved-content', id?: string, data?: any}>({type: 'none'});
 
   useEffect(() => {
     setIsNavVisible(true);
@@ -33,8 +33,6 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
     { id: 'news', label: 'News' },
     { id: 'blog', label: 'Blog' },
     { id: 'courses', label: 'Courses' },
-    { id: 'continue-learning', label: 'Continue Learning' },
-    { id: 'saved', label: 'Saved Content' },
     { id: 'partner', label: 'Partner with Us' },
   ];
 
@@ -121,6 +119,18 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
     return <BlogTab initialPost={fullScreenView.data} onBack={() => setFullScreenView({type: 'none'})} isFullScreen={true} />;
   }
 
+  if (fullScreenView.type === 'saved-content') {
+    return <SavedContentTab onBack={() => setFullScreenView({type: 'none'})} onOpenArticle={(post) => setFullScreenView({type: 'article', data: post})} />;
+  }
+
+  if (fullScreenView.type === 'course' && fullScreenView.data) {
+    return <CourseExperience 
+      initialCourseId={fullScreenView.data.courseId} 
+      initialLessonId={fullScreenView.data.lessonId}
+      onBack={() => setFullScreenView({type: 'none'})} 
+    />;
+  }
+
   return (
     <div className="flex flex-col h-screen bg-[#f8f9fa] dark:bg-[#1a1d27] font-sans overflow-hidden transition-colors duration-300">
       {/* Top Navigation (only visible when Home is active) */}
@@ -181,13 +191,10 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
                 {activeTopTab === 'blog' && (
                   <BlogTab onOpenArticle={(post) => setFullScreenView({type: 'article', data: post})} />
                 )}
-                {activeTopTab === 'saved' && (
-                  <SavedContentTab onOpenArticle={(post) => setFullScreenView({type: 'article', data: post})} />
-                )}
                 {activeTopTab === 'courses' && (
-                  <CourseExperience />
+                  <CourseExperience onOpenCourse={(courseId, lessonId) => setFullScreenView({type: 'course', data: {courseId, lessonId}})} />
                 )}
-                {activeTopTab !== 'news' && activeTopTab !== 'partner' && activeTopTab !== 'blog' && activeTopTab !== 'saved' && activeTopTab !== 'courses' && (
+                {activeTopTab !== 'news' && activeTopTab !== 'partner' && activeTopTab !== 'blog' && activeTopTab !== 'courses' && (
                   <div className="flex flex-col items-center justify-center h-64 text-gray-400 dark:text-gray-500">
                     <p>{topTabs.find(t => t.id === activeTopTab)?.label} content coming soon.</p>
                   </div>
@@ -200,6 +207,8 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
             onNavigate={onNavigate} 
             onGoToCourses={() => { setActiveBottomTab('home'); setActiveTopTab('courses'); }} 
             onGoToPartner={() => { setActiveBottomTab('home'); setActiveTopTab('partner'); }}
+            onOpenSavedContent={() => setFullScreenView({type: 'saved-content'})}
+            onContinueLearning={(video) => setFullScreenView({type: 'course', data: {courseId: video.courseId, lessonId: video.lessonId}})}
           />
         ) : activeBottomTab === 'map' ? (
           <ChurchMap 

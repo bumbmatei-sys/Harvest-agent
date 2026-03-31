@@ -14,8 +14,11 @@ import {
   LogOut, 
   ChevronRight,
   BadgeCheck,
-  Moon
+  Moon,
+  Bookmark,
+  Play
 } from 'lucide-react';
+import Image from 'next/image';
 import { auth, db } from '../firebase';
 import { signOut, updateProfile } from 'firebase/auth';
 import { doc, getDoc, onSnapshot, updateDoc } from 'firebase/firestore';
@@ -81,9 +84,11 @@ interface ProfileProps {
   onNavigate: (page: string) => void;
   onGoToCourses: () => void;
   onGoToPartner: () => void;
+  onOpenSavedContent: () => void;
+  onContinueLearning?: (video: any) => void;
 }
 
-const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToCourses, onGoToPartner }) => {
+const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToCourses, onGoToPartner, onOpenSavedContent, onContinueLearning }) => {
   const [isPersonalInfoOpen, setIsPersonalInfoOpen] = useState(false);
   const [isAboutUsOpen, setIsAboutUsOpen] = useState(false);
   const [isContactOpen, setIsContactOpen] = useState(false);
@@ -131,6 +136,7 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToCourses, onGoToPart
   const [profilePic, setProfilePic] = useState<string | null>(auth.currentUser?.photoURL || null);
   const [userName, setUserName] = useState<string>('Loading...');
   const [isAdmin, setIsAdmin] = useState(false);
+  const [lastWatchedVideo, setLastWatchedVideo] = useState<any>(null);
 
   useEffect(() => {
     let unsubscribe: () => void;
@@ -152,6 +158,11 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToCourses, onGoToPart
               }
               if (data.role === 'admin' || data.email === 'bumbmatei@gmail.com') {
                 setIsAdmin(true);
+              }
+              if (data.lastWatchedVideo) {
+                setLastWatchedVideo(data.lastWatchedVideo);
+              } else {
+                setLastWatchedVideo(null);
               }
             } else {
               setUserName(auth.currentUser?.displayName || 'User');
@@ -287,20 +298,47 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToCourses, onGoToPart
       {/* Content Section */}
       <div className="px-4 -mt-12 relative z-10 space-y-6">
         
-        {/* Ready to grow card */}
-        <div className="bg-white dark:bg-[#252a36] rounded-3xl p-6 shadow-sm border border-gray-100 dark:border-gray-800 text-center transition-colors duration-300">
-          <h3 className="text-lg font-bold text-[#1a202c] dark:text-white mb-2">Ready to grow?</h3>
-          <p className="text-gray-500 dark:text-gray-400 text-xs mb-6">
-            You haven&apos;t started any courses yet. Begin your journey today.
-          </p>
-          <button 
-            onClick={onGoToCourses}
-            className="w-full bg-[#d4a017] hover:bg-[#b8860b] text-white font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition-colors text-sm"
-          >
-            <GraduationCap size={18} />
-            Start Learning
-          </button>
-        </div>
+        {/* Ready to grow card / Last watched video */}
+        {lastWatchedVideo ? (
+          <div className="bg-white dark:bg-[#252a36] rounded-3xl p-5 shadow-sm border border-gray-100 dark:border-gray-800 transition-colors duration-300">
+            <h3 className="text-sm font-bold text-[#1a202c] dark:text-white mb-3">Continue Learning</h3>
+            <div 
+              onClick={() => onContinueLearning ? onContinueLearning(lastWatchedVideo) : onGoToCourses()}
+              className="flex items-center gap-4 bg-gray-50 dark:bg-[#1a1d27] p-3 rounded-2xl cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            >
+              <div className="relative w-24 h-16 rounded-xl overflow-hidden flex-shrink-0 bg-gray-200 dark:bg-gray-700">
+                {lastWatchedVideo.thumbnail ? (
+                  <Image src={lastWatchedVideo.thumbnail} alt={lastWatchedVideo.courseTitle} fill className="object-cover" referrerPolicy="no-referrer" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-gray-400">
+                    <Play size={16} />
+                  </div>
+                )}
+                <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
+                  <Play size={16} className="text-white fill-white" />
+                </div>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-[#d4a017] font-bold mb-0.5 truncate">{lastWatchedVideo.courseTitle}</p>
+                <p className="text-sm font-bold text-gray-900 dark:text-white truncate">{lastWatchedVideo.lessonTitle}</p>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-white dark:bg-[#252a36] rounded-3xl p-6 shadow-sm border border-gray-100 dark:border-gray-800 text-center transition-colors duration-300">
+            <h3 className="text-lg font-bold text-[#1a202c] dark:text-white mb-2">Ready to grow?</h3>
+            <p className="text-gray-500 dark:text-gray-400 text-xs mb-6">
+              You haven&apos;t started any courses yet. Begin your journey today.
+            </p>
+            <button 
+              onClick={onGoToCourses}
+              className="w-full bg-[#d4a017] hover:bg-[#b8860b] text-white font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition-colors text-sm"
+            >
+              <GraduationCap size={18} />
+              Start Learning
+            </button>
+          </div>
+        )}
 
         {/* Account Settings */}
         <div>
@@ -335,6 +373,13 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToCourses, onGoToPart
                   alert("You haven't selected a Home Church yet. Go to the Map to select one.");
                 }
               }}
+            />
+            <div className="h-px bg-gray-50 dark:bg-gray-800 mx-4"></div>
+            <SettingItem 
+              icon={<Bookmark size={16} className="text-[#800020]" />} 
+              iconBg="bg-[#800020]/10 dark:bg-[#800020]/20" 
+              label="Saved Content" 
+              onClick={onOpenSavedContent}
             />
             <div className="h-px bg-gray-50 dark:bg-gray-800 mx-4"></div>
             <SettingItem 

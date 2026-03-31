@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
-import { collection, getDocs, query, where } from "firebase/firestore";
+import { collection, getDocs, query, where, doc, getDoc, updateDoc } from "firebase/firestore";
 import { db, auth } from "../firebase";
+import { Bookmark, ArrowLeft, Clock, User, List, ChevronUp, ChevronDown, BookOpen, CheckCircle, ArrowRight } from 'lucide-react';
 
 // ─────────────────────────────────────────────
 // HARVEST — Course Experience (Mobile-First)
@@ -162,87 +163,21 @@ interface BrandedVideoPlayerProps {
 }
 
 function BrandedVideoPlayer({ lesson }: BrandedVideoPlayerProps) {
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
-  const [speed, setSpeed] = useState("1x");
-  const [quality, setQuality] = useState("Auto");
-
   return (
     <div style={{ background: "#000", width: "100%", aspectRatio: "16/9", position: "relative", overflow: "hidden" }}>
-      
-      {/* Background YouTube iframe with default controls disabled */}
       {lesson.youtubeId ? (
         <iframe
-          src={`https://www.youtube.com/embed/${lesson.youtubeId}?controls=0&modestbranding=1&rel=0&playsinline=1&disablekb=1&iv_load_policy=3`}
-          style={{ width: "100%", height: "100%", border: "none", pointerEvents: "none" }}
+          src={`https://www.youtube.com/embed/${lesson.youtubeId}?rel=0`}
+          style={{ width: "100%", height: "100%", border: "none" }}
           title={lesson.title}
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          allowFullScreen
         />
       ) : (
         <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#555", fontSize: 13 }}>
           No Video Content
         </div>
       )}
-
-      {/* Custom UI Overlay */}
-      <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", justifyContent: "space-between", zIndex: 10 }}>
-        
-        {/* Top shadow gradient */}
-        <div style={{ background: "linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, transparent 100%)", padding: "12px 16px", height: 60 }} />
-
-        {/* Big Play Button (Center) */}
-        <div 
-          onClick={() => setIsPlaying(!isPlaying)}
-          style={{ alignSelf: "center", width: 64, height: 64, borderRadius: "50%", background: "rgba(0,0,0,0.4)", backdropFilter: "blur(4px)", border: `2px solid ${GOLD}`, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: GOLD, fontSize: 24, paddingLeft: isPlaying ? 0 : 4, transition: "transform 0.2s" }}
-        >
-          {isPlaying ? "❚❚" : "▶"}
-        </div>
-
-        {/* Bottom Controls */}
-        <div style={{ background: "linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 100%)", padding: "20px 16px 12px", position: "relative" }}>
-          
-          {/* Timeline / Progress Bar */}
-          <div style={{ width: "100%", height: 4, background: "rgba(255,255,255,0.3)", borderRadius: 99, marginBottom: 12, cursor: "pointer", position: "relative" }}>
-            <div style={{ width: "35%", height: "100%", background: GOLD, borderRadius: 99 }} />
-            <div style={{ position: "absolute", left: "35%", top: "50%", transform: "translate(-50%, -50%)", width: 12, height: 12, background: "#fff", borderRadius: "50%", boxShadow: "0 1px 4px rgba(0,0,0,0.5)" }} />
-          </div>
-
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <div style={{ fontSize: 12, color: "#fff", fontWeight: 600, fontFamily: "'Nunito', sans-serif" }}>11:04 / {lesson.duration}</div>
-            
-            <div style={{ display: "flex", gap: 16 }}>
-              {/* Settings Toggle */}
-              <button onClick={() => setShowSettings(!showSettings)} style={{ background: "none", border: "none", color: showSettings ? GOLD : "#fff", cursor: "pointer", fontSize: 16, display: "flex", alignItems: "center", transition: "color 0.2s" }}>
-                ⚙️
-              </button>
-              {/* Fullscreen Toggle */}
-              <button style={{ background: "none", border: "none", color: "#fff", cursor: "pointer", fontSize: 16, display: "flex", alignItems: "center" }}>
-                ⛶
-              </button>
-            </div>
-          </div>
-
-          {/* Settings Popup Menu */}
-          {showSettings && (
-            <div style={{ position: "absolute", bottom: 50, right: 16, background: "rgba(20, 20, 20, 0.95)", backdropFilter: "blur(10px)", borderRadius: 12, border: `1px solid rgba(201,150,58,0.3)`, padding: 8, minWidth: 140, color: "#fff", boxShadow: "0 8px 32px rgba(0,0,0,0.5)" }}>
-               <div style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", marginBottom: 4, padding: "0 8px", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 800 }}>Speed</div>
-               {["0.75x", "1x", "1.25x", "1.5x", "2x"].map(s => (
-                  <button key={s} onClick={() => { setSpeed(s); setShowSettings(false); }} style={{ display: "block", width: "100%", textAlign: "left", background: speed === s ? "rgba(201,150,58,0.2)" : "transparent", color: speed === s ? GOLD : "#fff", border: "none", padding: "6px 8px", borderRadius: 6, cursor: "pointer", fontSize: 13, fontWeight: speed === s ? 700 : 500, fontFamily: "'Nunito', sans-serif" }}>
-                    {speed === s && <span style={{ marginRight: 6 }}>✓</span>}{s}
-                  </button>
-               ))}
-               
-               <div style={{ height: 1, background: "rgba(255,255,255,0.1)", margin: "8px 0" }} />
-               
-               <div style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", marginBottom: 4, padding: "0 8px", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 800 }}>Quality</div>
-               {["Auto", "1080p", "720p", "480p"].map(q => (
-                  <button key={q} onClick={() => { setQuality(q); setShowSettings(false); }} style={{ display: "block", width: "100%", textAlign: "left", background: quality === q ? "rgba(201,150,58,0.2)" : "transparent", color: quality === q ? GOLD : "#fff", border: "none", padding: "6px 8px", borderRadius: 6, cursor: "pointer", fontSize: 13, fontWeight: quality === q ? 700 : 500, fontFamily: "'Nunito', sans-serif" }}>
-                    {quality === q && <span style={{ marginRight: 6 }}>✓</span>}{q}
-                  </button>
-               ))}
-            </div>
-          )}
-        </div>
-      </div>
     </div>
   );
 }
@@ -314,9 +249,6 @@ function CourseLibrary({ courses, authors, categories, onSelectCourse, completed
                 style={{ background: CARD, borderRadius: 16, overflow: "hidden", cursor: "pointer", boxShadow: "0 2px 8px rgba(0,0,0,0.07)", display: "flex", gap: 0 }}>
                 <div style={{ width: 110, flexShrink: 0, position: "relative", overflow: "hidden" }}>
                   <Image src={course.thumbnail || `https://picsum.photos/seed/${course.id}/600/400`} alt={course.title} fill style={{ objectFit: "cover" }} referrerPolicy="no-referrer" />
-                  {pct === 100 && (
-                    <div style={{ position: "absolute", inset: 0, background: "rgba(22,163,74,0.7)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22 }}>✓</div>
-                  )}
                 </div>
                 <div style={{ flex: 1, padding: "12px 14px 12px" }}>
                   <span style={{ background: GOLD_LIGHT, color: GOLD, fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 99 }}>{course.category}</span>
@@ -372,10 +304,19 @@ function CourseOverview({ course, authors, onBack, onStartLesson, completed }: C
 
   return (
     <div style={{ background: BG, minHeight: "100vh", fontFamily: "'Nunito', sans-serif" }}>
+      <div style={{ position: "sticky", top: 0, zIndex: 20, background: CARD, borderBottom: `1px solid ${BORDER}`, padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
+        <button onClick={onBack} style={{ background: "none", border: "none", color: TEXT, cursor: "pointer", padding: 0, display: "flex", alignItems: "center" }}>
+          <ArrowLeft size={20} />
+        </button>
+        <div style={{ fontSize: 15, fontWeight: 700, color: TEXT, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", flex: 1, textAlign: "center", padding: "0 12px" }}>
+          {course.title}
+        </div>
+        <div style={{ width: 20 }} />
+      </div>
+
       <div style={{ position: "relative", height: 240, overflow: "hidden" }}>
         <Image src={course.thumbnail || `https://picsum.photos/seed/${course.id}/600/400`} alt={course.title} fill style={{ objectFit: "cover" }} referrerPolicy="no-referrer" />
         <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.7) 100%)" }} />
-        <button onClick={onBack} style={{ position: "absolute", top: 16, left: 16, background: "rgba(0,0,0,0.35)", backdropFilter: "blur(6px)", border: "1px solid rgba(255,255,255,0.2)", color: "#fff", borderRadius: 99, padding: "7px 14px", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 13 }}>← Back</button>
         <div style={{ position: "absolute", bottom: 16, left: 16, right: 16 }}>
           <span style={{ background: GOLD, color: "#fff", fontSize: 10, fontWeight: 800, padding: "3px 10px", borderRadius: 99 }}>{course.category}</span>
           <div style={{ fontFamily: "'Lora', serif", fontSize: 22, fontWeight: 700, color: "#fff", marginTop: 6, lineHeight: 1.2 }}>{course.title}</div>
@@ -404,7 +345,7 @@ function CourseOverview({ course, authors, onBack, onStartLesson, completed }: C
 
         <button onClick={() => nextLesson && onStartLesson(course, nextLesson)}
           style={{ width: "100%", background: GOLD_BTN, border: "none", color: "#fff", fontWeight: 800, padding: "16px", borderRadius: 14, cursor: "pointer", fontSize: 16, fontFamily: "inherit", boxShadow: "0 4px 16px rgba(201,150,58,0.4)", marginBottom: 20 }}>
-          {pct > 0 ? `Continue Learning →` : "Start Course →"}
+          {pct > 0 ? `Continue Learning` : "Start Course"}
         </button>
 
         <div style={{ display: "flex", borderBottom: `1px solid ${BORDER}` }}>
@@ -420,8 +361,6 @@ function CourseOverview({ course, authors, onBack, onStartLesson, completed }: C
       <div style={{ padding: "20px 16px 20px" }}>
         {tab === "about" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-            <div style={{ fontSize: 15, color: TEXT2, lineHeight: 1.75 }} dangerouslySetInnerHTML={{ __html: course.description }} />
-            
             {courseAuthors.length > 0 && (
               <div>
                 <h2 style={{ fontFamily: "'Lora', serif", fontSize: 18, fontWeight: 700, color: TEXT, marginBottom: 16 }}>Instructors</h2>
@@ -445,6 +384,8 @@ function CourseOverview({ course, authors, onBack, onStartLesson, completed }: C
                 </div>
               </div>
             )}
+            
+            <div style={{ fontSize: 15, color: TEXT2, lineHeight: 1.75 }} dangerouslySetInnerHTML={{ __html: course.description }} />
           </div>
         )}
 
@@ -500,10 +441,8 @@ interface LessonViewProps {
 }
 
 function LessonView({ course, lesson, authors, onBack, onComplete, completed, onSelectLesson }: LessonViewProps) {
-  const [showCurriculum, setShowCurriculum] = useState<boolean>(false);
+  const [activeTab, setActiveTab] = useState<"overview" | "outline" | "sources">("overview");
   const [expandedOutline, setExpandedOutline] = useState<Set<string>>(new Set());
-  const [liked, setLiked] = useState<boolean>(false);
-  const [likeCount, setLikeCount] = useState<number>(14);
   const [bookmarked, setBookmarked] = useState<boolean>(false);
   
   const isDone = completed.has(lesson.id);
@@ -514,6 +453,19 @@ function LessonView({ course, lesson, authors, onBack, onComplete, completed, on
   const nextLesson = allLessons[currentIndex + 1];
   const pct = getProgress(course, completed);
 
+  let currentLevel: Level | undefined;
+  let currentSection: Section | undefined;
+  for (const lvl of course.levels || []) {
+    for (const sec of lvl.sections || []) {
+      if (sec.lessons.some(l => l.id === lesson.id)) {
+        currentLevel = lvl;
+        currentSection = sec;
+        break;
+      }
+    }
+    if (currentLevel) break;
+  }
+
   const toggleOutline = (id: string) => {
     setExpandedOutline(prev => {
       const next = new Set(prev);
@@ -522,111 +474,158 @@ function LessonView({ course, lesson, authors, onBack, onComplete, completed, on
     });
   };
 
+  const handleTabClick = (tab: "overview" | "outline" | "sources") => {
+    setActiveTab(tab);
+    if (tab === "overview") {
+      setTimeout(() => {
+        document.getElementById("section-overview")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 50);
+    } else if (tab === "outline") {
+      setTimeout(() => {
+        document.getElementById("section-outline")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 50);
+    }
+  };
+
   return (
-    <div style={{ background: BG, minHeight: "100vh", fontFamily: "'Nunito', sans-serif" }}>
+    <div style={{ background: BG, minHeight: "100vh", fontFamily: "'Nunito', sans-serif", paddingBottom: 150 }}>
       
-      <div style={{ position: "sticky", top: 0, zIndex: 20, background: CARD, borderBottom: `1px solid ${BORDER}`, padding: "12px 16px", display: "flex", alignItems: "center", gap: 10, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
-        <button onClick={onBack} style={{ background: "none", border: "none", color: GOLD, fontWeight: 700, cursor: "pointer", fontSize: 20, padding: 0, lineHeight: 1 }}>←</button>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: TEXT, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{lesson.title}</div>
-          <div style={{ fontSize: 11, color: TEXT2 }}>⏱ {lesson.duration}</div>
+      <div style={{ position: "sticky", top: 0, zIndex: 20, background: CARD, borderBottom: `1px solid ${BORDER}`, padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
+        <button onClick={onBack} style={{ background: "none", border: "none", color: TEXT, cursor: "pointer", padding: 0, display: "flex", alignItems: "center" }}>
+          <ArrowLeft size={20} />
+        </button>
+        <div style={{ fontSize: 15, fontWeight: 700, color: TEXT, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", flex: 1, textAlign: "center", padding: "0 12px" }}>
+          {currentLevel?.title || course.title}
         </div>
-        <button onClick={() => setBookmarked(b => !b)}
-          style={{ background: bookmarked ? GOLD_LIGHT : "#F5F5F5", border: `1px solid ${bookmarked ? GOLD : BORDER}`, color: bookmarked ? GOLD : TEXT2, fontWeight: 700, fontSize: 11, padding: "6px 12px", borderRadius: 8, cursor: "pointer", fontFamily: "inherit" }}>
-          🔖 {bookmarked ? "Saved" : "Save"}
+        <button
+          onClick={() => setBookmarked(b => !b)}
+          className="p-2 -mr-2 text-gray-500 hover:text-[#d4a017] dark:text-gray-400 transition-colors rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
+        >
+          <Bookmark size={20} className={bookmarked ? 'fill-current text-[#d4a017]' : ''} />
         </button>
       </div>
 
       <BrandedVideoPlayer lesson={lesson} />
 
       <div style={{ background: CARD, borderRadius: "20px 20px 0 0", marginTop: -12, position: "relative", padding: "20px 16px 0" }}>
-        <h1 style={{ fontFamily: "'Lora', serif", fontSize: 22, fontWeight: 700, color: TEXT, lineHeight: 1.3, marginBottom: 8 }}>{lesson.title}</h1>
-        
-        {author && (
-          <div style={{ marginBottom: 16, paddingBottom: 16, borderBottom: `1px solid ${BORDER}` }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: author.bio ? 12 : 0 }}>
-              <div style={{ position: "relative", width: 38, height: 38, borderRadius: "50%", overflow: "hidden", border: `2px solid ${GOLD_LIGHT}` }}>
-                <Image src={author.picture || `https://i.pravatar.cc/150?u=${author.id}`} alt={author.name} fill style={{ objectFit: "cover" }} referrerPolicy="no-referrer" />
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: TEXT }}>{author.name}</div>
-                <div style={{ fontSize: 11, color: GOLD }}>{author.title}</div>
-              </div>
-            </div>
-            {author.bio && (
-              <div style={{ fontSize: 13, color: TEXT2, lineHeight: 1.6 }} dangerouslySetInnerHTML={{ __html: author.bio }} />
-            )}
+        {currentSection && (
+          <div style={{ display: "inline-block", border: `1px solid ${GOLD}40`, background: GOLD_LIGHT, color: GOLD, fontSize: 10, fontWeight: 800, padding: "4px 10px", borderRadius: 99, marginBottom: 12, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+            {currentSection.title}
           </div>
         )}
+        <h1 style={{ fontFamily: "'Nunito', sans-serif", fontSize: 24, fontWeight: 800, color: TEXT, lineHeight: 1.3, marginBottom: 12 }}>{lesson.title}</h1>
+        
+        <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: TEXT2, marginBottom: 24 }}>
+          <span style={{ display: "flex", alignItems: "center", gap: 4 }}><Clock size={14} /> {lesson.duration}</span>
+          <span>•</span>
+          <button style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: GOLD, cursor: "pointer", padding: 0, fontFamily: "inherit", fontSize: 13 }}><User size={14} /> {author?.name}</button>
+        </div>
 
-        <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
-          <button onClick={() => setLiked(!liked)}
-            style={{ flex: 1, background: liked ? "#FFF0F0" : BG, border: `1.5px solid ${liked ? "#E74C3C" : BORDER}`, borderRadius: 10, padding: "10px", cursor: "pointer", fontSize: 13, fontWeight: 700, color: liked ? "#E74C3C" : TEXT2, fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}>
-            <span>{liked ? "❤️" : "🤍"}</span>
-            <span>{liked ? likeCount + 1 : likeCount}</span>
-          </button>
-          {!isDone ? (
-            <button onClick={() => onComplete(lesson.id)}
-              style={{ flex: 2, background: GOLD_BTN, border: "none", color: "#fff", fontWeight: 800, padding: "10px", borderRadius: 10, cursor: "pointer", fontSize: 13, fontFamily: "inherit" }}>
-              ✓ Mark Complete
+        <div style={{ display: "flex", borderBottom: `1px solid ${BORDER}`, marginBottom: 24, position: "sticky", top: 50, background: CARD, zIndex: 10 }}>
+          {([] as const).concat([["overview", "Overview"], ["outline", "Teaching Outline"], ["sources", "Sources"]]).map(([id, label]) => (
+            <button key={id} onClick={() => handleTabClick(id as any)}
+              style={{ flex: 1, background: "none", border: "none", borderBottom: `2.5px solid ${activeTab === id ? GOLD : "transparent"}`, color: activeTab === id ? GOLD : TEXT2, fontWeight: 700, fontSize: 14, padding: "12px 4px", cursor: "pointer", fontFamily: "inherit", transition: "all 0.2s", whiteSpace: "nowrap" }}>
+              {label}
             </button>
-          ) : (
-            <div style={{ flex: 2, background: GREEN_BG, border: `1.5px solid ${GREEN}`, color: GREEN, fontWeight: 800, padding: "10px", borderRadius: 10, fontSize: 13, textAlign: "center", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              ✓ Completed
-            </div>
-          )}
+          ))}
         </div>
       </div>
 
       <div style={{ padding: "0 16px 20px" }}>
-        {lesson.summary && (
-          <div style={{ background: GOLD_LIGHT, border: `1px solid ${GOLD}33`, borderRadius: 14, padding: "14px 16px", marginBottom: 20 }}>
-            <p style={{ fontSize: 14, color: "#7A5C1E", lineHeight: 1.75, margin: 0 }}>{lesson.summary}</p>
-          </div>
+        {(activeTab === "overview" || activeTab === "outline") && (
+          <>
+            {lesson.summary && (
+              <div id="section-overview" style={{ scrollMarginTop: 120, marginBottom: 32 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+                  <div style={{ width: 24, height: 24, borderRadius: "50%", background: GOLD, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 800 }}>i</div>
+                  <h2 style={{ fontSize: 18, fontWeight: 800, color: TEXT, margin: 0 }}>Overview</h2>
+                </div>
+                <div style={{ fontSize: 15, color: TEXT2, lineHeight: 1.7 }}>
+                  {lesson.summary}
+                </div>
+              </div>
+            )}
+
+            {lesson.outline && lesson.outline.length > 0 && (
+              <div id="section-outline" style={{ scrollMarginTop: 120, marginBottom: 32 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+                  <List size={20} color={GOLD} />
+                  <h2 style={{ fontSize: 18, fontWeight: 800, color: TEXT, margin: 0 }}>Teaching Outline</h2>
+                </div>
+                
+                <div style={{ position: "relative", paddingLeft: 16 }}>
+                  <div style={{ position: "absolute", left: 0, top: 12, bottom: 12, width: 3, background: GOLD, borderRadius: 3 }} />
+                  
+                  <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                    {lesson.outline.map((item, i) => {
+                      const isExpanded = expandedOutline.has(item.id);
+                      return (
+                        <div key={item.id} style={{ position: "relative" }}>
+                          <div style={{ position: "absolute", left: -21, top: 4, width: 14, height: 14, borderRadius: "50%", background: isExpanded ? GOLD : "#E5E7EB", border: isExpanded ? `3px solid ${GOLD_LIGHT}` : "3px solid #fff", zIndex: 2, boxSizing: "border-box" }} />
+                          
+                          <div onClick={() => toggleOutline(item.id)} style={{ display: "flex", alignItems: "flex-start", gap: 12, cursor: "pointer", paddingLeft: 8 }}>
+                            <span style={{ flex: 1, fontWeight: 800, fontSize: 15, color: TEXT, lineHeight: 1.4 }}>{item.title}</span>
+                            <span style={{ color: TEXT2, marginTop: 2 }}>{isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}</span>
+                          </div>
+                          
+                          {isExpanded && (
+                            <div style={{ padding: "8px 0 8px 8px", fontSize: 14, color: TEXT2, lineHeight: 1.7 }}>
+                              {item.text}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
         )}
 
-        {lesson.outline && lesson.outline.length > 0 && (
-          <div style={{ marginBottom: 24 }}>
-            <h2 style={{ fontFamily: "'Lora', serif", fontSize: 18, fontWeight: 700, color: TEXT, marginBottom: 12 }}>Teaching Outline</h2>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {lesson.outline.map((item, i) => (
-                <div key={item.id} style={{ border: `1.5px solid ${expandedOutline.has(item.id) ? GOLD : BORDER}`, borderRadius: 12, overflow: "hidden", background: expandedOutline.has(item.id) ? GOLD_LIGHT : CARD }}>
-                  <div onClick={() => toggleOutline(item.id)}
-                    style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 14px", cursor: "pointer" }}>
-                    <div style={{ width: 26, height: 26, borderRadius: "50%", background: expandedOutline.has(item.id) ? GOLD : GOLD_LIGHT, border: `2px solid ${GOLD}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, color: expandedOutline.has(item.id) ? "#fff" : GOLD, flexShrink: 0 }}>{i + 1}</div>
-                    <span style={{ flex: 1, fontWeight: 700, fontSize: 14, color: TEXT }}>{item.title}</span>
-                    <span style={{ fontSize: 11, color: TEXT2 }}>{expandedOutline.has(item.id) ? "▲" : "▼"}</span>
-                  </div>
-                  {expandedOutline.has(item.id) && (
-                    <div style={{ padding: "0 14px 14px 52px", fontSize: 14, color: "#5C4A1E", lineHeight: 1.75 }}>{item.text}</div>
-                  )}
-                </div>
-              ))}
+        {activeTab === "sources" && (
+          <div id="section-sources" style={{ scrollMarginTop: 120, marginBottom: 32 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+              <BookOpen size={20} color={GOLD} />
+              <h2 style={{ fontSize: 18, fontWeight: 800, color: TEXT, margin: 0 }}>Sources</h2>
+            </div>
+            <div style={{ fontSize: 15, color: TEXT2, lineHeight: 1.7 }}>
+              {lesson.sources ? (
+                <div dangerouslySetInnerHTML={{ __html: lesson.sources }} />
+              ) : (
+                <p>No sources provided for this lesson.</p>
+              )}
             </div>
           </div>
         )}
 
-        {lesson.sources && (
-          <div style={{ marginBottom: 24 }}>
-            <h2 style={{ fontFamily: "'Lora', serif", fontSize: 18, fontWeight: 700, color: TEXT, marginBottom: 12 }}>Sources & References</h2>
-            <div style={{ fontSize: 14, color: TEXT2, lineHeight: 1.75 }} dangerouslySetInnerHTML={{ __html: lesson.sources }} />
-          </div>
-        )}
-
-        <div style={{ display: "flex", gap: 10, marginBottom: 28 }}>
-          {prevLesson && (
-            <button onClick={() => onSelectLesson(prevLesson)}
-              style={{ flex: 1, background: CARD, border: `1.5px solid ${BORDER}`, borderRadius: 12, padding: "12px 14px", cursor: "pointer", textAlign: "left", fontFamily: "inherit" }}>
-              <div style={{ fontSize: 11, color: TEXT2, marginBottom: 3 }}>← Previous</div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: TEXT, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{prevLesson.title}</div>
+        <div style={{ marginTop: 40, display: "flex", flexDirection: "column", gap: 12 }}>
+          {!isDone ? (
+            <button onClick={() => onComplete(lesson.id)}
+              style={{ width: "100%", background: "#D4A017", border: "none", color: "#fff", fontWeight: 800, padding: "14px", borderRadius: 12, cursor: "pointer", fontSize: 15, fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+              <CheckCircle size={20} /> Mark as Completed
             </button>
-          )}
-          {nextLesson && (
-            <button onClick={() => onSelectLesson(nextLesson)}
-              style={{ flex: 1, background: GOLD_LIGHT, border: `1.5px solid ${GOLD}`, borderRadius: 12, padding: "12px 14px", cursor: "pointer", textAlign: "right", fontFamily: "inherit" }}>
-              <div style={{ fontSize: 11, color: GOLD, marginBottom: 3 }}>Next →</div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: TEXT, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{nextLesson.title}</div>
-            </button>
+          ) : (
+            <>
+              <button onClick={() => onComplete(lesson.id)}
+                style={{ width: "100%", background: "#E8F5E9", border: `1px solid #4CAF50`, color: "#2E7D32", fontWeight: 800, padding: "14px", borderRadius: 12, cursor: "pointer", fontSize: 15, textAlign: "center", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                <CheckCircle size={20} /> Completed
+              </button>
+              <div style={{ display: "flex", justifyContent: prevLesson ? "space-between" : "flex-end", gap: 12 }}>
+                {prevLesson && (
+                  <button onClick={() => onSelectLesson(prevLesson)}
+                    style={{ background: CARD, border: `1px solid ${BORDER}`, color: TEXT, fontWeight: 700, padding: "10px 16px", borderRadius: 99, cursor: "pointer", fontSize: 13, fontFamily: "inherit", display: "flex", alignItems: "center", gap: 6 }}>
+                    <ArrowLeft size={16} /> Previous
+                  </button>
+                )}
+                {nextLesson && (
+                  <button onClick={() => onSelectLesson(nextLesson)}
+                    style={{ background: CARD, border: `1px solid ${GOLD}`, color: GOLD, fontWeight: 700, padding: "10px 16px", borderRadius: 99, cursor: "pointer", fontSize: 13, fontFamily: "inherit", display: "flex", alignItems: "center", gap: 6 }}>
+                    Next Lesson <ArrowRight size={16} />
+                  </button>
+                )}
+              </div>
+            </>
           )}
         </div>
       </div>
@@ -637,11 +636,61 @@ function LessonView({ course, lesson, authors, onBack, onComplete, completed, on
 // ═══════════════════════════════════════════════
 // APP SHELL
 // ═══════════════════════════════════════════════
-export default function CourseApp() {
-  const [screen, setScreen] = useState<"library" | "overview" | "lesson">("library");
+export default function CourseApp({ 
+  onOpenCourse, 
+  onBack, 
+  initialCourseId, 
+  initialLessonId 
+}: { 
+  onOpenCourse?: (courseId: string, lessonId?: string) => void;
+  onBack?: () => void;
+  initialCourseId?: string;
+  initialLessonId?: string;
+}) {
+  const [screen, setScreen] = useState<"library" | "overview" | "lesson">(
+    initialLessonId ? "lesson" : initialCourseId ? "overview" : "library"
+  );
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
   const [completed, setCompleted] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      if (!auth.currentUser) return;
+      try {
+        const userRef = doc(db, "users", auth.currentUser.uid);
+        const userSnap = await getDoc(userRef);
+        if (userSnap.exists()) {
+          const data = userSnap.data();
+          if (data.completedLessons) {
+            setCompleted(new Set(data.completedLessons));
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching user data", error);
+      }
+    };
+    fetchUserData();
+  }, []);
+
+  const updateLastWatched = async (course: Course, lesson: Lesson) => {
+    if (!auth.currentUser) return;
+    try {
+      const userRef = doc(db, "users", auth.currentUser.uid);
+      await updateDoc(userRef, {
+        lastWatchedVideo: {
+          courseId: course.id,
+          courseTitle: course.title,
+          lessonId: lesson.id,
+          lessonTitle: lesson.title,
+          thumbnail: course.thumbnail || '',
+          timestamp: new Date().toISOString()
+        }
+      });
+    } catch (error) {
+      console.error("Error updating last watched video", error);
+    }
+  };
 
   const [courses, setCourses] = useState<Course[]>([]);
   const [authors, setAuthors] = useState<Author[]>([]);
@@ -679,6 +728,18 @@ export default function CourseApp() {
           fetchedCourses.push({ id: doc.id, ...doc.data() } as Course);
         });
         setCourses(fetchedCourses);
+
+        if (initialCourseId) {
+          const course = fetchedCourses.find(c => c.id === initialCourseId);
+          if (course) {
+            setSelectedCourse(course);
+            if (initialLessonId) {
+              const allLessons = getAllLessons(course);
+              const lesson = allLessons.find(l => l.id === initialLessonId);
+              if (lesson) setSelectedLesson(lesson);
+            }
+          }
+        }
       } catch (error) {
         handleFirestoreError(error, OperationType.GET, "courses");
       } finally {
@@ -688,10 +749,56 @@ export default function CourseApp() {
     fetchData();
   }, []);
 
-  const goToCourse = (course: Course) => { setSelectedCourse(course); setScreen("overview"); window.scrollTo(0, 0); };
-  const goToLesson = (course: Course, lesson: Lesson) => { setSelectedCourse(course); setSelectedLesson(lesson); setScreen("lesson"); window.scrollTo(0, 0); };
-  const markComplete = (id: string) => setCompleted(prev => new Set([...prev, id]));
-  const selectLesson = (lesson: Lesson) => { setSelectedLesson(lesson); window.scrollTo(0, 0); };
+  const goToCourse = (course: Course) => { 
+    if (onOpenCourse) {
+      onOpenCourse(course.id);
+    } else {
+      setSelectedCourse(course); 
+      setScreen("overview"); 
+      window.scrollTo(0, 0); 
+    }
+  };
+  
+  const goToLesson = (course: Course, lesson: Lesson) => { 
+    if (onOpenCourse) {
+      onOpenCourse(course.id, lesson.id);
+      updateLastWatched(course, lesson);
+    } else {
+      setSelectedCourse(course); 
+      setSelectedLesson(lesson); 
+      setScreen("lesson"); 
+      window.scrollTo(0, 0); 
+      updateLastWatched(course, lesson);
+    }
+  };
+  
+  const toggleComplete = async (id: string) => {
+    const newCompleted = new Set(completed);
+    if (newCompleted.has(id)) {
+      newCompleted.delete(id);
+    } else {
+      newCompleted.add(id);
+    }
+    setCompleted(newCompleted);
+    if (auth.currentUser) {
+      try {
+        const userRef = doc(db, "users", auth.currentUser.uid);
+        await updateDoc(userRef, {
+          completedLessons: Array.from(newCompleted)
+        });
+      } catch (error) {
+        console.error("Error updating completed lessons", error);
+      }
+    }
+  };
+  
+  const selectLesson = (lesson: Lesson) => { 
+    setSelectedLesson(lesson); 
+    window.scrollTo(0, 0); 
+    if (selectedCourse) {
+      updateLastWatched(selectedCourse, lesson);
+    }
+  };
 
   if (loading) {
     return (
@@ -702,13 +809,13 @@ export default function CourseApp() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto" style={{ minHeight: "calc(100vh - 120px)" }}>
+    <div className={`max-w-4xl mx-auto ${onBack ? "bg-[#f8f9fa] dark:bg-[#1a1d27] min-h-screen" : ""}`} style={onBack ? {} : { minHeight: "calc(100vh - 120px)" }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&family=Lora:wght@400;600;700&display=swap');
       `}</style>
       {screen === "library" && <CourseLibrary courses={courses} authors={authors} categories={categories} onSelectCourse={goToCourse} completed={completed} />}
-      {screen === "overview" && selectedCourse && <CourseOverview course={selectedCourse} authors={authors} onBack={() => setScreen("library")} onStartLesson={goToLesson} completed={completed} />}
-      {screen === "lesson" && selectedCourse && selectedLesson && <LessonView course={selectedCourse} lesson={selectedLesson} authors={authors} onBack={() => setScreen("overview")} onComplete={markComplete} completed={completed} onSelectLesson={selectLesson} />}
+      {screen === "overview" && selectedCourse && <CourseOverview course={selectedCourse} authors={authors} onBack={onBack || (() => setScreen("library"))} onStartLesson={goToLesson} completed={completed} />}
+      {screen === "lesson" && selectedCourse && selectedLesson && <LessonView course={selectedCourse} lesson={selectedLesson} authors={authors} onBack={() => setScreen("overview")} onComplete={toggleComplete} completed={completed} onSelectLesson={selectLesson} />}
     </div>
   );
 }

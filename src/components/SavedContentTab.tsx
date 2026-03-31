@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { collection, query, where, onSnapshot, doc } from 'firebase/firestore';
 import { db, auth } from '../firebase';
-import { FileText, Calendar, Tag, Bookmark } from 'lucide-react';
+import { FileText, Calendar, Tag, Bookmark, ArrowLeft } from 'lucide-react';
 
 interface BlogPost {
   id: string;
@@ -21,9 +21,10 @@ interface BlogPost {
 
 interface SavedContentTabProps {
   onOpenArticle: (post: BlogPost) => void;
+  onBack?: () => void;
 }
 
-const SavedContentTab: React.FC<SavedContentTabProps> = ({ onOpenArticle }) => {
+const SavedContentTab: React.FC<SavedContentTabProps> = ({ onOpenArticle, onBack }) => {
   const [bookmarkedPostIds, setBookmarkedPostIds] = useState<string[]>([]);
   const [savedPosts, setSavedPosts] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState(true);
@@ -95,39 +96,63 @@ const SavedContentTab: React.FC<SavedContentTabProps> = ({ onOpenArticle }) => {
     }
   };
 
+  const renderHeader = () => {
+    if (!onBack) return null;
+    return (
+      <div className="bg-white dark:bg-[#1a1d27] pt-safe pb-4 px-4 shadow-sm z-10 sticky top-0 flex items-center gap-3">
+        <button onClick={onBack} className="p-2 -ml-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors">
+          <ArrowLeft size={24} />
+        </button>
+        <h1 className="text-xl font-bold text-gray-900 dark:text-white">Saved Content</h1>
+      </div>
+    );
+  };
+
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center h-64 text-gray-500 dark:text-gray-400">
-        <div className="w-8 h-8 border-4 border-[#d4a017] border-t-transparent rounded-full animate-spin mb-4"></div>
-        <p>Loading saved content...</p>
+      <div className={`flex flex-col h-screen ${onBack ? 'bg-[#f8f9fa] dark:bg-[#1a1d27]' : ''}`}>
+        {renderHeader()}
+        <div className="flex flex-col items-center justify-center flex-1 text-gray-500 dark:text-gray-400">
+          <div className="w-8 h-8 border-4 border-[#d4a017] border-t-transparent rounded-full animate-spin mb-4"></div>
+          <p>Loading saved content...</p>
+        </div>
       </div>
     );
   }
 
   if (!auth.currentUser) {
     return (
-      <div className="flex flex-col items-center justify-center h-64 text-gray-500 dark:text-gray-400 px-4 text-center">
-        <Bookmark size={48} className="text-gray-300 dark:text-gray-600 mb-4" />
-        <p className="text-lg font-medium text-gray-900 dark:text-white mb-2">Sign in to save content</p>
-        <p className="text-sm">You need to be signed in to view your saved articles.</p>
+      <div className={`flex flex-col h-screen ${onBack ? 'bg-[#f8f9fa] dark:bg-[#1a1d27]' : ''}`}>
+        {renderHeader()}
+        <div className="flex flex-col items-center justify-center flex-1 text-gray-500 dark:text-gray-400 px-4 text-center">
+          <Bookmark size={48} className="text-gray-300 dark:text-gray-600 mb-4" />
+          <p className="text-lg font-medium text-gray-900 dark:text-white mb-2">Sign in to save content</p>
+          <p className="text-sm">You need to be signed in to view your saved articles.</p>
+        </div>
       </div>
     );
   }
 
   if (savedPosts.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-64 text-gray-500 dark:text-gray-400 px-4 text-center">
-        <Bookmark size={48} className="text-gray-300 dark:text-gray-600 mb-4" />
-        <p className="text-lg font-medium text-gray-900 dark:text-white mb-2">No saved content yet</p>
-        <p className="text-sm">Articles you bookmark will appear here.</p>
+      <div className={`flex flex-col h-screen ${onBack ? 'bg-[#f8f9fa] dark:bg-[#1a1d27]' : ''}`}>
+        {renderHeader()}
+        <div className="flex flex-col items-center justify-center flex-1 text-gray-500 dark:text-gray-400 px-4 text-center">
+          <Bookmark size={48} className="text-gray-300 dark:text-gray-600 mb-4" />
+          <p className="text-lg font-medium text-gray-900 dark:text-white mb-2">No saved content yet</p>
+          <p className="text-sm">Articles you bookmark will appear here.</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 pb-8">
-      {/* Filter */}
-      <div className="flex gap-2 overflow-x-auto pb-2 mb-2 hide-scrollbar">
+    <div className={`space-y-6 pb-8 ${onBack ? 'bg-[#f8f9fa] dark:bg-[#1a1d27] min-h-screen' : ''}`}>
+      {renderHeader()}
+      
+      <div className={onBack ? "px-4" : ""}>
+        {/* Filter */}
+        <div className="flex gap-2 overflow-x-auto pb-2 mb-2 hide-scrollbar">
         {filters.map(filter => (
           <button
             key={filter}
@@ -207,6 +232,7 @@ const SavedContentTab: React.FC<SavedContentTabProps> = ({ onOpenArticle }) => {
           <p>{activeFilter} content coming soon.</p>
         </div>
       )}
+      </div>
     </div>
   );
 };
