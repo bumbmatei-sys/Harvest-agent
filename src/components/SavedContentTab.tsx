@@ -170,7 +170,7 @@ const SavedContentTab: React.FC<SavedContentTabProps> = ({ onOpenArticle, onBack
 
       {(activeFilter === 'All' || activeFilter === 'Articles') && (
         <div className="flex flex-col gap-3">
-          {savedPosts.map(post => (
+          {savedPosts.map((post, index) => (
           <article 
             key={post.id} 
             onClick={() => onOpenArticle(post)}
@@ -183,6 +183,7 @@ const SavedContentTab: React.FC<SavedContentTabProps> = ({ onOpenArticle, onBack
                   alt={post.title} 
                   fill
                   sizes="80px"
+                  priority={index < 4}
                   className="object-cover"
                   referrerPolicy="no-referrer"
                 />

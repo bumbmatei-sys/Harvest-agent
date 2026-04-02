@@ -217,6 +217,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onBack, onNavigate }) => {
           src="https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/No_people_just_2k_202512231746.jpeg" 
           alt="Harvest Background" 
           fill
+          sizes="100vw"
           priority
           className="object-cover"
         />

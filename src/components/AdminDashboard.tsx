@@ -7,6 +7,7 @@ import AdminPosts from './AdminPosts';
 import AdminInbox from './AdminInbox';
 import AdminChurches from './AdminChurches';
 import AdminCourses from './AdminCourses';
+import AdminRAG from './AdminRAG';
 import { db } from '../firebase';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 
@@ -58,7 +59,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
             onClick={() => onNavigate('home')}
             className="w-8 h-8 flex items-center justify-center rounded-full bg-[#fdf8ed] dark:bg-[#2a2415] text-[#d4a017] hover:bg-[#fcefc7] dark:hover:bg-[#3a301c] transition-colors relative"
           >
-            <Image src="https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png" alt="Harvest Logo" fill sizes="20px" className="object-contain p-1.5" />
+            <Image src="https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png" alt="Harvest Logo" fill sizes="20px" priority className="object-contain p-1.5" />
           </button>
           <h1 className="text-lg font-bold text-gray-900 dark:text-white">Harvest Admin</h1>
         </div>
@@ -87,6 +88,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
           <AdminChurches />
         ) : activeTab === 'courses' ? (
           <AdminCourses />
+        ) : activeTab === 'ai' ? (
+          <AdminRAG />
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-gray-400 dark:text-gray-500">
             <p className="text-lg font-medium">{bottomTabs.find(t => t.id === activeTab)?.label || 'Inbox'} coming soon.</p>

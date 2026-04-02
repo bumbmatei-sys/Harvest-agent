@@ -308,7 +308,7 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToCourses, onGoToPart
             >
               <div className="relative w-24 h-16 rounded-xl overflow-hidden flex-shrink-0 bg-gray-200 dark:bg-gray-700">
                 {lastWatchedVideo.thumbnail ? (
-                  <Image src={lastWatchedVideo.thumbnail} alt={lastWatchedVideo.courseTitle} fill className="object-cover" referrerPolicy="no-referrer" />
+                  <Image src={lastWatchedVideo.thumbnail} alt={lastWatchedVideo.courseTitle} fill sizes="96px" priority className="object-cover" referrerPolicy="no-referrer" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-gray-400">
                     <Play size={16} />

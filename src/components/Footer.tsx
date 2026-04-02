@@ -43,6 +43,7 @@ const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
                 alt="Harvest Logo" 
                 width={32}
                 height={32}
+                priority
                 className="h-8 w-auto" 
               />
               <span className="text-white text-xl font-bold tracking-tight">Harvest</span>

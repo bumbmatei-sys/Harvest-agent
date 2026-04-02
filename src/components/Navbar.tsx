@@ -98,6 +98,7 @@ const Navbar: React.FC<NavbarProps> = ({ isHome = true, onNavigate }) => {
               alt="Harvest Logo" 
               width={32}
               height={32}
+              priority
               className="h-8 w-auto group-hover:scale-110 transition-transform duration-300" 
             />
             <span className="text-white text-xl font-bold tracking-tight">Harvest</span>

@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, Suspense, lazy } from 'react';
 import { auth, db } from './firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
@@ -11,14 +11,16 @@ import FutureSection from './components/FutureSection';
 import CTASection from './components/CTASection';
 import DonationSection from './components/DonationSection';
 import Footer from './components/Footer';
-import PrivacyPolicy from './components/PrivacyPolicy';
-import ContactSupport from './components/ContactSupport';
-import TermsOfUse from './components/TermsOfUse';
-import FAQ from './components/FAQ';
-import AuthPage from './components/AuthPage';
-import MainApp from './components/MainApp';
-import Onboarding from './components/Onboarding';
-import AdminDashboard from './components/AdminDashboard';
+
+// Lazy load heavy components
+const PrivacyPolicy = lazy(() => import('./components/PrivacyPolicy'));
+const ContactSupport = lazy(() => import('./components/ContactSupport'));
+const TermsOfUse = lazy(() => import('./components/TermsOfUse'));
+const FAQ = lazy(() => import('./components/FAQ'));
+const AuthPage = lazy(() => import('./components/AuthPage'));
+const MainApp = lazy(() => import('./components/MainApp'));
+const Onboarding = lazy(() => import('./components/Onboarding'));
+const AdminDashboard = lazy(() => import('./components/AdminDashboard'));
 
 enum OperationType {
   CREATE = 'create',
@@ -125,24 +127,46 @@ const App: React.FC = () => {
     window.scrollTo(0, 0);
   };
 
+  const renderLoading = () => (
+    <div className="min-h-screen flex items-center justify-center bg-background-dark">
+      <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+    </div>
+  );
+
   if (!isAuthReady) {
-    return <div className="min-h-screen flex items-center justify-center bg-background-dark"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div></div>;
+    return renderLoading();
   }
 
   if (currentPage === 'onboarding') {
-    return <Onboarding onComplete={() => navigateTo('home')} />;
+    return (
+      <Suspense fallback={renderLoading()}>
+        <Onboarding onComplete={() => navigateTo('home')} />
+      </Suspense>
+    );
   }
 
   if (currentPage === 'home') {
-    return <MainApp onNavigate={navigateTo} />;
+    return (
+      <Suspense fallback={renderLoading()}>
+        <MainApp onNavigate={navigateTo} />
+      </Suspense>
+    );
   }
 
   if (currentPage === 'auth') {
-    return <AuthPage onBack={() => navigateTo('landing')} onNavigate={navigateTo} />;
+    return (
+      <Suspense fallback={renderLoading()}>
+        <AuthPage onBack={() => navigateTo('landing')} onNavigate={navigateTo} />
+      </Suspense>
+    );
   }
 
   if (currentPage === 'admin') {
-    return <AdminDashboard onNavigate={navigateTo} />;
+    return (
+      <Suspense fallback={renderLoading()}>
+        <AdminDashboard onNavigate={navigateTo} />
+      </Suspense>
+    );
   }
 
   if (currentPage === 'privacy-policy') {
@@ -150,7 +174,9 @@ const App: React.FC = () => {
         <div className="min-h-screen flex flex-col font-sans">
              <Navbar isHome={false} onNavigate={navigateTo} />
              <main className="flex-grow">
-                <PrivacyPolicy onBack={() => navigateTo('landing')} />
+                <Suspense fallback={renderLoading()}>
+                  <PrivacyPolicy onBack={() => navigateTo('landing')} />
+                </Suspense>
              </main>
              <Footer onNavigate={navigateTo} />
         </div>
@@ -162,7 +188,9 @@ const App: React.FC = () => {
         <div className="min-h-screen flex flex-col font-sans">
              <Navbar isHome={false} onNavigate={navigateTo} />
              <main className="flex-grow">
-                <TermsOfUse onBack={() => navigateTo('landing')} />
+                <Suspense fallback={renderLoading()}>
+                  <TermsOfUse onBack={() => navigateTo('landing')} />
+                </Suspense>
              </main>
              <Footer onNavigate={navigateTo} />
         </div>
@@ -174,7 +202,9 @@ const App: React.FC = () => {
         <div className="min-h-screen flex flex-col font-sans">
              <Navbar isHome={false} onNavigate={navigateTo} />
              <main className="flex-grow">
-                <ContactSupport onBack={() => navigateTo('landing')} />
+                <Suspense fallback={renderLoading()}>
+                  <ContactSupport onBack={() => navigateTo('landing')} />
+                </Suspense>
              </main>
              <Footer onNavigate={navigateTo} />
         </div>
@@ -186,7 +216,9 @@ const App: React.FC = () => {
         <div className="min-h-screen flex flex-col font-sans">
              <Navbar isHome={false} onNavigate={navigateTo} />
              <main className="flex-grow">
-                <FAQ onBack={() => navigateTo('landing')} />
+                <Suspense fallback={renderLoading()}>
+                  <FAQ onBack={() => navigateTo('landing')} />
+                </Suspense>
              </main>
              <Footer onNavigate={navigateTo} />
         </div>

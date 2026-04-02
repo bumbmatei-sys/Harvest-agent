@@ -202,7 +202,8 @@ const BlogTab: React.FC<BlogTabProps> = ({ onOpenArticle, initialPost, onBack, i
                 src={selectedPost.featuredImage} 
                 alt={selectedPost.title} 
                 fill
-                sizes="100vw"
+                sizes="(max-width: 768px) 100vw, 800px"
+                priority
                 className="object-cover"
                 referrerPolicy="no-referrer"
               />
@@ -335,7 +336,7 @@ const BlogTab: React.FC<BlogTabProps> = ({ onOpenArticle, initialPost, onBack, i
 
       {/* Blog Posts List */}
       <div className="flex flex-col gap-3">
-        {filteredPosts.map(post => (
+        {filteredPosts.map((post, index) => (
           <article 
             key={post.id} 
             onClick={() => {
@@ -354,6 +355,7 @@ const BlogTab: React.FC<BlogTabProps> = ({ onOpenArticle, initialPost, onBack, i
                   alt={post.title} 
                   fill
                   sizes="80px"
+                  priority={index < 4}
                   className="object-cover"
                   referrerPolicy="no-referrer"
                 />

@@ -98,6 +98,7 @@ export interface OutlineItem {
 export interface Lesson {
   id: string;
   youtubeId?: string;
+  youtubeUrl?: string;
   title: string;
   duration: string;
   authorId: string;
@@ -162,12 +163,21 @@ interface BrandedVideoPlayerProps {
   lesson: Lesson;
 }
 
+function extractYouTubeId(url: string | undefined): string | undefined {
+  if (!url) return undefined;
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+  const match = url.match(regExp);
+  return (match && match[2].length === 11) ? match[2] : undefined;
+}
+
 function BrandedVideoPlayer({ lesson }: BrandedVideoPlayerProps) {
+  const videoId = lesson.youtubeId || extractYouTubeId(lesson.youtubeUrl);
+
   return (
     <div style={{ background: "#000", width: "100%", aspectRatio: "16/9", position: "relative", overflow: "hidden" }}>
-      {lesson.youtubeId ? (
+      {videoId ? (
         <iframe
-          src={`https://www.youtube.com/embed/${lesson.youtubeId}?rel=0`}
+          src={`https://www.youtube.com/embed/${videoId}?rel=0`}
           style={{ width: "100%", height: "100%", border: "none" }}
           title={lesson.title}
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
@@ -207,7 +217,7 @@ function CourseLibrary({ courses, authors, categories, onSelectCourse, completed
           <div onClick={() => onSelectCourse(featured)}
             style={{ borderRadius: 18, overflow: "hidden", position: "relative", height: 200, marginBottom: 24, cursor: "pointer", boxShadow: "0 6px 24px rgba(0,0,0,0.15)" }}>
             <Image src={featured.thumbnail || `https://picsum.photos/seed/${featured.id}/600/400`} alt={featured.title}
-              fill style={{ objectFit: "cover", display: "block" }} referrerPolicy="no-referrer" />
+              fill sizes="(max-width: 768px) 100vw, 600px" priority style={{ objectFit: "cover", display: "block" }} referrerPolicy="no-referrer" />
             <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.75) 100%)" }} />
             <div style={{ position: "absolute", top: 12, left: 12 }}>
               <span style={{ background: GOLD, color: "#fff", fontSize: 10, fontWeight: 800, padding: "3px 10px", borderRadius: 99, letterSpacing: "0.08em" }}>⭐ FEATURED</span>
@@ -248,7 +258,7 @@ function CourseLibrary({ courses, authors, categories, onSelectCourse, completed
               <div key={course.id} onClick={() => onSelectCourse(course)}
                 style={{ background: CARD, borderRadius: 16, overflow: "hidden", cursor: "pointer", boxShadow: "0 2px 8px rgba(0,0,0,0.07)", display: "flex", gap: 0 }}>
                 <div style={{ width: 110, flexShrink: 0, position: "relative", overflow: "hidden" }}>
-                  <Image src={course.thumbnail || `https://picsum.photos/seed/${course.id}/600/400`} alt={course.title} fill style={{ objectFit: "cover" }} referrerPolicy="no-referrer" />
+                  <Image src={course.thumbnail || `https://picsum.photos/seed/${course.id}/600/400`} alt={course.title} fill sizes="110px" style={{ objectFit: "cover" }} referrerPolicy="no-referrer" />
                 </div>
                 <div style={{ flex: 1, padding: "12px 14px 12px" }}>
                   <span style={{ background: GOLD_LIGHT, color: GOLD, fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 99 }}>{course.category}</span>
@@ -257,7 +267,7 @@ function CourseLibrary({ courses, authors, categories, onSelectCourse, completed
                     <div style={{ display: "flex" }}>
                       {courseAuthors.slice(0, 2).map((a, i) => (
                         <div key={a.id} style={{ position: "relative", width: 18, height: 18, borderRadius: "50%", border: "1.5px solid #fff", marginLeft: i > 0 ? -6 : 0, overflow: "hidden" }}>
-                          <Image src={a.picture || `https://i.pravatar.cc/150?u=${a.id}`} alt={a.name} fill style={{ objectFit: "cover" }} referrerPolicy="no-referrer" />
+                          <Image src={a.picture || `https://i.pravatar.cc/150?u=${a.id}`} alt={a.name} fill sizes="18px" style={{ objectFit: "cover" }} referrerPolicy="no-referrer" />
                         </div>
                       ))}
                     </div>
@@ -315,7 +325,7 @@ function CourseOverview({ course, authors, onBack, onStartLesson, completed }: C
       </div>
 
       <div style={{ position: "relative", height: 240, overflow: "hidden" }}>
-        <Image src={course.thumbnail || `https://picsum.photos/seed/${course.id}/600/400`} alt={course.title} fill style={{ objectFit: "cover" }} referrerPolicy="no-referrer" />
+        <Image src={course.thumbnail || `https://picsum.photos/seed/${course.id}/600/400`} alt={course.title} fill sizes="(max-width: 768px) 100vw, 600px" priority style={{ objectFit: "cover" }} referrerPolicy="no-referrer" />
         <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.7) 100%)" }} />
         <div style={{ position: "absolute", bottom: 16, left: 16, right: 16 }}>
           <span style={{ background: GOLD, color: "#fff", fontSize: 10, fontWeight: 800, padding: "3px 10px", borderRadius: 99 }}>{course.category}</span>
@@ -369,7 +379,7 @@ function CourseOverview({ course, authors, onBack, onStartLesson, completed }: C
                     <div key={author.id} style={{ background: CARD, borderRadius: 14, padding: 16, border: `1px solid ${BORDER}` }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: author.bio ? 12 : 0 }}>
                         <div style={{ position: "relative", width: 48, height: 48, borderRadius: "50%", overflow: "hidden", border: `2px solid ${GOLD_LIGHT}` }}>
-                          <Image src={author.picture || `https://i.pravatar.cc/150?u=${author.id}`} alt={author.name} fill style={{ objectFit: "cover" }} referrerPolicy="no-referrer" />
+                          <Image src={author.picture || `https://i.pravatar.cc/150?u=${author.id}`} alt={author.name} fill sizes="48px" style={{ objectFit: "cover" }} referrerPolicy="no-referrer" />
                         </div>
                         <div>
                           <div style={{ fontSize: 15, fontWeight: 700, color: TEXT }}>{author.name}</div>

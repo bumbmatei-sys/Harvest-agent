@@ -197,7 +197,7 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack }) => {
         ) : posts.length === 0 ? (
           <div className="text-center py-12 text-gray-500">No news yet.</div>
         ) : (
-          posts.map(post => (
+          posts.map((post, index) => (
             <div key={post.id} className="bg-white dark:bg-[#252a36] rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-800">
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-10 h-10 rounded-full bg-[#1a1d27] text-white flex items-center justify-center font-bold overflow-hidden relative">
@@ -226,7 +226,7 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack }) => {
 
               {post.imageUrl && (
                 <div className="mb-3 rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800 relative min-h-[200px]">
-                  <Image src={post.imageUrl} alt="Post attachment" fill sizes="100vw" className="object-cover" referrerPolicy="no-referrer" />
+                  <Image src={post.imageUrl} alt="Post attachment" fill sizes="(max-width: 768px) 100vw, 800px" priority={index < 2} className="object-cover" referrerPolicy="no-referrer" />
                 </div>
               )}
 

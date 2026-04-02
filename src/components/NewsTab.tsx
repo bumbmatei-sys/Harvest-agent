@@ -263,7 +263,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle }) => {
       {posts.length === 0 ? (
         <div className="text-center py-12 text-gray-500">No news yet.</div>
       ) : (
-        posts.map(post => (
+        posts.map((post, index) => (
           <div key={post.id} className="bg-white dark:bg-[#252a36] rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-4">
             <div className="flex justify-between items-start mb-3">
               <div className="flex items-center gap-3">
@@ -294,7 +294,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle }) => {
 
             {post.imageUrl && (
               <div className="rounded-xl overflow-hidden mb-3 max-h-80 bg-gray-100 dark:bg-gray-800 relative min-h-[200px]">
-                <Image src={post.imageUrl} alt="Post attachment" fill sizes="100vw" className="object-cover" referrerPolicy="no-referrer" />
+                <Image src={post.imageUrl} alt="Post attachment" fill sizes="(max-width: 768px) 100vw, 800px" priority={index < 2} className="object-cover" referrerPolicy="no-referrer" />
               </div>
             )}
 
@@ -402,7 +402,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle }) => {
             <h2 className="text-xl font-bold text-gray-900 dark:text-white">Latest Articles</h2>
           </div>
           <div className="flex flex-col gap-3">
-            {articles.map(post => (
+            {articles.map((post, index) => (
               <article 
                 key={post.id} 
                 onClick={() => onOpenArticle(post)}
@@ -415,6 +415,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle }) => {
                       alt={post.title} 
                       fill
                       sizes="80px"
+                      priority={index < 3}
                       className="object-cover"
                       referrerPolicy="no-referrer"
                     />

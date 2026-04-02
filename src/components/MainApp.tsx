@@ -1,15 +1,18 @@
 "use client";
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, Suspense, lazy } from 'react';
 import { Home, BookOpen, MessageCircle, Map as MapIcon, User, Play } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import Profile from './Profile';
-import PartnerWithUsTab from './PartnerWithUsTab';
-import BlogTab from './BlogTab';
-import NewsTab from './NewsTab';
-import AllNews from './AllNews';
-import SavedContentTab from './SavedContentTab';
-import CourseExperience from './CourseExperience';
 import dynamic from 'next/dynamic';
+
+// Lazy load heavy components
+const Profile = lazy(() => import('./Profile'));
+const PartnerWithUsTab = lazy(() => import('./PartnerWithUsTab'));
+const BlogTab = lazy(() => import('./BlogTab'));
+const NewsTab = lazy(() => import('./NewsTab'));
+const AllNews = lazy(() => import('./AllNews'));
+const SavedContentTab = lazy(() => import('./SavedContentTab'));
+const CourseExperience = lazy(() => import('./CourseExperience'));
+const AIChat = lazy(() => import('./AIChat'));
 
 const ChurchMap = dynamic(() => import('./ChurchMap'), { ssr: false });
 
@@ -111,24 +114,46 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
     setLastScrollY(currentScrollY);
   };
 
+  const renderLoading = () => (
+    <div className="flex items-center justify-center h-full w-full min-h-[50vh]">
+      <div className="w-8 h-8 border-4 border-[#e6b325] border-t-transparent rounded-full animate-spin"></div>
+    </div>
+  );
+
   if (fullScreenView.type === 'all-news') {
-    return <AllNews onBack={() => setFullScreenView({type: 'none'})} />;
+    return (
+      <Suspense fallback={renderLoading()}>
+        <AllNews onBack={() => setFullScreenView({type: 'none'})} />
+      </Suspense>
+    );
   }
 
   if (fullScreenView.type === 'article' && fullScreenView.data) {
-    return <BlogTab initialPost={fullScreenView.data} onBack={() => setFullScreenView({type: 'none'})} isFullScreen={true} />;
+    return (
+      <Suspense fallback={renderLoading()}>
+        <BlogTab initialPost={fullScreenView.data} onBack={() => setFullScreenView({type: 'none'})} isFullScreen={true} />
+      </Suspense>
+    );
   }
 
   if (fullScreenView.type === 'saved-content') {
-    return <SavedContentTab onBack={() => setFullScreenView({type: 'none'})} onOpenArticle={(post) => setFullScreenView({type: 'article', data: post})} />;
+    return (
+      <Suspense fallback={renderLoading()}>
+        <SavedContentTab onBack={() => setFullScreenView({type: 'none'})} onOpenArticle={(post) => setFullScreenView({type: 'article', data: post})} />
+      </Suspense>
+    );
   }
 
   if (fullScreenView.type === 'course' && fullScreenView.data) {
-    return <CourseExperience 
-      initialCourseId={fullScreenView.data.courseId} 
-      initialLessonId={fullScreenView.data.lessonId}
-      onBack={() => setFullScreenView({type: 'none'})} 
-    />;
+    return (
+      <Suspense fallback={renderLoading()}>
+        <CourseExperience 
+          initialCourseId={fullScreenView.data.courseId} 
+          initialLessonId={fullScreenView.data.lessonId}
+          onBack={() => setFullScreenView({type: 'none'})} 
+        />
+      </Suspense>
+    );
   }
 
   return (
@@ -157,7 +182,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
       )}
 
       {/* Main Content Area */}
-      <div className={`flex-1 overflow-x-hidden relative ${activeBottomTab === 'map' ? '' : 'overflow-y-auto pb-24'}`} onScroll={handleScroll}>
+      <div className={`flex-1 overflow-x-hidden relative ${activeBottomTab === 'map' ? '' : activeBottomTab === 'chat' ? 'overflow-y-auto pb-[65px]' : 'overflow-y-auto pb-24'}`} onScroll={handleScroll}>
         {activeBottomTab === 'home' ? (
           <div className="relative w-full h-full">
             <AnimatePresence initial={false} custom={direction} mode="popLayout">
@@ -179,37 +204,45 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
                 className="absolute w-full h-full p-4 space-y-6"
               >
                 {/* Content based on activeTopTab */}
-                {activeTopTab === 'news' && (
-                  <NewsTab 
-                    onOpenAllNews={() => setFullScreenView({type: 'all-news'})} 
-                    onOpenArticle={(post) => setFullScreenView({type: 'article', data: post})} 
-                  />
-                )}
-                {activeTopTab === 'partner' && (
-                  <PartnerWithUsTab />
-                )}
-                {activeTopTab === 'blog' && (
-                  <BlogTab onOpenArticle={(post) => setFullScreenView({type: 'article', data: post})} />
-                )}
-                {activeTopTab === 'courses' && (
-                  <CourseExperience onOpenCourse={(courseId, lessonId) => setFullScreenView({type: 'course', data: {courseId, lessonId}})} />
-                )}
-                {activeTopTab !== 'news' && activeTopTab !== 'partner' && activeTopTab !== 'blog' && activeTopTab !== 'courses' && (
-                  <div className="flex flex-col items-center justify-center h-64 text-gray-400 dark:text-gray-500">
-                    <p>{topTabs.find(t => t.id === activeTopTab)?.label} content coming soon.</p>
-                  </div>
-                )}
+                <Suspense fallback={renderLoading()}>
+                  {activeTopTab === 'news' && (
+                    <NewsTab 
+                      onOpenAllNews={() => setFullScreenView({type: 'all-news'})} 
+                      onOpenArticle={(post) => setFullScreenView({type: 'article', data: post})} 
+                    />
+                  )}
+                  {activeTopTab === 'partner' && (
+                    <PartnerWithUsTab />
+                  )}
+                  {activeTopTab === 'blog' && (
+                    <BlogTab onOpenArticle={(post) => setFullScreenView({type: 'article', data: post})} />
+                  )}
+                  {activeTopTab === 'courses' && (
+                    <CourseExperience onOpenCourse={(courseId, lessonId) => setFullScreenView({type: 'course', data: {courseId, lessonId}})} />
+                  )}
+                  {activeTopTab !== 'news' && activeTopTab !== 'partner' && activeTopTab !== 'blog' && activeTopTab !== 'courses' && (
+                    <div className="flex flex-col items-center justify-center h-64 text-gray-400 dark:text-gray-500">
+                      <p>{topTabs.find(t => t.id === activeTopTab)?.label} content coming soon.</p>
+                    </div>
+                  )}
+                </Suspense>
               </motion.div>
             </AnimatePresence>
           </div>
         ) : activeBottomTab === 'profile' ? (
-          <Profile 
-            onNavigate={onNavigate} 
-            onGoToCourses={() => { setActiveBottomTab('home'); setActiveTopTab('courses'); }} 
-            onGoToPartner={() => { setActiveBottomTab('home'); setActiveTopTab('partner'); }}
-            onOpenSavedContent={() => setFullScreenView({type: 'saved-content'})}
-            onContinueLearning={(video) => setFullScreenView({type: 'course', data: {courseId: video.courseId, lessonId: video.lessonId}})}
-          />
+          <Suspense fallback={renderLoading()}>
+            <Profile 
+              onNavigate={onNavigate} 
+              onGoToCourses={() => { setActiveBottomTab('home'); setActiveTopTab('courses'); }} 
+              onGoToPartner={() => { setActiveBottomTab('home'); setActiveTopTab('partner'); }}
+              onOpenSavedContent={() => setFullScreenView({type: 'saved-content'})}
+              onContinueLearning={(video) => setFullScreenView({type: 'course', data: {courseId: video.courseId, lessonId: video.lessonId}})}
+            />
+          </Suspense>
+        ) : activeBottomTab === 'chat' ? (
+          <Suspense fallback={renderLoading()}>
+            <AIChat onBack={() => setActiveBottomTab('home')} />
+          </Suspense>
         ) : activeBottomTab === 'map' ? (
           <ChurchMap 
             onBack={() => setActiveBottomTab('home')} 

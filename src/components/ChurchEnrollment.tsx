@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { db, auth } from '../firebase';
 import { collection, addDoc, doc, updateDoc } from 'firebase/firestore';
+import { Church, MapPin, Calendar, Trash2, Plus, User, Globe, Send, AlertCircle } from 'lucide-react';
 
 interface ChurchEnrollmentProps {
     onBack: () => void;
@@ -165,7 +166,7 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
         <div className="w-full">
             {error && (
                 <div className="mb-8 p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl flex items-center gap-3">
-                    <span className="material-symbols-outlined">error</span>
+                    <AlertCircle size={24} />
                     <p>{error}</p>
                 </div>
             )}
@@ -174,7 +175,7 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
                         {/* Section 1: Church Details */}
                         <div className="space-y-6">
                             <h3 className="text-lg font-bold text-background-dark border-b border-gray-100 pb-3 flex items-center gap-2">
-                                <span className="material-symbols-outlined text-primary">church</span>
+                                <Church className="text-primary" size={24} />
                                 Church Details
                             </h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -218,7 +219,7 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
                         {/* Section 2: Location */}
                         <div className="space-y-6">
                             <h3 className="text-lg font-bold text-background-dark border-b border-gray-100 pb-3 flex items-center gap-2">
-                                <span className="material-symbols-outlined text-primary">location_on</span>
+                                <MapPin className="text-primary" size={24} />
                                 Location
                             </h3>
                             
@@ -329,7 +330,7 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
                         {/* Section: Weekly Services */}
                         <div className="space-y-6">
                             <h3 className="text-lg font-bold text-background-dark border-b border-gray-100 pb-3 flex items-center gap-2">
-                                <span className="material-symbols-outlined text-primary">event</span>
+                                <Calendar className="text-primary" size={24} />
                                 Weekly Services
                             </h3>
                             <p className="text-sm text-gray-500 mb-4">Add the regular services and meetings throughout the week.</p>
@@ -379,7 +380,7 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
                                                         onClick={() => handleRemoveService(index)}
                                                         className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0"
                                                     >
-                                                        <span className="material-symbols-outlined">delete</span>
+                                                        <Trash2 size={24} />
                                                     </button>
                                                 )}
                                             </div>
@@ -392,7 +393,7 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
                                 onClick={handleAddService}
                                 className="text-primary font-medium flex items-center gap-1 hover:text-primary-dark transition-colors text-sm"
                             >
-                                <span className="material-symbols-outlined text-sm">add</span>
+                                <Plus className="text-sm" size={16} />
                                 Add another service
                             </button>
                         </div>
@@ -400,7 +401,7 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
                         {/* Section 3: Contact Person */}
                         <div className="space-y-6">
                             <h3 className="text-lg font-bold text-background-dark border-b border-gray-100 pb-3 flex items-center gap-2">
-                                <span className="material-symbols-outlined text-primary">person</span>
+                                <User className="text-primary" size={24} />
                                 Contact Person
                             </h3>
                             <div>
@@ -446,7 +447,7 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
                         {/* Section 4: Social Links */}
                         <div className="space-y-6">
                             <h3 className="text-lg font-bold text-background-dark border-b border-gray-100 pb-3 flex items-center gap-2">
-                                <span className="material-symbols-outlined text-primary">public</span>
+                                <Globe className="text-primary" size={24} />
                                 Online Presence
                             </h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -454,7 +455,7 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
                                     <label className="block text-sm font-bold text-gray-700 mb-2">Website</label>
                                     <div className="relative">
                                         <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
-                                            <span className="material-symbols-outlined text-[20px]">language</span>
+                                            <Globe size={20} />
                                         </div>
                                         <input 
                                             type="url" 
@@ -511,7 +512,7 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
                                 ) : (
                                     <>
                                         {initialData ? 'Save Changes' : 'Submit Church'}
-                                        <span className="material-symbols-outlined">send</span>
+                                        <Send size={24} />
                                     </>
                                 )}
                             </button>
