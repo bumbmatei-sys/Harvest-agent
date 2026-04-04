@@ -1,0 +1,17 @@
+{
+  "name": "Harvest App",
+  "short_name": "Harvest",
+  "description": "Harvest Course Experience",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#C9963A",
+  "icons": [
+    {
+      "src": "https://raw.githubusercontent.com/bumbmatei-sys/harvest-pics/main/fundal-alb.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

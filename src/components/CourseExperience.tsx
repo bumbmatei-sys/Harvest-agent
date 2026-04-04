@@ -194,17 +194,21 @@ function BrandedVideoPlayer({ lesson }: BrandedVideoPlayerProps) {
   const [showControls, setShowControls] = useState(true);
   const [seeking, setSeeking] = useState(false);
   
-  const playerRef = useRef<ReactPlayer>(null);
+  const playerRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const handlePlayPause = () => setPlaying(!playing);
   const handleToggleMuted = () => setMuted(!muted);
   
-  const handleProgress = (state: { played: number }) => {
-    if (!seeking) {
-      setPlayed(state.played);
+  const handleTimeUpdate = (e: React.SyntheticEvent<HTMLVideoElement>) => {
+    if (!seeking && duration > 0) {
+      setPlayed(e.currentTarget.currentTime / duration);
     }
+  };
+  
+  const handleDurationChange = (e: React.SyntheticEvent<HTMLVideoElement>) => {
+    setDuration(e.currentTarget.duration);
   };
   
   const handleSeekMouseDown = () => setSeeking(true);
@@ -212,7 +216,10 @@ function BrandedVideoPlayer({ lesson }: BrandedVideoPlayerProps) {
   const handleSeekMouseUp = (e: React.MouseEvent<HTMLInputElement> | React.TouchEvent<HTMLInputElement>) => {
     setSeeking(false);
     const target = e.target as HTMLInputElement;
-    playerRef.current?.seekTo(parseFloat(target.value));
+    const newTime = parseFloat(target.value) * duration;
+    if (playerRef.current) {
+      playerRef.current.currentTime = newTime;
+    }
   };
 
   const handleFullscreen = () => {
@@ -281,8 +288,8 @@ function BrandedVideoPlayer({ lesson }: BrandedVideoPlayerProps) {
             setHasStarted(true);
             setPlaying(true);
           }}
-          onProgress={handleProgress}
-          onDuration={setDuration}
+          onTimeUpdate={handleTimeUpdate}
+          onDurationChange={handleDurationChange}
           onPlay={() => {
             setHasStarted(true);
             setPlaying(true);
