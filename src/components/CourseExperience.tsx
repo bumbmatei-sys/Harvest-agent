@@ -958,7 +958,7 @@ export default function CourseApp({
       }
     };
     fetchData();
-  }, []);
+  }, [initialCourseId, initialLessonId]);
 
   const goToCourse = (course: Course) => { 
     if (onOpenCourse) {

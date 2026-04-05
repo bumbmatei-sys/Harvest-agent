@@ -693,7 +693,7 @@ export default function BiblePage() {
 
             {!searching && searchQuery && searchResults.length === 0 && (
               <div style={{ textAlign: "center" as const, padding: "32px 20px", color: TEXT2, fontSize: 14 }}>
-                No results. Try a verse reference like "Romans 8:28".
+                No results. Try a verse reference like &quot;Romans 8:28&quot;.
               </div>
             )}
 
