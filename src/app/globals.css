@@ -3,95 +3,94 @@
 @tailwind utilities;
 
 @layer base {
-  :root {
-    --font-sans: 'Inter', sans-serif;
-    --color-primary: #B8860B;
-    --color-secondary: #8E8E93;
-    --color-background-light: #FFFFFF;
-    --color-background-dark: #002147;
-    --color-background-alt: #F5F5F7;
-    --background-image-gold-gradient: linear-gradient(135deg, #B8860B 0%, #D4AF37 100%);
-  }
+ :root {
+ --font-sans: 'Inter', sans-serif;
+ --color-primary: #B8860B;
+ --color-secondary: #8E8E93;
+ --color-background-light: #FFFFFF;
+ --color-background-alt: #F5F5F7;
+ --background-image-gold-gradient: linear-gradient(135deg, #B8860B 0%, #D4AF37 100%);
+ }
 }
 
 @layer utilities {
-  .isometric-phone {
-    transform: rotateX(15deg) rotateY(0deg) rotateZ(-15deg) scale(0.9);
-    box-shadow: 0 40px 80px rgba(0, 0, 0, 0.4);
-    transition: transform 0.7s cubic-bezier(0.25, 0.46, 0.45, 0.94), box-shadow 0.7s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-  }
-  .isometric-phone:hover {
-    transform: rotateX(0deg) rotateY(0deg) rotateZ(0deg) scale(1);
-    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.5);
-  }
-  .glass-card {
-    background: rgba(255, 255, 255, 0.03);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-  }
+ .isometric-phone {
+ transform: rotateX(15deg) rotateY(0deg) rotateZ(-15deg) scale(0.9);
+ box-shadow: 0 40px 80px rgba(0, 0, 0, 0.4);
+ transition: transform 0.7s cubic-bezier(0.25, 0.46, 0.45, 0.94), box-shadow 0.7s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+ }
+ .isometric-phone:hover {
+ transform: rotateX(0deg) rotateY(0deg) rotateZ(0deg) scale(1);
+ box-shadow: 0 30px 60px rgba(0, 0, 0, 0.5);
+ }
+ .glass-card {
+ background: rgba(255, 255, 255, 0.03);
+ backdrop-filter: blur(12px);
+ -webkit-backdrop-filter: blur(12px);
+ border: 1px solid rgba(255, 255, 255, 0.1);
+ }
 }
 
 /* Fallback styles for Rich Text Editor in case typography plugin fails */
 .ProseMirror h1, .prose h1 {
-  font-size: 2.25rem !important;
-  font-weight: 800 !important;
-  margin-top: 1.5em !important;
-  margin-bottom: 0.5em !important;
-  line-height: 1.2 !important;
+ font-size: 2.25rem !important;
+ font-weight: 800 !important;
+ margin-top: 1.5em !important;
+ margin-bottom: 0.5em !important;
+ line-height: 1.2 !important;
 }
 .ProseMirror h2, .prose h2 {
-  font-size: 1.5rem !important;
-  font-weight: 700 !important;
-  margin-top: 1.5em !important;
-  margin-bottom: 0.5em !important;
-  line-height: 1.3333333 !important;
+ font-size: 1.5rem !important;
+ font-weight: 700 !important;
+ margin-top: 1.5em !important;
+ margin-bottom: 0.5em !important;
+ line-height: 1.3333333 !important;
 }
 .ProseMirror p, .prose p {
-  margin-top: 1.25em !important;
-  margin-bottom: 1.25em !important;
-  line-height: 1.75 !important;
+ margin-top: 1.25em !important;
+ margin-bottom: 1.25em !important;
+ line-height: 1.75 !important;
 }
 .ProseMirror ul, .prose ul {
-  list-style-type: disc !important;
-  padding-left: 1.625em !important;
-  margin-top: 1.25em !important;
-  margin-bottom: 1.25em !important;
+ list-style-type: disc !important;
+ padding-left: 1.625em !important;
+ margin-top: 1.25em !important;
+ margin-bottom: 1.25em !important;
 }
 .ProseMirror ol, .prose ol {
-  list-style-type: decimal !important;
-  padding-left: 1.625em !important;
-  margin-top: 1.25em !important;
-  margin-bottom: 1.25em !important;
+ list-style-type: decimal !important;
+ padding-left: 1.625em !important;
+ margin-top: 1.25em !important;
+ margin-bottom: 1.25em !important;
 }
 .ProseMirror li, .prose li {
-  margin-top: 0.5em !important;
-  margin-bottom: 0.5em !important;
+ margin-top: 0.5em !important;
+ margin-bottom: 0.5em !important;
 }
 .ProseMirror a, .prose a {
-  color: #3b82f6 !important;
-  text-decoration: underline !important;
+ color: #3b82f6 !important;
+ text-decoration: underline !important;
 }
 .ProseMirror img, .prose img {
-  margin-top: 2em !important;
-  margin-bottom: 2em !important;
-  border-radius: 0.5rem !important;
+ margin-top: 2em !important;
+ margin-bottom: 2em !important;
+ border-radius: 0.5rem !important;
 }
 .ProseMirror blockquote, .prose blockquote {
-  border-left-width: 0.25rem !important;
-  border-left-color: #e5e7eb !important;
-  padding-left: 1em !important;
-  font-style: italic !important;
-  margin-top: 1.6em !important;
-  margin-bottom: 1.6em !important;
+ border-left-width: 0.25rem !important;
+ border-left-color: #e5e7eb !important;
+ padding-left: 1em !important;
+ font-style: italic !important;
+ margin-top: 1.6em !important;
+ margin-bottom: 1.6em !important;
 }
 
 /* Tiptap Placeholder */
 .ProseMirror p.is-editor-empty:first-child::before {
-  color: #adb5bd;
-  content: attr(data-placeholder);
-  float: left;
-  height: 0;
-  pointer-events: none;
+ color: #adb5bd;
+ content: attr(data-placeholder);
+ float: left;
+ height: 0;
+ pointer-events: none;
 }
 

@@ -1,7 +1,6 @@
 import type { Config } from "tailwindcss";
 
 const config: Config = {
-  darkMode: 'class',
   content: [
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
@@ -15,7 +14,6 @@ const config: Config = {
         primary: "var(--color-primary)",
         secondary: "var(--color-secondary)",
         "background-light": "var(--color-background-light)",
-        "background-dark": "var(--color-background-dark)",
         "background-alt": "var(--color-background-alt)",
       },
       backgroundImage: {
