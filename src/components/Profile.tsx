@@ -133,7 +133,7 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToCourses, onGoToPart
  if (data.photoURL) {
  setProfilePic(data.photoURL);
  }
- if (data.role === 'admin' || data.email === 'bumbmatei@gmail.com') {
+ if (data.role === 'admin' || data.role === 'super_admin' || data.email === 'bumbmatei@gmail.com') {
  setIsAdmin(true);
  }
  } else {
@@ -214,7 +214,7 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToCourses, onGoToPart
  await updateDoc(userRef, { photoURL: base64String });
  await updateProfile(auth.currentUser!, { photoURL: base64String });
  } catch (error) {
- console.error("Error saving photo:", error);
+ handleFirestoreError(error, OperationType.UPDATE, `users/${auth.currentUser?.uid}`);
  }
  };
  img.src = reader.result as string;

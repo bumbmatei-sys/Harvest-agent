@@ -5,6 +5,53 @@ import { collection, query, onSnapshot, doc, deleteDoc } from 'firebase/firestor
 import { Church, Search, Filter, Edit2, Trash2, Plus, CheckCircle, Clock } from 'lucide-react';
 import ChurchEnrollment from './ChurchEnrollment';
 
+
+enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId?: string;
+    email?: string | null;
+    emailVerified?: boolean;
+    isAnonymous?: boolean;
+    tenantId?: string | null;
+    providerInfo?: any[];
+  }
+}
+
+function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: auth?.currentUser?.uid,
+      email: auth?.currentUser?.email,
+      emailVerified: auth?.currentUser?.emailVerified,
+      isAnonymous: auth?.currentUser?.isAnonymous,
+      tenantId: auth?.currentUser?.tenantId,
+      providerInfo: auth?.currentUser?.providerData.map(provider => ({
+        providerId: provider.providerId,
+        displayName: provider.displayName,
+        email: provider.email,
+        photoUrl: provider.photoURL
+      })) || []
+    },
+    operationType,
+    path
+  };
+  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  throw new Error(JSON.stringify(errInfo));
+}
+
 const AdminChurches: React.FC = () => {
  const [churches, setChurches] = useState<any[]>([]);
  const [loading, setLoading] = useState(true);
@@ -43,7 +90,7 @@ const AdminChurches: React.FC = () => {
  setChurches(churchData);
  setLoading(false);
  }, (error) => {
- console.error("Error fetching churches:", error);
+ handleFirestoreError(error, OperationType.GET, `churches`);
  setLoading(false);
  });
 
@@ -55,7 +102,7 @@ const AdminChurches: React.FC = () => {
  await deleteDoc(doc(db, 'churches', id));
  setDeleteConfirmId(null);
  } catch (error) {
- console.error("Error deleting church:", error);
+ handleFirestoreError(error, OperationType.DELETE, `churches/${id}`);
  }
  };
 

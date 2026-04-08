@@ -5,6 +5,53 @@ import { collection, addDoc, doc, updateDoc, getDocs, deleteDoc, setDoc } from "
 import { db } from "../firebase";
 import RichTextEditor from './RichTextEditor';
 
+
+enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId?: string;
+    email?: string | null;
+    emailVerified?: boolean;
+    isAnonymous?: boolean;
+    tenantId?: string | null;
+    providerInfo?: any[];
+  }
+}
+
+function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: auth?.currentUser?.uid,
+      email: auth?.currentUser?.email,
+      emailVerified: auth?.currentUser?.emailVerified,
+      isAnonymous: auth?.currentUser?.isAnonymous,
+      tenantId: auth?.currentUser?.tenantId,
+      providerInfo: auth?.currentUser?.providerData.map(provider => ({
+        providerId: provider.providerId,
+        displayName: provider.displayName,
+        email: provider.email,
+        photoUrl: provider.photoURL
+      })) || []
+    },
+    operationType,
+    path
+  };
+  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  throw new Error(JSON.stringify(errInfo));
+}
+
 // ─────────────────────────────────────────────
 // HARVEST — Admin Course Builder v2 (TypeScript)
 // React + TypeScript (not Next.js)
@@ -561,7 +608,7 @@ export default function CourseBuilder({ course: initialCourse, onClose }: Course
  });
  setCategories(fetchedCats);
  } catch (error) {
- console.error("Error fetching data:", error);
+ handleFirestoreError(error, OperationType.GET, `courses`);
  }
  };
  fetchData();
@@ -583,7 +630,7 @@ export default function CourseBuilder({ course: initialCourse, onClose }: Course
  await deleteDoc(doc(db, "categories", cat));
  }
  } catch (e) {
- console.error("Error updating categories", e);
+ handleFirestoreError(e, OperationType.WRITE, `categories`);
  }
  };
  const dragOverLevel = useRef<number | null>(null);
@@ -596,7 +643,7 @@ export default function CourseBuilder({ course: initialCourse, onClose }: Course
  try {
  await setDoc(doc(db, "authors", newAuthor.id), newAuthor);
  } catch (e) {
- console.error("Error saving author", e);
+ handleFirestoreError(e, OperationType.WRITE, `authors`);
  }
  };
 
@@ -605,7 +652,7 @@ export default function CourseBuilder({ course: initialCourse, onClose }: Course
  try {
  await setDoc(doc(db, "authors", a.id), a);
  } catch (e) {
- console.error("Error updating author", e);
+ handleFirestoreError(e, OperationType.UPDATE, `authors`);
  }
  };
 
@@ -616,7 +663,7 @@ export default function CourseBuilder({ course: initialCourse, onClose }: Course
  try {
  await deleteDoc(doc(db, "authors", removed));
  } catch (e) {
- console.error("Error deleting author", e);
+ handleFirestoreError(e, OperationType.DELETE, `authors`);
  }
  };
 
@@ -653,7 +700,7 @@ export default function CourseBuilder({ course: initialCourse, onClose }: Course
  setSaved(true);
  setTimeout(() => setSaved(false), 2500);
  } catch (e) {
- console.error("Error saving course", e);
+ handleFirestoreError(e, OperationType.WRITE, `courses`);
  alert("Error saving course. Please try again.");
  } finally {
  setSaving(false);

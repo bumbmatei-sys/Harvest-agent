@@ -5,6 +5,53 @@ import { collection, query, orderBy, onSnapshot, addDoc, deleteDoc, doc, updateD
 import { db, auth } from '../firebase';
 import { MessageSquare, BarChart2, Calendar as CalendarIcon, Image as ImageIcon, Send, MoreVertical, ThumbsUp, Check, X } from 'lucide-react';
 
+
+enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId?: string;
+    email?: string | null;
+    emailVerified?: boolean;
+    isAnonymous?: boolean;
+    tenantId?: string | null;
+    providerInfo?: any[];
+  }
+}
+
+function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: auth?.currentUser?.uid,
+      email: auth?.currentUser?.email,
+      emailVerified: auth?.currentUser?.emailVerified,
+      isAnonymous: auth?.currentUser?.isAnonymous,
+      tenantId: auth?.currentUser?.tenantId,
+      providerInfo: auth?.currentUser?.providerData.map(provider => ({
+        providerId: provider.providerId,
+        displayName: provider.displayName,
+        email: provider.email,
+        photoUrl: provider.photoURL
+      })) || []
+    },
+    operationType,
+    path
+  };
+  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  throw new Error(JSON.stringify(errInfo));
+}
+
 interface PollOption {
  id: string;
  text: string;
@@ -141,7 +188,7 @@ const AdminPosts: React.FC = () => {
  setEventTime('');
  setEventLocation('');
  } catch (error) {
- console.error('Error creating post:', error);
+ handleFirestoreError(error, OperationType.WRITE, `community_posts`);
  setErrorMessage('Failed to create post');
  setTimeout(() => setErrorMessage(null), 3000);
  } finally {
@@ -204,7 +251,7 @@ const AdminPosts: React.FC = () => {
  await deleteDoc(doc(db, 'community_posts', postId));
  setDeleteConfirmId(null);
  } catch (error) {
- console.error('Error deleting post:', error);
+ handleFirestoreError(error, OperationType.DELETE, `community_posts`);
  }
  };
 
@@ -278,7 +325,7 @@ const AdminPosts: React.FC = () => {
  isPinned: !currentPinnedStatus
  });
  } catch (error) {
- console.error('Error pinning post:', error);
+ handleFirestoreError(error, OperationType.UPDATE, `community_posts`);
  setErrorMessage('Failed to pin post');
  setTimeout(() => setErrorMessage(null), 3000);
  }

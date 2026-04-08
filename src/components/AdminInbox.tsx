@@ -4,6 +4,53 @@ import { db } from '../firebase';
 import { collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { Mail, MapPin, Lightbulb, HeartHandshake, Church, CheckCircle, Trash2, Clock, ChevronDown, ChevronUp, Inbox } from 'lucide-react';
 
+
+enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId?: string;
+    email?: string | null;
+    emailVerified?: boolean;
+    isAnonymous?: boolean;
+    tenantId?: string | null;
+    providerInfo?: any[];
+  }
+}
+
+function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: auth?.currentUser?.uid,
+      email: auth?.currentUser?.email,
+      emailVerified: auth?.currentUser?.emailVerified,
+      isAnonymous: auth?.currentUser?.isAnonymous,
+      tenantId: auth?.currentUser?.tenantId,
+      providerInfo: auth?.currentUser?.providerData.map(provider => ({
+        providerId: provider.providerId,
+        displayName: provider.displayName,
+        email: provider.email,
+        photoUrl: provider.photoURL
+      })) || []
+    },
+    operationType,
+    path
+  };
+  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  throw new Error(JSON.stringify(errInfo));
+}
+
 const AdminInbox = () => {
  const [submissions, setSubmissions] = useState<any[]>([]);
  const [loading, setLoading] = useState(true);
@@ -22,7 +69,7 @@ const AdminInbox = () => {
  setSubmissions(subs);
  setLoading(false);
  }, (error) => {
- console.error("Error fetching submissions:", error);
+ handleFirestoreError(error, OperationType.GET, `submissions`);
  setLoading(false);
  if (error instanceof Error && error.message.includes('offline')) {
  alert("You are offline. Please check your connection.");
@@ -38,7 +85,7 @@ const AdminInbox = () => {
  status: newStatus
  });
  } catch (error) {
- console.error("Error updating status:", error);
+ handleFirestoreError(error, OperationType.UPDATE, `submissions/${id}`);
  }
  };
 
@@ -47,7 +94,7 @@ const AdminInbox = () => {
  await deleteDoc(doc(db, 'submissions', id));
  setDeleteConfirmId(null);
  } catch (error) {
- console.error("Error deleting submission:", error);
+ handleFirestoreError(error, OperationType.DELETE, `submissions/${id}`);
  }
  };
 

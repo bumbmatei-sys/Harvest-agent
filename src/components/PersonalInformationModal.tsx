@@ -204,7 +204,7 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
  console.warn("Could not update auth profile photoURL, but saved to Firestore", e);
  }
  } catch (error) {
- console.error("Error updating profile photo:", error);
+ handleFirestoreError(error, OperationType.UPDATE, `users/${auth.currentUser?.uid}`);
  }
  };
  img.src = reader.result as string;

@@ -100,7 +100,7 @@ const App: React.FC = () => {
  }
  }
  } catch (error) {
- console.error("Error fetching user doc:", error);
+ // console.error("Error fetching user doc:", error);
  try {
  handleFirestoreError(error, OperationType.GET, `users/${user.uid}`);
  } catch (e) {

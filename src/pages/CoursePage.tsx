@@ -87,7 +87,7 @@ export default function CoursePage({
           }
         }
       } catch (error) {
-        console.error("Error fetching user data", error);
+        handleFirestoreError(error, OperationType.GET, `users/${auth.currentUser?.uid}`);
       }
     };
     fetchUserData();
@@ -108,7 +108,7 @@ export default function CoursePage({
         }
       });
     } catch (error) {
-      console.error("Error updating last watched video", error);
+      handleFirestoreError(error, OperationType.UPDATE, `users/${auth.currentUser?.uid}`);
     }
   };
 
@@ -207,7 +207,7 @@ export default function CoursePage({
           completedLessons: Array.from(newCompleted)
         });
       } catch (error) {
-        console.error("Error updating completed lessons", error);
+        handleFirestoreError(error, OperationType.UPDATE, `users/${auth.currentUser?.uid}`);
       }
     }
   };

@@ -5,6 +5,53 @@ import { collection, onSnapshot, query, orderBy, deleteDoc, doc } from 'firebase
 import { db } from '../firebase';
 import AdminCourseEditor, { Course } from './AdminCourseEditor';
 
+
+enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId?: string;
+    email?: string | null;
+    emailVerified?: boolean;
+    isAnonymous?: boolean;
+    tenantId?: string | null;
+    providerInfo?: any[];
+  }
+}
+
+function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: auth?.currentUser?.uid,
+      email: auth?.currentUser?.email,
+      emailVerified: auth?.currentUser?.emailVerified,
+      isAnonymous: auth?.currentUser?.isAnonymous,
+      tenantId: auth?.currentUser?.tenantId,
+      providerInfo: auth?.currentUser?.providerData.map(provider => ({
+        providerId: provider.providerId,
+        displayName: provider.displayName,
+        email: provider.email,
+        photoUrl: provider.photoURL
+      })) || []
+    },
+    operationType,
+    path
+  };
+  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  throw new Error(JSON.stringify(errInfo));
+}
+
 const AdminCourses: React.FC = () => {
  const [courses, setCourses] = useState<Course[]>([]);
  const [loading, setLoading] = useState(true);
@@ -26,7 +73,7 @@ const AdminCourses: React.FC = () => {
  setCourses(fetchedCourses);
  setLoading(false);
  }, (error) => {
- console.error("Error fetching courses:", error);
+ handleFirestoreError(error, OperationType.GET, `courses`);
  setLoading(false);
  });
 
@@ -63,7 +110,7 @@ const AdminCourses: React.FC = () => {
  await deleteDoc(doc(db, 'courses', id));
  setDeleteConfirmId(null);
  } catch (error) {
- console.error("Error deleting course:", error);
+ handleFirestoreError(error, OperationType.DELETE, `courses/${id}`);
  setErrorMessage("Failed to delete course. Please try again.");
  setTimeout(() => setErrorMessage(null), 3000);
  }

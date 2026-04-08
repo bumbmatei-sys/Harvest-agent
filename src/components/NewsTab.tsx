@@ -5,6 +5,53 @@ import { collection, query, orderBy, onSnapshot, doc, updateDoc, arrayUnion, arr
 import { db, auth } from '../firebase';
 import { Calendar as CalendarIcon, ThumbsUp, Check, ChevronRight, FileText, Tag, Calendar } from 'lucide-react';
 
+
+enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId?: string;
+    email?: string | null;
+    emailVerified?: boolean;
+    isAnonymous?: boolean;
+    tenantId?: string | null;
+    providerInfo?: any[];
+  }
+}
+
+function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: auth?.currentUser?.uid,
+      email: auth?.currentUser?.email,
+      emailVerified: auth?.currentUser?.emailVerified,
+      isAnonymous: auth?.currentUser?.isAnonymous,
+      tenantId: auth?.currentUser?.tenantId,
+      providerInfo: auth?.currentUser?.providerData.map(provider => ({
+        providerId: provider.providerId,
+        displayName: provider.displayName,
+        email: provider.email,
+        photoUrl: provider.photoURL
+      })) || []
+    },
+    operationType,
+    path
+  };
+  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  throw new Error(JSON.stringify(errInfo));
+}
+
 interface PollOption {
  id: string;
  text: string;
@@ -124,16 +171,20 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle }) => {
  return;
  }
 
- const postRef = doc(db, 'community_posts', postId);
- if (likes.includes(user.uid)) {
- await updateDoc(postRef, {
- likes: arrayRemove(user.uid)
- });
- } else {
- await updateDoc(postRef, {
- likes: arrayUnion(user.uid)
- });
- }
+ try {
+      const postRef = doc(db, 'community_posts', postId);
+      if (likes.includes(user.uid)) {
+        await updateDoc(postRef, {
+          likes: arrayRemove(user.uid)
+        });
+      } else {
+        await updateDoc(postRef, {
+          likes: arrayUnion(user.uid)
+        });
+      }
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `community_posts/${postId}`);
+    }
  };
 
  const handleVote = async (postId: string, optionId: string, currentOptions: PollOption[]) => {
@@ -155,9 +206,13 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle }) => {
  return opt;
  });
 
- await updateDoc(doc(db, 'community_posts', postId), {
- pollOptions: updatedOptions
- });
+ try {
+      await updateDoc(doc(db, 'community_posts', postId), {
+        pollOptions: updatedOptions
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `community_posts/${postId}`);
+    }
  };
 
  const handleAttend = async (postId: string, attendees: string[], attendeeDetails?: any[]) => {
@@ -181,7 +236,11 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle }) => {
  updates['eventDetails.attendeeDetails'] = arrayRemove(userDetail);
  }
  
- await updateDoc(postRef, updates);
+ try {
+      await updateDoc(postRef, updates);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `community_posts/${postId}`);
+    }
  } else {
  setAttendingPostId(postId);
  }

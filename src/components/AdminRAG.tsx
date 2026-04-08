@@ -3,6 +3,53 @@ import { db } from '../firebase';
 import { collection, addDoc, serverTimestamp, query, where, getDocs, deleteDoc, onSnapshot, updateDoc, doc } from 'firebase/firestore';
 import { GoogleGenAI } from "@google/genai";
 
+
+enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId?: string;
+    email?: string | null;
+    emailVerified?: boolean;
+    isAnonymous?: boolean;
+    tenantId?: string | null;
+    providerInfo?: any[];
+  }
+}
+
+function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: auth?.currentUser?.uid,
+      email: auth?.currentUser?.email,
+      emailVerified: auth?.currentUser?.emailVerified,
+      isAnonymous: auth?.currentUser?.isAnonymous,
+      tenantId: auth?.currentUser?.tenantId,
+      providerInfo: auth?.currentUser?.providerData.map(provider => ({
+        providerId: provider.providerId,
+        displayName: provider.displayName,
+        email: provider.email,
+        photoUrl: provider.photoURL
+      })) || []
+    },
+    operationType,
+    path
+  };
+  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  throw new Error(JSON.stringify(errInfo));
+}
+
 const ai = new GoogleGenAI({ apiKey: process.env.NEXT_PUBLIC_GEMINI_API_KEY });
 
 // ─────────────────────────────────────────────
@@ -72,7 +119,7 @@ async function chunkAndEmbed(text: string, sourceId: string, title: string, type
  });
  }
  } catch (error) {
- console.error("Error embedding chunk:", error);
+ handleFirestoreError(error, OperationType.WRITE, `rag_chunks`);
  }
  }
  
@@ -159,7 +206,7 @@ export default function AdminRAG() {
  loadedSources.sort((a: any, b: any) => b.addedAt.getTime() - a.addedAt.getTime());
  setSources(loadedSources);
  }, (error) => {
- console.error("Error fetching RAG sources:", error);
+ handleFirestoreError(error, OperationType.GET, `rag_sources`);
  });
 
  return () => unsubscribe();
@@ -274,7 +321,7 @@ export default function AdminRAG() {
  const deletePromises = snap.docs.map(document => deleteDoc(document.ref));
  await Promise.all(deletePromises);
  } catch (error) {
- console.error("Error deleting source:", error);
+ handleFirestoreError(error, OperationType.DELETE, `rag_sources/${id}`);
  }
  
  setDeleteTarget(null);
