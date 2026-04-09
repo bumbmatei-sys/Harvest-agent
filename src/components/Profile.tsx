@@ -179,7 +179,7 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToCourses, onGoToPart
  if (file && auth.currentUser) {
  const reader = new FileReader();
  reader.onloadend = async () => {
- const img = new Image();
+ const img = new window.Image();
  img.onload = async () => {
  const canvas = document.createElement('canvas');
  const MAX_WIDTH = 400;

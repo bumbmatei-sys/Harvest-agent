@@ -39,7 +39,7 @@ export function CourseOverview({ course, authors, onBack, onStartLesson, complet
         <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.7) 100%)" }} />
         <div style={{ position: "absolute", bottom: 16, left: 16, right: 16 }}>
           <span style={{ background: GOLD, color: "#fff", fontSize: 10, fontWeight: 800, padding: "3px 10px", borderRadius: 99 }}>{course.category}</span>
-          <div style={{ fontFamily: "'Lora', serif", fontSize: 22, fontWeight: 700, color: "#fff", marginTop: 6, lineHeight: 1.2 }}>{course.title}</div>
+          <div style={{ fontFamily: "'Nunito', sans-serif", fontSize: 22, fontWeight: 800, color: "#fff", marginTop: 6, lineHeight: 1.2 }}>{course.title}</div>
         </div>
       </div>
 
@@ -69,7 +69,7 @@ export function CourseOverview({ course, authors, onBack, onStartLesson, complet
         </button>
 
         <div style={{ display: "flex", borderBottom: `1px solid ${BORDER}` }}>
-          {([] as const).concat([["about", "About"], ["curriculum", "Curriculum"]]).map(([id, label]) => (
+          {([["about", "About"], ["curriculum", "Curriculum"]] as [string, string][]).map(([id, label]) => (
             <button key={id} onClick={() => setTab(id as "about" | "curriculum")}
               style={{ flex: 1, background: "none", border: "none", borderBottom: `2.5px solid ${tab === id ? GOLD : "transparent"}`, color: tab === id ? GOLD : TEXT2, fontWeight: 700, fontSize: 14, padding: "12px", cursor: "pointer", fontFamily: "inherit", transition: "all 0.2s" }}>
               {label}
@@ -83,11 +83,11 @@ export function CourseOverview({ course, authors, onBack, onStartLesson, complet
           <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
             {courseAuthors.length > 0 && (
               <div>
-                <h2 style={{ fontFamily: "'Lora', serif", fontSize: 18, fontWeight: 700, color: TEXT, marginBottom: 16 }}>Instructors</h2>
+                <h2 style={{ fontFamily: "'Nunito', sans-serif", fontSize: 18, fontWeight: 800, color: TEXT, marginBottom: 16 }}>Instructors</h2>
                 <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                   {courseAuthors.map(author => (
                     <div key={author.id} style={{ background: CARD, borderRadius: 14, padding: 16, border: `1px solid ${BORDER}` }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: author.bio ? 12 : 0 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 0 }}>
                         <div style={{ position: "relative", width: 48, height: 48, borderRadius: "50%", overflow: "hidden", border: `2px solid ${GOLD_LIGHT}` }}>
                           <Image src={author.picture || `https://i.pravatar.cc/150?u=${author.id}`} alt={author.name} fill sizes="48px" style={{ objectFit: "cover" }} referrerPolicy="no-referrer" />
                         </div>
@@ -96,9 +96,6 @@ export function CourseOverview({ course, authors, onBack, onStartLesson, complet
                           <div style={{ fontSize: 13, color: GOLD }}>{author.title}</div>
                         </div>
                       </div>
-                      {author.bio && (
-                        <div style={{ fontSize: 14, color: TEXT2, lineHeight: 1.6 }} dangerouslySetInnerHTML={{ __html: author.bio }} />
-                      )}
                     </div>
                   ))}
                 </div>

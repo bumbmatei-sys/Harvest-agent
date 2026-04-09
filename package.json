@@ -19,6 +19,7 @@
     "@tiptap/pm": "^2.11.5",
     "@tiptap/react": "^2.11.5",
     "@tiptap/starter-kit": "^2.11.5",
+    "country-state-city": "^3.2.1",
     "firebase": "^10.14.1",
     "firebase-admin": "^12.6.0",
     "leaflet": "^1.9.4",

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { db } from '../firebase';
+import { db, auth } from '../firebase';
 import { collection, addDoc, serverTimestamp, query, where, getDocs, deleteDoc, onSnapshot, updateDoc, doc } from 'firebase/firestore';
 import { GoogleGenAI } from "@google/genai";
 
@@ -321,7 +321,7 @@ export default function AdminRAG() {
  const deletePromises = snap.docs.map(document => deleteDoc(document.ref));
  await Promise.all(deletePromises);
  } catch (error) {
- handleFirestoreError(error, OperationType.DELETE, `rag_sources/${id}`);
+ handleFirestoreError(error, OperationType.DELETE, `rag_sources/${deleteTarget.id}`);
  }
  
  setDeleteTarget(null);

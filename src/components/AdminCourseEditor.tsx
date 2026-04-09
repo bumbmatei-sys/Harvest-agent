@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, CSSProperties, KeyboardEvent, MouseEvent }
 import Image from 'next/image';
 import { ArrowLeft } from "lucide-react";
 import { collection, addDoc, doc, updateDoc, getDocs, deleteDoc, setDoc } from "firebase/firestore";
-import { db } from "../firebase";
+import { db, auth } from "../firebase";
 import RichTextEditor from './RichTextEditor';
 
 
@@ -566,7 +566,7 @@ function AuthorPickerModal({ authorsLibrary, selectedIds, onConfirm, onClose }: 
  </div>
  <div style={{ padding: "14px 20px", borderTop: `1px solid ${BORDER}`, display: "flex", gap: 10 }}>
  <button style={{ ...s.draftBtn, flex: 1 }} onClick={onClose}>Cancel</button>
- <button style={{ ...s.publishBtn, flex: 2 }} onClick={() => onConfirm([...selected])}>Confirm Selection</button>
+ <button style={{ ...s.publishBtn, flex: 2 }} onClick={() => onConfirm(Array.from(selected))}>Confirm Selection</button>
  </div>
  </div>
  </div>

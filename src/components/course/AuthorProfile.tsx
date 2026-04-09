@@ -38,9 +38,7 @@ export function AuthorProfile({ author, onBack }: AuthorProfileViewProps) {
             <div style={{ padding: "16px 20px", borderBottom: `1px solid ${BORDER}`, fontSize: 12, fontWeight: 800, color: TEXT2, letterSpacing: "0.05em", textTransform: "uppercase" }}>
               About
             </div>
-            <div style={{ padding: "20px", fontSize: 15, color: TEXT2, lineHeight: 1.6 }}>
-              {author.bio}
-            </div>
+            <div style={{ padding: "20px", fontSize: 15, color: TEXT2, lineHeight: 1.6 }} dangerouslySetInnerHTML={{ __html: author.bio }} />
           </div>
         )}
 

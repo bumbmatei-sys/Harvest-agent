@@ -24,7 +24,7 @@ export function CourseCard({ course, authors, completed, onSelectCourse }: Cours
       </div>
       <div style={{ flex: 1, padding: "12px 14px 12px" }}>
         <span style={{ background: GOLD_LIGHT, color: GOLD, fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 99 }}>{course.category}</span>
-        <div style={{ fontFamily: "'Lora', serif", fontWeight: 700, fontSize: 14, color: TEXT, lineHeight: 1.3, margin: "6px 0 4px" }}>{course.title}</div>
+        <div style={{ fontFamily: "'Nunito', sans-serif", fontWeight: 800, fontSize: 14, color: TEXT, lineHeight: 1.3, margin: "6px 0 4px" }}>{course.title}</div>
         <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
           <div style={{ display: "flex" }}>
             {courseAuthors.slice(0, 2).map((a, i) => (

@@ -126,12 +126,11 @@ const filterByLocation = (users: UserRecord[], q: string): UserRecord[] => {
 };
 
 const downloadUsersCSV = (users: UserRecord[], filename: string): void => {
-  const headers = ["Name", "Email", "City", "Country", "Phone", "Registration Date"];
+  const headers = ["Name", "Phone Number", "Email", "Registration Date", "Country", "City"];
   const rows = users.map((u) => [
-    u.name, u.email,
-    u.city || "Unknown", u.country || "Unknown",
-    u.phone || "Unknown",
+    u.name, u.phone || "Unknown", u.email,
     new Date(u.registeredAt).toLocaleDateString("en-US"),
+    u.country || "Unknown", u.city || "Unknown",
   ]);
   const csv = [headers, ...rows].map((r) => r.map((c) => `"${c}"`).join(",")).join("\n");
   const blob = new Blob([csv], { type: "text/csv" });
@@ -144,12 +143,11 @@ const downloadUsersCSV = (users: UserRecord[], filename: string): void => {
 };
 
 const downloadCSV = (users: UserRecord[], period: TimePeriod, location: string): void => {
-  const headers = ["Name", "Email", "City", "Country", "Phone", "Registration Date"];
+  const headers = ["Name", "Phone Number", "Email", "Registration Date", "Country", "City"];
   const rows = users.map((u) => [
-    u.name, u.email,
-    u.city || "Unknown", u.country || "Unknown",
-    u.phone || "Unknown",
+    u.name, u.phone || "Unknown", u.email,
     new Date(u.registeredAt).toLocaleDateString("en-US"),
+    u.country || "Unknown", u.city || "Unknown",
   ]);
   const csv = [headers, ...rows].map((r) => r.map((c) => `"${c}"`).join(",")).join("\n");
   const blob = new Blob([csv], { type: "text/csv" });

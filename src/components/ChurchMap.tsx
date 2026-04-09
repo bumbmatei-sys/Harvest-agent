@@ -6,7 +6,7 @@ import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { ArrowLeft, LocateFixed, Map as MapIcon, List, Navigation, Home, CheckCircle } from 'lucide-react';
 import { collection, query, where, getDocs } from 'firebase/firestore';
-import { db } from '../firebase';
+import { db, auth } from '../firebase';
 import ChurchDetailsModal from './ChurchDetailsModal';
 
 

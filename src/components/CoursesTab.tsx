@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
-import { db } from '../firebase';
+import { db, auth } from '../firebase';
 import { BookOpen, Clock, ChevronRight } from 'lucide-react';
 import { Course } from './AdminCourseEditor';
 

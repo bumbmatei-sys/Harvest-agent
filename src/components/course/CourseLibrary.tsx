@@ -35,7 +35,7 @@ export function CourseLibrary({ courses, authors, categories, onSelectCourse, co
             </div>
             <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "16px" }}>
               <div style={{ fontSize: 11, color: "rgba(255,255,255,0.75)", fontWeight: 600, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em" }}>{featured.category}</div>
-              <div style={{ fontFamily: "'Lora', serif", fontSize: 19, fontWeight: 700, color: "#fff", lineHeight: 1.25, marginBottom: 8 }}>{featured.title}</div>
+              <div style={{ fontFamily: "'Nunito', sans-serif", fontSize: 19, fontWeight: 800, color: "#fff", lineHeight: 1.25, marginBottom: 8 }}>{featured.title}</div>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <div style={{ display: "flex", gap: 12 }}>
                   <span style={{ fontSize: 12, color: "rgba(255,255,255,0.8)" }}>📚 {getTotalLessons(featured)}</span>

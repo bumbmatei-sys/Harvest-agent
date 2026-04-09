@@ -169,7 +169,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
         ) : activeTab === 'blog' ? (
           <div className="p-4"><AdminBlog /></div>
         ) : activeTab === 'posts' ? (
-          <div className="p-4"><AdminPosts /></div>
+          <div className="p-4"><AdminPosts userRole={isSuperAdmin ? 'super_admin' : userRole} userPermissions={userPermissions} /></div>
         ) : activeTab === 'inbox' ? (
           <div className="p-4"><AdminInbox /></div>
         ) : activeTab === 'churches' ? (

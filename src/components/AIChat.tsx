@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, KeyboardEvent } from "react";
 import Image from "next/image";
 import ReactMarkdown from 'react-markdown';
-import { db } from '../firebase';
+import { db, auth } from '../firebase';
 import { collection, addDoc, serverTimestamp, query, where, getDocs, deleteDoc, onSnapshot } from 'firebase/firestore';
 import { GoogleGenAI } from "@google/genai";
 
@@ -323,7 +323,7 @@ export default function AIChat({ onBack }: { onBack?: () => void }) {
  const chunksSnap = await getDocs(collection(db, "rag_chunks"));
  
  const scoredChunks = chunksSnap.docs.map(doc => {
- const data = doc.data();
+ const data = doc.data() as { title: string; chunk: string; vector: number[] };
  const similarity = cosineSimilarity(queryVector, data.vector || []);
  return {
  ...data,

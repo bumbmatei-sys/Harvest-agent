@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Search, Edit2, Trash2, BookOpen } from 'lucide-react';
 import { collection, onSnapshot, query, orderBy, deleteDoc, doc } from 'firebase/firestore';
-import { db } from '../firebase';
+import { db, auth } from '../firebase';
 import AdminCourseEditor, { Course } from './AdminCourseEditor';
 
 
@@ -213,7 +213,7 @@ const AdminCourses: React.FC = () => {
  <Edit2 size={16} />
  </button>
  <button 
- onClick={() => setDeleteConfirmId(course.id)}
+ onClick={() => setDeleteConfirmId(course.id || null)}
  className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 :bg-red-900/30 rounded-lg transition-colors"
  >
  <Trash2 size={16} />

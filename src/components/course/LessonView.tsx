@@ -50,6 +50,7 @@ export function LessonView({ course, lesson, authors, onBack, onComplete, comple
   const prevLesson = allLessons[currentIndex - 1];
   const nextLesson = allLessons[currentIndex + 1];
   const pct = getProgress(course, completed);
+  const hasSources = lesson.sources && lesson.sources.replace(/<[^>]*>?/gm, '').trim().length > 0;
 
   let currentLevel: Level | undefined;
   let currentSection: Section | undefined;
@@ -115,7 +116,7 @@ export function LessonView({ course, lesson, authors, onBack, onComplete, comple
         </div>
 
         <div style={{ display: "flex", borderBottom: `1px solid ${BORDER}`, marginBottom: 24, position: "sticky", top: 50, background: CARD, zIndex: 10 }}>
-          {([] as const).concat([["overview", "Overview"], ["outline", "Teaching Outline"], ["sources", "Sources"]]).map(([id, label]) => (
+          {([["overview", "Overview"], ["outline", "Teaching Outline"]] as [string, string][]).concat(hasSources ? [["sources", "Sources"]] : []).map(([id, label]) => (
             <button key={id} onClick={() => handleTabClick(id as any)}
               style={{ flex: 1, background: "none", border: "none", borderBottom: `2.5px solid ${activeTab === id ? GOLD : "transparent"}`, color: activeTab === id ? GOLD : TEXT2, fontWeight: 700, fontSize: 14, padding: "12px 4px", cursor: "pointer", fontFamily: "inherit", transition: "all 0.2s", whiteSpace: "nowrap" }}>
               {label}

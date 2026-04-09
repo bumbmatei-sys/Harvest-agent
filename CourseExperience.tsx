@@ -422,7 +422,7 @@ function CourseOverview({ course, onBack, onStartLesson, completed }: CourseOver
         </button>
 
         <div style={{ display: "flex", borderBottom: `1px solid ${BORDER}` }}>
-          {([] as const).concat([["about", "About"], ["curriculum", "Curriculum"]]).map(([id, label]) => (
+          {([["about", "About"], ["curriculum", "Curriculum"]] as [string, string][]).map(([id, label]) => (
             <button key={id} onClick={() => setTab(id as "about" | "curriculum")}
               style={{ flex: 1, background: "none", border: "none", borderBottom: `2.5px solid ${tab === id ? GOLD : "transparent"}`, color: tab === id ? GOLD : TEXT2, fontWeight: 700, fontSize: 14, padding: "12px", cursor: "pointer", fontFamily: "inherit", transition: "all 0.2s" }}>
               {label}
@@ -619,7 +619,7 @@ export default function CourseApp() {
 
   const goToCourse = (course: Course) => { setSelectedCourse(course); setScreen("overview"); window.scrollTo(0, 0); };
   const goToLesson = (course: Course, lesson: Lesson) => { setSelectedCourse(course); setSelectedLesson(lesson); setScreen("lesson"); window.scrollTo(0, 0); };
-  const markComplete = (id: string) => setCompleted(prev => new Set([...prev, id]));
+  const markComplete = (id: string) => setCompleted(prev => new Set([...Array.from(prev), id]));
   const selectLesson = (lesson: Lesson) => { setSelectedLesson(lesson); window.scrollTo(0, 0); };
 
   return (

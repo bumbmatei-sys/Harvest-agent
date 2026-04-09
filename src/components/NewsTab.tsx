@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { collection, query, orderBy, onSnapshot, doc, updateDoc, arrayUnion, arrayRemove, limit, where } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, doc, updateDoc, arrayUnion, arrayRemove, limit, where, getDoc } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { Calendar as CalendarIcon, ThumbsUp, Check, ChevronRight, FileText, Tag, Calendar } from 'lucide-react';
 
@@ -80,6 +80,9 @@ interface CommunityPost {
  pollOptions?: PollOption[];
  eventDetails?: EventDetails;
  isPinned?: boolean;
+  targetRegions?: string[];
+  targetCountry?: string;
+  targetCity?: string;
 }
 
 interface BlogPost {
@@ -102,9 +105,10 @@ interface NewsTabProps {
 }
 
 const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle }) => {
- const [posts, setPosts] = useState<CommunityPost[]>([]);
+ const [allPosts, setAllPosts] = useState<CommunityPost[]>([]);
  const [articles, setArticles] = useState<BlogPost[]>([]);
  const [loading, setLoading] = useState(true);
+  const [userLocation, setUserLocation] = useState<{country?: string, city?: string} | null>(null);
  
  // Event attendance modal state
  const [attendingPostId, setAttendingPostId] = useState<string | null>(null);
@@ -112,7 +116,25 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle }) => {
  const [attendeeEmail, setAttendeeEmail] = useState('');
  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
- useEffect(() => {
+ 
+  useEffect(() => {
+    const fetchUserLocation = async () => {
+      if (auth.currentUser) {
+        try {
+          const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
+          if (userDoc.exists()) {
+            const data = userDoc.data();
+            setUserLocation({ country: data.country, city: data.city });
+          }
+        } catch (error) {
+          console.error('Failed to fetch user location', error);
+        }
+      }
+    };
+    fetchUserLocation();
+  }, []);
+
+  useEffect(() => {
  // Fetch all posts to ensure pinned posts are included, then slice
  const q = query(collection(db, 'community_posts'), orderBy('createdAt', 'desc'));
  
@@ -128,7 +150,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle }) => {
  return 0;
  });
  
- setPosts(sortedPosts.slice(0, 3));
+ setAllPosts(sortedPosts);
  setLoading(false);
  });
 
@@ -292,7 +314,25 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle }) => {
  }
  };
 
- if (loading) {
+ 
+  const posts = allPosts.filter(post => {
+    // Legacy support
+    if (post.targetRegions && post.targetRegions.length > 0 && !post.targetRegions.includes('Global')) {
+      if (!userLocation) return false;
+      return post.targetRegions.includes(userLocation.country || '') || post.targetRegions.includes(userLocation.city || '');
+    }
+
+    // New format
+    if (!post.targetCountry || post.targetCountry === 'Global') return true;
+    if (!userLocation) return false;
+    
+    if (post.targetCountry !== userLocation.country) return false;
+    if (post.targetCity && post.targetCity !== userLocation.city) return false;
+    
+    return true;
+  }).slice(0, 3);
+
+  if (loading) {
  return (
  <div className="flex justify-center py-12">
  <div className="w-8 h-8 border-4 border-[#d4a017] border-t-transparent rounded-full animate-spin"></div>

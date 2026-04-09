@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { collection, query, orderBy, onSnapshot, doc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, doc, updateDoc, arrayUnion, arrayRemove, getDoc } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { Calendar as CalendarIcon, ThumbsUp, Check, ArrowLeft } from 'lucide-react';
 
@@ -80,6 +80,9 @@ interface CommunityPost {
  pollOptions?: PollOption[];
  eventDetails?: EventDetails;
  isPinned?: boolean;
+  targetRegions?: string[];
+  targetCountry?: string;
+  targetCity?: string;
 }
 
 interface AllNewsProps {
@@ -87,8 +90,9 @@ interface AllNewsProps {
 }
 
 const AllNews: React.FC<AllNewsProps> = ({ onBack }) => {
- const [posts, setPosts] = useState<CommunityPost[]>([]);
+ const [allPosts, setAllPosts] = useState<CommunityPost[]>([]);
  const [loading, setLoading] = useState(true);
+  const [userLocation, setUserLocation] = useState<{country?: string, city?: string} | null>(null);
  
  // Event attendance modal state
  const [attendingPostId, setAttendingPostId] = useState<string | null>(null);
@@ -96,7 +100,25 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack }) => {
  const [attendeeEmail, setAttendeeEmail] = useState('');
  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
- useEffect(() => {
+ 
+  useEffect(() => {
+    const fetchUserLocation = async () => {
+      if (auth.currentUser) {
+        try {
+          const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
+          if (userDoc.exists()) {
+            const data = userDoc.data();
+            setUserLocation({ country: data.country, city: data.city });
+          }
+        } catch (error) {
+          console.error('Failed to fetch user location', error);
+        }
+      }
+    };
+    fetchUserLocation();
+  }, []);
+
+  useEffect(() => {
  const q = query(collection(db, 'community_posts'), orderBy('createdAt', 'desc'));
  
  const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -111,11 +133,12 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack }) => {
  return 0;
  });
  
- setPosts(sortedPosts);
+ setAllPosts(sortedPosts);
  setLoading(false);
  });
 
- return () => unsubscribe();
+ 
+  return () => unsubscribe();
  }, []);
 
  const handleLike = async (postId: string, likes: string[]) => {
@@ -230,6 +253,23 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack }) => {
  hour12: true
  }).format(date);
  };
+
+  const posts = allPosts.filter(post => {
+    // Legacy support
+    if (post.targetRegions && post.targetRegions.length > 0 && !post.targetRegions.includes('Global')) {
+      if (!userLocation) return false;
+      return post.targetRegions.includes(userLocation.country || '') || post.targetRegions.includes(userLocation.city || '');
+    }
+
+    // New format
+    if (!post.targetCountry || post.targetCountry === 'Global') return true;
+    if (!userLocation) return false;
+    
+    if (post.targetCountry !== userLocation.country) return false;
+    if (post.targetCity && post.targetCity !== userLocation.city) return false;
+    
+    return true;
+  });
 
  return (
  <div className="flex flex-col h-screen bg-[#f8f9fa] ">

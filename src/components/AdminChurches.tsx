@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect } from 'react';
-import { db } from '../firebase';
+import { db, auth } from '../firebase';
 import { collection, query, onSnapshot, doc, deleteDoc } from 'firebase/firestore';
 import { Church, Search, Filter, Edit2, Trash2, Plus, CheckCircle, Clock } from 'lucide-react';
 import ChurchEnrollment from './ChurchEnrollment';
