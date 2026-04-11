@@ -1,5 +1,5 @@
 import React, { useState, useEffect, CSSProperties } from "react";
-import { collection, query, getDocs, doc, updateDoc, where } from "firebase/firestore";
+import { collection, query, getDocs, doc, updateDoc, where, deleteDoc } from "firebase/firestore";
 import { db, auth } from "../firebase";
 
 
@@ -393,6 +393,7 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
   const [isNewAdmin, setIsNewAdmin] = useState(false);
   const [showEditor, setShowEditor] = useState(false);
   const [showRemoveConfirm, setShowRemoveConfirm] = useState<string | null>(null);
+  const [userToDelete, setUserToDelete] = useState<string | null>(null);
 
   useEffect(() => {
     setListSearchQuery("");
@@ -447,6 +448,18 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
     setHasSearched(true);
   };
 
+  const confirmDeleteUser = async () => {
+    if (!userToDelete) return;
+    try {
+      await deleteDoc(doc(db, "users", userToDelete));
+      setAllUsers(prev => prev.filter(u => u.id !== userToDelete));
+      setFilteredUsers(prev => prev.filter(u => u.id !== userToDelete));
+      setUserToDelete(null);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `users/${userToDelete}`);
+    }
+  };
+
   const renderAllUsers = () => {
     const filtered = allUsers.filter(u => 
       u.name.toLowerCase().includes(listSearchQuery.toLowerCase()) || 
@@ -474,22 +487,35 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
             <thead>
               <tr style={{ borderBottom: `1px solid ${BORDER}`, background: "#FAFAFA" }}>
                 <th style={s.th}>Name</th>
+                <th style={s.th}>Phone Number</th>
                 <th style={s.th}>Email</th>
-                <th style={s.th}>Location</th>
                 <th style={s.th}>Registered</th>
+                <th style={s.th}>Country</th>
+                <th style={s.th}>City</th>
+                <th style={s.th}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {filtered.map(u => (
                 <tr key={u.id} style={{ borderBottom: `1px solid ${BORDER}` }}>
                   <td style={s.td}>{u.name}</td>
+                  <td style={s.td}>{u.phone || "Unknown"}</td>
                   <td style={s.td}>{u.email}</td>
-                  <td style={s.td}>{u.city ? `${u.city}, ` : ""}{u.country || "Unknown"}</td>
                   <td style={s.td}>{new Date(u.registeredAt).toLocaleDateString()}</td>
+                  <td style={s.td}>{u.country || "Unknown"}</td>
+                  <td style={s.td}>{u.city || "Unknown"}</td>
+                  <td style={s.td}>
+                    <button 
+                      onClick={() => setUserToDelete(u.id)}
+                      style={{ background: "none", border: "none", color: "red", cursor: "pointer", fontSize: 13, fontWeight: 600 }}
+                    >
+                      Delete
+                    </button>
+                  </td>
                 </tr>
               ))}
               {filtered.length === 0 && (
-                <tr><td colSpan={4} style={{ padding: 20, textAlign: "center", color: TEXT2 }}>No users found.</td></tr>
+                <tr><td colSpan={7} style={{ padding: 20, textAlign: "center", color: TEXT2 }}>No users found.</td></tr>
               )}
             </tbody>
           </table>
@@ -583,22 +609,35 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
             <thead>
               <tr style={{ borderBottom: `1px solid ${BORDER}`, background: "#FAFAFA" }}>
                 <th style={s.th}>Name</th>
+                <th style={s.th}>Phone Number</th>
                 <th style={s.th}>Email</th>
-                <th style={s.th}>City</th>
                 <th style={s.th}>Registered</th>
+                <th style={s.th}>Country</th>
+                <th style={s.th}>City</th>
+                <th style={s.th}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {filtered.map(u => (
                 <tr key={u.id} style={{ borderBottom: `1px solid ${BORDER}` }}>
                   <td style={s.td}>{u.name}</td>
+                  <td style={s.td}>{u.phone || "Unknown"}</td>
                   <td style={s.td}>{u.email}</td>
-                  <td style={s.td}>{u.city || "Unknown"}</td>
                   <td style={s.td}>{new Date(u.registeredAt).toLocaleDateString()}</td>
+                  <td style={s.td}>{u.country || "Unknown"}</td>
+                  <td style={s.td}>{u.city || "Unknown"}</td>
+                  <td style={s.td}>
+                    <button 
+                      onClick={() => setUserToDelete(u.id)}
+                      style={{ background: "none", border: "none", color: "red", cursor: "pointer", fontSize: 13, fontWeight: 600 }}
+                    >
+                      Delete
+                    </button>
+                  </td>
                 </tr>
               ))}
               {filtered.length === 0 && (
-                <tr><td colSpan={4} style={{ padding: 20, textAlign: "center", color: TEXT2 }}>No users found.</td></tr>
+                <tr><td colSpan={7} style={{ padding: 20, textAlign: "center", color: TEXT2 }}>No users found.</td></tr>
               )}
             </tbody>
           </table>
@@ -786,12 +825,19 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
                               <div style={{ flex: 1, minWidth: 0 }}>
                                 <div style={{ fontWeight: 700, fontSize: 14, color: TEXT }}>{user.name}</div>
                                 <div style={{ fontSize: 12, color: TEXT2, marginTop: 1 }}>{user.email}</div>
+                                {user.phone && <div style={{ fontSize: 12, color: TEXT2, marginTop: 1 }}>📞 {user.phone}</div>}
                               </div>
                               <div style={{ textAlign: "right", flexShrink: 0 }}>
                                 <div style={{ fontSize: 12, fontWeight: 600, color: TEXT }}>📍 {user.city || "Unknown"}, {user.country || "Unknown"}</div>
                                 <div style={{ fontSize: 11, color: TEXT2, marginTop: 1 }}>
                                   {new Date(user.registeredAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                                 </div>
+                                <button 
+                                  onClick={() => setUserToDelete(user.id)}
+                                  style={{ background: "none", border: "none", color: "red", cursor: "pointer", fontSize: 11, fontWeight: 600, marginTop: 4, padding: 0 }}
+                                >
+                                  Delete
+                                </button>
                               </div>
                             </div>
                           ))
@@ -910,6 +956,26 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
           )}
         </div>
       </div>
+
+      {userToDelete && (
+        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.5)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20, animation: "fadeIn 0.2s ease" }}>
+          <div style={{ background: CARD, borderRadius: 16, width: "100%", maxWidth: 360, overflow: "hidden", animation: "scaleUp 0.2s ease" }}>
+            <div style={{ padding: "20px 20px 16px", textAlign: "center" }}>
+              <div style={{ width: 48, height: 48, borderRadius: "50%", background: "#FEF2F2", color: "#DC2626", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, margin: "0 auto 16px" }}>
+                ⚠️
+              </div>
+              <h3 style={{ margin: "0 0 8px", fontSize: 18, fontWeight: 800, color: TEXT }}>Delete User?</h3>
+              <p style={{ margin: 0, fontSize: 14, color: TEXT2, lineHeight: 1.5 }}>
+                Are you sure you want to delete this user from the database? This action cannot be undone.
+              </p>
+            </div>
+            <div style={{ padding: "16px 20px 20px", display: "flex", gap: 10 }}>
+              <button onClick={() => setUserToDelete(null)} style={{ flex: 1, background: "transparent", border: `1.5px solid ${BORDER}`, color: TEXT2, padding: "12px", borderRadius: 12, cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 14 }}>Cancel</button>
+              <button onClick={confirmDeleteUser} style={{ flex: 1, background: "#DC2626", border: "none", color: "#fff", fontWeight: 800, padding: "12px", borderRadius: 12, cursor: "pointer", fontFamily: "inherit", fontSize: 14, boxShadow: "0 2px 10px rgba(220,38,38,0.3)" }}>Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

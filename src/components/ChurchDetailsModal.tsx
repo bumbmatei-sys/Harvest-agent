@@ -305,10 +305,10 @@ const ChurchDetailsModal: React.FC<ChurchDetailsModalProps> = ({
 
  <button 
  onClick={openDirections}
- className="w-12 h-12 rounded-full bg-[#0d9488] flex items-center justify-center text-white hover:bg-[#0f766e] transition-colors shadow-sm"
+ className="px-6 h-12 rounded-full bg-[#1e3a8a] flex items-center justify-center text-white font-bold hover:bg-[#172554] transition-colors shadow-sm"
  title="Directions"
  >
- <Navigation size={24} className="transform rotate-45" />
+ Directions
  </button>
  </div>
 

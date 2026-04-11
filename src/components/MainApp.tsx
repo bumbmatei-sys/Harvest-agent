@@ -227,6 +227,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
  onNavigate={onNavigate} 
  onGoToCourses={() => { setActiveBottomTab('home'); setActiveTopTab('courses'); }} 
  onGoToPartner={() => { setActiveBottomTab('home'); setActiveTopTab('partner'); }}
+ onGoToMap={() => setActiveBottomTab('map')}
  />
  </Suspense>
  ) : activeBottomTab === 'chat' ? (

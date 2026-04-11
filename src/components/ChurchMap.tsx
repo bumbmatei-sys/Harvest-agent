@@ -407,7 +407,7 @@ const ChurchMap: React.FC<ChurchMapProps> = ({ onBack, onMapInteraction }) => {
  }}
  className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors shadow-sm ${
  isHome 
- ? 'bg-[#10b981] text-white' 
+ ? 'bg-[#1e3a8a] text-white' 
  : 'bg-white text-gray-500 border border-gray-200 hover:bg-gray-50 :bg-gray-700'
  }`}
  title={isHome ? 'Remove from Home Church' : 'Set as Home Church'}

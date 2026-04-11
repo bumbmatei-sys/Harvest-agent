@@ -490,8 +490,8 @@ export default function BiblePage() {
  {/* ── TOP BAR ── */}
  <div style={{ background: CARD, borderBottom: `1px solid ${BORDER}`, padding: "12px 16px", flexShrink: 0, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
- {/* Back */}
- <button style={{ background: "none", border: "none", color: GOLD, fontSize: 22, cursor: "pointer", padding: 0, lineHeight: 1 }}>←</button>
+ 
+ 
 
  {/* Book + Chapter picker trigger */}
  <button onClick={() => setShowPicker(true)}

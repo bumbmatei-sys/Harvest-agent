@@ -64,6 +64,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
  const [name, setName] = useState('');
  const [country, setCountry] = useState('');
  const [city, setCity] = useState('');
+ const [phone, setPhone] = useState('');
  const [loading, setLoading] = useState(false);
  const [gpsLoading, setGpsLoading] = useState(false);
  const [error, setError] = useState('');
@@ -145,7 +146,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
 
  const handleSubmit = async (e: React.FormEvent) => {
  e.preventDefault();
- if (!name || !country || !city) {
+ if (!name || !country || !city || !phone) {
  setError('Please fill in all fields.');
  return;
  }
@@ -163,6 +164,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
  displayName: name,
  country,
  city,
+ phone,
  onboardingCompleted: true
  });
  } catch (err) {
@@ -251,6 +253,18 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
  onChange={(e) => setCity(e.target.value)}
  className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/20 text-white placeholder-gray-400 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
  placeholder="e.g. London"
+ />
+ </div>
+
+ <div className="relative z-30">
+ <label className="block text-sm font-bold text-gray-200 mb-1">Phone Number</label>
+ <input
+ type="tel"
+ required
+ value={phone}
+ onChange={(e) => setPhone(e.target.value)}
+ className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/20 text-white placeholder-gray-400 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
+ placeholder="e.g. +1 234 567 8900"
  />
  </div>
 

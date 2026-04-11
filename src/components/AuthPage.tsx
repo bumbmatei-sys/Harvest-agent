@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import Image from 'next/image';
 import { auth, db } from '../firebase';
-import { signInWithPopup, GoogleAuthProvider, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVerification, setPersistence, browserLocalPersistence, browserSessionPersistence } from 'firebase/auth';
+import { signInWithPopup, GoogleAuthProvider, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVerification,  } from 'firebase/auth';
 import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
 
 enum OperationType {
@@ -68,7 +68,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onBack, onNavigate }) => {
  const [password, setPassword] = useState('');
  const [confirmPassword, setConfirmPassword] = useState('');
  const [newsletter, setNewsletter] = useState(true);
- const [rememberMe, setRememberMe] = useState(true);
+ 
  const [legalModalContent, setLegalModalContent] = useState<'terms' | 'privacy' | null>(null);
  const [error, setError] = useState('');
  const [success, setSuccess] = useState('');
@@ -79,7 +79,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onBack, onNavigate }) => {
  setLoading(true);
  setError('');
  
- await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
+ 
  
  const provider = new GoogleAuthProvider();
  const result = await signInWithPopup(auth, provider);
@@ -147,7 +147,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onBack, onNavigate }) => {
  setError('');
  setSuccess('');
  
- await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
+ 
  
  if (isLogin) {
  const userCredential = await signInWithEmailAndPassword(auth, email, password);
@@ -356,11 +356,11 @@ const AuthPage: React.FC<AuthPageProps> = ({ onBack, onNavigate }) => {
 
  {isLogin && (
  <div className="mt-4">
- <label className="flex items-center gap-3 cursor-pointer group">
+ <label style={{display: 'none'}}>
  <div className="relative flex items-center">
  <input
  type="checkbox"
- checked={rememberMe}
+ checked={true}
  onChange={(e) => setRememberMe(e.target.checked)}
  className="w-5 h-5 rounded border-white/30 bg-white/10 text-primary focus:ring-primary focus:ring-offset-0 transition-all cursor-pointer"
  />

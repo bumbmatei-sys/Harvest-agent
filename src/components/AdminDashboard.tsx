@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { LayoutDashboard, Church, FileText, Rss, BrainCircuit, Inbox, ArrowLeft, BookOpen } from 'lucide-react';
+import { LayoutDashboard, Church, FileText, Rss, BrainCircuit, Inbox, ArrowLeft, GraduationCap } from 'lucide-react';
 import AdminBlog from './AdminBlog';
 import AdminPosts from './AdminPosts';
 import AdminInbox from './AdminInbox';
@@ -121,7 +121,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
   const bottomTabs = [
     (isSuperAdmin || perms.fullAccess || perms.analytics) && { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     (isSuperAdmin || perms.fullAccess || perms.modifyChurches) && { id: 'churches', label: 'Church List', icon: Church },
-    (isSuperAdmin || perms.fullAccess || perms.createCourses) && { id: 'courses', label: 'Courses', icon: BookOpen },
+    (isSuperAdmin || perms.fullAccess || perms.createCourses) && { id: 'courses', label: 'Courses', icon: GraduationCap },
     (isSuperAdmin || perms.fullAccess || perms.writeArticles) && { id: 'blog', label: 'Blog', icon: FileText },
     (isSuperAdmin || perms.fullAccess || perms.createPosts) && { id: 'posts', label: 'Posts', icon: Rss },
     (isSuperAdmin || perms.fullAccess || perms.uploadRag) && { id: 'ai', label: 'AI Knowledge', icon: BrainCircuit },

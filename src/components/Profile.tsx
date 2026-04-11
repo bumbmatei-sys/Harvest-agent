@@ -83,15 +83,17 @@ interface ProfileProps {
  onNavigate: (page: string) => void;
  onGoToCourses: () => void;
  onGoToPartner: () => void;
+ onGoToMap: () => void;
 }
 
-const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToCourses, onGoToPartner }) => {
+const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToCourses, onGoToPartner, onGoToMap }) => {
  const [isPersonalInfoOpen, setIsPersonalInfoOpen] = useState(false);
  const [isAboutUsOpen, setIsAboutUsOpen] = useState(false);
  const [isContactOpen, setIsContactOpen] = useState(false);
  const [isPrivacyTermsOpen, setIsPrivacyTermsOpen] = useState(false);
  const [isFAQOpen, setIsFAQOpen] = useState(false);
  const [isChurchDetailsOpen, setIsChurchDetailsOpen] = useState(false);
+ const [isNoHomeChurchModalOpen, setIsNoHomeChurchModalOpen] = useState(false);
  const [homeChurchId, setHomeChurchId] = useState<string | null>(null);
 
  useEffect(() => {
@@ -295,12 +297,12 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToCourses, onGoToPart
  <SettingItem 
  icon={<Church size={16} className="text-green-500" />} 
  iconBg="bg-green-50" 
- label={homeChurchId ? "My Church" : "My Home Church"} 
+ label="My Home Church" 
  onClick={() => {
  if (homeChurchId) {
  setIsChurchDetailsOpen(true);
  } else {
- alert("You haven't selected a Home Church yet. Go to the Map to select one.");
+ setIsNoHomeChurchModalOpen(true);
  }
  }}
  />
@@ -388,6 +390,39 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToCourses, onGoToPart
  onRemoveHomeChurch={handleRemoveHomeChurch}
  fullPage={true}
  />
+
+ {isNoHomeChurchModalOpen && (
+ <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+ <div className="bg-white rounded-2xl w-full max-w-sm overflow-hidden shadow-xl animate-fadeUp">
+ <div className="p-6 text-center">
+ <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+ <Church size={32} className="text-gray-400" />
+ </div>
+ <h3 className="text-xl font-bold text-gray-900 mb-2">No Home Church</h3>
+ <p className="text-gray-500 mb-6 text-sm">
+ You have no churches selected. Add a church to stay connected with your local community.
+ </p>
+ <div className="flex flex-col gap-3">
+ <button
+ onClick={() => {
+ setIsNoHomeChurchModalOpen(false);
+ onGoToMap();
+ }}
+ className="w-full py-3 bg-[#e6b325] text-white font-bold rounded-xl hover:bg-[#d4a422] transition-colors"
+ >
+ Add Church
+ </button>
+ <button
+ onClick={() => setIsNoHomeChurchModalOpen(false)}
+ className="w-full py-3 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-colors"
+ >
+ Cancel
+ </button>
+ </div>
+ </div>
+ </div>
+ </div>
+ )}
  </div>
  );
 };

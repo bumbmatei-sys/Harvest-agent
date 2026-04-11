@@ -4,7 +4,7 @@ import Image from 'next/image';
 import { X, Edit2, ChevronRight, ArrowLeft } from 'lucide-react';
 import { auth, db } from '../firebase';
 import { updateProfile, updatePassword, deleteUser, EmailAuthProvider, reauthenticateWithCredential, sendPasswordResetEmail } from 'firebase/auth';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 import CountrySelect from './CountrySelect';
 
 enum OperationType {
@@ -70,6 +70,7 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
  const [email, setEmail] = useState(auth.currentUser?.email || '');
  const [country, setCountry] = useState('');
  const [city, setCity] = useState('');
+ const [phone, setPhone] = useState('');
  const [profilePic, setProfilePic] = useState<string | null>(auth.currentUser?.photoURL || null);
  const [isSaving, setIsSaving] = useState(false);
  
@@ -107,6 +108,7 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
  if (data.displayName) setName(data.displayName);
  if (data.country) setCountry(data.country);
  if (data.city) setCity(data.city);
+ if (data.phone) setPhone(data.phone);
  if (data.photoURL) setProfilePic(data.photoURL);
  }
  } catch (error) {
@@ -139,7 +141,8 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
  await updateDoc(userRef, {
  displayName: name,
  country,
- city
+ city,
+ phone
  });
  } catch (err) {
  handleFirestoreError(err, OperationType.UPDATE, `users/${auth.currentUser.uid}`);
@@ -216,6 +219,12 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
  const handleDeleteAccount = async () => {
  try {
  if (auth.currentUser) {
+ const uid = auth.currentUser.uid;
+ try {
+ await deleteDoc(doc(db, 'users', uid));
+ } catch (err) {
+ handleFirestoreError(err, OperationType.DELETE, `users/${uid}`);
+ }
  await deleteUser(auth.currentUser);
  // App will redirect to login automatically via onAuthStateChanged
  }
@@ -493,6 +502,19 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
  type="text"
  value={city}
  onChange={(e) => setCity(e.target.value)}
+ className="w-full bg-[#f8f9fa] rounded-2xl px-4 py-4 text-gray-900 font-bold focus:outline-none focus:ring-2 focus:ring-[#d4a017]/20"
+ />
+ </div>
+
+ {/* Phone */}
+ <div className="p-4 pb-2 relative z-30">
+ <label className="text-[10px] font-bold text-gray-400 tracking-wider uppercase mb-2 block">
+ Phone Number
+ </label>
+ <input
+ type="tel"
+ value={phone}
+ onChange={(e) => setPhone(e.target.value)}
  className="w-full bg-[#f8f9fa] rounded-2xl px-4 py-4 text-gray-900 font-bold focus:outline-none focus:ring-2 focus:ring-[#d4a017]/20"
  />
  </div>
