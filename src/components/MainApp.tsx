@@ -10,7 +10,7 @@ const PartnerWithUsTab = lazy(() => import('./PartnerWithUsTab'));
 const BlogTab = lazy(() => import('./BlogTab'));
 const NewsTab = lazy(() => import('./NewsTab'));
 const AllNews = lazy(() => import('./AllNews'));
-const CourseExperience = lazy(() => import('../pages/CoursePage'));
+const CourseExperience = lazy(() => import('../components/CoursePage'));
 const AIChat = lazy(() => import('./AIChat'));
 const BiblePage = lazy(() => import('./BiblePage'));
 
