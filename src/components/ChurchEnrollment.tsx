@@ -3,6 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { db, auth } from '../firebase';
 import { collection, addDoc, doc, updateDoc } from 'firebase/firestore';
 import { Church, MapPin, Calendar, Trash2, Plus, User, Globe, Send, AlertCircle } from 'lucide-react';
+import Autocomplete from "react-google-autocomplete";
+
 
 
 enum OperationType {
@@ -225,6 +227,43 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
  <Church className="text-primary" size={24} />
  Church Details
  </h3>
+
+          <div className="mt-4 mb-2">
+            <label className="block text-sm font-bold text-gray-700 mb-2">Search Church with Google Maps API</label>
+            <Autocomplete
+              apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}
+              onPlaceSelected={(place) => {
+                let newFormData = { ...formData };
+                if (place.name) newFormData.churchName = place.name;
+                if (place.formatted_phone_number || place.international_phone_number) {
+                  newFormData.contactPhone = place.formatted_phone_number || place.international_phone_number;
+                }
+                if (place.website) newFormData.website = place.website;
+                if (place.geometry && place.geometry.location) {
+                  newFormData.lat = place.geometry.location.lat().toString();
+                  newFormData.lng = place.geometry.location.lng().toString();
+                }
+
+                place.address_components?.forEach(component => {
+                  const types = component.types;
+                  if (types.includes('street_number')) newFormData.number = component.long_name;
+                  if (types.includes('route')) newFormData.street = component.long_name;
+                  if (types.includes('locality') || types.includes('postal_town')) newFormData.city = component.long_name;
+                  if (types.includes('administrative_area_level_1')) newFormData.state = component.long_name;
+                  if (types.includes('country')) newFormData.country = component.long_name;
+                  if (types.includes('postal_code')) newFormData.zipcode = component.long_name;
+                });
+
+                setFormData(newFormData);
+              }}
+              options={{
+                types: ['establishment'],
+              }}
+              className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors"
+              placeholder="Start typing to auto-fill..."
+            />
+          </div>
+
  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
  <div>
  <label className="block text-sm font-bold text-gray-700 mb-2">Church Name <span className="text-red-500">*</span></label>
