@@ -12,9 +12,10 @@ interface CourseOverviewProps {
   onBack: () => void;
   onStartLesson: (course: Course, lesson: Lesson) => void;
   completed: Set<string>;
+  onSelectAuthor?: (author: Author) => void;
 }
 
-export function CourseOverview({ course, authors, onBack, onStartLesson, completed }: CourseOverviewProps) {
+export function CourseOverview({ course, authors, onBack, onStartLesson, completed, onSelectAuthor }: CourseOverviewProps) {
   const courseAuthors = course.authorIds.map(id => getAuthor(id, authors)).filter((a): a is Author => a !== undefined);
   const pct = getProgress(course, completed);
   const allLessons = getAllLessons(course);
@@ -86,7 +87,10 @@ export function CourseOverview({ course, authors, onBack, onStartLesson, complet
                 <h2 style={{ fontFamily: "'Nunito', sans-serif", fontSize: 18, fontWeight: 800, color: TEXT, marginBottom: 16 }}>Instructors</h2>
                 <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                   {courseAuthors.map(author => (
-                    <div key={author.id} style={{ background: CARD, borderRadius: 14, padding: 16, border: `1px solid ${BORDER}` }}>
+                    <div 
+                      key={author.id} 
+                      onClick={() => onSelectAuthor?.(author)}
+                      style={{ background: CARD, borderRadius: 14, padding: 16, border: `1px solid ${BORDER}`, cursor: onSelectAuthor ? 'pointer' : 'default' }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 0 }}>
                         <div style={{ position: "relative", width: 48, height: 48, borderRadius: "50%", overflow: "hidden", border: `2px solid ${GOLD_LIGHT}` }}>
                           <Image src={author.picture || `https://i.pravatar.cc/150?u=${author.id}`} alt={author.name} fill sizes="48px" style={{ objectFit: "cover" }} referrerPolicy="no-referrer" />

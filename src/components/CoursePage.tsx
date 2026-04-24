@@ -72,6 +72,7 @@ export default function CoursePage({
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
   const [selectedAuthor, setSelectedAuthor] = useState<Author | null>(null);
+  const [previousScreen, setPreviousScreen] = useState<"overview" | "lesson" | null>(null);
   const [completed, setCompleted] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -234,9 +235,9 @@ export default function CoursePage({
         @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&family=Lora:wght@400;600;700&display=swap');
       `}</style>
       {screen === "library" && <CourseLibrary courses={courses} authors={authors} categories={categories} onSelectCourse={goToCourse} completed={completed} />}
-      {screen === "overview" && selectedCourse && <CourseOverview course={selectedCourse} authors={authors} onBack={onBack || (() => setScreen("library"))} onStartLesson={goToLesson} completed={completed} />}
-      {screen === "lesson" && selectedCourse && selectedLesson && <LessonView course={selectedCourse} lesson={selectedLesson} authors={authors} onBack={() => setScreen("overview")} onComplete={toggleComplete} completed={completed} onSelectLesson={selectLesson} onSelectAuthor={(author) => { setSelectedAuthor(author); setScreen("author"); window.scrollTo(0, 0); }} />}
-      {screen === "author" && selectedAuthor && <AuthorProfile author={selectedAuthor} onBack={() => setScreen("lesson")} />}
+      {screen === "overview" && selectedCourse && <CourseOverview course={selectedCourse} authors={authors} onBack={onBack || (() => setScreen("library"))} onStartLesson={goToLesson} completed={completed} onSelectAuthor={(author) => { setSelectedAuthor(author); setPreviousScreen("overview"); setScreen("author"); window.scrollTo(0, 0); }} />}
+      {screen === "lesson" && selectedCourse && selectedLesson && <LessonView course={selectedCourse} lesson={selectedLesson} authors={authors} onBack={() => setScreen("overview")} onComplete={toggleComplete} completed={completed} onSelectLesson={selectLesson} onSelectAuthor={(author) => { setSelectedAuthor(author); setPreviousScreen("lesson"); setScreen("author"); window.scrollTo(0, 0); }} />}
+      {screen === "author" && selectedAuthor && <AuthorProfile author={selectedAuthor} onBack={() => setScreen(previousScreen || (selectedLesson ? "lesson" : "overview"))} />}
     </div>
   );
 }
