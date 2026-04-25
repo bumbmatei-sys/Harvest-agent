@@ -8,6 +8,7 @@ import AuthPage from './components/AuthPage';
 import MainApp from './components/MainApp';
 import Onboarding from './components/Onboarding';
 import AdminDashboard from './components/AdminDashboard';
+import PWAInstallManager from './components/PWAInstallManager';
 
 enum OperationType {
  CREATE = 'create',
@@ -123,19 +124,28 @@ const App: React.FC = () => {
 
  if (currentPage === 'onboarding') {
  return (
+ <>
  <Onboarding onComplete={() => navigateTo('home')} />
+ <PWAInstallManager />
+ </>
  );
  }
 
  if (currentPage === 'home') {
  return (
+ <>
  <MainApp onNavigate={navigateTo} />
+ <PWAInstallManager />
+ </>
  );
  }
 
  if (currentPage === 'admin') {
  return (
+ <>
  <AdminDashboard onNavigate={navigateTo} />
+ <PWAInstallManager />
+ </>
  );
  }
 

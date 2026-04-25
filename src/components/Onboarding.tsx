@@ -174,7 +174,9 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
  return;
  }
 
- onComplete();
+ sessionStorage.setItem('pwa_prompt_ready', 'true');
+window.dispatchEvent(new Event('onboardingComplete'));
+onComplete();
  } catch (err: any) {
  console.error(err);
  setError(err.message || 'Failed to save information.');
