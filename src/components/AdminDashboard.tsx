@@ -233,12 +233,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
           {showInbox && (
             <button 
               onClick={() => setActiveTab('inbox')}
-              className={`flex items-center gap-2 text-gray-500 hover:text-gray-900 transition-colors relative ${activeTab === 'inbox' ? 'text-[#d4a017]' : ''}`}
+              className={`text-gray-500 hover:text-gray-900 transition-colors relative ${activeTab === 'inbox' ? 'text-[#d4a017]' : ''}`}
             >
-              <Inbox size={20} />
-              <span className="text-sm font-medium">Inbox</span>
+              <Inbox size={24} />
               {unreadCount > 0 && (
-                <span className="bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white text-[8px] font-bold text-white flex items-center justify-center">
                   {unreadCount > 9 ? '9+' : unreadCount}
                 </span>
               )}
