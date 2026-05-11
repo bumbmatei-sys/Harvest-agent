@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { auth, db } from '../firebase';
-import { doc, updateDoc, getDoc } from 'firebase/firestore';
+import { doc, updateDoc, getDoc, setDoc } from 'firebase/firestore';
 import CountrySelect from './CountrySelect';
 
 enum OperationType {
@@ -161,14 +161,14 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
 
  const userRef = doc(db, 'users', user.uid);
  try {
- await updateDoc(userRef, {
+ await setDoc(userRef, {
  displayName: name,
  country,
  city,
  phone,
         acceptedJesus: acceptedJesus === 'yes',
         onboardingCompleted: true
- });
+ }, { merge: true });
  } catch (err) {
  handleFirestoreError(err, OperationType.UPDATE, `users/${user.uid}`);
  return;

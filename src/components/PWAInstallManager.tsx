@@ -88,7 +88,7 @@ export default function PWAInstallManager() {
   // Condition to render:
   // For iOS: just needs to be mobile iOS and showPrompt is true.
   // For Android: needs the deferredPrompt to be ready, plus showPrompt true.
-  const isReadyToShow = showPrompt && (platform === 'ios' || (platform === 'android' && deferredPrompt));
+  const isReadyToShow = showPrompt && (platform === 'ios' || platform === 'android');
 
   if (!isReadyToShow) return null;
 
@@ -141,12 +141,33 @@ export default function PWAInstallManager() {
             ) : (
               <div className="text-sm text-gray-600">
                 <p className="mb-3 leading-snug">Install for the best experience, faster load times, and offline access.</p>
-                <button 
-                  onClick={handleInstallClick}
-                  className="w-full bg-[#e6b325] text-white px-4 py-2.5 rounded-xl font-bold shadow-sm hover:bg-[#d4a219] active:scale-[0.98] transition-all"
-                >
-                  Install Now
-                </button>
+                {deferredPrompt ? (
+                  <button 
+                    onClick={handleInstallClick}
+                    className="w-full bg-[#e6b325] text-white px-4 py-2.5 rounded-xl font-bold shadow-sm hover:bg-[#d4a219] active:scale-[0.98] transition-all"
+                  >
+                    Install Now
+                  </button>
+                ) : (
+                  <div className="space-y-2 mt-2">
+                    <div className="flex items-center gap-2 bg-gray-50 p-2 rounded-lg">
+                      <span className="font-bold text-gray-400">1.</span> 
+                      Tap the browser menu (⋮)
+                    </div>
+                    <div className="flex items-center gap-2 bg-gray-50 p-2 rounded-lg">
+                      <span className="font-bold text-gray-400">2.</span> 
+                      Select "Add to Home screen"
+                    </div>
+                    <div className="mt-3 flex justify-end">
+                      <button 
+                        onClick={dismissPrompt} 
+                        className="text-sm font-semibold text-[#e6b325] hover:text-[#c9963a] px-2 py-1"
+                      >
+                        Got it
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
