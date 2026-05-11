@@ -7,6 +7,8 @@ import Autocomplete from "react-google-autocomplete";
 
 
 
+import { ImageUpload } from './ImageUpload';
+
 enum OperationType {
   CREATE = 'create',
   UPDATE = 'update',
@@ -289,14 +291,11 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
  />
  </div>
  <div className="md:col-span-2">
- <label className="block text-sm font-bold text-gray-700 mb-2">Church Image URL <span className="text-gray-400 font-normal">(Optional)</span></label>
- <input 
- type="url" 
- name="imageUrl"
- value={formData.imageUrl}
- onChange={handleChange}
- className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors" 
- placeholder="https://example.com/image.jpg" 
+ <label className="block text-sm font-bold text-gray-700 mb-2">Church Image <span className="text-gray-400 font-normal">(Optional)</span></label>
+ <ImageUpload 
+ value={formData.imageUrl} 
+ onChange={(url) => setFormData(prev => ({ ...prev, imageUrl: url }))} 
+ placeholder="Upload or paste image URL" 
  />
  </div>
  </div>

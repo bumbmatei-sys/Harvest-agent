@@ -313,6 +313,13 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToCourses, onGoToPart
  label="Partner with Us" 
  onClick={onGoToPartner}
  />
+            <div className="h-px bg-gray-50 mx-4"></div>
+            <SettingItem 
+              icon={<GraduationCap size={16} className="text-purple-500" />} 
+              iconBg="bg-purple-50" 
+              label="Trainings" 
+              onClick={() => window.open('https://content.cfan.org/training/', '_blank')}
+            />
  </div>
  </div>
 

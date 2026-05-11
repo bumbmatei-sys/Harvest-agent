@@ -4,6 +4,7 @@ import Image from 'next/image';
 import { ArrowLeft, Upload, X, Plus, Calendar, Save, Send, Trash2 } from 'lucide-react';
 import { collection, addDoc, updateDoc, doc, serverTimestamp } from 'firebase/firestore';
 import { db, auth } from '../firebase';
+import { ImageUpload } from './ImageUpload';
 import RichTextEditor from './RichTextEditor';
 
 
@@ -282,21 +283,8 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
 
  {/* Featured Image */}
  <div className="bg-white p-3 rounded-lg border border-gray-200 space-y-2">
- <label className="block text-sm font-medium text-gray-700 ">Featured Image URL</label>
- <div className="flex gap-2">
- <input 
- type="text" 
- value={featuredImage}
- onChange={(e) => setFeaturedImage(transformImageUrl(e.target.value))}
- placeholder="https://example.com/image.jpg"
- className="flex-1 px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 focus:ring-2 focus:ring-[#d4a017] focus:border-transparent outline-none transition-all text-sm"
- />
- </div>
- {featuredImage && (
- <div className="mt-2 relative rounded-lg overflow-hidden h-32 bg-gray-100 border border-gray-200 ">
- <Image src={featuredImage} alt="Featured preview" fill sizes="100vw" className="object-cover" referrerPolicy="no-referrer" onError={(e) => { (e.target as HTMLImageElement).src = 'https://placehold.co/600x400?text=Invalid+Image+URL'; }} />
- </div>
- )}
+ <label className="block text-sm font-medium text-gray-700 ">Featured Image</label>
+ <ImageUpload value={featuredImage} onChange={setFeaturedImage} placeholder="Upload or paste image URL" />
  </div>
 
  {/* Tags */}

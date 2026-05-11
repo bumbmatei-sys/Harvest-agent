@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import ReactPlayer from "react-player";
-import { ArrowLeft, Clock, User, List, ChevronUp, ChevronDown, BookOpen, CheckCircle, ArrowRight } from "lucide-react";
+import { ArrowLeft, Clock, User, List, ChevronUp, ChevronDown, BookOpen, CheckCircle, ArrowRight, X } from "lucide-react";
 import { Course, Lesson, Author, Level, Section } from "../../types/course.types";
 import { getAuthor, getAllLessons, getProgress, extractYouTubeId } from "../../utils/course.utils";
 import { BG, CARD, BORDER, TEXT, GOLD, GOLD_LIGHT, TEXT2, GREEN_BG, GREEN } from "../../utils/course.constants";
@@ -42,6 +42,7 @@ interface LessonViewProps {
 export function LessonView({ course, lesson, authors, onBack, onComplete, completed, onSelectLesson, onSelectAuthor }: LessonViewProps) {
   const [activeTab, setActiveTab] = useState<"overview" | "outline" | "sources">("overview");
   const [expandedOutline, setExpandedOutline] = useState<Set<string>>(new Set());
+  const [showCurriculum, setShowCurriculum] = useState(false);
   
   const isDone = completed.has(lesson.id);
   const author = getAuthor(lesson.authorId, authors);
@@ -64,6 +65,8 @@ export function LessonView({ course, lesson, authors, onBack, onComplete, comple
     }
     if (currentLevel) break;
   }
+
+  const [expandedLevel, setExpandedLevel] = useState<string | null>(currentLevel?.id || course.levels?.[0]?.id || null);
 
   const toggleOutline = (id: string) => {
     setExpandedOutline(prev => {
@@ -96,7 +99,9 @@ export function LessonView({ course, lesson, authors, onBack, onComplete, comple
         <div style={{ fontSize: 15, fontWeight: 700, color: TEXT, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", flex: 1, textAlign: "center", padding: "0 12px" }}>
           {currentLevel?.title || course.title}
         </div>
-        <div style={{ width: 36 }} />
+        <button onClick={() => setShowCurriculum(true)} style={{ background: "none", border: "none", color: TEXT, cursor: "pointer", padding: 0, display: "flex", alignItems: "center", width: 36, justifyContent: "flex-end" }}>
+          <List size={20} />
+        </button>
       </div>
 
       <YouTubePlayer lesson={lesson} />
@@ -223,6 +228,53 @@ export function LessonView({ course, lesson, authors, onBack, onComplete, comple
           )}
         </div>
       </div>
+
+      {showCurriculum && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 100, display: "flex", flexDirection: "column", justifyContent: "flex-end", backdropFilter: "blur(4px)" }}
+             onClick={() => setShowCurriculum(false)}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: "#F9F9F9", height: "80vh", borderRadius: "20px 20px 0 0", overflowY: "auto", display: "flex", flexDirection: "column" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: `1px solid ${BORDER}`, position: "sticky", top: 0, background: "#F9F9F9", zIndex: 10 }}>
+              <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0, color: TEXT }}>Curriculum</h2>
+              <button onClick={() => setShowCurriculum(false)} style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: "50%", width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: TEXT }}>
+                <X size={16} />
+              </button>
+            </div>
+            
+            <div style={{ padding: "20px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
+              {course.levels?.map((level) => (
+                <div key={level.id} style={{ background: CARD, borderRadius: 14, overflow: "hidden", border: `1px solid ${BORDER}`, boxShadow: "0 1px 4px rgba(0,0,0,0.02)" }}>
+                  <div onClick={() => setExpandedLevel(expandedLevel === level.id ? null : level.id)}
+                    style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 16px", cursor: "pointer" }}>
+                    <span style={{ fontWeight: 800, fontSize: 15, color: TEXT }}>📖 {level.title}</span>
+                    <span style={{ fontSize: 11, color: TEXT2 }}>{expandedLevel === level.id ? "▲" : "▼"}</span>
+                  </div>
+                  {expandedLevel === level.id && level.sections?.map((sec) => (
+                    <div key={sec.id} style={{ borderTop: `1px solid ${BORDER}` }}>
+                      <div style={{ padding: "8px 16px 4px", fontSize: 11, fontWeight: 700, color: TEXT2, letterSpacing: "0.07em", textTransform: "uppercase" }}>{sec.title}</div>
+                      {sec.lessons?.map((l, li) => {
+                        const done = completed.has(l.id);
+                        const isCurrent = l.id === lesson.id;
+                        return (
+                          <div key={l.id} onClick={() => { setShowCurriculum(false); onSelectLesson(l); }}
+                            style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", borderTop: `1px solid ${BORDER}`, cursor: "pointer", background: isCurrent ? `${GOLD_LIGHT}80` : "transparent" }}>
+                            <div style={{ width: 30, height: 30, borderRadius: "50%", background: done ? GREEN_BG : isCurrent ? GOLD : CARD, border: `2px solid ${done ? GREEN : GOLD}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, flexShrink: 0, color: done ? GREEN : isCurrent ? "#fff" : GOLD }}>
+                              {done ? <span style={{ fontWeight: 800 }}>✓</span> : <span style={{ fontWeight: 800 }}>{li + 1}</span>}
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: 14, fontWeight: isCurrent ? 800 : 600, color: isCurrent ? '#000' : TEXT }}>{l.title}</div>
+                            </div>
+                            <span style={{ fontSize: 11, color: TEXT2, flexShrink: 0 }}>⏱ {l.duration}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

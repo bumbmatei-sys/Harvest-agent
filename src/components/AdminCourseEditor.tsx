@@ -3,6 +3,7 @@ import Image from 'next/image';
 import { ArrowLeft } from "lucide-react";
 import { collection, addDoc, doc, updateDoc, getDocs, deleteDoc, setDoc } from "firebase/firestore";
 import { db, auth } from "../firebase";
+import { ImageUpload } from './ImageUpload';
 import RichTextEditor from './RichTextEditor';
 
 
@@ -304,8 +305,12 @@ function AuthorCard({ author, onChange, onRemove, selectable = false, selected =
  <Field label="Full Name" value={author.name} onChange={(v) => set("name", v)} placeholder="John Smith" />
  <Field label="Title / Role" value={author.title} onChange={(v) => set("title", v)} placeholder="Lead Pastor" />
  </div>
- <Field label="Profile Picture URL" value={author.picture} onChange={(v) => set("picture", v)} placeholder="https://..." />
- {author.picture && <div style={{ position: 'relative', width: 60, height: 60, borderRadius: '50%', overflow: 'hidden', border: `2px solid ${BORDER}` }}><Image src={author.picture} alt="" fill sizes="60px" style={{ objectFit: 'cover' }} onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} /></div>}
+ <div style={{ marginTop: 12 }}>
+ <label style={s.label}>Profile Picture</label>
+ <div style={{ marginTop: 8 }}>
+ <ImageUpload value={author.picture} onChange={(v) => set("picture", v)} placeholder="Upload or paste image URL" />
+ </div>
+ </div>
  <div>
  <label style={s.label}>Bio</label>
  <RichTextEditor content={author.bio} onChange={(v) => set("bio", v)} minHeight="80px" placeholder="Author biography..." />
@@ -833,12 +838,12 @@ export default function CourseBuilder({ course: initialCourse, onClose }: Course
  <div style={s.card}>
  <div style={s.sectionHeading}>Thumbnail</div>
  <div style={s.cardBody}>
- <Field label="Thumbnail Image URL" value={course.thumbnail} onChange={(v) => set("thumbnail", v)} placeholder="https://..." />
- {course.thumbnail && (
- <div style={{ position: 'relative', width: "100%", height: 180, borderRadius: 10, overflow: 'hidden', border: `1px solid ${BORDER}` }}>
- <Image src={course.thumbnail} alt="" fill sizes="100vw" style={{ objectFit: 'cover' }} onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+ <div style={{ padding: "0 0 20px" }}>
+ <label style={s.label}>Thumbnail Image</label>
+ <div style={{ marginTop: 8 }}>
+ <ImageUpload value={course.thumbnail} onChange={(v) => set("thumbnail", v)} placeholder="Upload or paste thumbnail URL" />
  </div>
- )}
+ </div>
  </div>
  </div>
  </div>

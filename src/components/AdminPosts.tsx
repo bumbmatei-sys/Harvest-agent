@@ -4,6 +4,7 @@ import Image from 'next/image';
 import { collection, query, orderBy, onSnapshot, addDoc, deleteDoc, doc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { Country, City } from 'country-state-city';
+import { ImageUpload } from './ImageUpload';
 import { MessageSquare, BarChart2, Calendar as CalendarIcon, Image as ImageIcon, Send, MoreVertical, ThumbsUp, Check, X } from 'lucide-react';
 
 
@@ -490,24 +491,12 @@ const AdminPosts: React.FC<AdminPostsProps> = ({ userRole, userPermissions }) =>
  )}
 
  {(activeTab === 'post' || activeTab === 'event') && (
- <div className="flex items-center gap-2">
+ <div className="flex flex-col gap-2">
+ <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
  <ImageIcon size={18} className="text-gray-400" />
- <input
- type="text"
- value={imageUrl}
- onChange={(e) => setImageUrl(e.target.value)}
- placeholder="Paste image URL here (optional)"
- className="flex-1 bg-transparent border-none focus:ring-0 text-sm text-gray-900 placeholder-gray-400 p-0"
- />
- </div>
- )}
- 
- {imageUrl && (
- <div className="relative h-32 rounded-lg overflow-hidden bg-gray-100 ">
- <Image src={transformImageUrl(imageUrl)} alt="Preview" fill sizes="100vw" className="object-cover" referrerPolicy="no-referrer" onError={(e) => { (e.target as HTMLImageElement).src = 'https://placehold.co/600x400?text=Invalid+Image+URL'; }} />
- <button onClick={() => setImageUrl('')} className="absolute top-2 right-2 p-1 bg-black/50 text-white rounded-full hover:bg-black/70">
- <X size={14} />
- </button>
+ Attached Image
+ </label>
+ <ImageUpload value={imageUrl} onChange={setImageUrl} placeholder="Upload or paste image URL here (optional)" />
  </div>
  )}
 
