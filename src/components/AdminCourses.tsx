@@ -117,7 +117,7 @@ const AdminCourses: React.FC = () => {
  };
 
  return (
- <div className="space-y-6">
+ <div className="space-y-6 lg:max-w-5xl lg:mx-auto w-full">
  {errorMessage && (
  <div className="bg-red-50 text-red-600 p-3 rounded-xl text-sm font-medium border border-red-100">
  {errorMessage}

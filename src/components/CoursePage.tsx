@@ -230,7 +230,7 @@ export default function CoursePage({
   }
 
   return (
-    <div className={`max-w-4xl mx-auto ${onBack ? "bg-[#f8f9fa] min-h-screen" : ""}`} style={onBack ? {} : { minHeight: "calc(100vh - 120px)" }}>
+    <div className={`max-w-4xl lg:max-w-5xl lg:mx-auto w-full mx-auto ${onBack ? "bg-[#f8f9fa] min-h-screen" : ""}`} style={onBack ? {} : { minHeight: "calc(100vh - 120px)" }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&family=Lora:wght@400;600;700&display=swap');
       `}</style>

@@ -294,7 +294,7 @@ const BlogTab: React.FC<BlogTabProps> = ({ onOpenArticle, initialPost, onBack, i
  }
 
  return (
- <div className="space-y-6 pb-8">
+ <div className="space-y-6 pb-8 lg:max-w-5xl lg:mx-auto w-full">
  {errorMessage && (
  <div className="bg-red-50 text-red-600 p-3 rounded-xl text-sm font-medium border border-red-100 mx-1">
  {errorMessage}

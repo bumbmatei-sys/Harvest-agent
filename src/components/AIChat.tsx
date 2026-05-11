@@ -415,7 +415,7 @@ If the user asks something completely unrelated to faith, politely guide them ba
  const isEmpty = messages.length === 0;
 
  return (
- <div style={{ fontFamily: "'Nunito', sans-serif", background: BG, height: "100%", display: "flex", flexDirection: "column", position: "relative", overflow: "hidden" }}>
+ <div style={{ fontFamily: "'Nunito', sans-serif", background: BG, height: "100%", width: "100%", maxWidth: 1024, margin: "0 auto", display: "flex", flexDirection: "column", position: "relative", overflow: "hidden" }}>
  <style>{`
  @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap');
  :root {

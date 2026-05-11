@@ -343,7 +343,7 @@ const ChurchMap: React.FC<ChurchMapProps> = ({ onBack, onMapInteraction }) => {
  </MapContainer>
  ) : (
  <div className="flex-1 overflow-y-auto bg-white pt-24 px-4 pb-6">
- <div className="max-w-2xl mx-auto">
+ <div className="lg:max-w-5xl lg:mx-auto w-full max-w-2xl mx-auto">
  <div className="space-y-4">
  {sortedChurches.map((church) => {
  let distanceStr = "? km";

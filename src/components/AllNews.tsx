@@ -273,7 +273,7 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack }) => {
 
  return (
  <div className="flex flex-col h-screen bg-[#f8f9fa] ">
- <div className="sticky top-0 z-20 bg-white/80 backdrop-blur-md border-b border-gray-100 px-4 py-3 flex items-center gap-3">
+ <div className="sticky top-0 z-20 bg-white/80 backdrop-blur-md border-b border-gray-100 px-4 py-3 flex items-center gap-3 lg:max-w-5xl lg:mx-auto w-full">
  <button 
  onClick={onBack}
  className="p-2 -ml-2 text-gray-600 hover:bg-gray-100 :bg-gray-800 rounded-full transition-colors"
@@ -283,7 +283,7 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack }) => {
  <span className="font-medium text-gray-900 truncate">News & Updates</span>
  </div>
 
- <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-24">
+ <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-24 lg:max-w-5xl lg:mx-auto w-full">
  {errorMessage && (
  <div className="bg-red-50 text-red-600 p-3 rounded-xl text-sm font-medium border border-red-100 mb-4">
  {errorMessage}
