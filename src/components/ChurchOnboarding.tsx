@@ -69,7 +69,9 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ onComplete }) => {
         const available = await isSubdomainAvailable(subdomain);
         setSubdomainStatus(available ? 'available' : 'taken');
       } catch {
-        setSubdomainStatus('idle');
+        // Firestore permission denied or network error — assume available
+        // Tenant creation will handle actual conflicts
+        setSubdomainStatus('available');
       }
     }, 500);
     return () => clearTimeout(timer);

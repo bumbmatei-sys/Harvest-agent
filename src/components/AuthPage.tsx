@@ -208,14 +208,14 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
  className="h-32 w-auto drop-shadow-2xl"
  />
  </div>
- <h2 className="text-2xl font-medium text-gray-300">
+ <h2 className="text-2xl font-medium text-white/80">
    {isChurchSignup ? 'Set up your' : 'Welcome to'}
  </h2>
  <h1 className="text-4xl font-black text-white mt-1">
    {isChurchSignup ? 'Ministry' : 'Harvest'}
  </h1>
  {isChurchSignup && (
-   <p className="text-gray-400 text-sm mt-2">
+   <p className="text-white/70 text-sm mt-2">
      Create your account to set up your church&apos;s app
    </p>
  )}
@@ -254,7 +254,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
  <div className="flex items-center mb-6">
  <button 
  onClick={() => setShowEmailForm(false)}
- className="text-gray-400 hover:text-white transition-colors flex items-center gap-1 text-sm"
+ className="text-white/60 hover:text-white transition-colors flex items-center gap-1 text-sm"
  >
  <span className="material-symbols-outlined text-sm">arrow_back</span>
  Back
@@ -262,7 +262,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
  </div>
  <form onSubmit={handleEmailAuth} className="space-y-5">
  <div>
- <label className="block text-sm font-bold text-gray-200 mb-1">Email Address</label>
+ <label className="block text-sm font-bold text-white mb-1">Email Address</label>
  <input
  type="email"
  required
@@ -273,7 +273,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
  />
  </div>
  <div>
- <label className="block text-sm font-bold text-gray-200 mb-1">Password</label>
+ <label className="block text-sm font-bold text-white mb-1">Password</label>
  <input
  type="password"
  required
@@ -283,7 +283,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
  placeholder="••••••••"
  />
  {!isLogin && (
- <p className="text-xs text-gray-400 mt-2">
+ <p className="text-xs text-white/60 mt-2">
  Must be at least 10 characters, 1 capital letter, and 1 symbol.
  </p>
  )}
@@ -291,7 +291,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
 
  {!isLogin && (
  <div>
- <label className="block text-sm font-bold text-gray-200 mb-1">Confirm Password</label>
+ <label className="block text-sm font-bold text-white mb-1">Confirm Password</label>
  <input
  type="password"
  required
@@ -314,7 +314,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
  className="w-5 h-5 rounded border-white/30 bg-white/10 text-primary focus:ring-primary focus:ring-offset-0 transition-all cursor-pointer"
  />
  </div>
- <span className="text-sm text-gray-300 group-hover:text-white transition-colors">
+ <span className="text-sm text-white/80 group-hover:text-white transition-colors">
  Sign up for the Harvest newsletter to receive updates and news.
  </span>
  </label>
@@ -331,7 +331,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
  </form>
 
  <div className="mt-8 text-center">
- <p className="text-gray-300 text-sm">
+ <p className="text-white/80 text-sm">
  {isLogin ? "Don't have an account?" : "Already have an account?"}{' '}
  <button 
  onClick={() => setIsLogin(!isLogin)}
@@ -345,7 +345,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
  )}
 
  <div className="mt-6 text-center">
- <p className="text-xs text-gray-400">
+ <p className="text-xs text-white/60">
  By registering you accept the{' '}
  <button 
  type="button" 
