@@ -74,7 +74,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, tenantPlan 
   }, []);
 
   if (isLoading) {
-    return <div className="flex items-center justify-center h-screen bg-[#f8f9fa]"><div className="w-8 h-8 border-4 border-[#d4a017] border-t-transparent rounded-full animate-spin"></div></div>;
+    return <div className="flex items-center justify-center h-screen bg-[#f8f9fa]"><div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--brand-color, #d4a017)', borderTopColor: 'transparent' }}></div></div>;
   }
 
   const isSuperAdmin = userRole === 'super_admin' || auth.currentUser?.email === 'bumbmatei@gmail.com';
@@ -133,14 +133,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, tenantPlan 
                     ? 'lg:w-14 lg:h-14 lg:p-0 w-16 h-12' 
                     : 'lg:flex-row lg:justify-start lg:gap-4 lg:w-full lg:h-14 lg:px-4 w-16 h-12'
                 } ${
-                  isActive ? 'text-[#d4a017] lg:bg-[#fefce8]' : 'text-gray-400 hover:text-gray-600 lg:hover:bg-gray-50'
+                  isActive ? 'lg:bg-[#fefce8]' : 'text-gray-400 hover:text-gray-600 lg:hover:bg-gray-50'
                 }`}
+                style={isActive ? { color: 'var(--brand-color, #d4a017)' } : undefined}
                 title={isSidebarCollapsed ? tab.label : undefined}
               >
                 <Icon 
                   size={24} 
                   strokeWidth={isActive ? 2.5 : 2} 
-                  className={isActive ? 'fill-[#d4a017]/20 shrink-0' : 'shrink-0'} 
+                  className={isActive ? 'shrink-0' : 'shrink-0'} 
+                  style={isActive ? { color: 'var(--brand-color, #d4a017)' } : undefined}
                 />
                 <span className={`text-[10px] lg:text-sm lg:font-medium lg:truncate ${isSidebarCollapsed ? 'lg:hidden block' : 'lg:block block'}`}>
                   {tab.label}
@@ -183,14 +185,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, tenantPlan 
           <div className="flex items-center gap-2">
             <button 
               onClick={() => setActiveTab('settings')}
-              className={`text-gray-500 hover:text-gray-900 transition-colors ${activeTab === 'settings' ? 'text-[#d4a017]' : ''}`}
+              className="text-gray-500 hover:text-gray-900 transition-colors"
+              style={activeTab === 'settings' ? { color: 'var(--brand-color, #d4a017)' } : undefined}
             >
               <Settings size={22} />
             </button>
             {showInbox && (
               <button 
                 onClick={() => setActiveTab('inbox')}
-                className={`text-gray-500 hover:text-gray-900 transition-colors relative ${activeTab === 'inbox' ? 'text-[#d4a017]' : ''}`}
+                className="text-gray-500 hover:text-gray-900 transition-colors relative"
+                style={activeTab === 'inbox' ? { color: 'var(--brand-color, #d4a017)' } : undefined}
               >
                 <Inbox size={24} />
                 {unreadCount > 0 && (
@@ -207,14 +211,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, tenantPlan 
         <div className="hidden lg:flex bg-white px-8 py-4 items-center justify-end gap-3 shadow-sm z-10 w-full">
           <button 
             onClick={() => setActiveTab('settings')}
-            className={`text-gray-500 hover:text-gray-900 transition-colors ${activeTab === 'settings' ? 'text-[#d4a017]' : ''}`}
+            className="text-gray-500 hover:text-gray-900 transition-colors"
+            style={activeTab === 'settings' ? { color: 'var(--brand-color, #d4a017)' } : undefined}
           >
             <Settings size={22} />
           </button>
           {showInbox && (
             <button 
               onClick={() => setActiveTab('inbox')}
-              className={`text-gray-500 hover:text-gray-900 transition-colors relative ${activeTab === 'inbox' ? 'text-[#d4a017]' : ''}`}
+              className="text-gray-500 hover:text-gray-900 transition-colors relative"
+              style={activeTab === 'inbox' ? { color: 'var(--brand-color, #d4a017)' } : undefined}
             >
               <Inbox size={24} />
               {unreadCount > 0 && (

@@ -122,7 +122,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, tenantPlan }) => {
 
   const renderLoading = () => (
     <div className="flex items-center justify-center h-full w-full min-h-[50vh]">
-      <div className="w-8 h-8 border-4 border-[#e6b325] border-t-transparent rounded-full animate-spin"></div>
+      <div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--brand-color, #e6b325)', borderTopColor: 'transparent' }}></div>
     </div>
   );
 
@@ -176,14 +176,16 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, tenantPlan }) => {
                     ? 'lg:w-14 lg:h-14 lg:p-0 w-16 h-12' 
                     : 'lg:flex-row lg:justify-start lg:gap-4 lg:w-full lg:h-14 lg:px-4 w-16 h-12'
                 } ${
-                  isActive ? 'text-[#e6b325] lg:bg-[#fefce8]' : 'text-gray-400 hover:text-gray-600 lg:hover:bg-gray-50'
+                  isActive ? 'lg:bg-[#fefce8]' : 'text-gray-400 hover:text-gray-600 lg:hover:bg-gray-50'
                 }`}
+                style={isActive ? { color: 'var(--brand-color, #e6b325)' } : undefined}
                 title={isSidebarCollapsed ? tab.label : undefined}
               >
                 <Icon 
                   size={24} 
                   strokeWidth={isActive ? 2.5 : 2} 
-                  className={isActive ? 'fill-[#e6b325]/20 shrink-0' : 'shrink-0'} 
+                  className={isActive ? 'shrink-0' : 'shrink-0'} 
+                  style={isActive ? { color: 'var(--brand-color, #e6b325)' } : undefined}
                 />
                 <span className={`text-[10px] lg:text-sm lg:font-medium lg:truncate ${isSidebarCollapsed ? 'lg:hidden block' : 'lg:block block'}`}>
                   {tab.label}
@@ -218,12 +220,13 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, tenantPlan }) => {
                   data-tab-id={tab.id}
                   onClick={() => handleTopTabClick(tab.id)}
                   className={`whitespace-nowrap pb-3 font-bold text-[13px] transition-colors relative snap-start ${
-                    activeTopTab === tab.id ? 'text-[#e6b325]' : 'text-gray-500'
+                    activeTopTab === tab.id ? '' : 'text-gray-500'
                   }`}
+                  style={activeTopTab === tab.id ? { color: 'var(--brand-color, #e6b325)' } : undefined}
                 >
                   {tab.label}
                   {activeTopTab === tab.id && (
-                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#e6b325]" />
+                    <div className="absolute bottom-0 left-0 right-0 h-0.5" style={{ backgroundColor: 'var(--brand-color, #e6b325)' }} />
                   )}
                 </button>
               ))}

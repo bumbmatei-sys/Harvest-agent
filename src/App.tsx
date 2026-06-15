@@ -52,11 +52,20 @@ const App: React.FC = () => {
               const userPlan = data.plan as TenantPlan | undefined;
               if (userPlan) {
                 setTenantPlan(userPlan);
-              } else if (userTenantId) {
+              }
+
+              // Load tenant config (branding) from tenant doc
+              if (userTenantId) {
                 try {
                   const tenantDoc = await getDoc(doc(db, 'tenants', userTenantId));
                   if (tenantDoc.exists()) {
-                    setTenantPlan(tenantDoc.data().plan as TenantPlan);
+                    const tData = tenantDoc.data();
+                    if (!userPlan) setTenantPlan(tData.plan as TenantPlan);
+                    // Apply branding CSS custom property
+                    const color = tData.config?.primaryColor;
+                    if (color) {
+                      document.documentElement.style.setProperty('--brand-color', color);
+                    }
                   }
                 } catch (e) {
                   console.error('Failed to fetch tenant:', e);
