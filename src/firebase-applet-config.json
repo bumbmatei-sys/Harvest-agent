@@ -1,10 +1,10 @@
 {
-  "projectId": "gen-lang-client-0963654104",
-  "appId": "1:881847321993:web:8e10587600fc4e79890d58",
-  "apiKey": "AIzaSyASXZnfqrA8PNEI5aH75IKayCayTJZurBg",
-  "authDomain": "gen-lang-client-0963654104.firebaseapp.com",
-  "firestoreDatabaseId": "ai-studio-4460d0a3-4d13-445a-8803-460a9ebbe886",
-  "storageBucket": "gen-lang-client-0963654104.firebasestorage.app",
-  "messagingSenderId": "881847321993",
-  "measurementId": ""
+  "projectId": "harvest-agent-233a1",
+  "appId": "1:287808405874:web:ca22a0028b42ba75ae1deb",
+  "apiKey": "***",
+  "authDomain": "harvest-agent-233a1.firebaseapp.com",
+  "firestoreDatabaseId": "(default)",
+  "storageBucket": "harvest-agent-233a1.firebasestorage.app",
+  "messagingSenderId": "287808405874",
+  "measurementId": "G-8W8PPDQT6Z"
 }
