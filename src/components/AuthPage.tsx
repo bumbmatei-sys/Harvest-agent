@@ -19,6 +19,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [newsletter, setNewsletter] = useState(true);
   const [tenantId, setTenantId] = useState<string | null>(null);
+  const [isChurchSignup, setIsChurchSignup] = useState(false);
   
   const [legalModalContent, setLegalModalContent] = useState<'terms' | 'privacy' | null>(null);
   const [error, setError] = useState('');
@@ -31,6 +32,11 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
     const tenantCookie = cookies.find(c => c.trim().startsWith('tenantId='));
     if (tenantCookie) {
       setTenantId(tenantCookie.split('=')[1].trim());
+    }
+    // Check if arriving from presentation site "Start Ministry" button
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('signup') === 'church') {
+      setIsChurchSignup(true);
     }
   }, []);
 
@@ -202,8 +208,17 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
  className="h-32 w-auto drop-shadow-2xl"
  />
  </div>
- <h2 className="text-2xl font-medium text-gray-300">Welcome to</h2>
- <h1 className="text-4xl font-black text-white mt-1">Harvest</h1>
+ <h2 className="text-2xl font-medium text-gray-300">
+   {isChurchSignup ? 'Set up your' : 'Welcome to'}
+ </h2>
+ <h1 className="text-4xl font-black text-white mt-1">
+   {isChurchSignup ? 'Ministry' : 'Harvest'}
+ </h1>
+ {isChurchSignup && (
+   <p className="text-gray-400 text-sm mt-2">
+     Create your account to set up your church&apos;s app
+   </p>
+ )}
  </div>
 
  {error && (
