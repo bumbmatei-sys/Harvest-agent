@@ -5,6 +5,7 @@ export interface TenantConfig {
   logo?: string;        // URL to logo image
   primaryColor?: string; // hex color, e.g. "#D4AF37"
   description?: string;
+  customDomain?: string; // e.g. "yourchurch.com" (Ultra/Enterprise only)
 }
 
 export interface Tenant {

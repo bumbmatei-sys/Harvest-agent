@@ -33,6 +33,7 @@ interface FormData {
   plan: TenantPlan;
   adminEmail: string;
   description: string;
+  customDomain: string;
 }
 
 const EMPTY_FORM: FormData = {
@@ -41,6 +42,7 @@ const EMPTY_FORM: FormData = {
   plan: 'starter',
   adminEmail: '',
   description: '',
+  customDomain: '',
 };
 
 const AdminTenants: React.FC = () => {
@@ -86,6 +88,7 @@ const AdminTenants: React.FC = () => {
       plan: tenant.plan,
       adminEmail: tenant.adminEmails?.[0] || '',
       description: tenant.config?.description || '',
+      customDomain: tenant.config?.customDomain || '',
     });
     setEditingId(tenant.id);
     setError('');
@@ -105,7 +108,7 @@ const AdminTenants: React.FC = () => {
         await updateTenant(editingId, {
           name: form.name,
           plan: form.plan,
-          config: { description: form.description },
+          config: { description: form.description, customDomain: form.customDomain || undefined },
           adminEmails: [form.adminEmail],
         });
       } else {
@@ -118,7 +121,7 @@ const AdminTenants: React.FC = () => {
           subdomain: sub,
           plan: form.plan,
           adminEmails: [form.adminEmail],
-          config: { description: form.description },
+          config: { description: form.description, customDomain: form.customDomain || undefined },
         });
       }
       setShowForm(false);
@@ -209,6 +212,11 @@ const AdminTenants: React.FC = () => {
                   <p className="text-sm text-gray-500">
                     <span className="font-mono text-gray-600">{tenant.subdomain}</span>.theharvest.app
                   </p>
+                  {tenant.config?.customDomain && (
+                    <p className="text-sm text-blue-600 font-medium mt-0.5">
+                      {tenant.config.customDomain}
+                    </p>
+                  )}
                   {tenant.adminEmails?.length > 0 && (
                     <p className="text-xs text-gray-400 mt-1">Admin: {tenant.adminEmails[0]}</p>
                   )}
@@ -328,6 +336,20 @@ const AdminTenants: React.FC = () => {
                   <option value="enterprise">Enterprise — Custom</option>
                 </select>
               </div>
+
+              {(form.plan === 'ultra' || form.plan === 'enterprise') && (
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Custom Domain</label>
+                  <input
+                    type="text"
+                    value={form.customDomain}
+                    onChange={e => setForm({ ...form, customDomain: e.target.value })}
+                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#d4a017] focus:border-[#d4a017] outline-none"
+                    placeholder="yourchurch.com"
+                  />
+                  <p className="text-xs text-gray-400 mt-1">The church's own domain. DNS must point to Vercel.</p>
+                </div>
+              )}
 
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Admin Email</label>
