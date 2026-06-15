@@ -21,12 +21,18 @@ export async function createTenant(data: {
   const id = data.subdomain.toLowerCase().trim();
   const now = new Date().toISOString();
 
+  const config: Record<string, any> = {};
+  if (data.config?.logo) config.logo = data.config.logo;
+  if (data.config?.primaryColor) config.primaryColor = data.config.primaryColor;
+  if (data.config?.description) config.description = data.config.description;
+  if (data.config?.customDomain) config.customDomain = data.config.customDomain;
+
   const tenantData = {
     name: data.name,
     subdomain: id,
     plan: data.plan,
     status: 'active' as TenantStatus,
-    config: data.config || {},
+    config,
     adminEmails: data.adminEmails,
     createdAt: now,
     updatedAt: now,
@@ -58,13 +64,25 @@ export async function getAllTenants(): Promise<Tenant[]> {
  */
 export async function updateTenant(
   id: string,
-  data: Partial<Pick<Tenant, 'name' | 'plan' | 'status' | 'config' | 'adminEmails'>>
+  data: Partial<Pick<Tenant, 'name' | 'plan' | 'status' | 'adminEmails'> & { config: Partial<TenantConfig> }>
 ): Promise<void> {
   const ref = doc(db, TENANTS_COLLECTION, id);
-  await updateDoc(ref, {
-    ...data,
+  const updateData: Record<string, any> = {
     updatedAt: new Date().toISOString(),
-  });
+  };
+  if (data.name !== undefined) updateData.name = data.name;
+  if (data.plan !== undefined) updateData.plan = data.plan;
+  if (data.status !== undefined) updateData.status = data.status;
+  if (data.adminEmails !== undefined) updateData.adminEmails = data.adminEmails;
+  if (data.config) {
+    const config: Record<string, any> = {};
+    if (data.config.logo !== undefined) config.logo = data.config.logo;
+    if (data.config.primaryColor !== undefined) config.primaryColor = data.config.primaryColor;
+    if (data.config.description !== undefined) config.description = data.config.description;
+    if (data.config.customDomain !== undefined) config.customDomain = data.config.customDomain;
+    updateData.config = config;
+  }
+  await updateDoc(ref, updateData);
 }
 
 /**

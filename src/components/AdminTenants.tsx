@@ -108,7 +108,7 @@ const AdminTenants: React.FC = () => {
         await updateTenant(editingId, {
           name: form.name,
           plan: form.plan,
-          config: { description: form.description, customDomain: form.customDomain || undefined },
+          config: { description: form.description, ...(form.customDomain ? { customDomain: form.customDomain } : {}) },
           adminEmails: [form.adminEmail],
         });
       } else {
@@ -121,7 +121,7 @@ const AdminTenants: React.FC = () => {
           subdomain: sub,
           plan: form.plan,
           adminEmails: [form.adminEmail],
-          config: { description: form.description, customDomain: form.customDomain || undefined },
+          config: { description: form.description, ...(form.customDomain ? { customDomain: form.customDomain } : {}) },
         });
       }
       setShowForm(false);
