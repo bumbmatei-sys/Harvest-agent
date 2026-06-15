@@ -10,6 +10,8 @@ import AdminCourses from './AdminCourses';
 import AdminRAG from './AdminRAG';
 import AdminTenants from './AdminTenants';
 import AnalyticsAndRoles, { Permission } from './AnalyticsAndRoles';
+import { TenantPlan } from '../types/tenant.types';
+import { getPlanFeatures } from '../utils/plan-features';
 import { db, auth } from '../firebase';
 import { collection, query, where, onSnapshot, doc, getDoc, limit } from 'firebase/firestore';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
@@ -18,9 +20,10 @@ import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 
 interface AdminDashboardProps {
   onNavigate: (page: string) => void;
+  tenantPlan?: TenantPlan; // undefined = super admin (all features)
 }
 
-const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
+const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, tenantPlan }) => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -75,14 +78,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
 
   const isSuperAdmin = userRole === 'super_admin' || auth.currentUser?.email === 'bumbmatei@gmail.com';
   const perms = userPermissions || {} as Permission;
+  const features = tenantPlan ? getPlanFeatures(tenantPlan) : null;
+  const isTenantAdmin = !!tenantPlan;
 
   const bottomTabs = [
     (isSuperAdmin || perms.fullAccess || perms.analytics) && { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    (isSuperAdmin || perms.fullAccess || perms.modifyChurches) && { id: 'churches', label: 'Church List', icon: Church },
-    (isSuperAdmin || perms.fullAccess || perms.createCourses) && { id: 'courses', label: 'Courses', icon: GraduationCap },
-    (isSuperAdmin || perms.fullAccess || perms.writeArticles) && { id: 'blog', label: 'Blog', icon: FileText },
+    (isSuperAdmin || perms.fullAccess || perms.modifyChurches) && { id: 'churches', label: isTenantAdmin && features && features.maxChurches === 1 ? 'Church' : 'Church List', icon: Church },
+    (isSuperAdmin || !isTenantAdmin || (features && features.blog)) && (perms.fullAccess || perms.createCourses || isSuperAdmin) && { id: 'courses', label: 'Courses', icon: GraduationCap },
+    (isSuperAdmin || !isTenantAdmin || (features && features.blog)) && (isSuperAdmin || perms.fullAccess || perms.writeArticles) && { id: 'blog', label: 'Blog', icon: FileText },
     (isSuperAdmin || perms.fullAccess || perms.createPosts) && { id: 'posts', label: 'Posts', icon: Rss },
-    (isSuperAdmin || perms.fullAccess || perms.uploadRag) && { id: 'ai', label: 'AI Knowledge', icon: BrainCircuit },
+    (isSuperAdmin || !isTenantAdmin || (features && features.aiKnowledge)) && (isSuperAdmin || perms.fullAccess || perms.uploadRag) && { id: 'ai', label: 'AI Knowledge', icon: BrainCircuit },
     isSuperAdmin && { id: 'tenants', label: 'Tenants', icon: Building2 },
   ].filter(Boolean) as { id: string; label: string; icon: any }[];
 
