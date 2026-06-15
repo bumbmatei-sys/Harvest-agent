@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { LayoutDashboard, Church, FileText, Rss, BrainCircuit, Inbox, ArrowLeft, GraduationCap, ChevronLeft, ChevronRight, Building2 } from 'lucide-react';
+import { LayoutDashboard, Church, FileText, Rss, BrainCircuit, Inbox, ArrowLeft, GraduationCap, ChevronLeft, ChevronRight, Building2, Settings } from 'lucide-react';
 import AdminBlog from './AdminBlog';
 import AdminPosts from './AdminPosts';
 import AdminInbox from './AdminInbox';
@@ -9,6 +9,7 @@ import AdminChurches from './AdminChurches';
 import AdminCourses from './AdminCourses';
 import AdminRAG from './AdminRAG';
 import AdminTenants from './AdminTenants';
+import AdminSettings from './AdminSettings';
 import AnalyticsAndRoles, { Permission } from './AnalyticsAndRoles';
 import { TenantPlan } from '../types/tenant.types';
 import { getPlanFeatures } from '../utils/plan-features';
@@ -179,23 +180,37 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, tenantPlan 
             </button>
             <h1 className="text-lg font-bold text-gray-900">Harvest Admin</h1>
           </div>
-          {showInbox && (
+          <div className="flex items-center gap-2">
             <button 
-              onClick={() => setActiveTab('inbox')}
-              className={`text-gray-500 hover:text-gray-900 transition-colors relative ${activeTab === 'inbox' ? 'text-[#d4a017]' : ''}`}
+              onClick={() => setActiveTab('settings')}
+              className={`text-gray-500 hover:text-gray-900 transition-colors ${activeTab === 'settings' ? 'text-[#d4a017]' : ''}`}
             >
-              <Inbox size={24} />
-              {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white text-[8px] font-bold text-white flex items-center justify-center">
-                  {unreadCount > 9 ? '9+' : unreadCount}
-                </span>
-              )}
+              <Settings size={22} />
             </button>
-          )}
+            {showInbox && (
+              <button 
+                onClick={() => setActiveTab('inbox')}
+                className={`text-gray-500 hover:text-gray-900 transition-colors relative ${activeTab === 'inbox' ? 'text-[#d4a017]' : ''}`}
+              >
+                <Inbox size={24} />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white text-[8px] font-bold text-white flex items-center justify-center">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Top Header Desktop */}
-        <div className="hidden lg:flex bg-white px-8 py-4 items-center justify-end shadow-sm z-10 w-full">
+        <div className="hidden lg:flex bg-white px-8 py-4 items-center justify-end gap-3 shadow-sm z-10 w-full">
+          <button 
+            onClick={() => setActiveTab('settings')}
+            className={`text-gray-500 hover:text-gray-900 transition-colors ${activeTab === 'settings' ? 'text-[#d4a017]' : ''}`}
+          >
+            <Settings size={22} />
+          </button>
           {showInbox && (
             <button 
               onClick={() => setActiveTab('inbox')}
@@ -229,6 +244,27 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, tenantPlan 
             <div className="p-4 lg:p-0"><AdminRAG /></div>
           ) : activeTab === 'tenants' ? (
             <div className="p-4 lg:p-0"><AdminTenants /></div>
+          ) : activeTab === 'settings' ? (
+            <AdminSettings
+              onBack={() => setActiveTab('dashboard')}
+              currentPlan={tenantPlan || 'plus'}
+              onChangePlan={async (plan) => {
+                // Update plan in Firestore
+                if (auth.currentUser) {
+                  const { updateDoc } = await import('firebase/firestore');
+                  await updateDoc(doc(db, 'users', auth.currentUser.uid), { plan });
+                  window.location.reload(); // Refresh to apply new plan
+                }
+              }}
+              onCancelPlan={async () => {
+                // Mark tenant as suspended
+                if (auth.currentUser) {
+                  const { updateDoc } = await import('firebase/firestore');
+                  await updateDoc(doc(db, 'users', auth.currentUser.uid), { planStatus: 'cancelled' });
+                  alert('Your subscription has been cancelled. It will remain active until the end of the billing period.');
+                }
+              }}
+            />
           ) : (
             <div className="flex flex-col items-center justify-center h-full text-gray-400">
               <p className="text-lg font-medium">{bottomTabs.find(t => t.id === activeTab)?.label || 'Inbox'} coming soon.</p>
