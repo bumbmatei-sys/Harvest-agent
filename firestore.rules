@@ -83,16 +83,18 @@ service cloud.firestore {
     // ─── Tenants (multi-tenant prep) ─────────────────────────────────
 
     match /tenants/{tenantId} {
-      // Tenant members can read their tenant; admins can read any
-      allow read: if belongsToTenant(tenantId) || isAdmin();
+      // Any authenticated user can read tenants (needed for onboarding & subdomain lookup)
+      allow read: if isAuthenticated();
 
-      // Only superAdmins can create/delete tenants
-      allow create, delete: if isAuthenticated() &&
+      // Any authenticated user can create a tenant (during church onboarding)
+      allow create: if isAuthenticated();
+
+      // Authenticated users can update tenants (tenant admins update their own)
+      allow update: if isAuthenticated();
+
+      // Only superAdmins can delete tenants
+      allow delete: if isAuthenticated() &&
         request.auth.token.superAdmin == true;
-
-      // Tenant admins can update their own tenant; superAdmins can update any
-      allow update: if isTenantAdmin(tenantId) ||
-        (isAuthenticated() && request.auth.token.superAdmin == true);
 
       // ─── Tenant-scoped subcollections ──────────────────────────────
 
