@@ -96,7 +96,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, tenantPlan 
   ].filter(Boolean) as { id: string; label: string; icon: any }[];
 
   // If the active tab is not in the allowed tabs, switch to the first allowed tab
-  if (bottomTabs.length > 0 && !bottomTabs.find(t => t.id === activeTab) && activeTab !== 'inbox') {
+  if (bottomTabs.length > 0 && !bottomTabs.find(t => t.id === activeTab) && activeTab !== 'inbox' && activeTab !== 'settings') {
     setActiveTab(bottomTabs[0].id);
   }
 
