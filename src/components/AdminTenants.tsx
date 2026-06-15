@@ -305,23 +305,23 @@ const AdminTenants: React.FC = () => {
                 />
               </div>
 
-              {!editingId && (
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">Subdomain</label>
-                  <div className="flex items-center gap-0">
-                    <input
-                      type="text"
-                      value={form.subdomain}
-                      onChange={e => setForm({ ...form, subdomain: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') })}
-                      className="flex-1 px-4 py-2.5 border border-gray-200 rounded-l-xl text-sm focus:ring-2 focus:ring-[#d4a017] focus:border-[#d4a017] outline-none font-mono"
-                      placeholder="gracechurch"
-                    />
-                    <span className="px-3 py-2.5 bg-gray-50 border border-l-0 border-gray-200 rounded-r-xl text-sm text-gray-500">
-                      .theharvest.app
-                    </span>
-                  </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Subdomain</label>
+                <div className="flex items-center gap-0">
+                  <input
+                    type="text"
+                    value={form.subdomain}
+                    onChange={e => setForm({ ...form, subdomain: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') })}
+                    disabled={!!editingId}
+                    className={`flex-1 px-4 py-2.5 border border-gray-200 rounded-l-xl text-sm focus:ring-2 focus:ring-[#d4a017] focus:border-[#d4a017] outline-none font-mono ${editingId ? 'bg-gray-50 text-gray-400' : ''}`}
+                    placeholder="gracechurch"
+                  />
+                  <span className="px-3 py-2.5 bg-gray-50 border border-l-0 border-gray-200 rounded-r-xl text-sm text-gray-500">
+                    .theharvest.app
+                  </span>
                 </div>
-              )}
+                {editingId && <p className="text-xs text-gray-400 mt-1">Subdomain cannot be changed after creation.</p>}
+              </div>
 
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Plan</label>
