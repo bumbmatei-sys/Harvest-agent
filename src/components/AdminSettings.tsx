@@ -11,11 +11,11 @@ interface AdminSettingsProps {
   onCancelPlan: () => void;
 }
 
-const PLANS: { id: TenantPlan; name: string; price: string; icon: any; color: string; popular?: boolean }[] = [
-  { id: 'plus', name: 'Plus', price: '$100/mo', icon: Zap, color: '#6366f1' },
-  { id: 'pro', name: 'Pro', price: '$250/mo', icon: Crown, color: '#d4a017', popular: true },
-  { id: 'ultra', name: 'Ultra', price: '$500/mo', icon: Star, color: '#8b5cf6' },
-  { id: 'enterprise', name: 'Enterprise', price: 'Custom', icon: Building2, color: '#0b1121' },
+const PLANS: { id: TenantPlan; name: string; monthlyPrice: string; yearlyPrice: string; yearlyPromo: string; yearlyOriginal: string; icon: any; color: string; popular?: boolean }[] = [
+  { id: 'plus', name: 'Plus', monthlyPrice: '$100/mo', yearlyPrice: '$1,000/yr', yearlyPromo: '$1,000', yearlyOriginal: '$1,200', icon: Zap, color: '#6366f1' },
+  { id: 'pro', name: 'Pro', monthlyPrice: '$250/mo', yearlyPrice: '$2,500/yr', yearlyPromo: '$2,500', yearlyOriginal: '$3,000', icon: Crown, color: '#d4a017', popular: true },
+  { id: 'ultra', name: 'Ultra', monthlyPrice: '$500/mo', yearlyPrice: '$5,000/yr', yearlyPromo: '$5,000', yearlyOriginal: '$6,000', icon: Star, color: '#8b5cf6' },
+  { id: 'enterprise', name: 'Enterprise', monthlyPrice: 'Custom', yearlyPrice: 'Custom', yearlyPromo: 'Custom', yearlyOriginal: '', icon: Building2, color: '#0b1121' },
 ];
 
 const FEATURE_COMPARISON: { key: keyof PlanFeatures; label: string; format?: (v: any) => string }[] = [
@@ -37,6 +37,7 @@ const MOCK_PAYMENTS = [
 
 const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onChangePlan, onCancelPlan }) => {
   const [activeSection, setActiveSection] = useState<'main' | 'upgrade' | 'cancel' | 'branding'>('main');
+  const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly');
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [brandingLogo, setBrandingLogo] = useState('');
   const [brandingColor, setBrandingColor] = useState('#D4AF37');
@@ -88,7 +89,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
             )}
             <div>
               <p className="text-xl font-bold text-gray-900">{currentPlanData?.name || 'Unknown'}</p>
-              <p className="text-gray-500">{currentPlanData?.price || 'N/A'}</p>
+              <p className="text-gray-500">{currentPlanData?.monthlyPrice || 'N/A'}</p>
             </div>
           </div>
           <div className="flex gap-2">
@@ -243,6 +244,35 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
       <h2 className="text-2xl font-bold text-gray-900">Upgrade Your Plan</h2>
       <p className="text-gray-500">Choose the plan that best fits your ministry's needs.</p>
 
+      {/* Billing Period Toggle */}
+      <div className="flex items-center justify-center gap-3 bg-gray-50 rounded-2xl p-2 max-w-xs mx-auto">
+        <button
+          onClick={() => setBillingPeriod('monthly')}
+          className={`px-5 py-2 rounded-xl text-sm font-semibold transition-all ${
+            billingPeriod === 'monthly' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          Monthly
+        </button>
+        <button
+          onClick={() => setBillingPeriod('yearly')}
+          className={`px-5 py-2 rounded-xl text-sm font-semibold transition-all relative ${
+            billingPeriod === 'yearly' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          Yearly
+          <span className="absolute -top-2 -right-2 px-1.5 py-0.5 bg-green-500 text-white text-[10px] font-bold rounded-full">
+            -2mo
+          </span>
+        </button>
+      </div>
+
+      {billingPeriod === 'yearly' && (
+        <p className="text-center text-sm text-green-600 font-medium">
+          🎉 First year promotion: 2 months free! Pay for 10 months, get 12.
+        </p>
+      )}
+
       {/* Plan Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {PLANS.map((plan) => {
@@ -273,7 +303,15 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
                   <plan.icon size={24} style={{ color: plan.color }} />
                 </div>
                 <h3 className="text-lg font-bold text-gray-900">{plan.name}</h3>
-                <p className="text-2xl font-bold text-gray-900 mt-1">{plan.price}</p>
+                {billingPeriod === 'yearly' && plan.yearlyOriginal && (
+                  <p className="text-sm text-gray-400 line-through">{plan.yearlyOriginal}/yr</p>
+                )}
+                <p className="text-2xl font-bold text-gray-900 mt-1">
+                  {billingPeriod === 'monthly' ? plan.monthlyPrice : plan.yearlyPrice}
+                </p>
+                {billingPeriod === 'yearly' && plan.id !== 'enterprise' && (
+                  <p className="text-xs text-green-600 font-medium mt-1">Save 2 months</p>
+                )}
               </div>
 
               <div className="space-y-2 mb-5">
