@@ -11,6 +11,10 @@ export interface PlanFeatures {
   map: boolean;
   /** Max number of churches (0 = hidden, -1 = unlimited) */
   maxChurches: number;
+  /** Max number of courses (-1 = unlimited) */
+  maxCourses: number;
+  /** Max number of admin accounts (-1 = unlimited) */
+  maxAdmins: number;
   /** Allow custom domain */
   customDomain: boolean;
 }
@@ -22,6 +26,8 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     aiKnowledge: false,
     map: false,
     maxChurches: 1,
+    maxCourses: 5,
+    maxAdmins: 2,
     customDomain: false,
   },
   pro: {
@@ -30,6 +36,8 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     aiKnowledge: true,
     map: false,
     maxChurches: 1,
+    maxCourses: -1,
+    maxAdmins: 5,
     customDomain: false,
   },
   ultra: {
@@ -38,6 +46,8 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     aiKnowledge: true,
     map: false,
     maxChurches: 1,
+    maxCourses: -1,
+    maxAdmins: -1,
     customDomain: true,
   },
   enterprise: {
@@ -46,6 +56,8 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     aiKnowledge: true,
     map: true,
     maxChurches: -1,
+    maxCourses: -1,
+    maxAdmins: -1,
     customDomain: true,
   },
 };
