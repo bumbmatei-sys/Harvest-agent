@@ -11,12 +11,14 @@ import ErrorBoundary from './components/ErrorBoundary';
 import AdminDashboard from './components/AdminDashboard';
 import PWAInstallManager from './components/PWAInstallManager';
 import { OperationType, handleFirestoreError } from './utils/firestore-errors';
+import { TenantPlan } from './types/tenant.types';
 
 
 const App: React.FC = () => {
  const [currentPage, setCurrentPage] = useState('auth');
  const [isAuthReady, setIsAuthReady] = useState(false);
  const [needsOnboarding, setNeedsOnboarding] = useState(false);
+ const [tenantPlan, setTenantPlan] = useState<TenantPlan | undefined>(undefined);
  const currentPageRef = useRef(currentPage);
 
  useEffect(() => {
@@ -27,13 +29,27 @@ const App: React.FC = () => {
  const unsubscribe = onAuthStateChanged(auth, async (user) => {
  if (user) {
  try {
- const userDoc = await getDoc(doc(db, 'users', user.uid));
- if (userDoc.exists() && userDoc.data().onboardingCompleted) {
- setNeedsOnboarding(false);
- if (currentPageRef.current === 'auth') {
- setCurrentPage('home');
- }
- } else {
+   const userDoc = await getDoc(doc(db, 'users', user.uid));
+   if (userDoc.exists() && userDoc.data().onboardingCompleted) {
+     setNeedsOnboarding(false);
+     // Fetch tenant plan if user belongs to a tenant
+     const userTenantId = userDoc.data().tenantId;
+     if (userTenantId) {
+       try {
+         const tenantDoc = await getDoc(doc(db, 'tenants', userTenantId));
+         if (tenantDoc.exists()) {
+           setTenantPlan(tenantDoc.data().plan as TenantPlan);
+         }
+       } catch (e) {
+         console.error('Failed to fetch tenant:', e);
+       }
+     } else {
+       setTenantPlan(undefined);
+     }
+     if (currentPageRef.current === 'auth') {
+       setCurrentPage('home');
+     }
+   } else {
  setNeedsOnboarding(true);
  if (currentPageRef.current === 'auth') {
  setCurrentPage('onboarding');
@@ -50,9 +66,10 @@ const App: React.FC = () => {
  }
  }
  } else {
- if (currentPageRef.current !== 'auth') {
- setCurrentPage('auth');
- }
+   setTenantPlan(undefined);
+   if (currentPageRef.current !== 'auth') {
+     setCurrentPage('auth');
+   }
  }
  setIsAuthReady(true);
  });
@@ -86,7 +103,7 @@ const App: React.FC = () => {
  if (currentPage === 'home') {
  return (
  <>
- <MainApp onNavigate={navigateTo} />
+ <MainApp onNavigate={navigateTo} tenantPlan={tenantPlan} />
  <PWAInstallManager />
  </>
  );
@@ -96,7 +113,7 @@ const App: React.FC = () => {
    return (
      <>
        <ErrorBoundary>
-         <AdminDashboard onNavigate={navigateTo} />
+         <AdminDashboard onNavigate={navigateTo} tenantPlan={tenantPlan} />
        </ErrorBoundary>
        <PWAInstallManager />
      </>
