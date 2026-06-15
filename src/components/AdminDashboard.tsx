@@ -1,13 +1,14 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { LayoutDashboard, Church, FileText, Rss, BrainCircuit, Inbox, ArrowLeft, GraduationCap, ChevronLeft, ChevronRight } from 'lucide-react';
+import { LayoutDashboard, Church, FileText, Rss, BrainCircuit, Inbox, ArrowLeft, GraduationCap, ChevronLeft, ChevronRight, Building2 } from 'lucide-react';
 import AdminBlog from './AdminBlog';
 import AdminPosts from './AdminPosts';
 import AdminInbox from './AdminInbox';
 import AdminChurches from './AdminChurches';
 import AdminCourses from './AdminCourses';
 import AdminRAG from './AdminRAG';
+import AdminTenants from './AdminTenants';
 import AnalyticsAndRoles, { Permission } from './AnalyticsAndRoles';
 import { db, auth } from '../firebase';
 import { collection, query, where, onSnapshot, doc, getDoc, limit } from 'firebase/firestore';
@@ -82,6 +83,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
     (isSuperAdmin || perms.fullAccess || perms.writeArticles) && { id: 'blog', label: 'Blog', icon: FileText },
     (isSuperAdmin || perms.fullAccess || perms.createPosts) && { id: 'posts', label: 'Posts', icon: Rss },
     (isSuperAdmin || perms.fullAccess || perms.uploadRag) && { id: 'ai', label: 'AI Knowledge', icon: BrainCircuit },
+    isSuperAdmin && { id: 'tenants', label: 'Tenants', icon: Building2 },
   ].filter(Boolean) as { id: string; label: string; icon: any }[];
 
   // If the active tab is not in the allowed tabs, switch to the first allowed tab
@@ -217,6 +219,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
             <div className="p-4 lg:p-0"><AdminCourses /></div>
           ) : activeTab === 'ai' ? (
             <div className="p-4 lg:p-0"><AdminRAG /></div>
+          ) : activeTab === 'tenants' ? (
+            <div className="p-4 lg:p-0"><AdminTenants /></div>
           ) : (
             <div className="flex flex-col items-center justify-center h-full text-gray-400">
               <p className="text-lg font-medium">{bottomTabs.find(t => t.id === activeTab)?.label || 'Inbox'} coming soon.</p>

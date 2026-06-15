@@ -47,12 +47,13 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
  if (!userSnap.exists()) {
  try {
  const userData: any = {
- uid: result.user.uid,
- email: result.user.email,
- createdAt: new Date().toISOString(),
- role: 'user',
- newsletter: newsletter,
- termsAccepted: true
+   uid: result.user.uid,
+   email: result.user.email,
+   createdAt: new Date().toISOString(),
+   role: 'user',
+   tenantId: null,
+   newsletter: newsletter,
+   termsAccepted: true
  };
  if (result.user.displayName) userData.displayName = result.user.displayName;
  if (result.user.photoURL) userData.photoURL = result.user.photoURL;
@@ -132,13 +133,14 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
  // Store user in Firestore
  try {
  await setDoc(doc(db, 'users', result.user.uid), {
- uid: result.user.uid,
- email: result.user.email,
- displayName: email.split('@')[0],
- createdAt: new Date().toISOString(),
- role: 'user',
- newsletter: newsletter,
- termsAccepted: true
+   uid: result.user.uid,
+   email: result.user.email,
+   displayName: email.split('@')[0],
+   createdAt: new Date().toISOString(),
+   role: 'user',
+   tenantId: null,
+   newsletter: newsletter,
+   termsAccepted: true
  });
  } catch (err) {
  try { handleFirestoreError(err, OperationType.WRITE, `users/${result.user.uid}`); } catch (e) { console.error(e); }
