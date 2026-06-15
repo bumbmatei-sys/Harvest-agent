@@ -20,7 +20,7 @@ export interface PlanFeatures {
 }
 
 const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
-  starter: {
+  plus: {
     blog: false,
     aiChat: false,
     aiKnowledge: false,
@@ -64,10 +64,10 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
 
 /**
  * Get feature flags for a given plan.
- * Defaults to 'starter' if plan is unknown.
+ * Defaults to 'plus' if plan is unknown.
  */
 export function getPlanFeatures(plan: TenantPlan): PlanFeatures {
-  return PLAN_FEATURES[plan] || PLAN_FEATURES.starter;
+  return PLAN_FEATURES[plan] || PLAN_FEATURES.plus;
 }
 
 /**

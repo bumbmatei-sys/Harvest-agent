@@ -8,14 +8,14 @@ import { createTenant, updateTenant, deleteTenant, isSubdomainAvailable } from '
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 
 const PLAN_LABELS: Record<TenantPlan, string> = {
-  starter: 'Starter',
+  plus: 'Plus',
   pro: 'Pro',
   ultra: 'Ultra',
   enterprise: 'Enterprise',
 };
 
 const PLAN_COLORS: Record<TenantPlan, string> = {
-  starter: 'bg-blue-100 text-blue-700',
+  plus: 'bg-blue-100 text-blue-700',
   pro: 'bg-purple-100 text-purple-700',
   ultra: 'bg-amber-100 text-amber-700',
   enterprise: 'bg-emerald-100 text-emerald-700',
@@ -39,7 +39,7 @@ interface FormData {
 const EMPTY_FORM: FormData = {
   name: '',
   subdomain: '',
-  plan: 'starter',
+  plan: 'plus',
   adminEmail: '',
   description: '',
   customDomain: '',
@@ -330,7 +330,7 @@ const AdminTenants: React.FC = () => {
                   onChange={e => setForm({ ...form, plan: e.target.value as TenantPlan })}
                   className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#d4a017] focus:border-[#d4a017] outline-none bg-white"
                 >
-                  <option value="starter">Starter — $100/mo</option>
+                  <option value="plus">Plus — $100/mo</option>
                   <option value="pro">Pro — $250/mo</option>
                   <option value="ultra">Ultra — $500/mo</option>
                   <option value="enterprise">Enterprise — Custom</option>

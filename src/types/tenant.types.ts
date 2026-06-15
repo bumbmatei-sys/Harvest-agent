@@ -1,4 +1,4 @@
-export type TenantPlan = 'starter' | 'pro' | 'ultra' | 'enterprise';
+export type TenantPlan = 'plus' | 'pro' | 'ultra' | 'enterprise';
 export type TenantStatus = 'active' | 'suspended' | 'pending';
 
 export interface TenantConfig {

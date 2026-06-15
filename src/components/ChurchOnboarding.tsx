@@ -15,8 +15,8 @@ interface ChurchOnboardingProps {
 
 const PLANS: { id: TenantPlan; name: string; price: string; desc: string; features: string[]; popular?: boolean }[] = [
   {
-    id: 'starter',
-    name: 'Starter',
+    id: 'plus',
+    name: 'Plus',
     price: '$100/mo',
     desc: 'Perfect for getting started',
     features: ['1 church', '2 admin accounts', '5 courses', 'Custom subdomain'],
