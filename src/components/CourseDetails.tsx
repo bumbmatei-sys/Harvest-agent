@@ -1,5 +1,6 @@
 "use client";
 import React from 'react';
+import { sanitizeHtml } from '../utils/sanitize';
 import Image from 'next/image';
 import { ArrowLeft, Clock, User, BookOpen, PlayCircle, CheckCircle2 } from 'lucide-react';
 import { Course } from './AdminCourseEditor';
@@ -55,7 +56,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ course, onBack }) => {
  <section>
  <h2 className="text-xl font-bold text-gray-900 mb-4">About this course</h2>
  <div className="prose max-w-none text-gray-600 ">
- <div dangerouslySetInnerHTML={{ __html: course.description }} />
+ <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(course.description) }} />
  </div>
  </section>
 

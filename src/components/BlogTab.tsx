@@ -1,56 +1,13 @@
 "use client";
 import React, { useState, useEffect } from 'react';
+import { sanitizeHtml } from '../utils/sanitize';
 import Image from 'next/image';
 import { collection, query, where, orderBy, onSnapshot, doc, updateDoc, arrayUnion, arrayRemove, getDoc } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { FileText, Calendar, Tag, ArrowLeft, Search } from 'lucide-react';
+import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 
 
-enum OperationType {
-  CREATE = 'create',
-  UPDATE = 'update',
-  DELETE = 'delete',
-  LIST = 'list',
-  GET = 'get',
-  WRITE = 'write',
-}
-
-interface FirestoreErrorInfo {
-  error: string;
-  operationType: OperationType;
-  path: string | null;
-  authInfo: {
-    userId?: string;
-    email?: string | null;
-    emailVerified?: boolean;
-    isAnonymous?: boolean;
-    tenantId?: string | null;
-    providerInfo?: any[];
-  }
-}
-
-function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
-  const errInfo: FirestoreErrorInfo = {
-    error: error instanceof Error ? error.message : String(error),
-    authInfo: {
-      userId: auth?.currentUser?.uid,
-      email: auth?.currentUser?.email,
-      emailVerified: auth?.currentUser?.emailVerified,
-      isAnonymous: auth?.currentUser?.isAnonymous,
-      tenantId: auth?.currentUser?.tenantId,
-      providerInfo: auth?.currentUser?.providerData.map(provider => ({
-        providerId: provider.providerId,
-        displayName: provider.displayName,
-        email: provider.email,
-        photoUrl: provider.photoURL
-      })) || []
-    },
-    operationType,
-    path
-  };
-  console.error('Firestore Error: ', JSON.stringify(errInfo));
-  throw new Error(JSON.stringify(errInfo));
-}
 
 interface BlogPost {
  id: string;
@@ -111,7 +68,7 @@ const BlogTab: React.FC<BlogTabProps> = ({ onOpenArticle, initialPost, onBack, i
  setPosts(visiblePosts);
  setLoading(false);
  }, (error) => {
- handleFirestoreError(error, OperationType.GET, `blog_posts`);
+ try { handleFirestoreError(error, OperationType.GET, `blog_posts`); } catch (e) { console.error(e); }
  setLoading(false);
  });
 
@@ -227,7 +184,7 @@ const BlogTab: React.FC<BlogTabProps> = ({ onOpenArticle, initialPost, onBack, i
  <div 
  className="prose prose-base max-w-none mb-8"
  style={{ wordBreak: 'normal', overflowWrap: 'break-word', whiteSpace: 'normal' }}
- dangerouslySetInnerHTML={{ __html: selectedPost.content }}
+ dangerouslySetInnerHTML={{ __html: sanitizeHtml(selectedPost.content) }}
  />
  
  {selectedPost.tags && selectedPost.tags.length > 0 && (

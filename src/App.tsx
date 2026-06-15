@@ -7,59 +7,11 @@ import { doc, getDoc } from 'firebase/firestore';
 import AuthPage from './components/AuthPage';
 import MainApp from './components/MainApp';
 import Onboarding from './components/Onboarding';
+import ErrorBoundary from './components/ErrorBoundary';
 import AdminDashboard from './components/AdminDashboard';
 import PWAInstallManager from './components/PWAInstallManager';
+import { OperationType, handleFirestoreError } from './utils/firestore-errors';
 
-enum OperationType {
- CREATE = 'create',
- UPDATE = 'update',
- DELETE = 'delete',
- LIST = 'list',
- GET = 'get',
- WRITE = 'write',
-}
-
-interface FirestoreErrorInfo {
- error: string;
- operationType: OperationType;
- path: string | null;
- authInfo: {
- userId: string | undefined;
- email: string | null | undefined;
- emailVerified: boolean | undefined;
- isAnonymous: boolean | undefined;
- tenantId: string | null | undefined;
- providerInfo: {
- providerId: string;
- displayName: string | null;
- email: string | null;
- photoUrl: string | null;
- }[];
- }
-}
-
-function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
- const errInfo: FirestoreErrorInfo = {
- error: error instanceof Error ? error.message : String(error),
- authInfo: {
- userId: auth.currentUser?.uid,
- email: auth.currentUser?.email,
- emailVerified: auth.currentUser?.emailVerified,
- isAnonymous: auth.currentUser?.isAnonymous,
- tenantId: auth.currentUser?.tenantId,
- providerInfo: auth.currentUser?.providerData.map(provider => ({
- providerId: provider.providerId,
- displayName: provider.displayName,
- email: provider.email,
- photoUrl: provider.photoURL
- })) || []
- },
- operationType,
- path
- }
- console.error('Firestore Error: ', JSON.stringify(errInfo));
- throw new Error(JSON.stringify(errInfo));
-}
 
 const App: React.FC = () => {
  const [currentPage, setCurrentPage] = useState('auth');
@@ -141,12 +93,14 @@ const App: React.FC = () => {
  }
 
  if (currentPage === 'admin') {
- return (
- <>
- <AdminDashboard onNavigate={navigateTo} />
- <PWAInstallManager />
- </>
- );
+   return (
+     <>
+       <ErrorBoundary>
+         <AdminDashboard onNavigate={navigateTo} />
+       </ErrorBoundary>
+       <PWAInstallManager />
+     </>
+   );
  }
 
  return (

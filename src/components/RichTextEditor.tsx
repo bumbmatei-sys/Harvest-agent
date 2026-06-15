@@ -1,5 +1,6 @@
 "use client";
 import React, { useCallback } from 'react';
+import { isSafeUrl } from '../utils/sanitize';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
@@ -33,26 +34,27 @@ const MenuBar = ({ editor }: { editor: any }) => {
  };
 
  const addImage = useCallback(() => {
- if (!editor) return;
- const url = window.prompt('URL');
- if (url) {
- editor.chain().focus().setImage({ src: transformImageUrl(url) }).run();
- }
- }, [editor]);
+    if (!editor) return;
+    const url = window.prompt('URL');
+    if (url && isSafeUrl(url)) {
+      editor.chain().focus().setImage({ src: transformImageUrl(url) }).run();
+    }
+  }, [editor]);
 
  const setLink = useCallback(() => {
- if (!editor) return;
- const previousUrl = editor.getAttributes('link').href;
- const url = window.prompt('URL', previousUrl);
- if (url === null) {
- return;
- }
- if (url === '') {
- editor.chain().focus().extendMarkRange('link').unsetLink().run();
- return;
- }
- editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
- }, [editor]);
+    if (!editor) return;
+    const previousUrl = editor.getAttributes('link').href;
+    const url = window.prompt('URL', previousUrl);
+    if (url === null) {
+      return;
+    }
+    if (url === '') {
+      editor.chain().focus().extendMarkRange('link').unsetLink().run();
+      return;
+    }
+    if (!isSafeUrl(url)) return;
+    editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
+  }, [editor]);
 
  if (!editor) {
  return null;

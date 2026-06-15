@@ -1,36 +1,116 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // ─── Helper functions ────────────────────────────────────────────
+
     function isAuthenticated() {
       return request.auth != null;
     }
-    
+
+    // Admin or superAdmin via custom claims (set server-side with Firebase Admin SDK)
     function isAdmin() {
-      return isAuthenticated() && (
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
-        request.auth.token.email == 'bumbmatei@gmail.com'
-      );
+      return isAuthenticated() &&
+        (request.auth.token.admin == true ||
+         request.auth.token.superAdmin == true);
     }
 
+    // Tenant ID derived from the user's custom claims
+    function userTenantId() {
+      return request.auth.token.tenantId;
+    }
+
+    // Check if the authenticated user belongs to a given tenant
+    function belongsToTenant(tenantId) {
+      return isAuthenticated() && userTenantId() == tenantId;
+    }
+
+    // Admin belonging to the given tenant
+    function isTenantAdmin(tenantId) {
+      return isAdmin() && belongsToTenant(tenantId);
+    }
+
+    // ─── Users ───────────────────────────────────────────────────────
+
     match /users/{userId} {
-      allow read: if isAuthenticated();
+      // Users can read only their own document; admins can read all
+      allow read: if isAuthenticated() &&
+        (request.auth.uid == userId || isAdmin());
+
+      // Self-registration: user creates their own profile
       allow create: if isAuthenticated() && request.auth.uid == userId;
-      allow update: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+
+      // Users can update their own profile; admins can update any
+      allow update: if isAuthenticated() &&
+        (request.auth.uid == userId || isAdmin());
+
+      // Only admins can delete user documents
       allow delete: if isAdmin();
     }
 
-    match /{document=**} {
-      allow read: if isAuthenticated();
-      allow write: if isAdmin();
-    }
-    
+    // ─── Submissions ─────────────────────────────────────────────────
+
     match /submissions/{subId} {
+      // Any authenticated user can create a submission
       allow create: if isAuthenticated();
+
+      // Users can read their own submissions; admins can read all
+      allow read: if isAuthenticated() &&
+        (request.auth.uid == resource.data.userId || isAdmin());
+
+      // Users can update their own submissions; admins can update any
+      allow update: if isAuthenticated() &&
+        (request.auth.uid == resource.data.userId || isAdmin());
+
+      // Only admins can delete
+      allow delete: if isAdmin();
     }
-    
+
+    // ─── Community Posts ─────────────────────────────────────────────
+
     match /community_posts/{postId} {
+      // Anyone authenticated can read community posts
+      allow read: if isAuthenticated();
+
+      // Any authenticated user can create
       allow create: if isAuthenticated();
-      allow update, delete: if isAuthenticated() && (request.auth.uid == resource.data.authorId || isAdmin());
+
+      // Only the author or admins can update/delete
+      allow update, delete: if isAuthenticated() &&
+        (request.auth.uid == resource.data.authorId || isAdmin());
     }
+
+    // ─── Tenants (multi-tenant prep) ─────────────────────────────────
+
+    match /tenants/{tenantId} {
+      // Tenant members can read their tenant; admins can read any
+      allow read: if belongsToTenant(tenantId) || isAdmin();
+
+      // Only superAdmins can create/delete tenants
+      allow create, delete: if isAuthenticated() &&
+        request.auth.token.superAdmin == true;
+
+      // Tenant admins can update their own tenant; superAdmins can update any
+      allow update: if isTenantAdmin(tenantId) ||
+        (isAuthenticated() && request.auth.token.superAdmin == true);
+
+      // ─── Tenant-scoped subcollections ──────────────────────────────
+
+      match /settings/{settingId} {
+        allow read: if belongsToTenant(tenantId);
+        allow write: if isTenantAdmin(tenantId);
+      }
+
+      match /members/{memberId} {
+        allow read: if belongsToTenant(tenantId);
+        allow create, delete: if isTenantAdmin(tenantId);
+        // Members can update their own membership doc
+        allow update: if belongsToTenant(tenantId) &&
+          (request.auth.uid == memberId || isTenantAdmin(tenantId));
+      }
+    }
+
+    // ─── Catch-all: DENY everything not matched above ────────────────
+    // (Implicit in Firestore: any path not matched by a rule is denied)
   }
 }

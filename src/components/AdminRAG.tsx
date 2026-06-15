@@ -1,56 +1,10 @@
 import React, { useState, useRef, useEffect } from "react";
 import { db, auth } from '../firebase';
 import { collection, addDoc, serverTimestamp, query, where, getDocs, deleteDoc, onSnapshot, updateDoc, doc } from 'firebase/firestore';
-import { GoogleGenAI } from "@google/genai";
+import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 
 
-enum OperationType {
-  CREATE = 'create',
-  UPDATE = 'update',
-  DELETE = 'delete',
-  LIST = 'list',
-  GET = 'get',
-  WRITE = 'write',
-}
-
-interface FirestoreErrorInfo {
-  error: string;
-  operationType: OperationType;
-  path: string | null;
-  authInfo: {
-    userId?: string;
-    email?: string | null;
-    emailVerified?: boolean;
-    isAnonymous?: boolean;
-    tenantId?: string | null;
-    providerInfo?: any[];
-  }
-}
-
-function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
-  const errInfo: FirestoreErrorInfo = {
-    error: error instanceof Error ? error.message : String(error),
-    authInfo: {
-      userId: auth?.currentUser?.uid,
-      email: auth?.currentUser?.email,
-      emailVerified: auth?.currentUser?.emailVerified,
-      isAnonymous: auth?.currentUser?.isAnonymous,
-      tenantId: auth?.currentUser?.tenantId,
-      providerInfo: auth?.currentUser?.providerData.map(provider => ({
-        providerId: provider.providerId,
-        displayName: provider.displayName,
-        email: provider.email,
-        photoUrl: provider.photoURL
-      })) || []
-    },
-    operationType,
-    path
-  };
-  console.error('Firestore Error: ', JSON.stringify(errInfo));
-  throw new Error(JSON.stringify(errInfo));
-}
-
-const ai = new GoogleGenAI({ apiKey: process.env.NEXT_PUBLIC_GEMINI_API_KEY });
+// Gemini API calls are proxied through /api/gemini to keep the API key server-side
 
 // ─────────────────────────────────────────────
 // HARVEST — AI Knowledge Base (RAG)
@@ -101,26 +55,29 @@ async function chunkAndEmbed(text: string, sourceId: string, title: string, type
  const chunks = chunkText(text);
  
  for (const chunk of chunks) {
- try {
- const result = await ai.models.embedContent({
- model: 'gemini-embedding-2-preview',
- contents: [chunk],
- });
- 
- const vector = result.embeddings?.[0]?.values;
- if (vector) {
- await addDoc(collection(db, "rag_chunks"), {
- sourceId,
- title,
- type,
- chunk,
- vector,
- createdAt: serverTimestamp()
- });
- }
- } catch (error) {
- handleFirestoreError(error, OperationType.WRITE, `rag_chunks`);
- }
+   try {
+     const res = await fetch('/api/gemini', {
+       method: 'POST',
+       headers: { 'Content-Type': 'application/json' },
+       body: JSON.stringify({ action: 'embed', text: chunk }),
+     });
+     const data = await res.json();
+     if (!res.ok) throw new Error(data.error || 'Embed request failed');
+     
+     const vector = data.vector;
+     if (vector) {
+       await addDoc(collection(db, "rag_chunks"), {
+         sourceId,
+         title,
+         type,
+         chunk,
+         vector,
+         createdAt: serverTimestamp()
+       });
+     }
+   } catch (error) {
+     try { handleFirestoreError(error, OperationType.WRITE, `rag_chunks`); } catch (e) { console.error(e); }
+   }
  }
  
  return chunks.length;
@@ -206,7 +163,7 @@ export default function AdminRAG() {
  loadedSources.sort((a: any, b: any) => b.addedAt.getTime() - a.addedAt.getTime());
  setSources(loadedSources);
  }, (error) => {
- handleFirestoreError(error, OperationType.GET, `rag_sources`);
+ try { handleFirestoreError(error, OperationType.GET, `rag_sources`); } catch (e) { console.error(e); }
  });
 
  return () => unsubscribe();
@@ -321,7 +278,7 @@ export default function AdminRAG() {
  const deletePromises = snap.docs.map(document => deleteDoc(document.ref));
  await Promise.all(deletePromises);
  } catch (error) {
- handleFirestoreError(error, OperationType.DELETE, `rag_sources/${deleteTarget.id}`);
+ try { handleFirestoreError(error, OperationType.DELETE, `rag_sources/${deleteTarget.id}`); } catch (e) { console.error(e); }
  }
  
  setDeleteTarget(null);

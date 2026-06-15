@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { BookOpen, Clock, ChevronRight } from 'lucide-react';
 import { Course } from './AdminCourseEditor';
@@ -67,7 +67,8 @@ const CoursesTab: React.FC<CoursesTabProps> = ({ onOpenCourse }) => {
  const q = query(
  collection(db, 'courses'),
  where('status', '==', 'published'),
- orderBy('createdAt', 'desc')
+ orderBy('createdAt', 'desc'),
+ limit(50)
  );
  const querySnapshot = await getDocs(q);
  const fetchedCourses: Course[] = [];

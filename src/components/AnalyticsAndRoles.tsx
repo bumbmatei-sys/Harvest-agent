@@ -1,53 +1,9 @@
 import React, { useState, useEffect, CSSProperties } from "react";
 import { collection, query, getDocs, doc, updateDoc, where, deleteDoc } from "firebase/firestore";
 import { db, auth } from "../firebase";
+import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 
 
-enum OperationType {
-  CREATE = 'create',
-  UPDATE = 'update',
-  DELETE = 'delete',
-  LIST = 'list',
-  GET = 'get',
-  WRITE = 'write',
-}
-
-interface FirestoreErrorInfo {
-  error: string;
-  operationType: OperationType;
-  path: string | null;
-  authInfo: {
-    userId?: string;
-    email?: string | null;
-    emailVerified?: boolean;
-    isAnonymous?: boolean;
-    tenantId?: string | null;
-    providerInfo?: any[];
-  }
-}
-
-function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
-  const errInfo: FirestoreErrorInfo = {
-    error: error instanceof Error ? error.message : String(error),
-    authInfo: {
-      userId: auth?.currentUser?.uid,
-      email: auth?.currentUser?.email,
-      emailVerified: auth?.currentUser?.emailVerified,
-      isAnonymous: auth?.currentUser?.isAnonymous,
-      tenantId: auth?.currentUser?.tenantId,
-      providerInfo: auth?.currentUser?.providerData.map(provider => ({
-        providerId: provider.providerId,
-        displayName: provider.displayName,
-        email: provider.email,
-        photoUrl: provider.photoURL
-      })) || []
-    },
-    operationType,
-    path
-  };
-  console.error('Firestore Error: ', JSON.stringify(errInfo));
-  throw new Error(JSON.stringify(errInfo));
-}
 
 const GOLD = "#C9963A";
 const GOLD_LIGHT = "#FBF3E4";
@@ -437,7 +393,7 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
         setAllUsers(usersList);
         setAdmins(adminsList);
       } catch (error) {
-        handleFirestoreError(error, OperationType.GET, `users`);
+        try { handleFirestoreError(error, OperationType.GET, `users`); } catch (e) { console.error(e); }
       }
     };
     fetchUsers();
@@ -458,7 +414,7 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
       setFilteredUsers(prev => prev.filter(u => u.id !== userToDelete));
       setUserToDelete(null);
     } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, `users/${userToDelete}`);
+      try { handleFirestoreError(error, OperationType.DELETE, `users/${userToDelete}`); } catch (e) { console.error(e); }
     }
   };
 
@@ -675,7 +631,7 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
       setShowEditor(false);
       setEditingAdmin(null);
     } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, `users/${admin.id}`);
+      try { handleFirestoreError(error, OperationType.UPDATE, `users/${admin.id}`); } catch (e) { console.error(e); }
     }
   };
 
@@ -690,7 +646,7 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
       setAdmins((prev) => prev.filter((a) => a.id !== id));
       setShowRemoveConfirm(null);
     } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, `users/${id}`);
+      try { handleFirestoreError(error, OperationType.UPDATE, `users/${id}`); } catch (e) { console.error(e); }
     }
   };
 

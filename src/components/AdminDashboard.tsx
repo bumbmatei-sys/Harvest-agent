@@ -10,54 +10,10 @@ import AdminCourses from './AdminCourses';
 import AdminRAG from './AdminRAG';
 import AnalyticsAndRoles, { Permission } from './AnalyticsAndRoles';
 import { db, auth } from '../firebase';
-import { collection, query, where, onSnapshot, doc, getDoc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc, getDoc, limit } from 'firebase/firestore';
+import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 
 
-enum OperationType {
-  CREATE = 'create',
-  UPDATE = 'update',
-  DELETE = 'delete',
-  LIST = 'list',
-  GET = 'get',
-  WRITE = 'write',
-}
-
-interface FirestoreErrorInfo {
-  error: string;
-  operationType: OperationType;
-  path: string | null;
-  authInfo: {
-    userId?: string;
-    email?: string | null;
-    emailVerified?: boolean;
-    isAnonymous?: boolean;
-    tenantId?: string | null;
-    providerInfo?: any[];
-  }
-}
-
-function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
-  const errInfo: FirestoreErrorInfo = {
-    error: error instanceof Error ? error.message : String(error),
-    authInfo: {
-      userId: auth?.currentUser?.uid,
-      email: auth?.currentUser?.email,
-      emailVerified: auth?.currentUser?.emailVerified,
-      isAnonymous: auth?.currentUser?.isAnonymous,
-      tenantId: auth?.currentUser?.tenantId,
-      providerInfo: auth?.currentUser?.providerData.map(provider => ({
-        providerId: provider.providerId,
-        displayName: provider.displayName,
-        email: provider.email,
-        photoUrl: provider.photoURL
-      })) || []
-    },
-    operationType,
-    path
-  };
-  console.error('Firestore Error: ', JSON.stringify(errInfo));
-  throw new Error(JSON.stringify(errInfo));
-}
 
 interface AdminDashboardProps {
   onNavigate: (page: string) => void;
@@ -83,7 +39,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
             setUserPermissions(data.permissions || null);
           }
         } catch (error) {
-          handleFirestoreError(error, OperationType.GET, `users/${auth.currentUser?.uid}`);
+          try { handleFirestoreError(error, OperationType.GET, `users/${auth.currentUser?.uid}`); } catch (e) { console.error(e); }
         }
       }
       setIsLoading(false);
@@ -92,18 +48,18 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
   }, []);
 
   useEffect(() => {
-    const q = query(collection(db, 'submissions'), where('status', '==', 'pending'));
+    const q = query(collection(db, 'submissions'), where('status', '==', 'pending'), limit(100));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       setUnreadCount(snapshot.docs.length);
     }, (error) => {
-      handleFirestoreError(error, OperationType.GET, `submissions`);
+      try { handleFirestoreError(error, OperationType.GET, `submissions`); } catch (e) { console.error(e); }
     });
     
-    const qChurches = query(collection(db, 'churches'), where('status', '==', 'pending'));
+    const qChurches = query(collection(db, 'churches'), where('status', '==', 'pending'), limit(100));
     const unsubscribeChurches = onSnapshot(qChurches, (snapshot) => {
       setPendingChurchesCount(snapshot.docs.length);
     }, (error) => {
-      handleFirestoreError(error, OperationType.GET, `churches`);
+      try { handleFirestoreError(error, OperationType.GET, `churches`); } catch (e) { console.error(e); }
     });
     
     return () => {

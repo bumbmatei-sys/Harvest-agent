@@ -4,57 +4,8 @@ import Image from 'next/image';
 import { auth, db } from '../firebase';
 import { signInWithPopup, GoogleAuthProvider, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVerification,  } from 'firebase/auth';
 import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
+import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 
-enum OperationType {
- CREATE = 'create',
- UPDATE = 'update',
- DELETE = 'delete',
- LIST = 'list',
- GET = 'get',
- WRITE = 'write',
-}
-
-interface FirestoreErrorInfo {
- error: string;
- operationType: OperationType;
- path: string | null;
- authInfo: {
- userId: string | undefined;
- email: string | null | undefined;
- emailVerified: boolean | undefined;
- isAnonymous: boolean | undefined;
- tenantId: string | null | undefined;
- providerInfo: {
- providerId: string;
- displayName: string | null;
- email: string | null;
- photoUrl: string | null;
- }[];
- }
-}
-
-function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
- const errInfo: FirestoreErrorInfo = {
- error: error instanceof Error ? error.message : String(error),
- authInfo: {
- userId: auth.currentUser?.uid,
- email: auth.currentUser?.email,
- emailVerified: auth.currentUser?.emailVerified,
- isAnonymous: auth.currentUser?.isAnonymous,
- tenantId: auth.currentUser?.tenantId,
- providerInfo: auth.currentUser?.providerData.map(provider => ({
- providerId: provider.providerId,
- displayName: provider.displayName,
- email: provider.email,
- photoUrl: provider.photoURL
- })) || []
- },
- operationType,
- path
- }
- console.error('Firestore Error: ', JSON.stringify(errInfo));
- throw new Error(JSON.stringify(errInfo));
-}
 
 interface AuthPageProps {
  onNavigate: (page: string) => void;
@@ -89,7 +40,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
  try {
  userSnap = await getDoc(userRef);
  } catch (err) {
- handleFirestoreError(err, OperationType.GET, `users/${result.user.uid}`);
+ try { handleFirestoreError(err, OperationType.GET, `users/${result.user.uid}`); } catch (e) { console.error(e); }
  return;
  }
  
@@ -108,7 +59,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
 
  await setDoc(userRef, userData);
  } catch (err) {
- handleFirestoreError(err, OperationType.WRITE, `users/${result.user.uid}`);
+ try { handleFirestoreError(err, OperationType.WRITE, `users/${result.user.uid}`); } catch (e) { console.error(e); }
  return;
  }
  } else {
@@ -119,7 +70,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
  newsletter: newsletter
  });
  } catch (err) {
- handleFirestoreError(err, OperationType.UPDATE, `users/${result.user.uid}`);
+ try { handleFirestoreError(err, OperationType.UPDATE, `users/${result.user.uid}`); } catch (e) { console.error(e); }
  return;
  }
  }
@@ -159,7 +110,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
  newsletter: newsletter
  });
  } catch (err) {
- handleFirestoreError(err, OperationType.UPDATE, `users/${userCredential.user.uid}`);
+ try { handleFirestoreError(err, OperationType.UPDATE, `users/${userCredential.user.uid}`); } catch (e) { console.error(e); }
  return;
  }
  } else {
@@ -190,7 +141,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
  termsAccepted: true
  });
  } catch (err) {
- handleFirestoreError(err, OperationType.WRITE, `users/${result.user.uid}`);
+ try { handleFirestoreError(err, OperationType.WRITE, `users/${result.user.uid}`); } catch (e) { console.error(e); }
  return;
  }
 
@@ -338,24 +289,6 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
  </div>
  <span className="text-sm text-gray-300 group-hover:text-white transition-colors">
  Sign up for the Harvest newsletter to receive updates and news.
- </span>
- </label>
- </div>
- )}
-
- {isLogin && (
- <div className="mt-4">
- <label style={{display: 'none'}}>
- <div className="relative flex items-center">
- <input
- type="checkbox"
- checked={true}
- onChange={(e) => setRememberMe(e.target.checked)}
- className="w-5 h-5 rounded border-white/30 bg-white/10 text-primary focus:ring-primary focus:ring-offset-0 transition-all cursor-pointer"
- />
- </div>
- <span className="text-sm text-gray-300 group-hover:text-white transition-colors">
- Remember me
  </span>
  </label>
  </div>

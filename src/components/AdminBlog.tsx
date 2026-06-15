@@ -1,56 +1,12 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { Plus, Search, Edit2, Trash2, MoreVertical, Filter, FileText } from 'lucide-react';
-import { collection, onSnapshot, query, orderBy, deleteDoc, doc } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, deleteDoc, doc, limit } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import AdminBlogPostEditor from './AdminBlogPostEditor';
+import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 
 
-enum OperationType {
-  CREATE = 'create',
-  UPDATE = 'update',
-  DELETE = 'delete',
-  LIST = 'list',
-  GET = 'get',
-  WRITE = 'write',
-}
-
-interface FirestoreErrorInfo {
-  error: string;
-  operationType: OperationType;
-  path: string | null;
-  authInfo: {
-    userId?: string;
-    email?: string | null;
-    emailVerified?: boolean;
-    isAnonymous?: boolean;
-    tenantId?: string | null;
-    providerInfo?: any[];
-  }
-}
-
-function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
-  const errInfo: FirestoreErrorInfo = {
-    error: error instanceof Error ? error.message : String(error),
-    authInfo: {
-      userId: auth?.currentUser?.uid,
-      email: auth?.currentUser?.email,
-      emailVerified: auth?.currentUser?.emailVerified,
-      isAnonymous: auth?.currentUser?.isAnonymous,
-      tenantId: auth?.currentUser?.tenantId,
-      providerInfo: auth?.currentUser?.providerData.map(provider => ({
-        providerId: provider.providerId,
-        displayName: provider.displayName,
-        email: provider.email,
-        photoUrl: provider.photoURL
-      })) || []
-    },
-    operationType,
-    path
-  };
-  console.error('Firestore Error: ', JSON.stringify(errInfo));
-  throw new Error(JSON.stringify(errInfo));
-}
 
 interface BlogPost {
  id: string;
@@ -78,7 +34,7 @@ const AdminBlog: React.FC = () => {
  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
  useEffect(() => {
- const q = query(collection(db, 'blog_posts'), orderBy('createdAt', 'desc'));
+ const q = query(collection(db, 'blog_posts'), orderBy('createdAt', 'desc'), limit(50));
  const unsubscribe = onSnapshot(q, (snapshot) => {
  const fetchedPosts = snapshot.docs.map(doc => ({
  id: doc.id,
@@ -87,7 +43,7 @@ const AdminBlog: React.FC = () => {
  setPosts(fetchedPosts);
  setLoading(false);
  }, (error) => {
- handleFirestoreError(error, OperationType.GET, `blog_posts`);
+ try { handleFirestoreError(error, OperationType.GET, `blog_posts`); } catch (e) { console.error(e); }
  setLoading(false);
  });
 
@@ -140,7 +96,7 @@ const AdminBlog: React.FC = () => {
  await deleteDoc(doc(db, 'blog_posts', id));
  setDeleteConfirmId(null);
  } catch (error) {
- handleFirestoreError(error, OperationType.DELETE, `blog_posts/${id}`);
+ try { handleFirestoreError(error, OperationType.DELETE, `blog_posts/${id}`); } catch (e) { console.error(e); }
  setErrorMessage("Failed to delete post. Please try again.");
  setTimeout(() => setErrorMessage(null), 3000);
  }

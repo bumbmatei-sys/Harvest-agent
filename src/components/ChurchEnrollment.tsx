@@ -8,52 +8,8 @@ import Autocomplete from "react-google-autocomplete";
 
 
 import { ImageUpload } from './ImageUpload';
+import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 
-enum OperationType {
-  CREATE = 'create',
-  UPDATE = 'update',
-  DELETE = 'delete',
-  LIST = 'list',
-  GET = 'get',
-  WRITE = 'write',
-}
-
-interface FirestoreErrorInfo {
-  error: string;
-  operationType: OperationType;
-  path: string | null;
-  authInfo: {
-    userId?: string;
-    email?: string | null;
-    emailVerified?: boolean;
-    isAnonymous?: boolean;
-    tenantId?: string | null;
-    providerInfo?: any[];
-  }
-}
-
-function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
-  const errInfo: FirestoreErrorInfo = {
-    error: error instanceof Error ? error.message : String(error),
-    authInfo: {
-      userId: auth?.currentUser?.uid,
-      email: auth?.currentUser?.email,
-      emailVerified: auth?.currentUser?.emailVerified,
-      isAnonymous: auth?.currentUser?.isAnonymous,
-      tenantId: auth?.currentUser?.tenantId,
-      providerInfo: auth?.currentUser?.providerData.map(provider => ({
-        providerId: provider.providerId,
-        displayName: provider.displayName,
-        email: provider.email,
-        photoUrl: provider.photoURL
-      })) || []
-    },
-    operationType,
-    path
-  };
-  console.error('Firestore Error: ', JSON.stringify(errInfo));
-  throw new Error(JSON.stringify(errInfo));
-}
 
 interface ChurchEnrollmentProps {
  onBack: () => void;
@@ -154,14 +110,18 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
  const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`);
  const data = await response.json();
  if (data && data.length > 0 && data[0].lat && data[0].lon) {
- lat = parseFloat(data[0].lat) || 0;
- lng = parseFloat(data[0].lon) || 0;
+   lat = parseFloat(data[0].lat) || 0;
+   lng = parseFloat(data[0].lon) || 0;
  } else {
- lat = 0;
- lng = 0;
+   console.warn('Geocoding returned no results for address:', address);
+   setError('Location could not be determined from the address. Please enter latitude and longitude manually.');
+   lat = 0;
+   lng = 0;
  }
  } catch (geoError) {
  console.error("Geocoding error:", geoError);
+ console.warn('Geocoding request failed for address:', address);
+ setError('Location service is unavailable. Please enter latitude and longitude manually.');
  lat = 0;
  lng = 0;
  }
@@ -202,7 +162,7 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
  if (onSave) onSave();
  }
  } catch (err) {
- handleFirestoreError(err, OperationType.WRITE, `churches`);
+ try { handleFirestoreError(err, OperationType.WRITE, `churches`); } catch (e) { console.error(e); }
  if (err instanceof Error) {
  setError(`Failed to submit: ${err.message}`);
  } else {

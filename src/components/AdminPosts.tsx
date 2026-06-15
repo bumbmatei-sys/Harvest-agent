@@ -1,58 +1,14 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { collection, query, orderBy, onSnapshot, addDoc, deleteDoc, doc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, addDoc, deleteDoc, doc, updateDoc, arrayUnion, arrayRemove, limit } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { Country, City } from 'country-state-city';
 import { ImageUpload } from './ImageUpload';
 import { MessageSquare, BarChart2, Calendar as CalendarIcon, Image as ImageIcon, Send, MoreVertical, ThumbsUp, Check, X } from 'lucide-react';
+import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 
 
-enum OperationType {
-  CREATE = 'create',
-  UPDATE = 'update',
-  DELETE = 'delete',
-  LIST = 'list',
-  GET = 'get',
-  WRITE = 'write',
-}
-
-interface FirestoreErrorInfo {
-  error: string;
-  operationType: OperationType;
-  path: string | null;
-  authInfo: {
-    userId?: string;
-    email?: string | null;
-    emailVerified?: boolean;
-    isAnonymous?: boolean;
-    tenantId?: string | null;
-    providerInfo?: any[];
-  }
-}
-
-function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
-  const errInfo: FirestoreErrorInfo = {
-    error: error instanceof Error ? error.message : String(error),
-    authInfo: {
-      userId: auth?.currentUser?.uid,
-      email: auth?.currentUser?.email,
-      emailVerified: auth?.currentUser?.emailVerified,
-      isAnonymous: auth?.currentUser?.isAnonymous,
-      tenantId: auth?.currentUser?.tenantId,
-      providerInfo: auth?.currentUser?.providerData.map(provider => ({
-        providerId: provider.providerId,
-        displayName: provider.displayName,
-        email: provider.email,
-        photoUrl: provider.photoURL
-      })) || []
-    },
-    operationType,
-    path
-  };
-  console.error('Firestore Error: ', JSON.stringify(errInfo));
-  throw new Error(JSON.stringify(errInfo));
-}
 
 interface PollOption {
  id: string;
@@ -135,7 +91,7 @@ const AdminPosts: React.FC<AdminPostsProps> = ({ userRole, userPermissions }) =>
  const availableCities = selectedCountryCode ? City.getCitiesOfCountry(selectedCountryCode) || [] : [];
 
  useEffect(() => {
- const q = query(collection(db, 'community_posts'), orderBy('createdAt', 'desc'));
+ const q = query(collection(db, 'community_posts'), orderBy('createdAt', 'desc'), limit(50));
  const unsubscribe = onSnapshot(q, (snapshot) => {
  const postsData = snapshot.docs.map(doc => ({
  id: doc.id,
@@ -223,7 +179,7 @@ const AdminPosts: React.FC<AdminPostsProps> = ({ userRole, userPermissions }) =>
  setEventTime('');
  setEventLocation('');
     } catch (error) {
- handleFirestoreError(error, OperationType.WRITE, `community_posts`);
+ try { handleFirestoreError(error, OperationType.WRITE, `community_posts`); } catch (e) { console.error(e); }
  setErrorMessage('Failed to create post');
  setTimeout(() => setErrorMessage(null), 3000);
  } finally {
@@ -288,7 +244,7 @@ const AdminPosts: React.FC<AdminPostsProps> = ({ userRole, userPermissions }) =>
  await deleteDoc(doc(db, 'community_posts', postId));
  setDeleteConfirmId(null);
  } catch (error) {
- handleFirestoreError(error, OperationType.DELETE, `community_posts`);
+ try { handleFirestoreError(error, OperationType.DELETE, `community_posts`); } catch (e) { console.error(e); }
  }
  };
 
@@ -362,7 +318,7 @@ const AdminPosts: React.FC<AdminPostsProps> = ({ userRole, userPermissions }) =>
  isPinned: !currentPinnedStatus
  });
  } catch (error) {
- handleFirestoreError(error, OperationType.UPDATE, `community_posts`);
+ try { handleFirestoreError(error, OperationType.UPDATE, `community_posts`); } catch (e) { console.error(e); }
  setErrorMessage('Failed to pin post');
  setTimeout(() => setErrorMessage(null), 3000);
  }

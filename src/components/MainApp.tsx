@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useRef, Suspense, lazy } from 'react';
+import React, { useState, useEffect, useRef, useCallback, Suspense, lazy } from 'react';
 import { Home, BookOpen, MessageCircle, Map as MapIcon, User, Play, ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import dynamic from 'next/dynamic';
@@ -11,6 +11,7 @@ import NewsTab from './NewsTab';
 import AllNews from './AllNews';
 import CourseExperience from '../components/CoursePage';
 import AIChat from './AIChat';
+import ErrorBoundary from './ErrorBoundary';
 import BiblePage from './BiblePage';
 
 const ChurchMap = dynamic(() => import('./ChurchMap'), { ssr: false });
@@ -19,25 +20,33 @@ interface MainAppProps {
   onNavigate: (page: string) => void;
 }
 
+const TOP_TABS = [
+  { id: 'news', label: 'News' },
+  { id: 'blog', label: 'Blog' },
+  { id: 'courses', label: 'Courses' },
+  { id: 'partner', label: 'Partner with Us' },
+];
+
+const BOTTOM_TABS = [
+  { id: 'home', label: 'Home', icon: Home },
+  { id: 'bible', label: 'Bible', icon: BookOpen },
+  { id: 'chat', label: 'Chat', icon: MessageCircle },
+  { id: 'map', label: 'Map', icon: MapIcon },
+  { id: 'profile', label: 'My Profile', icon: User },
+];
+
 const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
   const [activeBottomTab, setActiveBottomTab] = useState('home');
   const [activeTopTab, setActiveTopTab] = useState('news');
   const [isNavVisible, setIsNavVisible] = useState(true);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [lastScrollY, setLastScrollY] = useState(0);
+  const lastScrollYRef = useRef(0);
   const [direction, setDirection] = useState(0);
   const [fullScreenView, setFullScreenView] = useState<{type: 'none' | 'all-news' | 'article' | 'course', id?: string, data?: any}>({type: 'none'});
 
   useEffect(() => {
     setIsNavVisible(true);
   }, [activeBottomTab]);
-
-  const topTabs = [
-    { id: 'news', label: 'News' },
-    { id: 'blog', label: 'Blog' },
-    { id: 'courses', label: 'Courses' },
-    { id: 'partner', label: 'Partner with Us' },
-  ];
 
   const topTabsRef = useRef<HTMLDivElement>(null);
 
@@ -50,35 +59,35 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
     }
   }, [activeTopTab]);
 
-  const handleTopTabClick = (tabId: string) => {
-    const currentIndex = topTabs.findIndex(t => t.id === activeTopTab);
-    const nextIndex = topTabs.findIndex(t => t.id === tabId);
+  const handleTopTabClick = useCallback((tabId: string) => {
+    const currentIndex = TOP_TABS.findIndex(t => t.id === activeTopTab);
+    const nextIndex = TOP_TABS.findIndex(t => t.id === tabId);
     if (currentIndex !== nextIndex) {
       setDirection(nextIndex > currentIndex ? 1 : -1);
       setActiveTopTab(tabId);
     }
-  };
+  }, [activeTopTab]);
 
-  const handleDragEnd = (e: any, { offset, velocity }: any) => {
+  const handleDragEnd = useCallback((e: any, { offset, velocity }: any) => {
     const swipeDistance = offset.x;
     const swipeVelocity = velocity.x;
 
-    const currentIndex = topTabs.findIndex(t => t.id === activeTopTab);
+    const currentIndex = TOP_TABS.findIndex(t => t.id === activeTopTab);
 
     if (swipeDistance < -50 || swipeVelocity < -500) {
       // Swipe left -> next tab
-      if (currentIndex < topTabs.length - 1) {
+      if (currentIndex < TOP_TABS.length - 1) {
         setDirection(1);
-        setActiveTopTab(topTabs[currentIndex + 1].id);
+        setActiveTopTab(TOP_TABS[currentIndex + 1].id);
       }
     } else if (swipeDistance > 50 || swipeVelocity > 500) {
       // Swipe right -> prev tab
       if (currentIndex > 0) {
         setDirection(-1);
-        setActiveTopTab(topTabs[currentIndex - 1].id);
+        setActiveTopTab(TOP_TABS[currentIndex - 1].id);
       }
     }
-  };
+  }, [activeTopTab]);
 
   const tabVariants = {
     enter: (direction: number) => ({
@@ -95,24 +104,16 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
     }),
   };
 
-  const bottomTabs = [
-    { id: 'home', label: 'Home', icon: Home },
-    { id: 'bible', label: 'Bible', icon: BookOpen },
-    { id: 'chat', label: 'Chat', icon: MessageCircle },
-    { id: 'map', label: 'Map', icon: MapIcon },
-    { id: 'profile', label: 'My Profile', icon: User },
-  ];
-
-  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
     if (fullScreenView.type !== 'none') return;
     const currentScrollY = e.currentTarget.scrollTop;
-    if (currentScrollY > lastScrollY && currentScrollY > 50) {
+    if (currentScrollY > lastScrollYRef.current && currentScrollY > 50) {
       setIsNavVisible(false);
-    } else if (currentScrollY < lastScrollY) {
+    } else if (currentScrollY < lastScrollYRef.current) {
       setIsNavVisible(true);
     }
-    setLastScrollY(currentScrollY);
-  };
+    lastScrollYRef.current = currentScrollY;
+  }, [fullScreenView]);
 
   const renderLoading = () => (
     <div className="flex items-center justify-center h-full w-full min-h-[50vh]">
@@ -158,7 +159,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
             {!isSidebarCollapsed && <span className="text-xl font-bold text-gray-900 truncate">Harvest</span>}
           </div>
 
-          {bottomTabs.map((tab) => {
+          {BOTTOM_TABS.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeBottomTab === tab.id;
             return (
@@ -206,7 +207,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
         {activeBottomTab === 'home' && (
           <div className="bg-white pt-3 pb-0 px-4 shadow-sm z-10 flex-shrink-0 transition-colors duration-300">
             <div ref={topTabsRef} className="flex overflow-x-auto gap-6 pb-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] snap-x scroll-smooth lg:max-w-5xl lg:mx-auto w-full">
-              {topTabs.map((tab) => (
+              {TOP_TABS.map((tab) => (
                 <button
                   key={tab.id}
                   data-tab-id={tab.id}
@@ -226,6 +227,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
         )}
 
         {/* Main Content Area */}
+        <ErrorBoundary>
         <div className={`flex-1 overflow-x-hidden relative ${activeBottomTab === 'map' ? '' : activeBottomTab === 'chat' ? 'overflow-y-auto pb-[65px] lg:pb-0' : 'overflow-y-auto pb-24 lg:pb-0'}`} onScroll={handleScroll}>
           {activeBottomTab === 'home' ? (
             <div className="relative w-full h-full lg:max-w-5xl lg:mx-auto">
@@ -243,7 +245,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
                   }}
                   drag="x"
                   dragConstraints={{ left: 0, right: 0 }}
-                  dragElastic={{ left: activeTopTab === topTabs[topTabs.length - 1].id ? 0 : 1, right: activeTopTab === topTabs[0].id ? 0 : 1 }}
+                  dragElastic={{ left: activeTopTab === TOP_TABS[TOP_TABS.length - 1].id ? 0 : 1, right: activeTopTab === TOP_TABS[0].id ? 0 : 1 }}
                   onDragEnd={handleDragEnd}
                   className="absolute w-full h-full p-4 space-y-6"
                 >
@@ -265,7 +267,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
                   )}
                   {activeTopTab !== 'news' && activeTopTab !== 'partner' && activeTopTab !== 'blog' && activeTopTab !== 'courses' && (
                     <div className="flex flex-col items-center justify-center h-64 text-gray-400">
-                      <p>{topTabs.find(t => t.id === activeTopTab)?.label} content coming soon.</p>
+                      <p>{TOP_TABS.find(t => t.id === activeTopTab)?.label} content coming soon.</p>
                     </div>
                   )}
                 </motion.div>
@@ -297,10 +299,11 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
              </div>
           ) : (
             <div className="flex flex-col items-center justify-center h-full text-gray-400 lg:max-w-5xl lg:mx-auto">
-              <p>{bottomTabs.find(t => t.id === activeBottomTab)?.label} section coming soon.</p>
+              <p>{BOTTOM_TABS.find(t => t.id === activeBottomTab)?.label} section coming soon.</p>
             </div>
           )}
         </div>
+        </ErrorBoundary>
       </div>
     </div>
   );

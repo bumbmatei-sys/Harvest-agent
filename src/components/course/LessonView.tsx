@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { sanitizeHtml } from "../../utils/sanitize";
 import ReactPlayer from "react-player";
 import { ArrowLeft, Clock, User, List, ChevronUp, ChevronDown, BookOpen, CheckCircle, ArrowRight, X } from "lucide-react";
 import { Course, Lesson, Author, Level, Section } from "../../types/course.types";
@@ -190,7 +191,7 @@ export function LessonView({ course, lesson, authors, onBack, onComplete, comple
             </div>
             <div style={{ fontSize: 15, color: TEXT2, lineHeight: 1.7 }}>
               {lesson.sources ? (
-                <div dangerouslySetInnerHTML={{ __html: lesson.sources }} />
+                <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(lesson.sources) }} />
               ) : (
                 <p>No sources provided for this lesson.</p>
               )}

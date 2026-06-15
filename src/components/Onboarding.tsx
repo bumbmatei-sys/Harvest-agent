@@ -4,57 +4,8 @@ import Image from 'next/image';
 import { auth, db } from '../firebase';
 import { doc, updateDoc, getDoc, setDoc } from 'firebase/firestore';
 import CountrySelect from './CountrySelect';
+import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 
-enum OperationType {
- CREATE = 'create',
- UPDATE = 'update',
- DELETE = 'delete',
- LIST = 'list',
- GET = 'get',
- WRITE = 'write',
-}
-
-interface FirestoreErrorInfo {
- error: string;
- operationType: OperationType;
- path: string | null;
- authInfo: {
- userId: string | undefined;
- email: string | null | undefined;
- emailVerified: boolean | undefined;
- isAnonymous: boolean | undefined;
- tenantId: string | null | undefined;
- providerInfo: {
- providerId: string;
- displayName: string | null;
- email: string | null;
- photoUrl: string | null;
- }[];
- }
-}
-
-function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
- const errInfo: FirestoreErrorInfo = {
- error: error instanceof Error ? error.message : String(error),
- authInfo: {
- userId: auth.currentUser?.uid,
- email: auth.currentUser?.email,
- emailVerified: auth.currentUser?.emailVerified,
- isAnonymous: auth.currentUser?.isAnonymous,
- tenantId: auth.currentUser?.tenantId,
- providerInfo: auth.currentUser?.providerData.map(provider => ({
- providerId: provider.providerId,
- displayName: provider.displayName,
- email: provider.email,
- photoUrl: provider.photoURL
- })) || []
- },
- operationType,
- path
- }
- console.error('Firestore Error: ', JSON.stringify(errInfo));
- throw new Error(JSON.stringify(errInfo));
-}
 
 interface OnboardingProps {
  onComplete: () => void;
@@ -170,7 +121,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
         onboardingCompleted: true
  }, { merge: true });
  } catch (err) {
- handleFirestoreError(err, OperationType.UPDATE, `users/${user.uid}`);
+ try { handleFirestoreError(err, OperationType.UPDATE, `users/${user.uid}`); } catch (e) { console.error(e); }
  return;
  }
 

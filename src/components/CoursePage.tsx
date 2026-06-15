@@ -8,52 +8,8 @@ import { CourseLibrary } from "../components/course/CourseLibrary";
 import { CourseOverview } from "../components/course/CourseOverview";
 import { LessonView } from "../components/course/LessonView";
 import { AuthorProfile } from "../components/course/AuthorProfile";
+import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 
-enum OperationType {
-  CREATE = 'create',
-  UPDATE = 'update',
-  DELETE = 'delete',
-  LIST = 'list',
-  GET = 'get',
-  WRITE = 'write',
-}
-
-interface FirestoreErrorInfo {
-  error: string;
-  operationType: OperationType;
-  path: string | null;
-  authInfo: {
-    userId?: string;
-    email?: string | null;
-    emailVerified?: boolean;
-    isAnonymous?: boolean;
-    tenantId?: string | null;
-    providerInfo?: any[];
-  }
-}
-
-function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
-  const errInfo: FirestoreErrorInfo = {
-    error: error instanceof Error ? error.message : String(error),
-    authInfo: {
-      userId: auth.currentUser?.uid,
-      email: auth.currentUser?.email,
-      emailVerified: auth.currentUser?.emailVerified,
-      isAnonymous: auth.currentUser?.isAnonymous,
-      tenantId: auth.currentUser?.tenantId,
-      providerInfo: auth.currentUser?.providerData.map(provider => ({
-        providerId: provider.providerId,
-        displayName: provider.displayName,
-        email: provider.email,
-        photoUrl: provider.photoURL
-      })) || []
-    },
-    operationType,
-    path
-  };
-  console.error('Firestore Error: ', JSON.stringify(errInfo));
-  throw new Error(JSON.stringify(errInfo));
-}
 
 export default function CoursePage({ 
   onOpenCourse, 
@@ -88,7 +44,7 @@ export default function CoursePage({
           }
         }
       } catch (error) {
-        handleFirestoreError(error, OperationType.GET, `users/${auth.currentUser?.uid}`);
+        try { handleFirestoreError(error, OperationType.GET, `users/${auth.currentUser?.uid}`); } catch (e) { console.error(e); }
       }
     };
     fetchUserData();
@@ -109,7 +65,7 @@ export default function CoursePage({
         }
       });
     } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, `users/${auth.currentUser?.uid}`);
+      try { handleFirestoreError(error, OperationType.UPDATE, `users/${auth.currentUser?.uid}`); } catch (e) { console.error(e); }
     }
   };
 
@@ -128,7 +84,7 @@ export default function CoursePage({
         });
         setAuthors(fetchedAuthors);
       } catch (error) {
-        handleFirestoreError(error, OperationType.GET, "authors");
+        try { handleFirestoreError(error, OperationType.GET, "authors"); } catch (e) { console.error(e); }
       }
 
       try {
@@ -139,7 +95,7 @@ export default function CoursePage({
         });
         setCategories(fetchedCats);
       } catch (error) {
-        handleFirestoreError(error, OperationType.GET, "categories");
+        try { handleFirestoreError(error, OperationType.GET, "categories"); } catch (e) { console.error(e); }
       }
 
       try {
@@ -162,7 +118,7 @@ export default function CoursePage({
           }
         }
       } catch (error) {
-        handleFirestoreError(error, OperationType.GET, "courses");
+        try { handleFirestoreError(error, OperationType.GET, "courses"); } catch (e) { console.error(e); }
       } finally {
         setLoading(false);
       }
@@ -208,7 +164,7 @@ export default function CoursePage({
           completedLessons: Array.from(newCompleted)
         });
       } catch (error) {
-        handleFirestoreError(error, OperationType.UPDATE, `users/${auth.currentUser?.uid}`);
+        try { handleFirestoreError(error, OperationType.UPDATE, `users/${auth.currentUser?.uid}`); } catch (e) { console.error(e); }
       }
     }
   };

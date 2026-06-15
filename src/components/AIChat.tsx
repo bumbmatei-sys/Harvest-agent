@@ -3,7 +3,6 @@ import Image from "next/image";
 import ReactMarkdown from 'react-markdown';
 import { db, auth } from '../firebase';
 import { collection, addDoc, serverTimestamp, query, where, getDocs, deleteDoc, onSnapshot } from 'firebase/firestore';
-import { GoogleGenAI } from "@google/genai";
 
 
 enum OperationType {
@@ -52,7 +51,7 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
   throw new Error(JSON.stringify(errInfo));
 }
 
-const ai = new GoogleGenAI({ apiKey: process.env.NEXT_PUBLIC_GEMINI_API_KEY });
+// Gemini API calls are proxied through /api/gemini to keep the API key server-side
 
 // ─────────────────────────────────────────────
 // HARVEST — AI Chat Interface (TypeScript)
@@ -308,36 +307,39 @@ export default function AIChat({ onBack }: { onBack?: () => void }) {
  };
 
  const searchVectorDB = async (queryText: string) => {
- try {
- // 1. Embed the query
- const result = await ai.models.embedContent({
- model: 'gemini-embedding-2-preview',
- contents: [queryText],
- });
- 
- const queryVector = result.embeddings?.[0]?.values;
- if (!queryVector) return [];
+   try {
+     // 1. Embed the query via API route
+     const res = await fetch('/api/gemini', {
+       method: 'POST',
+       headers: { 'Content-Type': 'application/json' },
+       body: JSON.stringify({ action: 'embed', text: queryText }),
+     });
+     const embedData = await res.json();
+     if (!res.ok) throw new Error(embedData.error || 'Embed request failed');
 
- // 2. Fetch all chunks (for a small knowledge base this is fine)
- // For larger DBs, we'd need a proper vector search extension or backend
- const chunksSnap = await getDocs(collection(db, "rag_chunks"));
- 
- const scoredChunks = chunksSnap.docs.map(doc => {
- const data = doc.data() as { title: string; chunk: string; vector: number[] };
- const similarity = cosineSimilarity(queryVector, data.vector || []);
- return {
- ...data,
- similarity
- };
- });
+     const queryVector = embedData.vector;
+     if (!queryVector) return [];
 
- // 3. Sort by similarity and take top 5
- scoredChunks.sort((a, b) => b.similarity - a.similarity);
- return scoredChunks.slice(0, 5).filter(c => c.similarity > 0.5); // Only return relevant chunks
- } catch (error) {
- handleFirestoreError(error, OperationType.GET, `rag_chunks`);
- return [];
- }
+     // 2. Fetch all chunks (for a small knowledge base this is fine)
+     // For larger DBs, we'd need a proper vector search extension or backend
+     const chunksSnap = await getDocs(collection(db, "rag_chunks"));
+      
+     const scoredChunks = chunksSnap.docs.map(doc => {
+       const data = doc.data() as { title: string; chunk: string; vector: number[] };
+       const similarity = cosineSimilarity(queryVector, data.vector || []);
+       return {
+         ...data,
+         similarity
+       };
+     });
+
+     // 3. Sort by similarity and take top 5
+     scoredChunks.sort((a, b) => b.similarity - a.similarity);
+     return scoredChunks.slice(0, 5).filter(c => c.similarity > 0.5); // Only return relevant chunks
+   } catch (error) {
+     handleFirestoreError(error, OperationType.GET, `rag_chunks`);
+     return [];
+   }
  };
 
  const sendMessage = async (text: string): Promise<void> => {
@@ -366,20 +368,24 @@ You answer questions about Scripture, theology, prayer, and the church's specifi
 Answer ONLY using the provided context if it is relevant. If the context doesn't contain the answer, you can use your general knowledge but keep it biblically sound and encouraging.
 If the user asks something completely unrelated to faith, politely guide them back to spiritual topics.`;
 
- // 3. Call Gemini API
+ // 3. Call Gemini API via server-side route
  const chatHistory = messages.map(m => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.text}`).join('\n');
- 
+    
  const prompt = `${contextStr}\n\nChat History:\n${chatHistory}\n\nUser: ${text}`;
 
- const response = await ai.models.generateContent({
- model: "gemini-3.1-flash-lite-preview",
- contents: prompt,
- config: {
- systemInstruction,
- }
+ const response = await fetch('/api/gemini', {
+   method: 'POST',
+   headers: { 'Content-Type': 'application/json' },
+   body: JSON.stringify({
+     action: 'generate',
+     prompt,
+     systemInstruction,
+   }),
  });
+ const genData = await response.json();
+ if (!response.ok) throw new Error(genData.error || 'Generate request failed');
 
- const aiText = response.text || "I'm sorry, I couldn't generate a response.";
+ const aiText = genData.text || "I'm sorry, I couldn't generate a response.";
  
  const aiMsg: Message = { id: uid(), role: "ai", text: aiText, time: now() };
  const finalMessages = [...newMessages, aiMsg];

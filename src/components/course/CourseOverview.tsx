@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { sanitizeHtml } from "../../utils/sanitize";
 import Image from "next/image";
 import { ArrowLeft } from "lucide-react";
 import { Course, Author, Lesson } from "../../types/course.types";
@@ -106,7 +107,7 @@ export function CourseOverview({ course, authors, onBack, onStartLesson, complet
               </div>
             )}
             
-            <div style={{ fontSize: 15, color: TEXT2, lineHeight: 1.75 }} dangerouslySetInnerHTML={{ __html: course.description }} />
+            <div style={{ fontSize: 15, color: TEXT2, lineHeight: 1.75 }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(course.description) }} />
           </div>
         )}
 

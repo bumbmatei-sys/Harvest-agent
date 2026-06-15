@@ -5,53 +5,9 @@ import { collection, addDoc, doc, updateDoc, getDocs, deleteDoc, setDoc } from "
 import { db, auth } from "../firebase";
 import { ImageUpload } from './ImageUpload';
 import RichTextEditor from './RichTextEditor';
+import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 
 
-enum OperationType {
-  CREATE = 'create',
-  UPDATE = 'update',
-  DELETE = 'delete',
-  LIST = 'list',
-  GET = 'get',
-  WRITE = 'write',
-}
-
-interface FirestoreErrorInfo {
-  error: string;
-  operationType: OperationType;
-  path: string | null;
-  authInfo: {
-    userId?: string;
-    email?: string | null;
-    emailVerified?: boolean;
-    isAnonymous?: boolean;
-    tenantId?: string | null;
-    providerInfo?: any[];
-  }
-}
-
-function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
-  const errInfo: FirestoreErrorInfo = {
-    error: error instanceof Error ? error.message : String(error),
-    authInfo: {
-      userId: auth?.currentUser?.uid,
-      email: auth?.currentUser?.email,
-      emailVerified: auth?.currentUser?.emailVerified,
-      isAnonymous: auth?.currentUser?.isAnonymous,
-      tenantId: auth?.currentUser?.tenantId,
-      providerInfo: auth?.currentUser?.providerData.map(provider => ({
-        providerId: provider.providerId,
-        displayName: provider.displayName,
-        email: provider.email,
-        photoUrl: provider.photoURL
-      })) || []
-    },
-    operationType,
-    path
-  };
-  console.error('Firestore Error: ', JSON.stringify(errInfo));
-  throw new Error(JSON.stringify(errInfo));
-}
 
 // ─────────────────────────────────────────────
 // HARVEST — Admin Course Builder v2 (TypeScript)
@@ -155,7 +111,7 @@ export interface Course {
 // ═══════════════════════════════════════════════
 // FACTORY FUNCTIONS
 // ═══════════════════════════════════════════════
-const uid = (): string => Math.random().toString(36).slice(2, 9);
+const uid = (): string => crypto.randomUUID().slice(0, 7);
 const emptyLink = (platform = ""): AuthorLink => ({ id: uid(), platform, url: "" });
 const emptyAuthor = (): Author => ({ id: uid(), name: "", title: "", picture: "", bio: "", links: [emptyLink("Website")] });
 const emptyOutlineItem = (): OutlineItem => ({ id: uid(), title: "", text: "" });
@@ -613,7 +569,7 @@ export default function CourseBuilder({ course: initialCourse, onClose }: Course
  });
  setCategories(fetchedCats);
  } catch (error) {
- handleFirestoreError(error, OperationType.GET, `courses`);
+ try { handleFirestoreError(error, OperationType.GET, `courses`); } catch (e) { console.error(e); }
  }
  };
  fetchData();
@@ -635,7 +591,7 @@ export default function CourseBuilder({ course: initialCourse, onClose }: Course
  await deleteDoc(doc(db, "categories", cat));
  }
  } catch (e) {
- handleFirestoreError(e, OperationType.WRITE, `categories`);
+ try { handleFirestoreError(e, OperationType.WRITE, `categories`); } catch (e) { console.error(e); }
  }
  };
  const dragOverLevel = useRef<number | null>(null);
@@ -648,7 +604,7 @@ export default function CourseBuilder({ course: initialCourse, onClose }: Course
  try {
  await setDoc(doc(db, "authors", newAuthor.id), newAuthor);
  } catch (e) {
- handleFirestoreError(e, OperationType.WRITE, `authors`);
+ try { handleFirestoreError(e, OperationType.WRITE, `authors`); } catch (e) { console.error(e); }
  }
  };
 
@@ -657,7 +613,7 @@ export default function CourseBuilder({ course: initialCourse, onClose }: Course
  try {
  await setDoc(doc(db, "authors", a.id), a);
  } catch (e) {
- handleFirestoreError(e, OperationType.UPDATE, `authors`);
+ try { handleFirestoreError(e, OperationType.UPDATE, `authors`); } catch (e) { console.error(e); }
  }
  };
 
@@ -668,7 +624,7 @@ export default function CourseBuilder({ course: initialCourse, onClose }: Course
  try {
  await deleteDoc(doc(db, "authors", removed));
  } catch (e) {
- handleFirestoreError(e, OperationType.DELETE, `authors`);
+ try { handleFirestoreError(e, OperationType.DELETE, `authors`); } catch (e) { console.error(e); }
  }
  };
 
@@ -705,7 +661,7 @@ export default function CourseBuilder({ course: initialCourse, onClose }: Course
  setSaved(true);
  setTimeout(() => setSaved(false), 2500);
  } catch (e) {
- handleFirestoreError(e, OperationType.WRITE, `courses`);
+ try { handleFirestoreError(e, OperationType.WRITE, `courses`); } catch (e) { console.error(e); }
  alert("Error saving course. Please try again.");
  } finally {
  setSaving(false);

@@ -1,4 +1,5 @@
 import React from "react";
+import { sanitizeHtml } from "../../utils/sanitize";
 import Image from "next/image";
 import { ArrowLeft, User, Globe, Camera, Twitter, Mic, Youtube, ArrowRight } from "lucide-react";
 import { Author } from "../../types/course.types";
@@ -38,7 +39,7 @@ export function AuthorProfile({ author, onBack }: AuthorProfileViewProps) {
             <div style={{ padding: "16px 20px", borderBottom: `1px solid ${BORDER}`, fontSize: 12, fontWeight: 800, color: TEXT2, letterSpacing: "0.05em", textTransform: "uppercase" }}>
               About
             </div>
-            <div style={{ padding: "20px", fontSize: 15, color: TEXT2, lineHeight: 1.6 }} dangerouslySetInnerHTML={{ __html: author.bio }} />
+            <div style={{ padding: "20px", fontSize: 15, color: TEXT2, lineHeight: 1.6 }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(author.bio) }} />
           </div>
         )}
 

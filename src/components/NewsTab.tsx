@@ -4,53 +4,9 @@ import Image from 'next/image';
 import { collection, query, orderBy, onSnapshot, doc, updateDoc, arrayUnion, arrayRemove, limit, where, getDoc } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { Calendar as CalendarIcon, ThumbsUp, Check, ChevronRight, FileText, Tag, Calendar } from 'lucide-react';
+import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 
 
-enum OperationType {
-  CREATE = 'create',
-  UPDATE = 'update',
-  DELETE = 'delete',
-  LIST = 'list',
-  GET = 'get',
-  WRITE = 'write',
-}
-
-interface FirestoreErrorInfo {
-  error: string;
-  operationType: OperationType;
-  path: string | null;
-  authInfo: {
-    userId?: string;
-    email?: string | null;
-    emailVerified?: boolean;
-    isAnonymous?: boolean;
-    tenantId?: string | null;
-    providerInfo?: any[];
-  }
-}
-
-function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
-  const errInfo: FirestoreErrorInfo = {
-    error: error instanceof Error ? error.message : String(error),
-    authInfo: {
-      userId: auth?.currentUser?.uid,
-      email: auth?.currentUser?.email,
-      emailVerified: auth?.currentUser?.emailVerified,
-      isAnonymous: auth?.currentUser?.isAnonymous,
-      tenantId: auth?.currentUser?.tenantId,
-      providerInfo: auth?.currentUser?.providerData.map(provider => ({
-        providerId: provider.providerId,
-        displayName: provider.displayName,
-        email: provider.email,
-        photoUrl: provider.photoURL
-      })) || []
-    },
-    operationType,
-    path
-  };
-  console.error('Firestore Error: ', JSON.stringify(errInfo));
-  throw new Error(JSON.stringify(errInfo));
-}
 
 interface PollOption {
  id: string;
@@ -136,7 +92,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle }) => {
 
   useEffect(() => {
  // Fetch all posts to ensure pinned posts are included, then slice
- const q = query(collection(db, 'community_posts'), orderBy('createdAt', 'desc'));
+ const q = query(collection(db, 'community_posts'), orderBy('createdAt', 'desc'), limit(50));
  
  const unsubscribe = onSnapshot(q, (snapshot) => {
  const postsData = snapshot.docs.map(doc => ({
@@ -155,8 +111,9 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle }) => {
  });
 
  const articlesQuery = query(
- collection(db, 'blog_posts'),
- where('status', '==', 'published')
+   collection(db, 'blog_posts'),
+   where('status', '==', 'published'),
+   limit(50)
  );
 
  const unsubscribeArticles = onSnapshot(articlesQuery, (snapshot) => {
@@ -205,7 +162,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle }) => {
         });
       }
     } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, `community_posts/${postId}`);
+      try { handleFirestoreError(error, OperationType.UPDATE, `community_posts/${postId}`); } catch (e) { console.error(e); }
     }
  };
 
@@ -233,7 +190,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle }) => {
         pollOptions: updatedOptions
       });
     } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, `community_posts/${postId}`);
+      try { handleFirestoreError(error, OperationType.UPDATE, `community_posts/${postId}`); } catch (e) { console.error(e); }
     }
  };
 
@@ -261,7 +218,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle }) => {
  try {
       await updateDoc(postRef, updates);
     } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, `community_posts/${postId}`);
+      try { handleFirestoreError(error, OperationType.UPDATE, `community_posts/${postId}`); } catch (e) { console.error(e); }
     }
  } else {
  setAttendingPostId(postId);

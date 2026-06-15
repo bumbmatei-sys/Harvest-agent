@@ -90,11 +90,9 @@ export default function PWAInstallManager() {
   // For Android: needs the deferredPrompt to be ready, plus showPrompt true.
   const isReadyToShow = showPrompt && (platform === 'ios' || platform === 'android');
 
-  if (!isReadyToShow) return null;
-
   return (
     <AnimatePresence>
-      <motion.div 
+      {isReadyToShow && <motion.div 
         initial={{ y: 100, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         exit={{ y: 100, opacity: 0 }}
@@ -172,7 +170,7 @@ export default function PWAInstallManager() {
             )}
           </div>
         </div>
-      </motion.div>
+      </motion.div>}
     </AnimatePresence>
   );
 }
