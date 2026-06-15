@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { auth, db } from '../firebase';
 import { signInWithPopup, GoogleAuthProvider, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVerification,  } from 'firebase/auth';
@@ -12,17 +12,27 @@ interface AuthPageProps {
 }
 
 const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
- const [isLogin, setIsLogin] = useState(true);
- const [showEmailForm, setShowEmailForm] = useState(false);
- const [email, setEmail] = useState('');
- const [password, setPassword] = useState('');
- const [confirmPassword, setConfirmPassword] = useState('');
- const [newsletter, setNewsletter] = useState(true);
- 
- const [legalModalContent, setLegalModalContent] = useState<'terms' | 'privacy' | null>(null);
- const [error, setError] = useState('');
- const [success, setSuccess] = useState('');
- const [loading, setLoading] = useState(false);
+  const [isLogin, setIsLogin] = useState(true);
+  const [showEmailForm, setShowEmailForm] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [newsletter, setNewsletter] = useState(true);
+  const [tenantId, setTenantId] = useState<string | null>(null);
+  
+  const [legalModalContent, setLegalModalContent] = useState<'terms' | 'privacy' | null>(null);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    // Read tenantId from cookie (set by middleware)
+    const cookies = document.cookie.split(';');
+    const tenantCookie = cookies.find(c => c.trim().startsWith('tenantId='));
+    if (tenantCookie) {
+      setTenantId(tenantCookie.split('=')[1].trim());
+    }
+  }, []);
 
  const handleGoogleSignIn = async () => {
  try {
@@ -51,7 +61,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
    email: result.user.email,
    createdAt: new Date().toISOString(),
    role: 'user',
-   tenantId: null,
+   tenantId: tenantId || null,
    newsletter: newsletter,
    termsAccepted: true
  };
@@ -138,7 +148,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
    displayName: email.split('@')[0],
    createdAt: new Date().toISOString(),
    role: 'user',
-   tenantId: null,
+   tenantId: tenantId || null,
    newsletter: newsletter,
    termsAccepted: true
  });

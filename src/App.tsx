@@ -33,7 +33,12 @@ const App: React.FC = () => {
    if (userDoc.exists() && userDoc.data().onboardingCompleted) {
      setNeedsOnboarding(false);
      // Fetch tenant plan if user belongs to a tenant
-     const userTenantId = userDoc.data().tenantId;
+     // Check user doc first, then cookie (set by middleware from subdomain)
+     const userTenantId = userDoc.data().tenantId || (() => {
+       const cookies = document.cookie.split(';');
+       const tc = cookies.find(c => c.trim().startsWith('tenantId='));
+       return tc ? tc.split('=')[1].trim() : null;
+     })();
      if (userTenantId) {
        try {
          const tenantDoc = await getDoc(doc(db, 'tenants', userTenantId));
