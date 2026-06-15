@@ -36,8 +36,8 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     blog: true,
     aiChat: true,
     aiKnowledge: true,
-    map: true,
-    maxChurches: -1,
+    map: false,
+    maxChurches: 1,
     customDomain: true,
   },
   enterprise: {
