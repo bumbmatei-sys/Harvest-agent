@@ -20,17 +20,20 @@ const PLAN_NAMES: Record<TenantPlan, string> = {
 };
 
 const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ onComplete }) => {
-  // Read plan from URL (?plan=pro) — skip plan selection if present
   const urlPlan = typeof window !== 'undefined'
     ? new URLSearchParams(window.location.search).get('plan') as TenantPlan | null
     : null;
-  const validUrlPlan = urlPlan && ['plus', 'pro', 'ultra', 'enterprise'].includes(urlPlan) ? urlPlan : null;
+  const selectedPlan = urlPlan && ['plus', 'pro', 'ultra', 'enterprise'].includes(urlPlan) ? urlPlan : 'plus';
 
-  // If plan comes from URL, skip step 0 (plan selection). Steps: 0=info, 1=branding, 2=done
-  const [step, setStep] = useState(validUrlPlan ? 0 : 1);
-  const [selectedPlan, setSelectedPlan] = useState<TenantPlan | null>(validUrlPlan);
+  const hasBranding = selectedPlan === 'ultra' || selectedPlan === 'enterprise';
+  const hasCustomDomain = selectedPlan === 'ultra' || selectedPlan === 'enterprise';
+
+  // Steps: 0 = Ministry Info, 1 = Branding (Ultra/Enterprise only), 2 = Done
+  // For Plus/Pro: 0 = Ministry Info, 1 = Done (skip branding)
+  const [step, setStep] = useState(0);
   const [ministryName, setMinistryName] = useState('');
   const [subdomain, setSubdomain] = useState('');
+  const [customDomain, setCustomDomain] = useState('');
   const [description, setDescription] = useState('');
   const [logo, setLogo] = useState('');
   const [primaryColor, setPrimaryColor] = useState('#D4AF37');
@@ -38,15 +41,11 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ onComplete }) => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
-  // Step labels: if plan is pre-selected, skip "Plan" step
-  const hasPlan = !!validUrlPlan;
-  const progressSteps = hasPlan ? ['Ministry', 'Branding', 'Done'] : ['Plan', 'Ministry', 'Branding', 'Done'];
-  // Step offsets: if plan pre-selected, step 0 = info (was step 1), step 1 = branding (was step 2), step 2 = done (was step 3)
-  const stepOffset = hasPlan ? 1 : 0;
+  const progressSteps = hasBranding ? ['Ministry', 'Branding', 'Done'] : ['Ministry', 'Done'];
 
   // Auto-generate subdomain from ministry name
   useEffect(() => {
-    if (ministryName && step === (hasPlan ? 0 : 1)) {
+    if (ministryName && step === 0) {
       const generated = ministryName
         .toLowerCase()
         .replace(/[^a-z0-9\s-]/g, '')
@@ -56,7 +55,7 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ onComplete }) => {
         .slice(0, 30);
       setSubdomain(generated);
     }
-  }, [ministryName, step, hasPlan]);
+  }, [ministryName, step]);
 
   // Check subdomain availability with debounce
   useEffect(() => {
@@ -76,10 +75,9 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ onComplete }) => {
     return () => clearTimeout(timer);
   }, [subdomain]);
 
-  // Validation
-  const isInfoStep = hasPlan ? step === 0 : step === 1;
-  const isBrandingStep = hasPlan ? step === 1 : step === 2;
-  const isDoneStep = hasPlan ? step === 2 : step === 3;
+  const isInfoStep = step === 0;
+  const isBrandingStep = hasBranding && step === 1;
+  const isDoneStep = hasBranding ? step === 2 : step === 1;
 
   const canProceedInfo = ministryName.trim().length >= 2 && subdomain.length >= 3 && subdomainStatus === 'available';
 
@@ -93,11 +91,6 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ onComplete }) => {
         return;
       }
     }
-    // If plan selection step and no plan selected
-    if (!hasPlan && step === 0 && !selectedPlan) {
-      setError('Please select a plan.');
-      return;
-    }
     setError('');
     setStep(step + 1);
   };
@@ -110,7 +103,6 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ onComplete }) => {
   const handleFinish = async () => {
     const user = auth.currentUser;
     if (!user) { setError('You must be logged in.'); return; }
-    if (!selectedPlan) { setError('Please select a plan.'); return; }
 
     setSaving(true);
     setError('');
@@ -125,6 +117,7 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ onComplete }) => {
           description: description.trim() || undefined,
           logo: logo || undefined,
           primaryColor: primaryColor || undefined,
+          customDomain: customDomain.trim() || undefined,
         },
       });
 
@@ -149,7 +142,7 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ onComplete }) => {
         });
       }
 
-      setStep(hasPlan ? 2 : 3); // done
+      setStep(hasBranding ? 2 : 1);
     } catch (err: any) {
       console.error('Church onboarding failed:', err);
       setError(err.message || 'Failed to set up your ministry. Please try again.');
@@ -158,9 +151,17 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ onComplete }) => {
     }
   };
 
+  const s = {
+    label: { display: 'block', fontSize: '14px', fontWeight: 700, color: '#ffffff', marginBottom: '6px' } as React.CSSProperties,
+    sublabel: { color: 'rgba(255,255,255,0.5)', fontWeight: 400 } as React.CSSProperties,
+    helper: { fontSize: '12px', color: 'rgba(255,255,255,0.7)', marginTop: '4px' } as React.CSSProperties,
+    desc: { fontSize: '14px', color: 'rgba(255,255,255,0.8)', marginTop: '8px' } as React.CSSProperties,
+    tip: { fontSize: '12px', color: 'rgba(255,255,255,0.7)' } as React.CSSProperties,
+    tipBold: { color: '#ffffff', fontWeight: 700 } as React.CSSProperties,
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-background-dark px-4 py-8 relative overflow-hidden">
-      {/* Background */}
       <div className="absolute inset-0 z-0">
         <Image
           src="https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/No_people_just_2k_202512231746.jpeg"
@@ -173,20 +174,21 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ onComplete }) => {
         <div className="absolute inset-0 bg-gradient-to-b from-background-dark/80 via-background-dark/60 to-background-dark/95 mix-blend-multiply" />
         <div className="absolute inset-0 bg-black/40" />
       </div>
-
-      {/* Ambient glow */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80vw] h-[80vw] bg-primary/10 blur-[150px] rounded-full pointer-events-none mix-blend-overlay z-0" />
 
       <div className="max-w-2xl w-full z-10 relative">
-        {/* Selected plan badge (when plan comes from URL) */}
-        {hasPlan && selectedPlan && (
-          <div className="text-center mb-4">
-            <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/20 border border-primary/30 text-sm font-bold text-primary">
-              <Sparkles size={14} />
-              {PLAN_NAMES[selectedPlan]} Plan Selected
-            </span>
-          </div>
-        )}
+        {/* Plan badge */}
+        <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: '8px',
+            padding: '6px 16px', borderRadius: '9999px',
+            background: 'rgba(212,175,55,0.15)', border: '1px solid rgba(212,175,55,0.3)',
+            fontSize: '14px', fontWeight: 700, color: '#D4AF37',
+          }}>
+            <Sparkles size={14} />
+            {PLAN_NAMES[selectedPlan]} Plan
+          </span>
+        </div>
 
         {/* Progress bar */}
         <div className="flex items-center justify-center gap-2 mb-8">
@@ -205,9 +207,7 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ onComplete }) => {
                 }`}>{label}</span>
               </div>
               {i < progressSteps.length - 1 && (
-                <div className={`w-8 h-0.5 rounded ${
-                  i < step ? 'bg-primary' : 'bg-white/10'
-                }`} />
+                <div className={`w-8 h-0.5 rounded ${i < step ? 'bg-primary' : 'bg-white/10'}`} />
               )}
             </React.Fragment>
           ))}
@@ -223,74 +223,18 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ onComplete }) => {
               </div>
             )}
 
-            {/* Plan Selection (only when no plan from URL) */}
-            {!hasPlan && step === 0 && (
-              <div className="animate-fade-in-up">
-                <div className="text-center mb-8">
-                  <Sparkles className="mx-auto text-primary mb-3" size={32} />
-                  <h1 className="text-3xl font-black text-white">Choose Your Plan</h1>
-                  <p className="text-white/70 text-sm mt-2">Select the plan that fits your ministry. You can upgrade anytime.</p>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {(['plus', 'pro', 'ultra', 'enterprise'] as TenantPlan[]).map((planId) => {
-                    const info = {
-                      plus: { price: '$100/mo', desc: 'Perfect for getting started', features: ['1 church', '2 admin accounts', '5 courses'], popular: false },
-                      pro: { price: '$250/mo', desc: 'Most popular for growing ministries', features: ['5 admin accounts', 'Unlimited courses', 'Blog + AI Chat'], popular: true },
-                      ultra: { price: '$500/mo', desc: 'Full branding & custom domain', features: ['Unlimited admins', 'Custom domain', 'Full rebranding'], popular: false },
-                      enterprise: { price: 'Custom', desc: 'Multi-campus & dedicated support', features: ['Unlimited churches', 'Church map', 'Dedicated support'], popular: false },
-                    }[planId];
-                    return (
-                      <button
-                        key={planId}
-                        onClick={() => setSelectedPlan(planId)}
-                        className={`relative text-left p-5 rounded-2xl border-2 transition-all ${
-                          selectedPlan === planId
-                            ? 'border-primary bg-primary/10 shadow-lg shadow-primary/20'
-                            : 'border-white/10 bg-white/5 hover:border-white/30'
-                        }`}
-                      >
-                        {info.popular && (
-                          <span className="absolute -top-2.5 left-4 bg-primary text-white text-xs font-bold px-3 py-0.5 rounded-full">Most Popular</span>
-                        )}
-                        <div className="flex items-baseline justify-between mb-2">
-                          <h3 className="text-lg font-bold text-white">{PLAN_NAMES[planId]}</h3>
-                          <span className="text-primary font-bold">{info.price}</span>
-                        </div>
-                        <p className="text-white/60 text-xs mb-3">{info.desc}</p>
-                        <ul className="space-y-1">
-                          {info.features.map((f) => (
-                            <li key={f} className="text-white/80 text-xs flex items-center gap-1.5">
-                              <CheckCircle2 size={12} className="text-primary shrink-0" />
-                              {f}
-                            </li>
-                          ))}
-                        </ul>
-                        {selectedPlan === planId && (
-                          <div className="absolute top-3 right-3">
-                            <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center">
-                              <CheckCircle2 size={14} className="text-white" />
-                            </div>
-                          </div>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Ministry Info */}
+            {/* Step 0: Ministry Info */}
             {isInfoStep && (
               <div className="animate-fade-in-up">
-                <div className="text-center mb-8">
-                  <Church className="mx-auto text-primary mb-3" size={32} />
-                  <h1 className="text-3xl font-black text-white">Your Ministry</h1>
-                  <p className="text-white/70 text-sm mt-2">Tell us about your church or ministry.</p>
+                <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+                  <Church style={{ margin: '0 auto 12px', color: '#D4AF37' }} size={32} />
+                  <h1 style={{ fontSize: '30px', fontWeight: 900, color: '#ffffff', marginBottom: '8px' }}>Your Ministry</h1>
+                  <p style={s.desc}>Tell us about your church or ministry.</p>
                 </div>
 
-                <div className="space-y-5">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                   <div>
-                    <label className="block text-sm font-bold text-white mb-1">Ministry Name</label>
+                    <label style={s.label}>Ministry Name</label>
                     <input
                       type="text"
                       value={ministryName}
@@ -302,14 +246,14 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ onComplete }) => {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-bold text-white mb-1">Your Subdomain</label>
+                    <label style={s.label}>Your Subdomain</label>
                     <div className="flex items-center gap-0">
                       <input
                         type="text"
                         value={subdomain}
                         onChange={(e) => {
                           setSubdomain(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''));
-                          setSubdomainStatus('idle'); // reset status on manual edit
+                          setSubdomainStatus('idle');
                         }}
                         className={`flex-1 px-4 py-3 rounded-l-xl bg-white/5 border text-white placeholder-gray-400 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all font-mono text-sm ${
                           subdomainStatus === 'taken' ? 'border-red-500' :
@@ -318,32 +262,49 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ onComplete }) => {
                         }`}
                         placeholder="gracechurch"
                       />
-                      <span className="px-3 py-3 bg-white/5 border border-l-0 border-white/20 rounded-r-xl text-sm text-white/60">
+                      <span style={{ padding: '12px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.2)', borderLeft: 'none', borderRadius: '0 12px 12px 0', fontSize: '14px', color: 'rgba(255,255,255,0.6)' }}>
                         .theharvest.app
                       </span>
                     </div>
-                    <div className="mt-1.5 h-5">
+                    <div style={{ marginTop: '6px', height: '20px' }}>
                       {subdomainStatus === 'checking' && (
-                        <span className="text-xs text-white/60 flex items-center gap-1">
+                        <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                           <Loader2 size={12} className="animate-spin" /> Checking availability...
                         </span>
                       )}
                       {subdomainStatus === 'available' && (
-                        <span className="text-xs text-green-400 flex items-center gap-1">
+                        <span style={{ fontSize: '12px', color: '#4ade80', display: 'flex', alignItems: 'center', gap: '4px' }}>
                           <CheckCircle2 size={12} /> {subdomain}.theharvest.app is available!
                         </span>
                       )}
                       {subdomainStatus === 'taken' && (
-                        <span className="text-xs text-red-400 flex items-center gap-1">
+                        <span style={{ fontSize: '12px', color: '#f87171', display: 'flex', alignItems: 'center', gap: '4px' }}>
                           <AlertCircle size={12} /> This subdomain is already taken.
                         </span>
                       )}
                     </div>
                   </div>
 
+                  {/* Custom domain — Ultra/Enterprise only */}
+                  {hasCustomDomain && (
+                    <div>
+                      <label style={s.label}>
+                        Custom Domain <span style={s.sublabel}>(optional — can configure later)</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={customDomain}
+                        onChange={(e) => setCustomDomain(e.target.value)}
+                        className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/20 text-white placeholder-gray-400 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
+                        placeholder="yourchurch.com"
+                      />
+                      <p style={s.helper}>Your own domain. We&apos;ll help you configure DNS after setup.</p>
+                    </div>
+                  )}
+
                   <div>
-                    <label className="block text-sm font-bold text-white mb-1">
-                      Description <span className="text-white/50 font-normal">(optional)</span>
+                    <label style={s.label}>
+                      Description <span style={s.sublabel}>(optional)</span>
                     </label>
                     <textarea
                       value={description}
@@ -357,18 +318,18 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ onComplete }) => {
               </div>
             )}
 
-            {/* Branding */}
+            {/* Step 1: Branding (Ultra/Enterprise only) */}
             {isBrandingStep && (
               <div className="animate-fade-in-up">
-                <div className="text-center mb-8">
-                  <Palette className="mx-auto text-primary mb-3" size={32} />
-                  <h1 className="text-3xl font-black text-white">Brand Your Space</h1>
-                  <p className="text-white/70 text-sm mt-2">Customize how your ministry looks. This is optional — you can change it later.</p>
+                <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+                  <Palette style={{ margin: '0 auto 12px', color: '#D4AF37' }} size={32} />
+                  <h1 style={{ fontSize: '30px', fontWeight: 900, color: '#ffffff', marginBottom: '8px' }}>Brand Your Space</h1>
+                  <p style={s.desc}>Customize how your ministry looks. You can change this later.</p>
                 </div>
 
-                <div className="space-y-6">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                   <div>
-                    <label className="block text-sm font-bold text-white mb-2">Ministry Logo</label>
+                    <label style={s.label}>Ministry Logo</label>
                     <ImageUpload
                       value={logo}
                       onChange={setLogo}
@@ -377,27 +338,25 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ onComplete }) => {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-bold text-white mb-2">Brand Color</label>
-                    <div className="flex items-center gap-4">
+                    <label style={s.label}>Brand Color</label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                       <input
                         type="color"
                         value={primaryColor}
                         onChange={(e) => setPrimaryColor(e.target.value)}
-                        className="w-12 h-12 rounded-xl border-2 border-white/20 cursor-pointer bg-transparent"
+                        style={{ width: '48px', height: '48px', borderRadius: '12px', border: '2px solid rgba(255,255,255,0.2)', cursor: 'pointer', background: 'transparent' }}
                       />
                       <div>
-                        <p className="text-white text-sm font-mono">{primaryColor}</p>
-                        <p className="text-white/60 text-xs">Used for accents and highlights</p>
+                        <p style={{ color: '#ffffff', fontSize: '14px', fontFamily: 'monospace' }}>{primaryColor}</p>
+                        <p style={s.helper}>Used for accents and highlights</p>
                       </div>
                     </div>
                   </div>
 
-                  <div className="p-4 rounded-xl bg-white/5 border border-white/10">
-                    <p className="text-white/60 text-xs">
-                      <strong className="text-white">Tip:</strong> Your logo and color will appear on your ministry&apos;s app page.
-                      {(selectedPlan === 'ultra' || selectedPlan === 'enterprise') && (
-                        <span className="text-primary"> With your plan, you also get full rebranding and custom domain support.</span>
-                      )}
+                  <div style={{ padding: '16px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                    <p style={s.tip}>
+                      <strong style={s.tipBold}>Your plan includes:</strong> full rebranding, custom domain, and unlimited admin accounts.
+                      Your logo and color will appear throughout your ministry&apos;s app.
                     </p>
                   </div>
                 </div>
@@ -407,21 +366,23 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ onComplete }) => {
             {/* Done */}
             {isDoneStep && (
               <div className="animate-fade-in-up text-center py-8">
-                <div className="w-20 h-20 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-6">
-                  <CheckCircle2 size={40} className="text-green-400" />
+                <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'rgba(34,197,94,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>
+                  <CheckCircle2 size={40} style={{ color: '#4ade80' }} />
                 </div>
-                <h1 className="text-3xl font-black text-white mb-2">You&apos;re All Set!</h1>
-                <p className="text-white/80 text-sm mb-2">
-                  <span className="font-bold text-white">{ministryName}</span> is ready to go.
+                <h1 style={{ fontSize: '30px', fontWeight: 900, color: '#ffffff', marginBottom: '8px' }}>You&apos;re All Set!</h1>
+                <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '14px', marginBottom: '8px' }}>
+                  <strong style={{ color: '#ffffff' }}>{ministryName}</strong> is ready to go.
                 </p>
-                <p className="text-white/60 text-sm mb-8">
+                <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '14px', marginBottom: '32px' }}>
                   Your app will be live at{' '}
-                  <span className="font-mono text-primary">{subdomain}.theharvest.app</span>
+                  <span style={{ fontFamily: 'monospace', color: '#D4AF37' }}>{subdomain}.theharvest.app</span>
+                  {customDomain && (
+                    <span> and <span style={{ fontFamily: 'monospace', color: '#D4AF37' }}>{customDomain}</span></span>
+                  )}
                 </p>
-
                 <button
                   onClick={onComplete}
-                  className="inline-flex items-center gap-2 bg-primary text-white font-bold py-3 px-8 rounded-xl hover:bg-yellow-600 transition-all shadow-lg shadow-primary/30"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: '#D4AF37', color: '#ffffff', fontWeight: 700, padding: '12px 32px', borderRadius: '12px', border: 'none', cursor: 'pointer', fontSize: '16px', boxShadow: '0 4px 12px rgba(212,175,55,0.3)' }}
                 >
                   Go to Admin Dashboard
                   <ArrowRight size={18} />
@@ -430,47 +391,38 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ onComplete }) => {
             )}
           </div>
 
-          {/* Navigation buttons */}
+          {/* Navigation */}
           {!isDoneStep && (
-            <div className="p-6 border-t border-white/10 flex justify-between">
-              {step > (hasPlan ? 0 : 1) ? (
+            <div style={{ padding: '24px', borderTop: '1px solid rgba(255,255,255,0.1)', display: 'flex', justifyContent: 'space-between' }}>
+              {step > 0 ? (
                 <button
                   onClick={handleBack}
-                  className="flex items-center gap-2 text-white/60 hover:text-white transition-colors font-medium"
+                  style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'rgba(255,255,255,0.7)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500, fontSize: '14px' }}
                 >
                   <ArrowLeft size={16} />
                   Back
                 </button>
-              ) : (
-                <div />
-              )}
+              ) : <div />}
 
               {isBrandingStep ? (
                 <button
                   onClick={handleFinish}
                   disabled={saving}
-                  className="flex items-center gap-2 bg-primary text-white font-bold py-3 px-6 rounded-xl hover:bg-yellow-600 transition-all shadow-lg shadow-primary/30 disabled:opacity-50"
+                  style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#D4AF37', color: '#ffffff', fontWeight: 700, padding: '12px 24px', borderRadius: '12px', border: 'none', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.5 : 1, boxShadow: '0 4px 12px rgba(212,175,55,0.3)' }}
                 >
                   {saving ? (
-                    <>
-                      <Loader2 size={16} className="animate-spin" />
-                      Setting up...
-                    </>
+                    <><Loader2 size={16} className="animate-spin" /> Setting up...</>
                   ) : (
-                    <>
-                      Launch Ministry
-                      <Sparkles size={16} />
-                    </>
+                    <>Launch Ministry <Sparkles size={16} /></>
                   )}
                 </button>
               ) : (
                 <button
                   onClick={handleNext}
                   disabled={isInfoStep && !canProceedInfo && subdomainStatus !== 'checking'}
-                  className="flex items-center gap-2 bg-primary text-white font-bold py-3 px-6 rounded-xl hover:bg-yellow-600 transition-all shadow-lg shadow-primary/30 disabled:opacity-30 disabled:cursor-not-allowed"
+                  style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#D4AF37', color: '#ffffff', fontWeight: 700, padding: '12px 24px', borderRadius: '12px', border: 'none', cursor: (isInfoStep && !canProceedInfo && subdomainStatus !== 'checking') ? 'not-allowed' : 'pointer', opacity: (isInfoStep && !canProceedInfo && subdomainStatus !== 'checking') ? 0.3 : 1, boxShadow: '0 4px 12px rgba(212,175,55,0.3)' }}
                 >
-                  Continue
-                  <ArrowRight size={16} />
+                  Continue <ArrowRight size={16} />
                 </button>
               )}
             </div>
