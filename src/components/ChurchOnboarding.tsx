@@ -128,6 +128,7 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ onComplete }) => {
       const updateData: Record<string, any> = {
         tenantId,
         role: 'church_admin',
+        plan: selectedPlan,
         onboardingCompleted: true,
       };
 

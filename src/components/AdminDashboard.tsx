@@ -77,17 +77,20 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, tenantPlan 
   }
 
   const isSuperAdmin = userRole === 'super_admin' || auth.currentUser?.email === 'bumbmatei@gmail.com';
+  const isChurchAdmin = userRole === 'church_admin';
   const perms = userPermissions || {} as Permission;
   const features = tenantPlan ? getPlanFeatures(tenantPlan) : null;
   const isTenantAdmin = !!tenantPlan;
+  // Church admins (tenant owners) get full access to their plan's features
+  const hasFullAccess = isSuperAdmin || isChurchAdmin || perms.fullAccess;
 
   const bottomTabs = [
-    (isSuperAdmin || perms.fullAccess || perms.analytics) && { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    (isSuperAdmin || perms.fullAccess || perms.modifyChurches) && { id: 'churches', label: isTenantAdmin && features && features.maxChurches === 1 ? 'Church' : 'Church List', icon: Church },
-    (isSuperAdmin || !isTenantAdmin || (features && features.blog)) && (perms.fullAccess || perms.createCourses || isSuperAdmin) && { id: 'courses', label: 'Courses', icon: GraduationCap },
-    (isSuperAdmin || !isTenantAdmin || (features && features.blog)) && (isSuperAdmin || perms.fullAccess || perms.writeArticles) && { id: 'blog', label: 'Blog', icon: FileText },
-    (isSuperAdmin || perms.fullAccess || perms.createPosts) && { id: 'posts', label: 'Posts', icon: Rss },
-    (isSuperAdmin || !isTenantAdmin || (features && features.aiKnowledge)) && (isSuperAdmin || perms.fullAccess || perms.uploadRag) && { id: 'ai', label: 'AI Knowledge', icon: BrainCircuit },
+    (hasFullAccess || perms.analytics) && { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    (hasFullAccess || perms.modifyChurches) && { id: 'churches', label: isTenantAdmin && features && features.maxChurches === 1 ? 'Church' : 'Church List', icon: Church },
+    (isSuperAdmin || !isTenantAdmin || (features && features.blog)) && (hasFullAccess || perms.createCourses) && { id: 'courses', label: 'Courses', icon: GraduationCap },
+    (isSuperAdmin || !isTenantAdmin || (features && features.blog)) && (hasFullAccess || perms.writeArticles) && { id: 'blog', label: 'Blog', icon: FileText },
+    (hasFullAccess || perms.createPosts) && { id: 'posts', label: 'Posts', icon: Rss },
+    (isSuperAdmin || !isTenantAdmin || (features && features.aiKnowledge)) && (hasFullAccess || perms.uploadRag) && { id: 'ai', label: 'AI Knowledge', icon: BrainCircuit },
     isSuperAdmin && { id: 'tenants', label: 'Tenants', icon: Building2 },
   ].filter(Boolean) as { id: string; label: string; icon: any }[];
 
@@ -96,7 +99,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, tenantPlan 
     setActiveTab(bottomTabs[0].id);
   }
 
-  const showInbox = isSuperAdmin || perms.fullAccess || perms.seeFormsInbox;
+  const showInbox = hasFullAccess || perms.seeFormsInbox;
 
   return (
     <div className="flex flex-col lg:flex-row h-screen bg-[#f8f9fa] font-sans overflow-hidden transition-colors duration-300">
@@ -211,7 +214,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, tenantPlan 
         {/* Main Content Area */}
         <div className="flex-1 overflow-y-auto pb-24 lg:pb-8 p-0 lg:p-6">
           {activeTab === 'dashboard' ? (
-            <AnalyticsAndRoles currentUserRole={isSuperAdmin ? 'super_admin' : userRole} currentUserPermissions={userPermissions} />
+            <AnalyticsAndRoles currentUserRole={isSuperAdmin ? 'super_admin' : userRole} currentUserPermissions={isChurchAdmin ? { fullAccess: true } as any : userPermissions} />
           ) : activeTab === 'blog' ? (
             <div className="p-4 lg:p-0"><AdminBlog /></div>
           ) : activeTab === 'posts' ? (

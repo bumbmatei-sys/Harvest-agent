@@ -86,7 +86,7 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToCourses, onGoToPart
  if (data.photoURL) {
  setProfilePic(data.photoURL);
  }
- if (data.role === 'admin' || data.role === 'super_admin' || data.email === 'bumbmatei@gmail.com') {
+ if (data.role === 'admin' || data.role === 'church_admin' || data.role === 'super_admin' || data.email === 'bumbmatei@gmail.com') {
  setIsAdmin(true);
  }
  } else {

@@ -48,7 +48,11 @@ const App: React.FC = () => {
 
             if (onboardingDone) {
               // Onboarding complete — go to the right dashboard
-              if (userTenantId) {
+              // Read plan from user doc first (avoids tenant fetch permission issues)
+              const userPlan = data.plan as TenantPlan | undefined;
+              if (userPlan) {
+                setTenantPlan(userPlan);
+              } else if (userTenantId) {
                 try {
                   const tenantDoc = await getDoc(doc(db, 'tenants', userTenantId));
                   if (tenantDoc.exists()) {
