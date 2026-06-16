@@ -74,6 +74,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
   const [editingQuestion, setEditingQuestion] = useState<{ id: string; label: string; type: 'text' | 'select' | 'radio' | 'textarea'; options?: string[]; required: boolean; order: number } | null>(null);
   const [showQuestionModal, setShowQuestionModal] = useState(false);
   const [aiAssistantSubscribed, setAiAssistantSubscribed] = useState(false);
+  const [aiAssistantCode, setAiAssistantCode] = useState<string | null>(null);
   const [aiAssistantLoaded, setAiAssistantLoaded] = useState(false);
   const [aiAssistantLoading, setAiAssistantLoading] = useState(false);
   const [aiAssistantCancelLoading, setAiAssistantCancelLoading] = useState(false);
@@ -316,7 +317,12 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
             const tenantDoc = await getDoc(doc(db, 'tenants', tid));
             if (tenantDoc.exists()) {
               const data = tenantDoc.data();
-              if (data.addOnAiAssistant) setAiAssistantSubscribed(true);
+              const plan = data.plan;
+              const isUltraOrEnterprise = plan === 'ultra' || plan === 'enterprise';
+              if (data.addOnAiAssistant || isUltraOrEnterprise) {
+                setAiAssistantSubscribed(true);
+                if (data.addOnAiAssistantCode) setAiAssistantCode(data.addOnAiAssistantCode);
+              }
             }
           }
         }
@@ -1446,7 +1452,27 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
                       <span className="px-3 py-1 bg-green-100 text-green-700 text-sm font-semibold rounded-full">Active</span>
                       <span className="text-sm text-gray-600">$199/mo</span>
                     </div>
-                    <button
+
+                    {/* Access Code */}
+                    {aiAssistantCode && (
+                      <div className="mb-4 p-4 bg-indigo-50 rounded-xl border border-indigo-100">
+                        <p className="text-xs font-semibold text-indigo-700 mb-2 uppercase tracking-wide">Your Access Code</p>
+                        <div className="flex items-center gap-3">
+                          <code className="text-2xl font-mono font-bold text-indigo-900 tracking-wider">{aiAssistantCode}</code>
+                          <button
+                            onClick={() => { navigator.clipboard.writeText(aiAssistantCode!); alert('Copied!'); }}
+                            className="px-3 py-1.5 bg-indigo-100 text-indigo-700 text-xs font-semibold rounded-lg hover:bg-indigo-200 transition-colors"
+                          >
+                            Copy
+                          </button>
+                        </div>
+                        <p className="text-xs text-indigo-600 mt-2">Enter this code in the Telegram bot to activate your AI assistant.</p>
+                      </div>
+                    )}
+
+                    {/* Cancel button only for add-on subscribers, not Ultra/Enterprise */}
+                    {!['ultra', 'enterprise'].includes(tenantPlan || '') && (
+                      <button
                       onClick={handleAiAssistantCancel}
                       disabled={aiAssistantCancelLoading}
                       className="w-full px-5 py-2.5 border border-red-200 text-red-600 rounded-xl text-sm font-semibold hover:bg-red-50 transition-colors disabled:opacity-50"
@@ -1460,6 +1486,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
                         'Cancel AI Assistant'
                       )}
                     </button>
+                    )}
                   </>
                 )}
               </div>

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import Stripe from 'stripe';
 import { adminDb } from '@/lib/firebase-admin';
+import { generateAccessCode } from '@/app/api/ai-assistant/route';
 
 export const dynamic = 'force-dynamic';
 
@@ -41,11 +42,13 @@ export async function POST(request: NextRequest) {
         if (tenantId) {
           // Handle AI Assistant add-on checkout
           if (session.metadata?.addOn === 'ai-assistant') {
+            const accessCode = generateAccessCode();
             await adminDb.collection('tenants').doc(tenantId).update({
               addOnAiAssistant: subscriptionId,
+              addOnAiAssistantCode: accessCode,
               updatedAt: new Date().toISOString(),
             });
-            console.log(`✅ Tenant ${tenantId} added AI Assistant add-on`);
+            console.log(`✅ Tenant ${tenantId} added AI Assistant add-on (code: ${accessCode})`);
           } else {
             const plan = session.metadata?.plan;
             if (plan) {
@@ -61,7 +64,7 @@ export async function POST(request: NextRequest) {
                 }
               }
 
-              await adminDb.collection('tenants').doc(tenantId).update({
+              const updateData: Record<string, any> = {
                 plan,
                 status: 'active',
                 stripeSubscriptionId: subscriptionId,
@@ -70,7 +73,14 @@ export async function POST(request: NextRequest) {
                   ? getYearlyPriceId(plan)
                   : getMonthlyPriceId(plan),
                 updatedAt: new Date().toISOString(),
-              });
+              };
+
+              // Ultra/Enterprise: AI assistant is included — auto-generate code if not present
+              if ((plan === 'ultra' || plan === 'enterprise') && !tenantDoc.data()?.addOnAiAssistantCode) {
+                updateData.addOnAiAssistantCode = generateAccessCode();
+              }
+
+              await adminDb.collection('tenants').doc(tenantId).update(updateData);
 
               // Update all users belonging to this tenant
               const usersSnap = await adminDb.collection('users')
@@ -141,12 +151,20 @@ export async function POST(request: NextRequest) {
 
         if (tenantId) {
           if (addOn === 'ai-assistant') {
-            // AI Assistant add-on cancelled
+            // AI Assistant add-on cancelled — revoke access code and bindings
+            const bindingsSnap = await adminDb.collection('ai_assistant_bindings')
+              .where('tenantId', '==', tenantId)
+              .get();
+            const batch = adminDb.batch();
+            bindingsSnap.docs.forEach(doc => batch.delete(doc.ref));
+            await batch.commit();
+
             await adminDb.collection('tenants').doc(tenantId).update({
               addOnAiAssistant: null,
+              addOnAiAssistantCode: null,
               updatedAt: new Date().toISOString(),
             });
-            console.log(`❌ Tenant ${tenantId} AI Assistant add-on cancelled`);
+            console.log(`❌ Tenant ${tenantId} AI Assistant add-on cancelled (${bindingsSnap.size} bindings removed)`);
           } else {
             // Downgrade to plus (lowest plan) on cancellation
             await adminDb.collection('tenants').doc(tenantId).update({
