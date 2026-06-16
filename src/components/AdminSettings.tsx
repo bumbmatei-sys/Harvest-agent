@@ -329,21 +329,21 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
 
               <button
                 onClick={() => {
-                  if (!isCurrent && !isDowngrade) {
+                  if (!isCurrent) {
                     onChangePlan(plan.id);
                     setActiveSection('main');
                   }
                 }}
-                disabled={isCurrent || isDowngrade}
+                disabled={isCurrent}
                 className={`w-full py-2.5 rounded-xl text-sm font-semibold transition-colors ${
                   isCurrent
                     ? 'bg-gray-100 text-gray-400 cursor-default'
                     : isDowngrade
-                    ? 'bg-gray-50 text-gray-400 cursor-not-allowed'
+                    ? 'border border-gray-200 text-gray-600 hover:bg-gray-50'
                     : 'bg-[#d4a017] text-white hover:bg-[#b8941a]'
                 }`}
               >
-                {isCurrent ? 'Current Plan' : isDowngrade ? 'Downgrade' : `Upgrade to ${plan.name}`}
+                {isCurrent ? 'Current Plan' : isDowngrade ? `Downgrade to ${plan.name}` : `Upgrade to ${plan.name}`}
               </button>
             </div>
           );
