@@ -132,18 +132,18 @@ export async function POST(request: NextRequest) {
 
 function getMonthlyPriceId(plan: string): string {
   const map: Record<string, string> = {
-    plus: 'price_1TioOs1YKkcSbTf3eHwgIu2J',
-    pro: 'price_1TioOs1YKkcSbTf35trtKkNC',
-    ultra: 'price_1TioOs1YKkcSbTf3B9ZbWHEA',
+    plus: 'price_1TipKw1YKkcSbTf3NBKUJQxW',
+    pro: 'price_1TipKx1YKkcSbTf3BLNULdsm',
+    ultra: 'price_1TipKx1YKkcSbTf3d1QlW8nA',
   };
   return map[plan] || map.plus;
 }
 
 function getYearlyPriceId(plan: string): string {
   const map: Record<string, string> = {
-    plus: 'price_1TioOs1YKkcSbTf39WQDS5QB',
-    pro: 'price_1TioOs1YKkcSbTf3XF71Y8uy',
-    ultra: 'price_1TioOs1YKkcSbTf35csZtLNe',
+    plus: 'price_1TipKw1YKkcSbTf3lxwJrDPb',
+    pro: 'price_1TipKx1YKkcSbTf3lYNIc7GB',
+    ultra: 'price_1TipKy1YKkcSbTf3dTDBc6iI',
   };
   return map[plan] || map.plus;
 }

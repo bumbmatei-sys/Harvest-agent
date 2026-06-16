@@ -8,16 +8,16 @@ export const dynamic = 'force-dynamic';
 // Price IDs for each plan
 const PRICE_MAP: Record<string, Record<string, string>> = {
   plus: {
-    monthly: 'price_1TioOs1YKkcSbTf3eHwgIu2J',
-    yearly: 'price_1TioOs1YKkcSbTf39WQDS5QB',
+    monthly: 'price_1TipKw1YKkcSbTf3NBKUJQxW',
+    yearly: 'price_1TipKw1YKkcSbTf3lxwJrDPb',
   },
   pro: {
-    monthly: 'price_1TioOs1YKkcSbTf35trtKkNC',
-    yearly: 'price_1TioOs1YKkcSbTf3XF71Y8uy',
+    monthly: 'price_1TipKx1YKkcSbTf3BLNULdsm',
+    yearly: 'price_1TipKx1YKkcSbTf3lYNIc7GB',
   },
   ultra: {
-    monthly: 'price_1TioOs1YKkcSbTf3B9ZbWHEA',
-    yearly: 'price_1TioOs1YKkcSbTf35csZtLNe',
+    monthly: 'price_1TipKx1YKkcSbTf3d1QlW8nA',
+    yearly: 'price_1TipKy1YKkcSbTf3dTDBc6iI',
   },
 };
 
