@@ -1,12 +1,10 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { cert, initializeApp, getApps } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
 
 /**
- * Resolve a custom domain to a tenantId.
+ * Resolve a custom domain to a tenantId using Firestore REST API.
+ * No firebase-admin SDK needed — uses the web API key.
  * Called by middleware when hostname doesn't match known base domains.
- * Sets tenantId + customDomain cookies and redirects to the original URL.
  */
 export async function GET(request: NextRequest) {
   const domain = request.nextUrl.searchParams.get('domain');
@@ -17,27 +15,60 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    if (!getApps().length) {
-      const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT || '{}');
-      initializeApp({ credential: cert(serviceAccount) });
+    const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
+    const projectId = 'harvest-agent-233a1';
+    
+    // Use Firestore REST API to query tenants by customDomain
+    const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents:runQuery`;
+    
+    const queryBody = {
+      structuredQuery: {
+        from: [{ collectionId: 'tenants' }],
+        where: {
+          compositeFilter: {
+            op: 'AND',
+            filters: [
+              {
+                fieldFilter: {
+                  field: { fieldPath: 'config.customDomain' },
+                  op: 'EQUAL',
+                  value: { stringValue: domain }
+                }
+              },
+              {
+                fieldFilter: {
+                  field: { fieldPath: 'status' },
+                  op: 'EQUAL',
+                  value: { stringValue: 'active' }
+                }
+              }
+            ]
+          }
+        },
+        limit: 1
+      }
+    };
+
+    const resp = await fetch(`${url}?key=${apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(queryBody),
+    });
+
+    if (!resp.ok) {
+      throw new Error(`Firestore REST API error: ${resp.status}`);
     }
 
-    const db = getFirestore();
+    const data = await resp.json();
     
-    // Query tenants collection for matching custom domain
-    const snapshot = await db.collection('tenants')
-      .where('config.customDomain', '==', domain)
-      .where('status', '==', 'active')
-      .limit(1)
-      .get();
-
-    if (snapshot.empty) {
-      // Domain not found — redirect to main site
+    // Check if we got a result
+    if (!data || data.length === 0 || !data[0].document) {
       return NextResponse.redirect(new URL('https://theharvest.app', request.url));
     }
 
-    const tenant = snapshot.docs[0];
-    const tenantId = tenant.id;
+    // Extract tenantId from document name: projects/.../tenants/{tenantId}
+    const docName = data[0].document.name;
+    const tenantId = docName.split('/').pop();
 
     // Redirect to the original path with tenant context cookies
     const redirectUrl = new URL(redirectPath, request.url);
