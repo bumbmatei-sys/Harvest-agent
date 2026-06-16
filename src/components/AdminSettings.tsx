@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from 'react';
-import { ArrowLeft, Check, Crown, Zap, Building2, Star, ChevronRight, AlertTriangle, Globe, CreditCard } from 'lucide-react';
+import { ArrowLeft, Check, Crown, Zap, Building2, Star, ChevronRight, ChevronDown, AlertTriangle, Globe, CreditCard, Palette, Settings2 } from 'lucide-react';
 import { TenantPlan } from '../types/tenant.types';
 import { getPlanFeatures, PlanFeatures } from '../utils/plan-features';
 import { ImageUpload } from './ImageUpload';
@@ -35,6 +35,7 @@ const FEATURE_COMPARISON: { key: keyof PlanFeatures; label: string; format?: (v:
 
 const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onChangePlan, onCancelPlan, tenantId, email }) => {
   const [activeSection, setActiveSection] = useState<'main' | 'upgrade' | 'cancel' | 'branding' | 'domain' | 'onboarding' | 'payment'>('main');
+  const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly');
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [brandingLogo, setBrandingLogo] = useState('');
@@ -283,263 +284,21 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
     }
   }, []);
 
-  const renderMain = () => (
-    <div className="space-y-6">
-      {/* Stripe status banners */}
-      {stripeStatus === 'success' && (
-        <div className="bg-green-50 border border-green-200 rounded-2xl p-4 flex items-center gap-3">
-          <Check size={20} className="text-green-600" />
-          <div>
-            <p className="text-sm font-semibold text-green-800">Payment successful!</p>
-            <p className="text-xs text-green-600">Your plan has been updated. It may take a moment to reflect.</p>
-          </div>
-          <button onClick={() => setStripeStatus(null)} className="ml-auto text-green-600 hover:text-green-800">✕</button>
-        </div>
-      )}
-      {stripeStatus === 'cancel' && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-4 flex items-center gap-3">
-          <AlertTriangle size={20} className="text-yellow-600" />
-          <div>
-            <p className="text-sm font-semibold text-yellow-800">Checkout cancelled</p>
-            <p className="text-xs text-yellow-600">No charges were made. You can try again anytime.</p>
-          </div>
-          <button onClick={() => setStripeStatus(null)} className="ml-auto text-yellow-600 hover:text-yellow-800">✕</button>
-        </div>
-      )}
+  // Lazy-load section data when accordion expands
+  React.useEffect(() => {
+    if (expandedSection === 'branding') loadBranding();
+    if (expandedSection === 'domain') loadDomain();
+    if (expandedSection === 'payment') loadPayment();
+    if (expandedSection === 'onboarding') loadOnboardingQuestions();
+  }, [expandedSection]);
 
-      {/* Current Plan Card */}
-      <div className="bg-white rounded-2xl border border-gray-100 p-6">
-        <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">Current Plan</h3>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            {currentPlanData && (
-              <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${currentPlanData.color}15` }}>
-                <currentPlanData.icon size={24} style={{ color: currentPlanData.color }} />
-              </div>
-            )}
-            <div>
-              <p className="text-xl font-bold text-gray-900">{currentPlanData?.name || 'Unknown'}</p>
-              <p className="text-gray-500">{currentPlanData?.monthlyPrice || 'N/A'}</p>
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setActiveSection('upgrade')}
-              className="px-4 py-2 bg-[#d4a017] text-white rounded-xl text-sm font-semibold hover:bg-[#b8941a] transition-colors"
-            >
-              Upgrade Plan
-            </button>
-          </div>
-        </div>
-
-        {/* Quick feature summary */}
-        <div className="mt-4 pt-4 border-t border-gray-100">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="text-center">
-              <p className="text-2xl font-bold text-gray-900">{currentFeatures.maxChurches === -1 ? '∞' : currentFeatures.maxChurches}</p>
-              <p className="text-xs text-gray-500">Churches</p>
-            </div>
-            <div className="text-center">
-              <p className="text-2xl font-bold text-gray-900">{currentFeatures.maxAdmins === -1 ? '∞' : currentFeatures.maxAdmins}</p>
-              <p className="text-xs text-gray-500">Admins</p>
-            </div>
-            <div className="text-center">
-              <p className="text-2xl font-bold text-gray-900">{currentFeatures.maxCourses === -1 ? '∞' : currentFeatures.maxCourses}</p>
-              <p className="text-xs text-gray-500">Courses</p>
-            </div>
-            <div className="text-center">
-              <p className="text-2xl font-bold text-gray-900">{currentFeatures.blog ? '✓' : '✗'}</p>
-              <p className="text-xs text-gray-500">Blog & AI</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Branding (Ultra/Enterprise only) */}
-      {hasBranding && (
-        <div className="bg-white rounded-2xl border border-gray-100 p-6">
-          <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">Branding</h3>
-          <p className="text-gray-600 text-sm mb-4">Customize your ministry&apos;s appearance — logo and brand color.</p>
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-xl bg-gray-50 flex items-center justify-center overflow-hidden border border-gray-100">
-              {brandingLogo ? (
-                <img src={brandingLogo} alt="Logo" className="w-full h-full object-contain" />
-              ) : (
-                <span className="text-gray-300 text-xs">No logo</span>
-              )}
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full border-2 border-gray-200" style={{ backgroundColor: brandingColor }} />
-              <span className="text-sm text-gray-600 font-mono">{brandingColor}</span>
-            </div>
-            <button
-              onClick={() => { setActiveSection('branding'); loadBranding(); }}
-              className="ml-auto px-4 py-2 border border-gray-200 text-gray-700 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors"
-            >
-              Edit Branding
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Domain & Subdomain */}
-      <div className="bg-white rounded-2xl border border-gray-100 p-6">
-        <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">Domain</h3>
-        <p className="text-gray-600 text-sm mb-4">Manage your ministry&apos;s web address and custom domain.</p>
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center">
-            <Globe size={24} className="text-blue-600" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-gray-900 truncate">{subdomain || 'Loading...'}.theharvest.app</p>
-            <p className="text-xs text-gray-500">
-              {hasCustomDomain && customDomain ? `Custom: ${customDomain}` : hasCustomDomain ? 'Custom domain available' : 'Subdomain only'}
-            </p>
-          </div>
-          <button
-            onClick={() => { setActiveSection('domain'); loadDomain(); }}
-            className="ml-auto px-4 py-2 border border-gray-200 text-gray-700 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors"
-          >
-            Manage Domain
-          </button>
-        </div>
-      </div>
-
-      {/* Onboarding Questions */}
-      <div className="bg-white rounded-2xl border border-gray-100 p-6">
-        <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">Onboarding Questions</h3>
-        <p className="text-gray-600 text-sm mb-4">Customize the questions asked during user onboarding. Default fields (name, country, city, phone, accepted Jesus) are always included.</p>
-        <button
-          onClick={() => { setActiveSection('onboarding'); loadOnboardingQuestions(); }}
-          className="px-4 py-2 border border-gray-200 text-gray-700 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors"
-        >
-          Manage Questions
-        </button>
-      </div>
-
-      {/* Payment Settings (Stripe Connect) */}
-      <div className="bg-white rounded-2xl border border-gray-100 p-6">
-        <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">Payment Settings</h3>
-        <p className="text-gray-600 text-sm mb-4">Connect your Stripe account to receive payments from your congregation.</p>
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-purple-50 flex items-center justify-center">
-            <CreditCard size={24} className="text-purple-600" />
-          </div>
-          <div className="flex-1">
-            {stripeConnectStatus ? (
-              <div className="flex items-center gap-2">
-                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                  stripeConnectStatus === 'active' ? 'bg-green-100 text-green-800' :
-                  stripeConnectStatus === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                  'bg-red-100 text-red-800'
-                }`}>
-                  {stripeConnectStatus === 'active' ? 'Active' : stripeConnectStatus === 'pending' ? 'Pending' : 'Restricted'}
-                </span>
-                <span className="text-sm text-gray-500">Stripe account connected</span>
-              </div>
-            ) : (
-              <p className="text-sm text-gray-500">No Stripe account connected</p>
-            )}
-          </div>
-          {stripeConnectStatus ? (
-            <a
-              href="https://dashboard.stripe.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="ml-auto px-4 py-2 border border-gray-200 text-gray-700 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors"
-            >
-              Manage Stripe
-            </a>
-          ) : (
-            <button
-              onClick={() => { setActiveSection('payment'); loadPayment(); }}
-              className="ml-auto px-4 py-2 bg-purple-600 text-white rounded-xl text-sm font-semibold hover:bg-purple-700 transition-colors"
-            >
-              Connect Stripe Account
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Billing Management */}
-      <div className="bg-white rounded-2xl border border-gray-100 p-6">
-        <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">Billing &amp; Payments</h3>
-        <p className="text-sm text-gray-600 mb-4">Manage your subscription, update payment methods, and view invoices through Stripe.</p>
-        <button
-          onClick={handleManageSubscription}
-          disabled={portalLoading}
-          className="flex items-center gap-2 px-5 py-2.5 bg-gray-900 text-white rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50"
-        >
-          {portalLoading ? (
-            <>
-              <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              Opening portal...
-            </>
-          ) : (
-            <>
-              Manage Subscription
-              <ChevronRight size={16} />
-            </>
-          )}
-        </button>
-        <p className="text-xs text-gray-400 mt-3">Powered by Stripe</p>
-      </div>
-
-      {/* Cancel Plan */}
-      <div className="bg-white rounded-2xl border border-red-100 p-6">
-        <h3 className="text-sm font-semibold text-red-500 uppercase tracking-wide mb-2">Danger Zone</h3>
-        <p className="text-gray-600 text-sm mb-4">Cancel your subscription. Your ministry will remain active until the end of the current billing period.</p>
-        <button
-          onClick={() => setShowCancelConfirm(true)}
-          className="px-4 py-2 border border-red-200 text-red-600 rounded-xl text-sm font-semibold hover:bg-red-50 transition-colors"
-        >
-          Cancel Subscription
-        </button>
-      </div>
-
-      {/* Cancel Confirmation Modal */}
-      {showCancelConfirm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[200] p-4">
-          <div className="bg-white rounded-2xl p-6 max-w-md w-full">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center">
-                <AlertTriangle size={20} className="text-red-500" />
-              </div>
-              <h3 className="text-lg font-bold text-gray-900">Cancel Subscription?</h3>
-            </div>
-            <p className="text-gray-600 text-sm mb-6">
-              Your ministry will remain active until the end of the current billing period. After that, all data will be preserved but your ministry will be suspended.
-            </p>
-            <div className="flex gap-3 justify-end">
-              <button
-                onClick={() => setShowCancelConfirm(false)}
-                className="px-4 py-2 text-gray-600 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors"
-              >
-                Keep Plan
-              </button>
-              <button
-                onClick={() => { onCancelPlan(); setShowCancelConfirm(false); }}
-                className="px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-semibold hover:bg-red-700 transition-colors"
-              >
-                Yes, Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
+  // Accordion toggle helper
+  const toggleSection = (id: string) => {
+    setExpandedSection(prev => prev === id ? null : id);
+  };
 
   const renderUpgrade = () => (
     <div className="space-y-6">
-      <button
-        onClick={() => setActiveSection('main')}
-        className="flex items-center gap-2 text-gray-500 hover:text-gray-900 transition-colors"
-      >
-        <ArrowLeft size={18} />
-        <span className="text-sm font-medium">Back to Settings</span>
-      </button>
-
       <h2 className="text-2xl font-bold text-gray-900">Upgrade Your Plan</h2>
       <p className="text-gray-500">Choose the plan that best fits your ministry&apos;s needs.</p>
 
@@ -1295,26 +1054,249 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
   return (
     <div className="p-4 lg:p-6 max-w-6xl mx-auto">
       {/* Header */}
-      <div className="flex items-center gap-4 mb-6">
-        {activeSection !== 'main' && (
-          <button
-            onClick={() => setActiveSection('main')}
-            className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
-          >
-            <ArrowLeft size={18} className="text-gray-500" />
-          </button>
-        )}
-        <h1 className="text-2xl font-bold text-gray-900">
-          {activeSection === 'main' ? 'Settings' : activeSection === 'upgrade' ? 'Upgrade Plan' : activeSection === 'branding' ? 'Branding' : activeSection === 'domain' ? 'Domain & Subdomain' : activeSection === 'onboarding' ? 'Onboarding Questions' : activeSection === 'payment' ? 'Payment Settings' : 'Cancel Plan'}
-        </h1>
+      <h1 className="text-2xl font-bold text-gray-900 mb-6">Settings</h1>
+
+      {/* Stripe status banners */}
+      {stripeStatus === 'success' && (
+        <div className="bg-green-50 border border-green-200 rounded-2xl p-4 flex items-center gap-3 mb-4">
+          <Check size={20} className="text-green-600" />
+          <div>
+            <p className="text-sm font-semibold text-green-800">Payment successful!</p>
+            <p className="text-xs text-green-600">Your plan has been updated. It may take a moment to reflect.</p>
+          </div>
+          <button onClick={() => setStripeStatus(null)} className="ml-auto text-green-600 hover:text-green-800">✕</button>
+        </div>
+      )}
+      {stripeStatus === 'cancel' && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-4 flex items-center gap-3 mb-4">
+          <AlertTriangle size={20} className="text-yellow-600" />
+          <div>
+            <p className="text-sm font-semibold text-yellow-800">Checkout cancelled</p>
+            <p className="text-xs text-yellow-600">No charges were made. You can try again anytime.</p>
+          </div>
+          <button onClick={() => setStripeStatus(null)} className="ml-auto text-yellow-600 hover:text-yellow-800">✕</button>
+        </div>
+      )}
+
+      {/* Current Plan Summary */}
+      <div className="bg-white rounded-2xl border border-gray-100 p-6 mb-4">
+        <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">Current Plan</h3>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            {currentPlanData && (
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${currentPlanData.color}15` }}>
+                <currentPlanData.icon size={24} style={{ color: currentPlanData.color }} />
+              </div>
+            )}
+            <div>
+              <p className="text-xl font-bold text-gray-900">{currentPlanData?.name || 'Unknown'}</p>
+              <p className="text-gray-500">{currentPlanData?.monthlyPrice || 'N/A'}</p>
+            </div>
+          </div>
+        </div>
+        <div className="mt-4 pt-4 border-t border-gray-100">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="text-center">
+              <p className="text-2xl font-bold text-gray-900">{currentFeatures.maxChurches === -1 ? '∞' : currentFeatures.maxChurches}</p>
+              <p className="text-xs text-gray-500">Churches</p>
+            </div>
+            <div className="text-center">
+              <p className="text-2xl font-bold text-gray-900">{currentFeatures.maxAdmins === -1 ? '∞' : currentFeatures.maxAdmins}</p>
+              <p className="text-xs text-gray-500">Admins</p>
+            </div>
+            <div className="text-center">
+              <p className="text-2xl font-bold text-gray-900">{currentFeatures.maxCourses === -1 ? '∞' : currentFeatures.maxCourses}</p>
+              <p className="text-xs text-gray-500">Courses</p>
+            </div>
+            <div className="text-center">
+              <p className="text-2xl font-bold text-gray-900">{currentFeatures.blog ? '✓' : '✗'}</p>
+              <p className="text-xs text-gray-500">Blog &amp; AI</p>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {activeSection === 'main' && renderMain()}
-      {activeSection === 'upgrade' && renderUpgrade()}
-      {activeSection === 'branding' && renderBranding()}
-      {activeSection === 'domain' && renderDomain()}
-      {activeSection === 'onboarding' && renderOnboarding()}
-      {activeSection === 'payment' && renderPayment()}
+      {/* Accordion Sections */}
+      <div className="space-y-3 mb-4">
+        {/* Subscription Plan */}
+        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+          <button
+            onClick={() => toggleSection('plan')}
+            className="w-full flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <Crown size={20} className="text-[#d4a017]" />
+              <span className="text-sm font-semibold text-gray-900">Subscription Plan</span>
+            </div>
+            <ChevronDown
+              size={18}
+              className={`text-gray-400 transition-transform duration-300 ${expandedSection === 'plan' ? 'rotate-180' : ''}`}
+            />
+          </button>
+          {expandedSection === 'plan' && (
+            <div className="px-4 pb-4 border-t border-gray-100 pt-4">
+              {renderUpgrade()}
+            </div>
+          )}
+        </div>
+
+        {/* Payment Settings */}
+        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+          <button
+            onClick={() => toggleSection('payment')}
+            className="w-full flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <CreditCard size={20} className="text-purple-600" />
+              <span className="text-sm font-semibold text-gray-900">Payment Settings</span>
+            </div>
+            <ChevronDown
+              size={18}
+              className={`text-gray-400 transition-transform duration-300 ${expandedSection === 'payment' ? 'rotate-180' : ''}`}
+            />
+          </button>
+          {expandedSection === 'payment' && (
+            <div className="px-4 pb-4 border-t border-gray-100 pt-4">
+              {renderPayment()}
+            </div>
+          )}
+        </div>
+
+        {/* Branding & Appearance (Ultra/Enterprise only) */}
+        {hasBranding && (
+          <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+            <button
+              onClick={() => toggleSection('branding')}
+              className="w-full flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <Palette size={20} className="text-[#d4a017]" />
+                <span className="text-sm font-semibold text-gray-900">Branding &amp; Appearance</span>
+              </div>
+              <ChevronDown
+                size={18}
+                className={`text-gray-400 transition-transform duration-300 ${expandedSection === 'branding' ? 'rotate-180' : ''}`}
+              />
+            </button>
+            {expandedSection === 'branding' && (
+              <div className="px-4 pb-4 border-t border-gray-100 pt-4">
+                {renderBranding()}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Domain Settings */}
+        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+          <button
+            onClick={() => toggleSection('domain')}
+            className="w-full flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <Globe size={20} className="text-blue-600" />
+              <span className="text-sm font-semibold text-gray-900">Domain Settings</span>
+            </div>
+            <ChevronDown
+              size={18}
+              className={`text-gray-400 transition-transform duration-300 ${expandedSection === 'domain' ? 'rotate-180' : ''}`}
+            />
+          </button>
+          {expandedSection === 'domain' && (
+            <div className="px-4 pb-4 border-t border-gray-100 pt-4">
+              {renderDomain()}
+            </div>
+          )}
+        </div>
+
+        {/* Onboarding Questions */}
+        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+          <button
+            onClick={() => toggleSection('onboarding')}
+            className="w-full flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <Settings2 size={20} className="text-green-600" />
+              <span className="text-sm font-semibold text-gray-900">Onboarding Questions</span>
+            </div>
+            <ChevronDown
+              size={18}
+              className={`text-gray-400 transition-transform duration-300 ${expandedSection === 'onboarding' ? 'rotate-180' : ''}`}
+            />
+          </button>
+          {expandedSection === 'onboarding' && (
+            <div className="px-4 pb-4 border-t border-gray-100 pt-4">
+              {renderOnboarding()}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Billing Management */}
+      <div className="bg-white rounded-2xl border border-gray-100 p-6 mb-4">
+        <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">Billing &amp; Payments</h3>
+        <p className="text-sm text-gray-600 mb-4">Manage your subscription, update payment methods, and view invoices through Stripe.</p>
+        <button
+          onClick={handleManageSubscription}
+          disabled={portalLoading}
+          className="flex items-center gap-2 px-5 py-2.5 bg-gray-900 text-white rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50"
+        >
+          {portalLoading ? (
+            <>
+              <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              Opening portal...
+            </>
+          ) : (
+            <>
+              Manage Subscription
+              <ChevronRight size={16} />
+            </>
+          )}
+        </button>
+        <p className="text-xs text-gray-400 mt-3">Powered by Stripe</p>
+      </div>
+
+      {/* Cancel Plan */}
+      <div className="bg-white rounded-2xl border border-red-100 p-6 mb-4">
+        <h3 className="text-sm font-semibold text-red-500 uppercase tracking-wide mb-2">Danger Zone</h3>
+        <p className="text-gray-600 text-sm mb-4">Cancel your subscription. Your ministry will remain active until the end of the current billing period.</p>
+        <button
+          onClick={() => setShowCancelConfirm(true)}
+          className="px-4 py-2 border border-red-200 text-red-600 rounded-xl text-sm font-semibold hover:bg-red-50 transition-colors"
+        >
+          Cancel Subscription
+        </button>
+      </div>
+
+      {/* Cancel Confirmation Modal */}
+      {showCancelConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[200] p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center">
+                <AlertTriangle size={20} className="text-red-500" />
+              </div>
+              <h3 className="text-lg font-bold text-gray-900">Cancel Subscription?</h3>
+            </div>
+            <p className="text-gray-600 text-sm mb-6">
+              Your ministry will remain active until the end of the current billing period. After that, all data will be preserved but your ministry will be suspended.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowCancelConfirm(false)}
+                className="px-4 py-2 text-gray-600 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors"
+              >
+                Keep Plan
+              </button>
+              <button
+                onClick={() => { onCancelPlan(); setShowCancelConfirm(false); }}
+                className="px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-semibold hover:bg-red-700 transition-colors"
+              >
+                Yes, Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
