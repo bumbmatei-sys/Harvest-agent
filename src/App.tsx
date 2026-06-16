@@ -17,13 +17,6 @@ import { TenantProvider, useTenant } from './contexts/TenantContext';
 
 type Page = 'auth' | 'onboarding' | 'church-onboarding' | 'home' | 'admin';
 
-/** Read a cookie by name (client-side) */
-function getCookie(name: string): string | null {
-  if (typeof document === 'undefined') return null;
-  const match = document.cookie.split(';').find(c => c.trim().startsWith(`${name}=`));
-  return match ? match.split('=')[1].trim() : null;
-}
-
 /** Error page shown when a tenant subdomain doesn't resolve to a valid tenant */
 const TenantNotFound: React.FC<{ tenantId: string; message: string }> = ({ tenantId, message }) => (
   <div className="min-h-screen flex items-center justify-center bg-background-dark">

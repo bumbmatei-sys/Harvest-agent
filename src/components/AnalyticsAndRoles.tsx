@@ -2,6 +2,7 @@ import React, { useState, useEffect, CSSProperties } from "react";
 import { collection, query, getDocs, doc, updateDoc, where, deleteDoc } from "firebase/firestore";
 import { db, auth } from "../firebase";
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
+import { getTenantScope } from '../utils/tenant-scope';
 
 
 
@@ -359,7 +360,11 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const usersSnap = await getDocs(collection(db, "users"));
+        const tenantId = await getTenantScope();
+        const q = tenantId
+          ? query(collection(db, "users"), where("tenantId", "==", tenantId))
+          : query(collection(db, "users"));
+        const usersSnap = await getDocs(q);
         const usersList: UserRecord[] = [];
         const adminsList: AdminUser[] = [];
         

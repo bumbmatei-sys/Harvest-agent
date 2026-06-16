@@ -28,7 +28,7 @@ export interface TenantContextValue {
 const TenantContext = createContext<TenantContextValue | undefined>(undefined);
 
 /** Read a cookie by name (client-side only) */
-function getCookie(name: string): string | null {
+export function getCookie(name: string): string | null {
   if (typeof document === 'undefined') return null;
   const match = document.cookie.split(';').find(c => c.trim().startsWith(`${name}=`));
   return match ? match.split('=')[1].trim() : null;

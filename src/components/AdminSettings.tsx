@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from 'react';
-import { ArrowLeft, Check, Crown, Zap, Building2, Star, ChevronRight, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Check, Crown, Zap, Building2, Star, ChevronRight, AlertTriangle, Globe } from 'lucide-react';
 import { TenantPlan } from '../types/tenant.types';
 import { getPlanFeatures, PlanFeatures } from '../utils/plan-features';
 
@@ -36,7 +36,7 @@ const MOCK_PAYMENTS = [
 ];
 
 const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onChangePlan, onCancelPlan }) => {
-  const [activeSection, setActiveSection] = useState<'main' | 'upgrade' | 'cancel' | 'branding'>('main');
+  const [activeSection, setActiveSection] = useState<'main' | 'upgrade' | 'cancel' | 'branding' | 'domain'>('main');
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly');
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [brandingLogo, setBrandingLogo] = useState('');
@@ -44,10 +44,16 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
   const [brandingSaving, setBrandingSaving] = useState(false);
   const [brandingSaved, setBrandingSaved] = useState(false);
   const [brandingLoaded, setBrandingLoaded] = useState(false);
+  const [subdomain, setSubdomain] = useState('');
+  const [customDomain, setCustomDomain] = useState('');
+  const [domainSaving, setDomainSaving] = useState(false);
+  const [domainSaved, setDomainSaved] = useState(false);
+  const [domainLoaded, setDomainLoaded] = useState(false);
 
   const currentPlanData = PLANS.find(p => p.id === currentPlan);
   const currentFeatures = getPlanFeatures(currentPlan);
   const hasBranding = currentFeatures.customDomain; // Ultra+ get branding
+  const hasCustomDomain = currentFeatures.customDomain; // Ultra+ get custom domain
 
   // Load current branding from tenant doc
   const loadBranding = async () => {
@@ -73,6 +79,32 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
       console.error('Failed to load branding:', e);
     }
     setBrandingLoaded(true);
+  };
+
+  // Load current domain settings from tenant doc
+  const loadDomain = async () => {
+    if (domainLoaded) return;
+    try {
+      const { auth, db } = await import('../firebase');
+      const { doc, getDoc } = await import('firebase/firestore');
+      if (auth.currentUser) {
+        const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
+        if (userDoc.exists()) {
+          const tenantId = userDoc.data().tenantId;
+          if (tenantId) {
+            setSubdomain(tenantId);
+            const tenantDoc = await getDoc(doc(db, 'tenants', tenantId));
+            if (tenantDoc.exists()) {
+              const config = tenantDoc.data().config || {};
+              if (config.customDomain) setCustomDomain(config.customDomain);
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Failed to load domain settings:', e);
+    }
+    setDomainLoaded(true);
   };
 
   const renderMain = () => (
@@ -151,6 +183,29 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
           </div>
         </div>
       )}
+
+      {/* Domain & Subdomain */}
+      <div className="bg-white rounded-2xl border border-gray-100 p-6">
+        <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">Domain</h3>
+        <p className="text-gray-600 text-sm mb-4">Manage your ministry's web address and custom domain.</p>
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center">
+            <Globe size={24} className="text-blue-600" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-gray-900 truncate">{subdomain || 'Loading...'}.theharvest.app</p>
+            <p className="text-xs text-gray-500">
+              {hasCustomDomain && customDomain ? `Custom: ${customDomain}` : hasCustomDomain ? 'Custom domain available' : 'Subdomain only'}
+            </p>
+          </div>
+          <button
+            onClick={() => { setActiveSection('domain'); loadDomain(); }}
+            className="ml-auto px-4 py-2 border border-gray-200 text-gray-700 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors"
+          >
+            Manage Domain
+          </button>
+        </div>
+      </div>
 
       {/* Payment History */}
       <div className="bg-white rounded-2xl border border-gray-100 p-6">
@@ -501,6 +556,138 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
     </div>
   );
 
+  const renderDomain = () => (
+    <div className="space-y-6">
+      <p className="text-gray-600">
+        Manage your ministry's web address. Your subdomain is <strong>{subdomain}.theharvest.app</strong>.
+      </p>
+
+      {/* Subdomain (read-only) */}
+      <div className="bg-white rounded-2xl border border-gray-100 p-6">
+        <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">Subdomain</h3>
+        <div className="flex items-center gap-4">
+          <div className="flex-1">
+            <div className="flex items-center">
+              <input
+                type="text"
+                value={subdomain}
+                disabled
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-l-xl text-sm bg-gray-50 text-gray-600 cursor-not-allowed"
+              />
+              <span className="px-4 py-2.5 border border-l-0 border-gray-200 rounded-r-xl text-sm text-gray-500 bg-gray-100">.theharvest.app</span>
+            </div>
+            <p className="text-xs text-gray-400 mt-2">
+              To change your subdomain, please contact support. Subdomain changes require migration and may affect your existing links.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Custom Domain (Ultra/Enterprise only) */}
+      {hasCustomDomain ? (
+        <div className="bg-white rounded-2xl border border-gray-100 p-6">
+          <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">Custom Domain</h3>
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-purple-50 flex items-center justify-center">
+              <Globe size={24} className="text-purple-600" />
+            </div>
+            <div className="flex-1">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Your Custom Domain</label>
+              <input
+                type="text"
+                value={customDomain}
+                onChange={(e) => setCustomDomain(e.target.value)}
+                placeholder="e.g. ministry.yourchurch.org"
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#d4a017] focus:border-transparent"
+              />
+              <p className="text-xs text-gray-400 mt-1">
+                Enter your custom domain. You'll need to add a CNAME record pointing to <span className="font-mono">theharvest.app</span>.
+              </p>
+            </div>
+          </div>
+
+          {/* DNS Instructions */}
+          <div className="mt-4 pt-4 border-t border-gray-100">
+            <p className="text-sm font-medium text-gray-700 mb-3">DNS Configuration</p>
+            <div className="bg-gray-50 rounded-xl p-4">
+              <p className="text-xs text-gray-600 mb-2">Add the following CNAME record to your DNS provider:</p>
+              <div className="font-mono text-sm bg-white rounded-lg p-3 border border-gray-200">
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Type:</span>
+                  <span className="text-gray-900">CNAME</span>
+                </div>
+                <div className="flex justify-between mt-1">
+                  <span className="text-gray-500">Name:</span>
+                  <span className="text-gray-900">{customDomain || 'your-domain.com'}</span>
+                </div>
+                <div className="flex justify-between mt-1">
+                  <span className="text-gray-500">Value:</span>
+                  <span className="text-gray-900">theharvest.app</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="bg-white rounded-2xl border border-gray-100 p-6">
+          <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">Custom Domain</h3>
+          <p className="text-gray-600 text-sm mb-4">
+            Custom domains are available on <strong>Ultra</strong> and <strong>Enterprise</strong> plans.
+            Upgrade to use your own domain name.
+          </p>
+          <button
+            onClick={() => setActiveSection('upgrade')}
+            className="px-4 py-2 bg-[#d4a017] text-white rounded-xl text-sm font-semibold hover:bg-[#b8941a] transition-colors"
+          >
+            Upgrade to Unlock
+          </button>
+        </div>
+      )}
+
+      {/* Save Button (only for custom domain) */}
+      {hasCustomDomain && (
+        <div className="flex items-center gap-3">
+          <button
+            onClick={async () => {
+              setDomainSaving(true);
+              setDomainSaved(false);
+              try {
+                const { auth, db } = await import('../firebase');
+                const { doc, getDoc, updateDoc } = await import('firebase/firestore');
+                if (auth.currentUser) {
+                  const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
+                  if (userDoc.exists()) {
+                    const tenantId = userDoc.data().tenantId;
+                    if (tenantId) {
+                      await updateDoc(doc(db, 'tenants', tenantId), {
+                        'config.customDomain': customDomain.trim() || null,
+                        updatedAt: new Date().toISOString(),
+                      });
+                      setDomainSaved(true);
+                      setTimeout(() => setDomainSaved(false), 3000);
+                    }
+                  }
+                }
+              } catch (e) {
+                console.error('Failed to save domain settings:', e);
+                alert('Failed to save domain settings. Please try again.');
+              } finally {
+                setDomainSaving(false);
+              }
+            }}
+            disabled={domainSaving}
+            className="px-6 py-2.5 bg-[#d4a017] text-white rounded-xl text-sm font-semibold hover:bg-[#b8941a] transition-colors disabled:opacity-50"
+          >
+            {domainSaving ? 'Saving...' : 'Save Domain Settings'}
+          </button>
+          {domainSaved && (
+            <span className="text-sm text-green-600 font-medium">✓ Domain settings saved successfully</span>
+          )}
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div className="p-4 lg:p-6 max-w-6xl mx-auto">
       {/* Header */}
@@ -514,13 +701,14 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
           </button>
         )}
         <h1 className="text-2xl font-bold text-gray-900">
-          {activeSection === 'main' ? 'Settings' : activeSection === 'upgrade' ? 'Upgrade Plan' : activeSection === 'branding' ? 'Branding' : 'Cancel Plan'}
+          {activeSection === 'main' ? 'Settings' : activeSection === 'upgrade' ? 'Upgrade Plan' : activeSection === 'branding' ? 'Branding' : activeSection === 'domain' ? 'Domain & Subdomain' : 'Cancel Plan'}
         </h1>
       </div>
 
       {activeSection === 'main' && renderMain()}
       {activeSection === 'upgrade' && renderUpgrade()}
       {activeSection === 'branding' && renderBranding()}
+      {activeSection === 'domain' && renderDomain()}
     </div>
   );
 };

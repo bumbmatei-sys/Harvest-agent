@@ -18,8 +18,10 @@ export function middleware(request: NextRequest) {
 
   // Detect admin subdomain → set isAdmin cookie
   // This runs before any tenant detection so admin always wins
+  // Only match exact admin subdomains for known base domains
   const isAdminSubdomain = hostname === 'admin.theharvest.app' ||
-    hostname.startsWith('admin.');
+    hostname === 'admin.harvest-agent.vercel.app' ||
+    /^admin-[a-z0-9-]+\.vercel\.app$/.test(hostname);
   if (isAdminSubdomain) {
     response.cookies.set('isAdmin', 'true', { path: '/', maxAge: 60 * 60 * 24 * 30 });
   } else {
@@ -45,7 +47,6 @@ export function middleware(request: NextRequest) {
     'theharvest.app',
     'www.theharvest.app',
     'harvest-agent.vercel.app',
-    'harvest-agent-bumbmatei-sys-projects.vercel.app',
     'localhost',
   ];
 
@@ -64,9 +65,9 @@ export function middleware(request: NextRequest) {
     // Reconstruct the base domain (everything after the first part)
     const baseDomain = parts.slice(1).join('.');
 
-    // Only treat as tenant subdomain if base is theharvest.app
-    // Skip Vercel preview URLs like harvest-agent-abc123.vercel.app
-    if (baseDomain === 'theharvest.app') {
+    // Treat as tenant subdomain if base is theharvest.app
+    // OR if it's a *.vercel.app preview deployment (e.g. gracechurch.harvest-agent-abc123.vercel.app)
+    if (baseDomain === 'theharvest.app' || baseDomain.endsWith('.vercel.app')) {
       const subdomain = parts[0];
       response.cookies.set('tenantId', subdomain, { path: '/', maxAge: 60 * 60 * 24 * 30 });
       return response;
