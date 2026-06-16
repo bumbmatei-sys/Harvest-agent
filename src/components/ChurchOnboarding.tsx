@@ -7,6 +7,7 @@ import { Church, Palette, CheckCircle2, ArrowRight, ArrowLeft, Sparkles, Loader2
 import { TenantPlan } from '../types/tenant.types';
 import { createTenant, isSubdomainAvailable } from '../utils/tenant.utils';
 import { ImageUpload } from './ImageUpload';
+import { sendEmail, welcomeEmail } from '../utils/email';
 
 interface ChurchOnboardingProps {
   onComplete: () => void;
@@ -143,6 +144,13 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ onComplete }) => {
           ...updateData,
           termsAccepted: true,
         });
+      }
+
+      // Fire-and-forget welcome email
+      if (auth.currentUser?.email) {
+        const emailData = welcomeEmail(auth.currentUser.displayName || 'Friend', ministryName.trim());
+        emailData.to = auth.currentUser.email;
+        sendEmail(emailData).catch(console.error);
       }
 
       setStep(hasBranding ? 2 : 1);

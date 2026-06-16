@@ -2,9 +2,10 @@
 import React, { useState } from 'react';
 import { ArrowLeft, Mail, MapPin, Lightbulb, HeartHandshake, ChevronDown, ChevronUp } from 'lucide-react';
 import { db, auth } from '../firebase';
-import { collection, addDoc } from 'firebase/firestore';
+import { collection, addDoc, doc, getDoc } from 'firebase/firestore';
 import { getTenantScope } from '../utils/tenant-scope';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
+import { sendEmail, contactFormNotification } from '../utils/email';
 
 
 interface ContactModalProps {
@@ -138,6 +139,29 @@ const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) => {
    data,
    tenantId: tenantId || null
  });
+
+ // Fire-and-forget admin notification email
+ if (tenantId) {
+   try {
+     const tenantSnap = await getDoc(doc(db, 'tenants', tenantId));
+     if (tenantSnap.exists()) {
+       const adminEmails: string[] = tenantSnap.data().adminEmails || [];
+       const submitterName = data.name || data.contactName || 'Someone';
+       const submitterEmail = data.email || '';
+       const message = data.message || data.request || data.details || data.reason || '';
+       const ministryName = tenantSnap.data().name || 'Your Ministry';
+       adminEmails.forEach((adminEmail: string) => {
+         if (adminEmail) {
+           const emailData = contactFormNotification(adminEmail, submitterName, submitterEmail, message, ministryName);
+           sendEmail(emailData).catch(console.error);
+         }
+       });
+     }
+   } catch (emailErr) {
+     console.error('Failed to send admin notification:', emailErr);
+   }
+ }
+
  setSuccessMessage('Successfully submitted! Thank you.');
  resetForm();
  setTimeout(() => {
