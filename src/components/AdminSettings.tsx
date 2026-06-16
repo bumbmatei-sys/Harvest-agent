@@ -61,6 +61,14 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
   const [paymentLoaded, setPaymentLoaded] = useState(false);
   const [onboardingQuestions, setOnboardingQuestions] = useState<{ id: string; label: string; type: 'text' | 'select' | 'radio' | 'textarea'; options?: string[]; required: boolean; order: number }[]>([]);
   const [onboardingLoaded, setOnboardingLoaded] = useState(false);
+
+  const DEFAULT_ONBOARDING_QUESTIONS = [
+    { id: 'default_name', label: 'Full Name', type: 'text' as const, required: true, order: 0 },
+    { id: 'default_country', label: 'Country', type: 'select' as const, required: true, order: 1, options: [] },
+    { id: 'default_city', label: 'City', type: 'text' as const, required: true, order: 2 },
+    { id: 'default_phone', label: 'Phone Number', type: 'text' as const, required: true, order: 3 },
+    { id: 'default_accepted_jesus', label: 'Have you accepted Jesus?', type: 'radio' as const, required: true, order: 4, options: ['Yes', 'No'] },
+  ];
   const [onboardingSaving, setOnboardingSaving] = useState(false);
   const [onboardingSaved, setOnboardingSaved] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<{ id: string; label: string; type: 'text' | 'select' | 'radio' | 'textarea'; options?: string[]; required: boolean; order: number } | null>(null);
@@ -271,8 +279,11 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
             const tenantDoc = await getDoc(doc(db, 'tenants', tenantId));
             if (tenantDoc.exists()) {
               const config = tenantDoc.data().config || {};
-              if (config.onboardingQuestions && Array.isArray(config.onboardingQuestions)) {
+              if (config.onboardingQuestions && Array.isArray(config.onboardingQuestions) && config.onboardingQuestions.length > 0) {
                 setOnboardingQuestions(config.onboardingQuestions.sort((a: any, b: any) => a.order - b.order));
+              } else {
+                // No saved questions yet — seed defaults so admin can see and edit them
+                setOnboardingQuestions(DEFAULT_ONBOARDING_QUESTIONS);
               }
             }
           }
@@ -949,7 +960,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
     return (
       <div className="space-y-6">
         <p className="text-gray-600">
-          Manage custom onboarding questions. The default fields (Name, Country, City, Phone, Accepted Jesus) are always shown. Custom questions appear after them.
+          These are the questions new members see when signing up. Edit, reorder, or delete any question. Add your own custom questions below.
         </p>
 
         {/* Add Question Button */}

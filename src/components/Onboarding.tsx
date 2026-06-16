@@ -135,10 +135,14 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
 
  const handleSubmit = async (e: React.FormEvent) => {
  e.preventDefault();
- if (!name || !country || !city || !phone || !acceptedJesus) {
- setError('Please fill in all fields.');
- return;
- }
+
+ // Only validate default fields that are actually present in the questions list
+ const hasDefault = (id: string) => customQuestions.some(q => q.id === id);
+ if (hasDefault('default_name') && !name) { setError('Please fill in all fields.'); return; }
+ if (hasDefault('default_country') && !country) { setError('Please fill in all fields.'); return; }
+ if (hasDefault('default_city') && !city) { setError('Please fill in all fields.'); return; }
+ if (hasDefault('default_phone') && !phone) { setError('Please fill in all fields.'); return; }
+ if (hasDefault('default_accepted_jesus') && !acceptedJesus) { setError('Please fill in all fields.'); return; }
 
  // Check required custom questions
  for (const q of customQuestions) {
@@ -295,96 +299,111 @@ onComplete();
  )}
 
  <form onSubmit={handleSubmit} className="space-y-5">
- <div>
- <label className="block text-sm font-bold text-gray-200 mb-1">Full Name</label>
- <input
- type="text"
- required
- value={name}
- onChange={(e) => setName(e.target.value)}
- className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/20 text-white placeholder-gray-400 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
- placeholder="John Doe"
- />
- </div>
 
- <div className="relative z-50">
- <label className="block text-sm font-bold text-gray-200 mb-1">Country</label>
- <CountrySelect
- value={country}
- onChange={setCountry}
- className="w-full"
- buttonClassName="!bg-white/5 !border-white/20 !text-white focus:!ring-2 focus:!ring-primary focus:!border-primary !py-3 !rounded-xl"
- />
- </div>
+ {/* Default onboarding questions — rendered by known IDs */}
+ {customQuestions.some(q => q.id === 'default_name') && (
+   <div>
+     <label className="block text-sm font-bold text-gray-200 mb-1">Full Name</label>
+     <input type="text" required value={name} onChange={(e) => setName(e.target.value)}
+       className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/20 text-white placeholder-gray-400 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
+       placeholder="John Doe" />
+   </div>
+ )}
 
- <div className="relative z-40">
- <label className="block text-sm font-bold text-gray-200 mb-1">City</label>
- <input
- type="text"
- required
- value={city}
- onChange={(e) => setCity(e.target.value)}
- className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/20 text-white placeholder-gray-400 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
- placeholder="e.g. London"
- />
- </div>
+ {customQuestions.some(q => q.id === 'default_country') && (
+   <div className="relative z-50">
+     <label className="block text-sm font-bold text-gray-200 mb-1">Country</label>
+     <CountrySelect value={country} onChange={setCountry} className="w-full"
+       buttonClassName="!bg-white/5 !border-white/20 !text-white focus:!ring-2 focus:!ring-primary focus:!border-primary !py-3 !rounded-xl" />
+   </div>
+ )}
 
- <div className="relative z-30">
- <label className="block text-sm font-bold text-gray-200 mb-1">Phone Number</label>
- <input
- type="tel"
- required
- value={phone}
- onChange={(e) => setPhone(e.target.value)}
- className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/20 text-white placeholder-gray-400 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
- placeholder="e.g. +1 234 567 8900"
-              />
-            </div>
+ {customQuestions.some(q => q.id === 'default_city') && (
+   <div className="relative z-40">
+     <label className="block text-sm font-bold text-gray-200 mb-1">City</label>
+     <input type="text" required value={city} onChange={(e) => setCity(e.target.value)}
+       className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/20 text-white placeholder-gray-400 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
+       placeholder="e.g. London" />
+   </div>
+ )}
 
-            <div className="relative z-30 mt-4">
-              <label className="block text-sm font-bold text-gray-200 mb-2">Have you accepted Jesus?</label>
-              <div className="flex gap-4">
-                <label className="flex-1 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="acceptedJesus"
-                    value="yes"
-                    checked={acceptedJesus === 'yes'}
-                    onChange={(e) => setAcceptedJesus(e.target.value)}
-                    className="peer sr-only"
-                    required
-                  />
-                  <div className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/20 text-center text-white peer-checked:bg-primary/20 peer-checked:border-primary peer-checked:text-primary transition-all font-semibold">
-                    Yes
-                  </div>
-                </label>
-                <label className="flex-1 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="acceptedJesus"
-                    value="no"
-                    checked={acceptedJesus === 'no'}
-                    onChange={(e) => setAcceptedJesus(e.target.value)}
-                    className="peer sr-only"
-                    required
-                  />
-                  <div className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/20 text-center text-white peer-checked:bg-white/20 peer-checked:border-white/50 transition-all font-semibold">
-                    No
-                  </div>
-                </label>
-              </div>
-            </div>
+ {customQuestions.some(q => q.id === 'default_phone') && (
+   <div className="relative z-30">
+     <label className="block text-sm font-bold text-gray-200 mb-1">Phone Number</label>
+     <input type="tel" required value={phone} onChange={(e) => setPhone(e.target.value)}
+       className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/20 text-white placeholder-gray-400 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
+       placeholder="e.g. +1 234 567 8900" />
+   </div>
+ )}
 
-            {/* Custom Onboarding Questions */}
-            {customQuestions.map((question) => (
-              <div key={question.id} className="relative z-20">
-                <label className="block text-sm font-bold text-gray-200 mb-1">
-                  {question.label}
-                  {question.required && <span className="text-red-400 ml-1">*</span>}
-                </label>
-                {renderCustomQuestion(question)}
-              </div>
-            ))}
+ {customQuestions.some(q => q.id === 'default_accepted_jesus') && (
+   <div className="relative z-30 mt-4">
+     <label className="block text-sm font-bold text-gray-200 mb-2">Have you accepted Jesus?</label>
+     <div className="flex gap-4">
+       <label className="flex-1 cursor-pointer">
+         <input type="radio" name="acceptedJesus" value="yes" checked={acceptedJesus === 'yes'} onChange={(e) => setAcceptedJesus(e.target.value)} className="peer sr-only" required />
+         <div className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/20 text-center text-white peer-checked:bg-primary/20 peer-checked:border-primary peer-checked:text-primary transition-all font-semibold">Yes</div>
+       </label>
+       <label className="flex-1 cursor-pointer">
+         <input type="radio" name="acceptedJesus" value="no" checked={acceptedJesus === 'no'} onChange={(e) => setAcceptedJesus(e.target.value)} className="peer sr-only" required />
+         <div className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/20 text-center text-white peer-checked:bg-white/20 peer-checked:border-white/50 transition-all font-semibold">No</div>
+       </label>
+     </div>
+   </div>
+ )}
+
+ {/* Custom Onboarding Questions (non-default) */}
+ {customQuestions.filter(q => !q.id.startsWith('default_')).map((question) => (
+   <div key={question.id} className="relative z-20">
+     <label className="block text-sm font-bold text-gray-200 mb-1">
+       {question.label}
+       {question.required && <span className="text-red-400 ml-1">*</span>}
+     </label>
+     {renderCustomQuestion(question)}
+   </div>
+ ))}
+
+ {/* Fallback: if no questions configured at all, show hardcoded defaults */}
+ {customQuestions.length === 0 && (
+   <>
+     <div>
+       <label className="block text-sm font-bold text-gray-200 mb-1">Full Name</label>
+       <input type="text" required value={name} onChange={(e) => setName(e.target.value)}
+         className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/20 text-white placeholder-gray-400 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
+         placeholder="John Doe" />
+     </div>
+     <div className="relative z-50">
+       <label className="block text-sm font-bold text-gray-200 mb-1">Country</label>
+       <CountrySelect value={country} onChange={setCountry} className="w-full"
+         buttonClassName="!bg-white/5 !border-white/20 !text-white focus:!ring-2 focus:!ring-primary focus:!border-primary !py-3 !rounded-xl" />
+     </div>
+     <div className="relative z-40">
+       <label className="block text-sm font-bold text-gray-200 mb-1">City</label>
+       <input type="text" required value={city} onChange={(e) => setCity(e.target.value)}
+         className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/20 text-white placeholder-gray-400 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
+         placeholder="e.g. London" />
+     </div>
+     <div className="relative z-30">
+       <label className="block text-sm font-bold text-gray-200 mb-1">Phone Number</label>
+       <input type="tel" required value={phone} onChange={(e) => setPhone(e.target.value)}
+         className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/20 text-white placeholder-gray-400 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
+         placeholder="e.g. +1 234 567 8900" />
+     </div>
+     <div className="relative z-30 mt-4">
+       <label className="block text-sm font-bold text-gray-200 mb-2">Have you accepted Jesus?</label>
+       <div className="flex gap-4">
+         <label className="flex-1 cursor-pointer">
+           <input type="radio" name="acceptedJesus" value="yes" checked={acceptedJesus === 'yes'} onChange={(e) => setAcceptedJesus(e.target.value)} className="peer sr-only" required />
+           <div className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/20 text-center text-white peer-checked:bg-primary/20 peer-checked:border-primary peer-checked:text-primary transition-all font-semibold">Yes</div>
+         </label>
+         <label className="flex-1 cursor-pointer">
+           <input type="radio" name="acceptedJesus" value="no" checked={acceptedJesus === 'no'} onChange={(e) => setAcceptedJesus(e.target.value)} className="peer sr-only" required />
+           <div className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/20 text-center text-white peer-checked:bg-white/20 peer-checked:border-white/50 transition-all font-semibold">No</div>
+         </label>
+       </div>
+     </div>
+   </>
+ )}
 
  <button
  type="submit"
