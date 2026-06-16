@@ -59,11 +59,14 @@ export async function middleware(request: NextRequest) {
   }
 
   // ─── 5. Custom domain resolution ────────────────────────────────
+  // Strip www. prefix for consistent domain resolution
+  const resolveHostname = hostname.replace(/^www\./, '');
+
   // Check if we already resolved this domain (cached in cookie)
   const cachedDomain = request.cookies.get('customDomain')?.value;
   const cachedTenantId = request.cookies.get('tenantId')?.value;
 
-  if (cachedDomain === hostname && cachedTenantId) {
+  if ((cachedDomain === hostname || cachedDomain === resolveHostname) && cachedTenantId) {
     // Already resolved, use cached tenantId
     return response;
   }
@@ -71,7 +74,7 @@ export async function middleware(request: NextRequest) {
   // Unknown domain — redirect to API route to resolve
   // The API route will set cookies and redirect back
   const resolveUrl = new URL('/api/resolve-domain', request.url);
-  resolveUrl.searchParams.set('domain', hostname);
+  resolveUrl.searchParams.set('domain', resolveHostname);
   resolveUrl.searchParams.set('redirect', request.nextUrl.pathname + request.nextUrl.search);
   
   return NextResponse.redirect(resolveUrl);

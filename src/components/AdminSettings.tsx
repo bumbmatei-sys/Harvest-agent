@@ -653,16 +653,34 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
               setDomainSaved(false);
               try {
                 const { auth, db } = await import('../firebase');
-                const { doc, getDoc, updateDoc } = await import('firebase/firestore');
+                const { doc, getDoc, updateDoc, setDoc, deleteDoc } = await import('firebase/firestore');
                 if (auth.currentUser) {
                   const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
                   if (userDoc.exists()) {
                     const tenantId = userDoc.data().tenantId;
                     if (tenantId) {
+                      // Normalize domain: lowercase, strip protocol, trailing slashes, www prefix
+                      const normalizedDomain = customDomain.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '').replace(/^www\./, '');
+
+                      // Get old domain to clean up domains collection
+                      const tenantDoc = await getDoc(doc(db, 'tenants', tenantId));
+                      const oldDomain = tenantDoc.exists() ? tenantDoc.data().config?.customDomain : null;
+
                       await updateDoc(doc(db, 'tenants', tenantId), {
-                        'config.customDomain': customDomain.trim() || null,
+                        'config.customDomain': normalizedDomain || null,
                         updatedAt: new Date().toISOString(),
                       });
+
+                      // Write to domains collection for fast API lookup
+                      if (normalizedDomain) {
+                        await setDoc(doc(db, 'domains', normalizedDomain), { tenantId });
+                      }
+
+                      // Delete old domain entry if domain changed
+                      if (oldDomain && oldDomain !== normalizedDomain) {
+                        await deleteDoc(doc(db, 'domains', oldDomain)).catch(() => {});
+                      }
+
                       setDomainSaved(true);
                       setTimeout(() => setDomainSaved(false), 3000);
                     }
