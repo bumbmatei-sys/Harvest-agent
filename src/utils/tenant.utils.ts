@@ -74,13 +74,12 @@ export async function updateTenant(
   if (data.plan !== undefined) updateData.plan = data.plan;
   if (data.status !== undefined) updateData.status = data.status;
   if (data.adminEmails !== undefined) updateData.adminEmails = data.adminEmails;
+  // Use dot notation for partial config updates to avoid overwriting existing fields
   if (data.config) {
-    const config: Record<string, any> = {};
-    if (data.config.logo !== undefined) config.logo = data.config.logo;
-    if (data.config.primaryColor !== undefined) config.primaryColor = data.config.primaryColor;
-    if (data.config.description !== undefined) config.description = data.config.description;
-    if (data.config.customDomain !== undefined) config.customDomain = data.config.customDomain;
-    updateData.config = config;
+    if (data.config.logo !== undefined) updateData['config.logo'] = data.config.logo;
+    if (data.config.primaryColor !== undefined) updateData['config.primaryColor'] = data.config.primaryColor;
+    if (data.config.description !== undefined) updateData['config.description'] = data.config.description;
+    if (data.config.customDomain !== undefined) updateData['config.customDomain'] = data.config.customDomain;
   }
   await updateDoc(ref, updateData);
 }

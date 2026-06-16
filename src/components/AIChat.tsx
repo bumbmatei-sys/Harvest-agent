@@ -297,7 +297,8 @@ export default function AIChat({ onBack }: { onBack?: () => void }) {
      scoredChunks.sort((a, b) => b.similarity - a.similarity);
      return scoredChunks.slice(0, 5).filter(c => c.similarity > 0.5); // Only return relevant chunks
    } catch (error) {
-     handleFirestoreError(error, OperationType.GET, `rag_chunks`);
+     const errInfo = handleFirestoreError(error, OperationType.GET, 'rag_chunks');
+     console.warn('Knowledge base search failed, falling back to general chat:', errInfo.error);
      return [];
    }
  };

@@ -71,9 +71,10 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
-  // Unknown domain — redirect to API route to resolve
-  // The API route will set cookies and redirect back
-  const resolveUrl = new URL('/api/resolve-domain', request.url);
+  // Unknown domain — redirect to API route to resolve on the base domain
+  // Must use theharvest.app (not request.url which is the custom domain)
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://theharvest.app';
+  const resolveUrl = new URL('/api/resolve-domain', baseUrl);
   resolveUrl.searchParams.set('domain', resolveHostname);
   resolveUrl.searchParams.set('redirect', request.nextUrl.pathname + request.nextUrl.search);
   

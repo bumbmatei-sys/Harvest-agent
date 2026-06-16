@@ -83,6 +83,13 @@ const filterByLocation = (users: UserRecord[], q: string): UserRecord[] => {
   );
 };
 
+const escapeCsvValue = (val: string): string => {
+  // Prefix formula chars to prevent CSV injection in spreadsheet apps
+  const str = String(val);
+  const safe = /^[=+@\-]/.test(str) ? "'" + str : str;
+  return `"${safe.replace(/"/g, '""')}"`;
+};
+
 const downloadUsersCSV = (users: UserRecord[], filename: string): void => {
   const headers = ["Name", "Phone Number", "Email", "Registration Date", "Country", "City", "Accepted Jesus"];
   const rows = users.map((u) => [
@@ -90,7 +97,7 @@ const downloadUsersCSV = (users: UserRecord[], filename: string): void => {
     new Date(u.registeredAt).toLocaleDateString("en-US"),
     u.country || "Unknown", u.city || "Unknown", u.acceptedJesus !== undefined ? (u.acceptedJesus ? "Yes" : "No") : "Unknown",
   ]);
-  const csv = [headers, ...rows].map((r) => r.map((c) => `"${c}"`).join(",")).join("\n");
+  const csv = [headers, ...rows].map((r) => r.map(escapeCsvValue).join(",")).join("\n");
   const blob = new Blob([csv], { type: "text/csv" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -101,20 +108,7 @@ const downloadUsersCSV = (users: UserRecord[], filename: string): void => {
 };
 
 const downloadCSV = (users: UserRecord[], period: TimePeriod, location: string): void => {
-  const headers = ["Name", "Phone Number", "Email", "Registration Date", "Country", "City", "Accepted Jesus"];
-  const rows = users.map((u) => [
-    u.name, u.phone || "Unknown", u.email,
-    new Date(u.registeredAt).toLocaleDateString("en-US"),
-    u.country || "Unknown", u.city || "Unknown", u.acceptedJesus !== undefined ? (u.acceptedJesus ? "Yes" : "No") : "Unknown",
-  ]);
-  const csv = [headers, ...rows].map((r) => r.map((c) => `"${c}"`).join(",")).join("\n");
-  const blob = new Blob([csv], { type: "text/csv" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `harvest-users-${location || "all"}-${period}days.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
+  downloadUsersCSV(users, `harvest-users-${location || "all"}-${period}days.csv`);
 };
 
 interface StatCardProps { label: string; value: string | number; sub?: string; color?: string; icon: string; onClick?: () => void; }

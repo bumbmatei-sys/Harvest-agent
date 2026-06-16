@@ -1,5 +1,5 @@
 'use client';
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { TenantPlan, TenantConfig } from '../types/tenant.types';
@@ -58,6 +58,7 @@ export const TenantProvider: React.FC<TenantProviderProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isAdminDomain, setIsAdminDomain] = useState(false);
+  const planInitialized = useRef(false);
 
   // Detect admin subdomain
   useEffect(() => {
@@ -105,7 +106,8 @@ export const TenantProvider: React.FC<TenantProviderProps> = ({
         }
 
         const data = tenantDoc.data();
-        if (!tenantPlan && data.plan) {
+        if (!planInitialized.current && data.plan) {
+          planInitialized.current = true;
           setTenantPlanState(data.plan as TenantPlan);
         }
         if (data.config) {
@@ -131,7 +133,7 @@ export const TenantProvider: React.FC<TenantProviderProps> = ({
 
     validateTenant();
     return () => { cancelled = true; };
-  }, [tenantId, initialPlan, initialTenantId, tenantPlan]);
+  }, [tenantId, initialPlan, initialTenantId]);
 
   const setTenantPlan = useCallback((plan: TenantPlan) => {
     setTenantPlanState(plan);

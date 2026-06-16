@@ -11,14 +11,21 @@ export async function GET(request: NextRequest) {
   const domain = request.nextUrl.searchParams.get('domain');
   const redirectPath = request.nextUrl.searchParams.get('redirect') || '/';
   
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://theharvest.app';
+
   if (!domain) {
-    return NextResponse.redirect(new URL('/', request.url));
+    return NextResponse.redirect(baseUrl);
   }
 
   try {
-    const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
-    // Firebase project ID — hardcoded for now (single project deployment)
-    const projectId = 'harvest-agent-233a1';
+    // Use server-only env var for API key (falls back to NEXT_PUBLIC for local dev)
+    const apiKey = process.env.FIREBASE_API_KEY || process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
+    const projectId = process.env.FIREBASE_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+    
+    if (!apiKey || !projectId) {
+      console.error('Missing FIREBASE_API_KEY or FIREBASE_PROJECT_ID env vars');
+      return NextResponse.redirect(baseUrl);
+    }
     
     // Normalize domain: lowercase, strip www. prefix for lookup
     const normalizedDomain = domain.toLowerCase().replace(/^www\./, '');
@@ -34,17 +41,17 @@ export async function GET(request: NextRequest) {
     }
 
     if (!resp.ok) {
-      return NextResponse.redirect(new URL('https://theharvest.app', request.url));
+      return NextResponse.redirect(baseUrl);
     }
 
     const doc = await resp.json();
     const tenantId = doc.fields?.tenantId?.stringValue;
 
     if (!tenantId) {
-      return NextResponse.redirect(new URL('https://theharvest.app', request.url));
+      return NextResponse.redirect(baseUrl);
     }
 
-    // Redirect to the original path with tenant context cookies
+    // Redirect to the original path on the custom domain itself
     const redirectUrl = new URL(redirectPath, request.url);
     const response = NextResponse.redirect(redirectUrl);
     
@@ -62,6 +69,6 @@ export async function GET(request: NextRequest) {
     return response;
   } catch (error) {
     console.error('Domain resolution error:', error);
-    return NextResponse.redirect(new URL('https://theharvest.app', request.url));
+    return NextResponse.redirect(baseUrl);
   }
 }

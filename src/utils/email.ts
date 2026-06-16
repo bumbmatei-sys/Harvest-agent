@@ -3,6 +3,10 @@
  * Sends emails via the /api/send-email route.
  */
 
+const APP_URL = typeof window !== 'undefined' 
+  ? window.location.origin 
+  : (process.env.NEXT_PUBLIC_APP_URL || 'https://theharvest.app');
+
 interface EmailOptions {
   to: string;
   subject: string;
@@ -67,7 +71,7 @@ export function contactFormNotification(
         <blockquote style="border-left: 3px solid #D4AF37; padding-left: 16px; color: #555;">
           ${message}
         </blockquote>
-        <p><a href="https://harvest-agent.vercel.app" style="color: #D4AF37;">View in Dashboard →</a></p>
+        <p><a href="${APP_URL}" style="color: #D4AF37;">View in Dashboard →</a></p>
       </div>
     `,
   };
@@ -106,7 +110,7 @@ export function newPostNotification(
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #0b1121;">New Post from ${ministryName}</h2>
         <p><strong>${postTitle}</strong></p>
-        <p><a href="https://harvest-agent.vercel.app" style="color: #D4AF37;">Read More →</a></p>
+        <p><a href="${APP_URL}" style="color: #D4AF37;">Read More →</a></p>
       </div>
     `,
   };

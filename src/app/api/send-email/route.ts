@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { adminDb } from '@/lib/firebase-admin';
 
 /**
  * Email notification API route.
@@ -48,16 +49,7 @@ export async function POST(request: NextRequest) {
     // }
 
     // ─── Option 2: Log to Firestore (default) ─────────────────────
-    const { initializeApp, cert, getApps } = await import('firebase-admin/app');
-    const { getFirestore } = await import('firebase-admin/firestore');
-
-    if (!getApps().length) {
-      const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT || '{}');
-      initializeApp({ credential: cert(serviceAccount) });
-    }
-
-    const db = getFirestore();
-    await db.collection('email_log').add({
+    await adminDb.collection('email_log').add({
       to,
       from,
       subject,

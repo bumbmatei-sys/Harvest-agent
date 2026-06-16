@@ -167,7 +167,7 @@ export default function AdminRAG() {
      const loadedSources = snapshot.docs.map(doc => ({
        id: doc.id,
        ...doc.data(),
-       addedAt: doc.data().addedAt?.toDate() || new Date()
+       addedAt: doc.data().addedAt?.toDate?.() || new Date()
      }));
      loadedSources.sort((a: any, b: any) => b.addedAt.getTime() - a.addedAt.getTime());
      setSources(loadedSources);

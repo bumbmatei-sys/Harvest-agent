@@ -13,13 +13,15 @@ import { getTenantScope } from '../utils/tenant-scope';
 
 
 
-// Fix for default marker icon in react-leaflet
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-L.Icon.Default.mergeOptions({
- iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
- iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
- shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-});
+// Fix for default marker icon in react-leaflet (safe for SSR since component uses dynamic import)
+if (typeof window !== 'undefined') {
+  delete (L.Icon.Default.prototype as any)._getIconUrl;
+  L.Icon.Default.mergeOptions({
+    iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+    iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+  });
+}
 
 // Custom church icon
 const createChurchIcon = () => {
@@ -112,7 +114,7 @@ const LocationButton = ({ setUserLocation }: { setUserLocation: (loc: {lat: numb
  e.stopPropagation();
  locateUser();
  }}
- className="bg-white p-3 rounded-full shadow-md text-gray-700 hover:text-[#d4a017] :text-[#d4a017] transition-colors"
+ className="bg-white p-3 rounded-full shadow-md text-gray-700 hover:text-[#d4a017] transition-colors"
  >
  <LocateFixed size={24} />
  </button>
@@ -246,7 +248,7 @@ const ChurchMap: React.FC<ChurchMapProps> = ({ onBack, onMapInteraction }) => {
  <div className="absolute top-4 left-4 right-4 z-[1000] flex justify-between items-center pointer-events-none">
  <button 
  onClick={onBack}
- className="pointer-events-auto bg-white p-3 rounded-full shadow-md text-gray-700 hover:text-[#d4a017] :text-[#d4a017] transition-colors"
+ className="pointer-events-auto bg-white p-3 rounded-full shadow-md text-gray-700 hover:text-[#d4a017] transition-colors"
  >
  <ArrowLeft size={24} />
  </button>
@@ -260,7 +262,7 @@ const ChurchMap: React.FC<ChurchMapProps> = ({ onBack, onMapInteraction }) => {
  <div className="flex flex-col gap-2 pointer-events-auto">
  <button 
  onClick={() => setViewMode(viewMode === 'map' ? 'list' : 'map')}
- className="bg-white p-3 rounded-full shadow-md text-gray-700 hover:text-[#d4a017] :text-[#d4a017] transition-colors flex items-center justify-center"
+ className="bg-white p-3 rounded-full shadow-md text-gray-700 hover:text-[#d4a017] transition-colors flex items-center justify-center"
  >
  {viewMode === 'map' ? <List size={24} /> : <MapIcon size={24} />}
  </button>
