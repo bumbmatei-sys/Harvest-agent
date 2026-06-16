@@ -1,8 +1,9 @@
 "use client";
 import React, { useState } from 'react';
-import { ArrowLeft, Check, Crown, Zap, Building2, Star, ChevronRight, AlertTriangle, Globe } from 'lucide-react';
+import { ArrowLeft, Check, Crown, Zap, Building2, Star, ChevronRight, AlertTriangle, Globe, CreditCard } from 'lucide-react';
 import { TenantPlan } from '../types/tenant.types';
 import { getPlanFeatures, PlanFeatures } from '../utils/plan-features';
+import { ImageUpload } from './ImageUpload';
 
 interface AdminSettingsProps {
   onBack: () => void;
@@ -33,7 +34,7 @@ const FEATURE_COMPARISON: { key: keyof PlanFeatures; label: string; format?: (v:
 // Stripe billing — no more mock payments
 
 const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onChangePlan, onCancelPlan, tenantId, email }) => {
-  const [activeSection, setActiveSection] = useState<'main' | 'upgrade' | 'cancel' | 'branding' | 'domain'>('main');
+  const [activeSection, setActiveSection] = useState<'main' | 'upgrade' | 'cancel' | 'branding' | 'domain' | 'onboarding' | 'payment'>('main');
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly');
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [brandingLogo, setBrandingLogo] = useState('');
@@ -41,12 +42,22 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
   const [brandingSaving, setBrandingSaving] = useState(false);
   const [brandingSaved, setBrandingSaved] = useState(false);
   const [brandingLoaded, setBrandingLoaded] = useState(false);
+  const [brandingBackgroundImage, setBrandingBackgroundImage] = useState('');
   const [subdomain, setSubdomain] = useState('');
   const [customDomain, setCustomDomain] = useState('');
   const [domainSaving, setDomainSaving] = useState(false);
   const [domainSaved, setDomainSaved] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);
+  const [stripeConnectStatus, setStripeConnectStatus] = useState<string | null>(null);
+  const [stripeConnectLoading, setStripeConnectLoading] = useState(false);
+  const [paymentLoaded, setPaymentLoaded] = useState(false);
+  const [onboardingQuestions, setOnboardingQuestions] = useState<{ id: string; label: string; type: 'text' | 'select' | 'radio' | 'textarea'; options?: string[]; required: boolean; order: number }[]>([]);
+  const [onboardingLoaded, setOnboardingLoaded] = useState(false);
+  const [onboardingSaving, setOnboardingSaving] = useState(false);
+  const [onboardingSaved, setOnboardingSaved] = useState(false);
+  const [editingQuestion, setEditingQuestion] = useState<{ id: string; label: string; type: 'text' | 'select' | 'radio' | 'textarea'; options?: string[]; required: boolean; order: number } | null>(null);
+  const [showQuestionModal, setShowQuestionModal] = useState(false);
 
   const getTenantId = async (): Promise<string | null> => {
     if (tenantId) return tenantId;
@@ -137,6 +148,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
               const config = tenantDoc.data().config || {};
               if (config.logo) setBrandingLogo(config.logo);
               if (config.primaryColor) setBrandingColor(config.primaryColor);
+              if (config.backgroundImage) setBrandingBackgroundImage(config.backgroundImage);
             }
           }
         }
@@ -173,6 +185,83 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
     setDomainLoaded(true);
   };
 
+  // Load Stripe Connect status from tenant doc
+  const loadPayment = async () => {
+    if (paymentLoaded) return;
+    try {
+      const { auth, db } = await import('../firebase');
+      const { doc, getDoc } = await import('firebase/firestore');
+      if (auth.currentUser) {
+        const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
+        if (userDoc.exists()) {
+          const tid = userDoc.data().tenantId;
+          if (tid) {
+            const tenantDoc = await getDoc(doc(db, 'tenants', tid));
+            if (tenantDoc.exists()) {
+              const data = tenantDoc.data();
+              if (data.stripeConnectStatus) setStripeConnectStatus(data.stripeConnectStatus);
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Failed to load payment settings:', e);
+    }
+    setPaymentLoaded(true);
+  };
+
+  // Handle Stripe Connect
+  const handleStripeConnect = async () => {
+    const tid = await getTenantId();
+    if (!tid) { alert('Unable to find your organization.'); return; }
+    setStripeConnectLoading(true);
+    try {
+      const resp = await fetch('/api/stripe/connect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenantId: tid }),
+      });
+      const data = await resp.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        alert(data.error || 'Failed to connect Stripe');
+      }
+    } catch (e) {
+      console.error('Stripe Connect error:', e);
+      alert('Failed to connect Stripe. Please try again.');
+    } finally {
+      setStripeConnectLoading(false);
+    }
+  };
+
+  // Load onboarding questions from tenant doc
+  const loadOnboardingQuestions = async () => {
+    if (onboardingLoaded) return;
+    try {
+      const { auth, db } = await import('../firebase');
+      const { doc, getDoc } = await import('firebase/firestore');
+      if (auth.currentUser) {
+        const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
+        if (userDoc.exists()) {
+          const tenantId = userDoc.data().tenantId;
+          if (tenantId) {
+            const tenantDoc = await getDoc(doc(db, 'tenants', tenantId));
+            if (tenantDoc.exists()) {
+              const config = tenantDoc.data().config || {};
+              if (config.onboardingQuestions && Array.isArray(config.onboardingQuestions)) {
+                setOnboardingQuestions(config.onboardingQuestions.sort((a: any, b: any) => a.order - b.order));
+              }
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Failed to load onboarding questions:', e);
+    }
+    setOnboardingLoaded(true);
+  };
+
   const [stripeStatus, setStripeStatus] = useState<string | null>(null);
 
   // Check for Stripe return params on mount
@@ -180,12 +269,16 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
     const stripe = params.get('stripe');
+    const stripeConnect = params.get('stripe_connect');
     if (stripe === 'success') {
       setStripeStatus('success');
       // Clean up URL
       window.history.replaceState({}, '', window.location.pathname);
     } else if (stripe === 'cancel') {
       setStripeStatus('cancel');
+      window.history.replaceState({}, '', window.location.pathname);
+    } else if (stripeConnect) {
+      setStripeConnectStatus(stripeConnect);
       window.history.replaceState({}, '', window.location.pathname);
     }
   }, []);
@@ -309,6 +402,62 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
           >
             Manage Domain
           </button>
+        </div>
+      </div>
+
+      {/* Onboarding Questions */}
+      <div className="bg-white rounded-2xl border border-gray-100 p-6">
+        <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">Onboarding Questions</h3>
+        <p className="text-gray-600 text-sm mb-4">Customize the questions asked during user onboarding. Default fields (name, country, city, phone, accepted Jesus) are always included.</p>
+        <button
+          onClick={() => { setActiveSection('onboarding'); loadOnboardingQuestions(); }}
+          className="px-4 py-2 border border-gray-200 text-gray-700 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors"
+        >
+          Manage Questions
+        </button>
+      </div>
+
+      {/* Payment Settings (Stripe Connect) */}
+      <div className="bg-white rounded-2xl border border-gray-100 p-6">
+        <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">Payment Settings</h3>
+        <p className="text-gray-600 text-sm mb-4">Connect your Stripe account to receive payments from your congregation.</p>
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-xl bg-purple-50 flex items-center justify-center">
+            <CreditCard size={24} className="text-purple-600" />
+          </div>
+          <div className="flex-1">
+            {stripeConnectStatus ? (
+              <div className="flex items-center gap-2">
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                  stripeConnectStatus === 'active' ? 'bg-green-100 text-green-800' :
+                  stripeConnectStatus === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                  'bg-red-100 text-red-800'
+                }`}>
+                  {stripeConnectStatus === 'active' ? 'Active' : stripeConnectStatus === 'pending' ? 'Pending' : 'Restricted'}
+                </span>
+                <span className="text-sm text-gray-500">Stripe account connected</span>
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500">No Stripe account connected</p>
+            )}
+          </div>
+          {stripeConnectStatus ? (
+            <a
+              href="https://dashboard.stripe.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="ml-auto px-4 py-2 border border-gray-200 text-gray-700 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors"
+            >
+              Manage Stripe
+            </a>
+          ) : (
+            <button
+              onClick={() => { setActiveSection('payment'); loadPayment(); }}
+              className="ml-auto px-4 py-2 bg-purple-600 text-white rounded-xl text-sm font-semibold hover:bg-purple-700 transition-colors"
+            >
+              Connect Stripe Account
+            </button>
+          )}
         </div>
       </div>
 
@@ -617,6 +766,19 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
         </div>
       </div>
 
+      {/* Background Image (Ultra/Enterprise only) */}
+      {currentFeatures.customBackground && (
+        <div className="bg-white rounded-2xl border border-gray-100 p-6">
+          <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">Background Image</h3>
+          <p className="text-gray-600 text-sm mb-4">Set a custom background image for your auth/login page.</p>
+          <ImageUpload
+            value={brandingBackgroundImage}
+            onChange={setBrandingBackgroundImage}
+            placeholder="Or paste background image URL here"
+          />
+        </div>
+      )}
+
       {/* Save Button */}
       <div className="flex items-center gap-3">
         <button
@@ -634,6 +796,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
                     await updateDoc(doc(db, 'tenants', tenantId), {
                       'config.logo': brandingLogo || null,
                       'config.primaryColor': brandingColor,
+                      'config.backgroundImage': brandingBackgroundImage || null,
                       updatedAt: new Date().toISOString(),
                     });
                     setBrandingSaved(true);
@@ -810,6 +973,219 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
     </div>
   );
 
+  const renderOnboarding = () => {
+    const questionTypeOptions: { value: 'text' | 'select' | 'radio' | 'textarea'; label: string }[] = [
+      { value: 'text', label: 'Text Input' },
+      { value: 'textarea', label: 'Text Area' },
+      { value: 'select', label: 'Dropdown' },
+      { value: 'radio', label: 'Radio Buttons' },
+    ];
+
+    const addQuestion = () => {
+      const newQ = {
+        id: `custom_${Date.now()}`,
+        label: '',
+        type: 'text' as const,
+        options: [],
+        required: false,
+        order: onboardingQuestions.length,
+      };
+      setEditingQuestion(newQ);
+      setShowQuestionModal(true);
+    };
+
+    const editQuestion = (q: typeof onboardingQuestions[0]) => {
+      setEditingQuestion({ ...q });
+      setShowQuestionModal(true);
+    };
+
+    const deleteQuestion = (id: string) => {
+      setOnboardingQuestions(prev => prev.filter(q => q.id !== id).map((q, i) => ({ ...q, order: i })));
+    };
+
+    const moveQuestion = (index: number, direction: 'up' | 'down') => {
+      const newQuestions = [...onboardingQuestions];
+      const targetIndex = direction === 'up' ? index - 1 : index + 1;
+      if (targetIndex < 0 || targetIndex >= newQuestions.length) return;
+      [newQuestions[index], newQuestions[targetIndex]] = [newQuestions[targetIndex], newQuestions[index]];
+      setOnboardingQuestions(newQuestions.map((q, i) => ({ ...q, order: i })));
+    };
+
+    const saveQuestion = () => {
+      if (!editingQuestion || !editingQuestion.label.trim()) return;
+      const exists = onboardingQuestions.find(q => q.id === editingQuestion.id);
+      if (exists) {
+        setOnboardingQuestions(prev => prev.map(q => q.id === editingQuestion.id ? editingQuestion : q));
+      } else {
+        setOnboardingQuestions(prev => [...prev, editingQuestion]);
+      }
+      setShowQuestionModal(false);
+      setEditingQuestion(null);
+    };
+
+    const saveAllQuestions = async () => {
+      setOnboardingSaving(true);
+      setOnboardingSaved(false);
+      try {
+        const { auth, db } = await import('../firebase');
+        const { doc, getDoc, updateDoc } = await import('firebase/firestore');
+        if (auth.currentUser) {
+          const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
+          if (userDoc.exists()) {
+            const tenantId = userDoc.data().tenantId;
+            if (tenantId) {
+              await updateDoc(doc(db, 'tenants', tenantId), {
+                'config.onboardingQuestions': onboardingQuestions,
+                updatedAt: new Date().toISOString(),
+              });
+              setOnboardingSaved(true);
+              setTimeout(() => setOnboardingSaved(false), 3000);
+            }
+          }
+        }
+      } catch (e) {
+        console.error('Failed to save onboarding questions:', e);
+        alert('Failed to save onboarding questions. Please try again.');
+      } finally {
+        setOnboardingSaving(false);
+      }
+    };
+
+    return (
+      <div className="space-y-6">
+        <p className="text-gray-600">
+          Manage custom onboarding questions. The default fields (Name, Country, City, Phone, Accepted Jesus) are always shown. Custom questions appear after them.
+        </p>
+
+        {/* Add Question Button */}
+        <button
+          onClick={addQuestion}
+          className="px-4 py-2 bg-[#d4a017] text-white rounded-xl text-sm font-semibold hover:bg-[#b8941a] transition-colors"
+        >
+          + Add Question
+        </button>
+
+        {/* Questions List */}
+        {onboardingQuestions.length === 0 && (
+          <div className="bg-white rounded-2xl border border-gray-100 p-8 text-center">
+            <p className="text-gray-400 text-sm">No custom questions yet. Click &quot;Add Question&quot; to create one.</p>
+          </div>
+        )}
+
+        {onboardingQuestions.map((q, index) => (
+          <div key={q.id} className="bg-white rounded-2xl border border-gray-100 p-4 flex items-start gap-4">
+            <div className="flex flex-col gap-1 pt-1">
+              <button onClick={() => moveQuestion(index, 'up')} disabled={index === 0} className="text-gray-400 hover:text-gray-600 disabled:opacity-30 text-xs">▲</button>
+              <button onClick={() => moveQuestion(index, 'down')} disabled={index === onboardingQuestions.length - 1} className="text-gray-400 hover:text-gray-600 disabled:opacity-30 text-xs">▼</button>
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-sm font-bold text-gray-900">{q.label || '(Untitled)'}</span>
+                <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">{q.type}</span>
+                {q.required && <span className="text-xs bg-red-50 text-red-500 px-2 py-0.5 rounded-full">Required</span>}
+              </div>
+              {(q.type === 'select' || q.type === 'radio') && q.options && q.options.length > 0 && (
+                <p className="text-xs text-gray-400">Options: {q.options.join(', ')}</p>
+              )}
+            </div>
+            <div className="flex gap-2 flex-shrink-0">
+              <button onClick={() => editQuestion(q)} className="px-3 py-1.5 text-xs font-semibold text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors">Edit</button>
+              <button onClick={() => deleteQuestion(q.id)} className="px-3 py-1.5 text-xs font-semibold text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors">Delete</button>
+            </div>
+          </div>
+        ))}
+
+        {/* Save Button */}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={saveAllQuestions}
+            disabled={onboardingSaving}
+            className="px-6 py-2.5 bg-[#d4a017] text-white rounded-xl text-sm font-semibold hover:bg-[#b8941a] transition-colors disabled:opacity-50"
+          >
+            {onboardingSaving ? 'Saving...' : 'Save Questions'}
+          </button>
+          {onboardingSaved && (
+            <span className="text-sm text-green-600 font-medium">✓ Questions saved successfully</span>
+          )}
+        </div>
+
+        {/* Question Editor Modal */}
+        {showQuestionModal && editingQuestion && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[200] p-4">
+            <div className="bg-white rounded-2xl p-6 max-w-md w-full space-y-4">
+              <h3 className="text-lg font-bold text-gray-900">
+                {onboardingQuestions.find(q => q.id === editingQuestion.id) ? 'Edit Question' : 'Add Question'}
+              </h3>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Label</label>
+                <input
+                  type="text"
+                  value={editingQuestion.label}
+                  onChange={(e) => setEditingQuestion({ ...editingQuestion, label: e.target.value })}
+                  placeholder="e.g. What is your favorite verse?"
+                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#d4a017]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                <select
+                  value={editingQuestion.type}
+                  onChange={(e) => setEditingQuestion({ ...editingQuestion, type: e.target.value as any })}
+                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#d4a017]"
+                >
+                  {questionTypeOptions.map(opt => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              {(editingQuestion.type === 'select' || editingQuestion.type === 'radio') && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Options (comma-separated)</label>
+                  <input
+                    type="text"
+                    value={(editingQuestion.options || []).join(', ')}
+                    onChange={(e) => setEditingQuestion({ ...editingQuestion, options: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })}
+                    placeholder="e.g. Option A, Option B, Option C"
+                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#d4a017]"
+                  />
+                </div>
+              )}
+
+              <div className="flex items-center gap-3">
+                <label className="text-sm font-medium text-gray-700">Required</label>
+                <button
+                  onClick={() => setEditingQuestion({ ...editingQuestion, required: !editingQuestion.required })}
+                  className={`w-10 h-6 rounded-full relative transition-colors ${editingQuestion.required ? 'bg-[#d4a017]' : 'bg-gray-200'}`}
+                >
+                  <div className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-all ${editingQuestion.required ? 'left-5' : 'left-1'}`} />
+                </button>
+              </div>
+
+              <div className="flex gap-3 justify-end pt-2">
+                <button
+                  onClick={() => { setShowQuestionModal(false); setEditingQuestion(null); }}
+                  className="px-4 py-2 text-gray-600 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={saveQuestion}
+                  disabled={!editingQuestion.label.trim()}
+                  className="px-4 py-2 bg-[#d4a017] text-white rounded-xl text-sm font-semibold hover:bg-[#b8941a] transition-colors disabled:opacity-50"
+                >
+                  Save
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="p-4 lg:p-6 max-w-6xl mx-auto">
       {/* Header */}
@@ -823,7 +1199,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
           </button>
         )}
         <h1 className="text-2xl font-bold text-gray-900">
-          {activeSection === 'main' ? 'Settings' : activeSection === 'upgrade' ? 'Upgrade Plan' : activeSection === 'branding' ? 'Branding' : activeSection === 'domain' ? 'Domain & Subdomain' : 'Cancel Plan'}
+          {activeSection === 'main' ? 'Settings' : activeSection === 'upgrade' ? 'Upgrade Plan' : activeSection === 'branding' ? 'Branding' : activeSection === 'domain' ? 'Domain & Subdomain' : activeSection === 'onboarding' ? 'Onboarding Questions' : 'Cancel Plan'}
         </h1>
       </div>
 
@@ -831,6 +1207,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
       {activeSection === 'upgrade' && renderUpgrade()}
       {activeSection === 'branding' && renderBranding()}
       {activeSection === 'domain' && renderDomain()}
+      {activeSection === 'onboarding' && renderOnboarding()}
     </div>
   );
 };

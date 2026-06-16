@@ -5,7 +5,17 @@ import { auth, db } from '../firebase';
 import { doc, updateDoc, getDoc, setDoc } from 'firebase/firestore';
 import CountrySelect from './CountrySelect';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
+import { getTenantScope } from '../utils/tenant-scope';
 
+
+interface OnboardingQuestion {
+  id: string;
+  label: string;
+  type: 'text' | 'select' | 'radio' | 'textarea';
+  options?: string[];
+  required: boolean;
+  order: number;
+}
 
 interface OnboardingProps {
  onComplete: () => void;
@@ -20,12 +30,39 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
  const [loading, setLoading] = useState(false);
  const [gpsLoading, setGpsLoading] = useState(false);
  const [error, setError] = useState('');
+ const [customQuestions, setCustomQuestions] = useState<OnboardingQuestion[]>([]);
+ const [customAnswers, setCustomAnswers] = useState<Record<string, string>>({});
 
  useEffect(() => {
  // Pre-fill name if available from Google
  if (auth.currentUser?.displayName) {
  setName(auth.currentUser.displayName);
  }
+
+ // Load custom onboarding questions from tenant config
+ const loadCustomQuestions = async () => {
+   try {
+     const tenantId = await getTenantScope();
+     if (tenantId) {
+       const tenantDoc = await getDoc(doc(db, 'tenants', tenantId));
+       if (tenantDoc.exists()) {
+         const config = tenantDoc.data().config || {};
+         if (config.onboardingQuestions && Array.isArray(config.onboardingQuestions)) {
+           const questions = config.onboardingQuestions
+             .filter((q: any) => q && q.id && q.label)
+             .sort((a: any, b: any) => (a.order || 0) - (b.order || 0)) as OnboardingQuestion[];
+           setCustomQuestions(questions);
+           const initialAnswers: Record<string, string> = {};
+           questions.forEach((q: OnboardingQuestion) => { initialAnswers[q.id] = ''; });
+           setCustomAnswers(initialAnswers);
+         }
+       }
+     }
+   } catch (err) {
+     console.error('Failed to load custom onboarding questions:', err);
+   }
+ };
+ loadCustomQuestions();
 
  // Auto-attempt to get location
  if (navigator.geolocation) {
@@ -103,6 +140,14 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
  return;
  }
 
+ // Check required custom questions
+ for (const q of customQuestions) {
+   if (q.required && !customAnswers[q.id]?.trim()) {
+     setError(`Please fill in: ${q.label}`);
+     return;
+   }
+ }
+
  try {
  setLoading(true);
  setError('');
@@ -111,15 +156,22 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
  if (!user) throw new Error('No user logged in');
 
  const userRef = doc(db, 'users', user.uid);
+ const updateData: Record<string, any> = {
+   displayName: name,
+   country,
+   city,
+   phone,
+   acceptedJesus: acceptedJesus === 'yes',
+   onboardingCompleted: true,
+ };
+
+ // Save custom question answers if any exist
+ if (customQuestions.length > 0 && Object.keys(customAnswers).some(k => customAnswers[k]?.trim())) {
+   updateData.onboardingAnswers = customAnswers;
+ }
+
  try {
- await setDoc(userRef, {
- displayName: name,
- country,
- city,
- phone,
-        acceptedJesus: acceptedJesus === 'yes',
-        onboardingCompleted: true
- }, { merge: true });
+ await setDoc(userRef, updateData, { merge: true });
  } catch (err) {
  try { handleFirestoreError(err, OperationType.UPDATE, `users/${user.uid}`); } catch (e) { console.error(e); }
  return;
@@ -134,6 +186,72 @@ onComplete();
  } finally {
  setLoading(false);
  }
+ };
+
+ const renderCustomQuestion = (question: OnboardingQuestion) => {
+   const value = customAnswers[question.id] || '';
+
+   switch (question.type) {
+     case 'text':
+       return (
+         <input
+           type="text"
+           required={question.required}
+           value={value}
+           onChange={(e) => setCustomAnswers(prev => ({ ...prev, [question.id]: e.target.value }))}
+           className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/20 text-white placeholder-gray-400 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
+           placeholder={question.label}
+         />
+       );
+     case 'textarea':
+       return (
+         <textarea
+           required={question.required}
+           value={value}
+           onChange={(e) => setCustomAnswers(prev => ({ ...prev, [question.id]: e.target.value }))}
+           className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/20 text-white placeholder-gray-400 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all resize-none"
+           placeholder={question.label}
+           rows={3}
+         />
+       );
+     case 'select':
+       return (
+         <select
+           required={question.required}
+           value={value}
+           onChange={(e) => setCustomAnswers(prev => ({ ...prev, [question.id]: e.target.value }))}
+           className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/20 text-white focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all appearance-none"
+         >
+           <option value="" className="bg-gray-800">Select an option...</option>
+           {(question.options || []).map((opt) => (
+             <option key={opt} value={opt} className="bg-gray-800">{opt}</option>
+           ))}
+         </select>
+       );
+     case 'radio':
+       return (
+         <div className="flex gap-4 flex-wrap">
+           {(question.options || []).map((opt) => (
+             <label key={opt} className="flex-1 cursor-pointer min-w-[100px]">
+               <input
+                 type="radio"
+                 name={`custom_${question.id}`}
+                 value={opt}
+                 checked={value === opt}
+                 onChange={(e) => setCustomAnswers(prev => ({ ...prev, [question.id]: e.target.value }))}
+                 className="peer sr-only"
+                 required={question.required}
+               />
+               <div className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/20 text-center text-white peer-checked:bg-primary/20 peer-checked:border-primary peer-checked:text-primary transition-all font-semibold text-sm">
+                 {opt}
+               </div>
+             </label>
+           ))}
+         </div>
+       );
+     default:
+       return null;
+   }
  };
 
  return (
@@ -256,6 +374,17 @@ onComplete();
                 </label>
               </div>
             </div>
+
+            {/* Custom Onboarding Questions */}
+            {customQuestions.map((question) => (
+              <div key={question.id} className="relative z-20">
+                <label className="block text-sm font-bold text-gray-200 mb-1">
+                  {question.label}
+                  {question.required && <span className="text-red-400 ml-1">*</span>}
+                </label>
+                {renderCustomQuestion(question)}
+              </div>
+            ))}
 
  <button
  type="submit"

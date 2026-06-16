@@ -37,6 +37,7 @@ interface UserRecord {
   phone: string;
   acceptedJesus?: boolean;
   registeredAt: string;
+  onboardingAnswers?: Record<string, string>;
 }
 
 export interface Permission {
@@ -109,6 +110,53 @@ const downloadUsersCSV = (users: UserRecord[], filename: string): void => {
 
 const downloadCSV = (users: UserRecord[], period: TimePeriod, location: string): void => {
   downloadUsersCSV(users, `harvest-users-${location || "all"}-${period}days.csv`);
+};
+
+const downloadOnboardingCSV = async (users: UserRecord[], filename: string): Promise<void> => {
+  try {
+    const { db } = await import('../firebase');
+    const { doc, getDoc } = await import('firebase/firestore');
+    const { getTenantScope } = await import('../utils/tenant-scope');
+
+    // Fetch tenant onboarding questions config for column headers
+    let questionLabels: { id: string; label: string }[] = [];
+    const tenantId = await getTenantScope();
+    if (tenantId) {
+      const tenantDoc = await getDoc(doc(db, 'tenants', tenantId));
+      if (tenantDoc.exists()) {
+        const config = tenantDoc.data().config || {};
+        if (config.onboardingQuestions && Array.isArray(config.onboardingQuestions)) {
+          questionLabels = config.onboardingQuestions
+            .sort((a: any, b: any) => (a.order || 0) - (b.order || 0))
+            .map((q: any) => ({ id: q.id, label: q.label }));
+        }
+      }
+    }
+
+    const headers = [
+      "Name", "Phone Number", "Email", "Registration Date", "Country", "City", "Accepted Jesus",
+      ...questionLabels.map(q => q.label),
+    ];
+
+    const rows = users.map((u) => [
+      u.name, u.phone || "Unknown", u.email,
+      new Date(u.registeredAt).toLocaleDateString("en-US"),
+      u.country || "Unknown", u.city || "Unknown",
+      u.acceptedJesus !== undefined ? (u.acceptedJesus ? "Yes" : "No") : "Unknown",
+      ...questionLabels.map(q => (u.onboardingAnswers && u.onboardingAnswers[q.id]) || ""),
+    ]);
+
+    const csv = [headers, ...rows].map((r) => r.map(escapeCsvValue).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    console.error("Failed to download onboarding CSV:", e);
+  }
 };
 
 interface StatCardProps { label: string; value: string | number; sub?: string; color?: string; icon: string; onClick?: () => void; }
@@ -372,7 +420,8 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
             country: data.country || "",
             phone: data.phone || "",
             acceptedJesus: data.acceptedJesus,
-            registeredAt: data.createdAt || new Date().toISOString()
+            registeredAt: data.createdAt || new Date().toISOString(),
+            onboardingAnswers: data.onboardingAnswers || {}
           };
           usersList.push(user);
 
@@ -429,6 +478,7 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
           <button onClick={() => setSubView("main")} style={s.backBtn}>← Back</button>
           <h2 style={{ fontSize: 20, fontWeight: 800, color: TEXT }}>All Users ({filtered.length})</h2>
           <div style={{ flex: 1 }} />
+          <button onClick={() => downloadOnboardingCSV(filtered, "all_users_onboarding.csv")} style={{ ...s.downloadBtn, marginRight: 8 }}>📋 Onboarding Data</button>
           <button onClick={() => downloadUsersCSV(filtered, "all_users.csv")} style={s.downloadBtn}>⬇ Download CSV</button>
         </div>
         
@@ -760,10 +810,16 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
                             {locationQuery ? ` in "${locationQuery}"` : ""} — last {period} day{period !== 1 ? "s" : ""}
                           </span>
                           {filteredUsers.length > 0 && (
-                            <button onClick={() => downloadCSV(filteredUsers, period, locationQuery)}
-                              style={{ background: GREEN_BG, border: `1px solid ${GREEN}33`, color: GREEN, borderRadius: 8, padding: "4px 12px", cursor: "pointer", fontSize: 11, fontFamily: "inherit", fontWeight: 700, display: "flex", alignItems: "center", gap: 5 }}>
-                              ⬇ CSV
-                            </button>
+                            <div style={{ display: "flex", gap: 6 }}>
+                              <button onClick={() => downloadOnboardingCSV(filteredUsers, `onboarding-${locationQuery || "all"}-${period}days.csv`)}
+                                style={{ background: BLUE_BG, border: `1px solid ${BLUE}33`, color: BLUE, borderRadius: 8, padding: "4px 12px", cursor: "pointer", fontSize: 11, fontFamily: "inherit", fontWeight: 700, display: "flex", alignItems: "center", gap: 5 }}>
+                                📋 Onboarding
+                              </button>
+                              <button onClick={() => downloadCSV(filteredUsers, period, locationQuery)}
+                                style={{ background: GREEN_BG, border: `1px solid ${GREEN}33`, color: GREEN, borderRadius: 8, padding: "4px 12px", cursor: "pointer", fontSize: 11, fontFamily: "inherit", fontWeight: 700, display: "flex", alignItems: "center", gap: 5 }}>
+                                ⬇ CSV
+                              </button>
+                            </div>
                           )}
                         </div>
 

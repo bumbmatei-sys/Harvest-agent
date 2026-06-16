@@ -7,6 +7,14 @@ export interface TenantConfig {
   description?: string;
   customDomain?: string; // e.g. "yourchurch.com" (Ultra/Enterprise only)
   backgroundImage?: string; // URL to custom background image for auth page
+  onboardingQuestions?: {
+    id: string;
+    label: string;
+    type: 'text' | 'select' | 'radio' | 'textarea';
+    options?: string[];
+    required: boolean;
+    order: number;
+  }[];
 }
 
 export interface Tenant {
@@ -23,4 +31,7 @@ export interface Tenant {
   stripeCustomerId?: string;
   stripeSubscriptionId?: string;
   stripePriceId?: string;
+  // Stripe Connect fields
+  stripeConnectAccountId?: string;
+  stripeConnectStatus?: 'pending' | 'active' | 'restricted';
 }
