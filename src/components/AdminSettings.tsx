@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { ArrowLeft, Check, Crown, Zap, Building2, Star, ChevronRight, ChevronDown, AlertTriangle, Globe, CreditCard, Palette, Settings2, Bot } from 'lucide-react';
 import { TenantPlan } from '../types/tenant.types';
 import { getPlanFeatures, PlanFeatures } from '../utils/plan-features';
@@ -69,6 +69,17 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
   const [aiAssistantLoaded, setAiAssistantLoaded] = useState(false);
   const [aiAssistantLoading, setAiAssistantLoading] = useState(false);
   const [aiAssistantCancelLoading, setAiAssistantCancelLoading] = useState(false);
+  const [activePlanIndex, setActivePlanIndex] = useState(0);
+  const planScrollRef = useRef<HTMLDivElement>(null);
+
+  const handlePlanScroll = useCallback(() => {
+    const container = planScrollRef.current;
+    if (!container) return;
+    const scrollLeft = container.scrollLeft;
+    const cardWidth = 300; // approximate card width including gap
+    const index = Math.round(scrollLeft / cardWidth);
+    setActivePlanIndex(Math.min(index, PLANS.length - 1));
+  }, []);
 
   const getTenantId = async (): Promise<string | null> => {
     if (tenantId) return tenantId;
@@ -422,8 +433,16 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
         </p>
       )}
 
-      {/* Plan Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Plan Cards Carousel */}
+      <style>{`
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+      `}</style>
+      <div
+        ref={planScrollRef}
+        onScroll={handlePlanScroll}
+        className='flex overflow-x-auto gap-4 pb-4 snap-x snap-mandatory scrollbar-hide'
+        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+      >
         {PLANS.map((plan) => {
           const features = getPlanFeatures(plan.id);
           const isCurrent = plan.id === currentPlan;
@@ -432,7 +451,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
           return (
             <div
               key={plan.id}
-              className={`relative bg-white rounded-2xl border-2 p-5 transition-all ${
+              className={`relative bg-white rounded-2xl border-2 p-5 transition-all min-w-[280px] max-w-[320px] flex-shrink-0 snap-center ${
                 isCurrent ? 'border-[#d4a017] shadow-lg' : 'border-gray-100 hover:border-gray-200'
               }`}
             >
@@ -510,6 +529,28 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
             </div>
           );
         })}
+      </div>
+
+      {/* Carousel Dot Indicators */}
+      <div className="flex justify-center gap-2 py-2">
+        {PLANS.map((_, index) => (
+          <button
+            key={index}
+            onClick={() => {
+              const container = planScrollRef.current;
+              if (container) {
+                container.scrollTo({ left: index * 300, behavior: 'smooth' });
+              }
+              setActivePlanIndex(index);
+            }}
+            className={`transition-all rounded-full ${
+              activePlanIndex === index
+                ? 'w-6 h-2 bg-[#d4a017]'
+                : 'w-2 h-2 bg-gray-300 hover:bg-gray-400'
+            }`}
+            aria-label={`Go to plan ${index + 1}`}
+          />
+        ))}
       </div>
 
       {/* Feature Comparison Table */}
