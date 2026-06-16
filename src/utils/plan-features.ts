@@ -19,6 +19,10 @@ export interface PlanFeatures {
   customDomain: boolean;
   /** Allow custom background image on auth page */
   customBackground: boolean;
+  /** Newsletter automation (coming soon) */
+  newsletterAutomation: boolean;
+  /** SMS automation (coming soon) */
+  smsAutomation: boolean;
 }
 
 const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
@@ -32,6 +36,8 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     maxAdmins: 2,
     customDomain: false,
     customBackground: false,
+    newsletterAutomation: false,
+    smsAutomation: false,
   },
   pro: {
     blog: true,
@@ -43,6 +49,8 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     maxAdmins: 5,
     customDomain: false,
     customBackground: false,
+    newsletterAutomation: true,
+    smsAutomation: false,
   },
   ultra: {
     blog: true,
@@ -54,6 +62,8 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     maxAdmins: -1,
     customDomain: true,
     customBackground: true,
+    newsletterAutomation: true,
+    smsAutomation: true,
   },
   enterprise: {
     blog: true,
@@ -65,6 +75,8 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     maxAdmins: -1,
     customDomain: true,
     customBackground: true,
+    newsletterAutomation: true,
+    smsAutomation: true,
   },
 };
 

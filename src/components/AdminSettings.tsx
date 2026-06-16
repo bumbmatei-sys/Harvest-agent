@@ -25,6 +25,8 @@ const FEATURE_COMPARISON: { key: keyof PlanFeatures; label: string; format?: (v:
   { key: 'blog', label: 'Blog & AI Chat' },
   { key: 'aiKnowledge', label: 'AI Knowledge Base' },
   { key: 'map', label: 'Church Map Directory' },
+  { key: 'newsletterAutomation', label: 'Newsletter Automation (Soon)' },
+  { key: 'smsAutomation', label: 'SMS Automation (Soon)' },
   { key: 'maxChurches', label: 'Churches', format: (v) => v === -1 ? 'Unlimited' : `${v}` },
   { key: 'maxCourses', label: 'Courses', format: (v) => v === -1 ? 'Unlimited' : `${v}` },
   { key: 'maxAdmins', label: 'Admin Accounts', format: (v) => v === -1 ? 'Unlimited' : `${v}` },
@@ -1338,7 +1340,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
               <div className="mb-4">
                 <h4 className="text-base font-bold text-gray-900 mb-1">Personal AI Assistant</h4>
                 <p className="text-sm text-gray-600 mb-3">
-                  A dedicated AI assistant trained on your church&apos;s data to help your members with questions, prayer requests, and spiritual guidance 24/7.
+                  Your personal AI assistant that connects to 900+ apps, automates tasks, manages schedules, and streamlines your admin workflow. Accessible through the app interface or Telegram.
                 </p>
                 {!aiAssistantSubscribed ? (
                   <>
