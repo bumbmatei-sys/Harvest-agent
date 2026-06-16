@@ -49,8 +49,21 @@ export async function POST(request: NextRequest) {
           } else {
             const plan = session.metadata?.plan;
             if (plan) {
+              // Cancel old subscription if exists (prevents double billing on upgrade)
+              const tenantDoc = await adminDb.collection('tenants').doc(tenantId).get();
+              const oldSubId = tenantDoc.data()?.stripeSubscriptionId;
+              if (oldSubId && oldSubId !== subscriptionId) {
+                try {
+                  await stripe.subscriptions.cancel(oldSubId);
+                  console.log(`🔄 Cancelled old subscription ${oldSubId} for tenant ${tenantId}`);
+                } catch (cancelErr) {
+                  console.error(`Failed to cancel old subscription ${oldSubId}:`, cancelErr);
+                }
+              }
+
               await adminDb.collection('tenants').doc(tenantId).update({
                 plan,
+                status: 'active',
                 stripeSubscriptionId: subscriptionId,
                 stripeCustomerId: session.customer as string,
                 stripePriceId: session.metadata?.billing === 'yearly'
@@ -79,17 +92,44 @@ export async function POST(request: NextRequest) {
       case 'customer.subscription.updated': {
         const subscription = event.data.object as Stripe.Subscription;
         const tenantId = subscription.metadata?.tenantId;
-        const plan = subscription.metadata?.plan;
 
         if (tenantId) {
           const updateData: Record<string, unknown> = {
             stripeSubscriptionId: subscription.id,
             updatedAt: new Date().toISOString(),
           };
+
+          // Detect plan from metadata or price ID (handles portal changes)
+          let plan = subscription.metadata?.plan;
+          if (!plan && subscription.items?.data?.[0]?.price?.id) {
+            plan = getPlanFromPriceId(subscription.items.data[0].price.id);
+          }
           if (plan) updateData.plan = plan;
 
+          // Sync subscription status
+          if (subscription.status === 'active') {
+            updateData.status = 'active';
+          } else if (subscription.status === 'past_due') {
+            updateData.status = 'past_due';
+          } else if (subscription.status === 'canceled') {
+            updateData.status = 'cancelled';
+          }
+
           await adminDb.collection('tenants').doc(tenantId).update(updateData);
-          console.log(`📝 Subscription updated for tenant ${tenantId}`);
+
+          // Update user docs if plan changed
+          if (plan) {
+            const usersSnap = await adminDb.collection('users')
+              .where('tenantId', '==', tenantId)
+              .get();
+            const batch = adminDb.batch();
+            usersSnap.docs.forEach(doc => {
+              batch.update(doc.ref, { plan });
+            });
+            await batch.commit();
+          }
+
+          console.log(`📝 Subscription updated for tenant ${tenantId}`, plan ? `→ ${plan}` : '');
         }
         break;
       }
@@ -111,6 +151,7 @@ export async function POST(request: NextRequest) {
             // Downgrade to plus (lowest plan) on cancellation
             await adminDb.collection('tenants').doc(tenantId).update({
               plan: 'plus',
+              status: 'cancelled',
               stripeSubscriptionId: null,
               updatedAt: new Date().toISOString(),
             });
@@ -142,6 +183,50 @@ export async function POST(request: NextRequest) {
         }
         break;
       }
+
+      case 'invoice.payment_succeeded': {
+        const invoice = event.data.object as Stripe.Invoice;
+        const tenantId = (invoice as any).metadata?.tenantId;
+        if (tenantId) {
+          // Reactivate suspended accounts on successful payment
+          const tenantDoc = await adminDb.collection('tenants').doc(tenantId).get();
+          if (tenantDoc.exists() && tenantDoc.data()?.status === 'suspended') {
+            await adminDb.collection('tenants').doc(tenantId).update({
+              status: 'active',
+              updatedAt: new Date().toISOString(),
+            });
+            console.log(`✅ Tenant ${tenantId} reactivated after successful payment`);
+          }
+        }
+        break;
+      }
+
+      case 'charge.refunded': {
+        const charge = event.data.object as Stripe.Charge;
+        const tenantId = charge.metadata?.tenantId;
+        if (tenantId) {
+          await adminDb.collection('tenants').doc(tenantId).update({
+            lastRefund: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          });
+          console.log(`💰 Refund processed for tenant ${tenantId}`);
+        }
+        break;
+      }
+
+      case 'charge.dispute.created': {
+        const dispute = event.data.object as Stripe.Dispute;
+        const tenantId = dispute.metadata?.tenantId;
+        if (tenantId) {
+          await adminDb.collection('tenants').doc(tenantId).update({
+            status: 'disputed',
+            lastDispute: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          });
+          console.log(`⚠️ Dispute created for tenant ${tenantId}`);
+        }
+        break;
+      }
     }
   } catch (err) {
     console.error('Webhook handler error:', err);
@@ -169,4 +254,18 @@ function getYearlyPriceId(plan: string): string {
     ultra: 'price_1TiycG1YKkcSbTf3d54wo7lB',
   };
   return map[plan] || map.plus;
+}
+
+function getPlanFromPriceId(priceId: string): string | null {
+  const allPrices: Record<string, string> = {
+    'price_1TiydE1YKkcSbTf34ZbpeJjd': 'plus',
+    'price_1TiydE1YKkcSbTf332ZMf8n9': 'plus',
+    'price_1TiydE1YKkcSbTf3pATPgbci': 'pro',
+    'price_1TiydE1YKkcSbTf31nC69ngk': 'pro',
+    'price_1TiycF1YKkcSbTf3gfOoL0Dm': 'max',
+    'price_1TiycF1YKkcSbTf3gSUXqzl9': 'max',
+    'price_1TiycG1YKkcSbTf35YIEaVEl': 'ultra',
+    'price_1TiycG1YKkcSbTf3d54wo7lB': 'ultra',
+  };
+  return allPrices[priceId] || null;
 }
