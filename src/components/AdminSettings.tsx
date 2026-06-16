@@ -1392,40 +1392,72 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
         </div>
       </div>
 
-      {/* Billing Management */}
-      <div className="bg-white rounded-2xl border border-gray-100 p-6 mb-4">
-        <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">Billing &amp; Payments</h3>
-        <p className="text-sm text-gray-600 mb-4">Manage your subscription, update payment methods, and view invoices through Stripe.</p>
+      {/* Billing & Payments */}
+      <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
         <button
-          onClick={handleManageSubscription}
-          disabled={portalLoading}
-          className="flex items-center gap-2 px-5 py-2.5 bg-gray-900 text-white rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50"
+          onClick={() => toggleSection('billing')}
+          className="w-full flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 transition-colors"
         >
-          {portalLoading ? (
-            <>
-              <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              Opening portal...
-            </>
-          ) : (
-            <>
-              Manage Subscription
-              <ChevronRight size={16} />
-            </>
-          )}
+          <div className="flex items-center gap-3">
+            <CreditCard size={20} className="text-gray-600" />
+            <span className="text-sm font-semibold text-gray-900">Billing &amp; Payments</span>
+          </div>
+          <ChevronDown
+            size={18}
+            className={`text-gray-400 transition-transform duration-300 ${expandedSection === 'billing' ? 'rotate-180' : ''}`}
+          />
         </button>
-        <p className="text-xs text-gray-400 mt-3">Powered by Stripe</p>
+        {expandedSection === 'billing' && (
+          <div className="px-4 pb-4 border-t border-gray-100 pt-4">
+            <p className="text-sm text-gray-600 mb-4">Manage your subscription, update payment methods, and view invoices through Stripe.</p>
+            <button
+              onClick={handleManageSubscription}
+              disabled={portalLoading}
+              className="flex items-center gap-2 px-5 py-2.5 bg-gray-900 text-white rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50"
+            >
+              {portalLoading ? (
+                <>
+                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Opening portal...
+                </>
+              ) : (
+                <>
+                  Manage Subscription
+                  <ChevronRight size={16} />
+                </>
+              )}
+            </button>
+            <p className="text-xs text-gray-400 mt-3">Powered by Stripe</p>
+          </div>
+        )}
       </div>
 
       {/* Cancel Plan */}
-      <div className="bg-white rounded-2xl border border-red-100 p-6 mb-4">
-        <h3 className="text-sm font-semibold text-red-500 uppercase tracking-wide mb-2">Danger Zone</h3>
-        <p className="text-gray-600 text-sm mb-4">Cancel your subscription. Your ministry will remain active until the end of the current billing period.</p>
+      <div className="bg-white rounded-2xl border border-red-100 overflow-hidden">
         <button
-          onClick={() => setShowCancelConfirm(true)}
-          className="px-4 py-2 border border-red-200 text-red-600 rounded-xl text-sm font-semibold hover:bg-red-50 transition-colors"
+          onClick={() => toggleSection('cancel-plan')}
+          className="w-full flex items-center justify-between p-4 cursor-pointer hover:bg-red-50/50 transition-colors"
         >
-          Cancel Subscription
+          <div className="flex items-center gap-3">
+            <AlertTriangle size={20} className="text-red-500" />
+            <span className="text-sm font-semibold text-red-600">Cancel Subscription</span>
+          </div>
+          <ChevronDown
+            size={18}
+            className={`text-gray-400 transition-transform duration-300 ${expandedSection === 'cancel-plan' ? 'rotate-180' : ''}`}
+          />
         </button>
+        {expandedSection === 'cancel-plan' && (
+          <div className="px-4 pb-4 border-t border-red-100 pt-4">
+            <p className="text-gray-600 text-sm mb-4">Cancel your subscription. Your ministry will remain active until the end of the current billing period.</p>
+            <button
+              onClick={() => setShowCancelConfirm(true)}
+              className="px-4 py-2 border border-red-200 text-red-600 rounded-xl text-sm font-semibold hover:bg-red-50 transition-colors"
+            >
+              Cancel Subscription
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Cancel Confirmation Modal */}
