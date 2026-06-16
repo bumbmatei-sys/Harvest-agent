@@ -155,29 +155,28 @@ export default function AdminRAG() {
  // For simplicity based on the provided design, we'll maintain a 'rag_sources' collection
  useEffect(() => {
    let unsubscribe: (() => void) | null = null;
+   let unmounted = false;
 
-   const loadSources = async () => {
+   (async () => {
    const tenantId = await getTenantScope();
+   if (unmounted) return;
    const q = tenantId
      ? query(collection(db, 'rag_sources'), where('tenantId', '==', tenantId))
      : query(collection(db, 'rag_sources'));
    unsubscribe = onSnapshot(q, (snapshot) => {
      const loadedSources = snapshot.docs.map(doc => ({
- id: doc.id,
- ...doc.data(),
- addedAt: doc.data().addedAt?.toDate() || new Date()
- }));
- // Sort by addedAt descending
- loadedSources.sort((a: any, b: any) => b.addedAt.getTime() - a.addedAt.getTime());
- setSources(loadedSources);
- }, (error) => {
- try { handleFirestoreError(error, OperationType.GET, `rag_sources`); } catch (e) { console.error(e); }
- });
+       id: doc.id,
+       ...doc.data(),
+       addedAt: doc.data().addedAt?.toDate() || new Date()
+     }));
+     loadedSources.sort((a: any, b: any) => b.addedAt.getTime() - a.addedAt.getTime());
+     setSources(loadedSources);
+   }, (error) => {
+     try { handleFirestoreError(error, OperationType.GET, `rag_sources`); } catch (e) { console.error(e); }
+   });
+   })().catch(e => console.error('Failed to load RAG sources:', e));
 
- };
-
- loadSources();
- return () => { if (unsubscribe) unsubscribe(); };
+   return () => { unmounted = true; if (unsubscribe) unsubscribe(); };
  }, []);
 
  // ── Handle paste text submit ──

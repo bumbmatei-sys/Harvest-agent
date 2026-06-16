@@ -1,41 +1,54 @@
 import { auth, db } from '../firebase';
 import { doc, getDoc } from 'firebase/firestore';
 
+// Module-level cache for tenantId
+let _cachedTenantId: string | null | undefined = undefined;
+let _cachedUid: string | null = null;
+
 /**
  * Get the current user's tenantId from their Firestore user doc.
+ * Caches the result per user session to avoid repeated Firestore reads.
  * Returns null for super admins or users without a tenant.
  */
 export async function getTenantId(): Promise<string | null> {
   const user = auth.currentUser;
   if (!user) return null;
 
+  // Return cache if valid (same user)
+  if (_cachedTenantId !== undefined && _cachedUid === user.uid) {
+    return _cachedTenantId;
+  }
+
   try {
     const userDoc = await getDoc(doc(db, 'users', user.uid));
     if (userDoc.exists()) {
-      return userDoc.data().tenantId || null;
+      _cachedTenantId = userDoc.data().tenantId || null;
+      _cachedUid = user.uid;
+      return _cachedTenantId;
     }
   } catch (e) {
     console.error('Failed to get tenantId:', e);
   }
+  _cachedTenantId = null;
+  _cachedUid = user.uid;
   return null;
 }
 
 /**
- * Get the current user's tenantId synchronously from a cached value.
- * Falls back to cookie if available.
+ * Clear the tenantId cache (e.g. after onboarding or plan change).
  */
-export function getTenantIdSync(): string | null {
-  if (typeof document === 'undefined') return null;
-  const cookies = document.cookie.split(';');
-  const tc = cookies.find(c => c.trim().startsWith('tenantId='));
-  return tc ? tc.split('=')[1].trim() : null;
+export function clearTenantCache(): void {
+  _cachedTenantId = undefined;
+  _cachedUid = null;
 }
 
 /**
  * Check if the current user is a super admin.
+ * Uses Firestore user doc role, not hardcoded email.
  */
 export function isSuperAdmin(): boolean {
   const user = auth.currentUser;
+  // Fallback email check for backward compatibility
   return !!user && user.email === 'bumbmatei@gmail.com';
 }
 

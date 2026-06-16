@@ -18,7 +18,7 @@ const AdminInbox = () => {
  useEffect(() => {
  let unsubscribe: (() => void) | null = null;
 
- const loadSubmissions = async () => {
+ (async () => {
    const tenantId = await getTenantScope();
    const q = tenantId
      ? query(collection(db, 'submissions'), where('tenantId', '==', tenantId), orderBy('createdAt', 'desc'), limit(50))
@@ -28,18 +28,15 @@ const AdminInbox = () => {
      const subs: any[] = [];
      snapshot.forEach((doc) => {
        subs.push({ id: doc.id, ...doc.data() });
- });
- setSubmissions(subs);
- setLoading(false);
- }, (error) => {
- try { handleFirestoreError(error, OperationType.GET, `submissions`); } catch (e) { console.error(e); }
- setLoading(false);
- if (error instanceof Error && error.message.includes('offline')) {
- alert("You are offline. Please check your connection.");
- }
- });
+     });
+     setSubmissions(subs);
+     setLoading(false);
+   }, (error) => {
+     try { handleFirestoreError(error, OperationType.GET, `submissions`); } catch (e) { console.error(e); }
+     setLoading(false);
+   });
+ })();
 
- loadSubmissions();
  return () => { if (unsubscribe) unsubscribe(); };
  }, []);
 
