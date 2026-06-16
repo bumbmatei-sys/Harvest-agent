@@ -10,6 +10,7 @@ import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 const PLAN_LABELS: Record<TenantPlan, string> = {
   plus: 'Plus',
   pro: 'Pro',
+  max: 'Max',
   ultra: 'Ultra',
   enterprise: 'Enterprise',
 };
@@ -17,6 +18,7 @@ const PLAN_LABELS: Record<TenantPlan, string> = {
 const PLAN_COLORS: Record<TenantPlan, string> = {
   plus: 'bg-blue-100 text-blue-700',
   pro: 'bg-purple-100 text-purple-700',
+  max: 'bg-amber-100 text-amber-700',
   ultra: 'bg-amber-100 text-amber-700',
   enterprise: 'bg-emerald-100 text-emerald-700',
 };
@@ -330,14 +332,15 @@ const AdminTenants: React.FC = () => {
                   onChange={e => setForm({ ...form, plan: e.target.value as TenantPlan })}
                   className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#d4a017] focus:border-[#d4a017] outline-none bg-white"
                 >
-                  <option value="plus">Plus — $100/mo</option>
-                  <option value="pro">Pro — $250/mo</option>
-                  <option value="ultra">Ultra — $500/mo</option>
+                  <option value="plus">Plus — $79/mo</option>
+                  <option value="pro">Pro — $199/mo</option>
+                  <option value="max">Max — $399/mo</option>
+                  <option value="ultra">Ultra — $699/mo</option>
                   <option value="enterprise">Enterprise — Custom</option>
                 </select>
               </div>
 
-              {(form.plan === 'ultra' || form.plan === 'enterprise') && (
+              {(form.plan === 'max' || form.plan === 'ultra' || form.plan === 'enterprise') && (
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-1">Custom Domain</label>
                   <input

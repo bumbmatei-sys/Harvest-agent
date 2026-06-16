@@ -7,22 +7,14 @@ export const dynamic = 'force-dynamic';
 
 // Price IDs for each plan
 // AI Assistant add-on price IDs
-const AI_ASSISTANT_MONTHLY = 'price_1TiqsB1YKkcSbTf3QabrkQIU';
-const AI_ASSISTANT_SETUP = 'price_1TiqsB1YKkcSbTf35n5cW3hu';
+const AI_ASSISTANT_MONTHLY = 'price_1TiycF1YKkcSbTf3NTQz89hz';
+const AI_ASSISTANT_SETUP = 'price_1TiycF1YKkcSbTf3Vesfw5Gp';
 
 const PRICE_MAP: Record<string, Record<string, string>> = {
-  plus: {
-    monthly: 'price_1TipKw1YKkcSbTf3NBKUJQxW',
-    yearly: 'price_1TipKw1YKkcSbTf3lxwJrDPb',
-  },
-  pro: {
-    monthly: 'price_1TipKx1YKkcSbTf3BLNULdsm',
-    yearly: 'price_1TipKx1YKkcSbTf3lYNIc7GB',
-  },
-  ultra: {
-    monthly: 'price_1TipKx1YKkcSbTf3d1QlW8nA',
-    yearly: 'price_1TipKy1YKkcSbTf3dTDBc6iI',
-  },
+  plus: { monthly: 'price_1TiydE1YKkcSbTf34ZbpeJjd', yearly: 'price_1TiydE1YKkcSbTf332ZMf8n9' },
+  pro: { monthly: 'price_1TiydE1YKkcSbTf3pATPgbci', yearly: 'price_1TiydE1YKkcSbTf31nC69ngk' },
+  max: { monthly: 'price_1TiycF1YKkcSbTf3gfOoL0Dm', yearly: 'price_1TiycF1YKkcSbTf3gSUXqzl9' },
+  ultra: { monthly: 'price_1TiycG1YKkcSbTf35YIEaVEl', yearly: 'price_1TiycG1YKkcSbTf3d54wo7lB' },
 };
 
 export async function POST(request: NextRequest) {

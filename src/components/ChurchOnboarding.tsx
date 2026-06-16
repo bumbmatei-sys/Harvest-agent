@@ -16,6 +16,7 @@ interface ChurchOnboardingProps {
 const PLAN_NAMES: Record<TenantPlan, string> = {
   plus: 'Plus',
   pro: 'Pro',
+  max: 'Max',
   ultra: 'Ultra',
   enterprise: 'Enterprise',
 };
@@ -24,10 +25,10 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ onComplete }) => {
   const urlPlan = typeof window !== 'undefined'
     ? new URLSearchParams(window.location.search).get('plan') as TenantPlan | null
     : null;
-  const selectedPlan = urlPlan && ['plus', 'pro', 'ultra', 'enterprise'].includes(urlPlan) ? urlPlan : 'plus';
+  const selectedPlan = urlPlan && ['plus', 'pro', 'max', 'ultra', 'enterprise'].includes(urlPlan) ? urlPlan : 'plus';
 
-  const hasBranding = selectedPlan === 'ultra' || selectedPlan === 'enterprise';
-  const hasCustomDomain = selectedPlan === 'ultra' || selectedPlan === 'enterprise';
+  const hasBranding = selectedPlan === 'max' || selectedPlan === 'ultra' || selectedPlan === 'enterprise';
+  const hasCustomDomain = selectedPlan === 'max' || selectedPlan === 'ultra' || selectedPlan === 'enterprise';
 
   // Steps: 0 = Ministry Info, 1 = Branding (Ultra/Enterprise only), 2 = Done
   // For Plus/Pro: 0 = Ministry Info, 1 = Done (skip branding)

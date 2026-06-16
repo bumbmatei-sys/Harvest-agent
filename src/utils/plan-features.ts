@@ -23,11 +23,13 @@ export interface PlanFeatures {
   newsletterAutomation: boolean;
   /** SMS automation (coming soon) */
   smsAutomation: boolean;
+  /** AI Assistant included in plan */
+  aiAssistant: boolean;
 }
 
 const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
   plus: {
-    blog: false,
+    blog: true,
     aiChat: false,
     aiKnowledge: false,
     map: false,
@@ -38,6 +40,7 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     customBackground: false,
     newsletterAutomation: false,
     smsAutomation: false,
+    aiAssistant: false,
   },
   pro: {
     blog: true,
@@ -51,6 +54,21 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     customBackground: false,
     newsletterAutomation: true,
     smsAutomation: false,
+    aiAssistant: false,
+  },
+  max: {
+    blog: true,
+    aiChat: true,
+    aiKnowledge: true,
+    map: false,
+    maxChurches: 1,
+    maxCourses: -1,
+    maxAdmins: -1,
+    customDomain: true,
+    customBackground: true,
+    newsletterAutomation: true,
+    smsAutomation: true,
+    aiAssistant: false,
   },
   ultra: {
     blog: true,
@@ -64,6 +82,7 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     customBackground: true,
     newsletterAutomation: true,
     smsAutomation: true,
+    aiAssistant: true,
   },
   enterprise: {
     blog: true,
@@ -77,6 +96,7 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     customBackground: true,
     newsletterAutomation: true,
     smsAutomation: true,
+    aiAssistant: true,
   },
 };
 

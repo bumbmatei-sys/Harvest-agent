@@ -8,6 +8,7 @@ export const dynamic = 'force-dynamic';
 const FEE_MAP: Record<string, number> = {
   plus: 0.20,
   pro: 0.10,
+  max: 0,
   ultra: 0,
   enterprise: 0,
 };

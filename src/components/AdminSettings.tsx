@@ -15,22 +15,26 @@ interface AdminSettingsProps {
 }
 
 const PLANS: { id: TenantPlan; name: string; monthlyPrice: string; yearlyPrice: string; yearlyPromo: string; yearlyOriginal: string; icon: any; color: string; popular?: boolean }[] = [
-  { id: 'plus', name: 'Plus', monthlyPrice: '$100/mo', yearlyPrice: '$1,000/yr', yearlyPromo: '$1,000', yearlyOriginal: '$1,200', icon: Zap, color: '#6366f1' },
-  { id: 'pro', name: 'Pro', monthlyPrice: '$250/mo', yearlyPrice: '$2,500/yr', yearlyPromo: '$2,500', yearlyOriginal: '$3,000', icon: Crown, color: '#d4a017', popular: true },
-  { id: 'ultra', name: 'Ultra', monthlyPrice: '$500/mo', yearlyPrice: '$5,000/yr', yearlyPromo: '$5,000', yearlyOriginal: '$6,000', icon: Star, color: '#8b5cf6' },
+  { id: 'plus', name: 'Plus', monthlyPrice: '$79/mo', yearlyPrice: '$790/yr', yearlyPromo: '$790', yearlyOriginal: '$948', icon: Zap, color: '#6366f1' },
+  { id: 'pro', name: 'Pro', monthlyPrice: '$199/mo', yearlyPrice: '$1,990/yr', yearlyPromo: '$1,990', yearlyOriginal: '$2,388', icon: Crown, color: '#d4a017' },
+  { id: 'max', name: 'Max', monthlyPrice: '$399/mo', yearlyPrice: '$3,990/yr', yearlyPromo: '$3,990', yearlyOriginal: '$4,788', icon: Star, color: '#8b5cf6', popular: true },
+  { id: 'ultra', name: 'Ultra', monthlyPrice: '$699/mo', yearlyPrice: '$6,990/yr', yearlyPromo: '$6,990', yearlyOriginal: '$8,388', icon: Building2, color: '#b45309' },
   { id: 'enterprise', name: 'Enterprise', monthlyPrice: 'Custom', yearlyPrice: 'Custom', yearlyPromo: 'Custom', yearlyOriginal: '', icon: Building2, color: '#0b1121' },
 ];
 
 const FEATURE_COMPARISON: { key: keyof PlanFeatures; label: string; format?: (v: any) => string }[] = [
-  { key: 'blog', label: 'Blog & AI Chat' },
-  { key: 'aiKnowledge', label: 'AI Knowledge Base' },
-  { key: 'map', label: 'Church Map Directory' },
+  { key: 'blog', label: 'Blog' },
   { key: 'newsletterAutomation', label: 'Newsletter Automation (Soon)' },
-  { key: 'smsAutomation', label: 'SMS Automation (Soon)' },
-  { key: 'maxChurches', label: 'Churches', format: (v) => v === -1 ? 'Unlimited' : `${v}` },
+  { key: 'aiChat', label: 'AI Chat' },
+  { key: 'aiKnowledge', label: 'AI Knowledge Base' },
   { key: 'maxCourses', label: 'Courses', format: (v) => v === -1 ? 'Unlimited' : `${v}` },
   { key: 'maxAdmins', label: 'Admin Accounts', format: (v) => v === -1 ? 'Unlimited' : `${v}` },
   { key: 'customDomain', label: 'Custom Domain' },
+  { key: 'customBackground', label: 'Custom Background' },
+  { key: 'smsAutomation', label: 'SMS Automation (Soon)' },
+  { key: 'map', label: 'Church Map Directory' },
+  { key: 'maxChurches', label: 'Churches', format: (v) => v === -1 ? 'Unlimited' : `${v}` },
+  { key: 'aiAssistant', label: 'AI Assistant Included' },
 ];
 
 // Stripe billing — no more mock payments
@@ -745,7 +749,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
         <div className="bg-white rounded-2xl border border-gray-100 p-6">
           <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">Custom Domain</h3>
           <p className="text-gray-600 text-sm mb-4">
-            Custom domains are available on <strong>Ultra</strong> and <strong>Enterprise</strong> plans.
+            Custom domains are available on <strong>Max</strong>, <strong>Ultra</strong>, and <strong>Enterprise</strong> plans.
             Upgrade to use your own domain name.
           </p>
           <button
@@ -1345,9 +1349,9 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
                 {!aiAssistantSubscribed ? (
                   <>
                     <div className="flex items-baseline gap-2 mb-4">
-                      <span className="text-2xl font-bold text-gray-900">$500 setup</span>
+                      <span className="text-2xl font-bold text-gray-900">$299 setup</span>
                       <span className="text-gray-400">+</span>
-                      <span className="text-2xl font-bold text-gray-900">$200/mo</span>
+                      <span className="text-2xl font-bold text-gray-900">$199/mo</span>
                     </div>
                     <button
                       onClick={handleAiAssistantCheckout}
@@ -1368,7 +1372,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
                   <>
                     <div className="flex items-center gap-3 mb-4">
                       <span className="px-3 py-1 bg-green-100 text-green-700 text-sm font-semibold rounded-full">Active</span>
-                      <span className="text-sm text-gray-600">$200/mo</span>
+                      <span className="text-sm text-gray-600">$199/mo</span>
                     </div>
                     <button
                       onClick={handleAiAssistantCancel}
