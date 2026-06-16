@@ -138,8 +138,8 @@ service cloud.firestore {
     // ─── Tenants (multi-tenant prep) ─────────────────────────────────
 
     match /tenants/{tenantId} {
-      // Any authenticated user can read tenants (needed for onboarding & subdomain lookup)
-      allow read: if isAuthenticated();
+      // Allow unauthenticated reads for subdomain validation (no sensitive data)
+      allow read: if true;
 
       // Any authenticated user can create a tenant (during church onboarding)
       allow create: if isAuthenticated();
