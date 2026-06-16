@@ -80,6 +80,56 @@ service cloud.firestore {
         (request.auth.uid == resource.data.authorId || isAdmin());
     }
 
+    // ─── Blog Posts ─────────────────────────────────────────────────
+
+    match /blog_posts/{postId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if isAuthenticated();
+    }
+
+    // ─── Courses ────────────────────────────────────────────────────
+
+    match /courses/{courseId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if isAuthenticated();
+    }
+
+    // ─── Churches ───────────────────────────────────────────────────
+
+    match /churches/{churchId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if isAuthenticated();
+    }
+
+    // ─── RAG Sources & Chunks ───────────────────────────────────────
+
+    match /rag_sources/{sourceId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if isAuthenticated();
+    }
+
+    match /rag_chunks/{chunkId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if isAuthenticated();
+    }
+
+    // ─── Authors & Categories (shared) ──────────────────────────────
+
+    match /authors/{authorId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+
+    match /categories/{catId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+
     // ─── Tenants (multi-tenant prep) ─────────────────────────────────
 
     match /tenants/{tenantId} {

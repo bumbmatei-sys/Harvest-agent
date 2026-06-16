@@ -9,6 +9,7 @@ import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import ChurchDetailsModal from './ChurchDetailsModal';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
+import { getTenantScope } from '../utils/tenant-scope';
 
 
 
@@ -170,7 +171,10 @@ const ChurchMap: React.FC<ChurchMapProps> = ({ onBack, onMapInteraction }) => {
  useEffect(() => {
  const fetchChurches = async () => {
  try {
- const q = query(collection(db, 'churches'), where('status', '==', 'active'));
+ const tenantId = await getTenantScope();
+ const q = tenantId
+   ? query(collection(db, 'churches'), where('status', '==', 'active'), where('tenantId', '==', tenantId))
+   : query(collection(db, 'churches'), where('status', '==', 'active'));
  const querySnapshot = await getDocs(q);
  const fetchedChurches: Church[] = [];
  querySnapshot.forEach((doc) => {

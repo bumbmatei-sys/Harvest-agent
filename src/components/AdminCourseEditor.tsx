@@ -6,6 +6,7 @@ import { db, auth } from "../firebase";
 import { ImageUpload } from './ImageUpload';
 import RichTextEditor from './RichTextEditor';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
+import { getTenantScope } from '../utils/tenant-scope';
 
 
 
@@ -648,16 +649,17 @@ export default function CourseBuilder({ course: initialCourse, onClose }: Course
  const authorName = mainAuthor ? mainAuthor.name : "No Author";
  const payload: any = { ...course, status, author: authorName, updatedAt: new Date().toISOString() };
  if (!course.id) {
- payload.createdAt = new Date().toISOString();
- }
- console.log("SAVE →", payload);
- try {
- if (course.id) {
- await updateDoc(doc(db, "courses", course.id), payload as any);
- } else {
- const docRef = await addDoc(collection(db, "courses"), payload);
- setCourse(c => ({ ...c, id: docRef.id }));
- }
+     payload.createdAt = new Date().toISOString();
+   }
+   console.log("SAVE →", payload);
+   try {
+     const tenantId = await getTenantScope();
+     if (course.id) {
+       await updateDoc(doc(db, "courses", course.id), payload as any);
+     } else {
+       const docRef = await addDoc(collection(db, "courses"), { ...payload, tenantId: tenantId || null });
+       setCourse(c => ({ ...c, id: docRef.id }));
+     }
  setSaved(true);
  setTimeout(() => setSaved(false), 2500);
  } catch (e) {

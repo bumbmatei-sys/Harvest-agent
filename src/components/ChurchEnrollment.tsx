@@ -9,6 +9,7 @@ import Autocomplete from "react-google-autocomplete";
 
 import { ImageUpload } from './ImageUpload';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
+import { getTenantScope } from '../utils/tenant-scope';
 
 
 interface ChurchEnrollmentProps {
@@ -153,12 +154,14 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
  await updateDoc(doc(db, 'churches', initialData.id), churchData);
  if (onSave) onSave();
  } else {
- await addDoc(collection(db, 'churches'), {
- ...churchData,
- status: 'active',
- createdAt: new Date().toISOString(),
- userId: auth.currentUser?.uid || null
- });
+   const tenantId = await getTenantScope();
+   await addDoc(collection(db, 'churches'), {
+     ...churchData,
+     status: 'active',
+     createdAt: new Date().toISOString(),
+     userId: auth.currentUser?.uid || null,
+     tenantId: tenantId || null
+   });
  if (onSave) onSave();
  }
  } catch (err) {

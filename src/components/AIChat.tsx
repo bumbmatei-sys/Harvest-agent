@@ -3,53 +3,8 @@ import Image from "next/image";
 import ReactMarkdown from 'react-markdown';
 import { db, auth } from '../firebase';
 import { collection, addDoc, serverTimestamp, query, where, getDocs, deleteDoc, onSnapshot } from 'firebase/firestore';
-
-
-enum OperationType {
-  CREATE = 'create',
-  UPDATE = 'update',
-  DELETE = 'delete',
-  LIST = 'list',
-  GET = 'get',
-  WRITE = 'write',
-}
-
-interface FirestoreErrorInfo {
-  error: string;
-  operationType: OperationType;
-  path: string | null;
-  authInfo: {
-    userId?: string;
-    email?: string | null;
-    emailVerified?: boolean;
-    isAnonymous?: boolean;
-    tenantId?: string | null;
-    providerInfo?: any[];
-  }
-}
-
-function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
-  const errInfo: FirestoreErrorInfo = {
-    error: error instanceof Error ? error.message : String(error),
-    authInfo: {
-      userId: auth?.currentUser?.uid,
-      email: auth?.currentUser?.email,
-      emailVerified: auth?.currentUser?.emailVerified,
-      isAnonymous: auth?.currentUser?.isAnonymous,
-      tenantId: auth?.currentUser?.tenantId,
-      providerInfo: auth?.currentUser?.providerData.map(provider => ({
-        providerId: provider.providerId,
-        displayName: provider.displayName,
-        email: provider.email,
-        photoUrl: provider.photoURL
-      })) || []
-    },
-    operationType,
-    path
-  };
-  console.error('Firestore Error: ', JSON.stringify(errInfo));
-  throw new Error(JSON.stringify(errInfo));
-}
+import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
+import { getTenantScope } from '../utils/tenant-scope';
 
 // Gemini API calls are proxied through /api/gemini to keep the API key server-side
 
@@ -322,7 +277,12 @@ export default function AIChat({ onBack }: { onBack?: () => void }) {
 
      // 2. Fetch all chunks (for a small knowledge base this is fine)
      // For larger DBs, we'd need a proper vector search extension or backend
-     const chunksSnap = await getDocs(collection(db, "rag_chunks"));
+     const tenantId = await getTenantScope();
+    const chunksSnap = await getDocs(
+      tenantId
+        ? query(collection(db, "rag_chunks"), where("tenantId", "==", tenantId))
+        : collection(db, "rag_chunks")
+    );
       
      const scoredChunks = chunksSnap.docs.map(doc => {
        const data = doc.data() as { title: string; chunk: string; vector: number[] };

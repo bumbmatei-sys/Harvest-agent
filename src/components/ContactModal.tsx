@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { ArrowLeft, Mail, MapPin, Lightbulb, HeartHandshake, ChevronDown, ChevronUp } from 'lucide-react';
 import { db, auth } from '../firebase';
 import { collection, addDoc } from 'firebase/firestore';
+import { getTenantScope } from '../utils/tenant-scope';
 
 
 enum OperationType {
@@ -173,12 +174,14 @@ const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) => {
  setErrorMessage('');
 
  try {
+ const tenantId = await getTenantScope();
  await addDoc(collection(db, 'submissions'), {
- type,
- status: 'pending',
- createdAt: new Date().toISOString(),
- userId: auth.currentUser?.uid || null,
- data
+   type,
+   status: 'pending',
+   createdAt: new Date().toISOString(),
+   userId: auth.currentUser?.uid || null,
+   data,
+   tenantId: tenantId || null
  });
  setSuccessMessage('Successfully submitted! Thank you.');
  resetForm();

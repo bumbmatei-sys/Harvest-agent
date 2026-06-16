@@ -6,6 +6,7 @@ import { collection, query, where, orderBy, onSnapshot, doc, updateDoc, arrayUni
 import { db, auth } from '../firebase';
 import { FileText, Calendar, Tag, ArrowLeft, Search } from 'lucide-react';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
+import { getTenantScope } from '../utils/tenant-scope';
 
 
 
@@ -40,13 +41,22 @@ const BlogTab: React.FC<BlogTabProps> = ({ onOpenArticle, initialPost, onBack, i
  const [selectedPost, setSelectedPost] = useState<BlogPost | null>(initialPost || null);
 
  useEffect(() => {
- // Only fetch published posts
- const q = query(
- collection(db, 'blog_posts'),
- where('status', '==', 'published')
- );
+ let unsubscribe: (() => void) | null = null;
+ (async () => {
+   // Only fetch published posts
+   const tenantId = await getTenantScope();
+   const q = tenantId
+     ? query(
+         collection(db, 'blog_posts'),
+         where('tenantId', '==', tenantId),
+         where('status', '==', 'published')
+       )
+     : query(
+         collection(db, 'blog_posts'),
+         where('status', '==', 'published')
+       );
 
- const unsubscribe = onSnapshot(q, (snapshot) => {
+   unsubscribe = onSnapshot(q, (snapshot) => {
  const fetchedPosts = snapshot.docs.map(doc => ({
  id: doc.id,
  ...doc.data()
@@ -70,9 +80,10 @@ const BlogTab: React.FC<BlogTabProps> = ({ onOpenArticle, initialPost, onBack, i
  }, (error) => {
  try { handleFirestoreError(error, OperationType.GET, `blog_posts`); } catch (e) { console.error(e); }
  setLoading(false);
- });
+   });
+ })();
 
- return () => unsubscribe();
+ return () => { if (unsubscribe) unsubscribe(); };
  }, []);
 
  const categories = ['All', ...Array.from(new Set(posts.map(post => post.category)))];

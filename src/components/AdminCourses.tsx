@@ -1,10 +1,11 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { Plus, Search, Edit2, Trash2, BookOpen } from 'lucide-react';
-import { collection, onSnapshot, query, orderBy, deleteDoc, doc, limit } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, orderBy, deleteDoc, doc, limit } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import AdminCourseEditor, { Course } from './AdminCourseEditor';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
+import { getTenantScope } from '../utils/tenant-scope';
 
 
 
@@ -20,20 +21,28 @@ const AdminCourses: React.FC = () => {
  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
  useEffect(() => {
- const q = query(collection(db, 'courses'), orderBy('createdAt', 'desc'), limit(50));
- const unsubscribe = onSnapshot(q, (snapshot) => {
- const fetchedCourses = snapshot.docs.map(doc => ({
- id: doc.id,
- ...doc.data()
- })) as Course[];
- setCourses(fetchedCourses);
- setLoading(false);
- }, (error) => {
- try { handleFirestoreError(error, OperationType.GET, `courses`); } catch (e) { console.error(e); }
- setLoading(false);
- });
+ let unsubscribe: (() => void) | null = null;
 
- return () => unsubscribe();
+ (async () => {
+   const tenantId = await getTenantScope();
+   const q = tenantId
+     ? query(collection(db, 'courses'), where('tenantId', '==', tenantId), orderBy('createdAt', 'desc'), limit(50))
+     : query(collection(db, 'courses'), orderBy('createdAt', 'desc'), limit(50));
+
+   unsubscribe = onSnapshot(q, (snapshot) => {
+     const fetchedCourses = snapshot.docs.map(doc => ({
+       id: doc.id,
+       ...doc.data()
+     })) as Course[];
+     setCourses(fetchedCourses);
+     setLoading(false);
+   }, (error) => {
+     try { handleFirestoreError(error, OperationType.GET, `courses`); } catch (e) { console.error(e); }
+     setLoading(false);
+   });
+ })();
+
+ return () => { if (unsubscribe) unsubscribe(); };
  }, []);
 
  const filteredCourses = courses.filter(course => {

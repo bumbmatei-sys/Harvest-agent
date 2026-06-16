@@ -1,12 +1,13 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { collection, query, orderBy, onSnapshot, addDoc, deleteDoc, doc, updateDoc, arrayUnion, arrayRemove, limit } from 'firebase/firestore';
+import { collection, query, where, orderBy, onSnapshot, addDoc, deleteDoc, doc, updateDoc, arrayUnion, arrayRemove, limit } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { Country, City } from 'country-state-city';
 import { ImageUpload } from './ImageUpload';
 import { MessageSquare, BarChart2, Calendar as CalendarIcon, Image as ImageIcon, Send, MoreVertical, ThumbsUp, Check, X } from 'lucide-react';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
+import { getTenantScope } from '../utils/tenant-scope';
 
 
 
@@ -91,24 +92,30 @@ const AdminPosts: React.FC<AdminPostsProps> = ({ userRole, userPermissions }) =>
  const availableCities = selectedCountryCode ? City.getCitiesOfCountry(selectedCountryCode) || [] : [];
 
  useEffect(() => {
- const q = query(collection(db, 'community_posts'), orderBy('createdAt', 'desc'), limit(50));
- const unsubscribe = onSnapshot(q, (snapshot) => {
- const postsData = snapshot.docs.map(doc => ({
- id: doc.id,
- ...doc.data()
- })) as CommunityPost[];
- 
- const sortedPosts = [...postsData].sort((a, b) => {
- if (a.isPinned && !b.isPinned) return -1;
- if (!a.isPinned && b.isPinned) return 1;
- return 0;
- });
- 
- setPosts(sortedPosts);
- setLoading(false);
- });
+ let unsubscribe: (() => void) | null = null;
+ (async () => {
+   const tenantId = await getTenantScope();
+   const q = tenantId
+     ? query(collection(db, 'community_posts'), where('tenantId', '==', tenantId), orderBy('createdAt', 'desc'), limit(50))
+     : query(collection(db, 'community_posts'), orderBy('createdAt', 'desc'), limit(50));
+   unsubscribe = onSnapshot(q, (snapshot) => {
+     const postsData = snapshot.docs.map(doc => ({
+       id: doc.id,
+       ...doc.data()
+     })) as CommunityPost[];
 
- return () => unsubscribe();
+     const sortedPosts = [...postsData].sort((a, b) => {
+       if (a.isPinned && !b.isPinned) return -1;
+       if (!a.isPinned && b.isPinned) return 1;
+       return 0;
+     });
+
+     setPosts(sortedPosts);
+     setLoading(false);
+   });
+ })();
+
+ return () => { if (unsubscribe) unsubscribe(); };
  }, []);
 
  const transformImageUrl = (url: string) => {
@@ -163,11 +170,15 @@ const AdminPosts: React.FC<AdminPostsProps> = ({ userRole, userPermissions }) =>
  };
  }
 
+ const tenantId = await getTenantScope();
  if (editingPostId) {
- await updateDoc(doc(db, 'community_posts', editingPostId), postData);
- setEditingPostId(null);
+   await updateDoc(doc(db, 'community_posts', editingPostId), postData);
+   setEditingPostId(null);
  } else {
- await addDoc(collection(db, 'community_posts'), postData);
+   await addDoc(collection(db, 'community_posts'), {
+     ...postData,
+     tenantId: tenantId || null,
+   });
  }
  
  // Reset form

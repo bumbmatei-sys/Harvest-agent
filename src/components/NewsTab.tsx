@@ -5,6 +5,7 @@ import { collection, query, orderBy, onSnapshot, doc, updateDoc, arrayUnion, arr
 import { db, auth } from '../firebase';
 import { Calendar as CalendarIcon, ThumbsUp, Check, ChevronRight, FileText, Tag, Calendar } from 'lucide-react';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
+import { getTenantScope } from '../utils/tenant-scope';
 
 
 
@@ -91,54 +92,69 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle }) => {
   }, []);
 
   useEffect(() => {
- // Fetch all posts to ensure pinned posts are included, then slice
- const q = query(collection(db, 'community_posts'), orderBy('createdAt', 'desc'), limit(50));
- 
- const unsubscribe = onSnapshot(q, (snapshot) => {
- const postsData = snapshot.docs.map(doc => ({
- id: doc.id,
- ...doc.data()
- })) as CommunityPost[];
- 
- const sortedPosts = [...postsData].sort((a, b) => {
- if (a.isPinned && !b.isPinned) return -1;
- if (!a.isPinned && b.isPinned) return 1;
- return 0;
- });
- 
- setAllPosts(sortedPosts);
- setLoading(false);
- });
+ let unsubCommunity: (() => void) | null = null;
+ let unsubArticles: (() => void) | null = null;
+ (async () => {
+   const tenantId = await getTenantScope();
 
- const articlesQuery = query(
-   collection(db, 'blog_posts'),
-   where('status', '==', 'published'),
-   limit(50)
- );
+   // Fetch all posts to ensure pinned posts are included, then slice
+   const communityQ = tenantId
+     ? query(collection(db, 'community_posts'), where('tenantId', '==', tenantId), orderBy('createdAt', 'desc'), limit(50))
+     : query(collection(db, 'community_posts'), orderBy('createdAt', 'desc'), limit(50));
 
- const unsubscribeArticles = onSnapshot(articlesQuery, (snapshot) => {
- const fetchedPosts = snapshot.docs.map(doc => ({
- id: doc.id,
- ...doc.data()
- })) as BlogPost[];
- 
- const now = new Date().toISOString();
- const visiblePosts = fetchedPosts.filter(post => 
- !post.publishedAt || post.publishedAt <= now
- );
- 
- visiblePosts.sort((a, b) => {
- const dateA = a.publishedAt || a.createdAt;
- const dateB = b.publishedAt || b.createdAt;
- return new Date(dateB).getTime() - new Date(dateA).getTime();
- });
- 
- setArticles(visiblePosts.slice(0, 3));
- });
+   unsubCommunity = onSnapshot(communityQ, (snapshot) => {
+     const postsData = snapshot.docs.map(doc => ({
+       id: doc.id,
+       ...doc.data()
+     })) as CommunityPost[];
+
+     const sortedPosts = [...postsData].sort((a, b) => {
+       if (a.isPinned && !b.isPinned) return -1;
+       if (!a.isPinned && b.isPinned) return 1;
+       return 0;
+     });
+
+     setAllPosts(sortedPosts);
+     setLoading(false);
+   });
+
+   const articlesQ = tenantId
+     ? query(
+         collection(db, 'blog_posts'),
+         where('tenantId', '==', tenantId),
+         where('status', '==', 'published'),
+         limit(50)
+       )
+     : query(
+         collection(db, 'blog_posts'),
+         where('status', '==', 'published'),
+         limit(50)
+       );
+
+   unsubArticles = onSnapshot(articlesQ, (snapshot) => {
+     const fetchedPosts = snapshot.docs.map(doc => ({
+       id: doc.id,
+       ...doc.data()
+     })) as BlogPost[];
+
+     const now = new Date().toISOString();
+     const visiblePosts = fetchedPosts.filter(post =>
+       !post.publishedAt || post.publishedAt <= now
+     );
+
+     visiblePosts.sort((a, b) => {
+       const dateA = a.publishedAt || a.createdAt;
+       const dateB = b.publishedAt || b.createdAt;
+       return new Date(dateB).getTime() - new Date(dateA).getTime();
+     });
+
+     setArticles(visiblePosts.slice(0, 3));
+   });
+ })();
 
  return () => {
- unsubscribe();
- unsubscribeArticles();
+   if (unsubCommunity) unsubCommunity();
+   if (unsubArticles) unsubArticles();
  };
  }, []);
 

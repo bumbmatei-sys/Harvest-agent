@@ -1,9 +1,10 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { collection, query, orderBy, onSnapshot, doc, updateDoc, arrayUnion, arrayRemove, getDoc } from 'firebase/firestore';
+import { collection, query, where, orderBy, onSnapshot, doc, updateDoc, arrayUnion, arrayRemove, getDoc } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { Calendar as CalendarIcon, ThumbsUp, Check, ArrowLeft } from 'lucide-react';
+import { getTenantScope } from '../utils/tenant-scope';
 
 
 enum OperationType {
@@ -119,26 +120,31 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack }) => {
   }, []);
 
   useEffect(() => {
- const q = query(collection(db, 'community_posts'), orderBy('createdAt', 'desc'));
- 
- const unsubscribe = onSnapshot(q, (snapshot) => {
- const postsData = snapshot.docs.map(doc => ({
- id: doc.id,
- ...doc.data()
- })) as CommunityPost[];
- 
- const sortedPosts = [...postsData].sort((a, b) => {
- if (a.isPinned && !b.isPinned) return -1;
- if (!a.isPinned && b.isPinned) return 1;
- return 0;
- });
- 
- setAllPosts(sortedPosts);
- setLoading(false);
- });
+ let unsubscribe: (() => void) | null = null;
+  (async () => {
+    const tenantId = await getTenantScope();
+    const q = tenantId
+      ? query(collection(db, 'community_posts'), where('tenantId', '==', tenantId), orderBy('createdAt', 'desc'))
+      : query(collection(db, 'community_posts'), orderBy('createdAt', 'desc'));
 
- 
-  return () => unsubscribe();
+    unsubscribe = onSnapshot(q, (snapshot) => {
+      const postsData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as CommunityPost[];
+
+      const sortedPosts = [...postsData].sort((a, b) => {
+        if (a.isPinned && !b.isPinned) return -1;
+        if (!a.isPinned && b.isPinned) return 1;
+        return 0;
+      });
+
+      setAllPosts(sortedPosts);
+      setLoading(false);
+    });
+  })();
+
+  return () => { if (unsubscribe) unsubscribe(); };
  }, []);
 
  const handleLike = async (postId: string, likes: string[]) => {

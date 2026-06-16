@@ -9,6 +9,7 @@ import { CourseOverview } from "../components/course/CourseOverview";
 import { LessonView } from "../components/course/LessonView";
 import { AuthorProfile } from "../components/course/AuthorProfile";
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
+import { getTenantScope } from '../utils/tenant-scope';
 
 
 export default function CoursePage({ 
@@ -99,7 +100,11 @@ export default function CoursePage({
       }
 
       try {
-        const coursesSnap = await getDocs(query(collection(db, "courses"), where("status", "==", "published")));
+        const tenantId = await getTenantScope();
+        const coursesQuery = tenantId
+          ? query(collection(db, "courses"), where("status", "==", "published"), where("tenantId", "==", tenantId))
+          : query(collection(db, "courses"), where("status", "==", "published"));
+        const coursesSnap = await getDocs(coursesQuery);
         const fetchedCourses: Course[] = [];
         coursesSnap.forEach((doc) => {
           fetchedCourses.push({ id: doc.id, ...doc.data() } as Course);

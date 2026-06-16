@@ -1,10 +1,11 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { Plus, Search, Edit2, Trash2, MoreVertical, Filter, FileText } from 'lucide-react';
-import { collection, onSnapshot, query, orderBy, deleteDoc, doc, limit } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, orderBy, deleteDoc, doc, limit } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import AdminBlogPostEditor from './AdminBlogPostEditor';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
+import { getTenantScope } from '../utils/tenant-scope';
 
 
 
@@ -34,20 +35,25 @@ const AdminBlog: React.FC = () => {
  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
  useEffect(() => {
- const q = query(collection(db, 'blog_posts'), orderBy('createdAt', 'desc'), limit(50));
- const unsubscribe = onSnapshot(q, (snapshot) => {
- const fetchedPosts = snapshot.docs.map(doc => ({
- id: doc.id,
- ...doc.data()
- })) as BlogPost[];
- setPosts(fetchedPosts);
- setLoading(false);
- }, (error) => {
- try { handleFirestoreError(error, OperationType.GET, `blog_posts`); } catch (e) { console.error(e); }
- setLoading(false);
- });
-
- return () => unsubscribe();
+ let unsubscribe: (() => void) | null = null;
+ (async () => {
+   const tenantId = await getTenantScope();
+   const q = tenantId
+     ? query(collection(db, 'blog_posts'), where('tenantId', '==', tenantId), orderBy('createdAt', 'desc'), limit(50))
+     : query(collection(db, 'blog_posts'), orderBy('createdAt', 'desc'), limit(50));
+   unsubscribe = onSnapshot(q, (snapshot) => {
+     const fetchedPosts = snapshot.docs.map(doc => ({
+       id: doc.id,
+       ...doc.data()
+     })) as BlogPost[];
+     setPosts(fetchedPosts);
+     setLoading(false);
+   }, (error) => {
+     try { handleFirestoreError(error, OperationType.GET, `blog_posts`); } catch (e) { console.error(e); }
+     setLoading(false);
+   });
+ })();
+ return () => { if (unsubscribe) unsubscribe(); };
  }, []);
 
  const categories = Array.from(new Set(posts.map(post => post.category)));

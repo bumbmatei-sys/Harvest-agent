@@ -7,6 +7,7 @@ import { db, auth } from '../firebase';
 import { ImageUpload } from './ImageUpload';
 import RichTextEditor from './RichTextEditor';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
+import { getTenantScope } from '../utils/tenant-scope';
 
 
 
@@ -119,13 +120,15 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
  ...(status === 'published' && !post?.publishedAt ? { publishedAt: new Date().toISOString() } : {})
  };
 
+ const tenantId = await getTenantScope();
  if (post?.id) {
- await updateDoc(doc(db, 'blog_posts', post.id), postData);
+   await updateDoc(doc(db, 'blog_posts', post.id), postData);
  } else {
- await addDoc(collection(db, 'blog_posts'), {
- ...postData,
- createdAt: new Date().toISOString(),
- });
+   await addDoc(collection(db, 'blog_posts'), {
+     ...postData,
+     createdAt: new Date().toISOString(),
+     tenantId: tenantId || null,
+   });
  }
  onClose();
  } catch (err: any) {

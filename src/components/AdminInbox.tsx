@@ -1,9 +1,10 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { db, auth } from '../firebase';
-import { collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc, limit } from 'firebase/firestore';
+import { collection, query, where, orderBy, onSnapshot, doc, updateDoc, deleteDoc, limit } from 'firebase/firestore';
 import { Mail, MapPin, Lightbulb, HeartHandshake, Church, CheckCircle, Trash2, Clock, ChevronDown, ChevronUp, Inbox } from 'lucide-react';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
+import { getTenantScope } from '../utils/tenant-scope';
 
 
 
@@ -15,12 +16,18 @@ const AdminInbox = () => {
  const [filterType, setFilterType] = useState<string>('all');
 
  useEffect(() => {
- const q = query(collection(db, 'submissions'), orderBy('createdAt', 'desc'), limit(50));
- 
- const unsubscribe = onSnapshot(q, (snapshot) => {
- const subs: any[] = [];
- snapshot.forEach((doc) => {
- subs.push({ id: doc.id, ...doc.data() });
+ let unsubscribe: (() => void) | null = null;
+
+ const loadSubmissions = async () => {
+   const tenantId = await getTenantScope();
+   const q = tenantId
+     ? query(collection(db, 'submissions'), where('tenantId', '==', tenantId), orderBy('createdAt', 'desc'), limit(50))
+     : query(collection(db, 'submissions'), orderBy('createdAt', 'desc'), limit(50));
+
+   unsubscribe = onSnapshot(q, (snapshot) => {
+     const subs: any[] = [];
+     snapshot.forEach((doc) => {
+       subs.push({ id: doc.id, ...doc.data() });
  });
  setSubmissions(subs);
  setLoading(false);
@@ -32,7 +39,8 @@ const AdminInbox = () => {
  }
  });
 
- return () => unsubscribe();
+ loadSubmissions();
+ return () => { if (unsubscribe) unsubscribe(); };
  }, []);
 
  const handleStatusChange = async (id: string, newStatus: string) => {

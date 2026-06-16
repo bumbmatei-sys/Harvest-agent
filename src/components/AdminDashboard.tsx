@@ -16,6 +16,7 @@ import { getPlanFeatures } from '../utils/plan-features';
 import { db, auth } from '../firebase';
 import { collection, query, where, onSnapshot, doc, getDoc, limit } from 'firebase/firestore';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
+import { getTenantScope } from '../utils/tenant-scope';
 
 
 
@@ -53,23 +54,35 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, tenantPlan 
   }, []);
 
   useEffect(() => {
-    const q = query(collection(db, 'submissions'), where('status', '==', 'pending'), limit(100));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    let unsub1: (() => void) | null = null;
+    let unsub2: (() => void) | null = null;
+
+    const loadCounts = async () => {
+    const tenantId = await getTenantScope();
+    const q = tenantId
+      ? query(collection(db, 'submissions'), where('tenantId', '==', tenantId), where('status', '==', 'pending'), limit(100))
+      : query(collection(db, 'submissions'), where('status', '==', 'pending'), limit(100));
+    unsub1 = onSnapshot(q, (snapshot) => {
       setUnreadCount(snapshot.docs.length);
     }, (error) => {
       try { handleFirestoreError(error, OperationType.GET, `submissions`); } catch (e) { console.error(e); }
     });
     
-    const qChurches = query(collection(db, 'churches'), where('status', '==', 'pending'), limit(100));
-    const unsubscribeChurches = onSnapshot(qChurches, (snapshot) => {
+    const qChurches = tenantId
+      ? query(collection(db, 'churches'), where('tenantId', '==', tenantId), where('status', '==', 'pending'), limit(100))
+      : query(collection(db, 'churches'), where('status', '==', 'pending'), limit(100));
+    unsub2 = onSnapshot(qChurches, (snapshot) => {
       setPendingChurchesCount(snapshot.docs.length);
     }, (error) => {
       try { handleFirestoreError(error, OperationType.GET, `churches`); } catch (e) { console.error(e); }
     });
+    };
+
+    loadCounts();
     
     return () => {
-      unsubscribe();
-      unsubscribeChurches();
+      if (unsub1) unsub1();
+      if (unsub2) unsub2();
     };
   }, []);
 

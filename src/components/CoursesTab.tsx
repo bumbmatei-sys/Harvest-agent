@@ -5,6 +5,7 @@ import { collection, query, where, getDocs, orderBy, limit } from 'firebase/fire
 import { db, auth } from '../firebase';
 import { BookOpen, Clock, ChevronRight } from 'lucide-react';
 import { Course } from './AdminCourseEditor';
+import { getTenantScope } from '../utils/tenant-scope';
 
 
 enum OperationType {
@@ -64,12 +65,10 @@ const CoursesTab: React.FC<CoursesTabProps> = ({ onOpenCourse }) => {
  useEffect(() => {
  const fetchCourses = async () => {
  try {
- const q = query(
- collection(db, 'courses'),
- where('status', '==', 'published'),
- orderBy('createdAt', 'desc'),
- limit(50)
- );
+ const tenantId = await getTenantScope();
+ const q = tenantId
+   ? query(collection(db, 'courses'), where('status', '==', 'published'), where('tenantId', '==', tenantId), orderBy('createdAt', 'desc'), limit(50))
+   : query(collection(db, 'courses'), where('status', '==', 'published'), orderBy('createdAt', 'desc'), limit(50));
  const querySnapshot = await getDocs(q);
  const fetchedCourses: Course[] = [];
  querySnapshot.forEach((doc) => {

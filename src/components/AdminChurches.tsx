@@ -1,10 +1,11 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { db, auth } from '../firebase';
-import { collection, query, onSnapshot, doc, deleteDoc, limit } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc, deleteDoc, limit } from 'firebase/firestore';
 import { Church, Search, Filter, Edit2, Trash2, Plus, CheckCircle, Clock } from 'lucide-react';
 import ChurchEnrollment from './ChurchEnrollment';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
+import { getTenantScope } from '../utils/tenant-scope';
 
 
 
@@ -36,21 +37,28 @@ const AdminChurches: React.FC = () => {
  };
 
  useEffect(() => {
- const q = query(collection(db, 'churches'), limit(100));
- 
- const unsubscribe = onSnapshot(q, (snapshot) => {
- const churchData: any[] = [];
- snapshot.forEach((doc) => {
- churchData.push({ id: doc.id, ...doc.data() });
- });
- setChurches(churchData);
- setLoading(false);
- }, (error) => {
- try { handleFirestoreError(error, OperationType.GET, `churches`); } catch (e) { console.error(e); }
- setLoading(false);
- });
+ let unsubscribe: (() => void) | null = null;
 
- return () => unsubscribe();
+ (async () => {
+   const tenantId = await getTenantScope();
+   const q = tenantId
+     ? query(collection(db, 'churches'), where('tenantId', '==', tenantId), limit(100))
+     : query(collection(db, 'churches'), limit(100));
+
+   unsubscribe = onSnapshot(q, (snapshot) => {
+     const churchData: any[] = [];
+     snapshot.forEach((doc) => {
+       churchData.push({ id: doc.id, ...doc.data() });
+     });
+     setChurches(churchData);
+     setLoading(false);
+   }, (error) => {
+     try { handleFirestoreError(error, OperationType.GET, `churches`); } catch (e) { console.error(e); }
+     setLoading(false);
+   });
+ })();
+
+ return () => { if (unsubscribe) unsubscribe(); };
  }, []);
 
  const handleDelete = async (id: string) => {

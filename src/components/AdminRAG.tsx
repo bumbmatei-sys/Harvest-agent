@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { db, auth } from '../firebase';
 import { collection, addDoc, serverTimestamp, query, where, getDocs, deleteDoc, onSnapshot, updateDoc, doc } from 'firebase/firestore';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
+import { getTenantScope } from '../utils/tenant-scope';
 
 
 // Gemini API calls are proxied through /api/gemini to keep the API key server-side
@@ -51,7 +52,7 @@ function chunkText(text: string, size = 500) {
 }
 
 // ── Chunking + embedding + Firebase save
-async function chunkAndEmbed(text: string, sourceId: string, title: string, type: string) {
+async function chunkAndEmbed(text: string, sourceId: string, title: string, type: string, tenantId?: string | null) {
  const chunks = chunkText(text);
  
  for (const chunk of chunks) {
@@ -72,7 +73,8 @@ async function chunkAndEmbed(text: string, sourceId: string, title: string, type
          type,
          chunk,
          vector,
-         createdAt: serverTimestamp()
+         createdAt: serverTimestamp(),
+         tenantId: tenantId || null
        });
      }
    } catch (error) {
@@ -152,9 +154,15 @@ export default function AdminRAG() {
  // Load sources from Firestore (we can aggregate from rag_chunks or maintain a separate rag_sources collection)
  // For simplicity based on the provided design, we'll maintain a 'rag_sources' collection
  useEffect(() => {
- const q = query(collection(db, 'rag_sources'));
- const unsubscribe = onSnapshot(q, (snapshot) => {
- const loadedSources = snapshot.docs.map(doc => ({
+   let unsubscribe: (() => void) | null = null;
+
+   const loadSources = async () => {
+   const tenantId = await getTenantScope();
+   const q = tenantId
+     ? query(collection(db, 'rag_sources'), where('tenantId', '==', tenantId))
+     : query(collection(db, 'rag_sources'));
+   unsubscribe = onSnapshot(q, (snapshot) => {
+     const loadedSources = snapshot.docs.map(doc => ({
  id: doc.id,
  ...doc.data(),
  addedAt: doc.data().addedAt?.toDate() || new Date()
@@ -166,7 +174,10 @@ export default function AdminRAG() {
  try { handleFirestoreError(error, OperationType.GET, `rag_sources`); } catch (e) { console.error(e); }
  });
 
- return () => unsubscribe();
+ };
+
+ loadSources();
+ return () => { if (unsubscribe) unsubscribe(); };
  }, []);
 
  // ── Handle paste text submit ──
@@ -178,19 +189,23 @@ export default function AdminRAG() {
  setPasteTitle(""); setPasteText(""); setTab("sources"); setPasteLoading(true);
 
  // Add to Firestore rag_sources
+ const tenantId = await getTenantScope();
  await addDoc(collection(db, "rag_sources"), {
- sourceId,
- title,
- type: "text",
- status: "processing",
- chunks: 0,
- addedAt: serverTimestamp()
+   sourceId,
+   title,
+   type: "text",
+   status: "processing",
+   chunks: 0,
+   addedAt: serverTimestamp(),
+   tenantId: tenantId || null
  });
 
- const chunks = await chunkAndEmbed(pasteText, sourceId, title, "text");
- 
+ const chunks = await chunkAndEmbed(pasteText, sourceId, title, "text", tenantId);
+    
  // Update status to processed
- const q = query(collection(db, 'rag_sources'), where('sourceId', '==', sourceId));
+ const q = tenantId
+   ? query(collection(db, 'rag_sources'), where('tenantId', '==', tenantId), where('sourceId', '==', sourceId))
+   : query(collection(db, 'rag_sources'), where('sourceId', '==', sourceId));
  const snap = await getDocs(q);
  if (!snap.empty) {
  await updateDoc(snap.docs[0].ref, {
@@ -212,13 +227,15 @@ export default function AdminRAG() {
  setTab("sources");
 
  // Add to Firestore rag_sources
+ const tenantId = await getTenantScope();
  await addDoc(collection(db, "rag_sources"), {
- sourceId,
- title: file.name,
- type,
- status: "processing",
- chunks: 0,
- addedAt: serverTimestamp()
+   sourceId,
+   title: file.name,
+   type,
+   status: "processing",
+   chunks: 0,
+   addedAt: serverTimestamp(),
+   tenantId: tenantId || null
  });
 
  let text = "";
@@ -230,10 +247,12 @@ export default function AdminRAG() {
  } else {
  text = await readFileAsText(file);
  }
- const chunks = await chunkAndEmbed(text, sourceId, file.name, type);
- 
+ const chunks = await chunkAndEmbed(text, sourceId, file.name, type, tenantId);
+    
  // Update status to processed
- const q = query(collection(db, 'rag_sources'), where('sourceId', '==', sourceId));
+ const q = tenantId
+   ? query(collection(db, 'rag_sources'), where('tenantId', '==', tenantId), where('sourceId', '==', sourceId))
+   : query(collection(db, 'rag_sources'), where('sourceId', '==', sourceId));
  const snap = await getDocs(q);
  if (!snap.empty) {
  await updateDoc(snap.docs[0].ref, {
@@ -242,8 +261,10 @@ export default function AdminRAG() {
  });
  }
  } catch (err) {
- // Update status to error
- const q = query(collection(db, 'rag_sources'), where('sourceId', '==', sourceId));
+   // Update status to error
+   const q = tenantId
+     ? query(collection(db, 'rag_sources'), where('tenantId', '==', tenantId), where('sourceId', '==', sourceId))
+     : query(collection(db, 'rag_sources'), where('sourceId', '==', sourceId));
  const snap = await getDocs(q);
  if (!snap.empty) {
  await updateDoc(snap.docs[0].ref, {
@@ -273,7 +294,10 @@ export default function AdminRAG() {
  await deleteDoc(doc(db, "rag_sources", deleteTarget.id));
  
  // Delete chunks from Firestore
- const q = query(collection(db, "rag_chunks"), where("sourceId", "==", deleteTarget.sourceId));
+ const tenantId = await getTenantScope();
+ const q = tenantId
+   ? query(collection(db, "rag_chunks"), where("tenantId", "==", tenantId), where("sourceId", "==", deleteTarget.sourceId))
+   : query(collection(db, "rag_chunks"), where("sourceId", "==", deleteTarget.sourceId));
  const snap = await getDocs(q);
  const deletePromises = snap.docs.map(document => deleteDoc(document.ref));
  await Promise.all(deletePromises);
