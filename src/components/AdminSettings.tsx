@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from 'react';
-import { ArrowLeft, Check, Crown, Zap, Building2, Star, ChevronRight, ChevronDown, AlertTriangle, Globe, CreditCard, Palette, Settings2 } from 'lucide-react';
+import { ArrowLeft, Check, Crown, Zap, Building2, Star, ChevronRight, ChevronDown, AlertTriangle, Globe, CreditCard, Palette, Settings2, Bot } from 'lucide-react';
 import { TenantPlan } from '../types/tenant.types';
 import { getPlanFeatures, PlanFeatures } from '../utils/plan-features';
 import { ImageUpload } from './ImageUpload';
@@ -59,6 +59,10 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
   const [onboardingSaved, setOnboardingSaved] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<{ id: string; label: string; type: 'text' | 'select' | 'radio' | 'textarea'; options?: string[]; required: boolean; order: number } | null>(null);
   const [showQuestionModal, setShowQuestionModal] = useState(false);
+  const [aiAssistantSubscribed, setAiAssistantSubscribed] = useState(false);
+  const [aiAssistantLoaded, setAiAssistantLoaded] = useState(false);
+  const [aiAssistantLoading, setAiAssistantLoading] = useState(false);
+  const [aiAssistantCancelLoading, setAiAssistantCancelLoading] = useState(false);
 
   const getTenantId = async (): Promise<string | null> => {
     if (tenantId) return tenantId;
@@ -265,6 +269,86 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
 
   const [stripeStatus, setStripeStatus] = useState<string | null>(null);
 
+  // Load AI Assistant add-on status from tenant doc
+  const loadAiAssistant = async () => {
+    if (aiAssistantLoaded) return;
+    try {
+      const { auth, db } = await import('../firebase');
+      const { doc, getDoc } = await import('firebase/firestore');
+      if (auth.currentUser) {
+        const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
+        if (userDoc.exists()) {
+          const tid = userDoc.data().tenantId;
+          if (tid) {
+            const tenantDoc = await getDoc(doc(db, 'tenants', tid));
+            if (tenantDoc.exists()) {
+              const data = tenantDoc.data();
+              if (data.addOnAiAssistant) setAiAssistantSubscribed(true);
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Failed to load AI Assistant status:', e);
+    }
+    setAiAssistantLoaded(true);
+  };
+
+  // Handle AI Assistant checkout
+  const handleAiAssistantCheckout = async () => {
+    const tid = await getTenantId();
+    if (!tid) { alert('Unable to find your organization. Please try again.'); return; }
+    setAiAssistantLoading(true);
+    try {
+      const resp = await fetch('/api/stripe/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          addOn: 'ai-assistant',
+          tenantId: tid,
+          email: email || undefined,
+        }),
+      });
+      const data = await resp.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        alert(data.error || 'Failed to start checkout');
+      }
+    } catch (e) {
+      console.error('AI Assistant checkout error:', e);
+      alert('Failed to start checkout. Please try again.');
+    } finally {
+      setAiAssistantLoading(false);
+    }
+  };
+
+  // Handle AI Assistant cancel
+  const handleAiAssistantCancel = async () => {
+    const tid = await getTenantId();
+    if (!tid) { alert('Unable to find your organization.'); return; }
+    setAiAssistantCancelLoading(true);
+    try {
+      const resp = await fetch('/api/stripe/cancel-addon', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenantId: tid, addon: 'ai-assistant' }),
+      });
+      const data = await resp.json();
+      if (data.success) {
+        setAiAssistantSubscribed(false);
+        alert('AI Assistant add-on will be cancelled at the end of the billing period.');
+      } else {
+        alert(data.error || 'Failed to cancel add-on');
+      }
+    } catch (e) {
+      console.error('AI Assistant cancel error:', e);
+      alert('Failed to cancel add-on. Please try again.');
+    } finally {
+      setAiAssistantCancelLoading(false);
+    }
+  };
+
   // Check for Stripe return params on mount
   React.useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -290,6 +374,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
     if (expandedSection === 'domain') loadDomain();
     if (expandedSection === 'payment') loadPayment();
     if (expandedSection === 'onboarding') loadOnboardingQuestions();
+    if (expandedSection === 'ai-assistant') loadAiAssistant();
   }, [expandedSection]);
 
   // Accordion toggle helper
@@ -1226,6 +1311,80 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
           {expandedSection === 'onboarding' && (
             <div className="px-4 pb-4 border-t border-gray-100 pt-4">
               {renderOnboarding()}
+            </div>
+          )}
+        </div>
+
+        {/* AI Assistant Add-on */}
+        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+          <button
+            onClick={() => toggleSection('ai-assistant')}
+            className="w-full flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <Bot size={20} className="text-indigo-600" />
+              <span className="text-sm font-semibold text-gray-900">AI Assistant</span>
+              {aiAssistantSubscribed && (
+                <span className="ml-2 px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded-full">Active</span>
+              )}
+            </div>
+            <ChevronDown
+              size={18}
+              className={`text-gray-400 transition-transform duration-300 ${expandedSection === 'ai-assistant' ? 'rotate-180' : ''}`}
+            />
+          </button>
+          {expandedSection === 'ai-assistant' && (
+            <div className="px-4 pb-4 border-t border-gray-100 pt-4">
+              <div className="mb-4">
+                <h4 className="text-base font-bold text-gray-900 mb-1">Personal AI Assistant</h4>
+                <p className="text-sm text-gray-600 mb-3">
+                  A dedicated AI assistant trained on your church's data to help your members with questions, prayer requests, and spiritual guidance 24/7.
+                </p>
+                {!aiAssistantSubscribed ? (
+                  <>
+                    <div className="flex items-baseline gap-2 mb-4">
+                      <span className="text-2xl font-bold text-gray-900">$500 setup</span>
+                      <span className="text-gray-400">+</span>
+                      <span className="text-2xl font-bold text-gray-900">$200/mo</span>
+                    </div>
+                    <button
+                      onClick={handleAiAssistantCheckout}
+                      disabled={aiAssistantLoading}
+                      className="w-full px-5 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-semibold hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                    >
+                      {aiAssistantLoading ? (
+                        <>
+                          <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block mr-2" />
+                          Starting checkout...
+                        </>
+                      ) : (
+                        'Add AI Assistant'
+                      )}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-3 mb-4">
+                      <span className="px-3 py-1 bg-green-100 text-green-700 text-sm font-semibold rounded-full">Active</span>
+                      <span className="text-sm text-gray-600">$200/mo</span>
+                    </div>
+                    <button
+                      onClick={handleAiAssistantCancel}
+                      disabled={aiAssistantCancelLoading}
+                      className="w-full px-5 py-2.5 border border-red-200 text-red-600 rounded-xl text-sm font-semibold hover:bg-red-50 transition-colors disabled:opacity-50"
+                    >
+                      {aiAssistantCancelLoading ? (
+                        <>
+                          <span className="w-4 h-4 border-2 border-red-200 border-t-red-600 rounded-full animate-spin inline-block mr-2" />
+                          Cancelling...
+                        </>
+                      ) : (
+                        'Cancel AI Assistant'
+                      )}
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
           )}
         </div>

@@ -36,31 +36,42 @@ export async function POST(request: NextRequest) {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session;
         const tenantId = session.metadata?.tenantId;
-        const plan = session.metadata?.plan;
         const subscriptionId = session.subscription as string;
 
-        if (tenantId && plan) {
-          await adminDb.collection('tenants').doc(tenantId).update({
-            plan,
-            stripeSubscriptionId: subscriptionId,
-            stripeCustomerId: session.customer as string,
-            stripePriceId: session.metadata?.billing === 'yearly'
-              ? getYearlyPriceId(plan)
-              : getMonthlyPriceId(plan),
-            updatedAt: new Date().toISOString(),
-          });
+        if (tenantId) {
+          // Handle AI Assistant add-on checkout
+          if (session.metadata?.addOn === 'ai-assistant') {
+            await adminDb.collection('tenants').doc(tenantId).update({
+              addOnAiAssistant: subscriptionId,
+              updatedAt: new Date().toISOString(),
+            });
+            console.log(`✅ Tenant ${tenantId} added AI Assistant add-on`);
+          } else {
+            const plan = session.metadata?.plan;
+            if (plan) {
+              await adminDb.collection('tenants').doc(tenantId).update({
+                plan,
+                stripeSubscriptionId: subscriptionId,
+                stripeCustomerId: session.customer as string,
+                stripePriceId: session.metadata?.billing === 'yearly'
+                  ? getYearlyPriceId(plan)
+                  : getMonthlyPriceId(plan),
+                updatedAt: new Date().toISOString(),
+              });
 
-          // Update all users belonging to this tenant
-          const usersSnap = await adminDb.collection('users')
-            .where('tenantId', '==', tenantId)
-            .get();
-          const batch = adminDb.batch();
-          usersSnap.docs.forEach(doc => {
-            batch.update(doc.ref, { plan });
-          });
-          await batch.commit();
+              // Update all users belonging to this tenant
+              const usersSnap = await adminDb.collection('users')
+                .where('tenantId', '==', tenantId)
+                .get();
+              const batch = adminDb.batch();
+              usersSnap.docs.forEach(doc => {
+                batch.update(doc.ref, { plan });
+              });
+              await batch.commit();
 
-          console.log(`✅ Tenant ${tenantId} upgraded to ${plan}`);
+              console.log(`✅ Tenant ${tenantId} upgraded to ${plan}`);
+            }
+          }
         }
         break;
       }
@@ -86,25 +97,35 @@ export async function POST(request: NextRequest) {
       case 'customer.subscription.deleted': {
         const subscription = event.data.object as Stripe.Subscription;
         const tenantId = subscription.metadata?.tenantId;
+        const addOn = subscription.metadata?.addOn;
 
         if (tenantId) {
-          // Downgrade to plus (lowest plan) on cancellation
-          await adminDb.collection('tenants').doc(tenantId).update({
-            plan: 'plus',
-            stripeSubscriptionId: null,
-            updatedAt: new Date().toISOString(),
-          });
+          if (addOn === 'ai-assistant') {
+            // AI Assistant add-on cancelled
+            await adminDb.collection('tenants').doc(tenantId).update({
+              addOnAiAssistant: null,
+              updatedAt: new Date().toISOString(),
+            });
+            console.log(`❌ Tenant ${tenantId} AI Assistant add-on cancelled`);
+          } else {
+            // Downgrade to plus (lowest plan) on cancellation
+            await adminDb.collection('tenants').doc(tenantId).update({
+              plan: 'plus',
+              stripeSubscriptionId: null,
+              updatedAt: new Date().toISOString(),
+            });
 
-          const usersSnap = await adminDb.collection('users')
-            .where('tenantId', '==', tenantId)
-            .get();
-          const batch = adminDb.batch();
-          usersSnap.docs.forEach(doc => {
-            batch.update(doc.ref, { plan: 'plus' });
-          });
-          await batch.commit();
+            const usersSnap = await adminDb.collection('users')
+              .where('tenantId', '==', tenantId)
+              .get();
+            const batch = adminDb.batch();
+            usersSnap.docs.forEach(doc => {
+              batch.update(doc.ref, { plan: 'plus' });
+            });
+            await batch.commit();
 
-          console.log(`❌ Tenant ${tenantId} subscription cancelled, downgraded to plus`);
+            console.log(`❌ Tenant ${tenantId} subscription cancelled, downgraded to plus`);
+          }
         }
         break;
       }

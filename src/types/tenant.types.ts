@@ -31,6 +31,8 @@ export interface Tenant {
   stripeCustomerId?: string;
   stripeSubscriptionId?: string;
   stripePriceId?: string;
+  // Add-on subscription IDs
+  addOnAiAssistant?: string; // Stripe subscription ID for AI Assistant add-on
   // Stripe Connect fields
   stripeConnectAccountId?: string;
   stripeConnectStatus?: 'pending' | 'active' | 'restricted';
