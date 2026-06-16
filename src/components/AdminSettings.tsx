@@ -1186,6 +1186,112 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
     );
   };
 
+  const renderPayment = () => (
+    <div className="space-y-6">
+      <p className="text-gray-600">
+        Connect your Stripe account to receive payments from your congregation for donations, tithes, and more.
+      </p>
+
+      {/* Stripe Connect */}
+      <div className="bg-white rounded-2xl border border-gray-100 p-6">
+        <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">Stripe Connect</h3>
+        {stripeConnectStatus === 'active' ? (
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center">
+                <Check size={20} className="text-green-600" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-green-800">Active</p>
+                <p className="text-xs text-gray-500">Your Stripe account is connected and ready to accept payments.</p>
+              </div>
+              <span className="ml-auto inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                Active
+              </span>
+            </div>
+            <a
+              href="https://dashboard.stripe.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-gray-900 text-white rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors"
+            >
+              Manage Stripe Dashboard
+              <ChevronRight size={16} />
+            </a>
+          </div>
+        ) : stripeConnectStatus === 'pending' ? (
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-yellow-50 flex items-center justify-center">
+                <AlertTriangle size={20} className="text-yellow-600" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-yellow-800">Pending</p>
+                <p className="text-xs text-gray-500">Your Stripe account setup is incomplete. Please finish onboarding.</p>
+              </div>
+              <span className="ml-auto inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                Pending
+              </span>
+            </div>
+            <button
+              onClick={handleStripeConnect}
+              disabled={stripeConnectLoading}
+              className="px-5 py-2.5 bg-purple-600 text-white rounded-xl text-sm font-semibold hover:bg-purple-700 transition-colors disabled:opacity-50"
+            >
+              {stripeConnectLoading ? 'Connecting...' : 'Complete Onboarding'}
+            </button>
+          </div>
+        ) : stripeConnectStatus === 'restricted' ? (
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center">
+                <AlertTriangle size={20} className="text-red-600" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-red-800">Restricted</p>
+                <p className="text-xs text-gray-500">Your Stripe account has restrictions. Please update your information.</p>
+              </div>
+              <span className="ml-auto inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                Restricted
+              </span>
+            </div>
+            <button
+              onClick={handleStripeConnect}
+              disabled={stripeConnectLoading}
+              className="px-5 py-2.5 bg-purple-600 text-white rounded-xl text-sm font-semibold hover:bg-purple-700 transition-colors disabled:opacity-50"
+            >
+              {stripeConnectLoading ? 'Connecting...' : 'Update Stripe Account'}
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600">
+              You haven&apos;t connected a Stripe account yet. Connect now to start receiving payments.
+            </p>
+            <button
+              onClick={handleStripeConnect}
+              disabled={stripeConnectLoading}
+              className="flex items-center gap-2 px-5 py-2.5 bg-purple-600 text-white rounded-xl text-sm font-semibold hover:bg-purple-700 transition-colors disabled:opacity-50"
+            >
+              {stripeConnectLoading ? (
+                <>
+                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Connecting...
+                </>
+              ) : (
+                <>
+                  Connect Stripe Account
+                  <ChevronRight size={16} />
+                </>
+              )}
+            </button>
+            <p className="text-xs text-gray-400">Powered by Stripe Connect</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
   return (
     <div className="p-4 lg:p-6 max-w-6xl mx-auto">
       {/* Header */}
@@ -1199,7 +1305,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
           </button>
         )}
         <h1 className="text-2xl font-bold text-gray-900">
-          {activeSection === 'main' ? 'Settings' : activeSection === 'upgrade' ? 'Upgrade Plan' : activeSection === 'branding' ? 'Branding' : activeSection === 'domain' ? 'Domain & Subdomain' : activeSection === 'onboarding' ? 'Onboarding Questions' : 'Cancel Plan'}
+          {activeSection === 'main' ? 'Settings' : activeSection === 'upgrade' ? 'Upgrade Plan' : activeSection === 'branding' ? 'Branding' : activeSection === 'domain' ? 'Domain & Subdomain' : activeSection === 'onboarding' ? 'Onboarding Questions' : activeSection === 'payment' ? 'Payment Settings' : 'Cancel Plan'}
         </h1>
       </div>
 
@@ -1208,6 +1314,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
       {activeSection === 'branding' && renderBranding()}
       {activeSection === 'domain' && renderDomain()}
       {activeSection === 'onboarding' && renderOnboarding()}
+      {activeSection === 'payment' && renderPayment()}
     </div>
   );
 };
