@@ -16,11 +16,27 @@ export function middleware(request: NextRequest) {
   const { hostname } = request.nextUrl;
   const response = NextResponse.next();
 
+  // Detect admin subdomain → set isAdmin cookie
+  // This runs before any tenant detection so admin always wins
+  const isAdminSubdomain = hostname === 'admin.theharvest.app' ||
+    hostname.startsWith('admin.');
+  if (isAdminSubdomain) {
+    response.cookies.set('isAdmin', 'true', { path: '/', maxAge: 60 * 60 * 24 * 30 });
+  } else {
+    response.cookies.delete('isAdmin');
+  }
+
   // Allow query param override for local/testing
   const tenantParam = request.nextUrl.searchParams.get('tenant');
 
   if (tenantParam) {
     response.cookies.set('tenantId', tenantParam, { path: '/', maxAge: 60 * 60 * 24 * 30 });
+    return response;
+  }
+
+  // Admin subdomain always goes to admin — no tenant context needed
+  if (isAdminSubdomain) {
+    response.cookies.delete('tenantId');
     return response;
   }
 
