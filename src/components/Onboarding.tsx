@@ -144,8 +144,9 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
  if (hasDefault('default_phone') && !phone) { setError('Please fill in all fields.'); return; }
  if (hasDefault('default_accepted_jesus') && !acceptedJesus) { setError('Please fill in all fields.'); return; }
 
- // Check required custom questions
+ // Check required custom questions (skip defaults — already validated above)
  for (const q of customQuestions) {
+   if (q.id.startsWith('default_')) continue;
    if (q.required && !customAnswers[q.id]?.trim()) {
      setError(`Please fill in: ${q.label}`);
      return;
@@ -338,7 +339,7 @@ onComplete();
 
  {customQuestions.some(q => q.id === 'default_accepted_jesus') && (
    <div className="relative z-30 mt-4">
-     <label className="block text-sm font-bold text-gray-200 mb-2">Have you accepted Jesus?</label>
+     <label className="block text-sm font-bold text-gray-200 mb-2">{customQuestions.find(q => q.id === 'default_accepted_jesus')?.label || 'Have you accepted Jesus?'}</label>
      <div className="flex gap-4">
        <label className="flex-1 cursor-pointer">
          <input type="radio" name="acceptedJesus" value="yes" checked={acceptedJesus === 'yes'} onChange={(e) => setAcceptedJesus(e.target.value)} className="peer sr-only" required />

@@ -127,6 +127,7 @@ const downloadOnboardingCSV = async (users: UserRecord[], filename: string): Pro
         const config = tenantDoc.data().config || {};
         if (config.onboardingQuestions && Array.isArray(config.onboardingQuestions)) {
           questionLabels = config.onboardingQuestions
+            .filter((q: any) => q.id && !q.id.startsWith('default_'))
             .sort((a: any, b: any) => (a.order || 0) - (b.order || 0))
             .map((q: any) => ({ id: q.id, label: q.label }));
         }

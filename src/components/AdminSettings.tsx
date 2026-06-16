@@ -279,10 +279,15 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
             const tenantDoc = await getDoc(doc(db, 'tenants', tenantId));
             if (tenantDoc.exists()) {
               const config = tenantDoc.data().config || {};
-              if (config.onboardingQuestions && Array.isArray(config.onboardingQuestions) && config.onboardingQuestions.length > 0) {
-                setOnboardingQuestions(config.onboardingQuestions.sort((a: any, b: any) => a.order - b.order));
+              if (config.onboardingInitialized) {
+                // Admin has saved before — use their saved questions (even if empty)
+                if (config.onboardingQuestions && Array.isArray(config.onboardingQuestions) && config.onboardingQuestions.length > 0) {
+                  setOnboardingQuestions(config.onboardingQuestions.sort((a: any, b: any) => a.order - b.order));
+                } else {
+                  setOnboardingQuestions([]);
+                }
               } else {
-                // No saved questions yet — seed defaults so admin can see and edit them
+                // Never saved yet — seed defaults so admin can see and edit them
                 setOnboardingQuestions(DEFAULT_ONBOARDING_QUESTIONS);
               }
             }
@@ -942,6 +947,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
             if (tenantId) {
               await updateDoc(doc(db, 'tenants', tenantId), {
                 'config.onboardingQuestions': onboardingQuestions,
+                'config.onboardingInitialized': true,
                 updatedAt: new Date().toISOString(),
               });
               setOnboardingSaved(true);
@@ -992,6 +998,12 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
               </div>
               {(q.type === 'select' || q.type === 'radio') && q.options && q.options.length > 0 && (
                 <p className="text-xs text-gray-400">Options: {q.options.join(', ')}</p>
+              )}
+              {q.id === 'default_country' && (
+                <p className="text-xs text-blue-500 mt-1">🔍 Renders as searchable country picker in signup form</p>
+              )}
+              {q.id === 'default_accepted_jesus' && (
+                <p className="text-xs text-gray-400 mt-1">Options: Yes, No (fixed)</p>
               )}
             </div>
             <div className="flex gap-2 flex-shrink-0">
