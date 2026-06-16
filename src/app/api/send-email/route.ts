@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
+import { requireAuth } from '@/lib/api-auth';
 
 /**
  * Email notification API route.
@@ -21,6 +22,9 @@ interface EmailRequest {
 
 export async function POST(request: NextRequest) {
   try {
+    const userOrErr = await requireAuth(request);
+    if (userOrErr instanceof Response) return userOrErr;
+
     const body: EmailRequest = await request.json();
     const { to, subject, html, from = 'Harvest <noreply@theharvest.app>' } = body;
 

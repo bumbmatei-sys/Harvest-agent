@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import Stripe from 'stripe';
 import { adminDb } from '@/lib/firebase-admin';
+import { requireAuth } from '@/lib/api-auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,6 +16,9 @@ const FEE_MAP: Record<string, number> = {
 
 export async function POST(request: NextRequest) {
   try {
+    const userOrErr = await requireAuth(request);
+    if (userOrErr instanceof Response) return userOrErr;
+
     const stripeKey = process.env.STRIPE_SECRET_KEY;
     if (!stripeKey) {
       return NextResponse.json({ error: 'Stripe not configured' }, { status: 500 });
@@ -23,6 +27,11 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const { amount, tenantId, donationType, donorEmail } = body;
+
+    // Verify tenant membership
+    if (!userOrErr.isSuperAdmin && userOrErr.tenantId !== tenantId) {
+      return NextResponse.json({ error: 'Access denied to this tenant' }, { status: 403 });
+    }
 
     if (!amount || !tenantId || !donationType) {
       return NextResponse.json({ error: 'Missing required fields: amount, tenantId, donationType' }, { status: 400 });

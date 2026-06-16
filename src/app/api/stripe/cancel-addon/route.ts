@@ -2,11 +2,15 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import Stripe from 'stripe';
 import { adminDb } from '@/lib/firebase-admin';
+import { requireAuth } from '@/lib/api-auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   try {
+    const userOrErr = await requireAuth(request);
+    if (userOrErr instanceof Response) return userOrErr;
+
     const stripeKey = process.env.STRIPE_SECRET_KEY;
     if (!stripeKey) {
       return NextResponse.json({ error: 'Stripe not configured' }, { status: 500 });
@@ -15,6 +19,11 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const { tenantId, addon } = body;
+
+    // Verify tenant membership
+    if (!userOrErr.isSuperAdmin && userOrErr.tenantId !== tenantId) {
+      return NextResponse.json({ error: 'Access denied to this tenant' }, { status: 403 });
+    }
 
     if (!tenantId || addon !== 'ai-assistant') {
       return NextResponse.json({ error: 'Missing or invalid tenantId or addon' }, { status: 400 });
