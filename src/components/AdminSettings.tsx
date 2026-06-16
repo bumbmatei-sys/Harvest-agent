@@ -1186,7 +1186,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
           </div>
         </div>
         <div className="mt-4 pt-4 border-t border-gray-100">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
             <div className="text-center">
               <p className="text-2xl font-bold text-gray-900">{currentFeatures.maxChurches === -1 ? '∞' : currentFeatures.maxChurches}</p>
               <p className="text-xs text-gray-500">Churches</p>
@@ -1201,7 +1201,11 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
             </div>
             <div className="text-center">
               <p className="text-2xl font-bold text-gray-900">{currentFeatures.blog ? '✓' : '✗'}</p>
-              <p className="text-xs text-gray-500">Blog &amp; AI</p>
+              <p className="text-xs text-gray-500">Blog</p>
+            </div>
+            <div className="text-center">
+              <p className="text-2xl font-bold text-gray-900">{currentFeatures.aiChat ? '✓' : '✗'}</p>
+              <p className="text-xs text-gray-500">AI Chat</p>
             </div>
           </div>
         </div>
