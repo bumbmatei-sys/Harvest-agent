@@ -673,6 +673,21 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
         assignedRegions: admin.assignedRegions
       });
 
+      // Update custom claims for Firestore security rules
+      try {
+        const { auth: firebaseAuth } = await import('../firebase');
+        const token = await firebaseAuth.currentUser?.getIdToken();
+        if (token) {
+          await fetch('/api/auth/set-claims', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ uid: admin.id }),
+          });
+        }
+      } catch (claimsErr) {
+        console.error('Failed to update custom claims:', claimsErr);
+      }
+
       if (isNewAdmin) {
         setAdmins((prev) => [...prev, admin]);
       } else {
@@ -693,6 +708,22 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
         permissions: emptyPermission(),
         assignedRegions: []
       });
+
+      // Update custom claims (remove admin flag)
+      try {
+        const { auth: firebaseAuth } = await import('../firebase');
+        const token = await firebaseAuth.currentUser?.getIdToken();
+        if (token) {
+          await fetch('/api/auth/set-claims', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ uid: id }),
+          });
+        }
+      } catch (claimsErr) {
+        console.error('Failed to update custom claims:', claimsErr);
+      }
+
       setAdmins((prev) => prev.filter((a) => a.id !== id));
       setShowRemoveConfirm(null);
     } catch (error) {

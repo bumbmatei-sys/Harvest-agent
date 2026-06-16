@@ -95,7 +95,19 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
  return;
  }
  }
- 
+
+ // Refresh custom claims on sign-in (claims may have been updated server-side)
+ try {
+   const token = await result.user.getIdToken();
+   await fetch('/api/auth/set-claims', {
+     method: 'POST',
+     headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+     body: JSON.stringify({ uid: result.user.uid }),
+   });
+ } catch (claimsErr) {
+   console.error('Failed to refresh custom claims:', claimsErr);
+ }
+
  // For now don't do anything after connection, just maybe show a success state or stay here
  // The user said "after they get connected, for now dont do anything"
  // We could navigate to home or just show a message.
@@ -122,17 +134,29 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
  
  if (isLogin) {
  const userCredential = await signInWithEmailAndPassword(auth, email, password);
- 
+
  // Update termsAccepted and newsletter for existing users
  try {
  const userRef = doc(db, 'users', userCredential.user.uid);
  await updateDoc(userRef, {
- termsAccepted: true,
- newsletter: newsletter
+   termsAccepted: true,
+   newsletter: newsletter
  });
  } catch (err) {
  try { handleFirestoreError(err, OperationType.UPDATE, `users/${userCredential.user.uid}`); } catch (e) { console.error(e); }
  return;
+ }
+
+ // Refresh custom claims on sign-in
+ try {
+   const token = await userCredential.user.getIdToken();
+   await fetch('/api/auth/set-claims', {
+     method: 'POST',
+     headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+     body: JSON.stringify({ uid: userCredential.user.uid }),
+   });
+ } catch (claimsErr) {
+   console.error('Failed to refresh custom claims:', claimsErr);
  }
  } else {
  if (password !== confirmPassword) {
@@ -168,6 +192,18 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
  }
 
  setSuccess('Account created successfully!');
+
+ // Set custom claims for Firestore security rules
+ try {
+   const token = await result.user.getIdToken();
+   await fetch('/api/auth/set-claims', {
+     method: 'POST',
+     headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+     body: JSON.stringify({ uid: result.user.uid }),
+   });
+ } catch (claimsErr) {
+   console.error('Failed to set custom claims:', claimsErr);
+ }
  }
  } catch (err: any) {
  console.error(err);

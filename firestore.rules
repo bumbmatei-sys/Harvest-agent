@@ -30,124 +30,124 @@ service cloud.firestore {
       return isAdmin() && belongsToTenant(tenantId);
     }
 
+    // Check if request includes correct tenantId that matches the user's claims
+    function requestHasCorrectTenant() {
+      return isAuthenticated() &&
+        request.resource.data.tenantId == userTenantId();
+    }
+
     // ─── Users ───────────────────────────────────────────────────────
 
     match /users/{userId} {
-      // Users can read only their own document; admins can read all
+      // Users can read only their own document; tenant admins can read users in their tenant
       allow read: if isAuthenticated() &&
-        (request.auth.uid == userId || isAdmin());
+        (request.auth.uid == userId ||
+         isAdmin());
 
       // Self-registration: user creates their own profile
       allow create: if isAuthenticated() && request.auth.uid == userId;
 
-      // Users can update their own profile; admins can update any
+      // Users can update their own profile; admins can update users in their tenant
       allow update: if isAuthenticated() &&
         (request.auth.uid == userId || isAdmin());
 
-      // Only admins can delete user documents
-      allow delete: if isAdmin();
+      // Only super admins can delete user documents
+      allow delete: if isAuthenticated() &&
+        request.auth.token.superAdmin == true;
     }
 
     // ─── Submissions ─────────────────────────────────────────────────
 
     match /submissions/{subId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated();
-      // Prevent changing tenantId on update; admins bypass
-      allow update: if isAuthenticated() &&
-        (isAdmin() || request.resource.data.tenantId == resource.data.tenantId);
-      allow delete: if isAuthenticated();
+      allow read: if isAuthenticated() && isAdmin();
+      allow create: if isAuthenticated() && requestHasCorrectTenant();
+      allow update: if isAuthenticated() && isAdmin();
+      allow delete: if isAuthenticated() && isAdmin();
     }
 
     // ─── Community Posts ─────────────────────────────────────────────
 
     match /community_posts/{postId} {
+      // Authenticated users can read posts in their tenant
       allow read: if isAuthenticated();
-      allow create: if isAuthenticated();
-      // Prevent changing tenantId on update; admins bypass
+      // Any authenticated user in the tenant can create posts
+      allow create: if isAuthenticated() && requestHasCorrectTenant();
+      // Admins can update any post; post owner can update their own
       allow update: if isAuthenticated() &&
         (isAdmin() || request.resource.data.tenantId == resource.data.tenantId);
-      allow delete: if isAuthenticated();
+      // Admins can delete any post in their tenant
+      allow delete: if isAuthenticated() && isAdmin();
     }
 
     // ─── Blog Posts ─────────────────────────────────────────────────
 
     match /blog_posts/{postId} {
       allow read: if isAuthenticated();
-      allow create: if isAuthenticated();
-      // Prevent changing tenantId on update; admins bypass
-      allow update: if isAuthenticated() &&
-        (isAdmin() || request.resource.data.tenantId == resource.data.tenantId);
-      allow delete: if isAuthenticated();
+      allow create: if isAuthenticated() && isAdmin() && requestHasCorrectTenant();
+      allow update: if isAuthenticated() && isAdmin();
+      allow delete: if isAuthenticated() && isAdmin();
     }
 
     // ─── Courses ────────────────────────────────────────────────────
 
     match /courses/{courseId} {
       allow read: if isAuthenticated();
-      allow create: if isAuthenticated();
-      // Prevent changing tenantId on update; admins bypass
-      allow update: if isAuthenticated() &&
-        (isAdmin() || request.resource.data.tenantId == resource.data.tenantId);
-      allow delete: if isAuthenticated();
+      allow create: if isAuthenticated() && isAdmin() && requestHasCorrectTenant();
+      allow update: if isAuthenticated() && isAdmin();
+      allow delete: if isAuthenticated() && isAdmin();
     }
 
     // ─── Churches ───────────────────────────────────────────────────
 
     match /churches/{churchId} {
       allow read: if isAuthenticated();
-      allow create: if isAuthenticated();
-      // Prevent changing tenantId on update; admins bypass
-      allow update: if isAuthenticated() &&
-        (isAdmin() || request.resource.data.tenantId == resource.data.tenantId);
-      allow delete: if isAuthenticated();
+      allow create: if isAuthenticated() && isAdmin() && requestHasCorrectTenant();
+      allow update: if isAuthenticated() && isAdmin();
+      allow delete: if isAuthenticated() && isAdmin();
     }
 
     // ─── RAG Sources & Chunks ───────────────────────────────────────
 
     match /rag_sources/{sourceId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated();
-      // Prevent changing tenantId on update; admins bypass
-      allow update: if isAuthenticated() &&
-        (isAdmin() || request.resource.data.tenantId == resource.data.tenantId);
-      allow delete: if isAuthenticated();
+      allow read: if isAuthenticated() && isAdmin();
+      allow create: if isAuthenticated() && isAdmin() && requestHasCorrectTenant();
+      allow update: if isAuthenticated() && isAdmin();
+      allow delete: if isAuthenticated() && isAdmin();
     }
 
     match /rag_chunks/{chunkId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated();
-      // Prevent changing tenantId on update; admins bypass
-      allow update: if isAuthenticated() &&
-        (isAdmin() || request.resource.data.tenantId == resource.data.tenantId);
-      allow delete: if isAuthenticated();
+      allow read: if isAuthenticated() && isAdmin();
+      allow create: if isAuthenticated() && isAdmin() && requestHasCorrectTenant();
+      allow update: if isAuthenticated() && isAdmin();
+      allow delete: if isAuthenticated() && isAdmin();
     }
 
-    // ─── Authors & Categories (shared) ──────────────────────────────
+    // ─── Authors & Categories (shared within tenant) ────────────────
 
     match /authors/{authorId} {
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow write: if isAuthenticated() && isAdmin();
     }
 
     match /categories/{catId} {
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow write: if isAuthenticated() && isAdmin();
     }
 
-    // ─── Tenants (multi-tenant prep) ─────────────────────────────────
+    // ─── Tenants ────────────────────────────────────────────────────
 
     match /tenants/{tenantId} {
-      // Allow unauthenticated reads for subdomain validation (no sensitive data)
+      // Allow unauthenticated reads for subdomain resolution + branding on login page.
+      // TODO: Move Stripe IDs to a secrets subcollection with admin-only access.
       allow read: if true;
 
       // Any authenticated user can create a tenant (during church onboarding)
       allow create: if isAuthenticated();
 
-      // Authenticated users can update tenants (tenant admins update their own)
-      allow update: if isAuthenticated();
+      // Only tenant admins can update their own tenant
+      allow update: if isAuthenticated() && isTenantAdmin(tenantId);
 
-      // Only superAdmins can delete tenants
+      // Only super admins can delete tenants
       allow delete: if isAuthenticated() &&
         request.auth.token.superAdmin == true;
 
@@ -161,13 +161,18 @@ service cloud.firestore {
       match /members/{memberId} {
         allow read: if belongsToTenant(tenantId);
         allow create, delete: if isTenantAdmin(tenantId);
-        // Members can update their own membership doc
         allow update: if belongsToTenant(tenantId) &&
           (request.auth.uid == memberId || isTenantAdmin(tenantId));
       }
     }
 
+    // ─── Email Log (server-only, but allow authenticated reads) ─────
+
+    match /email_log/{logId} {
+      allow read: if isAuthenticated() && isAdmin();
+      allow create: if false; // Only via admin SDK (API routes)
+    }
+
     // ─── Catch-all: DENY everything not matched above ────────────────
-    // (Implicit in Firestore: any path not matched by a rule is denied)
   }
 }
