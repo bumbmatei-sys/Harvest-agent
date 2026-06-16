@@ -9,6 +9,8 @@ interface AdminSettingsProps {
   currentPlan: TenantPlan;
   onChangePlan: (plan: TenantPlan) => void;
   onCancelPlan: () => void;
+  tenantId?: string;
+  email?: string;
 }
 
 const PLANS: { id: TenantPlan; name: string; monthlyPrice: string; yearlyPrice: string; yearlyPromo: string; yearlyOriginal: string; icon: any; color: string; popular?: boolean }[] = [
@@ -28,14 +30,9 @@ const FEATURE_COMPARISON: { key: keyof PlanFeatures; label: string; format?: (v:
   { key: 'customDomain', label: 'Custom Domain' },
 ];
 
-// Placeholder payment history
-const MOCK_PAYMENTS = [
-  { id: 1, date: '2025-06-01', amount: '$100.00', plan: 'Plus', status: 'Paid', method: 'Visa •••• 4242' },
-  { id: 2, date: '2025-05-01', amount: '$100.00', plan: 'Plus', status: 'Paid', method: 'Visa •••• 4242' },
-  { id: 3, date: '2025-04-01', amount: '$100.00', plan: 'Plus', status: 'Paid', method: 'Visa •••• 4242' },
-];
+// Stripe billing — no more mock payments
 
-const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onChangePlan, onCancelPlan }) => {
+const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onChangePlan, onCancelPlan, tenantId, email }) => {
   const [activeSection, setActiveSection] = useState<'main' | 'upgrade' | 'cancel' | 'branding' | 'domain'>('main');
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly');
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
@@ -48,6 +45,75 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
   const [customDomain, setCustomDomain] = useState('');
   const [domainSaving, setDomainSaving] = useState(false);
   const [domainSaved, setDomainSaved] = useState(false);
+  const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
+  const [portalLoading, setPortalLoading] = useState(false);
+
+  const getTenantId = async (): Promise<string | null> => {
+    if (tenantId) return tenantId;
+    try {
+      const { auth, db } = await import('../firebase');
+      const { doc, getDoc } = await import('firebase/firestore');
+      if (auth.currentUser) {
+        const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
+        if (userDoc.exists()) return userDoc.data().tenantId || null;
+      }
+    } catch (e) { console.error('Failed to get tenantId:', e); }
+    return null;
+  };
+
+  const handleStripeCheckout = async (planId: string) => {
+    const tid = await getTenantId();
+    if (!tid) { alert('Unable to find your organization. Please try again.'); return; }
+    setCheckoutLoading(planId);
+    try {
+      const resp = await fetch('/api/stripe/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          plan: planId,
+          billing: billingPeriod,
+          tenantId: tid,
+          tenantName: subdomain,
+          email: email || undefined,
+        }),
+      });
+      const data = await resp.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        alert(data.error || 'Failed to start checkout');
+      }
+    } catch (e) {
+      console.error('Checkout error:', e);
+      alert('Failed to start checkout. Please try again.');
+    } finally {
+      setCheckoutLoading(null);
+    }
+  };
+
+  const handleManageSubscription = async () => {
+    const tid = await getTenantId();
+    if (!tid) { alert('Unable to find your organization.'); return; }
+    setPortalLoading(true);
+    try {
+      const resp = await fetch('/api/stripe/portal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenantId: tid }),
+      });
+      const data = await resp.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        alert(data.error || 'Failed to open billing portal');
+      }
+    } catch (e) {
+      console.error('Portal error:', e);
+      alert('Failed to open billing portal. Please try again.');
+    } finally {
+      setPortalLoading(false);
+    }
+  };
   const [domainLoaded, setDomainLoaded] = useState(false);
 
   const currentPlanData = PLANS.find(p => p.id === currentPlan);
@@ -107,8 +173,47 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
     setDomainLoaded(true);
   };
 
+  const [stripeStatus, setStripeStatus] = useState<string | null>(null);
+
+  // Check for Stripe return params on mount
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const stripe = params.get('stripe');
+    if (stripe === 'success') {
+      setStripeStatus('success');
+      // Clean up URL
+      window.history.replaceState({}, '', window.location.pathname);
+    } else if (stripe === 'cancel') {
+      setStripeStatus('cancel');
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
+
   const renderMain = () => (
     <div className="space-y-6">
+      {/* Stripe status banners */}
+      {stripeStatus === 'success' && (
+        <div className="bg-green-50 border border-green-200 rounded-2xl p-4 flex items-center gap-3">
+          <Check size={20} className="text-green-600" />
+          <div>
+            <p className="text-sm font-semibold text-green-800">Payment successful!</p>
+            <p className="text-xs text-green-600">Your plan has been updated. It may take a moment to reflect.</p>
+          </div>
+          <button onClick={() => setStripeStatus(null)} className="ml-auto text-green-600 hover:text-green-800">✕</button>
+        </div>
+      )}
+      {stripeStatus === 'cancel' && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-4 flex items-center gap-3">
+          <AlertTriangle size={20} className="text-yellow-600" />
+          <div>
+            <p className="text-sm font-semibold text-yellow-800">Checkout cancelled</p>
+            <p className="text-xs text-yellow-600">No charges were made. You can try again anytime.</p>
+          </div>
+          <button onClick={() => setStripeStatus(null)} className="ml-auto text-yellow-600 hover:text-yellow-800">✕</button>
+        </div>
+      )}
+
       {/* Current Plan Card */}
       <div className="bg-white rounded-2xl border border-gray-100 p-6">
         <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">Current Plan</h3>
@@ -207,38 +312,28 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
         </div>
       </div>
 
-      {/* Payment History */}
+      {/* Billing Management */}
       <div className="bg-white rounded-2xl border border-gray-100 p-6">
-        <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">Payment History</h3>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-100">
-                <th className="text-left py-3 px-2 text-gray-500 font-medium">Date</th>
-                <th className="text-left py-3 px-2 text-gray-500 font-medium">Amount</th>
-                <th className="text-left py-3 px-2 text-gray-500 font-medium">Plan</th>
-                <th className="text-left py-3 px-2 text-gray-500 font-medium">Status</th>
-                <th className="text-left py-3 px-2 text-gray-500 font-medium">Method</th>
-              </tr>
-            </thead>
-            <tbody>
-              {MOCK_PAYMENTS.map((payment) => (
-                <tr key={payment.id} className="border-b border-gray-50 hover:bg-gray-50/50">
-                  <td className="py-3 px-2 text-gray-900">{payment.date}</td>
-                  <td className="py-3 px-2 text-gray-900 font-medium">{payment.amount}</td>
-                  <td className="py-3 px-2 text-gray-600">{payment.plan}</td>
-                  <td className="py-3 px-2">
-                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700">
-                      {payment.status}
-                    </span>
-                  </td>
-                  <td className="py-3 px-2 text-gray-500">{payment.method}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <p className="text-xs text-gray-400 mt-3">* Payment processing via Stripe (coming soon)</p>
+        <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">Billing &amp; Payments</h3>
+        <p className="text-sm text-gray-600 mb-4">Manage your subscription, update payment methods, and view invoices through Stripe.</p>
+        <button
+          onClick={handleManageSubscription}
+          disabled={portalLoading}
+          className="flex items-center gap-2 px-5 py-2.5 bg-gray-900 text-white rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50"
+        >
+          {portalLoading ? (
+            <>
+              <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              Opening portal...
+            </>
+          ) : (
+            <>
+              Manage Subscription
+              <ChevronRight size={16} />
+            </>
+          )}
+        </button>
+        <p className="text-xs text-gray-400 mt-3">Powered by Stripe</p>
       </div>
 
       {/* Cancel Plan */}
@@ -384,21 +479,30 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
 
               <button
                 onClick={() => {
-                  if (!isCurrent) {
+                  if (!isCurrent && !isDowngrade && plan.id !== 'enterprise') {
+                    handleStripeCheckout(plan.id);
+                  } else if (!isCurrent && isDowngrade) {
                     onChangePlan(plan.id);
                     setActiveSection('main');
                   }
                 }}
-                disabled={isCurrent}
+                disabled={isCurrent || checkoutLoading === plan.id}
                 className={`w-full py-2.5 rounded-xl text-sm font-semibold transition-colors ${
                   isCurrent
                     ? 'bg-gray-100 text-gray-400 cursor-default'
                     : isDowngrade
                     ? 'border border-gray-200 text-gray-600 hover:bg-gray-50'
+                    : checkoutLoading === plan.id
+                    ? 'bg-[#d4a017]/70 text-white cursor-wait'
                     : 'bg-[#d4a017] text-white hover:bg-[#b8941a]'
                 }`}
               >
-                {isCurrent ? 'Current Plan' : isDowngrade ? `Downgrade to ${plan.name}` : `Upgrade to ${plan.name}`}
+                {checkoutLoading === plan.id ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Redirecting...
+                  </span>
+                ) : isCurrent ? 'Current Plan' : isDowngrade ? `Downgrade to ${plan.name}` : plan.id === 'enterprise' ? 'Contact Sales' : `Upgrade to ${plan.name}`}
               </button>
             </div>
           );

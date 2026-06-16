@@ -268,6 +268,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, tenantPlan 
             <AdminSettings
               onBack={() => setActiveTab('dashboard')}
               currentPlan={tenantPlan || 'plus'}
+              email={auth.currentUser?.email || undefined}
               onChangePlan={async (plan) => {
                 // Update plan in Firestore
                 if (auth.currentUser) {

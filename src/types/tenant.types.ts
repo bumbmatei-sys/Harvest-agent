@@ -18,4 +18,8 @@ export interface Tenant {
   adminEmails: string[]; // emails of church admins for this tenant
   createdAt: string;     // ISO date string
   updatedAt: string;     // ISO date string
+  // Stripe billing fields
+  stripeCustomerId?: string;
+  stripeSubscriptionId?: string;
+  stripePriceId?: string;
 }
