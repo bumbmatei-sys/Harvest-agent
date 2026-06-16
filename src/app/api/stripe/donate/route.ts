@@ -1,0 +1,126 @@
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import Stripe from 'stripe';
+import { adminDb } from '@/lib/firebase-admin';
+
+export const dynamic = 'force-dynamic';
+
+const FEE_MAP: Record<string, number> = {
+  plus: 0.20,
+  pro: 0.10,
+  ultra: 0,
+  enterprise: 0,
+};
+
+export async function POST(request: NextRequest) {
+  try {
+    const stripeKey = process.env.STRIPE_SECRET_KEY;
+    if (!stripeKey) {
+      return NextResponse.json({ error: 'Stripe not configured' }, { status: 500 });
+    }
+    const stripe = new Stripe(stripeKey, { apiVersion: '2026-05-27.dahlia' });
+
+    const body = await request.json();
+    const { amount, tenantId, donationType, donorEmail } = body;
+
+    if (!amount || !tenantId || !donationType) {
+      return NextResponse.json({ error: 'Missing required fields: amount, tenantId, donationType' }, { status: 400 });
+    }
+
+    if (donationType !== 'one-time' && donationType !== 'monthly') {
+      return NextResponse.json({ error: 'donationType must be "one-time" or "monthly"' }, { status: 400 });
+    }
+
+    // Look up tenant
+    const tenantDoc = await adminDb.collection('tenants').doc(tenantId).get();
+    if (!tenantDoc.exists) {
+      return NextResponse.json({ error: 'Tenant not found' }, { status: 404 });
+    }
+    const tenantData = tenantDoc.data()!;
+    const connectAccountId = tenantData.stripeConnectAccountId;
+    const plan = tenantData.plan || 'plus';
+
+    if (!connectAccountId) {
+      return NextResponse.json({ error: 'This ministry has not set up payments yet' }, { status: 400 });
+    }
+
+    const feePercent = FEE_MAP[plan] ?? 0;
+    const applicationFeeAmount = Math.round(amount * feePercent);
+
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://theharvest.app';
+
+    if (donationType === 'one-time') {
+      const session = await stripe.checkout.sessions.create({
+        mode: 'payment',
+        line_items: [
+          {
+            price_data: {
+              currency: 'usd',
+              product_data: {
+                name: 'One-Time Donation',
+              },
+              unit_amount: amount,
+            },
+            quantity: 1,
+          },
+        ],
+        payment_intent_data: {
+          transfer_data: {
+            destination: connectAccountId,
+          },
+          application_fee_amount: applicationFeeAmount,
+        },
+        success_url: `${baseUrl}/?donation=success`,
+        cancel_url: `${baseUrl}/?donation=cancel`,
+        customer_email: donorEmail || undefined,
+        metadata: {
+          tenantId,
+          donationType,
+          plan,
+        },
+      });
+
+      return NextResponse.json({ url: session.url });
+    }
+
+    // Monthly (subscription)
+    // application_fee_amount is valid in the Stripe API but the TS types for v22
+    // don't expose it on SubscriptionData, so we use Stripe's raw API params.
+    const subParams = {
+      mode: 'subscription' as const,
+      line_items: [
+        {
+          price_data: {
+            currency: 'usd',
+            product_data: {
+              name: 'Monthly Donation',
+            },
+            unit_amount: amount,
+            recurring: { interval: 'month' as const },
+          },
+          quantity: 1,
+        },
+      ],
+      subscription_data: {
+        transfer_data: {
+          destination: connectAccountId,
+        },
+        application_fee_amount: applicationFeeAmount,
+      },
+      success_url: `${baseUrl}/?donation=success`,
+      cancel_url: `${baseUrl}/?donation=cancel`,
+      customer_email: donorEmail || undefined,
+      metadata: {
+        tenantId,
+        donationType,
+        plan,
+      },
+    };
+    const session = await stripe.checkout.sessions.create(subParams as any);
+
+    return NextResponse.json({ url: session.url });
+  } catch (error: any) {
+    console.error('Stripe donate error:', error?.message || error);
+    return NextResponse.json({ error: error?.message || 'Failed to create checkout session' }, { status: 500 });
+  }
+}

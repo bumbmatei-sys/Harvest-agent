@@ -1,21 +1,22 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { 
- GraduationCap, 
- User, 
- Church, 
- HeartHandshake, 
- Bell, 
- Sun, 
- HelpCircle, 
- Info, 
- FileQuestion, 
- ShieldCheck, 
- LogOut, 
- ChevronRight,
- BadgeCheck,
- Moon,
- Play
+  GraduationCap, 
+  User, 
+  Church, 
+  HeartHandshake, 
+  Bell, 
+  Sun, 
+  HelpCircle, 
+  Info, 
+  FileQuestion, 
+  ShieldCheck, 
+  LogOut,
+  ChevronRight,
+  BadgeCheck,
+  Moon,
+  Play,
+  X
 } from 'lucide-react';
 import Image from 'next/image';
 import { auth, db } from '../firebase';
@@ -31,10 +32,10 @@ import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 
 
 interface ProfileProps {
- onNavigate: (page: string) => void;
- onGoToCourses: () => void;
- onGoToPartner: () => void;
- onGoToMap: () => void;
+  onNavigate: (page: string) => void;
+  onGoToCourses: () => void;
+  onGoToPartner: () => void;
+  onGoToMap: () => void;
 }
 
 const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToCourses, onGoToPartner, onGoToMap }) => {
@@ -47,16 +48,48 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToCourses, onGoToPart
  const [isNoHomeChurchModalOpen, setIsNoHomeChurchModalOpen] = useState(false);
  const [homeChurchId, setHomeChurchId] = useState<string | null>(null);
 
+ // Partnership state
+ const [donationAmount, setDonationAmount] = useState<number | null>(null);
+ const [donationChurchName, setDonationChurchName] = useState<string | null>(null);
+ const [donationSubscriptionId, setDonationSubscriptionId] = useState<string | null>(null);
+ const [isCancelingPartnership, setIsCancelingPartnership] = useState(false);
+ const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+
  useEffect(() => {
  const savedHomeChurch = localStorage.getItem('homeChurchId');
  if (savedHomeChurch) {
- setHomeChurchId(savedHomeChurch);
+   setHomeChurchId(savedHomeChurch);
  }
  }, []);
 
  const handleRemoveHomeChurch = () => {
- setHomeChurchId(null);
- localStorage.removeItem('homeChurchId');
+   setHomeChurchId(null);
+   localStorage.removeItem('homeChurchId');
+ };
+
+ const handleCancelPartnership = async () => {
+   if (!auth.currentUser) return;
+   setIsCancelingPartnership(true);
+   try {
+     const res = await fetch('/api/stripe/cancel-partnership', {
+       method: 'POST',
+       headers: { 'Content-Type': 'application/json' },
+       body: JSON.stringify({ userId: auth.currentUser.uid }),
+     });
+     const data = await res.json();
+     if (res.ok) {
+       setDonationSubscriptionId(null);
+       setDonationAmount(null);
+       setDonationChurchName(null);
+       setShowCancelConfirm(false);
+     } else {
+       console.error('Cancel partnership error:', data.error);
+     }
+   } catch (err) {
+     console.error('Cancel partnership error:', err);
+   } finally {
+     setIsCancelingPartnership(false);
+   }
  };
 
  const [hasMounted, setHasMounted] = useState(false);
@@ -77,18 +110,22 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToCourses, onGoToPart
  const userRef = doc(db, 'users', auth.currentUser.uid);
  unsubscribe = onSnapshot(userRef, (userDoc) => {
  if (userDoc.exists()) {
- const data = userDoc.data();
- if (data.displayName) {
- setUserName(data.displayName);
- } else {
- setUserName(auth.currentUser?.displayName || 'User');
- }
- if (data.photoURL) {
- setProfilePic(data.photoURL);
- }
- if (data.role === 'admin' || data.role === 'church_admin' || data.role === 'super_admin' || data.email === 'bumbmatei@gmail.com') {
- setIsAdmin(true);
- }
+   const data = userDoc.data();
+   if (data.displayName) {
+     setUserName(data.displayName);
+   } else {
+     setUserName(auth.currentUser?.displayName || 'User');
+   }
+   if (data.photoURL) {
+     setProfilePic(data.photoURL);
+   }
+   if (data.role === 'admin' || data.role === 'church_admin' || data.role === 'super_admin' || data.email === 'bumbmatei@gmail.com') {
+     setIsAdmin(true);
+   }
+   // Partnership data
+   setDonationAmount(data.donationAmount || null);
+   setDonationChurchName(data.donationChurchName || null);
+   setDonationSubscriptionId(data.donationSubscriptionId || null);
  } else {
  setUserName(auth.currentUser?.displayName || 'User');
  }
@@ -266,15 +303,79 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToCourses, onGoToPart
  />
             <div className="h-px bg-gray-50 mx-4"></div>
             <SettingItem 
-              icon={<GraduationCap size={16} className="text-purple-500" />} 
-              iconBg="bg-purple-50" 
+              icon={<GraduationCap size={16} className="text-purple-500" />}
+              iconBg="bg-purple-50"
               label="Trainings" 
               onClick={() => window.open('https://content.cfan.org/training/', '_blank')}
             />
- </div>
- </div>
+          </div>
+        </div>
 
- {/* Support & Info */}
+        {/* Partnership */}
+        <div>
+          <h4 className="text-[10px] font-bold text-gray-400 tracking-wider uppercase mb-3 ml-2">Partnership</h4>
+          <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden p-4">
+            {donationSubscriptionId ? (
+              <div>
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-7 h-7 rounded-full flex items-center justify-center bg-yellow-50">
+                    <HeartHandshake size={16} className="text-yellow-500" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-gray-900">
+                      ${donationAmount ? (donationAmount / 100).toFixed(0) : '—'} / month
+                    </p>
+                    {donationChurchName && (
+                      <p className="text-xs text-gray-500">{donationChurchName}</p>
+                    )}
+                  </div>
+                </div>
+                {showCancelConfirm ? (
+                  <div className="bg-red-50 rounded-xl p-3 mt-2">
+                    <p className="text-xs text-red-600 font-medium text-center mb-3">
+                      Are you sure? Your recurring donation will be canceled at the end of the current period.
+                    </p>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setShowCancelConfirm(false)}
+                        className="flex-1 py-2 bg-white text-gray-700 rounded-xl font-medium text-sm border border-gray-200"
+                      >
+                        Keep
+                      </button>
+                      <button
+                        onClick={handleCancelPartnership}
+                        disabled={isCancelingPartnership}
+                        className="flex-1 py-2 bg-red-600 text-white rounded-xl font-bold text-sm disabled:opacity-50"
+                      >
+                        {isCancelingPartnership ? 'Canceling...' : 'Cancel'}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setShowCancelConfirm(true)}
+                    className="w-full flex items-center justify-between p-3 bg-red-50 rounded-xl hover:bg-red-100 transition-colors mt-1"
+                  >
+                    <span className="text-sm font-bold text-red-600">Cancel Partnership</span>
+                    <X size={16} className="text-red-400" />
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="text-center py-2">
+                <p className="text-sm text-gray-500">You don&apos;t have an active partnership</p>
+                <button
+                  onClick={onGoToPartner}
+                  className="mt-2 text-sm font-bold text-[#d4a017]"
+                >
+                  Partner with Us →
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Support & Info */}
  <div>
  <h4 className="text-[10px] font-bold text-gray-400 tracking-wider uppercase mb-3 ml-2">Support & Info</h4>
  <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden transition-colors duration-300">

@@ -33,6 +33,12 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
  const [passwordMessage, setPasswordMessage] = useState('');
  const [isPasswordLoading, setIsPasswordLoading] = useState(false);
  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+ // Cancel Partnership state
+ const [hasActivePartnership, setHasActivePartnership] = useState(false);
+ const [showCancelPartnershipConfirm, setShowCancelPartnershipConfirm] = useState(false);
+ const [isCancelingPartnership, setIsCancelingPartnership] = useState(false);
+ const [cancelPartnershipMsg, setCancelPartnershipMsg] = useState('');
  
  const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -51,22 +57,48 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
  }, [isOpen]);
 
  const fetchUserData = async () => {
- if (auth.currentUser) {
- try {
- const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
- if (userDoc.exists()) {
- const data = userDoc.data();
- if (data.displayName) setName(data.displayName);
- if (data.country) setCountry(data.country);
- if (data.city) setCity(data.city);
- if (data.phone) setPhone(data.phone);
-        if (data.acceptedJesus !== undefined) setAcceptedJesus(data.acceptedJesus ? 'yes' : 'no');
- if (data.photoURL) setProfilePic(data.photoURL);
- }
- } catch (error) {
- handleFirestoreError(error, OperationType.GET, `users/${auth.currentUser.uid}`);
- }
- }
+   if (auth.currentUser) {
+     try {
+       const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
+       if (userDoc.exists()) {
+         const data = userDoc.data();
+         if (data.displayName) setName(data.displayName);
+         if (data.country) setCountry(data.country);
+         if (data.city) setCity(data.city);
+         if (data.phone) setPhone(data.phone);
+         if (data.acceptedJesus !== undefined) setAcceptedJesus(data.acceptedJesus ? 'yes' : 'no');
+         if (data.photoURL) setProfilePic(data.photoURL);
+         setHasActivePartnership(!!data.donationSubscriptionId);
+       }
+     } catch (error) {
+       handleFirestoreError(error, OperationType.GET, `users/${auth.currentUser.uid}`);
+     }
+   }
+ };
+
+ const handleCancelPartnership = async () => {
+   if (!auth.currentUser) return;
+   setIsCancelingPartnership(true);
+   setCancelPartnershipMsg('');
+   try {
+     const res = await fetch('/api/stripe/cancel-partnership', {
+       method: 'POST',
+       headers: { 'Content-Type': 'application/json' },
+       body: JSON.stringify({ userId: auth.currentUser.uid }),
+     });
+     const data = await res.json();
+     if (res.ok) {
+       setHasActivePartnership(false);
+       setShowCancelPartnershipConfirm(false);
+       setCancelPartnershipMsg('Partnership canceled successfully.');
+     } else {
+       setCancelPartnershipMsg(data.error || 'Failed to cancel partnership.');
+     }
+   } catch {
+     setCancelPartnershipMsg('Something went wrong. Please try again.');
+   } finally {
+     setIsCancelingPartnership(false);
+   }
  };
 
  const resetPasswordFlow = () => {
@@ -534,10 +566,45 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
  </button>
  )}
 
- <button className="w-full flex items-center justify-between p-4 bg-[#f8f9fa] rounded-2xl hover:bg-gray-100 transition-colors">
- <span className="text-sm font-bold text-gray-900">Cancel Partnership</span>
- <ChevronRight size={18} className="text-gray-400" />
+ <button
+   onClick={() => setShowCancelPartnershipConfirm(true)}
+   className="w-full flex items-center justify-between p-4 bg-[#f8f9fa] rounded-2xl hover:bg-gray-100 transition-colors"
+ >
+   <span className="text-sm font-bold text-gray-900">Cancel Partnership</span>
+   <ChevronRight size={18} className="text-gray-400" />
  </button>
+
+ {showCancelPartnershipConfirm && (
+   <div className="w-full p-4 bg-red-50 rounded-2xl flex flex-col gap-3">
+     <span className="text-sm font-bold text-red-600 text-center">
+       Cancel your recurring donation? It will end at the close of the current billing period.
+     </span>
+     {cancelPartnershipMsg && (
+       <p className={`text-xs text-center ${cancelPartnershipMsg.includes('success') ? 'text-green-600' : 'text-red-600'}`}>
+         {cancelPartnershipMsg}
+       </p>
+     )}
+     <div className="flex gap-2">
+       <button
+         onClick={() => setShowCancelPartnershipConfirm(false)}
+         className="flex-1 py-2 bg-white text-gray-700 rounded-xl font-medium border border-gray-200"
+       >
+         Keep
+       </button>
+       <button
+         onClick={handleCancelPartnership}
+         disabled={isCancelingPartnership}
+         className="flex-1 py-2 bg-red-600 text-white rounded-xl font-bold disabled:opacity-50"
+       >
+         {isCancelingPartnership ? 'Canceling...' : 'Confirm Cancel'}
+       </button>
+     </div>
+   </div>
+ )}
+
+ {cancelPartnershipMsg && !showCancelPartnershipConfirm && (
+   <p className="text-xs text-center text-green-600 -mt-1">{cancelPartnershipMsg}</p>
+ )}
 
  {showDeleteConfirm ? (
  <div className="w-full p-4 bg-red-50 rounded-2xl mt-4 flex flex-col gap-3">
