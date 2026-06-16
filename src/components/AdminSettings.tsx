@@ -474,6 +474,10 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
                     </div>
                   );
                 })}
+                <div className="flex items-center justify-between text-sm pt-2 border-t border-gray-100">
+                  <span className="text-gray-900 font-semibold">Partner revenue</span>
+                  <span className="text-green-600 font-bold">{plan.id === 'plus' ? '70%' : plan.id === 'pro' ? '80%' : plan.id === 'max' ? '90%' : '100%'} to you</span>
+                </div>
               </div>
 
               <button
