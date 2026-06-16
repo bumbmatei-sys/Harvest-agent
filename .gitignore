@@ -9,3 +9,4 @@ coverage/
 service-account.json
 .env.local
 .vercel
+.next/
