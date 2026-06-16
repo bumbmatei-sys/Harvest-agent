@@ -154,7 +154,7 @@ export default function PWAInstallManager() {
                     </div>
                     <div className="flex items-center gap-2 bg-gray-50 p-2 rounded-lg">
                       <span className="font-bold text-gray-400">2.</span> 
-                      Select "Add to Home screen"
+                      Select &quot;Add to Home screen&quot;
                     </div>
                     <div className="mt-3 flex justify-end">
                       <button 

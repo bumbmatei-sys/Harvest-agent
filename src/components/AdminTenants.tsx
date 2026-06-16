@@ -347,7 +347,7 @@ const AdminTenants: React.FC = () => {
                     className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#d4a017] focus:border-[#d4a017] outline-none"
                     placeholder="yourchurch.com"
                   />
-                  <p className="text-xs text-gray-400 mt-1">The church's own domain. DNS must point to Vercel.</p>
+                  <p className="text-xs text-gray-400 mt-1">The church&apos;s own domain. DNS must point to Vercel.</p>
                 </div>
               )}
 

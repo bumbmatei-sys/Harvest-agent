@@ -297,7 +297,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
       </button>
 
       <h2 className="text-2xl font-bold text-gray-900">Upgrade Your Plan</h2>
-      <p className="text-gray-500">Choose the plan that best fits your ministry's needs.</p>
+      <p className="text-gray-500">Choose the plan that best fits your ministry&apos;s needs.</p>
 
       {/* Billing Period Toggle */}
       <div className="flex items-center justify-center gap-3 bg-gray-50 rounded-2xl p-2 max-w-xs mx-auto">
@@ -443,7 +443,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
 
   const renderBranding = () => (
     <div className="space-y-6">
-      <p className="text-gray-600">Update your ministry's logo and brand color. Changes apply across your entire app.</p>
+      <p className="text-gray-600">Update your ministry&apos;s logo and brand color. Changes apply across your entire app.</p>
 
       {/* Logo Upload */}
       <div className="bg-white rounded-2xl border border-gray-100 p-6">
@@ -601,7 +601,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#d4a017] focus:border-transparent"
               />
               <p className="text-xs text-gray-400 mt-1">
-                Enter your custom domain. You'll need to add a CNAME record pointing to <span className="font-mono">theharvest.app</span>.
+                Enter your custom domain. You&apos;ll need to add a CNAME record pointing to <span className="font-mono">theharvest.app</span>.
               </p>
             </div>
           </div>

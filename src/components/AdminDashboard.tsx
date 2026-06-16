@@ -86,16 +86,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, tenantPlan 
     };
   }, []);
 
-  if (isLoading) {
-    return <div className="flex items-center justify-center h-screen bg-[#f8f9fa]"><div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--brand-color, #d4a017)', borderTopColor: 'transparent' }}></div></div>;
-  }
-
   const isSuperAdmin = userRole === 'super_admin' || auth.currentUser?.email === 'bumbmatei@gmail.com';
   const isChurchAdmin = userRole === 'church_admin';
   const perms = userPermissions || {} as Permission;
   const features = tenantPlan ? getPlanFeatures(tenantPlan) : null;
   const isTenantAdmin = !!tenantPlan;
-  // Church admins (tenant owners) get full access to their plan's features
   const hasFullAccess = isSuperAdmin || isChurchAdmin || perms.fullAccess;
 
   const bottomTabs = [
@@ -110,10 +105,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, tenantPlan 
 
   // If the active tab is not in the allowed tabs, switch to the first allowed tab
   useEffect(() => {
-    if (bottomTabs.length > 0 && !bottomTabs.find(t => t.id === activeTab) && activeTab !== 'inbox' && activeTab !== 'settings') {
+    if (!isLoading && bottomTabs.length > 0 && !bottomTabs.find(t => t.id === activeTab) && activeTab !== 'inbox' && activeTab !== 'settings') {
       setActiveTab(bottomTabs[0].id);
     }
-  }, [bottomTabs, activeTab]);
+  }, [isLoading, bottomTabs, activeTab]);
+
+  if (isLoading) {
+    return <div className="flex items-center justify-center h-screen bg-[#f8f9fa]"><div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--brand-color, #d4a017)', borderTopColor: 'transparent' }}></div></div>;
+  }
 
   const showInbox = hasFullAccess || perms.seeFormsInbox;
 
