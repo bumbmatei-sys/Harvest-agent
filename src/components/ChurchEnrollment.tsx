@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { db, auth } from '../firebase';
-import { collection, addDoc, doc, updateDoc } from 'firebase/firestore';
+import { collection, addDoc, doc, updateDoc, getDoc } from 'firebase/firestore';
 import { Church, MapPin, Calendar, Trash2, Plus, User, Globe, Send, AlertCircle } from 'lucide-react';
 import Autocomplete from "react-google-autocomplete";
 
@@ -151,7 +151,15 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
  };
 
  if (initialData?.id) {
- await updateDoc(doc(db, 'churches', initialData.id), churchData);
+   const tenantId = await getTenantScope();
+   if (tenantId) {
+     const docSnap = await getDoc(doc(db, 'churches', initialData.id));
+     if (docSnap.exists() && docSnap.data().tenantId && docSnap.data().tenantId !== tenantId) {
+       console.error('Tenant mismatch');
+       return;
+     }
+   }
+   await updateDoc(doc(db, 'churches', initialData.id), churchData);
  if (onSave) onSave();
  } else {
    const tenantId = await getTenantScope();

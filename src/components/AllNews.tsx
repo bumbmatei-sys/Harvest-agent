@@ -111,6 +111,14 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack }) => {
 
  try {
       const postRef = doc(db, 'community_posts', postId);
+      const tenantIdLike = await getTenantScope();
+      if (tenantIdLike) {
+        const docSnapLike = await getDoc(postRef);
+        if (docSnapLike.exists() && docSnapLike.data().tenantId && docSnapLike.data().tenantId !== tenantIdLike) {
+          console.error('Tenant mismatch');
+          return;
+        }
+      }
       if (likes.includes(user.uid)) {
         await updateDoc(postRef, {
           likes: arrayRemove(user.uid)
@@ -144,9 +152,18 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack }) => {
  });
 
  try {
-      await updateDoc(doc(db, 'community_posts', postId), {
-        pollOptions: updatedOptions
-      });
+   const postRefVote = doc(db, 'community_posts', postId);
+   const tenantIdVote = await getTenantScope();
+   if (tenantIdVote) {
+     const docSnapVote = await getDoc(postRefVote);
+     if (docSnapVote.exists() && docSnapVote.data().tenantId && docSnapVote.data().tenantId !== tenantIdVote) {
+       console.error('Tenant mismatch');
+       return;
+     }
+   }
+   await updateDoc(postRefVote, {
+     pollOptions: updatedOptions
+   });
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `community_posts/${postId}`);
     }
@@ -161,6 +178,14 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack }) => {
  }
 
  const postRef = doc(db, 'community_posts', postId);
+ const tenantIdAttend = await getTenantScope();
+ if (tenantIdAttend) {
+   const docSnapAttend = await getDoc(postRef);
+   if (docSnapAttend.exists() && docSnapAttend.data().tenantId && docSnapAttend.data().tenantId !== tenantIdAttend) {
+     console.error('Tenant mismatch');
+     return;
+   }
+ }
  if (attendees.includes(user.uid)) {
  // Un-attend
  const userDetail = attendeeDetails?.find(d => d.uid === user.uid);
@@ -189,6 +214,14 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack }) => {
  if (!user) return;
 
  const postRef = doc(db, 'community_posts', attendingPostId);
+ const tenantIdSubmit = await getTenantScope();
+ if (tenantIdSubmit) {
+   const docSnapSubmit = await getDoc(postRef);
+   if (docSnapSubmit.exists() && docSnapSubmit.data().tenantId && docSnapSubmit.data().tenantId !== tenantIdSubmit) {
+     console.error('Tenant mismatch');
+     return;
+   }
+ }
  await updateDoc(postRef, {
  'eventDetails.attendees': arrayUnion(user.uid),
  'eventDetails.attendeeDetails': arrayUnion({

@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, CSSProperties, KeyboardEvent, MouseEvent } from "react";
 import Image from 'next/image';
 import { ArrowLeft } from "lucide-react";
-import { collection, addDoc, doc, updateDoc, getDocs, deleteDoc, setDoc } from "firebase/firestore";
+import { collection, addDoc, doc, updateDoc, getDocs, deleteDoc, setDoc, getDoc } from "firebase/firestore";
 import { db, auth } from "../firebase";
 import { ImageUpload } from './ImageUpload';
 import RichTextEditor from './RichTextEditor';
@@ -655,6 +655,13 @@ export default function CourseBuilder({ course: initialCourse, onClose }: Course
    try {
      const tenantId = await getTenantScope();
      if (course.id) {
+       if (tenantId) {
+         const docSnap = await getDoc(doc(db, "courses", course.id));
+         if (docSnap.exists() && docSnap.data().tenantId && docSnap.data().tenantId !== tenantId) {
+           console.error('Tenant mismatch');
+           return;
+         }
+       }
        await updateDoc(doc(db, "courses", course.id), payload as any);
      } else {
        const docRef = await addDoc(collection(db, "courses"), { ...payload, tenantId: tenantId || null });
