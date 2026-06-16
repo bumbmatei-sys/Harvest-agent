@@ -1338,7 +1338,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
               <div className="mb-4">
                 <h4 className="text-base font-bold text-gray-900 mb-1">Personal AI Assistant</h4>
                 <p className="text-sm text-gray-600 mb-3">
-                  A dedicated AI assistant trained on your church's data to help your members with questions, prayer requests, and spiritual guidance 24/7.
+                  A dedicated AI assistant trained on your church&apos;s data to help your members with questions, prayer requests, and spiritual guidance 24/7.
                 </p>
                 {!aiAssistantSubscribed ? (
                   <>
