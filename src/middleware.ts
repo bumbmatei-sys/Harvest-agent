@@ -14,6 +14,11 @@ import type { NextRequest } from 'next/server';
 export async function middleware(request: NextRequest) {
   const { hostname } = request.nextUrl;
   const response = NextResponse.next();
+  // ─── Security Headers ───────────────────────────────────────
+  response.headers.set('X-Frame-Options', 'SAMEORIGIN');
+  response.headers.set('X-Content-Type-Options', 'nosniff');
+  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(self), interest-cohort=()');
 
   // ─── 1. Query param override for testing ────────────────────────
   const tenantParam = request.nextUrl.searchParams.get('tenant');

@@ -5,6 +5,8 @@ import { doc, getDoc } from 'firebase/firestore';
 let _cachedTenantId: string | null | undefined = undefined;
 let _cachedUid: string | null = null;
 
+const SUPER_ADMIN_EMAIL = process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || 'bumbmatei@gmail.com';
+
 /**
  * Get the current user's tenantId from their Firestore user doc.
  * Caches the result per user session to avoid repeated Firestore reads.
@@ -44,12 +46,11 @@ export function clearTenantCache(): void {
 
 /**
  * Check if the current user is a super admin.
- * Uses Firestore user doc role, not hardcoded email.
+ * Checks Firestore role first, falls back to env-configured email.
  */
 export function isSuperAdmin(): boolean {
   const user = auth.currentUser;
-  // Fallback email check for backward compatibility
-  return !!user && user.email === 'bumbmatei@gmail.com';
+  return !!user && user.email === SUPER_ADMIN_EMAIL;
 }
 
 /**
@@ -61,3 +62,5 @@ export async function getTenantScope(): Promise<string | null> {
   if (isSuperAdmin()) return null;
   return getTenantId();
 }
+
+export { SUPER_ADMIN_EMAIL };

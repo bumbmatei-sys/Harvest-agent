@@ -29,6 +29,7 @@ import PrivacyTermsModal from './PrivacyTermsModal';
 import FAQModal from './FAQModal';
 import ChurchDetailsModal from './ChurchDetailsModal';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
+import { SUPER_ADMIN_EMAIL } from '../utils/tenant-scope';
 
 
 interface ProfileProps {
@@ -119,7 +120,7 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToCourses, onGoToPart
    if (data.photoURL) {
      setProfilePic(data.photoURL);
    }
-   if (data.role === 'admin' || data.role === 'church_admin' || data.role === 'super_admin' || data.email === 'bumbmatei@gmail.com') {
+   if (data.role === 'admin' || data.role === 'church_admin' || data.role === 'super_admin' || data.email === SUPER_ADMIN_EMAIL) {
      setIsAdmin(true);
    }
    // Partnership data

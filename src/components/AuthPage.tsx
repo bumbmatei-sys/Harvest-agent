@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { auth, db } from '../firebase';
-import { signInWithPopup, GoogleAuthProvider, createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
+import { signInWithPopup, GoogleAuthProvider, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { useTenant } from '../contexts/TenantContext';
@@ -15,6 +15,8 @@ interface AuthPageProps {
 const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
   const [isLogin, setIsLogin] = useState(true);
   const [showEmailForm, setShowEmailForm] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -217,6 +219,30 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
  }
  };
 
+ const handleForgotPassword = async (e: React.FormEvent) => {
+  e.preventDefault();
+  try {
+   setLoading(true);
+   setError('');
+   setSuccess('');
+   await sendPasswordResetEmail(auth, forgotEmail);
+   setSuccess('Password reset email sent! Check your inbox.');
+   setShowForgotPassword(false);
+   setForgotEmail('');
+  } catch (err: any) {
+   console.error(err);
+   if (err.code === 'auth/user-not-found') {
+    setError('No account found with that email address.');
+   } else if (err.code === 'auth/invalid-email') {
+    setError('Please enter a valid email address.');
+   } else {
+    setError(err.message || 'Failed to send reset email.');
+   }
+  } finally {
+   setLoading(false);
+  }
+ };
+
  return (
  <div className="min-h-screen flex items-center justify-center bg-background-dark px-4 py-12 relative overflow-hidden">
  {/* Background Image & Overlay */}
@@ -295,13 +321,53 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
  <div className="animate-fade-in-up">
  <div className="flex items-center mb-6">
  <button 
- onClick={() => setShowEmailForm(false)}
- className="text-white/60 hover:text-white transition-colors flex items-center gap-1 text-sm"
+  onClick={() => {
+   setShowEmailForm(false);
+   setShowForgotPassword(false);
+  }}
+  className="text-white/60 hover:text-white transition-colors flex items-center gap-1 text-sm"
  >
- <span className="material-symbols-outlined text-sm">arrow_back</span>
- Back
+  <span className="material-symbols-outlined text-sm">arrow_back</span>
+  Back
  </button>
  </div>
+
+ {showForgotPassword ? (
+ <form onSubmit={handleForgotPassword} className="space-y-5">
+  <p className="text-white/80 text-sm">
+   Enter your email address and we&apos;ll send you a link to reset your password.
+  </p>
+  <div>
+  <label className="block text-sm font-bold text-white mb-1">Email Address</label>
+  <input
+   type="email"
+   required
+   value={forgotEmail}
+   onChange={(e) => setForgotEmail(e.target.value)}
+   className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/20 text-white placeholder-gray-400 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
+   placeholder="you@example.com"
+  />
+  </div>
+  <button
+   type="submit"
+   disabled={loading}
+   className="w-full text-white font-bold py-3 px-4 rounded-xl transition-all duration-100 shadow-lg disabled:opacity-50"
+   style={hasCustomBranding && branding.primaryColor ? { backgroundColor: branding.primaryColor, boxShadow: `0 10px 15px -3px ${branding.primaryColor}4D` } : {}}
+  >
+   {loading ? 'Sending...' : 'Send Reset Link'}
+  </button>
+  <div className="text-center">
+   <button
+    type="button"
+    onClick={() => setShowForgotPassword(false)}
+    className="text-primary text-sm font-bold hover:text-yellow-400 hover:underline transition-colors"
+   >
+    Back to sign in
+   </button>
+  </div>
+ </form>
+ ) : (
+ <>
  <form onSubmit={handleEmailAuth} className="space-y-5">
  <div>
  <label className="block text-sm font-bold text-white mb-1">Email Address</label>
@@ -328,6 +394,20 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
  <p className="text-xs text-white/60 mt-2">
  Must be at least 10 characters, 1 capital letter, and 1 symbol.
  </p>
+ )}
+ {isLogin && (
+ <button
+  type="button"
+  onClick={() => {
+   setShowForgotPassword(true);
+   setForgotEmail(email);
+   setError('');
+   setSuccess('');
+  }}
+  className="text-xs text-primary hover:text-yellow-400 hover:underline transition-colors mt-2"
+ >
+  Forgot password?
+ </button>
  )}
  </div>
 
@@ -384,6 +464,8 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
  </button>
  </p>
  </div>
+ </>
+ )}
  </div>
  )}
 

@@ -2,7 +2,7 @@ import React, { useState, useEffect, CSSProperties } from "react";
 import { collection, query, getDocs, doc, updateDoc, where, deleteDoc } from "firebase/firestore";
 import { db, auth } from "../firebase";
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
-import { getTenantScope } from '../utils/tenant-scope';
+import { getTenantScope, SUPER_ADMIN_EMAIL } from '../utils/tenant-scope';
 
 
 
@@ -426,13 +426,13 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
           };
           usersList.push(user);
 
-          if (data.role === "admin" || data.role === "super_admin" || data.email === "bumbmatei@gmail.com") {
+          if (data.role === "admin" || data.role === "super_admin" || data.email === SUPER_ADMIN_EMAIL) {
             adminsList.push({
               id: docSnap.id,
               name: user.name,
               email: user.email,
               picture: data.photoURL || "",
-              role: data.email === "bumbmatei@gmail.com" ? "super_admin" : data.role,
+              role: data.email === SUPER_ADMIN_EMAIL ? "super_admin" : data.role,
               permissions: data.permissions || emptyPermission(),
               assignedRegions: data.assignedRegions || []
             });

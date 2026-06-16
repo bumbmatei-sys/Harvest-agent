@@ -16,7 +16,7 @@ import { getPlanFeatures } from '../utils/plan-features';
 import { db, auth } from '../firebase';
 import { collection, query, where, onSnapshot, doc, getDoc, limit } from 'firebase/firestore';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
-import { getTenantScope } from '../utils/tenant-scope';
+import { getTenantScope, isSuperAdmin as checkIsSuperAdmin } from '../utils/tenant-scope';
 
 
 
@@ -86,7 +86,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, tenantPlan 
     };
   }, []);
 
-  const isSuperAdmin = userRole === 'super_admin' || auth.currentUser?.email === 'bumbmatei@gmail.com';
+  const isSuperAdmin = userRole === 'super_admin' || checkIsSuperAdmin();
   const isChurchAdmin = userRole === 'church_admin';
   const perms = userPermissions || {} as Permission;
   const features = tenantPlan ? getPlanFeatures(tenantPlan) : null;

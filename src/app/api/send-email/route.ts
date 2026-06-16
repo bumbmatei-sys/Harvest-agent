@@ -1,22 +1,16 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { Resend } from 'resend';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireAuth } from '@/lib/api-auth';
 
-/**
- * Email notification API route.
- * 
- * Currently logs emails to Firestore for debugging.
- * To integrate a real provider (Resend, SendGrid, etc.):
- * 1. Add the API key as RESEND_API_KEY env var
- * 2. Uncomment the fetch call below
- * 3. Remove the Firestore logging
- */
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 interface EmailRequest {
   to: string;
   subject: string;
   html: string;
+  text?: string;
   from?: string;
 }
 
@@ -26,39 +20,38 @@ export async function POST(request: NextRequest) {
     if (userOrErr instanceof Response) return userOrErr;
 
     const body: EmailRequest = await request.json();
-    const { to, subject, html, from = 'Harvest <noreply@theharvest.app>' } = body;
+    const { to, subject, html, text, from = 'Harvest <noreply@theharvest.app>' } = body;
 
-    if (!to || !subject || !html) {
-      return NextResponse.json({ error: 'Missing required fields: to, subject, html' }, { status: 400 });
+    if (!to || !subject || (!html && !text)) {
+      return NextResponse.json({ error: 'Missing required fields: to, subject, and html or text' }, { status: 400 });
     }
 
-    // ─── Option 1: Resend (uncomment when ready) ──────────────────
-    // const resendKey = process.env.RESEND_API_KEY;
-    // if (resendKey) {
-    //   const resp = await fetch('https://api.resend.com/emails', {
-    //     method: 'POST',
-    //     headers: {
-    //       'Authorization': `Bearer ${resendKey}`,
-    //       'Content-Type': 'application/json',
-    //     },
-    //     body: JSON.stringify({ from, to, subject, html }),
-    //   });
-    //   if (!resp.ok) {
-    //     const error = await resp.text();
-    //     console.error('Resend error:', error);
-    //     return NextResponse.json({ error: 'Failed to send email' }, { status: 500 });
-    //   }
-    //   const data = await resp.json();
-    //   return NextResponse.json({ success: true, id: data.id });
-    // }
+    const resendKey = process.env.RESEND_API_KEY;
+    if (resendKey) {
+      const { data, error } = await resend.emails.send({
+        from,
+        to,
+        subject,
+        html: html || undefined,
+        text: text || undefined,
+      });
 
-    // ─── Option 2: Log to Firestore (default) ─────────────────────
+      if (error) {
+        console.error('Resend error:', error);
+        return NextResponse.json({ error: 'Failed to send email' }, { status: 500 });
+      }
+
+      return NextResponse.json({ success: true, id: data?.id });
+    }
+
+    // Fallback: log to Firestore if no API key configured
     await adminDb.collection('email_log').add({
       to,
       from,
       subject,
       html,
-      status: 'logged', // Change to 'sent' when provider is integrated
+      text: text || null,
+      status: 'logged',
       createdAt: new Date().toISOString(),
     });
 

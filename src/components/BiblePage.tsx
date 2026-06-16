@@ -92,11 +92,33 @@ interface BookMeta {
 
 // ── Highlight colors ───────────────────────────
 const HIGHLIGHT_COLORS: Record<HighlightColor, string> = {
- gold: "var(--bible-hl-gold)",
- green: "var(--bible-hl-green)",
- blue: "var(--bible-hl-blue)",
- pink: "var(--bible-hl-pink)",
+  gold: "var(--bible-hl-gold)",
+  green: "var(--bible-hl-green)",
+  blue: "var(--bible-hl-blue)",
+  pink: "var(--bible-hl-pink)",
 };
+
+// ── Highlight persistence (localStorage) ────────
+const HIGHLIGHTS_STORAGE_KEY = "harvest-bible-highlights";
+
+function loadHighlights(): Map<string, HighlightColor> {
+  try {
+    const raw = localStorage.getItem(HIGHLIGHTS_STORAGE_KEY);
+    if (raw) {
+      const obj = JSON.parse(raw) as Record<string, HighlightColor>;
+      return new Map(Object.entries(obj));
+    }
+  } catch {}
+  return new Map();
+}
+
+function saveHighlights(map: Map<string, HighlightColor>): void {
+  try {
+    const obj: Record<string, HighlightColor> = {};
+    map.forEach((v, k) => { obj[k] = v; });
+    localStorage.setItem(HIGHLIGHTS_STORAGE_KEY, JSON.stringify(obj));
+  } catch {}
+}
 
 // ── Bible books ────────────────────────────────
 const BOOKS: BookMeta[] = [
@@ -130,8 +152,13 @@ const BOOKS: BookMeta[] = [
  { name: "Hosea", id: "hosea", chapters: 14, testament: "OT" },
  { name: "Joel", id: "joel", chapters: 3, testament: "OT" },
  { name: "Amos", id: "amos", chapters: 9, testament: "OT" },
+ { name: "Obadiah", id: "obadiah", chapters: 1, testament: "OT" },
  { name: "Jonah", id: "jonah", chapters: 4, testament: "OT" },
  { name: "Micah", id: "micah", chapters: 7, testament: "OT" },
+ { name: "Nahum", id: "nahum", chapters: 3, testament: "OT" },
+ { name: "Habakkuk", id: "habakkuk", chapters: 3, testament: "OT" },
+ { name: "Zephaniah", id: "zephaniah", chapters: 3, testament: "OT" },
+ { name: "Haggai", id: "haggai", chapters: 2, testament: "OT" },
  { name: "Zechariah", id: "zechariah", chapters: 14, testament: "OT" },
  { name: "Malachi", id: "malachi", chapters: 4, testament: "OT" },
  { name: "Matthew", id: "matthew", chapters: 28, testament: "NT" },
@@ -367,6 +394,15 @@ export default function BiblePage() {
  const [showPicker, setShowPicker] = useState(false);
  const [showTranslations, setShowTranslations] = useState(false);
  const [highlighted, setHighlighted] = useState<Map<string, HighlightColor>>(new Map());
+ // Load highlights from localStorage on mount
+ useEffect(() => {
+   setHighlighted(loadHighlights());
+ }, []);
+
+ // Save highlights to localStorage on change
+ useEffect(() => {
+   saveHighlights(highlighted);
+ }, [highlighted]);
  const [activeVerse, setActiveVerse] = useState<VerseAction | null>(null);
  const [searchQuery, setSearchQuery] = useState("");
  const [searchResults, setSearchResults] = useState<{ ref: string; text: string }[]>([]);

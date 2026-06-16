@@ -5,6 +5,7 @@ import { ArrowLeft, Eye, Users, HeartHandshake } from 'lucide-react';
 import { db } from '../firebase';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
+import { SUPER_ADMIN_EMAIL } from '../utils/tenant-scope';
 
 interface AboutUsModalProps {
  isOpen: boolean;
@@ -19,7 +20,7 @@ const AboutUsModal: React.FC<AboutUsModalProps> = ({ isOpen, onClose, onOpenPart
  if (isOpen) {
  const fetchMateiPic = async () => {
  try {
- const q = query(collection(db, 'users'), where('email', '==', 'bumbmatei@gmail.com'));
+ const q = query(collection(db, 'users'), where('email', '==', SUPER_ADMIN_EMAIL));
  const querySnapshot = await getDocs(q);
  if (!querySnapshot.empty) {
  const userData = querySnapshot.docs[0].data();
