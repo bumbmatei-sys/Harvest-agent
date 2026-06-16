@@ -21,8 +21,9 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
   const [newsletter, setNewsletter] = useState(true);
   const [tenantId, setTenantId] = useState<string | null>(null);
   const [isChurchSignup, setIsChurchSignup] = useState(false);
-  const { branding, tenantId: ctxTenantId, tenantName } = useTenant();
+  const { branding, tenantId: ctxTenantId, tenantName, tenantPlan } = useTenant();
   const isSubdomain = !!ctxTenantId;
+  const hasCustomBranding = tenantPlan === 'ultra' || tenantPlan === 'enterprise';
   
   const [legalModalContent, setLegalModalContent] = useState<'terms' | 'privacy' | null>(null);
   const [error, setError] = useState('');
@@ -185,7 +186,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
  {/* Background Image & Overlay */}
  <div className="absolute inset-0 z-0">
  <Image 
- src={branding.backgroundImage || "https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/No_people_just_2k_202512231746.jpeg"} 
+ src={hasCustomBranding && branding.backgroundImage ? branding.backgroundImage : 'https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/No_people_just_2k_202512231746.jpeg'}
  alt="Harvest Background" 
  fill
  sizes="100vw"
@@ -204,7 +205,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
  <div className="text-center mb-10">
  <div className="flex justify-center mb-6">
  <Image 
- src="https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png" 
+ src={hasCustomBranding && branding.logo ? branding.logo : 'https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png'}
  alt="Harvest Logo" 
  width={128}
  height={128}
@@ -239,7 +240,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
  onClick={handleGoogleSignIn}
  disabled={loading}
  className="w-full flex items-center justify-center gap-3 bg-white/10 border text-white font-bold py-3 px-4 rounded-xl hover:bg-white/20 transition-all duration-100 mb-4 disabled:opacity-50"
- style={branding.primaryColor ? { borderColor: branding.primaryColor + '40' } : { borderColor: 'rgba(255,255,255,0.3)' }}
+ style={hasCustomBranding && branding.primaryColor ? { borderColor: branding.primaryColor + '40' } : { borderColor: 'rgba(255,255,255,0.3)' }}
  >
  <Image src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" width={24} height={24} className="w-6 h-6" />
  Continue with Google
@@ -249,7 +250,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
  <button
  onClick={() => setShowEmailForm(true)}
  className="w-full flex items-center justify-center gap-3 bg-white/5 border text-white font-bold py-3 px-4 rounded-xl hover:bg-white/10 transition-all duration-100 mb-6"
- style={branding.primaryColor ? { borderColor: branding.primaryColor + '30' } : { borderColor: 'rgba(255,255,255,0.2)' }}
+ style={hasCustomBranding && branding.primaryColor ? { borderColor: branding.primaryColor + '30' } : { borderColor: 'rgba(255,255,255,0.2)' }}
  >
  <span className="material-symbols-outlined">mail</span>
  Continue with Email
@@ -330,7 +331,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
  type="submit"
  disabled={loading}
  className="w-full text-white font-bold py-3 px-4 rounded-xl transition-all duration-100 shadow-lg disabled:opacity-50"
- style={branding.primaryColor ? { backgroundColor: branding.primaryColor, boxShadow: `0 10px 15px -3px ${branding.primaryColor}4D` } : {}}
+ style={hasCustomBranding && branding.primaryColor ? { backgroundColor: branding.primaryColor, boxShadow: `0 10px 15px -3px ${branding.primaryColor}4D` } : {}}
  >
  {loading ? 'Please wait...' : (isLogin ? 'Sign In' : 'Create Account')}
  </button>
