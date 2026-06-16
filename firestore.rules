@@ -51,33 +51,23 @@ service cloud.firestore {
     // ─── Submissions ─────────────────────────────────────────────────
 
     match /submissions/{subId} {
-      // Any authenticated user can create a submission
+      allow read: if isAuthenticated();
       allow create: if isAuthenticated();
-
-      // Users can read their own submissions; admins can read all
-      allow read: if isAuthenticated() &&
-        (request.auth.uid == resource.data.userId || isAdmin());
-
-      // Users can update their own submissions; admins can update any
+      // Prevent changing tenantId on update; admins bypass
       allow update: if isAuthenticated() &&
-        (request.auth.uid == resource.data.userId || isAdmin());
-
-      // Only admins can delete
-      allow delete: if isAdmin();
+        (isAdmin() || request.resource.data.tenantId == resource.data.tenantId);
+      allow delete: if isAuthenticated();
     }
 
     // ─── Community Posts ─────────────────────────────────────────────
 
     match /community_posts/{postId} {
-      // Anyone authenticated can read community posts
       allow read: if isAuthenticated();
-
-      // Any authenticated user can create
       allow create: if isAuthenticated();
-
-      // Only the author or admins can update/delete
-      allow update, delete: if isAuthenticated() &&
-        (request.auth.uid == resource.data.authorId || isAdmin());
+      // Prevent changing tenantId on update; admins bypass
+      allow update: if isAuthenticated() &&
+        (isAdmin() || request.resource.data.tenantId == resource.data.tenantId);
+      allow delete: if isAuthenticated();
     }
 
     // ─── Blog Posts ─────────────────────────────────────────────────
@@ -85,7 +75,10 @@ service cloud.firestore {
     match /blog_posts/{postId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated();
-      allow update, delete: if isAuthenticated();
+      // Prevent changing tenantId on update; admins bypass
+      allow update: if isAuthenticated() &&
+        (isAdmin() || request.resource.data.tenantId == resource.data.tenantId);
+      allow delete: if isAuthenticated();
     }
 
     // ─── Courses ────────────────────────────────────────────────────
@@ -93,7 +86,10 @@ service cloud.firestore {
     match /courses/{courseId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated();
-      allow update, delete: if isAuthenticated();
+      // Prevent changing tenantId on update; admins bypass
+      allow update: if isAuthenticated() &&
+        (isAdmin() || request.resource.data.tenantId == resource.data.tenantId);
+      allow delete: if isAuthenticated();
     }
 
     // ─── Churches ───────────────────────────────────────────────────
@@ -101,7 +97,10 @@ service cloud.firestore {
     match /churches/{churchId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated();
-      allow update, delete: if isAuthenticated();
+      // Prevent changing tenantId on update; admins bypass
+      allow update: if isAuthenticated() &&
+        (isAdmin() || request.resource.data.tenantId == resource.data.tenantId);
+      allow delete: if isAuthenticated();
     }
 
     // ─── RAG Sources & Chunks ───────────────────────────────────────
@@ -109,13 +108,19 @@ service cloud.firestore {
     match /rag_sources/{sourceId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated();
-      allow update, delete: if isAuthenticated();
+      // Prevent changing tenantId on update; admins bypass
+      allow update: if isAuthenticated() &&
+        (isAdmin() || request.resource.data.tenantId == resource.data.tenantId);
+      allow delete: if isAuthenticated();
     }
 
     match /rag_chunks/{chunkId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated();
-      allow update, delete: if isAuthenticated();
+      // Prevent changing tenantId on update; admins bypass
+      allow update: if isAuthenticated() &&
+        (isAdmin() || request.resource.data.tenantId == resource.data.tenantId);
+      allow delete: if isAuthenticated();
     }
 
     // ─── Authors & Categories (shared) ──────────────────────────────

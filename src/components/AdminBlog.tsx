@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { Plus, Search, Edit2, Trash2, MoreVertical, Filter, FileText } from 'lucide-react';
-import { collection, onSnapshot, query, where, orderBy, deleteDoc, doc, limit } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, orderBy, deleteDoc, doc, getDoc, limit } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import AdminBlogPostEditor from './AdminBlogPostEditor';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
@@ -99,7 +99,15 @@ const AdminBlog: React.FC = () => {
 
  const handleDeletePost = async (id: string) => {
  try {
- await deleteDoc(doc(db, 'blog_posts', id));
+   const tenantId = await getTenantScope();
+   if (tenantId) {
+     const docSnap = await getDoc(doc(db, 'blog_posts', id));
+     if (docSnap.exists() && docSnap.data().tenantId && docSnap.data().tenantId !== tenantId) {
+       console.error('Tenant mismatch — cannot modify another tenant\'s document');
+       return;
+     }
+   }
+   await deleteDoc(doc(db, 'blog_posts', id));
  setDeleteConfirmId(null);
  } catch (error) {
  try { handleFirestoreError(error, OperationType.DELETE, `blog_posts/${id}`); } catch (e) { console.error(e); }

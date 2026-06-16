@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { Plus, Search, Edit2, Trash2, BookOpen } from 'lucide-react';
-import { collection, onSnapshot, query, where, orderBy, deleteDoc, doc, limit } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, orderBy, deleteDoc, doc, getDoc, limit } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import AdminCourseEditor, { Course } from './AdminCourseEditor';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
@@ -72,7 +72,15 @@ const AdminCourses: React.FC = () => {
 
  const handleDeleteCourse = async (id: string) => {
  try {
- await deleteDoc(doc(db, 'courses', id));
+   const tenantId = await getTenantScope();
+   if (tenantId) {
+     const docSnap = await getDoc(doc(db, 'courses', id));
+     if (docSnap.exists() && docSnap.data().tenantId && docSnap.data().tenantId !== tenantId) {
+       console.error('Tenant mismatch — cannot modify another tenant\'s document');
+       return;
+     }
+   }
+   await deleteDoc(doc(db, 'courses', id));
  setDeleteConfirmId(null);
  } catch (error) {
  try { handleFirestoreError(error, OperationType.DELETE, `courses/${id}`); } catch (e) { console.error(e); }

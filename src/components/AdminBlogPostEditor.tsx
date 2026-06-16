@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { ArrowLeft, Upload, X, Plus, Calendar, Save, Send, Trash2 } from 'lucide-react';
-import { collection, addDoc, updateDoc, doc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, doc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { ImageUpload } from './ImageUpload';
 import RichTextEditor from './RichTextEditor';
@@ -122,6 +122,13 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
 
  const tenantId = await getTenantScope();
  if (post?.id) {
+   if (tenantId) {
+     const docSnap = await getDoc(doc(db, 'blog_posts', post.id));
+     if (docSnap.exists() && docSnap.data().tenantId && docSnap.data().tenantId !== tenantId) {
+       console.error('Tenant mismatch — cannot modify another tenant\'s document');
+       return;
+     }
+   }
    await updateDoc(doc(db, 'blog_posts', post.id), postData);
  } else {
    await addDoc(collection(db, 'blog_posts'), {

@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { db, auth } from '../firebase';
-import { collection, query, where, orderBy, onSnapshot, doc, updateDoc, deleteDoc, limit } from 'firebase/firestore';
+import { collection, query, where, orderBy, onSnapshot, doc, getDoc, updateDoc, deleteDoc, limit } from 'firebase/firestore';
 import { Mail, MapPin, Lightbulb, HeartHandshake, Church, CheckCircle, Trash2, Clock, ChevronDown, ChevronUp, Inbox } from 'lucide-react';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { getTenantScope } from '../utils/tenant-scope';
@@ -42,8 +42,16 @@ const AdminInbox = () => {
 
  const handleStatusChange = async (id: string, newStatus: string) => {
  try {
- await updateDoc(doc(db, 'submissions', id), {
- status: newStatus
+   const tenantId = await getTenantScope();
+   if (tenantId) {
+     const docSnap = await getDoc(doc(db, 'submissions', id));
+     if (docSnap.exists() && docSnap.data().tenantId && docSnap.data().tenantId !== tenantId) {
+       console.error('Tenant mismatch — cannot modify another tenant\'s document');
+       return;
+     }
+   }
+   await updateDoc(doc(db, 'submissions', id), {
+     status: newStatus
  });
  } catch (error) {
  try { handleFirestoreError(error, OperationType.UPDATE, `submissions/${id}`); } catch (e) { console.error(e); }
@@ -52,7 +60,15 @@ const AdminInbox = () => {
 
  const handleDelete = async (id: string) => {
  try {
- await deleteDoc(doc(db, 'submissions', id));
+   const tenantId = await getTenantScope();
+   if (tenantId) {
+     const docSnap = await getDoc(doc(db, 'submissions', id));
+     if (docSnap.exists() && docSnap.data().tenantId && docSnap.data().tenantId !== tenantId) {
+       console.error('Tenant mismatch — cannot modify another tenant\'s document');
+       return;
+     }
+   }
+   await deleteDoc(doc(db, 'submissions', id));
  setDeleteConfirmId(null);
  } catch (error) {
  try { handleFirestoreError(error, OperationType.DELETE, `submissions/${id}`); } catch (e) { console.error(e); }

@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { db, auth } from '../firebase';
-import { collection, query, where, onSnapshot, doc, deleteDoc, limit } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc, deleteDoc, getDoc, limit } from 'firebase/firestore';
 import { Church, Search, Filter, Edit2, Trash2, Plus, CheckCircle, Clock } from 'lucide-react';
 import ChurchEnrollment from './ChurchEnrollment';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
@@ -63,7 +63,15 @@ const AdminChurches: React.FC = () => {
 
  const handleDelete = async (id: string) => {
  try {
- await deleteDoc(doc(db, 'churches', id));
+   const tenantId = await getTenantScope();
+   if (tenantId) {
+     const docSnap = await getDoc(doc(db, 'churches', id));
+     if (docSnap.exists() && docSnap.data().tenantId && docSnap.data().tenantId !== tenantId) {
+       console.error('Tenant mismatch — cannot modify another tenant\'s document');
+       return;
+     }
+   }
+   await deleteDoc(doc(db, 'churches', id));
  setDeleteConfirmId(null);
  } catch (error) {
  try { handleFirestoreError(error, OperationType.DELETE, `churches/${id}`); } catch (e) { console.error(e); }

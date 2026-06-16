@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { collection, query, where, orderBy, onSnapshot, addDoc, deleteDoc, doc, updateDoc, arrayUnion, arrayRemove, limit } from 'firebase/firestore';
+import { collection, query, where, orderBy, onSnapshot, addDoc, deleteDoc, doc, getDoc, updateDoc, arrayUnion, arrayRemove, limit } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { Country, City } from 'country-state-city';
 import { ImageUpload } from './ImageUpload';
@@ -172,6 +172,13 @@ const AdminPosts: React.FC<AdminPostsProps> = ({ userRole, userPermissions }) =>
 
  const tenantId = await getTenantScope();
  if (editingPostId) {
+   if (tenantId) {
+     const docSnap = await getDoc(doc(db, 'community_posts', editingPostId));
+     if (docSnap.exists() && docSnap.data().tenantId && docSnap.data().tenantId !== tenantId) {
+       console.error('Tenant mismatch — cannot modify another tenant\'s document');
+       return;
+     }
+   }
    await updateDoc(doc(db, 'community_posts', editingPostId), postData);
    setEditingPostId(null);
  } else {
@@ -252,7 +259,15 @@ const AdminPosts: React.FC<AdminPostsProps> = ({ userRole, userPermissions }) =>
 
  const handleDelete = async (postId: string) => {
  try {
- await deleteDoc(doc(db, 'community_posts', postId));
+   const tenantId = await getTenantScope();
+   if (tenantId) {
+     const docSnap = await getDoc(doc(db, 'community_posts', postId));
+     if (docSnap.exists() && docSnap.data().tenantId && docSnap.data().tenantId !== tenantId) {
+       console.error('Tenant mismatch — cannot modify another tenant\'s document');
+       return;
+     }
+   }
+   await deleteDoc(doc(db, 'community_posts', postId));
  setDeleteConfirmId(null);
  } catch (error) {
  try { handleFirestoreError(error, OperationType.DELETE, `community_posts`); } catch (e) { console.error(e); }
@@ -260,14 +275,23 @@ const AdminPosts: React.FC<AdminPostsProps> = ({ userRole, userPermissions }) =>
  };
 
  const handleLike = async (postId: string, likes: string[]) => {
- const user = auth.currentUser;
- if (!user) {
- setErrorMessage('Please sign in to like posts');
- setTimeout(() => setErrorMessage(null), 3000);
- return;
- }
+  const user = auth.currentUser;
+  if (!user) {
+    setErrorMessage('Please sign in to like posts');
+    setTimeout(() => setErrorMessage(null), 3000);
+    return;
+  }
 
- const postRef = doc(db, 'community_posts', postId);
+  const tenantId = await getTenantScope();
+  if (tenantId) {
+    const docSnap = await getDoc(doc(db, 'community_posts', postId));
+    if (docSnap.exists() && docSnap.data().tenantId && docSnap.data().tenantId !== tenantId) {
+      console.error('Tenant mismatch — cannot modify another tenant\'s document');
+      return;
+    }
+  }
+
+  const postRef = doc(db, 'community_posts', postId);
  if (likes.includes(user.uid)) {
  await updateDoc(postRef, {
  likes: arrayRemove(user.uid)
@@ -280,17 +304,26 @@ const AdminPosts: React.FC<AdminPostsProps> = ({ userRole, userPermissions }) =>
  };
 
  const handleVote = async (postId: string, optionId: string, currentOptions: PollOption[]) => {
- const user = auth.currentUser;
- if (!user) {
- setErrorMessage('Please sign in to vote');
- setTimeout(() => setErrorMessage(null), 3000);
- return;
- }
+  const user = auth.currentUser;
+  if (!user) {
+    setErrorMessage('Please sign in to vote');
+    setTimeout(() => setErrorMessage(null), 3000);
+    return;
+  }
 
- const hasVoted = currentOptions.some(o => o.votes.includes(user.uid));
- if (hasVoted) return;
+  const hasVoted = currentOptions.some(o => o.votes.includes(user.uid));
+  if (hasVoted) return;
 
- const updatedOptions = currentOptions.map(opt => {
+  const tenantId = await getTenantScope();
+  if (tenantId) {
+    const docSnap = await getDoc(doc(db, 'community_posts', postId));
+    if (docSnap.exists() && docSnap.data().tenantId && docSnap.data().tenantId !== tenantId) {
+      console.error('Tenant mismatch — cannot modify another tenant\'s document');
+      return;
+    }
+  }
+
+  const updatedOptions = currentOptions.map(opt => {
  if (opt.id === optionId) {
  return { ...opt, votes: [...opt.votes, user.uid] };
  }
@@ -303,14 +336,23 @@ const AdminPosts: React.FC<AdminPostsProps> = ({ userRole, userPermissions }) =>
  };
 
  const handleAttend = async (postId: string, attendees: string[]) => {
- const user = auth.currentUser;
- if (!user) {
- setErrorMessage('Please sign in to attend');
- setTimeout(() => setErrorMessage(null), 3000);
- return;
- }
+  const user = auth.currentUser;
+  if (!user) {
+    setErrorMessage('Please sign in to attend');
+    setTimeout(() => setErrorMessage(null), 3000);
+    return;
+  }
 
- const postRef = doc(db, 'community_posts', postId);
+  const tenantId = await getTenantScope();
+  if (tenantId) {
+    const docSnap = await getDoc(doc(db, 'community_posts', postId));
+    if (docSnap.exists() && docSnap.data().tenantId && docSnap.data().tenantId !== tenantId) {
+      console.error('Tenant mismatch — cannot modify another tenant\'s document');
+      return;
+    }
+  }
+
+  const postRef = doc(db, 'community_posts', postId);
  if (attendees.includes(user.uid)) {
  await updateDoc(postRef, {
  'eventDetails.attendees': arrayRemove(user.uid)
@@ -323,8 +365,16 @@ const AdminPosts: React.FC<AdminPostsProps> = ({ userRole, userPermissions }) =>
  };
 
  const handlePin = async (postId: string, currentPinnedStatus: boolean | undefined) => {
- try {
- const postRef = doc(db, 'community_posts', postId);
+  try {
+    const tenantId = await getTenantScope();
+    if (tenantId) {
+      const docSnap = await getDoc(doc(db, 'community_posts', postId));
+      if (docSnap.exists() && docSnap.data().tenantId && docSnap.data().tenantId !== tenantId) {
+        console.error('Tenant mismatch — cannot modify another tenant\'s document');
+        return;
+      }
+    }
+    const postRef = doc(db, 'community_posts', postId);
  await updateDoc(postRef, {
  isPinned: !currentPinnedStatus
  });

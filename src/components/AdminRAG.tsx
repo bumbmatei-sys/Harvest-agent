@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { db, auth } from '../firebase';
-import { collection, addDoc, serverTimestamp, query, where, getDocs, deleteDoc, onSnapshot, updateDoc, doc } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, where, getDocs, getDoc, deleteDoc, onSnapshot, updateDoc, doc } from 'firebase/firestore';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { getTenantScope } from '../utils/tenant-scope';
 
@@ -287,15 +287,24 @@ export default function AdminRAG() {
  // ── Delete ──
  const confirmDelete = async () => {
  if (!deleteTarget) return;
- 
+  
  try {
- // Delete from rag_sources
- await deleteDoc(doc(db, "rag_sources", deleteTarget.id));
- 
- // Delete chunks from Firestore
- const tenantId = await getTenantScope();
- const q = tenantId
-   ? query(collection(db, "rag_chunks"), where("tenantId", "==", tenantId), where("sourceId", "==", deleteTarget.sourceId))
+   // Verify tenant ownership before deleting
+   const tenantId = await getTenantScope();
+   if (tenantId) {
+     const docSnap = await getDoc(doc(db, "rag_sources", deleteTarget.id));
+     if (docSnap.exists() && docSnap.data().tenantId && docSnap.data().tenantId !== tenantId) {
+       console.error('Tenant mismatch — cannot modify another tenant\'s document');
+       return;
+     }
+   }
+
+   // Delete from rag_sources
+   await deleteDoc(doc(db, "rag_sources", deleteTarget.id));
+    
+   // Delete chunks from Firestore
+   const q = tenantId
+     ? query(collection(db, "rag_chunks"), where("tenantId", "==", tenantId), where("sourceId", "==", deleteTarget.sourceId))
    : query(collection(db, "rag_chunks"), where("sourceId", "==", deleteTarget.sourceId));
  const snap = await getDocs(q);
  const deletePromises = snap.docs.map(document => deleteDoc(document.ref));
