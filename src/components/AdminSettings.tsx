@@ -161,7 +161,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
       {hasBranding && (
         <div className="bg-white rounded-2xl border border-gray-100 p-6">
           <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">Branding</h3>
-          <p className="text-gray-600 text-sm mb-4">Customize your ministry's appearance — logo and brand color.</p>
+          <p className="text-gray-600 text-sm mb-4">Customize your ministry&apos;s appearance — logo and brand color.</p>
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 rounded-xl bg-gray-50 flex items-center justify-center overflow-hidden border border-gray-100">
               {brandingLogo ? (
@@ -187,7 +187,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
       {/* Domain & Subdomain */}
       <div className="bg-white rounded-2xl border border-gray-100 p-6">
         <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">Domain</h3>
-        <p className="text-gray-600 text-sm mb-4">Manage your ministry's web address and custom domain.</p>
+        <p className="text-gray-600 text-sm mb-4">Manage your ministry&apos;s web address and custom domain.</p>
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center">
             <Globe size={24} className="text-blue-600" />
@@ -559,7 +559,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
   const renderDomain = () => (
     <div className="space-y-6">
       <p className="text-gray-600">
-        Manage your ministry's web address. Your subdomain is <strong>{subdomain}.theharvest.app</strong>.
+        Manage your ministry&apos;s web address. Your subdomain is <strong>{subdomain}.theharvest.app</strong>.
       </p>
 
       {/* Subdomain (read-only) */}
