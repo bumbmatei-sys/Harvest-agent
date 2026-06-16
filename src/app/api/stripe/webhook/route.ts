@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
           };
 
           // Detect plan from metadata or price ID (handles portal changes)
-          let plan = subscription.metadata?.plan;
+          let plan = subscription.metadata?.plan || null;
           if (!plan && subscription.items?.data?.[0]?.price?.id) {
             plan = getPlanFromPriceId(subscription.items.data[0].price.id);
           }
@@ -190,7 +190,7 @@ export async function POST(request: NextRequest) {
         if (tenantId) {
           // Reactivate suspended accounts on successful payment
           const tenantDoc = await adminDb.collection('tenants').doc(tenantId).get();
-          if (tenantDoc.exists() && tenantDoc.data()?.status === 'suspended') {
+          if (!!tenantDoc.exists && tenantDoc.data()?.status === 'suspended') {
             await adminDb.collection('tenants').doc(tenantId).update({
               status: 'active',
               updatedAt: new Date().toISOString(),

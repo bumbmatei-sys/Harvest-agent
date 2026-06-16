@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { Resend } from 'resend';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireAuth } from '@/lib/api-auth';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+function getResend() {
+  const { Resend } = require('resend');
+  return new Resend(process.env.RESEND_API_KEY);
+}
 
 interface EmailRequest {
   to: string;
@@ -28,12 +30,11 @@ export async function POST(request: NextRequest) {
 
     const resendKey = process.env.RESEND_API_KEY;
     if (resendKey) {
-      const { data, error } = await resend.emails.send({
+      const { data, error } = await getResend().emails.send({
         from,
         to,
         subject,
-        html: html || undefined,
-        text: text || undefined,
+        ...(html ? { html } : { text: text || subject }),
       });
 
       if (error) {
