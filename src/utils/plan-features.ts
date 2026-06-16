@@ -17,6 +17,8 @@ export interface PlanFeatures {
   maxAdmins: number;
   /** Allow custom domain */
   customDomain: boolean;
+  /** Allow custom background image on auth page */
+  customBackground: boolean;
 }
 
 const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
@@ -29,6 +31,7 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     maxCourses: 5,
     maxAdmins: 2,
     customDomain: false,
+    customBackground: false,
   },
   pro: {
     blog: true,
@@ -39,6 +42,7 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     maxCourses: -1,
     maxAdmins: 5,
     customDomain: false,
+    customBackground: false,
   },
   ultra: {
     blog: true,
@@ -49,6 +53,7 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     maxCourses: -1,
     maxAdmins: -1,
     customDomain: true,
+    customBackground: true,
   },
   enterprise: {
     blog: true,
@@ -59,6 +64,7 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     maxCourses: -1,
     maxAdmins: -1,
     customDomain: true,
+    customBackground: true,
   },
 };
 

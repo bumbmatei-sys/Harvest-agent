@@ -6,6 +6,7 @@ export interface TenantConfig {
   primaryColor?: string; // hex color, e.g. "#D4AF37"
   description?: string;
   customDomain?: string; // e.g. "yourchurch.com" (Ultra/Enterprise only)
+  backgroundImage?: string; // URL to custom background image for auth page
 }
 
 export interface Tenant {

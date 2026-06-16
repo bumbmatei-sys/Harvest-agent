@@ -9,6 +9,8 @@ import { getPlanFeatures, PlanFeatures } from '../utils/plan-features';
 export interface TenantContextValue {
   /** Current tenant ID (null = global platform / super admin) */
   tenantId: string | null;
+  /** The tenant's display name (e.g. church name) */
+  tenantName: string | null;
   /** The tenant's subscription plan (undefined until loaded) */
   tenantPlan: TenantPlan | undefined;
   /** Branding config from the tenant document */
@@ -53,6 +55,7 @@ export const TenantProvider: React.FC<TenantProviderProps> = ({
   initialPlan,
 }) => {
   const [tenantId, setTenantId] = useState<string | null>(initialTenantId ?? null);
+  const [tenantName, setTenantName] = useState<string | null>(null);
   const [tenantPlan, setTenantPlanState] = useState<TenantPlan | undefined>(initialPlan);
   const [branding, setBranding] = useState<TenantConfig>({});
   const [isLoading, setIsLoading] = useState(true);
@@ -110,6 +113,9 @@ export const TenantProvider: React.FC<TenantProviderProps> = ({
           planInitialized.current = true;
           setTenantPlanState(data.plan as TenantPlan);
         }
+        if (data.name) {
+          setTenantName(data.name as string);
+        }
         if (data.config) {
           setBranding(data.config as TenantConfig);
           // Apply branding CSS custom property
@@ -145,6 +151,7 @@ export const TenantProvider: React.FC<TenantProviderProps> = ({
     <TenantContext.Provider
       value={{
         tenantId,
+        tenantName,
         tenantPlan,
         branding,
         isLoading,
