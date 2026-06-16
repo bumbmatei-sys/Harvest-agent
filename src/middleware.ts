@@ -2,47 +2,39 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 /**
- * Subdomain routing middleware.
+ * Subdomain + custom domain routing middleware.
  *
- * Extracts tenant subdomain from hostname and stores it in a cookie.
- * - gracechurch.theharvest.app → tenantId = "gracechurch"
- * - gracechurch.harvest-agent.vercel.app → tenantId = "gracechurch"
- * - theharvest.app → no tenant (global platform)
- * - harvest-agent.vercel.app → no tenant (global platform)
- *
- * Also supports ?tenant=xxx query param for local testing.
+ * Resolution order:
+ * 1. ?tenant=xxx query param (testing override)
+ * 2. admin.theharvest.app → isAdmin cookie
+ * 3. *.theharvest.app subdomain → tenantId cookie
+ * 4. Custom domain → resolve via API, cache in cookie
+ * 5. Base domains → no tenant (global platform)
  */
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { hostname } = request.nextUrl;
   const response = NextResponse.next();
 
-  // Detect admin subdomain → set isAdmin cookie
-  // This runs before any tenant detection so admin always wins
-  // Only match exact admin subdomains for known base domains
-  const isAdminSubdomain = hostname === 'admin.theharvest.app' ||
-    hostname === 'admin.harvest-agent.vercel.app' ||
-    /^admin-[a-z0-9-]+\.vercel\.app$/.test(hostname);
-  if (isAdminSubdomain) {
-    response.cookies.set('isAdmin', 'true', { path: '/', maxAge: 60 * 60 * 24 * 30 });
-  } else {
-    response.cookies.delete('isAdmin');
-  }
-
-  // Allow query param override for local/testing
+  // ─── 1. Query param override for testing ────────────────────────
   const tenantParam = request.nextUrl.searchParams.get('tenant');
-
   if (tenantParam) {
     response.cookies.set('tenantId', tenantParam, { path: '/', maxAge: 60 * 60 * 24 * 30 });
     return response;
   }
 
-  // Admin subdomain always goes to admin — no tenant context needed
+  // ─── 2. Admin subdomain detection ───────────────────────────────
+  const isAdminSubdomain = hostname === 'admin.theharvest.app' ||
+    hostname === 'admin.harvest-agent.vercel.app' ||
+    /^admin-[a-z0-9-]+\.vercel\.app$/.test(hostname);
+
   if (isAdminSubdomain) {
+    response.cookies.set('isAdmin', 'true', { path: '/', maxAge: 60 * 60 * 24 * 30 });
     response.cookies.delete('tenantId');
     return response;
   }
+  response.cookies.delete('isAdmin');
 
-  // Base domains that represent the global platform (no tenant)
+  // ─── 3. Known base domains → no tenant ──────────────────────────
   const baseDomains = [
     'theharvest.app',
     'www.theharvest.app',
@@ -50,23 +42,15 @@ export function middleware(request: NextRequest) {
     'localhost',
   ];
 
-  // If hostname is a known base domain → global platform
   if (baseDomains.includes(hostname)) {
     response.cookies.delete('tenantId');
     return response;
   }
 
-  // Check if hostname ends with a known base domain
-  // e.g. gracechurch.theharvest.app → parts = ["gracechurch", "theharvest", "app"]
+  // ─── 4. Subdomain of theharvest.app ─────────────────────────────
   const parts = hostname.split('.');
-
-  // Need at least 3 parts for a subdomain (subdomain.base.tld)
   if (parts.length >= 3) {
-    // Reconstruct the base domain (everything after the first part)
     const baseDomain = parts.slice(1).join('.');
-
-    // Treat as tenant subdomain if base is theharvest.app
-    // OR if it's a *.vercel.app preview deployment (e.g. gracechurch.harvest-agent-abc123.vercel.app)
     if (baseDomain === 'theharvest.app' || baseDomain.endsWith('.vercel.app')) {
       const subdomain = parts[0];
       response.cookies.set('tenantId', subdomain, { path: '/', maxAge: 60 * 60 * 24 * 30 });
@@ -74,12 +58,25 @@ export function middleware(request: NextRequest) {
     }
   }
 
-  // No tenant context
-  response.cookies.delete('tenantId');
-  return response;
+  // ─── 5. Custom domain resolution ────────────────────────────────
+  // Check if we already resolved this domain (cached in cookie)
+  const cachedDomain = request.cookies.get('customDomain')?.value;
+  const cachedTenantId = request.cookies.get('tenantId')?.value;
+
+  if (cachedDomain === hostname && cachedTenantId) {
+    // Already resolved, use cached tenantId
+    return response;
+  }
+
+  // Unknown domain — redirect to API route to resolve
+  // The API route will set cookies and redirect back
+  const resolveUrl = new URL('/api/resolve-domain', request.url);
+  resolveUrl.searchParams.set('domain', hostname);
+  resolveUrl.searchParams.set('redirect', request.nextUrl.pathname + request.nextUrl.search);
+  
+  return NextResponse.redirect(resolveUrl);
 }
 
 export const config = {
-  // Only run on page routes, skip static files and API routes
   matcher: ['/((?!_next/static|_next/image|favicon.ico|api/).*)'],
 };
