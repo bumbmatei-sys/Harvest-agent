@@ -183,6 +183,14 @@ service cloud.firestore {
       allow create: if false; // Only via admin SDK (API routes)
     }
 
+    // ─── Enterprise Leads (server-only writes, admin reads) ────────
+
+    match /enterprise_leads/{leadId} {
+      allow read: if isAuthenticated() && request.auth.token.superAdmin == true;
+      allow create: if true; // Public — form submissions
+      allow update, delete: if false; // Server-only via admin SDK
+    }
+
     // ─── Catch-all: DENY everything not matched above ────────────────
   }
 }

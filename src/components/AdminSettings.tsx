@@ -4,6 +4,7 @@ import { ArrowLeft, Check, Crown, Zap, Building2, Star, ChevronRight, ChevronDow
 import { TenantPlan } from '../types/tenant.types';
 import { getPlanFeatures, PlanFeatures } from '../utils/plan-features';
 import { ImageUpload } from './ImageUpload';
+import EnterpriseContactModal from './EnterpriseContactModal';
 
 interface AdminSettingsProps {
   onBack: () => void;
@@ -55,6 +56,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
   const [domainSaving, setDomainSaving] = useState(false);
   const [domainSaved, setDomainSaved] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
+  const [enterpriseModalOpen, setEnterpriseModalOpen] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
   const [stripeConnectStatus, setStripeConnectStatus] = useState<string | null>(null);
   const [stripeConnectLoading, setStripeConnectLoading] = useState(false);
@@ -523,7 +525,9 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
 
               <button
                 onClick={() => {
-                  if (!isCurrent && !isDowngrade && plan.id !== 'enterprise') {
+                  if (!isCurrent && !isDowngrade && plan.id === 'enterprise') {
+                    setEnterpriseModalOpen(true);
+                  } else if (!isCurrent && !isDowngrade) {
                     handleStripeCheckout(plan.id);
                   } else if (!isCurrent && isDowngrade) {
                     onChangePlan(plan.id);
@@ -1593,6 +1597,10 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
           </div>
         </div>
       )}
+      <EnterpriseContactModal
+        isOpen={enterpriseModalOpen}
+        onClose={() => setEnterpriseModalOpen(false)}
+      />
     </div>
   );
 };
