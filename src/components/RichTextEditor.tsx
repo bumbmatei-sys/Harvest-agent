@@ -1,7 +1,7 @@
 "use client";
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { isSafeUrl } from '../utils/sanitize';
-import { useEditor, EditorContent, ReactRenderer } from '@tiptap/react';
+import { useEditor, EditorContent, ReactRenderer, BubbleMenu } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
 import Link from '@tiptap/extension-link';
@@ -13,7 +13,8 @@ import { Extension } from '@tiptap/core';
 import {
   Heading1, Heading2, List, ListOrdered, Quote, Code,
   Minus, Bold, Italic, Link as LinkIcon, Image as ImageIcon,
-  Type, Strikethrough, Underline as UnderlineIcon
+  Type, Strikethrough, Underline as UnderlineIcon,
+  Upload, X, Loader2
 } from 'lucide-react';
 
 interface RichTextEditorProps {
@@ -27,8 +28,140 @@ interface CommandItem {
   title: string;
   description: string;
   icon: React.ReactNode;
-  action: (editor: any) => void;
+  action: (editor: any, showModal?: () => void) => void;
 }
+
+// ─── Inline Image Upload Modal ────────────────────────────────────
+
+const ImageUploadModal = ({
+  onClose,
+  onInsert,
+}: {
+  onClose: () => void;
+  onInsert: (url: string) => void;
+}) => {
+  const [tab, setTab] = useState<'upload' | 'url'>('upload');
+  const [url, setUrl] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
+  const [error, setError] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploading(true);
+    setError('');
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', 'Harvest');
+    try {
+      const res = await fetch('https://api.cloudinary.com/v1_1/dvpohwjor/image/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      if (!res.ok) throw new Error('Upload failed');
+      const data = await res.json();
+      onInsert(data.secure_url);
+    } catch {
+      setError('Upload failed. Try again.');
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleUrlInsert = () => {
+    if (!url.trim()) return;
+    if (!isSafeUrl(url.trim())) { setError('Invalid URL'); return; }
+    let finalUrl = url.trim();
+    if (finalUrl.includes('github.com') && (finalUrl.includes('/blob/') || finalUrl.includes('/raw/'))) {
+      finalUrl = finalUrl.replace('github.com', 'raw.githubusercontent.com').replace('/blob/', '/').replace('/raw/', '/');
+    }
+    onInsert(finalUrl);
+  };
+
+  return (
+    <div className="fixed inset-0 z-[10000] flex items-end sm:items-center justify-center bg-black/40" onClick={onClose}>
+      <div
+        className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md p-5 pb-8 sm:pb-5 space-y-4 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between">
+          <h3 className="text-base font-bold text-gray-900">Add Image</h3>
+          <button onClick={onClose} className="p-1.5 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-700">
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Tab switcher */}
+        <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
+          <button
+            onClick={() => setTab('upload')}
+            className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-colors ${
+              tab === 'upload' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'
+            }`}
+          >
+            Upload
+          </button>
+          <button
+            onClick={() => setTab('url')}
+            className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-colors ${
+              tab === 'url' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'
+            }`}
+          >
+            URL
+          </button>
+        </div>
+
+        {error && <div className="bg-red-50 text-red-600 p-2.5 rounded-lg text-sm">{error}</div>}
+
+        {tab === 'upload' ? (
+          <div>
+            <div
+              onClick={() => !isUploading && fileInputRef.current?.click()}
+              className="w-full h-40 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 flex flex-col items-center justify-center text-gray-500 hover:bg-gray-100 hover:border-[#d4a017] transition-colors cursor-pointer"
+            >
+              {isUploading ? (
+                <>
+                  <Loader2 size={28} className="animate-spin mb-2 text-[#d4a017]" />
+                  <span className="text-sm font-medium text-gray-600">Uploading...</span>
+                </>
+              ) : (
+                <>
+                  <Upload size={28} className="mb-2" />
+                  <span className="text-sm font-medium">Tap to upload</span>
+                  <span className="text-xs text-gray-400 mt-1">PNG, JPG, GIF up to 10MB</span>
+                </>
+              )}
+            </div>
+            <input ref={fileInputRef} type="file" accept="image/*" onChange={handleUpload} className="hidden" />
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <input
+              type="url"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleUrlInsert()}
+              placeholder="https://example.com/image.jpg"
+              className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#d4a017] focus:border-transparent outline-none"
+              autoFocus
+            />
+            <button
+              onClick={handleUrlInsert}
+              disabled={!url.trim()}
+              className="w-full py-2.5 bg-[#d4a017] text-white rounded-xl text-sm font-medium hover:bg-[#b8860b] transition-colors disabled:opacity-50"
+            >
+              Insert Image
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ─── Command definitions ──────────────────────────────────────────
 
 const commands: CommandItem[] = [
   {
@@ -108,7 +241,7 @@ const commands: CommandItem[] = [
     description: 'Add a link',
     icon: <LinkIcon size={18} />,
     action: (editor) => {
-      const url = window.prompt('URL');
+      const url = window.prompt('Enter URL');
       if (url && isSafeUrl(url)) {
         editor.chain().focus().setLink({ href: url }).run();
       }
@@ -116,22 +249,16 @@ const commands: CommandItem[] = [
   },
   {
     title: 'Image',
-    description: 'Add an image by URL',
+    description: 'Upload or paste image URL',
     icon: <ImageIcon size={18} />,
-    action: (editor) => {
-      const url = window.prompt('Image URL');
-      if (url && isSafeUrl(url)) {
-        let finalUrl = url;
-        if (url.includes('github.com') && (url.includes('/blob/') || url.includes('/raw/'))) {
-          finalUrl = url.replace('github.com', 'raw.githubusercontent.com').replace('/blob/', '/').replace('/raw/', '/');
-        }
-        editor.chain().focus().setImage({ src: finalUrl }).run();
-      }
+    action: (_editor: any, showModal?: () => void) => {
+      showModal?.();
     },
   },
 ];
 
-// Slash command extension — triggers on "/" at the start of an empty line or after a space
+// ─── Slash command extension ──────────────────────────────────────
+
 const SlashCommand = Extension.create({
   name: 'slashCommand',
   addOptions() {
@@ -140,7 +267,7 @@ const SlashCommand = Extension.create({
         char: '/',
         command: ({ editor, range, props }: any) => {
           editor.chain().deleteRange(range).run();
-          props.action(editor);
+          props.action(editor, props.showImageModal);
         },
       },
     };
@@ -156,8 +283,6 @@ const SlashCommand = Extension.create({
 });
 
 // ─── Slash Command Menu (pure display component) ──────────────────
-// Keyboard navigation is handled entirely in the render config's onKeyDown.
-// This component only renders the list and handles mouse clicks.
 
 const SlashCommandList = ({
   items,
@@ -170,7 +295,6 @@ const SlashCommandList = ({
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll selected item into view
   useEffect(() => {
     const el = containerRef.current?.children[selectedIndex] as HTMLElement;
     el?.scrollIntoView({ block: 'nearest' });
@@ -189,8 +313,6 @@ const SlashCommandList = ({
         {items.map((item, index) => (
           <button
             key={item.title}
-            // Use onMouseDown + preventDefault to keep editor focus
-            // onClick would blur the editor first, breaking the suggestion lifecycle
             onMouseDown={(e) => {
               e.preventDefault();
               command(item);
@@ -222,8 +344,6 @@ const SlashCommandList = ({
 };
 
 // ─── Suggestion render config ─────────────────────────────────────
-// All keyboard navigation lives here (onKeyDown), NOT in the React component.
-// Selection state is managed in closure variables, not React state.
 
 const renderSlashCommands = () => {
   let component: ReactRenderer | null = null;
@@ -232,12 +352,9 @@ const renderSlashCommands = () => {
   let currentItems: CommandItem[] = [];
   let currentCommand: ((item: CommandItem) => void) | null = null;
 
-  // Position popup with viewport boundary checks
   const positionPopup = (el: HTMLElement, rect: DOMRect) => {
     const POPUP_HEIGHT = 340;
-    const POPUP_WIDTH = 288; // w-72 = 18rem = 288px
-
-    // Vertical: flip above cursor if not enough space below
+    const POPUP_WIDTH = 288;
     const spaceBelow = window.innerHeight - rect.bottom;
     if (spaceBelow < POPUP_HEIGHT && rect.top > POPUP_HEIGHT) {
       el.style.top = `${rect.top - 8}px`;
@@ -246,8 +363,6 @@ const renderSlashCommands = () => {
       el.style.top = `${rect.bottom + 8}px`;
       el.style.transform = 'none';
     }
-
-    // Horizontal: clamp to viewport
     const left = Math.min(Math.max(8, rect.left), window.innerWidth - POPUP_WIDTH - 8);
     el.style.left = `${left}px`;
   };
@@ -294,15 +409,12 @@ const renderSlashCommands = () => {
         command: currentCommand,
         selectedIndex,
       });
-
       const rect = props.clientRect?.();
       if (rect && popup) positionPopup(popup, rect);
     },
 
     onKeyDown: (props: any) => {
       const { event } = props;
-
-      // Close on Escape
       if (event.key === 'Escape') {
         popup?.remove();
         popup = null;
@@ -310,8 +422,6 @@ const renderSlashCommands = () => {
         component = null;
         return true;
       }
-
-      // Navigate up
       if (event.key === 'ArrowUp') {
         event.preventDefault();
         if (currentItems.length > 0) {
@@ -319,8 +429,6 @@ const renderSlashCommands = () => {
         }
         return true;
       }
-
-      // Navigate down
       if (event.key === 'ArrowDown') {
         event.preventDefault();
         if (currentItems.length > 0) {
@@ -328,8 +436,6 @@ const renderSlashCommands = () => {
         }
         return true;
       }
-
-      // Select command
       if (event.key === 'Enter') {
         event.preventDefault();
         if (currentItems[selectedIndex] && currentCommand) {
@@ -337,8 +443,6 @@ const renderSlashCommands = () => {
         }
         return true;
       }
-
-      // All other keys: let tiptap handle (typing to filter, backspace, etc.)
       return false;
     },
 
@@ -359,23 +463,38 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
   minHeight = '300px',
   placeholder = 'Write something...',
 }) => {
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [showLinkInput, setShowLinkInput] = useState(false);
+  const [linkUrl, setLinkUrl] = useState('');
+  const linkInputRef = useRef<HTMLInputElement>(null);
+
+  const commandsWithModal = useRef(
+    commands.map((cmd) =>
+      cmd.title === 'Image'
+        ? { ...cmd, action: (_editor: any, showModal?: () => void) => showModal?.() }
+        : cmd
+    )
+  ).current;
+
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
         heading: { levels: [1, 2, 3] },
       }),
       Underline,
-      Link.configure({ openOnClick: false }),
+      Link.configure({
+        openOnClick: false,
+        HTMLAttributes: { class: 'text-[#d4a017] underline cursor-pointer' },
+      }),
       Image.configure({ HTMLAttributes: { referrerPolicy: 'no-referrer' } }),
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
       Placeholder.configure({ placeholder }),
       SlashCommand.configure({
         suggestion: {
           char: '/',
-          // \u0000 = null char (start of content), ' ' = after a space
           allowedPrefixes: [' ', '\u0000'],
           items: ({ query }: { query: string }) => {
-            return commands.filter(
+            return commandsWithModal.filter(
               (item) =>
                 item.title.toLowerCase().includes(query.toLowerCase()) ||
                 item.description.toLowerCase().includes(query.toLowerCase())
@@ -398,9 +517,134 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
     },
   });
 
+  const handleImageInsert = useCallback((url: string) => {
+    if (editor) {
+      editor.chain().focus().setImage({ src: url }).run();
+    }
+    setShowImageModal(false);
+  }, [editor]);
+
+  const openLinkEditor = useCallback(() => {
+    if (!editor) return;
+    const existingHref = editor.getAttributes('link').href || '';
+    setLinkUrl(existingHref);
+    setShowLinkInput(true);
+    setTimeout(() => linkInputRef.current?.focus(), 50);
+  }, [editor]);
+
+  const applyLink = useCallback(() => {
+    if (!editor) return;
+    if (!linkUrl.trim()) {
+      editor.chain().focus().extendMarkRange('link').unsetLink().run();
+    } else if (isSafeUrl(linkUrl.trim())) {
+      editor.chain().focus().extendMarkRange('link').setLink({ href: linkUrl.trim() }).run();
+    }
+    setShowLinkInput(false);
+  }, [editor, linkUrl]);
+
+  const removeLink = useCallback(() => {
+    if (!editor) return;
+    editor.chain().focus().extendMarkRange('link').unsetLink().run();
+    setShowLinkInput(false);
+  }, [editor]);
+
   return (
     <div className="bg-white rounded-xl overflow-hidden">
+      {/* Bubble menu: appears when text is selected */}
+      {editor && (
+        <BubbleMenu
+          editor={editor}
+          tippyOptions={{ duration: 100, placement: 'top' }}
+          className="bg-gray-900 rounded-xl shadow-xl"
+        >
+          {showLinkInput ? (
+            /* ── Inline link editor ── */
+            <div className="flex items-center gap-1.5 p-1.5">
+              <input
+                ref={linkInputRef}
+                type="url"
+                value={linkUrl}
+                onChange={(e) => setLinkUrl(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') { e.preventDefault(); applyLink(); }
+                  if (e.key === 'Escape') { setShowLinkInput(false); }
+                }}
+                placeholder="https://..."
+                className="w-40 sm:w-56 px-2.5 py-1.5 text-sm bg-white text-gray-900 border-0 rounded-lg focus:ring-2 focus:ring-[#d4a017] outline-none"
+              />
+              <button
+                onMouseDown={(e) => { e.preventDefault(); applyLink(); }}
+                className="px-2.5 py-1.5 bg-[#d4a017] text-white text-sm font-medium rounded-lg hover:bg-[#b8860b]"
+              >
+                ✓
+              </button>
+              {editor.isActive('link') && (
+                <button
+                  onMouseDown={(e) => { e.preventDefault(); removeLink(); }}
+                  className="px-2 py-1.5 text-red-400 hover:text-red-300 rounded-lg"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+          ) : (
+            /* ── Formatting toolbar ── */
+            <div className="flex items-center gap-0.5 p-1">
+              <button
+                onMouseDown={(e) => { e.preventDefault(); editor.chain().focus().toggleBold().run(); }}
+                className={`p-2 rounded-lg transition-colors ${
+                  editor.isActive('bold') ? 'bg-white/20 text-white' : 'text-gray-300 hover:text-white hover:bg-white/10'
+                }`}
+              >
+                <Bold size={16} />
+              </button>
+              <button
+                onMouseDown={(e) => { e.preventDefault(); editor.chain().focus().toggleItalic().run(); }}
+                className={`p-2 rounded-lg transition-colors ${
+                  editor.isActive('italic') ? 'bg-white/20 text-white' : 'text-gray-300 hover:text-white hover:bg-white/10'
+                }`}
+              >
+                <Italic size={16} />
+              </button>
+              <button
+                onMouseDown={(e) => { e.preventDefault(); editor.chain().focus().toggleUnderline().run(); }}
+                className={`p-2 rounded-lg transition-colors ${
+                  editor.isActive('underline') ? 'bg-white/20 text-white' : 'text-gray-300 hover:text-white hover:bg-white/10'
+                }`}
+              >
+                <UnderlineIcon size={16} />
+              </button>
+              <button
+                onMouseDown={(e) => { e.preventDefault(); editor.chain().focus().toggleStrike().run(); }}
+                className={`p-2 rounded-lg transition-colors ${
+                  editor.isActive('strike') ? 'bg-white/20 text-white' : 'text-gray-300 hover:text-white hover:bg-white/10'
+                }`}
+              >
+                <Strikethrough size={16} />
+              </button>
+              <div className="w-px h-5 bg-white/20 mx-0.5" />
+              <button
+                onMouseDown={(e) => { e.preventDefault(); openLinkEditor(); }}
+                className={`p-2 rounded-lg transition-colors ${
+                  editor.isActive('link') ? 'bg-white/20 text-white' : 'text-gray-300 hover:text-white hover:bg-white/10'
+                }`}
+              >
+                <LinkIcon size={16} />
+              </button>
+            </div>
+          )}
+        </BubbleMenu>
+      )}
+
       <EditorContent editor={editor} />
+
+      {/* Image upload modal */}
+      {showImageModal && (
+        <ImageUploadModal
+          onClose={() => setShowImageModal(false)}
+          onInsert={handleImageInsert}
+        />
+      )}
     </div>
   );
 };

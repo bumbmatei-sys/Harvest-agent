@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { ArrowLeft, ArrowRight, X, Plus, Calendar, Save, Send, Trash2 } from 'lucide-react';
 import { collection, addDoc, updateDoc, doc, getDoc } from 'firebase/firestore';
 import { db, auth } from '../firebase';
@@ -143,7 +143,7 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
   // ─── Step 1: Write ─────────────────────────────────────────────
   if (step === 'write') {
     return (
-      <div className="fixed inset-0 z-50 flex flex-col bg-white">
+      <div className="fixed inset-0 z-[200] flex flex-col bg-white">
         {/* Header */}
         <div className="px-4 py-3 flex items-center justify-between z-10">
           <button
@@ -162,7 +162,7 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
         </div>
 
         {/* Writing area */}
-        <div className="flex-1 overflow-y-auto px-4 pb-32">
+        <div className="flex-1 overflow-y-auto px-4 pb-20">
           <div className="max-w-3xl mx-auto">
             {error && (
               <div className="bg-red-50 text-red-600 p-3 rounded-xl text-sm mb-4">
@@ -193,8 +193,8 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
           </div>
         </div>
 
-        {/* Hint bar */}
-        <div className="fixed bottom-0 left-0 right-0 bg-gray-50 border-t border-gray-100 px-4 py-2.5 text-center">
+        {/* Hint bar — above admin nav bar */}
+        <div className="fixed bottom-0 left-0 right-0 bg-gray-50 border-t border-gray-100 px-4 pt-2.5 pb-20 text-center z-20">
           <span className="text-xs text-gray-400">
             Type <kbd className="px-1.5 py-0.5 bg-gray-200 rounded text-gray-500 font-mono">/</kbd> for formatting commands
           </span>
@@ -205,7 +205,7 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
 
   // ─── Step 2: Publish ───────────────────────────────────────────
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-[#f8f9fa]">
+    <div className="fixed inset-0 z-[200] flex flex-col bg-[#f8f9fa]">
       {/* Header */}
       <div className="bg-white px-4 py-3 flex items-center justify-between shadow-sm z-10">
         <div className="flex items-center gap-3">
@@ -222,7 +222,7 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-4 pb-40 sm:pb-32">
+      <div className="flex-1 overflow-y-auto p-4" style={{ paddingBottom: 'max(11rem, calc(7rem + env(safe-area-inset-bottom)))' }}>
         <div className="max-w-2xl mx-auto space-y-5">
           {error && (
             <div className="bg-red-50 text-red-600 p-3 rounded-xl text-sm">
@@ -340,8 +340,8 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
         </div>
       </div>
 
-      {/* Bottom action bar */}
-      <div className="bg-white border-t border-gray-100 p-3 pb-safe w-full z-20 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
+      {/* Bottom action bar — fixed above admin nav bar */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 w-full z-20 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] px-3 pt-3 pb-20">
         <div className="max-w-2xl mx-auto flex flex-col sm:flex-row gap-2">
           <button
             onClick={() => handleSave('draft')}
