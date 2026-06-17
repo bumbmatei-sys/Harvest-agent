@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/affiliate/retry-transfers",
+      "schedule": "0 * * * *"
+    }
+  ]
+}

@@ -112,6 +112,16 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
     if (!tid) { alert('Unable to find your organization. Please try again.'); return; }
     setCheckoutLoading(planId);
     try {
+      // Read referrerId from localStorage (may be JSON or legacy plain string)
+      let referrerId: string | undefined;
+      try {
+        const stored = localStorage.getItem('affiliateReferrerId');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          referrerId = parsed.id || stored;
+        }
+      } catch { /* ignore */ }
+
       const resp = await authFetch('/api/stripe/checkout', {
         method: 'POST',
         body: JSON.stringify({
@@ -120,6 +130,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
           tenantId: tid,
           tenantName: subdomain,
           email: email || undefined,
+          ...(referrerId ? { referrerId } : {}),
         }),
       });
       const data = await resp.json();

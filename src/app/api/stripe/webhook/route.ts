@@ -3,7 +3,7 @@ import type { NextRequest } from 'next/server';
 import Stripe from 'stripe';
 import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
-import { generateAccessCode } from '@/app/api/ai-assistant/route';
+import { generateAccessCode } from '@/lib/ai-utils';
 import { PLAN_PRICES, getPlanFromPriceId } from '@/lib/stripe-config';
 
 export const dynamic = 'force-dynamic';
@@ -111,28 +111,54 @@ export async function POST(request: NextRequest) {
                   const connectAccountId = referrerDoc.data()?.affiliateStripeAccountId;
                   const connectStatus = referrerDoc.data()?.affiliateConnectStatus;
                   if (connectAccountId && connectStatus === 'active' && commissionAmount > 0) {
-                    await stripe.transfers.create({
+                    const transfer = await stripe.transfers.create({
                       amount: commissionAmount,
                       currency: 'usd',
                       destination: connectAccountId,
                       metadata: { referrerId, tenantId, plan, type: 'affiliate_commission' },
                     });
                     commissionStatus = 'paid';
+                    // Store transfer ID for tracking
+                    await adminDb.collection('affiliate_commissions').add({
+                      referrerId,
+                      tenantId,
+                      plan,
+                      amount: session.amount_total || 0,
+                      commission: commissionAmount,
+                      status: commissionStatus,
+                      type: 'initial',
+                      stripeSubscriptionId: subscriptionId,
+                      stripeTransferId: transfer.id,
+                      createdAt: new Date().toISOString(),
+                    });
+                  } else {
+                    // No active Connect account — record as pending
+                    await adminDb.collection('affiliate_commissions').add({
+                      referrerId,
+                      tenantId,
+                      plan,
+                      amount: session.amount_total || 0,
+                      commission: commissionAmount,
+                      status: 'pending',
+                      type: 'initial',
+                      stripeSubscriptionId: subscriptionId,
+                      createdAt: new Date().toISOString(),
+                    });
                   }
                 } catch (transferErr) {
                   console.error('Affiliate transfer failed (will remain pending):', transferErr);
+                  await adminDb.collection('affiliate_commissions').add({
+                    referrerId,
+                    tenantId,
+                    plan,
+                    amount: session.amount_total || 0,
+                    commission: commissionAmount,
+                    status: 'pending',
+                    type: 'initial',
+                    stripeSubscriptionId: subscriptionId,
+                    createdAt: new Date().toISOString(),
+                  });
                 }
-                await adminDb.collection('affiliate_commissions').add({
-                  referrerId,
-                  tenantId,
-                  plan,
-                  amount: session.amount_total || 0,
-                  commission: commissionAmount,
-                  status: commissionStatus,
-                  type: 'initial',
-                  stripeSubscriptionId: subscriptionId,
-                  createdAt: new Date().toISOString(),
-                });
                 // Increment referrer's earnings and referral count
                 await adminDb.collection('users').doc(referrerId).update({
                   affiliateEarnings: FieldValue.increment(commissionAmount),
@@ -300,18 +326,20 @@ export async function POST(request: NextRequest) {
                 } else {
                 const commissionAmount = Math.round((invoice.amount_paid || 0) * 0.10);
                 let commissionStatus = 'pending';
+                let stripeTransferId: string | undefined;
                 try {
                   const referrerDoc = await adminDb.collection('users').doc(referrerId).get();
                   const connectAccountId = referrerDoc.data()?.affiliateStripeAccountId;
                   const connectStatus = referrerDoc.data()?.affiliateConnectStatus;
                   if (connectAccountId && connectStatus === 'active' && commissionAmount > 0) {
-                    await stripe.transfers.create({
+                    const transfer = await stripe.transfers.create({
                       amount: commissionAmount,
                       currency: 'usd',
                       destination: connectAccountId,
                       metadata: { referrerId, tenantId, plan: subscription.metadata?.plan || 'unknown', type: 'affiliate_commission_recurring' },
                     });
                     commissionStatus = 'paid';
+                    stripeTransferId = transfer.id;
                   }
                 } catch (transferErr) {
                   console.error('Affiliate recurring transfer failed:', transferErr);
@@ -326,6 +354,7 @@ export async function POST(request: NextRequest) {
                   type: 'recurring',
                   stripeSubscriptionId: subscriptionId,
                   stripeInvoiceId: invoice.id,
+                  ...(stripeTransferId ? { stripeTransferId } : {}),
                   createdAt: new Date().toISOString(),
                 });
                 await adminDb.collection('users').doc(referrerId).update({
@@ -388,6 +417,42 @@ export async function POST(request: NextRequest) {
             updatedAt: new Date().toISOString(),
           });
           console.log(`⚠️ Dispute created for tenant ${tenantId}`);
+        }
+        break;
+      }
+
+      case 'transfer.failed': {
+        const transfer = event.data.object as Stripe.Transfer;
+        const referrerId = transfer.metadata?.referrerId;
+        if (referrerId && transfer.metadata?.type === 'affiliate_commission') {
+          console.log(`⚠️ Affiliate transfer failed for referrer ${referrerId}: ${transfer.id}`);
+          // Commission already recorded as 'pending' — no action needed
+          // The retry cron job will pick it up
+        }
+        break;
+      }
+
+      case 'transfer.paid': {
+        const transfer = event.data.object as Stripe.Transfer;
+        const referrerId = transfer.metadata?.referrerId;
+        if (referrerId && transfer.metadata?.type?.startsWith('affiliate_commission')) {
+          // Update commission status from pending to paid
+          const commissionSnap = await adminDb.collection('affiliate_commissions')
+            .where('stripeTransferId', '==', transfer.id)
+            .limit(1)
+            .get();
+          if (!commissionSnap.empty) {
+            const commissionDoc = commissionSnap.docs[0];
+            if (commissionDoc.data().status === 'pending') {
+              await commissionDoc.ref.update({ status: 'paid', updatedAt: new Date().toISOString() });
+              // Decrement pending payouts
+              await adminDb.collection('users').doc(referrerId).update({
+                affiliatePendingPayouts: FieldValue.increment(-(commissionDoc.data().commission || 0)),
+                updatedAt: new Date().toISOString(),
+              });
+              console.log(`✅ Transfer ${transfer.id} confirmed for referrer ${referrerId}`);
+            }
+          }
         }
         break;
       }

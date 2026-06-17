@@ -70,7 +70,8 @@
       "collectionGroup": "affiliate_commissions",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "stripeInvoiceId", "order": "ASCENDING" }
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "ASCENDING" }
       ]
     }
   ],
