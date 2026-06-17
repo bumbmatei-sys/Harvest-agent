@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import Stripe from 'stripe';
 import { adminDb } from '@/lib/firebase-admin';
+import { FieldValue } from 'firebase-admin/firestore';
 import { generateAccessCode } from '@/app/api/ai-assistant/route';
 
 export const dynamic = 'force-dynamic';
@@ -81,6 +82,51 @@ export async function POST(request: NextRequest) {
               }
 
               await adminDb.collection('tenants').doc(tenantId).update(updateData);
+
+              // Affiliate commission: record if checkout has a referrerId
+              const referrerId = session.metadata?.referrerId;
+              if (referrerId) {
+                const commissionAmount = Math.round(
+                  (session.amount_total || 0) * 0.10 // 10% commission
+                );
+                // Look up referrer's Stripe Connect account for payout
+                let commissionStatus = 'pending';
+                try {
+                  const referrerDoc = await adminDb.collection('users').doc(referrerId).get();
+                  const connectAccountId = referrerDoc.data()?.affiliateStripeAccountId;
+                  if (connectAccountId && commissionAmount > 0) {
+                    await stripe.transfers.create({
+                      amount: commissionAmount,
+                      currency: 'usd',
+                      destination: connectAccountId,
+                      metadata: { referrerId, tenantId, plan, type: 'affiliate_commission' },
+                    });
+                    commissionStatus = 'paid';
+                  }
+                } catch (transferErr) {
+                  console.error('Affiliate transfer failed (will remain pending):', transferErr);
+                }
+                await adminDb.collection('affiliate_commissions').add({
+                  referrerId,
+                  tenantId,
+                  plan,
+                  amount: session.amount_total || 0,
+                  commission: commissionAmount,
+                  status: commissionStatus,
+                  stripeSubscriptionId: subscriptionId,
+                  createdAt: new Date().toISOString(),
+                });
+                // Increment referrer's earnings and referral count
+                await adminDb.collection('users').doc(referrerId).update({
+                  affiliateEarnings: FieldValue.increment(commissionAmount),
+                  affiliatePendingPayouts: commissionStatus === 'paid'
+                    ? FieldValue.increment(0)
+                    : FieldValue.increment(commissionAmount),
+                  affiliateReferralCount: FieldValue.increment(1),
+                  updatedAt: new Date().toISOString(),
+                });
+                console.log(`💰 Affiliate commission ${commissionStatus} for referrer ${referrerId}: $${(commissionAmount / 100).toFixed(2)}`);
+              }
 
               // Update all users belonging to this tenant
               const usersSnap = await adminDb.collection('users')
@@ -215,6 +261,57 @@ export async function POST(request: NextRequest) {
             });
             console.log(`✅ Tenant ${tenantId} reactivated after successful payment`);
           }
+
+          // Affiliate commission on RECURRING invoice payments only
+          // Skip subscription_create (first invoice) — already handled in checkout.session.completed
+          const subscriptionId = (invoice as any).subscription as string | null;
+          const billingReason = (invoice as any).billing_reason;
+          if (subscriptionId && billingReason !== 'subscription_create') {
+            try {
+              const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+              const referrerId = subscription.metadata?.referrerId;
+              if (referrerId) {
+                const commissionAmount = Math.round((invoice.amount_paid || 0) * 0.10);
+                let commissionStatus = 'pending';
+                try {
+                  const referrerDoc = await adminDb.collection('users').doc(referrerId).get();
+                  const connectAccountId = referrerDoc.data()?.affiliateStripeAccountId;
+                  if (connectAccountId && commissionAmount > 0) {
+                    await stripe.transfers.create({
+                      amount: commissionAmount,
+                      currency: 'usd',
+                      destination: connectAccountId,
+                      metadata: { referrerId, tenantId, plan: subscription.metadata?.plan || 'unknown', type: 'affiliate_commission_recurring' },
+                    });
+                    commissionStatus = 'paid';
+                  }
+                } catch (transferErr) {
+                  console.error('Affiliate recurring transfer failed:', transferErr);
+                }
+                await adminDb.collection('affiliate_commissions').add({
+                  referrerId,
+                  tenantId,
+                  plan: subscription.metadata?.plan || 'unknown',
+                  amount: invoice.amount_paid || 0,
+                  commission: commissionAmount,
+                  status: commissionStatus,
+                  stripeSubscriptionId: subscriptionId,
+                  stripeInvoiceId: invoice.id,
+                  createdAt: new Date().toISOString(),
+                });
+                await adminDb.collection('users').doc(referrerId).update({
+                  affiliateEarnings: FieldValue.increment(commissionAmount),
+                  affiliatePendingPayouts: commissionStatus === 'paid'
+                    ? FieldValue.increment(0)
+                    : FieldValue.increment(commissionAmount),
+                  updatedAt: new Date().toISOString(),
+                });
+                console.log(`💰 Recurring affiliate commission ${commissionStatus} for referrer ${referrerId}: $${(commissionAmount / 100).toFixed(2)}`);
+              }
+            } catch (subErr) {
+              console.error('Failed to check subscription for affiliate commission:', subErr);
+            }
+          }
         }
         break;
       }
@@ -275,34 +372,34 @@ export async function POST(request: NextRequest) {
 
 function getMonthlyPriceId(plan: string): string {
   const map: Record<string, string> = {
-    plus: 'price_1TiydE1YKkcSbTf34ZbpeJjd',
-    pro: 'price_1TiydE1YKkcSbTf3pATPgbci',
-    max: 'price_1TiycF1YKkcSbTf3gfOoL0Dm',
-    ultra: 'price_1TiycG1YKkcSbTf35YIEaVEl',
+    plus: 'price_1TjKTb1YKkcSbTf3kxXDuq5X',
+    pro: 'price_1TjKTc1YKkcSbTf3cZEjJoOf',
+    max: 'price_1TjKTc1YKkcSbTf3DHsyFJSF',
+    ultra: 'price_1TjKTc1YKkcSbTf3nLmjx30d',
   };
   return map[plan] || map.plus;
 }
 
 function getYearlyPriceId(plan: string): string {
   const map: Record<string, string> = {
-    plus: 'price_1TiydE1YKkcSbTf332ZMf8n9',
-    pro: 'price_1TiydE1YKkcSbTf31nC69ngk',
-    max: 'price_1TiycF1YKkcSbTf3gSUXqzl9',
-    ultra: 'price_1TiycG1YKkcSbTf3d54wo7lB',
+    plus: 'price_1TjKTb1YKkcSbTf3qzuvjmLU',
+    pro: 'price_1TjKTc1YKkcSbTf3rWZzmIYk',
+    max: 'price_1TjKTc1YKkcSbTf3O5KzCkNr',
+    ultra: 'price_1TjKTd1YKkcSbTf3I0M6RJsh',
   };
   return map[plan] || map.plus;
 }
 
 function getPlanFromPriceId(priceId: string): string | null {
   const allPrices: Record<string, string> = {
-    'price_1TiydE1YKkcSbTf34ZbpeJjd': 'plus',
-    'price_1TiydE1YKkcSbTf332ZMf8n9': 'plus',
-    'price_1TiydE1YKkcSbTf3pATPgbci': 'pro',
-    'price_1TiydE1YKkcSbTf31nC69ngk': 'pro',
-    'price_1TiycF1YKkcSbTf3gfOoL0Dm': 'max',
-    'price_1TiycF1YKkcSbTf3gSUXqzl9': 'max',
-    'price_1TiycG1YKkcSbTf35YIEaVEl': 'ultra',
-    'price_1TiycG1YKkcSbTf3d54wo7lB': 'ultra',
+    'price_1TjKTb1YKkcSbTf3kxXDuq5X': 'plus',
+    'price_1TjKTb1YKkcSbTf3qzuvjmLU': 'plus',
+    'price_1TjKTc1YKkcSbTf3cZEjJoOf': 'pro',
+    'price_1TjKTc1YKkcSbTf3rWZzmIYk': 'pro',
+    'price_1TjKTc1YKkcSbTf3DHsyFJSF': 'max',
+    'price_1TjKTc1YKkcSbTf3O5KzCkNr': 'max',
+    'price_1TjKTc1YKkcSbTf3nLmjx30d': 'ultra',
+    'price_1TjKTd1YKkcSbTf3I0M6RJsh': 'ultra',
   };
   return allPrices[priceId] || null;
 }

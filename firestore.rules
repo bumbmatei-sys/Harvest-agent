@@ -212,6 +212,17 @@ service cloud.firestore {
       allow update, delete: if false; // Server-only via admin SDK
     }
 
+    // ─── Affiliate Commissions (server-only writes, admin reads) ───
+
+    match /affiliate_commissions/{commissionId} {
+      allow read: if isAuthenticated() &&
+        (request.auth.token.superAdmin == true ||
+         resource.data.referrerId == request.auth.uid);
+      allow create: if false; // Only via admin SDK (webhook handler)
+      allow update: if isAuthenticated() && request.auth.token.superAdmin == true;
+      allow delete: if false;
+    }
+
     // ─── Catch-all: DENY everything not matched above ────────────────
   }
 }

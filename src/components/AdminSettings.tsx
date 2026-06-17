@@ -5,6 +5,8 @@ import { TenantPlan } from '../types/tenant.types';
 import { getPlanFeatures, PlanFeatures } from '../utils/plan-features';
 import { ImageUpload } from './ImageUpload';
 import EnterpriseContactModal from './EnterpriseContactModal';
+import AffiliateSection from './AffiliateSection';
+import { Share2 } from 'lucide-react';
 
 interface AdminSettingsProps {
   onBack: () => void;
@@ -16,10 +18,10 @@ interface AdminSettingsProps {
 }
 
 const PLANS: { id: TenantPlan; name: string; monthlyPrice: string; yearlyPrice: string; yearlyPromo: string; yearlyOriginal: string; icon: any; color: string; popular?: boolean }[] = [
-  { id: 'plus', name: 'Plus', monthlyPrice: '$79/mo', yearlyPrice: '$790/yr', yearlyPromo: '$790', yearlyOriginal: '$948', icon: Zap, color: '#6366f1' },
-  { id: 'pro', name: 'Pro', monthlyPrice: '$199/mo', yearlyPrice: '$1,990/yr', yearlyPromo: '$1,990', yearlyOriginal: '$2,388', icon: Crown, color: '#d4a017' },
-  { id: 'max', name: 'Max', monthlyPrice: '$399/mo', yearlyPrice: '$3,990/yr', yearlyPromo: '$3,990', yearlyOriginal: '$4,788', icon: Star, color: '#8b5cf6', popular: true },
-  { id: 'ultra', name: 'Ultra', monthlyPrice: '$699/mo', yearlyPrice: '$6,990/yr', yearlyPromo: '$6,990', yearlyOriginal: '$8,388', icon: Building2, color: '#b45309' },
+  { id: 'plus', name: 'Individual', monthlyPrice: '$49/mo', yearlyPrice: '$490/yr', yearlyPromo: '$490', yearlyOriginal: '$588', icon: Zap, color: '#6366f1' },
+  { id: 'pro', name: 'Community', monthlyPrice: '$99/mo', yearlyPrice: '$990/yr', yearlyPromo: '$990', yearlyOriginal: '$1,188', icon: Crown, color: '#d4a017' },
+  { id: 'max', name: 'Church', monthlyPrice: '$199/mo', yearlyPrice: '$1,990/yr', yearlyPromo: '$1,990', yearlyOriginal: '$2,388', icon: Star, color: '#8b5cf6', popular: true },
+  { id: 'ultra', name: 'Ministry', monthlyPrice: '$349/mo', yearlyPrice: '$3,490/yr', yearlyPromo: '$3,490', yearlyOriginal: '$4,188', icon: Building2, color: '#b45309' },
   { id: 'enterprise', name: 'Enterprise', monthlyPrice: 'Custom', yearlyPrice: 'Custom', yearlyPromo: 'Custom', yearlyOriginal: '', icon: Building2, color: '#0b1121' },
 ];
 
@@ -1431,9 +1433,9 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
                 {!aiAssistantSubscribed ? (
                   <>
                     <div className="flex items-baseline gap-2 mb-4">
-                      <span className="text-2xl font-bold text-gray-900">$299 setup</span>
+                      <span className="text-2xl font-bold text-gray-900">$150 setup</span>
                       <span className="text-gray-400">+</span>
-                      <span className="text-2xl font-bold text-gray-900">$199/mo</span>
+                      <span className="text-2xl font-bold text-gray-900">$100/mo</span>
                     </div>
                     <button
                       onClick={handleAiAssistantCheckout}
@@ -1454,7 +1456,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
                   <>
                     <div className="flex items-center gap-3 mb-4">
                       <span className="px-3 py-1 bg-green-100 text-green-700 text-sm font-semibold rounded-full">Active</span>
-                      <span className="text-sm text-gray-600">$199/mo</span>
+                      <span className="text-sm text-gray-600">$100/mo</span>
                     </div>
 
                     {/* Access Code */}
@@ -1497,6 +1499,28 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
             </div>
           )}
         </div>
+      </div>
+
+      {/* Affiliate Program */}
+      <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+        <button
+          onClick={() => toggleSection('affiliate')}
+          className="w-full flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 transition-colors"
+        >
+          <div className="flex items-center gap-3">
+            <Share2 size={20} className="text-green-600" />
+            <span className="text-sm font-semibold text-gray-900">Affiliate Program</span>
+          </div>
+          <ChevronDown
+            size={18}
+            className={`text-gray-400 transition-transform duration-300 ${expandedSection === 'affiliate' ? 'rotate-180' : ''}`}
+          />
+        </button>
+        {expandedSection === 'affiliate' && (
+          <div className="px-4 pb-4 border-t border-gray-100 pt-4">
+            <AffiliateSection />
+          </div>
+        )}
       </div>
 
       {/* Billing & Payments */}

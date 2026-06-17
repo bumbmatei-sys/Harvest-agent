@@ -8,14 +8,14 @@ export const dynamic = 'force-dynamic';
 
 // Price IDs for each plan
 // AI Assistant add-on price IDs
-const AI_ASSISTANT_MONTHLY = 'price_1TiycF1YKkcSbTf3NTQz89hz';
-const AI_ASSISTANT_SETUP = 'price_1TiycF1YKkcSbTf3Vesfw5Gp';
+const AI_ASSISTANT_MONTHLY = 'price_1TjKTd1YKkcSbTf3HSrtrxE9';
+const AI_ASSISTANT_SETUP = 'price_1TjKTd1YKkcSbTf3tQVxQfC5';
 
 const PRICE_MAP: Record<string, Record<string, string>> = {
-  plus: { monthly: 'price_1TiydE1YKkcSbTf34ZbpeJjd', yearly: 'price_1TiydE1YKkcSbTf332ZMf8n9' },
-  pro: { monthly: 'price_1TiydE1YKkcSbTf3pATPgbci', yearly: 'price_1TiydE1YKkcSbTf31nC69ngk' },
-  max: { monthly: 'price_1TiycF1YKkcSbTf3gfOoL0Dm', yearly: 'price_1TiycF1YKkcSbTf3gSUXqzl9' },
-  ultra: { monthly: 'price_1TiycG1YKkcSbTf35YIEaVEl', yearly: 'price_1TiycG1YKkcSbTf3d54wo7lB' },
+  plus: { monthly: 'price_1TjKTb1YKkcSbTf3kxXDuq5X', yearly: 'price_1TjKTb1YKkcSbTf3qzuvjmLU' },
+  pro: { monthly: 'price_1TjKTc1YKkcSbTf3cZEjJoOf', yearly: 'price_1TjKTc1YKkcSbTf3rWZzmIYk' },
+  max: { monthly: 'price_1TjKTc1YKkcSbTf3DHsyFJSF', yearly: 'price_1TjKTc1YKkcSbTf3O5KzCkNr' },
+  ultra: { monthly: 'price_1TjKTc1YKkcSbTf3nLmjx30d', yearly: 'price_1TjKTd1YKkcSbTf3I0M6RJsh' },
 };
 
 export async function POST(request: NextRequest) {
@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     const stripe = new Stripe(stripeKey, { apiVersion: '2026-05-27.dahlia' });
 
     const body = await request.json();
-    const { plan, billing, tenantId, tenantName, email, addOn } = body;
+    const { plan, billing, tenantId, tenantName, email, addOn, referrerId } = body;
 
     // Verify tenant membership
     if (!userOrErr.isSuperAdmin && userOrErr.tenantId !== tenantId) {
@@ -120,12 +120,12 @@ export async function POST(request: NextRequest) {
       line_items: [{ price: priceId, quantity: 1 }],
       success_url: `${baseUrl}/?stripe=success&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${baseUrl}/?stripe=cancel`,
-      metadata: { tenantId, plan, billing },
+      metadata: { tenantId, plan, billing, ...(referrerId ? { referrerId } : {}) },
       subscription_data: {
-        metadata: { tenantId, plan, billing },
+        metadata: { tenantId, plan, billing, ...(referrerId ? { referrerId } : {}) },
       },
       payment_intent_data: {
-        metadata: { tenantId, plan, billing },
+        metadata: { tenantId, plan, billing, ...(referrerId ? { referrerId } : {}) },
       },
     });
 

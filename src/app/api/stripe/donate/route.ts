@@ -7,9 +7,9 @@ import { requireAuth } from '@/lib/api-auth';
 export const dynamic = 'force-dynamic';
 
 const FEE_MAP: Record<string, number> = {
-  plus: 0.30,
-  pro: 0.20,
-  max: 0.10,
+  plus: 0.15,
+  pro: 0.10,
+  max: 0.05,
   ultra: 0,
   enterprise: 0,
 };

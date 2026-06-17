@@ -109,6 +109,26 @@ export function getPlanFeatures(plan: TenantPlan): PlanFeatures {
 }
 
 /**
+ * Human-readable display names for each plan tier.
+ * Internal IDs (plus/pro/max/ultra/enterprise) stay the same.
+ */
+export const PLAN_DISPLAY_NAMES: Record<TenantPlan, string> = {
+  plus: 'Individual',
+  pro: 'Community',
+  max: 'Church',
+  ultra: 'Ministry',
+  enterprise: 'Enterprise',
+};
+
+/**
+ * Get the display name for a given plan.
+ * Defaults to 'Individual' if plan is unknown.
+ */
+export function getPlanDisplayName(plan: TenantPlan): string {
+  return PLAN_DISPLAY_NAMES[plan] || PLAN_DISPLAY_NAMES.plus;
+}
+
+/**
  * Check if a specific feature is enabled for a plan.
  */
 export function hasFeature(plan: TenantPlan, feature: keyof PlanFeatures): boolean {
