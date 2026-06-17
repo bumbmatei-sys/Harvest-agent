@@ -10,21 +10,21 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
  *
  * Body:
  *   { action: "embed", text: string }
- *   { action: "generate", prompt: string, systemInstruction?: string, model?: string }
+ *   { action: "generate", prompt: string, systemInstruction?: string }
  */
 export async function POST(request: Request) {
   try {
-    if (!process.env.GEMINI_API_KEY) {
-      return NextResponse.json(
-        { error: 'GEMINI_API_KEY is not configured on the server.' },
-        { status: 500 }
-      );
-    }
-
     const body = await request.json();
     const { action } = body;
 
     if (action === 'embed') {
+      if (!process.env.GEMINI_API_KEY) {
+        return NextResponse.json(
+          { error: 'GEMINI_API_KEY is not configured on the server.' },
+          { status: 500 }
+        );
+      }
+
       const { text } = body;
       if (!text || typeof text !== 'string') {
         return NextResponse.json(
@@ -43,7 +43,14 @@ export async function POST(request: Request) {
     }
 
     if (action === 'generate') {
-      const { prompt, systemInstruction, model } = body;
+      if (!process.env.MIMO_API_KEY) {
+        return NextResponse.json(
+          { error: 'MIMO_API_KEY is not configured on the server.' },
+          { status: 500 }
+        );
+      }
+
+      const { prompt, systemInstruction } = body;
       if (!prompt || typeof prompt !== 'string') {
         return NextResponse.json(
           { error: '"prompt" is required for generate action.' },
@@ -51,15 +58,38 @@ export async function POST(request: Request) {
         );
       }
 
-      const response = await ai.models.generateContent({
-        model: model || 'gemini-3.1-flash-lite-preview',
-        contents: prompt,
-        config: {
-          ...(systemInstruction ? { systemInstruction } : {}),
+      const messages: Array<{ role: string; content: string }> = [];
+      if (systemInstruction) {
+        messages.push({ role: 'system', content: systemInstruction });
+      }
+      messages.push({ role: 'user', content: prompt });
+
+      const response = await fetch('https://token-plan-cn.xiaomimimo.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.MIMO_API_KEY}`,
         },
+        body: JSON.stringify({
+          model: 'mimo-v2.5',
+          messages,
+          max_completion_tokens: 4096,
+          temperature: 0.7,
+          top_p: 0.95,
+        }),
       });
 
-      const text = response.text || '';
+      if (!response.ok) {
+        const errBody = await response.text();
+        console.error('MiMo API error:', response.status, errBody);
+        return NextResponse.json(
+          { error: `MiMo API error: ${response.status}` },
+          { status: 502 }
+        );
+      }
+
+      const data = await response.json();
+      const text = data.choices?.[0]?.message?.content || '';
       return NextResponse.json({ text });
     }
 
@@ -68,7 +98,7 @@ export async function POST(request: Request) {
       { status: 400 }
     );
   } catch (error: any) {
-    console.error('Gemini API route error:', error);
+    console.error('API route error:', error);
     return NextResponse.json(
       { error: error?.message || 'Internal server error' },
       { status: 500 }

@@ -6,7 +6,8 @@ import { collection, addDoc, serverTimestamp, query, where, getDocs, deleteDoc, 
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { getTenantScope } from '../utils/tenant-scope';
 
-// Gemini API calls are proxied through /api/gemini to keep the API key server-side
+// AI API calls are proxied through /api/gemini to keep API keys server-side
+// Embeddings: Gemini | Chat: Xiaomi MiMo
 
 // ─────────────────────────────────────────────
 // HARVEST — AI Chat Interface (TypeScript)
