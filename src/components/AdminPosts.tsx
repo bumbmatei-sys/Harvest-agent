@@ -3,7 +3,6 @@ import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { collection, query, where, orderBy, onSnapshot, addDoc, deleteDoc, doc, getDoc, updateDoc, arrayUnion, arrayRemove, limit } from 'firebase/firestore';
 import { db, auth } from '../firebase';
-import { Country, City } from 'country-state-city';
 import { ImageUpload } from './ImageUpload';
 import { MessageSquare, BarChart2, Calendar as CalendarIcon, Image as ImageIcon, Send, MoreVertical, ThumbsUp, Check, X } from 'lucide-react';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
@@ -75,21 +74,13 @@ const AdminPosts: React.FC<AdminPostsProps> = ({ userRole, userPermissions }) =>
  const [eventDate, setEventDate] = useState('');
  const [eventTime, setEventTime] = useState('');
  const [eventLocation, setEventLocation] = useState('');
-  const [targetCountry, setTargetCountry] = useState<string>('');
-  const [targetCity, setTargetCity] = useState<string>('');
- 
+
  const [isSubmitting, setIsSubmitting] = useState(false);
  const [editingPostId, setEditingPostId] = useState<string | null>(null);
  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
- const allCountries = Country.getAllCountries();
- const availableCountries = (userRole === 'super_admin' || userPermissions?.fullAccess) 
-   ? allCountries 
-   : allCountries.filter(c => userPermissions?.postRegions?.includes(c.name));
 
- const selectedCountryCode = allCountries.find(c => c.name === targetCountry)?.isoCode;
- const availableCities = selectedCountryCode ? City.getCitiesOfCountry(selectedCountryCode) || [] : [];
 
  useEffect(() => {
  let unsubscribe: (() => void) | null = null;
@@ -146,8 +137,6 @@ const AdminPosts: React.FC<AdminPostsProps> = ({ userRole, userPermissions }) =>
  createdAt: new Date().toISOString(),
  content: content.trim(),
         likes: [],
-        targetCountry: targetCountry || 'Global',
-        targetCity: targetCity || ''
       };
 
  if (imageUrl.trim()) {
@@ -225,8 +214,6 @@ const AdminPosts: React.FC<AdminPostsProps> = ({ userRole, userPermissions }) =>
       setEventTime('');
       setEventLocation('');
     }
-    setTargetCountry(post.targetCountry || '');
-    setTargetCity(post.targetCity || '');
     setEditingPostId(post.id);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -517,50 +504,7 @@ const AdminPosts: React.FC<AdminPostsProps> = ({ userRole, userPermissions }) =>
  </div>
  )}
 
- 
-        <div className="pt-3 border-t border-gray-100">
-          <label className="block text-sm font-medium text-gray-700 mb-2">Target Audience</label>
-          <div className="flex gap-4">
-            <div className="flex-1">
-              <select
-                value={targetCountry}
-                onChange={(e) => {
-                  setTargetCountry(e.target.value);
-                  setTargetCity('');
-                }}
-                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-1 focus:ring-[#d4a017] outline-none"
-              >
-                {(userRole === 'super_admin' || userPermissions?.fullAccess) && (
-                  <option value="">Global (All Countries)</option>
-                )}
-                {!(userRole === 'super_admin' || userPermissions?.fullAccess) && !targetCountry && (
-                  <option value="">Select a Country</option>
-                )}
-                {availableCountries.map(c => (
-                  <option key={c.isoCode} value={c.name}>{c.name}</option>
-                ))}
-              </select>
-            </div>
-            
-            {targetCountry && (
-              <div className="flex-1">
-                <select
-                  value={targetCity}
-                  onChange={(e) => setTargetCity(e.target.value)}
-                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-1 focus:ring-[#d4a017] outline-none"
-                >
-                  <option value="">All Cities</option>
-                  {availableCities.map(city => (
-                    <option key={city.name} value={city.name}>{city.name}</option>
-                  ))}
-                </select>
-              </div>
-            )}
-          </div>
-          {!(userRole === 'super_admin' || userPermissions?.fullAccess) && availableCountries.length === 0 && (
-            <span className="text-sm text-red-500 mt-2 block">No regions assigned. You cannot post.</span>
-          )}
-        </div>
+
 
         <div className="flex justify-end pt-2 border-t border-gray-100 gap-2">
  {editingPostId && (
@@ -574,8 +518,7 @@ const AdminPosts: React.FC<AdminPostsProps> = ({ userRole, userPermissions }) =>
  setEventDate('');
  setEventTime('');
  setEventLocation('');
- setTargetCountry('');
- setTargetCity('');
+
 }}
                 className="px-4 py-2 text-gray-500 hover:bg-gray-100 :bg-gray-800 rounded-lg font-medium text-sm transition-colors"
  >
@@ -584,7 +527,7 @@ const AdminPosts: React.FC<AdminPostsProps> = ({ userRole, userPermissions }) =>
  )}
  <button
  onClick={handlePost}
- disabled={isSubmitting || (!content.trim() && activeTab !== 'event') || (!(userRole === 'super_admin' || userPermissions?.fullAccess) && !targetCountry)}
+ disabled={isSubmitting || (!content.trim() && activeTab !== 'event')}
  className="flex items-center gap-2 px-6 py-2 bg-[#e6b325] text-white rounded-lg font-medium text-sm hover:bg-[#d4a017] transition-colors disabled:opacity-50"
  >
  <Send size={16} />
@@ -622,11 +565,7 @@ const AdminPosts: React.FC<AdminPostsProps> = ({ userRole, userPermissions }) =>
  Pinned
                         </span>
                       )}
-                      {post.targetCountry && post.targetCountry !== 'Global' && (
-                        <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
-                          📍 {post.targetCountry}{post.targetCity ? `, ${post.targetCity}` : ''}
-                        </span>
-                      )}
+
  </div>
  <p className="text-xs text-gray-500">{formatDate(post.createdAt)}</p>
  </div>

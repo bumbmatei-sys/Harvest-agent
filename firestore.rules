@@ -79,6 +79,27 @@ service cloud.firestore {
         (isTenantAdmin(resource.data.tenantId) || request.resource.data.tenantId == resource.data.tenantId);
       // Tenant admins can delete posts in their tenant
       allow delete: if isAuthenticated() && isTenantAdmin(resource.data.tenantId);
+
+      // ─── Comments subcollection ─────────────────────────────────────
+      match /comments/{commentId} {
+        // Read: inherit tenant from parent post
+        allow read: if isAuthenticated() &&
+          (request.auth.token.superAdmin == true ||
+           belongsToTenant(getd(/databases/$(database)/documents/community_posts/$(postId)).data.tenantId));
+        // Create: must be own authorId, belong to parent tenant, content ≤280 chars
+        allow create: if isAuthenticated() &&
+          request.resource.data.authorId == request.auth.uid &&
+          request.resource.data.content is string &&
+          request.resource.data.content.size() <= 280 &&
+          request.resource.data.keys().hasAll(['authorId', 'authorName', 'content', 'createdAt']) &&
+          belongsToTenant(getd(/databases/$(database)/documents/community_posts/$(postId)).data.tenantId);
+        // Delete: author or tenant admin (tenant from parent post)
+        allow delete: if isAuthenticated() &&
+          (resource.data.authorId == request.auth.uid ||
+           isTenantAdmin(getd(/databases/$(database)/documents/community_posts/$(postId)).data.tenantId));
+        // Comments are immutable
+        allow update: if false;
+      }
     }
 
     // ─── Blog Posts ─────────────────────────────────────────────────
