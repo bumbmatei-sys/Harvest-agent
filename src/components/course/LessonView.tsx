@@ -1,33 +1,9 @@
+"use client";
 import React, { useState } from "react";
-import { sanitizeHtml } from "../../utils/sanitize";
-import ReactPlayer from "react-player";
-import { ArrowLeft, Clock, User, List, ChevronUp, ChevronDown, BookOpen, CheckCircle, ArrowRight, X } from "lucide-react";
-import { Course, Lesson, Author, Level, Section } from "../../types/course.types";
-import { getAuthor, getAllLessons, getProgress, extractYouTubeId } from "../../utils/course.utils";
-import { BG, CARD, BORDER, TEXT, GOLD, GOLD_LIGHT, TEXT2, GREEN_BG, GREEN } from "../../utils/course.constants";
-
-function YouTubePlayer({ lesson }: { lesson: Lesson }) {
-  const videoId = lesson.youtubeId || extractYouTubeId(lesson.youtubeUrl);
-  
-  if (!videoId) {
-    return (
-      <div style={{ background: "#000", width: "100%", aspectRatio: "16/9", position: "relative", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", color: "#555", fontSize: 13 }}>
-        No Video Content
-      </div>
-    );
-  }
-
-  return (
-    <div style={{ background: "#000", width: "100%", aspectRatio: "16/9", position: "relative", overflow: "hidden" }}>
-      <ReactPlayer
-        url={`https://www.youtube.com/watch?v=${videoId}`}
-        width="100%"
-        height="100%"
-        controls={true}
-      />
-    </div>
-  );
-}
+import ReactPlayer from "react-player/youtube";
+import { Course, Lesson, Author } from "../../types/course.types";
+import { getAllLessons } from "../../utils/course.utils";
+import { GOLD, GREEN, GREEN_BG } from "../../utils/course.constants";
 
 interface LessonViewProps {
   course: Course;
@@ -35,247 +11,189 @@ interface LessonViewProps {
   authors: Author[];
   onBack: () => void;
   onComplete: (id: string) => void;
-  completed: Set<string>;
+  completed?: Set<string>;
   onSelectLesson: (lesson: Lesson) => void;
   onSelectAuthor?: (author: Author) => void;
 }
 
 export function LessonView({ course, lesson, authors, onBack, onComplete, completed, onSelectLesson, onSelectAuthor }: LessonViewProps) {
-  const [activeTab, setActiveTab] = useState<"overview" | "outline" | "sources">("overview");
-  const [expandedOutline, setExpandedOutline] = useState<Set<string>>(new Set());
-  const [showCurriculum, setShowCurriculum] = useState(false);
-  
-  const isDone = completed.has(lesson.id);
-  const author = getAuthor(lesson.authorId, authors);
+  const [activeTab, setActiveTab] = useState<"outline" | "notes" | "resources">("outline");
+
   const allLessons = getAllLessons(course);
-  const currentIndex = allLessons.findIndex(l => l.id === lesson.id);
-  const prevLesson = allLessons[currentIndex - 1];
-  const nextLesson = allLessons[currentIndex + 1];
-  const pct = getProgress(course, completed);
-  const hasSources = lesson.sources && lesson.sources.replace(/<[^>]*>?/gm, '').trim().length > 0;
+  const currentIndex = allLessons.findIndex((l) => l.id === lesson.id);
+  const prevLesson = currentIndex > 0 ? allLessons[currentIndex - 1] : null;
+  const nextLesson = currentIndex < allLessons.length - 1 ? allLessons[currentIndex + 1] : null;
+  const isCompleted = completed?.has(lesson.id);
+  const lessonNumber = currentIndex >= 0 ? currentIndex + 1 : 0;
 
-  let currentLevel: Level | undefined;
-  let currentSection: Section | undefined;
-  for (const lvl of course.levels || []) {
-    for (const sec of lvl.sections || []) {
-      if (sec.lessons.some(l => l.id === lesson.id)) {
-        currentLevel = lvl;
-        currentSection = sec;
-        break;
-      }
-    }
-    if (currentLevel) break;
-  }
+  // Resolve video URL
+  const videoUrl = lesson.youtubeUrl
+    || (lesson.youtubeId ? `https://www.youtube.com/watch?v=${lesson.youtubeId}` : "");
 
-  const [expandedLevel, setExpandedLevel] = useState<string | null>(currentLevel?.id || course.levels?.[0]?.id || null);
-
-  const toggleOutline = (id: string) => {
-    setExpandedOutline(prev => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
-  };
-
-  const handleTabClick = (tab: "overview" | "outline" | "sources") => {
-    setActiveTab(tab);
-    if (tab === "overview") {
-      setTimeout(() => {
-        document.getElementById("section-overview")?.scrollIntoView({ behavior: "smooth", block: "start" });
-      }, 50);
-    } else if (tab === "outline") {
-      setTimeout(() => {
-        document.getElementById("section-outline")?.scrollIntoView({ behavior: "smooth", block: "start" });
-      }, 50);
-    }
-  };
+  // Resolve author
+  const author = authors.find((a) => a.id === lesson.authorId);
 
   return (
-    <div style={{ background: BG, minHeight: "100vh", fontFamily: "'Nunito', sans-serif", paddingBottom: 150 }}>
-      
-      <div style={{ position: "sticky", top: 0, zIndex: 20, background: CARD, borderBottom: `1px solid ${BORDER}`, padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
-        <button onClick={onBack} style={{ background: "none", border: "none", color: TEXT, cursor: "pointer", padding: 0, display: "flex", alignItems: "center" }}>
-          <ArrowLeft size={20} />
+    <div className="max-w-[480px] mx-auto pb-24">
+      {/* Header */}
+      <div className="flex items-center gap-3 px-5 py-4 bg-white border-b border-gray-100">
+        <button
+          onClick={onBack}
+          className="w-8 h-8 rounded-full bg-gray-50 border-none flex items-center justify-center cursor-pointer flex-shrink-0"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="m15 18-6-6 6-6" /></svg>
         </button>
-        <div style={{ fontSize: 15, fontWeight: 700, color: TEXT, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", flex: 1, textAlign: "center", padding: "0 12px" }}>
-          {currentLevel?.title || course.title}
+        <div className="flex-1 min-w-0">
+          <div className="text-[11px] text-gray-400 font-semibold uppercase tracking-wider">{course.title}</div>
+          <div className="text-[15px] font-bold truncate">{lesson.title}</div>
         </div>
-        <button onClick={() => setShowCurriculum(true)} style={{ background: "none", border: "none", color: TEXT, cursor: "pointer", padding: 0, display: "flex", alignItems: "center", width: 36, justifyContent: "flex-end" }}>
-          <List size={20} />
-        </button>
       </div>
 
-      <YouTubePlayer lesson={lesson} />
-
-      <div style={{ background: CARD, borderRadius: "20px 20px 0 0", marginTop: -12, position: "relative", padding: "20px 16px 0" }}>
-        {currentSection && (
-          <div style={{ display: "inline-block", border: `1px solid ${GOLD}40`, background: GOLD_LIGHT, color: GOLD, fontSize: 10, fontWeight: 800, padding: "4px 10px", borderRadius: 99, marginBottom: 12, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-            {currentSection.title}
+      {/* Video player */}
+      <div className="relative w-full bg-black" style={{ aspectRatio: "16/9" }}>
+        {videoUrl ? (
+          <ReactPlayer
+            url={videoUrl}
+            width="100%"
+            height="100%"
+            controls
+            playing={false}
+            config={{
+              playerVars: {
+                modestbranding: 1,
+                rel: 0,
+              },
+            }}
+          />
+        ) : (
+          <div className="w-full h-full flex flex-col items-center justify-center text-gray-500">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="mb-2 text-gray-600">
+              <rect x="2" y="3" width="20" height="14" rx="2" /><path d="m8 21 4-4 4 4" />
+            </svg>
+            <span className="text-sm font-medium">No video content</span>
           </div>
         )}
-        <h1 style={{ fontFamily: "'Nunito', sans-serif", fontSize: 24, fontWeight: 800, color: TEXT, lineHeight: 1.3, marginBottom: 12 }}>{lesson.title}</h1>
-        
-        <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: TEXT2, marginBottom: 24 }}>
-          <span style={{ display: "flex", alignItems: "center", gap: 4 }}><Clock size={14} /> {lesson.duration}</span>
-          <span>•</span>
-          <button onClick={() => author && onSelectAuthor && onSelectAuthor(author)} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: GOLD, cursor: "pointer", padding: 0, fontFamily: "inherit", fontSize: 13 }}><User size={14} /> {author?.name}</button>
-        </div>
+      </div>
 
-        <div style={{ display: "flex", borderBottom: `1px solid ${BORDER}`, marginBottom: 24, position: "sticky", top: 50, background: CARD, zIndex: 10 }}>
-          {([["overview", "Overview"], ["outline", "Teaching Outline"]] as [string, string][]).concat(hasSources ? [["sources", "Sources"]] : []).map(([id, label]) => (
-            <button key={id} onClick={() => handleTabClick(id as any)}
-              style={{ flex: 1, background: "none", border: "none", borderBottom: `2.5px solid ${activeTab === id ? GOLD : "transparent"}`, color: activeTab === id ? GOLD : TEXT2, fontWeight: 700, fontSize: 14, padding: "12px 4px", cursor: "pointer", fontFamily: "inherit", transition: "all 0.2s", whiteSpace: "nowrap" }}>
-              {label}
+      {/* Content */}
+      <div className="px-5">
+        <div className="text-xs text-gray-400 font-semibold uppercase tracking-wider mt-5 mb-1">
+          Lesson {lessonNumber} of {allLessons.length}
+        </div>
+        <div className="text-[22px] font-extrabold tracking-tight mb-4">{lesson.title}</div>
+
+        {/* Tabs */}
+        <div className="flex border-b border-gray-100 -mx-5 px-5 mb-4">
+          {(["outline", "notes", "resources"] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`py-3 mr-5 text-[13px] font-semibold capitalize cursor-pointer border-b-2 transition-colors ${
+                activeTab === tab ? "text-gray-900 border-amber-600" : "text-gray-400 border-transparent hover:text-gray-600"
+              }`}
+            >
+              {tab}
             </button>
           ))}
         </div>
-      </div>
 
-      <div style={{ padding: "0 16px 20px" }}>
-        {(activeTab === "overview" || activeTab === "outline") && (
-          <>
-            {lesson.summary && (
-              <div id="section-overview" style={{ scrollMarginTop: 120, marginBottom: 32 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-                  <div style={{ width: 24, height: 24, borderRadius: "50%", background: GOLD, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 800 }}>i</div>
-                  <h2 style={{ fontSize: 18, fontWeight: 800, color: TEXT, margin: 0 }}>Overview</h2>
+        {/* Outline tab */}
+        {activeTab === "outline" && lesson.outline && lesson.outline.length > 0 && (
+          <div>
+            {lesson.outline.map((item, idx) => (
+              <div key={item.id || idx} className="flex gap-3.5 py-3.5 border-b border-gray-50">
+                <div className="text-xs font-semibold w-[42px] flex-shrink-0 pt-0.5" style={{ color: GOLD }}>
+                  {item.text?.match(/\d+:\d+/)?.[0] || `${idx * 3}:00`}
                 </div>
-                <div style={{ fontSize: 15, color: TEXT2, lineHeight: 1.7 }}>
-                  {lesson.summary}
+                <div className="text-sm text-gray-500 leading-6">
+                  <strong className="text-gray-900 font-semibold">{item.title}</strong>
+                  {item.text ? ` — ${item.text}` : ""}
                 </div>
               </div>
-            )}
-
-            {lesson.outline && lesson.outline.length > 0 && (
-              <div id="section-outline" style={{ scrollMarginTop: 120, marginBottom: 32 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-                  <List size={20} color={GOLD} />
-                  <h2 style={{ fontSize: 18, fontWeight: 800, color: TEXT, margin: 0 }}>Teaching Outline</h2>
-                </div>
-                
-                <div style={{ position: "relative", paddingLeft: 16 }}>
-                  <div style={{ position: "absolute", left: 0, top: 12, bottom: 12, width: 3, background: GOLD, borderRadius: 3 }} />
-                  
-                  <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                    {lesson.outline.map((item, i) => {
-                      const isExpanded = expandedOutline.has(item.id);
-                      return (
-                        <div key={item.id} style={{ position: "relative" }}>
-                          <div style={{ position: "absolute", left: -21, top: 4, width: 14, height: 14, borderRadius: "50%", background: isExpanded ? GOLD : "#E5E7EB", border: isExpanded ? `3px solid ${GOLD_LIGHT}` : "3px solid #fff", zIndex: 2, boxSizing: "border-box" }} />
-                          
-                          <div onClick={() => toggleOutline(item.id)} style={{ display: "flex", alignItems: "flex-start", gap: 12, cursor: "pointer", paddingLeft: 8 }}>
-                            <span style={{ flex: 1, fontWeight: 800, fontSize: 15, color: TEXT, lineHeight: 1.4 }}>{item.title}</span>
-                            <span style={{ color: TEXT2, marginTop: 2 }}>{isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}</span>
-                          </div>
-                          
-                          {isExpanded && (
-                            <div style={{ padding: "8px 0 8px 8px", fontSize: 14, color: TEXT2, lineHeight: 1.7 }}>
-                              {item.text}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            )}
-          </>
-        )}
-
-        {activeTab === "sources" && (
-          <div id="section-sources" style={{ scrollMarginTop: 120, marginBottom: 32 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-              <BookOpen size={20} color={GOLD} />
-              <h2 style={{ fontSize: 18, fontWeight: 800, color: TEXT, margin: 0 }}>Sources</h2>
-            </div>
-            <div style={{ fontSize: 15, color: TEXT2, lineHeight: 1.7 }}>
-              {lesson.sources ? (
-                <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(lesson.sources) }} />
-              ) : (
-                <p>No sources provided for this lesson.</p>
-              )}
-            </div>
+            ))}
           </div>
         )}
 
-        <div style={{ marginTop: 40, display: "flex", flexDirection: "column", gap: 12 }}>
-          {!isDone ? (
-            <button onClick={() => onComplete(lesson.id)}
-              style={{ width: "100%", background: "#D4A017", border: "none", color: "#fff", fontWeight: 800, padding: "14px", borderRadius: 12, cursor: "pointer", fontSize: 15, fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-              <CheckCircle size={20} /> Mark as Completed
-            </button>
-          ) : (
-            <>
-              <button onClick={() => onComplete(lesson.id)}
-                style={{ width: "100%", background: "#E8F5E9", border: `1px solid #4CAF50`, color: "#2E7D32", fontWeight: 800, padding: "14px", borderRadius: 12, cursor: "pointer", fontSize: 15, textAlign: "center", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-                <CheckCircle size={20} /> Completed
-              </button>
-              <div style={{ display: "flex", justifyContent: prevLesson ? "space-between" : "flex-end", gap: 12 }}>
-                {prevLesson && (
-                  <button onClick={() => onSelectLesson(prevLesson)}
-                    style={{ background: CARD, border: `1px solid ${BORDER}`, color: TEXT, fontWeight: 700, padding: "10px 16px", borderRadius: 99, cursor: "pointer", fontSize: 13, fontFamily: "inherit", display: "flex", alignItems: "center", gap: 6 }}>
-                    <ArrowLeft size={16} /> Previous
-                  </button>
-                )}
-                {nextLesson && (
-                  <button onClick={() => onSelectLesson(nextLesson)}
-                    style={{ background: CARD, border: `1px solid ${GOLD}`, color: GOLD, fontWeight: 700, padding: "10px 16px", borderRadius: 99, cursor: "pointer", fontSize: 13, fontFamily: "inherit", display: "flex", alignItems: "center", gap: 6 }}>
-                    Next Lesson <ArrowRight size={16} />
-                  </button>
-                )}
-              </div>
-            </>
-          )}
-        </div>
-      </div>
+        {/* Notes tab */}
+        {activeTab === "notes" && (
+          <div className="py-5">
+            <p className="text-sm leading-7 text-gray-500">
+              {lesson.summary || "No notes available for this lesson."}
+            </p>
+          </div>
+        )}
 
-      {showCurriculum && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 100, display: "flex", flexDirection: "column", justifyContent: "flex-end", backdropFilter: "blur(4px)" }}
-             onClick={() => setShowCurriculum(false)}>
-          <div onClick={(e) => e.stopPropagation()} style={{ background: "#F9F9F9", height: "80vh", borderRadius: "20px 20px 0 0", overflowY: "auto", display: "flex", flexDirection: "column" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: `1px solid ${BORDER}`, position: "sticky", top: 0, background: "#F9F9F9", zIndex: 10 }}>
-              <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0, color: TEXT }}>Curriculum</h2>
-              <button onClick={() => setShowCurriculum(false)} style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: "50%", width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: TEXT }}>
-                <X size={16} />
+        {/* Resources tab */}
+        {activeTab === "resources" && (
+          <div className="py-5">
+            {lesson.sources ? (
+              <div className="text-sm leading-7 text-gray-500 whitespace-pre-wrap">{lesson.sources}</div>
+            ) : (
+              <p className="text-sm text-gray-400">No additional resources.</p>
+            )}
+          </div>
+        )}
+
+        {/* Author link */}
+        {author && onSelectAuthor && (
+          <div
+            className="flex items-center gap-3 py-4 border-t border-gray-100 mt-2 cursor-pointer"
+            onClick={() => onSelectAuthor(author)}
+          >
+            {author.picture ? (
+              <img src={author.picture} alt={author.name} className="w-9 h-9 rounded-full object-cover" />
+            ) : (
+              <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-400">
+                {author.name?.charAt(0)}
+              </div>
+            )}
+            <div className="flex-1">
+              <div className="text-sm font-bold">{author.name}</div>
+              <div className="text-xs text-gray-400">{author.title || "Instructor"}</div>
+            </div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2"><path d="m9 18 6-6-6-6" /></svg>
+          </div>
+        )}
+
+        {/* Actions */}
+        <div className="mt-6 space-y-3">
+          <button
+            onClick={() => onComplete(lesson.id)}
+            className={`w-full py-3.5 rounded-lg text-sm font-bold cursor-pointer flex items-center justify-center gap-2 transition-all ${
+              isCompleted
+                ? "bg-green-50 text-green-600 border border-green-500 hover:bg-green-600 hover:text-white"
+                : "bg-green-50 text-green-600 border border-green-500 hover:bg-green-600 hover:text-white"
+            }`}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="m5 13 4 4L19 7" /></svg>
+            {isCompleted ? "Completed ✓" : "Mark as Completed"}
+          </button>
+
+          <div className="flex gap-3">
+            {prevLesson && (
+              <button
+                onClick={() => onSelectLesson(prevLesson)}
+                className="flex-1 py-3 rounded-lg bg-gray-50 border border-gray-200 text-gray-500 text-[13px] font-semibold cursor-pointer flex items-center justify-center gap-1.5 hover:bg-gray-100 transition-colors"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="m15 18-6-6 6-6" /></svg>
+                Previous
               </button>
-            </div>
-            
-            <div style={{ padding: "20px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
-              {course.levels?.map((level) => (
-                <div key={level.id} style={{ background: CARD, borderRadius: 14, overflow: "hidden", border: `1px solid ${BORDER}`, boxShadow: "0 1px 4px rgba(0,0,0,0.02)" }}>
-                  <div onClick={() => setExpandedLevel(expandedLevel === level.id ? null : level.id)}
-                    style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 16px", cursor: "pointer" }}>
-                    <span style={{ fontWeight: 800, fontSize: 15, color: TEXT }}>📖 {level.title}</span>
-                    <span style={{ fontSize: 11, color: TEXT2 }}>{expandedLevel === level.id ? "▲" : "▼"}</span>
-                  </div>
-                  {expandedLevel === level.id && level.sections?.map((sec) => (
-                    <div key={sec.id} style={{ borderTop: `1px solid ${BORDER}` }}>
-                      <div style={{ padding: "8px 16px 4px", fontSize: 11, fontWeight: 700, color: TEXT2, letterSpacing: "0.07em", textTransform: "uppercase" }}>{sec.title}</div>
-                      {sec.lessons?.map((l, li) => {
-                        const done = completed.has(l.id);
-                        const isCurrent = l.id === lesson.id;
-                        return (
-                          <div key={l.id} onClick={() => { setShowCurriculum(false); onSelectLesson(l); }}
-                            style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", borderTop: `1px solid ${BORDER}`, cursor: "pointer", background: isCurrent ? `${GOLD_LIGHT}80` : "transparent" }}>
-                            <div style={{ width: 30, height: 30, borderRadius: "50%", background: done ? GREEN_BG : isCurrent ? GOLD : CARD, border: `2px solid ${done ? GREEN : GOLD}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, flexShrink: 0, color: done ? GREEN : isCurrent ? "#fff" : GOLD }}>
-                              {done ? <span style={{ fontWeight: 800 }}>✓</span> : <span style={{ fontWeight: 800 }}>{li + 1}</span>}
-                            </div>
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{ fontSize: 14, fontWeight: isCurrent ? 800 : 600, color: isCurrent ? '#000' : TEXT }}>{l.title}</div>
-                            </div>
-                            <span style={{ fontSize: 11, color: TEXT2, flexShrink: 0 }}>⏱ {l.duration}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ))}
-                </div>
-              ))}
-            </div>
+            )}
+            {nextLesson && (
+              <button
+                onClick={() => onSelectLesson(nextLesson)}
+                className="flex-1 py-3 rounded-lg text-white text-[13px] font-semibold cursor-pointer flex items-center justify-center gap-1.5 transition-colors"
+                style={{ background: GOLD }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = "#b8860b")}
+                onMouseLeave={(e) => (e.currentTarget.style.background = GOLD)}
+              >
+                Next
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="m9 18 6-6-6-6" /></svg>
+              </button>
+            )}
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }

@@ -1,48 +1,95 @@
+"use client";
 import React from "react";
-import Image from "next/image";
 import { Course, Author } from "../../types/course.types";
-import { getProgress, getAuthor, getTotalLessons, getTotalDuration } from "../../utils/course.utils";
-import { CARD, GOLD_LIGHT, GOLD, TEXT, TEXT2 } from "../../utils/course.constants";
-import { ProgressBar } from "./ProgressBar";
+import { getAllLessons } from "../../utils/course.utils";
+import { GOLD } from "../../utils/course.constants";
 
 interface CourseCardProps {
   course: Course;
   authors: Author[];
-  completed: Set<string>;
-  onSelectCourse: (course: Course) => void;
+  onClick: () => void;
+  completed?: Set<string>;
 }
 
-export function CourseCard({ course, authors, completed, onSelectCourse }: CourseCardProps) {
-  const pct = getProgress(course, completed);
-  const courseAuthors = course.authorIds.map(id => getAuthor(id, authors)).filter((a): a is Author => a !== undefined);
-  
+export function CourseCard({ course, authors, onClick, completed }: CourseCardProps) {
+  const allLessons = getAllLessons(course);
+  const totalLessons = allLessons.length;
+  const completedCount = completed
+    ? allLessons.filter((l) => completed.has(l.id)).length
+    : 0;
+  const progress = totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0;
+
+  // Resolve author names
+  const courseAuthors = course.authorIds
+    ?.map((id) => authors.find((a) => a.id === id))
+    .filter(Boolean) as Author[];
+  const authorName = courseAuthors?.[0]?.name || "";
+
+  // Total duration
+  const totalMinutes = allLessons.reduce((sum, l) => {
+    const match = l.duration?.match(/(\d+)/);
+    return sum + (match ? parseInt(match[1]) : 0);
+  }, 0);
+  const durationStr = totalMinutes >= 60
+    ? `${Math.floor(totalMinutes / 60)}h ${totalMinutes % 60}m`
+    : `${totalMinutes}m`;
+
   return (
-    <div onClick={() => onSelectCourse(course)}
-      style={{ background: CARD, borderRadius: 16, overflow: "hidden", cursor: "pointer", boxShadow: "0 2px 8px rgba(0,0,0,0.07)", display: "flex", gap: 0 }}>
-      <div style={{ width: 110, flexShrink: 0, position: "relative", overflow: "hidden" }}>
-        <Image src={course.thumbnail || `https://picsum.photos/seed/${course.id}/600/400`} alt={course.title} fill sizes="110px" style={{ objectFit: "cover" }} referrerPolicy="no-referrer" />
-      </div>
-      <div style={{ flex: 1, padding: "12px 14px 12px" }}>
-        <span style={{ background: GOLD_LIGHT, color: GOLD, fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 99 }}>{course.category}</span>
-        <div style={{ fontFamily: "'Nunito', sans-serif", fontWeight: 800, fontSize: 14, color: TEXT, lineHeight: 1.3, margin: "6px 0 4px" }}>{course.title}</div>
-        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
-          <div style={{ display: "flex" }}>
-            {courseAuthors.slice(0, 2).map((a, i) => (
-              <div key={a.id} style={{ position: "relative", width: 18, height: 18, borderRadius: "50%", border: "1.5px solid #fff", marginLeft: i > 0 ? -6 : 0, overflow: "hidden" }}>
-                <Image src={a.picture || `https://i.pravatar.cc/150?u=${a.id}`} alt={a.name} fill sizes="18px" style={{ objectFit: "cover" }} referrerPolicy="no-referrer" />
-              </div>
-            ))}
+    <div
+      onClick={onClick}
+      className="flex gap-3.5 p-3.5 bg-white border border-gray-100 rounded-xl cursor-pointer transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 mb-3"
+    >
+      {/* Thumbnail */}
+      <div className="w-[100px] h-[75px] rounded-lg overflow-hidden flex-shrink-0 bg-gray-100">
+        {course.thumbnail ? (
+          <img
+            src={course.thumbnail}
+            alt={course.title}
+            className="w-full h-full object-cover"
+            loading="lazy"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-gray-300">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <rect x="2" y="3" width="20" height="14" rx="2" />
+              <path d="m8 21 4-4 4 4" />
+            </svg>
           </div>
-          <span style={{ fontSize: 11, color: TEXT2 }}>{courseAuthors[0]?.name || "Unknown Author"}</span>
+        )}
+      </div>
+
+      {/* Info */}
+      <div className="flex-1 min-w-0 flex flex-col justify-center">
+        <div
+          className="text-[10px] font-bold uppercase tracking-wider mb-1"
+          style={{ color: GOLD }}
+        >
+          {course.category || "Course"}
         </div>
-        <div style={{ display: "flex", gap: 10, marginBottom: pct > 0 ? 8 : 0 }}>
-          <span style={{ fontSize: 11, color: TEXT2 }}>📚 {getTotalLessons(course)}</span>
-          <span style={{ fontSize: 11, color: TEXT2 }}>⏱ {getTotalDuration(course)}</span>
+        <div className="text-[15px] font-bold tracking-tight leading-snug mb-1 line-clamp-2">
+          {course.title}
         </div>
-        {pct > 0 && (
-          <div>
-            <ProgressBar pct={pct} height={4} />
-            <span style={{ fontSize: 10, color: TEXT2, marginTop: 2, display: "block" }}>{pct}% complete</span>
+        <div className="flex items-center gap-3 text-xs text-gray-400 font-medium">
+          {totalLessons > 0 && (
+            <span className="flex items-center gap-1">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20" /></svg>
+              {totalLessons} lessons
+            </span>
+          )}
+          {totalMinutes > 0 && (
+            <span className="flex items-center gap-1">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg>
+              {durationStr}
+            </span>
+          )}
+          {authorName && <span>{authorName}</span>}
+        </div>
+        {progress > 0 && (
+          <div className="mt-2 h-[3px] bg-gray-100 rounded-full overflow-hidden">
+            <div
+              className="h-full rounded-full transition-all duration-300"
+              style={{ width: `${progress}%`, background: GOLD }}
+            />
           </div>
         )}
       </div>
