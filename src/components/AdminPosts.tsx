@@ -7,6 +7,7 @@ import { ImageUpload } from './ImageUpload';
 import { MessageSquare, BarChart2, Calendar as CalendarIcon, Image as ImageIcon, Send, MoreVertical, ThumbsUp, Check, X } from 'lucide-react';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { getTenantScope } from '../utils/tenant-scope';
+import { sendPushNotification } from '../utils/send-notification';
 
 
 
@@ -175,6 +176,9 @@ const AdminPosts: React.FC<AdminPostsProps> = ({ userRole, userPermissions }) =>
      ...postData,
      tenantId: tenantId || null,
    });
+   // Fire-and-forget push notification
+   const preview = content.trim().slice(0, 100);
+   sendPushNotification('New Community Post', preview);
  }
  
  // Reset form

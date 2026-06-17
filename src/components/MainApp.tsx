@@ -12,6 +12,7 @@ import AllNews from './AllNews';
 import CourseExperience from '../components/CoursePage';
 import AIChat from './AIChat';
 import ErrorBoundary from './ErrorBoundary';
+import NotificationPrompt from './NotificationPrompt';
 import BiblePage from './BiblePage';
 import { TenantPlan } from '../types/tenant.types';
 import { getPlanFeatures } from '../utils/plan-features';
@@ -313,6 +314,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, tenantPlan }) => {
         </div>
         </ErrorBoundary>
       </div>
+      <NotificationPrompt />
     </div>
   );
 };

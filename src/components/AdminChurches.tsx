@@ -6,6 +6,7 @@ import { Church, Search, Filter, Edit2, Trash2, Plus, CheckCircle, Clock, Dollar
 import ChurchEnrollment from './ChurchEnrollment';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { getTenantScope } from '../utils/tenant-scope';
+import { sendPushNotification } from '../utils/send-notification';
 import { useTenant } from '@/contexts/TenantContext';
 
 
@@ -401,6 +402,8 @@ const AnnouncementsSection: React.FC<{ churchId: string }> = ({ churchId }) => {
         createdAt: new Date().toISOString(),
         createdBy: auth.currentUser?.uid || null,
       });
+      // Fire-and-forget push notification
+      sendPushNotification('New Announcement', newTitle.trim());
       setNewTitle('');
       setNewContent('');
     } catch (error) {
