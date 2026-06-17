@@ -28,12 +28,6 @@ const AdminChurches: React.FC = () => {
   const isEnterprise = tenantPlan === 'enterprise';
   const ENTERPRISE_PRICE_PER_CHURCH = 15; // $15/church/mo
 
-  // Announcement state
-  const [announcements, setAnnouncements] = useState<any[]>([]);
-  const [newAnnouncement, setNewAnnouncement] = useState({ title: '', content: '' });
-  const [editingAnnouncementId, setEditingAnnouncementId] = useState<string | null>(null);
-  const [editAnnouncementData, setEditAnnouncementData] = useState({ title: '', content: '' });
-
   const openFilterPopup = (type: 'city' | 'pastor' | 'country') => {
     setActiveFilterPopup(type);
     if (type === 'city') setTempFilterValue(cityFilter);
@@ -54,7 +48,7 @@ const AdminChurches: React.FC = () => {
       await fetch('/api/stripe/update-quantity', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tenantId, action: 'add' }),
+        body: JSON.stringify({ tenantId }),
       });
     } catch (err) {
       console.error('Failed to update subscription quantity:', err);
@@ -109,11 +103,12 @@ const AdminChurches: React.FC = () => {
   };
 
   const handleChurchSaved = async () => {
+    const wasAdding = isAdding;
     setIsAdding(false);
     setEditingChurch(null);
 
-    // Update subscription quantity after adding
-    if (isEnterprise) {
+    // Update subscription quantity only when adding (not editing)
+    if (isEnterprise && wasAdding) {
       setBillingNotice('This adds $15/mo to your bill');
       await updateSubscriptionQuantity();
       setTimeout(() => setBillingNotice(null), 5000);
@@ -387,6 +382,9 @@ const AnnouncementsSection: React.FC<{ churchId: string }> = ({ churchId }) => {
     const unsub = onSnapshot(q, (snap) => {
       setAnnouncements(snap.docs.map(d => ({ id: d.id, ...d.data() })));
       setLoading(false);
+    }, (error) => {
+      console.error('Announcements listener error:', error);
+      setLoading(false);
     });
     return () => unsub();
   }, [churchId]);
@@ -394,31 +392,44 @@ const AnnouncementsSection: React.FC<{ churchId: string }> = ({ churchId }) => {
   const handleCreate = async () => {
     if (!newTitle.trim() || !newContent.trim()) return;
     setSaving(true);
-    const tenantId = await getTenantScope();
-    await addDoc(collection(db, 'churches', churchId, 'announcements'), {
-      title: newTitle.trim(),
-      content: newContent.trim(),
-      tenantId: tenantId || null,
-      createdAt: new Date().toISOString(),
-      createdBy: auth.currentUser?.uid || null,
-    });
-    setNewTitle('');
-    setNewContent('');
-    setSaving(false);
+    try {
+      const tenantId = await getTenantScope();
+      await addDoc(collection(db, 'churches', churchId, 'announcements'), {
+        title: newTitle.trim(),
+        content: newContent.trim(),
+        tenantId: tenantId || null,
+        createdAt: new Date().toISOString(),
+        createdBy: auth.currentUser?.uid || null,
+      });
+      setNewTitle('');
+      setNewContent('');
+    } catch (error) {
+      console.error('Failed to create announcement:', error);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleUpdate = async (id: string) => {
     if (!editTitle.trim() || !editContent.trim()) return;
-    await updateDoc(doc(db, 'churches', churchId, 'announcements', id), {
-      title: editTitle.trim(),
-      content: editContent.trim(),
-      updatedAt: new Date().toISOString(),
-    });
-    setEditingId(null);
+    try {
+      await updateDoc(doc(db, 'churches', churchId, 'announcements', id), {
+        title: editTitle.trim(),
+        content: editContent.trim(),
+        updatedAt: new Date().toISOString(),
+      });
+      setEditingId(null);
+    } catch (error) {
+      console.error('Failed to update announcement:', error);
+    }
   };
 
   const handleDelete = async (id: string) => {
-    await deleteDoc(doc(db, 'churches', churchId, 'announcements', id));
+    try {
+      await deleteDoc(doc(db, 'churches', churchId, 'announcements', id));
+    } catch (error) {
+      console.error('Failed to delete announcement:', error);
+    }
   };
 
   return (

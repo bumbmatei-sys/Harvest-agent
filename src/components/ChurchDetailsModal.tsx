@@ -61,6 +61,8 @@ const ChurchDetailsModal: React.FC<ChurchDetailsModalProps> = ({
  if (!churchId || !isOpen) return;
  
  setLoading(true);
+ setChurch(null);
+ setAnnouncements([]);
  try {
  const docRef = doc(db, 'churches', churchId);
  const docSnap = await getDoc(docRef);
@@ -82,24 +84,41 @@ const ChurchDetailsModal: React.FC<ChurchDetailsModalProps> = ({
 
  // Fetch announcements when church changes
  useEffect(() => {
-   if (!churchId || !isOpen) return;
-   setLoadingAnnouncements(true);
-   try {
-     const announcementsRef = collection(db, 'churches', churchId, 'announcements');
-     const q = query(announcementsRef, orderBy('createdAt', 'desc'));
-     getDocs(q).then((snap) => {
-       const data: Announcement[] = snap.docs.map(d => ({
+ if (!churchId || !isOpen) return;
+ let cancelled = false;
+ setLoadingAnnouncements(true);
+ try {
+   const announcementsRef = collection(db, 'churches', churchId, 'announcements');
+   const q = query(announcementsRef, orderBy('createdAt', 'desc'));
+   getDocs(q).then((snap) => {
+     if (cancelled) return;
+     const data: Announcement[] = snap.docs.map(d => {
+       const raw = d.data();
+       // Handle both Firestore Timestamp and ISO string
+       let createdAtStr = '';
+       if (raw.createdAt?.toDate) {
+         createdAtStr = raw.createdAt.toDate().toISOString();
+       } else if (typeof raw.createdAt === 'string') {
+         createdAtStr = raw.createdAt;
+       }
+       return {
          id: d.id,
-         title: d.data().title || '',
-         content: d.data().content || '',
-         createdAt: d.data().createdAt || '',
-       }));
-       setAnnouncements(data);
-       setLoadingAnnouncements(false);
-     }).catch(() => setLoadingAnnouncements(false));
-   } catch {
+         title: raw.title || '',
+         content: raw.content || '',
+         createdAt: createdAtStr,
+       };
+     });
+     setAnnouncements(data);
      setLoadingAnnouncements(false);
-   }
+   }).catch((err) => {
+     if (cancelled) return;
+     console.error('Failed to load announcements:', err);
+     setLoadingAnnouncements(false);
+   });
+ } catch {
+   if (!cancelled) setLoadingAnnouncements(false);
+ }
+ return () => { cancelled = true; };
  }, [churchId, isOpen]);
 
  if (!isOpen) return null;
@@ -285,7 +304,7 @@ const ChurchDetailsModal: React.FC<ChurchDetailsModalProps> = ({
                <div className="flex items-center gap-2 flex-shrink-0 ml-2">
                  <button 
                    onClick={() => handleCopy(church.contactEmail!, 'email')}
-                   className="w-10 h-10 rounded-xl bg-[#f3f4f6] flex items-center justify-center text-gray-500 hover:bg-gray-200 :bg-gray-700 transition-colors"
+                   className="w-10 h-10 rounded-xl bg-[#f3f4f6] flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors"
                  >
                    {copiedEmail ? <CheckCircle2 size={18} className="text-green-500" /> : <Copy size={18} />}
                  </button>
@@ -302,7 +321,7 @@ const ChurchDetailsModal: React.FC<ChurchDetailsModalProps> = ({
                <div className="flex items-center gap-2 flex-shrink-0 ml-2">
                  <button 
                    onClick={() => handleCopy(church.contactPhone!, 'phone')}
-                   className="w-10 h-10 rounded-xl bg-[#f3f4f6] flex items-center justify-center text-gray-500 hover:bg-gray-200 :bg-gray-700 transition-colors"
+                   className="w-10 h-10 rounded-xl bg-[#f3f4f6] flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors"
                  >
                    {copiedPhone ? <CheckCircle2 size={18} className="text-green-500" /> : <Copy size={18} />}
                  </button>
@@ -340,7 +359,7 @@ const ChurchDetailsModal: React.FC<ChurchDetailsModalProps> = ({
                href={church.website}
                target="_blank"
                rel="noopener noreferrer"
-               className="w-12 h-12 rounded-full bg-[#f1f5f9] flex items-center justify-center text-[#0f172a] hover:bg-gray-200 :bg-gray-700 transition-colors"
+               className="w-12 h-12 rounded-full bg-[#f1f5f9] flex items-center justify-center text-[#0f172a] hover:bg-gray-200 transition-colors"
              >
                <Globe size={24} />
              </a>
