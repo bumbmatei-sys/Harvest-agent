@@ -87,6 +87,20 @@ export async function POST(request: NextRequest) {
               // Affiliate commission: record if checkout has a referrerId
               const referrerId = session.metadata?.referrerId;
               if (referrerId) {
+                // P0: Prevent self-referral
+                const tenantOwner = tenantDoc.data()?.ownerId || tenantDoc.data()?.createdBy;
+                if (referrerId === tenantOwner) {
+                  console.log('⚠️ Self-referral blocked for tenant', tenantId);
+                } else {
+                // P0: Dedup — check if commission already exists for this subscription's first payment
+                const existingCommission = await adminDb.collection('affiliate_commissions')
+                  .where('stripeSubscriptionId', '==', subscriptionId)
+                  .where('type', '==', 'initial')
+                  .limit(1)
+                  .get();
+                if (!existingCommission.empty) {
+                  console.log('⚠️ Commission already exists for subscription', subscriptionId);
+                } else {
                 const commissionAmount = Math.round(
                   (session.amount_total || 0) * 0.10 // 10% commission
                 );
@@ -95,7 +109,8 @@ export async function POST(request: NextRequest) {
                 try {
                   const referrerDoc = await adminDb.collection('users').doc(referrerId).get();
                   const connectAccountId = referrerDoc.data()?.affiliateStripeAccountId;
-                  if (connectAccountId && commissionAmount > 0) {
+                  const connectStatus = referrerDoc.data()?.affiliateConnectStatus;
+                  if (connectAccountId && connectStatus === 'active' && commissionAmount > 0) {
                     await stripe.transfers.create({
                       amount: commissionAmount,
                       currency: 'usd',
@@ -114,6 +129,7 @@ export async function POST(request: NextRequest) {
                   amount: session.amount_total || 0,
                   commission: commissionAmount,
                   status: commissionStatus,
+                  type: 'initial',
                   stripeSubscriptionId: subscriptionId,
                   createdAt: new Date().toISOString(),
                 });
@@ -127,6 +143,8 @@ export async function POST(request: NextRequest) {
                   updatedAt: new Date().toISOString(),
                 });
                 console.log(`💰 Affiliate commission ${commissionStatus} for referrer ${referrerId}: $${(commissionAmount / 100).toFixed(2)}`);
+                } // end dedup check
+                } // end self-referral check
               }
 
               // Update all users belonging to this tenant
@@ -272,12 +290,21 @@ export async function POST(request: NextRequest) {
               const subscription = await stripe.subscriptions.retrieve(subscriptionId);
               const referrerId = subscription.metadata?.referrerId;
               if (referrerId) {
+                // P0: Dedup — check if commission already exists for this invoice
+                const existingCommission = await adminDb.collection('affiliate_commissions')
+                  .where('stripeInvoiceId', '==', invoice.id)
+                  .limit(1)
+                  .get();
+                if (!existingCommission.empty) {
+                  console.log('⚠️ Commission already exists for invoice', invoice.id);
+                } else {
                 const commissionAmount = Math.round((invoice.amount_paid || 0) * 0.10);
                 let commissionStatus = 'pending';
                 try {
                   const referrerDoc = await adminDb.collection('users').doc(referrerId).get();
                   const connectAccountId = referrerDoc.data()?.affiliateStripeAccountId;
-                  if (connectAccountId && commissionAmount > 0) {
+                  const connectStatus = referrerDoc.data()?.affiliateConnectStatus;
+                  if (connectAccountId && connectStatus === 'active' && commissionAmount > 0) {
                     await stripe.transfers.create({
                       amount: commissionAmount,
                       currency: 'usd',
@@ -296,6 +323,7 @@ export async function POST(request: NextRequest) {
                   amount: invoice.amount_paid || 0,
                   commission: commissionAmount,
                   status: commissionStatus,
+                  type: 'recurring',
                   stripeSubscriptionId: subscriptionId,
                   stripeInvoiceId: invoice.id,
                   createdAt: new Date().toISOString(),
@@ -308,6 +336,7 @@ export async function POST(request: NextRequest) {
                   updatedAt: new Date().toISOString(),
                 });
                 console.log(`💰 Recurring affiliate commission ${commissionStatus} for referrer ${referrerId}: $${(commissionAmount / 100).toFixed(2)}`);
+                } // end dedup check
               }
             } catch (subErr) {
               console.error('Failed to check subscription for affiliate commission:', subErr);

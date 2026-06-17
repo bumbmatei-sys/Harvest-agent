@@ -91,6 +91,7 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
     const strippedContent = content.replace(/<[^>]*>/g, '').trim();
     if (!strippedContent) missing.push('Content');
     if (status === 'scheduled' && !scheduledDate) missing.push('Scheduled date');
+    if (status === 'scheduled' && scheduledDate && new Date(scheduledDate) <= new Date()) missing.push('Scheduled date must be in the future');
     if (missing.length > 0) {
       setError(`Missing required fields: ${missing.join(', ')}`);
       return;
@@ -157,7 +158,7 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
  </div>
 
  {/* Main Content */}
- <div className="flex-1 overflow-y-auto p-4 pb-32 sm:pb-28">
+ <div className="flex-1 overflow-y-auto p-4 pb-40 sm:pb-32">
         <div className="max-w-3xl mx-auto space-y-4">
  {error && (
  <div className="bg-red-50 text-red-600 p-3 rounded-xl text-sm">

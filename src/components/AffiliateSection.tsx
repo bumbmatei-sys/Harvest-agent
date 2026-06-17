@@ -104,7 +104,7 @@ export default function AffiliateSection() {
             <input
               type="text"
               readOnly
-              value={`theharvest.app/?ref=${status.userId}`}
+              value={`${window.location.origin}/?ref=${status.userId}`}
               className="flex-1 bg-transparent text-sm text-gray-700 outline-none"
             />
             <button

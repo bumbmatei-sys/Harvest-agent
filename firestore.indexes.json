@@ -57,6 +57,21 @@
         { "fieldPath": "ip", "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "affiliate_commissions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "stripeSubscriptionId", "order": "ASCENDING" },
+        { "fieldPath": "type", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "affiliate_commissions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "stripeInvoiceId", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []
