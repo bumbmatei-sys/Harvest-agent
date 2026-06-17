@@ -84,7 +84,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle }) => {
   const [commentsOpen, setCommentsOpen] = useState<Record<string, boolean>>({});
   const [commentInputs, setCommentInputs] = useState<Record<string, string>>({});
   const [postComments, setPostComments] = useState<Record<string, Comment[]>>({});
-  const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
+
 
   useEffect(() => {
     const fetchUserLocation = async () => {
@@ -114,39 +114,13 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle }) => {
           ...prev,
           [postId]: snap.docs.map(d => ({ id: d.id, ...d.data() } as Comment))
         }));
+      }, (error) => {
+        console.error('Failed to subscribe to comments:', error);
       });
       unsubs.push(unsub);
     });
     return () => { unsubs.forEach(u => u()); };
   }, [commentsOpen]);
-
-  // Subscribe to comment counts for visible posts
-  useEffect(() => {
-    let cancelled = false;
-    let allUnsubs: (() => void)[] = [];
-    (async () => {
-      const tenantId = await getTenantScope();
-      if (cancelled) return;
-      const q = tenantId
-        ? query(collection(db, 'community_posts'), where('tenantId', '==', tenantId), limit(50))
-        : query(collection(db, 'community_posts'), limit(50));
-      const unsubPosts = onSnapshot(q, (snap) => {
-        if (cancelled) return;
-        allUnsubs.forEach(u => u());
-        allUnsubs = [unsubPosts];
-        snap.docs.forEach((d) => {
-          const postId = d.id;
-          const cq = collection(db, 'community_posts', postId, 'comments');
-          const unsubC = onSnapshot(cq, (cs) => {
-            if (!cancelled) setCommentCounts(prev => ({ ...prev, [postId]: cs.size }));
-          });
-          allUnsubs.push(unsubC);
-        });
-      });
-      if (!cancelled) allUnsubs.push(unsubPosts);
-    })();
-    return () => { cancelled = true; allUnsubs.forEach(u => u()); };
-  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -583,7 +557,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle }) => {
                 }`}
               >
                 <MessageSquare size={16} />
-                <span>{commentCounts[post.id] || 0} Comments</span>
+                <span>{postComments[post.id]?.length ?? 0} Comments</span>
               </button>
             </div>
 

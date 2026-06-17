@@ -527,8 +527,8 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
                   } else if (!isCurrent && !isDowngrade) {
                     handleStripeCheckout(plan.id);
                   } else if (!isCurrent && isDowngrade) {
-                    onChangePlan(plan.id);
-                    setActiveSection('main');
+                    // Downgrades go through Stripe portal (handles proration)
+                    handleManageSubscription();
                   }
                 }}
                 disabled={isCurrent || checkoutLoading === plan.id}
@@ -1607,7 +1607,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
                 Keep Plan
               </button>
               <button
-                onClick={() => { onCancelPlan(); setShowCancelConfirm(false); }}
+                onClick={() => { handleManageSubscription(); setShowCancelConfirm(false); }}
                 className="px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-semibold hover:bg-red-700 transition-colors"
               >
                 Yes, Cancel
