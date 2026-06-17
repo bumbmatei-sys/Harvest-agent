@@ -88,7 +88,8 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
     const missing: string[] = [];
     if (!title.trim()) missing.push('Title');
     if (!category) missing.push('Category');
-    if (!content.trim() || content === '<p></p>') missing.push('Content');
+    const strippedContent = content.replace(/<[^>]*>/g, '').trim();
+    if (!strippedContent) missing.push('Content');
     if (status === 'scheduled' && !scheduledDate) missing.push('Scheduled date');
     if (missing.length > 0) {
       setError(`Missing required fields: ${missing.join(', ')}`);
@@ -117,7 +118,7 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
    if (tenantId) {
      const docSnap = await getDoc(doc(db, 'blog_posts', post.id));
      if (docSnap.exists() && docSnap.data().tenantId && docSnap.data().tenantId !== tenantId) {
-       console.error('Tenant mismatch — cannot modify another tenant\'s document');
+       setError('Permission denied: cannot modify another ministry\'s post.');
        return;
      }
    }
