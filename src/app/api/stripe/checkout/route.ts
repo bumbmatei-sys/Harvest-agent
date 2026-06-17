@@ -3,20 +3,9 @@ import type { NextRequest } from 'next/server';
 import Stripe from 'stripe';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireAuth } from '@/lib/api-auth';
+import { PLAN_PRICES, AI_ASSISTANT_MONTHLY, AI_ASSISTANT_SETUP } from '@/lib/stripe-config';
 
 export const dynamic = 'force-dynamic';
-
-// Price IDs for each plan
-// AI Assistant add-on price IDs
-const AI_ASSISTANT_MONTHLY = 'price_1TjKTd1YKkcSbTf3HSrtrxE9';
-const AI_ASSISTANT_SETUP = 'price_1TjKTd1YKkcSbTf3tQVxQfC5';
-
-const PRICE_MAP: Record<string, Record<string, string>> = {
-  plus: { monthly: 'price_1TjKTb1YKkcSbTf3kxXDuq5X', yearly: 'price_1TjKTb1YKkcSbTf3qzuvjmLU' },
-  pro: { monthly: 'price_1TjKTc1YKkcSbTf3cZEjJoOf', yearly: 'price_1TjKTc1YKkcSbTf3rWZzmIYk' },
-  max: { monthly: 'price_1TjKTc1YKkcSbTf3DHsyFJSF', yearly: 'price_1TjKTc1YKkcSbTf3O5KzCkNr' },
-  ultra: { monthly: 'price_1TjKTc1YKkcSbTf3nLmjx30d', yearly: 'price_1TjKTd1YKkcSbTf3I0M6RJsh' },
-};
 
 export async function POST(request: NextRequest) {
   try {
@@ -88,7 +77,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields: plan, billing' }, { status: 400 });
     }
 
-    const priceId = PRICE_MAP[plan]?.[billing];
+    const priceId = PLAN_PRICES[plan]?.[billing];
     if (!priceId) {
       return NextResponse.json({ error: `Invalid plan/billing: ${plan}/${billing}` }, { status: 400 });
     }

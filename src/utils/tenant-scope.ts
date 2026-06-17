@@ -5,7 +5,7 @@ import { doc, getDoc } from 'firebase/firestore';
 let _cachedTenantId: string | null | undefined = undefined;
 let _cachedUid: string | null = null;
 
-const SUPER_ADMIN_EMAIL = process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || 'bumbmatei@gmail.com';
+const SUPER_ADMIN_EMAIL = process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || 'bumbmatei@proton.me';
 
 /**
  * Get the current user's tenantId from their Firestore user doc.

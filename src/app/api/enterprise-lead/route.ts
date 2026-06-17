@@ -22,10 +22,34 @@ function isValidEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
+// Simple IP-based rate limit: max 3 submissions per hour
+const RATE_LIMIT_MAX = 3;
+const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
+
+async function checkRateLimit(ip: string): Promise<boolean> {
+  try {
+    const windowStart = new Date(Date.now() - RATE_LIMIT_WINDOW_MS).toISOString();
+    const snap = await adminDb.collection('enterprise_leads')
+      .where('ip', '==', ip)
+      .where('createdAt', '>', windowStart)
+      .get();
+    return snap.size < RATE_LIMIT_MAX;
+  } catch {
+    return true; // fail open — don't block on rate limit errors
+  }
+}
+
 const MAX_LENGTH = { name: 100, email: 200, churchName: 200, message: 2000 };
 
 export async function POST(request: NextRequest) {
   try {
+    // Rate limit by IP
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+    const allowed = await checkRateLimit(ip);
+    if (!allowed) {
+      return NextResponse.json({ error: 'Too many submissions. Please try again later.' }, { status: 429 });
+    }
+
     let body: any;
     try {
       body = await request.json();
@@ -60,12 +84,13 @@ export async function POST(request: NextRequest) {
       churchCount: safeChurchCount,
       message: safeMessage,
       userId: userId || null,
+      ip,
       status: 'new',
       createdAt: timestamp,
     });
 
     // 2. Send email notification to admin
-    const adminEmail = process.env.SUPER_ADMIN_EMAIL || 'bumbmatei@gmail.com';
+    const adminEmail = process.env.SUPER_ADMIN_EMAIL || 'bumbmatei@proton.me';
 
     if (process.env.RESEND_API_KEY) {
       try {

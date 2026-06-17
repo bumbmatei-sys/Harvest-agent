@@ -4,6 +4,7 @@ import Stripe from 'stripe';
 import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { generateAccessCode } from '@/app/api/ai-assistant/route';
+import { PLAN_PRICES, getPlanFromPriceId } from '@/lib/stripe-config';
 
 export const dynamic = 'force-dynamic';
 
@@ -371,35 +372,11 @@ export async function POST(request: NextRequest) {
 }
 
 function getMonthlyPriceId(plan: string): string {
-  const map: Record<string, string> = {
-    plus: 'price_1TjKTb1YKkcSbTf3kxXDuq5X',
-    pro: 'price_1TjKTc1YKkcSbTf3cZEjJoOf',
-    max: 'price_1TjKTc1YKkcSbTf3DHsyFJSF',
-    ultra: 'price_1TjKTc1YKkcSbTf3nLmjx30d',
-  };
-  return map[plan] || map.plus;
+  return PLAN_PRICES[plan]?.monthly || PLAN_PRICES.plus.monthly;
 }
 
 function getYearlyPriceId(plan: string): string {
-  const map: Record<string, string> = {
-    plus: 'price_1TjKTb1YKkcSbTf3qzuvjmLU',
-    pro: 'price_1TjKTc1YKkcSbTf3rWZzmIYk',
-    max: 'price_1TjKTc1YKkcSbTf3O5KzCkNr',
-    ultra: 'price_1TjKTd1YKkcSbTf3I0M6RJsh',
-  };
-  return map[plan] || map.plus;
+  return PLAN_PRICES[plan]?.yearly || PLAN_PRICES.plus.yearly;
 }
 
-function getPlanFromPriceId(priceId: string): string | null {
-  const allPrices: Record<string, string> = {
-    'price_1TjKTb1YKkcSbTf3kxXDuq5X': 'plus',
-    'price_1TjKTb1YKkcSbTf3qzuvjmLU': 'plus',
-    'price_1TjKTc1YKkcSbTf3cZEjJoOf': 'pro',
-    'price_1TjKTc1YKkcSbTf3rWZzmIYk': 'pro',
-    'price_1TjKTc1YKkcSbTf3DHsyFJSF': 'max',
-    'price_1TjKTc1YKkcSbTf3O5KzCkNr': 'max',
-    'price_1TjKTc1YKkcSbTf3nLmjx30d': 'ultra',
-    'price_1TjKTd1YKkcSbTf3I0M6RJsh': 'ultra',
-  };
-  return allPrices[priceId] || null;
-}
+// getPlanFromPriceId is now imported from stripe-config
