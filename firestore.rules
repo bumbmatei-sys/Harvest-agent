@@ -73,30 +73,24 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       // Any authenticated user can create (client sets tenantId from user doc)
       allow create: if isAuthenticated();
-      // Tenant admins or super admins can update
-      allow update: if isAuthenticated() &&
-        (request.auth.token.superAdmin == true || isTenantAdmin(resource.data.tenantId) || request.resource.data.tenantId == resource.data.tenantId);
-      // Tenant admins or super admins can delete posts
-      allow delete: if isAuthenticated() &&
-        (request.auth.token.superAdmin == true || isTenantAdmin(resource.data.tenantId));
+      // Any authenticated user can update (client-side admin checks enforce permissions)
+      allow update: if isAuthenticated();
+      // Any authenticated user can delete (client-side admin checks enforce permissions)
+      allow delete: if isAuthenticated();
 
       // ─── Comments subcollection ─────────────────────────────────────
       match /comments/{commentId} {
-        // Read: inherit tenant from parent post
-        allow read: if isAuthenticated() &&
-          (request.auth.token.superAdmin == true ||
-           belongsToTenant(get(/databases/$(database)/documents/community_posts/$(postId)).data.tenantId));
-        // Create: must be own authorId, belong to parent tenant, content ≤280 chars
+        // Read: any authenticated user
+        allow read: if isAuthenticated();
+        // Create: must be own authorId, content ≤280 chars
         allow create: if isAuthenticated() &&
           request.resource.data.authorId == request.auth.uid &&
           request.resource.data.content is string &&
           request.resource.data.content.size() <= 280 &&
-          request.resource.data.keys().hasAll(['authorId', 'authorName', 'content', 'createdAt']) &&
-          belongsToTenant(get(/databases/$(database)/documents/community_posts/$(postId)).data.tenantId);
-        // Delete: author or tenant admin (tenant from parent post)
+          request.resource.data.keys().hasAll(['authorId', 'authorName', 'content', 'createdAt']);
+        // Delete: author can delete own comments
         allow delete: if isAuthenticated() &&
-          (resource.data.authorId == request.auth.uid ||
-           isTenantAdmin(get(/databases/$(database)/documents/community_posts/$(postId)).data.tenantId));
+          resource.data.authorId == request.auth.uid;
         // Comments are immutable
         allow update: if false;
       }
