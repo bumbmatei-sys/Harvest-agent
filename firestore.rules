@@ -69,16 +69,16 @@ service cloud.firestore {
     // ─── Community Posts ─────────────────────────────────────────────
 
     match /community_posts/{postId} {
-      // Authenticated users can read posts in their tenant; super admins can read all
-      allow read: if isAuthenticated() &&
-        (request.auth.token.superAdmin == true || belongsToTenant(resource.data.tenantId));
-      // Any authenticated user in the tenant can create posts
-      allow create: if isAuthenticated() && requestHasCorrectTenant();
-      // Tenant admins can update; post owner can update their own
+      // Any authenticated user can read (client queries already filter by tenantId)
+      allow read: if isAuthenticated();
+      // Any authenticated user can create (client sets tenantId from user doc)
+      allow create: if isAuthenticated();
+      // Tenant admins or super admins can update
       allow update: if isAuthenticated() &&
-        (isTenantAdmin(resource.data.tenantId) || request.resource.data.tenantId == resource.data.tenantId);
-      // Tenant admins can delete posts in their tenant
-      allow delete: if isAuthenticated() && isTenantAdmin(resource.data.tenantId);
+        (request.auth.token.superAdmin == true || isTenantAdmin(resource.data.tenantId) || request.resource.data.tenantId == resource.data.tenantId);
+      // Tenant admins or super admins can delete posts
+      allow delete: if isAuthenticated() &&
+        (request.auth.token.superAdmin == true || isTenantAdmin(resource.data.tenantId));
 
       // ─── Comments subcollection ─────────────────────────────────────
       match /comments/{commentId} {

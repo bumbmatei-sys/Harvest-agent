@@ -38,10 +38,16 @@ export async function GET(request: NextRequest) {
       .get();
 
     if (!tenantsSnapshot.empty) {
-      await tenantsSnapshot.docs[0].ref.update({
+      const updateData: Record<string, any> = {
         stripeConnectStatus: status,
         updatedAt: new Date().toISOString(),
-      });
+      };
+      // Also update affiliate status if this account is the affiliate account
+      const tenantData = tenantsSnapshot.docs[0].data();
+      if (tenantData.affiliateAccountId === accountId) {
+        updateData.affiliateStatus = status;
+      }
+      await tenantsSnapshot.docs[0].ref.update(updateData);
     }
 
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://theharvest.app';

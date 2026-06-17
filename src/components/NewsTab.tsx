@@ -175,6 +175,9 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle }) => {
 
         setAllPosts(sortedPosts);
         setLoading(false);
+      }, (error) => {
+        console.error('Failed to load community posts:', error);
+        setLoading(false);
       });
 
       // Fetch articles
@@ -188,6 +191,8 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle }) => {
           ...doc.data()
         })) as BlogPost[];
         setArticles(articlesData);
+      }, (error) => {
+        console.error('Failed to load articles:', error);
       });
     })();
 

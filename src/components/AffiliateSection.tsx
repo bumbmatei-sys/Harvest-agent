@@ -25,7 +25,13 @@ export default function AffiliateSection() {
   const fetchStatus = async () => {
     try {
       setLoading(true);
-      const res = await fetch('/api/affiliate/status');
+      const { auth } = await import('../firebase');
+      const user = auth.currentUser;
+      if (!user) { setLoading(false); return; }
+      const token = await user.getIdToken();
+      const res = await fetch('/api/affiliate/status', {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
       if (res.ok) {
         const data = await res.json();
         setStatus(data);
@@ -40,13 +46,23 @@ export default function AffiliateSection() {
   const handleBecomeAffiliate = async () => {
     try {
       setOnboarding(true);
-      const res = await fetch('/api/affiliate/onboard', { method: 'POST' });
+      const { auth } = await import('../firebase');
+      const user = auth.currentUser;
+      if (!user) { alert('Please sign in first.'); return; }
+      const token = await user.getIdToken();
+      const res = await fetch('/api/affiliate/onboard', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      });
       const data = await res.json();
       if (data.url) {
         window.location.href = data.url;
+      } else {
+        alert(data.error || 'Failed to start affiliate onboarding. Please try again.');
       }
     } catch (err) {
       console.error('Failed to start affiliate onboarding:', err);
+      alert('Failed to start affiliate onboarding. Please try again.');
     } finally {
       setOnboarding(false);
     }
@@ -79,7 +95,7 @@ export default function AffiliateSection() {
       {status?.isAffiliate ? (
         <div className="space-y-4">
           <p className="text-sm text-gray-600">
-            Share your referral link and earn <strong>10% commission</strong> on every subscription.
+            Share your referral link and earn <strong>10% lifetime commission</strong> on every subscription.
           </p>
 
           {/* Referral Link */}
@@ -134,7 +150,7 @@ export default function AffiliateSection() {
       ) : (
         <div className="space-y-3">
           <p className="text-sm text-gray-600">
-            Join our affiliate program and earn <strong>10% commission</strong> on every subscription
+            Join our affiliate program and earn <strong>10% lifetime commission</strong> on every subscription
             you refer. Payouts are processed through Stripe Connect.
           </p>
           <button

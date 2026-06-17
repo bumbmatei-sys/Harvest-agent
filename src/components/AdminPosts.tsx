@@ -104,6 +104,9 @@ const AdminPosts: React.FC<AdminPostsProps> = ({ userRole, userPermissions }) =>
 
      setPosts(sortedPosts);
      setLoading(false);
+   }, (error) => {
+     console.error('Failed to load posts:', error);
+     setLoading(false);
    });
  })();
 

@@ -156,6 +156,9 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack }) => {
 
         setAllPosts(sortedPosts);
         setLoading(false);
+      }, (error) => {
+        console.error('Failed to load community posts:', error);
+        setLoading(false);
       });
     })();
 

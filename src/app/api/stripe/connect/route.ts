@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
     const stripe = new Stripe(stripeKey, { apiVersion: '2026-05-27.dahlia' });
 
     const body = await request.json();
-    const { tenantId } = body;
+    const { tenantId, type } = body;
 
     // Verify tenant membership
     if (!userOrErr.isSuperAdmin && userOrErr.tenantId !== tenantId) {
@@ -59,11 +59,16 @@ export async function POST(request: NextRequest) {
     });
 
     // Save the account ID and set status to pending
-    await adminDb.collection('tenants').doc(tenantId).update({
+    const updateData: Record<string, any> = {
       stripeConnectAccountId: account.id,
       stripeConnectStatus: 'pending',
       updatedAt: new Date().toISOString(),
-    });
+    };
+    if (type === 'affiliate') {
+      updateData.affiliateStatus = 'pending';
+      updateData.affiliateAccountId = account.id;
+    }
+    await adminDb.collection('tenants').doc(tenantId).update(updateData);
 
     // Create an account link for onboarding
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://theharvest.app';

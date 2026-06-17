@@ -251,9 +251,14 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
     if (!tid) { alert('Unable to find your organization.'); return; }
     setStripeConnectLoading(true);
     try {
+      const { auth } = await import('../firebase');
+      const token = auth.currentUser ? await auth.currentUser.getIdToken() : null;
       const resp = await fetch('/api/stripe/connect', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({ tenantId: tid }),
       });
       const data = await resp.json();
