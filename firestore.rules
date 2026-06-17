@@ -106,6 +106,14 @@ service cloud.firestore {
       allow create: if isAuthenticated() && isAdmin() && requestHasCorrectTenant();
       allow update: if isAuthenticated() && isTenantAdmin(resource.data.tenantId);
       allow delete: if isAuthenticated() && isTenantAdmin(resource.data.tenantId);
+
+      // Announcements subcollection — per-church
+      match /announcements/{announcementId} {
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated() && isTenantAdmin(request.resource.data.tenantId);
+        allow update: if isAuthenticated() && isTenantAdmin(resource.data.tenantId);
+        allow delete: if isAuthenticated() && isTenantAdmin(resource.data.tenantId);
+      }
     }
 
     // ─── RAG Sources & Chunks ───────────────────────────────────────

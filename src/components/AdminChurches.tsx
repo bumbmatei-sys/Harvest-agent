@@ -1,8 +1,8 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { db, auth } from '../firebase';
-import { collection, query, where, onSnapshot, doc, deleteDoc, getDoc, limit } from 'firebase/firestore';
-import { Church, Search, Filter, Edit2, Trash2, Plus, CheckCircle, Clock, DollarSign } from 'lucide-react';
+import { collection, query, where, onSnapshot, doc, deleteDoc, getDoc, addDoc, updateDoc, orderBy, limit } from 'firebase/firestore';
+import { Church, Search, Filter, Edit2, Trash2, Plus, CheckCircle, Clock, DollarSign, Megaphone, Save, X } from 'lucide-react';
 import ChurchEnrollment from './ChurchEnrollment';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { getTenantScope } from '../utils/tenant-scope';
@@ -27,6 +27,12 @@ const AdminChurches: React.FC = () => {
 
   const isEnterprise = tenantPlan === 'enterprise';
   const ENTERPRISE_PRICE_PER_CHURCH = 15; // $15/church/mo
+
+  // Announcement state
+  const [announcements, setAnnouncements] = useState<any[]>([]);
+  const [newAnnouncement, setNewAnnouncement] = useState({ title: '', content: '' });
+  const [editingAnnouncementId, setEditingAnnouncementId] = useState<string | null>(null);
+  const [editAnnouncementData, setEditAnnouncementData] = useState({ title: '', content: '' });
 
   const openFilterPopup = (type: 'city' | 'pastor' | 'country') => {
     setActiveFilterPopup(type);
@@ -146,6 +152,11 @@ const AdminChurches: React.FC = () => {
             onSave={handleChurchSaved}
           />
         </div>
+
+        {/* Announcements Section — only when editing */}
+        {editingChurch && (
+          <AnnouncementsSection churchId={editingChurch.id} />
+        )}
       </div>
     );
   }
@@ -358,3 +369,160 @@ const AdminChurches: React.FC = () => {
 };
 
 export default AdminChurches;
+
+// ─── Announcements Section (inline component) ────────────────────────
+
+const AnnouncementsSection: React.FC<{ churchId: string }> = ({ churchId }) => {
+  const [announcements, setAnnouncements] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [newTitle, setNewTitle] = useState('');
+  const [newContent, setNewContent] = useState('');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editContent, setEditContent] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const q = query(collection(db, 'churches', churchId, 'announcements'), orderBy('createdAt', 'desc'));
+    const unsub = onSnapshot(q, (snap) => {
+      setAnnouncements(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      setLoading(false);
+    });
+    return () => unsub();
+  }, [churchId]);
+
+  const handleCreate = async () => {
+    if (!newTitle.trim() || !newContent.trim()) return;
+    setSaving(true);
+    const tenantId = await getTenantScope();
+    await addDoc(collection(db, 'churches', churchId, 'announcements'), {
+      title: newTitle.trim(),
+      content: newContent.trim(),
+      tenantId: tenantId || null,
+      createdAt: new Date().toISOString(),
+      createdBy: auth.currentUser?.uid || null,
+    });
+    setNewTitle('');
+    setNewContent('');
+    setSaving(false);
+  };
+
+  const handleUpdate = async (id: string) => {
+    if (!editTitle.trim() || !editContent.trim()) return;
+    await updateDoc(doc(db, 'churches', churchId, 'announcements', id), {
+      title: editTitle.trim(),
+      content: editContent.trim(),
+      updatedAt: new Date().toISOString(),
+    });
+    setEditingId(null);
+  };
+
+  const handleDelete = async (id: string) => {
+    await deleteDoc(doc(db, 'churches', churchId, 'announcements', id));
+  };
+
+  return (
+    <div className="border-t border-gray-100 p-4">
+      <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+        <Megaphone size={18} className="text-[#d4a017]" />
+        Announcements
+      </h3>
+
+      {/* Create Form */}
+      <div className="bg-gray-50 rounded-xl p-4 mb-4">
+        <input
+          type="text"
+          placeholder="Announcement title"
+          value={newTitle}
+          onChange={(e) => setNewTitle(e.target.value)}
+          className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm mb-2 focus:outline-none focus:border-[#d4a017]"
+        />
+        <textarea
+          placeholder="Announcement content"
+          value={newContent}
+          onChange={(e) => setNewContent(e.target.value)}
+          rows={3}
+          className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm mb-2 focus:outline-none focus:border-[#d4a017] resize-none"
+        />
+        <button
+          onClick={handleCreate}
+          disabled={saving || !newTitle.trim() || !newContent.trim()}
+          className="flex items-center gap-2 bg-[#d4a017] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#b58812] transition-colors disabled:opacity-50"
+        >
+          <Plus size={14} />
+          {saving ? 'Adding...' : 'Add Announcement'}
+        </button>
+      </div>
+
+      {/* List */}
+      {loading ? (
+        <div className="flex justify-center py-4">
+          <div className="w-6 h-6 border-4 border-[#d4a017]/30 border-t-[#d4a017] rounded-full animate-spin"></div>
+        </div>
+      ) : announcements.length === 0 ? (
+        <p className="text-sm text-gray-500 text-center py-4">No announcements yet</p>
+      ) : (
+        <div className="space-y-3">
+          {announcements.map((a) => (
+            <div key={a.id} className="bg-gray-50 rounded-xl p-4">
+              {editingId === a.id ? (
+                <div>
+                  <input
+                    type="text"
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm mb-2 focus:outline-none focus:border-[#d4a017]"
+                  />
+                  <textarea
+                    value={editContent}
+                    onChange={(e) => setEditContent(e.target.value)}
+                    rows={3}
+                    className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm mb-2 focus:outline-none focus:border-[#d4a017] resize-none"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleUpdate(a.id)}
+                      className="flex items-center gap-1 bg-green-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-green-700"
+                    >
+                      <Save size={12} /> Save
+                    </button>
+                    <button
+                      onClick={() => setEditingId(null)}
+                      className="flex items-center gap-1 bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-gray-300"
+                    >
+                      <X size={12} /> Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <h4 className="font-bold text-gray-900 text-sm">{a.title}</h4>
+                  <p className="text-xs text-gray-600 mt-1 whitespace-pre-wrap">{a.content}</p>
+                  {a.createdAt && (
+                    <p className="text-xs text-gray-400 mt-2">
+                      {new Date(a.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </p>
+                  )}
+                  <div className="flex gap-2 mt-3">
+                    <button
+                      onClick={() => { setEditingId(a.id); setEditTitle(a.title); setEditContent(a.content); }}
+                      className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                    >
+                      <Edit2 size={14} />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(a.id)}
+                      className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};

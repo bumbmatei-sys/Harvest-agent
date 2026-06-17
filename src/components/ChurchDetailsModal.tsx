@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { X, MapPin, User, Clock, Mail, Phone, Globe, Facebook, Instagram, Navigation, Copy, CheckCircle2, Trash2 } from 'lucide-react';
-import { doc, getDoc } from 'firebase/firestore';
+import { X, MapPin, User, Clock, Mail, Phone, Globe, Facebook, Instagram, Navigation, Copy, CheckCircle2, Trash2, Megaphone, Info } from 'lucide-react';
+import { doc, getDoc, collection, query, orderBy, getDocs } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 
@@ -15,22 +15,29 @@ interface ChurchDetailsModalProps {
 }
 
 interface ChurchData {
- id: string;
- name: string;
- street?: string;
- number?: string;
- city: string;
- country: string;
- pastorName: string;
- contactEmail?: string;
- contactPhone?: string;
- website?: string;
- facebook?: string;
- instagram?: string;
- imageUrl?: string;
- services?: { day: string; time: string; name: string }[];
- lat: number;
- lng: number;
+  id: string;
+  name: string;
+  street?: string;
+  number?: string;
+  city: string;
+  country: string;
+  pastorName: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  website?: string;
+  facebook?: string;
+  instagram?: string;
+  imageUrl?: string;
+  services?: { day: string; time: string; name: string }[];
+  lat: number;
+  lng: number;
+}
+
+interface Announcement {
+  id: string;
+  title: string;
+  content: string;
+  createdAt: string;
 }
 
 const ChurchDetailsModal: React.FC<ChurchDetailsModalProps> = ({ 
@@ -45,6 +52,9 @@ const ChurchDetailsModal: React.FC<ChurchDetailsModalProps> = ({
  const [loading, setLoading] = useState(true);
  const [copiedEmail, setCopiedEmail] = useState(false);
  const [copiedPhone, setCopiedPhone] = useState(false);
+ const [activeTab, setActiveTab] = useState<'announcements' | 'info'>('announcements');
+ const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+ const [loadingAnnouncements, setLoadingAnnouncements] = useState(false);
 
  useEffect(() => {
  const fetchChurch = async () => {
@@ -68,6 +78,28 @@ const ChurchDetailsModal: React.FC<ChurchDetailsModalProps> = ({
  };
 
  fetchChurch();
+ }, [churchId, isOpen]);
+
+ // Fetch announcements when church changes
+ useEffect(() => {
+   if (!churchId || !isOpen) return;
+   setLoadingAnnouncements(true);
+   try {
+     const announcementsRef = collection(db, 'churches', churchId, 'announcements');
+     const q = query(announcementsRef, orderBy('createdAt', 'desc'));
+     getDocs(q).then((snap) => {
+       const data: Announcement[] = snap.docs.map(d => ({
+         id: d.id,
+         title: d.data().title || '',
+         content: d.data().content || '',
+         createdAt: d.data().createdAt || '',
+       }));
+       setAnnouncements(data);
+       setLoadingAnnouncements(false);
+     }).catch(() => setLoadingAnnouncements(false));
+   } catch {
+     setLoadingAnnouncements(false);
+   }
  }, [churchId, isOpen]);
 
  if (!isOpen) return null;
@@ -154,131 +186,191 @@ const ChurchDetailsModal: React.FC<ChurchDetailsModalProps> = ({
  </div>
 
  <div className="px-4 -mt-8 relative z-10 space-y-4">
- {/* Service Details Card */}
- <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 ">
- <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-6">Service Details</h3>
- 
- <div className="space-y-6">
- <div className="flex items-center gap-4">
- <div className="w-12 h-12 rounded-full bg-[#f3f4f6] flex items-center justify-center flex-shrink-0 text-[#1e293b] ">
- <User size={24} />
- </div>
- <div>
- <p className="text-sm text-gray-600 ">Lead Pastor:</p>
- <p className="font-bold text-lg text-gray-900 ">{church.pastorName || 'Not specified'}</p>
- </div>
- </div>
+   {/* Tab Buttons */}
+   <div className="flex gap-2 bg-white rounded-2xl p-1.5 shadow-sm border border-gray-100">
+     <button
+       onClick={() => setActiveTab('announcements')}
+       className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition-colors ${
+         activeTab === 'announcements'
+           ? 'bg-[#1e3a8a] text-white shadow-sm'
+           : 'text-gray-500 hover:text-gray-700'
+       }`}
+     >
+       <Megaphone size={16} />
+       Announcements
+     </button>
+     <button
+       onClick={() => setActiveTab('info')}
+       className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition-colors ${
+         activeTab === 'info'
+           ? 'bg-[#1e3a8a] text-white shadow-sm'
+           : 'text-gray-500 hover:text-gray-700'
+       }`}
+     >
+       <Info size={16} />
+       Church Info
+     </button>
+   </div>
 
- <div className="flex items-start gap-4">
- <div className="w-12 h-12 rounded-full bg-[#f3f4f6] flex items-center justify-center flex-shrink-0 text-[#1e293b] ">
- <Clock size={24} />
- </div>
- <div className="flex-1">
- <p className="text-sm text-gray-600 mb-1">Service Schedule:</p>
- <div className="text-base text-gray-900 ">{formatServices(church.services || [])}</div>
- </div>
- </div>
- </div>
- </div>
+   {activeTab === 'announcements' ? (
+     /* Announcements Tab */
+     <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
+       <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4">Announcements</h3>
+       {loadingAnnouncements ? (
+         <div className="flex justify-center py-8">
+           <div className="w-6 h-6 border-4 border-[#d4a017]/30 border-t-[#d4a017] rounded-full animate-spin"></div>
+         </div>
+       ) : announcements.length === 0 ? (
+         <div className="text-center py-8">
+           <Megaphone size={32} className="mx-auto mb-3 text-gray-300" />
+           <p className="text-sm text-gray-500">No announcements yet</p>
+         </div>
+       ) : (
+         <div className="space-y-4">
+           {announcements.map((a) => (
+             <div key={a.id} className="border-b border-gray-100 last:border-0 pb-4 last:pb-0">
+               <h4 className="font-bold text-gray-900 text-base">{a.title}</h4>
+               <p className="text-sm text-gray-600 mt-1 whitespace-pre-wrap">{a.content}</p>
+               {a.createdAt && (
+                 <p className="text-xs text-gray-400 mt-2">
+                   {new Date(a.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                 </p>
+               )}
+             </div>
+           ))}
+         </div>
+       )}
+     </div>
+   ) : (
+     /* Church Info Tab — existing content */
+     <>
+       {/* Service Details Card */}
+       <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 ">
+         <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-6">Service Details</h3>
+                
+         <div className="space-y-6">
+           <div className="flex items-center gap-4">
+             <div className="w-12 h-12 rounded-full bg-[#f3f4f6] flex items-center justify-center flex-shrink-0 text-[#1e293b] ">
+               <User size={24} />
+             </div>
+             <div>
+               <p className="text-sm text-gray-600 ">Lead Pastor:</p>
+               <p className="font-bold text-lg text-gray-900 ">{church.pastorName || 'Not specified'}</p>
+             </div>
+           </div>
 
- {/* Connect Card */}
- <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 ">
- <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-6">Connect</h3>
- 
- <div className="space-y-4">
- {church.contactEmail && (
- <div className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0">
- <div className="flex items-center gap-4 overflow-hidden">
- <Mail size={24} className="text-gray-400 flex-shrink-0" />
- <span className="text-base text-gray-800 truncate">{church.contactEmail}</span>
- </div>
- <div className="flex items-center gap-2 flex-shrink-0 ml-2">
- <button 
- onClick={() => handleCopy(church.contactEmail!, 'email')}
- className="w-10 h-10 rounded-xl bg-[#f3f4f6] flex items-center justify-center text-gray-500 hover:bg-gray-200 :bg-gray-700 transition-colors"
- >
- {copiedEmail ? <CheckCircle2 size={18} className="text-green-500" /> : <Copy size={18} />}
- </button>
- </div>
- </div>
- )}
+           <div className="flex items-start gap-4">
+             <div className="w-12 h-12 rounded-full bg-[#f3f4f6] flex items-center justify-center flex-shrink-0 text-[#1e293b] ">
+               <Clock size={24} />
+             </div>
+             <div className="flex-1">
+               <p className="text-sm text-gray-600 mb-1">Service Schedule:</p>
+               <div className="text-base text-gray-900 ">{formatServices(church.services || [])}</div>
+             </div>
+           </div>
+         </div>
+       </div>
 
- {church.contactPhone && (
- <div className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0">
- <div className="flex items-center gap-4 overflow-hidden">
- <Phone size={24} className="text-gray-400 flex-shrink-0" />
- <span className="text-base text-gray-800 truncate">{church.contactPhone}</span>
- </div>
- <div className="flex items-center gap-2 flex-shrink-0 ml-2">
- <button 
- onClick={() => handleCopy(church.contactPhone!, 'phone')}
- className="w-10 h-10 rounded-xl bg-[#f3f4f6] flex items-center justify-center text-gray-500 hover:bg-gray-200 :bg-gray-700 transition-colors"
- >
- {copiedPhone ? <CheckCircle2 size={18} className="text-green-500" /> : <Copy size={18} />}
- </button>
- </div>
- </div>
- )}
- </div>
- </div>
+       {/* Connect Card */}
+       <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 ">
+         <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-6">Connect</h3>
+                
+         <div className="space-y-4">
+           {church.contactEmail && (
+             <div className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0">
+               <div className="flex items-center gap-4 overflow-hidden">
+                 <Mail size={24} className="text-gray-400 flex-shrink-0" />
+                 <span className="text-base text-gray-800 truncate">{church.contactEmail}</span>
+               </div>
+               <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                 <button 
+                   onClick={() => handleCopy(church.contactEmail!, 'email')}
+                   className="w-10 h-10 rounded-xl bg-[#f3f4f6] flex items-center justify-center text-gray-500 hover:bg-gray-200 :bg-gray-700 transition-colors"
+                 >
+                   {copiedEmail ? <CheckCircle2 size={18} className="text-green-500" /> : <Copy size={18} />}
+                 </button>
+               </div>
+             </div>
+           )}
 
- {/* Action Buttons Card */}
- <div className="bg-white rounded-3xl p-4 shadow-sm border border-gray-100 flex items-center justify-between">
- <div className="flex items-center gap-4">
- {church.facebook && (
- <a 
- href={church.facebook}
- target="_blank"
- rel="noopener noreferrer"
- className="w-12 h-12 rounded-full bg-[#1877F2] flex items-center justify-center text-white hover:opacity-90 transition-opacity shadow-md shadow-[#1877F2]/30"
- >
- <Facebook size={24} />
- </a>
- )}
- {church.instagram && (
- <a 
- href={`https://instagram.com/${church.instagram.replace('@', '')}`}
- target="_blank"
- rel="noopener noreferrer"
- className="w-12 h-12 rounded-full bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] flex items-center justify-center text-white hover:opacity-90 transition-opacity shadow-md shadow-[#dc2743]/30"
- >
- <Instagram size={24} />
- </a>
- )}
- {church.website && (
- <a 
- href={church.website}
- target="_blank"
- rel="noopener noreferrer"
- className="w-12 h-12 rounded-full bg-[#f1f5f9] flex items-center justify-center text-[#0f172a] hover:bg-gray-200 :bg-gray-700 transition-colors"
- >
- <Globe size={24} />
- </a>
- )}
- </div>
+           {church.contactPhone && (
+             <div className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0">
+               <div className="flex items-center gap-4 overflow-hidden">
+                 <Phone size={24} className="text-gray-400 flex-shrink-0" />
+                 <span className="text-base text-gray-800 truncate">{church.contactPhone}</span>
+               </div>
+               <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                 <button 
+                   onClick={() => handleCopy(church.contactPhone!, 'phone')}
+                   className="w-10 h-10 rounded-xl bg-[#f3f4f6] flex items-center justify-center text-gray-500 hover:bg-gray-200 :bg-gray-700 transition-colors"
+                 >
+                   {copiedPhone ? <CheckCircle2 size={18} className="text-green-500" /> : <Copy size={18} />}
+                 </button>
+               </div>
+             </div>
+           )}
+         </div>
+       </div>
 
- <button 
- onClick={openDirections}
- className="px-6 h-12 rounded-full bg-[#1e3a8a] flex items-center justify-center text-white font-bold hover:bg-[#172554] transition-colors shadow-sm"
- title="Directions"
- >
- Directions
- </button>
- </div>
+       {/* Action Buttons Card */}
+       <div className="bg-white rounded-3xl p-4 shadow-sm border border-gray-100 flex items-center justify-between">
+         <div className="flex items-center gap-4">
+           {church.facebook && (
+             <a 
+               href={church.facebook}
+               target="_blank"
+               rel="noopener noreferrer"
+               className="w-12 h-12 rounded-full bg-[#1877F2] flex items-center justify-center text-white hover:opacity-90 transition-opacity shadow-md shadow-[#1877F2]/30"
+             >
+               <Facebook size={24} />
+             </a>
+           )}
+           {church.instagram && (
+             <a 
+               href={`https://instagram.com/${church.instagram.replace('@', '')}`}
+               target="_blank"
+               rel="noopener noreferrer"
+               className="w-12 h-12 rounded-full bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] flex items-center justify-center text-white hover:opacity-90 transition-opacity shadow-md shadow-[#dc2743]/30"
+             >
+               <Instagram size={24} />
+             </a>
+           )}
+           {church.website && (
+             <a 
+               href={church.website}
+               target="_blank"
+               rel="noopener noreferrer"
+               className="w-12 h-12 rounded-full bg-[#f1f5f9] flex items-center justify-center text-[#0f172a] hover:bg-gray-200 :bg-gray-700 transition-colors"
+             >
+               <Globe size={24} />
+             </a>
+           )}
+         </div>
 
- {isHomeChurch && onRemoveHomeChurch && (
- <div className="flex justify-center mt-8 mb-6">
- <button 
- onClick={() => {
- onRemoveHomeChurch();
- onClose();
- }}
- className="flex items-center gap-2 text-[#9f1239] hover:text-[#e11d48] font-medium transition-colors"
- >
- Remove Church <Trash2 size={18} />
- </button>
- </div>
- )}
+         <button 
+           onClick={openDirections}
+           className="px-6 h-12 rounded-full bg-[#1e3a8a] flex items-center justify-center text-white font-bold hover:bg-[#172554] transition-colors shadow-sm"
+           title="Directions"
+         >
+           Directions
+         </button>
+       </div>
+     </>
+   )}
+
+   {isHomeChurch && onRemoveHomeChurch && (
+     <div className="flex justify-center mt-8 mb-6">
+       <button 
+         onClick={() => {
+           onRemoveHomeChurch();
+           onClose();
+         }}
+         className="flex items-center gap-2 text-[#9f1239] hover:text-[#e11d48] font-medium transition-colors"
+       >
+         Remove Church <Trash2 size={18} />
+       </button>
+     </div>
+   )}
  </div>
  </div>
  ) : (
