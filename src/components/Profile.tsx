@@ -24,6 +24,7 @@ import { signOut, updateProfile } from 'firebase/auth';
 import { doc, getDoc, onSnapshot, updateDoc } from 'firebase/firestore';
 import PersonalInformationModal from './PersonalInformationModal';
 import AboutUsModal from './AboutUsModal';
+import { authFetch } from '../utils/auth-fetch';
 import ContactModal from './ContactModal';
 import PrivacyTermsModal from './PrivacyTermsModal';
 import FAQModal from './FAQModal';
@@ -72,9 +73,8 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToCourses, onGoToPart
    if (!auth.currentUser) return;
    setIsCancelingPartnership(true);
    try {
-     const res = await fetch('/api/stripe/cancel-partnership', {
+     const res = await authFetch('/api/stripe/cancel-partnership', {
        method: 'POST',
-       headers: { 'Content-Type': 'application/json' },
        body: JSON.stringify({ userId: auth.currentUser.uid }),
      });
      const data = await res.json();

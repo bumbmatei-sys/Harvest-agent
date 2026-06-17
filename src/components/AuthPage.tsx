@@ -105,7 +105,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
  }
  }
 
- // Refresh custom claims on sign-in (claims may have been updated server-side)
+ // Set custom claims on server, then force-refresh token to pick them up
  try {
    const token = await result.user.getIdToken();
    await fetch('/api/auth/set-claims', {
@@ -113,6 +113,8 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
      body: JSON.stringify({ uid: result.user.uid }),
    });
+   // Force token refresh so subsequent Firestore/API calls have the new claims
+   await result.user.getIdToken(true);
  } catch (claimsErr) {
    console.error('Failed to refresh custom claims:', claimsErr);
  }
@@ -156,7 +158,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
  return;
  }
 
- // Refresh custom claims on sign-in
+ // Set custom claims on server, then force-refresh token
  try {
    const token = await userCredential.user.getIdToken();
    await fetch('/api/auth/set-claims', {
@@ -164,6 +166,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
      body: JSON.stringify({ uid: userCredential.user.uid }),
    });
+   await userCredential.user.getIdToken(true);
  } catch (claimsErr) {
    console.error('Failed to refresh custom claims:', claimsErr);
  }
@@ -202,7 +205,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
 
  setSuccess('Account created successfully!');
 
- // Set custom claims for Firestore security rules
+ // Set custom claims for Firestore security rules, then force-refresh token
  try {
    const token = await result.user.getIdToken();
    await fetch('/api/auth/set-claims', {
@@ -210,6 +213,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
      body: JSON.stringify({ uid: result.user.uid }),
    });
+   await result.user.getIdToken(true);
  } catch (claimsErr) {
    console.error('Failed to set custom claims:', claimsErr);
  }

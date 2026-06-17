@@ -147,6 +147,19 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ onComplete }) => {
         });
       }
 
+      // Set custom claims on server, then force-refresh token so rules work
+      try {
+        const token = await user.getIdToken();
+        await fetch('/api/auth/set-claims', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ uid: user.uid }),
+        });
+        await user.getIdToken(true);
+      } catch (claimsErr) {
+        console.error('Failed to set custom claims after tenant assignment:', claimsErr);
+      }
+
       // Fire-and-forget welcome email
       if (auth.currentUser?.email) {
         const emailData = welcomeEmail(auth.currentUser.displayName || 'Friend', ministryName.trim());

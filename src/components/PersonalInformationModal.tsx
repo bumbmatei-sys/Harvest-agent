@@ -7,6 +7,7 @@ import { updateProfile, updatePassword, deleteUser, EmailAuthProvider, reauthent
 import { doc, getDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 import CountrySelect from './CountrySelect';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
+import { authFetch } from '../utils/auth-fetch';
 
 interface PersonalInformationModalProps {
  isOpen: boolean;
@@ -81,9 +82,8 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
    setIsCancelingPartnership(true);
    setCancelPartnershipMsg('');
    try {
-     const res = await fetch('/api/stripe/cancel-partnership', {
+     const res = await authFetch('/api/stripe/cancel-partnership', {
        method: 'POST',
-       headers: { 'Content-Type': 'application/json' },
        body: JSON.stringify({ userId: auth.currentUser.uid }),
      });
      const data = await res.json();

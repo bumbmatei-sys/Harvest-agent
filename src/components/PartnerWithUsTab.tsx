@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { HeartHandshake, Heart, Lock, ShieldCheck, Loader2 } from 'lucide-react';
 import { useTenant } from '@/contexts/TenantContext';
+import { authFetch } from '../utils/auth-fetch';
 
 type DonationType = 'one-time' | 'monthly';
 
@@ -30,9 +31,8 @@ const PartnerWithUsTab: React.FC = () => {
     setError(null);
 
     try {
-      const res = await fetch('/api/stripe/donate', {
+      const res = await authFetch('/api/stripe/donate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           amount: amountCents,
           tenantId,

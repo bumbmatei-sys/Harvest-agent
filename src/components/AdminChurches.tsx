@@ -4,6 +4,7 @@ import { db, auth } from '../firebase';
 import { collection, query, where, onSnapshot, doc, deleteDoc, getDoc, addDoc, updateDoc, orderBy, limit } from 'firebase/firestore';
 import { Church, Search, Filter, Edit2, Trash2, Plus, CheckCircle, Clock, DollarSign, Megaphone, Save, X } from 'lucide-react';
 import ChurchEnrollment from './ChurchEnrollment';
+import { authFetch } from '../utils/auth-fetch';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { getTenantScope } from '../utils/tenant-scope';
 import { sendPushNotification } from '../utils/send-notification';
@@ -46,9 +47,8 @@ const AdminChurches: React.FC = () => {
   const updateSubscriptionQuantity = async () => {
     if (!tenantId) return;
     try {
-      await fetch('/api/stripe/update-quantity', {
+      await authFetch('/api/stripe/update-quantity', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tenantId }),
       });
     } catch (err) {

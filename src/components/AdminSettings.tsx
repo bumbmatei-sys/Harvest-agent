@@ -1,12 +1,12 @@
 "use client";
 import React, { useState, useRef, useCallback } from 'react';
-import { ArrowLeft, Check, Crown, Zap, Building2, Star, ChevronRight, ChevronDown, AlertTriangle, Globe, CreditCard, Palette, Settings2, Bot } from 'lucide-react';
+import { ArrowLeft, Check, Crown, Zap, Building2, Star, ChevronRight, ChevronDown, AlertTriangle, Globe, CreditCard, Palette, Settings2, Bot, Share2 } from 'lucide-react';
 import { TenantPlan } from '../types/tenant.types';
 import { getPlanFeatures, PlanFeatures } from '../utils/plan-features';
 import { ImageUpload } from './ImageUpload';
 import EnterpriseContactModal from './EnterpriseContactModal';
 import AffiliateSection from './AffiliateSection';
-import { Share2 } from 'lucide-react';
+import { authFetch } from '../utils/auth-fetch';
 
 interface AdminSettingsProps {
   onBack: () => void;
@@ -112,9 +112,8 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
     if (!tid) { alert('Unable to find your organization. Please try again.'); return; }
     setCheckoutLoading(planId);
     try {
-      const resp = await fetch('/api/stripe/checkout', {
+      const resp = await authFetch('/api/stripe/checkout', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           plan: planId,
           billing: billingPeriod,
@@ -142,9 +141,8 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
     if (!tid) { alert('Unable to find your organization.'); return; }
     setPortalLoading(true);
     try {
-      const resp = await fetch('/api/stripe/portal', {
+      const resp = await authFetch('/api/stripe/portal', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tenantId: tid }),
       });
       const data = await resp.json();
@@ -251,14 +249,8 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
     if (!tid) { alert('Unable to find your organization.'); return; }
     setStripeConnectLoading(true);
     try {
-      const { auth } = await import('../firebase');
-      const token = auth.currentUser ? await auth.currentUser.getIdToken() : null;
-      const resp = await fetch('/api/stripe/connect', {
+      const resp = await authFetch('/api/stripe/connect', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-        },
         body: JSON.stringify({ tenantId: tid }),
       });
       const data = await resp.json();
@@ -348,9 +340,8 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
     if (!tid) { alert('Unable to find your organization. Please try again.'); return; }
     setAiAssistantLoading(true);
     try {
-      const resp = await fetch('/api/stripe/checkout', {
+      const resp = await authFetch('/api/stripe/checkout', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           addOn: 'ai-assistant',
           tenantId: tid,
@@ -377,9 +368,8 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
     if (!tid) { alert('Unable to find your organization.'); return; }
     setAiAssistantCancelLoading(true);
     try {
-      const resp = await fetch('/api/stripe/cancel-addon', {
+      const resp = await authFetch('/api/stripe/cancel-addon', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tenantId: tid, addon: 'ai-assistant' }),
       });
       const data = await resp.json();
