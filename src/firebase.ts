@@ -16,4 +16,4 @@ export const messaging = typeof window !== 'undefined'
   ? isSupported().then(supported => supported ? getMessaging(app) : null)
   : Promise.resolve(null);
 
-export const VAPID_KEY = 'BKI8dvU_2JyDvGWU4MxU49ujgFQeIajDArjcDnkDrAViiEtI8sTz4K0ZKjn83E2hVvVfMtx_Fls-omeEg5CljOY';
+export const VAPID_KEY = 'BLH6NQjAb2uv9n4y66AODEAstP9YdEh4qKEE63mgv2NDlHPIvgxIux-dbnm0CUncj9_BpCjeCUz5HUBkHXi24Yk';
