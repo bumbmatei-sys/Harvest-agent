@@ -66,8 +66,13 @@ export async function setClaimsForTenant(tenantId: string) {
       .where('tenantId', '==', tenantId)
       .get();
 
-    const promises = usersSnap.docs.map(doc => setCustomClaims(doc.id));
-    await Promise.all(promises);
+    // Batch in chunks of 10 to avoid overwhelming Firebase Admin SDK
+    const BATCH_SIZE = 10;
+    const docs = usersSnap.docs;
+    for (let i = 0; i < docs.length; i += BATCH_SIZE) {
+      const chunk = docs.slice(i, i + BATCH_SIZE);
+      await Promise.all(chunk.map(doc => setCustomClaims(doc.id)));
+    }
     console.log(`Claims updated for ${usersSnap.size} users in tenant ${tenantId}`);
   } catch (error) {
     console.error(`Failed to set claims for tenant ${tenantId}:`, error);

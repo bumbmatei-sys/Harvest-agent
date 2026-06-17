@@ -221,7 +221,14 @@ export async function POST(request: NextRequest) {
 
       case 'charge.refunded': {
         const charge = event.data.object as Stripe.Charge;
-        const tenantId = charge.metadata?.tenantId;
+        let tenantId = charge.metadata?.tenantId;
+        // Fallback: look up tenant by customer ID
+        if (!tenantId && charge.customer) {
+          const tenantSnap = await adminDb.collection('tenants')
+            .where('stripeCustomerId', '==', charge.customer as string)
+            .limit(1).get();
+          if (!tenantSnap.empty) tenantId = tenantSnap.docs[0].id;
+        }
         if (tenantId) {
           await adminDb.collection('tenants').doc(tenantId).update({
             lastRefund: new Date().toISOString(),
@@ -234,7 +241,19 @@ export async function POST(request: NextRequest) {
 
       case 'charge.dispute.created': {
         const dispute = event.data.object as Stripe.Dispute;
-        const tenantId = dispute.metadata?.tenantId;
+        let tenantId = dispute.metadata?.tenantId;
+        // Fallback: look up tenant by customer ID (dispute has charge → customer)
+        if (!tenantId && (dispute as any).charge) {
+          try {
+            const charge = await stripe.charges.retrieve((dispute as any).charge as string);
+            if (charge.customer) {
+              const tenantSnap = await adminDb.collection('tenants')
+                .where('stripeCustomerId', '==', charge.customer as string)
+                .limit(1).get();
+              if (!tenantSnap.empty) tenantId = tenantSnap.docs[0].id;
+            }
+          } catch (e) { /* charge lookup failed */ }
+        }
         if (tenantId) {
           await adminDb.collection('tenants').doc(tenantId).update({
             status: 'disputed',

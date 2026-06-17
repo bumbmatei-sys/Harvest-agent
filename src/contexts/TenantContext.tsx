@@ -70,14 +70,20 @@ export const TenantProvider: React.FC<TenantProviderProps> = ({
     setIsAdminDomain(isAdmin);
   }, []);
 
-  // Resolve tenant ID from cookie if not provided
+  // Resolve tenant ID from hostname (not spoofable) — cookie is fallback for custom domains
   useEffect(() => {
     if (initialTenantId !== undefined) {
       setTenantId(initialTenantId);
       return;
     }
-    const cookieTenantId = getCookie('tenantId');
-    setTenantId(cookieTenantId || null);
+    const hostname = window.location.hostname;
+    const parts = hostname.split('.');
+    if (parts.length >= 3 && (hostname.endsWith('.theharvest.app') || hostname.endsWith('.vercel.app'))) {
+      setTenantId(parts[0]);
+    } else {
+      const cookieTenantId = getCookie('tenantId');
+      setTenantId(cookieTenantId || null);
+    }
   }, [initialTenantId]);
 
   // Validate tenant exists in Firestore and load branding

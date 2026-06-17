@@ -33,11 +33,18 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // Read tenantId from cookie (set by middleware)
-    const cookies = document.cookie.split(';');
-    const tenantCookie = cookies.find(c => c.trim().startsWith('tenantId='));
-    if (tenantCookie) {
-      setTenantId(tenantCookie.split('=')[1].trim());
+    // Derive tenantId from hostname (not spoofable) — cookie is fallback for custom domains
+    const hostname = window.location.hostname;
+    const parts = hostname.split('.');
+    if (parts.length >= 3 && (hostname.endsWith('.theharvest.app') || hostname.endsWith('.vercel.app'))) {
+      setTenantId(parts[0]);
+    } else {
+      // Custom domain — use cookie (set server-side by middleware via resolve-domain)
+      const cookies = document.cookie.split(';');
+      const tenantCookie = cookies.find(c => c.trim().startsWith('tenantId='));
+      if (tenantCookie) {
+        setTenantId(tenantCookie.split('=')[1].trim());
+      }
     }
     // Check if arriving from presentation site "Start Ministry" button
     const params = new URLSearchParams(window.location.search);

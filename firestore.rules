@@ -39,17 +39,18 @@ service cloud.firestore {
     // ─── Users ───────────────────────────────────────────────────────
 
     match /users/{userId} {
-      // Users can read only their own document; tenant admins can read users in their tenant
+      // Users can read only their own document; tenant admins can read users in their tenant; super admins can read all
       allow read: if isAuthenticated() &&
         (request.auth.uid == userId ||
-         isAdmin());
+         request.auth.token.superAdmin == true ||
+         isTenantAdmin(resource.data.tenantId));
 
       // Self-registration: user creates their own profile
       allow create: if isAuthenticated() && request.auth.uid == userId;
 
-      // Users can update their own profile; admins can update users in their tenant
+      // Users can update their own profile; tenant admins can update users in their tenant
       allow update: if isAuthenticated() &&
-        (request.auth.uid == userId || isAdmin());
+        (request.auth.uid == userId || isTenantAdmin(resource.data.tenantId));
 
       // Only super admins can delete user documents
       allow delete: if isAuthenticated() &&
@@ -61,22 +62,23 @@ service cloud.firestore {
     match /submissions/{subId} {
       allow read: if isAuthenticated() && isAdmin();
       allow create: if isAuthenticated() && requestHasCorrectTenant();
-      allow update: if isAuthenticated() && isAdmin();
-      allow delete: if isAuthenticated() && isAdmin();
+      allow update: if isAuthenticated() && isTenantAdmin(resource.data.tenantId);
+      allow delete: if isAuthenticated() && isTenantAdmin(resource.data.tenantId);
     }
 
     // ─── Community Posts ─────────────────────────────────────────────
 
     match /community_posts/{postId} {
-      // Authenticated users can read posts in their tenant
-      allow read: if isAuthenticated();
+      // Authenticated users can read posts in their tenant; super admins can read all
+      allow read: if isAuthenticated() &&
+        (request.auth.token.superAdmin == true || belongsToTenant(resource.data.tenantId));
       // Any authenticated user in the tenant can create posts
       allow create: if isAuthenticated() && requestHasCorrectTenant();
-      // Admins can update any post; post owner can update their own
+      // Tenant admins can update; post owner can update their own
       allow update: if isAuthenticated() &&
-        (isAdmin() || request.resource.data.tenantId == resource.data.tenantId);
-      // Admins can delete any post in their tenant
-      allow delete: if isAuthenticated() && isAdmin();
+        (isTenantAdmin(resource.data.tenantId) || request.resource.data.tenantId == resource.data.tenantId);
+      // Tenant admins can delete posts in their tenant
+      allow delete: if isAuthenticated() && isTenantAdmin(resource.data.tenantId);
     }
 
     // ─── Blog Posts ─────────────────────────────────────────────────
@@ -84,8 +86,8 @@ service cloud.firestore {
     match /blog_posts/{postId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated() && isAdmin() && requestHasCorrectTenant();
-      allow update: if isAuthenticated() && isAdmin();
-      allow delete: if isAuthenticated() && isAdmin();
+      allow update: if isAuthenticated() && isTenantAdmin(resource.data.tenantId);
+      allow delete: if isAuthenticated() && isTenantAdmin(resource.data.tenantId);
     }
 
     // ─── Courses ────────────────────────────────────────────────────
@@ -93,8 +95,8 @@ service cloud.firestore {
     match /courses/{courseId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated() && isAdmin() && requestHasCorrectTenant();
-      allow update: if isAuthenticated() && isAdmin();
-      allow delete: if isAuthenticated() && isAdmin();
+      allow update: if isAuthenticated() && isTenantAdmin(resource.data.tenantId);
+      allow delete: if isAuthenticated() && isTenantAdmin(resource.data.tenantId);
     }
 
     // ─── Churches ───────────────────────────────────────────────────
@@ -102,8 +104,8 @@ service cloud.firestore {
     match /churches/{churchId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated() && isAdmin() && requestHasCorrectTenant();
-      allow update: if isAuthenticated() && isAdmin();
-      allow delete: if isAuthenticated() && isAdmin();
+      allow update: if isAuthenticated() && isTenantAdmin(resource.data.tenantId);
+      allow delete: if isAuthenticated() && isTenantAdmin(resource.data.tenantId);
     }
 
     // ─── RAG Sources & Chunks ───────────────────────────────────────
@@ -111,27 +113,27 @@ service cloud.firestore {
     match /rag_sources/{sourceId} {
       allow read: if isAuthenticated() && isAdmin();
       allow create: if isAuthenticated() && isAdmin() && requestHasCorrectTenant();
-      allow update: if isAuthenticated() && isAdmin();
-      allow delete: if isAuthenticated() && isAdmin();
+      allow update: if isAuthenticated() && isTenantAdmin(resource.data.tenantId);
+      allow delete: if isAuthenticated() && isTenantAdmin(resource.data.tenantId);
     }
 
     match /rag_chunks/{chunkId} {
       allow read: if isAuthenticated() && isAdmin();
       allow create: if isAuthenticated() && isAdmin() && requestHasCorrectTenant();
-      allow update: if isAuthenticated() && isAdmin();
-      allow delete: if isAuthenticated() && isAdmin();
+      allow update: if isAuthenticated() && isTenantAdmin(resource.data.tenantId);
+      allow delete: if isAuthenticated() && isTenantAdmin(resource.data.tenantId);
     }
 
     // ─── Authors & Categories (shared within tenant) ────────────────
 
     match /authors/{authorId} {
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated() && isAdmin();
+      allow write: if isAuthenticated() && isAdmin() && belongsToTenant(resource.data.tenantId);
     }
 
     match /categories/{catId} {
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated() && isAdmin();
+      allow write: if isAuthenticated() && isAdmin() && belongsToTenant(resource.data.tenantId);
     }
 
     // ─── Tenants ────────────────────────────────────────────────────
