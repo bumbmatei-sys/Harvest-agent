@@ -20,6 +20,10 @@ const EnterpriseContactModal: React.FC<EnterpriseContactModalProps> = ({ isOpen,
 
   if (!isOpen) return null;
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') handleClose();
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !email.trim() || !churchName.trim()) return;
@@ -53,6 +57,7 @@ const EnterpriseContactModal: React.FC<EnterpriseContactModalProps> = ({ isOpen,
 
   const handleClose = () => {
     setName('');
+    setEmail(auth.currentUser?.email || '');
     setChurchName('');
     setChurchCount('');
     setMessage('');
@@ -62,8 +67,8 @@ const EnterpriseContactModal: React.FC<EnterpriseContactModalProps> = ({ isOpen,
   };
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="bg-[#f8f9fa] w-full sm:w-[500px] max-h-[90vh] rounded-t-3xl sm:rounded-3xl overflow-y-auto flex flex-col relative animate-slide-up sm:animate-fade-in">
+    <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm" onClick={handleClose} onKeyDown={handleKeyDown}>
+      <div className="bg-[#f8f9fa] w-full sm:w-[500px] max-h-[90vh] rounded-t-3xl sm:rounded-3xl overflow-y-auto flex flex-col relative animate-slide-up sm:animate-fade-in" onClick={(e) => e.stopPropagation()}>
         {/* Close */}
         <button
           onClick={handleClose}
@@ -108,6 +113,7 @@ const EnterpriseContactModal: React.FC<EnterpriseContactModalProps> = ({ isOpen,
                   onChange={(e) => setName(e.target.value)}
                   required
                   placeholder="Pastor John"
+                  maxLength={100}
                   className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-[#d4a017] text-gray-900"
                 />
               </div>
@@ -120,6 +126,7 @@ const EnterpriseContactModal: React.FC<EnterpriseContactModalProps> = ({ isOpen,
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   placeholder="john@church.org"
+                  maxLength={200}
                   className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-[#d4a017] text-gray-900"
                 />
               </div>
@@ -132,6 +139,7 @@ const EnterpriseContactModal: React.FC<EnterpriseContactModalProps> = ({ isOpen,
                   onChange={(e) => setChurchName(e.target.value)}
                   required
                   placeholder="Grace Community Church"
+                  maxLength={200}
                   className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-[#d4a017] text-gray-900"
                 />
               </div>
@@ -143,6 +151,7 @@ const EnterpriseContactModal: React.FC<EnterpriseContactModalProps> = ({ isOpen,
                   value={churchCount}
                   onChange={(e) => setChurchCount(e.target.value)}
                   min="1"
+                  max="10000"
                   placeholder="e.g. 5"
                   className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-[#d4a017] text-gray-900"
                 />
@@ -155,6 +164,7 @@ const EnterpriseContactModal: React.FC<EnterpriseContactModalProps> = ({ isOpen,
                   onChange={(e) => setMessage(e.target.value)}
                   rows={3}
                   placeholder="Tell us about your needs..."
+                  maxLength={2000}
                   className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-[#d4a017] text-gray-900 resize-none"
                 />
               </div>
