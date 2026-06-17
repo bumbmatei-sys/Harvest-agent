@@ -85,23 +85,15 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
  };
 
  const handleSave = async (status: 'published' | 'draft' | 'scheduled') => {
- if (!title.trim()) {
- setError('Title is required');
- return;
- }
- if (!category) {
- setError('Category is required');
- return;
- }
- 
- if (!content.trim() || content === '<p></p>') {
- setError('Content is required');
- return;
- }
- if (status === 'scheduled' && !scheduledDate) {
- setError('Scheduled date is required for scheduled posts');
- return;
- }
+    const missing: string[] = [];
+    if (!title.trim()) missing.push('Title');
+    if (!category) missing.push('Category');
+    if (!content.trim() || content === '<p></p>') missing.push('Content');
+    if (status === 'scheduled' && !scheduledDate) missing.push('Scheduled date');
+    if (missing.length > 0) {
+      setError(`Missing required fields: ${missing.join(', ')}`);
+      return;
+    }
 
  setIsSaving(true);
  setError('');
@@ -164,8 +156,8 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
  </div>
 
  {/* Main Content */}
- <div className="flex-1 overflow-y-auto p-4">
- <div className="max-w-3xl mx-auto space-y-4">
+ <div className="flex-1 overflow-y-auto p-4 pb-32 sm:pb-28">
+        <div className="max-w-3xl mx-auto space-y-4">
  {error && (
  <div className="bg-red-50 text-red-600 p-3 rounded-xl text-sm">
  {error}
