@@ -1,10 +1,10 @@
 "use client";
 import React, { useState, useEffect } from 'react';
-import { db } from '../firebase';
+import { db, auth } from '../firebase';
 import { collection, onSnapshot, limit } from 'firebase/firestore';
 import { Building2, Plus, Search, Edit2, Trash2, Pause, Play, X, Check } from 'lucide-react';
 import { Tenant, TenantPlan, TenantStatus } from '../types/tenant.types';
-import { createTenant, updateTenant, deleteTenant, isSubdomainAvailable } from '../utils/tenant.utils';
+import { createTenant, updateTenant, isSubdomainAvailable } from '../utils/tenant.utils';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 
 const PLAN_LABELS: Record<TenantPlan, string> = {
@@ -57,6 +57,7 @@ const AdminTenants: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState('');
 
   useEffect(() => {
     const q = collection(db, 'tenants');
@@ -144,11 +145,22 @@ const AdminTenants: React.FC = () => {
   };
 
   const handleDelete = async (id: string) => {
+    setDeleteError('');
     try {
-      await deleteTenant(id);
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) { setDeleteError('Not authenticated'); return; }
+      const res = await fetch(`/api/tenants/delete?id=${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setDeleteError(data.error || 'Delete failed');
+        return;
+      }
       setDeleteConfirmId(null);
     } catch (err: any) {
-      console.error('Failed to delete tenant:', err);
+      setDeleteError(err.message || 'Delete failed');
     }
   };
 
@@ -253,7 +265,7 @@ const AdminTenants: React.FC = () => {
                         <Check size={16} className="text-red-600" />
                       </button>
                       <button
-                        onClick={() => setDeleteConfirmId(null)}
+                        onClick={() => { setDeleteConfirmId(null); setDeleteError(''); }}
                         className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
                         title="Cancel"
                       >
@@ -273,6 +285,16 @@ const AdminTenants: React.FC = () => {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Delete error banner */}
+      {deleteError && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm flex items-center justify-between">
+          <span>Delete failed: {deleteError}</span>
+          <button onClick={() => setDeleteError('')} className="text-red-400 hover:text-red-600">
+            <X size={16} />
+          </button>
         </div>
       )}
 

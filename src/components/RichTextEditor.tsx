@@ -251,8 +251,8 @@ const commands: CommandItem[] = [
     title: 'Image',
     description: 'Upload or paste image URL',
     icon: <ImageIcon size={18} />,
-    action: (_editor: any, showModal?: () => void) => {
-      showModal?.();
+    action: (_editor: any, openModal?: () => void) => {
+      openModal?.();
     },
   },
 ];
@@ -267,7 +267,7 @@ const SlashCommand = Extension.create({
         char: '/',
         command: ({ editor, range, props }: any) => {
           editor.chain().deleteRange(range).run();
-          props.action(editor, props.showImageModal);
+          props.action(editor);
         },
       },
     };
@@ -467,14 +467,9 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
   const [showLinkInput, setShowLinkInput] = useState(false);
   const [linkUrl, setLinkUrl] = useState('');
   const linkInputRef = useRef<HTMLInputElement>(null);
-
-  const commandsWithModal = useRef(
-    commands.map((cmd) =>
-      cmd.title === 'Image'
-        ? { ...cmd, action: (_editor: any, showModal?: () => void) => showModal?.() }
-        : cmd
-    )
-  ).current;
+  // Ref so the Image command can open the modal without prop threading
+  const openImageModalRef = useRef<() => void>(() => {});
+  openImageModalRef.current = () => setShowImageModal(true);
 
   const editor = useEditor({
     extensions: [
@@ -494,11 +489,17 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
           char: '/',
           allowedPrefixes: [' ', '\u0000'],
           items: ({ query }: { query: string }) => {
-            return commandsWithModal.filter(
-              (item) =>
-                item.title.toLowerCase().includes(query.toLowerCase()) ||
-                item.description.toLowerCase().includes(query.toLowerCase())
-            );
+            return commands
+              .map((cmd) =>
+                cmd.title === 'Image'
+                  ? { ...cmd, action: () => openImageModalRef.current() }
+                  : cmd
+              )
+              .filter(
+                (item) =>
+                  item.title.toLowerCase().includes(query.toLowerCase()) ||
+                  item.description.toLowerCase().includes(query.toLowerCase())
+              );
           },
           render: renderSlashCommands,
           allowSpaces: false,
