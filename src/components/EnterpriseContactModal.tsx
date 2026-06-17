@@ -87,7 +87,7 @@ const EnterpriseContactModal: React.FC<EnterpriseContactModalProps> = ({ isOpen,
               <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <CheckCircle size={32} className="text-green-600" />
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2">We'll be in touch!</h3>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">{"We'll be in touch!"}</h3>
               <p className="text-gray-500 text-sm mb-6">
                 Our team will review your request and reach out within 24 hours to discuss your Enterprise plan.
               </p>
