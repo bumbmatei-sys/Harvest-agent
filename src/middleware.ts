@@ -23,17 +23,15 @@ export async function middleware(request: NextRequest) {
   // ─── 1. Query param override for testing ────────────────────────
   const tenantParam = request.nextUrl.searchParams.get('tenant');
   if (tenantParam) {
-    response.cookies.set('tenantId', tenantParam, { path: '/', maxAge: 60 * 60 * 24 * 30 });
+    response.cookies.set('tenantId', tenantParam, { path: '/', maxAge: 60 * 60 * 24 * 30, secure: true, sameSite: 'lax' });
     return response;
   }
 
   // ─── 2. Admin subdomain detection ───────────────────────────────
-  const isAdminSubdomain = hostname === 'admin.theharvest.app' ||
-    hostname === 'admin.harvest-agent.vercel.app' ||
-    /^admin-[a-z0-9-]+\.vercel\.app$/.test(hostname);
+  const isAdminSubdomain = hostname === 'admin.theharvest.app';
 
   if (isAdminSubdomain) {
-    response.cookies.set('isAdmin', 'true', { path: '/', maxAge: 60 * 60 * 24 * 30 });
+    response.cookies.set('isAdmin', 'true', { path: '/', maxAge: 60 * 60 * 24 * 30, httpOnly: true, secure: true, sameSite: 'lax' });
     response.cookies.delete('tenantId');
     return response;
   }
@@ -58,7 +56,7 @@ export async function middleware(request: NextRequest) {
     const baseDomain = parts.slice(1).join('.');
     if (baseDomain === 'theharvest.app' || baseDomain.endsWith('.vercel.app')) {
       const subdomain = parts[0];
-      response.cookies.set('tenantId', subdomain, { path: '/', maxAge: 60 * 60 * 24 * 30 });
+      response.cookies.set('tenantId', subdomain, { path: '/', maxAge: 60 * 60 * 24 * 30, secure: true, sameSite: 'lax' });
       return response;
     }
   }

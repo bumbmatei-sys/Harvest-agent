@@ -37,9 +37,9 @@ export async function POST(request: NextRequest) {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session;
         const tenantId = session.metadata?.tenantId;
-        const subscriptionId = session.subscription as string;
+        const subscriptionId = session.subscription as string | null;
 
-        if (tenantId) {
+        if (tenantId && subscriptionId) {
           // Handle AI Assistant add-on checkout
           if (session.metadata?.addOn === 'ai-assistant') {
             const accessCode = generateAccessCode();

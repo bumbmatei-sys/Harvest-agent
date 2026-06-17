@@ -21,12 +21,12 @@ export async function POST(request: NextRequest) {
     const { tenantId } = body;
 
     // Verify tenant membership
-    if (!userOrErr.isSuperAdmin && userOrErr.tenantId !== tenantId) {
-      return NextResponse.json({ error: 'Access denied to this tenant' }, { status: 403 });
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Missing required field: tenantId' }, { status: 400 });
     }
 
-    if (!tenantId) {
-      return NextResponse.json({ error: 'Missing tenantId' }, { status: 400 });
+    if (!userOrErr.isSuperAdmin && userOrErr.tenantId !== tenantId) {
+      return NextResponse.json({ error: 'Access denied to this tenant' }, { status: 403 });
     }
 
     // Get the Stripe customer ID from the tenant document

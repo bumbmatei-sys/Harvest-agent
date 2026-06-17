@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
-import { requireAuth } from '@/lib/api-auth';
+import { requireAdmin } from '@/lib/api-auth';
 
-function getResend() {
-  const { Resend } = require('resend');
+async function getResend() {
+  const { Resend } = await import('resend');
   return new Resend(process.env.RESEND_API_KEY);
 }
 
@@ -18,7 +18,7 @@ interface EmailRequest {
 
 export async function POST(request: NextRequest) {
   try {
-    const userOrErr = await requireAuth(request);
+    const userOrErr = await requireAdmin(request);
     if (userOrErr instanceof Response) return userOrErr;
 
     const body: EmailRequest = await request.json();
@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
 
     const resendKey = process.env.RESEND_API_KEY;
     if (resendKey) {
-      const { data, error } = await getResend().emails.send({
+      const { data, error } = await (await getResend()).emails.send({
         from,
         to,
         subject,

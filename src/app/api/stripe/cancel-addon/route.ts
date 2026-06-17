@@ -46,9 +46,10 @@ export async function POST(request: NextRequest) {
       cancel_at_period_end: true,
     });
 
-    // Remove addOnAiAssistant from tenant doc
+    await stripe.subscriptions.update(subscriptionId, { cancel_at_period_end: true });
+    // Don't null addOnAiAssistant yet — let webhook handle it at period end
     await adminDb.collection('tenants').doc(tenantId).update({
-      addOnAiAssistant: null,
+      addOnAiAssistantCancelAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     });
 

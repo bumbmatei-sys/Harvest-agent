@@ -134,12 +134,10 @@ export async function PUT(request: NextRequest) {
 export function generateAccessCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // No I, O, 0, 1 (ambiguous)
   let code = '';
-  const bytes = crypto.randomBytes(5);
-  for (let i = 0; i < 7; i++) {
-    if (i === 4) {
-      code += '-'; // HARV-XXXX format
-    }
-    code += chars[bytes[i % 5] % chars.length];
+  const bytes = crypto.randomBytes(8);
+  for (let i = 0; i < 8; i++) {
+    if (i === 4) code += '-';
+    code += chars[bytes[i] % chars.length];
   }
   return `HARV-${code.substring(5)}`;
 }

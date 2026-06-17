@@ -17,7 +17,9 @@ export async function POST(request: NextRequest) {
     const idToken = authHeader.split('Bearer ')[1];
     const decodedToken = await adminAuth.verifyIdToken(idToken);
 
-    if (!decodedToken.superAdmin) {
+    // Allow super admin claim OR matching super admin email (for bootstrapping)
+    const superAdminEmail = process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || 'bumbmatei@gmail.com';
+    if (!decodedToken.superAdmin && decodedToken.email !== superAdminEmail) {
       return NextResponse.json({ error: 'Super admin only' }, { status: 403 });
     }
 

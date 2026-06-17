@@ -1471,7 +1471,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
                     )}
 
                     {/* Cancel button only for add-on subscribers, not Ultra/Enterprise */}
-                    {!['ultra', 'enterprise'].includes(tenantPlan || '') && (
+                    {!['ultra', 'enterprise'].includes(currentPlan || '') && (
                       <button
                       onClick={handleAiAssistantCancel}
                       disabled={aiAssistantCancelLoading}

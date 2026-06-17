@@ -41,10 +41,11 @@ export async function setCustomClaims(uid: string) {
     const existingUser = await adminAuth.getUser(uid);
     const existingClaims = existingUser.customClaims || {};
 
-    // Only update if claims actually changed
-    const claimsChanged = JSON.stringify(claims) !== JSON.stringify(
-      Object.fromEntries(Object.keys(claims).map(k => [k, existingClaims[k]]))
-    );
+    // Only update if claims actually changed — check ALL claim keys, not just new ones
+    const allKeys = ['tenantId', 'admin', 'superAdmin'];
+    const normalizedExisting = Object.fromEntries(allKeys.map(k => [k, existingClaims[k] ?? undefined]));
+    const normalizedNew = Object.fromEntries(allKeys.map(k => [k, claims[k] ?? undefined]));
+    const claimsChanged = JSON.stringify(normalizedNew) !== JSON.stringify(normalizedExisting);
 
     if (claimsChanged) {
       await adminAuth.setCustomUserClaims(uid, claims);
