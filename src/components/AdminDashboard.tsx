@@ -244,15 +244,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, tenantPlan 
             </button>
             <h1 className="text-lg font-bold text-gray-900">Harvest Admin</h1>
           </div>
-          <div className="flex items-center gap-2">
-            <button 
-              onClick={() => setActiveTab('settings')}
-              className="text-gray-500 hover:text-gray-900 transition-colors"
-              style={activeTab === 'settings' ? { color: 'var(--brand-color, #d4a017)' } : undefined}
-            >
-              <Settings size={22} />
-            </button>
-          </div>
         </div>
 
         {/* Top Header Desktop */}
@@ -335,7 +326,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, tenantPlan 
               onClick={() => setShowMoreSheet(false)}
             />
             <div
-              className="fixed bottom-[72px] left-0 right-0 bg-white rounded-t-2xl z-[102] lg:hidden shadow-[0_-8px_30px_rgba(0,0,0,0.12)]"
+              className="fixed bottom-0 left-0 right-0 bg-white rounded-t-2xl z-[102] lg:hidden shadow-[0_-8px_30px_rgba(0,0,0,0.12)] max-h-[70vh] overflow-y-auto"
               style={{ animation: 'slideUp 0.25s ease-out' }}
             >
               <div className="w-9 h-1 bg-gray-300 rounded-full mx-auto mt-3 mb-2" />
