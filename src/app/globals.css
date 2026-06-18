@@ -115,19 +115,20 @@
   background: initial;
 }
 
-/* Excalidraw mobile: hide top-left hamburger menu — we have our own Back button */
-.excalidraw-canvas-container .App-menu_top__left {
+/* ── Canvas: hide Excalidraw's top toolbar on mobile ─────────────────── */
+/* Drawing tools are still accessible via the bottom hamburger menu */
+.excalidraw-canvas-container .App-menu_top {
   display: none !important;
 }
 
-/* Safe area: push Excalidraw's top-right content below status bar */
-.excalidraw-canvas-container .layer-ui__wrapper__top-right {
-  padding-top: env(safe-area-inset-top, 0px) !important;
-}
-
-/* Safe area: push bottom bar above browser chrome */
-.excalidraw-canvas-container .layer-ui__wrapper__footer,
-.excalidraw-canvas-container .App-menu_bottom {
+/* Push Excalidraw's bottom footer above the browser chrome */
+.excalidraw-canvas-container .layer-ui__wrapper__footer {
   padding-bottom: env(safe-area-inset-bottom, 0px) !important;
 }
 
+/* Our floating toolbar bar at the top */
+.canvas-top-bar {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
