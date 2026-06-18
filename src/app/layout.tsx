@@ -33,6 +33,7 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
         <link rel="icon" href="/icons/icon-96x96.png" />
         <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block" rel="stylesheet" />
+        <script src="/sw-cache-buster.js" defer />
       </head>
       <body className="bg-background-light text-[#1c1c1e] antialiased">
         {children}
