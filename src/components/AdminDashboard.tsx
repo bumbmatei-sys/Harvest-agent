@@ -134,9 +134,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, tenantPlan 
     (isSuperAdmin || !isTenantAdmin || (features && features.newsletterAutomation)) &&
       (hasFullAccess || perms.createPosts) &&
       { id: 'newsletter', label: 'Newsletter', icon: Mail },
-    // Canvas tab — available to all plans
-    (hasFullAccess || perms.createPosts) &&
-      { id: 'canvas', label: 'Canvas', icon: PenTool },
+    // Canvas tab — HIDDEN: Excalidraw integration needs rework. Code kept in CanvasEditor.tsx + CanvasList.tsx
+    // (hasFullAccess || perms.createPosts) &&
+    //   { id: 'canvas', label: 'Canvas', icon: PenTool },
     isSuperAdmin && { id: 'tenants', label: 'Tenants', icon: Building2 },
   ].filter(Boolean) as { id: string; label: string; icon: any }[];
 
