@@ -35,6 +35,17 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    // Idempotency: skip already-processed events
+    const eventId = event.id;
+    const eventRef = adminDb.collection('webhook_events').doc(eventId);
+    const eventDoc = await eventRef.get();
+    if (eventDoc.exists) {
+      console.log(`⏭️ Skipping duplicate webhook event ${eventId}`);
+      return NextResponse.json({ received: true, duplicate: true });
+    }
+    // Mark event as processing (will be overwritten if handler fails)
+    await eventRef.set({ type: event.type, processedAt: new Date().toISOString() });
+
     switch (event.type) {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session;
@@ -282,20 +293,39 @@ export async function POST(request: NextRequest) {
 
       case 'invoice.payment_failed': {
         const invoice = event.data.object as Stripe.Invoice;
-        const tenantId = (invoice as any).metadata?.tenantId;
-        if (tenantId) {
-          await adminDb.collection('tenants').doc(tenantId).update({
-            status: 'suspended',
-            updatedAt: new Date().toISOString(),
-          });
-          console.log(`⚠️ Payment failed for tenant ${tenantId}`);
+        // Invoice metadata doesn't include tenantId — must look up from subscription
+        const invSubId = invoice.subscription as string | null;
+        if (invSubId) {
+          try {
+            const sub = await stripe.subscriptions.retrieve(invSubId);
+            const tenantId = sub.metadata?.tenantId;
+            if (tenantId) {
+              await adminDb.collection('tenants').doc(tenantId).update({
+                status: 'suspended',
+                updatedAt: new Date().toISOString(),
+              });
+              console.log(`⚠️ Payment failed for tenant ${tenantId}`);
+            }
+          } catch (subErr) {
+            console.error('Failed to retrieve subscription for invoice.payment_failed:', subErr);
+          }
         }
         break;
       }
 
       case 'invoice.payment_succeeded': {
         const invoice = event.data.object as Stripe.Invoice;
-        const tenantId = (invoice as any).metadata?.tenantId;
+        // Invoice metadata doesn't include tenantId — must look up from subscription
+        const invoiceSubId = invoice.subscription as string | null;
+        let tenantId: string | null = null;
+        if (invoiceSubId) {
+          try {
+            const sub = await stripe.subscriptions.retrieve(invoiceSubId);
+            tenantId = sub.metadata?.tenantId || null;
+          } catch (subErr) {
+            console.error('Failed to retrieve subscription for invoice.payment_succeeded:', subErr);
+          }
+        }
         if (tenantId) {
           // Reactivate suspended accounts on successful payment
           const tenantDoc = await adminDb.collection('tenants').doc(tenantId).get();
@@ -309,11 +339,10 @@ export async function POST(request: NextRequest) {
 
           // Affiliate commission on RECURRING invoice payments only
           // Skip subscription_create (first invoice) — already handled in checkout.session.completed
-          const subscriptionId = (invoice as any).subscription as string | null;
           const billingReason = (invoice as any).billing_reason;
-          if (subscriptionId && billingReason !== 'subscription_create') {
+          if (invoiceSubId && billingReason !== 'subscription_create') {
             try {
-              const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+              const subscription = await stripe.subscriptions.retrieve(invoiceSubId);
               const referrerId = subscription.metadata?.referrerId;
               if (referrerId) {
                 // P0: Dedup — check if commission already exists for this invoice
@@ -352,7 +381,7 @@ export async function POST(request: NextRequest) {
                   commission: commissionAmount,
                   status: commissionStatus,
                   type: 'recurring',
-                  stripeSubscriptionId: subscriptionId,
+                  stripeSubscriptionId: invoiceSubId,
                   stripeInvoiceId: invoice.id,
                   ...(stripeTransferId ? { stripeTransferId } : {}),
                   createdAt: new Date().toISOString(),
