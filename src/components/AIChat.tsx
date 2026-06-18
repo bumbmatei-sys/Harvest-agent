@@ -2,9 +2,10 @@ import { useState, useRef, useEffect, KeyboardEvent } from "react";
 import Image from "next/image";
 import ReactMarkdown from 'react-markdown';
 import { db, auth } from '../firebase';
-import { collection, addDoc, serverTimestamp, query, where, getDocs, deleteDoc, onSnapshot } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, where, getDocs, deleteDoc, doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { getTenantScope } from '../utils/tenant-scope';
+import { TenantPlan } from '../types/tenant.types';
 
 // AI API calls are proxied through /api/gemini to keep API keys server-side
 // Embeddings: Gemini | Chat: Xiaomi MiMo
@@ -195,17 +196,253 @@ function HistoryPanel({ history, activeId, onSelect, onNewChat, onClose, onDelet
 }
 
 // ═══════════════════════════════════════════════
+// PAYWALL (main site users without subscription)
+// ═══════════════════════════════════════════════
+function PaywallOverlay({ onBack, onSubscribe }: { onBack?: () => void; onSubscribe: () => void }) {
+  const [loading, setLoading] = useState(false);
+
+  const handleSubscribe = async () => {
+    setLoading(true);
+    try {
+      const user = auth.currentUser;
+      if (!user) return;
+      const token = await user.getIdToken();
+      const res = await fetch('/api/stripe/checkout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ plan: 'plus', addOn: 'ai-chat' }),
+      });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        alert(data.error || 'Failed to start checkout');
+      }
+    } catch {
+      alert('Something went wrong. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div style={{
+      fontFamily: "'Nunito', sans-serif",
+      background: BG,
+      height: "100%",
+      width: "100%",
+      maxWidth: 1024,
+      margin: "0 auto",
+      display: "flex",
+      flexDirection: "column",
+      overflow: "hidden",
+    }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap');
+        @keyframes fadeSlideUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+        @keyframes pulse-glow { 0%, 100% { box-shadow: 0 0 20px rgba(201,150,58,0.2); } 50% { box-shadow: 0 0 40px rgba(201,150,58,0.4); } }
+      `}</style>
+
+      {/* Top bar */}
+      <div style={{
+        background: CARD,
+        borderBottom: `1px solid ${BORDER}`,
+        padding: "12px 16px",
+        display: "flex",
+        alignItems: "center",
+        boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
+        flexShrink: 0,
+        zIndex: 10,
+      }}>
+        <button onClick={onBack} style={{ background: "none", border: "none", color: GOLD, cursor: "pointer", fontSize: 22, padding: 0, display: "flex", alignItems: "center", lineHeight: 1 }}>←</button>
+        <div style={{ textAlign: "center", flex: 1 }}>
+          <div style={{ fontWeight: 700, fontSize: 16, color: TEXT }}>Harvest AI</div>
+        </div>
+        <div style={{ width: 22 }} /> {/* spacer */}
+      </div>
+
+      {/* Paywall content */}
+      <div style={{
+        flex: 1,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "32px 24px",
+        animation: "fadeSlideUp 0.5s ease",
+        textAlign: "center",
+        overflow: "auto",
+      }}>
+        {/* Icon */}
+        <div style={{
+          width: 80,
+          height: 80,
+          borderRadius: "50%",
+          background: "linear-gradient(135deg, #FBF3E4, #F5E6C8)",
+          border: "2px solid #C9963A",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          marginBottom: 20,
+          animation: "pulse-glow 3s ease-in-out infinite",
+        }}>
+          <span style={{ fontSize: 36 }}>✦</span>
+        </div>
+
+        {/* Title */}
+        <h2 style={{ fontWeight: 800, fontSize: 24, color: TEXT, margin: "0 0 6px", letterSpacing: "-0.3px" }}>
+          Unlock Harvest AI
+        </h2>
+        <p style={{ fontSize: 14, color: TEXT2, margin: "0 0 24px", lineHeight: 1.6, maxWidth: 300 }}>
+          Your personal Bible study companion, trained on Scripture and sound doctrine.
+        </p>
+
+        {/* Benefits */}
+        <div style={{
+          background: CARD,
+          border: `1px solid ${BORDER}`,
+          borderRadius: 16,
+          padding: "20px",
+          width: "100%",
+          maxWidth: 340,
+          marginBottom: 24,
+          textAlign: "left",
+        }}>
+          {[
+            { icon: "📖", text: "Trained on Scripture & theology" },
+            { icon: "🔒", text: "Your data stays private — never sold" },
+            { icon: "💰", text: "Supports free learning for all" },
+            { icon: "⛪", text: "Sound, biblically faithful answers" },
+          ].map((item, i) => (
+            <div key={i} style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 12,
+              padding: "10px 0",
+              borderBottom: i < 3 ? `1px solid ${BORDER}` : "none",
+            }}>
+              <span style={{ fontSize: 18 }}>{item.icon}</span>
+              <span style={{ fontSize: 14, color: TEXT, fontWeight: 600 }}>{item.text}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Price */}
+        <div style={{
+          background: "linear-gradient(135deg, #FBF3E4, #F5E6C8)",
+          borderRadius: 14,
+          padding: "14px 24px",
+          marginBottom: 24,
+          border: "1px solid rgba(201,150,58,0.3)",
+        }}>
+          <div style={{ fontSize: 13, color: TEXT2, fontWeight: 600, marginBottom: 2 }}>Just</div>
+          <div style={{ fontSize: 32, fontWeight: 800, color: GOLD, lineHeight: 1 }}>$5.99<span style={{ fontSize: 14, fontWeight: 600, color: TEXT2 }}>/mo</span></div>
+          <div style={{ fontSize: 11, color: TEXT2, marginTop: 4 }}>Cancel anytime</div>
+        </div>
+
+        {/* CTA Button */}
+        <button
+          onClick={handleSubscribe}
+          disabled={loading}
+          style={{
+            width: "100%",
+            maxWidth: 340,
+            padding: "14px 24px",
+            background: loading ? BORDER : "linear-gradient(135deg, #C9963A, #D4A843)",
+            color: "#fff",
+            border: "none",
+            borderRadius: 12,
+            fontSize: 16,
+            fontWeight: 700,
+            fontFamily: "'Nunito', sans-serif",
+            cursor: loading ? "not-allowed" : "pointer",
+            boxShadow: loading ? "none" : "0 4px 16px rgba(201,150,58,0.4)",
+            transition: "all 0.2s",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 8,
+          }}
+        >
+          {loading ? (
+            <span style={{ display: "inline-block", width: 18, height: 18, border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "#fff", borderRadius: "50%", animation: "spin 0.6s linear infinite" }} />
+          ) : (
+            <>Subscribe Now <span style={{ fontSize: 18 }}>→</span></>
+          )}
+        </button>
+
+        {/* Footer note */}
+        <p style={{ fontSize: 11, color: TEXT2, margin: "16px 0 0", lineHeight: 1.5, maxWidth: 280 }}>
+          🔐 Secure checkout via Stripe<br />
+          Cancel anytime from your profile
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════
 // MAIN AI CHAT
 // ═══════════════════════════════════════════════
-export default function AIChat({ onBack }: { onBack?: () => void }) {
- const [history, setHistory] = useState<Chat[]>([]);
- const [activeChat, setActiveChat] = useState<Chat | null>(null);
- const [messages, setMessages] = useState<Message[]>([]);
- const [input, setInput] = useState<string>("");
- const [typing, setTyping] = useState<boolean>(false);
- const [showHistory, setShowHistory] = useState<boolean>(false);
- const messagesEndRef = useRef<HTMLDivElement>(null);
- const inputRef = useRef<HTMLTextAreaElement>(null);
+export default function AIChat({ onBack, tenantPlan }: { onBack?: () => void; tenantPlan?: TenantPlan | null }) {
+  const [history, setHistory] = useState<Chat[]>([]);
+  const [activeChat, setActiveChat] = useState<Chat | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState<string>("");
+  const [typing, setTyping] = useState<boolean>(false);
+  const [showHistory, setShowHistory] = useState<boolean>(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  // Subscription state for main site users
+  const [subscriptionStatus, setSubscriptionStatus] = useState<'loading' | 'active' | 'none'>('loading');
+  const isMainSite = tenantPlan === null || tenantPlan === undefined;
+
+  useEffect(() => {
+    if (!isMainSite) {
+      // Tenant users with aiChat access don't need subscription check
+      setSubscriptionStatus('active');
+      return;
+    }
+    // Main site user — check for AI chat subscription
+    const checkSubscription = async () => {
+      try {
+        const user = auth.currentUser;
+        if (!user) { setSubscriptionStatus('none'); return; }
+        const userSnap = await getDoc(doc(db, 'users', user.uid));
+        const userData = userSnap.data();
+        const sub = userData?.aiChatSubscription;
+        if (sub && (sub.status === 'active' || sub.status === 'trialing')) {
+          setSubscriptionStatus('active');
+        } else {
+          setSubscriptionStatus('none');
+        }
+      } catch (e) {
+        console.error('Failed to check subscription:', e);
+        setSubscriptionStatus('none');
+      }
+    };
+    checkSubscription();
+  }, [isMainSite]);
+
+  // Show paywall for main site users without subscription
+  if (isMainSite && subscriptionStatus === 'none') {
+    return <PaywallOverlay onBack={onBack} onSubscribe={() => {}} />;
+  }
+
+  // Loading state for main site users
+  if (isMainSite && subscriptionStatus === 'loading') {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: "100%", background: BG, fontFamily: "'Nunito', sans-serif" }}>
+        <div style={{ width: 24, height: 24, border: `3px solid ${BORDER}`, borderTopColor: GOLD, borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
 
  // Load chat history from localStorage on mount
  useEffect(() => {

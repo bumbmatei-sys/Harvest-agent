@@ -50,7 +50,27 @@ export async function POST(request: NextRequest) {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session;
         const tenantId = session.metadata?.tenantId;
+        const userId = session.metadata?.userId;
         const subscriptionId = session.subscription as string | null;
+
+        // Handle AI Chat user subscription
+        if (session.metadata?.addOn === 'ai-chat' && userId && subscriptionId) {
+          const sub = await stripe.subscriptions.retrieve(subscriptionId);
+          await adminDb.collection('users').doc(userId).update({
+            aiChatSubscription: {
+              status: 'active',
+              stripeSubscriptionId: subscriptionId,
+              stripeCustomerId: session.customer as string,
+              currentPeriodEnd: sub.current_period_end
+                ? new Date(sub.current_period_end * 1000).toISOString()
+                : null,
+              createdAt: new Date().toISOString(),
+            },
+            updatedAt: new Date().toISOString(),
+          });
+          console.log(`✅ User ${userId} subscribed to AI Chat`);
+          break;
+        }
 
         if (tenantId && subscriptionId) {
           // Handle AI Assistant add-on checkout
@@ -204,6 +224,22 @@ export async function POST(request: NextRequest) {
       case 'customer.subscription.updated': {
         const subscription = event.data.object as Stripe.Subscription;
         const tenantId = subscription.metadata?.tenantId;
+        const subUserId = subscription.metadata?.userId;
+
+        // Handle AI Chat subscription update
+        if (subscription.metadata?.addOn === 'ai-chat' && subUserId) {
+          const status = subscription.status === 'active' ? 'active' :
+                         subscription.status === 'past_due' ? 'past_due' : 'cancelled';
+          await adminDb.collection('users').doc(subUserId).update({
+            'aiChatSubscription.status': status,
+            'aiChatSubscription.currentPeriodEnd': subscription.current_period_end
+              ? new Date(subscription.current_period_end * 1000).toISOString()
+              : null,
+            updatedAt: new Date().toISOString(),
+          });
+          console.log(`📝 AI Chat subscription updated for user ${subUserId}: ${status}`);
+          break;
+        }
 
         if (tenantId) {
           const updateData: Record<string, unknown> = {
@@ -250,6 +286,17 @@ export async function POST(request: NextRequest) {
         const subscription = event.data.object as Stripe.Subscription;
         const tenantId = subscription.metadata?.tenantId;
         const addOn = subscription.metadata?.addOn;
+        const delUserId = subscription.metadata?.userId;
+
+        // Handle AI Chat subscription cancellation
+        if (addOn === 'ai-chat' && delUserId) {
+          await adminDb.collection('users').doc(delUserId).update({
+            'aiChatSubscription.status': 'cancelled',
+            updatedAt: new Date().toISOString(),
+          });
+          console.log(`❌ AI Chat subscription cancelled for user ${delUserId}`);
+          break;
+        }
 
         if (tenantId) {
           if (addOn === 'ai-assistant') {

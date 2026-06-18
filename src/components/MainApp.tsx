@@ -295,7 +295,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, tenantPlan }) => {
             </div>
           ) : activeBottomTab === 'chat' ? (
              <div className="w-full lg:max-w-5xl lg:mx-auto h-full">
-              <AIChat onBack={() => setActiveBottomTab('home')} />
+              <AIChat onBack={() => setActiveBottomTab('home')} tenantPlan={tenantPlan} />
              </div>
           ) : activeBottomTab === 'map' ? (
              <div className="w-full lg:max-w-5xl lg:mx-auto h-full">

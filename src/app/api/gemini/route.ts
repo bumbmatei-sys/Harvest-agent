@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
 import { requireAuth } from '@/lib/api-auth';
+import { adminDb } from '@/lib/firebase-admin';
 
 export const dynamic = 'force-dynamic';
 
@@ -58,6 +59,31 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === 'generate') {
+      // ── Server-side subscription enforcement ──
+      const user = userOrErr;
+      if (!user.tenantId) {
+        // Main site user — requires active AI chat subscription
+        const userDoc = await adminDb.collection('users').doc(user.uid).get();
+        const sub = userDoc.data()?.aiChatSubscription;
+        if (!sub || (sub.status !== 'active' && sub.status !== 'trialing')) {
+          return NextResponse.json(
+            { error: 'Active AI chat subscription required.' },
+            { status: 403 }
+          );
+        }
+      } else {
+        // Tenant user — check plan has AI (Community+)
+        const tenantDoc = await adminDb.collection('tenants').doc(user.tenantId).get();
+        const plan = tenantDoc.data()?.plan;
+        // plus plan has no AI access
+        if (plan === 'plus') {
+          return NextResponse.json(
+            { error: 'AI chat is not available on the Individual plan.' },
+            { status: 403 }
+          );
+        }
+      }
+
       if (!process.env.MIMO_API_KEY) {
         return NextResponse.json(
           { error: 'MIMO_API_KEY is not configured on the server.' },
