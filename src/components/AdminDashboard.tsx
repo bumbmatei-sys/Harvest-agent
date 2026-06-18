@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { LayoutDashboard, Church, FileText, Rss, BrainCircuit, Inbox, ArrowLeft, GraduationCap, ChevronLeft, ChevronRight, Building2, Settings } from 'lucide-react';
+import { LayoutDashboard, Church, FileText, Rss, BrainCircuit, Inbox, ArrowLeft, GraduationCap, ChevronLeft, ChevronRight, Building2, Settings, MoreHorizontal } from 'lucide-react';
 import AdminBlog from './AdminBlog';
 import AdminPosts from './AdminPosts';
 import AdminInbox from './AdminInbox';
@@ -30,6 +30,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, tenantPlan 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [pendingChurchesCount, setPendingChurchesCount] = useState(0);
+  const [showMoreSheet, setShowMoreSheet] = useState(false);
   const [userRole, setUserRole] = useState<string>('user');
   const [userPermissions, setUserPermissions] = useState<Permission | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -93,7 +94,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, tenantPlan 
   const isTenantAdmin = !!tenantPlan;
   const hasFullAccess = isSuperAdmin || isChurchAdmin || perms.fullAccess;
 
-  const bottomTabs = [
+  const showInbox = hasFullAccess || perms.seeFormsInbox;
+
+  // All available tabs (permission-filtered)
+  const allTabs = [
     (hasFullAccess || perms.analytics) && { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     (hasFullAccess || perms.modifyChurches) && { id: 'churches', label: isTenantAdmin && features && features.maxChurches === 1 ? 'Church' : 'Church List', icon: Church },
     (isSuperAdmin || !isTenantAdmin || (features && features.blog)) && (hasFullAccess || perms.createCourses) && { id: 'courses', label: 'Courses', icon: GraduationCap },
@@ -103,18 +107,24 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, tenantPlan 
     isSuperAdmin && { id: 'tenants', label: 'Tenants', icon: Building2 },
   ].filter(Boolean) as { id: string; label: string; icon: any }[];
 
+  // Mobile: first 4 tabs in nav bar, rest go to "More" sheet
+  const primaryTabs = allTabs.slice(0, 4);
+  const moreTabs = [
+    ...allTabs.slice(4),
+    ...(showInbox ? [{ id: 'inbox', label: 'Inbox', icon: Inbox }] : []),
+    { id: 'settings', label: 'Settings', icon: Settings },
+  ];
+
   // If the active tab is not in the allowed tabs, switch to the first allowed tab
   useEffect(() => {
-    if (!isLoading && bottomTabs.length > 0 && !bottomTabs.find(t => t.id === activeTab) && activeTab !== 'inbox' && activeTab !== 'settings') {
-      setActiveTab(bottomTabs[0].id);
+    if (!isLoading && allTabs.length > 0 && !allTabs.find(t => t.id === activeTab) && activeTab !== 'inbox' && activeTab !== 'settings') {
+      setActiveTab(allTabs[0].id);
     }
-  }, [isLoading, bottomTabs, activeTab]);
+  }, [isLoading, allTabs, activeTab]);
 
   if (isLoading) {
     return <div className="flex items-center justify-center h-screen bg-[#f8f9fa]"><div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--brand-color, #d4a017)', borderTopColor: 'transparent' }}></div></div>;
   }
-
-  const showInbox = hasFullAccess || perms.seeFormsInbox;
 
   return (
     <div className="flex flex-col lg:flex-row h-screen bg-[#f8f9fa] font-sans overflow-hidden transition-colors duration-300">
@@ -135,39 +145,76 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, tenantPlan 
             {!isSidebarCollapsed && <span className="text-xl font-bold text-gray-900 truncate">Admin</span>}
           </button>
 
-          {bottomTabs.map((tab) => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex flex-col items-center justify-center gap-1 rounded-xl transition-all relative shrink-0 ${
-                  isSidebarCollapsed 
-                    ? 'lg:w-14 lg:h-14 lg:p-0 w-16 h-12' 
-                    : 'lg:flex-row lg:justify-start lg:gap-4 lg:w-full lg:h-14 lg:px-4 w-16 h-12'
-                } ${
-                  isActive ? 'lg:bg-[#fefce8]' : 'text-gray-400 hover:text-gray-600 lg:hover:bg-gray-50'
-                }`}
-                style={isActive ? { color: 'var(--brand-color, #d4a017)' } : undefined}
-                title={isSidebarCollapsed ? tab.label : undefined}
-              >
-                <Icon 
-                  size={24} 
-                  strokeWidth={isActive ? 2.5 : 2} 
-                  className={isActive ? 'shrink-0' : 'shrink-0'} 
+          {/* Mobile: primary tabs + More button */}
+          <div className="flex lg:hidden justify-around items-center w-full">
+            {primaryTabs.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => { setActiveTab(tab.id); setShowMoreSheet(false); }}
+                  className={`flex flex-col items-center justify-center gap-1 w-16 h-12 rounded-xl transition-all relative ${
+                    isActive ? '' : 'text-gray-400'
+                  }`}
                   style={isActive ? { color: 'var(--brand-color, #d4a017)' } : undefined}
-                />
-                <span className={`text-[10px] lg:text-sm lg:font-medium lg:truncate ${isSidebarCollapsed ? 'lg:hidden block' : 'lg:block block'}`}>
-                  {tab.label}
-                </span>
+                >
+                  <Icon size={22} strokeWidth={isActive ? 2.5 : 2} />
+                  <span className="text-[10px] font-medium">{tab.label}</span>
+                  {tab.id === 'churches' && pendingChurchesCount > 0 && (
+                    <span className="absolute top-1 right-2 bg-red-500 rounded-full border-2 border-white w-3 h-3"></span>
+                  )}
+                </button>
+              );
+            })}
+            <button
+              onClick={() => setShowMoreSheet(!showMoreSheet)}
+              className={`flex flex-col items-center justify-center gap-1 w-16 h-12 rounded-xl transition-all ${
+                showMoreSheet ? '' : 'text-gray-400'
+              }`}
+              style={showMoreSheet ? { color: 'var(--brand-color, #d4a017)' } : undefined}
+            >
+              <MoreHorizontal size={22} strokeWidth={2} />
+              <span className="text-[10px] font-medium">More</span>
+            </button>
+          </div>
 
-                {tab.id === 'churches' && pendingChurchesCount > 0 && (
-                  <span className={`absolute bg-red-500 rounded-full border-2 border-white ${isSidebarCollapsed ? 'top-1 lg:right-2 right-2' : 'top-1 right-2 lg:top-1/2 lg:-translate-y-1/2 lg:right-4'} w-3 h-3`}></span>
-                )}
-              </button>
-            );
-          })}
+          {/* Desktop: all tabs in sidebar */}
+          <div className="hidden lg:flex lg:flex-col lg:items-stretch lg:gap-2 lg:w-full">
+            {allTabs.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex flex-col items-center justify-center gap-1 rounded-xl transition-all relative shrink-0 ${
+                    isSidebarCollapsed
+                      ? 'lg:w-14 lg:h-14 lg:p-0'
+                      : 'lg:flex-row lg:justify-start lg:gap-4 lg:w-full lg:h-14 lg:px-4'
+                  } ${
+                    isActive ? 'lg:bg-[#fefce8]' : 'text-gray-400 hover:text-gray-600 lg:hover:bg-gray-50'
+                  }`}
+                  style={isActive ? { color: 'var(--brand-color, #d4a017)' } : undefined}
+                  title={isSidebarCollapsed ? tab.label : undefined}
+                >
+                  <Icon
+                    size={24}
+                    strokeWidth={isActive ? 2.5 : 2}
+                    className="shrink-0"
+                    style={isActive ? { color: 'var(--brand-color, #d4a017)' } : undefined}
+                  />
+                  <span className={`text-[10px] lg:text-sm lg:font-medium lg:truncate ${isSidebarCollapsed ? 'lg:hidden' : 'lg:block'}`}>
+                    {tab.label}
+                  </span>
+
+                  {tab.id === 'churches' && pendingChurchesCount > 0 && (
+                    <span className={`absolute bg-red-500 rounded-full border-2 border-white ${isSidebarCollapsed ? 'top-1 lg:right-2' : 'top-1 right-2 lg:top-1/2 lg:-translate-y-1/2 lg:right-4'} w-3 h-3`}></span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
           
           {/* Collapse Button (Bottom) */}
           <div className="hidden lg:flex flex-1 items-end pb-6 mt-auto">
@@ -204,20 +251,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, tenantPlan 
             >
               <Settings size={22} />
             </button>
-            {showInbox && (
-              <button 
-                onClick={() => setActiveTab('inbox')}
-                className="text-gray-500 hover:text-gray-900 transition-colors relative"
-                style={activeTab === 'inbox' ? { color: 'var(--brand-color, #d4a017)' } : undefined}
-              >
-                <Inbox size={24} />
-                {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white text-[8px] font-bold text-white flex items-center justify-center">
-                    {unreadCount > 9 ? '9+' : unreadCount}
-                  </span>
-                )}
-              </button>
-            )}
           </div>
         </div>
 
@@ -288,10 +321,58 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, tenantPlan 
             />
           ) : (
             <div className="flex flex-col items-center justify-center h-full text-gray-400">
-              <p className="text-lg font-medium">{bottomTabs.find(t => t.id === activeTab)?.label || 'Inbox'} coming soon.</p>
+              <p className="text-lg font-medium">{allTabs.find(t => t.id === activeTab)?.label || 'Inbox'} coming soon.</p>
             </div>
           )}
         </div>
+
+        {/* More Sheet (mobile only) */}
+        {showMoreSheet && (
+          <>
+            <div
+              className="fixed inset-0 bg-black/40 z-[101] lg:hidden"
+              onClick={() => setShowMoreSheet(false)}
+            />
+            <div
+              className="fixed bottom-[72px] left-0 right-0 bg-white rounded-t-2xl z-[102] lg:hidden shadow-[0_-8px_30px_rgba(0,0,0,0.12)]"
+              style={{ animation: 'slideUp 0.25s ease-out' }}
+            >
+              <div className="w-9 h-1 bg-gray-300 rounded-full mx-auto mt-3 mb-2" />
+              <div className="px-4 pb-4">
+                <h3 className="text-sm font-bold text-gray-900 mb-3">More Tools</h3>
+                <div className="grid grid-cols-4 gap-3">
+                  {moreTabs.map((tab) => {
+                    const Icon = tab.icon;
+                    const isActive = activeTab === tab.id;
+                    return (
+                      <button
+                        key={tab.id}
+                        onClick={() => {
+                          setActiveTab(tab.id);
+                          setShowMoreSheet(false);
+                        }}
+                        className="flex flex-col items-center gap-2 py-3 rounded-xl hover:bg-gray-50 transition-colors relative"
+                      >
+                        <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${
+                          isActive ? 'bg-[#fefce8]' : 'bg-gray-100'
+                        }`}>
+                          <Icon size={20} style={isActive ? { color: 'var(--brand-color, #d4a017)' } : { color: '#666' }} />
+                        </div>
+                        <span className="text-[10px] font-semibold text-gray-700">{tab.label}</span>
+                        {tab.id === 'inbox' && unreadCount > 0 && (
+                          <span className="absolute top-1 right-2 w-4 h-4 bg-red-500 rounded-full border-2 border-white text-[8px] font-bold text-white flex items-center justify-center">
+                            {unreadCount > 9 ? '9+' : unreadCount}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+            <style>{`@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }`}</style>
+          </>
+        )}
       </div>
     </div>
   );

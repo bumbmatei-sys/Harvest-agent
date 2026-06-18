@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Option B — Grouped Sections</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Inter', sans-serif; background: #f8f9fa; color: #1a1a1a; }
+  
+  .phone {
+    width: 390px; height: 844px; margin: 20px auto; background: #f8f9fa;
+    border-radius: 40px; overflow: hidden; position: relative;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.05);
+  }
+  .status-bar {
+    height: 54px; background: white; display: flex; align-items: center;
+    justify-content: space-between; padding: 0 32px; font-size: 14px; font-weight: 600;
+  }
+  .status-bar .time { font-size: 15px; font-weight: 600; }
+  .status-bar .icons { display: flex; gap: 6px; align-items: center; }
+  .status-bar .icons svg { width: 16px; height: 16px; }
+  
+  .header {
+    background: white; padding: 16px 20px 12px; border-bottom: 1px solid #f0f0f0;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .header h1 { font-size: 20px; font-weight: 700; color: #0b1121; }
+  .header-bell { width: 36px; height: 36px; border-radius: 50%; background: #f5f5f5; display: flex; align-items: center; justify-content: center; }
+  
+  .content { padding: 20px; overflow-y: auto; height: calc(844px - 54px - 60px - 72px - 44px); }
+  
+  /* Sub-tabs for Content section */
+  .sub-tabs {
+    display: flex; gap: 4px; background: #f0f0f0; border-radius: 10px; padding: 3px; margin-bottom: 16px;
+  }
+  .sub-tab {
+    flex: 1; padding: 8px 4px; border-radius: 8px; text-align: center;
+    font-size: 12px; font-weight: 600; color: #666; cursor: pointer;
+    transition: all 0.2s;
+  }
+  .sub-tab.active { background: white; color: #0b1121; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+  
+  .content h2 { font-size: 16px; font-weight: 700; color: #0b1121; margin-bottom: 16px; }
+  
+  .stat-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+  .stat-card {
+    background: white; border-radius: 16px; padding: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .stat-card .label { font-size: 11px; color: #666; text-transform: uppercase; letter-spacing: 0.5px; }
+  .stat-card .value { font-size: 24px; font-weight: 700; color: #0b1121; margin-top: 4px; }
+  .stat-card .change { font-size: 11px; color: #22c55e; margin-top: 2px; }
+  
+  .chart-placeholder {
+    background: white; border-radius: 16px; padding: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04); margin-bottom: 16px;
+  }
+  .chart-bars { display: flex; align-items: flex-end; gap: 8px; height: 100px; margin-top: 12px; }
+  .chart-bar { flex: 1; background: #C9963A; border-radius: 6px 6px 0 0; opacity: 0.8; }
+  
+  .recent-list { margin-top: 16px; }
+  .recent-item {
+    background: white; border-radius: 12px; padding: 14px; margin-bottom: 8px;
+    display: flex; align-items: center; gap: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .recent-avatar { width: 40px; height: 40px; border-radius: 50%; background: #e8e8e8; display: flex; align-items: center; justify-content: center; font-weight: 600; color: #666; font-size: 14px; }
+  .recent-info { flex: 1; }
+  .recent-name { font-size: 13px; font-weight: 600; color: #1a1a1a; }
+  .recent-desc { font-size: 11px; color: #888; margin-top: 2px; }
+  
+  .section-title {
+    font-size: 11px; font-weight: 700; color: #999; text-transform: uppercase;
+    letter-spacing: 1px; margin: 16px 0 8px; padding-left: 4px;
+  }
+  
+  /* Content Tab View - Blog/Courses merged */
+  .content-card {
+    background: white; border-radius: 16px; padding: 16px; margin-bottom: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    display: flex; gap: 14px;
+  }
+  .content-thumb {
+    width: 80px; height: 60px; border-radius: 10px; background: #e8e8e8;
+    flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+    font-size: 24px;
+  }
+  .content-meta { flex: 1; }
+  .content-title { font-size: 13px; font-weight: 700; color: #0b1121; }
+  .content-subtitle { font-size: 11px; color: #888; margin-top: 4px; }
+  .content-badge {
+    display: inline-block; font-size: 9px; font-weight: 700; padding: 2px 6px;
+    border-radius: 4px; margin-top: 6px; text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .badge-blog { background: #eff6ff; color: #3b82f6; }
+  .badge-course { background: #f5f3ff; color: #8b5cf6; }
+  
+  /* Bottom Nav - 5 tabs */
+  .bottom-nav {
+    position: absolute; bottom: 0; left: 0; right: 0; height: 72px;
+    background: white; border-top: 1px solid #f0f0f0;
+    display: flex; justify-content: space-around; align-items: center;
+    padding-bottom: 8px;
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.05);
+  }
+  .nav-item {
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+    padding: 6px 8px; border-radius: 12px; transition: all 0.2s;
+    cursor: pointer; position: relative; min-width: 56px;
+  }
+  .nav-item.active { color: #C9963A; }
+  .nav-item:not(.active) { color: #999; }
+  .nav-item svg { width: 22px; height: 22px; }
+  .nav-item span { font-size: 10px; font-weight: 600; }
+  .nav-item .dot {
+    position: absolute; top: 4px; right: 8px; width: 8px; height: 8px;
+    background: #ef4444; border-radius: 50%; border: 2px solid white;
+  }
+  
+  /* More menu overlay */
+  .more-overlay {
+    position: absolute; bottom: 72px; left: 0; right: 0;
+    background: white; border-radius: 20px 20px 0 0;
+    padding: 20px 16px 24px;
+    box-shadow: 0 -8px 30px rgba(0,0,0,0.12);
+    display: none;
+  }
+  .more-overlay.show { display: block; }
+  .more-overlay .handle {
+    width: 36px; height: 4px; background: #ddd; border-radius: 2px;
+    margin: 0 auto 16px;
+  }
+  .more-overlay h3 {
+    font-size: 14px; font-weight: 700; color: #0b1121; margin-bottom: 12px;
+    padding-left: 4px;
+  }
+  .more-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .more-item {
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    padding: 12px 4px; border-radius: 12px; cursor: pointer;
+    transition: background 0.15s;
+  }
+  .more-item:hover { background: #f5f5f5; }
+  .more-icon {
+    width: 44px; height: 44px; border-radius: 12px; display: flex;
+    align-items: center; justify-content: center;
+  }
+  .more-icon svg { width: 20px; height: 20px; color: white; }
+  .more-item span { font-size: 10px; font-weight: 600; color: #333; text-align: center; }
+  .label-tag {
+    display: inline-block; background: #C9963A; color: white;
+    font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px;
+    position: absolute; top: -6px; right: -6px;
+  }
+</style>
+</head>
+<body>
+<div class="phone">
+  <!-- Status Bar -->
+  <div class="status-bar">
+    <span class="time">9:41</span>
+    <div class="icons">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z"/></svg>
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z"/></svg>
+    </div>
+  </div>
+  
+  <!-- Header -->
+  <div class="header">
+    <h1>Dashboard</h1>
+    <div class="header-bell">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+    </div>
+  </div>
+  
+  <!-- Content -->
+  <div class="content" id="contentArea">
+    <!-- Dashboard view (default) -->
+    <div id="dashboardView">
+      <div class="stat-row">
+        <div class="stat-card">
+          <div class="label">Members</div>
+          <div class="value">1,247</div>
+          <div class="change">↑ 12% this week</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">Posts</div>
+          <div class="value">89</div>
+          <div class="change">↑ 5 new today</div>
+        </div>
+      </div>
+      
+      <div class="chart-placeholder">
+        <div style="font-size:13px;font-weight:700;color:#0b1121;">Weekly Activity</div>
+        <div class="chart-bars">
+          <div class="chart-bar" style="height:40%"></div>
+          <div class="chart-bar" style="height:65%"></div>
+          <div class="chart-bar" style="height:45%"></div>
+          <div class="chart-bar" style="height:80%"></div>
+          <div class="chart-bar" style="height:55%"></div>
+          <div class="chart-bar" style="height:90%"></div>
+          <div class="chart-bar" style="height:70%"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:8px;font-size:10px;color:#999;">
+          <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+        </div>
+      </div>
+      
+      <div class="section-title">Recent Activity</div>
+      <div class="recent-list">
+        <div class="recent-item">
+          <div class="recent-avatar">JD</div>
+          <div class="recent-info">
+            <div class="recent-name">John Doe</div>
+            <div class="recent-desc">Posted in community • 2m ago</div>
+          </div>
+        </div>
+        <div class="recent-item">
+          <div class="recent-avatar">SM</div>
+          <div class="recent-info">
+            <div class="recent-name">Sarah Miller</div>
+            <div class="recent-desc">Commented on blog post • 15m ago</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Content view (Blog + Courses merged) -->
+    <div id="contentView" style="display:none;">
+      <div class="sub-tabs">
+        <div class="sub-tab active" onclick="switchSubTab(this)">All</div>
+        <div class="sub-tab" onclick="switchSubTab(this)">Blog</div>
+        <div class="sub-tab" onclick="switchSubTab(this)">Courses</div>
+        <div class="sub-tab" onclick="switchSubTab(this)">AI</div>
+      </div>
+      
+      <div class="content-card">
+        <div class="content-thumb">📝</div>
+        <div class="content-meta">
+          <div class="content-title">Welcome to Our Community</div>
+          <div class="content-subtitle">Blog post • Published 2 days ago</div>
+          <div class="content-badge badge-blog">Blog</div>
+        </div>
+      </div>
+      
+      <div class="content-card">
+        <div class="content-thumb">🎓</div>
+        <div class="content-meta">
+          <div class="content-title">Faith Foundations 101</div>
+          <div class="content-subtitle">Course • 12 lessons • 340 enrolled</div>
+          <div class="content-badge badge-course">Course</div>
+        </div>
+      </div>
+      
+      <div class="content-card">
+        <div class="content-thumb">📝</div>
+        <div class="content-meta">
+          <div class="content-title">Sunday Service Highlights</div>
+          <div class="content-subtitle">Blog post • Published yesterday</div>
+          <div class="content-badge badge-blog">Blog</div>
+        </div>
+      </div>
+      
+      <div class="content-card">
+        <div class="content-thumb">🎓</div>
+        <div class="content-meta">
+          <div class="content-title">Prayer & Worship Guide</div>
+          <div class="content-subtitle">Course • 8 lessons • 120 enrolled</div>
+          <div class="content-badge badge-course">Course</div>
+        </div>
+      </div>
+      
+      <div class="content-card">
+        <div class="content-thumb">🧠</div>
+        <div class="content-meta">
+          <div class="content-title">AI Knowledge Base</div>
+          <div class="content-subtitle">15 documents uploaded</div>
+          <div class="content-badge" style="background:#f0fdf4;color:#22c55e;">AI</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- More Menu Overlay -->
+  <div class="more-overlay" id="moreMenu">
+    <div class="handle"></div>
+    <h3>More</h3>
+    <div class="more-grid">
+      <div class="more-item">
+        <div class="more-icon" style="background:#C9963A; position: relative;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          <span class="label-tag">2</span>
+        </div>
+        <span>Inbox</span>
+      </div>
+      <div class="more-item">
+        <div class="more-icon" style="background:#6b7280;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </div>
+        <span>Settings</span>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Bottom Nav -->
+  <div class="bottom-nav">
+    <div class="nav-item active" id="navDashboard" onclick="switchView('dashboard')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
+      <span>Dashboard</span>
+    </div>
+    <div class="nav-item" id="navPosts">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      <span>Posts</span>
+      <div class="dot"></div>
+    </div>
+    <div class="nav-item" id="navContent" onclick="switchView('content')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+      <span>Content</span>
+    </div>
+    <div class="nav-item" id="navChurch">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></svg>
+      <span>Church</span>
+    </div>
+    <div class="nav-item" id="moreBtn" onclick="toggleMore()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+      <span>More</span>
+    </div>
+  </div>
+</div>
+
+<script>
+function toggleMore() {
+  document.getElementById('moreMenu').classList.toggle('show');
+  document.getElementById('moreBtn').classList.toggle('active');
+}
+
+function switchView(view) {
+  document.getElementById('dashboardView').style.display = view === 'dashboard' ? 'block' : 'none';
+  document.getElementById('contentView').style.display = view === 'content' ? 'block' : 'none';
+  
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  if (view === 'dashboard') document.getElementById('navDashboard').classList.add('active');
+  if (view === 'content') document.getElementById('navContent').classList.add('active');
+}
+
+function switchSubTab(el) {
+  document.querySelectorAll('.sub-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+}
+</script>
+
+<div style="text-align:center;margin-top:20px;font-family:Inter,sans-serif;">
+  <h3 style="color:#0b1121;">Option B — Grouped Sections</h3>
+  <p style="color:#666;font-size:14px;max-width:400px;margin:8px auto;">5 tabs: Dashboard, Posts, Content (Blog+Courses+AI merged with sub-tabs), Church, More. Fewer tabs, but "Content" combines 3 features into one.</p>
+</div>
+</body>
+</html>
