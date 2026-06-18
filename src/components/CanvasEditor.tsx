@@ -198,37 +198,37 @@ const CanvasEditor: React.FC<CanvasEditorProps> = ({ canvasId, canvasName: initi
   }
 
   return (
-    <div className="fixed inset-0 z-[9999] bg-white flex flex-col">
-      {/* Floating toolbar */}
-      <div className="absolute top-4 left-4 z-[10000] flex items-center gap-3">
+    <div className="fixed inset-0 z-[9999] bg-white flex flex-col" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
+      {/* Floating toolbar — offset below safe area */}
+      <div className="absolute left-4 z-[10000] flex items-center gap-2 flex-wrap max-w-[calc(100vw-2rem)]" style={{ top: `max(env(safe-area-inset-top), 1rem)` }}>
         <button
           onClick={handleBack}
-          className="flex items-center gap-2 px-3 py-2 bg-white rounded-xl shadow-md border border-gray-100 hover:bg-gray-50 transition-colors text-sm font-medium text-gray-700 cursor-pointer"
+          className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white rounded-lg shadow-md border border-gray-100 hover:bg-gray-50 transition-colors text-xs font-medium text-gray-700 cursor-pointer"
         >
-          <ArrowLeft size={18} />
+          <ArrowLeft size={16} />
           <span>Back</span>
         </button>
-        <div className="px-3 py-2 bg-white rounded-xl shadow-md border border-gray-100 text-sm font-semibold text-gray-900 max-w-[200px] truncate">
+        <div className="px-2.5 py-1.5 bg-white rounded-lg shadow-md border border-gray-100 text-xs font-semibold text-gray-900 max-w-[140px] truncate">
           {initialName}
         </div>
-        <div className={`px-3 py-2 bg-white rounded-xl shadow-md border border-gray-100 text-xs font-medium flex items-center gap-1.5 ${
+        <div className={`px-2.5 py-1.5 bg-white rounded-lg shadow-md border border-gray-100 text-[10px] font-medium flex items-center gap-1 ${
           saveStatus === 'saved' ? 'text-green-600' :
           saveStatus === 'saving' ? 'text-blue-500' :
           saveStatus === 'error' ? 'text-red-500' :
           'text-gray-400'
         }`}>
-          {saveStatus === 'saving' && <Loader2 size={12} className="animate-spin" />}
-          {saveStatus === 'saved' && <Check size={12} />}
-          {saveStatus === 'error' && <AlertCircle size={12} />}
+          {saveStatus === 'saving' && <Loader2 size={10} className="animate-spin" />}
+          {saveStatus === 'saved' && <Check size={10} />}
+          {saveStatus === 'error' && <AlertCircle size={10} />}
           {saveStatus === 'saving' ? 'Saving...' :
            saveStatus === 'saved' ? 'Saved' :
-           saveStatus === 'error' ? 'Save failed' :
+           saveStatus === 'error' ? 'Error' :
            'Auto-saved'}
         </div>
       </div>
 
       {/* Excalidraw canvas — takes full screen */}
-      <div className="flex-1 w-full h-full">
+      <div className="flex-1 w-full h-full excalidraw-canvas-container">
         <Excalidraw
           excalidrawAPI={(api) => { excalidrawAPI.current = api; }}
           initialData={{ elements: initialElements as any }}

@@ -6,6 +6,9 @@ import { cn } from "@/lib/utils";
 
 export const viewport: Viewport = {
   themeColor: '#C9963A',
+  viewportFit: 'cover',
+  width: 'device-width',
+  initialScale: 1,
 };
 
 export const metadata: Metadata = {

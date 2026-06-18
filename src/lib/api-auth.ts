@@ -64,7 +64,8 @@ export async function requireAdmin(request: NextRequest): Promise<AuthenticatedU
   const userOrResponse = await requireAuth(request);
   if (userOrResponse instanceof NextResponse) return userOrResponse;
 
-  if (!userOrResponse.isAdmin) {
+  // Super admins are implicitly admins
+  if (!userOrResponse.isAdmin && !userOrResponse.isSuperAdmin) {
     return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
   }
   return userOrResponse;
@@ -99,7 +100,8 @@ export async function requireTenantAdmin(
   const userOrResponse = await requireTenantMember(request, tenantId);
   if (userOrResponse instanceof NextResponse) return userOrResponse;
 
-  if (!userOrResponse.isAdmin) {
+  // Super admins are implicitly tenant admins
+  if (!userOrResponse.isAdmin && !userOrResponse.isSuperAdmin) {
     return NextResponse.json({ error: 'Tenant admin access required' }, { status: 403 });
   }
   return userOrResponse;
