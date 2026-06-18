@@ -91,6 +91,11 @@ export const TenantProvider: React.FC<TenantProviderProps> = ({
     let cancelled = false;
 
     async function validateTenant() {
+      // Check if user is arriving to sign up for a new plan — skip tenant-not-found error
+      const isSignupFlow = typeof window !== 'undefined'
+        ? new URLSearchParams(window.location.search).has('signup')
+        : false;
+
       // No tenant = global platform (super admin browsing root domain)
       if (!tenantId) {
         setIsLoading(false);
@@ -109,7 +114,10 @@ export const TenantProvider: React.FC<TenantProviderProps> = ({
         if (cancelled) return;
 
         if (!tenantDoc.exists()) {
-          setError(`Tenant "${tenantId}" not found. This organization may not exist or has been removed.`);
+          // When user is signing up via ?signup param, there's no tenant yet — skip error
+          if (!isSignupFlow) {
+            setError(`Tenant "${tenantId}" not found. This organization may not exist or has been removed.`);
+          }
           setIsLoading(false);
           return;
         }

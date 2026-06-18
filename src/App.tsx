@@ -146,7 +146,8 @@ const AppInner: React.FC = () => {
   }
 
   // Show tenant-not-found error if tenant validation failed
-  if (tenantError && tenantId) {
+  // Skip this error when user is arriving via ?signup param (no tenant exists yet)
+  if (tenantError && tenantId && !signupParam) {
     return <TenantNotFound tenantId={tenantId} message={tenantError} />;
   }
 
