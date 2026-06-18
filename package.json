@@ -30,6 +30,7 @@
     "dompurify": "^3.4.11",
     "firebase": "^10.14.1",
     "firebase-admin": "^12.6.0",
+    "geist": "^1.7.2",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.453.0",
     "motion": "^12.38.0",
