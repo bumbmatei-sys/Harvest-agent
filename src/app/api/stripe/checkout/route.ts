@@ -64,9 +64,6 @@ export async function POST(request: NextRequest) {
         subscription_data: {
           metadata: { tenantId, addOn: 'ai-assistant' },
         },
-        payment_intent_data: {
-          metadata: { tenantId, addOn: 'ai-assistant' },
-        },
       });
 
       return NextResponse.json({ url: session.url });
@@ -111,9 +108,6 @@ export async function POST(request: NextRequest) {
       cancel_url: `${baseUrl}/?stripe=cancel`,
       metadata: { tenantId, plan, billing, ...(referrerId ? { referrerId } : {}) },
       subscription_data: {
-        metadata: { tenantId, plan, billing, ...(referrerId ? { referrerId } : {}) },
-      },
-      payment_intent_data: {
         metadata: { tenantId, plan, billing, ...(referrerId ? { referrerId } : {}) },
       },
     });
