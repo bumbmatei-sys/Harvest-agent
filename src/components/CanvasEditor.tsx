@@ -197,42 +197,47 @@ const CanvasEditor: React.FC<CanvasEditorProps> = ({ canvasId, canvasName: initi
     );
   }
 
-  return (
-    <div className="fixed inset-0 z-[9999] bg-white flex flex-col" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
-      {/* Floating toolbar — offset below safe area */}
-      <div className="absolute left-4 z-[10000] flex items-center gap-2 flex-wrap max-w-[calc(100vw-2rem)]" style={{ top: `max(env(safe-area-inset-top), 1rem)` }}>
-        <button
-          onClick={handleBack}
-          className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white rounded-lg shadow-md border border-gray-100 hover:bg-gray-50 transition-colors text-xs font-medium text-gray-700 cursor-pointer"
-        >
-          <ArrowLeft size={16} />
-          <span>Back</span>
-        </button>
-        <div className="px-2.5 py-1.5 bg-white rounded-lg shadow-md border border-gray-100 text-xs font-semibold text-gray-900 max-w-[140px] truncate">
-          {initialName}
-        </div>
-        <div className={`px-2.5 py-1.5 bg-white rounded-lg shadow-md border border-gray-100 text-[10px] font-medium flex items-center gap-1 ${
-          saveStatus === 'saved' ? 'text-green-600' :
-          saveStatus === 'saving' ? 'text-blue-500' :
-          saveStatus === 'error' ? 'text-red-500' :
-          'text-gray-400'
-        }`}>
-          {saveStatus === 'saving' && <Loader2 size={10} className="animate-spin" />}
-          {saveStatus === 'saved' && <Check size={10} />}
-          {saveStatus === 'error' && <AlertCircle size={10} />}
+  // Custom controls injected into Excalidraw's native top-right area
+  const renderTopRightUI = useCallback((_isMobile: boolean, _appState: any) => (
+    <div className="flex items-center gap-1.5">
+      <button
+        onClick={handleBack}
+        className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white rounded-lg shadow-sm border border-gray-200 hover:bg-gray-50 transition-colors text-xs font-medium text-gray-700 cursor-pointer"
+      >
+        <ArrowLeft size={14} />
+        <span className="hidden sm:inline">Back</span>
+      </button>
+      <div className="px-2.5 py-1.5 bg-white rounded-lg shadow-sm border border-gray-200 text-xs font-semibold text-gray-900 max-w-[120px] sm:max-w-[180px] truncate">
+        {initialName}
+      </div>
+      <div className={`px-2 py-1.5 bg-white rounded-lg shadow-sm border border-gray-200 text-[10px] font-medium flex items-center gap-1 ${
+        saveStatus === 'saved' ? 'text-green-600' :
+        saveStatus === 'saving' ? 'text-blue-500' :
+        saveStatus === 'error' ? 'text-red-500' :
+        'text-gray-400'
+      }`}>
+        {saveStatus === 'saving' && <Loader2 size={10} className="animate-spin" />}
+        {saveStatus === 'saved' && <Check size={10} />}
+        {saveStatus === 'error' && <AlertCircle size={10} />}
+        <span className="hidden sm:inline">
           {saveStatus === 'saving' ? 'Saving...' :
            saveStatus === 'saved' ? 'Saved' :
            saveStatus === 'error' ? 'Error' :
            'Auto-saved'}
-        </div>
+        </span>
       </div>
+    </div>
+  ), [handleBack, initialName, saveStatus]);
 
-      {/* Excalidraw canvas — takes full screen */}
-      <div className="flex-1 w-full h-full excalidraw-canvas-container">
+  return (
+    <div className="fixed inset-0 z-[9999] bg-white flex flex-col excalidraw-canvas-container">
+      {/* Excalidraw canvas — our controls injected via renderTopRightUI */}
+      <div className="flex-1 w-full h-full">
         <Excalidraw
           excalidrawAPI={(api) => { excalidrawAPI.current = api; }}
           initialData={{ elements: initialElements as any }}
           onChange={handleChange}
+          renderTopRightUI={renderTopRightUI}
           UIOptions={{
             canvasActions: {
               changeViewBackgroundColor: true,

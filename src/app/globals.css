@@ -115,22 +115,19 @@
   background: initial;
 }
 
-/* Excalidraw mobile: hide top-left menu button to avoid overlapping with custom toolbar */
-.excalidraw-canvas-container .excalidraw .zen-mode-activated .App-menu_top__left,
-.excalidraw-canvas-container .excalidraw .App-menu_top__left {
-  top: env(safe-area-inset-top, 0px) !important;
-  left: env(safe-area-inset-left, 0px) !important;
+/* Excalidraw mobile: hide top-left hamburger menu — we have our own Back button */
+.excalidraw-canvas-container .App-menu_top__left {
+  display: none !important;
 }
 
-/* Push Excalidraw's top-right buttons below our custom toolbar on mobile */
-.excalidraw-canvas-container .excalidraw .App-menu_top__right {
-  top: calc(env(safe-area-inset-top, 0px) + 2.5rem) !important;
-  right: env(safe-area-inset-right, 0px) !important;
+/* Safe area: push Excalidraw's top-right content below status bar */
+.excalidraw-canvas-container .layer-ui__wrapper__top-right {
+  padding-top: env(safe-area-inset-top, 0px) !important;
 }
 
-/* Push Excalidraw's bottom buttons above browser bar */
-.excalidraw-canvas-container .excalidraw .App-bottom-bar,
-.excalidraw-canvas-container .excalidraw .layer-ui__wrapper__bottom-app-menu {
-  bottom: calc(env(safe-area-inset-bottom, 0px) + 0.5rem) !important;
+/* Safe area: push bottom bar above browser chrome */
+.excalidraw-canvas-container .layer-ui__wrapper__footer,
+.excalidraw-canvas-container .App-menu_bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px) !important;
 }
 
