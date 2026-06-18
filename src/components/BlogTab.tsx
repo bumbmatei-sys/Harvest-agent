@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { sanitizeHtml } from '../utils/sanitize';
 import Image from 'next/image';
 import { collection, query, where, orderBy, onSnapshot, doc, updateDoc, arrayUnion, arrayRemove, getDoc } from 'firebase/firestore';
@@ -90,7 +90,7 @@ const BlogTab: React.FC<BlogTabProps> = ({ onOpenArticle, initialPost, onBack, i
 
  const categories = ['All', ...Array.from(new Set(posts.map(post => post.category)))];
 
- const filteredPosts = posts.filter(post => {
+ const filteredPosts = useMemo(() => posts.filter(post => {
  const matchesCategory = selectedCategory === 'All' || post.category === selectedCategory;
  if (!matchesCategory) return false;
  
@@ -103,7 +103,7 @@ const BlogTab: React.FC<BlogTabProps> = ({ onOpenArticle, initialPost, onBack, i
  const matchesCategoryName = post.category.toLowerCase().includes(queryStr);
  
  return matchesTitle || matchesContent || matchesTags || matchesCategoryName;
- });
+ }), [posts, selectedCategory, searchQuery]);
 
  const formatDate = (dateString?: string) => {
  if (!dateString) return '';

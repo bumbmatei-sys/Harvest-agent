@@ -204,9 +204,13 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToCourses, onGoToPart
  localStorage.setItem('profilePic', base64String);
  
  try {
- const userRef = doc(db, 'users', auth.currentUser!.uid);
+ const uid = auth.currentUser?.uid;
+ if (!uid) return;
+ const userRef = doc(db, 'users', uid);
  await updateDoc(userRef, { photoURL: base64String });
- await updateProfile(auth.currentUser!, { photoURL: base64String });
+ if (auth.currentUser) {
+ await updateProfile(auth.currentUser, { photoURL: base64String });
+ }
  } catch (error) {
  try { handleFirestoreError(error, OperationType.UPDATE, `users/${auth.currentUser?.uid}`); } catch (e) { console.error(e); }
  }

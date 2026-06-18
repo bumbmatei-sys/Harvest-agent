@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Image from 'next/image';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -219,12 +219,12 @@ const ChurchMap: React.FC<ChurchMapProps> = ({ onBack, onMapInteraction }) => {
  };
 
  // Sort churches by distance if user location is available
- const sortedChurches = [...churches].sort((a, b) => {
+ const sortedChurches = useMemo(() => [...churches].sort((a, b) => {
  if (!userLocation) return 0;
  const distA = getDistanceFromLatLonInKm(userLocation.lat, userLocation.lng, a.lat, a.lng);
  const distB = getDistanceFromLatLonInKm(userLocation.lat, userLocation.lng, b.lat, b.lng);
  return distA - distB;
- });
+ }), [churches, userLocation]);
 
  useEffect(() => {
  if (viewMode === 'list' && highlightedChurchId) {

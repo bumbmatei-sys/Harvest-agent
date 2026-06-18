@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { LayoutDashboard, Church, FileText, Rss, BrainCircuit, Inbox, ArrowLeft, GraduationCap, ChevronLeft, ChevronRight, Building2, Settings, MoreHorizontal, Mail, PenTool } from 'lucide-react';
+import { LayoutDashboard, Church, FileText, Rss, BrainCircuit, Inbox, ArrowLeft, GraduationCap, ChevronLeft, ChevronRight, Building2, Settings, MoreHorizontal, Mail } from 'lucide-react';
 import AdminBlog from './AdminBlog';
 import AdminPosts from './AdminPosts';
 import AdminInbox from './AdminInbox';
@@ -137,9 +137,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, tenantPlan 
     (isSuperAdmin || !isTenantAdmin || (features && features.newsletterAutomation)) &&
       (hasFullAccess || perms.createPosts) &&
       { id: 'newsletter', label: 'Newsletter', icon: Mail },
-    // Canvas tab — HIDDEN: Excalidraw integration needs rework. Code kept in CanvasEditor.tsx + CanvasList.tsx
-    // (hasFullAccess || perms.createPosts) &&
-    //   { id: 'canvas', label: 'Canvas', icon: PenTool },
     isSuperAdmin && { id: 'tenants', label: 'Tenants', icon: Building2 },
   ].filter(Boolean) as { id: string; label: string; icon: any }[];
 
