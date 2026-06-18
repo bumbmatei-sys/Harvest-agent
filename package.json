@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@excalidraw/excalidraw": "^0.18.1",
     "@google/genai": "^1.48.0",
     "@tailwindcss/typography": "^0.5.19",
     "@tiptap/extension-image": "^2.11.5",
