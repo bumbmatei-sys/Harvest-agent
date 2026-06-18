@@ -8,6 +8,9 @@ import { getTenantScope } from '../utils/tenant-scope';
 import dynamic from 'next/dynamic';
 import type { ExcalidrawElement } from '@excalidraw/excalidraw/types/types';
 
+// Import Excalidraw CSS — CRITICAL: without this, the toolbar renders as raw unstyled elements
+import '@excalidraw/excalidraw/dist/prod/index.css';
+
 const Excalidraw = dynamic(
   () => import('@excalidraw/excalidraw').then(mod => ({ default: mod.Excalidraw })),
   { ssr: false }

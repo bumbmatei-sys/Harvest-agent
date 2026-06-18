@@ -194,24 +194,78 @@ const NewsletterEditor: React.FC<NewsletterEditorProps> = ({ tenantId, tenantNam
           </div>
         ) : (
           <>
-            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium ${
-              instagramConnected ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'
-            }`}>
-              <Instagram size={14} />
-              {instagramConnected ? 'Instagram Connected' : 'Instagram Not Connected'}
-              {instagramConnected && <Check size={12} />}
-            </div>
-            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium ${
-              mailchimpConnected ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'
-            }`}>
-              <Mail size={14} />
-              {mailchimpConnected ? 'Mailchimp Connected' : 'Mailchimp Not Connected'}
-              {mailchimpConnected && <Check size={12} />}
-            </div>
-            {(!instagramConnected || !mailchimpConnected) && (
-              <a href="#" onClick={(e) => { e.preventDefault(); if (onNavigateToSettings) onNavigateToSettings(); }} className="text-xs text-[#C9963A] hover:underline">
-                Connect in Settings →
-              </a>
+            {/* Instagram badge or connect button */}
+            {instagramConnected ? (
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium bg-green-50 text-green-700">
+                <Instagram size={14} />
+                Instagram Connected
+                <Check size={12} />
+              </div>
+            ) : (
+              <button
+                onClick={async () => {
+                  try {
+                    const resp = await authFetch('/api/composio/instagram/connect', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ tenantId }),
+                    });
+                    if (!resp.ok) {
+                      const err = await resp.json().catch(() => ({}));
+                      throw new Error(err.error || 'Failed to connect');
+                    }
+                    const data = await resp.json();
+                    if (data.redirectUrl) {
+                      window.open(data.redirectUrl, '_blank');
+                      setError(null);
+                      setSuccess('Instagram authorization opened in a new tab. Complete login there, then return here.');
+                    }
+                  } catch (e: any) {
+                    setError(e.message || 'Failed to connect Instagram');
+                  }
+                }}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600 transition-all cursor-pointer shadow-sm"
+              >
+                <Instagram size={14} />
+                Connect Instagram
+              </button>
+            )}
+
+            {/* Mailchimp badge or connect button */}
+            {mailchimpConnected ? (
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium bg-green-50 text-green-700">
+                <Mail size={14} />
+                Mailchimp Connected
+                <Check size={12} />
+              </div>
+            ) : (
+              <button
+                onClick={async () => {
+                  try {
+                    const resp = await authFetch('/api/composio/mailchimp/connect', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ tenantId }),
+                    });
+                    if (!resp.ok) {
+                      const err = await resp.json().catch(() => ({}));
+                      throw new Error(err.error || 'Failed to connect');
+                    }
+                    const data = await resp.json();
+                    if (data.redirectUrl) {
+                      window.open(data.redirectUrl, '_blank');
+                      setError(null);
+                      setSuccess('Mailchimp authorization opened in a new tab. Complete login there, then return here.');
+                    }
+                  } catch (e: any) {
+                    setError(e.message || 'Failed to connect Mailchimp');
+                  }
+                }}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold bg-[#FFE01B] text-black hover:bg-[#ffd000] transition-all cursor-pointer shadow-sm"
+              >
+                <Mail size={14} />
+                Connect Mailchimp
+              </button>
             )}
           </>
         )}
@@ -261,8 +315,21 @@ const NewsletterEditor: React.FC<NewsletterEditorProps> = ({ tenantId, tenantNam
             )}
           </button>
           {!instagramConnected && (
-            <p className="text-xs text-amber-600 mt-3">Connect your Instagram account in Settings first.</p>
+            <p className="text-xs text-amber-600 mt-3">Connect Instagram above, or create your newsletter manually.</p>
           )}
+          <div className="mt-4 pt-4 border-t border-[#C9963A]/10">
+            <button
+              onClick={() => {
+                setNewsletterId('manual-' + Date.now());
+                setSubject('');
+                setContent('');
+                setPlainText('');
+              }}
+              className="text-sm text-gray-500 hover:text-[#C9963A] transition-colors cursor-pointer underline underline-offset-2"
+            >
+              Or write newsletter manually →
+            </button>
+          </div>
         </div>
       )}
 

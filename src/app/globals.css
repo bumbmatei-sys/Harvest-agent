@@ -87,10 +87,31 @@
 
 /* Tiptap Placeholder */
 .ProseMirror p.is-editor-empty:first-child::before {
- color: #adb5bd;
- content: attr(data-placeholder);
- float: left;
- height: 0;
- pointer-events: none;
+  color: #adb5bd;
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+/* Excalidraw isolation — prevent Tailwind base reset from breaking Excalidraw's internal styles */
+.excalidraw {
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+}
+.excalidraw *,
+.excalidraw *::before,
+.excalidraw *::after {
+  list-style: none !important;
+}
+.Excalidraw,
+.Excalidraw *,
+.Excalidraw *::before,
+.Excalidraw *::after {
+  list-style: none !important;
+}
+/* Override Tailwind's border-0 on Excalidraw buttons */
+.excalidraw button {
+  border: initial;
+  background: initial;
 }
 
