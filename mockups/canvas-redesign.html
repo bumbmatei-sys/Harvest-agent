@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Canvas Whiteboard — Harvest</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Caveat:wght@500&display=swap" rel="stylesheet">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Inter',sans-serif; background:#e5e7eb; display:flex; justify-content:center; align-items:center; min-height:100vh; }
+
+  .phone { width:390px; height:844px; background:#f0f0f0; border-radius:40px; overflow:hidden; position:relative; box-shadow:0 20px 60px rgba(0,0,0,.3), inset 0 0 0 3px #1a1a1a; }
+
+  /* Status bar */
+  .status-bar { height:54px; background:#ffffff; display:flex; align-items:flex-end; justify-content:space-between; padding:0 28px 8px; font-size:12px; font-weight:600; color:#0b1121; position:relative; z-index:50; }
+  .status-bar .notch { position:absolute; top:0; left:50%; transform:translateX(-50%); width:126px; height:34px; background:#0b1121; border-radius:0 0 20px 20px; }
+  .status-icons { display:flex; gap:5px; align-items:center; }
+
+  /* Canvas */
+  .canvas { position:absolute; top:54px; left:0; right:0; bottom:0; background:#ffffff; background-image: radial-gradient(circle, #e5e7eb 1px, transparent 1px); background-size:24px 24px; overflow:hidden; }
+
+  /* Floating top bar */
+  .top-bar { position:absolute; top:62px; left:12px; right:12px; height:44px; background:#fff; border-radius:9999px; box-shadow:0 2px 12px rgba(0,0,0,.1); display:flex; align-items:center; padding:0 14px; gap:10px; z-index:20; }
+  .top-bar .back { width:32px; height:32px; display:flex; align-items:center; justify-content:center; cursor:pointer; color:#0b1121; }
+  .top-bar .name { font-size:14px; font-weight:600; color:#0b1121; flex:1; }
+  .top-bar .save { font-size:11px; color:#22c55e; font-weight:500; display:flex; align-items:center; gap:3px; }
+  .top-bar .online { font-size:11px; background:#f0fdf4; color:#22c55e; padding:3px 10px; border-radius:9999px; font-weight:500; display:flex; align-items:center; gap:4px; }
+  .top-bar .online .dot { width:6px; height:6px; background:#22c55e; border-radius:50%; }
+
+  /* Left toolbar */
+  .toolbar { position:absolute; top:118px; left:10px; width:44px; background:#fff; border-radius:12px; box-shadow:0 2px 12px rgba(0,0,0,.08); display:flex; flex-direction:column; align-items:center; padding:6px 0; gap:2px; z-index:20; }
+  .toolbar .tool { width:40px; height:40px; display:flex; align-items:center; justify-content:center; border-radius:8px; cursor:pointer; color:#6b7280; transition:all .15s; }
+  .toolbar .tool:hover { background:#f8f9fa; color:#0b1121; }
+  .toolbar .tool.active { background:#C9963A; color:#fff; }
+  .toolbar .sep { width:24px; height:1px; background:#e5e7eb; margin:4px 0; }
+
+  /* Sticky notes */
+  .sticky { position:absolute; border-radius:4px; padding:14px 16px; box-shadow:0 2px 8px rgba(0,0,0,.1); font-family:'Caveat',cursive; font-size:16px; line-height:1.4; transform:rotate(var(--r, 0deg)); }
+  .sticky.yellow { background:#fff9c4; --r:-3deg; left:80px; top:140px; width:150px; }
+  .sticky.pink { background:#f8bbd0; --r:2deg; left:200px; top:260px; width:140px; }
+  .sticky.blue { background:#bbdefb; --r:-1deg; left:60px; top:380px; width:160px; }
+
+  /* Rectangles */
+  .rect { position:absolute; border:2px solid #0b1121; border-radius:8px; padding:14px 18px; font-size:13px; font-weight:500; color:#0b1121; background:#fff; }
+  .rect.r1 { left:130px; top:500px; width:180px; }
+  .rect.r2 { left:100px; top:610px; width:160px; }
+
+  /* Arrow SVG */
+  .arrow-svg { position:absolute; top:0; left:0; width:100%; height:100%; z-index:5; pointer-events:none; }
+
+  /* Squiggle */
+  .squiggle { position:absolute; top:0; left:0; width:100%; height:100%; z-index:4; pointer-events:none; }
+
+  /* Zoom controls */
+  .zoom { position:absolute; bottom:24px; right:14px; background:#fff; border-radius:12px; box-shadow:0 2px 12px rgba(0,0,0,.08); display:flex; align-items:center; gap:0; z-index:20; overflow:hidden; }
+  .zoom button { width:36px; height:36px; border:none; background:none; cursor:pointer; display:flex; align-items:center; justify-content:center; color:#6b7280; font-size:14px; font-weight:600; }
+  .zoom button:hover { background:#f8f9fa; color:#0b1121; }
+  .zoom .level { font-size:11px; font-weight:600; color:#0b1121; padding:0 8px; border-left:1px solid #e5e7eb; border-right:1px solid #e5e7eb; height:36px; display:flex; align-items:center; }
+
+  /* Selection indicator on sticky */
+  .sticky.yellow::after { content:''; position:absolute; inset:-3px; border:2px solid #C9963A; border-radius:6px; }
+</style>
+</head>
+<body>
+
+<div class="phone">
+  <!-- Status bar -->
+  <div class="status-bar">
+    <span>9:41</span>
+    <div class="notch"></div>
+    <div class="status-icons">
+      <svg width="16" height="12" viewBox="0 0 16 12"><rect x="0" y="3" width="3" height="9" rx="1" fill="#0b1121"/><rect x="4" y="2" width="3" height="10" rx="1" fill="#0b1121"/><rect x="8" y="0" width="3" height="12" rx="1" fill="#0b1121"/><rect x="12" y="0" width="3" height="12" rx="1" fill="#0b1121" opacity=".3"/></svg>
+      <svg width="15" height="12" viewBox="0 0 15 12"><path d="M7.5 3a5.5 5.5 0 0 1 4 1.8l1-1.2A7 7 0 0 0 7.5 1.5 7 7 0 0 0 2.5 3.6l1 1.2A5.5 5.5 0 0 1 7.5 3z" fill="#0b1121"/><path d="M7.5 6a3 3 0 0 1 2.2 1l1-1.2A4.5 4.5 0 0 0 7.5 4.5 4.5 4.5 0 0 0 4.3 5.8l1 1.2A3 3 0 0 1 7.5 6z" fill="#0b1121"/><circle cx="7.5" cy="9.5" r="1.5" fill="#0b1121"/></svg>
+      <svg width="25" height="12" viewBox="0 0 25 12"><rect x="0" y="1" width="21" height="10" rx="2" stroke="#0b1121" stroke-width="1.2" fill="none"/><rect x="22" y="3.5" width="2" height="5" rx="1" fill="#0b1121"/><rect x="1.5" y="2.5" width="14" height="7" rx="1" fill="#22c55e"/></svg>
+    </div>
+  </div>
+
+  <!-- Canvas -->
+  <div class="canvas">
+    <!-- Squiggle -->
+    <svg class="squiggle" viewBox="0 0 390 790">
+      <path d="M250 170 C260 160, 270 190, 280 175 C290 160, 300 195, 310 180 C320 165, 330 195, 340 185" stroke="#C9963A" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+    </svg>
+
+    <!-- Arrow -->
+    <svg class="arrow-svg" viewBox="0 0 390 790">
+      <defs><marker id="ah" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0 0L8 3L0 6z" fill="#0b1121"/></marker></defs>
+      <line x1="195" y1="470" x2="155" y2="400" stroke="#0b1121" stroke-width="2" marker-end="url(#ah)"/>
+    </svg>
+
+    <!-- Floating top bar -->
+    <div class="top-bar">
+      <div class="back">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M15 19l-7-7 7-7"/></svg>
+      </div>
+      <span class="name">Sunday Planning</span>
+      <span class="save">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="3" stroke-linecap="round"><path d="M5 13l4 4L19 7"/></svg>
+        Saved ✓
+      </span>
+      <span class="online"><span class="dot"></span>2 online</span>
+    </div>
+
+    <!-- Left toolbar -->
+    <div class="toolbar">
+      <!-- Select -->
+      <div class="tool active">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M4 2l14 10-6 1.5L9.5 20z"/></svg>
+      </div>
+      <!-- Hand -->
+      <div class="tool">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 11V6a2 2 0 10-4 0v1M14 10V4a2 2 0 10-4 0v6M10 10V6a2 2 0 10-4 0v8a8 8 0 0016 0v-4a2 2 0 10-4 0"/></svg>
+      </div>
+      <div class="sep"></div>
+      <!-- Pen -->
+      <div class="tool">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 20h9M3 17l12-12a2.83 2.83 0 114 4L7 21H3v-4z"/></svg>
+      </div>
+      <!-- Rectangle -->
+      <div class="tool">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+      </div>
+      <!-- Ellipse -->
+      <div class="tool">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/></svg>
+      </div>
+      <!-- Arrow -->
+      <div class="tool">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 19L19 5M19 5v10M19 5H9"/></svg>
+      </div>
+      <!-- Line -->
+      <div class="tool">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 20L20 4"/></svg>
+      </div>
+      <div class="sep"></div>
+      <!-- Text -->
+      <div class="tool">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M5 4v3h5.5v12h3V7H19V4z"/></svg>
+      </div>
+      <!-- Sticky -->
+      <div class="tool">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M15 3v6h6" stroke-linecap="round"/></svg>
+      </div>
+      <div class="sep"></div>
+      <!-- Eraser -->
+      <div class="tool">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 20H7L3 16a1 1 0 010-1.4l9.6-9.6a2 2 0 012.8 0L20.6 10.2a2 2 0 010 2.8L13 20"/><path d="M6 13l7 7"/></svg>
+      </div>
+    </div>
+
+    <!-- Sticky notes -->
+    <div class="sticky yellow">
+      <strong>Worship Set</strong><br>
+      <span style="font-size:14px">Great Are You Lord<br>Goodness of God<br>Build My Life</span>
+    </div>
+
+    <div class="sticky pink">
+      <strong>Announcements</strong><br>
+      <span style="font-size:14px">Youth camp signups<br>Food bank Sat 9am<br>New small groups</span>
+    </div>
+
+    <div class="sticky blue">
+      <strong>Sermon Notes</strong><br>
+      <span style="font-size:14px">Theme: Hope<br>Key verse: Rom 15:13<br>3 main points</span>
+    </div>
+
+    <!-- Rectangles -->
+    <div class="rect r1">
+      <div style="font-size:11px;color:#6b7280;margin-bottom:4px">ACTION ITEMS</div>
+      <div>• Confirm AV setup</div>
+      <div>• Print bulletins</div>
+    </div>
+
+    <div class="rect r2">
+      <div style="font-size:11px;color:#6b7280;margin-bottom:4px">TIMELINE</div>
+      <div>9:00 — Doors open</div>
+      <div>9:30 — Service start</div>
+    </div>
+
+    <!-- Zoom -->
+    <div class="zoom">
+      <button>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14"/></svg>
+      </button>
+      <span class="level">100%</span>
+      <button>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+      </button>
+      <button style="border-left:1px solid #e5e7eb">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M3 9h18"/></svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

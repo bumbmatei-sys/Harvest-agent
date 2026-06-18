@@ -417,7 +417,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
     }
   };
 
-  // Load integration statuses from tenant doc
+  // Load integration statuses from Composio integration subcollections
   const loadIntegrations = async () => {
     if (integrationsLoaded) return;
     try {
@@ -425,16 +425,24 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
       if (!tid) return;
       const { doc, getDoc } = await import('firebase/firestore');
       const { db } = await import('../firebase');
-      const tenantDoc = await getDoc(doc(db, 'tenants', tid));
-      if (tenantDoc.exists()) {
-        const data = tenantDoc.data();
-        if (data.instagramConnected) {
+
+      // Check Instagram integration
+      const igDoc = await getDoc(doc(db, 'tenants', tid, 'integrations', 'instagram'));
+      if (igDoc.exists()) {
+        const igData = igDoc.data();
+        if (igData.status === 'connected' || igData.status === 'active') {
           setInstagramStatus('connected');
-          setInstagramAccount(data.instagramUsername || null);
+          setInstagramAccount(igData.username || null);
         }
-        if (data.mailchimpConnected) {
+      }
+
+      // Check Mailchimp integration
+      const mcDoc = await getDoc(doc(db, 'tenants', tid, 'integrations', 'mailchimp'));
+      if (mcDoc.exists()) {
+        const mcData = mcDoc.data();
+        if (mcData.status === 'connected' || mcData.status === 'active') {
           setMailchimpStatus('connected');
-          setMailchimpAccount(data.mailchimpEmail || null);
+          setMailchimpAccount(mcData.email || null);
         }
       }
     } catch (e) {

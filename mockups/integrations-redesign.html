@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Integrations — Harvest</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Inter',sans-serif; background:#e5e7eb; display:flex; justify-content:center; align-items:center; min-height:100vh; }
+
+  .phone { width:390px; height:844px; background:#f8f9fa; border-radius:40px; overflow:hidden; position:relative; box-shadow:0 20px 60px rgba(0,0,0,.3), inset 0 0 0 3px #1a1a1a; }
+
+  .status-bar { height:54px; background:#fff; display:flex; align-items:flex-end; justify-content:space-between; padding:0 28px 8px; font-size:12px; font-weight:600; color:#0b1121; position:relative; }
+  .status-bar .notch { position:absolute; top:0; left:50%; transform:translateX(-50%); width:126px; height:34px; background:#0b1121; border-radius:0 0 20px 20px; }
+  .status-icons { display:flex; gap:5px; align-items:center; }
+
+  .top-bar { height:52px; background:#fff; border-bottom:1px solid #e5e7eb; display:flex; align-items:center; padding:0 16px; gap:10px; }
+  .top-bar .back { width:32px; height:32px; display:flex; align-items:center; justify-content:center; color:#0b1121; }
+  .top-bar .gear { width:32px; height:32px; display:flex; align-items:center; justify-content:center; color:#6b7280; }
+  .top-bar .title { font-size:18px; font-weight:700; color:#0b1121; }
+
+  .scroll { height:calc(844px - 54px - 52px); overflow-y:auto; }
+  .pad { padding:20px 16px; }
+
+  .section-label { font-size:11px; font-weight:600; color:#6b7280; text-transform:uppercase; letter-spacing:.8px; margin-bottom:14px; }
+
+  /* Integration card */
+  .card { background:#fff; border-radius:12px; box-shadow:0 1px 3px rgba(0,0,0,.08); padding:20px; margin-bottom:14px; }
+  .card-top { display:flex; align-items:center; gap:14px; margin-bottom:14px; }
+  .card-icon { width:48px; height:48px; border-radius:12px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .card-icon.ig { background:linear-gradient(135deg,#feda75 0%,#fa7e1e 25%,#d62976 50%,#962fbf 75%,#4f5bd5 100%); }
+  .card-icon.mc { background:#ffe01b; }
+  .card-info { flex:1; }
+  .card-name { font-size:16px; font-weight:700; color:#0b1121; }
+  .card-status { display:flex; align-items:center; gap:6px; margin-top:4px; }
+  .status-dot { width:8px; height:8px; border-radius:50%; }
+  .status-dot.green { background:#22c55e; }
+  .status-text { font-size:13px; color:#6b7280; }
+  .status-text strong { color:#0b1121; }
+
+  .card-detail { background:#f8f9fa; border-radius:10px; padding:12px 14px; margin-bottom:14px; display:flex; align-items:center; justify-content:space-between; }
+  .card-detail .label { font-size:12px; color:#6b7280; }
+  .card-detail .value { font-size:13px; font-weight:600; color:#0b1121; }
+
+  .card-detail-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+  .sync-info { font-size:12px; color:#6b7280; display:flex; align-items:center; gap:4px; margin-bottom:14px; }
+  .sync-info svg { width:12px; height:12px; }
+
+  .select-wrap { position:relative; margin-bottom:14px; }
+  .select-wrap select { width:100%; height:40px; border:1.5px solid #e5e7eb; border-radius:8px; padding:0 36px 0 12px; font-size:13px; font-weight:500; color:#0b1121; font-family:'Inter',sans-serif; background:#fff; appearance:none; cursor:pointer; outline:none; }
+  .select-wrap select:focus { border-color:#C9963A; }
+  .select-wrap .arrow { position:absolute; right:12px; top:50%; transform:translateY(-50%); pointer-events:none; color:#6b7280; }
+
+  .btn-row { display:flex; gap:8px; }
+  .btn { flex:1; height:42px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; font-family:'Inter',sans-serif; transition:all .15s; }
+  .btn-outline { background:#fff; border:1.5px solid #e5e7eb; color:#6b7280; }
+  .btn-outline:hover { border-color:#d1d5db; color:#0b1121; }
+  .btn-gold { background:#C9963A; border:none; color:#fff; }
+  .btn-gold:hover { background:#b8862e; }
+  .btn-danger { background:#fff; border:1.5px solid #fecaca; color:#ef4444; }
+  .btn-danger:hover { background:#fef2f2; }
+
+  /* Empty state */
+  .empty-card { background:#fff; border-radius:12px; box-shadow:0 1px 3px rgba(0,0,0,.08); padding:24px 20px; text-align:center; margin-bottom:14px; border:1.5px dashed #e5e7eb; }
+  .empty-card .icon-wrap { width:56px; height:56px; background:#f8f9fa; border-radius:16px; display:inline-flex; align-items:center; justify-content:center; margin-bottom:12px; }
+  .empty-card h3 { font-size:15px; font-weight:700; color:#0b1121; margin-bottom:6px; }
+  .empty-card p { font-size:13px; color:#6b7280; line-height:1.5; margin-bottom:16px; }
+
+  .connected-badge { display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:600; color:#22c55e; background:#f0fdf4; padding:3px 10px; border-radius:9999px; }
+
+  .divider { height:1px; background:#e5e7eb; margin:20px 0; }
+</style>
+</head>
+<body>
+
+<div class="phone">
+  <div class="status-bar">
+    <span>9:41</span>
+    <div class="notch"></div>
+    <div class="status-icons">
+      <svg width="16" height="12" viewBox="0 0 16 12"><rect x="0" y="3" width="3" height="9" rx="1" fill="#0b1121"/><rect x="4" y="2" width="3" height="10" rx="1" fill="#0b1121"/><rect x="8" y="0" width="3" height="12" rx="1" fill="#0b1121"/><rect x="12" y="0" width="3" height="12" rx="1" fill="#0b1121" opacity=".3"/></svg>
+      <svg width="15" height="12" viewBox="0 0 15 12"><path d="M7.5 3a5.5 5.5 0 0 1 4 1.8l1-1.2A7 7 0 0 0 7.5 1.5 7 7 0 0 0 2.5 3.6l1 1.2A5.5 5.5 0 0 1 7.5 3z" fill="#0b1121"/><path d="M7.5 6a3 3 0 0 1 2.2 1l1-1.2A4.5 4.5 0 0 0 7.5 4.5 4.5 4.5 0 0 0 4.3 5.8l1 1.2A3 3 0 0 1 7.5 6z" fill="#0b1121"/><circle cx="7.5" cy="9.5" r="1.5" fill="#0b1121"/></svg>
+      <svg width="25" height="12" viewBox="0 0 25 12"><rect x="0" y="1" width="21" height="10" rx="2" stroke="#0b1121" stroke-width="1.2" fill="none"/><rect x="22" y="3.5" width="2" height="5" rx="1" fill="#0b1121"/><rect x="1.5" y="2.5" width="14" height="7" rx="1" fill="#22c55e"/></svg>
+    </div>
+  </div>
+
+  <div class="top-bar">
+    <div class="back">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M15 19l-7-7 7-7"/></svg>
+    </div>
+    <div class="gear">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </div>
+    <span class="title">Integrations</span>
+  </div>
+
+  <div class="scroll">
+    <div class="pad">
+      <div class="section-label">Connected Services</div>
+
+      <!-- Instagram Card — Connected -->
+      <div class="card">
+        <div class="card-top">
+          <div class="card-icon ig">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><rect x="2" y="2" width="20" height="20" rx="6" stroke="#fff" stroke-width="2"/><circle cx="12" cy="12" r="5" stroke="#fff" stroke-width="2"/><circle cx="18" cy="6" r="1.2" fill="#fff"/></svg>
+          </div>
+          <div class="card-info">
+            <div class="card-name">Instagram</div>
+            <div class="card-status">
+              <span class="status-dot green"></span>
+              <span class="status-text">Connected as <strong>@gracechurch</strong></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="sync-info">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+          Last synced 2 hours ago
+        </div>
+
+        <div class="btn-row">
+          <button class="btn btn-outline">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 4v6h6M23 20v-6h-6"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10M23 14l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>
+            Sync Now
+          </button>
+          <button class="btn btn-danger">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            Disconnect
+          </button>
+        </div>
+      </div>
+
+      <!-- Mailchimp Card — Connected -->
+      <div class="card">
+        <div class="card-top">
+          <div class="card-icon mc">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill="#0b1121"/><circle cx="9" cy="10" r="1.5" fill="#ffe01b"/><circle cx="15" cy="10" r="1.5" fill="#ffe01b"/><path d="M8 14c0-2.2 1.8-4 4-4s4 1.8 4 4" stroke="#ffe01b" stroke-width="1.5" fill="none"/><path d="M10 7l-1-3M14 7l1-3" stroke="#0b1121" stroke-width="1.5" stroke-linecap="round"/></svg>
+          </div>
+          <div class="card-info">
+            <div class="card-name">Mailchimp</div>
+            <div class="card-status">
+              <span class="status-dot green"></span>
+              <span class="status-text">Connected — <strong>1,247 subscribers</strong></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card-detail">
+          <div>
+            <div class="label">Audience</div>
+            <div class="value" style="margin-top:2px">Grace Church Members</div>
+          </div>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn btn-outline">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68"/></svg>
+            Settings
+          </button>
+          <button class="btn btn-danger">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            Disconnect
+          </button>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+      <div class="section-label">Available</div>
+
+      <!-- Empty state card -->
+      <div class="empty-card">
+        <div class="icon-wrap">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#C9963A" stroke-width="2" stroke-linecap="round"><rect x="2" y="3" width="20" height="18" rx="3"/><path d="M2 8h20"/><path d="M9 3v5"/></svg>
+        </div>
+        <h3>Resend Email</h3>
+        <p>Connect Resend to send newsletters with custom branding and better deliverability.</p>
+        <button class="btn btn-gold" style="width:100%">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+          Connect
+        </button>
+      </div>
+
+      <div class="empty-card">
+        <div class="icon-wrap">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        </div>
+        <h3>SMS Messaging</h3>
+        <p>Coming soon — send text message updates to your congregation.</p>
+        <button class="btn btn-outline" style="width:100%;opacity:.5;cursor:not-allowed" disabled>
+          Coming Soon
+        </button>
+      </div>
+
+      <div style="height:24px"></div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

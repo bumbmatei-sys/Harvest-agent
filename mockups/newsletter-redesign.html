@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Newsletter Editor — Harvest</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Inter',sans-serif; background:#e5e7eb; display:flex; justify-content:center; align-items:center; min-height:100vh; }
+
+  .phone { width:390px; height:844px; background:#f8f9fa; border-radius:40px; overflow:hidden; position:relative; box-shadow:0 20px 60px rgba(0,0,0,.3), inset 0 0 0 3px #1a1a1a; }
+
+  .status-bar { height:54px; background:#fff; display:flex; align-items:flex-end; justify-content:space-between; padding:0 28px 8px; font-size:12px; font-weight:600; color:#0b1121; }
+  .status-bar .notch { position:absolute; top:0; left:50%; transform:translateX(-50%); width:126px; height:34px; background:#0b1121; border-radius:0 0 20px 20px; }
+  .status-icons { display:flex; gap:5px; align-items:center; }
+
+  .top-bar { height:52px; background:#fff; border-bottom:1px solid #e5e7eb; display:flex; align-items:center; padding:0 16px; gap:8px; }
+  .top-bar .back { width:32px; height:32px; display:flex; align-items:center; justify-content:center; color:#0b1121; }
+  .top-bar .title { font-size:16px; font-weight:700; color:#0b1121; flex:1; }
+  .top-bar .btn { height:32px; padding:0 14px; border-radius:8px; border:none; font-size:12px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:5px; }
+  .top-bar .btn-ghost { background:none; color:#6b7280; }
+  .top-bar .btn-outline { background:#fff; border:1px solid #e5e7eb; color:#0b1121; }
+  .top-bar .btn-gold { background:#C9963A; color:#fff; }
+
+  .badges { display:flex; gap:8px; padding:10px 16px; background:#fff; border-bottom:1px solid #e5e7eb; flex-wrap:wrap; }
+  .badge { display:flex; align-items:center; gap:5px; font-size:11px; font-weight:500; padding:4px 12px; border-radius:9999px; }
+  .badge.green { background:#f0fdf4; color:#22c55e; }
+  .badge .check { font-size:10px; }
+
+  .scroll { height:calc(844px - 54px - 52px - 38px); overflow-y:auto; }
+
+  .section-pad { padding:16px; }
+
+  .subject-label { font-size:12px; font-weight:600; color:#6b7280; text-transform:uppercase; letter-spacing:.5px; margin-bottom:8px; }
+  .subject-input { width:100%; height:48px; border:1.5px solid #e5e7eb; border-radius:12px; padding:0 16px; font-size:18px; font-weight:600; color:#0b1121; font-family:'Inter',sans-serif; outline:none; transition:border .2s; }
+  .subject-input:focus { border-color:#C9963A; }
+  .subject-input::placeholder { color:#d1d5db; }
+
+  .gen-btn { width:100%; height:48px; border-radius:12px; border:none; background:#C9963A; color:#fff; font-size:14px; font-weight:600; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; margin-top:12px; transition:background .2s; }
+  .gen-btn:hover { background:#b8862e; }
+  .gen-btn svg { width:18px; height:18px; }
+
+  .editor-header { display:flex; align-items:center; justify-content:space-between; margin-top:16px; margin-bottom:8px; }
+  .editor-header span { font-size:12px; font-weight:600; color:#6b7280; text-transform:uppercase; letter-spacing:.5px; }
+  .editor-tools { display:flex; gap:2px; }
+  .editor-tools button { width:28px; height:28px; border:none; background:none; cursor:pointer; border-radius:4px; color:#6b7280; display:flex; align-items:center; justify-content:center; }
+  .editor-tools button:hover { background:#f0f0f0; color:#0b1121; }
+
+  .editor-area { background:#fff; border:1px solid #e5e7eb; border-radius:12px; min-height:200px; padding:16px; font-size:13px; line-height:1.7; color:#0b1121; }
+  .editor-area p { margin-bottom:10px; }
+  .editor-area h3 { font-size:15px; margin-bottom:6px; }
+  .editor-area .highlight { background:#fff9c4; padding:2px 6px; border-radius:4px; }
+
+  /* Preview section */
+  .preview-section { margin-top:16px; }
+  .preview-header { display:flex; align-items:center; gap:6px; font-size:12px; font-weight:600; color:#6b7280; text-transform:uppercase; letter-spacing:.5px; margin-bottom:10px; }
+  .preview-frame { background:#fff; border:1.5px solid #e5e7eb; border-radius:20px; overflow:hidden; }
+  .preview-phone-bar { height:28px; background:#f8f9fa; display:flex; align-items:center; justify-content:center; gap:4px; border-bottom:1px solid #e5e7eb; }
+  .preview-phone-bar .dot { width:6px; height:6px; background:#d1d5db; border-radius:50%; }
+  .preview-content { padding:20px 16px; }
+
+  .preview-logo { text-align:center; margin-bottom:16px; }
+  .preview-logo .icon { width:48px; height:48px; background:#C9963A; border-radius:12px; display:inline-flex; align-items:center; justify-content:center; color:#fff; font-size:20px; font-weight:700; }
+  .preview-logo .church-name { font-size:14px; font-weight:700; color:#0b1121; margin-top:8px; }
+
+  .preview-greeting { font-size:14px; color:#0b1121; margin-bottom:14px; line-height:1.5; }
+  .preview-highlight { background:#f8f9fa; border-radius:10px; padding:14px; margin-bottom:12px; }
+  .preview-highlight .label { font-size:10px; font-weight:600; color:#C9963A; text-transform:uppercase; letter-spacing:.5px; margin-bottom:6px; }
+  .preview-highlight .text { font-size:12px; color:#0b1121; line-height:1.5; }
+  .preview-highlight .img-placeholder { width:100%; height:60px; background:linear-gradient(135deg,#fff9c4,#f8bbd0); border-radius:8px; margin-top:8px; display:flex; align-items:center; justify-content:center; font-size:10px; color:#6b7280; }
+
+  .preview-cta { display:block; width:100%; height:40px; background:#C9963A; border-radius:10px; border:none; color:#fff; font-size:13px; font-weight:600; cursor:pointer; margin-top:10px; }
+</style>
+</head>
+<body>
+
+<div class="phone">
+  <div class="status-bar" style="position:relative">
+    <span>9:41</span>
+    <div class="notch"></div>
+    <div class="status-icons">
+      <svg width="16" height="12" viewBox="0 0 16 12"><rect x="0" y="3" width="3" height="9" rx="1" fill="#0b1121"/><rect x="4" y="2" width="3" height="10" rx="1" fill="#0b1121"/><rect x="8" y="0" width="3" height="12" rx="1" fill="#0b1121"/><rect x="12" y="0" width="3" height="12" rx="1" fill="#0b1121" opacity=".3"/></svg>
+      <svg width="15" height="12" viewBox="0 0 15 12"><path d="M7.5 3a5.5 5.5 0 0 1 4 1.8l1-1.2A7 7 0 0 0 7.5 1.5 7 7 0 0 0 2.5 3.6l1 1.2A5.5 5.5 0 0 1 7.5 3z" fill="#0b1121"/><path d="M7.5 6a3 3 0 0 1 2.2 1l1-1.2A4.5 4.5 0 0 0 7.5 4.5 4.5 4.5 0 0 0 4.3 5.8l1 1.2A3 3 0 0 1 7.5 6z" fill="#0b1121"/><circle cx="7.5" cy="9.5" r="1.5" fill="#0b1121"/></svg>
+      <svg width="25" height="12" viewBox="0 0 25 12"><rect x="0" y="1" width="21" height="10" rx="2" stroke="#0b1121" stroke-width="1.2" fill="none"/><rect x="22" y="3.5" width="2" height="5" rx="1" fill="#0b1121"/><rect x="1.5" y="2.5" width="14" height="7" rx="1" fill="#22c55e"/></svg>
+    </div>
+  </div>
+
+  <div class="top-bar">
+    <div class="back">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M15 19l-7-7 7-7"/></svg>
+    </div>
+    <span class="title">New Newsletter</span>
+    <button class="btn btn-ghost">Preview</button>
+    <button class="btn btn-outline">Save</button>
+    <button class="btn btn-gold">Send</button>
+  </div>
+
+  <div class="badges">
+    <div class="badge green">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><defs><linearGradient id="ig" x1="0" y1="24" x2="24" y2="0"><stop offset="0%" stop-color="#feda75"/><stop offset="25%" stop-color="#fa7e1e"/><stop offset="50%" stop-color="#d62976"/><stop offset="75%" stop-color="#962fbf"/><stop offset="100%" stop-color="#4f5bd5"/></linearGradient></defs><rect x="2" y="2" width="20" height="20" rx="6" stroke="url(#ig)" stroke-width="2" fill="none"/><circle cx="12" cy="12" r="5" stroke="url(#ig)" stroke-width="2" fill="none"/><circle cx="18" cy="6" r="1.2" fill="url(#ig)"/></svg>
+      @gracechurch
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="3" stroke-linecap="round"><path d="M5 13l4 4L19 7"/></svg>
+    </div>
+    <div class="badge green">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="#ffe01b"><circle cx="12" cy="12" r="10"/><path d="M8 14c0-2.2 1.8-4 4-4s4 1.8 4 4" stroke="#0b1121" stroke-width="1.5" fill="none"/><circle cx="9.5" cy="10" r="1" fill="#0b1121"/><circle cx="14.5" cy="10" r="1" fill="#0b1121"/></svg>
+      Mailchimp
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="3" stroke-linecap="round"><path d="M5 13l4 4L19 7"/></svg>
+    </div>
+  </div>
+
+  <div class="scroll">
+    <div class="section-pad">
+      <div class="subject-label">Subject Line</div>
+      <input class="subject-input" value="This Sunday at Grace Church ☀️" />
+
+      <button class="gen-btn">
+        <svg viewBox="0 0 24 24" fill="none"><defs><linearGradient id="ig2" x1="0" y1="24" x2="24" y2="0"><stop offset="0%" stop-color="#feda75"/><stop offset="25%" stop-color="#fa7e1e"/><stop offset="50%" stop-color="#d62976"/><stop offset="75%" stop-color="#962fbf"/><stop offset="100%" stop-color="#4f5bd5"/></linearGradient></defs><rect x="2" y="2" width="20" height="20" rx="6" stroke="url(#ig2)" stroke-width="2" fill="none"/><circle cx="12" cy="12" r="5" stroke="url(#ig2)" stroke-width="2" fill="none"/><circle cx="18" cy="6" r="1.2" fill="url(#ig2)"/></svg>
+        Generate from Instagram
+      </button>
+
+      <div class="editor-header">
+        <span>Content</span>
+        <div class="editor-tools">
+          <button><strong>B</strong></button>
+          <button><em>I</em></button>
+          <button><u>U</u></button>
+          <button>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
+          </button>
+          <button>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="editor-area">
+        <p>Dear Grace Church family,</p>
+        <p>We had an <span class="highlight">incredible week</span> on Instagram! Here are the highlights from our latest posts:</p>
+        <h3>📸 Sunday Worship Recap</h3>
+        <p>Over 340 of you engaged with our worship recap post. The message on hope from Romans 15:13 resonated deeply — thank you for sharing it with your friends and family.</p>
+        <h3>🙌 Community Outreach</h3>
+        <p>Our food bank Saturday was a huge success! We served <span class="highlight">47 families</span> and had 23 volunteers show up. Photos from the event received the most likes this month.</p>
+        <p>This Sunday, Pastor David continues our series on "Anchored in Hope." Don't forget to invite a friend — there's always room for one more.</p>
+        <p style="color:#6b7280;font-size:12px;margin-top:12px">— The Grace Church Team</p>
+      </div>
+
+      <!-- Preview section -->
+      <div class="preview-section">
+        <div class="preview-header">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="18" rx="3"/><path d="M2 8h20"/></svg>
+          Email Preview
+        </div>
+        <div class="preview-frame">
+          <div class="preview-phone-bar"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+          <div class="preview-content">
+            <div class="preview-logo">
+              <div class="icon">G</div>
+              <div class="church-name">Grace Church</div>
+            </div>
+            <div class="preview-greeting">Dear Grace Church family, 👋</div>
+            <div class="preview-highlight">
+              <div class="label">📸 Sunday Worship</div>
+              <div class="text">340+ people engaged with our worship recap. The message on hope from Romans 15:13 resonated deeply.</div>
+              <div class="img-placeholder">worship-recap.jpg</div>
+            </div>
+            <div class="preview-highlight">
+              <div class="label">🙌 Community Outreach</div>
+              <div class="text">We served 47 families with 23 volunteers at our food bank Saturday.</div>
+            </div>
+            <button class="preview-cta">Join Us This Sunday →</button>
+          </div>
+        </div>
+      </div>
+      <div style="height:24px"></div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
