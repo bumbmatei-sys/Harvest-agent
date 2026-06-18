@@ -72,7 +72,14 @@ export function verifySignedState(
     throw new Error('Invalid state signature');
   }
 
-  return JSON.parse(payload);
+  const parsed = JSON.parse(payload);
+
+  // Age validation: reject states older than 15 minutes
+  if (Date.now() - parsed.ts > 15 * 60 * 1000) {
+    throw new Error('State expired (max 15 minutes)');
+  }
+
+  return parsed;
 }
 
 // ── Fix 4: Fetch timeout + Fix 9: Safe JSON parsing ─────────────────────────

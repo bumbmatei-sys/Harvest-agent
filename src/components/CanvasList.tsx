@@ -1,15 +1,13 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { Plus, FileText, Trash2, Calendar } from 'lucide-react';
-import { collection, query, where, onSnapshot, addDoc, deleteDoc, doc, orderBy, serverTimestamp } from 'firebase/firestore';
-import { db, auth } from '../firebase';
-import { getTenantScope } from '../utils/tenant-scope';
+import { authFetch } from '../utils/auth-fetch';
 
 interface Canvas {
   id: string;
   name: string;
-  createdAt: any;
-  updatedAt: any;
+  createdAt: string | null;
+  updatedAt: string | null;
 }
 
 interface CanvasListProps {
@@ -21,41 +19,33 @@ const CanvasList: React.FC<CanvasListProps> = ({ onOpenCanvas }) => {
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
 
+  const fetchCanvases = async () => {
+    try {
+      const resp = await authFetch('/api/canvas');
+      if (!resp.ok) throw new Error('Failed to fetch canvases');
+      const data = await resp.json();
+      setCanvases(data.canvases || []);
+    } catch (error) {
+      console.error('Failed to load canvases:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    let unsub: (() => void) | null = null;
-
-    const load = async () => {
-      const tenantId = await getTenantScope();
-      const baseQuery = tenantId
-        ? query(collection(db, 'canvases'), where('tenantId', '==', tenantId), orderBy('updatedAt', 'desc'))
-        : query(collection(db, 'canvases'), orderBy('updatedAt', 'desc'));
-
-      unsub = onSnapshot(baseQuery, (snapshot) => {
-        setCanvases(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Canvas)));
-        setLoading(false);
-      }, (error) => {
-        console.error('Failed to load canvases:', error);
-        setLoading(false);
-      });
-    };
-
-    load();
-    return () => { if (unsub) unsub(); };
+    fetchCanvases();
   }, []);
 
   const handleCreate = async () => {
     setCreating(true);
     try {
-      const tenantId = await getTenantScope();
-      const docRef = await addDoc(collection(db, 'canvases'), {
-        name: 'Untitled Canvas',
-        tenantId: tenantId || null,
-        userId: auth.currentUser?.uid || null,
-        content: '',
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
+      const resp = await authFetch('/api/canvas', {
+        method: 'POST',
+        body: JSON.stringify({ name: 'Untitled Canvas' }),
       });
-      onOpenCanvas(docRef.id, 'Untitled Canvas');
+      if (!resp.ok) throw new Error('Failed to create canvas');
+      const data = await resp.json();
+      onOpenCanvas(data.id, data.name);
     } catch (e) {
       console.error('Failed to create canvas:', e);
       alert('Failed to create canvas. Please try again.');
@@ -68,16 +58,18 @@ const CanvasList: React.FC<CanvasListProps> = ({ onOpenCanvas }) => {
     e.stopPropagation();
     if (!confirm('Delete this canvas? This cannot be undone.')) return;
     try {
-      await deleteDoc(doc(db, 'canvases', id));
+      const resp = await authFetch(`/api/canvas/${id}`, { method: 'DELETE' });
+      if (!resp.ok) throw new Error('Failed to delete canvas');
+      setCanvases(prev => prev.filter(c => c.id !== id));
     } catch (e) {
       console.error('Failed to delete canvas:', e);
       alert('Failed to delete canvas.');
     }
   };
 
-  const formatDate = (timestamp: any) => {
+  const formatDate = (timestamp: string | null) => {
     if (!timestamp) return '';
-    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    const date = new Date(timestamp);
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 

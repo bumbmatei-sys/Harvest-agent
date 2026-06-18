@@ -42,9 +42,23 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, tenantPlan 
   const [canvasName, setCanvasName] = useState<string>('');
   const [newsletterView, setNewsletterView] = useState<'list' | 'editor'>('list');
   const [tenantId, setTenantId] = useState<string | null>(null);
+  const [tenantName, setTenantName] = useState<string>('Ministry');
 
   useEffect(() => {
-    getTenantScope().then(id => setTenantId(id));
+    getTenantScope().then(async (id) => {
+      setTenantId(id);
+      if (id) {
+        try {
+          const tenantDoc = await getDoc(doc(db, 'tenants', id));
+          if (tenantDoc.exists()) {
+            const data = tenantDoc.data();
+            setTenantName(data.name || data.config?.name || 'Ministry');
+          }
+        } catch (e) {
+          console.error('Failed to load tenant name:', e);
+        }
+      }
+    });
   }, []);
 
   useEffect(() => {
@@ -311,7 +325,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, tenantPlan 
               {newsletterView === 'editor' ? (
                 <NewsletterEditor
                   tenantId={tenantId || ''}
-                  tenantName="Ministry"
+                  tenantName={tenantName}
                   onBack={() => setNewsletterView('list')}
                 />
               ) : (

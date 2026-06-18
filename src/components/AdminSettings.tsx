@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { ArrowLeft, Check, Crown, Zap, Building2, Star, ChevronRight, ChevronDown, AlertTriangle, Globe, CreditCard, Palette, Settings2, Bot, Share2, Plug, Instagram, Mail } from 'lucide-react';
 import { TenantPlan } from '../types/tenant.types';
 import { getPlanFeatures, PlanFeatures } from '../utils/plan-features';
@@ -84,6 +84,15 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
   const [aiAssistantCancelLoading, setAiAssistantCancelLoading] = useState(false);
   const [activePlanIndex, setActivePlanIndex] = useState(0);
   const planScrollRef = useRef<HTMLDivElement>(null);
+  const pollingTimersRef = useRef<{ intervals: NodeJS.Timeout[]; timeouts: NodeJS.Timeout[] }>({ intervals: [], timeouts: [] });
+
+  // Clean up all polling timers on unmount
+  useEffect(() => {
+    return () => {
+      pollingTimersRef.current.intervals.forEach(id => clearInterval(id));
+      pollingTimersRef.current.timeouts.forEach(id => clearTimeout(id));
+    };
+  }, []);
 
   // Integration states
   const [instagramStatus, setInstagramStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected');
@@ -461,7 +470,9 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
           } catch { /* keep polling */ }
         }, 3000);
         // Stop polling after 2 minutes
-        setTimeout(() => clearInterval(pollInterval), 120000);
+        const pollTimeout = setTimeout(() => clearInterval(pollInterval), 120000);
+        pollingTimersRef.current.intervals.push(pollInterval);
+        pollingTimersRef.current.timeouts.push(pollTimeout);
       } else {
         alert(data.error || 'Failed to initiate Instagram connection');
       }
@@ -500,7 +511,9 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
           } catch { /* keep polling */ }
         }, 3000);
         // Stop polling after 2 minutes
-        setTimeout(() => clearInterval(pollInterval), 120000);
+        const pollTimeout = setTimeout(() => clearInterval(pollInterval), 120000);
+        pollingTimersRef.current.intervals.push(pollInterval);
+        pollingTimersRef.current.timeouts.push(pollTimeout);
       } else {
         alert(data.error || 'Failed to initiate Mailchimp connection');
       }

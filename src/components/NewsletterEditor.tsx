@@ -1,6 +1,7 @@
 "use client";
 import React, { useState } from 'react';
 import { ArrowLeft, Send, Eye, Save } from 'lucide-react';
+import { sanitizeHtml } from '../utils/sanitize';
 
 interface NewsletterEditorProps {
   tenantId: string;
@@ -13,6 +14,47 @@ const NewsletterEditor: React.FC<NewsletterEditorProps> = ({ tenantId, tenantNam
   const [content, setContent] = useState('');
   const [sending, setSending] = useState(false);
   const [previewMode, setPreviewMode] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const handleSaveDraft = async () => {
+    if (!subject.trim()) return;
+    setSaving(true);
+    try {
+      const { authFetch } = await import('../utils/auth-fetch');
+      const resp = await authFetch('/api/newsletter/drafts', {
+        method: 'POST',
+        body: JSON.stringify({ tenantId, subject, content }),
+      });
+      if (!resp.ok) throw new Error('Failed to save draft');
+      alert('Draft saved successfully.');
+    } catch (e) {
+      console.error('Failed to save draft:', e);
+      alert('Failed to save draft. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSend = async () => {
+    if (!subject.trim() || !content.trim()) return;
+    if (!confirm('Send this newsletter to all subscribers?')) return;
+    setSending(true);
+    try {
+      const { authFetch } = await import('../utils/auth-fetch');
+      const resp = await authFetch('/api/newsletter/send', {
+        method: 'POST',
+        body: JSON.stringify({ tenantId, subject, content }),
+      });
+      if (!resp.ok) throw new Error('Failed to send newsletter');
+      alert('Newsletter sent successfully!');
+      onBack();
+    } catch (e) {
+      console.error('Failed to send newsletter:', e);
+      alert('Failed to send newsletter. Please try again.');
+    } finally {
+      setSending(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -34,13 +76,15 @@ const NewsletterEditor: React.FC<NewsletterEditorProps> = ({ tenantId, tenantNam
             {previewMode ? 'Edit' : 'Preview'}
           </button>
           <button
-            disabled={!subject.trim() || sending}
+            onClick={handleSaveDraft}
+            disabled={!subject.trim() || saving}
             className="flex items-center gap-2 px-5 py-2 bg-[#d4a017] text-white rounded-xl text-sm font-semibold hover:bg-[#b8941a] transition-colors disabled:opacity-50"
           >
             <Save size={16} />
-            Save Draft
+            {saving ? 'Saving...' : 'Save Draft'}
           </button>
           <button
+            onClick={handleSend}
             disabled={!subject.trim() || !content.trim() || sending}
             className="flex items-center gap-2 px-5 py-2 bg-green-600 text-white rounded-xl text-sm font-semibold hover:bg-green-700 transition-colors disabled:opacity-50"
           >
@@ -68,7 +112,7 @@ const NewsletterEditor: React.FC<NewsletterEditorProps> = ({ tenantId, tenantNam
         {previewMode ? (
           <div
             className="prose max-w-none min-h-[400px] p-4 border border-gray-100 rounded-xl"
-            dangerouslySetInnerHTML={{ __html: content || '<p class="text-gray-400">Nothing to preview yet.</p>' }}
+            dangerouslySetInnerHTML={{ __html: sanitizeHtml(content || '<p class="text-gray-400">Nothing to preview yet.</p>') }}
           />
         ) : (
           <textarea

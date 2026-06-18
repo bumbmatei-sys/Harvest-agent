@@ -1,8 +1,11 @@
 "use client";
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ArrowLeft, Save, Eye } from 'lucide-react';
-import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
+import { authFetch } from '../utils/auth-fetch';
+import { getTenantScope } from '../utils/tenant-scope';
+import { sanitizeHtml } from '../utils/sanitize';
 
 interface CanvasEditorProps {
   canvasId: string;
@@ -17,33 +20,65 @@ const CanvasEditor: React.FC<CanvasEditorProps> = ({ canvasId, canvasName: initi
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [previewMode, setPreviewMode] = useState(false);
+  const unsubRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
+
     const loadCanvas = async () => {
       try {
-        const canvasDoc = await getDoc(doc(db, 'canvases', canvasId));
-        if (canvasDoc.exists()) {
-          const data = canvasDoc.data();
+        // Initial load via API (with tenant isolation + validation)
+        const resp = await authFetch(`/api/canvas/${canvasId}`);
+        if (!resp.ok) throw new Error('Failed to load canvas');
+        const data = await resp.json();
+        if (!cancelled) {
           setName(data.name || initialName);
+          // Set content from elements — the API stores elements array, but we use a simple content string
+          // For backward compat, check if there's a content field or reconstruct from elements
           setContent(data.content || '');
         }
       } catch (e) {
         console.error('Failed to load canvas:', e);
       }
-      setLoading(false);
+      if (!cancelled) setLoading(false);
     };
+
     loadCanvas();
+
+    // Real-time sync on correct tenant-scoped path
+    const setupRealtime = async () => {
+      const tenantId = await getTenantScope();
+      if (!tenantId || cancelled) return;
+
+      const canvasRef = doc(db, 'tenants', tenantId, 'canvases', canvasId);
+      unsubRef.current = onSnapshot(canvasRef, (snapshot) => {
+        if (snapshot.exists() && !cancelled) {
+          const data = snapshot.data();
+          if (data.name) setName(data.name);
+          if (data.content !== undefined) setContent(data.content || '');
+        }
+      }, (error) => {
+        console.error('Real-time sync error:', error);
+      });
+    };
+
+    setupRealtime();
+
+    return () => {
+      cancelled = true;
+      if (unsubRef.current) unsubRef.current();
+    };
   }, [canvasId, initialName]);
 
   const handleSave = async () => {
     setSaving(true);
     setSaved(false);
     try {
-      await updateDoc(doc(db, 'canvases', canvasId), {
-        name,
-        content,
-        updatedAt: serverTimestamp(),
+      const resp = await authFetch(`/api/canvas/${canvasId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ name, content }),
       });
+      if (!resp.ok) throw new Error('Failed to save canvas');
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch (e) {
@@ -107,7 +142,7 @@ const CanvasEditor: React.FC<CanvasEditorProps> = ({ canvasId, canvasName: initi
         {previewMode ? (
           <div
             className="prose max-w-none min-h-[500px] p-6"
-            dangerouslySetInnerHTML={{ __html: content || '<p class="text-gray-400">Nothing to preview yet.</p>' }}
+            dangerouslySetInnerHTML={{ __html: sanitizeHtml(content || '<p class="text-gray-400">Nothing to preview yet.</p>') }}
           />
         ) : (
           <textarea
