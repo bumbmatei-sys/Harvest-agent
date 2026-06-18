@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     }
 
     const userData = userDoc.data();
-    const subscriptionId = userData?.aiChatSubscription?.subscriptionId;
+    const subscriptionId = userData?.aiChatSubscription?.stripeSubscriptionId;
 
     if (!subscriptionId) {
       return NextResponse.json({ error: 'No active AI Chat subscription found' }, { status: 404 });
