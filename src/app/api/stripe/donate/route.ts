@@ -37,6 +37,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields: amount, tenantId, donationType' }, { status: 400 });
     }
 
+    // Validate donation amount (Stripe minimum $0.50, max $100,000)
+    if (typeof amount !== 'number' || amount < 50 || amount > 10000000) {
+      return NextResponse.json({ error: 'Invalid donation amount. Must be between $0.50 and $100,000.' }, { status: 400 });
+    }
+
     if (donationType !== 'one-time' && donationType !== 'monthly') {
       return NextResponse.json({ error: 'donationType must be "one-time" or "monthly"' }, { status: 400 });
     }

@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
 
     // Clean up invalid tokens using arrayRemove (safe for concurrent updates)
     if (invalidTokens.length > 0) {
-      const batch = adminDb.batch();
+      let batch = adminDb.batch();
       let batchOps = 0;
       for (const entry of Array.from(userTokenMap.entries())) {
         const [uid, userTokens] = entry;
@@ -112,6 +112,7 @@ export async function POST(request: NextRequest) {
         // Firestore batch limit is 500
         if (batchOps >= 490) {
           await batch.commit();
+          batch = adminDb.batch(); // Create new batch after commit
           batchOps = 0;
         }
       }
