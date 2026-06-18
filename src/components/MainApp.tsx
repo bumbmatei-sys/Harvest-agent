@@ -47,7 +47,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, tenantPlan }) => {
     { id: 'home', label: 'Home', icon: Home },
     { id: 'bible', label: 'Bible', icon: BookOpen },
     features?.aiChat !== false && { id: 'chat', label: 'Chat', icon: MessageCircle },
-    features?.map !== false && { id: 'map', label: 'Map', icon: MapIcon },
+    features?.map === true && { id: 'map', label: 'Map', icon: MapIcon },
     { id: 'profile', label: 'My Profile', icon: User },
   ].filter(Boolean) as { id: string; label: string; icon: any }[];
 

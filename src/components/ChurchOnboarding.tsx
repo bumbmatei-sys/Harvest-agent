@@ -416,7 +416,11 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ onComplete, signupP
                       setStripeLoading(true);
                       try {
                         const user = auth.currentUser;
-                        if (!user || !createdTenantId) { onComplete(); return; }
+                        if (!user || !createdTenantId) {
+                          setError('Could not find your tenant. Please try again.');
+                          setStripeLoading(false);
+                          return;
+                        }
                         const token = await user.getIdToken();
                         const resp = await fetch('/api/stripe/checkout', {
                           method: 'POST',
@@ -433,11 +437,13 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ onComplete, signupP
                         if (data.url) {
                           window.location.href = data.url;
                         } else {
-                          onComplete();
+                          setError(data.error || 'Failed to start checkout. Please try again.');
+                          setStripeLoading(false);
                         }
                       } catch (err) {
                         console.error('Stripe checkout error:', err);
-                        onComplete();
+                        setError('Connection error. Please try again or go to Settings > Billing.');
+                        setStripeLoading(false);
                       }
                     }}
                     disabled={stripeLoading}
