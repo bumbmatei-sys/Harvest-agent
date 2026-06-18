@@ -8,6 +8,7 @@ interface NewsletterEditorProps {
   tenantId: string;
   tenantName: string;
   onBack: () => void;
+  onNavigateToSettings?: () => void;
 }
 
 interface Newsletter {
@@ -18,7 +19,7 @@ interface Newsletter {
   postsUsed: number;
 }
 
-const NewsletterEditor: React.FC<NewsletterEditorProps> = ({ tenantId, tenantName, onBack }) => {
+const NewsletterEditor: React.FC<NewsletterEditorProps> = ({ tenantId, tenantName, onBack, onNavigateToSettings }) => {
   const [subject, setSubject] = useState('');
   const [content, setContent] = useState('');
   const [plainText, setPlainText] = useState('');
@@ -208,7 +209,7 @@ const NewsletterEditor: React.FC<NewsletterEditorProps> = ({ tenantId, tenantNam
               {mailchimpConnected && <Check size={12} />}
             </div>
             {(!instagramConnected || !mailchimpConnected) && (
-              <a href="#" onClick={(e) => { e.preventDefault(); /* Navigate to settings integrations */ }} className="text-xs text-[#C9963A] hover:underline">
+              <a href="#" onClick={(e) => { e.preventDefault(); if (onNavigateToSettings) onNavigateToSettings(); }} className="text-xs text-[#C9963A] hover:underline">
                 Connect in Settings →
               </a>
             )}

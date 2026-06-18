@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
     }
 
     const instagramData = instagramDoc.data();
-    if (!instagramData || instagramData.status !== 'active') {
+    if (!instagramData || (instagramData.status !== 'active' && instagramData.status !== 'connected')) {
       return NextResponse.json(
         { error: 'Instagram connection is not active. Please reconnect in Settings → Integrations.' },
         { status: 400 }

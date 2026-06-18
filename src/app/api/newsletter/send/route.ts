@@ -28,14 +28,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Parse request body
-    let body: { newsletterId?: string; schedule?: string };
+    let body: { newsletterId?: string; schedule?: string; action?: string; subject?: string; htmlContent?: string; plainText?: string };
     try {
       body = await request.json();
     } catch {
       return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
     }
 
-    const { newsletterId, schedule } = body;
+    const { newsletterId, schedule, action } = body;
 
     if (!newsletterId || typeof newsletterId !== 'string') {
       return NextResponse.json(
@@ -66,6 +66,36 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
       }
+    }
+
+    // Handle save_draft action: update Firestore and return without sending
+    if (action === 'save_draft') {
+      const newsletterRef = adminDb
+        .collection('tenants')
+        .doc(tenantId)
+        .collection('newsletters')
+        .doc(newsletterId);
+
+      const newsletterDoc = await newsletterRef.get();
+      if (!newsletterDoc.exists) {
+        return NextResponse.json(
+          { error: 'Newsletter not found' },
+          { status: 404 }
+        );
+      }
+
+      const updates: Record<string, unknown> = { updatedAt: new Date().toISOString() };
+      if (body.subject) updates.subject = body.subject;
+      if (body.htmlContent) updates.htmlContent = body.htmlContent;
+      if (body.plainText !== undefined) updates.plainText = body.plainText;
+
+      await newsletterRef.update(updates);
+
+      return NextResponse.json({
+        success: true,
+        status: 'draft',
+        message: 'Draft saved',
+      });
     }
 
     // Get tenant data for plan check
@@ -145,7 +175,7 @@ export async function POST(request: NextRequest) {
     }
 
     const mailchimpData = mailchimpDoc.data();
-    if (!mailchimpData || mailchimpData.status !== 'active') {
+    if (!mailchimpData || (mailchimpData.status !== 'active' && mailchimpData.status !== 'connected')) {
       return NextResponse.json(
         { error: 'Mailchimp connection is not active. Please reconnect in Settings → Integrations.' },
         { status: 400 }

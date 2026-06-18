@@ -65,24 +65,16 @@ const CanvasEditor: React.FC<CanvasEditorProps> = ({ canvasId, canvasName: initi
 
   // Real-time sync via Firestore
   useEffect(() => {
-    if (!tenantIdRef.current) {
-      // Wait for tenantId to be available
-      const check = setInterval(() => {
-        if (tenantIdRef.current) {
-          clearInterval(check);
-          setupSync();
-        }
-      }, 100);
-      return () => clearInterval(check);
-    }
-    setupSync();
+    let unsub: (() => void) | undefined;
+    let checkInterval: ReturnType<typeof setInterval> | undefined;
 
-    function setupSync() {
-      const tenantId = tenantIdRef.current;
-      if (!tenantId) return;
+    const init = async () => {
+      const tenantId = tenantIdRef.current || await getTenantScope();
+      if (!tenantId || !isMounted.current) return;
+      tenantIdRef.current = tenantId;
 
       const canvasRef = doc(db, 'tenants', tenantId, 'canvases', canvasId);
-      const unsub = onSnapshot(canvasRef, (snapshot) => {
+      unsub = onSnapshot(canvasRef, (snapshot) => {
         if (!snapshot.exists() || !isMounted.current) return;
         const data = snapshot.data();
         const remoteElements = data.elements || [];
@@ -95,9 +87,25 @@ const CanvasEditor: React.FC<CanvasEditorProps> = ({ canvasId, canvasName: initi
       }, (err) => {
         console.error('Real-time sync error:', err);
       });
+    };
 
-      return () => unsub();
+    // If tenantId already available, init immediately. Otherwise poll.
+    if (tenantIdRef.current) {
+      init();
+    } else {
+      checkInterval = setInterval(() => {
+        if (tenantIdRef.current) {
+          if (checkInterval) clearInterval(checkInterval);
+          checkInterval = undefined;
+          init();
+        }
+      }, 100);
     }
+
+    return () => {
+      if (checkInterval) clearInterval(checkInterval);
+      if (unsub) unsub();
+    };
   }, [canvasId]);
 
   // Debounced auto-save
@@ -137,11 +145,26 @@ const CanvasEditor: React.FC<CanvasEditorProps> = ({ canvasId, canvasName: initi
     };
   }, []);
 
-  const handleBack = () => {
-    // Final save before leaving
+  const handleBack = async () => {
     if (saveTimer.current) {
       clearTimeout(saveTimer.current);
       saveTimer.current = null;
+    }
+    // Flush any pending changes
+    if (excalidrawAPI.current) {
+      const elements = excalidrawAPI.current.getSceneElements();
+      const serialized = JSON.stringify(elements);
+      if (serialized !== lastSavedElements.current) {
+        try {
+          await authFetch(`/api/canvas/${canvasId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ elements }),
+          });
+        } catch (e) {
+          console.error('Final save failed:', e);
+        }
+      }
     }
     onBack();
   };
