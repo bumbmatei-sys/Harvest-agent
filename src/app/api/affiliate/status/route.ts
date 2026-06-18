@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
   } catch (error: any) {
     console.error('Affiliate status error:', error?.message || error);
     return NextResponse.json(
-      { error: error?.message || 'Failed to fetch affiliate status' },
+      { error: 'Failed to fetch affiliate status' },
       { status: 500 }
     );
   }

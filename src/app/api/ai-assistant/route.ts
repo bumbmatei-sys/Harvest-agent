@@ -8,9 +8,17 @@ import { generateAccessCode } from '@/lib/ai-utils';
  * Called by the Telegram bot when a user provides their access code.
  * 
  * Body: { code: string, telegramUserId: string, telegramUsername?: string }
+ * Header: x-bot-secret must match TELEGRAM_BOT_SECRET env var
  */
 export async function POST(request: NextRequest) {
   try {
+    // Verify bot secret — ensures caller is the actual Telegram bot
+    const botSecret = process.env.TELEGRAM_BOT_SECRET;
+    const providedSecret = request.headers.get('x-bot-secret');
+    if (!botSecret || providedSecret !== botSecret) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { code, telegramUserId, telegramUsername } = await request.json();
 
     if (!code || !telegramUserId) {
@@ -77,19 +85,26 @@ export async function POST(request: NextRequest) {
     });
   } catch (error: any) {
     console.error('AI assistant verify error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to verify access code' }, { status: 500 });
   }
 }
 
 /**
  * POST /api/ai-assistant/check
  * Quick subscription status check for the bot on every message.
- * No auth required — the bot calls this server-to-server.
+ * Requires bot secret header.
  * 
  * Body: { telegramUserId: string }
  */
 export async function PUT(request: NextRequest) {
   try {
+    // Verify bot secret
+    const botSecret = process.env.TELEGRAM_BOT_SECRET;
+    const providedSecret = request.headers.get('x-bot-secret');
+    if (!botSecret || providedSecret !== botSecret) {
+      return NextResponse.json({ active: false, error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { telegramUserId } = await request.json();
 
     if (!telegramUserId) {
@@ -123,7 +138,7 @@ export async function PUT(request: NextRequest) {
     });
   } catch (error: any) {
     console.error('AI assistant check error:', error);
-    return NextResponse.json({ active: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ active: false, error: 'Failed to check subscription' }, { status: 500 });
   }
 }
 

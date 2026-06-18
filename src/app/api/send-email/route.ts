@@ -22,7 +22,9 @@ export async function POST(request: NextRequest) {
     if (userOrErr instanceof Response) return userOrErr;
 
     const body: EmailRequest = await request.json();
-    const { to, subject, html, text, from = 'Harvest <noreply@theharvest.app>' } = body;
+    const { to, subject, html, text } = body;
+    // Lock from field to prevent admin spoofing
+    const from = 'Harvest <noreply@theharvest.app>';
 
     if (!to || !subject || (!html && !text)) {
       return NextResponse.json({ error: 'Missing required fields: to, subject, and html or text' }, { status: 400 });

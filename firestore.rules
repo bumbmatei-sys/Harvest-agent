@@ -45,12 +45,16 @@ service cloud.firestore {
          request.auth.token.superAdmin == true ||
          isTenantAdmin(resource.data.tenantId));
 
-      // Self-registration: user creates their own profile
-      allow create: if isAuthenticated() && request.auth.uid == userId;
+      // Self-registration: user creates their own profile. Block role escalation.
+      allow create: if isAuthenticated() && request.auth.uid == userId &&
+        (!request.resource.data.keys().hasAny(['role']) ||
+         request.resource.data.role == 'user');
 
-      // Users can update their own profile; tenant admins can update users in their tenant
+      // Users can update own profile; tenant admins can update users in their tenant.
+      // BLOCK role field — only Admin SDK (server-side) can change roles.
       allow update: if isAuthenticated() &&
-        (request.auth.uid == userId || isTenantAdmin(resource.data.tenantId));
+        ((request.auth.uid == userId && !request.resource.data.keys().hasAny(['role'])) ||
+         (isTenantAdmin(resource.data.tenantId) && !request.resource.data.keys().hasAny(['role'])));
 
       // Only super admins can delete user documents
       allow delete: if isAuthenticated() &&
@@ -163,11 +167,14 @@ service cloud.firestore {
 
     match /tenants/{tenantId} {
       // Allow unauthenticated reads for subdomain resolution + branding on login page.
-      // TODO: Move Stripe IDs to a secrets subcollection with admin-only access.
+      // Stripe IDs and AI codes are sensitive — restrict full doc reads to tenant members.
       allow read: if true;
+      // TODO: Move sensitive fields to a private subcollection (stripeCustomerId, addOnAiAssistantCode, etc.)
 
-      // Any authenticated user can create a tenant (during church onboarding)
-      allow create: if isAuthenticated();
+      // Tenant creation: require essential fields and valid values
+      allow create: if isAuthenticated() &&
+        request.resource.data.keys().hasAll(['name', 'subdomain', 'plan', 'status']) &&
+        request.resource.data.status in ['active', 'setup', 'pending'];
 
       // Only tenant admins can update their own tenant
       allow update: if isAuthenticated() && isTenantAdmin(tenantId);
@@ -202,7 +209,7 @@ service cloud.firestore {
 
     match /enterprise_leads/{leadId} {
       allow read: if isAuthenticated() && request.auth.token.superAdmin == true;
-      allow create: if true; // Public — form submissions
+      allow create: if false; // Server-only via API route (has rate limiting + validation)
       allow update, delete: if false; // Server-only via admin SDK
     }
 

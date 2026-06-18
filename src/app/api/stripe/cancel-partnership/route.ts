@@ -58,6 +58,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error('Cancel partnership error:', error?.message || error);
-    return NextResponse.json({ error: error?.message || 'Failed to cancel partnership' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to cancel partnership' }, { status: 500 });
   }
 }

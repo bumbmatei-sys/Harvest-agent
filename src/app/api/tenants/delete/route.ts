@@ -29,6 +29,6 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error('Tenant delete error:', error);
-    return NextResponse.json({ error: error.message || 'Delete failed' }, { status: 500 });
+    return NextResponse.json({ error: 'Delete failed' }, { status: 500 });
   }
 }

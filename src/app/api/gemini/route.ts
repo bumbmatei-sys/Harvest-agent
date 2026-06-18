@@ -1,9 +1,14 @@
 import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
+import { requireAuth } from '@/lib/api-auth';
 
 export const dynamic = 'force-dynamic';
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+
+const MAX_TEXT_LENGTH = 50000; // 50KB limit for embed text
+const MAX_PROMPT_LENGTH = 30000; // 30KB limit for generate prompts
 
 /**
  * POST /api/gemini
@@ -12,8 +17,12 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
  *   { action: "embed", text: string }
  *   { action: "generate", prompt: string, systemInstruction?: string }
  */
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
+    // Require authentication — prevents API abuse
+    const userOrErr = await requireAuth(request);
+    if (userOrErr instanceof Response) return userOrErr;
+
     const body = await request.json();
     const { action } = body;
 
@@ -29,6 +38,12 @@ export async function POST(request: Request) {
       if (!text || typeof text !== 'string') {
         return NextResponse.json(
           { error: '"text" is required for embed action.' },
+          { status: 400 }
+        );
+      }
+      if (text.length > MAX_TEXT_LENGTH) {
+        return NextResponse.json(
+          { error: `Text exceeds maximum length of ${MAX_TEXT_LENGTH} characters.` },
           { status: 400 }
         );
       }
@@ -54,6 +69,12 @@ export async function POST(request: Request) {
       if (!prompt || typeof prompt !== 'string') {
         return NextResponse.json(
           { error: '"prompt" is required for generate action.' },
+          { status: 400 }
+        );
+      }
+      if (prompt.length > MAX_PROMPT_LENGTH) {
+        return NextResponse.json(
+          { error: `Prompt exceeds maximum length of ${MAX_PROMPT_LENGTH} characters.` },
           { status: 400 }
         );
       }
@@ -100,7 +121,7 @@ export async function POST(request: Request) {
   } catch (error: any) {
     console.error('API route error:', error);
     return NextResponse.json(
-      { error: error?.message || 'Internal server error' },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }

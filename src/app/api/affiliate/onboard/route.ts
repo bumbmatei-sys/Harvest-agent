@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error('Affiliate onboard error:', error?.message || error);
     return NextResponse.json(
-      { error: error?.message || 'Failed to create affiliate account' },
+      { error: 'Failed to create affiliate account' },
       { status: 500 }
     );
   }

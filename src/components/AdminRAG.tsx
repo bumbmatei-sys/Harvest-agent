@@ -59,7 +59,10 @@ async function chunkAndEmbed(text: string, sourceId: string, title: string, type
    try {
      const res = await fetch('/api/gemini', {
        method: 'POST',
-       headers: { 'Content-Type': 'application/json' },
+       headers: {
+         'Content-Type': 'application/json',
+         'Authorization': `Bearer ${await auth.currentUser?.getIdToken()}`,
+       },
        body: JSON.stringify({ action: 'embed', text: chunk }),
      });
      const data = await res.json();

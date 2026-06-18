@@ -267,7 +267,10 @@ export default function AIChat({ onBack }: { onBack?: () => void }) {
      // 1. Embed the query via API route
      const res = await fetch('/api/gemini', {
        method: 'POST',
-       headers: { 'Content-Type': 'application/json' },
+       headers: {
+         'Content-Type': 'application/json',
+         'Authorization': `Bearer ${await auth.currentUser?.getIdToken()}`,
+       },
        body: JSON.stringify({ action: 'embed', text: queryText }),
      });
      const embedData = await res.json();
@@ -337,7 +340,10 @@ If the user asks something completely unrelated to faith, politely guide them ba
 
  const response = await fetch('/api/gemini', {
    method: 'POST',
-   headers: { 'Content-Type': 'application/json' },
+   headers: {
+     'Content-Type': 'application/json',
+     'Authorization': `Bearer ${await auth.currentUser?.getIdToken()}`,
+   },
    body: JSON.stringify({
      action: 'generate',
      prompt,
