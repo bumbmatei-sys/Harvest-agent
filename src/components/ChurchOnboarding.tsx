@@ -11,6 +11,7 @@ import { sendEmail, welcomeEmail } from '../utils/email';
 
 interface ChurchOnboardingProps {
   onComplete: () => void;
+  signupPlan?: TenantPlan;
 }
 
 const PLAN_NAMES: Record<TenantPlan, string> = {
@@ -21,11 +22,11 @@ const PLAN_NAMES: Record<TenantPlan, string> = {
   enterprise: 'Enterprise',
 };
 
-const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ onComplete }) => {
+const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ onComplete, signupPlan }) => {
   const urlPlan = typeof window !== 'undefined'
     ? new URLSearchParams(window.location.search).get('plan') as TenantPlan | null
     : null;
-  const selectedPlan = urlPlan && ['plus', 'pro', 'max', 'ultra', 'enterprise'].includes(urlPlan) ? urlPlan : 'plus';
+  const selectedPlan = signupPlan || (urlPlan && ['plus', 'pro', 'max', 'ultra', 'enterprise'].includes(urlPlan) ? urlPlan : 'plus');
 
   const hasBranding = selectedPlan === 'max' || selectedPlan === 'ultra' || selectedPlan === 'enterprise';
   const hasCustomDomain = selectedPlan === 'max' || selectedPlan === 'ultra' || selectedPlan === 'enterprise';
@@ -42,6 +43,8 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ onComplete }) => {
   const [subdomainStatus, setSubdomainStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [stripeLoading, setStripeLoading] = useState(false);
+  const [createdTenantId, setCreatedTenantId] = useState<string | null>(null);
 
   const progressSteps = hasBranding ? ['Ministry', 'Branding', 'Done'] : ['Ministry', 'Done'];
 
@@ -124,6 +127,8 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ onComplete }) => {
           customDomain: customDomain.trim() || undefined,
         },
       });
+
+      setCreatedTenantId(tenantId);
 
       const userRef = doc(db, 'users', user.uid);
       const userSnap = await getDoc(userRef);
@@ -405,13 +410,60 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ onComplete }) => {
                     <span> and <span style={{ fontFamily: 'monospace', color: '#D4AF37' }}>{customDomain}</span></span>
                   )}
                 </p>
-                <button
-                  onClick={onComplete}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: '#D4AF37', color: '#ffffff', fontWeight: 700, padding: '12px 32px', borderRadius: '12px', border: 'none', cursor: 'pointer', fontSize: '16px', boxShadow: '0 4px 12px rgba(212,175,55,0.3)' }}
-                >
-                  Go to Admin Dashboard
-                  <ArrowRight size={18} />
-                </button>
+                {signupPlan ? (
+                  <button
+                    onClick={async () => {
+                      setStripeLoading(true);
+                      try {
+                        const user = auth.currentUser;
+                        if (!user || !createdTenantId) { onComplete(); return; }
+                        const token = await user.getIdToken();
+                        const resp = await fetch('/api/stripe/checkout', {
+                          method: 'POST',
+                          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            plan: selectedPlan,
+                            billing: 'monthly',
+                            tenantId: createdTenantId,
+                            tenantName: subdomain,
+                            email: user.email || undefined,
+                          }),
+                        });
+                        const data = await resp.json();
+                        if (data.url) {
+                          window.location.href = data.url;
+                        } else {
+                          onComplete();
+                        }
+                      } catch (err) {
+                        console.error('Stripe checkout error:', err);
+                        onComplete();
+                      }
+                    }}
+                    disabled={stripeLoading}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: '#D4AF37', color: '#ffffff', fontWeight: 700, padding: '12px 32px', borderRadius: '12px', border: 'none', cursor: stripeLoading ? 'wait' : 'pointer', fontSize: '16px', boxShadow: '0 4px 12px rgba(212,175,55,0.3)', opacity: stripeLoading ? 0.7 : 1 }}
+                  >
+                    {stripeLoading ? (
+                      <>
+                        <Loader2 size={18} className="animate-spin" />
+                        Redirecting to payment...
+                      </>
+                    ) : (
+                      <>
+                        Continue to Payment
+                        <ArrowRight size={18} />
+                      </>
+                    )}
+                  </button>
+                ) : (
+                  <button
+                    onClick={onComplete}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: '#D4AF37', color: '#ffffff', fontWeight: 700, padding: '12px 32px', borderRadius: '12px', border: 'none', cursor: 'pointer', fontSize: '16px', boxShadow: '0 4px 12px rgba(212,175,55,0.3)' }}
+                  >
+                    Go to Admin Dashboard
+                    <ArrowRight size={18} />
+                  </button>
+                )}
               </div>
             )}
           </div>

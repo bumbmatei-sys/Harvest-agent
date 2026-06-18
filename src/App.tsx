@@ -50,8 +50,11 @@ const AppInner: React.FC = () => {
   const { tenantId, isAdminDomain, error: tenantError, isLoading: tenantLoading, setTenantPlan: ctxSetTenantPlan } = useTenant();
 
   // Check if user arrived from presentation site "Start Ministry" button
-  const isChurchSignup = typeof window !== 'undefined' &&
-    new URLSearchParams(window.location.search).get('signup') === 'church';
+  const signupParam = typeof window !== 'undefined'
+    ? new URLSearchParams(window.location.search).get('signup') : null;
+  const isChurchSignup = signupParam === 'church';
+  const signupPlan = signupParam && ['plus', 'pro', 'max', 'ultra'].includes(signupParam)
+    ? signupParam as TenantPlan : undefined;
 
   useEffect(() => {
     currentPageRef.current = currentPage;
@@ -94,7 +97,7 @@ const AppInner: React.FC = () => {
                   setCurrentPage(role === 'church_admin' || role === 'super_admin' ? 'admin' : 'home');
                 }
               }
-            } else if (isChurchSignup || role === 'church_admin') {
+            } else if (isChurchSignup || signupPlan || role === 'church_admin') {
               // Church admin path: needs church onboarding
               setCurrentPage('church-onboarding');
             } else {
@@ -103,7 +106,7 @@ const AppInner: React.FC = () => {
             }
           } else {
             // No user doc yet
-            if (isChurchSignup) {
+            if (isChurchSignup || signupPlan) {
               setCurrentPage('church-onboarding');
             } else {
               setCurrentPage('onboarding');
@@ -150,7 +153,7 @@ const AppInner: React.FC = () => {
   if (currentPage === 'church-onboarding') {
     return (
       <>
-        <ChurchOnboarding onComplete={() => navigateTo('admin')} />
+        <ChurchOnboarding onComplete={() => navigateTo('admin')} signupPlan={signupPlan} />
         <PWAInstallManager />
       </>
     );
@@ -159,7 +162,7 @@ const AppInner: React.FC = () => {
   if (currentPage === 'onboarding') {
     return (
       <>
-        <Onboarding onComplete={() => navigateTo('home')} />
+        <Onboarding onComplete={() => navigateTo('home')} signupPlan={signupPlan} />
         <PWAInstallManager />
       </>
     );
