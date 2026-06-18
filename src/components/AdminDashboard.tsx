@@ -116,11 +116,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, tenantPlan 
   ];
 
   // If the active tab is not in the allowed tabs, switch to the first allowed tab
+  const allTabIds = allTabs.map(t => t.id).join(',');
   useEffect(() => {
     if (!isLoading && allTabs.length > 0 && !allTabs.find(t => t.id === activeTab) && activeTab !== 'inbox' && activeTab !== 'settings') {
       setActiveTab(allTabs[0].id);
     }
-  }, [isLoading, allTabs, activeTab]);
+  }, [isLoading, allTabIds, activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (isLoading) {
     return <div className="flex items-center justify-center h-screen bg-[#f8f9fa]"><div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--brand-color, #d4a017)', borderTopColor: 'transparent' }}></div></div>;
@@ -280,7 +281,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, tenantPlan 
         </div>
 
         {/* Main Content Area */}
-        <div className="flex-1 overflow-y-auto pb-24 lg:pb-8 p-0 lg:p-6">
+        <div className={`flex-1 overflow-y-auto pb-24 lg:pb-8 p-0 lg:p-6 ${showMoreSheet ? 'overflow-hidden' : ''}`}>
           {activeTab === 'dashboard' ? (
             <AnalyticsAndRoles currentUserRole={isSuperAdmin ? 'super_admin' : userRole} currentUserPermissions={isChurchAdmin ? { fullAccess: true } as any : userPermissions} />
           ) : activeTab === 'blog' ? (
