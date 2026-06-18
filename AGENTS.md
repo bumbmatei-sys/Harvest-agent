@@ -67,19 +67,20 @@ src/
 ```
 
 ## Pricing Tiers (TenantPlan)
-| Plan | Price | Blog | AI | Map | Churches | Courses | Admins | Custom Domain | AI Assistant |
-|------|-------|------|-----|-----|----------|---------|--------|---------------|-------------|
-| plus | $79/mo | ✅ | ❌ | ❌ | 1 | 5 | 2 | ❌ | ❌ |
-| pro | $199/mo | ✅ | ✅ | ❌ | 1 | ∞ | 5 | ❌ | ❌ |
-| max | $399/mo | ✅ | ✅ | ❌ | 1 | ∞ | ∞ | ✅ | ❌ |
-| ultra | $699/mo | ✅ | ✅ | ❌ | 1 | ∞ | ∞ | ✅ | ✅ |
-| enterprise | custom | ✅ | ✅ | ✅ | ∞ | ∞ | ∞ | ✅ | ✅ |
+| Plan | Display Name | Price | Blog | AI | Map | Churches | Courses | Admins | Custom Domain | AI Assistant |
+|------|-------------|-------|------|-----|-----|----------|---------|--------|---------------|-------------|
+| plus | Individual | $49/mo | ✅ | ❌ | ❌ | 1 | 5 | 2 | ❌ | ❌ |
+| pro | Community | $99/mo | ✅ | ✅ | ❌ | 1 | ∞ | 5 | ❌ | ❌ |
+| max | Church | $199/mo | ✅ | ✅ | ❌ | 1 | ∞ | ∞ | ✅ | ❌ |
+| ultra | Ministry | $349/mo | ✅ | ✅ | ❌ | 1 | ∞ | ∞ | ✅ | ✅ |
+| enterprise | Enterprise | custom | ✅ | ✅ | ✅ | ∞ | ∞ | ∞ | ✅ | ✅ |
 
 ## Revenue Sharing (Stripe Connect)
-- Plus: 70% to church
-- Pro: 80% to church
-- Max: 90% to church
-- Ultra/Enterprise: 100% to church
+- Individual (plus): 85% to church
+- Community (pro): 90% to church
+- Church (max): 95% to church
+- Ministry (ultra): 100% to church
+- Enterprise: 100% to church
 
 ## Design System
 - **Background**: White

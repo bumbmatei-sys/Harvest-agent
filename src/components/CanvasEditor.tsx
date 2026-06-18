@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { ArrowLeft, Users, Check, Loader2, AlertCircle } from 'lucide-react';
-import { doc, onSnapshot, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { ArrowLeft, Check, Loader2, AlertCircle } from 'lucide-react';
+import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
 import { authFetch } from '../utils/auth-fetch';
 import { getTenantScope } from '../utils/tenant-scope';
@@ -46,7 +46,6 @@ const CanvasEditor: React.FC<CanvasEditorProps> = ({ canvasId, canvasName: initi
         if (cancelled) return;
         tenantIdRef.current = tenantId;
 
-        // Load via API
         const resp = await authFetch(`/api/canvas/${canvasId}`);
         if (!resp.ok) throw new Error('Failed to load canvas');
         const data = await resp.json();
@@ -83,7 +82,6 @@ const CanvasEditor: React.FC<CanvasEditorProps> = ({ canvasId, canvasName: initi
         const remoteElements = data.elements || [];
         const remoteSerialized = JSON.stringify(remoteElements);
 
-        // Only apply if this is a remote change (not our own write)
         if (remoteSerialized !== lastSavedElements.current && excalidrawAPI.current) {
           excalidrawAPI.current.updateScene({ elements: remoteElements });
         }
@@ -92,7 +90,6 @@ const CanvasEditor: React.FC<CanvasEditorProps> = ({ canvasId, canvasName: initi
       });
     };
 
-    // If tenantId already available, init immediately. Otherwise poll.
     if (tenantIdRef.current) {
       init();
     } else {
@@ -148,12 +145,12 @@ const CanvasEditor: React.FC<CanvasEditorProps> = ({ canvasId, canvasName: initi
     };
   }, []);
 
-  const handleBack = async () => {
+  // Back button handler — flush pending changes before exiting
+  const handleBack = useCallback(async () => {
     if (saveTimer.current) {
       clearTimeout(saveTimer.current);
       saveTimer.current = null;
     }
-    // Flush any pending changes
     if (excalidrawAPI.current) {
       const elements = excalidrawAPI.current.getSceneElements();
       const serialized = JSON.stringify(elements);
@@ -170,32 +167,7 @@ const CanvasEditor: React.FC<CanvasEditorProps> = ({ canvasId, canvasName: initi
       }
     }
     onBack();
-  };
-
-  // Loading state
-  if (loading) {
-    return (
-      <div className="fixed inset-0 z-[9999] bg-white flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="w-8 h-8 animate-spin text-[#C9963A]" />
-          <span className="text-sm text-gray-500">Loading canvas...</span>
-        </div>
-      </div>
-    );
-  }
-
-  // Error state
-  if (error) {
-    return (
-      <div className="fixed inset-0 z-[9999] bg-white flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <AlertCircle className="w-10 h-10 text-red-400" />
-          <span className="text-sm text-gray-600">{error}</span>
-          <button onClick={handleBack} className="text-sm text-[#C9963A] hover:underline">Go back</button>
-        </div>
-      </div>
-    );
-  }
+  }, [canvasId, onBack]);
 
   // Custom controls injected into Excalidraw's native top-right area
   const renderTopRightUI = useCallback((_isMobile: boolean, _appState: any) => (
@@ -229,9 +201,33 @@ const CanvasEditor: React.FC<CanvasEditorProps> = ({ canvasId, canvasName: initi
     </div>
   ), [handleBack, initialName, saveStatus]);
 
+  // Loading state
+  if (loading) {
+    return (
+      <div className="fixed inset-0 z-[9999] bg-white flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="w-8 h-8 animate-spin text-[#C9963A]" />
+          <span className="text-sm text-gray-500">Loading canvas...</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="fixed inset-0 z-[9999] bg-white flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <AlertCircle className="w-10 h-10 text-red-400" />
+          <span className="text-sm text-gray-600">{error}</span>
+          <button onClick={handleBack} className="text-sm text-[#C9963A] hover:underline">Go back</button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 z-[9999] bg-white flex flex-col excalidraw-canvas-container">
-      {/* Excalidraw canvas — our controls injected via renderTopRightUI */}
       <div className="flex-1 w-full h-full">
         <Excalidraw
           excalidrawAPI={(api) => { excalidrawAPI.current = api; }}
