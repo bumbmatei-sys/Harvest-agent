@@ -103,12 +103,14 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToCourses, onGoToPart
  const [isAdmin, setIsAdmin] = useState(false);
 
  useEffect(() => {
- let unsubscribe: () => void;
+ let unsubscribe: (() => void) | null = null;
+ let cancelled = false;
 
  const fetchUserData = async () => {
  if (auth.currentUser) {
  try {
  const userRef = doc(db, 'users', auth.currentUser.uid);
+ if (cancelled) return;
  unsubscribe = onSnapshot(userRef, (userDoc) => {
  if (userDoc.exists()) {
    const data = userDoc.data();
@@ -143,9 +145,10 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToCourses, onGoToPart
  fetchUserData();
 
  return () => {
- if (unsubscribe) {
- unsubscribe();
- }
+   cancelled = true;
+   if (unsubscribe) {
+     unsubscribe();
+   }
  };
  }, []);
 

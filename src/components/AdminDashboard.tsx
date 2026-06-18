@@ -83,9 +83,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, tenantPlan 
   useEffect(() => {
     let unsub1: (() => void) | null = null;
     let unsub2: (() => void) | null = null;
+    let cancelled = false;
 
     const loadCounts = async () => {
     const tenantId = await getTenantScope();
+    if (cancelled) return;
     const q = tenantId
       ? query(collection(db, 'submissions'), where('tenantId', '==', tenantId), where('status', '==', 'pending'), limit(100))
       : query(collection(db, 'submissions'), where('status', '==', 'pending'), limit(100));
@@ -108,6 +110,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, tenantPlan 
     loadCounts();
     
     return () => {
+      cancelled = true;
       if (unsub1) unsub1();
       if (unsub2) unsub2();
     };

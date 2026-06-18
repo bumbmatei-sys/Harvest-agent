@@ -172,7 +172,9 @@ const AppInner: React.FC = () => {
   if (currentPage === 'home') {
     return (
       <>
-        <MainApp onNavigate={navigateTo} tenantPlan={tenantPlan} />
+        <ErrorBoundary>
+          <MainApp onNavigate={navigateTo} tenantPlan={tenantPlan} />
+        </ErrorBoundary>
         <PWAInstallManager />
       </>
     );

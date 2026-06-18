@@ -41,49 +41,51 @@ const BlogTab: React.FC<BlogTabProps> = ({ onOpenArticle, initialPost, onBack, i
  const [selectedPost, setSelectedPost] = useState<BlogPost | null>(initialPost || null);
 
  useEffect(() => {
- let unsubscribe: (() => void) | null = null;
- (async () => {
-   // Only fetch published posts
-   const tenantId = await getTenantScope();
-   const q = tenantId
-     ? query(
-         collection(db, 'blog_posts'),
-         where('tenantId', '==', tenantId),
-         where('status', '==', 'published')
-       )
-     : query(
-         collection(db, 'blog_posts'),
-         where('status', '==', 'published')
-       );
+  let unsubscribe: (() => void) | null = null;
+  let cancelled = false;
+  (async () => {
+    // Only fetch published posts
+    const tenantId = await getTenantScope();
+    if (cancelled) return;
+    const q = tenantId
+      ? query(
+          collection(db, 'blog_posts'),
+          where('tenantId', '==', tenantId),
+          where('status', '==', 'published')
+        )
+      : query(
+          collection(db, 'blog_posts'),
+          where('status', '==', 'published')
+        );
 
-   unsubscribe = onSnapshot(q, (snapshot) => {
- const fetchedPosts = snapshot.docs.map(doc => ({
- id: doc.id,
- ...doc.data()
- })) as BlogPost[];
+    unsubscribe = onSnapshot(q, (snapshot) => {
+  const fetchedPosts = snapshot.docs.map(doc => ({
+  id: doc.id,
+  ...doc.data()
+  })) as BlogPost[];
  
- // Filter out scheduled posts that haven't reached their publish date yet
- const now = new Date().toISOString();
- const visiblePosts = fetchedPosts.filter(post => 
- !post.publishedAt || post.publishedAt <= now
- );
+  // Filter out scheduled posts that haven't reached their publish date yet
+  const now = new Date().toISOString();
+  const visiblePosts = fetchedPosts.filter(post => 
+  !post.publishedAt || post.publishedAt <= now
+  );
  
- // Sort by publishedAt (descending), fallback to createdAt
- visiblePosts.sort((a, b) => {
- const dateA = a.publishedAt || a.createdAt;
- const dateB = b.publishedAt || b.createdAt;
- return new Date(dateB).getTime() - new Date(dateA).getTime();
- });
+  // Sort by publishedAt (descending), fallback to createdAt
+  visiblePosts.sort((a, b) => {
+  const dateA = a.publishedAt || a.createdAt;
+  const dateB = b.publishedAt || b.createdAt;
+  return new Date(dateB).getTime() - new Date(dateA).getTime();
+  });
  
- setPosts(visiblePosts);
- setLoading(false);
- }, (error) => {
- try { handleFirestoreError(error, OperationType.GET, `blog_posts`); } catch (e) { console.error(e); }
- setLoading(false);
-   });
- })();
+  setPosts(visiblePosts);
+  setLoading(false);
+  }, (error) => {
+  try { handleFirestoreError(error, OperationType.GET, `blog_posts`); } catch (e) { console.error(e); }
+  setLoading(false);
+    });
+  })();
 
- return () => { if (unsubscribe) unsubscribe(); };
+  return () => { cancelled = true; if (unsubscribe) unsubscribe(); };
  }, []);
 
  const categories = ['All', ...Array.from(new Set(posts.map(post => post.category)))];

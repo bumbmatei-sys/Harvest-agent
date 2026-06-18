@@ -35,25 +35,27 @@ const AdminBlog: React.FC = () => {
  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
  useEffect(() => {
- let unsubscribe: (() => void) | null = null;
- (async () => {
-   const tenantId = await getTenantScope();
-   const q = tenantId
-     ? query(collection(db, 'blog_posts'), where('tenantId', '==', tenantId), orderBy('createdAt', 'desc'), limit(50))
-     : query(collection(db, 'blog_posts'), orderBy('createdAt', 'desc'), limit(50));
-   unsubscribe = onSnapshot(q, (snapshot) => {
-     const fetchedPosts = snapshot.docs.map(doc => ({
-       id: doc.id,
-       ...doc.data()
-     })) as BlogPost[];
-     setPosts(fetchedPosts);
-     setLoading(false);
-   }, (error) => {
-     try { handleFirestoreError(error, OperationType.GET, `blog_posts`); } catch (e) { console.error(e); }
-     setLoading(false);
-   });
- })();
- return () => { if (unsubscribe) unsubscribe(); };
+  let unsubscribe: (() => void) | null = null;
+  let cancelled = false;
+  (async () => {
+    const tenantId = await getTenantScope();
+    if (cancelled) return;
+    const q = tenantId
+      ? query(collection(db, 'blog_posts'), where('tenantId', '==', tenantId), orderBy('createdAt', 'desc'), limit(50))
+      : query(collection(db, 'blog_posts'), orderBy('createdAt', 'desc'), limit(50));
+    unsubscribe = onSnapshot(q, (snapshot) => {
+      const fetchedPosts = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as BlogPost[];
+      setPosts(fetchedPosts);
+      setLoading(false);
+    }, (error) => {
+      try { handleFirestoreError(error, OperationType.GET, `blog_posts`); } catch (e) { console.error(e); }
+      setLoading(false);
+    });
+  })();
+  return () => { cancelled = true; if (unsubscribe) unsubscribe(); };
  }, []);
 
  const categories = Array.from(new Set(posts.map(post => post.category)));
