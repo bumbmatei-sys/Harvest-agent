@@ -1,293 +1,156 @@
-'use client';
-
-import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, Trash2, FileText, Clock, User } from 'lucide-react';
+"use client";
+import React, { useState, useEffect } from 'react';
+import { Plus, FileText, Trash2, Calendar } from 'lucide-react';
+import { collection, query, where, onSnapshot, addDoc, deleteDoc, doc, orderBy, serverTimestamp } from 'firebase/firestore';
+import { db, auth } from '../firebase';
+import { getTenantScope } from '../utils/tenant-scope';
 
 interface Canvas {
   id: string;
   name: string;
-  createdBy: string;
-  createdByName: string;
-  createdAt: string | null;
-  updatedAt: string | null;
+  createdAt: any;
+  updatedAt: any;
 }
 
 interface CanvasListProps {
   onOpenCanvas: (id: string, name: string) => void;
 }
 
-function timeAgo(dateStr: string | null): string {
-  if (!dateStr) return 'Unknown';
-  const now = Date.now();
-  const then = new Date(dateStr).getTime();
-  const seconds = Math.floor((now - then) / 1000);
-
-  if (seconds < 60) return 'Just now';
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  if (days < 7) return `${days}d ago`;
-  return new Date(dateStr).toLocaleDateString();
-}
-
-export default function CanvasList({ onOpenCanvas }: CanvasListProps) {
+const CanvasList: React.FC<CanvasListProps> = ({ onOpenCanvas }) => {
   const [canvases, setCanvases] = useState<Canvas[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showNewModal, setShowNewModal] = useState(false);
-  const [newName, setNewName] = useState('');
   const [creating, setCreating] = useState(false);
-  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
-  const [deleting, setDeleting] = useState<string | null>(null);
-  // Fix 5: Error feedback to users
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchCanvases = useCallback(async () => {
-    try {
-      const res = await fetch('/api/canvas');
-      if (!res.ok) throw new Error('Failed to fetch');
-      const data = await res.json();
-      setCanvases(data.canvases || []);
-    } catch (err) {
-      console.error('Failed to fetch canvases:', err);
-      setError('Failed to load canvases. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
 
   useEffect(() => {
-    fetchCanvases();
-  }, [fetchCanvases]);
+    let unsub: (() => void) | null = null;
+
+    const load = async () => {
+      const tenantId = await getTenantScope();
+      const baseQuery = tenantId
+        ? query(collection(db, 'canvases'), where('tenantId', '==', tenantId), orderBy('updatedAt', 'desc'))
+        : query(collection(db, 'canvases'), orderBy('updatedAt', 'desc'));
+
+      unsub = onSnapshot(baseQuery, (snapshot) => {
+        setCanvases(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Canvas)));
+        setLoading(false);
+      }, (error) => {
+        console.error('Failed to load canvases:', error);
+        setLoading(false);
+      });
+    };
+
+    load();
+    return () => { if (unsub) unsub(); };
+  }, []);
 
   const handleCreate = async () => {
-    if (!newName.trim() || creating) return;
     setCreating(true);
     try {
-      const res = await fetch('/api/canvas', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newName.trim() }),
+      const tenantId = await getTenantScope();
+      const docRef = await addDoc(collection(db, 'canvases'), {
+        name: 'Untitled Canvas',
+        tenantId: tenantId || null,
+        userId: auth.currentUser?.uid || null,
+        content: '',
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
       });
-      if (!res.ok) throw new Error('Failed to create');
-      const data = await res.json();
-      setCanvases((prev) => [data, ...prev]);
-      setNewName('');
-      setShowNewModal(false);
-    } catch (err) {
-      console.error('Failed to create canvas:', err);
-      setError('Failed to create canvas. Please try again.');
+      onOpenCanvas(docRef.id, 'Untitled Canvas');
+    } catch (e) {
+      console.error('Failed to create canvas:', e);
+      alert('Failed to create canvas. Please try again.');
     } finally {
       setCreating(false);
     }
   };
 
-  const handleDelete = async (id: string) => {
-    setDeleting(id);
+  const handleDelete = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!confirm('Delete this canvas? This cannot be undone.')) return;
     try {
-      const res = await fetch(`/api/canvas/${id}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error('Failed to delete');
-      setCanvases((prev) => prev.filter((c) => c.id !== id));
-      setDeleteConfirm(null);
-    } catch (err) {
-      console.error('Failed to delete canvas:', err);
-      setError('Failed to delete canvas. Please try again.');
-    } finally {
-      setDeleting(null);
+      await deleteDoc(doc(db, 'canvases', id));
+    } catch (e) {
+      console.error('Failed to delete canvas:', e);
+      alert('Failed to delete canvas.');
     }
+  };
+
+  const formatDate = (timestamp: any) => {
+    if (!timestamp) return '';
+    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2" style={{ borderColor: '#C9963A' }} />
+        <div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--brand-color, #d4a017)', borderTopColor: 'transparent' }} />
       </div>
     );
   }
 
   return (
-    <div className="w-full max-w-6xl mx-auto px-4 py-8">
-      {/* Fix 5: Error banner */}
-      {error && (
-        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl flex items-center justify-between">
-          <span className="text-red-600 text-sm">{error}</span>
-          <button
-            onClick={() => setError(null)}
-            className="text-red-400 hover:text-red-600 text-sm font-medium"
-          >
-            Dismiss
-          </button>
-        </div>
-      )}
-      {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold" style={{ color: '#0b1121' }}>
-            Canvas
-          </h1>
-          <p className="text-gray-500 mt-1">
-            Collaborative whiteboard for your team
-          </p>
-        </div>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-2xl font-bold text-gray-900">Canvas</h2>
         <button
-          onClick={() => setShowNewModal(true)}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-white font-medium transition-all hover:opacity-90 active:scale-[0.98]"
-          style={{ backgroundColor: '#C9963A' }}
+          onClick={handleCreate}
+          disabled={creating}
+          className="flex items-center gap-2 px-5 py-2 bg-[#d4a017] text-white rounded-xl text-sm font-semibold hover:bg-[#b8941a] transition-colors disabled:opacity-50"
         >
-          <Plus size={18} />
-          New Canvas
+          <Plus size={16} />
+          {creating ? 'Creating...' : 'New Canvas'}
         </button>
       </div>
 
-      {/* Empty State */}
       {canvases.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-center">
-          <div
-            className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4"
-            style={{ backgroundColor: '#C9963A15' }}
-          >
-            <FileText size={28} style={{ color: '#C9963A' }} />
+        <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
+          <div className="w-16 h-16 mx-auto rounded-2xl bg-[#fefce8] flex items-center justify-center mb-4">
+            <FileText size={28} style={{ color: 'var(--brand-color, #d4a017)' }} />
           </div>
-          <h2 className="text-lg font-semibold mb-2" style={{ color: '#0b1121' }}>
-            No canvases yet
-          </h2>
-          <p className="text-gray-500 mb-6">
-            Create your first one!
+          <h3 className="text-lg font-bold text-gray-900 mb-2">No canvases yet</h3>
+          <p className="text-sm text-gray-500 mb-6 max-w-md mx-auto">
+            Create rich content pages for your ministry — announcements, devotionals, event pages, and more.
           </p>
           <button
-            onClick={() => setShowNewModal(true)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-white font-medium"
-            style={{ backgroundColor: '#C9963A' }}
+            onClick={handleCreate}
+            disabled={creating}
+            className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#d4a017] text-white rounded-xl text-sm font-semibold hover:bg-[#b8941a] transition-colors disabled:opacity-50"
           >
-            <Plus size={18} />
-            Create Canvas
+            <Plus size={16} />
+            Create Your First Canvas
           </button>
         </div>
       ) : (
-        /* Canvas Grid */
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {canvases.map((canvas) => (
             <div
               key={canvas.id}
-              className="group relative bg-white border border-gray-200 rounded-xl p-5 hover:shadow-md transition-all cursor-pointer"
               onClick={() => onOpenCanvas(canvas.id, canvas.name)}
+              className="bg-white rounded-2xl border border-gray-100 p-5 cursor-pointer hover:shadow-md hover:border-gray-200 transition-all group"
             >
               <div className="flex items-start justify-between mb-3">
-                <h3
-                  className="font-semibold text-base truncate flex-1 pr-2"
-                  style={{ color: '#0b1121' }}
-                >
-                  {canvas.name}
-                </h3>
+                <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
+                  <FileText size={20} className="text-blue-600" />
+                </div>
                 <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setDeleteConfirm(canvas.id);
-                  }}
-                  className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-red-50 transition-all"
-                  title="Delete canvas"
+                  onClick={(e) => handleDelete(canvas.id, e)}
+                  className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition-all p-1"
                 >
-                  <Trash2 size={16} className="text-red-400 hover:text-red-600" />
+                  <Trash2 size={16} />
                 </button>
               </div>
-
-              <div className="flex items-center gap-4 text-sm text-gray-500">
-                <span className="flex items-center gap-1">
-                  <User size={14} />
-                  {canvas.createdByName}
-                </span>
-                <span className="flex items-center gap-1">
-                  <Clock size={14} />
-                  {timeAgo(canvas.updatedAt)}
-                </span>
+              <h3 className="text-sm font-bold text-gray-900 mb-1 truncate">{canvas.name}</h3>
+              <div className="flex items-center gap-1 text-xs text-gray-400">
+                <Calendar size={12} />
+                {formatDate(canvas.updatedAt || canvas.createdAt)}
               </div>
             </div>
           ))}
         </div>
       )}
-
-      {/* New Canvas Modal */}
-      {showNewModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div
-            className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md mx-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2
-              className="text-lg font-semibold mb-4"
-              style={{ color: '#0b1121' }}
-            >
-              New Canvas
-            </h2>
-            <input
-              type="text"
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
-              placeholder="Canvas name..."
-              maxLength={100}
-              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:border-transparent"
-              style={{ '--tw-ring-color': '#C9963A' } as React.CSSProperties}
-              autoFocus
-            />
-            <div className="flex justify-end gap-3 mt-5">
-              <button
-                onClick={() => {
-                  setShowNewModal(false);
-                  setNewName('');
-                }}
-                className="px-4 py-2.5 rounded-xl text-gray-600 hover:bg-gray-100 font-medium transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleCreate}
-                disabled={!newName.trim() || creating}
-                className="px-4 py-2.5 rounded-xl text-white font-medium transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{ backgroundColor: '#C9963A' }}
-              >
-                {creating ? 'Creating...' : 'Create'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Delete Confirmation Modal */}
-      {deleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div
-            className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm mx-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2
-              className="text-lg font-semibold mb-2"
-              style={{ color: '#0b1121' }}
-            >
-              Delete Canvas
-            </h2>
-            <p className="text-gray-500 mb-5">
-              Are you sure? This action cannot be undone.
-            </p>
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setDeleteConfirm(null)}
-                className="px-4 py-2.5 rounded-xl text-gray-600 hover:bg-gray-100 font-medium transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => handleDelete(deleteConfirm)}
-                disabled={deleting === deleteConfirm}
-                className="px-4 py-2.5 rounded-xl text-white font-medium bg-red-500 hover:bg-red-600 transition-colors disabled:opacity-50"
-              >
-                {deleting === deleteConfirm ? 'Deleting...' : 'Delete'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
-}
+};
+
+export default CanvasList;

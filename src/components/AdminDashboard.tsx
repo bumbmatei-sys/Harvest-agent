@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { LayoutDashboard, Church, FileText, Rss, BrainCircuit, Inbox, ArrowLeft, GraduationCap, ChevronLeft, ChevronRight, Building2, Settings, MoreHorizontal } from 'lucide-react';
+import { LayoutDashboard, Church, FileText, Rss, BrainCircuit, Inbox, ArrowLeft, GraduationCap, ChevronLeft, ChevronRight, Building2, Settings, MoreHorizontal, Mail, PenTool } from 'lucide-react';
 import AdminBlog from './AdminBlog';
 import AdminPosts from './AdminPosts';
 import AdminInbox from './AdminInbox';
@@ -10,6 +10,10 @@ import AdminCourses from './AdminCourses';
 import AdminRAG from './AdminRAG';
 import AdminTenants from './AdminTenants';
 import AdminSettings from './AdminSettings';
+import NewsletterEditor from './NewsletterEditor';
+import NewsletterCampaigns from './NewsletterCampaigns';
+import CanvasList from './CanvasList';
+import CanvasEditor from './CanvasEditor';
 import AnalyticsAndRoles, { Permission } from './AnalyticsAndRoles';
 import { TenantPlan } from '../types/tenant.types';
 import { getPlanFeatures } from '../utils/plan-features';
@@ -34,6 +38,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, tenantPlan 
   const [userRole, setUserRole] = useState<string>('user');
   const [userPermissions, setUserPermissions] = useState<Permission | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [canvasId, setCanvasId] = useState<string | null>(null);
+  const [canvasName, setCanvasName] = useState<string>('');
+  const [newsletterView, setNewsletterView] = useState<'list' | 'editor'>('list');
+  const [tenantId, setTenantId] = useState<string | null>(null);
+
+  useEffect(() => {
+    getTenantScope().then(id => setTenantId(id));
+  }, []);
 
   useEffect(() => {
     const fetchUserPermissions = async () => {
@@ -104,6 +116,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, tenantPlan 
     (isSuperAdmin || !isTenantAdmin || (features && features.blog)) && (hasFullAccess || perms.writeArticles) && { id: 'blog', label: 'Blog', icon: FileText },
     (hasFullAccess || perms.createPosts) && { id: 'posts', label: 'Posts', icon: Rss },
     (isSuperAdmin || !isTenantAdmin || (features && features.aiKnowledge)) && (hasFullAccess || perms.uploadRag) && { id: 'ai', label: 'AI Knowledge', icon: BrainCircuit },
+    // Newsletter tab — gated behind plan feature
+    (isSuperAdmin || !isTenantAdmin || (features && features.newsletterAutomation)) &&
+      (hasFullAccess || perms.createPosts) &&
+      { id: 'newsletter', label: 'Newsletter', icon: Mail },
+    // Canvas tab — available to all plans
+    (hasFullAccess || perms.createPosts) &&
+      { id: 'canvas', label: 'Canvas', icon: PenTool },
     isSuperAdmin && { id: 'tenants', label: 'Tenants', icon: Building2 },
   ].filter(Boolean) as { id: string; label: string; icon: any }[];
 
@@ -154,7 +173,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, tenantPlan 
               return (
                 <button
                   key={tab.id}
-                  onClick={() => { setActiveTab(tab.id); setShowMoreSheet(false); }}
+                  onClick={() => { setActiveTab(tab.id); setShowMoreSheet(false); setNewsletterView('list'); }}
                   className={`flex flex-col items-center justify-center gap-1 w-16 h-12 rounded-xl transition-all relative ${
                     isActive ? '' : 'text-gray-400'
                   }`}
@@ -188,7 +207,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, tenantPlan 
               return (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
+                  onClick={() => { setActiveTab(tab.id); setNewsletterView('list'); }}
                   className={`flex flex-col items-center justify-center gap-1 rounded-xl transition-all relative shrink-0 ${
                     isSidebarCollapsed
                       ? 'lg:w-14 lg:h-14 lg:p-0'
@@ -287,6 +306,36 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, tenantPlan 
             <div className="p-4 lg:p-0"><AdminCourses /></div>
           ) : activeTab === 'ai' ? (
             <div className="p-4 lg:p-0"><AdminRAG /></div>
+          ) : activeTab === 'newsletter' ? (
+            <div className="p-4 lg:p-0">
+              {newsletterView === 'editor' ? (
+                <NewsletterEditor
+                  tenantId={tenantId || ''}
+                  tenantName="Ministry"
+                  onBack={() => setNewsletterView('list')}
+                />
+              ) : (
+                <NewsletterCampaigns
+                  tenantId={tenantId || ''}
+                  onBack={() => setActiveTab('dashboard')}
+                  onCreateNew={() => setNewsletterView('editor')}
+                />
+              )}
+            </div>
+          ) : activeTab === 'canvas' ? (
+            canvasId ? (
+              <CanvasEditor
+                canvasId={canvasId}
+                canvasName={canvasName}
+                onBack={() => { setCanvasId(null); setCanvasName(''); }}
+              />
+            ) : (
+              <div className="p-4 lg:p-0">
+                <CanvasList
+                  onOpenCanvas={(id, name) => { setCanvasId(id); setCanvasName(name); }}
+                />
+              </div>
+            )
           ) : activeTab === 'tenants' ? (
             <div className="p-4 lg:p-0"><AdminTenants /></div>
           ) : activeTab === 'settings' ? (
@@ -342,6 +391,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, tenantPlan 
                         onClick={() => {
                           setActiveTab(tab.id);
                           setShowMoreSheet(false);
+                          setNewsletterView('list');
                         }}
                         className="flex flex-col items-center gap-2 py-3 rounded-xl hover:bg-gray-50 transition-colors relative"
                       >

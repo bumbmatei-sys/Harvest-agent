@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useRef, useCallback } from 'react';
-import { ArrowLeft, Check, Crown, Zap, Building2, Star, ChevronRight, ChevronDown, AlertTriangle, Globe, CreditCard, Palette, Settings2, Bot, Share2 } from 'lucide-react';
+import { ArrowLeft, Check, Crown, Zap, Building2, Star, ChevronRight, ChevronDown, AlertTriangle, Globe, CreditCard, Palette, Settings2, Bot, Share2, Plug, Instagram, Mail } from 'lucide-react';
 import { TenantPlan } from '../types/tenant.types';
 import { getPlanFeatures, PlanFeatures } from '../utils/plan-features';
 import { ImageUpload } from './ImageUpload';
@@ -84,6 +84,15 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
   const [aiAssistantCancelLoading, setAiAssistantCancelLoading] = useState(false);
   const [activePlanIndex, setActivePlanIndex] = useState(0);
   const planScrollRef = useRef<HTMLDivElement>(null);
+
+  // Integration states
+  const [instagramStatus, setInstagramStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected');
+  const [instagramAccount, setInstagramAccount] = useState<string | null>(null);
+  const [instagramLoading, setInstagramLoading] = useState(false);
+  const [mailchimpStatus, setMailchimpStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected');
+  const [mailchimpAccount, setMailchimpAccount] = useState<string | null>(null);
+  const [mailchimpLoading, setMailchimpLoading] = useState(false);
+  const [integrationsLoaded, setIntegrationsLoaded] = useState(false);
 
   const handlePlanScroll = useCallback(() => {
     const container = planScrollRef.current;
@@ -399,6 +408,150 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
     }
   };
 
+  // Load integration statuses from tenant doc
+  const loadIntegrations = async () => {
+    if (integrationsLoaded) return;
+    try {
+      const tid = await getTenantId();
+      if (!tid) return;
+      const { doc, getDoc } = await import('firebase/firestore');
+      const { db } = await import('../firebase');
+      const tenantDoc = await getDoc(doc(db, 'tenants', tid));
+      if (tenantDoc.exists()) {
+        const data = tenantDoc.data();
+        if (data.instagramConnected) {
+          setInstagramStatus('connected');
+          setInstagramAccount(data.instagramUsername || null);
+        }
+        if (data.mailchimpConnected) {
+          setMailchimpStatus('connected');
+          setMailchimpAccount(data.mailchimpEmail || null);
+        }
+      }
+    } catch (e) {
+      console.error('Failed to load integrations:', e);
+    }
+    setIntegrationsLoaded(true);
+  };
+
+  // Connect Instagram via Composio
+  const handleInstagramConnect = async () => {
+    const tid = await getTenantId();
+    if (!tid) { alert('Unable to find your organization.'); return; }
+    setInstagramLoading(true);
+    try {
+      const resp = await authFetch('/api/composio/instagram/connect', {
+        method: 'POST',
+        body: JSON.stringify({ tenantId: tid }),
+      });
+      const data = await resp.json();
+      if (data.redirectUrl) {
+        setInstagramStatus('connecting');
+        window.open(data.redirectUrl, '_blank');
+        // Poll for connection status
+        const pollInterval = setInterval(async () => {
+          try {
+            const statusResp = await authFetch(`/api/composio/instagram/status?tenantId=${tid}`);
+            const statusData = await statusResp.json();
+            if (statusData.connected) {
+              setInstagramStatus('connected');
+              setInstagramAccount(statusData.username || null);
+              clearInterval(pollInterval);
+            }
+          } catch { /* keep polling */ }
+        }, 3000);
+        // Stop polling after 2 minutes
+        setTimeout(() => clearInterval(pollInterval), 120000);
+      } else {
+        alert(data.error || 'Failed to initiate Instagram connection');
+      }
+    } catch (e) {
+      console.error('Instagram connect error:', e);
+      alert('Failed to connect Instagram. Please try again.');
+    } finally {
+      setInstagramLoading(false);
+    }
+  };
+
+  // Connect Mailchimp via Composio
+  const handleMailchimpConnect = async () => {
+    const tid = await getTenantId();
+    if (!tid) { alert('Unable to find your organization.'); return; }
+    setMailchimpLoading(true);
+    try {
+      const resp = await authFetch('/api/composio/mailchimp/connect', {
+        method: 'POST',
+        body: JSON.stringify({ tenantId: tid }),
+      });
+      const data = await resp.json();
+      if (data.redirectUrl) {
+        setMailchimpStatus('connecting');
+        window.open(data.redirectUrl, '_blank');
+        // Poll for connection status
+        const pollInterval = setInterval(async () => {
+          try {
+            const statusResp = await authFetch(`/api/composio/mailchimp/status?tenantId=${tid}`);
+            const statusData = await statusResp.json();
+            if (statusData.connected) {
+              setMailchimpStatus('connected');
+              setMailchimpAccount(statusData.email || null);
+              clearInterval(pollInterval);
+            }
+          } catch { /* keep polling */ }
+        }, 3000);
+        // Stop polling after 2 minutes
+        setTimeout(() => clearInterval(pollInterval), 120000);
+      } else {
+        alert(data.error || 'Failed to initiate Mailchimp connection');
+      }
+    } catch (e) {
+      console.error('Mailchimp connect error:', e);
+      alert('Failed to connect Mailchimp. Please try again.');
+    } finally {
+      setMailchimpLoading(false);
+    }
+  };
+
+  // Disconnect Instagram
+  const handleInstagramDisconnect = async () => {
+    const tid = await getTenantId();
+    if (!tid) return;
+    setInstagramLoading(true);
+    try {
+      await authFetch('/api/composio/instagram/disconnect', {
+        method: 'POST',
+        body: JSON.stringify({ tenantId: tid }),
+      });
+      setInstagramStatus('disconnected');
+      setInstagramAccount(null);
+    } catch (e) {
+      console.error('Instagram disconnect error:', e);
+      alert('Failed to disconnect Instagram.');
+    } finally {
+      setInstagramLoading(false);
+    }
+  };
+
+  // Disconnect Mailchimp
+  const handleMailchimpDisconnect = async () => {
+    const tid = await getTenantId();
+    if (!tid) return;
+    setMailchimpLoading(true);
+    try {
+      await authFetch('/api/composio/mailchimp/disconnect', {
+        method: 'POST',
+        body: JSON.stringify({ tenantId: tid }),
+      });
+      setMailchimpStatus('disconnected');
+      setMailchimpAccount(null);
+    } catch (e) {
+      console.error('Mailchimp disconnect error:', e);
+      alert('Failed to disconnect Mailchimp.');
+    } finally {
+      setMailchimpLoading(false);
+    }
+  };
+
   // Check for Stripe return params on mount
   React.useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -431,6 +584,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
     if (expandedSection === 'payment') loadPayment();
     if (expandedSection === 'onboarding') loadOnboardingQuestions();
     if (expandedSection === 'ai-assistant') loadAiAssistant();
+    if (expandedSection === 'integrations') loadIntegrations();
   }, [expandedSection]);
 
   // Accordion toggle helper
@@ -1543,6 +1697,122 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
           )}
         </div>
       </div>
+
+      {/* Integrations (Pro+ newsletterAutomation) */}
+      {currentFeatures.newsletterAutomation && (
+        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+          <button
+            onClick={() => toggleSection('integrations')}
+            className="w-full flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <Plug size={20} className="text-blue-600" />
+              <span className="text-sm font-semibold text-gray-900">Integrations</span>
+              {instagramStatus === 'connected' && mailchimpStatus === 'connected' && (
+                <span className="ml-2 px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded-full">All Connected</span>
+              )}
+            </div>
+            <ChevronDown
+              size={18}
+              className={`text-gray-400 transition-transform duration-300 ${expandedSection === 'integrations' ? 'rotate-180' : ''}`}
+            />
+          </button>
+          {expandedSection === 'integrations' && (
+            <div className="px-4 pb-4 border-t border-gray-100 pt-4">
+              <p className="text-sm text-gray-600 mb-4">
+                Connect your social media and email marketing platforms to automate newsletter distribution and social posting.
+              </p>
+              <div className="space-y-4">
+                {/* Instagram Card */}
+                <div className="bg-gray-50 rounded-xl p-4">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+                      <Instagram size={24} className="text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-gray-900">Instagram</p>
+                      {instagramStatus === 'connected' ? (
+                        <p className="text-xs text-green-600">Connected{instagramAccount ? ` — @${instagramAccount}` : ''}</p>
+                      ) : instagramStatus === 'connecting' ? (
+                        <p className="text-xs text-yellow-600">Waiting for authorization...</p>
+                      ) : (
+                        <p className="text-xs text-gray-500">Auto-publish posts and stories from your newsletter</p>
+                      )}
+                    </div>
+                    {instagramStatus === 'connected' ? (
+                      <button
+                        onClick={handleInstagramDisconnect}
+                        disabled={instagramLoading}
+                        className="px-4 py-2 border border-red-200 text-red-600 rounded-xl text-xs font-semibold hover:bg-red-50 transition-colors disabled:opacity-50"
+                      >
+                        {instagramLoading ? 'Disconnecting...' : 'Disconnect'}
+                      </button>
+                    ) : (
+                      <button
+                        onClick={handleInstagramConnect}
+                        disabled={instagramLoading || instagramStatus === 'connecting'}
+                        className="px-4 py-2 bg-[#d4a017] text-white rounded-xl text-xs font-semibold hover:bg-[#b8941a] transition-colors disabled:opacity-50"
+                      >
+                        {instagramLoading ? (
+                          <span className="flex items-center gap-2">
+                            <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            Connecting...
+                          </span>
+                        ) : instagramStatus === 'connecting' ? 'Waiting...' : 'Connect'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Mailchimp Card */}
+                <div className="bg-gray-50 rounded-xl p-4">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-yellow-50 flex items-center justify-center">
+                      <Mail size={24} className="text-yellow-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-gray-900">Mailchimp</p>
+                      {mailchimpStatus === 'connected' ? (
+                        <p className="text-xs text-green-600">Connected{mailchimpAccount ? ` — ${mailchimpAccount}` : ''}</p>
+                      ) : mailchimpStatus === 'connecting' ? (
+                        <p className="text-xs text-yellow-600">Waiting for authorization...</p>
+                      ) : (
+                        <p className="text-xs text-gray-500">Sync subscribers and send campaigns via Mailchimp</p>
+                      )}
+                    </div>
+                    {mailchimpStatus === 'connected' ? (
+                      <button
+                        onClick={handleMailchimpDisconnect}
+                        disabled={mailchimpLoading}
+                        className="px-4 py-2 border border-red-200 text-red-600 rounded-xl text-xs font-semibold hover:bg-red-50 transition-colors disabled:opacity-50"
+                      >
+                        {mailchimpLoading ? 'Disconnecting...' : 'Disconnect'}
+                      </button>
+                    ) : (
+                      <button
+                        onClick={handleMailchimpConnect}
+                        disabled={mailchimpLoading || mailchimpStatus === 'connecting'}
+                        className="px-4 py-2 bg-[#d4a017] text-white rounded-xl text-xs font-semibold hover:bg-[#b8941a] transition-colors disabled:opacity-50"
+                      >
+                        {mailchimpLoading ? (
+                          <span className="flex items-center gap-2">
+                            <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            Connecting...
+                          </span>
+                        ) : mailchimpStatus === 'connecting' ? 'Waiting...' : 'Connect'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <p className="text-xs text-gray-400 mt-4">
+                Powered by Composio — secure OAuth connections. Your credentials are never stored on our servers.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Affiliate Program */}
       <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">

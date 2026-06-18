@@ -1,17 +1,8 @@
-'use client';
-
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import dynamic from 'next/dynamic';
-import { ArrowLeft } from 'lucide-react';
+"use client";
+import React, { useState, useEffect } from 'react';
+import { ArrowLeft, Save, Eye } from 'lucide-react';
+import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
-import { doc, onSnapshot, updateDoc, serverTimestamp } from 'firebase/firestore';
-import { useTenant } from '../contexts/TenantContext';
-
-// Dynamic import to avoid SSR issues with Excalidraw
-const Excalidraw = dynamic(
-  () => import('@excalidraw/excalidraw').then((mod) => mod.Excalidraw),
-  { ssr: false }
-);
 
 interface CanvasEditorProps {
   canvasId: string;
@@ -19,183 +10,116 @@ interface CanvasEditorProps {
   onBack: () => void;
 }
 
-export default function CanvasEditor({ canvasId, canvasName, onBack }: CanvasEditorProps) {
-  const { tenantId } = useTenant();
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
-  const [initialData, setInitialData] = useState<any>(null);
-  const lastSavedElements = useRef<string>('');
-  const isMounted = useRef(true);
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const excalidrawAPI = useRef<any>(null);
+const CanvasEditor: React.FC<CanvasEditorProps> = ({ canvasId, canvasName: initialName, onBack }) => {
+  const [name, setName] = useState(initialName);
+  const [content, setContent] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [previewMode, setPreviewMode] = useState(false);
 
-  // Fix 6: Track mount state to prevent state updates after unmount
   useEffect(() => {
-    return () => { isMounted.current = false; };
-  }, []);
-
-  // Load initial data from API
-  useEffect(() => {
-    if (!tenantId || !canvasId) return;
-
-    const loadInitial = async () => {
+    const loadCanvas = async () => {
       try {
-        const res = await fetch(`/api/canvas/${canvasId}`);
-        if (res.ok) {
-          const data = await res.json();
-          setInitialData({
-            elements: data.elements || [],
-            appState: data.appState || {},
-          });
+        const canvasDoc = await getDoc(doc(db, 'canvases', canvasId));
+        if (canvasDoc.exists()) {
+          const data = canvasDoc.data();
+          setName(data.name || initialName);
+          setContent(data.content || '');
         }
-      } catch (err) {
-        console.error('Failed to load canvas:', err);
+      } catch (e) {
+        console.error('Failed to load canvas:', e);
       }
+      setLoading(false);
     };
+    loadCanvas();
+  }, [canvasId, initialName]);
 
-    loadInitial();
-  }, [canvasId, tenantId]);
+  const handleSave = async () => {
+    setSaving(true);
+    setSaved(false);
+    try {
+      await updateDoc(doc(db, 'canvases', canvasId), {
+        name,
+        content,
+        updatedAt: serverTimestamp(),
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch (e) {
+      console.error('Failed to save canvas:', e);
+      alert('Failed to save. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
 
-  // Real-time Firestore listener
-  useEffect(() => {
-    if (!tenantId || !canvasId) return;
-
-    const docRef = doc(db, 'tenants', tenantId, 'canvases', canvasId);
-
-    const unsub = onSnapshot(docRef, (snapshot: any) => {
-      if (!snapshot.exists()) return;
-      const data = snapshot.data();
-      if (data) {
-        // Fix 1: Compare serialized elements instead of boolean flag
-        const remoteSerialized = JSON.stringify(data.elements || []);
-        if (remoteSerialized !== lastSavedElements.current) {
-          // Remote change — apply it (Fix 7: even if empty array)
-          excalidrawAPI.current?.updateScene({ elements: data.elements || [] });
-        }
-      }
-    });
-
-    return () => unsub();
-  }, [canvasId, tenantId]);
-
-  // Debounced save handler
-  const handleChange = useCallback(
-    (elements: readonly any[], appState: any) => {
-      if (!tenantId || !canvasId) return;
-
-      setSaveStatus('saving');
-
-      if (saveTimer.current) {
-        clearTimeout(saveTimer.current);
-      }
-
-      saveTimer.current = setTimeout(async () => {
-        try {
-          const serialized = JSON.stringify([...elements]);
-          const docRef = doc(db, 'tenants', tenantId, 'canvases', canvasId);
-          await updateDoc(docRef, {
-            elements: [...elements],
-            appState: { zoom: appState.zoom },
-            updatedAt: serverTimestamp(),
-          });
-          // Fix 1: Record what we saved for comparison
-          lastSavedElements.current = serialized;
-          if (isMounted.current) {
-            setSaveStatus('saved');
-            setTimeout(() => { if (isMounted.current) setSaveStatus('idle'); }, 2000);
-          }
-        } catch (err) {
-          console.error('Failed to save canvas:', err);
-          // Fix 5: Show save failed error
-          if (isMounted.current) {
-            setSaveStatus('error');
-            setTimeout(() => { if (isMounted.current) setSaveStatus('idle'); }, 3000);
-          }
-        }
-      }, 1000);
-    },
-    [canvasId, tenantId]
-  );
-
-  // Cleanup timer on unmount
-  useEffect(() => {
-    return () => {
-      if (saveTimer.current) {
-        clearTimeout(saveTimer.current);
-      }
-    };
-  }, []);
-
-  const handleExcalidrawAPI = useCallback((api: any) => {
-    excalidrawAPI.current = api;
-  }, []);
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--brand-color, #d4a017)', borderTopColor: 'transparent' }} />
+      </div>
+    );
+  }
 
   return (
-    <div className="fixed inset-0 z-50 bg-white flex flex-col">
-      {/* Top Bar */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-white shrink-0">
-        {/* Back Button */}
+    <div className="p-4 lg:p-0 space-y-4">
+      {/* Toolbar */}
+      <div className="flex items-center gap-4 flex-wrap">
         <button
           onClick={onBack}
-          className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors text-sm font-medium"
-          style={{ color: '#0b1121' }}
+          className="flex items-center gap-2 text-gray-500 hover:text-gray-700 transition-colors"
         >
-          <ArrowLeft size={18} />
-          Back
+          <ArrowLeft size={20} />
+          <span className="text-sm font-medium">Back</span>
         </button>
-
-        {/* Canvas Name */}
-        <h1
-          className="text-base font-semibold absolute left-1/2 -translate-x-1/2"
-          style={{ color: '#0b1121' }}
+        <input
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          className="flex-1 min-w-0 px-3 py-2 border border-gray-200 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#d4a017] focus:border-transparent"
+          placeholder="Canvas name"
+        />
+        <button
+          onClick={() => setPreviewMode(!previewMode)}
+          className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
         >
-          {canvasName}
-        </h1>
-
-        {/* Save Status */}
-        <div className="text-sm min-w-[80px] text-right">
-          {saveStatus === 'saving' && (
-            <span className="text-gray-400">Saving...</span>
-          )}
-          {saveStatus === 'saved' && (
-            <span style={{ color: '#C9963A' }}>Saved</span>
-          )}
-          {saveStatus === 'error' && (
-            <span className="text-red-500 font-medium">Save failed</span>
+          <Eye size={16} />
+          {previewMode ? 'Edit' : 'Preview'}
+        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="flex items-center gap-2 px-5 py-2 bg-[#d4a017] text-white rounded-xl text-sm font-semibold hover:bg-[#b8941a] transition-colors disabled:opacity-50"
+          >
+            <Save size={16} />
+            {saving ? 'Saving...' : 'Save'}
+          </button>
+          {saved && (
+            <span className="text-sm text-green-600 font-medium">✓ Saved</span>
           )}
         </div>
       </div>
 
-      {/* Excalidraw Canvas */}
-      <div className="flex-1 min-h-0">
-        {initialData ? (
-          <Excalidraw
-            key={canvasId}
-            initialData={initialData}
-            onChange={handleChange}
-            excalidrawAPI={handleExcalidrawAPI}
-            viewModeEnabled={false}
-            zenModeEnabled={false}
-            gridModeEnabled={false}
-            UIOptions={{
-              canvasActions: {
-                changeViewBackgroundColor: true,
-                clearCanvas: true,
-                export: { saveFileToDisk: true },
-                loadScene: true,
-                saveToActiveFile: false,
-                toggleTheme: true,
-              },
-            }}
+      {/* Editor */}
+      <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+        {previewMode ? (
+          <div
+            className="prose max-w-none min-h-[500px] p-6"
+            dangerouslySetInnerHTML={{ __html: content || '<p class="text-gray-400">Nothing to preview yet.</p>' }}
           />
         ) : (
-          <div className="flex items-center justify-center h-full">
-            <div
-              className="animate-spin rounded-full h-8 w-8 border-b-2"
-              style={{ borderColor: '#C9963A' }}
-            />
-          </div>
+          <textarea
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            placeholder="Start writing your canvas content... (HTML supported)"
+            className="w-full px-6 py-4 border-0 text-sm font-mono min-h-[500px] focus:outline-none resize-y"
+          />
         )}
       </div>
     </div>
   );
-}
+};
+
+export default CanvasEditor;
