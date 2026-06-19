@@ -56,6 +56,18 @@ const AppInner: React.FC = () => {
   const signupPlan = signupParam && ['plus', 'pro', 'max', 'ultra'].includes(signupParam)
     ? signupParam as TenantPlan : undefined;
 
+  // ARCHITECTURE: Main site (theharvest.app) is free — no plan subscriptions.
+  // Redirect ?signup= flows to nations.theharvest.app (tenant admin).
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const hostname = window.location.hostname;
+    const isMainSite = hostname === 'theharvest.app' || hostname === 'www.theharvest.app';
+    if (isMainSite && signupParam && !isAdminDomain) {
+      const url = new URL(window.location.href);
+      window.location.href = `https://nations.theharvest.app${url.pathname}${url.search}`;
+    }
+  }, [signupParam, isAdminDomain]);
+
   useEffect(() => {
     currentPageRef.current = currentPage;
   }, [currentPage]);

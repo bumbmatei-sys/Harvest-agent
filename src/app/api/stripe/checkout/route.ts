@@ -112,6 +112,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields: plan, billing' }, { status: 400 });
     }
 
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Plan subscriptions require a tenant. Sign up at nations.theharvest.app first.' }, { status: 400 });
+    }
+
     const priceId = PLAN_PRICES[plan]?.[billing];
     if (!priceId) {
       return NextResponse.json({ error: `Invalid plan/billing: ${plan}/${billing}` }, { status: 400 });
