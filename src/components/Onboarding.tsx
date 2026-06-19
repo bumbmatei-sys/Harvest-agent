@@ -176,7 +176,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
  }
 
  try {
-     await setDoc(userRef, updateData, { merge: true });
+     await updateDoc(userRef, updateData);
  } catch (err: any) {
      console.error('Onboarding save failed:', err);
      setError(err.message || 'Failed to save information. Please try again.');
