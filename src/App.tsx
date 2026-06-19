@@ -92,9 +92,13 @@ const AppInner: React.FC = () => {
                 // Admin subdomain → always admin dashboard
                 if (isAdminDomain) {
                   setCurrentPage('admin');
+                } else if (userTenantId) {
+                  // Tenant user with a tenantId → admin dashboard (church admins, etc.)
+                  setCurrentPage(role === 'church_admin' || role === 'super_admin' || role === 'admin' ? 'admin' : 'home');
                 } else {
-                  // Church admins go to admin dashboard, regular users go to home
-                  setCurrentPage(role === 'church_admin' || role === 'super_admin' ? 'admin' : 'home');
+                  // Main site user (no tenantId) → always home (MainApp)
+                  // Plan subscriptions only exist on tenant subdomains
+                  setCurrentPage('home');
                 }
               }
             } else if (isChurchSignup || signupPlan || role === 'church_admin') {
