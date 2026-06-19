@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     if (!stripeKey) {
       return NextResponse.redirect(new URL('/?error=stripe_not_configured', process.env.NEXT_PUBLIC_APP_URL || 'https://theharvest.app'));
     }
-    const stripe = new Stripe(stripeKey, { apiVersion: '2026-05-27.dahlia' });
+    const stripe = new Stripe(stripeKey);
 
     // Retrieve the account to check its status
     const account = await stripe.accounts.retrieve(accountId);

@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const stripe = new Stripe(stripeKey, { apiVersion: '2026-05-27.dahlia' });
+    const stripe = new Stripe(stripeKey);
 
     // Retrieve the account to check its status
     const account = await stripe.accounts.retrieve(accountId);

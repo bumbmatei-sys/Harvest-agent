@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
     if (!stripeKey) {
       return NextResponse.json({ error: 'Stripe not configured' }, { status: 500 });
     }
-    const stripe = new Stripe(stripeKey, { apiVersion: '2026-05-27.dahlia' });
+    const stripe = new Stripe(stripeKey);
 
     const userDoc = await adminDb.collection('users').doc(userOrErr.uid).get();
     if (!userDoc.exists) {

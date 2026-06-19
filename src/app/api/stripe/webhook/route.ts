@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Stripe not configured' }, { status: 500 });
   }
 
-  const stripe = new Stripe(stripeKey, { apiVersion: '2026-05-27.dahlia' });
+  const stripe = new Stripe(stripeKey);
 
   const body = await request.text();
   const sig = request.headers.get('stripe-signature');
@@ -49,12 +49,24 @@ export async function POST(request: NextRequest) {
     switch (event.type) {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session;
-        const tenantId = session.metadata?.tenantId;
-        const userId = session.metadata?.userId;
         const subscriptionId = session.subscription as string | null;
 
+        // Metadata lives on subscription_data → retrieve subscription to get it
+        let meta: Record<string, string> = {};
+        if (subscriptionId) {
+          try {
+            const sub = await stripe.subscriptions.retrieve(subscriptionId);
+            meta = (sub.metadata || {}) as Record<string, string>;
+          } catch (subErr) {
+            console.error('Failed to retrieve subscription metadata:', subErr);
+          }
+        }
+
+        const tenantId = meta.tenantId;
+        const userId = meta.userId;
+
         // Handle AI Chat user subscription
-        if (session.metadata?.addOn === 'ai-chat' && userId && subscriptionId) {
+        if (meta.addOn === 'ai-chat' && userId && subscriptionId) {
           const sub = await stripe.subscriptions.retrieve(subscriptionId);
           await adminDb.collection('users').doc(userId).update({
             aiChatSubscription: {
@@ -74,7 +86,7 @@ export async function POST(request: NextRequest) {
 
         if (tenantId && subscriptionId) {
           // Handle AI Assistant add-on checkout
-          if (session.metadata?.addOn === 'ai-assistant') {
+          if (meta.addOn === 'ai-assistant') {
             const accessCode = generateAccessCode();
             await adminDb.collection('tenants').doc(tenantId).update({
               addOnAiAssistant: subscriptionId,
@@ -83,7 +95,7 @@ export async function POST(request: NextRequest) {
             });
             console.log(`✅ Tenant ${tenantId} added AI Assistant add-on (code: ${accessCode})`);
           } else {
-            const plan = session.metadata?.plan;
+            const plan = meta.plan;
             if (plan) {
               // Cancel old subscription if exists (prevents double billing on upgrade)
               const tenantDoc = await adminDb.collection('tenants').doc(tenantId).get();
@@ -102,7 +114,7 @@ export async function POST(request: NextRequest) {
                 status: 'active',
                 stripeSubscriptionId: subscriptionId,
                 stripeCustomerId: session.customer as string,
-                stripePriceId: session.metadata?.billing === 'yearly'
+                stripePriceId: meta.billing === 'yearly'
                   ? getYearlyPriceId(plan)
                   : getMonthlyPriceId(plan),
                 updatedAt: new Date().toISOString(),
@@ -116,7 +128,7 @@ export async function POST(request: NextRequest) {
               await adminDb.collection('tenants').doc(tenantId).update(updateData);
 
               // Affiliate commission: record if checkout has a referrerId
-              const referrerId = session.metadata?.referrerId;
+              const referrerId = meta.referrerId;
               if (referrerId) {
                 // P0: Prevent self-referral
                 const tenantOwner = tenantDoc.data()?.ownerId || tenantDoc.data()?.createdBy;
@@ -500,53 +512,45 @@ export async function POST(request: NextRequest) {
       case 'transfer.failed': {
         const transfer = event.data.object as Stripe.Transfer;
         const referrerId = transfer.metadata?.referrerId;
-        if (referrerId && transfer.metadata?.type === 'affiliate_commission') {
-          console.log(`⚠️ Affiliate transfer failed for referrer ${referrerId}: ${transfer.id}`);
-          // Commission already recorded as 'pending' — no action needed
-          // The retry cron job will pick it up
-        }
-        break;
-      }
-
-      case 'transfer.paid': {
-        const transfer = event.data.object as Stripe.Transfer;
-        const referrerId = transfer.metadata?.referrerId;
-        if (referrerId && transfer.metadata?.type?.startsWith('affiliate_commission')) {
-          // Update commission status from pending to paid
-          const commissionSnap = await adminDb.collection('affiliate_commissions')
-            .where('stripeTransferId', '==', transfer.id)
-            .limit(1)
-            .get();
-          if (!commissionSnap.empty) {
-            const commissionDoc = commissionSnap.docs[0];
-            if (commissionDoc.data().status === 'pending') {
-              await commissionDoc.ref.update({ status: 'paid', updatedAt: new Date().toISOString() });
-              // Decrement pending payouts
-              await adminDb.collection('users').doc(referrerId).update({
-                affiliatePendingPayouts: FieldValue.increment(-(commissionDoc.data().commission || 0)),
-                updatedAt: new Date().toISOString(),
-              });
-              console.log(`✅ Transfer ${transfer.id} confirmed for referrer ${referrerId}`);
+        const tenantId = transfer.metadata?.tenantId;
+        if (referrerId) {
+          try {
+            // Update commission status
+            const commissionsSnap = await adminDb.collection('affiliate_commissions')
+              .where('stripeTransferId', '==', transfer.id)
+              .limit(1).get();
+            if (!commissionsSnap.empty) {
+              await commissionsSnap.docs[0].ref.update({ status: 'failed' });
             }
+            // Revert pending payout
+            const commissionAmount = transfer.amount || 0;
+            await adminDb.collection('users').doc(referrerId).update({
+              affiliatePendingPayouts: FieldValue.increment(-commissionAmount),
+              updatedAt: new Date().toISOString(),
+            });
+            console.log(`❌ Transfer failed for referrer ${referrerId}: $${(commissionAmount / 100).toFixed(2)}`);
+          } catch (err) {
+            console.error('Error handling transfer.failed:', err);
           }
         }
         break;
       }
+
+      default:
+        console.log(`Unhandled event type: ${event.type}`);
     }
-  } catch (err) {
-    console.error('Webhook handler error:', err);
+
+    return NextResponse.json({ received: true });
+  } catch (error: any) {
+    console.error('Webhook handler error:', error?.message || error);
     return NextResponse.json({ error: 'Webhook handler failed' }, { status: 500 });
   }
-
-  return NextResponse.json({ received: true });
 }
 
+// Helpers to get price IDs for webhook processing
 function getMonthlyPriceId(plan: string): string {
-  return PLAN_PRICES[plan]?.monthly || PLAN_PRICES.plus.monthly;
+  return PLAN_PRICES[plan]?.monthly || '';
 }
-
 function getYearlyPriceId(plan: string): string {
-  return PLAN_PRICES[plan]?.yearly || PLAN_PRICES.plus.yearly;
+  return PLAN_PRICES[plan]?.yearly || '';
 }
-
-// getPlanFromPriceId is now imported from stripe-config

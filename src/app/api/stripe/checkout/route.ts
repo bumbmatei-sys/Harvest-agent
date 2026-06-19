@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
     if (!stripeKey) {
       return NextResponse.json({ error: 'Stripe not configured' }, { status: 500 });
     }
-    const stripe = new Stripe(stripeKey, { apiVersion: '2026-05-27.dahlia' });
+    const stripe = new Stripe(stripeKey);
 
     const body = await request.json();
     const { plan, billing, tenantId, tenantName, email, addOn, referrerId } = body;
@@ -51,7 +51,6 @@ export async function POST(request: NextRequest) {
         line_items: [{ price: AI_CHAT_MONTHLY, quantity: 1 }],
         success_url: `${baseUrl}/?stripe=success&session_id={CHECKOUT_SESSION_ID}&addon=ai-chat`,
         cancel_url: `${baseUrl}/?stripe=cancel`,
-        metadata: { userId, addOn: 'ai-chat' },
         subscription_data: {
           metadata: { userId, addOn: 'ai-chat' },
         },
@@ -100,7 +99,6 @@ export async function POST(request: NextRequest) {
         ],
         success_url: `${baseUrl}/?stripe=success&session_id={CHECKOUT_SESSION_ID}&addon=ai-assistant`,
         cancel_url: `${baseUrl}/?stripe=cancel`,
-        metadata: { tenantId, addOn: 'ai-assistant' },
         subscription_data: {
           metadata: { tenantId, addOn: 'ai-assistant' },
         },
@@ -146,7 +144,6 @@ export async function POST(request: NextRequest) {
       line_items: [{ price: priceId, quantity: 1 }],
       success_url: `${baseUrl}/?stripe=success&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${baseUrl}/?stripe=cancel`,
-      metadata: { tenantId, plan, billing, ...(referrerId ? { referrerId } : {}) },
       subscription_data: {
         metadata: { tenantId, plan, billing, ...(referrerId ? { referrerId } : {}) },
       },
