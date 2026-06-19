@@ -277,7 +277,7 @@ function PaywallOverlay({ onBack, onSubscribe }: { onBack?: () => void; onSubscr
         textAlign: "center",
         overflow: "auto",
       }}>
-        {/* Icon */}
+        {/* Icon — Harvest wheat stalk logo */}
         <div style={{
           width: 80,
           height: 80,
@@ -289,8 +289,9 @@ function PaywallOverlay({ onBack, onSubscribe }: { onBack?: () => void; onSubscr
           justifyContent: "center",
           marginBottom: 20,
           animation: "pulse-glow 3s ease-in-out infinite",
+          overflow: "hidden",
         }}>
-          <span style={{ fontSize: 36 }}>✦</span>
+          <Image src="https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png" alt="Harvest" width={52} height={52} className="object-contain" />
         </div>
 
         {/* Title */}
