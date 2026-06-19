@@ -104,12 +104,10 @@ const AppInner: React.FC = () => {
                 // Admin subdomain → always admin dashboard
                 if (isAdminDomain) {
                   setCurrentPage('admin');
-                } else if (userTenantId) {
-                  // Tenant user with a tenantId → admin dashboard (church admins, etc.)
-                  setCurrentPage(role === 'church_admin' || role === 'super_admin' || role === 'admin' ? 'admin' : 'home');
                 } else {
-                  // Main site user (no tenantId) → always home (MainApp)
-                  // Plan subscriptions only exist on tenant subdomains
+                  // ARCHITECTURE: Main site (theharvest.app) = free platform for end users.
+                  // Everyone on the main site goes to MainApp (Home, Bible, Chat, Map, Profile).
+                  // Admin dashboard only lives on tenant subdomains (e.g. nations.theharvest.app).
                   setCurrentPage('home');
                 }
               }
