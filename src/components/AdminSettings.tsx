@@ -10,7 +10,7 @@ import { authFetch } from '../utils/auth-fetch';
 
 interface AdminSettingsProps {
   onBack: () => void;
-  currentPlan: TenantPlan;
+  currentPlan?: TenantPlan;
   onChangePlan: (plan: TenantPlan) => void;
   onCancelPlan: () => void;
   tenantId?: string;
@@ -189,10 +189,10 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
   };
   const [domainLoaded, setDomainLoaded] = useState(false);
 
-  const currentPlanData = PLANS.find(p => p.id === currentPlan);
-  const currentFeatures = getPlanFeatures(currentPlan);
-  const hasBranding = currentFeatures.customDomain; // Ultra+ get branding
-  const hasCustomDomain = currentFeatures.customDomain; // Ultra+ get custom domain
+  const currentPlanData = currentPlan ? PLANS.find(p => p.id === currentPlan) : null;
+  const currentFeatures = currentPlan ? getPlanFeatures(currentPlan) : null;
+  const hasBranding = currentFeatures?.customDomain; // Ultra+ get branding
+  const hasCustomDomain = currentFeatures?.customDomain; // Ultra+ get custom domain
 
   // Load current branding from tenant doc
   const loadBranding = async () => {
@@ -878,7 +878,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
       </div>
 
       {/* Background Image (Ultra/Enterprise only) */}
-      {currentFeatures.customBackground && (
+      {currentFeatures?.customBackground && (
         <div className="bg-white rounded-2xl border border-gray-100 p-6">
           <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">Background Image</h3>
           <p className="text-gray-600 text-sm mb-4">Set a custom background image for your auth/login page.</p>
@@ -1459,6 +1459,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
       )}
 
       {/* Current Plan Summary */}
+      {currentPlan ? (
       <div className="bg-white rounded-2xl border border-gray-100 p-6 mb-4">
         <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">Current Plan</h3>
         <div className="flex items-center justify-between">
@@ -1477,28 +1478,41 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
         <div className="mt-4 pt-4 border-t border-gray-100">
           <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
             <div className="text-center">
-              <p className="text-2xl font-bold text-gray-900">{currentFeatures.maxChurches === -1 ? '∞' : currentFeatures.maxChurches}</p>
+              <p className="text-2xl font-bold text-gray-900">{currentFeatures?.maxChurches === -1 ? '∞' : currentFeatures?.maxChurches}</p>
               <p className="text-xs text-gray-500">Churches</p>
             </div>
             <div className="text-center">
-              <p className="text-2xl font-bold text-gray-900">{currentFeatures.maxAdmins === -1 ? '∞' : currentFeatures.maxAdmins}</p>
+              <p className="text-2xl font-bold text-gray-900">{currentFeatures?.maxAdmins === -1 ? '∞' : currentFeatures?.maxAdmins}</p>
               <p className="text-xs text-gray-500">Admins</p>
             </div>
             <div className="text-center">
-              <p className="text-2xl font-bold text-gray-900">{currentFeatures.maxCourses === -1 ? '∞' : currentFeatures.maxCourses}</p>
+              <p className="text-2xl font-bold text-gray-900">{currentFeatures?.maxCourses === -1 ? '∞' : currentFeatures?.maxCourses}</p>
               <p className="text-xs text-gray-500">Courses</p>
             </div>
             <div className="text-center">
-              <p className="text-2xl font-bold text-gray-900">{currentFeatures.blog ? '✓' : '✗'}</p>
+              <p className="text-2xl font-bold text-gray-900">{currentFeatures?.blog ? '✓' : '✗'}</p>
               <p className="text-xs text-gray-500">Blog</p>
             </div>
             <div className="text-center">
-              <p className="text-2xl font-bold text-gray-900">{currentFeatures.aiChat ? '✓' : '✗'}</p>
+              <p className="text-2xl font-bold text-gray-900">{currentFeatures?.aiChat ? '✓' : '✗'}</p>
               <p className="text-xs text-gray-500">AI Chat</p>
             </div>
           </div>
         </div>
       </div>
+      ) : (
+      <div className="bg-white rounded-2xl border border-gray-100 p-6 mb-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-amber-50">
+            <span className="text-amber-500 text-lg">👑</span>
+          </div>
+          <div>
+            <p className="text-xl font-bold text-gray-900">Super Admin</p>
+            <p className="text-gray-500 text-sm">Platform-wide access — manage all tenants</p>
+          </div>
+        </div>
+      </div>
+      )}
 
       {/* Accordion Sections */}
       <div className="space-y-3 mb-4">
@@ -1720,7 +1734,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
       </div>
 
       {/* Integrations (Pro+ newsletterAutomation) */}
-      {currentFeatures.newsletterAutomation && (
+      {currentFeatures?.newsletterAutomation && (
         <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
           <button
             onClick={() => toggleSection('integrations')}

@@ -402,13 +402,14 @@ export default function AIChat({ onBack, tenantPlan }: { onBack?: () => void; te
   const [subscriptionStatus, setSubscriptionStatus] = useState<'loading' | 'active' | 'none'>('loading');
   const isMainSite = tenantPlan === null || tenantPlan === undefined;
 
+  // ── ALL useEffect hooks must be BEFORE any conditional return ──
+
+  // Check subscription for main site users
   useEffect(() => {
     if (!isMainSite) {
-      // Tenant users with aiChat access don't need subscription check
       setSubscriptionStatus('active');
       return;
     }
-    // Main site user — check for AI chat subscription
     const checkSubscription = async () => {
       try {
         const user = auth.currentUser;
@@ -416,7 +417,10 @@ export default function AIChat({ onBack, tenantPlan }: { onBack?: () => void; te
         const userSnap = await getDoc(doc(db, 'users', user.uid));
         const userData = userSnap.data();
         const sub = userData?.aiChatSubscription;
-        if (sub && (sub.status === 'active' || sub.status === 'trialing')) {
+        // Also check if user is super admin
+        if (userData?.role === 'super_admin' || userData?.email === 'bumbmatei@proton.me') {
+          setSubscriptionStatus('active');
+        } else if (sub && (sub.status === 'active' || sub.status === 'trialing')) {
           setSubscriptionStatus('active');
         } else {
           setSubscriptionStatus('none');
@@ -428,6 +432,30 @@ export default function AIChat({ onBack, tenantPlan }: { onBack?: () => void; te
     };
     checkSubscription();
   }, [isMainSite]);
+
+  // Load chat history from localStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem('harvest_ai_chats');
+    if (saved) {
+      try {
+        setHistory(JSON.parse(saved));
+      } catch (e) {
+        console.error("Failed to parse chat history", e);
+      }
+    }
+  }, []);
+
+  // Save chat history to localStorage when it changes
+  useEffect(() => {
+    localStorage.setItem('harvest_ai_chats', JSON.stringify(history));
+  }, [history]);
+
+  // Auto-scroll
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, typing]);
+
+  // ── NOW safe to do conditional returns ──
 
   // Show paywall for main site users without subscription
   if (isMainSite && subscriptionStatus === 'none') {
@@ -444,29 +472,8 @@ export default function AIChat({ onBack, tenantPlan }: { onBack?: () => void; te
     );
   }
 
- // Load chat history from localStorage on mount
- useEffect(() => {
- const saved = localStorage.getItem('harvest_ai_chats');
- if (saved) {
- try {
- setHistory(JSON.parse(saved));
- } catch (e) {
- console.error("Failed to parse chat history", e);
- }
- }
- }, []);
-
- // Save chat history to localStorage when it changes
- useEffect(() => {
- localStorage.setItem('harvest_ai_chats', JSON.stringify(history));
- }, [history]);
-
- useEffect(() => {
- messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
- }, [messages, typing]);
-
- const startNewChat = (): void => {
- setActiveChat(null);
+const startNewChat = (): void => {
+    setActiveChat(null);
  setMessages([]);
  setInput("");
  setShowHistory(false);
