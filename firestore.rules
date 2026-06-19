@@ -51,10 +51,11 @@ service cloud.firestore {
          request.resource.data.role == 'user');
 
       // Users can update own profile; tenant admins can update users in their tenant.
-      // BLOCK role field — only Admin SDK (server-side) can change roles.
+      // BLOCK role changes — only Admin SDK (server-side) can change roles.
+      // Uses diff().affectedKeys() to check only changed fields, not full post-write document.
       allow update: if isAuthenticated() &&
-        ((request.auth.uid == userId && !request.resource.data.keys().hasAny(['role'])) ||
-         (isTenantAdmin(resource.data.tenantId) && !request.resource.data.keys().hasAny(['role'])));
+        ((request.auth.uid == userId && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role'])) ||
+         (isTenantAdmin(resource.data.tenantId) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role'])));
 
       // Only super admins can delete user documents
       allow delete: if isAuthenticated() &&

@@ -34,11 +34,14 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, tenantPlan }) => {
   const [direction, setDirection] = useState(0);
   const [fullScreenView, setFullScreenView] = useState<{type: 'none' | 'all-news' | 'article' | 'course', id?: string, data?: any}>({type: 'none'});
 
+  // Main site users (no tenantPlan) get all features — Chat behind paywall, Map included.
+  // Tenant users are gated by their plan.
+  const isMainSite = !tenantPlan;
   const features = tenantPlan ? getPlanFeatures(tenantPlan) : null;
 
   const topTabs = [
     { id: 'news', label: 'News' },
-    features?.blog !== false && { id: 'blog', label: 'Blog' },
+    (isMainSite || features?.blog !== false) && { id: 'blog', label: 'Blog' },
     { id: 'courses', label: 'Courses' },
     { id: 'partner', label: 'Partner with Us' },
   ].filter(Boolean) as { id: string; label: string }[];
@@ -46,8 +49,8 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, tenantPlan }) => {
   const bottomTabs = [
     { id: 'home', label: 'Home', icon: Home },
     { id: 'bible', label: 'Bible', icon: BookOpen },
-    features?.aiChat !== false && { id: 'chat', label: 'Chat', icon: MessageCircle },
-    features?.map === true && { id: 'map', label: 'Map', icon: MapIcon },
+    (isMainSite || features?.aiChat !== false) && { id: 'chat', label: 'Chat', icon: MessageCircle },
+    (isMainSite || features?.map === true) && { id: 'map', label: 'Map', icon: MapIcon },
     { id: 'profile', label: 'My Profile', icon: User },
   ].filter(Boolean) as { id: string; label: string; icon: any }[];
 
