@@ -3,6 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import Image from 'next/image';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
+import { getPlaceholderImage } from '@/utils/placeholder';
 import L from 'leaflet';
 import { ArrowLeft, LocateFixed, Map as MapIcon, List, Navigation, Home, CheckCircle } from 'lucide-react';
 import { collection, query, where, getDocs } from 'firebase/firestore';
@@ -334,7 +335,7 @@ const ChurchMap: React.FC<ChurchMapProps> = ({ onBack, onMapInteraction }) => {
  <div className="w-20 h-20 rounded-xl bg-gray-200 flex-shrink-0 overflow-hidden relative">
  {/* Placeholder image for church */}
  <Image 
- src={church.imageUrl || `https://picsum.photos/seed/${church.id}/200/200`} 
+ src={church.imageUrl || getPlaceholderImage(church.id, 200, 200)} 
  alt={church.name}
  fill
  sizes="80px"

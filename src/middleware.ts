@@ -1,89 +1,42 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-/**
- * Subdomain + custom domain routing middleware.
- *
- * Resolution order:
- * 1. ?tenant=xxx query param (testing override)
- * 2. admin.theharvest.app → isAdmin cookie
- * 3. *.theharvest.app subdomain → tenantId cookie
- * 4. Custom domain → resolve via API, cache in cookie
- * 5. Base domains → no tenant (global platform)
- */
+// Rate limit config per path pattern (most specific first)
+const RATE_LIMIT_PATHS: Array<{ pattern: RegExp; category: string }> = [
+  { pattern: /^\/api\/stripe\//, category: 'stripe' },
+  { pattern: /^\/api\/auth\//, category: 'auth' },
+  { pattern: /^\/api\/gemini/, category: 'ai' },
+  { pattern: /^\/api\/ai-assistant/, category: 'ai' },
+  { pattern: /^\/api\//, category: 'api' },
+];
+
 export async function middleware(request: NextRequest) {
-  const { hostname } = request.nextUrl;
-  const response = NextResponse.next();
-  // ─── Security Headers ───────────────────────────────────────
-  response.headers.set('X-Frame-Options', 'SAMEORIGIN');
-  response.headers.set('X-Content-Type-Options', 'nosniff');
-  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
-  response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(self), interest-cohort=()');
-
-  // ─── 1. Query param override for testing ────────────────────────
-  const tenantParam = request.nextUrl.searchParams.get('tenant');
-  if (tenantParam) {
-    response.cookies.set('tenantId', tenantParam, { path: '/', maxAge: 60 * 60 * 24 * 30, secure: true, sameSite: 'lax' });
-    return response;
+  // Only rate-limit API routes
+  if (!request.nextUrl.pathname.startsWith('/api/')) {
+    return NextResponse.next();
   }
 
-  // ─── 2. Admin subdomain detection ───────────────────────────────
-  const isAdminSubdomain = hostname === 'admin.theharvest.app';
-
-  if (isAdminSubdomain) {
-    response.cookies.set('isAdmin', 'true', { path: '/', maxAge: 60 * 60 * 24 * 30, httpOnly: true, secure: true, sameSite: 'lax' });
-    response.cookies.delete('tenantId');
-    return response;
-  }
-  response.cookies.delete('isAdmin');
-
-  // ─── 3. Known base domains → no tenant ──────────────────────────
-  const baseDomains = [
-    'theharvest.app',
-    'www.theharvest.app',
-    'harvest-agent.vercel.app',
-    'localhost',
-  ];
-
-  if (baseDomains.includes(hostname)) {
-    response.cookies.delete('tenantId');
-    return response;
+  // Skip rate limiting if Redis is not configured (graceful degradation)
+  if (!process.env.UPSTASH_REDIS_REST_URL) {
+    return NextResponse.next();
   }
 
-  // ─── 4. Subdomain of theharvest.app ─────────────────────────────
-  const parts = hostname.split('.');
-  if (parts.length >= 3) {
-    const baseDomain = parts.slice(1).join('.');
-    if (baseDomain === 'theharvest.app' || baseDomain.endsWith('.vercel.app')) {
-      const subdomain = parts[0];
-      response.cookies.set('tenantId', subdomain, { path: '/', maxAge: 60 * 60 * 24 * 30, secure: true, sameSite: 'lax' });
-      return response;
+  const { checkRateLimit } = await import('@/lib/rate-limit');
+
+  const matched = RATE_LIMIT_PATHS.find(({ pattern }) =>
+    pattern.test(request.nextUrl.pathname)
+  );
+
+  if (matched) {
+    const rateLimitResponse = await checkRateLimit(request, matched.category as any);
+    if (rateLimitResponse) {
+      return rateLimitResponse;
     }
   }
 
-  // ─── 5. Custom domain resolution ────────────────────────────────
-  // Strip www. prefix for consistent domain resolution
-  const resolveHostname = hostname.replace(/^www\./, '');
-
-  // Check if we already resolved this domain (cached in cookie)
-  const cachedDomain = request.cookies.get('customDomain')?.value;
-  const cachedTenantId = request.cookies.get('tenantId')?.value;
-
-  if ((cachedDomain === hostname || cachedDomain === resolveHostname) && cachedTenantId) {
-    // Already resolved, use cached tenantId
-    return response;
-  }
-
-  // Unknown domain — redirect to API route to resolve on the base domain
-  // Must use theharvest.app (not request.url which is the custom domain)
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://theharvest.app';
-  const resolveUrl = new URL('/api/resolve-domain', baseUrl);
-  resolveUrl.searchParams.set('domain', resolveHostname);
-  resolveUrl.searchParams.set('redirect', request.nextUrl.pathname + request.nextUrl.search);
-  
-  return NextResponse.redirect(resolveUrl);
+  return NextResponse.next();
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|api/).*)'],
+  matcher: '/api/:path*',
 };

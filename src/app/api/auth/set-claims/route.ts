@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
 
     await setCustomClaims(uid);
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, forceRefresh: true });
   } catch (error: any) {
     console.error('set-claims error:', error);
     return NextResponse.json({ error: 'Failed to set claims' }, { status: 500 });

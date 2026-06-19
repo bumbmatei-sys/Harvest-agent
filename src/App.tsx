@@ -14,6 +14,7 @@ import PWAInstallManager from './components/PWAInstallManager';
 import { OperationType, handleFirestoreError } from './utils/firestore-errors';
 import { TenantPlan } from './types/tenant.types';
 import { TenantProvider, useTenant } from './contexts/TenantContext';
+import { useClaimsFreshness } from './hooks/useClaimsFreshness';
 
 type Page = 'auth' | 'onboarding' | 'church-onboarding' | 'home' | 'admin';
 
@@ -43,11 +44,15 @@ const TenantNotFound: React.FC<{ tenantId: string; message: string }> = ({ tenan
 
 /** Inner App component that uses the TenantContext */
 const AppInner: React.FC = () => {
+  useClaimsFreshness(); // Force-refresh token when claims change
   const [currentPage, setCurrentPage] = useState<Page>('auth');
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [tenantPlan, setTenantPlan] = useState<TenantPlan | undefined>(undefined);
   const currentPageRef = useRef(currentPage);
   const { tenantId, isAdminDomain, error: tenantError, isLoading: tenantLoading, setTenantPlan: ctxSetTenantPlan } = useTenant();
+
+  // Auto-refresh Firebase token when custom claims change (fixes stale claims)
+  useClaimsFreshness();
 
   // Check if user arrived from presentation site "Start Ministry" button
   const signupParam = typeof window !== 'undefined'

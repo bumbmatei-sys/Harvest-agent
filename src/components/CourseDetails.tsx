@@ -3,6 +3,7 @@ import React from 'react';
 import { sanitizeHtml } from '../utils/sanitize';
 import Image from 'next/image';
 import { ArrowLeft, Clock, User, BookOpen, PlayCircle, CheckCircle2 } from 'lucide-react';
+import { getPlaceholderImage } from '@/utils/placeholder';
 import { Course } from './AdminCourseEditor';
 
 interface CourseDetailsProps {
@@ -16,7 +17,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ course, onBack }) => {
  {/* Header Image */}
  <div className="relative h-64 sm:h-80 w-full flex-shrink-0">
  <Image 
- src={course.coverImage || `https://picsum.photos/seed/${course.id}/1200/600`} 
+ src={course.coverImage || getPlaceholderImage(course.id, 1200, 600)} 
  alt={course.title}
  fill
  sizes="100vw"

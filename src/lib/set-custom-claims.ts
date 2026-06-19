@@ -49,6 +49,10 @@ export async function setCustomClaims(uid: string) {
 
     if (claimsChanged) {
       await adminAuth.setCustomUserClaims(uid, claims);
+      // Write claimsUpdatedAt so clients can detect staleness and force-refresh
+      await adminDb.collection('users').doc(uid).update({
+        claimsUpdatedAt: new Date().toISOString(),
+      }).catch(() => { /* user doc might not exist yet */ });
       console.log(`Custom claims set for ${uid}:`, claims);
     }
   } catch (error) {

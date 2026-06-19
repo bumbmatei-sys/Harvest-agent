@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
 import { db } from '../firebase';
+import { getPlaceholderImage } from '@/utils/placeholder';
 import { BookOpen, Clock, ChevronRight } from 'lucide-react';
 import { Course } from './AdminCourseEditor';
 import { getTenantScope } from '../utils/tenant-scope';
@@ -81,7 +82,7 @@ const CoursesTab: React.FC<CoursesTabProps> = ({ onOpenCourse }) => {
  >
  <div className="relative h-48 w-full bg-gray-200 overflow-hidden">
  <Image 
- src={course.coverImage || `https://picsum.photos/seed/${course.id}/600/400`} 
+ src={course.coverImage || getPlaceholderImage(course.id, 600, 400)} 
  alt={course.title}
  fill
  sizes="(max-width: 768px) 100vw, 50vw"

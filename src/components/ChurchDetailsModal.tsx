@@ -3,6 +3,7 @@ import Image from 'next/image';
 import { X, MapPin, User, Clock, Mail, Phone, Globe, Facebook, Instagram, Navigation, Copy, CheckCircle2, Trash2, Megaphone, Info } from 'lucide-react';
 import { doc, getDoc, collection, query, orderBy, getDocs } from 'firebase/firestore';
 import { db, auth } from '../firebase';
+import { getPlaceholderImage } from '@/utils/placeholder';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 
 interface ChurchDetailsModalProps {
@@ -182,7 +183,7 @@ const ChurchDetailsModal: React.FC<ChurchDetailsModalProps> = ({
  {/* Header Image & Title */}
  <div className="relative h-72 w-full">
  <Image 
- src={church.imageUrl || `https://picsum.photos/seed/${church.id}/800/600`} 
+ src={church.imageUrl || getPlaceholderImage(church.id, 800, 600)} 
  alt={church.name}
  fill
  sizes="100vw"
