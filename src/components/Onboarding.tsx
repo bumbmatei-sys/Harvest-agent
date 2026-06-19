@@ -176,10 +176,12 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
  }
 
  try {
- await setDoc(userRef, updateData, { merge: true });
- } catch (err) {
- try { handleFirestoreError(err, OperationType.UPDATE, `users/${user.uid}`); } catch (e) { console.error(e); }
- return;
+     await setDoc(userRef, updateData, { merge: true });
+ } catch (err: any) {
+     console.error('Onboarding save failed:', err);
+     setError(err.message || 'Failed to save information. Please try again.');
+     setLoading(false);
+     return;
  }
 
  sessionStorage.setItem('pwa_prompt_ready', 'true');
