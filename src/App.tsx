@@ -15,6 +15,7 @@ import { OperationType, handleFirestoreError } from './utils/firestore-errors';
 import { TenantPlan } from './types/tenant.types';
 import { TenantProvider, useTenant } from './contexts/TenantContext';
 import { useClaimsFreshness } from './hooks/useClaimsFreshness';
+import { useCapacitorPush } from './hooks/useCapacitorPush';
 
 type Page = 'auth' | 'onboarding' | 'church-onboarding' | 'home' | 'admin';
 
@@ -45,6 +46,7 @@ const TenantNotFound: React.FC<{ tenantId: string; message: string }> = ({ tenan
 /** Inner App component that uses the TenantContext */
 const AppInner: React.FC = () => {
   useClaimsFreshness(); // Force-refresh token when claims change
+  useCapacitorPush();   // Register native FCM token when running in Capacitor
   const [currentPage, setCurrentPage] = useState<Page>('auth');
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [tenantPlan, setTenantPlan] = useState<TenantPlan | undefined>(undefined);
