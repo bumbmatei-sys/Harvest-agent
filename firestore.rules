@@ -76,12 +76,31 @@ service cloud.firestore {
     match /community_posts/{postId} {
       // Any authenticated user can read (client queries already filter by tenantId)
       allow read: if isAuthenticated();
-      // Any authenticated user can create (client sets tenantId from user doc)
-      allow create: if isAuthenticated();
-      // Any authenticated user can update (client-side admin checks enforce permissions)
-      allow update: if isAuthenticated();
-      // Any authenticated user can delete (client-side admin checks enforce permissions)
-      allow delete: if isAuthenticated();
+
+      // Create: must set own authorId and a tenantId matching the user's own tenant
+      allow create: if isAuthenticated() &&
+        request.resource.data.authorId == request.auth.uid &&
+        requestHasCorrectTenant();
+
+      // Update: two cases.
+      // 1) Interaction fields (likes, poll votes, event attendance) — any
+      //    tenant member can change these, since liking/voting/RSVPing
+      //    isn't an authoring action. Restricted to ONLY those fields so
+      //    this can't be used to rewrite post content.
+      // 2) Content edits (title, body, everything else) — author or
+      //    tenant admin only.
+      allow update: if isAuthenticated() && belongsToTenant(resource.data.tenantId) &&
+        (
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['likes', 'pollOptions', 'eventDetails']) ||
+          resource.data.authorId == request.auth.uid ||
+          isTenantAdmin(resource.data.tenantId)
+        );
+
+      // Delete: author or tenant admin only — not "any authenticated user"
+      allow delete: if isAuthenticated() &&
+        (resource.data.authorId == request.auth.uid ||
+         isTenantAdmin(resource.data.tenantId));
 
       // ─── Comments subcollection ─────────────────────────────────────
       match /comments/{commentId} {
@@ -100,6 +119,7 @@ service cloud.firestore {
         allow update: if false;
       }
     }
+
 
     // ─── Blog Posts ─────────────────────────────────────────────────
 
@@ -167,10 +187,22 @@ service cloud.firestore {
     // ─── Tenants ────────────────────────────────────────────────────
 
     match /tenants/{tenantId} {
-      // Allow unauthenticated reads for subdomain resolution + branding on login page.
-      // Stripe IDs and AI codes are sensitive — restrict full doc reads to tenant members.
+      // SECURITY: this doc is readable by anyone, including unauthenticated
+      // requests — required so the public marketing/login pages can resolve
+      // a subdomain to a tenant and show branding before login.
+      //
+      // KNOWN ISSUE — NOT YET FIXED: stripeCustomerId, stripeSubscriptionId,
+      // and addOnAiAssistantCode currently live on this same public document,
+      // meaning they are readable by anyone who knows or guesses a tenant ID.
+      // The correct fix is to move these three fields to a private
+      // subcollection (e.g. tenants/{tenantId}/private/billing) that is
+      // readable only by tenant members/admins, and update every read/write
+      // site (Stripe checkout, webhook, donate, connect, cancel-addon,
+      // update-quantity routes, plus AdminSettings/Onboarding components) to
+      // use the new location. This is a multi-file migration, tracked
+      // separately — do not attempt as a one-line rule change, since an
+      // incomplete migration will silently break checkout/billing.
       allow read: if true;
-      // TODO: Move sensitive fields to a private subcollection (stripeCustomerId, addOnAiAssistantCode, etc.)
 
       // Tenant creation: require essential fields and valid values
       allow create: if isAuthenticated() &&

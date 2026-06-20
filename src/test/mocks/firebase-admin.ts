@@ -5,11 +5,14 @@ export const mockGetUser = vi.fn();
 export const mockSetCustomUserClaims = vi.fn();
 export const mockGetDoc = vi.fn();
 export const mockUpdate = vi.fn();
+export const mockDelete = vi.fn();
+export const mockRecursiveDelete = vi.fn();
 
 const mockDocRef = () => ({
   get: mockGetDoc,
   set: vi.fn(),
   update: mockUpdate,
+  delete: mockDelete,
 });
 
 const mockCollection = () => ({
@@ -26,5 +29,6 @@ vi.mock('@/lib/firebase-admin', () => ({
   },
   adminDb: {
     collection: vi.fn(() => mockCollection()),
+    recursiveDelete: mockRecursiveDelete,
   },
 }));
