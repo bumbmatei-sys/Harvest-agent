@@ -23,9 +23,21 @@ export interface PlanFeatures {
   newsletterAutomation: boolean;
   /** SMS automation (coming soon) */
   smsAutomation: boolean;
-  /** AI Assistant included in plan */
+  /**
+   * true  = AI Assistant is INCLUDED in the base plan price (Ultra / Enterprise).
+   * false = AI Assistant is NOT included but is available as a paid add-on
+   *         ($150 setup + $100/mo) on all plan tiers — see AI_ASSISTANT_ADDON_PRICING.
+   */
   aiAssistant: boolean;
 }
+
+// ─── Single source of truth for feature flags ────────────────────────────────
+//
+// IMPORTANT: this matrix is mirrored on the marketing site (theharvest.site).
+// If you change any cell here you MUST also update the marketing copy — or,
+// better, make the marketing site fetch /api/plans at build time.
+// The contract test in __tests__/plan-features.test.ts will fail CI if these
+// values change without an explicit update to that test.
 
 const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
   plus: {
@@ -52,7 +64,7 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     maxAdmins: 5,
     customDomain: false,
     customBackground: false,
-    newsletterAutomation: true,
+    newsletterAutomation: false, // confirmed: not included in Community — was incorrectly true
     smsAutomation: false,
     aiAssistant: false,
   },
@@ -100,6 +112,34 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
   },
 };
 
+// ─── Pricing (source of truth) ────────────────────────────────────────────────
+
+/** Base plan pricing in USD. null = contact sales / custom quote. */
+export const PLAN_PRICING: Record<TenantPlan, { monthlyUsd: number | null; yearlyUsd: number | null }> = {
+  plus:       { monthlyUsd: 49,   yearlyUsd: 490  },
+  pro:        { monthlyUsd: 99,   yearlyUsd: 990  },
+  max:        { monthlyUsd: 199,  yearlyUsd: 1990 },
+  ultra:      { monthlyUsd: 349,  yearlyUsd: 3490 },
+  enterprise: { monthlyUsd: null, yearlyUsd: null },
+};
+
+/** AI Assistant add-on pricing (available on all plans; included for free on Ultra/Enterprise). */
+export const AI_ASSISTANT_ADDON_PRICING = {
+  setupFeeUsd: 150,
+  monthlyUsd:  100,
+} as const;
+
+/** Partner revenue share percentage per plan. */
+export const PLAN_REVENUE_SHARE: Record<TenantPlan, number> = {
+  plus:       70,
+  pro:        80,
+  max:        90,
+  ultra:      100,
+  enterprise: 100,
+};
+
+// ─── Accessors ────────────────────────────────────────────────────────────────
+
 /**
  * Get feature flags for a given plan.
  * Defaults to 'plus' if plan is unknown.
@@ -113,10 +153,10 @@ export function getPlanFeatures(plan: TenantPlan): PlanFeatures {
  * Internal IDs (plus/pro/max/ultra/enterprise) stay the same.
  */
 export const PLAN_DISPLAY_NAMES: Record<TenantPlan, string> = {
-  plus: 'Individual',
-  pro: 'Community',
-  max: 'Church',
-  ultra: 'Ministry',
+  plus:       'Individual',
+  pro:        'Community',
+  max:        'Church',
+  ultra:      'Ministry',
   enterprise: 'Enterprise',
 };
 
@@ -137,4 +177,15 @@ export function hasFeature(plan: TenantPlan, feature: keyof PlanFeatures): boole
   if (typeof value === 'boolean') return value;
   if (typeof value === 'number') return value !== 0;
   return false;
+}
+
+/**
+ * Format a plan price as a display string, e.g. "$49/mo" or "Custom".
+ */
+export function formatPlanPrice(plan: TenantPlan, billing: 'monthly' | 'yearly'): string {
+  const pricing = PLAN_PRICING[plan];
+  if (!pricing) return 'Custom';
+  const amount = billing === 'monthly' ? pricing.monthlyUsd : pricing.yearlyUsd;
+  if (amount === null) return 'Custom';
+  return `$${amount.toLocaleString()}/${billing === 'monthly' ? 'mo' : 'yr'}`;
 }
