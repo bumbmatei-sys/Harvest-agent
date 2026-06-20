@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Test & Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run lint
+
+  build:
+    name: Build check (informational)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+        env:
+          # Build requires env vars — provide minimal stubs so Next.js doesn't
+          # crash on import. Real values live in Vercel; this job is informational only.
+          NEXT_PUBLIC_FIREBASE_API_KEY: stub
+          NEXT_PUBLIC_FIREBASE_PROJECT_ID: stub
+          NEXT_PUBLIC_APP_URL: https://theharvest.app
+          NEXT_PUBLIC_SUPER_ADMIN_EMAIL: stub@stub.com
+          NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: stub
+          FIREBASE_SERVICE_ACCOUNT: '{"type":"service_account","project_id":"stub","private_key_id":"stub","private_key":"","client_email":"stub@stub.iam.gserviceaccount.com","client_id":"stub","auth_uri":"","token_uri":"","auth_provider_x509_cert_url":"","client_x509_cert_url":"","universe_domain":"googleapis.com"}'
+          STRIPE_SECRET_KEY: sk_test_stub
+          STRIPE_WEBHOOK_SECRET: whsec_stub
