@@ -7,9 +7,9 @@ export interface PlanFeatures {
   aiChat: boolean;
   /** Show AI Knowledge Base in admin */
   aiKnowledge: boolean;
-  /** Show church map in user app */
+  /** Show church map directory in user app */
   map: boolean;
-  /** Max number of churches (0 = hidden, -1 = unlimited) */
+  /** Max number of churches/locations (0 = hidden, -1 = unlimited) */
   maxChurches: number;
   /** Max number of courses (-1 = unlimited) */
   maxCourses: number;
@@ -17,27 +17,28 @@ export interface PlanFeatures {
   maxAdmins: number;
   /** Allow custom domain */
   customDomain: boolean;
-  /** Allow custom background image on auth page */
+  /** Allow full rebranding (logo + brand color) */
   customBackground: boolean;
-  /** Newsletter automation (coming soon) */
+  /** Newsletter automation */
   newsletterAutomation: boolean;
   /** SMS automation (coming soon) */
   smsAutomation: boolean;
   /**
-   * true  = AI Assistant is INCLUDED in the base plan price (Ultra / Enterprise).
-   * false = AI Assistant is NOT included but is available as a paid add-on
-   *         ($150 setup + $100/mo) on all plan tiers — see AI_ASSISTANT_ADDON_PRICING.
+   * AI Assistant availability for this plan tier.
+   * 'included' — bundled in the base plan price (Ministry / Enterprise).
+   * 'addon'    — NOT included but purchasable as a paid add-on on any plan
+   *              ($150 one-time setup + $100/mo recurring — see AI_ASSISTANT_ADDON_PRICING).
    */
-  aiAssistant: boolean;
+  aiAssistant: 'included' | 'addon';
 }
 
-// ─── Single source of truth for feature flags ────────────────────────────────
+// ─── Feature matrix ───────────────────────────────────────────────────────────
 //
-// IMPORTANT: this matrix is mirrored on the marketing site (theharvest.site).
-// If you change any cell here you MUST also update the marketing copy — or,
-// better, make the marketing site fetch /api/plans at build time.
-// The contract test in __tests__/plan-features.test.ts will fail CI if these
-// values change without an explicit update to that test.
+// IMPORTANT: this matrix must match the pricing table on theharvest.site.
+// If you change any cell, update the marketing site copy too — or switch the
+// marketing site to consume /api/plans so they can never drift again.
+// The contract test in __tests__/plan-features.test.ts will fail CI if this
+// matrix changes without an explicit update to that test.
 
 const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
   plus: {
@@ -52,7 +53,7 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     customBackground: false,
     newsletterAutomation: false,
     smsAutomation: false,
-    aiAssistant: false,
+    aiAssistant: 'addon',
   },
   pro: {
     blog: true,
@@ -64,9 +65,9 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     maxAdmins: 5,
     customDomain: false,
     customBackground: false,
-    newsletterAutomation: false, // confirmed: not included in Community — was incorrectly true
+    newsletterAutomation: true,
     smsAutomation: false,
-    aiAssistant: false,
+    aiAssistant: 'addon',
   },
   max: {
     blog: true,
@@ -80,7 +81,7 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     customBackground: true,
     newsletterAutomation: true,
     smsAutomation: true,
-    aiAssistant: false,
+    aiAssistant: 'addon',
   },
   ultra: {
     blog: true,
@@ -94,7 +95,7 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     customBackground: true,
     newsletterAutomation: true,
     smsAutomation: true,
-    aiAssistant: true,
+    aiAssistant: 'included',
   },
   enterprise: {
     blog: true,
@@ -108,13 +109,13 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     customBackground: true,
     newsletterAutomation: true,
     smsAutomation: true,
-    aiAssistant: true,
+    aiAssistant: 'included',
   },
 };
 
 // ─── Pricing (source of truth) ────────────────────────────────────────────────
 
-/** Base plan pricing in USD. null = contact sales / custom quote. */
+/** Base plan pricing in USD. null = custom quote / contact sales. */
 export const PLAN_PRICING: Record<TenantPlan, { monthlyUsd: number | null; yearlyUsd: number | null }> = {
   plus:       { monthlyUsd: 49,   yearlyUsd: 490  },
   pro:        { monthlyUsd: 99,   yearlyUsd: 990  },
@@ -123,20 +124,23 @@ export const PLAN_PRICING: Record<TenantPlan, { monthlyUsd: number | null; yearl
   enterprise: { monthlyUsd: null, yearlyUsd: null },
 };
 
-/** AI Assistant add-on pricing (available on all plans; included for free on Ultra/Enterprise). */
+/**
+ * Percentage of donation payments the ministry retains after platform fee.
+ * Source of truth: theharvest.site pricing table "Donations Retained" row.
+ */
+export const PLAN_DONATION_RETENTION: Record<TenantPlan, number> = {
+  plus:       85,
+  pro:        90,
+  max:        95,
+  ultra:      100,
+  enterprise: 100,
+};
+
+/** AI Assistant add-on pricing (available on all plans; free on ultra/enterprise). */
 export const AI_ASSISTANT_ADDON_PRICING = {
   setupFeeUsd: 150,
   monthlyUsd:  100,
 } as const;
-
-/** Partner revenue share percentage per plan. */
-export const PLAN_REVENUE_SHARE: Record<TenantPlan, number> = {
-  plus:       70,
-  pro:        80,
-  max:        90,
-  ultra:      100,
-  enterprise: 100,
-};
 
 // ─── Accessors ────────────────────────────────────────────────────────────────
 
@@ -150,7 +154,7 @@ export function getPlanFeatures(plan: TenantPlan): PlanFeatures {
 
 /**
  * Human-readable display names for each plan tier.
- * Internal IDs (plus/pro/max/ultra/enterprise) stay the same.
+ * Internal IDs (plus/pro/max/ultra/enterprise) are stable — these are UI labels only.
  */
 export const PLAN_DISPLAY_NAMES: Record<TenantPlan, string> = {
   plus:       'Individual',
@@ -160,28 +164,26 @@ export const PLAN_DISPLAY_NAMES: Record<TenantPlan, string> = {
   enterprise: 'Enterprise',
 };
 
-/**
- * Get the display name for a given plan.
- * Defaults to 'Individual' if plan is unknown.
- */
+/** Get the display name for a given plan. Defaults to 'Individual' if unknown. */
 export function getPlanDisplayName(plan: TenantPlan): string {
   return PLAN_DISPLAY_NAMES[plan] || PLAN_DISPLAY_NAMES.plus;
 }
 
 /**
  * Check if a specific feature is enabled for a plan.
+ * For aiAssistant: returns true for both 'included' and 'addon' (it's always available).
+ * Use `getPlanFeatures(plan).aiAssistant === 'included'` to check if it's bundled.
  */
 export function hasFeature(plan: TenantPlan, feature: keyof PlanFeatures): boolean {
   const features = getPlanFeatures(plan);
   const value = features[feature];
   if (typeof value === 'boolean') return value;
   if (typeof value === 'number') return value !== 0;
+  if (typeof value === 'string') return value.length > 0; // 'included' | 'addon'
   return false;
 }
 
-/**
- * Format a plan price as a display string, e.g. "$49/mo" or "Custom".
- */
+/** Format a plan price as a display string, e.g. "$49/mo" or "Custom". */
 export function formatPlanPrice(plan: TenantPlan, billing: 'monthly' | 'yearly'): string {
   const pricing = PLAN_PRICING[plan];
   if (!pricing) return 'Custom';

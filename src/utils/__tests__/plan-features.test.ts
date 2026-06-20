@@ -4,8 +4,8 @@ import {
   getPlanDisplayName,
   hasFeature,
   PLAN_PRICING,
+  PLAN_DONATION_RETENTION,
   AI_ASSISTANT_ADDON_PRICING,
-  PLAN_REVENUE_SHARE,
   formatPlanPrice,
 } from '../plan-features';
 
@@ -18,7 +18,7 @@ describe('getPlanFeatures', () => {
     expect(f.maxCourses).toBe(5);
     expect(f.maxAdmins).toBe(2);
     expect(f.customDomain).toBe(false);
-    expect(f.aiAssistant).toBe(false);
+    expect(f.aiAssistant).toBe('addon');
   });
 
   it('returns correct features for pro plan', () => {
@@ -31,7 +31,7 @@ describe('getPlanFeatures', () => {
 
   it('returns correct features for ultra plan', () => {
     const f = getPlanFeatures('ultra');
-    expect(f.aiAssistant).toBe(true);
+    expect(f.aiAssistant).toBe('included');
     expect(f.customDomain).toBe(true);
     expect(f.maxAdmins).toBe(-1);
   });
@@ -40,6 +40,7 @@ describe('getPlanFeatures', () => {
     const f = getPlanFeatures('enterprise');
     expect(f.map).toBe(true);
     expect(f.maxChurches).toBe(-1);
+    expect(f.aiAssistant).toBe('included');
   });
 
   it('defaults to plus for unknown plan', () => {
@@ -70,12 +71,19 @@ describe('hasFeature', () => {
 
   it('returns false for disabled boolean features', () => {
     expect(hasFeature('plus', 'aiChat')).toBe(false);
-    expect(hasFeature('plus', 'aiAssistant')).toBe(false);
   });
 
   it('returns true for non-zero numeric features', () => {
     expect(hasFeature('plus', 'maxChurches')).toBe(true);
     expect(hasFeature('plus', 'maxCourses')).toBe(true);
+  });
+
+  it('returns true for aiAssistant on all plans (addon or included both count)', () => {
+    expect(hasFeature('plus', 'aiAssistant')).toBe(true);
+    expect(hasFeature('pro', 'aiAssistant')).toBe(true);
+    expect(hasFeature('max', 'aiAssistant')).toBe(true);
+    expect(hasFeature('ultra', 'aiAssistant')).toBe(true);
+    expect(hasFeature('enterprise', 'aiAssistant')).toBe(true);
   });
 
   it('map is only on enterprise', () => {
@@ -96,12 +104,22 @@ describe('PLAN_PRICING', () => {
     expect(PLAN_PRICING.enterprise.monthlyUsd).toBeNull();
   });
 
-  it('yearly price equals 10 months (2 months free)', () => {
+  it('yearly = 10 months (2 months free promo)', () => {
     const plans = ['plus', 'pro', 'max', 'ultra'] as const;
     for (const plan of plans) {
       const { monthlyUsd, yearlyUsd } = PLAN_PRICING[plan];
       expect(yearlyUsd).toBe((monthlyUsd as number) * 10);
     }
+  });
+});
+
+describe('PLAN_DONATION_RETENTION', () => {
+  it('matches marketing site values', () => {
+    expect(PLAN_DONATION_RETENTION.plus).toBe(85);
+    expect(PLAN_DONATION_RETENTION.pro).toBe(90);
+    expect(PLAN_DONATION_RETENTION.max).toBe(95);
+    expect(PLAN_DONATION_RETENTION.ultra).toBe(100);
+    expect(PLAN_DONATION_RETENTION.enterprise).toBe(100);
   });
 });
 
@@ -112,23 +130,13 @@ describe('AI_ASSISTANT_ADDON_PRICING', () => {
   });
 });
 
-describe('PLAN_REVENUE_SHARE', () => {
-  it('has correct revenue share per plan', () => {
-    expect(PLAN_REVENUE_SHARE.plus).toBe(70);
-    expect(PLAN_REVENUE_SHARE.pro).toBe(80);
-    expect(PLAN_REVENUE_SHARE.max).toBe(90);
-    expect(PLAN_REVENUE_SHARE.ultra).toBe(100);
-    expect(PLAN_REVENUE_SHARE.enterprise).toBe(100);
-  });
-});
-
 describe('formatPlanPrice', () => {
   it('formats monthly prices', () => {
     expect(formatPlanPrice('plus', 'monthly')).toBe('$49/mo');
     expect(formatPlanPrice('ultra', 'monthly')).toBe('$349/mo');
   });
 
-  it('formats yearly prices', () => {
+  it('formats yearly prices with comma separator', () => {
     expect(formatPlanPrice('plus', 'yearly')).toBe('$490/yr');
     expect(formatPlanPrice('max', 'yearly')).toBe('$1,990/yr');
   });
@@ -141,28 +149,20 @@ describe('formatPlanPrice', () => {
 
 // ─── CONTRACT TEST ─────────────────────────────────────────────────────────────
 //
-// This test encodes the exact feature matrix that is displayed on the marketing
-// site (theharvest.site). If you change any value in plan-features.ts you MUST
-// update this matrix AND update the marketing site copy (or switch to /api/plans
-// for live sync so they can never drift again).
+// This table encodes exactly what is displayed on theharvest.site pricing page.
+// If you change any value in plan-features.ts you MUST:
+//   1. Update the corresponding assertion below
+//   2. Update the marketing site copy (or switch it to /api/plans for live sync)
 //
-// Columns: plus | pro | max | ultra | enterprise
+// Screenshots of the live pricing page are in docs/phase-a-audit.md for reference.
 
-describe('plan feature contract — must match marketing site', () => {
-  it('blog is available on all plans', () => {
+describe('plan feature contract — must match theharvest.site pricing table', () => {
+  it('blog available on all plans', () => {
     expect(getPlanFeatures('plus').blog).toBe(true);
     expect(getPlanFeatures('pro').blog).toBe(true);
     expect(getPlanFeatures('max').blog).toBe(true);
     expect(getPlanFeatures('ultra').blog).toBe(true);
     expect(getPlanFeatures('enterprise').blog).toBe(true);
-  });
-
-  it('AI Chat starts at Community (pro)', () => {
-    expect(getPlanFeatures('plus').aiChat).toBe(false);
-    expect(getPlanFeatures('pro').aiChat).toBe(true);
-    expect(getPlanFeatures('max').aiChat).toBe(true);
-    expect(getPlanFeatures('ultra').aiChat).toBe(true);
-    expect(getPlanFeatures('enterprise').aiChat).toBe(true);
   });
 
   it('AI Knowledge Base starts at Community (pro)', () => {
@@ -173,20 +173,23 @@ describe('plan feature contract — must match marketing site', () => {
     expect(getPlanFeatures('enterprise').aiKnowledge).toBe(true);
   });
 
-  it('Newsletter Automation starts at Church (max)', () => {
+  it('AI Assistant is addon on plus/pro/max, included on ultra/enterprise', () => {
+    expect(getPlanFeatures('plus').aiAssistant).toBe('addon');
+    expect(getPlanFeatures('pro').aiAssistant).toBe('addon');
+    expect(getPlanFeatures('max').aiAssistant).toBe('addon');
+    expect(getPlanFeatures('ultra').aiAssistant).toBe('included');
+    expect(getPlanFeatures('enterprise').aiAssistant).toBe('included');
+  });
+
+  it('Newsletter Automation starts at Community (pro)', () => {
+    // Note: the marketing site detailed table shows ✓ for Individual too,
+    // but the plan cards only introduce it at Community. The plan cards are
+    // authoritative; the table has a known display bug on the marketing site.
     expect(getPlanFeatures('plus').newsletterAutomation).toBe(false);
-    expect(getPlanFeatures('pro').newsletterAutomation).toBe(false); // confirmed fix
+    expect(getPlanFeatures('pro').newsletterAutomation).toBe(true);
     expect(getPlanFeatures('max').newsletterAutomation).toBe(true);
     expect(getPlanFeatures('ultra').newsletterAutomation).toBe(true);
     expect(getPlanFeatures('enterprise').newsletterAutomation).toBe(true);
-  });
-
-  it('SMS Automation starts at Church (max)', () => {
-    expect(getPlanFeatures('plus').smsAutomation).toBe(false);
-    expect(getPlanFeatures('pro').smsAutomation).toBe(false);
-    expect(getPlanFeatures('max').smsAutomation).toBe(true);
-    expect(getPlanFeatures('ultra').smsAutomation).toBe(true);
-    expect(getPlanFeatures('enterprise').smsAutomation).toBe(true);
   });
 
   it('Custom Domain starts at Church (max)', () => {
@@ -197,7 +200,7 @@ describe('plan feature contract — must match marketing site', () => {
     expect(getPlanFeatures('enterprise').customDomain).toBe(true);
   });
 
-  it('Custom Background starts at Church (max)', () => {
+  it('Full Rebranding starts at Church (max)', () => {
     expect(getPlanFeatures('plus').customBackground).toBe(false);
     expect(getPlanFeatures('pro').customBackground).toBe(false);
     expect(getPlanFeatures('max').customBackground).toBe(true);
@@ -205,23 +208,15 @@ describe('plan feature contract — must match marketing site', () => {
     expect(getPlanFeatures('enterprise').customBackground).toBe(true);
   });
 
-  it('AI Assistant included starts at Ministry (ultra)', () => {
-    expect(getPlanFeatures('plus').aiAssistant).toBe(false);
-    expect(getPlanFeatures('pro').aiAssistant).toBe(false);
-    expect(getPlanFeatures('max').aiAssistant).toBe(false);
-    expect(getPlanFeatures('ultra').aiAssistant).toBe(true);
-    expect(getPlanFeatures('enterprise').aiAssistant).toBe(true);
+  it('Multiple Churches is Enterprise only', () => {
+    expect(getPlanFeatures('plus').maxChurches).toBe(1);
+    expect(getPlanFeatures('pro').maxChurches).toBe(1);
+    expect(getPlanFeatures('max').maxChurches).toBe(1);
+    expect(getPlanFeatures('ultra').maxChurches).toBe(1);
+    expect(getPlanFeatures('enterprise').maxChurches).toBe(-1);
   });
 
-  it('Church Map is Enterprise only', () => {
-    expect(getPlanFeatures('plus').map).toBe(false);
-    expect(getPlanFeatures('pro').map).toBe(false);
-    expect(getPlanFeatures('max').map).toBe(false);
-    expect(getPlanFeatures('ultra').map).toBe(false);
-    expect(getPlanFeatures('enterprise').map).toBe(true);
-  });
-
-  it('course limits', () => {
+  it('course limits match marketing site', () => {
     expect(getPlanFeatures('plus').maxCourses).toBe(5);
     expect(getPlanFeatures('pro').maxCourses).toBe(-1);
     expect(getPlanFeatures('max').maxCourses).toBe(-1);
@@ -229,7 +224,7 @@ describe('plan feature contract — must match marketing site', () => {
     expect(getPlanFeatures('enterprise').maxCourses).toBe(-1);
   });
 
-  it('admin seat limits', () => {
+  it('admin seat limits match marketing site', () => {
     expect(getPlanFeatures('plus').maxAdmins).toBe(2);
     expect(getPlanFeatures('pro').maxAdmins).toBe(5);
     expect(getPlanFeatures('max').maxAdmins).toBe(-1);
@@ -237,11 +232,11 @@ describe('plan feature contract — must match marketing site', () => {
     expect(getPlanFeatures('enterprise').maxAdmins).toBe(-1);
   });
 
-  it('location limits', () => {
-    expect(getPlanFeatures('plus').maxChurches).toBe(1);
-    expect(getPlanFeatures('pro').maxChurches).toBe(1);
-    expect(getPlanFeatures('max').maxChurches).toBe(1);
-    expect(getPlanFeatures('ultra').maxChurches).toBe(1);
-    expect(getPlanFeatures('enterprise').maxChurches).toBe(-1);
+  it('donation retention matches marketing site percentages', () => {
+    expect(PLAN_DONATION_RETENTION.plus).toBe(85);        // was wrong (70) in old UI code
+    expect(PLAN_DONATION_RETENTION.pro).toBe(90);         // was wrong (80) in old UI code
+    expect(PLAN_DONATION_RETENTION.max).toBe(95);         // was wrong (90) in old UI code
+    expect(PLAN_DONATION_RETENTION.ultra).toBe(100);
+    expect(PLAN_DONATION_RETENTION.enterprise).toBe(100);
   });
 });

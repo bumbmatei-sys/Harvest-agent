@@ -5,6 +5,7 @@ import { auth, db } from '../firebase';
 import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
 import { Church, Palette, CheckCircle2, ArrowRight, ArrowLeft, Sparkles, Loader2, AlertCircle } from 'lucide-react';
 import { TenantPlan } from '../types/tenant.types';
+import { PLAN_DISPLAY_NAMES } from '../utils/plan-features';
 import { createTenant, isSubdomainAvailable } from '../utils/tenant.utils';
 import { ImageUpload } from './ImageUpload';
 import { sendEmail, welcomeEmail } from '../utils/email';
@@ -13,14 +14,6 @@ interface ChurchOnboardingProps {
   onComplete: () => void;
   signupPlan?: TenantPlan;
 }
-
-const PLAN_NAMES: Record<TenantPlan, string> = {
-  plus: 'Plus',
-  pro: 'Pro',
-  max: 'Max',
-  ultra: 'Ultra',
-  enterprise: 'Enterprise',
-};
 
 const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ onComplete, signupPlan }) => {
   const urlPlan = typeof window !== 'undefined'
@@ -216,7 +209,7 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ onComplete, signupP
             fontSize: '14px', fontWeight: 700, color: '#D4AF37',
           }}>
             <Sparkles size={14} />
-            {PLAN_NAMES[selectedPlan]} Plan
+            {PLAN_DISPLAY_NAMES[selectedPlan]} Plan
           </span>
         </div>
 
