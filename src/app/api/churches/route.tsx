@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
-import { requireAuth } from '@/lib/api-auth';
+import { requireAuth, requireAdmin } from '@/lib/api-auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,11 +9,18 @@ export async function GET(request: Request) {
     const userOrErr = await requireAuth(request as any);
     if (userOrErr instanceof Response) return userOrErr;
 
-    const snapshot = await adminDb.collection('churches').get();
-    const churches = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
+    if (!userOrErr.isSuperAdmin && !userOrErr.tenantId) {
+      return NextResponse.json({ error: 'No tenant associated with this user' }, { status: 400 });
+    }
+
+    // Super admins see all churches; everyone else is scoped to their own tenant
+    const ref = adminDb.collection('churches');
+    const query = userOrErr.isSuperAdmin
+      ? ref
+      : ref.where('tenantId', '==', userOrErr.tenantId);
+
+    const snapshot = await query.get();
+    const churches = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
 
     return NextResponse.json({ churches });
   } catch (error) {
@@ -24,19 +31,18 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const userOrErr = await requireAuth(request as any);
+    const userOrErr = await requireAdmin(request as any);
     if (userOrErr instanceof Response) return userOrErr;
 
     const body = await request.json();
-    
-    // Whitelist allowed fields only
+
     const allowedFields: Record<string, unknown> = {
       createdAt: new Date().toISOString(),
       createdBy: userOrErr.uid,
     };
     const safeFields = ['name', 'address', 'lat', 'lng', 'denomination', 'website', 'phone', 'email', 'tenantId'];
     for (const field of safeFields) {
-      if (body[field] !== undefined && typeof body[field] === 'string' || typeof body[field] === 'number') {
+      if (body[field] !== undefined && (typeof body[field] === 'string' || typeof body[field] === 'number')) {
         allowedFields[field] = body[field];
       }
     }

@@ -7,6 +7,8 @@ export const mockGetDoc = vi.fn();
 export const mockUpdate = vi.fn();
 export const mockDelete = vi.fn();
 export const mockRecursiveDelete = vi.fn();
+export const mockAdd = vi.fn().mockResolvedValue({ id: 'new-doc-id' });
+export const mockCollectionGet = vi.fn().mockResolvedValue({ docs: [], empty: true, forEach: vi.fn() });
 
 const mockDocRef = () => ({
   get: mockGetDoc,
@@ -18,7 +20,10 @@ const mockDocRef = () => ({
 const mockCollection = () => ({
   doc: vi.fn(() => mockDocRef()),
   where: vi.fn().mockReturnThis(),
-  get: vi.fn().mockResolvedValue({ docs: [], empty: true }),
+  orderBy: vi.fn().mockReturnThis(),
+  limit: vi.fn().mockReturnThis(),
+  get: mockCollectionGet,
+  add: mockAdd,
 });
 
 vi.mock('@/lib/firebase-admin', () => ({
