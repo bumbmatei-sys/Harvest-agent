@@ -99,10 +99,13 @@ const AppInner: React.FC = () => {
             if (onboardingDone) {
               // Onboarding complete — go to the right dashboard
               // Read plan from user doc first (avoids tenant fetch permission issues)
-              const userPlan = data.plan as TenantPlan | undefined;
-              if (userPlan) {
-                setTenantPlan(userPlan);
-                ctxSetTenantPlan(userPlan);
+              // Only set plan on tenant subdomains — main site users get all features
+              if (isAdminDomain) {
+                const userPlan = data.plan as TenantPlan | undefined;
+                if (userPlan) {
+                  setTenantPlan(userPlan);
+                  ctxSetTenantPlan(userPlan);
+                }
               }
 
               if (currentPageRef.current === 'auth' || currentPageRef.current === 'onboarding' || currentPageRef.current === 'church-onboarding') {
