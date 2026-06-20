@@ -22,7 +22,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --legacy-peer-deps
 
       - name: Run tests
         run: npm test
@@ -31,12 +31,6 @@ jobs:
         run: npm run lint
 
   # Build is intentionally separate and not required to pass yet.
-  # `next build` needs ~25 real env vars (Firebase, Stripe, Composio, etc.)
-  # that we don't want to fake with dummy values, since a fake Stripe key
-  # could mask a real config bug. Vercel already builds on every deploy
-  # with real secrets, so this isn't the safety net for build failures —
-  # `test` above is. Revisit this job once secrets are wired into
-  # GitHub Actions via repo secrets, if build-time regressions become a problem.
   build-check:
     name: Build (informational only)
     runs-on: ubuntu-latest
@@ -52,7 +46,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --legacy-peer-deps
 
       - name: Build
         run: npm run build
