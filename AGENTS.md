@@ -67,13 +67,15 @@ src/
 ```
 
 ## Pricing Tiers (TenantPlan)
-| Plan | Display Name | Price | Blog | AI | Map | Churches | Courses | Admins | Custom Domain | AI Assistant |
-|------|-------------|-------|------|-----|-----|----------|---------|--------|---------------|-------------|
-| plus | Individual | $49/mo | ✅ | ❌ | ❌ | 1 | 5 | 2 | ❌ | ❌ |
-| pro | Community | $99/mo | ✅ | ✅ | ❌ | 1 | ∞ | 5 | ❌ | ❌ |
-| max | Church | $199/mo | ✅ | ✅ | ❌ | 1 | ∞ | ∞ | ✅ | ❌ |
-| ultra | Ministry | $349/mo | ✅ | ✅ | ❌ | 1 | ∞ | ∞ | ✅ | ✅ |
-| enterprise | Enterprise | custom | ✅ | ✅ | ✅ | ∞ | ∞ | ∞ | ✅ | ✅ |
+| Plan | Display Name | Price | Blog | AI | Map | Church Directory | Churches | Courses | Admins | Custom Domain | AI Assistant |
+|------|-------------|-------|------|-----|-----|-----------------|----------|---------|--------|---------------|-------------|
+| plus | Individual | $49/mo | ✅ | ❌ | ✅ (own) | ❌ | 1 | 5 | 2 | ❌ | ❌ |
+| pro | Community | $99/mo | ✅ | ✅ | ✅ (own) | ❌ | 1 | ∞ | 5 | ❌ | ❌ |
+| max | Church | $199/mo | ✅ | ✅ | ✅ (own) | ❌ | 1 | ∞ | ∞ | ✅ | ❌ |
+| ultra | Ministry | $349/mo | ✅ | ✅ | ✅ (own) | ❌ | 1 | ∞ | ∞ | ✅ | ✅ |
+| enterprise | Enterprise | custom | ✅ | ✅ | ✅ | ✅ (global discovery) | ∞ | ∞ | ∞ | ✅ | ✅ |
+
+Map note: All plans show their own church location(s) on the map. The global multi-church discovery directory (browsing all tenants' churches) is Enterprise-only (`churchDirectory` feature flag).
 
 ## Revenue Sharing (Stripe Connect)
 - Individual (plus): 85% to church

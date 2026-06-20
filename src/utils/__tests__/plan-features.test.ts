@@ -70,11 +70,19 @@ describe('hasFeature', () => {
     expect(hasFeature('plus', 'maxCourses')).toBe(true);
   });
 
-  it('map is only on enterprise', () => {
-    expect(hasFeature('plus', 'map')).toBe(false);
-    expect(hasFeature('pro', 'map')).toBe(false);
-    expect(hasFeature('max', 'map')).toBe(false);
-    expect(hasFeature('ultra', 'map')).toBe(false);
+  it('map (own location) is available on all plans', () => {
+    expect(hasFeature('plus', 'map')).toBe(true);
+    expect(hasFeature('pro', 'map')).toBe(true);
+    expect(hasFeature('max', 'map')).toBe(true);
+    expect(hasFeature('ultra', 'map')).toBe(true);
     expect(hasFeature('enterprise', 'map')).toBe(true);
+  });
+
+  it('churchDirectory (global discovery) is enterprise-only', () => {
+    expect(hasFeature('plus', 'churchDirectory')).toBe(false);
+    expect(hasFeature('pro', 'churchDirectory')).toBe(false);
+    expect(hasFeature('max', 'churchDirectory')).toBe(false);
+    expect(hasFeature('ultra', 'churchDirectory')).toBe(false);
+    expect(hasFeature('enterprise', 'churchDirectory')).toBe(true);
   });
 });
