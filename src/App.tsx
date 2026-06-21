@@ -11,15 +11,15 @@ import ChurchOnboarding from './components/ChurchOnboarding';
 import ErrorBoundary from './components/ErrorBoundary';
 import AdminDashboard from './components/AdminDashboard';
 import PWAInstallManager from './components/PWAInstallManager';
+import PostPurchaseWizard from './components/PostPurchaseWizard';
 import { OperationType, handleFirestoreError } from './utils/firestore-errors';
 import { TenantPlan } from './types/tenant.types';
 import { TenantProvider, useTenant } from './contexts/TenantContext';
 import { useClaimsFreshness } from './hooks/useClaimsFreshness';
 import { useCapacitorPush } from './hooks/useCapacitorPush';
 
-type Page = 'auth' | 'onboarding' | 'church-onboarding' | 'home' | 'admin';
+type Page = 'auth' | 'onboarding' | 'church-onboarding' | 'home' | 'admin' | 'post-purchase';
 
-/** Error page shown when a tenant subdomain doesn't resolve to a valid tenant */
 const TenantNotFound: React.FC<{ tenantId: string; message: string }> = ({ tenantId, message }) => (
   <div className="min-h-screen flex items-center justify-center bg-background-dark">
     <div className="max-w-md mx-auto text-center p-8">
@@ -43,28 +43,25 @@ const TenantNotFound: React.FC<{ tenantId: string; message: string }> = ({ tenan
   </div>
 );
 
-/** Inner App component that uses the TenantContext */
 const AppInner: React.FC = () => {
-  useClaimsFreshness(); // Force-refresh token when claims change
-  useCapacitorPush();   // Register native FCM token when running in Capacitor
+  useClaimsFreshness();
+  useCapacitorPush();
   const [currentPage, setCurrentPage] = useState<Page>('auth');
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [tenantPlan, setTenantPlan] = useState<TenantPlan | undefined>(undefined);
+  const [isUpgrade, setIsUpgrade] = useState(false);
+  const [wizardTenantId, setWizardTenantId] = useState<string | null>(null);
   const currentPageRef = useRef(currentPage);
   const { tenantId, isAdminDomain, error: tenantError, isLoading: tenantLoading, setTenantPlan: ctxSetTenantPlan } = useTenant();
 
-  // Auto-refresh Firebase token when custom claims change (fixes stale claims)
   useClaimsFreshness();
 
-  // Check if user arrived from presentation site "Start Ministry" button
   const signupParam = typeof window !== 'undefined'
     ? new URLSearchParams(window.location.search).get('signup') : null;
   const isChurchSignup = signupParam === 'church';
   const signupPlan = signupParam && ['plus', 'pro', 'max', 'ultra'].includes(signupParam)
     ? signupParam as TenantPlan : undefined;
 
-  // ARCHITECTURE: Main site (theharvest.app) is free — no plan subscriptions.
-  // Redirect ?signup= flows to nations.theharvest.app (tenant admin).
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const hostname = window.location.hostname;
@@ -79,7 +76,6 @@ const AppInner: React.FC = () => {
     currentPageRef.current = currentPage;
   }, [currentPage]);
 
-  // If on admin subdomain, go straight to admin (still needs auth)
   useEffect(() => {
     if (isAdminDomain && isAuthReady) {
       setCurrentPage('admin');
@@ -99,9 +95,6 @@ const AppInner: React.FC = () => {
             const userTenantId = data.tenantId || tenantId;
 
             if (onboardingDone) {
-              // Onboarding complete — go to the right dashboard
-              // Read plan from user doc first (avoids tenant fetch permission issues)
-              // Only set plan on tenant subdomains — main site users get all features
               if (isAdminDomain) {
                 const userPlan = data.plan as TenantPlan | undefined;
                 if (userPlan) {
@@ -111,25 +104,49 @@ const AppInner: React.FC = () => {
               }
 
               if (currentPageRef.current === 'auth' || currentPageRef.current === 'onboarding' || currentPageRef.current === 'church-onboarding') {
-                // Admin subdomain → always admin dashboard
                 if (isAdminDomain) {
-                  setCurrentPage('admin');
+                  // Check for post-purchase redirect from Stripe
+                  const stripeParam = typeof window !== 'undefined'
+                    ? new URLSearchParams(window.location.search).get('stripe') : null;
+
+                  if (stripeParam === 'success' && userTenantId) {
+                    // Clean URL params
+                    if (typeof window !== 'undefined') {
+                      const url = new URL(window.location.href);
+                      url.searchParams.delete('stripe');
+                      url.searchParams.delete('session_id');
+                      url.searchParams.delete('addon');
+                      window.history.replaceState({}, '', url.toString());
+                    }
+                    try {
+                      const tenantDoc = await getDoc(doc(db, 'tenants', userTenantId));
+                      const wizardCompleted = tenantDoc.data()?.setupWizardCompleted;
+                      setIsUpgrade(!!wizardCompleted);
+                      setWizardTenantId(userTenantId);
+                      setCurrentPage('post-purchase');
+                    } catch {
+                      setCurrentPage('admin');
+                    }
+                  } else if (stripeParam === 'cancel') {
+                    if (typeof window !== 'undefined') {
+                      const url = new URL(window.location.href);
+                      url.searchParams.delete('stripe');
+                      window.history.replaceState({}, '', url.toString());
+                    }
+                    setCurrentPage('admin');
+                  } else {
+                    setCurrentPage('admin');
+                  }
                 } else {
-                  // ARCHITECTURE: Main site (theharvest.app) = free platform for end users.
-                  // Everyone on the main site goes to MainApp (Home, Bible, Chat, Map, Profile).
-                  // Admin dashboard only lives on tenant subdomains (e.g. nations.theharvest.app).
                   setCurrentPage('home');
                 }
               }
             } else if (isChurchSignup || signupPlan || role === 'church_admin') {
-              // Church admin path: needs church onboarding
               setCurrentPage('church-onboarding');
             } else {
-              // Regular user: needs standard onboarding
               setCurrentPage('onboarding');
             }
           } else {
-            // No user doc yet
             if (isChurchSignup || signupPlan) {
               setCurrentPage('church-onboarding');
             } else {
@@ -164,13 +181,10 @@ const AppInner: React.FC = () => {
     </div>
   );
 
-  // Show loading while tenant validation is in progress
   if (!isAuthReady || (tenantLoading && tenantId)) {
     return renderLoading();
   }
 
-  // Show tenant-not-found error if tenant validation failed
-  // Skip this error when user is arriving via ?signup param (no tenant exists yet)
   if (tenantError && tenantId && !signupParam) {
     return <TenantNotFound tenantId={tenantId} message={tenantError} />;
   }
@@ -188,6 +202,19 @@ const AppInner: React.FC = () => {
     return (
       <>
         <Onboarding onComplete={() => navigateTo('home')} signupPlan={signupPlan} />
+        <PWAInstallManager />
+      </>
+    );
+  }
+
+  if (currentPage === 'post-purchase' && wizardTenantId) {
+    return (
+      <>
+        <PostPurchaseWizard
+          tenantId={wizardTenantId}
+          isUpgrade={isUpgrade}
+          onComplete={() => navigateTo('admin')}
+        />
         <PWAInstallManager />
       </>
     );
@@ -218,7 +245,6 @@ const AppInner: React.FC = () => {
   return <AuthPage onNavigate={navigateTo} />;
 };
 
-/** Outer App: wraps everything in TenantProvider */
 const App: React.FC = () => {
   return (
     <TenantProvider>
