@@ -31,8 +31,6 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ onComplete, signupP
   const hasBranding = selectedPlan === 'max' || selectedPlan === 'ultra' || selectedPlan === 'enterprise';
   const hasCustomDomain = selectedPlan === 'max' || selectedPlan === 'ultra' || selectedPlan === 'enterprise';
 
-  // Steps: 0 = Ministry Info, 1 = Branding (Ultra/Enterprise only), 2 = Done
-  // For Plus/Pro: 0 = Ministry Info, 1 = Done (skip branding)
   const [step, setStep] = useState(0);
   const [ministryName, setMinistryName] = useState('');
   const [subdomain, setSubdomain] = useState('');
@@ -48,7 +46,6 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ onComplete, signupP
 
   const progressSteps = hasBranding ? ['Ministry', 'Branding', 'Done'] : ['Ministry', 'Done'];
 
-  // Auto-generate subdomain from ministry name
   useEffect(() => {
     if (ministryName && step === 0) {
       const generated = ministryName
@@ -62,7 +59,6 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ onComplete, signupP
     }
   }, [ministryName, step]);
 
-  // Check subdomain availability with debounce
   useEffect(() => {
     if (!subdomain || subdomain.length < 3) {
       setSubdomainStatus('idle');
@@ -74,8 +70,6 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ onComplete, signupP
         const available = await isSubdomainAvailable(subdomain);
         setSubdomainStatus(available ? 'available' : 'taken');
       } catch {
-        // Firestore permission denied or network error — assume available
-        // Tenant creation will handle actual conflicts
         setSubdomainStatus('available');
       }
     }, 500);
@@ -152,7 +146,6 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ onComplete, signupP
         });
       }
 
-      // Set custom claims on server, then force-refresh token so rules work
       try {
         const token = await user.getIdToken();
         await fetch('/api/auth/set-claims', {
@@ -165,7 +158,6 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ onComplete, signupP
         console.error('Failed to set custom claims after tenant assignment:', claimsErr);
       }
 
-      // Fire-and-forget welcome email
       if (auth.currentUser?.email) {
         const emailData = welcomeEmail(auth.currentUser.displayName || 'Friend', ministryName.trim());
         emailData.to = auth.currentUser.email;
@@ -315,7 +307,6 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ onComplete, signupP
                     </div>
                   </div>
 
-                  {/* Custom domain — Ultra/Enterprise only */}
                   {hasCustomDomain && (
                     <div>
                       <label style={s.label}>
@@ -348,7 +339,7 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ onComplete, signupP
               </div>
             )}
 
-            {/* Step 1: Branding (Ultra/Enterprise only) */}
+            {/* Step 1: Branding (Max/Ultra/Enterprise only) */}
             {isBrandingStep && (
               <div className="animate-fade-in-up">
                 <div style={{ textAlign: 'center', marginBottom: '32px' }}>
@@ -422,6 +413,14 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ onComplete, signupP
                           return;
                         }
                         const token = await user.getIdToken();
+                        let referrerId: string | undefined;
+                        try {
+                          const stored = localStorage.getItem('affiliateReferrerId');
+                          if (stored) {
+                            const parsed = JSON.parse(stored);
+                            referrerId = parsed.id || undefined;
+                          }
+                        } catch {}
                         const resp = await fetch('/api/stripe/checkout', {
                           method: 'POST',
                           headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -431,6 +430,7 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ onComplete, signupP
                             tenantId: createdTenantId,
                             tenantName: subdomain,
                             email: user.email || undefined,
+                            ...(referrerId ? { referrerId } : {}),
                           }),
                         });
                         const data = await resp.json();
@@ -487,11 +487,11 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ onComplete, signupP
                 </button>
               ) : <div />}
 
-              {isBrandingStep ? (
+              {(isBrandingStep || (isInfoStep && !hasBranding)) ? (
                 <button
                   onClick={handleFinish}
-                  disabled={saving}
-                  style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#D4AF37', color: '#ffffff', fontWeight: 700, padding: '12px 24px', borderRadius: '12px', border: 'none', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.5 : 1, boxShadow: '0 4px 12px rgba(212,175,55,0.3)' }}
+                  disabled={saving || (isInfoStep && !canProceedInfo && subdomainStatus !== 'checking')}
+                  style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#D4AF37', color: '#ffffff', fontWeight: 700, padding: '12px 24px', borderRadius: '12px', border: 'none', cursor: (saving || (isInfoStep && !canProceedInfo && subdomainStatus !== 'checking')) ? 'not-allowed' : 'pointer', opacity: (saving || (isInfoStep && !canProceedInfo && subdomainStatus !== 'checking')) ? 0.5 : 1, boxShadow: '0 4px 12px rgba(212,175,55,0.3)' }}
                 >
                   {saving ? (
                     <><Loader2 size={16} className="animate-spin" /> Setting up...</>
