@@ -26,7 +26,6 @@ export async function POST(request: NextRequest) {
       const userId = userOrErr.uid;
       const userEmail = email || userOrErr.email;
 
-      // Get or create Stripe customer for this user
       const userDoc = await adminDb.collection('users').doc(userId).get();
       const userData = userDoc.data();
       let customerId = userData?.aiChatStripeCustomerId;
@@ -60,7 +59,6 @@ export async function POST(request: NextRequest) {
     }
 
     // All remaining routes require tenantId
-    // Verify tenant membership
     if (!userOrErr.isSuperAdmin && userOrErr.tenantId !== tenantId) {
       return NextResponse.json({ error: 'Access denied to this tenant' }, { status: 403 });
     }
@@ -112,16 +110,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields: plan, billing' }, { status: 400 });
     }
 
-    if (!tenantId) {
-      return NextResponse.json({ error: 'Plan subscriptions require a tenant. Sign up at nations.theharvest.app first.' }, { status: 400 });
-    }
-
     const priceId = PLAN_PRICES[plan]?.[billing];
     if (!priceId) {
       return NextResponse.json({ error: `Invalid plan/billing: ${plan}/${billing}` }, { status: 400 });
     }
 
-    // Get or create Stripe customer
     const tenantDoc = await adminDb.collection('tenants').doc(tenantId).get();
     const tenantData = tenantDoc.data();
     let customerId = tenantData?.stripeCustomerId;
@@ -133,11 +126,27 @@ export async function POST(request: NextRequest) {
         metadata: { tenantId, app: 'harvest' },
       });
       customerId = customer.id;
-      // Save customer ID to tenant
       await adminDb.collection('tenants').doc(tenantId).update({
         stripeCustomerId: customerId,
         updatedAt: new Date().toISOString(),
       });
+    }
+
+    // Resolve short affiliate code (<=16 chars) to userId for webhook processing
+    let resolvedReferrerId = referrerId;
+    if (referrerId && referrerId.length <= 16) {
+      try {
+        const affiliateSnap = await adminDb
+          .collection('users')
+          .where('affiliateCode', '==', referrerId)
+          .limit(1)
+          .get();
+        if (!affiliateSnap.empty) {
+          resolvedReferrerId = affiliateSnap.docs[0].id;
+        }
+      } catch (resolveErr) {
+        console.warn('Failed to resolve affiliate code, using as-is:', resolveErr);
+      }
     }
 
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://theharvest.app';
@@ -149,7 +158,7 @@ export async function POST(request: NextRequest) {
       success_url: `${baseUrl}/?stripe=success&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${baseUrl}/?stripe=cancel`,
       subscription_data: {
-        metadata: { tenantId, plan, billing, ...(referrerId ? { referrerId } : {}) },
+        metadata: { tenantId, plan, billing, ...(resolvedReferrerId ? { referrerId: resolvedReferrerId } : {}) },
       },
     });
 
