@@ -15,10 +15,10 @@ interface PlanUpgradeSectionProps {
 
 const PLANS: { id: TenantPlan; name: string; monthlyPrice: string; yearlyPrice: string; yearlyPromo: string; yearlyOriginal: string; icon: any; color: string; popular?: boolean; comingSoon: string[] }[] = [
   { id: 'plus', name: 'Individual', monthlyPrice: '$59/mo', yearlyPrice: '$590/yr', yearlyPromo: '$590', yearlyOriginal: '$708', icon: Zap, color: '#6366f1', comingSoon: [] },
-  { id: 'pro', name: 'Small Team', monthlyPrice: '$99/mo', yearlyPrice: '$990/yr', yearlyPromo: '$990', yearlyOriginal: '$1,188', icon: Crown, color: '#d4a017', comingSoon: ['Fundraising'] },
-  { id: 'max', name: 'Community', monthlyPrice: '$199/mo', yearlyPrice: '$1,990/yr', yearlyPromo: '$1,990', yearlyOriginal: '$2,388', icon: Star, color: '#8b5cf6', popular: true, comingSoon: ['Automated Devotional', 'Event Registration', 'Docs'] },
-  { id: 'ultra', name: 'Ministry', monthlyPrice: '$399/mo', yearlyPrice: '$3,990/yr', yearlyPromo: '$3,990', yearlyOriginal: '$4,788', icon: Building2, color: '#b45309', comingSoon: ['Automated Blog Articles', 'CRM for Donors & Members', 'Accounting Tools', 'Community Groups'] },
-  { id: 'enterprise', name: 'Organization', monthlyPrice: 'Custom', yearlyPrice: 'Custom', yearlyPromo: 'Custom', yearlyOriginal: '', icon: Building2, color: '#0b1121', comingSoon: ['Tax Receipt Generation'] },
+  { id: 'pro', name: 'Small Team', monthlyPrice: '$119/mo', yearlyPrice: '$1,190/yr', yearlyPromo: '$1,190', yearlyOriginal: '$1,428', icon: Crown, color: '#d4a017', comingSoon: [] },
+  { id: 'max', name: 'Community', monthlyPrice: '$239/mo', yearlyPrice: '$2,390/yr', yearlyPromo: '$2,390', yearlyOriginal: '$2,868', icon: Star, color: '#8b5cf6', popular: true, comingSoon: ['Automated Devotional'] },
+  { id: 'ultra', name: 'Ministry', monthlyPrice: '$479/mo', yearlyPrice: '$4,790/yr', yearlyPromo: '$4,790', yearlyOriginal: '$5,748', icon: Building2, color: '#b45309', comingSoon: ['Automated Blog Articles'] },
+  { id: 'enterprise', name: 'Organization', monthlyPrice: 'Custom', yearlyPrice: 'Custom', yearlyPromo: 'Custom', yearlyOriginal: '', icon: Building2, color: '#0b1121', comingSoon: [] },
 ];
 
 const FEATURE_COMPARISON: { key: keyof PlanFeatures; label: string; format?: (v: any) => string }[] = [
@@ -32,18 +32,18 @@ const FEATURE_COMPARISON: { key: keyof PlanFeatures; label: string; format?: (v:
   { key: 'customDomain', label: 'Custom Branding' },
   { key: 'aiAssistant', label: 'AI Assistant', format: (v) => v === -1 ? 'Unlimited' : v === 0 ? '—' : `${v}` },
   { key: 'maxChurches', label: 'Churches', format: (v) => v === -1 ? 'Unlimited' : `${v}` },
+  { key: 'fundraising', label: 'Fundraising' },
+  { key: 'eventRegistration', label: 'Event Registration' },
+  { key: 'docs', label: 'Docs' },
+  { key: 'crm', label: 'CRM (Donors & Members)' },
+  { key: 'accountingTools', label: 'Accounting Tools' },
+  { key: 'communityGroups', label: 'Community Groups' },
+  { key: 'taxReceipt', label: 'Tax Receipts' },
 ];
 
 const SOON_FEATURES: { label: string; plans: TenantPlan[] }[] = [
-  { label: 'Fundraising', plans: ['pro', 'max', 'ultra', 'enterprise'] },
   { label: 'Automated Devotional', plans: ['max', 'ultra', 'enterprise'] },
-  { label: 'Event Registration', plans: ['max', 'ultra', 'enterprise'] },
-  { label: 'Docs', plans: ['max', 'ultra', 'enterprise'] },
   { label: 'Automated Blog Articles', plans: ['ultra', 'enterprise'] },
-  { label: 'CRM (Donors & Members)', plans: ['ultra', 'enterprise'] },
-  { label: 'Accounting Tools', plans: ['ultra', 'enterprise'] },
-  { label: 'Community Groups', plans: ['ultra', 'enterprise'] },
-  { label: 'Tax Receipt Generation', plans: ['enterprise'] },
 ];
 
 const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, tenantId, email }) => {

@@ -94,7 +94,7 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     map: true,
     maxChurches: 1,
     maxCourses: -1,
-    maxAdmins: -1,
+    maxAdmins: 10,
     customDomain: true,
     customBackground: true,
     newsletterAutomation: true,
