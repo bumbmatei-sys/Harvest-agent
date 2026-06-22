@@ -14,26 +14,24 @@ interface PlanUpgradeSectionProps {
 }
 
 const PLANS: { id: TenantPlan; name: string; monthlyPrice: string; yearlyPrice: string; yearlyPromo: string; yearlyOriginal: string; icon: any; color: string; popular?: boolean }[] = [
-  { id: 'plus', name: 'Individual', monthlyPrice: '$49/mo', yearlyPrice: '$490/yr', yearlyPromo: '$490', yearlyOriginal: '$588', icon: Zap, color: '#6366f1' },
-  { id: 'pro', name: 'Community', monthlyPrice: '$99/mo', yearlyPrice: '$990/yr', yearlyPromo: '$990', yearlyOriginal: '$1,188', icon: Crown, color: '#d4a017' },
-  { id: 'max', name: 'Church', monthlyPrice: '$199/mo', yearlyPrice: '$1,990/yr', yearlyPromo: '$1,990', yearlyOriginal: '$2,388', icon: Star, color: '#8b5cf6', popular: true },
-  { id: 'ultra', name: 'Ministry', monthlyPrice: '$349/mo', yearlyPrice: '$3,490/yr', yearlyPromo: '$3,490', yearlyOriginal: '$4,188', icon: Building2, color: '#b45309' },
-  { id: 'enterprise', name: 'Enterprise', monthlyPrice: 'Custom', yearlyPrice: 'Custom', yearlyPromo: 'Custom', yearlyOriginal: '', icon: Building2, color: '#0b1121' },
+  { id: 'plus', name: 'Individual', monthlyPrice: '$59/mo', yearlyPrice: '$590/yr', yearlyPromo: '$590', yearlyOriginal: '$708', icon: Zap, color: '#6366f1' },
+  { id: 'pro', name: 'Small Team', monthlyPrice: '$99/mo', yearlyPrice: '$990/yr', yearlyPromo: '$990', yearlyOriginal: '$1,188', icon: Crown, color: '#d4a017' },
+  { id: 'max', name: 'Community', monthlyPrice: '$199/mo', yearlyPrice: '$1,990/yr', yearlyPromo: '$1,990', yearlyOriginal: '$2,388', icon: Star, color: '#8b5cf6', popular: true },
+  { id: 'ultra', name: 'Ministry', monthlyPrice: '$399/mo', yearlyPrice: '$3,990/yr', yearlyPromo: '$3,990', yearlyOriginal: '$4,788', icon: Building2, color: '#b45309' },
+  { id: 'enterprise', name: 'Organization', monthlyPrice: 'Custom', yearlyPrice: 'Custom', yearlyPromo: 'Custom', yearlyOriginal: '', icon: Building2, color: '#0b1121' },
 ];
 
 const FEATURE_COMPARISON: { key: keyof PlanFeatures; label: string; format?: (v: any) => string }[] = [
   { key: 'blog', label: 'Blog' },
-  { key: 'newsletterAutomation', label: 'Newsletter Automation (Soon)' },
   { key: 'aiChat', label: 'AI Chat' },
   { key: 'aiKnowledge', label: 'AI Knowledge Base' },
+  { key: 'map', label: 'Church Map' },
+  { key: 'newsletterAutomation', label: 'Newsletter' },
   { key: 'maxCourses', label: 'Courses', format: (v) => v === -1 ? 'Unlimited' : `${v}` },
   { key: 'maxAdmins', label: 'Admin Accounts', format: (v) => v === -1 ? 'Unlimited' : `${v}` },
-  { key: 'customDomain', label: 'Custom Domain' },
-  { key: 'customBackground', label: 'Custom Background' },
-  { key: 'smsAutomation', label: 'SMS Automation (Soon)' },
-  { key: 'map', label: 'Church Map Directory' },
+  { key: 'customDomain', label: 'Custom Branding' },
+  { key: 'aiAssistant', label: 'AI Assistant' },
   { key: 'maxChurches', label: 'Churches', format: (v) => v === -1 ? 'Unlimited' : `${v}` },
-  { key: 'aiAssistant', label: 'AI Assistant Included' },
 ];
 
 const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, tenantId, email }) => {
@@ -48,7 +46,7 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
     const container = planScrollRef.current;
     if (!container) return;
     const scrollLeft = container.scrollLeft;
-    const cardWidth = 300; // approximate card width including gap
+    const cardWidth = 300;
     const index = Math.round(scrollLeft / cardWidth);
     setActivePlanIndex(Math.min(index, PLANS.length - 1));
   }, []);
@@ -63,7 +61,6 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
     if (!tid) { alert('Unable to find your organization. Please try again.'); return; }
     setCheckoutLoading(planId);
     try {
-      // Read referrerId from localStorage (may be JSON or legacy plain string)
       let referrerId: string | undefined;
       try {
         const stored = localStorage.getItem('affiliateReferrerId');
@@ -216,8 +213,8 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
                   );
                 })}
                 <div className="flex items-center justify-between text-sm pt-2 border-t border-gray-100">
-                  <span className="text-gray-900 font-semibold">Partner revenue</span>
-                  <span className="text-green-600 font-bold">{plan.id === 'plus' ? '70%' : plan.id === 'pro' ? '80%' : plan.id === 'max' ? '90%' : '100%'} to you</span>
+                  <span className="text-gray-900 font-semibold">Donation retention</span>
+                  <span className="text-green-600 font-bold">{plan.id === 'plus' ? '90%' : plan.id === 'pro' ? '95%' : '100%'} to you</span>
                 </div>
               </div>
 
@@ -228,7 +225,6 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
                   } else if (!isCurrent && !isDowngrade) {
                     handleStripeCheckout(plan.id);
                   } else if (!isCurrent && isDowngrade) {
-                    // Downgrades go through Stripe portal (handles proration)
                     handleManageSubscription();
                   }
                 }}
@@ -311,7 +307,7 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
         </div>
       </div>
 
-      {/* Billing & Payments — Manage via Stripe portal */}
+      {/* Billing & Payments */}
       <div className="flex flex-col items-center gap-3 pt-2">
         <button
           onClick={handleManageSubscription}

@@ -15,11 +15,11 @@ interface ChurchOnboardingProps {
 }
 
 const PLAN_NAMES: Record<TenantPlan, string> = {
-  plus: 'Plus',
-  pro: 'Pro',
-  max: 'Max',
-  ultra: 'Ultra',
-  enterprise: 'Enterprise',
+  plus: 'Individual',
+  pro: 'Small Team',
+  max: 'Community',
+  ultra: 'Ministry',
+  enterprise: 'Organization',
 };
 
 const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ onComplete, signupPlan }) => {
@@ -31,8 +31,6 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ onComplete, signupP
   const hasBranding = selectedPlan === 'max' || selectedPlan === 'ultra' || selectedPlan === 'enterprise';
   const hasCustomDomain = selectedPlan === 'max' || selectedPlan === 'ultra' || selectedPlan === 'enterprise';
 
-  // Steps: 0 = Ministry Info, 1 = Branding (Ultra/Enterprise only), 2 = Done
-  // For Plus/Pro: 0 = Ministry Info, 1 = Done (skip branding)
   const [step, setStep] = useState(0);
   const [ministryName, setMinistryName] = useState('');
   const [subdomain, setSubdomain] = useState('');
@@ -48,7 +46,6 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ onComplete, signupP
 
   const progressSteps = hasBranding ? ['Ministry', 'Branding', 'Done'] : ['Ministry', 'Done'];
 
-  // Auto-generate subdomain from ministry name
   useEffect(() => {
     if (ministryName && step === 0) {
       const generated = ministryName
@@ -62,7 +59,6 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ onComplete, signupP
     }
   }, [ministryName, step]);
 
-  // Check subdomain availability with debounce
   useEffect(() => {
     if (!subdomain || subdomain.length < 3) {
       setSubdomainStatus('idle');
@@ -74,8 +70,6 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ onComplete, signupP
         const available = await isSubdomainAvailable(subdomain);
         setSubdomainStatus(available ? 'available' : 'taken');
       } catch {
-        // Firestore permission denied or network error — assume available
-        // Tenant creation will handle actual conflicts
         setSubdomainStatus('available');
       }
     }, 500);
@@ -152,7 +146,6 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ onComplete, signupP
         });
       }
 
-      // Set custom claims on server, then force-refresh token so rules work
       try {
         const token = await user.getIdToken();
         await fetch('/api/auth/set-claims', {
@@ -165,7 +158,6 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ onComplete, signupP
         console.error('Failed to set custom claims after tenant assignment:', claimsErr);
       }
 
-      // Fire-and-forget welcome email
       if (auth.currentUser?.email) {
         const emailData = welcomeEmail(auth.currentUser.displayName || 'Friend', ministryName.trim());
         emailData.to = auth.currentUser.email;
@@ -315,7 +307,6 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ onComplete, signupP
                     </div>
                   </div>
 
-                  {/* Custom domain — Ultra/Enterprise only */}
                   {hasCustomDomain && (
                     <div>
                       <label style={s.label}>
@@ -348,7 +339,7 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ onComplete, signupP
               </div>
             )}
 
-            {/* Step 1: Branding (Ultra/Enterprise only) */}
+            {/* Step 1: Branding (Community/Ministry/Organization only) */}
             {isBrandingStep && (
               <div className="animate-fade-in-up">
                 <div style={{ textAlign: 'center', marginBottom: '32px' }}>
