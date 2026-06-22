@@ -15,7 +15,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: npm install
+          cache: npm
+      - run: npm ci
       - run: npm test
       - run: npm run lint
 
@@ -28,7 +29,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: npm install
+          cache: npm
+      - run: npm ci
       - run: npm run build
         env:
           # Build requires env vars — provide minimal stubs so Next.js doesn't
