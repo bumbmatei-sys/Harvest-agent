@@ -19,7 +19,7 @@ export interface PlanFeatures {
   customDomain: boolean;
   /** Allow custom background image on auth page */
   customBackground: boolean;
-  /** Newsletter automation (coming soon) */
+  /** Newsletter automation */
   newsletterAutomation: boolean;
   /** SMS automation (coming soon) */
   smsAutomation: boolean;
@@ -34,8 +34,8 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     aiKnowledge: false,
     map: false,
     maxChurches: 1,
-    maxCourses: 5,
-    maxAdmins: 2,
+    maxCourses: 2,
+    maxAdmins: 1,
     customDomain: false,
     customBackground: false,
     newsletterAutomation: false,
@@ -46,9 +46,9 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     blog: true,
     aiChat: true,
     aiKnowledge: true,
-    map: false,
+    map: true,
     maxChurches: 1,
-    maxCourses: -1,
+    maxCourses: 5,
     maxAdmins: 5,
     customDomain: false,
     customBackground: false,
@@ -60,28 +60,28 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     blog: true,
     aiChat: true,
     aiKnowledge: true,
-    map: false,
+    map: true,
     maxChurches: 1,
     maxCourses: -1,
     maxAdmins: -1,
     customDomain: true,
     customBackground: true,
     newsletterAutomation: true,
-    smsAutomation: true,
+    smsAutomation: false,
     aiAssistant: false,
   },
   ultra: {
     blog: true,
     aiChat: true,
     aiKnowledge: true,
-    map: false,
+    map: true,
     maxChurches: 1,
     maxCourses: -1,
     maxAdmins: -1,
     customDomain: true,
     customBackground: true,
     newsletterAutomation: true,
-    smsAutomation: true,
+    smsAutomation: false,
     aiAssistant: true,
   },
   enterprise: {
@@ -95,7 +95,7 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     customDomain: true,
     customBackground: true,
     newsletterAutomation: true,
-    smsAutomation: true,
+    smsAutomation: false,
     aiAssistant: true,
   },
 };
@@ -114,10 +114,10 @@ export function getPlanFeatures(plan: TenantPlan): PlanFeatures {
  */
 export const PLAN_DISPLAY_NAMES: Record<TenantPlan, string> = {
   plus: 'Individual',
-  pro: 'Community',
-  max: 'Church',
+  pro: 'Small Team',
+  max: 'Community',
   ultra: 'Ministry',
-  enterprise: 'Enterprise',
+  enterprise: 'Organization',
 };
 
 /**
