@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect } from 'react';
-import { db, auth } from '../firebase';
+import { db, auth, app } from '../firebase';
 import { collection, query, where, onSnapshot, doc, deleteDoc, getDoc, addDoc, updateDoc, orderBy, limit } from 'firebase/firestore';
 import { Church, Search, Filter, Edit2, Trash2, Plus, CheckCircle, Clock, DollarSign, Megaphone, Save, X } from 'lucide-react';
 import ChurchEnrollment from './ChurchEnrollment';
@@ -9,7 +9,9 @@ import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { getTenantScope } from '../utils/tenant-scope';
 import { sendPushNotification } from '../utils/send-notification';
 import { useTenant } from '@/contexts/TenantContext';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 
+const functions = getFunctions(app, 'us-central1');
 
 
 const AdminChurches: React.FC = () => {
@@ -26,6 +28,8 @@ const AdminChurches: React.FC = () => {
   const [activeFilterPopup, setActiveFilterPopup] = useState<'city' | 'pastor' | 'country' | null>(null);
   const [tempFilterValue, setTempFilterValue] = useState('');
   const [billingNotice, setBillingNotice] = useState<string | null>(null);
+  const [showBillingConfirm, setShowBillingConfirm] = useState(false);
+  const [billingLoading, setBillingLoading] = useState(false);
 
   const isEnterprise = tenantPlan === 'enterprise';
   const ENTERPRISE_PRICE_PER_CHURCH = 15; // $15/church/mo
@@ -44,15 +48,16 @@ const AdminChurches: React.FC = () => {
     setActiveFilterPopup(null);
   };
 
-  const updateSubscriptionQuantity = async () => {
+  const addChurchBilling = async (churchId: string, churchName: string) => {
     if (!tenantId) return;
     try {
-      await authFetch('/api/stripe/update-quantity', {
-        method: 'POST',
-        body: JSON.stringify({ tenantId }),
-      });
+      const callAddChurchBilling = httpsCallable(functions, 'addChurchBilling');
+      const result = await callAddChurchBilling({ tenantId, churchId, churchName });
+      return result.data as { success: boolean; subscriptionItemId: string };
     } catch (err) {
-      console.error('Failed to update subscription quantity:', err);
+      console.error('Failed to add church billing:', err);
+      setBillingNotice('Warning: Church created but billing setup failed. Contact support.');
+      setTimeout(() => setBillingNotice(null), 7000);
     }
   };
 
@@ -91,29 +96,40 @@ const AdminChurches: React.FC = () => {
           return;
         }
       }
+      // Delete the church doc — the removeChurchBilling Cloud Function will
+      // fire automatically on the onDelete trigger to remove the Stripe subscription item
       await deleteDoc(doc(db, 'churches', id));
       setDeleteConfirmId(null);
-
-      // Update subscription quantity after deletion
-      if (isEnterprise) {
-        await updateSubscriptionQuantity();
-      }
     } catch (error) {
       try { handleFirestoreError(error, OperationType.DELETE, `churches/${id}`); } catch (e) { console.error(e); }
     }
   };
 
-  const handleChurchSaved = async () => {
+  const handleChurchSaved = async (churchData?: any) => {
     const wasAdding = isAdding;
     setIsAdding(false);
     setEditingChurch(null);
 
-    // Update subscription quantity only when adding (not editing)
-    if (isEnterprise && wasAdding) {
-      setBillingNotice('This adds $15/mo to your bill');
-      await updateSubscriptionQuantity();
+    // Call addChurchBilling Cloud Function when a new church is created
+    if (isEnterprise && wasAdding && churchData?.id) {
+      setBillingNotice('Adding $15/mo to your subscription...');
+      await addChurchBilling(churchData.id, churchData.name || '');
+      setBillingNotice(`$15/mo added to your bill for "${churchData.name || 'New Church'}"`);
       setTimeout(() => setBillingNotice(null), 5000);
     }
+  };
+
+  const handleAddChurchClick = () => {
+    if (isEnterprise) {
+      setShowBillingConfirm(true);
+    } else {
+      setIsAdding(true);
+    }
+  };
+
+  const confirmBillingAndAdd = () => {
+    setShowBillingConfirm(false);
+    setIsAdding(true);
   };
 
   const filteredChurches = churches.filter(church => {
@@ -169,7 +185,7 @@ const AdminChurches: React.FC = () => {
           )}
         </div>
         <button
-          onClick={() => setIsAdding(true)}
+          onClick={handleAddChurchClick}
           className="flex items-center gap-1.5 bg-[#d4a017] text-white px-4 py-2 text-sm rounded-lg font-medium hover:bg-[#b58812] transition-colors shadow-md shadow-[#d4a017]/20"
         >
           <Plus size={16} strokeWidth={2.5} />
@@ -182,6 +198,40 @@ const AdminChurches: React.FC = () => {
         <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-3 flex items-center gap-2">
           <DollarSign size={16} className="text-yellow-600" />
           <p className="text-sm text-yellow-800 font-medium">{billingNotice}</p>
+        </div>
+      )}
+
+      {/* Add Church Billing Confirmation Modal */}
+      {showBillingConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-xl">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center">
+                <DollarSign size={20} className="text-yellow-600" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900">Adding a New Church</h3>
+            </div>
+            <p className="text-gray-600 mb-6">
+              Each additional church added to your organization will increase your monthly plan by{' '}
+              <span className="font-semibold text-gray-900">$15/mo</span>. This will be charged
+              automatically to your payment method on file.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowBillingConfirm(false)}
+                className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-xl transition-colors font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmBillingAndAdd}
+                className="flex items-center gap-1.5 px-4 py-2 bg-[#d4a017] text-white rounded-xl hover:bg-[#b58812] transition-colors font-medium"
+              >
+                <DollarSign size={16} />
+                Confirm & Add Church ($15/mo)
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -293,8 +343,8 @@ const AdminChurches: React.FC = () => {
             <p className="text-gray-600 mb-6">
               Are you sure you want to delete this church? This action cannot be undone.
               {isEnterprise && (
-                <span className="block text-sm text-yellow-700 mt-1">
-                  This will reduce your monthly bill by $15/mo.
+                <span className="block text-sm text-green-700 mt-1">
+                  This will automatically remove the $15/mo charge from your subscription.
                 </span>
               )}
             </p>
