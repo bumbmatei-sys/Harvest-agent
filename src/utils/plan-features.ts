@@ -25,9 +25,22 @@ export interface PlanFeatures {
   smsAutomation: boolean;
   /** Number of AI assistants (0 = none, 1 = one, -1 = unlimited) */
   aiAssistant: number;
+  /** Fundraising campaigns feature */
+  fundraising: boolean;
+  /** Event registration integration */
+  eventRegistration: boolean;
+  /** Docs / TipTap notes integration */
+  docs: boolean;
+  /** CRM for donors and members */
+  crm: boolean;
+  /** Accounting tools integration */
+  accountingTools: boolean;
+  /** Tax receipt generation */
+  taxReceipt: boolean;
 }
 
 const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
+  // Individual
   plus: {
     blog: true,
     aiChat: false,
@@ -41,7 +54,14 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     newsletterAutomation: false,
     smsAutomation: false,
     aiAssistant: 0,
+    fundraising: true,
+    eventRegistration: false,
+    docs: false,
+    crm: false,
+    accountingTools: false,
+    taxReceipt: false,
   },
+  // Small Team
   pro: {
     blog: true,
     aiChat: true,
@@ -55,7 +75,14 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     newsletterAutomation: true,
     smsAutomation: false,
     aiAssistant: 0,
+    fundraising: true,
+    eventRegistration: false,
+    docs: false,
+    crm: false,
+    accountingTools: false,
+    taxReceipt: false,
   },
+  // Community
   max: {
     blog: true,
     aiChat: true,
@@ -69,7 +96,14 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     newsletterAutomation: true,
     smsAutomation: false,
     aiAssistant: 0,
+    fundraising: true,
+    eventRegistration: true,
+    docs: true,
+    crm: false,
+    accountingTools: false,
+    taxReceipt: false,
   },
+  // Ministry
   ultra: {
     blog: true,
     aiChat: true,
@@ -83,7 +117,14 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     newsletterAutomation: true,
     smsAutomation: false,
     aiAssistant: 1,
+    fundraising: true,
+    eventRegistration: true,
+    docs: true,
+    crm: true,
+    accountingTools: true,
+    taxReceipt: false,
   },
+  // Organization
   enterprise: {
     blog: true,
     aiChat: true,
@@ -97,6 +138,12 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     newsletterAutomation: true,
     smsAutomation: false,
     aiAssistant: -1,
+    fundraising: true,
+    eventRegistration: true,
+    docs: true,
+    crm: true,
+    accountingTools: true,
+    taxReceipt: true,
   },
 };
 
