@@ -1,9 +1,9 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { collection, query, orderBy, onSnapshot, doc, updateDoc, arrayUnion, arrayRemove, limit, where, getDoc, addDoc, deleteDoc } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, doc, updateDoc, arrayUnion, arrayRemove, limit, where, getDoc, addDoc, deleteDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { db, auth } from '../firebase';
-import { Calendar as CalendarIcon, ThumbsUp, Check, ChevronRight, FileText, Tag, Calendar, MessageSquare, Send, Trash2 } from 'lucide-react';
+import { Calendar as CalendarIcon, ThumbsUp, Check, ChevronRight, FileText, Tag, Calendar, MessageSquare, Send, Trash2, MapPin, Globe } from 'lucide-react';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { getTenantScope } from '../utils/tenant-scope';
 import CampaignWidget from './CampaignWidget';
@@ -64,6 +64,22 @@ interface BlogPost {
   publishedAt?: string;
 }
 
+interface AdminEvent {
+  id: string;
+  title: string;
+  description: string;
+  coverImage: string | null;
+  location: string;
+  isOnline: boolean;
+  onlineLink: string | null;
+  startDate: Timestamp | null;
+  endDate: Timestamp | null;
+  price: number;
+  currency: string;
+  status: string;
+  pinned?: boolean;
+}
+
 interface NewsTabProps {
   onOpenAllNews: () => void;
   onOpenArticle: (post: BlogPost) => void;
@@ -72,14 +88,21 @@ interface NewsTabProps {
 const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle }) => {
   const [allPosts, setAllPosts] = useState<CommunityPost[]>([]);
   const [articles, setArticles] = useState<BlogPost[]>([]);
+  const [adminEvents, setAdminEvents] = useState<AdminEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [userLocation, setUserLocation] = useState<{country?: string, city?: string} | null>(null);
-  
-  // Event attendance modal state
+
+  // Event attendance modal state (legacy community post events)
   const [attendingPostId, setAttendingPostId] = useState<string | null>(null);
   const [attendeeName, setAttendeeName] = useState('');
   const [attendeeEmail, setAttendeeEmail] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // AdminEvents registration modal
+  const [registeringEvent, setRegisteringEvent] = useState<AdminEvent | null>(null);
+  const [regName, setRegName] = useState('');
+  const [regEmail, setRegEmail] = useState('');
+  const [regLoading, setRegLoading] = useState(false);
 
   // Comments state
   const [commentsOpen, setCommentsOpen] = useState<Record<string, boolean>>({});
@@ -127,6 +150,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle }) => {
     let cancelled = false;
     let unsubCommunity: (() => void) | null = null;
     let unsubArticles: (() => void) | null = null;
+    let unsubEvents: (() => void) | null = null;
     (async () => {
       const tenantId = await getTenantScope();
       if (cancelled) return;
@@ -169,12 +193,35 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle }) => {
       }, (error) => {
         console.error('Failed to load articles:', error);
       });
+
+      // Fetch published events from AdminEvents system (tenant-scoped only)
+      if (tenantId) {
+        const eventsQ = query(
+          collection(db, 'tenants', tenantId, 'events'),
+          where('status', '==', 'published'),
+          orderBy('startDate', 'asc'),
+          limit(10)
+        );
+        unsubEvents = onSnapshot(eventsQ, (snap) => {
+          const evs = snap.docs.map(d => ({ id: d.id, ...d.data() })) as AdminEvent[];
+          // Sort: pinned first, then by startDate
+          const sorted = [...evs].sort((a, b) => {
+            if (a.pinned && !b.pinned) return -1;
+            if (!a.pinned && b.pinned) return 1;
+            return 0;
+          });
+          setAdminEvents(sorted);
+        }, (err) => {
+          console.error('Failed to load events:', err);
+        });
+      }
     })();
 
     return () => {
       cancelled = true;
       if (unsubCommunity) unsubCommunity();
       if (unsubArticles) unsubArticles();
+      if (unsubEvents) unsubEvents();
     };
   }, []);
 
@@ -350,6 +397,43 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle }) => {
     setCommentsOpen(prev => ({ ...prev, [postId]: !prev[postId] }));
   };
 
+  const fmtEventDate = (ts: Timestamp | null) => {
+    if (!ts) return '';
+    return ts.toDate().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  };
+
+  const handleRegister = async () => {
+    if (!registeringEvent || !regName.trim() || !regEmail.trim()) return;
+    setRegLoading(true);
+    try {
+      const tenantId = await getTenantScope();
+      if (!tenantId) return;
+      const ticketCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+      await addDoc(collection(db, 'tenants', tenantId, 'registrations'), {
+        eventId: registeringEvent.id,
+        userId: auth.currentUser?.uid || null,
+        name: regName.trim(),
+        email: regEmail.trim(),
+        phone: null,
+        ticketCode,
+        status: 'confirmed',
+        amount: registeringEvent.price || 0,
+        registeredAt: serverTimestamp(),
+      });
+      setRegisteringEvent(null);
+      setRegName('');
+      setRegEmail('');
+      setErrorMessage('Registration confirmed! Ticket code: ' + ticketCode);
+      setTimeout(() => setErrorMessage(null), 5000);
+    } catch (e) {
+      console.error(e);
+      setErrorMessage('Registration failed. Please try again.');
+      setTimeout(() => setErrorMessage(null), 3000);
+    } finally {
+      setRegLoading(false);
+    }
+  };
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return new Intl.DateTimeFormat('en-US', {
@@ -412,6 +496,36 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle }) => {
 
       {/* Fundraising campaign widget — pinned at the top, disappears when no campaign is active */}
       <CampaignWidget />
+
+      {/* Pinned events from AdminEvents system */}
+      {adminEvents.filter(e => e.pinned).map(event => (
+        <div key={event.id} className="bg-white rounded-2xl shadow-sm border border-[#d4a017]/30 overflow-hidden">
+          {event.coverImage && (
+            <div className="relative h-36 bg-gray-100">
+              <Image src={event.coverImage} alt={event.title} fill sizes="(max-width:768px) 100vw, 800px" className="object-cover" referrerPolicy="no-referrer" />
+            </div>
+          )}
+          <div className="p-4">
+            <span className="inline-flex items-center text-[10px] font-bold text-[#d4a017] bg-[#fcefc7] px-2 py-0.5 rounded-full mb-2">Pinned Event</span>
+            <h3 className="font-bold text-gray-900 text-base mb-1">{event.title}</h3>
+            {event.description ? <p className="text-sm text-gray-500 line-clamp-2 mb-3">{event.description}</p> : null}
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 mb-3">
+              {event.startDate && <span className="flex items-center gap-1"><CalendarIcon size={12} />{fmtEventDate(event.startDate)}</span>}
+              {event.isOnline
+                ? <span className="flex items-center gap-1"><Globe size={12} />Online</span>
+                : event.location && <span className="flex items-center gap-1"><MapPin size={12} />{event.location}</span>}
+              <span className="font-medium">{event.price > 0 ? `$${event.price}` : 'Free'}</span>
+            </div>
+            <button
+              onClick={() => setRegisteringEvent(event)}
+              className="w-full py-2 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
+              style={{ backgroundColor: 'var(--brand-color, #e6b325)' }}
+            >
+              Register
+            </button>
+          </div>
+        </div>
+      ))}
 
       <div className="flex items-center justify-between px-1 mb-2">
         <h2 className="text-xl font-bold text-gray-900 ">News & Updates</h2>
@@ -633,6 +747,42 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle }) => {
         ))
       )}
 
+      {/* Upcoming Events (non-pinned) */}
+      {adminEvents.filter(e => !e.pinned).length > 0 && (
+        <div className="mt-4">
+          <h2 className="text-xl font-bold text-gray-900 px-1 mb-3">Upcoming Events</h2>
+          <div className="space-y-3">
+            {adminEvents.filter(e => !e.pinned).map(event => (
+              <div key={event.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                {event.coverImage && (
+                  <div className="relative h-32 bg-gray-100">
+                    <Image src={event.coverImage} alt={event.title} fill sizes="(max-width:768px) 100vw, 800px" className="object-cover" referrerPolicy="no-referrer" />
+                  </div>
+                )}
+                <div className="p-4">
+                  <h3 className="font-bold text-gray-900 text-base mb-1">{event.title}</h3>
+                  {event.description ? <p className="text-sm text-gray-500 line-clamp-2 mb-3">{event.description}</p> : null}
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 mb-3">
+                    {event.startDate && <span className="flex items-center gap-1"><CalendarIcon size={12} />{fmtEventDate(event.startDate)}</span>}
+                    {event.isOnline
+                      ? <span className="flex items-center gap-1"><Globe size={12} />Online</span>
+                      : event.location && <span className="flex items-center gap-1"><MapPin size={12} />{event.location}</span>}
+                    <span className="font-medium">{event.price > 0 ? `$${event.price}` : 'Free'}</span>
+                  </div>
+                  <button
+                    onClick={() => setRegisteringEvent(event)}
+                    className="w-full py-2 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
+                    style={{ backgroundColor: 'var(--brand-color, #e6b325)' }}
+                  >
+                    Register
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Latest Articles Section */}
       {articles.length > 0 && (
         <div className="mt-8">
@@ -695,6 +845,59 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle }) => {
                 </div>
               </article>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* AdminEvents Registration Modal */}
+      {registeringEvent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl">
+            <h3 className="text-xl font-bold text-gray-900 mb-1">Register for Event</h3>
+            <p className="text-sm text-gray-500 mb-4">{registeringEvent.title}</p>
+            <div className="space-y-4 mb-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                <input
+                  type="text"
+                  value={regName}
+                  onChange={e => setRegName(e.target.value)}
+                  className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:ring-2 focus:ring-[#d4a017] outline-none"
+                  placeholder="Your full name"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                <input
+                  type="email"
+                  value={regEmail}
+                  onChange={e => setRegEmail(e.target.value)}
+                  className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:ring-2 focus:ring-[#d4a017] outline-none"
+                  placeholder="your@email.com"
+                />
+              </div>
+              {registeringEvent.price > 0 && (
+                <p className="text-sm text-gray-500 bg-gray-50 rounded-xl p-3">
+                  Ticket price: <strong>${registeringEvent.price}</strong> — payment will be collected at the event.
+                </p>
+              )}
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setRegisteringEvent(null); setRegName(''); setRegEmail(''); }}
+                className="flex-1 px-4 py-2 border border-gray-200 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleRegister}
+                disabled={regLoading || !regName.trim() || !regEmail.trim()}
+                className="flex-1 px-4 py-2 text-white rounded-xl font-medium transition-colors disabled:opacity-50"
+                style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}
+              >
+                {regLoading ? 'Registering…' : 'Confirm'}
+              </button>
+            </div>
           </div>
         </div>
       )}

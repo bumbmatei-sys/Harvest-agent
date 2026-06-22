@@ -23,6 +23,7 @@ import AdminDocs from './AdminDocs';
 import AdminCommunity from './AdminCommunity';
 import AdminAccounting from './AdminAccounting';
 import AdminEvents from './AdminEvents';
+import PlanUpgradeScreen from './PlanUpgradeScreen';
 import { TenantPlan } from '../types/tenant.types';
 import { getPlanFeatures } from '../utils/plan-features';
 import { db, auth } from '../firebase';
@@ -405,17 +406,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, tenantPlan 
               </div>
             ) : null
           ) : activeTab === 'fundraising' ? (
-            <div className="p-4 lg:p-0"><AdminFundraising /></div>
-          ) : activeTab === 'events' ? (
-            <div className="p-4 lg:p-6 h-full flex flex-col"><AdminEvents /></div>
+            (isSuperAdmin || !isTenantAdmin || (features && features.fundraising))
+              ? <div className="p-4 lg:p-0"><AdminFundraising /></div>
+              : <PlanUpgradeScreen featureName="Fundraising" featureKey="fundraising" onBack={() => setActiveTab('dashboard')} onUpgrade={() => setActiveTab('settings')} />
           ) : activeTab === 'docs' ? (
-            <div className="p-4 lg:p-0"><AdminDocs /></div>
-          ) : activeTab === 'crm' ? (
-            <div className="p-4 lg:p-0"><AdminCRM /></div>
-          ) : activeTab === 'accounting' ? (
-            <div className="p-4 lg:p-6 h-full flex flex-col"><AdminAccounting /></div>
-          ) : activeTab === 'community' ? (
-            <div className="p-4 lg:p-6 h-full flex flex-col"><AdminCommunity /></div>
+            (isSuperAdmin || !isTenantAdmin || (features && features.docs))
+              ? <div className="p-4 lg:p-0"><AdminDocs /></div>
+              : <PlanUpgradeScreen featureName="Docs" featureKey="docs" onBack={() => setActiveTab('dashboard')} onUpgrade={() => setActiveTab('settings')} />
+          ) : activeTab === 'events' || activeTab === 'crm' || activeTab === 'accounting' || activeTab === 'community' ? (
+            null // rendered by FocusScreen overlays below
           ) : activeTab === 'tenants' ? (
             <div className="p-4 lg:p-0"><AdminTenants /></div>
           ) : activeTab === 'settings' ? (
@@ -540,6 +539,50 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, tenantPlan 
             canvasName={canvasName}
             onBack={() => { setCanvasId(null); setCanvasName(''); }}
           />
+        </FocusScreen>
+      )}
+
+      {/* Events focus mode */}
+      {activeTab === 'events' && (
+        <FocusScreen onBack={() => setActiveTab('dashboard')}>
+          <div className="h-full overflow-y-auto bg-[#f8f9fa] p-4 lg:p-6 pb-8">
+            {(isSuperAdmin || !isTenantAdmin || (features && features.eventRegistration))
+              ? <AdminEvents />
+              : <PlanUpgradeScreen featureName="Events" featureKey="event_registration" onBack={() => setActiveTab('dashboard')} onUpgrade={() => setActiveTab('settings')} />}
+          </div>
+        </FocusScreen>
+      )}
+
+      {/* CRM focus mode */}
+      {activeTab === 'crm' && (
+        <FocusScreen onBack={() => setActiveTab('dashboard')}>
+          <div className="h-full overflow-y-auto bg-[#f8f9fa] p-4 lg:p-6 pb-8">
+            {(isSuperAdmin || !isTenantAdmin || (features && features.crm))
+              ? <AdminCRM />
+              : <PlanUpgradeScreen featureName="CRM" featureKey="crm" onBack={() => setActiveTab('dashboard')} onUpgrade={() => setActiveTab('settings')} />}
+          </div>
+        </FocusScreen>
+      )}
+
+      {/* Accounting focus mode */}
+      {activeTab === 'accounting' && (
+        <FocusScreen onBack={() => setActiveTab('dashboard')}>
+          <div className="h-full overflow-y-auto bg-[#f8f9fa] p-4 lg:p-6 pb-8">
+            {(isSuperAdmin || !isTenantAdmin || (features && features.accountingTools))
+              ? <AdminAccounting />
+              : <PlanUpgradeScreen featureName="Accounting" featureKey="accounting" onBack={() => setActiveTab('dashboard')} onUpgrade={() => setActiveTab('settings')} />}
+          </div>
+        </FocusScreen>
+      )}
+
+      {/* Community focus mode */}
+      {activeTab === 'community' && (
+        <FocusScreen onBack={() => setActiveTab('dashboard')}>
+          <div className="h-full overflow-y-auto bg-[#f8f9fa] p-4 lg:p-6 pb-8">
+            {(isSuperAdmin || !isTenantAdmin || (features && features.communityGroups))
+              ? <AdminCommunity />
+              : <PlanUpgradeScreen featureName="Community Groups" featureKey="community_chat" onBack={() => setActiveTab('dashboard')} onUpgrade={() => setActiveTab('settings')} />}
+          </div>
         </FocusScreen>
       )}
     </div>

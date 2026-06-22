@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Plus, Edit2, Trash2, CalendarCheck, Users, MapPin, Clock, DollarSign,
-  ArrowLeft, Check, Download, Search, ChevronRight, Globe, X
+  ArrowLeft, Check, Download, Search, ChevronRight, Globe, X, Pin
 } from 'lucide-react';
 import {
   collection, query, where, orderBy, onSnapshot, addDoc, updateDoc, deleteDoc,
@@ -27,6 +27,7 @@ interface Event {
   price: number;
   currency: string;
   status: 'draft' | 'published' | 'cancelled' | 'completed';
+  pinned?: boolean;
   createdAt: Timestamp | null;
   createdBy: string;
   tenantId: string;
@@ -214,6 +215,13 @@ const AdminEvents: React.FC = () => {
     catch (e) { console.error(e); }
     setDeleteId(null);
     if (view === 'detail') setView('list');
+  };
+
+  const togglePin = async (ev: Event) => {
+    if (!tenantId) return;
+    try {
+      await updateDoc(doc(db, 'tenants', tenantId, 'events', ev.id), { pinned: !ev.pinned });
+    } catch (e) { console.error(e); }
   };
 
   const checkIn = async (reg: Registration) => {
@@ -516,6 +524,13 @@ const AdminEvents: React.FC = () => {
                     </div>
                   </div>
                   <div className="flex items-center gap-1 flex-shrink-0">
+                    <button
+                      onClick={e => { e.stopPropagation(); togglePin(ev); }}
+                      className="p-2 rounded-xl hover:bg-yellow-50 transition-colors"
+                      title={ev.pinned ? 'Unpin from feed' : 'Pin to feed'}
+                    >
+                      <Pin size={14} className={ev.pinned ? 'text-yellow-500 fill-yellow-500' : 'text-gray-400'} />
+                    </button>
                     <button onClick={e => { e.stopPropagation(); openEdit(ev); }}
                       className="p-2 rounded-xl hover:bg-gray-100 transition-colors">
                       <Edit2 size={14} className="text-gray-400" />
