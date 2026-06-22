@@ -7,6 +7,8 @@ import { Resend } from 'resend';
 // ─── Init Firebase Admin ───────────────────────────────────────────
 admin.initializeApp();
 const db = admin.firestore();
+const STORAGE_BUCKET = 'harvest-receipts-233a1';
+const getBucket = () => admin.storage().bucket(STORAGE_BUCKET);
 
 const SUPER_ADMIN_EMAILS = ['bumbmatei@proton.me', 'bumbmatei@zohomail.eu'];
 
@@ -361,7 +363,7 @@ export const generateSingleReceipt = functions.firestore
     try {
       const pdfBytes = await generateReceiptPDF(invoiceData);
 
-      const bucket = admin.storage().bucket();
+      const bucket = getBucket();
       const filePath = `tenants/${tenantId}/invoices/${invoiceId}.pdf`;
       const file = bucket.file(filePath);
       await file.save(Buffer.from(pdfBytes), { metadata: { contentType: 'application/pdf' } });
@@ -448,7 +450,7 @@ export const generateAnnualReceipts = functions.https.onCall(async (data, contex
     });
   }
 
-  const bucket = admin.storage().bucket();
+  const bucket = getBucket();
   let sent = 0, generated = 0;
   const failedEmails: string[] = [];
 
