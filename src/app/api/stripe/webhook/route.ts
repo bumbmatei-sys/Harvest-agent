@@ -536,6 +536,74 @@ export async function POST(request: NextRequest) {
         break;
       }
 
+      case 'payment_intent.succeeded': {
+        const pi = event.data.object as Stripe.PaymentIntent;
+        const meta = pi.metadata || {};
+
+        // Only process donations (type=partnership from donate route)
+        if (meta.type === 'partnership' && meta.tenantId) {
+          const donorEmail = pi.receipt_email || '';
+          const amount = pi.amount_received || pi.amount || 0;
+          const tenantId = meta.tenantId;
+
+          if (donorEmail) {
+            console.log(`Partnership donation: $${(amount / 100).toFixed(2)} from ${donorEmail} for tenant ${tenantId}`);
+
+            // Upsert contact in CRM
+            const existingContact = await adminDb.collection('contacts')
+              .where('email', '==', donorEmail)
+              .where('tenantId', '==', tenantId)
+              .limit(1).get();
+
+            let contactId: string;
+            if (!existingContact.empty) {
+              contactId = existingContact.docs[0].id;
+              const contactData = existingContact.docs[0].data();
+              const newType = contactData.type === 'member' ? 'both' : (contactData.type as string);
+              await existingContact.docs[0].ref.update({
+                type: newType,
+                totalDonated: FieldValue.increment(amount),
+                lastDonationAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+              });
+            } else {
+              const ref = await adminDb.collection('contacts').add({
+                firstName: '', lastName: '', email: donorEmail, phone: '',
+                type: 'donor', userId: '', tenantId,
+                totalDonated: amount, lastDonationAt: new Date().toISOString(),
+                memberSince: null, notes: '', tags: [],
+                createdAt: new Date().toISOString(), createdBy: 'system',
+              });
+              contactId = ref.id;
+            }
+
+            // Add contact activity
+            await adminDb.collection('contactActivities').add({
+              contactId, type: 'donation',
+              description: `Partnership donation via Stripe`,
+              amount, createdAt: new Date().toISOString(), createdBy: 'system',
+            });
+
+            // Get tenant + contact name for invoice
+            const tenantDoc = await adminDb.collection('tenants').doc(tenantId).get();
+            const tenantName = tenantDoc.data()?.name || tenantDoc.data()?.displayName || '';
+            const contactDoc = await adminDb.collection('contacts').doc(contactId).get();
+            const cData = contactDoc.data() || {};
+            const recipientName = `${cData.firstName || ''} ${cData.lastName || ''}`.trim() || donorEmail;
+
+            // Create invoice (Cloud Function generateSingleReceipt will auto-generate PDF)
+            const receiptNumber = `R-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+            await adminDb.collection('tenants').doc(tenantId).collection('invoices').add({
+              type: 'donation_receipt', recipientName, recipientEmail: donorEmail,
+              amount, currency: pi.currency || 'usd', description: 'Partnership donation',
+              relatedId: pi.id, receiptNumber, issuedAt: new Date().toISOString(),
+              tenantName, pdfUrl: null, status: 'pending',
+            });
+          }
+        }
+        break;
+      }
+
       default:
         console.log(`Unhandled event type: ${event.type}`);
     }
