@@ -13,12 +13,12 @@ interface PlanUpgradeSectionProps {
   email?: string;
 }
 
-const PLANS: { id: TenantPlan; name: string; monthlyPrice: string; yearlyPrice: string; yearlyPromo: string; yearlyOriginal: string; icon: any; color: string; popular?: boolean }[] = [
-  { id: 'plus', name: 'Individual', monthlyPrice: '$59/mo', yearlyPrice: '$590/yr', yearlyPromo: '$590', yearlyOriginal: '$708', icon: Zap, color: '#6366f1' },
-  { id: 'pro', name: 'Small Team', monthlyPrice: '$99/mo', yearlyPrice: '$990/yr', yearlyPromo: '$990', yearlyOriginal: '$1,188', icon: Crown, color: '#d4a017' },
-  { id: 'max', name: 'Community', monthlyPrice: '$199/mo', yearlyPrice: '$1,990/yr', yearlyPromo: '$1,990', yearlyOriginal: '$2,388', icon: Star, color: '#8b5cf6', popular: true },
-  { id: 'ultra', name: 'Ministry', monthlyPrice: '$399/mo', yearlyPrice: '$3,990/yr', yearlyPromo: '$3,990', yearlyOriginal: '$4,788', icon: Building2, color: '#b45309' },
-  { id: 'enterprise', name: 'Organization', monthlyPrice: 'Custom', yearlyPrice: 'Custom', yearlyPromo: 'Custom', yearlyOriginal: '', icon: Building2, color: '#0b1121' },
+const PLANS: { id: TenantPlan; name: string; monthlyPrice: string; yearlyPrice: string; yearlyPromo: string; yearlyOriginal: string; icon: any; color: string; popular?: boolean; comingSoon: string[] }[] = [
+  { id: 'plus', name: 'Individual', monthlyPrice: '$59/mo', yearlyPrice: '$590/yr', yearlyPromo: '$590', yearlyOriginal: '$708', icon: Zap, color: '#6366f1', comingSoon: [] },
+  { id: 'pro', name: 'Small Team', monthlyPrice: '$99/mo', yearlyPrice: '$990/yr', yearlyPromo: '$990', yearlyOriginal: '$1,188', icon: Crown, color: '#d4a017', comingSoon: ['Fundraising'] },
+  { id: 'max', name: 'Community', monthlyPrice: '$199/mo', yearlyPrice: '$1,990/yr', yearlyPromo: '$1,990', yearlyOriginal: '$2,388', icon: Star, color: '#8b5cf6', popular: true, comingSoon: ['Automated Devotional', 'Event Registration', 'Docs'] },
+  { id: 'ultra', name: 'Ministry', monthlyPrice: '$399/mo', yearlyPrice: '$3,990/yr', yearlyPromo: '$3,990', yearlyOriginal: '$4,788', icon: Building2, color: '#b45309', comingSoon: ['Automated Blog Articles', 'CRM for Donors & Members', 'Accounting Tools', 'Community Groups'] },
+  { id: 'enterprise', name: 'Organization', monthlyPrice: 'Custom', yearlyPrice: 'Custom', yearlyPromo: 'Custom', yearlyOriginal: '', icon: Building2, color: '#0b1121', comingSoon: ['Tax Receipt Generation'] },
 ];
 
 const FEATURE_COMPARISON: { key: keyof PlanFeatures; label: string; format?: (v: any) => string }[] = [
@@ -32,6 +32,18 @@ const FEATURE_COMPARISON: { key: keyof PlanFeatures; label: string; format?: (v:
   { key: 'customDomain', label: 'Custom Branding' },
   { key: 'aiAssistant', label: 'AI Assistant', format: (v) => v === -1 ? 'Unlimited' : v === 0 ? '—' : `${v}` },
   { key: 'maxChurches', label: 'Churches', format: (v) => v === -1 ? 'Unlimited' : `${v}` },
+];
+
+const SOON_FEATURES: { label: string; plans: TenantPlan[] }[] = [
+  { label: 'Fundraising', plans: ['pro', 'max', 'ultra', 'enterprise'] },
+  { label: 'Automated Devotional', plans: ['max', 'ultra', 'enterprise'] },
+  { label: 'Event Registration', plans: ['max', 'ultra', 'enterprise'] },
+  { label: 'Docs', plans: ['max', 'ultra', 'enterprise'] },
+  { label: 'Automated Blog Articles', plans: ['ultra', 'enterprise'] },
+  { label: 'CRM (Donors & Members)', plans: ['ultra', 'enterprise'] },
+  { label: 'Accounting Tools', plans: ['ultra', 'enterprise'] },
+  { label: 'Community Groups', plans: ['ultra', 'enterprise'] },
+  { label: 'Tax Receipt Generation', plans: ['enterprise'] },
 ];
 
 const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, tenantId, email }) => {
@@ -212,6 +224,19 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
                     </div>
                   );
                 })}
+
+                {plan.comingSoon.length > 0 && (
+                  <div className="pt-2 mt-1 border-t border-amber-100">
+                    <p className="text-[10px] font-semibold text-amber-500 uppercase tracking-wider mb-1.5">Coming Soon</p>
+                    {plan.comingSoon.map((item) => (
+                      <div key={item} className="flex items-center justify-between text-sm">
+                        <span className="text-gray-500">{item}</span>
+                        <span className="text-amber-500 text-xs font-semibold">Soon</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
                 <div className="flex items-center justify-between text-sm pt-2 border-t border-gray-100">
                   <span className="text-gray-900 font-semibold">Donation retention</span>
                   <span className="text-green-600 font-bold">{plan.id === 'plus' ? '90%' : plan.id === 'pro' ? '95%' : '100%'} to you</span>
@@ -300,6 +325,22 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
                       </td>
                     );
                   })}
+                </tr>
+              ))}
+              {/* Coming soon section header */}
+              <tr>
+                <td colSpan={6} className="pt-5 pb-2 px-3">
+                  <span className="text-[10px] font-semibold tracking-widest uppercase text-amber-500">Coming Soon</span>
+                </td>
+              </tr>
+              {SOON_FEATURES.map(({ label, plans: planIds }) => (
+                <tr key={label} className="border-b border-gray-50">
+                  <td className="py-3 px-3 text-gray-900 font-medium">{label}</td>
+                  {PLANS.map(p => (
+                    <td key={p.id} className={`py-3 px-3 text-center ${planIds.includes(p.id) ? 'text-amber-500' : 'text-gray-400'}`}>
+                      {planIds.includes(p.id) ? <span className="text-xs font-semibold">Soon</span> : '—'}
+                    </td>
+                  ))}
                 </tr>
               ))}
             </tbody>
