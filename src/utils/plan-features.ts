@@ -37,6 +37,8 @@ export interface PlanFeatures {
   accountingTools: boolean;
   /** Tax receipt generation */
   taxReceipt: boolean;
+  /** Community groups (Rocket.Chat integration) */
+  communityGroups: boolean;
 }
 
 const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
@@ -60,6 +62,7 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     crm: false,
     accountingTools: false,
     taxReceipt: false,
+    communityGroups: false,
   },
   // Small Team
   pro: {
@@ -81,6 +84,7 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     crm: false,
     accountingTools: false,
     taxReceipt: false,
+    communityGroups: false,
   },
   // Community
   max: {
@@ -102,6 +106,7 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     crm: false,
     accountingTools: false,
     taxReceipt: false,
+    communityGroups: false,
   },
   // Ministry
   ultra: {
@@ -123,6 +128,7 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     crm: true,
     accountingTools: true,
     taxReceipt: false,
+    communityGroups: true,
   },
   // Organization
   enterprise: {
@@ -144,6 +150,7 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     crm: true,
     accountingTools: true,
     taxReceipt: true,
+    communityGroups: true,
   },
 };
 

@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { LayoutDashboard, Church, FileText, Rss, BrainCircuit, Inbox, ArrowLeft, GraduationCap, ChevronLeft, ChevronRight, Building2, Settings, MoreHorizontal, Mail, SlidersHorizontal } from 'lucide-react';
+import { LayoutDashboard, Church, FileText, Rss, BrainCircuit, Inbox, ArrowLeft, GraduationCap, ChevronLeft, ChevronRight, Building2, Settings, MoreHorizontal, Mail, SlidersHorizontal, Heart, Users, MessageSquare, Receipt, CalendarCheck } from 'lucide-react';
 import AdminBlog from './AdminBlog';
 import AdminPosts from './AdminPosts';
 import AdminInbox from './AdminInbox';
@@ -17,6 +17,12 @@ import CanvasEditor from './CanvasEditor';
 import AnalyticsAndRoles, { Permission } from './AnalyticsAndRoles';
 import AdminNavCustomizer from './AdminNavCustomizer';
 import FocusScreen from './FocusScreen';
+import AdminFundraising from './AdminFundraising';
+import AdminCRM from './AdminCRM';
+import AdminDocs from './AdminDocs';
+import AdminCommunity from './AdminCommunity';
+import AdminAccounting from './AdminAccounting';
+import AdminEvents from './AdminEvents';
 import { TenantPlan } from '../types/tenant.types';
 import { getPlanFeatures } from '../utils/plan-features';
 import { db, auth } from '../firebase';
@@ -147,6 +153,30 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, tenantPlan 
     (isSuperAdmin || !isTenantAdmin || (features && features.newsletterAutomation)) &&
       (hasFullAccess || perms.createPosts) &&
       { id: 'newsletter', label: 'Newsletter', icon: Mail },
+    // Fundraising campaigns
+    (isSuperAdmin || !isTenantAdmin || (features && features.fundraising)) &&
+      hasFullAccess &&
+      { id: 'fundraising', label: 'Fundraising', icon: Heart },
+    // Event registration (Pretix)
+    (isSuperAdmin || !isTenantAdmin || (features && features.eventRegistration)) &&
+      hasFullAccess &&
+      { id: 'events', label: 'Events', icon: CalendarCheck },
+    // Docs (TipTap)
+    (isSuperAdmin || !isTenantAdmin || (features && features.docs)) &&
+      hasFullAccess &&
+      { id: 'docs', label: 'Docs', icon: FileText },
+    // CRM
+    (isSuperAdmin || !isTenantAdmin || (features && features.crm)) &&
+      hasFullAccess &&
+      { id: 'crm', label: 'CRM', icon: Users },
+    // Accounting (Crater)
+    (isSuperAdmin || !isTenantAdmin || (features && features.accountingTools)) &&
+      hasFullAccess &&
+      { id: 'accounting', label: 'Accounting', icon: Receipt },
+    // Community (Rocket.Chat)
+    (isSuperAdmin || !isTenantAdmin || (features && features.communityGroups)) &&
+      hasFullAccess &&
+      { id: 'community', label: 'Community', icon: MessageSquare },
     isSuperAdmin && { id: 'tenants', label: 'Tenants', icon: Building2 },
   ].filter(Boolean) as { id: string; label: string; icon: any }[];
 
@@ -374,6 +404,18 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, tenantPlan 
                 />
               </div>
             ) : null
+          ) : activeTab === 'fundraising' ? (
+            <div className="p-4 lg:p-0"><AdminFundraising /></div>
+          ) : activeTab === 'events' ? (
+            <div className="p-4 lg:p-6 h-full flex flex-col"><AdminEvents /></div>
+          ) : activeTab === 'docs' ? (
+            <div className="p-4 lg:p-0"><AdminDocs /></div>
+          ) : activeTab === 'crm' ? (
+            <div className="p-4 lg:p-0"><AdminCRM /></div>
+          ) : activeTab === 'accounting' ? (
+            <div className="p-4 lg:p-6 h-full flex flex-col"><AdminAccounting /></div>
+          ) : activeTab === 'community' ? (
+            <div className="p-4 lg:p-6 h-full flex flex-col"><AdminCommunity /></div>
           ) : activeTab === 'tenants' ? (
             <div className="p-4 lg:p-0"><AdminTenants /></div>
           ) : activeTab === 'settings' ? (
