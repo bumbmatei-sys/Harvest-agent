@@ -10,3 +10,4 @@ service-account.json
 .env.local
 .vercel
 .next/
+package-lock.json
