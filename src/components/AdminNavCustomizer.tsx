@@ -285,7 +285,7 @@ const AdminNavCustomizer: React.FC<AdminNavCustomizerProps> = ({
           {/* More Drawer section */}
           <section className="mb-6">
             <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5">More Drawer</h3>
-            <p className="text-xs text-gray-400 mb-3">These items appear in the "More" sheet.</p>
+            <p className="text-xs text-gray-400 mb-3">These items appear in the More sheet.</p>
 
             <SortableContext items={drawerItems.map((i) => i.id)} strategy={verticalListSortingStrategy}>
               <div id="drawer-droppable" className="space-y-2 min-h-[60px]">
@@ -318,7 +318,7 @@ const AdminNavCustomizer: React.FC<AdminNavCustomizerProps> = ({
         {/* Footnote */}
         <div className="bg-white rounded-[14px] p-3 border border-gray-100 text-xs text-gray-400">
           <span className="font-semibold text-gray-500">Note: </span>
-          Inbox, Settings, and the "More" button are always available and cannot be rearranged.
+          Inbox, Settings, and the More button are always available and cannot be rearranged.
         </div>
       </div>
     </div>
