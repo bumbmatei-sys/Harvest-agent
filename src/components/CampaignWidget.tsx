@@ -146,7 +146,13 @@ const CampaignWidget: React.FC<CampaignWidgetProps> = ({ onDonate }) => {
 
         {/* Donate CTA */}
         <button
-          onClick={() => onDonate?.(campaign)}
+          onClick={() => {
+            if (campaign.donateUrl) {
+              window.open(campaign.donateUrl, '_blank', 'noopener,noreferrer');
+            } else {
+              onDonate?.(campaign);
+            }
+          }}
           className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90 active:opacity-75"
           style={{ backgroundColor: 'var(--brand-color, #e6b325)' }}
         >
