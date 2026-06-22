@@ -497,3 +497,110 @@ export const generateAnnualReceipts = functions.https.onCall(async (data, contex
   console.log('generateAnnualReceipts: Done', result);
   return result;
 });
+
+// ─── 6. addChurchBilling ────────────────────────────────────────────
+// Called from the client after a new church is created on an Organization plan.
+// Adds a $15/mo subscription item to the tenant's existing Stripe subscription.
+export const addChurchBilling = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'Must be signed in');
+  }
+
+  const { tenantId, churchId, churchName } = data;
+  if (!tenantId || !churchId) {
+    throw new functions.https.HttpsError('invalid-argument', 'tenantId and churchId required');
+  }
+
+  const uid = context.auth.uid;
+  const email = context.auth.token.email || '';
+  const userDoc = await db.collection('users').doc(uid).get();
+  const userData = userDoc.data();
+
+  const isSuperAdmin = SUPER_ADMIN_EMAILS.includes(email)
+    || userData?.role === 'super_admin'
+    || context.auth.token.superAdmin === true;
+
+  // Verify the user belongs to this tenant (or is super admin)
+  if (!isSuperAdmin && userData?.tenantId !== tenantId) {
+    throw new functions.https.HttpsError('permission-denied', 'Access denied to this tenant');
+  }
+
+  const stripeKey = process.env.STRIPE_SECRET_KEY;
+  if (!stripeKey) {
+    throw new functions.https.HttpsError('failed-precondition', 'Stripe not configured');
+  }
+  const stripe = new Stripe(stripeKey);
+
+  const tenantDoc = await db.collection('tenants').doc(tenantId).get();
+  const tenantData = tenantDoc.data();
+  if (!tenantData) {
+    throw new functions.https.HttpsError('not-found', 'Tenant not found');
+  }
+
+  const subscriptionId = tenantData?.stripeSubscriptionId;
+  if (!subscriptionId) {
+    throw new functions.https.HttpsError('failed-precondition', 'Tenant has no active Stripe subscription');
+  }
+
+  console.log(`addChurchBilling: Adding $15/mo for church ${churchId} on subscription ${subscriptionId}`);
+
+  // Create subscription item with inline price_data (no pre-created product needed)
+  const subItem = await stripe.subscriptionItems.create({
+    subscription: subscriptionId,
+    price_data: {
+      currency: 'usd',
+      unit_amount: 1500, // $15.00/mo
+      recurring: { interval: 'month' },
+      product_data: {
+        name: `Additional Church: ${churchName || churchId}`,
+        metadata: { tenantId, churchId, type: 'per_church' },
+      },
+    } as any,
+    metadata: {
+      tenantId,
+      churchId,
+      type: 'per_church',
+    },
+  });
+
+  // Store the subscription item ID on the church document
+  await db.collection('churches').doc(churchId).update({
+    stripeSubscriptionItemId: subItem.id,
+    billingAmount: 1500,
+    billingAddedAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+
+  console.log(`addChurchBilling: Created subscription item ${subItem.id} for church ${churchId}`);
+  return { success: true, subscriptionItemId: subItem.id };
+});
+
+// ─── 7. removeChurchBilling ────────────────────────────────────────
+// Triggered when a church document is deleted — removes the $15/mo
+// subscription item from the tenant's Stripe subscription automatically.
+export const removeChurchBilling = functions.firestore
+  .document('churches/{churchId}')
+  .onDelete(async (snap, context) => {
+    const churchData = snap.data();
+    if (!churchData) return;
+
+    const subscriptionItemId = churchData.stripeSubscriptionItemId;
+    if (!subscriptionItemId) {
+      console.log(`removeChurchBilling: Church ${context.params.churchId} has no subscription item — skipping`);
+      return;
+    }
+
+    const stripeKey = process.env.STRIPE_SECRET_KEY;
+    if (!stripeKey) {
+      console.error('removeChurchBilling: STRIPE_SECRET_KEY not configured');
+      return;
+    }
+    const stripe = new Stripe(stripeKey);
+
+    try {
+      await stripe.subscriptionItems.del(subscriptionItemId);
+      console.log(`removeChurchBilling: Removed subscription item ${subscriptionItemId} for deleted church ${context.params.churchId}`);
+    } catch (err: any) {
+      console.error(`removeChurchBilling: Failed to remove subscription item ${subscriptionItemId}:`, err?.message || err);
+      // Don't throw — the church is already deleted, we don't want to block deletion
+    }
+  });

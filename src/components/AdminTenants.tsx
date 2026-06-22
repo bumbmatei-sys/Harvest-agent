@@ -354,11 +354,11 @@ const AdminTenants: React.FC = () => {
                   onChange={e => setForm({ ...form, plan: e.target.value as TenantPlan })}
                   className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#d4a017] focus:border-[#d4a017] outline-none bg-white"
                 >
-                  <option value="plus">Plus — $79/mo</option>
-                  <option value="pro">Pro — $199/mo</option>
-                  <option value="max">Max — $399/mo</option>
-                  <option value="ultra">Ultra — $699/mo</option>
-                  <option value="enterprise">Enterprise — Custom</option>
+                  <option value="plus">Individual — $59/mo</option>
+                  <option value="pro">Small Team — $119/mo</option>
+                  <option value="max">Community — $239/mo</option>
+                  <option value="ultra">Ministry — $479/mo</option>
+                  <option value="enterprise">Organization — Custom</option>
                 </select>
               </div>
 
