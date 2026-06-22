@@ -16,7 +16,7 @@ jobs:
         with:
           node-version: 20
           cache: npm
-      - run: npm ci
+      - run: npm install
       - run: npm test
       - run: npm run lint
 
@@ -30,7 +30,7 @@ jobs:
         with:
           node-version: 20
           cache: npm
-      - run: npm ci
+      - run: npm install
       - run: npm run build
         env:
           # Build requires env vars — provide minimal stubs so Next.js doesn't
