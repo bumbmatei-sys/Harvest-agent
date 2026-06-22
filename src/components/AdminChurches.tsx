@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect } from 'react';
-import { db, auth, app } from '../firebase';
+import { db, auth } from '../firebase';
 import { collection, query, where, onSnapshot, doc, deleteDoc, getDoc, addDoc, updateDoc, orderBy, limit } from 'firebase/firestore';
 import { Church, Search, Filter, Edit2, Trash2, Plus, CheckCircle, Clock, DollarSign, Megaphone, Save, X } from 'lucide-react';
 import ChurchEnrollment from './ChurchEnrollment';
@@ -9,9 +9,6 @@ import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { getTenantScope } from '../utils/tenant-scope';
 import { sendPushNotification } from '../utils/send-notification';
 import { useTenant } from '@/contexts/TenantContext';
-import { getFunctions, httpsCallable } from 'firebase/functions';
-
-const functions = getFunctions(app, 'us-central1');
 
 
 const AdminChurches: React.FC = () => {
@@ -51,9 +48,15 @@ const AdminChurches: React.FC = () => {
   const addChurchBilling = async (churchId: string, churchName: string) => {
     if (!tenantId) return;
     try {
-      const callAddChurchBilling = httpsCallable(functions, 'addChurchBilling');
-      const result = await callAddChurchBilling({ tenantId, churchId, churchName });
-      return result.data as { success: boolean; subscriptionItemId: string };
+      const res = await authFetch('/api/churches/add-billing', {
+        method: 'POST',
+        body: JSON.stringify({ tenantId, churchId, churchName }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to add billing');
+      }
+      return await res.json() as { success: boolean; subscriptionItemId: string };
     } catch (err) {
       console.error('Failed to add church billing:', err);
       setBillingNotice('Warning: Church created but billing setup failed. Contact support.');
@@ -96,8 +99,13 @@ const AdminChurches: React.FC = () => {
           return;
         }
       }
-      // Delete the church doc — the removeChurchBilling Cloud Function will
-      // fire automatically on the onDelete trigger to remove the Stripe subscription item
+      // Remove Stripe $15/mo billing for this church before deleting
+      if (isEnterprise && resolvedTenantId) {
+        await authFetch('/api/churches/remove-billing', {
+          method: 'POST',
+          body: JSON.stringify({ tenantId: resolvedTenantId, churchId: id }),
+        }).catch(err => console.error('remove-billing failed (non-fatal):', err));
+      }
       await deleteDoc(doc(db, 'churches', id));
       setDeleteConfirmId(null);
     } catch (error) {
