@@ -17,7 +17,6 @@ interface Campaign {
   raised: number;
   endDate?: string;
   isActive: boolean;
-  donateUrl?: string;
   tenantId?: string;
 }
 
@@ -29,7 +28,6 @@ const empty: Omit<Campaign, 'id'> = {
   raised: 0,
   endDate: '',
   isActive: false,
-  donateUrl: '',
 };
 
 const fmt = (n: number) =>
@@ -92,8 +90,16 @@ const AdminFundraising: React.FC = () => {
   };
 
   const toggleActive = async (c: Campaign) => {
-    try { await updateDoc(doc(db, 'campaigns', c.id), { isActive: !c.isActive }); }
-    catch (e) { console.error(e); }
+    try {
+      if (!c.isActive) {
+        // Deactivate all other campaigns first (only 1 active at a time)
+        const others = campaigns.filter((other) => other.id !== c.id && other.isActive);
+        await Promise.all(
+          others.map((other) => updateDoc(doc(db, 'campaigns', other.id), { isActive: false }))
+        );
+      }
+      await updateDoc(doc(db, 'campaigns', c.id), { isActive: !c.isActive });
+    } catch (e) { console.error(e); }
   };
 
   const confirmDelete = async () => {
@@ -194,17 +200,10 @@ const AdminFundraising: React.FC = () => {
                   className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#d4a017] resize-none"
                   rows={3} placeholder="What is this campaign for?" />
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-semibold text-gray-700 mb-1 block">Goal ($)</label>
-                  <input type="number" min={0} value={form.goal} onChange={(e) => setForm({ ...form, goal: Number(e.target.value) })}
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#d4a017]" />
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-gray-700 mb-1 block">Raised ($)</label>
-                  <input type="number" min={0} value={form.raised} onChange={(e) => setForm({ ...form, raised: Number(e.target.value) })}
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#d4a017]" />
-                </div>
+              <div>
+                <label className="text-xs font-semibold text-gray-700 mb-1 block">Goal ($)</label>
+                <input type="number" min={0} value={form.goal} onChange={(e) => setForm({ ...form, goal: Number(e.target.value) })}
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#d4a017]" />
               </div>
               <div>
                 <label className="text-xs font-semibold text-gray-700 mb-1 block">End Date</label>
@@ -214,12 +213,6 @@ const AdminFundraising: React.FC = () => {
               <div>
                 <label className="text-xs font-semibold text-gray-700 mb-1 block">Cover Image URL</label>
                 <input value={form.coverImage || ''} onChange={(e) => setForm({ ...form, coverImage: e.target.value })}
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#d4a017]"
-                  placeholder="https://..." />
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-gray-700 mb-1 block">Donate URL</label>
-                <input value={form.donateUrl || ''} onChange={(e) => setForm({ ...form, donateUrl: e.target.value })}
                   className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#d4a017]"
                   placeholder="https://..." />
               </div>

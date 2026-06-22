@@ -252,7 +252,7 @@ const AdminEvents: React.FC = () => {
   // ── Form View ──
   if (view === 'create' || view === 'edit') {
     return (
-      <div className="max-w-2xl mx-auto">
+      <div className="max-w-2xl mx-auto overflow-y-auto pb-32">
         <div className="flex items-center gap-3 mb-6">
           <button onClick={() => setView('list')} className="p-2 rounded-xl hover:bg-gray-100">
             <ArrowLeft size={18} className="text-gray-600" />
