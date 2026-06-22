@@ -3,6 +3,9 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Home, BookOpen, MessageCircle, Map as MapIcon, User, Play, ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import dynamic from 'next/dynamic';
+import { collection, query, where, getDocs, limit } from 'firebase/firestore';
+import { db } from '../firebase';
+import { getTenantScope } from '../utils/tenant-scope';
 
 import Profile from './Profile';
 import PartnerWithUsTab from './PartnerWithUsTab';
@@ -39,10 +42,41 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, tenantPlan }) => {
   const isMainSite = !tenantPlan;
   const features = tenantPlan ? getPlanFeatures(tenantPlan) : null;
 
+  // 'loading' means we haven't fetched yet — hide tab until we know.
+  // 'empty' means 0 published courses — hide tab.
+  // 'present' means at least 1 course exists — show tab.
+  const [coursesStatus, setCoursesStatus] = useState<'loading' | 'empty' | 'present'>('loading');
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const tenantId = await getTenantScope();
+        const q = tenantId
+          ? query(collection(db, 'courses'), where('status', '==', 'published'), where('tenantId', '==', tenantId), limit(1))
+          : query(collection(db, 'courses'), where('status', '==', 'published'), limit(1));
+        const snap = await getDocs(q);
+        if (!cancelled) setCoursesStatus(snap.empty ? 'empty' : 'present');
+      } catch {
+        // On error, hide the tab to avoid showing a broken courses screen
+        if (!cancelled) setCoursesStatus('empty');
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  // If courses disappear after being visible, navigate away from the tab
+  useEffect(() => {
+    if (coursesStatus === 'empty' && activeTopTab === 'courses') {
+      setActiveTopTab('news');
+    }
+  }, [coursesStatus, activeTopTab]);
+
   const topTabs = [
     { id: 'news', label: 'News' },
     (isMainSite || features?.blog !== false) && { id: 'blog', label: 'Blog' },
-    { id: 'courses', label: 'Courses' },
+    // Only include Courses tab once we know at least 1 course exists
+    coursesStatus === 'present' && { id: 'courses', label: 'Courses' },
     { id: 'partner', label: 'Partner with Us' },
   ].filter(Boolean) as { id: string; label: string }[];
 

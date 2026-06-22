@@ -6,6 +6,7 @@ import { db, auth } from '../firebase';
 import { Calendar as CalendarIcon, ThumbsUp, Check, ChevronRight, FileText, Tag, Calendar, MessageSquare, Send, Trash2 } from 'lucide-react';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { getTenantScope } from '../utils/tenant-scope';
+import CampaignWidget from './CampaignWidget';
 
 interface Comment {
   id: string;
@@ -408,6 +409,10 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle }) => {
           {errorMessage}
         </div>
       )}
+
+      {/* Fundraising campaign widget — pinned at the top, disappears when no campaign is active */}
+      <CampaignWidget />
+
       <div className="flex items-center justify-between px-1 mb-2">
         <h2 className="text-xl font-bold text-gray-900 ">News & Updates</h2>
         {posts.length >= 3 && (
