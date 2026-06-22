@@ -35,7 +35,8 @@ import ChurchDetailsModal from './ChurchDetailsModal';
 import UserMessages from './UserMessages';
 import UserEvents from './UserEvents';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
-import { SUPER_ADMIN_EMAIL } from '../utils/tenant-scope';
+import { SUPER_ADMIN_EMAIL, isSuperAdmin as checkIsSuperAdmin } from '../utils/tenant-scope';
+import { isSuperAdminEmail } from '../utils/super-admins';
 import { TenantPlan } from '../types/tenant.types';
 import { getPlanFeatures } from '../utils/plan-features';
 
@@ -162,7 +163,7 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToCourses, onGoToPart
    if (data.photoURL) {
      setProfilePic(data.photoURL);
    }
-   if (data.role === 'admin' || data.role === 'church_admin' || data.role === 'super_admin' || data.email === SUPER_ADMIN_EMAIL) {
+   if (data.role === 'admin' || data.role === 'church_admin' || data.role === 'super_admin' || isSuperAdminEmail(data.email)) {
      setIsAdmin(true);
    }
    // Partnership data
@@ -362,8 +363,8 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToCourses, onGoToPart
               label="Trainings"
               onClick={() => window.open('https://content.cfan.org/training/', '_blank')}
             />
-            {/* Messages row — only for non-admin users on ministry/organization plans */}
-            {!isAdmin && tenantPlan && getPlanFeatures(tenantPlan).communityGroups && (
+            {/* Messages row — for non-admin users on plans with community, or super admin */}
+            {(!isAdmin || checkIsSuperAdmin()) && tenantPlan && (checkIsSuperAdmin() || getPlanFeatures(tenantPlan).communityGroups) && (
               <>
                 <div className="h-px bg-gray-50 mx-4"></div>
                 <SettingItem

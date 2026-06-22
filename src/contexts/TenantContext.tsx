@@ -4,6 +4,8 @@ import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { TenantPlan, TenantConfig } from '../types/tenant.types';
 import { getPlanFeatures, PlanFeatures } from '../utils/plan-features';
+import { auth } from '../firebase';
+import { isSuperAdminEmail } from '../utils/super-admins';
 
 /** What the context exposes to consumers */
 export interface TenantContextValue {
@@ -159,7 +161,11 @@ export const TenantProvider: React.FC<TenantProviderProps> = ({
     setTenantPlanState(plan);
   }, []);
 
-  const planFeatures = tenantPlan ? getPlanFeatures(tenantPlan) : null;
+  // Super admin gets all features regardless of tenant plan
+  const isSuperUser = isSuperAdminEmail(auth.currentUser?.email);
+  const planFeatures = tenantPlan
+    ? (isSuperUser ? getPlanFeatures('enterprise') : getPlanFeatures(tenantPlan))
+    : null;
 
   return (
     <TenantContext.Provider

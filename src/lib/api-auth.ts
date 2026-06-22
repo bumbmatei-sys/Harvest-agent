@@ -1,6 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminAuth, adminDb } from './firebase-admin';
 
+// Server-side super admin emails (must match client-side super-admins.ts)
+const SUPER_ADMIN_EMAILS = [
+  'bumbmatei@proton.me',
+  'bumbmatei@zohomail.eu',
+];
+const envEmails = process.env.SUPER_ADMIN_EMAILS;
+if (envEmails) {
+  for (const e of envEmails.split(',').map((s) => s.trim().toLowerCase()).filter(Boolean)) {
+    if (!SUPER_ADMIN_EMAILS.includes(e)) SUPER_ADMIN_EMAILS.push(e);
+  }
+}
+
+function isSuperAdminEmail(email: string | null | undefined): boolean {
+  if (!email) return false;
+  return SUPER_ADMIN_EMAILS.includes(email.toLowerCase());
+}
+
 export interface AuthenticatedUser {
   uid: string;
   email: string | undefined;
@@ -39,7 +56,7 @@ export async function verifyAuth(request: NextRequest): Promise<AuthenticatedUse
       email: decoded.email,
       tenantId,
       isAdmin: decoded.admin === true,
-      isSuperAdmin: decoded.superAdmin === true,
+      isSuperAdmin: decoded.superAdmin === true || isSuperAdminEmail(decoded.email),
     };
   } catch {
     return null;

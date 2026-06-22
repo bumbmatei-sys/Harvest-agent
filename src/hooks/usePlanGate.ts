@@ -1,6 +1,8 @@
 "use client";
+import { auth } from '../firebase';
 import { useTenantOptional } from '../contexts/TenantContext';
 import { getPlanFeatures, PlanFeatures } from '../utils/plan-features';
+import { isSuperAdminEmail } from '../utils/super-admins';
 
 type FeatureKey =
   | 'fundraising'
@@ -41,7 +43,12 @@ export const FEATURE_MIN_PLAN: Record<FeatureKey, string> = {
 
 export function usePlanGate(feature: FeatureKey): boolean {
   const ctx = useTenantOptional();
-  if (!ctx || !ctx.tenantPlan) return true; // global platform or super admin
+
+  // Super admin always gets all features, regardless of tenant plan
+  const userEmail = auth.currentUser?.email;
+  if (isSuperAdminEmail(userEmail)) return true;
+
+  if (!ctx || !ctx.tenantPlan) return true; // global platform or no plan loaded yet
   const key = FEATURE_MAP[feature];
   if (!key) return false;
   const features = getPlanFeatures(ctx.tenantPlan);

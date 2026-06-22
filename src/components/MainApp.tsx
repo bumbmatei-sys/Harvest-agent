@@ -20,6 +20,8 @@ import BiblePage from './BiblePage';
 import ReferralTracker from './ReferralTracker';
 import { TenantPlan } from '../types/tenant.types';
 import { getPlanFeatures } from '../utils/plan-features';
+import { auth } from '../firebase';
+import { isSuperAdminEmail } from '../utils/super-admins';
 
 const ChurchMap = dynamic(() => import('./ChurchMap'), { ssr: false });
 
@@ -38,9 +40,11 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, tenantPlan }) => {
   const [fullScreenView, setFullScreenView] = useState<{type: 'none' | 'all-news' | 'article' | 'course', id?: string, data?: any}>({type: 'none'});
 
   // Main site users (no tenantPlan) get all features — Chat behind paywall, Map included.
+  // Super admins always get all features regardless of their tenant plan.
   // Tenant users are gated by their plan.
-  const isMainSite = !tenantPlan;
-  const features = tenantPlan ? getPlanFeatures(tenantPlan) : null;
+  const isSuperUser = isSuperAdminEmail(auth.currentUser?.email);
+  const isMainSite = !tenantPlan || isSuperUser;
+  const features = tenantPlan && !isSuperUser ? getPlanFeatures(tenantPlan) : null;
 
   // 'loading' means we haven't fetched yet — hide tab until we know.
   // 'empty' means 0 published courses — hide tab.

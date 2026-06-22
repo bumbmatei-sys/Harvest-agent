@@ -3,6 +3,7 @@ import Image from "next/image";
 import ReactMarkdown from 'react-markdown';
 import { db, auth } from '../firebase';
 import { collection, addDoc, serverTimestamp, query, where, getDocs, deleteDoc, doc, getDoc, onSnapshot } from 'firebase/firestore';
+import { isSuperAdminEmail } from '../utils/super-admins';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { getTenantScope } from '../utils/tenant-scope';
 import { TenantPlan } from '../types/tenant.types';
@@ -419,7 +420,7 @@ export default function AIChat({ onBack, tenantPlan }: { onBack?: () => void; te
         const userData = userSnap.data();
         const sub = userData?.aiChatSubscription;
         // Also check if user is super admin
-        if (userData?.role === 'super_admin' || userData?.email === 'bumbmatei@proton.me') {
+        if (userData?.role === 'super_admin' || isSuperAdminEmail(userData?.email)) {
           setSubscriptionStatus('active');
         } else if (sub && (sub.status === 'active' || sub.status === 'trialing')) {
           setSubscriptionStatus('active');

@@ -18,8 +18,14 @@ export async function POST(request: NextRequest) {
     const decodedToken = await adminAuth.verifyIdToken(idToken);
 
     // Allow super admin claim OR matching super admin email (for bootstrapping)
-    const superAdminEmail = process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || 'bumbmatei@proton.me';
-    if (!decodedToken.superAdmin && decodedToken.email !== superAdminEmail) {
+    const superAdminEmails = ['bumbmatei@proton.me', 'bumbmatei@zohomail.eu'];
+    const envEmails = process.env.SUPER_ADMIN_EMAILS;
+    if (envEmails) {
+      for (const e of envEmails.split(',').map((s) => s.trim().toLowerCase()).filter(Boolean)) {
+        if (!superAdminEmails.includes(e)) superAdminEmails.push(e);
+      }
+    }
+    if (!decodedToken.superAdmin && !superAdminEmails.includes((decodedToken.email || '').toLowerCase())) {
       return NextResponse.json({ error: 'Super admin only' }, { status: 403 });
     }
 
