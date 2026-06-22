@@ -1,9 +1,10 @@
 "use client";
 import React, { useState, useEffect } from 'react';
-import { Receipt, TrendingUp, Download, Search, Filter, ArrowUpRight, FileText, Lock, ChevronRight } from 'lucide-react';
+import { Receipt, TrendingUp, Download, Search, Filter, ArrowUpRight, FileText, Lock, ChevronRight, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 import {
   collection, query, where, orderBy, onSnapshot, limit, Timestamp
 } from 'firebase/firestore';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import { db } from '../firebase';
 import { getTenantScope } from '../utils/tenant-scope';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
@@ -61,6 +62,34 @@ const AdminAccounting: React.FC = () => {
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<'all' | Invoice['type']>('all');
   const [yearFilter, setYearFilter] = useState<string>('all');
+
+  // Annual receipt generation state
+  const [generating, setGenerating] = useState(false);
+  const [genResult, setGenResult] = useState<{ ok: boolean; msg: string } | null>(null);
+
+  const handleGenerateAnnualReceipts = async () => {
+    if (!tenantId) return;
+    const year = yearFilter !== 'all' ? Number(yearFilter) : new Date().getFullYear();
+    setGenerating(true);
+    setGenResult(null);
+    try {
+      const fn = httpsCallable(getFunctions(), 'generateAnnualReceipts');
+      const result = await fn({ year, tenantId });
+      const data = result.data as any;
+      if (data.generated > 0) {
+        const msg = data.sent > 0
+          ? `Generated ${data.generated} receipts — emailed ${data.sent} donor(s)`
+          : `Generated ${data.generated} receipt PDFs (not emailed — no Resend key)`;
+        setGenResult({ ok: true, msg });
+      } else {
+        setGenResult({ ok: false, msg: data.message || 'No donation invoices found for this period' });
+      }
+    } catch (err: any) {
+      setGenResult({ ok: false, msg: err.message || 'Failed to generate receipts' });
+    } finally {
+      setGenerating(false);
+    }
+  };
 
   useEffect(() => {
     let unsub: (() => void) | null = null;
@@ -178,13 +207,26 @@ const AdminAccounting: React.FC = () => {
                 {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
               </select>
               <button
-                className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white"
+                className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
                 style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}
-                onClick={() => alert('Annual receipt generation requires a backend Cloud Function to be deployed.')}
+                onClick={handleGenerateAnnualReceipts}
+                disabled={generating}
               >
-                <FileText size={15} /> Generate Annual Receipts
+                {generating ? (
+                  <><Loader2 size={15} className="animate-spin" /> Generating...</>
+                ) : (
+                  <><FileText size={15} /> Generate Annual Receipts</>
+                )}
               </button>
             </div>
+            {genResult && (
+              <div className={`mt-3 p-3 rounded-xl text-sm flex items-center gap-2 ${
+                genResult.ok ? 'bg-green-50 text-green-700 border border-green-100' : 'bg-amber-50 text-amber-700 border border-amber-100'
+              }`}>
+                {genResult.ok ? <CheckCircle size={14} /> : <AlertCircle size={14} />}
+                {genResult.msg}
+              </div>
+            )}
           </div>
         ) : (
           <div className="bg-amber-50 rounded-2xl border border-amber-100 p-4 flex items-start gap-3">

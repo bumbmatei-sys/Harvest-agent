@@ -84,6 +84,11 @@ export async function POST(request: NextRequest) {
             destination: connectAccountId,
           },
           application_fee_amount: applicationFeeAmount,
+          metadata: {
+            tenantId,
+            type: 'partnership',
+            donationType,
+          },
         },
         success_url: `${baseUrl}/?donation=success`,
         cancel_url: `${baseUrl}/?donation=cancel`,
