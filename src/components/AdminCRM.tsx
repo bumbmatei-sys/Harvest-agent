@@ -11,6 +11,7 @@ import {
 import { db, auth } from '../firebase';
 import { getTenantScope } from '../utils/tenant-scope';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
+import { notifyError } from '../utils/notify';
 
 interface Contact {
   id: string;
@@ -206,14 +207,14 @@ const AdminCRM: React.FC = () => {
         });
       }
       setView(isEditing ? 'detail' : 'list');
-    } catch (e) { console.error(e); }
+    } catch (e) { notifyError('Failed to save contact', e); }
     finally { setSaving(false); }
   };
 
   const confirmDelete = async () => {
     if (!deleteId) return;
     try { await deleteDoc(doc(db, 'contacts', deleteId)); }
-    catch (e) { console.error(e); }
+    catch (e) { notifyError('Failed to delete contact', e); }
     setDeleteId(null);
     if (view === 'detail') setView('list');
   };
@@ -224,6 +225,7 @@ const AdminCRM: React.FC = () => {
     try {
       await addDoc(collection(db, 'contactActivities'), {
         contactId: selected.id,
+        tenantId: tenantId || null,
         type: actForm.type,
         description: actForm.description.trim(),
         amount: actForm.type === 'donation' && actForm.amount ? Number(actForm.amount) : null,
@@ -241,7 +243,7 @@ const AdminCRM: React.FC = () => {
       }
       setShowAddActivity(false);
       setActForm({ type: 'note', description: '', amount: '' });
-    } catch (e) { console.error(e); }
+    } catch (e) { notifyError('Failed to add activity', e); }
     finally { setSavingAct(false); }
   };
 

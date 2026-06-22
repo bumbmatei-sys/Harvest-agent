@@ -7,6 +7,7 @@ import {
 import { db, auth } from '../firebase';
 import { getTenantScope } from '../utils/tenant-scope';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
+import { notifyError } from '../utils/notify';
 
 interface Campaign {
   id: string;
@@ -83,7 +84,7 @@ const AdminFundraising: React.FC = () => {
       }
       setShowForm(false);
     } catch (e) {
-      console.error('Save failed:', e);
+      notifyError('Failed to save campaign', e);
     } finally {
       setSaving(false);
     }
@@ -99,13 +100,13 @@ const AdminFundraising: React.FC = () => {
         );
       }
       await updateDoc(doc(db, 'campaigns', c.id), { isActive: !c.isActive });
-    } catch (e) { console.error(e); }
+    } catch (e) { notifyError('Failed to update campaign', e); }
   };
 
   const confirmDelete = async () => {
     if (!deleteId) return;
     try { await deleteDoc(doc(db, 'campaigns', deleteId)); }
-    catch (e) { console.error(e); }
+    catch (e) { notifyError('Failed to delete campaign', e); }
     setDeleteId(null);
   };
 

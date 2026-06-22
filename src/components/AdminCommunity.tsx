@@ -11,6 +11,7 @@ import { db, auth } from '../firebase';
 import { getTenantScope } from '../utils/tenant-scope';
 import { isSuperAdminEmail } from '../utils/super-admins';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
+import { notifyError } from '../utils/notify';
 
 interface Channel {
   id: string;
@@ -116,7 +117,7 @@ const ChannelThread: React.FC<{
         edited: false,
       });
       setText('');
-    } catch (e) { console.error(e); }
+    } catch (e) { notifyError('Failed to send message', e); }
     finally { setSending(false); }
   };
 
@@ -232,7 +233,7 @@ const DmThread: React.FC<{
         lastMessageAt: serverTimestamp(),
       });
       setText('');
-    } catch (e) { console.error(e); }
+    } catch (e) { notifyError('Failed to send message', e); }
     finally { setSending(false); }
   };
 
@@ -425,7 +426,7 @@ const AdminCommunity: React.FC = () => {
       setShowNewChannel(false);
       setNewChannelName('');
       setNewChannelDesc('');
-    } catch (e) { console.error(e); }
+    } catch (e) { notifyError('Failed to create channel', e); }
     finally { setSavingChannel(false); }
   };
 
@@ -448,7 +449,7 @@ const AdminCommunity: React.FC = () => {
       });
       setOpenAdminDm({ id: ref.id, participants: [currentUser.uid, admin.id], participantRoles: { [currentUser.uid]: 'admin', [admin.id]: 'admin' }, lastMessage: '', lastMessageAt: null, initiatedBy: currentUser.uid, participantNames: { [currentUser.uid]: currentUser.name, [admin.id]: admin.displayName } });
       setShowAdminPicker(false);
-    } catch (e) { console.error(e); }
+    } catch (e) { notifyError('Failed to start conversation', e); }
   };
 
   const startMemberDm = async (member: AdminUser) => {
@@ -469,7 +470,7 @@ const AdminCommunity: React.FC = () => {
       });
       setOpenMemberDm({ id: ref.id, participants: [currentUser.uid, member.id], participantRoles: { [currentUser.uid]: 'admin', [member.id]: 'user' }, lastMessage: '', lastMessageAt: null, initiatedBy: currentUser.uid, participantNames: { [currentUser.uid]: currentUser.name, [member.id]: member.displayName } });
       setShowMemberPicker(false);
-    } catch (e) { console.error(e); }
+    } catch (e) { notifyError('Failed to start conversation', e); }
   };
 
   const getOtherName = (dm: DirectMessage): string => {

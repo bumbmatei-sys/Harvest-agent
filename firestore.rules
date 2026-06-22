@@ -3,39 +3,92 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // ─── Helper functions ────────────────────────────────────────────
+    //
+    // Admin status is resolved from THREE sources so the app keeps working
+    // even when custom claims are missing or stale:
+    //   1. Custom claims (request.auth.token.admin / .superAdmin / .tenantId)
+    //   2. The user's Firestore doc (users/{uid}.role, users/{uid}.tenantId)
+    //   3. The tenant's adminEmails list (tenants/{tenantId}.adminEmails)
+    //      and the hard-coded SUPER_ADMIN_EMAILS list.
 
     function isAuthenticated() {
       return request.auth != null;
     }
 
-    // Admin or superAdmin via custom claims (set server-side with Firebase Admin SDK)
-    function isAdmin() {
-      return isAuthenticated() &&
-        (request.auth.token.admin == true ||
-         request.auth.token.superAdmin == true);
+    function tokenEmail() {
+      return request.auth.token.get('email', '');
     }
 
-    // Tenant ID derived from the user's custom claims
+    // Platform owners — MUST match src/utils/super-admins.ts SUPER_ADMIN_EMAILS.
+    function isSuperAdmin() {
+      return isAuthenticated() && (
+        request.auth.token.get('superAdmin', false) == true ||
+        tokenEmail() in ['bumbmatei@proton.me', 'bumbmatei@zohomail.eu']
+      );
+    }
+
+    // The signed-in user's Firestore doc (cached within a single evaluation).
+    function userDocExists() {
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function userData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    // Role from the user's Firestore doc, defaulting to 'user'.
+    function userRole() {
+      return userDocExists() ? userData().get('role', 'user') : 'user';
+    }
+
+    // Tenant ID: prefer the custom claim, fall back to the Firestore doc.
     function userTenantId() {
-      return request.auth.token.tenantId;
+      return request.auth.token.get('tenantId', null) != null
+        ? request.auth.token.get('tenantId', null)
+        : (userDocExists() ? userData().get('tenantId', null) : null);
     }
 
-    // Check if the authenticated user belongs to a given tenant
-    function belongsToTenant(tenantId) {
-      return isAuthenticated() && userTenantId() == tenantId;
+    // Generic admin (any tenant): claims OR Firestore role OR super admin.
+    function isAdmin() {
+      return isAuthenticated() && (
+        isSuperAdmin() ||
+        request.auth.token.get('admin', false) == true ||
+        userRole() == 'admin' ||
+        userRole() == 'super_admin'
+      );
     }
 
-    // Admin belonging to the given tenant
-    function isTenantAdmin(tenantId) {
+    // Email is listed in the tenant's adminEmails array.
+    function inTenantAdminEmails(tenantId) {
       return isAuthenticated() &&
-        (request.auth.token.superAdmin == true ||
-         (request.auth.token.admin == true && userTenantId() == tenantId));
+        exists(/databases/$(database)/documents/tenants/$(tenantId)) &&
+        tokenEmail() in get(/databases/$(database)/documents/tenants/$(tenantId)).data.get('adminEmails', []);
     }
 
-    // Check if request includes correct tenantId that matches the user's claims
+    // Tenant admin: super admin, an admin whose tenant matches, or an
+    // email listed in that tenant's adminEmails.
+    function isTenantAdmin(tenantId) {
+      return isAuthenticated() && (
+        isSuperAdmin() ||
+        (isAdmin() && userTenantId() == tenantId) ||
+        inTenantAdminEmails(tenantId)
+      );
+    }
+
+    // Member of a tenant (admins always count; super admins see all).
+    function belongsToTenant(tenantId) {
+      return isAuthenticated() && (
+        isSuperAdmin() ||
+        userTenantId() == tenantId ||
+        inTenantAdminEmails(tenantId)
+      );
+    }
+
+    // Incoming doc carries the caller's own tenantId (super admins exempt,
+    // since they create cross-tenant / null-tenant documents).
     function requestHasCorrectTenant() {
       return isAuthenticated() &&
-        request.resource.data.tenantId == userTenantId();
+        (isSuperAdmin() || request.resource.data.tenantId == userTenantId());
     }
 
     // ─── Users ───────────────────────────────────────────────────────
@@ -44,7 +97,7 @@ service cloud.firestore {
       // Users can read only their own document; tenant admins can read users in their tenant; super admins can read all
       allow read: if isAuthenticated() &&
         (request.auth.uid == userId ||
-         request.auth.token.superAdmin == true ||
+         isSuperAdmin() ||
          isTenantAdmin(resource.data.tenantId));
 
       // Self-registration: user creates their own profile. Block role escalation.
@@ -60,8 +113,7 @@ service cloud.firestore {
          (isTenantAdmin(resource.data.tenantId) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role'])));
 
       // Only super admins can delete user documents
-      allow delete: if isAuthenticated() &&
-        request.auth.token.superAdmin == true;
+      allow delete: if isSuperAdmin();
     }
 
     // ─── Submissions ─────────────────────────────────────────────────
@@ -127,7 +179,7 @@ service cloud.firestore {
 
     match /blog_posts/{postId} {
       allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && isAdmin() && requestHasCorrectTenant();
+      allow create: if isAuthenticated() && isTenantAdmin(request.resource.data.get('tenantId', ''));
       allow update: if isAuthenticated() && isTenantAdmin(resource.data.tenantId);
       allow delete: if isAuthenticated() && isTenantAdmin(resource.data.tenantId);
     }
@@ -136,7 +188,7 @@ service cloud.firestore {
 
     match /courses/{courseId} {
       allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && isAdmin() && requestHasCorrectTenant();
+      allow create: if isAuthenticated() && isTenantAdmin(request.resource.data.get('tenantId', ''));
       allow update: if isAuthenticated() && isTenantAdmin(resource.data.tenantId);
       allow delete: if isAuthenticated() && isTenantAdmin(resource.data.tenantId);
     }
@@ -145,7 +197,7 @@ service cloud.firestore {
 
     match /churches/{churchId} {
       allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && isAdmin() && requestHasCorrectTenant();
+      allow create: if isAuthenticated() && isTenantAdmin(request.resource.data.get('tenantId', ''));
       allow update: if isAuthenticated() && isTenantAdmin(resource.data.tenantId);
       allow delete: if isAuthenticated() && isTenantAdmin(resource.data.tenantId);
 
@@ -178,12 +230,14 @@ service cloud.firestore {
 
     match /authors/{authorId} {
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated() && isAdmin() && belongsToTenant(resource.data.tenantId);
+      allow write: if isAuthenticated() && isAdmin() &&
+        (isSuperAdmin() || belongsToTenant(request.resource.data.tenantId) || belongsToTenant(resource.data.tenantId));
     }
 
     match /categories/{catId} {
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated() && isAdmin() && belongsToTenant(resource.data.tenantId);
+      allow write: if isAuthenticated() && isAdmin() &&
+        (isSuperAdmin() || belongsToTenant(request.resource.data.tenantId) || belongsToTenant(resource.data.tenantId));
     }
 
     // ─── Tenants ────────────────────────────────────────────────────
@@ -215,8 +269,7 @@ service cloud.firestore {
       allow update: if isAuthenticated() && isTenantAdmin(tenantId);
 
       // Only super admins can delete tenants
-      allow delete: if isAuthenticated() &&
-        request.auth.token.superAdmin == true;
+      allow delete: if isSuperAdmin();
 
       // ─── Tenant-scoped subcollections ──────────────────────────────
 
@@ -231,93 +284,114 @@ service cloud.firestore {
         allow update: if belongsToTenant(tenantId) &&
           (request.auth.uid == memberId || isTenantAdmin(tenantId));
       }
+
+      // ─── Events & Registrations ──────────────────────────────────
+      match /events/{eventId} {
+        allow read: if isAuthenticated();
+        allow write: if isTenantAdmin(tenantId);
+      }
+
+      match /registrations/{regId} {
+        // A member can register themselves; admins manage all registrations.
+        allow read: if isAuthenticated() && (isTenantAdmin(tenantId) || resource.data.userId == request.auth.uid);
+        allow create: if isAuthenticated();
+        allow update: if isAuthenticated() && isTenantAdmin(tenantId);
+        allow delete: if isAuthenticated() && isTenantAdmin(tenantId);
+      }
+
+      // ─── Tenant-scoped campaigns (alternate location) ────────────
+      match /campaigns/{campaignId} {
+        allow read: if isAuthenticated();
+        allow write: if isTenantAdmin(tenantId);
+      }
+
+      // ─── CRM (tenant-scoped, alternate location) ─────────────────
+      match /contacts/{contactId} {
+        allow read, write: if isTenantAdmin(tenantId);
+      }
+
+      match /contactActivities/{activityId} {
+        allow read, write: if isTenantAdmin(tenantId);
+      }
+
+      // ─── Community chat ──────────────────────────────────────────
+      match /channels/{channelId} {
+        allow read: if belongsToTenant(tenantId);
+        allow write: if isTenantAdmin(tenantId);
+      }
+
+      match /channelMessages/{msgId} {
+        allow read: if belongsToTenant(tenantId);
+        allow create: if belongsToTenant(tenantId);
+        allow update, delete: if isTenantAdmin(tenantId);
+      }
+
+      match /directMessages/{dmId} {
+        allow read: if belongsToTenant(tenantId);
+        allow create: if belongsToTenant(tenantId);
+        allow update, delete: if belongsToTenant(tenantId);
+      }
+
+      match /dmMessages/{msgId} {
+        allow read: if belongsToTenant(tenantId);
+        allow create: if belongsToTenant(tenantId);
+        allow update, delete: if isTenantAdmin(tenantId);
+      }
+
+      // ─── Invoices / receipts ─────────────────────────────────────
+      match /invoices/{invoiceId} {
+        allow read, write: if isTenantAdmin(tenantId);
+      }
     }
 
-    // ─── Docs & Doc Folders ──────────────────────────────────────────
+    // ─── Docs & Doc Folders (top-level, tenantId field on each doc) ───
 
     match /docs/{docId} {
-      allow read: if isAuthenticated() && (isAdmin() || resource.data.createdBy == request.auth.uid);
-      allow create: if isAuthenticated() && isAdmin();
-      allow update: if isAuthenticated() && (isAdmin() || resource.data.createdBy == request.auth.uid);
-      allow delete: if isAuthenticated() && isAdmin();
+      allow read: if isAuthenticated() &&
+        (isTenantAdmin(resource.data.get('tenantId', '')) || resource.data.get('createdBy', '') == request.auth.uid);
+      allow create: if isAuthenticated() && isTenantAdmin(request.resource.data.get('tenantId', ''));
+      allow update: if isAuthenticated() &&
+        (isTenantAdmin(resource.data.get('tenantId', '')) || resource.data.get('createdBy', '') == request.auth.uid);
+      allow delete: if isAuthenticated() && isTenantAdmin(resource.data.get('tenantId', ''));
     }
 
     match /docFolders/{folderId} {
-      allow read: if isAuthenticated() && isAdmin();
-      allow write: if isAuthenticated() && isAdmin();
+      allow read: if isAuthenticated() && isTenantAdmin(resource.data.get('tenantId', ''));
+      allow create: if isAuthenticated() && isTenantAdmin(request.resource.data.get('tenantId', ''));
+      allow update, delete: if isAuthenticated() && isTenantAdmin(resource.data.get('tenantId', ''));
     }
 
-    // ─── Events & Registrations ──────────────────────────────────────
-
-    match /tenants/{tenantId}/events/{eventId} {
-      allow read: if isAuthenticated();
-      allow write: if isTenantAdmin(tenantId);
-    }
-
-    match /tenants/{tenantId}/registrations/{regId} {
-      allow read: if isAuthenticated() && (isTenantAdmin(tenantId) || resource.data.userId == request.auth.uid);
-      allow create: if isAuthenticated();
-      allow update: if isAuthenticated() && isTenantAdmin(tenantId);
-      allow delete: if isAuthenticated() && isTenantAdmin(tenantId);
-    }
-
-    // ─── Fundraising Campaigns ───────────────────────────────────────
+    // ─── Fundraising Campaigns (top-level, tenantId field on each doc) ─
 
     match /campaigns/{campaignId} {
+      // Readable by any authenticated user (members see the active campaign).
       allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && isAdmin();
-      allow update: if isAuthenticated() && isAdmin();
-      allow delete: if isAuthenticated() && isAdmin();
+      allow create: if isAuthenticated() && isTenantAdmin(request.resource.data.get('tenantId', ''));
+      allow update: if isAuthenticated() && isTenantAdmin(resource.data.get('tenantId', ''));
+      allow delete: if isAuthenticated() && isTenantAdmin(resource.data.get('tenantId', ''));
     }
 
-    match /tenants/{tenantId}/campaigns/{campaignId} {
-      allow read: if isAuthenticated();
-      allow write: if isTenantAdmin(tenantId);
+    // ─── CRM Contacts & Activities (top-level — paths used by AdminCRM) ─
+
+    match /contacts/{contactId} {
+      allow read: if isAuthenticated() && isTenantAdmin(resource.data.get('tenantId', ''));
+      allow create: if isAuthenticated() && isTenantAdmin(request.resource.data.get('tenantId', ''));
+      allow update: if isAuthenticated() && isTenantAdmin(resource.data.get('tenantId', ''));
+      allow delete: if isAuthenticated() && isTenantAdmin(resource.data.get('tenantId', ''));
     }
 
-    // ─── CRM Contacts & Activities ───────────────────────────────────
-
-    match /tenants/{tenantId}/contacts/{contactId} {
-      allow read: if isTenantAdmin(tenantId);
-      allow write: if isTenantAdmin(tenantId);
+    match /contactActivities/{activityId} {
+      allow read: if isAuthenticated() && isTenantAdmin(resource.data.get('tenantId', ''));
+      allow create: if isAuthenticated() && isTenantAdmin(request.resource.data.get('tenantId', ''));
+      allow update, delete: if isAuthenticated() && isTenantAdmin(resource.data.get('tenantId', ''));
     }
 
-    match /tenants/{tenantId}/contactActivities/{activityId} {
-      allow read: if isTenantAdmin(tenantId);
-      allow write: if isTenantAdmin(tenantId);
-    }
+    // ─── Donations (top-level) ───────────────────────────────────────
 
-    // ─── Community Chat ──────────────────────────────────────────────
-
-    match /tenants/{tenantId}/channels/{channelId} {
-      allow read: if belongsToTenant(tenantId) || isTenantAdmin(tenantId);
-      allow write: if isTenantAdmin(tenantId);
-    }
-
-    match /tenants/{tenantId}/channelMessages/{msgId} {
-      allow read: if belongsToTenant(tenantId) || isTenantAdmin(tenantId);
-      allow create: if belongsToTenant(tenantId) || isTenantAdmin(tenantId);
-      allow update, delete: if isTenantAdmin(tenantId);
-    }
-
-    match /tenants/{tenantId}/directMessages/{dmId} {
-      allow read: if belongsToTenant(tenantId) || isTenantAdmin(tenantId);
-      allow create: if isTenantAdmin(tenantId);
-      allow update: if isTenantAdmin(tenantId);
-      allow delete: if isTenantAdmin(tenantId);
-    }
-
-    match /tenants/{tenantId}/dmMessages/{msgId} {
-      allow read: if belongsToTenant(tenantId) || isTenantAdmin(tenantId);
-      allow create: if belongsToTenant(tenantId) || isTenantAdmin(tenantId);
-      allow update, delete: if isTenantAdmin(tenantId);
-    }
-
-    // ─── Invoices (for receipt generation) ───────────────────────────
-
-    match /tenants/{tenantId}/invoices/{invoiceId} {
-      allow read: if isTenantAdmin(tenantId);
-      allow write: if isTenantAdmin(tenantId);
+    match /donations/{donationId} {
+      allow read: if isAuthenticated() && isAdmin();
+      allow create: if isAuthenticated();
+      allow update, delete: if isAuthenticated() && isAdmin();
     }
 
     // ─── Email Log (server-only, but allow authenticated reads) ─────
@@ -330,7 +404,7 @@ service cloud.firestore {
     // ─── Enterprise Leads (server-only writes, admin reads) ────────
 
     match /enterprise_leads/{leadId} {
-      allow read: if isAuthenticated() && request.auth.token.superAdmin == true;
+      allow read: if isSuperAdmin();
       allow create: if false; // Server-only via API route (has rate limiting + validation)
       allow update, delete: if false; // Server-only via admin SDK
     }
@@ -339,10 +413,10 @@ service cloud.firestore {
 
     match /affiliate_commissions/{commissionId} {
       allow read: if isAuthenticated() &&
-        (request.auth.token.superAdmin == true ||
+        (isSuperAdmin() ||
          resource.data.referrerId == request.auth.uid);
       allow create: if false; // Only via admin SDK (webhook handler)
-      allow update: if isAuthenticated() && request.auth.token.superAdmin == true;
+      allow update: if isSuperAdmin();
       allow delete: if false;
     }
 

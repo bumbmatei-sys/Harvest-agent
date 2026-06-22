@@ -11,6 +11,7 @@ import {
 import { db, auth } from '../firebase';
 import { getTenantScope } from '../utils/tenant-scope';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
+import { notifyError } from '../utils/notify';
 
 interface Event {
   id: string;
@@ -205,14 +206,14 @@ const AdminEvents: React.FC = () => {
         });
       }
       setView('list');
-    } catch (e) { console.error(e); }
+    } catch (e) { notifyError('Failed to save event', e); }
     finally { setSaving(false); }
   };
 
   const confirmDelete = async () => {
     if (!deleteId || !tenantId) return;
     try { await deleteDoc(doc(db, 'tenants', tenantId, 'events', deleteId)); }
-    catch (e) { console.error(e); }
+    catch (e) { notifyError('Failed to delete event', e); }
     setDeleteId(null);
     if (view === 'detail') setView('list');
   };
@@ -221,7 +222,7 @@ const AdminEvents: React.FC = () => {
     if (!tenantId) return;
     try {
       await updateDoc(doc(db, 'tenants', tenantId, 'events', ev.id), { pinned: !ev.pinned });
-    } catch (e) { console.error(e); }
+    } catch (e) { notifyError('Failed to update event', e); }
   };
 
   const checkIn = async (reg: Registration) => {
@@ -229,7 +230,7 @@ const AdminEvents: React.FC = () => {
     setCheckingIn(reg.id);
     try {
       await updateDoc(doc(db, 'tenants', tenantId, 'registrations', reg.id), { status: 'attended' });
-    } catch (e) { console.error(e); }
+    } catch (e) { notifyError('Failed to check in attendee', e); }
     finally { setCheckingIn(null); }
   };
 

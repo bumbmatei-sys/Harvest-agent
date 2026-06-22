@@ -11,6 +11,7 @@ import {
 import { db, auth } from '../firebase';
 import { getTenantScope } from '../utils/tenant-scope';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
+import { notifyError } from '../utils/notify';
 import RichTextEditor from './RichTextEditor';
 import FocusScreen from './FocusScreen';
 
@@ -222,7 +223,7 @@ const AdminDocs: React.FC = () => {
       setSaveStatus('idle');
       setFocusMode(true);
       setTimeout(() => { titleRef.current?.select(); }, 100);
-    } catch (e) { console.error(e); }
+    } catch (e) { notifyError('Failed to create document', e); }
   };
 
   const createFolder = async () => {
@@ -238,21 +239,21 @@ const AdminDocs: React.FC = () => {
       });
       setShowNewFolder(false);
       setNewFolderName('');
-    } catch (e) { console.error(e); }
+    } catch (e) { notifyError('Failed to create folder', e); }
   };
 
   const confirmDeleteDoc = async () => {
     if (!deleteDocId) return;
     if (openDoc?.id === deleteDocId) { setOpenDoc(null); setFocusMode(false); }
     try { await deleteDoc(doc(db, 'docs', deleteDocId)); }
-    catch (e) { console.error(e); }
+    catch (e) { notifyError('Failed to delete document', e); }
     setDeleteDocId(null);
   };
 
   const confirmDeleteFolder = async () => {
     if (!deleteFolderId) return;
     try { await deleteDoc(doc(db, 'docFolders', deleteFolderId)); }
-    catch (e) { console.error(e); }
+    catch (e) { notifyError('Failed to delete folder', e); }
     setDeleteFolderId(null);
   };
 
