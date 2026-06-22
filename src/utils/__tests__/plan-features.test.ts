@@ -7,23 +7,23 @@ describe('getPlanFeatures', () => {
     expect(f.blog).toBe(true);
     expect(f.aiChat).toBe(false);
     expect(f.maxChurches).toBe(1);
-    expect(f.maxCourses).toBe(5);
-    expect(f.maxAdmins).toBe(2);
+    expect(f.maxCourses).toBe(2);
+    expect(f.maxAdmins).toBe(1);
     expect(f.customDomain).toBe(false);
-    expect(f.aiAssistant).toBe(false);
+    expect(f.aiAssistant).toBe(0);
   });
 
   it('returns correct features for pro plan', () => {
     const f = getPlanFeatures('pro');
     expect(f.aiChat).toBe(true);
-    expect(f.maxCourses).toBe(-1);
+    expect(f.maxCourses).toBe(5);
     expect(f.maxAdmins).toBe(5);
     expect(f.customDomain).toBe(false);
   });
 
   it('returns correct features for ultra plan', () => {
     const f = getPlanFeatures('ultra');
-    expect(f.aiAssistant).toBe(true);
+    expect(f.aiAssistant).toBe(1);
     expect(f.customDomain).toBe(true);
     expect(f.maxAdmins).toBe(-1);
   });
@@ -43,10 +43,10 @@ describe('getPlanFeatures', () => {
 describe('getPlanDisplayName', () => {
   it('returns correct display names', () => {
     expect(getPlanDisplayName('plus')).toBe('Individual');
-    expect(getPlanDisplayName('pro')).toBe('Community');
-    expect(getPlanDisplayName('max')).toBe('Church');
+    expect(getPlanDisplayName('pro')).toBe('Small Team');
+    expect(getPlanDisplayName('max')).toBe('Community');
     expect(getPlanDisplayName('ultra')).toBe('Ministry');
-    expect(getPlanDisplayName('enterprise')).toBe('Enterprise');
+    expect(getPlanDisplayName('enterprise')).toBe('Organization');
   });
 
   it('defaults to Individual for unknown plan', () => {
@@ -70,11 +70,11 @@ describe('hasFeature', () => {
     expect(hasFeature('plus', 'maxCourses')).toBe(true);
   });
 
-  it('map is only on enterprise', () => {
+  it('map is available on pro and above', () => {
     expect(hasFeature('plus', 'map')).toBe(false);
-    expect(hasFeature('pro', 'map')).toBe(false);
-    expect(hasFeature('max', 'map')).toBe(false);
-    expect(hasFeature('ultra', 'map')).toBe(false);
+    expect(hasFeature('pro', 'map')).toBe(true);
+    expect(hasFeature('max', 'map')).toBe(true);
+    expect(hasFeature('ultra', 'map')).toBe(true);
     expect(hasFeature('enterprise', 'map')).toBe(true);
   });
 });

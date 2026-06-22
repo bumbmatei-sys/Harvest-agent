@@ -323,11 +323,12 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, tenantPlan }) => {
             </div>
           ) : activeBottomTab === 'profile' ? (
             <div className="w-full lg:max-w-5xl lg:mx-auto">
-              <Profile 
-                onNavigate={onNavigate} 
-                onGoToCourses={() => { setActiveBottomTab('home'); setActiveTopTab('courses'); }} 
+              <Profile
+                onNavigate={onNavigate}
+                onGoToCourses={() => { setActiveBottomTab('home'); setActiveTopTab('courses'); }}
                 onGoToPartner={() => { setActiveBottomTab('home'); setActiveTopTab('partner'); }}
                 onGoToMap={() => setActiveBottomTab('map')}
+                tenantPlan={tenantPlan}
               />
             </div>
           ) : activeBottomTab === 'chat' ? (

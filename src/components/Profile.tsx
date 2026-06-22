@@ -1,28 +1,30 @@
 "use client";
 import React, { useState, useEffect } from 'react';
-import { 
-  GraduationCap, 
-  User, 
-  Church, 
-  HeartHandshake, 
-  Bell, 
-  Sun, 
-  HelpCircle, 
-  Info, 
-  FileQuestion, 
-  ShieldCheck, 
+import {
+  GraduationCap,
+  User,
+  Church,
+  HeartHandshake,
+  Bell,
+  Sun,
+  HelpCircle,
+  Info,
+  FileQuestion,
+  ShieldCheck,
   LogOut,
   ChevronRight,
   BadgeCheck,
   Moon,
   Play,
   X,
-  Sparkles
+  Sparkles,
+  MessageCircle,
+  CalendarCheck
 } from 'lucide-react';
 import Image from 'next/image';
 import { auth, db } from '../firebase';
 import { signOut, updateProfile } from 'firebase/auth';
-import { doc, getDoc, onSnapshot, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import PersonalInformationModal from './PersonalInformationModal';
 import AboutUsModal from './AboutUsModal';
 import { authFetch } from '../utils/auth-fetch';
@@ -30,8 +32,12 @@ import ContactModal from './ContactModal';
 import PrivacyTermsModal from './PrivacyTermsModal';
 import FAQModal from './FAQModal';
 import ChurchDetailsModal from './ChurchDetailsModal';
+import UserMessages from './UserMessages';
+import UserEvents from './UserEvents';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { SUPER_ADMIN_EMAIL } from '../utils/tenant-scope';
+import { TenantPlan } from '../types/tenant.types';
+import { getPlanFeatures } from '../utils/plan-features';
 
 
 interface ProfileProps {
@@ -39,9 +45,13 @@ interface ProfileProps {
   onGoToCourses: () => void;
   onGoToPartner: () => void;
   onGoToMap: () => void;
+  tenantPlan?: TenantPlan;
 }
 
-const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToCourses, onGoToPartner, onGoToMap }) => {
+const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToCourses, onGoToPartner, onGoToMap, tenantPlan }) => {
+  const [showMessages, setShowMessages] = useState(false);
+  const [showMyEvents, setShowMyEvents] = useState(false);
+  const [unreadMessages, setUnreadMessages] = useState(0);
  const [isPersonalInfoOpen, setIsPersonalInfoOpen] = useState(false);
  const [isAboutUsOpen, setIsAboutUsOpen] = useState(false);
  const [isContactOpen, setIsContactOpen] = useState(false);
@@ -346,12 +356,37 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToCourses, onGoToPart
  onClick={onGoToPartner}
  />
             <div className="h-px bg-gray-50 mx-4"></div>
-            <SettingItem 
+            <SettingItem
               icon={<GraduationCap size={16} className="text-purple-500" />}
               iconBg="bg-purple-50"
-              label="Trainings" 
+              label="Trainings"
               onClick={() => window.open('https://content.cfan.org/training/', '_blank')}
             />
+            {/* Messages row — only for non-admin users on ministry/organization plans */}
+            {!isAdmin && tenantPlan && getPlanFeatures(tenantPlan).communityGroups && (
+              <>
+                <div className="h-px bg-gray-50 mx-4"></div>
+                <SettingItem
+                  icon={<MessageCircle size={16} className="text-indigo-500" />}
+                  iconBg="bg-indigo-50"
+                  label="Messages"
+                  onClick={() => setShowMessages(true)}
+                  badge={unreadMessages > 0 ? unreadMessages : undefined}
+                />
+              </>
+            )}
+            {/* My Events row — shown for tenant users */}
+            {!isAdmin && tenantPlan && (
+              <>
+                <div className="h-px bg-gray-50 mx-4"></div>
+                <SettingItem
+                  icon={<CalendarCheck size={16} className="text-orange-500" />}
+                  iconBg="bg-orange-50"
+                  label="My Events"
+                  onClick={() => setShowMyEvents(true)}
+                />
+              </>
+            )}
           </div>
         </div>
 
@@ -582,11 +617,22 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToCourses, onGoToPart
  </div>
  </div>
  )}
+
+ {showMessages && (
+   <div className="fixed inset-0 z-[300] bg-[#F7F6F3]">
+     <UserMessages onBack={() => setShowMessages(false)} />
+   </div>
+ )}
+ {showMyEvents && (
+   <div className="fixed inset-0 z-[300] bg-[#F7F6F3]">
+     <UserEvents onBack={() => setShowMyEvents(false)} />
+   </div>
+ )}
  </div>
  );
 };
 
-const SettingItem = ({ icon, iconBg, label, onClick }: { icon: React.ReactNode, iconBg: string, label: string, onClick?: () => void }) => (
+const SettingItem = ({ icon, iconBg, label, onClick, badge }: { icon: React.ReactNode, iconBg: string, label: string, onClick?: () => void, badge?: number }) => (
  <button onClick={onClick} className="w-full flex items-center justify-between p-3.5 hover:bg-gray-50 transition-colors">
  <div className="flex items-center gap-3">
  <div className={`w-7 h-7 rounded-full flex items-center justify-center ${iconBg}`}>
@@ -594,7 +640,14 @@ const SettingItem = ({ icon, iconBg, label, onClick }: { icon: React.ReactNode, 
  </div>
  <span className="text-[13px] font-medium text-gray-700">{label}</span>
  </div>
- <ChevronRight size={16} className="text-gray-400" />
+ <div className="flex items-center gap-2">
+   {badge !== undefined && badge > 0 && (
+     <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
+       {badge > 99 ? '99+' : badge}
+     </span>
+   )}
+   <ChevronRight size={16} className="text-gray-400" />
+ </div>
  </button>
 );
 

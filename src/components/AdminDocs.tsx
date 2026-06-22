@@ -1,73 +1,194 @@
 "use client";
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Plus, FileText, Trash2, ArrowLeft, Clock } from 'lucide-react';
 import {
-  collection, query, where, orderBy, onSnapshot, addDoc, updateDoc, deleteDoc, doc, limit, serverTimestamp,
+  Plus, FileText, Trash2, Clock, FolderOpen, Folder, ChevronRight, ChevronDown,
+  PanelLeft, X, ArrowLeft
+} from 'lucide-react';
+import {
+  collection, query, where, orderBy, onSnapshot, addDoc, updateDoc, deleteDoc,
+  doc, limit, serverTimestamp, Timestamp
 } from 'firebase/firestore';
-import { db } from '../firebase';
+import { db, auth } from '../firebase';
 import { getTenantScope } from '../utils/tenant-scope';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import RichTextEditor from './RichTextEditor';
+import FocusScreen from './FocusScreen';
+
+interface DocFolder {
+  id: string;
+  name: string;
+  parentId: string | null;
+  createdBy: string;
+  createdAt: Timestamp | null;
+  order: number;
+}
 
 interface Doc {
   id: string;
   title: string;
   content: string;
-  updatedAt?: { seconds: number } | null;
+  folderId: string | null;
+  createdBy: string;
+  createdAt: Timestamp | null;
+  updatedAt: Timestamp | null;
+  isPrivate: boolean;
+  sharedWith: string[];
   tenantId?: string;
 }
 
+const fmtDate = (ts: Timestamp | null | undefined) => {
+  if (!ts) return '';
+  return ts.toDate().toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+};
+
+// ─── Folder Tree Node ─────────────────────────────────────────────
+
+const FolderNode: React.FC<{
+  folder: DocFolder;
+  folders: DocFolder[];
+  docs: Doc[];
+  activeFolderId: string | null;
+  activeDocId: string | null;
+  onSelectFolder: (id: string | null) => void;
+  onSelectDoc: (d: Doc) => void;
+  onDeleteFolder: (id: string) => void;
+  onDeleteDoc: (id: string) => void;
+  depth?: number;
+}> = ({ folder, folders, docs, activeFolderId, activeDocId, onSelectFolder, onSelectDoc, onDeleteFolder, onDeleteDoc, depth = 0 }) => {
+  const [open, setOpen] = useState(true);
+  const childFolders = folders.filter(f => f.parentId === folder.id);
+  const folderDocs = docs.filter(d => d.folderId === folder.id);
+  const isActive = activeFolderId === folder.id;
+
+  return (
+    <div>
+      <div
+        className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg cursor-pointer group transition-colors ${isActive ? 'bg-[#d4a017]/10' : 'hover:bg-gray-100'}`}
+        style={{ paddingLeft: `${8 + depth * 16}px` }}
+        onClick={() => { setOpen(!open); onSelectFolder(folder.id); }}
+      >
+        {open ? <ChevronDown size={13} className="text-gray-400 flex-shrink-0" /> : <ChevronRight size={13} className="text-gray-400 flex-shrink-0" />}
+        {open ? <FolderOpen size={14} style={{ color: 'var(--brand-color, #d4a017)' }} className="flex-shrink-0" /> : <Folder size={14} className="text-gray-400 flex-shrink-0" />}
+        <span className="text-xs font-medium text-gray-800 flex-1 truncate">{folder.name}</span>
+        <button
+          onClick={e => { e.stopPropagation(); onDeleteFolder(folder.id); }}
+          className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-red-50"
+        >
+          <X size={11} className="text-red-400" />
+        </button>
+      </div>
+      {open && (
+        <div>
+          {childFolders.map(cf => (
+            <FolderNode
+              key={cf.id}
+              folder={cf}
+              folders={folders}
+              docs={docs}
+              activeFolderId={activeFolderId}
+              activeDocId={activeDocId}
+              onSelectFolder={onSelectFolder}
+              onSelectDoc={onSelectDoc}
+              onDeleteFolder={onDeleteFolder}
+              onDeleteDoc={onDeleteDoc}
+              depth={depth + 1}
+            />
+          ))}
+          {folderDocs.map(d => (
+            <div
+              key={d.id}
+              onClick={() => onSelectDoc(d)}
+              className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg cursor-pointer group transition-colors ${activeDocId === d.id ? 'bg-[#d4a017]/10' : 'hover:bg-gray-100'}`}
+              style={{ paddingLeft: `${24 + depth * 16}px` }}
+            >
+              <FileText size={13} className="text-gray-400 flex-shrink-0" />
+              <span className="text-xs text-gray-700 flex-1 truncate">{d.title || 'Untitled'}</span>
+              <button
+                onClick={e => { e.stopPropagation(); onDeleteDoc(d.id); }}
+                className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-red-50"
+              >
+                <X size={11} className="text-red-400" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ─── Main AdminDocs ──────────────────────────────────────────────
+
 const AdminDocs: React.FC = () => {
   const [docs, setDocs] = useState<Doc[]>([]);
+  const [folders, setFolders] = useState<DocFolder[]>([]);
   const [loading, setLoading] = useState(true);
   const [tenantId, setTenantId] = useState<string | null>(null);
   const [openDoc, setOpenDoc] = useState<Doc | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editContent, setEditContent] = useState('');
   const [saving, setSaving] = useState(false);
-  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'idle'>('idle');
+  const [deleteDocId, setDeleteDocId] = useState<string | null>(null);
+  const [deleteFolderId, setDeleteFolderId] = useState<string | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [activeFolderId, setActiveFolderId] = useState<string | null>(null);
+  const [showNewFolder, setShowNewFolder] = useState(false);
+  const [newFolderName, setNewFolderName] = useState('');
+  const [focusMode, setFocusMode] = useState(false);
   const saveTimer = useRef<NodeJS.Timeout | null>(null);
+  const titleRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    let unsub: (() => void) | null = null;
+    let unsubs: (() => void)[] = [];
     let cancelled = false;
-    (async () => {
-      const tid = await getTenantScope();
+    getTenantScope().then(tid => {
       if (cancelled) return;
       setTenantId(tid);
-      const q = tid
-        ? query(collection(db, 'docs'), where('tenantId', '==', tid), orderBy('updatedAt', 'desc'), limit(100))
-        : query(collection(db, 'docs'), orderBy('updatedAt', 'desc'), limit(100));
-      unsub = onSnapshot(q, (snap) => {
-        setDocs(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Doc));
+      // Docs
+      const qDocs = tid
+        ? query(collection(db, 'docs'), where('tenantId', '==', tid), orderBy('updatedAt', 'desc'), limit(200))
+        : query(collection(db, 'docs'), orderBy('updatedAt', 'desc'), limit(200));
+      unsubs.push(onSnapshot(qDocs, snap => {
+        setDocs(snap.docs.map(d => ({ id: d.id, ...d.data() }) as Doc));
         setLoading(false);
-      }, (err) => {
+      }, err => {
         try { handleFirestoreError(err, OperationType.GET, 'docs'); } catch (e) { console.error(e); }
         setLoading(false);
-      });
-    })();
-    return () => { cancelled = true; unsub?.(); };
+      }));
+      // Folders
+      const qFolders = tid
+        ? query(collection(db, 'docFolders'), where('tenantId', '==', tid), orderBy('order'), limit(100))
+        : query(collection(db, 'docFolders'), orderBy('order'), limit(100));
+      unsubs.push(onSnapshot(qFolders, snap => {
+        setFolders(snap.docs.map(d => ({ id: d.id, ...d.data() }) as DocFolder));
+      }));
+    });
+    return () => { cancelled = true; unsubs.forEach(u => u()); };
   }, []);
 
   const openDocument = (d: Doc) => {
     setOpenDoc(d);
-    setEditTitle(d.title);
-    setEditContent(d.content);
+    setEditTitle(d.title || '');
+    setEditContent(d.content || '');
+    setSaveStatus('idle');
+    setFocusMode(true);
   };
 
   const saveDoc = useCallback(async (id: string, title: string, content: string) => {
-    setSaving(true);
+    setSaveStatus('saving');
     try {
       await updateDoc(doc(db, 'docs', id), { title, content, updatedAt: serverTimestamp() });
-    } catch (e) { console.error(e); }
-    finally { setSaving(false); }
+      setSaveStatus('saved');
+    } catch (e) { console.error(e); setSaveStatus('idle'); }
   }, []);
 
   const handleContentChange = (content: string) => {
     setEditContent(content);
     if (openDoc) {
+      setSaveStatus('saving');
       if (saveTimer.current) clearTimeout(saveTimer.current);
-      saveTimer.current = setTimeout(() => saveDoc(openDoc.id, editTitle, content), 1500);
+      saveTimer.current = setTimeout(() => saveDoc(openDoc.id, editTitle, content), 2000);
     }
   };
 
@@ -77,133 +198,324 @@ const AdminDocs: React.FC = () => {
     }
   };
 
-  const createDoc = async () => {
+  const createDoc = async (folderId?: string | null) => {
     try {
       const ref = await addDoc(collection(db, 'docs'), {
         title: 'Untitled',
         content: '',
+        folderId: folderId ?? activeFolderId ?? null,
         tenantId: tenantId || null,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
+        createdBy: auth.currentUser?.uid || '',
+        isPrivate: true,
+        sharedWith: [],
       });
-      const newDoc: Doc = { id: ref.id, title: 'Untitled', content: '', tenantId: tenantId || undefined };
+      const newDoc: Doc = {
+        id: ref.id, title: 'Untitled', content: '', folderId: folderId ?? null,
+        createdBy: auth.currentUser?.uid || '', createdAt: null, updatedAt: null,
+        isPrivate: true, sharedWith: [],
+      };
       setOpenDoc(newDoc);
       setEditTitle('Untitled');
       setEditContent('');
+      setSaveStatus('idle');
+      setFocusMode(true);
+      setTimeout(() => { titleRef.current?.select(); }, 100);
     } catch (e) { console.error(e); }
   };
 
-  const confirmDelete = async () => {
-    if (!deleteId) return;
-    if (openDoc?.id === deleteId) setOpenDoc(null);
-    try { await deleteDoc(doc(db, 'docs', deleteId)); }
+  const createFolder = async () => {
+    if (!newFolderName.trim()) return;
+    try {
+      await addDoc(collection(db, 'docFolders'), {
+        name: newFolderName.trim(),
+        parentId: null,
+        tenantId: tenantId || null,
+        createdAt: serverTimestamp(),
+        createdBy: auth.currentUser?.uid || '',
+        order: folders.length,
+      });
+      setShowNewFolder(false);
+      setNewFolderName('');
+    } catch (e) { console.error(e); }
+  };
+
+  const confirmDeleteDoc = async () => {
+    if (!deleteDocId) return;
+    if (openDoc?.id === deleteDocId) { setOpenDoc(null); setFocusMode(false); }
+    try { await deleteDoc(doc(db, 'docs', deleteDocId)); }
     catch (e) { console.error(e); }
-    setDeleteId(null);
+    setDeleteDocId(null);
   };
 
-  const fmtDate = (ts: { seconds: number } | null | undefined) => {
-    if (!ts) return '';
-    return new Date(ts.seconds * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const confirmDeleteFolder = async () => {
+    if (!deleteFolderId) return;
+    try { await deleteDoc(doc(db, 'docFolders', deleteFolderId)); }
+    catch (e) { console.error(e); }
+    setDeleteFolderId(null);
   };
 
-  // Document editor view (full tab, no FocusScreen — stays within admin layout)
-  if (openDoc) {
+  const rootFolders = folders.filter(f => !f.parentId);
+  const rootDocs = docs.filter(d => !d.folderId);
+  const folderDocs = activeFolderId ? docs.filter(d => d.folderId === activeFolderId) : rootDocs;
+
+  // ── Focus mode (full editor) ──
+  if (focusMode && openDoc) {
     return (
-      <div className="flex flex-col h-full max-h-[calc(100vh-160px)]">
-        <div className="flex items-center gap-3 mb-4">
-          <button onClick={() => { setOpenDoc(null); if (saveTimer.current) clearTimeout(saveTimer.current); }}
-            className="p-2 rounded-xl hover:bg-gray-100 transition-colors">
-            <ArrowLeft size={18} className="text-gray-600" />
-          </button>
-          <input
-            value={editTitle}
-            onChange={(e) => setEditTitle(e.target.value)}
-            onBlur={handleTitleBlur}
-            className="flex-1 text-xl font-bold text-gray-900 bg-transparent border-none outline-none placeholder-gray-300"
-            placeholder="Untitled"
-          />
-          {saving && <span className="text-xs text-gray-400">Saving...</span>}
+      <FocusScreen
+        onBack={() => {
+          if (saveTimer.current) clearTimeout(saveTimer.current);
+          if (editTitle.trim()) saveDoc(openDoc.id, editTitle, editContent);
+          setOpenDoc(null);
+          setFocusMode(false);
+        }}
+        onSidebarToggle={() => setSidebarOpen(!sidebarOpen)}
+      >
+        <div className="flex h-full bg-white">
+          {/* Sidebar */}
+          {sidebarOpen && (
+            <div className="w-64 flex-shrink-0 border-r border-gray-100 flex flex-col bg-white overflow-hidden">
+              <div className="p-3 border-b border-gray-100 flex gap-2">
+                <button
+                  onClick={() => createDoc()}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold text-white"
+                  style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}
+                >
+                  <Plus size={12} /> New Doc
+                </button>
+                <button
+                  onClick={() => setShowNewFolder(true)}
+                  className="px-3 py-2 rounded-xl text-xs font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50"
+                >
+                  <FolderOpen size={14} />
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-2">
+                {/* Root docs */}
+                {docs.filter(d => !d.folderId).map(d => (
+                  <div
+                    key={d.id}
+                    onClick={() => openDocument(d)}
+                    className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg cursor-pointer group transition-colors ${openDoc?.id === d.id ? 'bg-[#d4a017]/10' : 'hover:bg-gray-100'}`}
+                  >
+                    <FileText size={13} className="text-gray-400 flex-shrink-0" />
+                    <span className="text-xs text-gray-700 flex-1 truncate">{d.title || 'Untitled'}</span>
+                    <button
+                      onClick={e => { e.stopPropagation(); setDeleteDocId(d.id); }}
+                      className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-red-50"
+                    >
+                      <X size={11} className="text-red-400" />
+                    </button>
+                  </div>
+                ))}
+                {/* Folders */}
+                {rootFolders.map(f => (
+                  <FolderNode
+                    key={f.id}
+                    folder={f}
+                    folders={folders}
+                    docs={docs}
+                    activeFolderId={activeFolderId}
+                    activeDocId={openDoc?.id || null}
+                    onSelectFolder={setActiveFolderId}
+                    onSelectDoc={openDocument}
+                    onDeleteFolder={setDeleteFolderId}
+                    onDeleteDoc={setDeleteDocId}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Editor area */}
+          <div className="flex-1 flex flex-col overflow-hidden">
+            {/* Save status */}
+            <div className="flex items-center justify-center h-8 flex-shrink-0">
+              {saveStatus === 'saving' && <span className="text-xs text-gray-400">Saving...</span>}
+              {saveStatus === 'saved' && <span className="text-xs text-gray-400">Saved</span>}
+            </div>
+            <div className="flex-1 overflow-y-auto px-4 lg:px-16 py-4">
+              <input
+                ref={titleRef}
+                value={editTitle}
+                onChange={e => setEditTitle(e.target.value)}
+                onBlur={handleTitleBlur}
+                className="w-full text-3xl font-bold text-gray-900 bg-transparent border-none outline-none placeholder-gray-300 mb-6"
+                placeholder="Untitled"
+              />
+              <RichTextEditor
+                content={editContent}
+                onChange={handleContentChange}
+                minHeight="calc(100vh - 200px)"
+                placeholder="Start writing... Type / for commands"
+              />
+            </div>
+          </div>
         </div>
-        <div className="flex-1 bg-white rounded-2xl border border-gray-100 overflow-hidden">
-          <RichTextEditor
-            content={editContent}
-            onChange={handleContentChange}
-            minHeight="calc(100vh - 280px)"
-            placeholder="Start writing..."
-          />
-        </div>
-      </div>
+
+        {/* Modals inside focus mode */}
+        {showNewFolder && (
+          <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/50 p-4">
+            <div className="bg-white rounded-2xl w-full max-w-sm p-5">
+              <h3 className="font-bold text-gray-900 mb-4">New Folder</h3>
+              <input value={newFolderName} onChange={e => setNewFolderName(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && createFolder()}
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#d4a017] mb-4"
+                placeholder="Folder name" autoFocus />
+              <div className="flex gap-3">
+                <button onClick={() => setShowNewFolder(false)} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600">Cancel</button>
+                <button onClick={createFolder} disabled={!newFolderName.trim()}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
+                  style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}>Create</button>
+              </div>
+            </div>
+          </div>
+        )}
+        {(deleteDocId || deleteFolderId) && (
+          <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/50 p-4">
+            <div className="bg-white rounded-2xl p-6 w-full max-w-sm text-center">
+              <p className="font-bold text-gray-900 mb-2">Delete {deleteDocId ? 'this document' : 'this folder'}?</p>
+              <p className="text-sm text-gray-500 mb-5">This cannot be undone.</p>
+              <div className="flex gap-3">
+                <button onClick={() => { setDeleteDocId(null); setDeleteFolderId(null); }} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600">Cancel</button>
+                <button onClick={deleteDocId ? confirmDeleteDoc : confirmDeleteFolder} className="flex-1 py-2.5 rounded-xl bg-red-500 text-white text-sm font-semibold">Delete</button>
+              </div>
+            </div>
+          </div>
+        )}
+      </FocusScreen>
     );
   }
 
-  // Document list view
+  // ── List view ──
   if (loading) {
     return <div className="flex items-center justify-center h-40"><div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--brand-color, #d4a017)', borderTopColor: 'transparent' }} /></div>;
   }
 
   return (
-    <div className="max-w-3xl mx-auto">
+    <div className="max-w-4xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-2">
           <FileText size={22} style={{ color: 'var(--brand-color, #d4a017)' }} />
           <h2 className="text-xl font-bold text-gray-900">Docs</h2>
         </div>
-        <button
-          onClick={createDoc}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white"
-          style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}
-        >
-          <Plus size={16} /> New Doc
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowNewFolder(true)}
+            className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50"
+          >
+            <FolderOpen size={15} /> New Folder
+          </button>
+          <button
+            onClick={() => createDoc()}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white"
+            style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}
+          >
+            <Plus size={16} /> New Doc
+          </button>
+        </div>
       </div>
 
-      {docs.length === 0 ? (
+      {/* Folders */}
+      {folders.length > 0 && (
+        <div className="mb-5">
+          <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Folders</p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+            {rootFolders.map(f => (
+              <button
+                key={f.id}
+                onClick={() => setActiveFolderId(activeFolderId === f.id ? null : f.id)}
+                className={`flex items-center gap-2 p-3 rounded-2xl border transition-all text-left ${activeFolderId === f.id ? 'border-[#d4a017]/40 bg-[#d4a017]/5' : 'border-gray-100 bg-white hover:border-gray-200 shadow-sm'}`}
+              >
+                <Folder size={16} style={{ color: 'var(--brand-color, #d4a017)' }} />
+                <span className="text-xs font-semibold text-gray-800 truncate">{f.name}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Docs grid */}
+      {folderDocs.length === 0 && docs.length === 0 ? (
         <div className="text-center py-16 text-gray-400">
           <FileText size={40} className="mx-auto mb-3 opacity-30" />
           <p className="font-medium">No documents yet</p>
           <p className="text-sm mt-1">Create your first document</p>
         </div>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {docs.map((d) => (
-            <div
-              key={d.id}
-              onClick={() => openDocument(d)}
-              className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm cursor-pointer hover:border-[#d4a017]/40 hover:shadow-md transition-all group"
-            >
-              <div className="flex items-start justify-between gap-2">
-                <FileText size={18} className="text-gray-300 flex-shrink-0 mt-0.5" />
-                <button
-                  onClick={(e) => { e.stopPropagation(); setDeleteId(d.id); }}
-                  className="p-1 rounded-lg hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all"
-                >
-                  <Trash2 size={14} className="text-red-400" />
-                </button>
-              </div>
-              <p className="font-semibold text-gray-900 text-sm mt-2 truncate">{d.title || 'Untitled'}</p>
-              {d.content && (
-                <p className="text-xs text-gray-400 mt-1 line-clamp-2"
-                  dangerouslySetInnerHTML={{ __html: d.content.replace(/<[^>]*>/g, ' ').trim() }} />
-              )}
-              {d.updatedAt && (
-                <div className="flex items-center gap-1 mt-3 text-[10px] text-gray-400">
-                  <Clock size={10} />
-                  {fmtDate(d.updatedAt)}
-                </div>
-              )}
+        <>
+          {activeFolderId && (
+            <div className="flex items-center gap-2 mb-3">
+              <button onClick={() => setActiveFolderId(null)} className="text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1">
+                <ArrowLeft size={12} /> All docs
+              </button>
+              <span className="text-xs text-gray-400">/</span>
+              <span className="text-xs font-semibold text-gray-700">{folders.find(f => f.id === activeFolderId)?.name}</span>
             </div>
-          ))}
+          )}
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {folderDocs.map(d => (
+              <div
+                key={d.id}
+                onClick={() => openDocument(d)}
+                className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm cursor-pointer hover:border-[#d4a017]/40 hover:shadow-md transition-all group"
+              >
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <FileText size={18} className="text-gray-300 flex-shrink-0 mt-0.5" />
+                  <button
+                    onClick={e => { e.stopPropagation(); setDeleteDocId(d.id); }}
+                    className="p-1 rounded-lg hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all"
+                  >
+                    <Trash2 size={14} className="text-red-400" />
+                  </button>
+                </div>
+                <p className="font-semibold text-gray-900 text-sm truncate">{d.title || 'Untitled'}</p>
+                {d.content && (
+                  <p className="text-xs text-gray-400 mt-1 line-clamp-2"
+                    dangerouslySetInnerHTML={{ __html: d.content.replace(/<[^>]*>/g, ' ').trim() }} />
+                )}
+                {d.updatedAt && (
+                  <div className="flex items-center gap-1 mt-3 text-[10px] text-gray-400">
+                    <Clock size={10} />
+                    {fmtDate(d.updatedAt)}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* New folder modal */}
+      {showNewFolder && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-sm p-5">
+            <h3 className="font-bold text-gray-900 mb-4">New Folder</h3>
+            <input
+              value={newFolderName} onChange={e => setNewFolderName(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && createFolder()}
+              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#d4a017] mb-4"
+              placeholder="Folder name" autoFocus
+            />
+            <div className="flex gap-3">
+              <button onClick={() => { setShowNewFolder(false); setNewFolderName(''); }} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600">Cancel</button>
+              <button onClick={createFolder} disabled={!newFolderName.trim()}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
+                style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}>Create</button>
+            </div>
+          </div>
         </div>
       )}
 
-      {deleteId && (
+      {deleteDocId && (
         <div className="fixed inset-0 z-[210] flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white rounded-2xl p-6 w-full max-w-sm text-center">
             <p className="font-bold text-gray-900 mb-2">Delete this document?</p>
             <p className="text-sm text-gray-500 mb-5">This cannot be undone.</p>
             <div className="flex gap-3">
-              <button onClick={() => setDeleteId(null)} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600">Cancel</button>
-              <button onClick={confirmDelete} className="flex-1 py-2.5 rounded-xl bg-red-500 text-white text-sm font-semibold">Delete</button>
+              <button onClick={() => setDeleteDocId(null)} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600">Cancel</button>
+              <button onClick={confirmDeleteDoc} className="flex-1 py-2.5 rounded-xl bg-red-500 text-white text-sm font-semibold">Delete</button>
             </div>
           </div>
         </div>
