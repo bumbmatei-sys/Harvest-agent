@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { LayoutDashboard, Church, FileText, Rss, BrainCircuit, Inbox, ArrowLeft, GraduationCap, ChevronLeft, ChevronRight, Building2, Settings, MoreHorizontal, Mail } from 'lucide-react';
+import { LayoutDashboard, Church, FileText, Rss, BrainCircuit, Inbox, ArrowLeft, GraduationCap, ChevronLeft, ChevronRight, Building2, Settings, MoreHorizontal, Mail, SlidersHorizontal } from 'lucide-react';
 import AdminBlog from './AdminBlog';
 import AdminPosts from './AdminPosts';
 import AdminInbox from './AdminInbox';
@@ -15,6 +15,8 @@ import NewsletterCampaigns from './NewsletterCampaigns';
 import CanvasList from './CanvasList';
 import CanvasEditor from './CanvasEditor';
 import AnalyticsAndRoles, { Permission } from './AnalyticsAndRoles';
+import AdminNavCustomizer from './AdminNavCustomizer';
+import FocusScreen from './FocusScreen';
 import { TenantPlan } from '../types/tenant.types';
 import { getPlanFeatures } from '../utils/plan-features';
 import { db, auth } from '../firebase';
@@ -43,6 +45,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, tenantPlan 
   const [newsletterView, setNewsletterView] = useState<'list' | 'editor'>('list');
   const [tenantId, setTenantId] = useState<string | null>(null);
   const [tenantName, setTenantName] = useState<string>('Ministry');
+  // Nav customizer state
+  const [showNavCustomizer, setShowNavCustomizer] = useState(false);
+  // Ordered IDs for the bottom bar; null means use default (first 4 from allTabs)
+  const [customPrimaryIds, setCustomPrimaryIds] = useState<string[] | null>(null);
 
   useEffect(() => {
     getTenantScope().then(async (id) => {
@@ -70,6 +76,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, tenantPlan 
             const data = userDoc.data();
             setUserRole(data.role || 'user');
             setUserPermissions(data.permissions || null);
+            // Restore saved nav configuration if present
+            if (data.adminNavConfig?.primaryTabIds?.length) {
+              setCustomPrimaryIds(data.adminNavConfig.primaryTabIds);
+            }
           }
         } catch (error) {
           try { handleFirestoreError(error, OperationType.GET, `users/${auth.currentUser?.uid}`); } catch (e) { console.error(e); }
@@ -140,13 +150,31 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, tenantPlan 
     isSuperAdmin && { id: 'tenants', label: 'Tenants', icon: Building2 },
   ].filter(Boolean) as { id: string; label: string; icon: any }[];
 
-  // Mobile: first 4 tabs in nav bar, rest go to "More" sheet
-  const primaryTabs = allTabs.slice(0, 4);
-  const moreTabs = [
-    ...allTabs.slice(4),
-    ...(showInbox ? [{ id: 'inbox', label: 'Inbox', icon: Inbox }] : []),
-    { id: 'settings', label: 'Settings', icon: Settings },
-  ];
+  // Mobile: 4 tabs in the bottom bar. If the admin has saved a custom order,
+  // use it (filtered to still-permitted tabs). Otherwise default to first 4.
+  let primaryTabs;
+  let moreTabs;
+  if (customPrimaryIds && customPrimaryIds.length > 0) {
+    // Preserve saved order, only include tabs the user still has permission for
+    const orderedBar = customPrimaryIds
+      .map((id) => allTabs.find((t) => t.id === id))
+      .filter(Boolean)
+      .slice(0, 4) as typeof allTabs;
+    const barSet = new Set(orderedBar.map((t) => t.id));
+    primaryTabs = orderedBar;
+    moreTabs = [
+      ...allTabs.filter((t) => !barSet.has(t.id)),
+      ...(showInbox ? [{ id: 'inbox', label: 'Inbox', icon: Inbox }] : []),
+      { id: 'settings', label: 'Settings', icon: Settings },
+    ];
+  } else {
+    primaryTabs = allTabs.slice(0, 4);
+    moreTabs = [
+      ...allTabs.slice(4),
+      ...(showInbox ? [{ id: 'inbox', label: 'Inbox', icon: Inbox }] : []),
+      { id: 'settings', label: 'Settings', icon: Settings },
+    ];
+  }
 
   // If the active tab is not in the allowed tabs, switch to the first allowed tab
   const allTabIds = allTabs.map(t => t.id).join(',');
@@ -337,19 +365,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, tenantPlan 
               )}
             </div>
           ) : activeTab === 'canvas' ? (
-            canvasId ? (
-              <CanvasEditor
-                canvasId={canvasId}
-                canvasName={canvasName}
-                onBack={() => { setCanvasId(null); setCanvasName(''); }}
-              />
-            ) : (
+            // CanvasEditor is rendered inside FocusScreen (fixed overlay) when canvasId is set.
+            // Here we only render CanvasList so the user can pick a canvas.
+            !canvasId ? (
               <div className="p-4 lg:p-0">
                 <CanvasList
                   onOpenCanvas={(id, name) => { setCanvasId(id); setCanvasName(name); }}
                 />
               </div>
-            )
+            ) : null
           ) : activeTab === 'tenants' ? (
             <div className="p-4 lg:p-0"><AdminTenants /></div>
           ) : activeTab === 'settings' ? (
@@ -425,12 +449,57 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, tenantPlan 
                     );
                   })}
                 </div>
+
+                {/* Customize Navigation — admin-only shortcut at the bottom of the sheet */}
+                <div className="mt-4 pt-3 border-t border-gray-100">
+                  <button
+                    onClick={() => {
+                      setShowMoreSheet(false);
+                      setShowNavCustomizer(true);
+                    }}
+                    className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-gray-50 transition-colors"
+                  >
+                    <div className="w-11 h-11 rounded-xl flex items-center justify-center bg-gray-100 flex-shrink-0">
+                      <SlidersHorizontal size={20} color="#666" />
+                    </div>
+                    <div className="text-left">
+                      <p className="text-sm font-semibold text-gray-800">Customize Navigation</p>
+                      <p className="text-xs text-gray-400">Rearrange bottom bar items</p>
+                    </div>
+                  </button>
+                </div>
               </div>
             </div>
             <style>{`@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }`}</style>
           </>
         )}
+
+        {/* Nav customizer full-screen modal */}
+        {showNavCustomizer && (
+          <AdminNavCustomizer
+            allTabs={allTabs}
+            currentPrimaryIds={customPrimaryIds ?? primaryTabs.map((t) => t.id)}
+            onSave={(ids) => {
+              setCustomPrimaryIds(ids);
+              setShowNavCustomizer(false);
+            }}
+            onCancel={() => setShowNavCustomizer(false)}
+          />
+        )}
       </div>
+
+      {/* Canvas focus mode — covers the entire viewport over the nav & header */}
+      {activeTab === 'canvas' && canvasId && (
+        <FocusScreen
+          onBack={() => { setCanvasId(null); setCanvasName(''); }}
+        >
+          <CanvasEditor
+            canvasId={canvasId}
+            canvasName={canvasName}
+            onBack={() => { setCanvasId(null); setCanvasName(''); }}
+          />
+        </FocusScreen>
+      )}
     </div>
   );
 };
