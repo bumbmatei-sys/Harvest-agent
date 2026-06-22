@@ -27,7 +27,9 @@ service cloud.firestore {
 
     // Admin belonging to the given tenant
     function isTenantAdmin(tenantId) {
-      return isAdmin() && belongsToTenant(tenantId);
+      return isAuthenticated() &&
+        (request.auth.token.superAdmin == true ||
+         (request.auth.token.admin == true && userTenantId() == tenantId));
     }
 
     // Check if request includes correct tenantId that matches the user's claims
@@ -229,6 +231,93 @@ service cloud.firestore {
         allow update: if belongsToTenant(tenantId) &&
           (request.auth.uid == memberId || isTenantAdmin(tenantId));
       }
+    }
+
+    // ─── Docs & Doc Folders ──────────────────────────────────────────
+
+    match /docs/{docId} {
+      allow read: if isAuthenticated() && (isAdmin() || resource.data.createdBy == request.auth.uid);
+      allow create: if isAuthenticated() && isAdmin();
+      allow update: if isAuthenticated() && (isAdmin() || resource.data.createdBy == request.auth.uid);
+      allow delete: if isAuthenticated() && isAdmin();
+    }
+
+    match /docFolders/{folderId} {
+      allow read: if isAuthenticated() && isAdmin();
+      allow write: if isAuthenticated() && isAdmin();
+    }
+
+    // ─── Events & Registrations ──────────────────────────────────────
+
+    match /tenants/{tenantId}/events/{eventId} {
+      allow read: if isAuthenticated();
+      allow write: if isTenantAdmin(tenantId);
+    }
+
+    match /tenants/{tenantId}/registrations/{regId} {
+      allow read: if isAuthenticated() && (isTenantAdmin(tenantId) || resource.data.userId == request.auth.uid);
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && isTenantAdmin(tenantId);
+      allow delete: if isAuthenticated() && isTenantAdmin(tenantId);
+    }
+
+    // ─── Fundraising Campaigns ───────────────────────────────────────
+
+    match /campaigns/{campaignId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isAdmin();
+      allow update: if isAuthenticated() && isAdmin();
+      allow delete: if isAuthenticated() && isAdmin();
+    }
+
+    match /tenants/{tenantId}/campaigns/{campaignId} {
+      allow read: if isAuthenticated();
+      allow write: if isTenantAdmin(tenantId);
+    }
+
+    // ─── CRM Contacts & Activities ───────────────────────────────────
+
+    match /tenants/{tenantId}/contacts/{contactId} {
+      allow read: if isTenantAdmin(tenantId);
+      allow write: if isTenantAdmin(tenantId);
+    }
+
+    match /tenants/{tenantId}/contactActivities/{activityId} {
+      allow read: if isTenantAdmin(tenantId);
+      allow write: if isTenantAdmin(tenantId);
+    }
+
+    // ─── Community Chat ──────────────────────────────────────────────
+
+    match /tenants/{tenantId}/channels/{channelId} {
+      allow read: if belongsToTenant(tenantId) || isTenantAdmin(tenantId);
+      allow write: if isTenantAdmin(tenantId);
+    }
+
+    match /tenants/{tenantId}/channelMessages/{msgId} {
+      allow read: if belongsToTenant(tenantId) || isTenantAdmin(tenantId);
+      allow create: if belongsToTenant(tenantId) || isTenantAdmin(tenantId);
+      allow update, delete: if isTenantAdmin(tenantId);
+    }
+
+    match /tenants/{tenantId}/directMessages/{dmId} {
+      allow read: if belongsToTenant(tenantId) || isTenantAdmin(tenantId);
+      allow create: if isTenantAdmin(tenantId);
+      allow update: if isTenantAdmin(tenantId);
+      allow delete: if isTenantAdmin(tenantId);
+    }
+
+    match /tenants/{tenantId}/dmMessages/{msgId} {
+      allow read: if belongsToTenant(tenantId) || isTenantAdmin(tenantId);
+      allow create: if belongsToTenant(tenantId) || isTenantAdmin(tenantId);
+      allow update, delete: if isTenantAdmin(tenantId);
+    }
+
+    // ─── Invoices (for receipt generation) ───────────────────────────
+
+    match /tenants/{tenantId}/invoices/{invoiceId} {
+      allow read: if isTenantAdmin(tenantId);
+      allow write: if isTenantAdmin(tenantId);
     }
 
     // ─── Email Log (server-only, but allow authenticated reads) ─────

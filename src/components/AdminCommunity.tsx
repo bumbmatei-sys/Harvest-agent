@@ -9,6 +9,7 @@ import {
 } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { getTenantScope } from '../utils/tenant-scope';
+import { isSuperAdminEmail } from '../utils/super-admins';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 
 interface Channel {
@@ -482,6 +483,10 @@ const AdminCommunity: React.FC = () => {
   }
 
   if (!tenantId) {
+    // Super admin with no tenant gets a message about creating a tenant first
+    if (isSuperAdminEmail(auth.currentUser?.email)) {
+      return <div className="text-center py-16 text-gray-400">Select a tenant to manage community chat.</div>;
+    }
     return <div className="text-center py-16 text-gray-400">Community chat is only available for tenant admins.</div>;
   }
 
