@@ -1,11 +1,13 @@
 import { auth, db } from '../firebase';
 import { doc, getDoc } from 'firebase/firestore';
+import { isSuperAdminEmail, SUPER_ADMIN_EMAILS } from './super-admins';
 
 // Module-level cache for tenantId
 let _cachedTenantId: string | null | undefined = undefined;
 let _cachedUid: string | null = null;
 
-const SUPER_ADMIN_EMAIL = process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || 'bumbmatei@proton.me';
+// Keep backward-compatible export — first email in the array
+const SUPER_ADMIN_EMAIL = SUPER_ADMIN_EMAILS[0] || 'bumbmatei@proton.me';
 
 /**
  * Get the current user's tenantId from their Firestore user doc.
@@ -50,7 +52,7 @@ export function clearTenantCache(): void {
  */
 export function isSuperAdmin(): boolean {
   const user = auth.currentUser;
-  return !!user && user.email === SUPER_ADMIN_EMAIL;
+  return isSuperAdminEmail(user?.email);
 }
 
 /**

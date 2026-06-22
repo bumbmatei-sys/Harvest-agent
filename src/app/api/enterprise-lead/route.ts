@@ -90,7 +90,8 @@ export async function POST(request: NextRequest) {
     });
 
     // 2. Send email notification to admin
-    const adminEmail = process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || 'bumbmatei@proton.me';
+    const adminEmails = ['bumbmatei@proton.me', 'bumbmatei@zohomail.eu'];
+    const adminEmail = adminEmails[0];
 
     if (process.env.RESEND_API_KEY) {
       try {
