@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { HeartHandshake, Heart, Lock, ShieldCheck, Loader2 } from 'lucide-react';
 import { useTenant } from '@/contexts/TenantContext';
 import { authFetch } from '../utils/auth-fetch';
+import { PLATFORM_TENANT_ID } from '../utils/tenant-scope';
 
 type DonationType = 'one-time' | 'monthly';
 
@@ -16,10 +17,7 @@ const PartnerWithUsTab: React.FC = () => {
   const presetAmounts = ['10', '25', '50', '100'];
 
   const handleDonate = async () => {
-    if (!tenantId) {
-      setError('Unable to identify this ministry.');
-      return;
-    }
+    const effectiveTenantId = tenantId || PLATFORM_TENANT_ID;
 
     const amountCents = Math.round(parseFloat(amount) * 100);
     if (!amountCents || amountCents < 100) {
@@ -35,7 +33,7 @@ const PartnerWithUsTab: React.FC = () => {
         method: 'POST',
         body: JSON.stringify({
           amount: amountCents,
-          tenantId,
+          tenantId: effectiveTenantId,
           donationType,
         }),
       });

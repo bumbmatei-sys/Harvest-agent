@@ -12,7 +12,6 @@ const PLAN_LABELS: Record<TenantPlan, string> = {
   pro: 'Pro',
   max: 'Max',
   ultra: 'Ultra',
-  enterprise: 'Enterprise',
 };
 
 const PLAN_COLORS: Record<TenantPlan, string> = {
@@ -20,7 +19,6 @@ const PLAN_COLORS: Record<TenantPlan, string> = {
   pro: 'bg-purple-100 text-purple-700',
   max: 'bg-amber-100 text-amber-700',
   ultra: 'bg-amber-100 text-amber-700',
-  enterprise: 'bg-emerald-100 text-emerald-700',
 };
 
 const STATUS_COLORS: Record<TenantStatus, string> = {
@@ -358,11 +356,10 @@ const AdminTenants: React.FC = () => {
                   <option value="pro">Small Team — $119/mo</option>
                   <option value="max">Community — $239/mo</option>
                   <option value="ultra">Ministry — $479/mo</option>
-                  <option value="enterprise">Organization — Custom</option>
                 </select>
               </div>
 
-              {(form.plan === 'max' || form.plan === 'ultra' || form.plan === 'enterprise') && (
+              {(form.plan === 'max' || form.plan === 'ultra') && (
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-1">Custom Domain</label>
                   <input

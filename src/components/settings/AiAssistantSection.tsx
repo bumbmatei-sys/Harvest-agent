@@ -31,8 +31,8 @@ const AiAssistantSection: React.FC<AiAssistantSectionProps> = ({ currentPlan, em
               if (tenantDoc.exists()) {
                 const data = tenantDoc.data();
                 const plan = data.plan;
-                const isUltraOrEnterprise = plan === 'ultra' || plan === 'enterprise';
-                if (data.addOnAiAssistant || isUltraOrEnterprise) {
+                const isUltraPlan = plan === 'ultra';
+                if (data.addOnAiAssistant || isUltraPlan) {
                   setSubscribed(true);
                   if (data.addOnAiAssistantCode) setCode(data.addOnAiAssistantCode);
                 }
@@ -162,8 +162,8 @@ const AiAssistantSection: React.FC<AiAssistantSectionProps> = ({ currentPlan, em
             </div>
           )}
 
-          {/* Cancel button only for add-on subscribers, not Ultra/Enterprise */}
-          {!['ultra', 'enterprise'].includes(currentPlan || '') && (
+          {/* Cancel button only for add-on subscribers, not Ultra */}
+          {currentPlan !== 'ultra' && (
             <button
               onClick={handleCancel}
               disabled={cancelLoading}

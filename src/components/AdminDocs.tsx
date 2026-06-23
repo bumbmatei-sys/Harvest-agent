@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Plus, FileText, Trash2, Clock, FolderOpen, Folder, ChevronRight, ChevronDown,
-  PanelLeft, X, ArrowLeft
+  PanelLeft, X, ArrowLeft, MoreVertical, Edit2, Move, Pin
 } from 'lucide-react';
 import {
   collection, query, where, orderBy, onSnapshot, addDoc, updateDoc, deleteDoc,
@@ -35,11 +35,121 @@ interface Doc {
   isPrivate: boolean;
   sharedWith: string[];
   tenantId?: string;
+  pinned?: boolean;
 }
 
 const fmtDate = (ts: Timestamp | null | undefined) => {
   if (!ts) return '';
   return ts.toDate().toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+};
+
+// ─── Three-Dot Menu ──────────────────────────────────────────────
+
+const ThreeDotMenu: React.FC<{
+  onRename: () => void;
+  onDelete: () => void;
+  onMove?: () => void;
+  onPin?: () => void;
+  isPinned?: boolean;
+}> = ({ onRename, onDelete, onMove, onPin, isPinned }) => {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [menuOpen]);
+
+  return (
+    <div className="relative" ref={menuRef}>
+      <button
+        onClick={(e) => { e.stopPropagation(); setMenuOpen(!menuOpen); }}
+        className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-gray-100 transition-all"
+      >
+        <MoreVertical size={14} className="text-gray-400 hover:text-gray-600" />
+      </button>
+      {menuOpen && (
+        <div className="absolute right-0 top-full mt-1 w-36 bg-white rounded-lg shadow-lg border border-gray-100 z-50 py-1">
+          {onMove && (
+            <button
+              onClick={(e) => { e.stopPropagation(); setMenuOpen(false); onMove(); }}
+              className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-100 rounded-lg"
+            >
+              <Move size={12} /> Move to Folder
+            </button>
+          )}
+          {onPin && (
+            <button
+              onClick={(e) => { e.stopPropagation(); setMenuOpen(false); onPin(); }}
+              className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-100 rounded-lg"
+            >
+              <Pin size={12} /> {isPinned ? 'Unpin' : 'Pin to Top'}
+            </button>
+          )}
+          <button
+            onClick={(e) => { e.stopPropagation(); setMenuOpen(false); onRename(); }}
+            className="w-full flex items-center gap-2 text-left px-3 py-2 text-xs text-gray-700 hover:bg-gray-50"
+          >
+            <Edit2 size={12} /> Rename
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); setMenuOpen(false); onDelete(); }}
+            className="w-full flex items-center gap-2 text-left px-3 py-2 text-xs text-red-600 hover:bg-red-50"
+          >
+            <Trash2 size={12} /> Delete
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ─── Rename Modal ────────────────────────────────────────────────
+
+const RenameModal: React.FC<{
+  title: string;
+  initialValue: string;
+  onConfirm: (newName: string) => void;
+  onCancel: () => void;
+}> = ({ title, initialValue, onConfirm, onCancel }) => {
+  const [value, setValue] = useState(initialValue);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => { inputRef.current?.select(); }, []);
+
+  return (
+    <div className="fixed inset-0 z-[310] flex items-center justify-center bg-black/50 p-4">
+      <div className="bg-white rounded-2xl w-full max-w-sm p-5">
+        <h3 className="font-bold text-gray-900 mb-4">{title}</h3>
+        <input
+          ref={inputRef}
+          value={value}
+          onChange={e => setValue(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') onConfirm(value); if (e.key === 'Escape') onCancel(); }}
+          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#d4a017] mb-4"
+          placeholder="Name"
+          autoFocus
+        />
+        <div className="flex gap-3">
+          <button onClick={onCancel} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600">Cancel</button>
+          <button
+            onClick={() => onConfirm(value)}
+            disabled={!value.trim()}
+            className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
+            style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}
+          >
+            Save
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 // ─── Folder Tree Node ─────────────────────────────────────────────
@@ -54,8 +164,12 @@ const FolderNode: React.FC<{
   onSelectDoc: (d: Doc) => void;
   onDeleteFolder: (id: string) => void;
   onDeleteDoc: (id: string) => void;
+  onRenameFolder: (folder: DocFolder) => void;
+  onRenameDoc: (doc: Doc) => void;
+  onMoveDoc?: (docId: string) => void;
+  onPinDoc?: (docId: string, pinned: boolean) => void;
   depth?: number;
-}> = ({ folder, folders, docs, activeFolderId, activeDocId, onSelectFolder, onSelectDoc, onDeleteFolder, onDeleteDoc, depth = 0 }) => {
+}> = ({ folder, folders, docs, activeFolderId, activeDocId, onSelectFolder, onSelectDoc, onDeleteFolder, onDeleteDoc, onRenameFolder, onRenameDoc, onMoveDoc, onPinDoc, depth = 0 }) => {
   const [open, setOpen] = useState(true);
   const childFolders = folders.filter(f => f.parentId === folder.id);
   const folderDocs = docs.filter(d => d.folderId === folder.id);
@@ -71,12 +185,10 @@ const FolderNode: React.FC<{
         {open ? <ChevronDown size={13} className="text-gray-400 flex-shrink-0" /> : <ChevronRight size={13} className="text-gray-400 flex-shrink-0" />}
         {open ? <FolderOpen size={14} style={{ color: 'var(--brand-color, #d4a017)' }} className="flex-shrink-0" /> : <Folder size={14} className="text-gray-400 flex-shrink-0" />}
         <span className="text-xs font-medium text-gray-800 flex-1 truncate">{folder.name}</span>
-        <button
-          onClick={e => { e.stopPropagation(); onDeleteFolder(folder.id); }}
-          className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-red-50"
-        >
-          <X size={11} className="text-red-400" />
-        </button>
+        <ThreeDotMenu
+          onRename={() => onRenameFolder(folder)}
+          onDelete={() => onDeleteFolder(folder.id)}
+        />
       </div>
       {open && (
         <div>
@@ -92,6 +204,8 @@ const FolderNode: React.FC<{
               onSelectDoc={onSelectDoc}
               onDeleteFolder={onDeleteFolder}
               onDeleteDoc={onDeleteDoc}
+              onRenameFolder={onRenameFolder}
+              onRenameDoc={onRenameDoc}
               depth={depth + 1}
             />
           ))}
@@ -104,12 +218,13 @@ const FolderNode: React.FC<{
             >
               <FileText size={13} className="text-gray-400 flex-shrink-0" />
               <span className="text-xs text-gray-700 flex-1 truncate">{d.title || 'Untitled'}</span>
-              <button
-                onClick={e => { e.stopPropagation(); onDeleteDoc(d.id); }}
-                className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-red-50"
-              >
-                <X size={11} className="text-red-400" />
-              </button>
+              <ThreeDotMenu
+                onRename={() => onRenameDoc(d)}
+                onDelete={() => onDeleteDoc(d.id)}
+                onMove={onMoveDoc ? () => onMoveDoc(d.id) : undefined}
+                onPin={onPinDoc ? () => onPinDoc(d.id, !!d.pinned) : undefined}
+                isPinned={!!d.pinned}
+              />
             </div>
           ))}
         </div>
@@ -132,6 +247,9 @@ const AdminDocs: React.FC = () => {
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'idle'>('idle');
   const [deleteDocId, setDeleteDocId] = useState<string | null>(null);
   const [deleteFolderId, setDeleteFolderId] = useState<string | null>(null);
+  const [moveDocId, setMoveDocId] = useState<string | null>(null);
+  const [renameFolderData, setRenameFolderData] = useState<{ id: string; name: string } | null>(null);
+  const [renameDocData, setRenameDocData] = useState<{ id: string; name: string } | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeFolderId, setActiveFolderId] = useState<string | null>(null);
   const [showNewFolder, setShowNewFolder] = useState(false);
@@ -211,6 +329,7 @@ const AdminDocs: React.FC = () => {
         createdBy: auth.currentUser?.uid || '',
         isPrivate: true,
         sharedWith: [],
+        pinned: false,
       });
       const newDoc: Doc = {
         id: ref.id, title: 'Untitled', content: '', folderId: folderId ?? null,
@@ -250,6 +369,19 @@ const AdminDocs: React.FC = () => {
     setDeleteDocId(null);
   };
 
+  const moveDocToFolder = async (docId: string, folderId: string | null) => {
+    try {
+      await updateDoc(doc(db, 'docs', docId), { folderId, updatedAt: serverTimestamp() });
+      setMoveDocId(null);
+    } catch (e) { notifyError('Failed to move document', e); }
+  };
+
+  const togglePinDoc = async (docId: string, currentPinned: boolean) => {
+    try {
+      await updateDoc(doc(db, 'docs', docId), { pinned: !currentPinned });
+    } catch (e) { notifyError('Failed to toggle pin', e); }
+  };
+
   const confirmDeleteFolder = async () => {
     if (!deleteFolderId) return;
     try { await deleteDoc(doc(db, 'docFolders', deleteFolderId)); }
@@ -257,9 +389,38 @@ const AdminDocs: React.FC = () => {
     setDeleteFolderId(null);
   };
 
+  const handleRenameFolder = useCallback((folder: DocFolder) => {
+    setRenameFolderData({ id: folder.id, name: folder.name });
+  }, []);
+
+  const handleRenameDoc = useCallback((d: Doc) => {
+    setRenameDocData({ id: d.id, name: d.title || '' });
+  }, []);
+
+  const confirmRenameFolder = async (newName: string) => {
+    if (!renameFolderData || !newName.trim()) return;
+    try {
+      await updateDoc(doc(db, 'docFolders', renameFolderData.id), { name: newName.trim() });
+    } catch (e) { notifyError('Failed to rename folder', e); }
+    setRenameFolderData(null);
+  };
+
+  const confirmRenameDoc = async (newName: string) => {
+    if (!renameDocData || !newName.trim()) return;
+    try {
+      await updateDoc(doc(db, 'docs', renameDocData.id), { title: newName.trim(), updatedAt: serverTimestamp() });
+      if (openDoc?.id === renameDocData.id) {
+        setEditTitle(newName.trim());
+      }
+    } catch (e) { notifyError('Failed to rename document', e); }
+    setRenameDocData(null);
+  };
+
   const rootFolders = folders.filter(f => !f.parentId);
-  const rootDocs = docs.filter(d => !d.folderId);
-  const folderDocs = activeFolderId ? docs.filter(d => d.folderId === activeFolderId) : rootDocs;
+  const rootDocs = docs.filter(d => !d.folderId).sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0));
+  const folderDocs = activeFolderId
+    ? docs.filter(d => d.folderId === activeFolderId).sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0))
+    : rootDocs;
 
   // ── Focus mode (full editor) ──
   if (focusMode && openDoc) {
@@ -277,7 +438,7 @@ const AdminDocs: React.FC = () => {
           {/* Sidebar */}
           {sidebarOpen && (
             <div className="w-64 flex-shrink-0 border-r border-gray-100 flex flex-col bg-white overflow-hidden">
-              <div className="p-3 border-b border-gray-100 flex gap-2">
+              <div className="p-3 border-b border-gray-100 flex gap-2 mt-10">
                 <button
                   onClick={() => createDoc()}
                   className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold text-white"
@@ -302,12 +463,13 @@ const AdminDocs: React.FC = () => {
                   >
                     <FileText size={13} className="text-gray-400 flex-shrink-0" />
                     <span className="text-xs text-gray-700 flex-1 truncate">{d.title || 'Untitled'}</span>
-                    <button
-                      onClick={e => { e.stopPropagation(); setDeleteDocId(d.id); }}
-                      className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-red-50"
-                    >
-                      <X size={11} className="text-red-400" />
-                    </button>
+                    <ThreeDotMenu
+                      onRename={() => handleRenameDoc(d)}
+                      onDelete={() => setDeleteDocId(d.id)}
+                      onMove={() => setMoveDocId(d.id)}
+                      onPin={() => togglePinDoc(d.id, !!d.pinned)}
+                      isPinned={!!d.pinned}
+                    />
                   </div>
                 ))}
                 {/* Folders */}
@@ -323,6 +485,10 @@ const AdminDocs: React.FC = () => {
                     onSelectDoc={openDocument}
                     onDeleteFolder={setDeleteFolderId}
                     onDeleteDoc={setDeleteDocId}
+                    onRenameFolder={handleRenameFolder}
+                    onRenameDoc={handleRenameDoc}
+                    onMoveDoc={setMoveDocId}
+                    onPinDoc={togglePinDoc}
                   />
                 ))}
               </div>
@@ -331,12 +497,12 @@ const AdminDocs: React.FC = () => {
 
           {/* Editor area */}
           <div className="flex-1 flex flex-col overflow-hidden">
-            {/* Save status */}
-            <div className="flex items-center justify-center h-8 flex-shrink-0">
+            {/* Save status — offset for floating back/sidebar buttons */}
+            <div className="flex items-center justify-center h-8 flex-shrink-0 mt-10">
               {saveStatus === 'saving' && <span className="text-xs text-gray-400">Saving...</span>}
               {saveStatus === 'saved' && <span className="text-xs text-gray-400">Saved</span>}
             </div>
-            <div className="flex-1 overflow-y-auto px-4 lg:px-16 py-4">
+            <div className="flex-1 overflow-y-auto px-4 lg:px-16 pb-12">
               <input
                 ref={titleRef}
                 value={editTitle}
@@ -385,6 +551,48 @@ const AdminDocs: React.FC = () => {
             </div>
           </div>
         )}
+        {renameFolderData && (
+          <RenameModal
+            title="Rename Folder"
+            initialValue={renameFolderData.name}
+            onConfirm={confirmRenameFolder}
+            onCancel={() => setRenameFolderData(null)}
+          />
+        )}
+        {renameDocData && (
+          <RenameModal
+            title="Rename Document"
+            initialValue={renameDocData.name}
+            onConfirm={confirmRenameDoc}
+            onCancel={() => setRenameDocData(null)}
+          />
+        )}
+        {moveDocId && (
+          <div className="fixed inset-0 z-[210] flex items-end sm:items-center justify-center bg-black/50" onClick={() => setMoveDocId(null)}>
+            <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-sm p-5 max-h-[60vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+              <h3 className="font-bold text-gray-900 mb-4">Move to Folder</h3>
+              <button
+                onClick={() => moveDocToFolder(moveDocId, null)}
+                className="flex items-center gap-2 w-full px-3 py-2.5 rounded-xl hover:bg-gray-100 transition-colors text-sm text-gray-700 mb-1"
+              >
+                <FileText size={14} className="text-gray-400" /> No Folder (Root)
+              </button>
+              {folders.map(f => (
+                <button
+                  key={f.id}
+                  onClick={() => moveDocToFolder(moveDocId, f.id)}
+                  className="flex items-center gap-2 w-full px-3 py-2.5 rounded-xl hover:bg-gray-100 transition-colors text-sm text-gray-700 mb-1"
+                >
+                  <Folder size={14} style={{ color: 'var(--brand-color, #d4a017)' }} /> {f.name}
+                </button>
+              ))}
+              <button
+                onClick={() => setMoveDocId(null)}
+                className="w-full py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 mt-3"
+              >Cancel</button>
+            </div>
+          </div>
+        )}
       </FocusScreen>
     );
   }
@@ -424,14 +632,22 @@ const AdminDocs: React.FC = () => {
           <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Folders</p>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
             {rootFolders.map(f => (
-              <button
+              <div
                 key={f.id}
-                onClick={() => setActiveFolderId(activeFolderId === f.id ? null : f.id)}
-                className={`flex items-center gap-2 p-3 rounded-2xl border transition-all text-left ${activeFolderId === f.id ? 'border-[#d4a017]/40 bg-[#d4a017]/5' : 'border-gray-100 bg-white hover:border-gray-200 shadow-sm'}`}
+                className={`relative group flex items-center gap-2 p-3 rounded-2xl border transition-all text-left ${activeFolderId === f.id ? 'border-[#d4a017]/40 bg-[#d4a017]/5' : 'border-gray-100 bg-white hover:border-gray-200 shadow-sm'}`}
               >
-                <Folder size={16} style={{ color: 'var(--brand-color, #d4a017)' }} />
-                <span className="text-xs font-semibold text-gray-800 truncate">{f.name}</span>
-              </button>
+                <button
+                  onClick={() => setActiveFolderId(activeFolderId === f.id ? null : f.id)}
+                  className="flex items-center gap-2 flex-1 min-w-0"
+                >
+                  <Folder size={16} style={{ color: 'var(--brand-color, #d4a017)' }} />
+                  <span className="text-xs font-semibold text-gray-800 truncate">{f.name}</span>
+                </button>
+                <ThreeDotMenu
+                  onRename={() => handleRenameFolder(f)}
+                  onDelete={() => setDeleteFolderId(f.id)}
+                />
+              </div>
             ))}
           </div>
         </div>
@@ -460,16 +676,14 @@ const AdminDocs: React.FC = () => {
               <div
                 key={d.id}
                 onClick={() => openDocument(d)}
-                className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm cursor-pointer hover:border-[#d4a017]/40 hover:shadow-md transition-all group"
+                className="relative bg-white rounded-2xl p-4 border border-gray-100 shadow-sm cursor-pointer hover:border-[#d4a017]/40 hover:shadow-md transition-all group"
               >
                 <div className="flex items-start justify-between gap-2 mb-2">
                   <FileText size={18} className="text-gray-300 flex-shrink-0 mt-0.5" />
-                  <button
-                    onClick={e => { e.stopPropagation(); setDeleteDocId(d.id); }}
-                    className="p-1 rounded-lg hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all"
-                  >
-                    <Trash2 size={14} className="text-red-400" />
-                  </button>
+                  <ThreeDotMenu
+                    onRename={() => handleRenameDoc(d)}
+                    onDelete={() => setDeleteDocId(d.id)}
+                  />
                 </div>
                 <p className="font-semibold text-gray-900 text-sm truncate">{d.title || 'Untitled'}</p>
                 {d.content && (
@@ -518,6 +732,63 @@ const AdminDocs: React.FC = () => {
               <button onClick={() => setDeleteDocId(null)} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600">Cancel</button>
               <button onClick={confirmDeleteDoc} className="flex-1 py-2.5 rounded-xl bg-red-500 text-white text-sm font-semibold">Delete</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {deleteFolderId && (
+        <div className="fixed inset-0 z-[210] flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm text-center">
+            <p className="font-bold text-gray-900 mb-2">Delete this folder?</p>
+            <p className="text-sm text-gray-500 mb-5">This cannot be undone.</p>
+            <div className="flex gap-3">
+              <button onClick={() => setDeleteFolderId(null)} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600">Cancel</button>
+              <button onClick={confirmDeleteFolder} className="flex-1 py-2.5 rounded-xl bg-red-500 text-white text-sm font-semibold">Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {renameFolderData && (
+        <RenameModal
+          title="Rename Folder"
+          initialValue={renameFolderData.name}
+          onConfirm={confirmRenameFolder}
+          onCancel={() => setRenameFolderData(null)}
+        />
+      )}
+      {renameDocData && (
+        <RenameModal
+          title="Rename Document"
+          initialValue={renameDocData.name}
+          onConfirm={confirmRenameDoc}
+          onCancel={() => setRenameDocData(null)}
+        />
+      )}
+      {/* Move to Folder bottom sheet */}
+      {moveDocId && (
+        <div className="fixed inset-0 z-[210] flex items-end sm:items-center justify-center bg-black/50" onClick={() => setMoveDocId(null)}>
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-sm p-5 max-h-[60vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <h3 className="font-bold text-gray-900 mb-4">Move to Folder</h3>
+            <button
+              onClick={() => moveDocToFolder(moveDocId, null)}
+              className="flex items-center gap-2 w-full px-3 py-2.5 rounded-xl hover:bg-gray-100 transition-colors text-sm text-gray-700 mb-1"
+            >
+              <FileText size={14} className="text-gray-400" /> No Folder (Root)
+            </button>
+            {folders.map(f => (
+              <button
+                key={f.id}
+                onClick={() => moveDocToFolder(moveDocId, f.id)}
+                className="flex items-center gap-2 w-full px-3 py-2.5 rounded-xl hover:bg-gray-100 transition-colors text-sm text-gray-700 mb-1"
+              >
+                <Folder size={14} style={{ color: 'var(--brand-color, #d4a017)' }} /> {f.name}
+              </button>
+            ))}
+            <button
+              onClick={() => setMoveDocId(null)}
+              className="w-full py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 mt-3"
+            >Cancel</button>
           </div>
         </div>
       )}

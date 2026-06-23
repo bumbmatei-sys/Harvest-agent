@@ -120,8 +120,8 @@ export async function POST(request: NextRequest) {
                 updatedAt: new Date().toISOString(),
               };
 
-              // Ultra/Enterprise: AI assistant is included — auto-generate code if not present
-              if ((plan === 'ultra' || plan === 'enterprise') && !tenantDoc.data()?.addOnAiAssistantCode) {
+              // Ultra: AI assistant is included — auto-generate code if not present
+              if (plan === 'ultra' && !tenantDoc.data()?.addOnAiAssistantCode) {
                 updateData.addOnAiAssistantCode = generateAccessCode();
               }
 

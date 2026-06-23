@@ -5,7 +5,6 @@ import { TenantPlan } from '../../types/tenant.types';
 import { getPlanFeatures, PlanFeatures } from '../../utils/plan-features';
 import { authFetch } from '../../utils/auth-fetch';
 import { getTenantId } from './useTenantId';
-import EnterpriseContactModal from '../EnterpriseContactModal';
 
 interface PlanUpgradeSectionProps {
   currentPlan?: TenantPlan;
@@ -18,7 +17,6 @@ const PLANS: { id: TenantPlan; name: string; monthlyPrice: string; yearlyPrice: 
   { id: 'pro', name: 'Small Team', monthlyPrice: '$119/mo', yearlyPrice: '$1,190/yr', yearlyPromo: '$1,190', yearlyOriginal: '$1,428', icon: Crown, color: '#d4a017', comingSoon: [] },
   { id: 'max', name: 'Community', monthlyPrice: '$239/mo', yearlyPrice: '$2,390/yr', yearlyPromo: '$2,390', yearlyOriginal: '$2,868', icon: Star, color: '#8b5cf6', popular: true, comingSoon: ['Automated Devotional'] },
   { id: 'ultra', name: 'Ministry', monthlyPrice: '$479/mo', yearlyPrice: '$4,790/yr', yearlyPromo: '$4,790', yearlyOriginal: '$5,748', icon: Building2, color: '#b45309', comingSoon: ['Automated Blog Articles'] },
-  { id: 'enterprise', name: 'Organization', monthlyPrice: 'Custom', yearlyPrice: 'Custom', yearlyPromo: 'Custom', yearlyOriginal: '', icon: Building2, color: '#0b1121', comingSoon: [] },
 ];
 
 const FEATURE_COMPARISON: { key: keyof PlanFeatures; label: string; format?: (v: any) => string }[] = [
@@ -42,14 +40,13 @@ const FEATURE_COMPARISON: { key: keyof PlanFeatures; label: string; format?: (v:
 ];
 
 const SOON_FEATURES: { label: string; plans: TenantPlan[] }[] = [
-  { label: 'Automated Devotional', plans: ['max', 'ultra', 'enterprise'] },
-  { label: 'Automated Blog Articles', plans: ['ultra', 'enterprise'] },
+  { label: 'Automated Devotional', plans: ['max', 'ultra'] },
+  { label: 'Automated Blog Articles', plans: ['ultra'] },
 ];
 
 const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, tenantId, email }) => {
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly');
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
-  const [enterpriseModalOpen, setEnterpriseModalOpen] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
   const [activePlanIndex, setActivePlanIndex] = useState(0);
   const planScrollRef = useRef<HTMLDivElement>(null);
@@ -208,7 +205,7 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
                 <p className="text-2xl font-bold text-gray-900 mt-1">
                   {billingPeriod === 'monthly' ? plan.monthlyPrice : plan.yearlyPrice}
                 </p>
-                {billingPeriod === 'yearly' && plan.id !== 'enterprise' && (
+                {billingPeriod === 'yearly' && (
                   <p className="text-xs text-green-600 font-medium mt-1">Save 2 months</p>
                 )}
               </div>
@@ -245,9 +242,7 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
 
               <button
                 onClick={() => {
-                  if (!isCurrent && !isDowngrade && plan.id === 'enterprise') {
-                    setEnterpriseModalOpen(true);
-                  } else if (!isCurrent && !isDowngrade) {
+                  if (!isCurrent && !isDowngrade) {
                     handleStripeCheckout(plan.id);
                   } else if (!isCurrent && isDowngrade) {
                     handleManageSubscription();
@@ -269,7 +264,7 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
                     <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     Redirecting...
                   </span>
-                ) : isCurrent ? 'Current Plan' : isDowngrade ? `Downgrade to ${plan.name}` : plan.id === 'enterprise' ? 'Contact Sales' : `Upgrade to ${plan.name}`}
+                ) : isCurrent ? 'Current Plan' : isDowngrade ? `Downgrade to ${plan.name}` : `Upgrade to ${plan.name}`}
               </button>
             </div>
           );
@@ -329,7 +324,7 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
               ))}
               {/* Coming soon section header */}
               <tr>
-                <td colSpan={6} className="pt-5 pb-2 px-3">
+                <td colSpan={5} className="pt-5 pb-2 px-3">
                   <span className="text-[10px] font-semibold tracking-widest uppercase text-amber-500">Coming Soon</span>
                 </td>
               </tr>
@@ -367,10 +362,6 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
         <p className="text-xs text-gray-400">Powered by Stripe</p>
       </div>
 
-      <EnterpriseContactModal
-        isOpen={enterpriseModalOpen}
-        onClose={() => setEnterpriseModalOpen(false)}
-      />
     </div>
   );
 };

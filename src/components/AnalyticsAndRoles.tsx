@@ -269,7 +269,7 @@ function PermissionEditor({ admin, isNew, onSave, onClose, allUsers }: Permissio
           <button onClick={onClose} style={{ background: "none", border: "none", color: TEXT2, cursor: "pointer", fontSize: 20 }}>✕</button>
         </div>
 
-        <div style={{ overflowY: "auto", flex: 1, padding: "16px 20px 32px", display: "flex", flexDirection: "column", gap: 20 }}>
+        <div style={{ overflowY: "auto", flex: 1, paddingTop: 60, paddingBottom: 120, paddingLeft: 20, paddingRight: 20, display: "flex", flexDirection: "column", gap: 20 }}>
           {isNew && !form.id && (
             <div style={{ display: "flex", flexDirection: "column", gap: 10, position: "relative" }}>
               <label style={s.label}>Search User</label>
@@ -376,8 +376,8 @@ function PermissionEditor({ admin, isNew, onSave, onClose, allUsers }: Permissio
   );
 }
 
-export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissions }: { currentUserRole: string, currentUserPermissions?: Permission | null }) {
-  const [tab, setTab] = useState<MainTab>("analytics");
+export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissions, mode = "full" }: { currentUserRole: string, currentUserPermissions?: Permission | null, mode?: "full" | "analytics" | "roles" }) {
+  const [tab, setTab] = useState<MainTab>(mode === "roles" ? "roles" : "analytics");
   const [subView, setSubView] = useState<"main" | "all_users" | "countries" | "country_users">("main");
   const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
   const [listSearchQuery, setListSearchQuery] = useState("");
@@ -773,7 +773,7 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
         </div>
       )}
 
-      {(currentUserRole === "super_admin" || currentUserPermissions?.manageAdmins || currentUserPermissions?.fullAccess) && (
+      {mode === "full" && (currentUserRole === "super_admin" || currentUserPermissions?.manageAdmins || currentUserPermissions?.fullAccess) && (
         <div style={s.tabBar}>
           {([["analytics", "📊 Analytics"], ["roles", "👥 Admin Roles"]] as [MainTab, string][]).map(([id, label]) => (
             <button key={id} onClick={() => setTab(id)}

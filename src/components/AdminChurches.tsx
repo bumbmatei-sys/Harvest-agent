@@ -28,7 +28,7 @@ const AdminChurches: React.FC = () => {
   const [showBillingConfirm, setShowBillingConfirm] = useState(false);
   const [billingLoading, setBillingLoading] = useState(false);
 
-  const isEnterprise = tenantPlan === 'enterprise';
+  const isEnterprise = tenantPlan === 'ultra';
   const ENTERPRISE_PRICE_PER_CHURCH = 15; // $15/church/mo
 
   const openFilterPopup = (type: 'city' | 'pastor' | 'country') => {

@@ -3,7 +3,6 @@ import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Crown, Palette, Globe, CreditCard, Settings2, Bot, Plug, AlertTriangle, Share2, Check, ChevronRight } from 'lucide-react';
 import { TenantPlan } from '../types/tenant.types';
 import { getPlanFeatures, PlanFeatures } from '../utils/plan-features';
-import EnterpriseContactModal from './EnterpriseContactModal';
 import AffiliateSection from './AffiliateSection';
 import SettingsAccordion from './settings/SettingsAccordion';
 import PlanUpgradeSection from './settings/PlanUpgradeSection';
@@ -24,7 +23,6 @@ interface AdminSettingsProps {
 }
 
 const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onChangePlan, onCancelPlan, tenantId, email }) => {
-  const [enterpriseModalOpen, setEnterpriseModalOpen] = useState(false);
   const [stripeStatus, setStripeStatus] = useState<string | null>(null);
   const [stripeAddon, setStripeAddon] = useState<string | null>(null);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
@@ -313,18 +311,16 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
         </div>
       )}
 
-      <EnterpriseContactModal isOpen={enterpriseModalOpen} onClose={() => setEnterpriseModalOpen(false)} />
     </div>
   );
 };
 
 // Display constants (needed for current plan summary)
 const PLANS_DISPLAY = [
-  { id: 'plus' as TenantPlan, name: 'Individual', monthlyPrice: '$59/mo', icon: Crown, color: '#6366f1' },
-  { id: 'pro' as TenantPlan, name: 'Small Team', monthlyPrice: '$119/mo', icon: Crown, color: '#d4a017' },
-  { id: 'max' as TenantPlan, name: 'Community', monthlyPrice: '$239/mo', icon: Crown, color: '#8b5cf6' },
-  { id: 'ultra' as TenantPlan, name: 'Ministry', monthlyPrice: '$479/mo', icon: Crown, color: '#b45309' },
-  { id: 'enterprise' as TenantPlan, name: 'Organization', monthlyPrice: 'Custom', icon: Crown, color: '#0b1121' },
+  { id: 'plus'  as TenantPlan, name: 'Individual', monthlyPrice: '$59/mo',  icon: Crown, color: '#6366f1' },
+  { id: 'pro'   as TenantPlan, name: 'Small Team', monthlyPrice: '$119/mo', icon: Crown, color: '#d4a017' },
+  { id: 'max'   as TenantPlan, name: 'Community',  monthlyPrice: '$239/mo', icon: Crown, color: '#8b5cf6' },
+  { id: 'ultra' as TenantPlan, name: 'Ministry',   monthlyPrice: '$479/mo', icon: Crown, color: '#b45309' },
 ];
 
 export default AdminSettings;

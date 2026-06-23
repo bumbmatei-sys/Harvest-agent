@@ -108,37 +108,15 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     taxReceipt: false,
     communityGroups: false,
   },
-  // Ministry
+  // Ministry (top plan — replaces Organization/enterprise)
   ultra: {
-    blog: true,
-    aiChat: true,
-    aiKnowledge: true,
-    map: true,
-    maxChurches: 1,
-    maxCourses: -1,
-    maxAdmins: 15,
-    customDomain: true,
-    customBackground: true,
-    newsletterAutomation: true,
-    smsAutomation: false,
-    aiAssistant: 1,
-    fundraising: true,
-    eventRegistration: true,
-    docs: true,
-    crm: true,
-    accountingTools: true,
-    taxReceipt: false,
-    communityGroups: true,
-  },
-  // Organization
-  enterprise: {
     blog: true,
     aiChat: true,
     aiKnowledge: true,
     map: true,
     maxChurches: -1,
     maxCourses: -1,
-    maxAdmins: -1,
+    maxAdmins: 15,
     customDomain: true,
     customBackground: true,
     newsletterAutomation: true,
@@ -164,14 +142,13 @@ export function getPlanFeatures(plan: TenantPlan): PlanFeatures {
 
 /**
  * Human-readable display names for each plan tier.
- * Internal IDs (plus/pro/max/ultra/enterprise) stay the same.
+ * Internal IDs (plus/pro/max/ultra) stay the same.
  */
 export const PLAN_DISPLAY_NAMES: Record<TenantPlan, string> = {
   plus: 'Individual',
   pro: 'Small Team',
   max: 'Community',
   ultra: 'Ministry',
-  enterprise: 'Organization',
 };
 
 /**

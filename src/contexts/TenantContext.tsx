@@ -164,7 +164,7 @@ export const TenantProvider: React.FC<TenantProviderProps> = ({
   // Super admin gets all features regardless of tenant plan
   const isSuperUser = isSuperAdminEmail(auth.currentUser?.email);
   const planFeatures = tenantPlan
-    ? (isSuperUser ? getPlanFeatures('enterprise') : getPlanFeatures(tenantPlan))
+    ? (isSuperUser ? getPlanFeatures('ultra') : getPlanFeatures(tenantPlan))
     : null;
 
   return (

@@ -1,8 +1,8 @@
 "use client";
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Plus, Search, Edit2, Trash2, Users, Mail, Phone, ArrowLeft,
-  MessageSquare, DollarSign, PhoneCall, Calendar, Clock, ChevronRight
+  MessageSquare, DollarSign, PhoneCall, Calendar, Clock, ChevronRight, MapPin
 } from 'lucide-react';
 import {
   collection, query, where, orderBy, onSnapshot, addDoc, updateDoc, deleteDoc,
@@ -12,6 +12,7 @@ import { db, auth } from '../firebase';
 import { getTenantScope } from '../utils/tenant-scope';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { notifyError } from '../utils/notify';
+import AnalyticsAndRoles, { Permission } from './AnalyticsAndRoles';
 
 interface Contact {
   id: string;
@@ -86,7 +87,18 @@ const fmtDate = (ts: Timestamp | null) => {
 
 type ViewMode = 'list' | 'detail' | 'form';
 
-const AdminCRM: React.FC = () => {
+interface AdminCRMProps {
+  currentUserRole?: string;
+  currentUserPermissions?: Permission | null;
+}
+
+const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermissions }) => {
+  // Scroll-to-top container reference — attached to the wrapping div of every CRM view.
+  // Whenever the user switches between list / detail / form views (or Analytics sub-tab),
+  // we find the nearest scrollable ancestor and reset its scroll position to the top.
+  // This is the systematic scroll-reset pattern used across admin screens that share a
+  // parent scroll container inside FocusScreen.
+  const scrollRef = useRef<HTMLDivElement>(null);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -99,11 +111,13 @@ const AdminCRM: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
-  // Activity timeline
   const [activities, setActivities] = useState<ContactActivity[]>([]);
   const [showAddActivity, setShowAddActivity] = useState(false);
   const [actForm, setActForm] = useState({ type: 'note' as ContactActivity['type'], description: '', amount: '' });
   const [savingAct, setSavingAct] = useState(false);
+
+  // CRM sub-view: Contacts (default) or user registration Analytics
+  const [crmSubView, setCrmSubView] = useState<'contacts' | 'analytics'>('contacts');
 
   useEffect(() => {
     let unsub: (() => void) | null = null;
@@ -125,7 +139,6 @@ const AdminCRM: React.FC = () => {
     return () => { cancelled = true; unsub?.(); };
   }, []);
 
-  // Load activities for selected contact
   useEffect(() => {
     if (!selected) return;
     const q = query(
@@ -140,6 +153,18 @@ const AdminCRM: React.FC = () => {
     return unsub;
   }, [selected]);
 
+  // Reset scroll position to top whenever the user navigates between CRM views
+  // (list → detail → form, Contacts ↔ Analytics, or selecting a new contact).
+  // The scroll container lives in the parent FocusScreen wrapper, so we walk up
+  // the DOM from the view's root element to find the nearest overflow-y-auto
+  // ancestor and reset it. This is the systematic scroll-reset pattern.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const scroller = el.closest('[class*="overflow-y-auto"], [class*="overflow-auto"]') as HTMLElement | null;
+    if (scroller) scroller.scrollTo({ top: 0, left: 0 });
+  }, [view, crmSubView, selected?.id]);
+
   const filtered = contacts.filter(c => {
     const matchType = filter === 'all' || c.type === filter || (filter !== 'both' && c.type === 'both');
     const fullName = `${c.firstName} ${c.lastName}`.toLowerCase();
@@ -149,22 +174,13 @@ const AdminCRM: React.FC = () => {
     return matchType && matchSearch;
   });
 
-  const openCreate = () => {
-    setIsEditing(false);
-    setForm(emptyContact);
-    setView('form');
-  };
+  const openCreate = () => { setIsEditing(false); setForm(emptyContact); setView('form'); };
 
   const openEdit = (c: Contact) => {
     setIsEditing(true);
     setForm({
-      firstName: c.firstName || '',
-      lastName: c.lastName || '',
-      email: c.email || '',
-      phone: c.phone || '',
-      type: c.type,
-      notes: c.notes || '',
-      tags: c.tags || [],
+      firstName: c.firstName || '', lastName: c.lastName || '', email: c.email || '',
+      phone: c.phone || '', type: c.type, notes: c.notes || '', tags: c.tags || [],
       totalDonated: c.totalDonated || 0,
       address: { ...{ street: '', city: '', state: '', zip: '', country: '' }, ...c.address },
     });
@@ -172,38 +188,26 @@ const AdminCRM: React.FC = () => {
     setView('form');
   };
 
-  const openDetail = (c: Contact) => {
-    setSelected(c);
-    setView('detail');
-  };
+  const openDetail = (c: Contact) => { setSelected(c); setView('detail'); };
 
   const handleSave = async () => {
     if (!form.firstName.trim()) return;
     setSaving(true);
     try {
       const data = {
-        firstName: form.firstName.trim(),
-        lastName: form.lastName.trim(),
-        email: form.email.trim(),
-        phone: form.phone.trim(),
-        type: form.type,
-        notes: form.notes.trim(),
-        tags: form.tags,
-        totalDonated: form.totalDonated,
-        address: form.address,
-        updatedAt: serverTimestamp(),
+        firstName: form.firstName.trim(), lastName: form.lastName.trim(),
+        email: form.email.trim(), phone: form.phone.trim(), type: form.type,
+        notes: form.notes.trim(), tags: form.tags, totalDonated: form.totalDonated,
+        address: form.address, updatedAt: serverTimestamp(),
       };
       if (isEditing && selected) {
         await updateDoc(doc(db, 'contacts', selected.id), data);
         setSelected({ ...selected, ...data, updatedAt: null });
       } else {
         await addDoc(collection(db, 'contacts'), {
-          ...data,
-          tenantId: tenantId || null,
-          lastDonationAt: null,
-          memberSince: null,
-          createdAt: serverTimestamp(),
-          createdBy: auth.currentUser?.uid || '',
+          ...data, tenantId: tenantId || null,
+          lastDonationAt: null, memberSince: null,
+          createdAt: serverTimestamp(), createdBy: auth.currentUser?.uid || '',
         });
       }
       setView(isEditing ? 'detail' : 'list');
@@ -224,21 +228,14 @@ const AdminCRM: React.FC = () => {
     setSavingAct(true);
     try {
       await addDoc(collection(db, 'contactActivities'), {
-        contactId: selected.id,
-        tenantId: tenantId || null,
-        type: actForm.type,
+        contactId: selected.id, tenantId: tenantId || null, type: actForm.type,
         description: actForm.description.trim(),
         amount: actForm.type === 'donation' && actForm.amount ? Number(actForm.amount) : null,
-        createdAt: serverTimestamp(),
-        createdBy: auth.currentUser?.uid || '',
+        createdAt: serverTimestamp(), createdBy: auth.currentUser?.uid || '',
       });
-      // Update totalDonated if donation
       if (actForm.type === 'donation' && actForm.amount) {
         const newTotal = (selected.totalDonated || 0) + Number(actForm.amount);
-        await updateDoc(doc(db, 'contacts', selected.id), {
-          totalDonated: newTotal,
-          lastDonationAt: serverTimestamp(),
-        });
+        await updateDoc(doc(db, 'contacts', selected.id), { totalDonated: newTotal, lastDonationAt: serverTimestamp() });
         setSelected({ ...selected, totalDonated: newTotal });
       }
       setShowAddActivity(false);
@@ -251,10 +248,57 @@ const AdminCRM: React.FC = () => {
     return <div className="flex items-center justify-center h-40"><div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--brand-color, #d4a017)', borderTopColor: 'transparent' }} /></div>;
   }
 
+  // Sub-tab bar — visible in all sub-views (Contacts / Analytics)
+  const subTabBar = (
+    <div className="flex gap-1 mb-5 border-b border-gray-200">
+      <button
+        onClick={() => setCrmSubView('contacts')}
+        className={`px-4 py-2 text-sm font-semibold border-b-2 transition-colors ${
+          crmSubView === 'contacts'
+            ? 'border-[#d4a017] text-[#d4a017]'
+            : 'border-transparent text-gray-400 hover:text-gray-600'
+        }`}
+      >
+        Contacts
+      </button>
+      <button
+        onClick={() => { setCrmSubView('analytics'); setView('list'); setSelected(null); }}
+        className={`px-4 py-2 text-sm font-semibold border-b-2 transition-colors ${
+          crmSubView === 'analytics'
+            ? 'border-[#d4a017] text-[#d4a017]'
+            : 'border-transparent text-gray-400 hover:text-gray-600'
+        }`}
+      >
+        Analytics
+      </button>
+    </div>
+  );
+
+  // ── Analytics sub-view ──
+  if (crmSubView === 'analytics') {
+    return (
+      <div ref={scrollRef} className="max-w-3xl mx-auto">
+        {subTabBar}
+        {currentUserRole ? (
+          <AnalyticsAndRoles
+            currentUserRole={currentUserRole}
+            currentUserPermissions={currentUserPermissions}
+            mode="analytics"
+          />
+        ) : (
+          <div className="text-center py-16 text-gray-400">
+            <p className="text-sm">Analytics unavailable.</p>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   // ── Form View ──
   if (view === 'form') {
     return (
-      <div className="max-w-2xl mx-auto">
+      <div ref={scrollRef} className="max-w-2xl mx-auto">
+        {subTabBar}
         <div className="flex items-center gap-3 mb-6">
           <button onClick={() => setView(isEditing ? 'detail' : 'list')} className="p-2 rounded-xl hover:bg-gray-100">
             <ArrowLeft size={18} className="text-gray-600" />
@@ -339,7 +383,8 @@ const AdminCRM: React.FC = () => {
   // ── Detail View ──
   if (view === 'detail' && selected) {
     return (
-      <div className="max-w-2xl mx-auto">
+      <div ref={scrollRef} className="max-w-2xl mx-auto">
+        {subTabBar}
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-3">
             <button onClick={() => { setSelected(null); setView('list'); }} className="p-2 rounded-xl hover:bg-gray-100">
@@ -370,39 +415,69 @@ const AdminCRM: React.FC = () => {
 
         {/* Contact info card */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 mb-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3">
             {selected.email && (
               <div className="flex items-center gap-2">
-                <Mail size={14} className="text-gray-400" />
+                <Mail size={14} className="text-gray-400 flex-shrink-0" />
                 <span className="text-sm text-gray-700 truncate">{selected.email}</span>
               </div>
             )}
             {selected.phone && (
               <div className="flex items-center gap-2">
-                <Phone size={14} className="text-gray-400" />
+                <Phone size={14} className="text-gray-400 flex-shrink-0" />
                 <span className="text-sm text-gray-700">{selected.phone}</span>
               </div>
             )}
-            {selected.totalDonated > 0 && (
+            {selected.memberSince && (
               <div className="flex items-center gap-2">
-                <DollarSign size={14} style={{ color: 'var(--brand-color, #d4a017)' }} />
-                <span className="text-sm font-semibold text-gray-900">{fmt(selected.totalDonated)} total donated</span>
+                <Calendar size={14} className="text-gray-400 flex-shrink-0" />
+                <span className="text-sm text-gray-700">Member since {fmtDate(selected.memberSince)}</span>
               </div>
             )}
+            <div className="flex items-center gap-2">
+              <DollarSign size={14} style={{ color: 'var(--brand-color, #d4a017)' }} className="flex-shrink-0" />
+              <span className="text-sm font-semibold text-gray-900">{fmt(selected.totalDonated || 0)} total</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Clock size={14} className="text-gray-400 flex-shrink-0" />
+              <span className="text-sm text-gray-700">
+                {selected.lastDonationAt ? `Last gift ${fmtDate(selected.lastDonationAt)}` : 'No donations yet'}
+              </span>
+            </div>
             {selected.address?.city && (
               <div className="flex items-center gap-2">
-                <ChevronRight size={14} className="text-gray-400" />
-                <span className="text-sm text-gray-700">
-                  {[selected.address.city, selected.address.state, selected.address.country].filter(Boolean).join(', ')}
+                <MapPin size={14} className="text-gray-400 flex-shrink-0" />
+                <span className="text-sm text-gray-700 truncate">
+                  {[selected.address.city, selected.address.state].filter(Boolean).join(', ')}
                 </span>
               </div>
             )}
           </div>
-          {selected.notes && (
-            <div className="mt-3 pt-3 border-t border-gray-100">
-              <p className="text-xs text-gray-500 leading-relaxed">{selected.notes}</p>
+          {selected.tags && selected.tags.length > 0 && (
+            <div className="mt-3 pt-3 border-t border-gray-100 flex flex-wrap gap-1.5">
+              {selected.tags.map(tag => (
+                <span key={tag} className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">{tag}</span>
+              ))}
             </div>
           )}
+          <div className="mt-3 pt-3 border-t border-gray-100">
+            <label className="text-xs font-semibold text-gray-700 mb-1 block">Admin Notes</label>
+            <textarea
+              defaultValue={selected.notes || ''}
+              onBlur={async (e) => {
+                const val = e.target.value.trim();
+                if (val !== (selected.notes || '')) {
+                  try {
+                    await updateDoc(doc(db, 'contacts', selected.id), { notes: val });
+                    setSelected({ ...selected, notes: val });
+                  } catch (err) { console.error('Failed to save notes:', err); }
+                }
+              }}
+              rows={3}
+              className="w-full text-xs text-gray-600 border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:border-[#d4a017] resize-none leading-relaxed"
+              placeholder="Add notes about this contact..."
+            />
+          </div>
         </div>
 
         {/* Activity timeline */}
@@ -420,7 +495,7 @@ const AdminCRM: React.FC = () => {
         {activities.length === 0 ? (
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 text-center text-gray-400">
             <Clock size={28} className="mx-auto mb-2 opacity-30" />
-            <p className="text-sm">No activities recorded yet</p>
+            <p className="text-sm">Activities will appear here when the user makes donations or attends events.</p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -442,13 +517,74 @@ const AdminCRM: React.FC = () => {
             ))}
           </div>
         )}
+
+        {/* Add Activity Modal */}
+        {showAddActivity && (
+          <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center bg-black/50 p-4">
+            <div className="bg-white rounded-2xl w-full max-w-md">
+              <div className="p-5 border-b border-gray-100"><h3 className="font-bold text-gray-900">Add Activity</h3></div>
+              <div className="p-5 space-y-4">
+                <div>
+                  <label className="text-xs font-semibold text-gray-700 mb-1 block">Type</label>
+                  <select value={actForm.type} onChange={e => setActForm({ ...actForm, type: e.target.value as ContactActivity['type'] })}
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#d4a017] bg-white">
+                    <option value="note">Note</option>
+                    <option value="donation">Donation</option>
+                    <option value="email">Email</option>
+                    <option value="call">Call</option>
+                    <option value="meeting">Meeting</option>
+                  </select>
+                </div>
+                {actForm.type === 'donation' && (
+                  <div>
+                    <label className="text-xs font-semibold text-gray-700 mb-1 block">Amount ($)</label>
+                    <input type="number" min={0} value={actForm.amount} onChange={e => setActForm({ ...actForm, amount: e.target.value })}
+                      className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#d4a017]" placeholder="0.00" />
+                  </div>
+                )}
+                <div>
+                  <label className="text-xs font-semibold text-gray-700 mb-1 block">Description *</label>
+                  <textarea value={actForm.description} onChange={e => setActForm({ ...actForm, description: e.target.value })}
+                    rows={3} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#d4a017] resize-none"
+                    placeholder="What happened?" />
+                </div>
+              </div>
+              <div className="p-5 border-t border-gray-100 flex gap-3">
+                <button onClick={() => setShowAddActivity(false)} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600">Cancel</button>
+                <button onClick={addActivity} disabled={savingAct || !actForm.description.trim()}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
+                  style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}>
+                  {savingAct ? 'Saving...' : 'Add'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {deleteId && (
+          <div className="fixed inset-0 z-[210] flex items-center justify-center bg-black/50 p-4">
+            <div className="bg-white rounded-2xl p-6 w-full max-w-sm text-center">
+              <p className="font-bold text-gray-900 mb-2">Delete contact?</p>
+              <p className="text-sm text-gray-500 mb-5">This cannot be undone.</p>
+              <div className="flex gap-3">
+                <button onClick={() => setDeleteId(null)} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600">Cancel</button>
+                <button onClick={confirmDelete} className="flex-1 py-2.5 rounded-xl bg-red-500 text-white text-sm font-semibold">Delete</button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
 
   // ── List View ──
+  const totalGiven = contacts.reduce((s, c) => s + (c.totalDonated || 0), 0);
+  const memberCount = contacts.filter(c => c.type === 'member' || c.type === 'both').length;
+  const donorCount = contacts.filter(c => c.type === 'donor' || c.type === 'both').length;
+
   return (
     <div className="max-w-3xl mx-auto">
+      {subTabBar}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-2">
           <Users size={22} style={{ color: 'var(--brand-color, #d4a017)' }} />
@@ -462,14 +598,20 @@ const AdminCRM: React.FC = () => {
         </button>
       </div>
 
-      {/* Stats */}
+      {/* Analytics */}
       <div className="grid grid-cols-3 gap-3 mb-5">
-        {(['donor', 'member', 'both'] as const).map(t => (
-          <div key={t} className="bg-white rounded-xl p-3 border border-gray-100 text-center shadow-sm">
-            <div className="text-xl font-bold text-gray-900">{contacts.filter(c => c.type === t).length}</div>
-            <div className="text-xs text-gray-500 mt-0.5">{TYPE_LABELS[t]}s</div>
-          </div>
-        ))}
+        <div className="bg-white rounded-xl p-3 border border-gray-100 text-center shadow-sm">
+          <div className="text-xl font-bold text-gray-900">{memberCount}</div>
+          <div className="text-xs text-gray-500 mt-0.5">Members</div>
+        </div>
+        <div className="bg-white rounded-xl p-3 border border-gray-100 text-center shadow-sm">
+          <div className="text-xl font-bold text-gray-900">{donorCount}</div>
+          <div className="text-xs text-gray-500 mt-0.5">Donors</div>
+        </div>
+        <div className="bg-white rounded-xl p-3 border border-gray-100 text-center shadow-sm">
+          <div className="text-base font-bold text-gray-900">{fmt(totalGiven)}</div>
+          <div className="text-xs text-gray-500 mt-0.5">Total Given</div>
+        </div>
       </div>
 
       {/* Search + filter */}
@@ -526,51 +668,6 @@ const AdminCRM: React.FC = () => {
               <ChevronRight size={14} className="text-gray-300 flex-shrink-0" />
             </div>
           ))}
-        </div>
-      )}
-
-      {/* Add Activity Modal */}
-      {showAddActivity && (
-        <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-2xl w-full max-w-md">
-            <div className="p-5 border-b border-gray-100">
-              <h3 className="font-bold text-gray-900">Add Activity</h3>
-            </div>
-            <div className="p-5 space-y-4">
-              <div>
-                <label className="text-xs font-semibold text-gray-700 mb-1 block">Type</label>
-                <select value={actForm.type} onChange={e => setActForm({ ...actForm, type: e.target.value as ContactActivity['type'] })}
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#d4a017] bg-white">
-                  <option value="note">Note</option>
-                  <option value="donation">Donation</option>
-                  <option value="email">Email</option>
-                  <option value="call">Call</option>
-                  <option value="meeting">Meeting</option>
-                </select>
-              </div>
-              {actForm.type === 'donation' && (
-                <div>
-                  <label className="text-xs font-semibold text-gray-700 mb-1 block">Amount ($)</label>
-                  <input type="number" min={0} value={actForm.amount} onChange={e => setActForm({ ...actForm, amount: e.target.value })}
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#d4a017]" placeholder="0.00" />
-                </div>
-              )}
-              <div>
-                <label className="text-xs font-semibold text-gray-700 mb-1 block">Description *</label>
-                <textarea value={actForm.description} onChange={e => setActForm({ ...actForm, description: e.target.value })}
-                  rows={3} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#d4a017] resize-none"
-                  placeholder="What happened?" />
-              </div>
-            </div>
-            <div className="p-5 border-t border-gray-100 flex gap-3">
-              <button onClick={() => setShowAddActivity(false)} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600">Cancel</button>
-              <button onClick={addActivity} disabled={savingAct || !actForm.description.trim()}
-                className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
-                style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}>
-                {savingAct ? 'Saving...' : 'Add'}
-              </button>
-            </div>
-          </div>
         </div>
       )}
 

@@ -1,11 +1,11 @@
 "use client";
 import React, { useEffect } from 'react';
-import { ArrowLeft, PanelRight } from 'lucide-react';
+import { ChevronLeft, PanelLeft } from 'lucide-react';
 
 interface FocusScreenProps {
   /** Called when the back arrow is tapped or Android hardware back is pressed. */
   onBack: () => void;
-  /** Optional — shows the sidebar toggle button in the top-right corner. */
+  /** Optional — shows the sidebar toggle button next to the back button. */
   onSidebarToggle?: () => void;
   children: React.ReactNode;
 }
@@ -13,8 +13,8 @@ interface FocusScreenProps {
 /**
  * Full-screen focus mode wrapper for integrated app screens (Notes, CRM, Canvas, etc.).
  * Uses fixed positioning (z-[200]) to overlay the entire viewport, hiding the nav bar and
- * header that sit beneath it. Shows a floating back arrow (top-left) and optional sidebar
- * toggle (top-right) over the content.
+ * header that sit beneath it. Shows a gold back chevron (top-left) and optional sidebar
+ * toggle (top-left, beside back) over the content.
  */
 const FocusScreen: React.FC<FocusScreenProps> = ({ onBack, onSidebarToggle, children }) => {
   // Handle Android hardware back button via the browser History API popstate event.
@@ -34,25 +34,23 @@ const FocusScreen: React.FC<FocusScreenProps> = ({ onBack, onSidebarToggle, chil
         {children}
       </div>
 
-      {/* Floating back button — top left */}
+      {/* Back button — top left, gold chevron, no background circle */}
       <button
         onClick={onBack}
         aria-label="Go back"
-        className="absolute top-4 left-4 z-10 w-9 h-9 rounded-full flex items-center justify-center transition-opacity hover:opacity-80 active:opacity-60"
-        style={{ background: 'rgba(0,0,0,0.35)' }}
+        className="absolute top-4 left-4 z-10 flex items-center justify-center p-1 transition-opacity hover:opacity-70 active:opacity-50"
       >
-        <ArrowLeft size={20} className="text-white" strokeWidth={2.5} />
+        <ChevronLeft size={24} color="#B8962E" strokeWidth={2.5} />
       </button>
 
-      {/* Floating sidebar toggle — top right (shown only when a handler is provided) */}
+      {/* Sidebar toggle — top left beside back button (shown only when a handler is provided) */}
       {onSidebarToggle && (
         <button
           onClick={onSidebarToggle}
           aria-label="Toggle sidebar"
-          className="absolute top-4 right-4 z-10 w-9 h-9 rounded-full flex items-center justify-center transition-opacity hover:opacity-80 active:opacity-60"
-          style={{ background: 'rgba(0,0,0,0.35)' }}
+          className="absolute top-4 left-14 z-10 flex items-center justify-center p-1 transition-opacity hover:opacity-70 active:opacity-50"
         >
-          <PanelRight size={20} className="text-white" strokeWidth={2} />
+          <PanelLeft size={20} color="#B8962E" strokeWidth={2} />
         </button>
       )}
     </div>
