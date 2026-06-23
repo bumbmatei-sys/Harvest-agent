@@ -29,7 +29,7 @@ import { getPlanFeatures } from '../utils/plan-features';
 import { db, auth } from '../firebase';
 import { collection, query, where, onSnapshot, doc, getDoc, limit } from 'firebase/firestore';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
-import { getTenantScope, isSuperAdmin as checkIsSuperAdmin } from '../utils/tenant-scope';
+import { getTenantScope, isSuperAdmin as checkIsSuperAdmin, PLATFORM_TENANT_ID } from '../utils/tenant-scope';
 
 
 
@@ -383,13 +383,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, tenantPlan 
             <div className="p-4 lg:p-0">
               {newsletterView === 'editor' ? (
                 <NewsletterEditor
-                  tenantId={tenantId || ''}
+                  tenantId={tenantId || PLATFORM_TENANT_ID}
                   tenantName={tenantName}
                   onBack={() => setNewsletterView('list')}
                 />
               ) : (
                 <NewsletterCampaigns
-                  tenantId={tenantId || ''}
+                  tenantId={tenantId || PLATFORM_TENANT_ID}
                   onBack={() => setActiveTab('dashboard')}
                   onCreateNew={() => setNewsletterView('editor')}
                 />
