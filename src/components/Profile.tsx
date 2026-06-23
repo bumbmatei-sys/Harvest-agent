@@ -209,7 +209,6 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToCourses, onGoToPart
  const handleLogout = async () => {
  try {
  await signOut(auth);
- // App.tsx will handle the redirect to landing page via onAuthStateChanged
  } catch (error) {
  console.error('Error signing out:', error);
  }
@@ -267,6 +266,13 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToCourses, onGoToPart
  reader.readAsDataURL(file);
  }
  };
+
+ // Show Trainings only on the main platform domain
+ const showTrainings = typeof window !== 'undefined' && (
+   window.location.hostname === 'theharvest.app' ||
+   window.location.hostname === 'localhost' ||
+   window.location.hostname.endsWith('.localhost')
+ );
 
  return (
  <div className="flex flex-col min-h-full bg-[#f8f9fa] transition-colors duration-300">
@@ -356,162 +362,166 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToCourses, onGoToPart
  label="Partner with Us" 
  onClick={onGoToPartner}
  />
-            <div className="h-px bg-gray-50 mx-4"></div>
-            <SettingItem
-              icon={<GraduationCap size={16} className="text-purple-500" />}
-              iconBg="bg-purple-50"
-              label="Trainings"
-              onClick={() => window.open('https://content.cfan.org/training/', '_blank')}
-            />
-            {/* Messages row — for non-admin users on plans with community, or super admin */}
-            {(!isAdmin || checkIsSuperAdmin()) && tenantPlan && (checkIsSuperAdmin() || getPlanFeatures(tenantPlan).communityGroups) && (
-              <>
-                <div className="h-px bg-gray-50 mx-4"></div>
-                <SettingItem
-                  icon={<MessageCircle size={16} className="text-indigo-500" />}
-                  iconBg="bg-indigo-50"
-                  label="Messages"
-                  onClick={() => setShowMessages(true)}
-                  badge={unreadMessages > 0 ? unreadMessages : undefined}
-                />
-              </>
-            )}
-            {/* My Events row — shown for tenant users */}
-            {!isAdmin && tenantPlan && (
-              <>
-                <div className="h-px bg-gray-50 mx-4"></div>
-                <SettingItem
-                  icon={<CalendarCheck size={16} className="text-orange-500" />}
-                  iconBg="bg-orange-50"
-                  label="My Events"
-                  onClick={() => setShowMyEvents(true)}
-                />
-              </>
-            )}
-          </div>
-        </div>
+ {showTrainings && (
+ <>
+ <div className="h-px bg-gray-50 mx-4"></div>
+ <SettingItem
+ icon={<GraduationCap size={16} className="text-purple-500" />}
+ iconBg="bg-purple-50"
+ label="Trainings"
+ onClick={() => window.open('https://content.cfan.org/training/', '_blank')}
+ />
+ </>
+ )}
+ {/* Messages row */}
+ {(!isAdmin || checkIsSuperAdmin()) && tenantPlan && (checkIsSuperAdmin() || getPlanFeatures(tenantPlan).communityGroups) && (
+ <>
+ <div className="h-px bg-gray-50 mx-4"></div>
+ <SettingItem
+ icon={<MessageCircle size={16} className="text-indigo-500" />}
+ iconBg="bg-indigo-50"
+ label="Messages"
+ onClick={() => setShowMessages(true)}
+ badge={unreadMessages > 0 ? unreadMessages : undefined}
+ />
+ </>
+ )}
+ {/* My Events row */}
+ {!isAdmin && tenantPlan && (
+ <>
+ <div className="h-px bg-gray-50 mx-4"></div>
+ <SettingItem
+ icon={<CalendarCheck size={16} className="text-orange-500" />}
+ iconBg="bg-orange-50"
+ label="My Events"
+ onClick={() => setShowMyEvents(true)}
+ />
+ </>
+ )}
+ </div>
+ </div>
 
-        {/* AI Subscription */}
-        {aiChatSub && (
-          <div>
-            <h4 className="text-[10px] font-bold text-gray-400 tracking-wider uppercase mb-3 ml-2">AI Subscription</h4>
-            <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden p-4">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-7 h-7 rounded-full flex items-center justify-center bg-amber-50">
-                  <Sparkles size={16} className="text-amber-500" />
-                </div>
-                <div>
-                  <p className="text-sm font-bold text-gray-900">Harvest AI — $5.99/mo</p>
-                  <p className="text-xs text-gray-500">
-                    {aiChatSub.cancelAt
-                      ? 'Cancels at end of billing period'
-                      : 'Active — auto-renews monthly'}
-                  </p>
-                </div>
-              </div>
-              {aiChatSub.cancelAt ? (
-                <div className="w-full flex items-center justify-center p-3 bg-gray-50 rounded-xl mt-1">
-                  <span className="text-sm font-medium text-gray-500">Cancellation scheduled</span>
-                </div>
-              ) : showAICancelConfirm ? (
-                <div className="bg-red-50 rounded-xl p-3 mt-2">
-                  <p className="text-xs text-red-600 font-medium text-center mb-3">
-                    Your AI access will continue until the end of this billing period.
-                  </p>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => setShowAICancelConfirm(false)}
-                      className="flex-1 py-2 bg-white text-gray-700 rounded-xl font-medium text-sm border border-gray-200"
-                    >
-                      Keep
-                    </button>
-                    <button
-                      onClick={handleCancelAI}
-                      disabled={isCancelingAI}
-                      className="flex-1 py-2 bg-red-600 text-white rounded-xl font-bold text-sm disabled:opacity-50"
-                    >
-                      {isCancelingAI ? 'Canceling...' : 'Cancel'}
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <button
-                  onClick={() => setShowAICancelConfirm(true)}
-                  className="w-full flex items-center justify-between p-3 bg-red-50 rounded-xl hover:bg-red-100 transition-colors mt-1"
-                >
-                  <span className="text-sm font-bold text-red-600">Cancel Subscription</span>
-                  <X size={16} className="text-red-400" />
-                </button>
-              )}
-            </div>
-          </div>
-        )}
+ {/* AI Subscription */}
+ {aiChatSub && (
+ <div>
+ <h4 className="text-[10px] font-bold text-gray-400 tracking-wider uppercase mb-3 ml-2">AI Subscription</h4>
+ <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden p-4">
+ <div className="flex items-center gap-3 mb-3">
+ <div className="w-7 h-7 rounded-full flex items-center justify-center bg-amber-50">
+ <Sparkles size={16} className="text-amber-500" />
+ </div>
+ <div>
+ <p className="text-sm font-bold text-gray-900">Harvest AI — $5.99/mo</p>
+ <p className="text-xs text-gray-500">
+ {aiChatSub.cancelAt
+ ? 'Cancels at end of billing period'
+ : 'Active — auto-renews monthly'}
+ </p>
+ </div>
+ </div>
+ {aiChatSub.cancelAt ? (
+ <div className="w-full flex items-center justify-center p-3 bg-gray-50 rounded-xl mt-1">
+ <span className="text-sm font-medium text-gray-500">Cancellation scheduled</span>
+ </div>
+ ) : showAICancelConfirm ? (
+ <div className="bg-red-50 rounded-xl p-3 mt-2">
+ <p className="text-xs text-red-600 font-medium text-center mb-3">
+ Your AI access will continue until the end of this billing period.
+ </p>
+ <div className="flex gap-2">
+ <button
+ onClick={() => setShowAICancelConfirm(false)}
+ className="flex-1 py-2 bg-white text-gray-700 rounded-xl font-medium text-sm border border-gray-200"
+ >
+ Keep
+ </button>
+ <button
+ onClick={handleCancelAI}
+ disabled={isCancelingAI}
+ className="flex-1 py-2 bg-red-600 text-white rounded-xl font-bold text-sm disabled:opacity-50"
+ >
+ {isCancelingAI ? 'Canceling...' : 'Cancel'}
+ </button>
+ </div>
+ </div>
+ ) : (
+ <button
+ onClick={() => setShowAICancelConfirm(true)}
+ className="w-full flex items-center justify-between p-3 bg-red-50 rounded-xl hover:bg-red-100 transition-colors mt-1"
+ >
+ <span className="text-sm font-bold text-red-600">Cancel Subscription</span>
+ <X size={16} className="text-red-400" />
+ </button>
+ )}
+ </div>
+ </div>
+ )}
 
-        {/* Partnership */}
-        <div>
-          <h4 className="text-[10px] font-bold text-gray-400 tracking-wider uppercase mb-3 ml-2">Partnership</h4>
-          <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden p-4">
-            {donationSubscriptionId ? (
-              <div>
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-7 h-7 rounded-full flex items-center justify-center bg-yellow-50">
-                    <HeartHandshake size={16} className="text-yellow-500" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold text-gray-900">
-                      ${donationAmount ? (donationAmount / 100).toFixed(0) : '—'} / month
-                    </p>
-                    {donationChurchName && (
-                      <p className="text-xs text-gray-500">{donationChurchName}</p>
-                    )}
-                  </div>
-                </div>
-                {showCancelConfirm ? (
-                  <div className="bg-red-50 rounded-xl p-3 mt-2">
-                    <p className="text-xs text-red-600 font-medium text-center mb-3">
-                      Are you sure? Your recurring donation will be canceled at the end of the current period.
-                    </p>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => setShowCancelConfirm(false)}
-                        className="flex-1 py-2 bg-white text-gray-700 rounded-xl font-medium text-sm border border-gray-200"
-                      >
-                        Keep
-                      </button>
-                      <button
-                        onClick={handleCancelPartnership}
-                        disabled={isCancelingPartnership}
-                        className="flex-1 py-2 bg-red-600 text-white rounded-xl font-bold text-sm disabled:opacity-50"
-                      >
-                        {isCancelingPartnership ? 'Canceling...' : 'Cancel'}
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => setShowCancelConfirm(true)}
-                    className="w-full flex items-center justify-between p-3 bg-red-50 rounded-xl hover:bg-red-100 transition-colors mt-1"
-                  >
-                    <span className="text-sm font-bold text-red-600">Cancel Partnership</span>
-                    <X size={16} className="text-red-400" />
-                  </button>
-                )}
-              </div>
-            ) : (
-              <div className="text-center py-2">
-                <p className="text-sm text-gray-500">You don&apos;t have an active partnership</p>
-                <button
-                  onClick={onGoToPartner}
-                  className="mt-2 text-sm font-bold text-[#d4a017]"
-                >
-                  Partner with Us →
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
+ {/* Partnership */}
+ <div>
+ <h4 className="text-[10px] font-bold text-gray-400 tracking-wider uppercase mb-3 ml-2">Partnership</h4>
+ <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden p-4">
+ {donationSubscriptionId ? (
+ <div>
+ <div className="flex items-center gap-3 mb-3">
+ <div className="w-7 h-7 rounded-full flex items-center justify-center bg-yellow-50">
+ <HeartHandshake size={16} className="text-yellow-500" />
+ </div>
+ <div>
+ <p className="text-sm font-bold text-gray-900">
+ ${donationAmount ? (donationAmount / 100).toFixed(0) : '—'} / month
+ </p>
+ {donationChurchName && (
+ <p className="text-xs text-gray-500">{donationChurchName}</p>
+ )}
+ </div>
+ </div>
+ {showCancelConfirm ? (
+ <div className="bg-red-50 rounded-xl p-3 mt-2">
+ <p className="text-xs text-red-600 font-medium text-center mb-3">
+ Are you sure? Your recurring donation will be canceled at the end of the current period.
+ </p>
+ <div className="flex gap-2">
+ <button
+ onClick={() => setShowCancelConfirm(false)}
+ className="flex-1 py-2 bg-white text-gray-700 rounded-xl font-medium text-sm border border-gray-200"
+ >
+ Keep
+ </button>
+ <button
+ onClick={handleCancelPartnership}
+ disabled={isCancelingPartnership}
+ className="flex-1 py-2 bg-red-600 text-white rounded-xl font-bold text-sm disabled:opacity-50"
+ >
+ {isCancelingPartnership ? 'Canceling...' : 'Cancel'}
+ </button>
+ </div>
+ </div>
+ ) : (
+ <button
+ onClick={() => setShowCancelConfirm(true)}
+ className="w-full flex items-center justify-between p-3 bg-red-50 rounded-xl hover:bg-red-100 transition-colors mt-1"
+ >
+ <span className="text-sm font-bold text-red-600">Cancel Partnership</span>
+ <X size={16} className="text-red-400" />
+ </button>
+ )}
+ </div>
+ ) : (
+ <div className="text-center py-2">
+ <p className="text-sm text-gray-500">You don&apos;t have an active partnership</p>
+ <button
+ onClick={onGoToPartner}
+ className="mt-2 text-sm font-bold text-[#d4a017]"
+ >
+ Partner with Us →
+ </button>
+ </div>
+ )}
+ </div>
+ </div>
 
-        {/* Support & Info */}
+ {/* Support & Info */}
  <div>
  <h4 className="text-[10px] font-bold text-gray-400 tracking-wider uppercase mb-3 ml-2">Support & Info</h4>
  <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden transition-colors duration-300">
@@ -620,14 +630,14 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToCourses, onGoToPart
  )}
 
  {showMessages && (
-   <div className="fixed inset-0 z-[300] bg-[#F7F6F3]">
-     <UserMessages onBack={() => setShowMessages(false)} />
-   </div>
+ <div className="fixed inset-0 z-[300] bg-[#F7F6F3]">
+ <UserMessages onBack={() => setShowMessages(false)} />
+ </div>
  )}
  {showMyEvents && (
-   <div className="fixed inset-0 z-[300] bg-[#F7F6F3]">
-     <UserEvents onBack={() => setShowMyEvents(false)} />
-   </div>
+ <div className="fixed inset-0 z-[300] bg-[#F7F6F3]">
+ <UserEvents onBack={() => setShowMyEvents(false)} />
+ </div>
  )}
  </div>
  );
@@ -642,12 +652,12 @@ const SettingItem = ({ icon, iconBg, label, onClick, badge }: { icon: React.Reac
  <span className="text-[13px] font-medium text-gray-700">{label}</span>
  </div>
  <div className="flex items-center gap-2">
-   {badge !== undefined && badge > 0 && (
-     <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
-       {badge > 99 ? '99+' : badge}
-     </span>
-   )}
-   <ChevronRight size={16} className="text-gray-400" />
+ {badge !== undefined && badge > 0 && (
+ <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
+ {badge > 99 ? '99+' : badge}
+ </span>
+ )}
+ <ChevronRight size={16} className="text-gray-400" />
  </div>
  </button>
 );
