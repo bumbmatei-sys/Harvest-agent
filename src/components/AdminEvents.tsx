@@ -174,7 +174,8 @@ const AdminEvents: React.FC = () => {
   };
 
   const handleSave = async () => {
-    if (!form.title.trim() || !tenantId) return;
+    if (!form.title.trim()) { notifyError('Event title is required', null); return; }
+    if (!tenantId) { notifyError('Unable to determine your tenant. Please refresh.', null); return; }
     setSaving(true);
     try {
       const data: Partial<Omit<Event, 'id'>> = {
@@ -197,15 +198,38 @@ const AdminEvents: React.FC = () => {
           ...data,
           updatedAt: serverTimestamp(),
         });
+        setSelected({ ...selected, ...data } as Event);
+        setView('detail');
       } else {
-        await addDoc(collection(db, 'tenants', tenantId, 'events'), {
+        const ref = await addDoc(collection(db, 'tenants', tenantId, 'events'), {
           ...data,
           tenantId,
           createdAt: serverTimestamp(),
           createdBy: auth.currentUser?.uid || '',
         });
+        const newEvent: Event = {
+          id: ref.id,
+          title: data.title || '',
+          description: data.description || '',
+          coverImage: data.coverImage ?? null,
+          location: data.location || '',
+          isOnline: data.isOnline || false,
+          onlineLink: data.onlineLink ?? null,
+          startDate: data.startDate ?? null,
+          endDate: data.endDate ?? null,
+          capacity: data.capacity ?? null,
+          registrationDeadline: data.registrationDeadline ?? null,
+          price: data.price || 0,
+          currency: data.currency || 'usd',
+          status: data.status || 'draft',
+          tenantId,
+          createdAt: null,
+          createdBy: auth.currentUser?.uid || '',
+          pinned: false,
+        };
+        setSelected(newEvent);
+        setView('detail');
       }
-      setView('list');
     } catch (e) { notifyError('Failed to save event', e); }
     finally { setSaving(false); }
   };
@@ -261,7 +285,7 @@ const AdminEvents: React.FC = () => {
   // ── Form View ──
   if (view === 'create' || view === 'edit') {
     return (
-      <div className="max-w-2xl mx-auto overflow-y-auto pb-32">
+      <div className="max-w-2xl mx-auto pb-32">
         <div className="flex items-center gap-3 mb-6">
           <button onClick={() => setView('list')} className="p-2 rounded-xl hover:bg-gray-100">
             <ArrowLeft size={18} className="text-gray-600" />
@@ -483,68 +507,65 @@ const AdminEvents: React.FC = () => {
         </div>
       ) : (
         <div className="space-y-3">
-          {events.map(ev => {
-            const regCount = 0; // loaded separately in detail view
-            return (
-              <div
-                key={ev.id}
-                className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm cursor-pointer hover:border-[#d4a017]/30 transition-all"
-                onClick={() => openDetail(ev)}
-              >
-                {ev.coverImage && (
-                  <div className="w-full h-32 rounded-xl overflow-hidden mb-3">
-                    <img src={ev.coverImage} alt={ev.title} className="w-full h-full object-cover" />
+          {events.map(ev => (
+            <div
+              key={ev.id}
+              className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm cursor-pointer hover:border-[#d4a017]/30 transition-all"
+              onClick={() => openDetail(ev)}
+            >
+              {ev.coverImage && (
+                <div className="w-full h-32 rounded-xl overflow-hidden mb-3">
+                  <img src={ev.coverImage} alt={ev.title} className="w-full h-full object-cover" />
+                </div>
+              )}
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="font-bold text-gray-900 truncate">{ev.title}</h3>
+                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full flex-shrink-0 ${STATUS_COLORS[ev.status]}`}>
+                      {ev.status}
+                    </span>
                   </div>
-                )}
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-bold text-gray-900 truncate">{ev.title}</h3>
-                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full flex-shrink-0 ${STATUS_COLORS[ev.status]}`}>
-                        {ev.status}
-                      </span>
-                    </div>
-                    <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1.5">
-                      {ev.startDate && (
-                        <span className="flex items-center gap-1 text-xs text-gray-500">
-                          <Clock size={11} /> {fmtDate(ev.startDate)}
-                        </span>
-                      )}
-                      {ev.isOnline ? (
-                        <span className="flex items-center gap-1 text-xs text-gray-500">
-                          <Globe size={11} /> Online
-                        </span>
-                      ) : ev.location ? (
-                        <span className="flex items-center gap-1 text-xs text-gray-500">
-                          <MapPin size={11} /> {ev.location}
-                        </span>
-                      ) : null}
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1.5">
+                    {ev.startDate && (
                       <span className="flex items-center gap-1 text-xs text-gray-500">
-                        <DollarSign size={11} /> {ev.price > 0 ? `$${ev.price}` : 'Free'}
+                        <Clock size={11} /> {fmtDate(ev.startDate)}
                       </span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1 flex-shrink-0">
-                    <button
-                      onClick={e => { e.stopPropagation(); togglePin(ev); }}
-                      className="p-2 rounded-xl hover:bg-yellow-50 transition-colors"
-                      title={ev.pinned ? 'Unpin from feed' : 'Pin to feed'}
-                    >
-                      <Pin size={14} className={ev.pinned ? 'text-yellow-500 fill-yellow-500' : 'text-gray-400'} />
-                    </button>
-                    <button onClick={e => { e.stopPropagation(); openEdit(ev); }}
-                      className="p-2 rounded-xl hover:bg-gray-100 transition-colors">
-                      <Edit2 size={14} className="text-gray-400" />
-                    </button>
-                    <button onClick={e => { e.stopPropagation(); setDeleteId(ev.id); }}
-                      className="p-2 rounded-xl hover:bg-red-50 transition-colors">
-                      <Trash2 size={14} className="text-red-400" />
-                    </button>
+                    )}
+                    {ev.isOnline ? (
+                      <span className="flex items-center gap-1 text-xs text-gray-500">
+                        <Globe size={11} /> Online
+                      </span>
+                    ) : ev.location ? (
+                      <span className="flex items-center gap-1 text-xs text-gray-500">
+                        <MapPin size={11} /> {ev.location}
+                      </span>
+                    ) : null}
+                    <span className="flex items-center gap-1 text-xs text-gray-500">
+                      <DollarSign size={11} /> {ev.price > 0 ? `$${ev.price}` : 'Free'}
+                    </span>
                   </div>
                 </div>
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <button
+                    onClick={e => { e.stopPropagation(); togglePin(ev); }}
+                    className="p-2 rounded-xl hover:bg-yellow-50 transition-colors"
+                    title={ev.pinned ? 'Unpin from feed' : 'Pin to feed'}
+                  >
+                    <Pin size={14} className={ev.pinned ? 'text-yellow-500 fill-yellow-500' : 'text-gray-400'} />
+                  </button>
+                  <button onClick={e => { e.stopPropagation(); openEdit(ev); }}
+                    className="p-2 rounded-xl hover:bg-gray-100 transition-colors">
+                    <Edit2 size={14} className="text-gray-400" />
+                  </button>
+                  <button onClick={e => { e.stopPropagation(); setDeleteId(ev.id); }}
+                    className="p-2 rounded-xl hover:bg-red-50 transition-colors">
+                    <Trash2 size={14} className="text-red-400" />
+                  </button>
+                </div>
               </div>
-            );
-          })}
+            </div>
+          ))}
         </div>
       )}
 
