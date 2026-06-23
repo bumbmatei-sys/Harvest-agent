@@ -82,7 +82,7 @@ const AdminAccounting: React.FC = () => {
           : `Generated ${data.generated} receipt PDFs (not emailed — no Resend key)`;
         setGenResult({ ok: true, msg });
       } else {
-        setGenResult({ ok: false, msg: data.message || 'No donation invoices found for this period' });
+        setGenResult({ ok: false, msg: data.message || `No donation records found for ${year}` });
       }
     } catch (err: any) {
       setGenResult({ ok: false, msg: err.message || 'Failed to generate receipts' });
@@ -188,7 +188,7 @@ const AdminAccounting: React.FC = () => {
           <h3 className="text-sm font-bold text-gray-700">Tax Receipts</h3>
           {!isTaxReceiptsEnabled && (
             <span className="text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full font-semibold flex items-center gap-1">
-              <Lock size={10} /> Organization plan required
+              <Lock size={10} /> Ministry plan required
             </span>
           )}
         </div>
@@ -232,7 +232,7 @@ const AdminAccounting: React.FC = () => {
           <div className="bg-amber-50 rounded-2xl border border-amber-100 p-4 flex items-start gap-3">
             <Lock size={18} className="text-amber-500 flex-shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm font-semibold text-amber-800">Tax receipt generation requires the Organization plan</p>
+              <p className="text-sm font-semibold text-amber-800">Tax receipt generation requires the Ministry plan</p>
               <p className="text-xs text-amber-600 mt-0.5">Upgrade to generate and email year-end tax receipts to all donors.</p>
             </div>
           </div>

@@ -320,11 +320,10 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
 
 // Display constants (needed for current plan summary)
 const PLANS_DISPLAY = [
-  { id: 'plus' as TenantPlan, name: 'Individual', monthlyPrice: '$59/mo', icon: Crown, color: '#6366f1' },
-  { id: 'pro' as TenantPlan, name: 'Small Team', monthlyPrice: '$119/mo', icon: Crown, color: '#d4a017' },
-  { id: 'max' as TenantPlan, name: 'Community', monthlyPrice: '$239/mo', icon: Crown, color: '#8b5cf6' },
-  { id: 'ultra' as TenantPlan, name: 'Ministry', monthlyPrice: '$479/mo', icon: Crown, color: '#b45309' },
-  { id: 'enterprise' as TenantPlan, name: 'Organization', monthlyPrice: 'Custom', icon: Crown, color: '#0b1121' },
+  { id: 'plus'  as TenantPlan, name: 'Individual', monthlyPrice: '$59/mo',  icon: Crown, color: '#6366f1' },
+  { id: 'pro'   as TenantPlan, name: 'Small Team', monthlyPrice: '$119/mo', icon: Crown, color: '#d4a017' },
+  { id: 'max'   as TenantPlan, name: 'Community',  monthlyPrice: '$239/mo', icon: Crown, color: '#8b5cf6' },
+  { id: 'ultra' as TenantPlan, name: 'Ministry',   monthlyPrice: '$479/mo', icon: Crown, color: '#b45309' },
 ];
 
 export default AdminSettings;
