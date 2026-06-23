@@ -9,6 +9,9 @@ let _cachedUid: string | null = null;
 // Keep backward-compatible export — first email in the array
 const SUPER_ADMIN_EMAIL = SUPER_ADMIN_EMAILS[0] || 'bumbmatei@proton.me';
 
+/** Platform tenant ID — used as fallback for super admin flows (newsletter, partner, etc.) */
+export const PLATFORM_TENANT_ID = process.env.NEXT_PUBLIC_PLATFORM_TENANT_ID || 'harvest';
+
 /**
  * Get the current user's tenantId from their Firestore user doc.
  * Caches the result per user session to avoid repeated Firestore reads.

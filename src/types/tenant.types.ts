@@ -1,11 +1,11 @@
-export type TenantPlan = 'plus' | 'pro' | 'max' | 'ultra' | 'enterprise';
+export type TenantPlan = 'plus' | 'pro' | 'max' | 'ultra';
 export type TenantStatus = 'active' | 'suspended' | 'pending';
 
 export interface TenantConfig {
   logo?: string;        // URL to logo image
   primaryColor?: string; // hex color, e.g. "#D4AF37"
   description?: string;
-  customDomain?: string; // e.g. "yourchurch.com" (Ultra/Enterprise only)
+  customDomain?: string; // e.g. "yourchurch.com" (Ultra only)
   backgroundImage?: string; // URL to custom background image for auth page
   onboardingQuestions?: {
     id: string;

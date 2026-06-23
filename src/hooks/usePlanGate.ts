@@ -28,7 +28,6 @@ export const PLAN_NAMES: Record<string, string> = {
   pro: 'Small Team',
   max: 'Community',
   ultra: 'Ministry',
-  enterprise: 'Organization',
 };
 
 export const FEATURE_MIN_PLAN: Record<FeatureKey, string> = {
@@ -38,7 +37,7 @@ export const FEATURE_MIN_PLAN: Record<FeatureKey, string> = {
   crm: 'Ministry',
   accounting: 'Ministry',
   community_chat: 'Ministry',
-  tax_receipts: 'Organization',
+  tax_receipts: 'Ministry',
 };
 
 export function usePlanGate(feature: FeatureKey): boolean {

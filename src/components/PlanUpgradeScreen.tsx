@@ -3,21 +3,20 @@ import React from 'react';
 import { Lock } from 'lucide-react';
 
 const PLANS = [
-  { key: 'plus',       name: 'Individual',   price: '$59/mo'   },
-  { key: 'pro',        name: 'Small Team',   price: '$119/mo'  },
-  { key: 'max',        name: 'Community',    price: '$239/mo'  },
-  { key: 'ultra',      name: 'Ministry',     price: '$479/mo'  },
-  { key: 'enterprise', name: 'Organization', price: 'Custom'   },
+  { key: 'plus',  name: 'Individual', price: '$59/mo'  },
+  { key: 'pro',   name: 'Small Team', price: '$119/mo' },
+  { key: 'max',   name: 'Community',  price: '$239/mo' },
+  { key: 'ultra', name: 'Ministry',   price: '$479/mo' },
 ];
 
 export const FEATURE_MIN_PLAN_NAME: Record<string, string> = {
-  fundraising:       'Individual',
+  fundraising:        'Individual',
   event_registration: 'Community',
-  docs:              'Community',
-  crm:              'Ministry',
-  accounting:       'Ministry',
-  community_chat:   'Ministry',
-  tax_receipts:     'Organization',
+  docs:               'Community',
+  crm:                'Ministry',
+  accounting:         'Ministry',
+  community_chat:     'Ministry',
+  tax_receipts:       'Ministry',
 };
 
 interface PlanUpgradeScreenProps {
@@ -37,7 +36,6 @@ const PlanUpgradeScreen: React.FC<PlanUpgradeScreenProps> = ({
   const minIdx = PLANS.findIndex(p => p.name === minPlanName);
   const requiredPlans = minIdx >= 0 ? PLANS.slice(minIdx) : PLANS;
   const minPlan = requiredPlans[0];
-  const isEnterpriseOnly = minPlan?.key === 'enterprise';
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] p-6 text-center">
@@ -86,23 +84,13 @@ const PlanUpgradeScreen: React.FC<PlanUpgradeScreenProps> = ({
         >
           Go Back
         </button>
-        {isEnterpriseOnly ? (
-          <a
-            href="mailto:hello@harvestapp.com"
-            className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white text-center transition-opacity hover:opacity-90"
-            style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}
-          >
-            Contact Us
-          </a>
-        ) : (
-          <button
-            onClick={onUpgrade}
-            className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
-            style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}
-          >
-            Upgrade
-          </button>
-        )}
+        <button
+          onClick={onUpgrade}
+          className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
+          style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}
+        >
+          Upgrade
+        </button>
       </div>
     </div>
   );
