@@ -19,17 +19,16 @@ const PLAN_NAMES: Record<TenantPlan, string> = {
   pro: 'Small Team',
   max: 'Community',
   ultra: 'Ministry',
-  enterprise: 'Organization',
 };
 
 const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ onComplete, signupPlan }) => {
   const urlPlan = typeof window !== 'undefined'
     ? new URLSearchParams(window.location.search).get('plan') as TenantPlan | null
     : null;
-  const selectedPlan = signupPlan || (urlPlan && ['plus', 'pro', 'max', 'ultra', 'enterprise'].includes(urlPlan) ? urlPlan : 'plus');
+  const selectedPlan = signupPlan || (urlPlan && ['plus', 'pro', 'max', 'ultra'].includes(urlPlan) ? urlPlan : 'plus');
 
-  const hasBranding = selectedPlan === 'max' || selectedPlan === 'ultra' || selectedPlan === 'enterprise';
-  const hasCustomDomain = selectedPlan === 'max' || selectedPlan === 'ultra' || selectedPlan === 'enterprise';
+  const hasBranding = selectedPlan === 'max' || selectedPlan === 'ultra';
+  const hasCustomDomain = selectedPlan === 'max' || selectedPlan === 'ultra';
 
   const [step, setStep] = useState(0);
   const [ministryName, setMinistryName] = useState('');

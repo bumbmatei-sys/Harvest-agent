@@ -23,15 +23,11 @@ describe('getPlanFeatures', () => {
 
   it('returns correct features for ultra plan', () => {
     const f = getPlanFeatures('ultra');
-    expect(f.aiAssistant).toBe(1);
+    expect(f.aiAssistant).toBe(-1);
     expect(f.customDomain).toBe(true);
     expect(f.maxAdmins).toBe(15);
-  });
-
-  it('returns correct features for enterprise plan', () => {
-    const f = getPlanFeatures('enterprise');
-    expect(f.map).toBe(true);
     expect(f.maxChurches).toBe(-1);
+    expect(f.map).toBe(true);
   });
 
   it('defaults to plus for unknown plan', () => {
@@ -46,7 +42,6 @@ describe('getPlanDisplayName', () => {
     expect(getPlanDisplayName('pro')).toBe('Small Team');
     expect(getPlanDisplayName('max')).toBe('Community');
     expect(getPlanDisplayName('ultra')).toBe('Ministry');
-    expect(getPlanDisplayName('enterprise')).toBe('Organization');
   });
 
   it('defaults to Individual for unknown plan', () => {
@@ -75,6 +70,5 @@ describe('hasFeature', () => {
     expect(hasFeature('pro', 'map')).toBe(true);
     expect(hasFeature('max', 'map')).toBe(true);
     expect(hasFeature('ultra', 'map')).toBe(true);
-    expect(hasFeature('enterprise', 'map')).toBe(true);
   });
 });

@@ -3,7 +3,6 @@ import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Crown, Palette, Globe, CreditCard, Settings2, Bot, Plug, AlertTriangle, Share2, Check, ChevronRight } from 'lucide-react';
 import { TenantPlan } from '../types/tenant.types';
 import { getPlanFeatures, PlanFeatures } from '../utils/plan-features';
-import EnterpriseContactModal from './EnterpriseContactModal';
 import AffiliateSection from './AffiliateSection';
 import SettingsAccordion from './settings/SettingsAccordion';
 import PlanUpgradeSection from './settings/PlanUpgradeSection';
@@ -24,7 +23,6 @@ interface AdminSettingsProps {
 }
 
 const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onChangePlan, onCancelPlan, tenantId, email }) => {
-  const [enterpriseModalOpen, setEnterpriseModalOpen] = useState(false);
   const [stripeStatus, setStripeStatus] = useState<string | null>(null);
   const [stripeAddon, setStripeAddon] = useState<string | null>(null);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
@@ -313,7 +311,6 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
         </div>
       )}
 
-      <EnterpriseContactModal isOpen={enterpriseModalOpen} onClose={() => setEnterpriseModalOpen(false)} />
     </div>
   );
 };

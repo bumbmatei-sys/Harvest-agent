@@ -11,7 +11,6 @@ const FEE_MAP: Record<string, number> = {
   pro: 0.10,
   max: 0.05,
   ultra: 0,
-  enterprise: 0,
 };
 
 export async function POST(request: NextRequest) {
