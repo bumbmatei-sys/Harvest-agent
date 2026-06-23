@@ -12,6 +12,7 @@ import { db, auth } from '../firebase';
 import { getTenantScope } from '../utils/tenant-scope';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { notifyError } from '../utils/notify';
+import AnalyticsAndRoles, { Permission } from './AnalyticsAndRoles';
 
 interface Contact {
   id: string;
@@ -86,7 +87,12 @@ const fmtDate = (ts: Timestamp | null) => {
 
 type ViewMode = 'list' | 'detail' | 'form';
 
-const AdminCRM: React.FC = () => {
+interface AdminCRMProps {
+  currentUserRole?: string;
+  currentUserPermissions?: Permission | null;
+}
+
+const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermissions }) => {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -103,6 +109,9 @@ const AdminCRM: React.FC = () => {
   const [showAddActivity, setShowAddActivity] = useState(false);
   const [actForm, setActForm] = useState({ type: 'note' as ContactActivity['type'], description: '', amount: '' });
   const [savingAct, setSavingAct] = useState(false);
+
+  // CRM sub-view: Contacts (default) or user registration Analytics
+  const [crmSubView, setCrmSubView] = useState<'contacts' | 'analytics'>('contacts');
 
   useEffect(() => {
     let unsub: (() => void) | null = null;
@@ -221,10 +230,57 @@ const AdminCRM: React.FC = () => {
     return <div className="flex items-center justify-center h-40"><div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--brand-color, #d4a017)', borderTopColor: 'transparent' }} /></div>;
   }
 
+  // Sub-tab bar — visible in all sub-views (Contacts / Analytics)
+  const subTabBar = (
+    <div className="flex gap-1 mb-5 border-b border-gray-200">
+      <button
+        onClick={() => setCrmSubView('contacts')}
+        className={`px-4 py-2 text-sm font-semibold border-b-2 transition-colors ${
+          crmSubView === 'contacts'
+            ? 'border-[#d4a017] text-[#d4a017]'
+            : 'border-transparent text-gray-400 hover:text-gray-600'
+        }`}
+      >
+        Contacts
+      </button>
+      <button
+        onClick={() => { setCrmSubView('analytics'); setView('list'); setSelected(null); }}
+        className={`px-4 py-2 text-sm font-semibold border-b-2 transition-colors ${
+          crmSubView === 'analytics'
+            ? 'border-[#d4a017] text-[#d4a017]'
+            : 'border-transparent text-gray-400 hover:text-gray-600'
+        }`}
+      >
+        Analytics
+      </button>
+    </div>
+  );
+
+  // ── Analytics sub-view ──
+  if (crmSubView === 'analytics') {
+    return (
+      <div className="max-w-3xl mx-auto">
+        {subTabBar}
+        {currentUserRole ? (
+          <AnalyticsAndRoles
+            currentUserRole={currentUserRole}
+            currentUserPermissions={currentUserPermissions}
+            mode="analytics"
+          />
+        ) : (
+          <div className="text-center py-16 text-gray-400">
+            <p className="text-sm">Analytics unavailable.</p>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   // ── Form View ──
   if (view === 'form') {
     return (
       <div className="max-w-2xl mx-auto">
+        {subTabBar}
         <div className="flex items-center gap-3 mb-6">
           <button onClick={() => setView(isEditing ? 'detail' : 'list')} className="p-2 rounded-xl hover:bg-gray-100">
             <ArrowLeft size={18} className="text-gray-600" />
@@ -310,6 +366,7 @@ const AdminCRM: React.FC = () => {
   if (view === 'detail' && selected) {
     return (
       <div className="max-w-2xl mx-auto">
+        {subTabBar}
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-3">
             <button onClick={() => { setSelected(null); setView('list'); }} className="p-2 rounded-xl hover:bg-gray-100">
@@ -498,6 +555,7 @@ const AdminCRM: React.FC = () => {
 
   return (
     <div className="max-w-3xl mx-auto">
+      {subTabBar}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-2">
           <Users size={22} style={{ color: 'var(--brand-color, #d4a017)' }} />

@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { LayoutDashboard, Church, FileText, Rss, BrainCircuit, Inbox, ArrowLeft, GraduationCap, ChevronLeft, ChevronRight, Building2, Settings, MoreHorizontal, Mail, SlidersHorizontal, Heart, Users, MessageSquare, Receipt, CalendarCheck } from 'lucide-react';
+import { LayoutDashboard, Church, FileText, Rss, BrainCircuit, Inbox, ArrowLeft, GraduationCap, ChevronLeft, ChevronRight, Building2, Settings, MoreHorizontal, Mail, SlidersHorizontal, Heart, Users, MessageSquare, Receipt, CalendarCheck, ShieldCheck } from 'lucide-react';
 import AdminBlog from './AdminBlog';
 import AdminPosts from './AdminPosts';
 import AdminInbox from './AdminInbox';
@@ -144,7 +144,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, tenantPlan 
 
   // All available tabs (permission-filtered)
   const allTabs = [
-    (hasFullAccess || perms.analytics) && { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    // Dashboard is always visible — placeholder/welcome screen (analytics moved to CRM)
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     (hasFullAccess || perms.modifyChurches) && { id: 'churches', label: isTenantAdmin && features && features.maxChurches === 1 ? 'Church' : 'Church List', icon: Church },
     (isSuperAdmin || !isTenantAdmin || (features && features.blog)) && (hasFullAccess || perms.createCourses) && { id: 'courses', label: 'Courses', icon: GraduationCap },
     (isSuperAdmin || !isTenantAdmin || (features && features.blog)) && (hasFullAccess || perms.writeArticles) && { id: 'blog', label: 'Blog', icon: FileText },
@@ -166,7 +167,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, tenantPlan 
     (isSuperAdmin || !isTenantAdmin || (features && features.docs)) &&
       hasFullAccess &&
       { id: 'docs', label: 'Docs', icon: FileText },
-    // CRM
+    // CRM (includes user registration analytics as a sub-tab)
     (isSuperAdmin || !isTenantAdmin || (features && features.crm)) &&
       hasFullAccess &&
       { id: 'crm', label: 'CRM', icon: Users },
@@ -179,6 +180,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, tenantPlan 
       hasFullAccess &&
       { id: 'community', label: 'Community', icon: MessageSquare },
     isSuperAdmin && { id: 'tenants', label: 'Tenants', icon: Building2 },
+    // Admin Roles — placed last so it falls into the mobile "More" drawer by default
+    (isSuperAdmin || hasFullAccess || perms.manageAdmins) && { id: 'admin_roles', label: 'Admin Roles', icon: ShieldCheck },
   ].filter(Boolean) as { id: string; label: string; icon: any }[];
 
   // Mobile: 4 tabs in the bottom bar. If the admin has saved a custom order,
@@ -366,7 +369,19 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, tenantPlan 
         {/* Main Content Area */}
         <div className={`flex-1 overflow-y-auto pb-24 lg:pb-8 p-0 lg:p-6 ${showMoreSheet ? 'overflow-hidden' : ''}`}>
           {activeTab === 'dashboard' ? (
-            <AnalyticsAndRoles currentUserRole={isSuperAdmin ? 'super_admin' : userRole} currentUserPermissions={isChurchAdmin ? { fullAccess: true } as any : userPermissions} />
+            <div className="flex flex-col items-center justify-center h-full p-8 text-center text-gray-400">
+              <LayoutDashboard size={48} strokeWidth={1.5} className="mb-4 opacity-20" />
+              <h2 className="text-lg font-bold text-gray-500 mb-1">Dashboard</h2>
+              <p className="text-sm text-gray-400">Select a tool from the navigation to get started.</p>
+            </div>
+          ) : activeTab === 'admin_roles' ? (
+            <div className="p-4 lg:p-0">
+              <AnalyticsAndRoles
+                currentUserRole={isSuperAdmin ? 'super_admin' : userRole}
+                currentUserPermissions={isChurchAdmin ? { fullAccess: true } as any : userPermissions}
+                mode="roles"
+              />
+            </div>
           ) : activeTab === 'blog' ? (
             <div className="p-4 lg:p-0"><AdminBlog /></div>
           ) : activeTab === 'posts' ? (
@@ -558,7 +573,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, tenantPlan 
         <FocusScreen onBack={() => setActiveTab('dashboard')}>
           <div className="h-full overflow-y-auto bg-[#f8f9fa] p-4 lg:p-6 pb-8">
             {(isSuperAdmin || !isTenantAdmin || (features && features.crm))
-              ? <AdminCRM />
+              ? <AdminCRM currentUserRole={isSuperAdmin ? 'super_admin' : userRole} currentUserPermissions={isChurchAdmin ? { fullAccess: true } as any : userPermissions} />
               : <PlanUpgradeScreen featureName="CRM" featureKey="crm" onBack={() => setActiveTab('dashboard')} onUpgrade={() => setActiveTab('settings')} />}
           </div>
         </FocusScreen>
