@@ -188,7 +188,7 @@ const AdminFundraising: React.FC = () => {
             <div className="p-5 border-b border-gray-100">
               <h3 className="text-base font-bold text-gray-900">{editing ? 'Edit Campaign' : 'New Campaign'}</h3>
             </div>
-            <div className="p-5 space-y-4">
+            <div className="p-5 space-y-4 pb-32">
               <div>
                 <label className="text-xs font-semibold text-gray-700 mb-1 block">Title *</label>
                 <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}

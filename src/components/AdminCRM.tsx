@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Plus, Search, Edit2, Trash2, Users, Mail, Phone, ArrowLeft,
   MessageSquare, DollarSign, PhoneCall, Calendar, Clock, ChevronRight, MapPin
@@ -93,6 +93,12 @@ interface AdminCRMProps {
 }
 
 const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermissions }) => {
+  // Scroll-to-top container reference — attached to the wrapping div of every CRM view.
+  // Whenever the user switches between list / detail / form views (or Analytics sub-tab),
+  // we find the nearest scrollable ancestor and reset its scroll position to the top.
+  // This is the systematic scroll-reset pattern used across admin screens that share a
+  // parent scroll container inside FocusScreen.
+  const scrollRef = useRef<HTMLDivElement>(null);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -146,6 +152,18 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
     });
     return unsub;
   }, [selected]);
+
+  // Reset scroll position to top whenever the user navigates between CRM views
+  // (list → detail → form, Contacts ↔ Analytics, or selecting a new contact).
+  // The scroll container lives in the parent FocusScreen wrapper, so we walk up
+  // the DOM from the view's root element to find the nearest overflow-y-auto
+  // ancestor and reset it. This is the systematic scroll-reset pattern.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const scroller = el.closest('[class*="overflow-y-auto"], [class*="overflow-auto"]') as HTMLElement | null;
+    if (scroller) scroller.scrollTo({ top: 0, left: 0 });
+  }, [view, crmSubView, selected?.id]);
 
   const filtered = contacts.filter(c => {
     const matchType = filter === 'all' || c.type === filter || (filter !== 'both' && c.type === 'both');
@@ -259,7 +277,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
   // ── Analytics sub-view ──
   if (crmSubView === 'analytics') {
     return (
-      <div className="max-w-3xl mx-auto">
+      <div ref={scrollRef} className="max-w-3xl mx-auto">
         {subTabBar}
         {currentUserRole ? (
           <AnalyticsAndRoles
@@ -279,7 +297,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
   // ── Form View ──
   if (view === 'form') {
     return (
-      <div className="max-w-2xl mx-auto">
+      <div ref={scrollRef} className="max-w-2xl mx-auto">
         {subTabBar}
         <div className="flex items-center gap-3 mb-6">
           <button onClick={() => setView(isEditing ? 'detail' : 'list')} className="p-2 rounded-xl hover:bg-gray-100">
@@ -365,7 +383,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
   // ── Detail View ──
   if (view === 'detail' && selected) {
     return (
-      <div className="max-w-2xl mx-auto">
+      <div ref={scrollRef} className="max-w-2xl mx-auto">
         {subTabBar}
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-3">
@@ -416,18 +434,16 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
                 <span className="text-sm text-gray-700">Member since {fmtDate(selected.memberSince)}</span>
               </div>
             )}
-            {selected.totalDonated > 0 && (
-              <div className="flex items-center gap-2">
-                <DollarSign size={14} style={{ color: 'var(--brand-color, #d4a017)' }} className="flex-shrink-0" />
-                <span className="text-sm font-semibold text-gray-900">{fmt(selected.totalDonated)} total</span>
-              </div>
-            )}
-            {selected.lastDonationAt && (
-              <div className="flex items-center gap-2">
-                <Clock size={14} className="text-gray-400 flex-shrink-0" />
-                <span className="text-sm text-gray-700">Last gift {fmtDate(selected.lastDonationAt)}</span>
-              </div>
-            )}
+            <div className="flex items-center gap-2">
+              <DollarSign size={14} style={{ color: 'var(--brand-color, #d4a017)' }} className="flex-shrink-0" />
+              <span className="text-sm font-semibold text-gray-900">{fmt(selected.totalDonated || 0)} total</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Clock size={14} className="text-gray-400 flex-shrink-0" />
+              <span className="text-sm text-gray-700">
+                {selected.lastDonationAt ? `Last gift ${fmtDate(selected.lastDonationAt)}` : 'No donations yet'}
+              </span>
+            </div>
             {selected.address?.city && (
               <div className="flex items-center gap-2">
                 <MapPin size={14} className="text-gray-400 flex-shrink-0" />
@@ -444,11 +460,24 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
               ))}
             </div>
           )}
-          {selected.notes && (
-            <div className="mt-3 pt-3 border-t border-gray-100">
-              <p className="text-xs text-gray-500 leading-relaxed">{selected.notes}</p>
-            </div>
-          )}
+          <div className="mt-3 pt-3 border-t border-gray-100">
+            <label className="text-xs font-semibold text-gray-700 mb-1 block">Admin Notes</label>
+            <textarea
+              defaultValue={selected.notes || ''}
+              onBlur={async (e) => {
+                const val = e.target.value.trim();
+                if (val !== (selected.notes || '')) {
+                  try {
+                    await updateDoc(doc(db, 'contacts', selected.id), { notes: val });
+                    setSelected({ ...selected, notes: val });
+                  } catch (err) { console.error('Failed to save notes:', err); }
+                }
+              }}
+              rows={3}
+              className="w-full text-xs text-gray-600 border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:border-[#d4a017] resize-none leading-relaxed"
+              placeholder="Add notes about this contact..."
+            />
+          </div>
         </div>
 
         {/* Activity timeline */}
