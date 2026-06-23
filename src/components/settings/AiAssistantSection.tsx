@@ -110,9 +110,7 @@ const AiAssistantSection: React.FC<AiAssistantSectionProps> = ({ currentPlan, em
       {!subscribed ? (
         <>
           <div className="flex items-baseline gap-2 mb-4">
-            <span className="text-2xl font-bold text-gray-900">$150 setup</span>
-            <span className="text-gray-400">+</span>
-            <span className="text-2xl font-bold text-gray-900">$100/mo</span>
+            <span className="text-2xl font-bold text-gray-900">$200/mo</span>
           </div>
           <button
             onClick={handleCheckout}
@@ -133,7 +131,7 @@ const AiAssistantSection: React.FC<AiAssistantSectionProps> = ({ currentPlan, em
         <>
           <div className="flex items-center gap-3 mb-4">
             <span className="px-3 py-1 bg-green-100 text-green-700 text-sm font-semibold rounded-full">Active</span>
-            <span className="text-sm text-gray-600">$100/mo</span>
+            <span className="text-sm text-gray-600">$200/mo</span>
           </div>
 
           {/* Access Code + Telegram Deep Link */}

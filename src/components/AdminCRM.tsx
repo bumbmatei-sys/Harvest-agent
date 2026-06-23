@@ -1,7 +1,7 @@
 "use client";
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useContext } from 'react';
 import {
-  Plus, Search, Edit2, Trash2, Users, Mail, Phone, ArrowLeft,
+  Plus, Search, Edit2, Trash2, Users, Mail, Phone,
   MessageSquare, DollarSign, PhoneCall, Calendar, Clock, ChevronRight, MapPin
 } from 'lucide-react';
 import {
@@ -13,6 +13,7 @@ import { getTenantScope } from '../utils/tenant-scope';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { notifyError } from '../utils/notify';
 import AnalyticsAndRoles, { Permission } from './AnalyticsAndRoles';
+import { FocusScreenBackContext } from './FocusScreen';
 
 interface Contact {
   id: string;
@@ -108,6 +109,17 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
   const [selected, setSelected] = useState<Contact | null>(null);
   const [form, setForm] = useState(emptyContact);
   const [isEditing, setIsEditing] = useState(false);
+
+  const { registerBack } = useContext(FocusScreenBackContext);
+
+  useEffect(() => {
+    registerBack(() => {
+      if (view === 'form') { setView(isEditing ? 'detail' : 'list'); return true; }
+      if (view === 'detail' && selected) { setSelected(null); setView('list'); return true; }
+      return false;
+    });
+  }, [view, selected, isEditing, registerBack]);
+
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
@@ -300,9 +312,6 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
       <div ref={scrollRef} className="max-w-2xl mx-auto">
         {subTabBar}
         <div className="flex items-center gap-3 mb-6">
-          <button onClick={() => setView(isEditing ? 'detail' : 'list')} className="p-2 rounded-xl hover:bg-gray-100">
-            <ArrowLeft size={18} className="text-gray-600" />
-          </button>
           <h2 className="text-xl font-bold text-gray-900">{isEditing ? 'Edit Contact' : 'Add Contact'}</h2>
         </div>
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-5">
@@ -387,9 +396,6 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
         {subTabBar}
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-3">
-            <button onClick={() => { setSelected(null); setView('list'); }} className="p-2 rounded-xl hover:bg-gray-100">
-              <ArrowLeft size={18} className="text-gray-600" />
-            </button>
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold text-white flex-shrink-0"
                 style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}>

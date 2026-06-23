@@ -438,7 +438,7 @@ const AdminDocs: React.FC = () => {
           {/* Sidebar */}
           {sidebarOpen && (
             <div className="w-64 flex-shrink-0 border-r border-gray-100 flex flex-col bg-white overflow-hidden">
-              <div className="p-3 border-b border-gray-100 flex gap-2 mt-10">
+              <div className="p-3 border-b border-gray-100 flex gap-2">
                 <button
                   onClick={() => createDoc()}
                   className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold text-white"
@@ -498,7 +498,7 @@ const AdminDocs: React.FC = () => {
           {/* Editor area */}
           <div className="flex-1 flex flex-col overflow-hidden">
             {/* Save status — offset for floating back/sidebar buttons */}
-            <div className="flex items-center justify-center h-8 flex-shrink-0 mt-10">
+            <div className="flex items-center justify-center h-8 flex-shrink-0">
               {saveStatus === 'saving' && <span className="text-xs text-gray-400">Saving...</span>}
               {saveStatus === 'saved' && <span className="text-xs text-gray-400">Saved</span>}
             </div>

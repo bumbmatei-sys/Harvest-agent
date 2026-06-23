@@ -1,8 +1,8 @@
 "use client";
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import {
   Plus, Edit2, Trash2, CalendarCheck, Users, MapPin, Clock, DollarSign,
-  ArrowLeft, Check, Download, Search, ChevronRight, Globe, X, Pin
+  Check, Download, Search, ChevronRight, Globe, X, Pin
 } from 'lucide-react';
 import {
   collection, query, where, orderBy, onSnapshot, addDoc, updateDoc, deleteDoc,
@@ -12,6 +12,7 @@ import { db, auth } from '../firebase';
 import { getTenantScope } from '../utils/tenant-scope';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { notifyError } from '../utils/notify';
+import { FocusScreenBackContext } from './FocusScreen';
 
 interface Event {
   id: string;
@@ -102,6 +103,21 @@ const AdminEvents: React.FC = () => {
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [regSearch, setRegSearch] = useState('');
   const [checkingIn, setCheckingIn] = useState<string | null>(null);
+
+  // Wire the parent FocusScreen's back button to internal navigation:
+  // pressing back from an edit/create or detail sub-view returns to
+  // the event list instead of jumping all the way out of Events.
+  const { registerBack } = useContext(FocusScreenBackContext);
+  useEffect(() => {
+    registerBack(() => {
+      if (view !== 'list') {
+        setView('list');
+        setSelected(null);
+        return true; // consumed — handled internally
+      }
+      return false; // let FocusScreen exit to dashboard
+    });
+  }, [view, registerBack]);
 
   useEffect(() => {
     let unsub: (() => void) | null = null;
@@ -286,12 +302,7 @@ const AdminEvents: React.FC = () => {
   if (view === 'create' || view === 'edit') {
     return (
       <div className="max-w-2xl mx-auto pb-32">
-        <div className="flex items-center gap-3 mb-6">
-          <button onClick={() => setView('list')} className="p-2 rounded-xl hover:bg-gray-100">
-            <ArrowLeft size={18} className="text-gray-600" />
-          </button>
-          <h2 className="text-xl font-bold text-gray-900">{view === 'edit' ? 'Edit Event' : 'Create Event'}</h2>
-        </div>
+        <h2 className="text-xl font-bold text-gray-900 mb-6">{view === 'edit' ? 'Edit Event' : 'Create Event'}</h2>
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-5">
           <div className="grid grid-cols-1 gap-5">
             <div>
@@ -393,16 +404,11 @@ const AdminEvents: React.FC = () => {
     return (
       <div className="max-w-3xl mx-auto">
         <div className="flex items-center justify-between mb-5">
-          <div className="flex items-center gap-3">
-            <button onClick={() => setView('list')} className="p-2 rounded-xl hover:bg-gray-100">
-              <ArrowLeft size={18} className="text-gray-600" />
-            </button>
-            <div>
-              <h2 className="text-xl font-bold text-gray-900 truncate">{selected.title}</h2>
-              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${STATUS_COLORS[selected.status]}`}>
-                {selected.status}
-              </span>
-            </div>
+          <div>
+            <h2 className="text-xl font-bold text-gray-900 truncate">{selected.title}</h2>
+            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${STATUS_COLORS[selected.status]}`}>
+              {selected.status}
+            </span>
           </div>
           <div className="flex items-center gap-2">
             <button onClick={() => openEdit(selected)} className="p-2 rounded-xl border border-gray-200 hover:bg-gray-50">

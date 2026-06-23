@@ -94,7 +94,6 @@ export async function POST(request: NextRequest) {
         customer: customerId,
         mode: 'subscription',
         line_items: [
-          { price: AI_ASSISTANT_SETUP, quantity: 1 },
           { price: AI_ASSISTANT_MONTHLY, quantity: 1 },
         ],
         success_url: `${baseUrl}/?stripe=success&session_id={CHECKOUT_SESSION_ID}&addon=ai-assistant`,
