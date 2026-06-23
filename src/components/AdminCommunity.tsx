@@ -8,7 +8,7 @@ import {
   serverTimestamp, getDocs, limit, Timestamp
 } from 'firebase/firestore';
 import { db, auth } from '../firebase';
-import { getTenantScope } from '../utils/tenant-scope';
+import { getTenantId } from '../utils/tenant-scope';
 import { isSuperAdminEmail } from '../utils/super-admins';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { notifyError } from '../utils/notify';
@@ -73,7 +73,7 @@ const fmtTime = (ts: Timestamp | null) => {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 };
 
-// ─── Channel Thread ────────────────────────────────────────────────
+// ─── Channel Thread ──────────────────────────────────────────────────────
 
 const ChannelThread: React.FC<{
   channel: Channel;
@@ -184,7 +184,7 @@ const ChannelThread: React.FC<{
   );
 };
 
-// ─── DM Thread ─────────────────────────────────────────────────────
+// ─── DM Thread ────────────────────────────────────────────────────────────
 
 const DmThread: React.FC<{
   dm: DirectMessage;
@@ -303,7 +303,7 @@ const DmThread: React.FC<{
   );
 };
 
-// ─── Main AdminCommunity ───────────────────────────────────────────
+// ─── Main AdminCommunity ─────────────────────────────────────────────────────
 
 const AdminCommunity: React.FC = () => {
   const [tab, setTab] = useState<MainTab>('channels');
@@ -334,13 +334,21 @@ const AdminCommunity: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    getTenantScope().then(async (tid) => {
+    const user = auth.currentUser;
+    const isSuperAdm = isSuperAdminEmail(user?.email);
+    if (isSuperAdm) {
+      setLoading(false);
+      return;
+    }
+    getTenantId().then(async (tid) => {
       setTenantId(tid);
-      if (auth.currentUser) {
+      if (user) {
         const { getDoc } = await import('firebase/firestore');
-        const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
-        const name = userDoc.exists() ? (userDoc.data().displayName || auth.currentUser.displayName || 'Admin') : (auth.currentUser.displayName || 'Admin');
-        setCurrentUser({ uid: auth.currentUser.uid, name });
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        const name = userDoc.exists()
+          ? (userDoc.data().displayName || user.displayName || 'Admin')
+          : (user.displayName || 'Admin');
+        setCurrentUser({ uid: user.uid, name });
       }
       setLoading(false);
     });
@@ -432,7 +440,6 @@ const AdminCommunity: React.FC = () => {
 
   const startAdminDm = async (admin: AdminUser) => {
     if (!tenantId || !currentUser) return;
-    // Check if DM already exists
     const existing = adminDms.find(dm =>
       dm.participants.includes(admin.id) && dm.participants.includes(currentUser.uid)
     );
@@ -484,7 +491,6 @@ const AdminCommunity: React.FC = () => {
   }
 
   if (!tenantId) {
-    // Super admin with no tenant gets a message about creating a tenant first
     if (isSuperAdminEmail(auth.currentUser?.email)) {
       return <div className="text-center py-16 text-gray-400">Select a tenant to manage community chat.</div>;
     }
