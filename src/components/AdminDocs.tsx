@@ -76,25 +76,24 @@ const ThreeDotMenu: React.FC<{
       </button>
       {menuOpen && (
         <div className="absolute right-0 top-full mt-1 w-36 bg-white rounded-lg shadow-lg border border-gray-100 z-50 py-1">
-          <button
-            {onMove && (
-              <button
-                onClick={(e) => { e.stopPropagation(); setMenuOpen(false); onMove(); }}
-                className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-100 rounded-lg"
-              >
-                <Move size={12} /> Move to Folder
-              </button>
-            )}
-            {onPin && (
-              <button
-                onClick={(e) => { e.stopPropagation(); setMenuOpen(false); onPin(); }}
-                className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-100 rounded-lg"
-              >
-                <Pin size={12} /> {isPinned ? 'Unpin' : 'Pin to Top'}
-              </button>
-            )}
+          {onMove && (
             <button
-              onClick={(e) => { e.stopPropagation(); setMenuOpen(false); onRename(); }}
+              onClick={(e) => { e.stopPropagation(); setMenuOpen(false); onMove(); }}
+              className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-100 rounded-lg"
+            >
+              <Move size={12} /> Move to Folder
+            </button>
+          )}
+          {onPin && (
+            <button
+              onClick={(e) => { e.stopPropagation(); setMenuOpen(false); onPin(); }}
+              className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-100 rounded-lg"
+            >
+              <Pin size={12} /> {isPinned ? 'Unpin' : 'Pin to Top'}
+            </button>
+          )}
+          <button
+            onClick={(e) => { e.stopPropagation(); setMenuOpen(false); onRename(); }}
             className="w-full flex items-center gap-2 text-left px-3 py-2 text-xs text-gray-700 hover:bg-gray-50"
           >
             <Edit2 size={12} /> Rename
@@ -167,8 +166,10 @@ const FolderNode: React.FC<{
   onDeleteDoc: (id: string) => void;
   onRenameFolder: (folder: DocFolder) => void;
   onRenameDoc: (doc: Doc) => void;
+  onMoveDoc?: (docId: string) => void;
+  onPinDoc?: (docId: string, pinned: boolean) => void;
   depth?: number;
-}> = ({ folder, folders, docs, activeFolderId, activeDocId, onSelectFolder, onSelectDoc, onDeleteFolder, onDeleteDoc, onRenameFolder, onRenameDoc, depth = 0 }) => {
+}> = ({ folder, folders, docs, activeFolderId, activeDocId, onSelectFolder, onSelectDoc, onDeleteFolder, onDeleteDoc, onRenameFolder, onRenameDoc, onMoveDoc, onPinDoc, depth = 0 }) => {
   const [open, setOpen] = useState(true);
   const childFolders = folders.filter(f => f.parentId === folder.id);
   const folderDocs = docs.filter(d => d.folderId === folder.id);
@@ -220,8 +221,8 @@ const FolderNode: React.FC<{
               <ThreeDotMenu
                 onRename={() => onRenameDoc(d)}
                 onDelete={() => onDeleteDoc(d.id)}
-                onMove={() => onMoveDoc?.(d.id)}
-                onPin={() => onPinDoc?.(d.id, !!d.pinned)}
+                onMove={onMoveDoc ? () => onMoveDoc(d.id) : undefined}
+                onPin={onPinDoc ? () => onPinDoc(d.id, !!d.pinned) : undefined}
                 isPinned={!!d.pinned}
               />
             </div>
@@ -465,6 +466,9 @@ const AdminDocs: React.FC = () => {
                     <ThreeDotMenu
                       onRename={() => handleRenameDoc(d)}
                       onDelete={() => setDeleteDocId(d.id)}
+                      onMove={() => setMoveDocId(d.id)}
+                      onPin={() => togglePinDoc(d.id, !!d.pinned)}
+                      isPinned={!!d.pinned}
                     />
                   </div>
                 ))}
@@ -483,6 +487,8 @@ const AdminDocs: React.FC = () => {
                     onDeleteDoc={setDeleteDocId}
                     onRenameFolder={handleRenameFolder}
                     onRenameDoc={handleRenameDoc}
+                    onMoveDoc={setMoveDocId}
+                    onPinDoc={togglePinDoc}
                   />
                 ))}
               </div>
