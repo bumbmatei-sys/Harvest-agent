@@ -613,9 +613,10 @@ const AdminCommunity: React.FC = () => {
       setCurrentUser({ uid: user.uid, name });
     };
 
-    // The subdomain is the authoritative tenant. On nations.theharvest.app every
-    // admin — including a super admin — manages ONLY the Nations tenant's chat,
-    // so we load immediately with no tenant picker.
+    // Resolve THIS admin's own tenant and render chat directly — no picker.
+    // Subdomain is authoritative; otherwise fall back to their user doc.
+    // tenantId stays null only for a super admin (whose user doc has no
+    // tenant), which is the single case that shows the tenant picker below.
     const hostTenant = getTenantIdFromHost();
     if (hostTenant) {
       setTenantId(hostTenant);
@@ -623,12 +624,6 @@ const AdminCommunity: React.FC = () => {
       return;
     }
 
-    // Root/platform domain (no tenant subdomain): super admin gets the picker,
-    // a regular admin falls back to the tenant on their own user doc.
-    if (isSuperAdminEmail(user?.email)) {
-      setLoading(false);
-      return;
-    }
     getTenantId().then(async (tid) => {
       setTenantId(tid);
       await loadCurrentUser();

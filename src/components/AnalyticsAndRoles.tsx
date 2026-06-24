@@ -257,7 +257,7 @@ function PermissionEditor({ admin, isNew, onSave, onClose, allUsers }: Permissio
           <button onClick={onClose} style={{ background: "none", border: "none", color: TEXT2, cursor: "pointer", fontSize: 20 }}>✕</button>
         </div>
 
-        <div style={{ overflowY: "auto", flex: 1, paddingTop: 60, paddingBottom: 120, paddingLeft: 20, paddingRight: 20, display: "flex", flexDirection: "column", gap: 20 }}>
+        <div style={{ overflowY: "auto", flex: 1, paddingTop: 60, paddingBottom: 160, paddingLeft: 20, paddingRight: 20, display: "flex", flexDirection: "column", gap: 20 }}>
           {isNew && !form.id && (
             <div style={{ display: "flex", flexDirection: "column", gap: 10, position: "relative" }}>
               <label style={s.label}>Search User</label>
