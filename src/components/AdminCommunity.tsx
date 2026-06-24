@@ -8,7 +8,7 @@ import {
   serverTimestamp, getDocs, limit, Timestamp
 } from 'firebase/firestore';
 import { db, auth } from '../firebase';
-import { getTenantId, getTenantIdFromHost } from '../utils/tenant-scope';
+import { getTenantId, getTenantIdFromHost, PLATFORM_TENANT_ID } from '../utils/tenant-scope';
 import { isSuperAdminEmail } from '../utils/super-admins';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { notifyError } from '../utils/notify';
@@ -625,7 +625,12 @@ const AdminCommunity: React.FC = () => {
     }
 
     getTenantId().then(async (tid) => {
-      setTenantId(tid);
+      // On the root platform domain a super admin has no subdomain and a null
+      // tenant on their user doc — land them directly in the platform's own
+      // community chat instead of a picker. Regular admins keep their tenant
+      // (or null, which shows the not-an-admin message below).
+      const resolved = tid || (isSuperAdminEmail(user?.email) ? PLATFORM_TENANT_ID : null);
+      setTenantId(resolved);
       await loadCurrentUser();
       setLoading(false);
     });
