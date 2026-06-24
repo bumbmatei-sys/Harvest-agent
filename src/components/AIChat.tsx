@@ -742,7 +742,7 @@ Friendly neighbor, not a corporate chatbot. Short. Helpful. Human.`;
  </div>
 
  {/* ── MESSAGES ── */}
- <div style={{ flex: 1, overflowY: "auto", padding: isEmpty ? 0 : "16px 16px 8px", display: "flex", flexDirection: "column" }}>
+ <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: isEmpty ? 0 : "16px 16px 8px", display: "flex", flexDirection: "column" }}>
  {/* Empty state */}
  {isEmpty && (
  <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "32px 20px", animation: "fadeSlideUp 0.4s ease" }}>

@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Plus, FileText, Trash2, Clock, FolderOpen, Folder, ChevronRight, ChevronDown,
-  PanelLeft, X, ArrowLeft, MoreVertical, Edit2, Move, Pin, MoreHorizontal, Share2, Check, Download
+  PanelLeft, X, ArrowLeft, MoreVertical, Edit2, Move, Pin, MoreHorizontal, Share2, Check, Download, Upload
 } from 'lucide-react';
 import {
   collection, query, where, orderBy, onSnapshot, addDoc, updateDoc, deleteDoc,
@@ -14,6 +14,7 @@ import { getTenantScope } from '../utils/tenant-scope';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { notifyError } from '../utils/notify';
 import { exportToPDF, exportToDOCX, exportToMarkdown } from '../utils/doc-export';
+import { markdownToHtml, titleFromMarkdown } from '../utils/markdown-import';
 import RichTextEditor from './RichTextEditor';
 import FocusScreen from './FocusScreen';
 
@@ -469,6 +470,45 @@ const AdminDocs: React.FC = () => {
     } catch (e) { notifyError('Failed to create document', e); }
   };
 
+  const importInputRef = useRef<HTMLInputElement>(null);
+
+  const importMarkdownFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (e.target) e.target.value = '';
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const html = markdownToHtml(text);
+      const title = titleFromMarkdown(text, file.name);
+      const ref = await addDoc(collection(db, 'docs'), {
+        title,
+        content: html,
+        folderId: null,
+        tenantId: tenantId || null,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        createdBy: auth.currentUser?.uid || '',
+        isPrivate: true,
+        sharedWith: [],
+        pinned: false,
+      });
+      const newDoc: Doc = {
+        id: ref.id, title, content: html, folderId: null,
+        createdBy: auth.currentUser?.uid || '', createdAt: null, updatedAt: null,
+        isPrivate: true, sharedWith: [],
+      };
+      setOpenDoc(newDoc);
+      setEditTitle(title);
+      setEditContent(html);
+      setSaveStatus('idle');
+      setFocusMode(true);
+      toast.success('Note imported successfully');
+    } catch (err) {
+      console.error('Markdown import failed', err);
+      toast.error('Could not import file — check it is a valid .md file');
+    }
+  };
+
   const createFolder = async () => {
     if (!newFolderName.trim()) return;
     try {
@@ -839,6 +879,20 @@ const AdminDocs: React.FC = () => {
           <h2 className="text-xl font-bold text-gray-900">Docs</h2>
         </div>
         <div className="flex gap-2">
+          <input
+            ref={importInputRef}
+            type="file"
+            accept=".md,.markdown,text/markdown,text/plain"
+            onChange={importMarkdownFile}
+            className="hidden"
+          />
+          <button
+            onClick={() => importInputRef.current?.click()}
+            className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50"
+            title="Import a .md file"
+          >
+            <Upload size={15} /> Import
+          </button>
           <button
             onClick={() => setShowNewFolder(true)}
             className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50"
