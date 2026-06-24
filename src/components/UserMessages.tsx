@@ -8,6 +8,13 @@ import {
 import { db, auth } from '../firebase';
 import { getTenantScope } from '../utils/tenant-scope';
 
+interface MessageAttachment {
+  type: 'doc' | 'contact' | 'campaign';
+  id: string;
+  title: string;
+  subtitle: string;
+}
+
 interface DirectMessage {
   id: string;
   participants: string[];
@@ -26,6 +33,7 @@ interface DmMessage {
   content: string;
   createdAt: Timestamp | null;
   read: boolean;
+  attachments?: MessageAttachment[];
 }
 
 const fmtTime = (ts: Timestamp | null) => {
@@ -36,6 +44,25 @@ const fmtTime = (ts: Timestamp | null) => {
   if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
   if (diff < 86400000) return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+};
+
+// ─── Attachment Card (view-only for users) ───────────────────────────────────
+
+const AttachmentCard: React.FC<{ attachment: MessageAttachment }> = ({ attachment }) => {
+  const icon = attachment.type === 'doc' ? '📄' : attachment.type === 'contact' ? '👤' : '🎯';
+  const label = attachment.type === 'doc' ? 'Note / Doc' : attachment.type === 'contact' ? 'Contact' : 'Campaign';
+  return (
+    <div className="mt-1.5 bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm" style={{ maxWidth: 210 }}>
+      <div className="flex items-start gap-2 p-3">
+        <span className="text-lg leading-none flex-shrink-0">{icon}</span>
+        <div className="flex-1 min-w-0">
+          <p className="text-[10px] font-bold uppercase tracking-wide text-gray-400 mb-0.5">{label}</p>
+          <p className="text-xs font-semibold text-gray-900 truncate leading-tight">{attachment.title}</p>
+          <p className="text-[10px] text-gray-400 truncate mt-0.5">{attachment.subtitle}</p>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 const DmThread: React.FC<{
@@ -124,10 +151,13 @@ const DmThread: React.FC<{
                 {m.senderName.charAt(0).toUpperCase()}
               </div>
               <div className={`max-w-[72%] ${isMine ? 'items-end' : 'items-start'} flex flex-col`}>
-                <p className={`text-sm px-3 py-2 rounded-2xl ${isMine ? 'rounded-tr-sm text-white' : 'rounded-tl-sm text-gray-700 bg-white border border-gray-100 shadow-sm'}`}
-                  style={isMine ? { backgroundColor: 'var(--brand-color, #B8962E)' } : undefined}>
-                  {m.content}
-                </p>
+                {m.content && (
+                  <p className={`text-sm px-3 py-2 rounded-2xl ${isMine ? 'rounded-tr-sm text-white' : 'rounded-tl-sm text-gray-700 bg-white border border-gray-100 shadow-sm'}`}
+                    style={isMine ? { backgroundColor: 'var(--brand-color, #B8962E)' } : undefined}>
+                    {m.content}
+                  </p>
+                )}
+                {m.attachments?.map((a, i) => <AttachmentCard key={i} attachment={a} />)}
                 <span className="text-[10px] text-gray-400 mt-0.5">{fmtTime(m.createdAt)}</span>
               </div>
             </div>
@@ -206,8 +236,6 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack }) => {
     const otherId = dm.participants.find(p => p !== currentUser.uid) || '';
     return (dm as any).participantNames?.[otherId] || 'Admin';
   };
-
-  const getUnreadCount = (dm: DirectMessage): number => 0; // simplified
 
   if (loading) {
     return (
