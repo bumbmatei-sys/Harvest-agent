@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import {
   collection, query, where, orderBy, onSnapshot, addDoc, updateDoc, deleteDoc,
-  doc, limit, serverTimestamp, Timestamp, getDocs
+  doc, limit, serverTimestamp, Timestamp, getDocs, getDoc
 } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { getTenantScope } from '../utils/tenant-scope';
@@ -94,11 +94,6 @@ interface AdminCRMProps {
 }
 
 const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermissions }) => {
-  // Scroll-to-top container reference — attached to the wrapping div of every CRM view.
-  // Whenever the user switches between list / detail / form views (or Analytics sub-tab),
-  // we find the nearest scrollable ancestor and reset its scroll position to the top.
-  // This is the systematic scroll-reset pattern used across admin screens that share a
-  // parent scroll container inside FocusScreen.
   const scrollRef = useRef<HTMLDivElement>(null);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
@@ -128,8 +123,12 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
   const [actForm, setActForm] = useState({ type: 'note' as ContactActivity['type'], description: '', amount: '' });
   const [savingAct, setSavingAct] = useState(false);
 
-  // CRM sub-view: Contacts (default) or user registration Analytics
   const [crmSubView, setCrmSubView] = useState<'contacts' | 'analytics'>('contacts');
+
+  // Onboarding answers
+  const [onboardingAnswers, setOnboardingAnswers] = useState<Record<string, string> | null>(null);
+  const [onboardingQuestions, setOnboardingQuestions] = useState<Array<{ id: string; label: string; order: number }>>([]);
+  const [loadingAnswers, setLoadingAnswers] = useState(false);
 
   useEffect(() => {
     let unsub: (() => void) | null = null;
@@ -152,6 +151,44 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
   }, []);
 
   useEffect(() => {
+    if (!selected) {
+      setOnboardingAnswers(null);
+      setOnboardingQuestions([]);
+      return;
+    }
+    setLoadingAnswers(true);
+    const fetchAnswers = async () => {
+      try {
+        if (selected.email) {
+          const usersQ = query(collection(db, 'users'), where('email', '==', selected.email), limit(1));
+          const usersSnap = await getDocs(usersQ);
+          if (!usersSnap.empty) {
+            const userData = usersSnap.docs[0].data();
+            setOnboardingAnswers(userData.onboardingAnswers || null);
+          } else {
+            setOnboardingAnswers(null);
+          }
+        } else {
+          setOnboardingAnswers(null);
+        }
+        if (tenantId) {
+          const tenantSnap = await getDoc(doc(db, 'tenants', tenantId));
+          if (tenantSnap.exists()) {
+            const qs: Array<{ id: string; label: string; order: number }> =
+              tenantSnap.data()?.config?.onboardingQuestions || [];
+            setOnboardingQuestions([...qs].sort((a, b) => a.order - b.order));
+          }
+        }
+      } catch (e) {
+        console.error('Failed to load onboarding answers', e);
+      } finally {
+        setLoadingAnswers(false);
+      }
+    };
+    fetchAnswers();
+  }, [selected?.id, selected?.email, tenantId]);
+
+  useEffect(() => {
     if (!selected) return;
     const q = query(
       collection(db, 'contactActivities'),
@@ -165,11 +202,6 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
     return unsub;
   }, [selected]);
 
-  // Reset scroll position to top whenever the user navigates between CRM views
-  // (list → detail → form, Contacts ↔ Analytics, or selecting a new contact).
-  // The scroll container lives in the parent FocusScreen wrapper, so we walk up
-  // the DOM from the view's root element to find the nearest overflow-y-auto
-  // ancestor and reset it. This is the systematic scroll-reset pattern.
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
@@ -260,7 +292,6 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
     return <div className="flex items-center justify-center h-40"><div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--brand-color, #d4a017)', borderTopColor: 'transparent' }} /></div>;
   }
 
-  // Sub-tab bar — visible in all sub-views (Contacts / Analytics)
   const subTabBar = (
     <div className="flex gap-1 mb-5 border-b border-gray-200">
       <button
@@ -286,7 +317,6 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
     </div>
   );
 
-  // ── Analytics sub-view ──
   if (crmSubView === 'analytics') {
     return (
       <div ref={scrollRef} className="max-w-3xl mx-auto">
@@ -306,7 +336,6 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
     );
   }
 
-  // ── Form View ──
   if (view === 'form') {
     return (
       <div ref={scrollRef} className="max-w-2xl mx-auto">
@@ -389,24 +418,21 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
     );
   }
 
-  // ── Detail View ──
   if (view === 'detail' && selected) {
     return (
       <div ref={scrollRef} className="max-w-2xl mx-auto">
         {subTabBar}
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold text-white flex-shrink-0"
-                style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}>
-                {selected.firstName.charAt(0).toUpperCase()}
-              </div>
-              <div>
-                <h2 className="text-xl font-bold text-gray-900">{selected.firstName} {selected.lastName}</h2>
-                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${TYPE_COLORS[selected.type]}`}>
-                  {TYPE_LABELS[selected.type]}
-                </span>
-              </div>
+            <div className="w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold text-white flex-shrink-0"
+              style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}>
+              {selected.firstName.charAt(0).toUpperCase()}
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-gray-900">{selected.firstName} {selected.lastName}</h2>
+              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${TYPE_COLORS[selected.type]}`}>
+                {TYPE_LABELS[selected.type]}
+              </span>
             </div>
           </div>
           <div className="flex gap-2">
@@ -419,7 +445,6 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
           </div>
         </div>
 
-        {/* Contact info card */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 mb-4">
           <div className="grid grid-cols-2 gap-3">
             {selected.email && (
@@ -486,7 +511,6 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
           </div>
         </div>
 
-        {/* Activity timeline */}
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-bold text-gray-700">Activity Timeline</h3>
           <button
@@ -524,7 +548,32 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
           </div>
         )}
 
-        {/* Add Activity Modal */}
+        {/* Onboarding Answers */}
+        <div className="mt-5">
+          <h3 className="text-sm font-bold text-gray-700 mb-3">Onboarding Answers</h3>
+          {loadingAnswers ? (
+            <div className="flex justify-center py-6">
+              <div className="w-6 h-6 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--brand-color, #d4a017)', borderTopColor: 'transparent' }} />
+            </div>
+          ) : !onboardingAnswers || Object.keys(onboardingAnswers).length === 0 ? (
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 text-center text-gray-400 text-sm">
+              No onboarding responses yet.
+            </div>
+          ) : (
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
+              {(onboardingQuestions.length > 0
+                ? onboardingQuestions.filter(q => onboardingAnswers[q.id])
+                : Object.keys(onboardingAnswers).map(id => ({ id, label: id.replace(/_/g, ' '), order: 0 }))
+              ).map(q => (
+                <div key={q.id}>
+                  <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">{q.label}</p>
+                  <p className="text-sm text-gray-800">{onboardingAnswers[q.id]}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
         {showAddActivity && (
           <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center bg-black/50 p-4">
             <div className="bg-white rounded-2xl w-full max-w-md">
@@ -583,7 +632,6 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
     );
   }
 
-  // ── List View ──
   const totalGiven = contacts.reduce((s, c) => s + (c.totalDonated || 0), 0);
   const memberCount = contacts.filter(c => c.type === 'member' || c.type === 'both').length;
   const donorCount = contacts.filter(c => c.type === 'donor' || c.type === 'both').length;
@@ -604,7 +652,6 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
         </button>
       </div>
 
-      {/* Analytics */}
       <div className="grid grid-cols-3 gap-3 mb-5">
         <div className="bg-white rounded-xl p-3 border border-gray-100 text-center shadow-sm">
           <div className="text-xl font-bold text-gray-900">{memberCount}</div>
@@ -620,7 +667,6 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
         </div>
       </div>
 
-      {/* Search + filter */}
       <div className="flex gap-2 mb-5">
         <div className="relative flex-1">
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -628,7 +674,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
             placeholder="Search by name or email..."
             className="w-full pl-9 pr-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-[#d4a017]" />
         </div>
-        <select value={filter} onChange={e => setFilter(e.target.value as any)}
+        <select value={filter} onChange={e => setFilter(e.target.value as 'all' | Contact['type'])}
           className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#d4a017] bg-white">
           <option value="all">All</option>
           <option value="donor">Donors</option>

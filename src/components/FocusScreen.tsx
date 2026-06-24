@@ -2,16 +2,6 @@
 import React, { useCallback, useContext, useEffect, useMemo, useRef, createContext } from 'react';
 import { ChevronLeft, PanelLeft } from 'lucide-react';
 
-/**
- * Optional override hook: a child rendered inside FocusScreen may
- * register a back interceptor via React context. When the back
- * button is pressed we run the interceptor first; if it returns
- * true we treat the press as consumed (the child handled its own
- * internal navigation), otherwise we fall back to the default
- * onBack prop. The Android hardware back button goes through the
- * same path, so inner components get correct back behaviour for
- * free — including when they're layered behind sub-views.
- */
 interface FocusScreenBackContextValue {
   registerBack: (cb: (() => boolean) | null) => void;
 }
@@ -20,32 +10,14 @@ export const FocusScreenBackContext = createContext<FocusScreenBackContextValue>
 });
 
 interface FocusScreenProps {
-  /** Called when the back arrow is tapped or Android hardware back is pressed. */
   onBack: () => void;
-  /** Optional — shows the sidebar toggle button next to the back button. */
   onSidebarToggle?: () => void;
+  headerCenter?: React.ReactNode;
+  headerRight?: React.ReactNode;
   children: React.ReactNode;
 }
 
-/**
- * Full-screen focus mode wrapper for integrated app screens (Events,
- * CRM, Canvas, Docs, etc.).  Replaces the previous floating-button
- * design with a slim white top bar that contains the gold back
- * chevron (+ optional sidebar toggle) so the controls live in
- * normal document flow and can never overlap content below them.
- *
- * Children rendered inside this wrapper can opt in to back-button
- * interception by calling
- *
- *   const { registerBack } = useContext(FocusScreenBackContext);
- *   registerBack(() => { if (internalView) { closeInternal(); return true; } return false; });
- *
- * — returning true from the interceptor consumes the back press
- * (e.g. closing an opened detail panel) without exiting the
- * FocusScreen entirely.
- */
-const FocusScreen: React.FC<FocusScreenProps> = ({ onBack, onSidebarToggle, children }) => {
-  // Ref holds the latest interceptor without forcing re-renders.
+const FocusScreen: React.FC<FocusScreenProps> = ({ onBack, onSidebarToggle, headerCenter, headerRight, children }) => {
   const overrideRef = useRef<(() => boolean) | null>(null);
   const registerBack = useCallback((cb: (() => boolean) | null) => {
     overrideRef.current = cb;
@@ -56,7 +28,6 @@ const FocusScreen: React.FC<FocusScreenProps> = ({ onBack, onSidebarToggle, chil
     onBack();
   }, [onBack]);
 
-  // Android hardware back button via the browser History API popstate event.
   useEffect(() => {
     window.history.pushState(null, '', window.location.href);
     const handlePopState = () => handleBack();
@@ -71,7 +42,6 @@ const FocusScreen: React.FC<FocusScreenProps> = ({ onBack, onSidebarToggle, chil
   return (
     <FocusScreenBackContext.Provider value={contextValue}>
       <div className="fixed inset-0 z-[200] bg-[#f8f9fa] flex flex-col">
-        {/* Top bar: gold chevron back + optional sidebar toggle */}
         <div className="flex items-center gap-2 px-3 py-3 flex-shrink-0 bg-white border-b border-gray-100">
           <button
             onClick={handleBack}
@@ -90,9 +60,18 @@ const FocusScreen: React.FC<FocusScreenProps> = ({ onBack, onSidebarToggle, chil
               <PanelLeft size={20} color="#B8962E" strokeWidth={2} />
             </button>
           )}
+
+          <div className="flex-1 flex items-center justify-center">
+            {headerCenter}
+          </div>
+
+          {headerRight && (
+            <div className="flex-shrink-0 flex items-center pr-1">
+              {headerRight}
+            </div>
+          )}
         </div>
 
-        {/* Content fills the remaining screen height */}
         <div className="flex-1 overflow-hidden">{children}</div>
       </div>
     </FocusScreenBackContext.Provider>
