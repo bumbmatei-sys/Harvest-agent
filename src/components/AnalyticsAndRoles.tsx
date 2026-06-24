@@ -61,7 +61,6 @@ export interface AdminUser {
   picture: string;
   role: "super_admin" | "admin" | "user";
   permissions: Permission;
-  assignedRegions: string[];
 }
 
 const emptyPermission = (): Permission => ({
@@ -191,10 +190,9 @@ function PermissionEditor({ admin, isNew, onSave, onClose, allUsers }: Permissio
   const [form, setForm] = useState<AdminUser>(
     admin || {
       id: "", name: "", email: "", picture: "", role: "admin",
-      permissions: emptyPermission(), assignedRegions: [],
+      permissions: emptyPermission(),
     }
   );
-  const [regionInput, setRegionInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<UserRecord[]>([]);
 
@@ -236,16 +234,6 @@ function PermissionEditor({ admin, isNew, onSave, onClose, allUsers }: Permissio
       setForm((f) => ({ ...f, permissions: { ...f.permissions, fullAccess: false } }));
     }
   };
-
-  const addRegion = (): void => {
-    const r = regionInput.trim();
-    if (!r || form.assignedRegions.includes(r)) return;
-    setForm((f) => ({ ...f, assignedRegions: [...f.assignedRegions, r] }));
-    setRegionInput("");
-  };
-
-  const removeRegion = (r: string): void =>
-    setForm((f) => ({ ...f, assignedRegions: f.assignedRegions.filter((x) => x !== r) }));
 
   const PERMISSION_ROWS: { key: keyof Permission; label: string; desc: string; icon: string; superOnly?: boolean }[] = [
     { key: "writeArticles", label: "Write Articles", desc: "Create, edit and publish blog articles", icon: "✍️" },
@@ -334,34 +322,6 @@ function PermissionEditor({ admin, isNew, onSave, onClose, allUsers }: Permissio
             </div>
           )}
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <label style={s.label}>Assigned Regions</label>
-            <div style={{ fontSize: 12, color: TEXT2, marginTop: -6 }}>
-              Cities or countries this admin can access. Leave empty for global access.
-            </div>
-            <div style={{ display: "flex", gap: 8 }}>
-              <input style={{ ...s.input, flex: 1 }} placeholder="e.g. Lagos, Nigeria, UK..."
-                value={regionInput} onChange={(e) => setRegionInput(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && addRegion()} />
-              <button onClick={addRegion}
-                style={{ background: GOLD_BTN, border: "none", color: "#fff", fontWeight: 700, padding: "0 16px", borderRadius: 10, cursor: "pointer", fontSize: 13, fontFamily: "inherit", whiteSpace: "nowrap" }}>
-                Add
-              </button>
-            </div>
-            {form.assignedRegions.length > 0 && (
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                {form.assignedRegions.map((r) => (
-                  <div key={r} style={{ display: "flex", alignItems: "center", gap: 6, background: GOLD_LIGHT, border: `1.5px solid ${GOLD}`, borderRadius: 99, padding: "4px 12px" }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: GOLD }}>📍 {r}</span>
-                    <button onClick={() => removeRegion(r)} style={{ background: "none", border: "none", color: GOLD, cursor: "pointer", fontSize: 12, padding: 0, lineHeight: 1, fontWeight: 700 }}>✕</button>
-                  </div>
-                ))}
-              </div>
-            )}
-            {form.assignedRegions.length === 0 && (
-              <div style={{ fontSize: 12, color: TEXT2, fontStyle: "italic" }}>No regions assigned — global access if Analytics is enabled.</div>
-            )}
-          </div>
         </div>
 
         <div style={{ padding: "12px 20px 28px", borderTop: `1px solid ${BORDER}`, display: "flex", gap: 10, flexShrink: 0 }}>
@@ -434,7 +394,6 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
               picture: data.photoURL || "",
               role: data.email === SUPER_ADMIN_EMAIL ? "super_admin" : data.role,
               permissions: data.permissions || emptyPermission(),
-              assignedRegions: data.assignedRegions || []
             });
           }
         });
@@ -670,7 +629,6 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
       await updateDoc(userRef, {
         role: admin.role,
         permissions: admin.permissions,
-        assignedRegions: admin.assignedRegions
       });
 
       // Update custom claims for Firestore security rules
@@ -706,7 +664,6 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
       await updateDoc(userRef, {
         role: "user",
         permissions: emptyPermission(),
-        assignedRegions: []
       });
 
       // Update custom claims (remove admin flag)
@@ -945,15 +902,6 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
                           ))}
                           {activePerms.length === 0 && <span style={{ fontSize: 11, color: TEXT2, fontStyle: "italic" }}>No permissions assigned</span>}
                         </div>
-
-                        {admin.assignedRegions.length > 0 && (
-                          <div style={{ fontSize: 11, color: TEXT2, marginTop: 5 }}>
-                            📍 {admin.assignedRegions.join(", ")}
-                          </div>
-                        )}
-                        {!isSuperAdmin && admin.assignedRegions.length === 0 && (
-                          <div style={{ fontSize: 11, color: TEXT2, marginTop: 5 }}>🌍 Global access</div>
-                        )}
                       </div>
 
                       {!isSuperAdmin && (

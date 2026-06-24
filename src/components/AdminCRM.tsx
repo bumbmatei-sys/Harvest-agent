@@ -190,17 +190,31 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
 
   useEffect(() => {
     if (!selected) return;
-    const q = query(
-      collection(db, 'contactActivities'),
-      where('contactId', '==', selected.id),
-      orderBy('createdAt', 'desc'),
-      limit(100)
-    );
+    // Filter by equality only (contactId + tenantId) so no composite index is
+    // required; sort newest-first on the client. Scoping by tenantId keeps the
+    // timeline isolated to the current tenant.
+    const q = tenantId
+      ? query(
+          collection(db, 'contactActivities'),
+          where('contactId', '==', selected.id),
+          where('tenantId', '==', tenantId),
+          limit(100)
+        )
+      : query(
+          collection(db, 'contactActivities'),
+          where('contactId', '==', selected.id),
+          limit(100)
+        );
     const unsub = onSnapshot(q, snap => {
-      setActivities(snap.docs.map(d => ({ id: d.id, ...d.data() }) as ContactActivity));
+      const rows = snap.docs.map(d => ({ id: d.id, ...d.data() }) as ContactActivity);
+      rows.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
+      setActivities(rows);
+    }, err => {
+      try { handleFirestoreError(err, OperationType.GET, 'contactActivities'); } catch (e) { console.error(e); }
+      setActivities([]);
     });
     return unsub;
-  }, [selected]);
+  }, [selected, tenantId]);
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -525,7 +539,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
         {activities.length === 0 ? (
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 text-center text-gray-400">
             <Clock size={28} className="mx-auto mb-2 opacity-30" />
-            <p className="text-sm">Activities will appear here when the user makes donations or attends events.</p>
+            <p className="text-sm">No activities recorded yet — add the first one</p>
           </div>
         ) : (
           <div className="space-y-2">

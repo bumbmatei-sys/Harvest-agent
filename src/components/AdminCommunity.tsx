@@ -8,7 +8,7 @@ import {
   serverTimestamp, getDocs, limit, Timestamp
 } from 'firebase/firestore';
 import { db, auth } from '../firebase';
-import { getTenantId } from '../utils/tenant-scope';
+import { getTenantId, getTenantIdFromHost } from '../utils/tenant-scope';
 import { isSuperAdminEmail } from '../utils/super-admins';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { notifyError } from '../utils/notify';
@@ -602,21 +602,36 @@ const AdminCommunity: React.FC = () => {
 
   useEffect(() => {
     const user = auth.currentUser;
-    const isSuperAdm = isSuperAdminEmail(user?.email);
-    if (isSuperAdm) {
+
+    const loadCurrentUser = async () => {
+      if (!user) return;
+      const { getDoc } = await import('firebase/firestore');
+      const userDoc = await getDoc(doc(db, 'users', user.uid));
+      const name = userDoc.exists()
+        ? (userDoc.data().displayName || user.displayName || 'Admin')
+        : (user.displayName || 'Admin');
+      setCurrentUser({ uid: user.uid, name });
+    };
+
+    // The subdomain is the authoritative tenant. On nations.theharvest.app every
+    // admin — including a super admin — manages ONLY the Nations tenant's chat,
+    // so we load immediately with no tenant picker.
+    const hostTenant = getTenantIdFromHost();
+    if (hostTenant) {
+      setTenantId(hostTenant);
+      loadCurrentUser().finally(() => setLoading(false));
+      return;
+    }
+
+    // Root/platform domain (no tenant subdomain): super admin gets the picker,
+    // a regular admin falls back to the tenant on their own user doc.
+    if (isSuperAdminEmail(user?.email)) {
       setLoading(false);
       return;
     }
     getTenantId().then(async (tid) => {
       setTenantId(tid);
-      if (user) {
-        const { getDoc } = await import('firebase/firestore');
-        const userDoc = await getDoc(doc(db, 'users', user.uid));
-        const name = userDoc.exists()
-          ? (userDoc.data().displayName || user.displayName || 'Admin')
-          : (user.displayName || 'Admin');
-        setCurrentUser({ uid: user.uid, name });
-      }
+      await loadCurrentUser();
       setLoading(false);
     });
   }, []);
