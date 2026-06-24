@@ -322,14 +322,16 @@ function PermissionEditor({ admin, isNew, onSave, onClose, allUsers }: Permissio
             </div>
           )}
 
-        </div>
+          {/* Action buttons scroll with the content (paddingBottom on the
+              container keeps them clear of the bottom navigation bar). */}
+          <div style={{ display: "flex", gap: 10 }}>
+            <button onClick={onClose} style={{ flex: 1, background: "transparent", border: `1.5px solid ${BORDER}`, color: TEXT2, padding: "12px", borderRadius: 12, cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 14 }}>Cancel</button>
+            <button onClick={() => onSave(form)} disabled={!form.id}
+              style={{ flex: 2, background: GOLD_BTN, border: "none", color: "#fff", fontWeight: 800, padding: "12px", borderRadius: 12, cursor: "pointer", fontFamily: "inherit", fontSize: 14, boxShadow: "0 2px 10px rgba(201,150,58,0.35)", opacity: form.id ? 1 : 0.5 }}>
+              {isNew ? "Add Admin" : "Save Changes"}
+            </button>
+          </div>
 
-        <div style={{ padding: "12px 20px 28px", borderTop: `1px solid ${BORDER}`, display: "flex", gap: 10, flexShrink: 0 }}>
-          <button onClick={onClose} style={{ flex: 1, background: "transparent", border: `1.5px solid ${BORDER}`, color: TEXT2, padding: "12px", borderRadius: 12, cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 14 }}>Cancel</button>
-          <button onClick={() => onSave(form)} disabled={!form.id}
-            style={{ flex: 2, background: GOLD_BTN, border: "none", color: "#fff", fontWeight: 800, padding: "12px", borderRadius: 12, cursor: "pointer", fontFamily: "inherit", fontSize: 14, boxShadow: "0 2px 10px rgba(201,150,58,0.35)", opacity: form.id ? 1 : 0.5 }}>
-            {isNew ? "Add Admin" : "Save Changes"}
-          </button>
         </div>
       </div>
     </div>
