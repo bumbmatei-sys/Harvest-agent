@@ -1,11 +1,11 @@
 "use client";
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
-  Hash, MessageSquare, Plus, Send, Users, X, Search, ArrowLeft, ChevronRight, Megaphone, Paperclip
+  Hash, MessageSquare, Plus, Send, Users, X, Search, ArrowLeft, ChevronRight, Megaphone, Paperclip, UserPlus
 } from 'lucide-react';
 import {
   collection, query, where, orderBy, onSnapshot, addDoc, updateDoc, doc,
-  serverTimestamp, getDocs, limit, Timestamp
+  serverTimestamp, getDocs, limit, Timestamp, arrayUnion, arrayRemove
 } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { getTenantId, getTenantIdFromHost, PLATFORM_TENANT_ID } from '../utils/tenant-scope';
@@ -27,6 +27,7 @@ interface Channel {
   createdAt: Timestamp | null;
   createdBy: string;
   type: 'announcement';
+  members?: string[];
 }
 
 interface ChannelMessage {
@@ -121,53 +122,71 @@ const AttachPicker: React.FC<{
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    if (!tenantId) return;
     setLoading(true);
     setItems([]);
+    let cancelled = false;
+    // Records live in flat collections scoped by a `tenantId` field (matching
+    // AdminDocs / AdminCRM / AdminFundraising) — NOT tenant subcollections.
+    // Query by equality only so no composite index is required.
     const run = async () => {
       try {
         if (tab === 'docs') {
-          const snap = await getDocs(query(
-            collection(db, 'tenants', tenantId, 'docs'),
-            orderBy('createdAt', 'desc'),
-            limit(50)
-          ));
-          setItems(snap.docs.map(d => {
+          const [docsSnap, foldersSnap] = await Promise.all([
+            getDocs(query(collection(db, 'docs'), where('tenantId', '==', tenantId), limit(50))),
+            getDocs(query(collection(db, 'docFolders'), where('tenantId', '==', tenantId), limit(100))),
+          ]);
+          if (cancelled) return;
+          const folderNames = new Map<string, string>();
+          foldersSnap.docs.forEach(f => folderNames.set(f.id, (f.data().name as string) || 'Folder'));
+          const rows = docsSnap.docs.map(d => {
             const data = d.data();
-            return { type: 'doc' as const, id: d.id, title: data.title || 'Untitled', subtitle: data.folder || 'My Docs' };
-          }));
+            const folder = data.folderId ? folderNames.get(data.folderId) : null;
+            const updated = (data.updatedAt as Timestamp | undefined)?.toDate?.();
+            const subtitle = folder || (updated ? updated.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'Doc');
+            return { type: 'doc' as const, id: d.id, title: (data.title as string) || 'Untitled', subtitle, _sort: (data.updatedAt as Timestamp | undefined)?.toMillis?.() || 0 };
+          });
+          rows.sort((a, b) => b._sort - a._sort);
+          setItems(rows.map(({ _sort, ...r }) => r));
         } else if (tab === 'contacts') {
-          const snap = await getDocs(query(
-            collection(db, 'tenants', tenantId, 'contacts'),
-            limit(50)
-          ));
+          const snap = await getDocs(query(collection(db, 'contacts'), where('tenantId', '==', tenantId), limit(100)));
+          if (cancelled) return;
+          const typeLabel: Record<string, string> = { donor: 'Donor', member: 'Member', both: 'Donor & Member' };
           setItems(snap.docs.map(d => {
             const data = d.data();
-            return { type: 'contact' as const, id: d.id, title: data.name || 'Unknown', subtitle: data.email || data.type || 'Contact' };
+            const name = `${data.firstName || ''} ${data.lastName || ''}`.trim() || 'Unknown';
+            const badge = typeLabel[data.type as string] || 'Contact';
+            const subtitle = data.email ? `${badge} · ${data.email}` : badge;
+            return { type: 'contact' as const, id: d.id, title: name, subtitle };
           }));
         } else {
-          const snap = await getDocs(query(
-            collection(db, 'tenants', tenantId, 'campaigns'),
-            orderBy('createdAt', 'desc'),
-            limit(50)
-          ));
+          const snap = await getDocs(query(collection(db, 'campaigns'), where('tenantId', '==', tenantId), limit(50)));
+          if (cancelled) return;
           setItems(snap.docs.map(d => {
             const data = d.data();
-            const raised = data.amountRaised || 0;
-            const goal = data.goal || 0;
-            const sub = goal > 0
+            const raised = (data.raised as number) || 0;
+            const goal = (data.goal as number) || 0;
+            const status = data.isActive ? 'Active' : 'Inactive';
+            const money = goal > 0
               ? `$${raised.toLocaleString()} of $${goal.toLocaleString()}`
               : `$${raised.toLocaleString()} raised`;
-            return { type: 'campaign' as const, id: d.id, title: data.title || 'Campaign', subtitle: sub };
+            return { type: 'campaign' as const, id: d.id, title: (data.title as string) || 'Campaign', subtitle: `${money} · ${status}` };
           }));
         }
-      } catch {
-        setItems([]);
+      } catch (e) {
+        if (!cancelled) {
+          setItems([]);
+          notifyError('Failed to load records', e);
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
     run();
+    return () => { cancelled = true; };
   }, [tab, tenantId]);
+
+  const emptyLabel = tab === 'docs' ? 'No docs yet' : tab === 'contacts' ? 'No contacts yet' : 'No campaigns yet';
 
   const filtered = search
     ? items.filter(i =>
@@ -212,7 +231,7 @@ const AttachPicker: React.FC<{
               <div className="w-6 h-6 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--brand-color, #d4a017)', borderTopColor: 'transparent' }} />
             </div>
           ) : filtered.length === 0 ? (
-            <p className="text-center py-10 text-sm text-gray-400">Nothing found</p>
+            <p className="text-center py-10 text-sm text-gray-400">{search ? 'Nothing found' : emptyLabel}</p>
           ) : filtered.map(item => {
             const sel = isSelected(item.id);
             const icon = item.type === 'doc' ? '📄' : item.type === 'contact' ? '👤' : '🎯';
@@ -254,6 +273,127 @@ const AttachPicker: React.FC<{
   );
 };
 
+// ─── Channel Members Sheet ────────────────────────────────────────────────────
+
+const ChannelMembersSheet: React.FC<{
+  tenantId: string;
+  channelId: string;
+  onClose: () => void;
+}> = ({ tenantId, channelId, onClose }) => {
+  const [members, setMembers] = useState<string[]>([]);
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [search, setSearch] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  // Live members from the channel doc.
+  useEffect(() => {
+    return onSnapshot(doc(db, 'tenants', tenantId, 'channels', channelId), snap => {
+      setMembers((snap.data()?.members as string[]) || []);
+    }, e => notifyError('Failed to load channel members', e));
+  }, [tenantId, channelId]);
+
+  // Tenant users (equality-only query — no composite index needed).
+  useEffect(() => {
+    let cancelled = false;
+    getDocs(query(collection(db, 'users'), where('tenantId', '==', tenantId), limit(200)))
+      .then(snap => {
+        if (cancelled) return;
+        setUsers(snap.docs.map(d => ({ id: d.id, ...d.data() }) as AdminUser));
+        setLoading(false);
+      })
+      .catch(e => { if (!cancelled) { setLoading(false); notifyError('Failed to load users', e); } });
+    return () => { cancelled = true; };
+  }, [tenantId]);
+
+  const channelRef = doc(db, 'tenants', tenantId, 'channels', channelId);
+  const addMember = async (uid: string) => {
+    try { await updateDoc(channelRef, { members: arrayUnion(uid) }); }
+    catch (e) { notifyError('Failed to add member', e); }
+  };
+  const removeMember = async (uid: string) => {
+    try { await updateDoc(channelRef, { members: arrayRemove(uid) }); }
+    catch (e) { notifyError('Failed to remove member', e); }
+  };
+
+  const userMap = new Map(users.map(u => [u.id, u]));
+  const memberUsers = members.map(id => userMap.get(id)).filter(Boolean) as AdminUser[];
+  const addable = users
+    .filter(u => !members.includes(u.id))
+    .filter(u => !search ||
+      u.displayName?.toLowerCase().includes(search.toLowerCase()) ||
+      u.email?.toLowerCase().includes(search.toLowerCase()));
+
+  return (
+    <div className="fixed inset-0 z-[300] flex items-end">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="relative w-full bg-white rounded-t-2xl max-h-[75vh] flex flex-col">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 flex-shrink-0">
+          <h3 className="font-bold text-gray-900 text-sm">Channel Members</h3>
+          <button onClick={onClose}><X size={18} className="text-gray-400" /></button>
+        </div>
+
+        {/* Current members */}
+        <div className="px-5 pt-3 pb-1 flex-shrink-0">
+          <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Members · {members.length}</p>
+        </div>
+        <div className="overflow-y-auto flex-shrink-0" style={{ maxHeight: '28vh' }}>
+          {memberUsers.length === 0 ? (
+            <p className="text-center py-4 text-sm text-gray-400">No members yet</p>
+          ) : memberUsers.map(u => (
+            <div key={u.id} className="flex items-center gap-3 px-5 py-2.5">
+              <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white flex-shrink-0"
+                style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}>
+                {u.displayName?.charAt(0)?.toUpperCase() || '?'}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-gray-900 truncate">{u.displayName || 'Unknown'}</p>
+                <p className="text-xs text-gray-400 truncate">{u.email}</p>
+              </div>
+              <button onClick={() => removeMember(u.id)} className="p-1.5 rounded-lg hover:bg-red-50">
+                <X size={15} className="text-red-400" />
+              </button>
+            </div>
+          ))}
+        </div>
+
+        {/* Add members */}
+        <div className="px-4 pt-3 pb-2 border-t border-gray-100 flex-shrink-0">
+          <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 px-1">Add Members</p>
+          <div className="relative">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search by name or email..."
+              className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-[#d4a017]"
+            />
+          </div>
+        </div>
+        <div className="overflow-y-auto flex-1">
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="w-6 h-6 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--brand-color, #d4a017)', borderTopColor: 'transparent' }} />
+            </div>
+          ) : addable.length === 0 ? (
+            <p className="text-center py-8 text-sm text-gray-400">{search ? 'No users found' : 'No users found in this tenant'}</p>
+          ) : addable.map(u => (
+            <button key={u.id} onClick={() => addMember(u.id)} className="w-full flex items-center gap-3 px-5 py-2.5 text-left hover:bg-gray-50">
+              <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white flex-shrink-0 bg-gray-400">
+                {u.displayName?.charAt(0)?.toUpperCase() || '?'}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-gray-900 truncate">{u.displayName || 'Unknown'}</p>
+                <p className="text-xs text-gray-400 truncate">{u.email}</p>
+              </div>
+              <UserPlus size={16} style={{ color: 'var(--brand-color, #d4a017)' }} className="flex-shrink-0" />
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ─── Channel Thread ──────────────────────────────────────────────────────────
 
 const ChannelThread: React.FC<{
@@ -267,6 +407,7 @@ const ChannelThread: React.FC<{
   const [sending, setSending] = useState(false);
   const [attachments, setAttachments] = useState<MessageAttachment[]>([]);
   const [showPicker, setShowPicker] = useState(false);
+  const [showMembers, setShowMembers] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -316,18 +457,25 @@ const ChannelThread: React.FC<{
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 bg-white">
-        <button onClick={onBack} className="p-1.5 rounded-lg hover:bg-gray-100">
-          <ArrowLeft size={18} className="text-gray-600" />
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 bg-white flex-shrink-0">
+        <button onClick={onBack} className="p-1 -ml-1 flex-shrink-0" aria-label="Back">
+          <ArrowLeft size={22} style={{ color: '#B8962E' }} />
         </button>
-        <Hash size={18} style={{ color: 'var(--brand-color, #d4a017)' }} />
+        <Hash size={18} style={{ color: 'var(--brand-color, #d4a017)' }} className="flex-shrink-0" />
         <div className="flex-1 min-w-0">
           <p className="font-bold text-gray-900 text-sm truncate">{channel.name}</p>
           {channel.description && <p className="text-xs text-gray-400 truncate">{channel.description}</p>}
         </div>
+        <button
+          onClick={() => setShowMembers(true)}
+          className="p-1.5 rounded-lg hover:bg-gray-100 flex-shrink-0"
+          aria-label="Channel members"
+        >
+          <Users size={20} style={{ color: '#B8962E' }} />
+        </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+      <div className="flex-1 min-h-0 overflow-y-auto px-4 pt-4 pb-4 space-y-3">
         {messages.length === 0 && (
           <div className="text-center py-12 text-gray-400">
             <Megaphone size={32} className="mx-auto mb-2 opacity-30" />
@@ -357,7 +505,7 @@ const ChannelThread: React.FC<{
         <div ref={bottomRef} />
       </div>
 
-      <div className="p-4 bg-white border-t border-gray-100">
+      <div className="bg-white border-t border-gray-100 flex-shrink-0 px-4 pt-3" style={{ paddingBottom: 'calc(12px + env(safe-area-inset-bottom))' }}>
         {attachments.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-2">
             {attachments.map((a, i) => (
@@ -402,6 +550,13 @@ const ChannelThread: React.FC<{
           selected={attachments}
           onToggle={toggleAttachment}
           onClose={() => setShowPicker(false)}
+        />
+      )}
+      {showMembers && (
+        <ChannelMembersSheet
+          tenantId={tenantId}
+          channelId={channel.id}
+          onClose={() => setShowMembers(false)}
         />
       )}
     </div>
@@ -669,37 +824,38 @@ const AdminCommunity: React.FC = () => {
     });
   }, [tenantId, currentUser]);
 
-  // Load admins list
+  // Load admins list. Query by tenantId only (single-field, no composite index
+  // needed) and filter role on the client so the picker never silently fails.
   const loadAdmins = useCallback(async () => {
     if (!tenantId) return;
     try {
-      const q = query(
+      const snap = await getDocs(query(
         collection(db, 'users'),
         where('tenantId', '==', tenantId),
-        where('role', 'in', ['admin', 'church_admin']),
-        limit(50)
-      );
-      const snap = await getDocs(q);
+        limit(200)
+      ));
+      const adminRoles = ['admin', 'church_admin', 'super_admin'];
       setAdmins(snap.docs
         .map(d => ({ id: d.id, ...d.data() }) as AdminUser)
-        .filter(a => a.id !== currentUser?.uid)
+        .filter(a => adminRoles.includes(a.role) && a.id !== currentUser?.uid)
       );
-    } catch (e) { console.error(e); }
+    } catch (e) { notifyError('Failed to load admins', e); }
   }, [tenantId, currentUser]);
 
-  // Load members list
+  // Load members list (role === 'user').
   const loadMembers = useCallback(async () => {
     if (!tenantId) return;
     try {
-      const q = query(
+      const snap = await getDocs(query(
         collection(db, 'users'),
         where('tenantId', '==', tenantId),
-        where('role', '==', 'user'),
-        limit(100)
+        limit(200)
+      ));
+      setMembers(snap.docs
+        .map(d => ({ id: d.id, ...d.data() }) as AdminUser)
+        .filter(m => m.role === 'user')
       );
-      const snap = await getDocs(q);
-      setMembers(snap.docs.map(d => ({ id: d.id, ...d.data() }) as AdminUser));
-    } catch (e) { console.error(e); }
+    } catch (e) { notifyError('Failed to load members', e); }
   }, [tenantId]);
 
   const createChannel = async () => {
@@ -712,6 +868,7 @@ const AdminCommunity: React.FC = () => {
         createdAt: serverTimestamp(),
         createdBy: currentUser.uid,
         type: 'announcement',
+        members: [currentUser.uid],
       });
       setShowNewChannel(false);
       setNewChannelName('');
@@ -1005,7 +1162,7 @@ const AdminCommunity: React.FC = () => {
             </div>
             <div className="overflow-y-auto flex-1">
               {admins.length === 0 ? (
-                <div className="text-center py-8 text-gray-400 text-sm">No other admins found</div>
+                <div className="text-center py-8 text-gray-400 text-sm">No users found in this tenant</div>
               ) : (
                 admins.map(a => (
                   <button
@@ -1050,7 +1207,7 @@ const AdminCommunity: React.FC = () => {
             </div>
             <div className="overflow-y-auto flex-1">
               {filteredMembers.length === 0 ? (
-                <div className="text-center py-8 text-gray-400 text-sm">No members found</div>
+                <div className="text-center py-8 text-gray-400 text-sm">No users found in this tenant</div>
               ) : (
                 filteredMembers.map(m => (
                   <button

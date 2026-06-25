@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, Send, MessageSquare } from 'lucide-react';
+import { ArrowLeft, Send, MessageSquare, Hash, Megaphone } from 'lucide-react';
 import {
   collection, query, where, orderBy, onSnapshot, addDoc, updateDoc, doc,
   serverTimestamp, limit, Timestamp
@@ -33,6 +33,22 @@ interface DmMessage {
   content: string;
   createdAt: Timestamp | null;
   read: boolean;
+  attachments?: MessageAttachment[];
+}
+
+interface Channel {
+  id: string;
+  name: string;
+  description: string;
+  members?: string[];
+}
+
+interface ChannelMessage {
+  id: string;
+  channelId: string;
+  senderName: string;
+  content: string;
+  createdAt: Timestamp | null;
   attachments?: MessageAttachment[];
 }
 
@@ -189,6 +205,76 @@ const DmThread: React.FC<{
   );
 };
 
+// ─── Read-only Channel View (members can read, not post) ──────────────────────
+
+const ChannelView: React.FC<{
+  channel: Channel;
+  tenantId: string;
+  onBack: () => void;
+}> = ({ channel, tenantId, onBack }) => {
+  const [messages, setMessages] = useState<ChannelMessage[]>([]);
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const q = query(
+      collection(db, 'tenants', tenantId, 'channelMessages'),
+      where('channelId', '==', channel.id),
+      orderBy('createdAt', 'asc'),
+      limit(200)
+    );
+    return onSnapshot(q, snap => {
+      setMessages(snap.docs.map(d => ({ id: d.id, ...d.data() }) as ChannelMessage));
+    }, () => {});
+  }, [channel.id, tenantId]);
+
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
+
+  return (
+    <div className="flex flex-col h-full bg-[#F7F6F3]">
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 bg-white flex-shrink-0">
+        <button onClick={onBack} className="p-1 -ml-1 flex-shrink-0" aria-label="Back">
+          <ArrowLeft size={22} style={{ color: '#B8962E' }} />
+        </button>
+        <Hash size={18} style={{ color: 'var(--brand-color, #B8962E)' }} className="flex-shrink-0" />
+        <div className="flex-1 min-w-0">
+          <p className="font-bold text-gray-900 text-sm truncate">{channel.name}</p>
+          {channel.description && <p className="text-xs text-gray-400 truncate">{channel.description}</p>}
+        </div>
+      </div>
+
+      <div className="flex-1 min-h-0 overflow-y-auto px-4 pt-4 pb-4 space-y-3">
+        {messages.length === 0 && (
+          <div className="text-center py-12 text-gray-400">
+            <Megaphone size={32} className="mx-auto mb-2 opacity-30" />
+            <p className="text-sm">No announcements yet</p>
+          </div>
+        )}
+        {messages.map(m => (
+          <div key={m.id} className="flex gap-3">
+            <div className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold text-white"
+              style={{ backgroundColor: 'var(--brand-color, #B8962E)' }}>
+              {(m.senderName || 'A').charAt(0).toUpperCase()}
+            </div>
+            <div>
+              <div className="flex items-baseline gap-2 mb-0.5">
+                <span className="text-sm font-semibold text-gray-900">{m.senderName || 'Admin'}</span>
+                <span className="text-[10px] text-gray-400">{fmtTime(m.createdAt)}</span>
+              </div>
+              {m.content && (
+                <p className="text-sm text-gray-700 bg-white px-3 py-2 rounded-2xl rounded-tl-sm border border-gray-100 shadow-sm max-w-xs lg:max-w-md">
+                  {m.content}
+                </p>
+              )}
+              {m.attachments?.map((a, i) => <AttachmentCard key={i} attachment={a} />)}
+            </div>
+          </div>
+        ))}
+        <div ref={bottomRef} />
+      </div>
+    </div>
+  );
+};
+
 interface UserMessagesProps {
   onBack: () => void;
 }
@@ -197,8 +283,10 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack }) => {
   const [tenantId, setTenantId] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<{ uid: string; name: string } | null>(null);
   const [dms, setDms] = useState<DirectMessage[]>([]);
+  const [channels, setChannels] = useState<Channel[]>([]);
   const [loading, setLoading] = useState(true);
   const [openDm, setOpenDm] = useState<DirectMessage | null>(null);
+  const [openChannel, setOpenChannel] = useState<Channel | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -231,6 +319,19 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack }) => {
     });
   }, [tenantId, currentUser]);
 
+  // Channels the user is a member of (array-contains needs no composite index).
+  useEffect(() => {
+    if (!tenantId || !currentUser) return;
+    const q = query(
+      collection(db, 'tenants', tenantId, 'channels'),
+      where('members', 'array-contains', currentUser.uid),
+      limit(50)
+    );
+    return onSnapshot(q, snap => {
+      setChannels(snap.docs.map(d => ({ id: d.id, ...d.data() }) as Channel));
+    }, () => {});
+  }, [tenantId, currentUser]);
+
   const getOtherName = (dm: DirectMessage): string => {
     if (!currentUser) return 'Admin';
     const otherId = dm.participants.find(p => p !== currentUser.uid) || '';
@@ -250,6 +351,14 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack }) => {
           <div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin"
             style={{ borderColor: 'var(--brand-color, #B8962E)', borderTopColor: 'transparent' }} />
         </div>
+      </div>
+    );
+  }
+
+  if (openChannel && tenantId) {
+    return (
+      <div className="flex flex-col h-full">
+        <ChannelView channel={openChannel} tenantId={tenantId} onBack={() => setOpenChannel(null)} />
       </div>
     );
   }
@@ -278,14 +387,41 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack }) => {
       </div>
 
       <div className="flex-1 p-4">
-        {dms.length === 0 ? (
+        {dms.length === 0 && channels.length === 0 ? (
           <div className="text-center py-16 text-gray-400">
             <MessageSquare size={40} className="mx-auto mb-3 opacity-30" />
             <p className="font-medium">No messages yet</p>
             <p className="text-sm mt-1">Messages from your church admins will appear here</p>
           </div>
         ) : (
-          <div className="space-y-2">
+          <>
+            {channels.length > 0 && (
+              <div className="mb-5">
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Channels</p>
+                <div className="space-y-2">
+                  {channels.map(ch => (
+                    <button
+                      key={ch.id}
+                      onClick={() => setOpenChannel(ch)}
+                      className="w-full bg-white rounded-2xl px-4 py-3 border border-gray-100 shadow-sm flex items-center gap-3 hover:border-[#B8962E]/30 transition-all text-left"
+                    >
+                      <div className="w-11 h-11 rounded-xl flex-shrink-0 flex items-center justify-center"
+                        style={{ backgroundColor: 'var(--brand-color, #B8962E)' }}>
+                        <Hash size={18} className="text-white" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-gray-900 text-sm truncate">#{ch.name}</p>
+                        {ch.description && <p className="text-xs text-gray-400 truncate">{ch.description}</p>}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            {dms.length > 0 && (
+              <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Direct Messages</p>
+            )}
+            <div className="space-y-2">
             {dms.map(dm => (
               <button
                 key={dm.id}
@@ -303,7 +439,8 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack }) => {
                 {dm.lastMessageAt && <span className="text-[10px] text-gray-400 flex-shrink-0">{fmtTime(dm.lastMessageAt)}</span>}
               </button>
             ))}
-          </div>
+            </div>
+          </>
         )}
       </div>
     </div>

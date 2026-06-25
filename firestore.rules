@@ -258,7 +258,11 @@ service cloud.firestore {
       }
 
       match /channelMessages/{msgId} {
-        allow read: if belongsToTenant(tenantId);
+        // Tenant admins read everything; members read only channels they belong to.
+        allow read: if belongsToTenant(tenantId) && (
+          isTenantAdmin(tenantId) ||
+          request.auth.uid in get(/databases/$(database)/documents/tenants/$(tenantId)/channels/$(resource.data.channelId)).data.get('members', [])
+        );
         allow create: if belongsToTenant(tenantId);
         allow update, delete: if isTenantAdmin(tenantId);
       }
