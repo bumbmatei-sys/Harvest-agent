@@ -86,8 +86,11 @@ service cloud.firestore {
          request.resource.data.role == 'user');
 
       allow update: if isAuthenticated() &&
+        // Users may edit their own doc but not their own role.
         ((request.auth.uid == userId && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role'])) ||
-         (isTenantAdmin(resource.data.tenantId) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role'])));
+         // Tenant admins (and super admins) may manage members of their tenant,
+         // including promoting/demoting role and editing permissions.
+         isTenantAdmin(resource.data.tenantId));
 
       allow delete: if isSuperAdmin();
     }

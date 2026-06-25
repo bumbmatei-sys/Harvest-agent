@@ -2,6 +2,7 @@ import React, { useState, useEffect, CSSProperties } from "react";
 import { collection, query, getDocs, doc, updateDoc, where, deleteDoc } from "firebase/firestore";
 import { db, auth } from "../firebase";
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
+import { notifyError } from '../utils/notify';
 import { getTenantScope, SUPER_ADMIN_EMAIL } from '../utils/tenant-scope';
 
 
@@ -257,7 +258,7 @@ function PermissionEditor({ admin, isNew, onSave, onClose, allUsers }: Permissio
           <button onClick={onClose} style={{ background: "none", border: "none", color: TEXT2, cursor: "pointer", fontSize: 20 }}>✕</button>
         </div>
 
-        <div style={{ overflowY: "auto", flex: 1, paddingTop: 60, paddingBottom: 200, paddingLeft: 20, paddingRight: 20, display: "flex", flexDirection: "column", gap: 20 }}>
+        <div style={{ overflowY: "auto", flex: 1, paddingTop: 16, paddingBottom: 200, paddingLeft: 20, paddingRight: 20, display: "flex", flexDirection: "column", gap: 20 }}>
           {isNew && !form.id && (
             <div style={{ display: "flex", flexDirection: "column", gap: 10, position: "relative" }}>
               <label style={s.label}>Search User</label>
@@ -625,7 +626,11 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
   const periodAll = filterByPeriod(allUsers, period);
   const countries = new Set(allUsers.map((u) => u.country).filter(Boolean)).size;
 
-  const handleSaveAdmin = async (admin: AdminUser): void => {
+  const handleSaveAdmin = async (admin: AdminUser): Promise<void> => {
+    if (!admin.id) {
+      notifyError('Select a user before adding them as an admin', 'No user selected');
+      return;
+    }
     try {
       const userRef = doc(db, "users", admin.id);
       await updateDoc(userRef, {
@@ -656,11 +661,12 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
       setShowEditor(false);
       setEditingAdmin(null);
     } catch (error) {
-      try { handleFirestoreError(error, OperationType.UPDATE, `users/${admin.id}`); } catch (e) { console.error(e); }
+      handleFirestoreError(error, OperationType.UPDATE, `users/${admin.id}`);
+      notifyError('Failed to save admin', error);
     }
   };
 
-  const handleRemoveAdmin = async (id: string): void => {
+  const handleRemoveAdmin = async (id: string): Promise<void> => {
     try {
       const userRef = doc(db, "users", id);
       await updateDoc(userRef, {
