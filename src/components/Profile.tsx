@@ -18,7 +18,6 @@ import {
   Play,
   X,
   Sparkles,
-  MessageCircle,
   CalendarCheck
 } from 'lucide-react';
 import Image from 'next/image';
@@ -32,7 +31,6 @@ import ContactModal from './ContactModal';
 import PrivacyTermsModal from './PrivacyTermsModal';
 import FAQModal from './FAQModal';
 import ChurchDetailsModal from './ChurchDetailsModal';
-import UserMessages from './UserMessages';
 import UserEvents from './UserEvents';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { SUPER_ADMIN_EMAIL, isSuperAdmin as checkIsSuperAdmin } from '../utils/tenant-scope';
@@ -50,9 +48,7 @@ interface ProfileProps {
 }
 
 const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToCourses, onGoToPartner, onGoToMap, tenantPlan }) => {
-  const [showMessages, setShowMessages] = useState(false);
   const [showMyEvents, setShowMyEvents] = useState(false);
-  const [unreadMessages, setUnreadMessages] = useState(0);
  const [isPersonalInfoOpen, setIsPersonalInfoOpen] = useState(false);
  const [isAboutUsOpen, setIsAboutUsOpen] = useState(false);
  const [isContactOpen, setIsContactOpen] = useState(false);
@@ -373,19 +369,7 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToCourses, onGoToPart
  />
  </>
  )}
- {/* Messages row */}
- {(!isAdmin || checkIsSuperAdmin()) && tenantPlan && (checkIsSuperAdmin() || getPlanFeatures(tenantPlan).communityGroups) && (
- <>
- <div className="h-px bg-gray-50 mx-4"></div>
- <SettingItem
- icon={<MessageCircle size={16} className="text-indigo-500" />}
- iconBg="bg-indigo-50"
- label="Messages"
- onClick={() => setShowMessages(true)}
- badge={unreadMessages > 0 ? unreadMessages : undefined}
- />
- </>
- )}
+ {/* Messages now lives in the top tab bar (News | Blog | Courses | Messages | Partner) */}
  {/* My Events row */}
  {!isAdmin && tenantPlan && (
  <>
@@ -629,11 +613,6 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToCourses, onGoToPart
  </div>
  )}
 
- {showMessages && (
- <div className="fixed inset-0 z-[300] bg-[#F7F6F3]">
- <UserMessages onBack={() => setShowMessages(false)} />
- </div>
- )}
  {showMyEvents && (
  <div className="fixed inset-0 z-[300] bg-[#F7F6F3]">
  <UserEvents onBack={() => setShowMyEvents(false)} />

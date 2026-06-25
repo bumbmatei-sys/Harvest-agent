@@ -14,6 +14,7 @@ import NewsTab from './NewsTab';
 import AllNews from './AllNews';
 import CourseExperience from '../components/CoursePage';
 import AIChat from './AIChat';
+import UserMessages from './UserMessages';
 import ErrorBoundary from './ErrorBoundary';
 import NotificationPrompt from './NotificationPrompt';
 import BiblePage from './BiblePage';
@@ -81,6 +82,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, tenantPlan }) => {
     (isMainSite || features?.blog !== false) && { id: 'blog', label: 'Blog' },
     // Only include Courses tab once we know at least 1 course exists
     coursesStatus === 'present' && { id: 'courses', label: 'Courses' },
+    { id: 'messages', label: 'Messages' },
     { id: 'partner', label: 'Partner with Us' },
   ].filter(Boolean) as { id: string; label: string }[];
 
@@ -317,7 +319,12 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, tenantPlan }) => {
                   {activeTopTab === 'courses' && (
                     <CourseExperience onOpenCourse={(courseId, lessonId) => setFullScreenView({type: 'course', data: {courseId, lessonId}})} />
                   )}
-                  {activeTopTab !== 'news' && activeTopTab !== 'partner' && activeTopTab !== 'blog' && activeTopTab !== 'courses' && (
+                  {activeTopTab === 'messages' && (
+                    <div className="-m-4 h-full">
+                      <UserMessages embedded onBack={() => {}} />
+                    </div>
+                  )}
+                  {activeTopTab !== 'news' && activeTopTab !== 'partner' && activeTopTab !== 'blog' && activeTopTab !== 'courses' && activeTopTab !== 'messages' && (
                     <div className="flex flex-col items-center justify-center h-64 text-gray-400">
                       <p>{topTabs.find(t => t.id === activeTopTab)?.label} content coming soon.</p>
                     </div>

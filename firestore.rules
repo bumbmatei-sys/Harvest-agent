@@ -255,15 +255,23 @@ service cloud.firestore {
       match /channels/{channelId} {
         allow read: if belongsToTenant(tenantId);
         allow write: if isTenantAdmin(tenantId);
+        // Members may update only the last-message preview fields when they post.
+        allow update: if belongsToTenant(tenantId) &&
+          request.auth.uid in resource.data.get('members', []) &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastMessage', 'lastMessageAt']);
       }
 
       match /channelMessages/{msgId} {
-        // Tenant admins read everything; members read only channels they belong to.
+        // Tenant admins read/write everything; members read AND post only in
+        // channels they belong to.
         allow read: if belongsToTenant(tenantId) && (
           isTenantAdmin(tenantId) ||
           request.auth.uid in get(/databases/$(database)/documents/tenants/$(tenantId)/channels/$(resource.data.channelId)).data.get('members', [])
         );
-        allow create: if belongsToTenant(tenantId);
+        allow create: if belongsToTenant(tenantId) && (
+          isTenantAdmin(tenantId) ||
+          request.auth.uid in get(/databases/$(database)/documents/tenants/$(tenantId)/channels/$(request.resource.data.channelId)).data.get('members', [])
+        );
         allow update, delete: if isTenantAdmin(tenantId);
       }
 

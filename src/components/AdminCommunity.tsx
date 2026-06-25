@@ -1,7 +1,7 @@
 "use client";
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useContext, useMemo } from 'react';
 import {
-  Hash, MessageSquare, Plus, Send, Users, X, Search, ArrowLeft, ChevronRight, Megaphone, Paperclip, UserPlus
+  Hash, MessageSquare, Plus, Send, Users, X, Search, ChevronRight, Megaphone, Paperclip, UserPlus
 } from 'lucide-react';
 import {
   collection, query, where, orderBy, onSnapshot, addDoc, updateDoc, doc,
@@ -12,6 +12,7 @@ import { getTenantId, getTenantIdFromHost, PLATFORM_TENANT_ID } from '../utils/t
 import { isSuperAdminEmail } from '../utils/super-admins';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { notifyError } from '../utils/notify';
+import { FocusScreenBackContext } from './FocusScreen';
 
 interface MessageAttachment {
   type: 'doc' | 'contact' | 'campaign';
@@ -28,6 +29,8 @@ interface Channel {
   createdBy: string;
   type: 'announcement';
   members?: string[];
+  lastMessage?: string;
+  lastMessageAt?: Timestamp | null;
 }
 
 interface ChannelMessage {
@@ -82,6 +85,19 @@ const fmtTime = (ts: Timestamp | null) => {
   if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
   if (diff < 86400000) return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+};
+
+// Admin (gold) / User (grey) role badge shown next to channel message senders.
+const RoleBadge: React.FC<{ role?: string }> = ({ role }) => {
+  const isAdmin = role === 'admin' || role === 'church_admin' || role === 'super_admin';
+  return (
+    <span
+      className="text-[9px] font-bold px-1.5 py-0.5 rounded-full leading-none"
+      style={isAdmin ? { backgroundColor: '#FBF3E4', color: '#B8962E' } : { backgroundColor: '#f3f4f6', color: '#6b7280' }}
+    >
+      {isAdmin ? 'Admin' : 'User'}
+    </span>
+  );
 };
 
 // ─── Attachment Card ─────────────────────────────────────────────────────────
@@ -400,8 +416,7 @@ const ChannelThread: React.FC<{
   channel: Channel;
   tenantId: string;
   currentUser: { uid: string; name: string };
-  onBack: () => void;
-}> = ({ channel, tenantId, currentUser, onBack }) => {
+}> = ({ channel, tenantId, currentUser }) => {
   const [messages, setMessages] = useState<ChannelMessage[]>([]);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
@@ -448,7 +463,12 @@ const ChannelThread: React.FC<{
         edited: false,
       };
       if (attachments.length > 0) payload.attachments = attachments;
+      const content = text.trim();
       await addDoc(collection(db, 'tenants', tenantId, 'channelMessages'), payload);
+      await updateDoc(doc(db, 'tenants', tenantId, 'channels', channel.id), {
+        lastMessage: content || (attachments.length > 0 ? `📎 ${attachments[0].title}` : ''),
+        lastMessageAt: serverTimestamp(),
+      }).catch(() => {});
       setText('');
       setAttachments([]);
     } catch (e) { notifyError('Failed to send message', e); }
@@ -458,9 +478,6 @@ const ChannelThread: React.FC<{
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 bg-white flex-shrink-0">
-        <button onClick={onBack} className="p-1 -ml-1 flex-shrink-0" aria-label="Back">
-          <ArrowLeft size={22} style={{ color: '#B8962E' }} />
-        </button>
         <Hash size={18} style={{ color: 'var(--brand-color, #d4a017)' }} className="flex-shrink-0" />
         <div className="flex-1 min-w-0">
           <p className="font-bold text-gray-900 text-sm truncate">{channel.name}</p>
@@ -491,6 +508,7 @@ const ChannelThread: React.FC<{
             <div>
               <div className="flex items-baseline gap-2 mb-0.5">
                 <span className="text-sm font-semibold text-gray-900">{m.senderName}</span>
+                <RoleBadge role={m.senderRole} />
                 <span className="text-[10px] text-gray-400">{fmtTime(m.createdAt)}</span>
               </div>
               {m.content && (
@@ -570,8 +588,7 @@ const DmThread: React.FC<{
   tenantId: string;
   currentUser: { uid: string; name: string };
   otherName: string;
-  onBack: () => void;
-}> = ({ dm, tenantId, currentUser, otherName, onBack }) => {
+}> = ({ dm, tenantId, currentUser, otherName }) => {
   const [messages, setMessages] = useState<DmMessage[]>([]);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
@@ -630,10 +647,7 @@ const DmThread: React.FC<{
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 bg-white">
-        <button onClick={onBack} className="p-1.5 rounded-lg hover:bg-gray-100">
-          <ArrowLeft size={18} className="text-gray-600" />
-        </button>
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 bg-white flex-shrink-0">
         <div className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold text-white"
           style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}>
           {otherName.charAt(0).toUpperCase()}
@@ -739,6 +753,9 @@ const AdminCommunity: React.FC = () => {
   const [newChannelName, setNewChannelName] = useState('');
   const [newChannelDesc, setNewChannelDesc] = useState('');
   const [savingChannel, setSavingChannel] = useState(false);
+  const [channelPool, setChannelPool] = useState<AdminUser[]>([]);
+  const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
+  const [channelMemberSearch, setChannelMemberSearch] = useState('');
 
   // Admin DMs
   const [adminDms, setAdminDms] = useState<DirectMessage[]>([]);
@@ -754,6 +771,19 @@ const AdminCommunity: React.FC = () => {
   const [memberSearch, setMemberSearch] = useState('');
 
   const [loading, setLoading] = useState(true);
+
+  // Intercept the FocusScreen back chevron so it closes an open thread first
+  // (one back arrow total — the gold FocusScreen chevron).
+  const { registerBack } = useContext(FocusScreenBackContext);
+  useEffect(() => {
+    registerBack(() => {
+      if (openChannel) { setOpenChannel(null); return true; }
+      if (openAdminDm) { setOpenAdminDm(null); return true; }
+      if (openMemberDm) { setOpenMemberDm(null); return true; }
+      return false;
+    });
+    return () => registerBack(null);
+  }, [openChannel, openAdminDm, openMemberDm, registerBack]);
 
   useEffect(() => {
     const user = auth.currentUser;
@@ -804,24 +834,25 @@ const AdminCommunity: React.FC = () => {
     });
   }, [tenantId]);
 
-  // Load all DMs
+  // Load all DMs. array-contains only (no orderBy) so no composite index is
+  // required; sort newest-first on the client.
   useEffect(() => {
     if (!tenantId || !currentUser) return;
     const q = query(
       collection(db, 'tenants', tenantId, 'directMessages'),
       where('participants', 'array-contains', currentUser.uid),
-      orderBy('lastMessageAt', 'desc'),
       limit(100)
     );
     return onSnapshot(q, snap => {
       const all = snap.docs.map(d => ({ id: d.id, ...d.data() }) as DirectMessage);
+      all.sort((a, b) => (b.lastMessageAt?.toMillis() || 0) - (a.lastMessageAt?.toMillis() || 0));
       setAdminDms(all.filter(dm =>
         dm.participants.every(p => dm.participantRoles?.[p] === 'admin')
       ));
       setMemberDms(all.filter(dm =>
         dm.participants.some(p => dm.participantRoles?.[p] !== 'admin')
       ));
-    });
+    }, e => notifyError('Failed to load conversations', e));
   }, [tenantId, currentUser]);
 
   // Load admins list. Query by tenantId only (single-field, no composite index
@@ -858,21 +889,63 @@ const AdminCommunity: React.FC = () => {
     } catch (e) { notifyError('Failed to load members', e); }
   }, [tenantId]);
 
+  // Pool of tenant users for the create-channel member selector.
+  const loadChannelPool = useCallback(async () => {
+    if (!tenantId) return;
+    try {
+      const snap = await getDocs(query(
+        collection(db, 'users'),
+        where('tenantId', '==', tenantId),
+        limit(200)
+      ));
+      setChannelPool(snap.docs.map(d => ({ id: d.id, ...d.data() }) as AdminUser));
+    } catch (e) { notifyError('Failed to load users', e); }
+  }, [tenantId]);
+
+  // uid → channel names the user belongs to (for membership badges).
+  const userChannels = useMemo(() => {
+    const map = new Map<string, string[]>();
+    channels.forEach(ch => (ch.members || []).forEach(uid => {
+      const arr = map.get(uid) || [];
+      arr.push(ch.name);
+      map.set(uid, arr);
+    }));
+    return map;
+  }, [channels]);
+
+  const membershipBadge = (uid: string) => {
+    const chans = userChannels.get(uid);
+    if (chans && chans.length > 0) {
+      return <p className="text-[10px] truncate" style={{ color: '#B8962E' }}>In: {chans.map(c => `#${c}`).join(', ')}</p>;
+    }
+    return <p className="text-[10px] text-gray-400 italic">Not in any channel</p>;
+  };
+
+  const openNewChannel = () => {
+    setSelectedMembers([]);
+    setChannelMemberSearch('');
+    setShowNewChannel(true);
+    loadChannelPool();
+  };
+
   const createChannel = async () => {
     if (!newChannelName.trim() || !tenantId || !currentUser) return;
     setSavingChannel(true);
     try {
+      const members = Array.from(new Set([currentUser.uid, ...selectedMembers]));
       await addDoc(collection(db, 'tenants', tenantId, 'channels'), {
         name: newChannelName.trim(),
         description: newChannelDesc.trim(),
+        members,
         createdAt: serverTimestamp(),
         createdBy: currentUser.uid,
         type: 'announcement',
-        members: [currentUser.uid],
       });
       setShowNewChannel(false);
       setNewChannelName('');
       setNewChannelDesc('');
+      setSelectedMembers([]);
+      setChannelMemberSearch('');
     } catch (e) { notifyError('Failed to create channel', e); }
     finally { setSavingChannel(false); }
   };
@@ -940,21 +1013,21 @@ const AdminCommunity: React.FC = () => {
   if (openChannel && currentUser) {
     return (
       <div className="h-full flex flex-col" style={{ minHeight: 'calc(100vh - 200px)' }}>
-        <ChannelThread channel={openChannel} tenantId={tenantId} currentUser={currentUser} onBack={() => setOpenChannel(null)} />
+        <ChannelThread channel={openChannel} tenantId={tenantId} currentUser={currentUser} />
       </div>
     );
   }
   if (openAdminDm && currentUser) {
     return (
       <div className="h-full flex flex-col" style={{ minHeight: 'calc(100vh - 200px)' }}>
-        <DmThread dm={openAdminDm} tenantId={tenantId} currentUser={currentUser} otherName={getOtherName(openAdminDm)} onBack={() => setOpenAdminDm(null)} />
+        <DmThread dm={openAdminDm} tenantId={tenantId} currentUser={currentUser} otherName={getOtherName(openAdminDm)} />
       </div>
     );
   }
   if (openMemberDm && currentUser) {
     return (
       <div className="h-full flex flex-col" style={{ minHeight: 'calc(100vh - 200px)' }}>
-        <DmThread dm={openMemberDm} tenantId={tenantId} currentUser={currentUser} otherName={getOtherName(openMemberDm)} onBack={() => setOpenMemberDm(null)} />
+        <DmThread dm={openMemberDm} tenantId={tenantId} currentUser={currentUser} otherName={getOtherName(openMemberDm)} />
       </div>
     );
   }
@@ -992,7 +1065,7 @@ const AdminCommunity: React.FC = () => {
           <div className="flex justify-between items-center mb-3">
             <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Announcement Channels</p>
             <button
-              onClick={() => setShowNewChannel(true)}
+              onClick={openNewChannel}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-white"
               style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}
             >
@@ -1120,7 +1193,7 @@ const AdminCommunity: React.FC = () => {
               <h3 className="font-bold text-gray-900">New Channel</h3>
               <button onClick={() => setShowNewChannel(false)}><X size={18} className="text-gray-400" /></button>
             </div>
-            <div className="p-5 space-y-4">
+            <div className="p-5 space-y-4 max-h-[55vh] overflow-y-auto">
               <div>
                 <label className="text-xs font-semibold text-gray-700 mb-1 block">Channel Name *</label>
                 <input
@@ -1138,6 +1211,60 @@ const AdminCommunity: React.FC = () => {
                   className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#d4a017]"
                   placeholder="What is this channel about?"
                 />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-gray-700 mb-1 block">
+                  Members {selectedMembers.length > 0 && <span className="text-gray-400 font-normal">· {selectedMembers.length} selected</span>}
+                </label>
+                <p className="text-[11px] text-gray-400 mb-2">You are added automatically as the channel creator.</p>
+                <div className="relative mb-2">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input
+                    value={channelMemberSearch}
+                    onChange={e => setChannelMemberSearch(e.target.value)}
+                    placeholder="Search users by name or email..."
+                    className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-[#d4a017]"
+                  />
+                </div>
+                <div className="max-h-44 overflow-y-auto border border-gray-100 rounded-xl divide-y divide-gray-50">
+                  {(() => {
+                    const pool = channelPool
+                      .filter(u => u.id !== currentUser?.uid)
+                      .filter(u => !channelMemberSearch ||
+                        u.displayName?.toLowerCase().includes(channelMemberSearch.toLowerCase()) ||
+                        u.email?.toLowerCase().includes(channelMemberSearch.toLowerCase()));
+                    if (pool.length === 0) {
+                      return <p className="text-center py-6 text-xs text-gray-400">No users found in this tenant</p>;
+                    }
+                    return pool.map(u => {
+                      const checked = selectedMembers.includes(u.id);
+                      return (
+                        <button
+                          key={u.id}
+                          type="button"
+                          onClick={() => setSelectedMembers(prev => checked ? prev.filter(id => id !== u.id) : [...prev, u.id])}
+                          className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-gray-50"
+                        >
+                          <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
+                            style={{ backgroundColor: checked ? 'var(--brand-color, #d4a017)' : '#9ca3af' }}>
+                            {u.displayName?.charAt(0)?.toUpperCase() || '?'}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-gray-900 truncate">{u.displayName || 'Unknown'}</p>
+                            <p className="text-xs text-gray-400 truncate">{u.email}</p>
+                            {membershipBadge(u.id)}
+                          </div>
+                          <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 ${checked ? 'border-[#d4a017]' : 'border-gray-300'}`}
+                            style={checked ? { backgroundColor: 'var(--brand-color, #d4a017)' } : undefined}>
+                            {checked && (
+                              <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                            )}
+                          </div>
+                        </button>
+                      );
+                    });
+                  })()}
+                </div>
               </div>
             </div>
             <div className="p-5 border-t border-gray-100 flex gap-3">
@@ -1174,9 +1301,10 @@ const AdminCommunity: React.FC = () => {
                       style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}>
                       {a.displayName?.charAt(0)?.toUpperCase() || '?'}
                     </div>
-                    <div>
-                      <p className="text-sm font-semibold text-gray-900">{a.displayName}</p>
-                      <p className="text-xs text-gray-400">{a.email}</p>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-gray-900 truncate">{a.displayName}</p>
+                      <p className="text-xs text-gray-400 truncate">{a.email}</p>
+                      {membershipBadge(a.id)}
                     </div>
                   </button>
                 ))
@@ -1218,9 +1346,10 @@ const AdminCommunity: React.FC = () => {
                     <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white flex-shrink-0 bg-blue-500">
                       {m.displayName?.charAt(0)?.toUpperCase() || '?'}
                     </div>
-                    <div>
-                      <p className="text-sm font-semibold text-gray-900">{m.displayName}</p>
-                      <p className="text-xs text-gray-400">{m.email}</p>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-gray-900 truncate">{m.displayName}</p>
+                      <p className="text-xs text-gray-400 truncate">{m.email}</p>
+                      {membershipBadge(m.id)}
                     </div>
                   </button>
                 ))
