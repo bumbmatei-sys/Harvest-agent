@@ -60,6 +60,33 @@ export default function PWAInstallManager() {
     };
   }, []);
 
+  // Ensure a freshly deployed service worker actually reaches the user.
+  // next-pwa precaches the app shell, so without this a returning visitor can
+  // keep seeing the OLD cached bundle after a deploy. We proactively check for
+  // an update and, when a new SW takes control, reload once to pick it up.
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
+    let refreshing = false;
+    const hadController = !!navigator.serviceWorker.controller;
+    const onControllerChange = () => {
+      // Skip the very first install (no previous controller) — nothing to refresh.
+      if (refreshing || !hadController) return;
+      refreshing = true;
+      window.location.reload();
+    };
+    navigator.serviceWorker.addEventListener('controllerchange', onControllerChange);
+    // Ask the browser to check for a newer service worker now and on focus.
+    const checkForUpdate = () => {
+      navigator.serviceWorker.getRegistration().then(reg => { reg?.update().catch(() => {}); }).catch(() => {});
+    };
+    checkForUpdate();
+    window.addEventListener('focus', checkForUpdate);
+    return () => {
+      navigator.serviceWorker.removeEventListener('controllerchange', onControllerChange);
+      window.removeEventListener('focus', checkForUpdate);
+    };
+  }, []);
+
   const dismissPrompt = () => {
     setShowPrompt(false);
     sessionStorage.setItem('pwa_prompt_shown', 'true');
