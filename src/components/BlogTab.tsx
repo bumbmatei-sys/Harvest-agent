@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { sanitizeHtml } from '../utils/sanitize';
 import Image from 'next/image';
-import { collection, query, where, orderBy, onSnapshot, doc, updateDoc, arrayUnion, arrayRemove, getDoc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc, updateDoc, arrayUnion, arrayRemove, getDoc } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { FileText, Calendar, Tag, ArrowLeft, Search } from 'lucide-react';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
@@ -47,22 +47,18 @@ const BlogTab: React.FC<BlogTabProps> = ({ onOpenArticle, initialPost, onBack, i
     // Only fetch published posts
     const tenantId = await getTenantScope();
     if (cancelled) return;
-    const q = tenantId
-      ? query(
-          collection(db, 'blog_posts'),
-          where('tenantId', '==', tenantId),
-          where('status', '==', 'published')
-        )
-      : query(
-          collection(db, 'blog_posts'),
-          where('status', '==', 'published')
-        );
+    // Single-field filter only (status); tenant filter applied client-side.
+    const q = query(
+      collection(db, 'blog_posts'),
+      where('status', '==', 'published')
+    );
 
     unsubscribe = onSnapshot(q, (snapshot) => {
-  const fetchedPosts = snapshot.docs.map(doc => ({
+  let fetchedPosts = snapshot.docs.map(doc => ({
   id: doc.id,
   ...doc.data()
   })) as BlogPost[];
+  if (tenantId) fetchedPosts = fetchedPosts.filter(p => (p as any).tenantId === tenantId);
  
   // Filter out scheduled posts that haven't reached their publish date yet
   const now = new Date().toISOString();

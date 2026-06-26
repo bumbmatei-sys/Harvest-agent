@@ -3,6 +3,9 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Home, BookOpen, MessageCircle, Map as MapIcon, User, Play, ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import dynamic from 'next/dynamic';
+import { collection, query, where, getDocs, limit } from 'firebase/firestore';
+import { db } from '../firebase';
+import { getTenantScope } from '../utils/tenant-scope';
 
 import Profile from './Profile';
 import PartnerWithUsTab from './PartnerWithUsTab';
@@ -11,21 +14,24 @@ import NewsTab from './NewsTab';
 import AllNews from './AllNews';
 import CourseExperience from '../components/CoursePage';
 import AIChat from './AIChat';
+import UserMessages from './UserMessages';
 import ErrorBoundary from './ErrorBoundary';
 import NotificationPrompt from './NotificationPrompt';
 import BiblePage from './BiblePage';
 import ReferralTracker from './ReferralTracker';
-import { TenantPlan } from '../types/tenant.types';
 import { getPlanFeatures } from '../utils/plan-features';
+import { auth } from '../firebase';
+import { isSuperAdminEmail } from '../utils/super-admins';
+import { useAppStore } from '../store/useAppStore';
 
 const ChurchMap = dynamic(() => import('./ChurchMap'), { ssr: false });
 
 interface MainAppProps {
   onNavigate: (page: string) => void;
-  tenantPlan?: TenantPlan;
 }
 
-const MainApp: React.FC<MainAppProps> = ({ onNavigate, tenantPlan }) => {
+const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
+  const { tenantPlan } = useAppStore();
   const [activeBottomTab, setActiveBottomTab] = useState('home');
   const [activeTopTab, setActiveTopTab] = useState('news');
   const [isNavVisible, setIsNavVisible] = useState(true);
@@ -35,14 +41,48 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, tenantPlan }) => {
   const [fullScreenView, setFullScreenView] = useState<{type: 'none' | 'all-news' | 'article' | 'course', id?: string, data?: any}>({type: 'none'});
 
   // Main site users (no tenantPlan) get all features — Chat behind paywall, Map included.
+  // Super admins always get all features regardless of their tenant plan.
   // Tenant users are gated by their plan.
-  const isMainSite = !tenantPlan;
-  const features = tenantPlan ? getPlanFeatures(tenantPlan) : null;
+  const isSuperUser = isSuperAdminEmail(auth.currentUser?.email);
+  const isMainSite = !tenantPlan || isSuperUser;
+  const features = tenantPlan && !isSuperUser ? getPlanFeatures(tenantPlan) : null;
+
+  // 'loading' means we haven't fetched yet — hide tab until we know.
+  // 'empty' means 0 published courses — hide tab.
+  // 'present' means at least 1 course exists — show tab.
+  const [coursesStatus, setCoursesStatus] = useState<'loading' | 'empty' | 'present'>('loading');
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const tenantId = await getTenantScope();
+        // Single-field filter only (status); tenant scoping applied in-memory to avoid a composite index.
+        const q = query(collection(db, 'courses'), where('status', '==', 'published'), limit(50));
+        const snap = await getDocs(q);
+        const has = tenantId ? snap.docs.some(d => d.data().tenantId === tenantId) : !snap.empty;
+        if (!cancelled) setCoursesStatus(has ? 'present' : 'empty');
+      } catch {
+        // On error, hide the tab to avoid showing a broken courses screen
+        if (!cancelled) setCoursesStatus('empty');
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  // If courses disappear after being visible, navigate away from the tab
+  useEffect(() => {
+    if (coursesStatus === 'empty' && activeTopTab === 'courses') {
+      setActiveTopTab('news');
+    }
+  }, [coursesStatus, activeTopTab]);
 
   const topTabs = [
     { id: 'news', label: 'News' },
     (isMainSite || features?.blog !== false) && { id: 'blog', label: 'Blog' },
-    { id: 'courses', label: 'Courses' },
+    // Only include Courses tab once we know at least 1 course exists
+    coursesStatus === 'present' && { id: 'courses', label: 'Courses' },
+    { id: 'messages', label: 'Messages' },
     { id: 'partner', label: 'Partner with Us' },
   ].filter(Boolean) as { id: string; label: string }[];
 
@@ -242,7 +282,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, tenantPlan }) => {
 
         {/* Main Content Area */}
         <ErrorBoundary>
-        <div className={`flex-1 overflow-x-hidden relative ${activeBottomTab === 'map' ? '' : activeBottomTab === 'chat' ? 'overflow-y-auto pb-[65px] lg:pb-0' : 'overflow-y-auto pb-24 lg:pb-0'}`} onScroll={handleScroll}>
+        <div className={`flex-1 overflow-x-hidden relative ${activeBottomTab === 'map' ? '' : activeBottomTab === 'chat' ? 'overflow-hidden pb-[65px] lg:pb-0' : 'overflow-y-auto pb-24 lg:pb-0'}`} onScroll={handleScroll}>
           {activeBottomTab === 'home' ? (
             <div className="relative w-full h-full lg:max-w-5xl lg:mx-auto">
               <AnimatePresence initial={false} custom={direction} mode="popLayout">
@@ -279,7 +319,12 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, tenantPlan }) => {
                   {activeTopTab === 'courses' && (
                     <CourseExperience onOpenCourse={(courseId, lessonId) => setFullScreenView({type: 'course', data: {courseId, lessonId}})} />
                   )}
-                  {activeTopTab !== 'news' && activeTopTab !== 'partner' && activeTopTab !== 'blog' && activeTopTab !== 'courses' && (
+                  {activeTopTab === 'messages' && (
+                    <div className="-m-4 h-full">
+                      <UserMessages embedded onBack={() => {}} />
+                    </div>
+                  )}
+                  {activeTopTab !== 'news' && activeTopTab !== 'partner' && activeTopTab !== 'blog' && activeTopTab !== 'courses' && activeTopTab !== 'messages' && (
                     <div className="flex flex-col items-center justify-center h-64 text-gray-400">
                       <p>{topTabs.find(t => t.id === activeTopTab)?.label} content coming soon.</p>
                     </div>
@@ -289,16 +334,16 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, tenantPlan }) => {
             </div>
           ) : activeBottomTab === 'profile' ? (
             <div className="w-full lg:max-w-5xl lg:mx-auto">
-              <Profile 
-                onNavigate={onNavigate} 
-                onGoToCourses={() => { setActiveBottomTab('home'); setActiveTopTab('courses'); }} 
+              <Profile
+                onNavigate={onNavigate}
+                onGoToCourses={() => { setActiveBottomTab('home'); setActiveTopTab('courses'); }}
                 onGoToPartner={() => { setActiveBottomTab('home'); setActiveTopTab('partner'); }}
                 onGoToMap={() => setActiveBottomTab('map')}
               />
             </div>
           ) : activeBottomTab === 'chat' ? (
              <div className="w-full lg:max-w-5xl lg:mx-auto h-full">
-              <AIChat onBack={() => setActiveBottomTab('home')} tenantPlan={tenantPlan} />
+              <AIChat onBack={() => setActiveBottomTab('home')} />
              </div>
           ) : activeBottomTab === 'map' ? (
              <div className="w-full lg:max-w-5xl lg:mx-auto h-full">

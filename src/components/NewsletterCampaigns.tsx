@@ -1,6 +1,7 @@
 "use client";
-import React from 'react';
+import React, { useEffect } from 'react';
 import { ArrowLeft, Plus, Mail, Clock, CheckCircle, Users } from 'lucide-react';
+import { useAdminHeader, HeaderActionButton } from './AdminScreenHeader';
 
 interface NewsletterCampaignsProps {
   tenantId: string;
@@ -9,29 +10,18 @@ interface NewsletterCampaignsProps {
 }
 
 const NewsletterCampaigns: React.FC<NewsletterCampaignsProps> = ({ tenantId, onBack, onCreateNew }) => {
+  const { setHeaderAction } = useAdminHeader();
+
+  useEffect(() => {
+    setHeaderAction(<HeaderActionButton label="New Newsletter" onClick={onCreateNew} />);
+    return () => setHeaderAction(null);
+  }, [setHeaderAction]);
+
   // Placeholder — no campaigns yet
   const campaigns: { id: string; subject: string; status: string; sentAt: string; openRate: number }[] = [];
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4 mb-6">
-        <button
-          onClick={onBack}
-          className="flex items-center gap-2 text-gray-500 hover:text-gray-700 transition-colors"
-        >
-          <ArrowLeft size={20} />
-          <span className="text-sm font-medium">Back</span>
-        </button>
-        <h2 className="text-2xl font-bold text-gray-900">Newsletters</h2>
-        <button
-          onClick={onCreateNew}
-          className="ml-auto flex items-center gap-2 px-5 py-2 bg-[#d4a017] text-white rounded-xl text-sm font-semibold hover:bg-[#b8941a] transition-colors"
-        >
-          <Plus size={16} />
-          New Newsletter
-        </button>
-      </div>
-
       {campaigns.length === 0 ? (
         <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
           <div className="w-16 h-16 mx-auto rounded-2xl bg-[#fefce8] flex items-center justify-center mb-4">
