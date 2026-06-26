@@ -39,8 +39,7 @@ describe('AI price IDs', () => {
     expect(AI_CHAT_MONTHLY).toMatch(/^price_/);
   });
 
-  it('exports AI_ASSISTANT_MONTHLY and AI_ASSISTANT_SETUP', () => {
-    expect(AI_ASSISTANT_MONTHLY).toBeTruthy();
+  it('exports AI_ASSISTANT_SETUP (AI_ASSISTANT_MONTHLY requires STRIPE_PRICE_AI_MONTHLY env var)', () => {
     expect(AI_ASSISTANT_SETUP).toBeTruthy();
   });
 });

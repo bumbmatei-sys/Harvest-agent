@@ -25,7 +25,9 @@ export const PLAN_PRICES: Record<string, { monthly: string; yearly: string }> = 
 };
 
 // AI Assistant price IDs
-export const AI_ASSISTANT_MONTHLY = process.env.STRIPE_PRICE_AI_MONTHLY ?? 'price_1TjKTd1YKkcSbTf3HSrtrxE9';
+// IMPORTANT: price_1TjKTd1YKkcSbTf3HSrtrxE9 was the original $100/mo price — do NOT use it.
+// Set STRIPE_PRICE_AI_MONTHLY in Vercel to a $200/mo price (unit_amount=20000 in Stripe Dashboard).
+export const AI_ASSISTANT_MONTHLY = process.env.STRIPE_PRICE_AI_MONTHLY ?? '';
 export const AI_ASSISTANT_SETUP = process.env.STRIPE_PRICE_AI_SETUP ?? 'price_1TjKTd1YKkcSbTf3tQVxQfC5';
 
 // AI Chat user subscription price ID
