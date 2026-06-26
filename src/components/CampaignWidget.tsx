@@ -44,14 +44,14 @@ const CampaignWidget: React.FC<CampaignWidgetProps> = ({ onDonate }) => {
       const tenantId = await getTenantScope();
       if (cancelled) return;
 
-      const q = tenantId
-        ? query(collection(db, 'campaigns'), where('tenantId', '==', tenantId), where('isActive', '==', true), limit(1))
-        : query(collection(db, 'campaigns'), where('isActive', '==', true), limit(1));
+      // Single-field filter only (isActive); tenant scoping applied in-memory to avoid a composite index.
+      const q = query(collection(db, 'campaigns'), where('isActive', '==', true), limit(20));
 
       unsub = onSnapshot(q, (snap) => {
         if (cancelled) return;
-        if (!snap.empty) {
-          const d = snap.docs[0];
+        const docs = tenantId ? snap.docs.filter(d => d.data().tenantId === tenantId) : snap.docs;
+        if (docs.length > 0) {
+          const d = docs[0];
           setCampaign({ id: d.id, ...d.data() } as Campaign);
         } else {
           setCampaign(null);

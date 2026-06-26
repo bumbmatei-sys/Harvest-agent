@@ -83,12 +83,12 @@ export default function CoursePage({
 
       try {
         const tenantId = await getTenantScope();
-        const coursesQuery = tenantId
-          ? query(collection(db, "courses"), where("status", "==", "published"), where("tenantId", "==", tenantId))
-          : query(collection(db, "courses"), where("status", "==", "published"));
+        // Single-field filter only (status); tenant scoping applied client-side.
+        const coursesQuery = query(collection(db, "courses"), where("status", "==", "published"));
         const coursesSnap = await getDocs(coursesQuery);
         const fetchedCourses: Course[] = [];
         coursesSnap.forEach((d) => {
+          if (tenantId && d.data().tenantId !== tenantId) return;
           fetchedCourses.push({ id: d.id, ...d.data() } as Course);
         });
         setCourses(fetchedCourses);

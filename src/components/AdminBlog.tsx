@@ -1,11 +1,12 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { Plus, Search, Edit2, Trash2, MoreVertical, Filter, FileText } from 'lucide-react';
-import { collection, onSnapshot, query, where, orderBy, deleteDoc, doc, getDoc, limit } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, deleteDoc, doc, getDoc, limit } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import AdminBlogPostEditor from './AdminBlogPostEditor';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { getTenantScope } from '../utils/tenant-scope';
+import { sortByTime } from '../utils/query-helpers';
 
 
 
@@ -40,15 +41,16 @@ const AdminBlog: React.FC = () => {
   (async () => {
     const tenantId = await getTenantScope();
     if (cancelled) return;
+    // Single-field filter only (tenantId); sort client-side to avoid a composite index.
     const q = tenantId
-      ? query(collection(db, 'blog_posts'), where('tenantId', '==', tenantId), orderBy('createdAt', 'desc'), limit(50))
-      : query(collection(db, 'blog_posts'), orderBy('createdAt', 'desc'), limit(50));
+      ? query(collection(db, 'blog_posts'), where('tenantId', '==', tenantId), limit(100))
+      : query(collection(db, 'blog_posts'), limit(100));
     unsubscribe = onSnapshot(q, (snapshot) => {
       const fetchedPosts = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       })) as BlogPost[];
-      setPosts(fetchedPosts);
+      setPosts(sortByTime(fetchedPosts, 'createdAt', 'desc'));
       setLoading(false);
     }, (error) => {
       try { handleFirestoreError(error, OperationType.GET, `blog_posts`); } catch (e) { console.error(e); }

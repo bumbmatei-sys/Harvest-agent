@@ -2,10 +2,11 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, CalendarCheck, MapPin, Clock, Globe, Ticket } from 'lucide-react';
 import {
-  collection, query, where, orderBy, onSnapshot, limit, Timestamp
+  collection, query, where, onSnapshot, limit, Timestamp
 } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { getTenantScope } from '../utils/tenant-scope';
+import { sortByTime } from '../utils/query-helpers';
 
 interface Registration {
   id: string;
@@ -50,14 +51,14 @@ const UserEvents: React.FC<UserEventsProps> = ({ onBack }) => {
       if (cancelled) return;
       setTenantId(tid);
       if (!tid) { setLoading(false); return; }
+      // Single-field filter only (userId); sort client-side to avoid a composite index.
       const q = query(
         collection(db, 'tenants', tid, 'registrations'),
         where('userId', '==', auth.currentUser!.uid),
-        orderBy('registeredAt', 'desc'),
-        limit(100)
+        limit(200)
       );
       unsub = onSnapshot(q, async snap => {
-        const regs = snap.docs.map(d => ({ id: d.id, ...d.data() }) as Registration);
+        const regs = sortByTime(snap.docs.map(d => ({ id: d.id, ...d.data() }) as Registration), 'registeredAt', 'desc');
         // Enrich with event data
         if (regs.length > 0 && tid) {
           const { getDocs, doc: firestoreDoc, getDoc } = await import('firebase/firestore');

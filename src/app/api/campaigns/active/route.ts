@@ -15,28 +15,23 @@ export async function GET(request: NextRequest) {
   try {
     const tenantId = request.headers.get('x-tenant-id');
 
-    let snapshot;
-    if (tenantId) {
-      snapshot = await adminDb
-        .collection('campaigns')
-        .where('tenantId', '==', tenantId)
-        .where('isActive', '==', true)
-        .limit(1)
-        .get();
-    } else {
-      // Main Harvest site — fetch global (tenant-less) active campaign
-      snapshot = await adminDb
-        .collection('campaigns')
-        .where('isActive', '==', true)
-        .limit(1)
-        .get();
-    }
+    // Single-field filter only (isActive); tenant scoping is applied in-memory
+    // so no composite (tenantId + isActive) index is required.
+    const snapshot = await adminDb
+      .collection('campaigns')
+      .where('isActive', '==', true)
+      .limit(20)
+      .get();
 
-    if (snapshot.empty) {
+    const docs = tenantId
+      ? snapshot.docs.filter((d) => d.data().tenantId === tenantId)
+      : snapshot.docs;
+
+    if (docs.length === 0) {
       return NextResponse.json({ campaign: null });
     }
 
-    const doc = snapshot.docs[0];
+    const doc = docs[0];
     return NextResponse.json({
       campaign: { id: doc.id, ...doc.data() },
     });

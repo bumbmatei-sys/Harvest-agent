@@ -5,7 +5,7 @@ import {
   PanelLeft, X, ArrowLeft, MoreVertical, Edit2, Move, Pin, MoreHorizontal, Share2, Check, Download, Upload
 } from 'lucide-react';
 import {
-  collection, query, where, orderBy, onSnapshot, addDoc, updateDoc, deleteDoc,
+  collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc,
   doc, limit, serverTimestamp, Timestamp, getDocs, arrayUnion, arrayRemove
 } from 'firebase/firestore';
 import { toast } from 'sonner';
@@ -13,6 +13,7 @@ import { db, auth } from '../firebase';
 import { getTenantScope } from '../utils/tenant-scope';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { notifyError } from '../utils/notify';
+import { sortByTime, sortByNumber } from '../utils/query-helpers';
 import { exportToPDF, exportToDOCX, exportToMarkdown } from '../utils/doc-export';
 import { markdownToHtml, titleFromMarkdown } from '../utils/markdown-import';
 import RichTextEditor from './RichTextEditor';
@@ -381,21 +382,23 @@ const AdminDocs: React.FC = () => {
     getTenantScope().then(tid => {
       if (cancelled) return;
       setTenantId(tid);
+      // Single-field filter only (tenantId); sort client-side to avoid a composite index.
       const qDocs = tid
-        ? query(collection(db, 'docs'), where('tenantId', '==', tid), orderBy('updatedAt', 'desc'), limit(200))
-        : query(collection(db, 'docs'), orderBy('updatedAt', 'desc'), limit(200));
+        ? query(collection(db, 'docs'), where('tenantId', '==', tid), limit(300))
+        : query(collection(db, 'docs'), limit(300));
       unsubs.push(onSnapshot(qDocs, snap => {
-        setDocs(snap.docs.map(d => ({ id: d.id, ...d.data() }) as Doc));
+        setDocs(sortByTime(snap.docs.map(d => ({ id: d.id, ...d.data() }) as Doc), 'updatedAt', 'desc'));
         setLoading(false);
       }, err => {
         try { handleFirestoreError(err, OperationType.GET, 'docs'); } catch (e) { console.error(e); }
         setLoading(false);
       }));
+      // Single-field filter only (tenantId); sort client-side to avoid a composite index.
       const qFolders = tid
-        ? query(collection(db, 'docFolders'), where('tenantId', '==', tid), orderBy('order'), limit(100))
-        : query(collection(db, 'docFolders'), orderBy('order'), limit(100));
+        ? query(collection(db, 'docFolders'), where('tenantId', '==', tid), limit(200))
+        : query(collection(db, 'docFolders'), limit(200));
       unsubs.push(onSnapshot(qFolders, snap => {
-        setFolders(snap.docs.map(d => ({ id: d.id, ...d.data() }) as DocFolder));
+        setFolders(sortByNumber(snap.docs.map(d => ({ id: d.id, ...d.data() }) as DocFolder), 'order', 'asc'));
       }));
       if (auth.currentUser?.uid) {
         const qShared = query(
@@ -583,14 +586,14 @@ const AdminDocs: React.FC = () => {
     setLoadingAdmins(true);
     try {
       if (!tenantId) { setShareAdmins([]); setLoadingAdmins(false); return; }
+      // Single-field filter only (tenantId); role filtered in-memory to avoid a composite index.
       const q = query(
         collection(db, 'users'),
-        where('tenantId', '==', tenantId),
-        where('role', '==', 'admin')
+        where('tenantId', '==', tenantId)
       );
       const snap = await getDocs(q);
       const admins: AdminUser[] = snap.docs
-        .filter(d => d.id !== auth.currentUser?.uid)
+        .filter(d => d.id !== auth.currentUser?.uid && (d.data() as any).role === 'admin')
         .map(d => ({
           id: d.id,
           name: `${d.data().firstName || ''} ${d.data().lastName || ''}`.trim() || d.data().email || d.id,

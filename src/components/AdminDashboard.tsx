@@ -105,20 +105,19 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, tenantPlan 
     const loadCounts = async () => {
     const tenantId = await getTenantScope();
     if (cancelled) return;
-    const q = tenantId
-      ? query(collection(db, 'submissions'), where('tenantId', '==', tenantId), where('status', '==', 'pending'), limit(100))
-      : query(collection(db, 'submissions'), where('status', '==', 'pending'), limit(100));
+    // Single-field filter only (status); tenant scoping applied in-memory to avoid a composite index.
+    const q = query(collection(db, 'submissions'), where('status', '==', 'pending'), limit(300));
     unsub1 = onSnapshot(q, (snapshot) => {
-      setUnreadCount(snapshot.docs.length);
+      const docs = tenantId ? snapshot.docs.filter(d => d.data().tenantId === tenantId) : snapshot.docs;
+      setUnreadCount(docs.length);
     }, (error) => {
       try { handleFirestoreError(error, OperationType.GET, `submissions`); } catch (e) { console.error(e); }
     });
-    
-    const qChurches = tenantId
-      ? query(collection(db, 'churches'), where('tenantId', '==', tenantId), where('status', '==', 'pending'), limit(100))
-      : query(collection(db, 'churches'), where('status', '==', 'pending'), limit(100));
+
+    const qChurches = query(collection(db, 'churches'), where('status', '==', 'pending'), limit(300));
     unsub2 = onSnapshot(qChurches, (snapshot) => {
-      setPendingChurchesCount(snapshot.docs.length);
+      const docs = tenantId ? snapshot.docs.filter(d => d.data().tenantId === tenantId) : snapshot.docs;
+      setPendingChurchesCount(docs.length);
     }, (error) => {
       try { handleFirestoreError(error, OperationType.GET, `churches`); } catch (e) { console.error(e); }
     });

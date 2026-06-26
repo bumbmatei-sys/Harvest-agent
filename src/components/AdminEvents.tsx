@@ -10,6 +10,7 @@ import {
 } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { getTenantScope } from '../utils/tenant-scope';
+import { sortByTime } from '../utils/query-helpers';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { notifyError } from '../utils/notify';
 import { FocusScreenBackContext } from './FocusScreen';
@@ -145,14 +146,14 @@ const AdminEvents: React.FC = () => {
   // Load registrations when viewing event detail
   useEffect(() => {
     if (view !== 'detail' || !selected || !tenantId) return;
+    // Single-field filter only (eventId); sort client-side to avoid a composite index.
     const q = query(
       collection(db, 'tenants', tenantId, 'registrations'),
       where('eventId', '==', selected.id),
-      orderBy('registeredAt', 'desc'),
       limit(500)
     );
     const unsub = onSnapshot(q, snap => {
-      setRegistrations(snap.docs.map(d => ({ id: d.id, ...d.data() }) as Registration));
+      setRegistrations(sortByTime(snap.docs.map(d => ({ id: d.id, ...d.data() }) as Registration), 'registeredAt', 'desc'));
     });
     return unsub;
   }, [view, selected, tenantId]);

@@ -57,11 +57,11 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, tenantPlan }) => {
     (async () => {
       try {
         const tenantId = await getTenantScope();
-        const q = tenantId
-          ? query(collection(db, 'courses'), where('status', '==', 'published'), where('tenantId', '==', tenantId), limit(1))
-          : query(collection(db, 'courses'), where('status', '==', 'published'), limit(1));
+        // Single-field filter only (status); tenant scoping applied in-memory to avoid a composite index.
+        const q = query(collection(db, 'courses'), where('status', '==', 'published'), limit(50));
         const snap = await getDocs(q);
-        if (!cancelled) setCoursesStatus(snap.empty ? 'empty' : 'present');
+        const has = tenantId ? snap.docs.some(d => d.data().tenantId === tenantId) : !snap.empty;
+        if (!cancelled) setCoursesStatus(has ? 'present' : 'empty');
       } catch {
         // On error, hide the tab to avoid showing a broken courses screen
         if (!cancelled) setCoursesStatus('empty');

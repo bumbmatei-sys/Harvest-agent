@@ -1,11 +1,12 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { Plus, Search, Edit2, Trash2, BookOpen } from 'lucide-react';
-import { collection, onSnapshot, query, where, orderBy, deleteDoc, doc, getDoc, limit } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, deleteDoc, doc, getDoc, limit } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import AdminCourseEditor, { Course } from './AdminCourseEditor';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { getTenantScope } from '../utils/tenant-scope';
+import { sortByTime } from '../utils/query-helpers';
 
 
 
@@ -25,16 +26,17 @@ const AdminCourses: React.FC = () => {
 
  (async () => {
    const tenantId = await getTenantScope();
+   // Single-field filter only (tenantId); sort client-side to avoid a composite index.
    const q = tenantId
-     ? query(collection(db, 'courses'), where('tenantId', '==', tenantId), orderBy('createdAt', 'desc'), limit(50))
-     : query(collection(db, 'courses'), orderBy('createdAt', 'desc'), limit(50));
+     ? query(collection(db, 'courses'), where('tenantId', '==', tenantId), limit(100))
+     : query(collection(db, 'courses'), limit(100));
 
    unsubscribe = onSnapshot(q, (snapshot) => {
      const fetchedCourses = snapshot.docs.map(doc => ({
        id: doc.id,
        ...doc.data()
      })) as Course[];
-     setCourses(fetchedCourses);
+     setCourses(sortByTime(fetchedCourses, 'createdAt', 'desc'));
      setLoading(false);
    }, (error) => {
      try { handleFirestoreError(error, OperationType.GET, `courses`); } catch (e) { console.error(e); }

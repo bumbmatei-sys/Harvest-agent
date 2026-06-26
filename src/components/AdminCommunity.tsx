@@ -12,6 +12,7 @@ import { getTenantId, getTenantIdFromHost, PLATFORM_TENANT_ID } from '../utils/t
 import { isSuperAdminEmail } from '../utils/super-admins';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { notifyError } from '../utils/notify';
+import { sortByTime } from '../utils/query-helpers';
 import { FocusScreenBackContext } from './FocusScreen';
 
 interface MessageAttachment {
@@ -426,14 +427,14 @@ const ChannelThread: React.FC<{
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // Single-field filter only (channelId); sort client-side to avoid a composite index.
     const q = query(
       collection(db, 'tenants', tenantId, 'channelMessages'),
       where('channelId', '==', channel.id),
-      orderBy('createdAt', 'asc'),
-      limit(200)
+      limit(300)
     );
     const unsub = onSnapshot(q, (snap) => {
-      setMessages(snap.docs.map(d => ({ id: d.id, ...d.data() }) as ChannelMessage));
+      setMessages(sortByTime(snap.docs.map(d => ({ id: d.id, ...d.data() }) as ChannelMessage), 'createdAt', 'asc'));
     });
     return unsub;
   }, [channel.id, tenantId]);
@@ -597,14 +598,14 @@ const DmThread: React.FC<{
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // Single-field filter only (dmId); sort client-side to avoid a composite index.
     const q = query(
       collection(db, 'tenants', tenantId, 'dmMessages'),
       where('dmId', '==', dm.id),
-      orderBy('createdAt', 'asc'),
-      limit(200)
+      limit(300)
     );
     const unsub = onSnapshot(q, (snap) => {
-      setMessages(snap.docs.map(d => ({ id: d.id, ...d.data() }) as DmMessage));
+      setMessages(sortByTime(snap.docs.map(d => ({ id: d.id, ...d.data() }) as DmMessage), 'createdAt', 'asc'));
     });
     return unsub;
   }, [dm.id, tenantId]);

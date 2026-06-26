@@ -5,13 +5,14 @@ import {
   MessageSquare, DollarSign, PhoneCall, Calendar, Clock, ChevronRight, MapPin
 } from 'lucide-react';
 import {
-  collection, query, where, orderBy, onSnapshot, addDoc, updateDoc, deleteDoc,
+  collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc,
   doc, limit, serverTimestamp, Timestamp, getDocs, getDoc
 } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { getTenantScope } from '../utils/tenant-scope';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { notifyError } from '../utils/notify';
+import { sortByString } from '../utils/query-helpers';
 import AnalyticsAndRoles, { Permission } from './AnalyticsAndRoles';
 import { FocusScreenBackContext } from './FocusScreen';
 
@@ -136,11 +137,12 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
     getTenantScope().then(tid => {
       if (cancelled) return;
       setTenantId(tid);
+      // Single-field filter only (tenantId); sort client-side by lastName to avoid a composite index.
       const q = tid
-        ? query(collection(db, 'contacts'), where('tenantId', '==', tid), orderBy('lastName'), limit(300))
-        : query(collection(db, 'contacts'), orderBy('lastName'), limit(300));
+        ? query(collection(db, 'contacts'), where('tenantId', '==', tid), limit(500))
+        : query(collection(db, 'contacts'), limit(500));
       unsub = onSnapshot(q, snap => {
-        setContacts(snap.docs.map(d => ({ id: d.id, ...d.data() }) as Contact));
+        setContacts(sortByString(snap.docs.map(d => ({ id: d.id, ...d.data() }) as Contact), 'lastName', 'asc'));
         setLoading(false);
       }, err => {
         try { handleFirestoreError(err, OperationType.GET, 'contacts'); } catch (e) { console.error(e); }
@@ -190,23 +192,16 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
 
   useEffect(() => {
     if (!selected) return;
-    // Filter by equality only (contactId + tenantId) so no composite index is
-    // required; sort newest-first on the client. Scoping by tenantId keeps the
-    // timeline isolated to the current tenant.
-    const q = tenantId
-      ? query(
-          collection(db, 'contactActivities'),
-          where('contactId', '==', selected.id),
-          where('tenantId', '==', tenantId),
-          limit(100)
-        )
-      : query(
-          collection(db, 'contactActivities'),
-          where('contactId', '==', selected.id),
-          limit(100)
-        );
+    // Single-field filter only (contactId); tenant scoping + newest-first sort
+    // are applied on the client so no composite index is required.
+    const q = query(
+      collection(db, 'contactActivities'),
+      where('contactId', '==', selected.id),
+      limit(200)
+    );
     const unsub = onSnapshot(q, snap => {
-      const rows = snap.docs.map(d => ({ id: d.id, ...d.data() }) as ContactActivity);
+      let rows = snap.docs.map(d => ({ id: d.id, ...d.data() }) as ContactActivity);
+      if (tenantId) rows = rows.filter(r => (r as any).tenantId === tenantId);
       rows.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
       setActivities(rows);
     }, err => {

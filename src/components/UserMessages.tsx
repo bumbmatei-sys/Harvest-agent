@@ -2,11 +2,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ArrowLeft, Send, MessageSquare, Hash, Megaphone } from 'lucide-react';
 import {
-  collection, query, where, orderBy, onSnapshot, addDoc, updateDoc, doc,
+  collection, query, where, onSnapshot, addDoc, updateDoc, doc,
   serverTimestamp, limit, Timestamp
 } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { getTenantScope } from '../utils/tenant-scope';
+import { sortByTime } from '../utils/query-helpers';
 
 interface MessageAttachment {
   type: 'doc' | 'contact' | 'campaign';
@@ -111,14 +112,14 @@ const DmThread: React.FC<{
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // Single-field filter only (dmId); sort client-side to avoid a composite index.
     const q = query(
       collection(db, 'tenants', tenantId, 'dmMessages'),
       where('dmId', '==', dm.id),
-      orderBy('createdAt', 'asc'),
-      limit(200)
+      limit(300)
     );
     return onSnapshot(q, snap => {
-      setMessages(snap.docs.map(d => ({ id: d.id, ...d.data() }) as DmMessage));
+      setMessages(sortByTime(snap.docs.map(d => ({ id: d.id, ...d.data() }) as DmMessage), 'createdAt', 'asc'));
       // Mark unread as read
       snap.docs.forEach(d => {
         const data = d.data();
@@ -236,14 +237,14 @@ const ChannelView: React.FC<{
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // Single-field filter only (channelId); sort client-side to avoid a composite index.
     const q = query(
       collection(db, 'tenants', tenantId, 'channelMessages'),
       where('channelId', '==', channel.id),
-      orderBy('createdAt', 'asc'),
-      limit(200)
+      limit(300)
     );
     return onSnapshot(q, snap => {
-      setMessages(snap.docs.map(d => ({ id: d.id, ...d.data() }) as ChannelMessage));
+      setMessages(sortByTime(snap.docs.map(d => ({ id: d.id, ...d.data() }) as ChannelMessage), 'createdAt', 'asc'));
     }, () => {});
   }, [channel.id, tenantId]);
 
