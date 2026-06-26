@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useRef, useContext } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Plus, Search, Edit2, Trash2, Users, Mail, Phone,
   MessageSquare, DollarSign, PhoneCall, Calendar, Clock, ChevronRight, MapPin
@@ -14,7 +14,7 @@ import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { notifyError } from '../utils/notify';
 import { sortByString } from '../utils/query-helpers';
 import AnalyticsAndRoles, { Permission } from './AnalyticsAndRoles';
-import { FocusScreenBackContext } from './FocusScreen';
+import { useAdminHeader, HeaderActionButton } from './AdminScreenHeader';
 
 interface Contact {
   id: string;
@@ -92,9 +92,14 @@ type ViewMode = 'list' | 'detail' | 'form';
 interface AdminCRMProps {
   currentUserRole?: string;
   currentUserPermissions?: Permission | null;
+  /** Deep-link: open this contact's detail on mount (e.g. from a chat attachment). */
+  initialContactId?: string;
+  /** Called once the deep-linked contact has been opened, to clear the URL param. */
+  onItemConsumed?: () => void;
 }
 
-const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermissions }) => {
+const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermissions, initialContactId, onItemConsumed }) => {
+  const { setHeaderAction, setHeaderOverride } = useAdminHeader();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
@@ -106,15 +111,33 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
   const [form, setForm] = useState(emptyContact);
   const [isEditing, setIsEditing] = useState(false);
 
-  const { registerBack } = useContext(FocusScreenBackContext);
-
+  // Drive the shared header: in detail/form sub-views the back chevron steps
+  // back within CRM; on the list view it shows the "Add Contact" action.
   useEffect(() => {
-    registerBack(() => {
-      if (view === 'form') { setView(isEditing ? 'detail' : 'list'); return true; }
-      if (view === 'detail' && selected) { setSelected(null); setView('list'); return true; }
-      return false;
-    });
-  }, [view, selected, isEditing, registerBack]);
+    if (view === 'form') {
+      setHeaderOverride({
+        title: isEditing ? 'Edit Contact' : 'Add Contact',
+        onBack: () => setView(isEditing ? 'detail' : 'list'),
+      });
+    } else if (view === 'detail' && selected) {
+      setHeaderOverride({
+        title: `${selected.firstName} ${selected.lastName}`.trim() || 'Contact',
+        onBack: () => { setSelected(null); setView('list'); },
+      });
+    } else {
+      setHeaderOverride(null);
+    }
+    return () => setHeaderOverride(null);
+  }, [view, selected, isEditing, setHeaderOverride]);
+
+  // Publish the "Add Contact" action into the shared header — but only on the
+  // Contacts sub-view (the Analytics sub-view renders AnalyticsAndRoles, which
+  // manages its own header action). Re-asserts when the sub-view changes back.
+  useEffect(() => {
+    if (crmSubView !== 'contacts') { setHeaderAction(null); return; }
+    setHeaderAction(<HeaderActionButton label="Add Contact" onClick={() => { setIsEditing(false); setForm(emptyContact); setView('form'); }} />);
+    return () => setHeaderAction(null);
+  }, [setHeaderAction, crmSubView]);
 
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -243,6 +266,14 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
 
   const openDetail = (c: Contact) => { setSelected(c); setView('detail'); };
 
+  // Deep-link: open a specific contact when navigated to /admin/crm/:id
+  // (e.g. tapping "View Contact" on a chat attachment card).
+  useEffect(() => {
+    if (!initialContactId) return;
+    const c = contacts.find(x => x.id === initialContactId);
+    if (c) { setSelected(c); setView('detail'); onItemConsumed?.(); }
+  }, [initialContactId, contacts]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleSave = async () => {
     if (!form.firstName.trim()) return;
     setSaving(true);
@@ -349,9 +380,6 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
     return (
       <div ref={scrollRef} className="max-w-2xl mx-auto">
         {subTabBar}
-        <div className="flex items-center gap-3 mb-6">
-          <h2 className="text-xl font-bold text-gray-900">{isEditing ? 'Edit Contact' : 'Add Contact'}</h2>
-        </div>
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-5">
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -648,19 +676,6 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
   return (
     <div className="max-w-3xl mx-auto">
       {subTabBar}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-2">
-          <Users size={22} style={{ color: 'var(--brand-color, #d4a017)' }} />
-          <h2 className="text-xl font-bold text-gray-900">CRM</h2>
-          <span className="text-sm text-gray-400 font-normal">— Donors & Members</span>
-        </div>
-        <button onClick={openCreate}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white"
-          style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}>
-          <Plus size={16} /> Add Contact
-        </button>
-      </div>
-
       <div className="grid grid-cols-3 gap-3 mb-5">
         <div className="bg-white rounded-xl p-3 border border-gray-100 text-center shadow-sm">
           <div className="text-xl font-bold text-gray-900">{memberCount}</div>

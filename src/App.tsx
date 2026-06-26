@@ -1,5 +1,13 @@
 'use client';
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+  useNavigate,
+  useLocation,
+} from 'react-router-dom';
 import { auth, db } from './firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
@@ -15,8 +23,11 @@ import { OperationType, handleFirestoreError } from './utils/firestore-errors';
 import { TenantPlan } from './types/tenant.types';
 import { TenantProvider, useTenant } from './contexts/TenantContext';
 import { useClaimsFreshness } from './hooks/useClaimsFreshness';
+import { isSuperAdminEmail } from './utils/super-admins';
 
-type Page = 'auth' | 'onboarding' | 'church-onboarding' | 'home' | 'admin';
+/** Paths that represent the auth / onboarding funnel (used to decide redirects). */
+const FUNNEL_PATHS = ['/auth', '/onboarding', '/church-onboarding'];
+const ADMIN_ROLES = ['admin', 'church_admin', 'super_admin'];
 
 /** Error page shown when a tenant subdomain doesn't resolve to a valid tenant */
 const TenantNotFound: React.FC<{ tenantId: string; message: string }> = ({ tenantId, message }) => (
@@ -42,17 +53,25 @@ const TenantNotFound: React.FC<{ tenantId: string; message: string }> = ({ tenan
   </div>
 );
 
-/** Inner App component that uses the TenantContext */
+const renderLoading = () => (
+  <div className="min-h-screen flex items-center justify-center bg-background-dark">
+    <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+  </div>
+);
+
+/** Inner App component that uses the TenantContext + React Router. */
 const AppInner: React.FC = () => {
   useClaimsFreshness(); // Force-refresh token when claims change
-  const [currentPage, setCurrentPage] = useState<Page>('auth');
+
+  const navigate = useNavigate();
+  const location = useLocation();
+  const pathnameRef = useRef(location.pathname);
+  useEffect(() => { pathnameRef.current = location.pathname; }, [location.pathname]);
+
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [tenantPlan, setTenantPlan] = useState<TenantPlan | undefined>(undefined);
-  const currentPageRef = useRef(currentPage);
+  const [userRole, setUserRole] = useState<string>('user');
   const { tenantId, isAdminDomain, error: tenantError, isLoading: tenantLoading, setTenantPlan: ctxSetTenantPlan } = useTenant();
-
-  // Auto-refresh Firebase token when custom claims change (fixes stale claims)
-  useClaimsFreshness();
 
   // Check if user arrived from presentation site "Start Ministry" button
   const signupParam = typeof window !== 'undefined'
@@ -74,32 +93,21 @@ const AppInner: React.FC = () => {
   }, [signupParam, isAdminDomain]);
 
   useEffect(() => {
-    currentPageRef.current = currentPage;
-  }, [currentPage]);
-
-  // If on admin subdomain, go straight to admin (still needs auth)
-  useEffect(() => {
-    if (isAdminDomain && isAuthReady) {
-      setCurrentPage('admin');
-    }
-  }, [isAdminDomain, isAuthReady]);
-
-  useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         try {
           const userDoc = await getDoc(doc(db, 'users', user.uid));
+          const path = pathnameRef.current;
 
           if (userDoc.exists()) {
             const data = userDoc.data();
             const role = data.role || 'user';
+            setUserRole(role);
             const onboardingDone = data.onboardingCompleted;
-            const userTenantId = data.tenantId || tenantId;
 
             if (onboardingDone) {
-              // Onboarding complete — go to the right dashboard
-              // Read plan from user doc first (avoids tenant fetch permission issues)
-              // Only set plan on tenant subdomains — main site users get all features
+              // Read plan from user doc first (avoids tenant fetch permission issues).
+              // Only set plan on tenant subdomains — main site users get all features.
               if (isAdminDomain) {
                 const userPlan = data.plan as TenantPlan | undefined;
                 if (userPlan) {
@@ -108,59 +116,57 @@ const AppInner: React.FC = () => {
                 }
               }
 
-              if (currentPageRef.current === 'auth' || currentPageRef.current === 'onboarding' || currentPageRef.current === 'church-onboarding') {
-                // Admin subdomain → always admin dashboard
-                if (isAdminDomain) {
-                  setCurrentPage('admin');
-                } else {
-                  // ARCHITECTURE: Main site (theharvest.app) = free platform for end users.
-                  // Everyone on the main site goes to MainApp (Home, Bible, Chat, Map, Profile).
-                  // Admin dashboard only lives on tenant subdomains (e.g. nations.theharvest.app).
-                  setCurrentPage('home');
-                }
+              // PWA / refresh persistence: only redirect away from the auth funnel.
+              // A deep link (e.g. /admin/crm) on refresh is left intact so the user
+              // stays on the page they were on.
+              const homeBase = isAdminDomain ? '/admin' : '/';
+              if (FUNNEL_PATHS.includes(path)) {
+                navigate(homeBase, { replace: true });
+              } else if (path === '/' && isAdminDomain) {
+                navigate('/admin', { replace: true });
               }
+              // else: keep the current deep-linked path
             } else if (isChurchSignup || signupPlan || role === 'church_admin') {
-              // Church admin path: needs church onboarding
-              setCurrentPage('church-onboarding');
+              navigate('/church-onboarding', { replace: true });
             } else {
-              // Regular user: needs standard onboarding
-              setCurrentPage('onboarding');
+              navigate('/onboarding', { replace: true });
             }
           } else {
-            // No user doc yet
-            if (isChurchSignup || signupPlan) {
-              setCurrentPage('church-onboarding');
-            } else {
-              setCurrentPage('onboarding');
-            }
+            // No user doc yet → onboarding funnel
+            navigate(isChurchSignup || signupPlan ? '/church-onboarding' : '/onboarding', { replace: true });
           }
         } catch (error) {
           try {
             handleFirestoreError(error, OperationType.GET, `users/${user.uid}`);
           } catch (e) { /* handled */ }
-          setCurrentPage('home');
+          // On error fall back to user home (don't trap on the auth screen)
+          if (FUNNEL_PATHS.includes(pathnameRef.current)) navigate('/', { replace: true });
         }
       } else {
+        // Signed out — clear state and send to auth, dropping any deep link.
         setTenantPlan(undefined);
-        if (currentPageRef.current !== 'auth') {
-          setCurrentPage('auth');
-        }
+        setUserRole('user');
+        navigate('/auth', { replace: true });
       }
       setIsAuthReady(true);
     });
     return () => unsubscribe();
-  }, [isChurchSignup, isAdminDomain, tenantId, ctxSetTenantPlan]);
+  }, [isChurchSignup, signupPlan, isAdminDomain, ctxSetTenantPlan, navigate]);
 
-  const navigateTo = (page: string) => {
-    setCurrentPage(page as Page);
+  // Map legacy string-based navigation (onNavigate('admin'|'home'|...)) to routes
+  // so child components keep their existing API while routing is URL-driven.
+  const handleNavigate = useCallback((page: string) => {
+    if (page === 'admin') navigate('/admin');
+    else if (page === 'home') navigate('/');
+    else if (page === 'auth') navigate('/auth');
+    else navigate(`/${page}`);
     window.scrollTo(0, 0);
-  };
+  }, [navigate]);
 
-  const renderLoading = () => (
-    <div className="min-h-screen flex items-center justify-center bg-background-dark">
-      <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-    </div>
-  );
+  const isAdmin =
+    ADMIN_ROLES.includes(userRole) ||
+    isAdminDomain ||
+    isSuperAdminEmail(auth.currentUser?.email);
 
   // Show loading while tenant validation is in progress
   if (!isAuthReady || (tenantLoading && tenantId)) {
@@ -173,55 +179,57 @@ const AppInner: React.FC = () => {
     return <TenantNotFound tenantId={tenantId} message={tenantError} />;
   }
 
-  if (currentPage === 'church-onboarding') {
-    return (
-      <>
-        <ChurchOnboarding onComplete={() => navigateTo('admin')} signupPlan={signupPlan} />
-        <PWAInstallManager />
-      </>
-    );
-  }
+  /** Guard: admin routes require an admin role (or admin subdomain / super admin). */
+  const RequireAdmin: React.FC<{ children: React.ReactElement }> = ({ children }) =>
+    isAdmin ? children : <Navigate to="/" replace />;
 
-  if (currentPage === 'onboarding') {
-    return (
-      <>
-        <Onboarding onComplete={() => navigateTo('home')} signupPlan={signupPlan} />
-        <PWAInstallManager />
-      </>
-    );
-  }
+  const adminElement = (
+    <RequireAdmin>
+      <ErrorBoundary>
+        <AdminDashboard onNavigate={handleNavigate} tenantPlan={tenantPlan} />
+      </ErrorBoundary>
+    </RequireAdmin>
+  );
 
-  if (currentPage === 'home') {
-    return (
-      <>
-        <ErrorBoundary>
-          <MainApp onNavigate={navigateTo} tenantPlan={tenantPlan} />
-        </ErrorBoundary>
-        <PWAInstallManager />
-      </>
-    );
-  }
-
-  if (currentPage === 'admin') {
-    return (
-      <>
-        <ErrorBoundary>
-          <AdminDashboard onNavigate={navigateTo} tenantPlan={tenantPlan} />
-        </ErrorBoundary>
-        <PWAInstallManager />
-      </>
-    );
-  }
-
-  return <AuthPage onNavigate={navigateTo} />;
+  return (
+    <>
+      <Routes>
+        <Route path="/auth" element={<AuthPage onNavigate={handleNavigate} />} />
+        <Route
+          path="/onboarding"
+          element={<Onboarding onComplete={() => navigate('/', { replace: true })} signupPlan={signupPlan} />}
+        />
+        <Route
+          path="/church-onboarding"
+          element={<ChurchOnboarding onComplete={() => navigate('/admin', { replace: true })} signupPlan={signupPlan} />}
+        />
+        <Route path="/admin" element={adminElement} />
+        <Route path="/admin/:section" element={adminElement} />
+        <Route path="/admin/:section/:itemId" element={adminElement} />
+        <Route
+          path="/"
+          element={
+            <ErrorBoundary>
+              <MainApp onNavigate={handleNavigate} tenantPlan={tenantPlan} />
+            </ErrorBoundary>
+          }
+        />
+        {/* Unknown routes fall back to user home */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+      <PWAInstallManager />
+    </>
+  );
 };
 
-/** Outer App: wraps everything in TenantProvider */
+/** Outer App: wraps everything in BrowserRouter + TenantProvider. */
 const App: React.FC = () => {
   return (
-    <TenantProvider>
-      <AppInner />
-    </TenantProvider>
+    <BrowserRouter>
+      <TenantProvider>
+        <AppInner />
+      </TenantProvider>
+    </BrowserRouter>
   );
 };
 

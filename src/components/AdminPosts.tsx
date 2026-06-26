@@ -1,10 +1,11 @@
 "use client";
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import { collection, query, where, onSnapshot, addDoc, deleteDoc, doc, getDoc, updateDoc, arrayUnion, arrayRemove, limit } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { ImageUpload } from './ImageUpload';
 import { MessageSquare, BarChart2, Calendar as CalendarIcon, Image as ImageIcon, Send, MoreVertical, ThumbsUp, Check, X } from 'lucide-react';
+import { useAdminHeader, HeaderActionButton } from './AdminScreenHeader';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { getTenantScope } from '../utils/tenant-scope';
 import { sendPushNotification } from '../utils/send-notification';
@@ -183,6 +184,18 @@ const AdminPosts: React.FC<AdminPostsProps> = ({ userRole, userPermissions }) =>
  setIsSubmitting(false);
  }
  };
+
+ const { setHeaderAction } = useAdminHeader();
+ const composerRef = useRef<HTMLTextAreaElement>(null);
+ useEffect(() => {
+   // The post composer is always visible at the top of this screen, so the
+   // header action simply reveals + focuses it (there is no separate editor).
+   setHeaderAction(<HeaderActionButton label="New Post" onClick={() => {
+     composerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+     composerRef.current?.focus();
+   }} />);
+   return () => setHeaderAction(null);
+ }, [setHeaderAction]);
 
  const handleEdit = (post: CommunityPost) => {
  if (post.type === 'event') return; // Legacy event posts cannot be edited
@@ -392,6 +405,7 @@ const AdminPosts: React.FC<AdminPostsProps> = ({ userRole, userPermissions }) =>
 
  <div className="space-y-3">
  <textarea
+ ref={composerRef}
  value={content}
  onChange={(e) => setContent(e.target.value)}
  placeholder={activeTab === 'poll' ? "Ask a question..." : "Share an update with the community..."}

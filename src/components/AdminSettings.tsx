@@ -183,9 +183,6 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
 
   return (
     <div className="p-4 lg:p-6 max-w-6xl mx-auto">
-      {/* Header */}
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Settings</h1>
-
       {/* Stripe status banners */}
       {stripeStatus === 'success' && stripeAddon === 'ai-assistant' && (
         <div className="bg-green-50 border border-green-200 rounded-2xl p-4 mb-4">

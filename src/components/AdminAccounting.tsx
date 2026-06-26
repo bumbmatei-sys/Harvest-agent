@@ -151,12 +151,6 @@ const AdminAccounting: React.FC = () => {
 
   return (
     <div className="max-w-4xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center gap-2 mb-6">
-        <Receipt size={22} style={{ color: 'var(--brand-color, #d4a017)' }} />
-        <h2 className="text-xl font-bold text-gray-900">Accounting</h2>
-      </div>
-
       {/* Summary Cards */}
       <div className="grid grid-cols-3 gap-3 mb-6">
         <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">

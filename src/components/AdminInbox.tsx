@@ -127,8 +127,6 @@ const AdminInbox = () => {
  return (
  <div className="space-y-4">
  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
- <h2 className="text-2xl font-bold text-gray-900 ">Inbox</h2>
- 
  <div className="flex overflow-x-auto gap-2 pb-2 sm:pb-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
  {['all', 'general', 'prayer', 'feature', 'church_suggestion'].map((type) => (
  <button

@@ -9,6 +9,7 @@ import { getTenantScope } from '../utils/tenant-scope';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { notifyError } from '../utils/notify';
 import { sortByNumber } from '../utils/query-helpers';
+import { useAdminHeader, HeaderActionButton } from './AdminScreenHeader';
 
 interface Campaign {
   id: string;
@@ -35,7 +36,15 @@ const empty: Omit<Campaign, 'id'> = {
 const fmt = (n: number) =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n);
 
-const AdminFundraising: React.FC = () => {
+interface AdminFundraisingProps {
+  /** Deep-link: open this campaign on mount (e.g. from a chat attachment card). */
+  initialCampaignId?: string;
+  /** Called once the deep-linked campaign has been opened, to clear the URL param. */
+  onItemConsumed?: () => void;
+}
+
+const AdminFundraising: React.FC<AdminFundraisingProps> = ({ initialCampaignId, onItemConsumed }) => {
+  const { setHeaderAction } = useAdminHeader();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
   const [tenantId, setTenantId] = useState<string | null>(null);
@@ -69,6 +78,19 @@ const AdminFundraising: React.FC = () => {
 
   const openCreate = () => { setEditing(null); setForm(empty); setShowForm(true); };
   const openEdit = (c: Campaign) => { setEditing(c); setForm({ ...c }); setShowForm(true); };
+
+  // Publish the "New Campaign" action into the shared header.
+  useEffect(() => {
+    setHeaderAction(<HeaderActionButton label="New Campaign" onClick={() => { setEditing(null); setForm(empty); setShowForm(true); }} />);
+    return () => setHeaderAction(null);
+  }, [setHeaderAction]);
+
+  // Deep-link: open a specific campaign when navigated to /admin/fundraising/:id.
+  useEffect(() => {
+    if (!initialCampaignId) return;
+    const c = campaigns.find(x => x.id === initialCampaignId);
+    if (c) { setEditing(c); setForm({ ...c }); setShowForm(true); onItemConsumed?.(); }
+  }, [initialCampaignId, campaigns]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSave = async () => {
     if (!form.title.trim()) return;
@@ -118,20 +140,6 @@ const AdminFundraising: React.FC = () => {
 
   return (
     <div className="max-w-3xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-2">
-          <Heart size={22} style={{ color: 'var(--brand-color, #d4a017)' }} />
-          <h2 className="text-xl font-bold text-gray-900">Fundraising Campaigns</h2>
-        </div>
-        <button
-          onClick={openCreate}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white"
-          style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}
-        >
-          <Plus size={16} /> New Campaign
-        </button>
-      </div>
-
       {campaigns.length === 0 ? (
         <div className="text-center py-16 text-gray-400">
           <Heart size={40} className="mx-auto mb-3 opacity-30" />
