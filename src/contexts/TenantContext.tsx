@@ -38,6 +38,20 @@ export function getCookie(name: string): string | null {
   return match ? match.split('=')[1].trim() : null;
 }
 
+/**
+ * Resolve a tenant ID from a hostname and cookie fallback.
+ * Only *.theharvest.app subdomains are treated as tenant slugs.
+ * Preview/staging URLs (*.vercel.app, apex domain, localhost, etc.) fall through
+ * to the cookie fallback so they render the global/platform view.
+ */
+export function resolveTenantIdFromHostname(hostname: string, cookieTenantId: string | null): string | null {
+  const parts = hostname.split('.');
+  if (parts.length >= 3 && hostname.endsWith('.theharvest.app')) {
+    return parts[0];
+  }
+  return cookieTenantId;
+}
+
 export interface TenantProviderProps {
   children: ReactNode;
   /**
@@ -79,13 +93,8 @@ export const TenantProvider: React.FC<TenantProviderProps> = ({
       return;
     }
     const hostname = window.location.hostname;
-    const parts = hostname.split('.');
-    if (parts.length >= 3 && (hostname.endsWith('.theharvest.app') || hostname.endsWith('.vercel.app'))) {
-      setTenantId(parts[0]);
-    } else {
-      const cookieTenantId = getCookie('tenantId');
-      setTenantId(cookieTenantId || null);
-    }
+    const cookieTenantId = getCookie('tenantId');
+    setTenantId(resolveTenantIdFromHostname(hostname, cookieTenantId));
   }, [initialTenantId]);
 
   // Validate tenant exists in Firestore and load branding
