@@ -604,3 +604,192 @@ export const removeChurchBilling = functions.firestore
       // Don't throw — the church is already deleted, we don't want to block deletion
     }
   });
+
+// ─── 8. telegramWebhook ─────────────────────────────────────────────────
+// HTTP webhook endpoint for the Harvest AI Assistant Telegram bot.
+// Telegram sends updates here when a user sends a message to the bot.
+export const telegramWebhook = functions.https.onRequest(async (req, res) => {
+  if (req.method !== 'POST') {
+    res.status(200).json({ ok: true });
+    return;
+  }
+
+  const update = req.body;
+  console.log('telegramWebhook: Received update', JSON.stringify(update).slice(0, 200));
+
+  try {
+    const message = update.message;
+    if (!message || !message.text) {
+      res.status(200).json({ ok: true });
+      return;
+    }
+
+    const chatId = message.chat.id;
+    const text = message.text.trim();
+    const fromUser = message.from;
+    const userId = fromUser?.id?.toString() || '';
+    const username = fromUser?.username || '';
+
+    console.log(`telegramWebhook: Message from ${userId} (${username}): ${text.slice(0, 100)}`);
+
+    // ── /start ──
+    if (text.startsWith('/start')) {
+      await sendTelegramMessage(chatId,
+        '👋 Welcome to the Harvest AI Assistant!\n\n' +
+        'To connect your account, reply with your access code.\n\n' +
+        'Example: `ABC-DEF-123`\n\n' +
+        "If you don't have an access code, please contact your Harvest admin."
+      );
+      res.status(200).json({ ok: true });
+      return;
+    }
+
+    // ── /help ──
+    if (text.startsWith('/help')) {
+      await sendTelegramMessage(chatId,
+        '🤖 *Harvest AI Assistant Help*\n\n' +
+        'Commands:\n' +
+        '/start — Get started with your access code\n' +
+        '/status — Check your subscription status\n' +
+        '/help — Show this help message\n\n' +
+        'Or reply with your access code to connect your account.'
+      );
+      res.status(200).json({ ok: true });
+      return;
+    }
+
+    // ── /status ──
+    if (text.startsWith('/status')) {
+      const bindingSnap = await db.collection('ai_assistant_bindings')
+        .where('telegramUserId', '==', userId).limit(1).get();
+
+      if (bindingSnap.empty) {
+        await sendTelegramMessage(chatId, '⚠️ No active AI Assistant subscription found.\n\nReply with your access code to get started.');
+        res.status(200).json({ ok: true });
+        return;
+      }
+
+      const binding = bindingSnap.docs[0].data();
+      const tenantDoc = await db.collection('tenants').doc(binding.tenantId).get();
+      const tenantData = tenantDoc.data();
+      const active = !!tenantData?.addOnAiAssistant;
+
+      const reply = active
+        ? `✅ *AI Assistant Active*\n\nTenant: ${tenantData?.name || 'Unknown'}\nPlan: ${tenantData?.plan || 'Ministry'}\nStatus: Active`
+        : `❌ *AI Assistant Subscription Inactive*\n\nYour AI Assistant subscription has expired or been cancelled.\nContact your administrator to reactivate.`;
+
+      await sendTelegramMessage(chatId, reply);
+      res.status(200).json({ ok: true });
+      return;
+    }
+
+    // ── Access code verification ──
+    const codePattern = /^[A-Z]{2,5}-[A-Z0-9]{3,5}-[A-Z0-9]{3,5}$/i;
+    const upperCode = text.toUpperCase().replace(/\s+/g, '-');
+
+    if (codePattern.test(upperCode) || (text.length >= 9 && text.length <= 20)) {
+      const tenantsSnap = await db.collection('tenants')
+        .where('addOnAiAssistantCode', '==', upperCode).limit(1).get();
+
+      if (tenantsSnap.empty) {
+        await sendTelegramMessage(chatId, '❌ Invalid access code. Please check and try again.');
+        res.status(200).json({ ok: true });
+        return;
+      }
+
+      const tenantDoc = tenantsSnap.docs[0];
+      const tenantData = tenantDoc.data();
+      const tenantId = tenantDoc.id;
+
+      if (!tenantData.addOnAiAssistant) {
+        await sendTelegramMessage(chatId, '⚠️ Code found but AI Assistant subscription is inactive.');
+        res.status(200).json({ ok: true });
+        return;
+      }
+
+      const existingBinding = await db.collection('ai_assistant_bindings')
+        .where('telegramUserId', '==', userId).limit(1).get();
+
+      if (!existingBinding.empty) {
+        const binding = existingBinding.docs[0].data();
+        if (binding.tenantId === tenantId) {
+          await sendTelegramMessage(chatId, `✅ You're already connected to *${tenantData.name}*.\n\nReply /status to check your subscription.`);
+          res.status(200).json({ ok: true });
+          return;
+        }
+        await sendTelegramMessage(chatId, '⚠️ This Telegram account is already bound to another organization.');
+        res.status(200).json({ ok: true });
+        return;
+      }
+
+      await db.collection('ai_assistant_bindings').add({
+        tenantId,
+        telegramUserId: userId,
+        telegramUsername: username || null,
+        code: upperCode,
+        boundAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      await sendTelegramMessage(chatId,
+        `✅ *Access Granted!*\n\nConnected to: *${tenantData.name}*\nSubscription: AI Assistant\nPlan: ${tenantData.plan || 'Ministry'}\n\nReply /help for available commands.`
+      );
+      res.status(200).json({ ok: true, verified: true });
+      return;
+    }
+
+    // ── Default ──
+    await sendTelegramMessage(chatId,
+      "❓ I didn't understand that.\n\n" +
+      'Reply with your access code (e.g. `ABC-DEF-123`), or use:\n' +
+      '/status — Check your subscription\n' +
+      '/help — Show all commands'
+    );
+    res.status(200).json({ ok: true });
+  } catch (err: any) {
+    console.error('telegramWebhook error:', err?.message || err);
+    res.status(200).json({ ok: false, error: err?.message || 'Internal error' });
+  }
+});
+
+// ─── Helper: send Telegram message via Bot API ─────────────────────────
+async function sendTelegramMessage(chatId: number | string, text: string): Promise<void> {
+  const botToken = process.env.TELEGRAM_BOT_TOKEN;
+  if (!botToken) {
+    console.error('sendTelegramMessage: TELEGRAM_BOT_TOKEN not set');
+    return;
+  }
+
+  const https = require('https');
+  const data = JSON.stringify({ chat_id: chatId, text, parse_mode: 'Markdown' });
+
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const req = https.request(
+        `https://api.telegram.org/bot${botToken}/sendMessage`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Content-Length': data.length },
+          timeout: 10000,
+        },
+        (res: any) => {
+          let body = '';
+          res.on('data', (chunk: any) => { body += chunk; });
+          res.on('end', () => {
+            if (res.statusCode >= 200 && res.statusCode < 300) {
+              console.log(`sendTelegramMessage: Sent to ${chatId}`);
+              resolve();
+            } else {
+              console.error(`sendTelegramMessage: Got ${res.statusCode}: ${body}`);
+              reject(new Error(`Telegram API returned ${res.statusCode}`));
+            }
+          });
+        }
+      );
+      req.on('error', reject);
+      req.write(data);
+      req.end();
+    });
+  } catch (err: any) {
+    console.error('sendTelegramMessage: Failed:', err?.message || err);
+  }
+}
