@@ -520,7 +520,9 @@ export const removeChurchBilling = functions.firestore
   });
 
 // ─── 8. telegramWebhook ──────────────────────────────────────────────────────────────
-export const telegramWebhook = functions.https.onRequest(async (req, res) => {
+export const telegramWebhook = functions
+  .runWith({ secrets: ['TELEGRAM_BOT_TOKEN', 'MIMO_API_KEY'] })
+  .https.onRequest(async (req, res) => {
   if (req.method !== 'POST') {
     res.status(405).send('Method Not Allowed');
     return;
