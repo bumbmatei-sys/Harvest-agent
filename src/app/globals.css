@@ -4,12 +4,15 @@
 
 @layer base {
  :root {
- --font-sans: 'Inter', sans-serif;
- --color-primary: #B8860B;
- --color-secondary: #8E8E93;
+ --font-sans: 'Nunito', sans-serif;
+ --color-primary: #D4AF37;
+ --color-secondary: #e6b325;
+ --brand-color: #D4AF37;
+ --color-navy: #0b1121;
+ --color-background-dark: #0b1121;
  --color-background-light: #FFFFFF;
  --color-background-alt: #F5F5F7;
- --background-image-gold-gradient: linear-gradient(135deg, #B8860B 0%, #D4AF37 100%);
+ --background-image-gold-gradient: linear-gradient(135deg, #D4AF37 0%, #e6b325 100%);
  }
 }
 

@@ -13,8 +13,11 @@ const config: Config = {
       colors: {
         primary: "var(--color-primary)",
         secondary: "var(--color-secondary)",
+        gold: "var(--brand-color)",
+        navy: "var(--color-navy)",
         "background-light": "var(--color-background-light)",
         "background-alt": "var(--color-background-alt)",
+        "background-dark": "var(--color-background-dark)",
       },
       backgroundImage: {
         "gold-gradient": "var(--background-image-gold-gradient)",

@@ -7,8 +7,10 @@ export interface PlanFeatures {
   aiChat: boolean;
   /** Show AI Knowledge Base in admin */
   aiKnowledge: boolean;
-  /** Show church map in user app */
+  /** Show church map in user app (own locations — all plans) */
   map: boolean;
+  /** Show global multi-church discovery directory (Enterprise-only) */
+  churchDirectory: boolean;
   /** Max number of churches (0 = hidden, -1 = unlimited) */
   maxChurches: number;
   /** Max number of courses (-1 = unlimited) */
@@ -47,7 +49,8 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     blog: true,
     aiChat: false,
     aiKnowledge: false,
-    map: false,
+    map: true,
+    churchDirectory: false,
     maxChurches: 1,
     maxCourses: 2,
     maxAdmins: 1,
@@ -114,6 +117,7 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     aiChat: true,
     aiKnowledge: true,
     map: true,
+    churchDirectory: true,
     maxChurches: -1,
     maxCourses: -1,
     maxAdmins: 15,

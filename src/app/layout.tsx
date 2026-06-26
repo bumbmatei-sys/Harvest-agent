@@ -1,11 +1,18 @@
 import type { Metadata, Viewport } from 'next';
 import Script from 'next/script';
+import { Nunito } from 'next/font/google';
 import './globals.css';
-import { GeistSans } from "geist/font/sans";
 import { cn } from "@/lib/utils";
 
+const nunito = Nunito({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800', '900'],
+  variable: '--font-sans',
+  display: 'swap',
+});
+
 export const viewport: Viewport = {
-  themeColor: '#C9963A',
+  themeColor: '#D4AF37',
   viewportFit: 'cover',
   width: 'device-width',
   initialScale: 1,
@@ -28,7 +35,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={cn("scroll-smooth font-sans", GeistSans.variable)} suppressHydrationWarning>
+    <html lang="en" className={cn("scroll-smooth font-sans", nunito.variable)} suppressHydrationWarning>
       <head>
         <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
         <link rel="icon" href="/icons/icon-96x96.png" />
