@@ -46,6 +46,28 @@ function initialsFromName(name?: string): string {
 // Session cache of sender photo URLs, keyed by uid (fetched once per uid).
 const senderPhotoCache = new Map<string, string | null>();
 
+// UIDs that have had their tenantId migrated this session — fire-and-forget.
+const migratedTenantUids = new Set<string>();
+
+/**
+ * One-time migration: if a user's Firestore doc has tenantId === null (created
+ * before the tenant document existed), stamp it with the current tenantId so
+ * future single-field queries find them without needing the dual-query path.
+ * Safe to call on every send — the Set guard makes it a no-op after the first time.
+ */
+async function maybeMigrateTenantId(uid: string, tenantId: string): Promise<void> {
+  if (!uid || migratedTenantUids.has(uid)) return;
+  migratedTenantUids.add(uid);
+  try {
+    const snap = await getDoc(doc(db, 'users', uid));
+    if (snap.exists() && snap.data().tenantId == null) {
+      await updateDoc(doc(db, 'users', uid), { tenantId });
+    }
+  } catch {
+    migratedTenantUids.delete(uid);
+  }
+}
+
 /**
  * Message avatar — shows the sender's Firestore photoURL as a circular image, or
  * gold initials when there is no photo. The sender doc is fetched once per uid
@@ -527,6 +549,7 @@ const ChannelThread: React.FC<{
   const send = async () => {
     if ((!text.trim() && attachments.length === 0) || sending) return;
     setSending(true);
+    maybeMigrateTenantId(currentUser.uid, tenantId);
     try {
       const payload: Record<string, unknown> = {
         channelId: channel.id,
@@ -678,6 +701,7 @@ const DmThread: React.FC<{
   const send = async () => {
     if ((!text.trim() && attachments.length === 0) || sending) return;
     setSending(true);
+    maybeMigrateTenantId(currentUser.uid, tenantId);
     try {
       const content = text.trim();
       const payload: Record<string, unknown> = {
