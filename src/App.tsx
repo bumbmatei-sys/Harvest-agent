@@ -21,6 +21,7 @@ import ChurchOnboarding from './components/ChurchOnboarding';
 import ErrorBoundary from './components/ErrorBoundary';
 import AdminDashboard from './components/AdminDashboard';
 import PWAInstallManager from './components/PWAInstallManager';
+import PostPurchaseWizard from './components/PostPurchaseWizard';
 import { OperationType, handleFirestoreError } from './utils/firestore-errors';
 import { TenantPlan } from './types/tenant.types';
 import { TenantProvider, useTenant } from './contexts/TenantContext';
@@ -42,7 +43,6 @@ const queryClient = new QueryClient({
   },
 });
 
-/** Error page shown when a tenant subdomain doesn't resolve to a valid tenant */
 const TenantNotFound: React.FC<{ tenantId: string; message: string }> = ({ tenantId, message }) => (
   <div className="min-h-screen flex items-center justify-center bg-background-dark">
     <div className="max-w-md mx-auto text-center p-8">
@@ -99,15 +99,12 @@ const AppInner: React.FC = () => {
     setCurrentTenant(null, tenantId);
   }, [tenantId, setCurrentTenant]);
 
-  // Check if user arrived from presentation site "Start Ministry" button
   const signupParam = typeof window !== 'undefined'
     ? new URLSearchParams(window.location.search).get('signup') : null;
   const isChurchSignup = signupParam === 'church';
   const signupPlan = signupParam && ['plus', 'pro', 'max', 'ultra'].includes(signupParam)
     ? signupParam as TenantPlan : undefined;
 
-  // ARCHITECTURE: Main site (theharvest.app) is free — no plan subscriptions.
-  // Redirect ?signup= flows to nations.theharvest.app (tenant admin).
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const hostname = window.location.hostname;
@@ -201,13 +198,10 @@ const AppInner: React.FC = () => {
     isAdminDomain ||
     isSuperAdminEmail(auth.currentUser?.email);
 
-  // Show loading while tenant validation is in progress
   if (!isAuthReady || (tenantLoading && tenantId)) {
     return renderLoading();
   }
 
-  // Show tenant-not-found error if tenant validation failed
-  // Skip this error when user is arriving via ?signup param (no tenant exists yet)
   if (tenantError && tenantId && !signupParam) {
     return <TenantNotFound tenantId={tenantId} message={tenantError} />;
   }

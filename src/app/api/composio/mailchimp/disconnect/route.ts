@@ -6,57 +6,48 @@ import { adminDb } from '@/lib/firebase-admin';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * POST /api/composio/mailchimp/disconnect
- * Disconnects Mailchimp integration for the authenticated tenant
- */
 export async function POST(request: NextRequest) {
   try {
     const userOrResponse = await requireAdmin(request);
     if (userOrResponse instanceof NextResponse) return userOrResponse;
-    const { tenantId } = userOrResponse;
+    const { uid, tenantId } = userOrResponse;
 
     if (!tenantId) {
-      return NextResponse.json(
-        { error: 'No tenant associated with this user' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'No tenant associated with this user' }, { status: 400 });
     }
 
-    const integrationRef = adminDb
-      .collection('tenants')
-      .doc(tenantId)
-      .collection('integrations')
-      .doc('mailchimp');
+    const integrationsRef = adminDb.collection('tenants').doc(tenantId).collection('integrations');
 
-    const integrationDoc = await integrationRef.get();
+    // Check per-admin doc first, fall back to legacy
+    let integrationRef = integrationsRef.doc(`${uid}_mailchimp`);
+    let integrationDoc = await integrationRef.get();
 
     if (!integrationDoc.exists) {
-      return NextResponse.json(
-        { error: 'Mailchimp is not connected' },
-        { status: 404 }
-      );
+      const legacyRef = integrationsRef.doc('mailchimp');
+      const legacyDoc = await legacyRef.get();
+      if (legacyDoc.exists && legacyDoc.data()?.connectedBy === uid) {
+        integrationRef = legacyRef;
+        integrationDoc = legacyDoc;
+      }
+    }
+
+    if (!integrationDoc.exists) {
+      return NextResponse.json({ error: 'Mailchimp is not connected' }, { status: 404 });
     }
 
     const data = integrationDoc.data();
     if (!data) {
-      return NextResponse.json(
-        { error: 'Mailchimp is not connected' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Mailchimp is not connected' }, { status: 404 });
     }
 
-    // Delete the connection from Composio
     if (data.connectedAccountId) {
       try {
         await deleteConnection(data.connectedAccountId);
       } catch (error) {
         console.warn('Could not delete Composio connection:', error);
-        // Continue with local cleanup even if Composio delete fails
       }
     }
 
-    // Update local status
     await integrationRef.set({
       status: 'disconnected',
       disconnectedAt: new Date().toISOString(),
@@ -67,9 +58,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true, message: 'Mailchimp disconnected' });
   } catch (error) {
     console.error('Mailchimp disconnect error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

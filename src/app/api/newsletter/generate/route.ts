@@ -11,25 +11,16 @@ const MIMO_BASE_URL = 'https://token-plan-cn.xiaomimimo.com/v1/chat/completions'
 const MIMO_MODEL = 'mimo-v2.5';
 const RATE_LIMIT = 5;
 
-/**
- * POST /api/newsletter/generate
- * Generates a newsletter draft from recent Instagram posts using AI.
- */
 export async function POST(request: NextRequest) {
   try {
-    // Auth + tenant verification
     const userOrResponse = await requireAdmin(request);
     if (userOrResponse instanceof NextResponse) return userOrResponse;
     const { tenantId } = userOrResponse;
 
     if (!tenantId) {
-      return NextResponse.json(
-        { error: 'No tenant associated with this user' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'No tenant associated with this user' }, { status: 400 });
     }
 
-    // Get tenant data for plan check and name
     const tenantDoc = await adminDb.collection('tenants').doc(tenantId).get();
     if (!tenantDoc.exists) {
       return NextResponse.json({ error: 'Tenant not found' }, { status: 404 });
@@ -43,7 +34,6 @@ export async function POST(request: NextRequest) {
     const tenantPlan = tenantData.plan || 'plus';
     const tenantName = tenantData.name || 'Your Ministry';
 
-    // Plan feature check
     if (!hasFeature(tenantPlan, 'newsletterAutomation')) {
       return NextResponse.json(
         { error: 'Newsletter automation is not available on your current plan. Please upgrade to Pro or higher.' },
@@ -54,11 +44,8 @@ export async function POST(request: NextRequest) {
     // Rate limit: max 5 per tenant per day
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     const recentNewsletters = await adminDb
-      .collection('tenants')
-      .doc(tenantId)
-      .collection('newsletters')
-      .where('generatedAt', '>', twentyFourHoursAgo)
-      .get();
+      .collection('tenants').doc(tenantId).collection('newsletters')
+      .where('generatedAt', '>', twentyFourHoursAgo).get();
 
     if (recentNewsletters.size >= RATE_LIMIT) {
       return NextResponse.json(
@@ -67,35 +54,41 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get Instagram integration
-    const instagramDoc = await adminDb
-      .collection('tenants')
-      .doc(tenantId)
-      .collection('integrations')
-      .doc('instagram')
-      .get();
+    // Get Instagram integration — prefer primary admin's, fall back to legacy
+    const primaryInstagramAdmin = tenantData.primaryInstagramAdmin as string | undefined;
+    let instagramData: Record<string, any> | undefined;
 
-    if (!instagramDoc.exists) {
+    if (primaryInstagramAdmin) {
+      const adminIgDoc = await adminDb
+        .collection('tenants').doc(tenantId)
+        .collection('integrations').doc(`${primaryInstagramAdmin}_instagram`).get();
+      if (adminIgDoc.exists) instagramData = adminIgDoc.data() ?? undefined;
+    }
+
+    if (!instagramData) {
+      const legacyIgDoc = await adminDb
+        .collection('tenants').doc(tenantId)
+        .collection('integrations').doc('instagram').get();
+      if (legacyIgDoc.exists) instagramData = legacyIgDoc.data() ?? undefined;
+    }
+
+    if (!instagramData) {
       return NextResponse.json(
         { error: 'Instagram is not connected. Please connect Instagram in Settings → Integrations.' },
         { status: 400 }
       );
     }
 
-    const instagramData = instagramDoc.data();
-    if (!instagramData || (instagramData.status !== 'active' && instagramData.status !== 'connected')) {
+    if (instagramData.status !== 'active' && instagramData.status !== 'connected') {
       return NextResponse.json(
         { error: 'Instagram connection is not active. Please reconnect in Settings → Integrations.' },
         { status: 400 }
       );
     }
 
-    const connectedAccountId = instagramData.connectedAccountId;
+    const connectedAccountId = instagramData.connectedAccountId as string;
     if (!connectedAccountId) {
-      return NextResponse.json(
-        { error: 'No Instagram connected account found' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'No Instagram connected account found' }, { status: 400 });
     }
 
     // Fetch posts from last 30 days
@@ -112,11 +105,8 @@ export async function POST(request: NextRequest) {
         },
         connectedAccountId
       );
-
       posts = result?.data?.data || result?.data || [];
-      if (!Array.isArray(posts)) {
-        posts = [];
-      }
+      if (!Array.isArray(posts)) posts = [];
     } catch (actionError) {
       console.error('Failed to fetch Instagram posts:', actionError);
       return NextResponse.json(
@@ -132,45 +122,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Build post summaries for AI
     const postSummaries = posts.slice(0, 20).map((post: any, i: number) => {
       const caption = (post.caption || '').slice(0, 300);
-      return `Post ${i + 1}:
-- Type: ${post.media_type || 'Unknown'}
-- Caption: ${caption}${caption.length >= 300 ? '...' : ''}
-- Likes: ${post.like_count || 0}
-- Comments: ${post.comments_count || 0}
-- Link: ${post.permalink || 'N/A'}
-- Date: ${post.timestamp || 'Unknown'}`;
+      return `Post ${i + 1}:\n- Type: ${post.media_type || 'Unknown'}\n- Caption: ${caption}${caption.length >= 300 ? '...' : ''}\n- Likes: ${post.like_count || 0}\n- Comments: ${post.comments_count || 0}\n- Link: ${post.permalink || 'N/A'}\n- Date: ${post.timestamp || 'Unknown'}`;
     }).join('\n\n');
 
-    // Generate newsletter with MiMo AI
-    const systemPrompt = `You are a newsletter writer for a church/ministry called "${tenantName}". Based on the Instagram posts from the past month, create an engaging newsletter in HTML format.
-
-Include:
-1. A warm, personal greeting
-2. A compelling subject line (on its own line, prefixed with "SUBJECT:")
-3. Top post highlights with engaging descriptions
-4. Key themes from the month's content
-5. A closing encouragement or call to action
-
-Format the newsletter as clean, inline-styled HTML that works in email clients. Use these design colors:
-- Gold accent: #C9963A
-- Navy text: #0b1121
-- White background
-- Font: Arial, sans-serif
-
-After the HTML, add a separator "---PLAIN_TEXT---" and provide a plain text version of the newsletter.
-
-Keep the tone warm, encouraging, and community-focused. Do NOT include <html>, <head>, or <body> tags — just the newsletter content as a div.`;
+    const systemPrompt = `You are a newsletter writer for a church/ministry called "${tenantName}". Based on the Instagram posts from the past month, create an engaging newsletter in HTML format.\n\nInclude:\n1. A warm, personal greeting\n2. A compelling subject line (on its own line, prefixed with "SUBJECT:")\n3. Top post highlights with engaging descriptions\n4. Key themes from the month's content\n5. A closing encouragement or call to action\n\nFormat the newsletter as clean, inline-styled HTML that works in email clients. Use these design colors:\n- Gold accent: #C9963A\n- Navy text: #0b1121\n- White background\n- Font: Arial, sans-serif\n\nAfter the HTML, add a separator "---PLAIN_TEXT---" and provide a plain text version of the newsletter.\n\nKeep the tone warm, encouraging, and community-focused. Do NOT include <html>, <head>, or <body> tags — just the newsletter content as a div.`;
 
     const userPrompt = `Here are the Instagram posts from ${tenantName} over the past 30 days:\n\n${postSummaries}\n\nPlease create an engaging newsletter based on these posts.`;
 
     if (!process.env.MIMO_API_KEY) {
-      return NextResponse.json(
-        { error: 'AI service is not configured' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'AI service is not configured' }, { status: 500 });
     }
 
     let aiResponse: string;
@@ -202,36 +164,25 @@ Keep the tone warm, encouraging, and community-focused. Do NOT include <html>, <
       if (!mimoRes.ok) {
         const errBody = await mimoRes.text();
         console.error('MiMo API error:', mimoRes.status, errBody);
-        return NextResponse.json(
-          { error: 'AI service error. Please try again.' },
-          { status: 502 }
-        );
+        return NextResponse.json({ error: 'AI service error. Please try again.' }, { status: 502 });
       }
 
       const mimoData = await mimoRes.json();
       aiResponse = mimoData.choices?.[0]?.message?.content || '';
     } catch (fetchError) {
       console.error('MiMo API fetch error:', fetchError);
-      return NextResponse.json(
-        { error: 'Failed to reach AI service. Please try again.' },
-        { status: 502 }
-      );
+      return NextResponse.json({ error: 'Failed to reach AI service. Please try again.' }, { status: 502 });
     }
 
     if (!aiResponse) {
-      return NextResponse.json(
-        { error: 'AI returned an empty response. Please try again.' },
-        { status: 502 }
-      );
+      return NextResponse.json({ error: 'AI returned an empty response. Please try again.' }, { status: 502 });
     }
 
-    // Parse subject and content from AI response
     let subject = `${tenantName} Monthly Newsletter`;
     let htmlContent = aiResponse;
     let plainText = '';
-    let parseWarnings: string[] = [];
+    const parseWarnings: string[] = [];
 
-    // Extract subject line (case-insensitive, flexible whitespace)
     const subjectMatch = aiResponse.match(/subject:\s*(.+)/i);
     if (subjectMatch) {
       subject = subjectMatch[1].trim();
@@ -240,18 +191,15 @@ Keep the tone warm, encouraging, and community-focused. Do NOT include <html>, <
       parseWarnings.push('Could not extract SUBJECT line from AI response');
     }
 
-    // Split HTML and plain text (flexible dashes: ---, --, ----, etc.)
     const plainTextSplit = htmlContent.split(/-{2,}\s*plain_text\s*-{2,}/i);
     if (plainTextSplit.length >= 2) {
       htmlContent = plainTextSplit[0].trim();
       plainText = plainTextSplit.slice(1).join('---PLAIN_TEXT---').trim();
     } else {
-      // Fallback: strip HTML tags for plain text
       plainText = htmlContent.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
       parseWarnings.push('Could not find ---PLAIN_TEXT--- separator');
     }
 
-    // Validate HTML contains at least one tag; wrap bare text if missing
     if (!/<[a-z][\s\S]*>/i.test(htmlContent)) {
       htmlContent = `<div style="font-family:Arial,sans-serif;color:#0b1121;">${htmlContent}</div>`;
       parseWarnings.push('AI response had no HTML tags; wrapped in <div>');
@@ -261,12 +209,8 @@ Keep the tone warm, encouraging, and community-focused. Do NOT include <html>, <
       console.warn('Newsletter parsing warnings:', parseWarnings);
     }
 
-    // Save newsletter draft to Firestore
     const newsletterRef = adminDb
-      .collection('tenants')
-      .doc(tenantId)
-      .collection('newsletters')
-      .doc();
+      .collection('tenants').doc(tenantId).collection('newsletters').doc();
 
     const newsletterDoc = {
       id: newsletterRef.id,
@@ -293,9 +237,6 @@ Keep the tone warm, encouraging, and community-focused. Do NOT include <html>, <
     });
   } catch (error) {
     console.error('Newsletter generate error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
