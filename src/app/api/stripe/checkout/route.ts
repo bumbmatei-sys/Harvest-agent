@@ -3,7 +3,7 @@ import type { NextRequest } from 'next/server';
 import Stripe from 'stripe';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireAuth } from '@/lib/api-auth';
-import { PLAN_PRICES, AI_ASSISTANT_MONTHLY, AI_ASSISTANT_SETUP, AI_CHAT_MONTHLY } from '@/lib/stripe-config';
+import { PLAN_PRICES, AI_ASSISTANT_MONTHLY, AI_CHAT_MONTHLY } from '@/lib/stripe-config';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,7 +26,6 @@ export async function POST(request: NextRequest) {
       const userId = userOrErr.uid;
       const userEmail = email || userOrErr.email;
 
-      // Get or create Stripe customer for this user
       const userDoc = await adminDb.collection('users').doc(userId).get();
       const userData = userDoc.data();
       let customerId = userData?.aiChatStripeCustomerId;
@@ -60,7 +59,6 @@ export async function POST(request: NextRequest) {
     }
 
     // All remaining routes require tenantId
-    // Verify tenant membership
     if (!userOrErr.isSuperAdmin && userOrErr.tenantId !== tenantId) {
       return NextResponse.json({ error: 'Access denied to this tenant' }, { status: 403 });
     }
@@ -93,13 +91,11 @@ export async function POST(request: NextRequest) {
       const session = await stripe.checkout.sessions.create({
         customer: customerId,
         mode: 'subscription',
-        line_items: [
-          { price: AI_ASSISTANT_MONTHLY, quantity: 1 },
-        ],
+        line_items: [{ price: AI_ASSISTANT_MONTHLY, quantity: 1 }],
         success_url: `${baseUrl}/?stripe=success&session_id={CHECKOUT_SESSION_ID}&addon=ai-assistant`,
         cancel_url: `${baseUrl}/?stripe=cancel`,
         subscription_data: {
-          metadata: { tenantId, addOn: 'ai-assistant' },
+          metadata: { tenantId, addOn: 'ai-assistant', userId: userOrErr.uid },
         },
       });
 
@@ -111,16 +107,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields: plan, billing' }, { status: 400 });
     }
 
-    if (!tenantId) {
-      return NextResponse.json({ error: 'Plan subscriptions require a tenant. Sign up at nations.theharvest.app first.' }, { status: 400 });
-    }
-
     const priceId = PLAN_PRICES[plan]?.[billing];
     if (!priceId) {
       return NextResponse.json({ error: `Invalid plan/billing: ${plan}/${billing}` }, { status: 400 });
     }
 
-    // Get or create Stripe customer
     const tenantDoc = await adminDb.collection('tenants').doc(tenantId).get();
     const tenantData = tenantDoc.data();
     let customerId = tenantData?.stripeCustomerId;
@@ -132,7 +123,6 @@ export async function POST(request: NextRequest) {
         metadata: { tenantId, app: 'harvest' },
       });
       customerId = customer.id;
-      // Save customer ID to tenant
       await adminDb.collection('tenants').doc(tenantId).update({
         stripeCustomerId: customerId,
         updatedAt: new Date().toISOString(),
