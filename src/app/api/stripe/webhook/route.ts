@@ -136,12 +136,13 @@ export async function POST(request: NextRequest) {
                   console.log('⚠️ Self-referral blocked for tenant', tenantId);
                 } else {
                 // P0: Dedup — check if commission already exists for this subscription's first payment
-                const existingCommission = await adminDb.collection('affiliate_commissions')
+                // Single-field filter only (stripeSubscriptionId); type checked in-memory to avoid a composite index.
+                const existingCommissionSnap = await adminDb.collection('affiliate_commissions')
                   .where('stripeSubscriptionId', '==', subscriptionId)
-                  .where('type', '==', 'initial')
-                  .limit(1)
+                  .limit(10)
                   .get();
-                if (!existingCommission.empty) {
+                const hasInitialCommission = existingCommissionSnap.docs.some(d => d.data().type === 'initial');
+                if (hasInitialCommission) {
                   console.log('⚠️ Commission already exists for subscription', subscriptionId);
                 } else {
                 const commissionAmount = Math.round(
@@ -550,17 +551,18 @@ export async function POST(request: NextRequest) {
             console.log(`Partnership donation: $${(amount / 100).toFixed(2)} from ${donorEmail} for tenant ${tenantId}`);
 
             // Upsert contact in CRM
-            const existingContact = await adminDb.collection('contacts')
+            // Single-field filter only (email); tenant matched in-memory to avoid a composite index.
+            const existingContactSnap = await adminDb.collection('contacts')
               .where('email', '==', donorEmail)
-              .where('tenantId', '==', tenantId)
-              .limit(1).get();
+              .limit(20).get();
+            const existingContactDoc = existingContactSnap.docs.find(d => d.data().tenantId === tenantId);
 
             let contactId: string;
-            if (!existingContact.empty) {
-              contactId = existingContact.docs[0].id;
-              const contactData = existingContact.docs[0].data();
+            if (existingContactDoc) {
+              contactId = existingContactDoc.id;
+              const contactData = existingContactDoc.data();
               const newType = contactData.type === 'member' ? 'both' : (contactData.type as string);
-              await existingContact.docs[0].ref.update({
+              await existingContactDoc.ref.update({
                 type: newType,
                 totalDonated: FieldValue.increment(amount),
                 lastDonationAt: new Date().toISOString(),
