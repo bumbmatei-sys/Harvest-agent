@@ -1,0 +1,108 @@
+import { useQuery } from '@tanstack/react-query';
+import { collection, query, where, getDocs, getDoc, doc, limit } from 'firebase/firestore';
+import { db } from '../../firebase';
+import type { Timestamp } from 'firebase/firestore';
+import { sortByString, sortByTime } from '../../utils/query-helpers';
+
+export interface Contact {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  type: 'donor' | 'member' | 'both';
+  address?: {
+    street?: string;
+    city?: string;
+    state?: string;
+    zip?: string;
+    country?: string;
+  };
+  notes: string;
+  tags: string[];
+  totalDonated: number;
+  lastDonationAt: Timestamp | null;
+  memberSince: Timestamp | null;
+  createdAt: Timestamp | null;
+  createdBy: string;
+  updatedAt: Timestamp | null;
+  tenantId?: string;
+}
+
+export interface ContactActivity {
+  id: string;
+  contactId: string;
+  type: 'note' | 'donation' | 'email' | 'call' | 'meeting';
+  description: string;
+  amount: number | null;
+  createdAt: Timestamp | null;
+  createdBy: string;
+  tenantId?: string;
+}
+
+export const useContacts = (tenantId: string | null | undefined, isAuthReady = true) =>
+  useQuery({
+    queryKey: ['contacts', tenantId],
+    queryFn: async (): Promise<Contact[]> => {
+      const q = tenantId
+        ? query(collection(db, 'contacts'), where('tenantId', '==', tenantId), limit(500))
+        : query(collection(db, 'contacts'), limit(500));
+      const snap = await getDocs(q);
+      return sortByString(
+        snap.docs.map(d => ({ id: d.id, ...d.data() }) as Contact),
+        'lastName',
+        'asc',
+      );
+    },
+    enabled: isAuthReady && tenantId !== undefined,
+    staleTime: 1000 * 60 * 5,
+  });
+
+export const useContact = (tenantId: string | null | undefined, contactId: string | null | undefined) =>
+  useQuery({
+    queryKey: ['contact', tenantId, contactId],
+    queryFn: async (): Promise<Contact | null> => {
+      if (!contactId) return null;
+      const snap = await getDoc(doc(db, 'contacts', contactId));
+      if (!snap.exists()) return null;
+      return { id: snap.id, ...snap.data() } as Contact;
+    },
+    enabled: !!contactId,
+    staleTime: 1000 * 60 * 5,
+  });
+
+export const useContactActivities = (
+  tenantId: string | null | undefined,
+  contactId: string | null | undefined,
+) =>
+  useQuery({
+    queryKey: ['contactActivities', tenantId, contactId],
+    queryFn: async (): Promise<ContactActivity[]> => {
+      if (!contactId) return [];
+      const q = query(
+        collection(db, 'contactActivities'),
+        where('contactId', '==', contactId),
+        limit(200),
+      );
+      const snap = await getDocs(q);
+      let rows = snap.docs.map(d => ({ id: d.id, ...d.data() }) as ContactActivity);
+      if (tenantId) rows = rows.filter(r => r.tenantId === tenantId);
+      return sortByTime(rows, 'createdAt', 'desc');
+    },
+    enabled: !!contactId,
+    staleTime: 1000 * 60 * 2,
+  });
+
+export const useContactOnboardingAnswers = (email: string | null | undefined) =>
+  useQuery({
+    queryKey: ['contactOnboardingAnswers', email],
+    queryFn: async (): Promise<Record<string, string> | null> => {
+      if (!email) return null;
+      const q = query(collection(db, 'users'), where('email', '==', email), limit(1));
+      const snap = await getDocs(q);
+      if (snap.empty) return null;
+      return (snap.docs[0].data().onboardingAnswers as Record<string, string>) ?? null;
+    },
+    enabled: !!email,
+    staleTime: 1000 * 60 * 10,
+  });

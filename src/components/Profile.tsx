@@ -35,8 +35,8 @@ import UserEvents from './UserEvents';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { SUPER_ADMIN_EMAIL, isSuperAdmin as checkIsSuperAdmin } from '../utils/tenant-scope';
 import { isSuperAdminEmail } from '../utils/super-admins';
-import { TenantPlan } from '../types/tenant.types';
 import { getPlanFeatures } from '../utils/plan-features';
+import { useAppStore } from '../store/useAppStore';
 
 
 interface ProfileProps {
@@ -44,10 +44,10 @@ interface ProfileProps {
   onGoToCourses: () => void;
   onGoToPartner: () => void;
   onGoToMap: () => void;
-  tenantPlan?: TenantPlan;
 }
 
-const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToCourses, onGoToPartner, onGoToMap, tenantPlan }) => {
+const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToCourses, onGoToPartner, onGoToMap }) => {
+  const { tenantPlan } = useAppStore();
   const [showMyEvents, setShowMyEvents] = useState(false);
  const [isPersonalInfoOpen, setIsPersonalInfoOpen] = useState(false);
  const [isAboutUsOpen, setIsAboutUsOpen] = useState(false);

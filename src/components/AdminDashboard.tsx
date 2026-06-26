@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { LayoutDashboard, Church, FileText, Rss, BrainCircuit, Inbox, GraduationCap, ChevronLeft, ChevronRight, Building2, Settings, MoreHorizontal, Mail, SlidersHorizontal, Heart, Users, MessageSquare, Receipt, CalendarCheck, ShieldCheck } from 'lucide-react';
 import AdminBlog from './AdminBlog';
@@ -25,12 +25,14 @@ import AdminAccounting from './AdminAccounting';
 import AdminEvents from './AdminEvents';
 import PlanUpgradeScreen from './PlanUpgradeScreen';
 import { AdminScreenHeader, AdminHeaderContext, AdminHeaderOverride } from './AdminScreenHeader';
-import { TenantPlan } from '../types/tenant.types';
 import { getPlanFeatures } from '../utils/plan-features';
 import { db, auth } from '../firebase';
-import { collection, query, where, onSnapshot, doc, getDoc, limit } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, limit } from 'firebase/firestore';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
-import { getTenantScope, isSuperAdmin as checkIsSuperAdmin, PLATFORM_TENANT_ID } from '../utils/tenant-scope';
+import { isSuperAdmin as checkIsSuperAdmin, PLATFORM_TENANT_ID } from '../utils/tenant-scope';
+import { useAppStore } from '../store/useAppStore';
+import { useCurrentUser } from '../hooks/queries/useUserQueries';
+import { useTenant as useTenantDoc } from '../hooks/queries/useTenantQueries';
 
 // URL slug ↔ internal tab id. Most ids map 1:1; only these two differ so the
 // URLs read nicely (/admin/ai-knowledge, /admin/roles).
@@ -39,26 +41,30 @@ const TAB_TO_SLUG: Record<string, string> = { 'ai': 'ai-knowledge', 'admin_roles
 
 interface AdminDashboardProps {
   onNavigate: (page: string) => void;
-  tenantPlan?: TenantPlan; // undefined = super admin (all features)
 }
 
-const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, tenantPlan }) => {
+const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
+  const { tenantPlan, currentTenantId, isAuthReady } = useAppStore();
   const navigate = useNavigate();
   const { section, itemId } = useParams();
   const activeTab = section ? (SLUG_TO_TAB[section] || section) : 'dashboard';
+
+  // Tenant and user data from React Query
+  const tenantId = currentTenantId;
+  const { data: tenantData } = useTenantDoc(tenantId);
+  const tenantName = tenantData?.name ?? tenantData?.config?.name ?? 'Ministry';
+  const { data: userData, isLoading: userLoading } = useCurrentUser(auth.currentUser?.uid);
+
+  const userRole = userData?.role ?? 'user';
+  const userPermissions: Permission | null = (userData?.permissions as Permission) ?? null;
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [pendingChurchesCount, setPendingChurchesCount] = useState(0);
   const [showMoreSheet, setShowMoreSheet] = useState(false);
-  const [userRole, setUserRole] = useState<string>('user');
-  const [userPermissions, setUserPermissions] = useState<Permission | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [canvasId, setCanvasId] = useState<string | null>(null);
   const [canvasName, setCanvasName] = useState<string>('');
   const [newsletterView, setNewsletterView] = useState<'list' | 'editor'>('list');
-  const [tenantId, setTenantId] = useState<string | null>(null);
-  const [tenantName, setTenantName] = useState<string>('Ministry');
   // Nav customizer state
   const [showNavCustomizer, setShowNavCustomizer] = useState(false);
   // Ordered IDs for the bottom bar; null means use default (first 4 from allTabs)
@@ -70,6 +76,20 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, tenantPlan 
   // Full header override published by a sub-view (e.g. an open chat thread).
   const [headerOverride, setHeaderOverride] = useState<AdminHeaderOverride | null>(null);
   const headerApi = React.useMemo(() => ({ setHeaderAction, setHeaderOverride }), []);
+
+  // Restore saved nav configuration from user data
+  const navInitialized = useRef(false);
+  useEffect(() => {
+    if (!navInitialized.current && userData) {
+      navInitialized.current = true;
+      if (userData.adminNavConfig?.primaryTabIds?.length) {
+        setCustomPrimaryIds(userData.adminNavConfig.primaryTabIds);
+      }
+      if (userData.adminNavConfig?.moreTabIds?.length) {
+        setCustomMoreIds(userData.adminNavConfig.moreTabIds);
+      }
+    }
+  }, [userData]);
 
   /** Navigate to a tab by internal id (resets transient sub-views). */
   const go = useCallback((id: string) => {
@@ -90,48 +110,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, tenantPlan 
     navigate(`/admin/${TAB_TO_SLUG[activeTab] || activeTab}`, { replace: true });
   }, [navigate, activeTab]);
 
-  useEffect(() => {
-    getTenantScope().then(async (id) => {
-      setTenantId(id);
-      if (id) {
-        try {
-          const tenantDoc = await getDoc(doc(db, 'tenants', id));
-          if (tenantDoc.exists()) {
-            const data = tenantDoc.data();
-            setTenantName(data.name || data.config?.name || 'Ministry');
-          }
-        } catch (e) {
-          console.error('Failed to load tenant name:', e);
-        }
-      }
-    });
-  }, []);
-
-  useEffect(() => {
-    const fetchUserPermissions = async () => {
-      if (auth.currentUser) {
-        try {
-          const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
-          if (userDoc.exists()) {
-            const data = userDoc.data();
-            setUserRole(data.role || 'user');
-            setUserPermissions(data.permissions || null);
-            // Restore saved nav configuration if present
-            if (data.adminNavConfig?.primaryTabIds?.length) {
-              setCustomPrimaryIds(data.adminNavConfig.primaryTabIds);
-            }
-            if (data.adminNavConfig?.moreTabIds?.length) {
-              setCustomMoreIds(data.adminNavConfig.moreTabIds);
-            }
-          }
-        } catch (error) {
-          try { handleFirestoreError(error, OperationType.GET, `users/${auth.currentUser?.uid}`); } catch (e) { console.error(e); }
-        }
-      }
-      setIsLoading(false);
-    };
-    fetchUserPermissions();
-  }, []);
 
   useEffect(() => {
     let unsub1: (() => void) | null = null;
@@ -170,10 +148,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, tenantPlan 
 
   const isSuperAdmin = userRole === 'super_admin' || checkIsSuperAdmin();
   const isChurchAdmin = userRole === 'church_admin';
-  const perms = userPermissions || {} as Permission;
+  const perms = userPermissions ?? {} as Permission;
   const features = tenantPlan ? getPlanFeatures(tenantPlan) : null;
   const isTenantAdmin = !!tenantPlan;
   const hasFullAccess = isSuperAdmin || isChurchAdmin || perms.fullAccess;
+  const isLoading = !isAuthReady || userLoading;
 
   const showInbox = hasFullAccess || perms.seeFormsInbox;
 
@@ -506,9 +485,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, tenantPlan 
           ) : activeTab === 'settings' ? (
             <AdminSettings
               onBack={() => go('dashboard')}
-              currentPlan={tenantPlan || undefined}
-              tenantId={tenantId || undefined}
-              email={auth.currentUser?.email || undefined}
+              currentPlan={tenantPlan ?? undefined}
+              tenantId={tenantId ?? undefined}
+              email={auth.currentUser?.email ?? undefined}
               onChangePlan={async (plan) => {
                 if (auth.currentUser) {
                   const { updateDoc } = await import('firebase/firestore');

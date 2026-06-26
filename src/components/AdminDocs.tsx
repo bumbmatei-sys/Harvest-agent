@@ -5,43 +5,22 @@ import {
   PanelLeft, X, ArrowLeft, MoreVertical, Edit2, Move, Pin, MoreHorizontal, Share2, Check, Download, Upload
 } from 'lucide-react';
 import {
-  collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc,
-  doc, limit, serverTimestamp, Timestamp, getDocs, arrayUnion, arrayRemove
+  collection, query, where, addDoc, updateDoc, deleteDoc,
+  doc, serverTimestamp, Timestamp, getDocs, arrayUnion, arrayRemove
 } from 'firebase/firestore';
 import { toast } from 'sonner';
 import { db, auth } from '../firebase';
-import { getTenantScope } from '../utils/tenant-scope';
-import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { notifyError } from '../utils/notify';
-import { sortByTime, sortByNumber } from '../utils/query-helpers';
+import { useQueryClient } from '@tanstack/react-query';
+import { useAppStore } from '../store/useAppStore';
+import { useDocs, useDocFolders, useSharedDocs } from '../hooks/queries/useDocsQueries';
 import { exportToPDF, exportToDOCX, exportToMarkdown } from '../utils/doc-export';
 import { markdownToHtml, titleFromMarkdown } from '../utils/markdown-import';
 import RichTextEditor from './RichTextEditor';
 import FocusScreen from './FocusScreen';
 import { useAdminHeader, HeaderActionButton } from './AdminScreenHeader';
 
-interface DocFolder {
-  id: string;
-  name: string;
-  parentId: string | null;
-  createdBy: string;
-  createdAt: Timestamp | null;
-  order: number;
-}
-
-interface Doc {
-  id: string;
-  title: string;
-  content: string;
-  folderId: string | null;
-  createdBy: string;
-  createdAt: Timestamp | null;
-  updatedAt: Timestamp | null;
-  isPrivate: boolean;
-  sharedWith: string[];
-  tenantId?: string;
-  pinned?: boolean;
-}
+import type { Doc, DocFolder } from '../hooks/queries/useDocsQueries';
 
 interface AdminUser {
   id: string;
@@ -359,11 +338,13 @@ interface AdminDocsProps {
 
 const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) => {
   const { setHeaderAction } = useAdminHeader();
-  const [docs, setDocs] = useState<Doc[]>([]);
-  const [folders, setFolders] = useState<DocFolder[]>([]);
-  const [sharedDocs, setSharedDocs] = useState<Doc[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [tenantId, setTenantId] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const { currentTenantId: tenantId, isAuthReady } = useAppStore();
+
+  const { data: docs = [], isLoading: loading } = useDocs(tenantId, isAuthReady);
+  const { data: folders = [] } = useDocFolders(tenantId, isAuthReady);
+  const { data: sharedDocs = [] } = useSharedDocs(auth.currentUser?.uid);
+
   const [openDoc, setOpenDoc] = useState<Doc | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editContent, setEditContent] = useState('');
@@ -384,44 +365,6 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
   const [focusMode, setFocusMode] = useState(false);
   const saveTimer = useRef<NodeJS.Timeout | null>(null);
   const titleRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    let unsubs: (() => void)[] = [];
-    let cancelled = false;
-    getTenantScope().then(tid => {
-      if (cancelled) return;
-      setTenantId(tid);
-      // Single-field filter only (tenantId); sort client-side to avoid a composite index.
-      const qDocs = tid
-        ? query(collection(db, 'docs'), where('tenantId', '==', tid), limit(300))
-        : query(collection(db, 'docs'), limit(300));
-      unsubs.push(onSnapshot(qDocs, snap => {
-        setDocs(sortByTime(snap.docs.map(d => ({ id: d.id, ...d.data() }) as Doc), 'updatedAt', 'desc'));
-        setLoading(false);
-      }, err => {
-        try { handleFirestoreError(err, OperationType.GET, 'docs'); } catch (e) { console.error(e); }
-        setLoading(false);
-      }));
-      // Single-field filter only (tenantId); sort client-side to avoid a composite index.
-      const qFolders = tid
-        ? query(collection(db, 'docFolders'), where('tenantId', '==', tid), limit(200))
-        : query(collection(db, 'docFolders'), limit(200));
-      unsubs.push(onSnapshot(qFolders, snap => {
-        setFolders(sortByNumber(snap.docs.map(d => ({ id: d.id, ...d.data() }) as DocFolder), 'order', 'asc'));
-      }));
-      if (auth.currentUser?.uid) {
-        const qShared = query(
-          collection(db, 'docs'),
-          where('sharedWith', 'array-contains', auth.currentUser.uid),
-          limit(50)
-        );
-        unsubs.push(onSnapshot(qShared, snap => {
-          setSharedDocs(snap.docs.map(d => ({ id: d.id, ...d.data() }) as Doc));
-        }));
-      }
-    });
-    return () => { cancelled = true; unsubs.forEach(u => u()); };
-  }, []);
 
   const openDocument = (d: Doc) => {
     setOpenDoc(d);
@@ -450,8 +393,9 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
     try {
       await updateDoc(doc(db, 'docs', id), { title, content, updatedAt: serverTimestamp() });
       setSaveStatus('saved');
+      await queryClient.invalidateQueries({ queryKey: ['docs', tenantId] });
     } catch (e) { console.error(e); setSaveStatus('idle'); }
-  }, []);
+  }, [queryClient, tenantId]);
 
   const handleContentChange = (content: string) => {
     setEditContent(content);
@@ -493,6 +437,7 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
       setSaveStatus('idle');
       setFocusMode(true);
       setTimeout(() => { titleRef.current?.select(); }, 100);
+      await queryClient.invalidateQueries({ queryKey: ['docs', tenantId] });
     } catch (e) { notifyError('Failed to create document', e); }
   };
 
@@ -528,6 +473,7 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
       setEditContent(html);
       setSaveStatus('idle');
       setFocusMode(true);
+      await queryClient.invalidateQueries({ queryKey: ['docs', tenantId] });
       toast.success('Note imported successfully');
     } catch (err) {
       console.error('Markdown import failed', err);
@@ -548,14 +494,17 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
       });
       setShowNewFolder(false);
       setNewFolderName('');
+      await queryClient.invalidateQueries({ queryKey: ['docFolders', tenantId] });
     } catch (e) { notifyError('Failed to create folder', e); }
   };
 
   const confirmDeleteDoc = async () => {
     if (!deleteDocId) return;
     if (openDoc?.id === deleteDocId) { setOpenDoc(null); setFocusMode(false); }
-    try { await deleteDoc(doc(db, 'docs', deleteDocId)); }
-    catch (e) { notifyError('Failed to delete document', e); }
+    try {
+      await deleteDoc(doc(db, 'docs', deleteDocId));
+      await queryClient.invalidateQueries({ queryKey: ['docs', tenantId] });
+    } catch (e) { notifyError('Failed to delete document', e); }
     setDeleteDocId(null);
   };
 
@@ -563,19 +512,23 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
     try {
       await updateDoc(doc(db, 'docs', docId), { folderId, updatedAt: serverTimestamp() });
       setMoveDocId(null);
+      await queryClient.invalidateQueries({ queryKey: ['docs', tenantId] });
     } catch (e) { notifyError('Failed to move document', e); }
   };
 
   const togglePinDoc = async (docId: string, currentPinned: boolean) => {
     try {
       await updateDoc(doc(db, 'docs', docId), { pinned: !currentPinned });
+      await queryClient.invalidateQueries({ queryKey: ['docs', tenantId] });
     } catch (e) { notifyError('Failed to toggle pin', e); }
   };
 
   const confirmDeleteFolder = async () => {
     if (!deleteFolderId) return;
-    try { await deleteDoc(doc(db, 'docFolders', deleteFolderId)); }
-    catch (e) { notifyError('Failed to delete folder', e); }
+    try {
+      await deleteDoc(doc(db, 'docFolders', deleteFolderId));
+      await queryClient.invalidateQueries({ queryKey: ['docFolders', tenantId] });
+    } catch (e) { notifyError('Failed to delete folder', e); }
     setDeleteFolderId(null);
   };
 
@@ -591,6 +544,7 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
     if (!renameFolderData || !newName.trim()) return;
     try {
       await updateDoc(doc(db, 'docFolders', renameFolderData.id), { name: newName.trim() });
+      await queryClient.invalidateQueries({ queryKey: ['docFolders', tenantId] });
     } catch (e) { notifyError('Failed to rename folder', e); }
     setRenameFolderData(null);
   };
@@ -600,6 +554,7 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
     try {
       await updateDoc(doc(db, 'docs', renameDocData.id), { title: newName.trim(), updatedAt: serverTimestamp() });
       if (openDoc?.id === renameDocData.id) setEditTitle(newName.trim());
+      await queryClient.invalidateQueries({ queryKey: ['docs', tenantId] });
     } catch (e) { notifyError('Failed to rename document', e); }
     setRenameDocData(null);
   };
@@ -636,6 +591,8 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
       await updateDoc(doc(db, 'docs', docId), {
         sharedWith: isCurrentlyShared ? arrayRemove(adminUid) : arrayUnion(adminUid),
       });
+      await queryClient.invalidateQueries({ queryKey: ['docs', tenantId] });
+      await queryClient.invalidateQueries({ queryKey: ['sharedDocs', auth.currentUser?.uid] });
     } catch (e) { notifyError('Failed to update sharing', e); }
   };
 

@@ -19,19 +19,19 @@ import ErrorBoundary from './ErrorBoundary';
 import NotificationPrompt from './NotificationPrompt';
 import BiblePage from './BiblePage';
 import ReferralTracker from './ReferralTracker';
-import { TenantPlan } from '../types/tenant.types';
 import { getPlanFeatures } from '../utils/plan-features';
 import { auth } from '../firebase';
 import { isSuperAdminEmail } from '../utils/super-admins';
+import { useAppStore } from '../store/useAppStore';
 
 const ChurchMap = dynamic(() => import('./ChurchMap'), { ssr: false });
 
 interface MainAppProps {
   onNavigate: (page: string) => void;
-  tenantPlan?: TenantPlan;
 }
 
-const MainApp: React.FC<MainAppProps> = ({ onNavigate, tenantPlan }) => {
+const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
+  const { tenantPlan } = useAppStore();
   const [activeBottomTab, setActiveBottomTab] = useState('home');
   const [activeTopTab, setActiveTopTab] = useState('news');
   const [isNavVisible, setIsNavVisible] = useState(true);
@@ -339,12 +339,11 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, tenantPlan }) => {
                 onGoToCourses={() => { setActiveBottomTab('home'); setActiveTopTab('courses'); }}
                 onGoToPartner={() => { setActiveBottomTab('home'); setActiveTopTab('partner'); }}
                 onGoToMap={() => setActiveBottomTab('map')}
-                tenantPlan={tenantPlan}
               />
             </div>
           ) : activeBottomTab === 'chat' ? (
              <div className="w-full lg:max-w-5xl lg:mx-auto h-full">
-              <AIChat onBack={() => setActiveBottomTab('home')} tenantPlan={tenantPlan} />
+              <AIChat onBack={() => setActiveBottomTab('home')} />
              </div>
           ) : activeBottomTab === 'map' ? (
              <div className="w-full lg:max-w-5xl lg:mx-auto h-full">
