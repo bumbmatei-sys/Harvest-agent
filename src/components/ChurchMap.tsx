@@ -175,17 +175,17 @@ const ChurchMap: React.FC<ChurchMapProps> = ({ onBack, onMapInteraction }) => {
  const fetchChurches = async () => {
  try {
  const tenantId = await getTenantScope();
- const q = tenantId
-   ? query(collection(db, 'churches'), where('status', '==', 'active'), where('tenantId', '==', tenantId))
-   : query(collection(db, 'churches'), where('status', '==', 'active'));
+ // Single-field filter only (status); tenant scoping applied client-side.
+ const q = query(collection(db, 'churches'), where('status', '==', 'active'));
  const querySnapshot = await getDocs(q);
  const fetchedChurches: Church[] = [];
  querySnapshot.forEach((doc) => {
  const data = doc.data();
+ if (tenantId && data.tenantId !== tenantId) return;
  // Convert lat/lng to numbers if they are strings
  const lat = typeof data.lat === 'string' ? parseFloat(data.lat) : data.lat;
  const lng = typeof data.lng === 'string' ? parseFloat(data.lng) : data.lng;
- 
+
  if (!isNaN(lat) && !isNaN(lng)) {
  fetchedChurches.push({ id: doc.id, ...data, lat, lng } as Church);
  }

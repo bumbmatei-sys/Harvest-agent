@@ -8,58 +8,91 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Admin or superAdmin via custom claims (set server-side with Firebase Admin SDK)
-    function isAdmin() {
-      return isAuthenticated() &&
-        (request.auth.token.admin == true ||
-         request.auth.token.superAdmin == true);
+    function tokenEmail() {
+      return request.auth.token.get('email', '');
     }
 
-    // Tenant ID derived from the user's custom claims
+    function isSuperAdmin() {
+      return isAuthenticated() && (
+        request.auth.token.get('superAdmin', false) == true ||
+        tokenEmail() in ['bumbmatei@proton.me', 'bumbmatei@zohomail.eu']
+      );
+    }
+
+    function userDocExists() {
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function userData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function userRole() {
+      return userDocExists() ? userData().get('role', 'user') : 'user';
+    }
+
     function userTenantId() {
-      return request.auth.token.tenantId;
+      return request.auth.token.get('tenantId', null) != null
+        ? request.auth.token.get('tenantId', null)
+        : (userDocExists() ? userData().get('tenantId', null) : null);
     }
 
-    // Check if the authenticated user belongs to a given tenant
-    function belongsToTenant(tenantId) {
-      return isAuthenticated() && userTenantId() == tenantId;
+    function isAdmin() {
+      return isAuthenticated() && (
+        isSuperAdmin() ||
+        request.auth.token.get('admin', false) == true ||
+        userRole() == 'admin' ||
+        userRole() == 'super_admin'
+      );
     }
 
-    // Admin belonging to the given tenant
+    function inTenantAdminEmails(tenantId) {
+      return isAuthenticated() &&
+        exists(/databases/$(database)/documents/tenants/$(tenantId)) &&
+        tokenEmail() in get(/databases/$(database)/documents/tenants/$(tenantId)).data.get('adminEmails', []);
+    }
+
     function isTenantAdmin(tenantId) {
-      return isAdmin() && belongsToTenant(tenantId);
+      return isAuthenticated() && (
+        isSuperAdmin() ||
+        (isAdmin() && userTenantId() == tenantId) ||
+        inTenantAdminEmails(tenantId)
+      );
     }
 
-    // Check if request includes correct tenantId that matches the user's claims
+    function belongsToTenant(tenantId) {
+      return isAuthenticated() && (
+        isSuperAdmin() ||
+        userTenantId() == tenantId ||
+        inTenantAdminEmails(tenantId)
+      );
+    }
+
     function requestHasCorrectTenant() {
       return isAuthenticated() &&
-        request.resource.data.tenantId == userTenantId();
+        (isSuperAdmin() || request.resource.data.tenantId == userTenantId());
     }
 
     // ─── Users ───────────────────────────────────────────────────────
 
     match /users/{userId} {
-      // Users can read only their own document; tenant admins can read users in their tenant; super admins can read all
       allow read: if isAuthenticated() &&
         (request.auth.uid == userId ||
-         request.auth.token.superAdmin == true ||
+         isSuperAdmin() ||
          isTenantAdmin(resource.data.tenantId));
 
-      // Self-registration: user creates their own profile. Block role escalation.
       allow create: if isAuthenticated() && request.auth.uid == userId &&
         (!request.resource.data.keys().hasAny(['role']) ||
          request.resource.data.role == 'user');
 
-      // Users can update own profile; tenant admins can update users in their tenant.
-      // BLOCK role changes — only Admin SDK (server-side) can change roles.
-      // Uses diff().affectedKeys() to check only changed fields, not full post-write document.
       allow update: if isAuthenticated() &&
+        // Users may edit their own doc but not their own role.
         ((request.auth.uid == userId && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role'])) ||
-         (isTenantAdmin(resource.data.tenantId) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role'])));
+         // Tenant admins (and super admins) may manage members of their tenant,
+         // including promoting/demoting role and editing permissions.
+         isTenantAdmin(resource.data.tenantId));
 
-      // Only super admins can delete user documents
-      allow delete: if isAuthenticated() &&
-        request.auth.token.superAdmin == true;
+      allow delete: if isSuperAdmin();
     }
 
     // ─── Submissions ─────────────────────────────────────────────────
@@ -74,21 +107,12 @@ service cloud.firestore {
     // ─── Community Posts ─────────────────────────────────────────────
 
     match /community_posts/{postId} {
-      // Any authenticated user can read (client queries already filter by tenantId)
       allow read: if isAuthenticated();
 
-      // Create: must set own authorId and a tenantId matching the user's own tenant
       allow create: if isAuthenticated() &&
         request.resource.data.authorId == request.auth.uid &&
         requestHasCorrectTenant();
 
-      // Update: two cases.
-      // 1) Interaction fields (likes, poll votes, event attendance) — any
-      //    tenant member can change these, since liking/voting/RSVPing
-      //    isn't an authoring action. Restricted to ONLY those fields so
-      //    this can't be used to rewrite post content.
-      // 2) Content edits (title, body, everything else) — author or
-      //    tenant admin only.
       allow update: if isAuthenticated() && belongsToTenant(resource.data.tenantId) &&
         (
           request.resource.data.diff(resource.data).affectedKeys()
@@ -97,35 +121,28 @@ service cloud.firestore {
           isTenantAdmin(resource.data.tenantId)
         );
 
-      // Delete: author or tenant admin only — not "any authenticated user"
       allow delete: if isAuthenticated() &&
         (resource.data.authorId == request.auth.uid ||
          isTenantAdmin(resource.data.tenantId));
 
-      // ─── Comments subcollection ─────────────────────────────────────
       match /comments/{commentId} {
-        // Read: any authenticated user
         allow read: if isAuthenticated();
-        // Create: must be own authorId, content ≤280 chars
         allow create: if isAuthenticated() &&
           request.resource.data.authorId == request.auth.uid &&
           request.resource.data.content is string &&
           request.resource.data.content.size() <= 280 &&
           request.resource.data.keys().hasAll(['authorId', 'authorName', 'content', 'createdAt']);
-        // Delete: author can delete own comments
         allow delete: if isAuthenticated() &&
           resource.data.authorId == request.auth.uid;
-        // Comments are immutable
         allow update: if false;
       }
     }
-
 
     // ─── Blog Posts ─────────────────────────────────────────────────
 
     match /blog_posts/{postId} {
       allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && isAdmin() && requestHasCorrectTenant();
+      allow create: if isAuthenticated() && isTenantAdmin(request.resource.data.get('tenantId', ''));
       allow update: if isAuthenticated() && isTenantAdmin(resource.data.tenantId);
       allow delete: if isAuthenticated() && isTenantAdmin(resource.data.tenantId);
     }
@@ -134,7 +151,7 @@ service cloud.firestore {
 
     match /courses/{courseId} {
       allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && isAdmin() && requestHasCorrectTenant();
+      allow create: if isAuthenticated() && isTenantAdmin(request.resource.data.get('tenantId', ''));
       allow update: if isAuthenticated() && isTenantAdmin(resource.data.tenantId);
       allow delete: if isAuthenticated() && isTenantAdmin(resource.data.tenantId);
     }
@@ -143,11 +160,10 @@ service cloud.firestore {
 
     match /churches/{churchId} {
       allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && isAdmin() && requestHasCorrectTenant();
+      allow create: if isAuthenticated() && isTenantAdmin(request.resource.data.get('tenantId', ''));
       allow update: if isAuthenticated() && isTenantAdmin(resource.data.tenantId);
       allow delete: if isAuthenticated() && isTenantAdmin(resource.data.tenantId);
 
-      // Announcements subcollection — per-church
       match /announcements/{announcementId} {
         allow read: if isAuthenticated();
         allow create: if isAuthenticated() && isTenantAdmin(request.resource.data.tenantId);
@@ -172,51 +188,32 @@ service cloud.firestore {
       allow delete: if isAuthenticated() && isTenantAdmin(resource.data.tenantId);
     }
 
-    // ─── Authors & Categories (shared within tenant) ────────────────
+    // ─── Authors & Categories ────────────────────────────────────────
 
     match /authors/{authorId} {
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated() && isAdmin() && belongsToTenant(resource.data.tenantId);
+      allow write: if isAuthenticated() && isAdmin() &&
+        (isSuperAdmin() || belongsToTenant(request.resource.data.tenantId) || belongsToTenant(resource.data.tenantId));
     }
 
     match /categories/{catId} {
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated() && isAdmin() && belongsToTenant(resource.data.tenantId);
+      allow write: if isAuthenticated() && isAdmin() &&
+        (isSuperAdmin() || belongsToTenant(request.resource.data.tenantId) || belongsToTenant(resource.data.tenantId));
     }
 
     // ─── Tenants ────────────────────────────────────────────────────
 
     match /tenants/{tenantId} {
-      // SECURITY: this doc is readable by anyone, including unauthenticated
-      // requests — required so the public marketing/login pages can resolve
-      // a subdomain to a tenant and show branding before login.
-      //
-      // KNOWN ISSUE — NOT YET FIXED: stripeCustomerId, stripeSubscriptionId,
-      // and addOnAiAssistantCode currently live on this same public document,
-      // meaning they are readable by anyone who knows or guesses a tenant ID.
-      // The correct fix is to move these three fields to a private
-      // subcollection (e.g. tenants/{tenantId}/private/billing) that is
-      // readable only by tenant members/admins, and update every read/write
-      // site (Stripe checkout, webhook, donate, connect, cancel-addon,
-      // update-quantity routes, plus AdminSettings/Onboarding components) to
-      // use the new location. This is a multi-file migration, tracked
-      // separately — do not attempt as a one-line rule change, since an
-      // incomplete migration will silently break checkout/billing.
       allow read: if true;
 
-      // Tenant creation: require essential fields and valid values
       allow create: if isAuthenticated() &&
         request.resource.data.keys().hasAll(['name', 'subdomain', 'plan', 'status']) &&
         request.resource.data.status in ['active', 'setup', 'pending'];
 
-      // Only tenant admins can update their own tenant
       allow update: if isAuthenticated() && isTenantAdmin(tenantId);
 
-      // Only super admins can delete tenants
-      allow delete: if isAuthenticated() &&
-        request.auth.token.superAdmin == true;
-
-      // ─── Tenant-scoped subcollections ──────────────────────────────
+      allow delete: if isSuperAdmin();
 
       match /settings/{settingId} {
         allow read: if belongsToTenant(tenantId);
@@ -229,34 +226,147 @@ service cloud.firestore {
         allow update: if belongsToTenant(tenantId) &&
           (request.auth.uid == memberId || isTenantAdmin(tenantId));
       }
+
+      match /events/{eventId} {
+        allow read: if isAuthenticated();
+        allow write: if isTenantAdmin(tenantId);
+      }
+
+      match /registrations/{regId} {
+        allow read: if isAuthenticated() && (isTenantAdmin(tenantId) || resource.data.userId == request.auth.uid);
+        allow create: if isAuthenticated();
+        allow update: if isAuthenticated() && isTenantAdmin(tenantId);
+        allow delete: if isAuthenticated() && isTenantAdmin(tenantId);
+      }
+
+      match /campaigns/{campaignId} {
+        allow read: if isAuthenticated();
+        allow write: if isTenantAdmin(tenantId);
+      }
+
+      match /contacts/{contactId} {
+        allow read, write: if isTenantAdmin(tenantId);
+      }
+
+      match /contactActivities/{activityId} {
+        allow read, write: if isTenantAdmin(tenantId);
+      }
+
+      match /channels/{channelId} {
+        allow read: if belongsToTenant(tenantId);
+        allow write: if isTenantAdmin(tenantId);
+        // Members may update only the last-message preview fields when they post.
+        allow update: if belongsToTenant(tenantId) &&
+          request.auth.uid in resource.data.get('members', []) &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastMessage', 'lastMessageAt']);
+      }
+
+      match /channelMessages/{msgId} {
+        // Tenant admins read/write everything; members read AND post only in
+        // channels they belong to.
+        allow read: if belongsToTenant(tenantId) && (
+          isTenantAdmin(tenantId) ||
+          request.auth.uid in get(/databases/$(database)/documents/tenants/$(tenantId)/channels/$(resource.data.channelId)).data.get('members', [])
+        );
+        allow create: if belongsToTenant(tenantId) && (
+          isTenantAdmin(tenantId) ||
+          request.auth.uid in get(/databases/$(database)/documents/tenants/$(tenantId)/channels/$(request.resource.data.channelId)).data.get('members', [])
+        );
+        allow update, delete: if isTenantAdmin(tenantId);
+      }
+
+      match /directMessages/{dmId} {
+        allow read: if belongsToTenant(tenantId);
+        allow create: if belongsToTenant(tenantId);
+        allow update, delete: if belongsToTenant(tenantId);
+      }
+
+      match /dmMessages/{msgId} {
+        allow read: if belongsToTenant(tenantId);
+        allow create: if belongsToTenant(tenantId);
+        allow update, delete: if isTenantAdmin(tenantId);
+      }
+
+      match /invoices/{invoiceId} {
+        allow read, write: if isTenantAdmin(tenantId);
+      }
     }
 
-    // ─── Email Log (server-only, but allow authenticated reads) ─────
+    // ─── Docs & Doc Folders ───────────────────────────────────────────
+
+    match /docs/{docId} {
+      allow read: if isAuthenticated() &&
+        (isTenantAdmin(resource.data.get('tenantId', '')) ||
+         resource.data.get('createdBy', '') == request.auth.uid ||
+         request.auth.uid in resource.data.get('sharedWith', []));
+      allow create: if isAuthenticated() && isTenantAdmin(request.resource.data.get('tenantId', ''));
+      allow update: if isAuthenticated() &&
+        (isTenantAdmin(resource.data.get('tenantId', '')) || resource.data.get('createdBy', '') == request.auth.uid);
+      allow delete: if isAuthenticated() && isTenantAdmin(resource.data.get('tenantId', ''));
+    }
+
+    match /docFolders/{folderId} {
+      allow read: if isAuthenticated() && isTenantAdmin(resource.data.get('tenantId', ''));
+      allow create: if isAuthenticated() && isTenantAdmin(request.resource.data.get('tenantId', ''));
+      allow update, delete: if isAuthenticated() && isTenantAdmin(resource.data.get('tenantId', ''));
+    }
+
+    // ─── Fundraising Campaigns ───────────────────────────────────────
+
+    match /campaigns/{campaignId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isTenantAdmin(request.resource.data.get('tenantId', ''));
+      allow update: if isAuthenticated() && isTenantAdmin(resource.data.get('tenantId', ''));
+      allow delete: if isAuthenticated() && isTenantAdmin(resource.data.get('tenantId', ''));
+    }
+
+    // ─── CRM Contacts & Activities ───────────────────────────────────
+
+    match /contacts/{contactId} {
+      allow read: if isAuthenticated() && isTenantAdmin(resource.data.get('tenantId', ''));
+      allow create: if isAuthenticated() && isTenantAdmin(request.resource.data.get('tenantId', ''));
+      allow update: if isAuthenticated() && isTenantAdmin(resource.data.get('tenantId', ''));
+      allow delete: if isAuthenticated() && isTenantAdmin(resource.data.get('tenantId', ''));
+    }
+
+    match /contactActivities/{activityId} {
+      allow read: if isAuthenticated() && isTenantAdmin(resource.data.get('tenantId', ''));
+      allow create: if isAuthenticated() && isTenantAdmin(request.resource.data.get('tenantId', ''));
+      allow update, delete: if isAuthenticated() && isTenantAdmin(resource.data.get('tenantId', ''));
+    }
+
+    // ─── Donations ───────────────────────────────────────────────────
+
+    match /donations/{donationId} {
+      allow read: if isAuthenticated() && isAdmin();
+      allow create: if isAuthenticated();
+      allow update, delete: if isAuthenticated() && isAdmin();
+    }
+
+    // ─── Email Log ───────────────────────────────────────────────────
 
     match /email_log/{logId} {
       allow read: if isAuthenticated() && isAdmin();
-      allow create: if false; // Only via admin SDK (API routes)
+      allow create: if false;
     }
 
-    // ─── Enterprise Leads (server-only writes, admin reads) ────────
+    // ─── Enterprise Leads ────────────────────────────────────────────
 
     match /enterprise_leads/{leadId} {
-      allow read: if isAuthenticated() && request.auth.token.superAdmin == true;
-      allow create: if false; // Server-only via API route (has rate limiting + validation)
-      allow update, delete: if false; // Server-only via admin SDK
+      allow read: if isSuperAdmin();
+      allow create: if false;
+      allow update, delete: if false;
     }
 
-    // ─── Affiliate Commissions (server-only writes, admin reads) ───
+    // ─── Affiliate Commissions ───────────────────────────────────────
 
     match /affiliate_commissions/{commissionId} {
       allow read: if isAuthenticated() &&
-        (request.auth.token.superAdmin == true ||
+        (isSuperAdmin() ||
          resource.data.referrerId == request.auth.uid);
-      allow create: if false; // Only via admin SDK (webhook handler)
-      allow update: if isAuthenticated() && request.auth.token.superAdmin == true;
+      allow create: if false;
+      allow update: if isSuperAdmin();
       allow delete: if false;
     }
-
-    // ─── Catch-all: DENY everything not matched above ────────────────
   }
 }

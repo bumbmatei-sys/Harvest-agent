@@ -15,7 +15,7 @@ import { getTenantScope } from '../utils/tenant-scope';
 interface ChurchEnrollmentProps {
  onBack: () => void;
  initialData?: any;
- onSave?: () => void;
+ onSave?: (data?: { id: string; name: string }) => void;
 }
 
 const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData, onSave }) => {
@@ -160,17 +160,17 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
      }
    }
    await updateDoc(doc(db, 'churches', initialData.id), churchData);
- if (onSave) onSave();
+ if (onSave) onSave({ id: initialData.id, name: churchData.name || '' });
  } else {
    const tenantId = await getTenantScope();
-   await addDoc(collection(db, 'churches'), {
+   const ref = await addDoc(collection(db, 'churches'), {
      ...churchData,
      status: 'active',
      createdAt: new Date().toISOString(),
      userId: auth.currentUser?.uid || null,
      tenantId: tenantId || null
    });
- if (onSave) onSave();
+ if (onSave) onSave({ id: ref.id, name: churchData.name || '' });
  }
  } catch (err) {
  try { handleFirestoreError(err, OperationType.WRITE, `churches`); } catch (e) { console.error(e); }

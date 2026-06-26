@@ -1,11 +1,13 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { Plus, Search, Edit2, Trash2, MoreVertical, Filter, FileText } from 'lucide-react';
-import { collection, onSnapshot, query, where, orderBy, deleteDoc, doc, getDoc, limit } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, deleteDoc, doc, getDoc, limit } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import AdminBlogPostEditor from './AdminBlogPostEditor';
+import { useAdminHeader, HeaderActionButton } from './AdminScreenHeader';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { getTenantScope } from '../utils/tenant-scope';
+import { sortByTime } from '../utils/query-helpers';
 
 
 
@@ -40,15 +42,16 @@ const AdminBlog: React.FC = () => {
   (async () => {
     const tenantId = await getTenantScope();
     if (cancelled) return;
+    // Single-field filter only (tenantId); sort client-side to avoid a composite index.
     const q = tenantId
-      ? query(collection(db, 'blog_posts'), where('tenantId', '==', tenantId), orderBy('createdAt', 'desc'), limit(50))
-      : query(collection(db, 'blog_posts'), orderBy('createdAt', 'desc'), limit(50));
+      ? query(collection(db, 'blog_posts'), where('tenantId', '==', tenantId), limit(100))
+      : query(collection(db, 'blog_posts'), limit(100));
     unsubscribe = onSnapshot(q, (snapshot) => {
       const fetchedPosts = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       })) as BlogPost[];
-      setPosts(fetchedPosts);
+      setPosts(sortByTime(fetchedPosts, 'createdAt', 'desc'));
       setLoading(false);
     }, (error) => {
       try { handleFirestoreError(error, OperationType.GET, `blog_posts`); } catch (e) { console.error(e); }
@@ -94,6 +97,12 @@ const AdminBlog: React.FC = () => {
  setIsEditorOpen(true);
  };
 
+ const { setHeaderAction } = useAdminHeader();
+ useEffect(() => {
+   setHeaderAction(<HeaderActionButton label="New Post" onClick={() => handleNewPost()} />);
+   return () => setHeaderAction(null);
+ }, [setHeaderAction]);
+
  const handleEditPost = (post: BlogPost) => {
  setEditingPost(post);
  setIsEditorOpen(true);
@@ -132,19 +141,6 @@ const AdminBlog: React.FC = () => {
  categories={categories}
  />
  )}
- <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
- <div>
- <h2 className="text-2xl font-bold text-gray-900 mb-1">Blog Posts</h2>
- <p className="text-sm text-gray-500 ">Manage your blog content and publications.</p>
- </div>
- <button 
- onClick={handleNewPost}
- className="bg-[#d4a017] hover:bg-[#b8860b] text-white px-4 py-2.5 rounded-xl font-medium flex items-center gap-2 transition-colors shadow-sm w-full sm:w-auto justify-center"
- >
- <Plus size={18} />
- <span>New Post</span>
- </button>
- </div>
 
  <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
  {/* Filters Bar */}

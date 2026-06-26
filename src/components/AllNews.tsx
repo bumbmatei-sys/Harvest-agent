@@ -6,6 +6,7 @@ import { db, auth } from '../firebase';
 import { Calendar as CalendarIcon, ThumbsUp, Check, ArrowLeft, MessageSquare, Send, Trash2 } from 'lucide-react';
 import { getTenantScope } from '../utils/tenant-scope';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
+import { sortByTime } from '../utils/query-helpers';
 
 interface Comment {
   id: string;
@@ -111,15 +112,16 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack }) => {
     (async () => {
       const tenantId = await getTenantScope();
       if (cancelled) return;
+      // Single-field filter only (tenantId); sort client-side to avoid a composite index.
       const q = tenantId
-        ? query(collection(db, 'community_posts'), where('tenantId', '==', tenantId), orderBy('createdAt', 'desc'))
-        : query(collection(db, 'community_posts'), orderBy('createdAt', 'desc'));
+        ? query(collection(db, 'community_posts'), where('tenantId', '==', tenantId))
+        : query(collection(db, 'community_posts'));
 
       unsubscribe = onSnapshot(q, (snapshot) => {
-        const postsData = snapshot.docs.map(doc => ({
+        const postsData = sortByTime(snapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
-        })) as CommunityPost[];
+        })) as CommunityPost[], 'createdAt', 'desc');
 
         const sortedPosts = [...postsData].sort((a, b) => {
           if (a.isPinned && !b.isPinned) return -1;

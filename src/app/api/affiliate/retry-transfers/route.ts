@@ -28,13 +28,16 @@ export async function POST(request: NextRequest) {
   try {
     // Find pending commissions older than 5 minutes (give initial transfer time to complete)
     const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+    // Single-field filter only (status); age window applied in-memory to avoid a composite index.
     const pendingSnap = await adminDb.collection('affiliate_commissions')
       .where('status', '==', 'pending')
-      .where('createdAt', '<', fiveMinAgo)
-      .limit(50)
+      .limit(200)
       .get();
+    const pendingDocs = pendingSnap.docs
+      .filter(d => String(d.data().createdAt || '') < fiveMinAgo)
+      .slice(0, 50);
 
-    if (pendingSnap.empty) {
+    if (pendingDocs.length === 0) {
       return NextResponse.json({ message: 'No pending commissions', processed: 0 });
     }
 
@@ -42,7 +45,7 @@ export async function POST(request: NextRequest) {
     let skipped = 0;
     let failed = 0;
 
-    for (const doc of pendingSnap.docs) {
+    for (const doc of pendingDocs) {
       const data = doc.data();
       const referrerId = data.referrerId;
 
@@ -98,7 +101,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       message: 'Retry complete',
-      total: pendingSnap.size,
+      total: pendingDocs.length,
       retried,
       skipped,
       failed,

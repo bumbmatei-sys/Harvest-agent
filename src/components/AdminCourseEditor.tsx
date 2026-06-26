@@ -899,7 +899,7 @@ const s: Record<string, CSSProperties> = {
  tabBar: { display: "flex", padding: "16px 20px 0", borderBottom: `1px solid ${BORDER}` },
  tab: { background: "none", border: "none", color: TEXT2, cursor: "pointer", padding: "10px 16px 12px", fontSize: 14, fontWeight: 600, fontFamily: "inherit", borderBottom: "2.5px solid transparent" },
  tabActive: { color: GOLD, borderBottom: `2.5px solid ${GOLD}` },
- content: { padding: "20px", maxWidth: 820, margin: "0 auto" },
+ content: { overflowY: "auto", padding: "20px", paddingBottom: 120, maxWidth: 820, margin: "0 auto" },
  panel: { display: "flex", flexDirection: "column", gap: 14 },
  card: { background: CARD, borderRadius: 16, boxShadow: "0 1px 6px rgba(0,0,0,0.07)", overflow: "hidden" },
  cardBody: { padding: "16px", display: "flex", flexDirection: "column", gap: 14 },

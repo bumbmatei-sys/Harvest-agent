@@ -1,11 +1,13 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { Plus, Search, Edit2, Trash2, BookOpen } from 'lucide-react';
-import { collection, onSnapshot, query, where, orderBy, deleteDoc, doc, getDoc, limit } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, deleteDoc, doc, getDoc, limit } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import AdminCourseEditor, { Course } from './AdminCourseEditor';
+import { useAdminHeader, HeaderActionButton } from './AdminScreenHeader';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { getTenantScope } from '../utils/tenant-scope';
+import { sortByTime } from '../utils/query-helpers';
 
 
 
@@ -25,16 +27,17 @@ const AdminCourses: React.FC = () => {
 
  (async () => {
    const tenantId = await getTenantScope();
+   // Single-field filter only (tenantId); sort client-side to avoid a composite index.
    const q = tenantId
-     ? query(collection(db, 'courses'), where('tenantId', '==', tenantId), orderBy('createdAt', 'desc'), limit(50))
-     : query(collection(db, 'courses'), orderBy('createdAt', 'desc'), limit(50));
+     ? query(collection(db, 'courses'), where('tenantId', '==', tenantId), limit(100))
+     : query(collection(db, 'courses'), limit(100));
 
    unsubscribe = onSnapshot(q, (snapshot) => {
      const fetchedCourses = snapshot.docs.map(doc => ({
        id: doc.id,
        ...doc.data()
      })) as Course[];
-     setCourses(fetchedCourses);
+     setCourses(sortByTime(fetchedCourses, 'createdAt', 'desc'));
      setLoading(false);
    }, (error) => {
      try { handleFirestoreError(error, OperationType.GET, `courses`); } catch (e) { console.error(e); }
@@ -64,6 +67,12 @@ const AdminCourses: React.FC = () => {
  setEditingCourse(null);
  setIsEditorOpen(true);
  };
+
+ const { setHeaderAction } = useAdminHeader();
+ useEffect(() => {
+   setHeaderAction(<HeaderActionButton label="New Course" onClick={() => handleNewCourse()} />);
+   return () => setHeaderAction(null);
+ }, [setHeaderAction]);
 
  const handleEditCourse = (course: Course) => {
  setEditingCourse(course);
@@ -102,20 +111,6 @@ const AdminCourses: React.FC = () => {
  onClose={() => setIsEditorOpen(false)} 
  />
  )}
- 
- <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
- <div>
- <h2 className="text-2xl font-bold text-gray-900 mb-1">Courses</h2>
- <p className="text-sm text-gray-500 ">Manage your educational courses and content.</p>
- </div>
- <button 
- onClick={handleNewCourse}
- className="bg-[#d4a017] hover:bg-[#b8860b] text-white px-4 py-2.5 rounded-xl font-medium flex items-center gap-2 transition-colors shadow-sm w-full sm:w-auto justify-center"
- >
- <Plus size={18} />
- <span>New Course</span>
- </button>
- </div>
 
  <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
  {/* Filters Bar */}
