@@ -23,6 +23,10 @@ export async function POST(request: NextRequest) {
     }
     const stripe = new Stripe(stripeKey);
 
+    if (!AI_ASSISTANT_MONTHLY) {
+      return NextResponse.json({ error: 'AI Assistant price not configured — set STRIPE_PRICE_AI_MONTHLY ($200/mo)' }, { status: 500, headers: CORS_HEADERS });
+    }
+
     const { email } = await request.json();
     if (!email || typeof email !== 'string') {
       return NextResponse.json({ error: 'Email is required' }, { status: 400, headers: CORS_HEADERS });

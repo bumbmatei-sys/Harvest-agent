@@ -69,6 +69,9 @@ export async function POST(request: NextRequest) {
 
     // Handle AI Assistant add-on checkout
     if (addOn === 'ai-assistant') {
+      if (!AI_ASSISTANT_MONTHLY) {
+        return NextResponse.json({ error: 'AI Assistant price not configured — set STRIPE_PRICE_AI_MONTHLY ($200/mo)' }, { status: 500 });
+      }
       const tenantDoc = await adminDb.collection('tenants').doc(tenantId).get();
       const tenantData = tenantDoc.data();
       let customerId = tenantData?.stripeCustomerId;
