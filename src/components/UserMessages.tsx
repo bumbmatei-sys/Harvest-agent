@@ -2,11 +2,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ArrowLeft, Send, MessageSquare } from 'lucide-react';
 import {
-  collection, query, where, orderBy, onSnapshot, addDoc, updateDoc, doc,
+  collection, query, where, onSnapshot, addDoc, updateDoc, doc,
   serverTimestamp, limit, Timestamp
 } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { getTenantScope } from '../utils/tenant-scope';
+import { sortByTime } from '../utils/query-helpers';
 
 interface DirectMessage {
   id: string;
@@ -51,14 +52,14 @@ const DmThread: React.FC<{
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // Single-field filter only (dmId); sort client-side to avoid a composite index.
     const q = query(
       collection(db, 'tenants', tenantId, 'dmMessages'),
       where('dmId', '==', dm.id),
-      orderBy('createdAt', 'asc'),
-      limit(200)
+      limit(300)
     );
     return onSnapshot(q, snap => {
-      setMessages(snap.docs.map(d => ({ id: d.id, ...d.data() }) as DmMessage));
+      setMessages(sortByTime(snap.docs.map(d => ({ id: d.id, ...d.data() }) as DmMessage), 'createdAt', 'asc'));
       // Mark unread as read
       snap.docs.forEach(d => {
         const data = d.data();
@@ -190,14 +191,14 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack }) => {
 
   useEffect(() => {
     if (!tenantId || !currentUser) return;
+    // Single-field filter only (participants); sort client-side by lastMessageAt.
     const q = query(
       collection(db, 'tenants', tenantId, 'directMessages'),
       where('participants', 'array-contains', currentUser.uid),
-      orderBy('lastMessageAt', 'desc'),
-      limit(50)
+      limit(100)
     );
     return onSnapshot(q, snap => {
-      setDms(snap.docs.map(d => ({ id: d.id, ...d.data() }) as DirectMessage));
+      setDms(sortByTime(snap.docs.map(d => ({ id: d.id, ...d.data() }) as DirectMessage), 'lastMessageAt', 'desc'));
     });
   }, [tenantId, currentUser]);
 

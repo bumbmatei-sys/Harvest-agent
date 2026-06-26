@@ -12,6 +12,7 @@ import { getTenantId } from '../utils/tenant-scope';
 import { isSuperAdminEmail } from '../utils/super-admins';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { notifyError } from '../utils/notify';
+import { sortByTime } from '../utils/query-helpers';
 
 interface Channel {
   id: string;
@@ -87,14 +88,16 @@ const ChannelThread: React.FC<{
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // Single-field filter only (channelId). Sorting by createdAt happens
+    // client-side so no composite index is required.
     const q = query(
       collection(db, 'tenants', tenantId, 'channelMessages'),
       where('channelId', '==', channel.id),
-      orderBy('createdAt', 'asc'),
-      limit(200)
+      limit(300)
     );
     const unsub = onSnapshot(q, (snap) => {
-      setMessages(snap.docs.map(d => ({ id: d.id, ...d.data() }) as ChannelMessage));
+      const msgs = snap.docs.map(d => ({ id: d.id, ...d.data() }) as ChannelMessage);
+      setMessages(sortByTime(msgs, 'createdAt', 'asc'));
     });
     return unsub;
   }, [channel.id, tenantId]);
@@ -199,14 +202,15 @@ const DmThread: React.FC<{
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // Single-field filter only (dmId); sort client-side to avoid a composite index.
     const q = query(
       collection(db, 'tenants', tenantId, 'dmMessages'),
       where('dmId', '==', dm.id),
-      orderBy('createdAt', 'asc'),
-      limit(200)
+      limit(300)
     );
     const unsub = onSnapshot(q, (snap) => {
-      setMessages(snap.docs.map(d => ({ id: d.id, ...d.data() }) as DmMessage));
+      const msgs = snap.docs.map(d => ({ id: d.id, ...d.data() }) as DmMessage);
+      setMessages(sortByTime(msgs, 'createdAt', 'asc'));
     });
     return unsub;
   }, [dm.id, tenantId]);
@@ -370,14 +374,17 @@ const AdminCommunity: React.FC = () => {
   // Load all DMs
   useEffect(() => {
     if (!tenantId || !currentUser) return;
+    // Single-field filter only (participants); sort client-side by lastMessageAt.
     const q = query(
       collection(db, 'tenants', tenantId, 'directMessages'),
       where('participants', 'array-contains', currentUser.uid),
-      orderBy('lastMessageAt', 'desc'),
-      limit(100)
+      limit(150)
     );
     return onSnapshot(q, snap => {
-      const all = snap.docs.map(d => ({ id: d.id, ...d.data() }) as DirectMessage);
+      const all = sortByTime(
+        snap.docs.map(d => ({ id: d.id, ...d.data() }) as DirectMessage),
+        'lastMessageAt', 'desc'
+      );
       setAdminDms(all.filter(dm =>
         dm.participants.every(p => dm.participantRoles?.[p] === 'admin')
       ));
@@ -391,15 +398,16 @@ const AdminCommunity: React.FC = () => {
   const loadAdmins = useCallback(async () => {
     if (!tenantId) return;
     try {
+      // Single-field filter only (tenantId); role is filtered client-side.
       const q = query(
         collection(db, 'users'),
         where('tenantId', '==', tenantId),
-        where('role', 'in', ['admin', 'church_admin']),
-        limit(50)
+        limit(300)
       );
       const snap = await getDocs(q);
       setAdmins(snap.docs
         .map(d => ({ id: d.id, ...d.data() }) as AdminUser)
+        .filter(a => ['admin', 'church_admin'].includes((a as any).role))
         .filter(a => a.id !== currentUser?.uid)
       );
     } catch (e) { console.error(e); }
@@ -409,14 +417,17 @@ const AdminCommunity: React.FC = () => {
   const loadMembers = useCallback(async () => {
     if (!tenantId) return;
     try {
+      // Single-field filter only (tenantId); role is filtered client-side.
       const q = query(
         collection(db, 'users'),
         where('tenantId', '==', tenantId),
-        where('role', '==', 'user'),
-        limit(100)
+        limit(400)
       );
       const snap = await getDocs(q);
-      setMembers(snap.docs.map(d => ({ id: d.id, ...d.data() }) as AdminUser));
+      setMembers(snap.docs
+        .map(d => ({ id: d.id, ...d.data() }) as AdminUser)
+        .filter(a => (a as any).role === 'user')
+      );
     } catch (e) { console.error(e); }
   }, [tenantId]);
 
