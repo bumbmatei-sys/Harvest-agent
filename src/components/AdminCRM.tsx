@@ -10,6 +10,7 @@ import {
 } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
+import { sortByTime, sortByString } from '../utils/query-helpers';
 import { notifyError } from '../utils/notify';
 import AnalyticsAndRoles, { Permission } from './AnalyticsAndRoles';
 import { useAdminHeader, HeaderActionButton } from './AdminScreenHeader';
@@ -130,6 +131,18 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
   // Onboarding answers — fetched via React Query when a contact is selected
   const { data: onboardingAnswers = null, isLoading: loadingAnswers } = useContactOnboardingAnswers(selected?.email);
 
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const scroller = el.closest('[class*="overflow-y-auto"], [class*="overflow-auto"]') as HTMLElement | null;
+    if (scroller) scroller.scrollTo({ top: 0, left: 0 });
+  }, [view, crmSubView, selected?.id]);
+
+  // Reset scroll position to top whenever the user navigates between CRM views
+  // (list → detail → form, Contacts ↔ Analytics, or selecting a new contact).
+  // The scroll container lives in the parent FocusScreen wrapper, so we walk up
+  // the DOM from the view's root element to find the nearest overflow-y-auto
+  // ancestor and reset it. This is the systematic scroll-reset pattern.
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;

@@ -753,7 +753,7 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
           {/* Sidebar */}
           {sidebarOpen && (
             <div className="w-64 flex-shrink-0 border-r border-gray-100 flex flex-col bg-white overflow-hidden">
-              <div className="p-3 border-b border-gray-100 flex gap-2">
+              <div className="p-3 border-b border-gray-100 flex gap-2 mt-10">
                 <button
                   onClick={() => createDoc()}
                   className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold text-white"

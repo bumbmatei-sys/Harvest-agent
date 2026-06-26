@@ -941,6 +941,7 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
   // required; sort newest-first on the client.
   useEffect(() => {
     if (!tenantId || !currentUser) return;
+    // Single-field filter only (participants); sort client-side by lastMessageAt.
     const q = query(
       collection(db, 'tenants', tenantId, 'directMessages'),
       where('participants', 'array-contains', currentUser.uid),
