@@ -17,9 +17,15 @@ type TimestampLike = Timestamp | { toMillis?: () => number; seconds?: number } |
  * Pending writes (serverTimestamp() not yet resolved) and null sort to the end,
  * so an optimistic just-sent message lands at the bottom of an ascending list.
  */
-export function tsMillis(v: TimestampLike): number {
-  if (v && typeof (v as any).toMillis === 'function') return (v as any).toMillis();
-  if (v && typeof (v as any).seconds === 'number') return (v as any).seconds * 1000;
+export function tsMillis(v: TimestampLike | string | number): number {
+  if (v == null) return Number.MAX_SAFE_INTEGER;
+  if (typeof (v as any).toMillis === 'function') return (v as any).toMillis();
+  if (typeof (v as any).seconds === 'number') return (v as any).seconds * 1000;
+  if (typeof v === 'number') return v;
+  if (typeof v === 'string') {
+    const t = Date.parse(v);
+    return Number.isNaN(t) ? Number.MAX_SAFE_INTEGER : t;
+  }
   return Number.MAX_SAFE_INTEGER;
 }
 

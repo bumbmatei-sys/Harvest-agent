@@ -5,12 +5,13 @@ import {
   MessageSquare, DollarSign, PhoneCall, Calendar, Clock, ChevronRight, MapPin
 } from 'lucide-react';
 import {
-  collection, query, where, orderBy, onSnapshot, addDoc, updateDoc, deleteDoc,
+  collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc,
   doc, limit, serverTimestamp, Timestamp, getDocs
 } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { getTenantScope } from '../utils/tenant-scope';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
+import { sortByTime, sortByString } from '../utils/query-helpers';
 import { notifyError } from '../utils/notify';
 import AnalyticsAndRoles, { Permission } from './AnalyticsAndRoles';
 
@@ -125,11 +126,12 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
     getTenantScope().then(tid => {
       if (cancelled) return;
       setTenantId(tid);
+      // Single-field filter only (tenantId); sort client-side by lastName to avoid a composite index.
       const q = tid
-        ? query(collection(db, 'contacts'), where('tenantId', '==', tid), orderBy('lastName'), limit(300))
-        : query(collection(db, 'contacts'), orderBy('lastName'), limit(300));
+        ? query(collection(db, 'contacts'), where('tenantId', '==', tid), limit(500))
+        : query(collection(db, 'contacts'), limit(500));
       unsub = onSnapshot(q, snap => {
-        setContacts(snap.docs.map(d => ({ id: d.id, ...d.data() }) as Contact));
+        setContacts(sortByString(snap.docs.map(d => ({ id: d.id, ...d.data() }) as Contact), 'lastName', 'asc'));
         setLoading(false);
       }, err => {
         try { handleFirestoreError(err, OperationType.GET, 'contacts'); } catch (e) { console.error(e); }
@@ -141,14 +143,14 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
 
   useEffect(() => {
     if (!selected) return;
+    // Single-field filter only (contactId); sort client-side to avoid a composite index.
     const q = query(
       collection(db, 'contactActivities'),
       where('contactId', '==', selected.id),
-      orderBy('createdAt', 'desc'),
-      limit(100)
+      limit(200)
     );
     const unsub = onSnapshot(q, snap => {
-      setActivities(snap.docs.map(d => ({ id: d.id, ...d.data() }) as ContactActivity));
+      setActivities(sortByTime(snap.docs.map(d => ({ id: d.id, ...d.data() }) as ContactActivity), 'createdAt', 'desc'));
     });
     return unsub;
   }, [selected]);

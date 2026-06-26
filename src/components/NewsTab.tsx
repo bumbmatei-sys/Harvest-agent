@@ -7,6 +7,7 @@ import { Calendar as CalendarIcon, ThumbsUp, Check, ChevronRight, FileText, Tag,
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { getTenantScope } from '../utils/tenant-scope';
 import CampaignWidget from './CampaignWidget';
+import { sortByTime } from '../utils/query-helpers';
 
 interface Comment {
   id: string;
@@ -156,15 +157,16 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle }) => {
       if (cancelled) return;
 
       // Fetch all posts to ensure pinned posts are included, then slice
+      // Single-field filter only (tenantId); sort client-side to avoid a composite index.
       const communityQ = tenantId
-        ? query(collection(db, 'community_posts'), where('tenantId', '==', tenantId), orderBy('createdAt', 'desc'), limit(20))
-        : query(collection(db, 'community_posts'), orderBy('createdAt', 'desc'), limit(20));
+        ? query(collection(db, 'community_posts'), where('tenantId', '==', tenantId), limit(50))
+        : query(collection(db, 'community_posts'), limit(50));
 
       unsubCommunity = onSnapshot(communityQ, (snapshot) => {
-        const postsData = snapshot.docs.map(doc => ({
+        const postsData = sortByTime(snapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
-        })) as CommunityPost[];
+        })) as CommunityPost[], 'createdAt', 'desc');
 
         const sortedPosts = [...postsData].sort((a, b) => {
           if (a.isPinned && !b.isPinned) return -1;
@@ -180,31 +182,31 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle }) => {
       });
 
       // Fetch articles
-      const articlesQ = tenantId
-        ? query(collection(db, 'blog_posts'), where('tenantId', '==', tenantId), where('status', '==', 'published'), orderBy('publishedAt', 'desc'), limit(5))
-        : query(collection(db, 'blog_posts'), where('status', '==', 'published'), orderBy('publishedAt', 'desc'), limit(5));
+      // Single-field filter only (status); tenant filter + sort applied client-side.
+      const articlesQ = query(collection(db, 'blog_posts'), where('status', '==', 'published'), limit(30));
 
       unsubArticles = onSnapshot(articlesQ, (snapshot) => {
-        const articlesData = snapshot.docs.map(doc => ({
+        let articlesData = snapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
         })) as BlogPost[];
-        setArticles(articlesData);
+        if (tenantId) articlesData = articlesData.filter(a => (a as any).tenantId === tenantId);
+        setArticles(sortByTime(articlesData, 'publishedAt', 'desc').slice(0, 5));
       }, (error) => {
         console.error('Failed to load articles:', error);
       });
 
       // Fetch published events from AdminEvents system (tenant-scoped only)
       if (tenantId) {
+        // Single-field filter only (status); sort client-side to avoid a composite index.
         const eventsQ = query(
           collection(db, 'tenants', tenantId, 'events'),
           where('status', '==', 'published'),
-          orderBy('startDate', 'asc'),
-          limit(10)
+          limit(30)
         );
         unsubEvents = onSnapshot(eventsQ, (snap) => {
-          const evs = snap.docs.map(d => ({ id: d.id, ...d.data() })) as AdminEvent[];
-          // Sort: pinned first, then by startDate
+          const evs = sortByTime(snap.docs.map(d => ({ id: d.id, ...d.data() })) as AdminEvent[], 'startDate', 'asc');
+          // Sort: pinned first, then by startDate (already startDate-ordered above)
           const sorted = [...evs].sort((a, b) => {
             if (a.pinned && !b.pinned) return -1;
             if (!a.pinned && b.pinned) return 1;

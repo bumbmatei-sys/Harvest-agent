@@ -1,13 +1,14 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { collection, query, where, orderBy, onSnapshot, addDoc, deleteDoc, doc, getDoc, updateDoc, arrayUnion, arrayRemove, limit } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, addDoc, deleteDoc, doc, getDoc, updateDoc, arrayUnion, arrayRemove, limit } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { ImageUpload } from './ImageUpload';
 import { MessageSquare, BarChart2, Calendar as CalendarIcon, Image as ImageIcon, Send, MoreVertical, ThumbsUp, Check, X } from 'lucide-react';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { getTenantScope } from '../utils/tenant-scope';
 import { sendPushNotification } from '../utils/send-notification';
+import { sortByTime } from '../utils/query-helpers';
 
 
 
@@ -83,14 +84,15 @@ const AdminPosts: React.FC<AdminPostsProps> = ({ userRole, userPermissions }) =>
  let unsubscribe: (() => void) | null = null;
  (async () => {
    const tenantId = await getTenantScope();
+   // Single-field filter only (tenantId); sort client-side to avoid a composite index.
    const q = tenantId
-     ? query(collection(db, 'community_posts'), where('tenantId', '==', tenantId), orderBy('createdAt', 'desc'), limit(50))
-     : query(collection(db, 'community_posts'), orderBy('createdAt', 'desc'), limit(50));
+     ? query(collection(db, 'community_posts'), where('tenantId', '==', tenantId), limit(100))
+     : query(collection(db, 'community_posts'), limit(100));
    unsubscribe = onSnapshot(q, (snapshot) => {
-     const postsData = snapshot.docs.map(doc => ({
+     const postsData = sortByTime(snapshot.docs.map(doc => ({
        id: doc.id,
        ...doc.data()
-     })) as CommunityPost[];
+     })) as CommunityPost[], 'createdAt', 'desc');
 
      const sortedPosts = [...postsData].sort((a, b) => {
        if (a.isPinned && !b.isPinned) return -1;

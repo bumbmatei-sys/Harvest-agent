@@ -205,9 +205,8 @@ export default function AdminRAG() {
  const chunks = await chunkAndEmbed(pasteText, sourceId, title, "text", tenantId);
     
  // Update status to processed
- const q = tenantId
-   ? query(collection(db, 'rag_sources'), where('tenantId', '==', tenantId), where('sourceId', '==', sourceId))
-   : query(collection(db, 'rag_sources'), where('sourceId', '==', sourceId));
+ // Single-field filter only (sourceId is unique); avoids a composite index.
+ const q = query(collection(db, 'rag_sources'), where('sourceId', '==', sourceId));
  const snap = await getDocs(q);
  if (!snap.empty) {
  await updateDoc(snap.docs[0].ref, {
@@ -252,9 +251,8 @@ export default function AdminRAG() {
  const chunks = await chunkAndEmbed(text, sourceId, file.name, type, tenantId);
     
  // Update status to processed
- const q = tenantId
-   ? query(collection(db, 'rag_sources'), where('tenantId', '==', tenantId), where('sourceId', '==', sourceId))
-   : query(collection(db, 'rag_sources'), where('sourceId', '==', sourceId));
+ // Single-field filter only (sourceId is unique); avoids a composite index.
+ const q = query(collection(db, 'rag_sources'), where('sourceId', '==', sourceId));
  const snap = await getDocs(q);
  if (!snap.empty) {
  await updateDoc(snap.docs[0].ref, {
@@ -264,9 +262,8 @@ export default function AdminRAG() {
  }
  } catch (err) {
    // Update status to error
-   const q = tenantId
-     ? query(collection(db, 'rag_sources'), where('tenantId', '==', tenantId), where('sourceId', '==', sourceId))
-     : query(collection(db, 'rag_sources'), where('sourceId', '==', sourceId));
+   // Single-field filter only (sourceId is unique); avoids a composite index.
+   const q = query(collection(db, 'rag_sources'), where('sourceId', '==', sourceId));
  const snap = await getDocs(q);
  if (!snap.empty) {
  await updateDoc(snap.docs[0].ref, {
@@ -306,9 +303,8 @@ export default function AdminRAG() {
    await deleteDoc(doc(db, "rag_sources", deleteTarget.id));
     
    // Delete chunks from Firestore
-   const q = tenantId
-     ? query(collection(db, "rag_chunks"), where("tenantId", "==", tenantId), where("sourceId", "==", deleteTarget.sourceId))
-   : query(collection(db, "rag_chunks"), where("sourceId", "==", deleteTarget.sourceId));
+   // Single-field filter only (sourceId is unique); avoids a composite index.
+   const q = query(collection(db, "rag_chunks"), where("sourceId", "==", deleteTarget.sourceId));
  const snap = await getDocs(q);
  const deletePromises = snap.docs.map(document => deleteDoc(document.ref));
  await Promise.all(deletePromises);

@@ -2,12 +2,13 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, ToggleLeft, ToggleRight, Heart, DollarSign } from 'lucide-react';
 import {
-  collection, query, where, orderBy, onSnapshot, addDoc, updateDoc, deleteDoc, doc, limit, serverTimestamp,
+  collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc, doc, limit, serverTimestamp,
 } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { getTenantScope } from '../utils/tenant-scope';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { notifyError } from '../utils/notify';
+import { sortByNumber } from '../utils/query-helpers';
 
 interface Campaign {
   id: string;
@@ -51,11 +52,12 @@ const AdminFundraising: React.FC = () => {
       const tid = await getTenantScope();
       if (cancelled) return;
       setTenantId(tid);
+      // Single-field filter only (tenantId); sort client-side to avoid a composite index.
       const q = tid
-        ? query(collection(db, 'campaigns'), where('tenantId', '==', tid), orderBy('isActive', 'desc'), limit(50))
-        : query(collection(db, 'campaigns'), orderBy('isActive', 'desc'), limit(50));
+        ? query(collection(db, 'campaigns'), where('tenantId', '==', tid), limit(100))
+        : query(collection(db, 'campaigns'), limit(100));
       unsub = onSnapshot(q, (snap) => {
-        setCampaigns(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Campaign));
+        setCampaigns(sortByNumber(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Campaign), 'isActive', 'desc'));
         setLoading(false);
       }, (err) => {
         try { handleFirestoreError(err, OperationType.GET, 'campaigns'); } catch (e) { console.error(e); }

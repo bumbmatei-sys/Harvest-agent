@@ -1,13 +1,14 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
+import { collection, query, where, getDocs, limit } from 'firebase/firestore';
 import { db } from '../firebase';
 import { getPlaceholderImage } from '@/utils/placeholder';
 import { BookOpen, Clock, ChevronRight } from 'lucide-react';
 import { Course } from './AdminCourseEditor';
 import { getTenantScope } from '../utils/tenant-scope';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
+import { sortByTime } from '../utils/query-helpers';
 
 
 interface CoursesTabProps {
@@ -22,15 +23,15 @@ const CoursesTab: React.FC<CoursesTabProps> = ({ onOpenCourse }) => {
  const fetchCourses = async () => {
  try {
  const tenantId = await getTenantScope();
- const q = tenantId
-   ? query(collection(db, 'courses'), where('status', '==', 'published'), where('tenantId', '==', tenantId), orderBy('createdAt', 'desc'), limit(50))
-   : query(collection(db, 'courses'), where('status', '==', 'published'), orderBy('createdAt', 'desc'), limit(50));
+ // Single-field filter only (status); tenant filter + sort applied client-side.
+ const q = query(collection(db, 'courses'), where('status', '==', 'published'), limit(100));
  const querySnapshot = await getDocs(q);
- const fetchedCourses: Course[] = [];
+ let fetchedCourses: Course[] = [];
  querySnapshot.forEach((doc) => {
  fetchedCourses.push({ id: doc.id, ...doc.data() } as Course);
  });
- setCourses(fetchedCourses);
+ if (tenantId) fetchedCourses = fetchedCourses.filter(c => (c as any).tenantId === tenantId);
+ setCourses(sortByTime(fetchedCourses, 'createdAt', 'desc'));
  } catch (error) {
  handleFirestoreError(error, OperationType.GET, `courses`);
  } finally {

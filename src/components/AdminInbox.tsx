@@ -1,10 +1,11 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { db, auth } from '../firebase';
-import { collection, query, where, orderBy, onSnapshot, doc, getDoc, updateDoc, deleteDoc, limit } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc, getDoc, updateDoc, deleteDoc, limit } from 'firebase/firestore';
 import { Mail, MapPin, Lightbulb, HeartHandshake, Church, CheckCircle, Trash2, Clock, ChevronDown, ChevronUp, Inbox } from 'lucide-react';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { getTenantScope } from '../utils/tenant-scope';
+import { sortByTime } from '../utils/query-helpers';
 
 
 
@@ -20,16 +21,17 @@ const AdminInbox = () => {
 
  (async () => {
    const tenantId = await getTenantScope();
+   // Single-field filter only (tenantId); sort client-side to avoid a composite index.
    const q = tenantId
-     ? query(collection(db, 'submissions'), where('tenantId', '==', tenantId), orderBy('createdAt', 'desc'), limit(50))
-     : query(collection(db, 'submissions'), orderBy('createdAt', 'desc'), limit(50));
+     ? query(collection(db, 'submissions'), where('tenantId', '==', tenantId), limit(200))
+     : query(collection(db, 'submissions'), limit(200));
 
    unsubscribe = onSnapshot(q, (snapshot) => {
      const subs: any[] = [];
      snapshot.forEach((doc) => {
        subs.push({ id: doc.id, ...doc.data() });
      });
-     setSubmissions(subs);
+     setSubmissions(sortByTime(subs, 'createdAt', 'desc'));
      setLoading(false);
    }, (error) => {
      try { handleFirestoreError(error, OperationType.GET, `submissions`); } catch (e) { console.error(e); }

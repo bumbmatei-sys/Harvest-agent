@@ -5,7 +5,7 @@ import {
   PanelLeft, X, ArrowLeft, MoreVertical, Edit2, Move, Pin
 } from 'lucide-react';
 import {
-  collection, query, where, orderBy, onSnapshot, addDoc, updateDoc, deleteDoc,
+  collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc,
   doc, limit, serverTimestamp, Timestamp
 } from 'firebase/firestore';
 import { db, auth } from '../firebase';
@@ -14,6 +14,7 @@ import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { notifyError } from '../utils/notify';
 import RichTextEditor from './RichTextEditor';
 import FocusScreen from './FocusScreen';
+import { sortByTime, sortByNumber } from '../utils/query-helpers';
 
 interface DocFolder {
   id: string;
@@ -265,22 +266,24 @@ const AdminDocs: React.FC = () => {
       if (cancelled) return;
       setTenantId(tid);
       // Docs
+      // Single-field filter only (tenantId); sort client-side to avoid a composite index.
       const qDocs = tid
-        ? query(collection(db, 'docs'), where('tenantId', '==', tid), orderBy('updatedAt', 'desc'), limit(200))
-        : query(collection(db, 'docs'), orderBy('updatedAt', 'desc'), limit(200));
+        ? query(collection(db, 'docs'), where('tenantId', '==', tid), limit(300))
+        : query(collection(db, 'docs'), limit(300));
       unsubs.push(onSnapshot(qDocs, snap => {
-        setDocs(snap.docs.map(d => ({ id: d.id, ...d.data() }) as Doc));
+        setDocs(sortByTime(snap.docs.map(d => ({ id: d.id, ...d.data() }) as Doc), 'updatedAt', 'desc'));
         setLoading(false);
       }, err => {
         try { handleFirestoreError(err, OperationType.GET, 'docs'); } catch (e) { console.error(e); }
         setLoading(false);
       }));
       // Folders
+      // Single-field filter only (tenantId); sort client-side to avoid a composite index.
       const qFolders = tid
-        ? query(collection(db, 'docFolders'), where('tenantId', '==', tid), orderBy('order'), limit(100))
-        : query(collection(db, 'docFolders'), orderBy('order'), limit(100));
+        ? query(collection(db, 'docFolders'), where('tenantId', '==', tid), limit(200))
+        : query(collection(db, 'docFolders'), limit(200));
       unsubs.push(onSnapshot(qFolders, snap => {
-        setFolders(snap.docs.map(d => ({ id: d.id, ...d.data() }) as DocFolder));
+        setFolders(sortByNumber(snap.docs.map(d => ({ id: d.id, ...d.data() }) as DocFolder), 'order', 'asc'));
       }));
     });
     return () => { cancelled = true; unsubs.forEach(u => u()); };
