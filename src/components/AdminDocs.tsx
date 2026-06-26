@@ -18,6 +18,7 @@ import { exportToPDF, exportToDOCX, exportToMarkdown } from '../utils/doc-export
 import { markdownToHtml, titleFromMarkdown } from '../utils/markdown-import';
 import RichTextEditor from './RichTextEditor';
 import FocusScreen from './FocusScreen';
+import { useAdminHeader, HeaderActionButton } from './AdminScreenHeader';
 
 interface DocFolder {
   id: string;
@@ -349,7 +350,15 @@ const FolderNode: React.FC<{
 
 // ─── Main AdminDocs ──────────────────────────────────────────────
 
-const AdminDocs: React.FC = () => {
+interface AdminDocsProps {
+  /** Deep-link: open this doc on mount (e.g. from a chat attachment card). */
+  initialDocId?: string;
+  /** Called once the deep-linked doc has been opened, to clear the URL param. */
+  onItemConsumed?: () => void;
+}
+
+const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) => {
+  const { setHeaderAction } = useAdminHeader();
   const [docs, setDocs] = useState<Doc[]>([]);
   const [folders, setFolders] = useState<DocFolder[]>([]);
   const [sharedDocs, setSharedDocs] = useState<Doc[]>([]);
@@ -421,6 +430,20 @@ const AdminDocs: React.FC = () => {
     setSaveStatus('idle');
     setFocusMode(true);
   };
+
+  // Deep-link: open a specific doc when navigated to /admin/docs/:id
+  // (e.g. tapping "Open Doc" on a chat attachment card).
+  useEffect(() => {
+    if (!initialDocId) return;
+    const d = docs.find(x => x.id === initialDocId) || sharedDocs.find(x => x.id === initialDocId);
+    if (d) { openDocument(d); onItemConsumed?.(); }
+  }, [initialDocId, docs, sharedDocs]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Publish the primary "New Doc" action into the shared header.
+  useEffect(() => {
+    setHeaderAction(<HeaderActionButton label="New Doc" onClick={() => createDoc()} />);
+    return () => setHeaderAction(null);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const saveDoc = useCallback(async (id: string, title: string, content: string) => {
     setSaveStatus('saving');
@@ -876,40 +899,27 @@ const AdminDocs: React.FC = () => {
 
   return (
     <div className="max-w-4xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-2">
-          <FileText size={22} style={{ color: 'var(--brand-color, #d4a017)' }} />
-          <h2 className="text-xl font-bold text-gray-900">Docs</h2>
-        </div>
-        <div className="flex gap-2">
-          <input
-            ref={importInputRef}
-            type="file"
-            accept=".md,.markdown,text/markdown,text/plain"
-            onChange={importMarkdownFile}
-            className="hidden"
-          />
-          <button
-            onClick={() => importInputRef.current?.click()}
-            className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50"
-            title="Import a .md file"
-          >
-            <Upload size={15} /> Import
-          </button>
-          <button
-            onClick={() => setShowNewFolder(true)}
-            className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50"
-          >
-            <FolderOpen size={15} /> New Folder
-          </button>
-          <button
-            onClick={() => createDoc()}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white"
-            style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}
-          >
-            <Plus size={16} /> New Doc
-          </button>
-        </div>
+      <div className="flex items-center justify-end gap-2 mb-6">
+        <input
+          ref={importInputRef}
+          type="file"
+          accept=".md,.markdown,text/markdown,text/plain"
+          onChange={importMarkdownFile}
+          className="hidden"
+        />
+        <button
+          onClick={() => importInputRef.current?.click()}
+          className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50"
+          title="Import a .md file"
+        >
+          <Upload size={15} /> Import
+        </button>
+        <button
+          onClick={() => setShowNewFolder(true)}
+          className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50"
+        >
+          <FolderOpen size={15} /> New Folder
+        </button>
       </div>
 
       {folders.length > 0 && (

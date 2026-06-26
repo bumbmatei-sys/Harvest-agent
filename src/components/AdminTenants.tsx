@@ -6,6 +6,7 @@ import { Building2, Plus, Search, Edit2, Trash2, Pause, Play, X, Check } from 'l
 import { Tenant, TenantPlan, TenantStatus } from '../types/tenant.types';
 import { createTenant, updateTenant, isSubdomainAvailable } from '../utils/tenant.utils';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
+import { useAdminHeader, HeaderActionButton } from './AdminScreenHeader';
 
 const PLAN_LABELS: Record<TenantPlan, string> = {
   plus: 'Plus',
@@ -56,6 +57,7 @@ const AdminTenants: React.FC = () => {
   const [error, setError] = useState('');
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState('');
+  const { setHeaderAction } = useAdminHeader();
 
   useEffect(() => {
     const q = collection(db, 'tenants');
@@ -81,6 +83,11 @@ const AdminTenants: React.FC = () => {
     setError('');
     setShowForm(true);
   };
+
+  useEffect(() => {
+    setHeaderAction(<HeaderActionButton label="Add Tenant" onClick={openCreate} />);
+    return () => setHeaderAction(null);
+  }, [setHeaderAction]);
 
   const openEdit = (tenant: Tenant) => {
     setForm({
@@ -172,21 +179,6 @@ const AdminTenants: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Tenants</h2>
-          <p className="text-sm text-gray-500 mt-1">Manage church instances and their subscriptions.</p>
-        </div>
-        <button
-          onClick={openCreate}
-          className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#d4a017] text-white font-semibold rounded-xl hover:bg-yellow-600 transition-colors shadow-sm"
-        >
-          <Plus size={18} />
-          New Tenant
-        </button>
-      </div>
-
       {/* Search */}
       <div className="relative">
         <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />

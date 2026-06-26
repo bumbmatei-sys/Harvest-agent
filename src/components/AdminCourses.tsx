@@ -4,6 +4,7 @@ import { Plus, Search, Edit2, Trash2, BookOpen } from 'lucide-react';
 import { collection, onSnapshot, query, where, deleteDoc, doc, getDoc, limit } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import AdminCourseEditor, { Course } from './AdminCourseEditor';
+import { useAdminHeader, HeaderActionButton } from './AdminScreenHeader';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { getTenantScope } from '../utils/tenant-scope';
 import { sortByTime } from '../utils/query-helpers';
@@ -67,6 +68,12 @@ const AdminCourses: React.FC = () => {
  setIsEditorOpen(true);
  };
 
+ const { setHeaderAction } = useAdminHeader();
+ useEffect(() => {
+   setHeaderAction(<HeaderActionButton label="New Course" onClick={() => handleNewCourse()} />);
+   return () => setHeaderAction(null);
+ }, [setHeaderAction]);
+
  const handleEditCourse = (course: Course) => {
  setEditingCourse(course);
  setIsEditorOpen(true);
@@ -104,20 +111,6 @@ const AdminCourses: React.FC = () => {
  onClose={() => setIsEditorOpen(false)} 
  />
  )}
- 
- <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
- <div>
- <h2 className="text-2xl font-bold text-gray-900 mb-1">Courses</h2>
- <p className="text-sm text-gray-500 ">Manage your educational courses and content.</p>
- </div>
- <button 
- onClick={handleNewCourse}
- className="bg-[#d4a017] hover:bg-[#b8860b] text-white px-4 py-2.5 rounded-xl font-medium flex items-center gap-2 transition-colors shadow-sm w-full sm:w-auto justify-center"
- >
- <Plus size={18} />
- <span>New Course</span>
- </button>
- </div>
 
  <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
  {/* Filters Bar */}

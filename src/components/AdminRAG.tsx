@@ -340,11 +340,8 @@ export default function AdminRAG() {
 
  {deleteTarget && <DeleteModal source={deleteTarget} onConfirm={confirmDelete} onClose={()=>setDeleteTarget(null)} />}
 
- {/* Top bar */}
- <div style={s.topBar}>
- <div style={{ display:"flex", alignItems:"center", flexShrink: 1, minWidth: 0, marginRight: 10 }}>
- <h1 style={{ fontSize:18, fontWeight:800, color:TEXT, letterSpacing:"-0.3px", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>AI Knowledge Base</h1>
- </div>
+ {/* Stats bar */}
+ <div style={{ ...s.topBar, justifyContent:"flex-end" }}>
  {/* Stats */}
  <div style={{ display:"flex", gap:16, alignItems:"center", flexShrink: 0 }}>
  <div style={{ textAlign:"right" }}>

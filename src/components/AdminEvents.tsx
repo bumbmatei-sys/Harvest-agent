@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Plus, Edit2, Trash2, CalendarCheck, Users, MapPin, Clock, DollarSign,
   Check, Download, Search, ChevronRight, Globe, X, Pin
@@ -13,7 +13,7 @@ import { getTenantScope } from '../utils/tenant-scope';
 import { sortByTime } from '../utils/query-helpers';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { notifyError } from '../utils/notify';
-import { FocusScreenBackContext } from './FocusScreen';
+import { useAdminHeader, HeaderActionButton } from './AdminScreenHeader';
 
 interface Event {
   id: string;
@@ -91,6 +91,7 @@ const emptyForm = {
 };
 
 const AdminEvents: React.FC = () => {
+  const { setHeaderAction, setHeaderOverride } = useAdminHeader();
   const [tenantId, setTenantId] = useState<string | null>(null);
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
@@ -105,20 +106,29 @@ const AdminEvents: React.FC = () => {
   const [regSearch, setRegSearch] = useState('');
   const [checkingIn, setCheckingIn] = useState<string | null>(null);
 
-  // Wire the parent FocusScreen's back button to internal navigation:
-  // pressing back from an edit/create or detail sub-view returns to
-  // the event list instead of jumping all the way out of Events.
-  const { registerBack } = useContext(FocusScreenBackContext);
+  // Drive the shared header. In a sub-view (create/edit/detail) the back chevron
+  // returns to the event list; on the list it shows the "Create Event" action.
   useEffect(() => {
-    registerBack(() => {
-      if (view !== 'list') {
-        setView('list');
-        setSelected(null);
-        return true; // consumed — handled internally
-      }
-      return false; // let FocusScreen exit to dashboard
-    });
-  }, [view, registerBack]);
+    if (view === 'create' || view === 'edit') {
+      setHeaderOverride({
+        title: view === 'edit' ? 'Edit Event' : 'Create Event',
+        onBack: () => { setView('list'); setSelected(null); },
+      });
+    } else if (view === 'detail' && selected) {
+      setHeaderOverride({
+        title: selected.title || 'Event',
+        onBack: () => { setView('list'); setSelected(null); },
+      });
+    } else {
+      setHeaderOverride(null);
+    }
+    return () => setHeaderOverride(null);
+  }, [view, selected, setHeaderOverride]);
+
+  useEffect(() => {
+    setHeaderAction(<HeaderActionButton label="Create Event" onClick={() => { setSelected(null); setForm(emptyForm); setView('create'); }} />);
+    return () => setHeaderAction(null);
+  }, [setHeaderAction]);
 
   useEffect(() => {
     let unsub: (() => void) | null = null;
@@ -303,7 +313,6 @@ const AdminEvents: React.FC = () => {
   if (view === 'create' || view === 'edit') {
     return (
       <div className="max-w-2xl mx-auto pb-32">
-        <h2 className="text-xl font-bold text-gray-900 mb-6">{view === 'edit' ? 'Edit Event' : 'Create Event'}</h2>
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-5">
           <div className="grid grid-cols-1 gap-5">
             <div>
@@ -494,18 +503,6 @@ const AdminEvents: React.FC = () => {
   // ── List View ──
   return (
     <div className="max-w-3xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-2">
-          <CalendarCheck size={22} style={{ color: 'var(--brand-color, #d4a017)' }} />
-          <h2 className="text-xl font-bold text-gray-900">Events</h2>
-        </div>
-        <button onClick={openCreate}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white"
-          style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}>
-          <Plus size={16} /> Create Event
-        </button>
-      </div>
-
       {events.length === 0 ? (
         <div className="text-center py-16 text-gray-400">
           <CalendarCheck size={40} className="mx-auto mb-3 opacity-30" />

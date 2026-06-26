@@ -4,6 +4,7 @@ import { db, auth } from "../firebase";
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { notifyError } from '../utils/notify';
 import { getTenantScope, SUPER_ADMIN_EMAIL } from '../utils/tenant-scope';
+import { useAdminHeader, HeaderActionButton } from './AdminScreenHeader';
 
 
 
@@ -699,6 +700,14 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
   const openNewAdmin = (): void => { setEditingAdmin(null); setIsNewAdmin(true); setShowEditor(true); };
   const openEditAdmin = (admin: AdminUser): void => { setEditingAdmin(admin); setIsNewAdmin(false); setShowEditor(true); };
 
+  const { setHeaderAction } = useAdminHeader();
+
+  useEffect(() => {
+    if (mode !== "roles") { setHeaderAction(null); return; }
+    setHeaderAction(<HeaderActionButton label="Add Admin" onClick={openNewAdmin} />);
+    return () => setHeaderAction(null);
+  }, [setHeaderAction]);
+
   return (
     <div style={pageStyle}>
       <style>{`
@@ -871,8 +880,6 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
                   <strong>Admin Management.</strong> You can promote users and configure their permissions. Sections a limited admin has no access to are hidden from their dashboard entirely.
                 </div>
               </div>
-
-              <button onClick={openNewAdmin} style={s.newBtn}>+ Add Admin</button>
 
               {admins.map((admin) => {
                 const isSuperAdmin = admin.role === "super_admin";

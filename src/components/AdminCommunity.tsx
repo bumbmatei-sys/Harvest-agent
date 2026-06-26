@@ -1,19 +1,81 @@
 "use client";
-import React, { useState, useEffect, useRef, useCallback, useContext, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   Hash, MessageSquare, Plus, Send, Users, X, Search, ChevronRight, Megaphone, Paperclip, UserPlus
 } from 'lucide-react';
 import {
-  collection, query, where, orderBy, onSnapshot, addDoc, updateDoc, doc,
-  serverTimestamp, getDocs, limit, Timestamp, arrayUnion, arrayRemove
+  collection, query, where, orderBy, onSnapshot, addDoc, updateDoc, doc, getDoc,
+  serverTimestamp, getDocs, limit, Timestamp, arrayUnion, arrayRemove,
+  type QueryDocumentSnapshot
 } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { getTenantId, getTenantIdFromHost, PLATFORM_TENANT_ID } from '../utils/tenant-scope';
 import { isSuperAdminEmail } from '../utils/super-admins';
-import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { notifyError } from '../utils/notify';
 import { sortByTime } from '../utils/query-helpers';
-import { FocusScreenBackContext } from './FocusScreen';
+import { useAdminHeader } from './AdminScreenHeader';
+
+/**
+ * Fetch documents in a flat collection scoped by a `tenantId` field, using only
+ * single-field equality (no composite index). For the platform tenant viewed by
+ * a super admin, also pull in legacy records whose `tenantId` is null and merge
+ * them (deduped) — this is why Harvest-tenant data appears empty otherwise.
+ */
+async function dualTenantDocs(
+  collName: string,
+  tenantId: string,
+  includeNull: boolean,
+  max: number,
+): Promise<QueryDocumentSnapshot[]> {
+  const primary = await getDocs(query(collection(db, collName), where('tenantId', '==', tenantId), limit(max)));
+  if (!includeNull) return primary.docs;
+  const legacy = await getDocs(query(collection(db, collName), where('tenantId', '==', null), limit(max)));
+  const seen = new Set(primary.docs.map(d => d.id));
+  return [...primary.docs, ...legacy.docs.filter(d => !seen.has(d.id))];
+}
+
+/** Avatar initials from a display name: first letter of first + last word. */
+function initialsFromName(name?: string): string {
+  if (!name || !name.trim()) return '?';
+  const parts = name.trim().split(/\s+/);
+  const first = parts[0]?.[0] ?? '';
+  const last = parts.length > 1 ? parts[parts.length - 1][0] : '';
+  return (first + last).toUpperCase() || '?';
+}
+
+// Session cache of sender photo URLs, keyed by uid (fetched once per uid).
+const senderPhotoCache = new Map<string, string | null>();
+
+/**
+ * Message avatar — shows the sender's Firestore photoURL as a circular image, or
+ * gold initials when there is no photo. The sender doc is fetched once per uid
+ * and cached for the session.
+ */
+const MessageAvatar: React.FC<{ senderId: string; senderName: string; bg?: string }> = ({ senderId, senderName, bg = '#B8962E' }) => {
+  const [photoURL, setPhotoURL] = useState<string | null>(() => senderPhotoCache.get(senderId) ?? null);
+
+  useEffect(() => {
+    if (senderPhotoCache.has(senderId)) { setPhotoURL(senderPhotoCache.get(senderId) ?? null); return; }
+    let cancelled = false;
+    getDoc(doc(db, 'users', senderId))
+      .then(snap => {
+        const url = (snap.exists() ? (snap.data().photoURL as string | undefined) : undefined) || null;
+        senderPhotoCache.set(senderId, url);
+        if (!cancelled) setPhotoURL(url);
+      })
+      .catch(() => { senderPhotoCache.set(senderId, null); });
+    return () => { cancelled = true; };
+  }, [senderId]);
+
+  if (photoURL) {
+    return <img src={photoURL} alt={senderName} className="w-8 h-8 rounded-full object-cover flex-shrink-0" />;
+  }
+  return (
+    <div className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold text-white" style={{ backgroundColor: bg }}>
+      {initialsFromName(senderName)}
+    </div>
+  );
+};
 
 interface MessageAttachment {
   type: 'doc' | 'contact' | 'campaign';
@@ -103,7 +165,7 @@ const RoleBadge: React.FC<{ role?: string }> = ({ role }) => {
 
 // ─── Attachment Card ─────────────────────────────────────────────────────────
 
-const AttachmentCard: React.FC<{ attachment: MessageAttachment }> = ({ attachment }) => {
+const AttachmentCard: React.FC<{ attachment: MessageAttachment; onOpen?: () => void }> = ({ attachment, onOpen }) => {
   const icon = attachment.type === 'doc' ? '📄' : attachment.type === 'contact' ? '👤' : '🎯';
   const label = attachment.type === 'doc' ? 'Open Doc' : attachment.type === 'contact' ? 'View Contact' : 'View Campaign';
   return (
@@ -117,7 +179,12 @@ const AttachmentCard: React.FC<{ attachment: MessageAttachment }> = ({ attachmen
       </div>
       <div className="px-3 pb-3">
         <div className="h-px bg-gray-100 mb-2" />
-        <button className="w-full text-[11px] font-bold py-1.5 rounded-lg text-white" style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}>
+        <button
+          onClick={onOpen}
+          disabled={!onOpen}
+          className="w-full text-[11px] font-bold py-1.5 rounded-lg text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+          style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}
+        >
           {label}
         </button>
       </div>
@@ -129,10 +196,11 @@ const AttachmentCard: React.FC<{ attachment: MessageAttachment }> = ({ attachmen
 
 const AttachPicker: React.FC<{
   tenantId: string;
+  includeNull: boolean;
   selected: MessageAttachment[];
   onToggle: (a: MessageAttachment) => void;
   onClose: () => void;
-}> = ({ tenantId, selected, onToggle, onClose }) => {
+}> = ({ tenantId, includeNull, selected, onToggle, onClose }) => {
   const [tab, setTab] = useState<AttachTab>('docs');
   const [search, setSearch] = useState('');
   const [items, setItems] = useState<MessageAttachment[]>([]);
@@ -145,18 +213,20 @@ const AttachPicker: React.FC<{
     let cancelled = false;
     // Records live in flat collections scoped by a `tenantId` field (matching
     // AdminDocs / AdminCRM / AdminFundraising) — NOT tenant subcollections.
-    // Query by equality only so no composite index is required.
+    // Query by equality only so no composite index is required. For the platform
+    // tenant under a super admin, legacy null-tenant records are merged in too.
+    console.log('[AttachPicker] currentTenantId:', tenantId, 'includeNull:', includeNull, 'tab:', tab);
     const run = async () => {
       try {
         if (tab === 'docs') {
-          const [docsSnap, foldersSnap] = await Promise.all([
-            getDocs(query(collection(db, 'docs'), where('tenantId', '==', tenantId), limit(50))),
-            getDocs(query(collection(db, 'docFolders'), where('tenantId', '==', tenantId), limit(100))),
+          const [docsDocs, foldersDocs] = await Promise.all([
+            dualTenantDocs('docs', tenantId, includeNull, 50),
+            dualTenantDocs('docFolders', tenantId, includeNull, 100),
           ]);
           if (cancelled) return;
           const folderNames = new Map<string, string>();
-          foldersSnap.docs.forEach(f => folderNames.set(f.id, (f.data().name as string) || 'Folder'));
-          const rows = docsSnap.docs.map(d => {
+          foldersDocs.forEach(f => folderNames.set(f.id, (f.data().name as string) || 'Folder'));
+          const rows = docsDocs.map(d => {
             const data = d.data();
             const folder = data.folderId ? folderNames.get(data.folderId) : null;
             const updated = (data.updatedAt as Timestamp | undefined)?.toDate?.();
@@ -166,10 +236,10 @@ const AttachPicker: React.FC<{
           rows.sort((a, b) => b._sort - a._sort);
           setItems(rows.map(({ _sort, ...r }) => r));
         } else if (tab === 'contacts') {
-          const snap = await getDocs(query(collection(db, 'contacts'), where('tenantId', '==', tenantId), limit(100)));
+          const contactDocs = await dualTenantDocs('contacts', tenantId, includeNull, 100);
           if (cancelled) return;
           const typeLabel: Record<string, string> = { donor: 'Donor', member: 'Member', both: 'Donor & Member' };
-          setItems(snap.docs.map(d => {
+          setItems(contactDocs.map(d => {
             const data = d.data();
             const name = `${data.firstName || ''} ${data.lastName || ''}`.trim() || 'Unknown';
             const badge = typeLabel[data.type as string] || 'Contact';
@@ -177,9 +247,9 @@ const AttachPicker: React.FC<{
             return { type: 'contact' as const, id: d.id, title: name, subtitle };
           }));
         } else {
-          const snap = await getDocs(query(collection(db, 'campaigns'), where('tenantId', '==', tenantId), limit(50)));
+          const campaignDocs = await dualTenantDocs('campaigns', tenantId, includeNull, 50);
           if (cancelled) return;
-          setItems(snap.docs.map(d => {
+          setItems(campaignDocs.map(d => {
             const data = d.data();
             const raised = (data.raised as number) || 0;
             const goal = (data.goal as number) || 0;
@@ -201,7 +271,7 @@ const AttachPicker: React.FC<{
     };
     run();
     return () => { cancelled = true; };
-  }, [tab, tenantId]);
+  }, [tab, tenantId, includeNull]);
 
   const emptyLabel = tab === 'docs' ? 'No docs yet' : tab === 'contacts' ? 'No contacts yet' : 'No campaigns yet';
 
@@ -294,9 +364,10 @@ const AttachPicker: React.FC<{
 
 const ChannelMembersSheet: React.FC<{
   tenantId: string;
+  includeNull: boolean;
   channelId: string;
   onClose: () => void;
-}> = ({ tenantId, channelId, onClose }) => {
+}> = ({ tenantId, includeNull, channelId, onClose }) => {
   const [members, setMembers] = useState<string[]>([]);
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [search, setSearch] = useState('');
@@ -309,18 +380,20 @@ const ChannelMembersSheet: React.FC<{
     }, e => notifyError('Failed to load channel members', e));
   }, [tenantId, channelId]);
 
-  // Tenant users (equality-only query — no composite index needed).
+  // Tenant users (equality-only query — no composite index needed). For the
+  // platform tenant under a super admin, also include legacy null-tenant users.
   useEffect(() => {
     let cancelled = false;
-    getDocs(query(collection(db, 'users'), where('tenantId', '==', tenantId), limit(200)))
-      .then(snap => {
+    console.log('[ChannelMembersSheet] currentTenantId:', tenantId, 'includeNull:', includeNull);
+    dualTenantDocs('users', tenantId, includeNull, 200)
+      .then(docs => {
         if (cancelled) return;
-        setUsers(snap.docs.map(d => ({ id: d.id, ...d.data() }) as AdminUser));
+        setUsers(docs.map(d => ({ id: d.id, ...d.data() }) as AdminUser));
         setLoading(false);
       })
       .catch(e => { if (!cancelled) { setLoading(false); notifyError('Failed to load users', e); } });
     return () => { cancelled = true; };
-  }, [tenantId]);
+  }, [tenantId, includeNull]);
 
   const channelRef = doc(db, 'tenants', tenantId, 'channels', channelId);
   const addMember = async (uid: string) => {
@@ -416,14 +489,15 @@ const ChannelMembersSheet: React.FC<{
 const ChannelThread: React.FC<{
   channel: Channel;
   tenantId: string;
+  includeNull: boolean;
   currentUser: { uid: string; name: string };
-}> = ({ channel, tenantId, currentUser }) => {
+  onOpenAttachment?: (type: MessageAttachment['type'], id: string) => void;
+}> = ({ channel, tenantId, includeNull, currentUser, onOpenAttachment }) => {
   const [messages, setMessages] = useState<ChannelMessage[]>([]);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const [attachments, setAttachments] = useState<MessageAttachment[]>([]);
   const [showPicker, setShowPicker] = useState(false);
-  const [showMembers, setShowMembers] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -478,21 +552,6 @@ const ChannelThread: React.FC<{
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 bg-white flex-shrink-0">
-        <Hash size={18} style={{ color: 'var(--brand-color, #d4a017)' }} className="flex-shrink-0" />
-        <div className="flex-1 min-w-0">
-          <p className="font-bold text-gray-900 text-sm truncate">{channel.name}</p>
-          {channel.description && <p className="text-xs text-gray-400 truncate">{channel.description}</p>}
-        </div>
-        <button
-          onClick={() => setShowMembers(true)}
-          className="p-1.5 rounded-lg hover:bg-gray-100 flex-shrink-0"
-          aria-label="Channel members"
-        >
-          <Users size={20} style={{ color: '#B8962E' }} />
-        </button>
-      </div>
-
       <div className="flex-1 min-h-0 overflow-y-auto px-4 pt-4 pb-4 space-y-3">
         {messages.length === 0 && (
           <div className="text-center py-12 text-gray-400">
@@ -502,10 +561,7 @@ const ChannelThread: React.FC<{
         )}
         {messages.map(m => (
           <div key={m.id} className="flex gap-3">
-            <div className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold text-white"
-              style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}>
-              {m.senderName.charAt(0).toUpperCase()}
-            </div>
+            <MessageAvatar senderId={m.senderId} senderName={m.senderName} />
             <div>
               <div className="flex items-baseline gap-2 mb-0.5">
                 <span className="text-sm font-semibold text-gray-900">{m.senderName}</span>
@@ -517,7 +573,9 @@ const ChannelThread: React.FC<{
                   {m.content}
                 </p>
               )}
-              {m.attachments?.map((a, i) => <AttachmentCard key={i} attachment={a} />)}
+              {m.attachments?.map((a, i) => (
+                <AttachmentCard key={i} attachment={a} onOpen={onOpenAttachment ? () => onOpenAttachment(a.type, a.id) : undefined} />
+              ))}
             </div>
           </div>
         ))}
@@ -566,16 +624,10 @@ const ChannelThread: React.FC<{
       {showPicker && (
         <AttachPicker
           tenantId={tenantId}
+          includeNull={includeNull}
           selected={attachments}
           onToggle={toggleAttachment}
           onClose={() => setShowPicker(false)}
-        />
-      )}
-      {showMembers && (
-        <ChannelMembersSheet
-          tenantId={tenantId}
-          channelId={channel.id}
-          onClose={() => setShowMembers(false)}
         />
       )}
     </div>
@@ -587,9 +639,11 @@ const ChannelThread: React.FC<{
 const DmThread: React.FC<{
   dm: DirectMessage;
   tenantId: string;
+  includeNull: boolean;
   currentUser: { uid: string; name: string };
   otherName: string;
-}> = ({ dm, tenantId, currentUser, otherName }) => {
+  onOpenAttachment?: (type: MessageAttachment['type'], id: string) => void;
+}> = ({ dm, tenantId, includeNull, currentUser, otherName, onOpenAttachment }) => {
   const [messages, setMessages] = useState<DmMessage[]>([]);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
@@ -648,14 +702,6 @@ const DmThread: React.FC<{
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 bg-white flex-shrink-0">
-        <div className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold text-white"
-          style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}>
-          {otherName.charAt(0).toUpperCase()}
-        </div>
-        <p className="font-bold text-gray-900 text-sm">{otherName}</p>
-      </div>
-
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {messages.length === 0 && (
           <div className="text-center py-12 text-gray-400">
@@ -667,10 +713,7 @@ const DmThread: React.FC<{
           const isMine = m.senderId === currentUser.uid;
           return (
             <div key={m.id} className={`flex gap-3 ${isMine ? 'flex-row-reverse' : ''}`}>
-              <div className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold text-white"
-                style={{ backgroundColor: isMine ? 'var(--brand-color, #d4a017)' : '#6b7280' }}>
-                {m.senderName.charAt(0).toUpperCase()}
-              </div>
+              <MessageAvatar senderId={m.senderId} senderName={m.senderName} bg={isMine ? '#B8962E' : '#6b7280'} />
               <div className={`max-w-xs lg:max-w-md ${isMine ? 'items-end' : 'items-start'} flex flex-col`}>
                 <div className={`flex items-baseline gap-2 mb-0.5 ${isMine ? 'flex-row-reverse' : ''}`}>
                   <span className="text-xs text-gray-400">{fmtTime(m.createdAt)}</span>
@@ -681,7 +724,9 @@ const DmThread: React.FC<{
                     {m.content}
                   </p>
                 )}
-                {m.attachments?.map((a, i) => <AttachmentCard key={i} attachment={a} />)}
+                {m.attachments?.map((a, i) => (
+                  <AttachmentCard key={i} attachment={a} onOpen={onOpenAttachment ? () => onOpenAttachment(a.type, a.id) : undefined} />
+                ))}
               </div>
             </div>
           );
@@ -731,6 +776,7 @@ const DmThread: React.FC<{
       {showPicker && (
         <AttachPicker
           tenantId={tenantId}
+          includeNull={includeNull}
           selected={attachments}
           onToggle={toggleAttachment}
           onClose={() => setShowPicker(false)}
@@ -742,7 +788,13 @@ const DmThread: React.FC<{
 
 // ─── Main AdminCommunity ─────────────────────────────────────────────────────
 
-const AdminCommunity: React.FC = () => {
+interface AdminCommunityProps {
+  /** Navigate to an attached record (doc / contact / campaign) from a message card. */
+  onOpenAttachment?: (type: MessageAttachment['type'], id: string) => void;
+}
+
+const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => {
+  const { setHeaderOverride } = useAdminHeader();
   const [tab, setTab] = useState<MainTab>('channels');
   const [tenantId, setTenantId] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<{ uid: string; name: string } | null>(null);
@@ -750,6 +802,7 @@ const AdminCommunity: React.FC = () => {
   // Channels
   const [channels, setChannels] = useState<Channel[]>([]);
   const [openChannel, setOpenChannel] = useState<Channel | null>(null);
+  const [showChannelMembers, setShowChannelMembers] = useState(false);
   const [showNewChannel, setShowNewChannel] = useState(false);
   const [newChannelName, setNewChannelName] = useState('');
   const [newChannelDesc, setNewChannelDesc] = useState('');
@@ -773,18 +826,43 @@ const AdminCommunity: React.FC = () => {
 
   const [loading, setLoading] = useState(true);
 
-  // Intercept the FocusScreen back chevron so it closes an open thread first
-  // (one back arrow total — the gold FocusScreen chevron).
-  const { registerBack } = useContext(FocusScreenBackContext);
+  // Platform tenant ('harvest') viewed by a super admin also surfaces legacy
+  // records whose `tenantId` is null (the root cause of empty Harvest results).
+  const includeNullTenant = isSuperAdminEmail(auth.currentUser?.email) && tenantId === PLATFORM_TENANT_ID;
+
+  // Drive the shared screen header. When a thread is open the header shows the
+  // channel/DM name + a members button, and back closes the thread (so there is
+  // exactly one header and one back arrow). Otherwise the dashboard's default
+  // "Community Chat" header is used.
   useEffect(() => {
-    registerBack(() => {
-      if (openChannel) { setOpenChannel(null); return true; }
-      if (openAdminDm) { setOpenAdminDm(null); return true; }
-      if (openMemberDm) { setOpenMemberDm(null); return true; }
-      return false;
-    });
-    return () => registerBack(null);
-  }, [openChannel, openAdminDm, openMemberDm, registerBack]);
+    if (openChannel) {
+      setHeaderOverride({
+        title: openChannel.name,
+        titleIcon: <Hash size={18} style={{ color: 'var(--brand-color, #d4a017)' }} className="flex-shrink-0" />,
+        onBack: () => { setShowChannelMembers(false); setOpenChannel(null); },
+        action: (
+          <button
+            onClick={() => setShowChannelMembers(true)}
+            className="p-1.5 rounded-lg hover:bg-gray-100"
+            aria-label="Channel members"
+          >
+            <Users size={22} style={{ color: '#B8962E' }} />
+          </button>
+        ),
+      });
+    } else if (openAdminDm || openMemberDm) {
+      const dm = (openAdminDm || openMemberDm)!;
+      const otherId = dm.participants.find(p => p !== currentUser?.uid) || '';
+      const name = dm.participantNames?.[otherId] || otherId.slice(0, 8);
+      setHeaderOverride({
+        title: name,
+        onBack: () => { setOpenAdminDm(null); setOpenMemberDm(null); },
+      });
+    } else {
+      setHeaderOverride(null);
+    }
+    return () => setHeaderOverride(null);
+  }, [openChannel, openAdminDm, openMemberDm, currentUser, setHeaderOverride]);
 
   useEffect(() => {
     const user = auth.currentUser;
@@ -861,47 +939,38 @@ const AdminCommunity: React.FC = () => {
   const loadAdmins = useCallback(async () => {
     if (!tenantId) return;
     try {
-      const snap = await getDocs(query(
-        collection(db, 'users'),
-        where('tenantId', '==', tenantId),
-        limit(200)
-      ));
+      console.log('[AdminCommunity] loadAdmins currentTenantId:', tenantId, 'includeNull:', includeNullTenant);
+      const docs = await dualTenantDocs('users', tenantId, includeNullTenant, 200);
       const adminRoles = ['admin', 'church_admin', 'super_admin'];
-      setAdmins(snap.docs
+      setAdmins(docs
         .map(d => ({ id: d.id, ...d.data() }) as AdminUser)
         .filter(a => adminRoles.includes(a.role) && a.id !== currentUser?.uid)
       );
     } catch (e) { notifyError('Failed to load admins', e); }
-  }, [tenantId, currentUser]);
+  }, [tenantId, currentUser, includeNullTenant]);
 
   // Load members list (role === 'user').
   const loadMembers = useCallback(async () => {
     if (!tenantId) return;
     try {
-      const snap = await getDocs(query(
-        collection(db, 'users'),
-        where('tenantId', '==', tenantId),
-        limit(200)
-      ));
-      setMembers(snap.docs
+      console.log('[AdminCommunity] loadMembers currentTenantId:', tenantId, 'includeNull:', includeNullTenant);
+      const docs = await dualTenantDocs('users', tenantId, includeNullTenant, 200);
+      setMembers(docs
         .map(d => ({ id: d.id, ...d.data() }) as AdminUser)
         .filter(m => m.role === 'user')
       );
     } catch (e) { notifyError('Failed to load members', e); }
-  }, [tenantId]);
+  }, [tenantId, includeNullTenant]);
 
   // Pool of tenant users for the create-channel member selector.
   const loadChannelPool = useCallback(async () => {
     if (!tenantId) return;
     try {
-      const snap = await getDocs(query(
-        collection(db, 'users'),
-        where('tenantId', '==', tenantId),
-        limit(200)
-      ));
+      console.log('[AdminCommunity] loadChannelPool currentTenantId:', tenantId, 'includeNull:', includeNullTenant);
+      const snap = { docs: await dualTenantDocs('users', tenantId, includeNullTenant, 200) };
       setChannelPool(snap.docs.map(d => ({ id: d.id, ...d.data() }) as AdminUser));
     } catch (e) { notifyError('Failed to load users', e); }
-  }, [tenantId]);
+  }, [tenantId, includeNullTenant]);
 
   // uid → channel names the user belongs to (for membership badges).
   const userChannels = useMemo(() => {
@@ -1010,25 +1079,33 @@ const AdminCommunity: React.FC = () => {
     return <div className="text-center py-16 text-gray-400">Community chat is only available for tenant admins.</div>;
   }
 
-  // ── Thread views ──
+  // ── Thread views ── (header is rendered by the shared AdminScreenHeader override)
   if (openChannel && currentUser) {
     return (
       <div className="h-full flex flex-col" style={{ minHeight: 'calc(100vh - 200px)' }}>
-        <ChannelThread channel={openChannel} tenantId={tenantId} currentUser={currentUser} />
+        <ChannelThread channel={openChannel} tenantId={tenantId} includeNull={includeNullTenant} currentUser={currentUser} onOpenAttachment={onOpenAttachment} />
+        {showChannelMembers && (
+          <ChannelMembersSheet
+            tenantId={tenantId}
+            includeNull={includeNullTenant}
+            channelId={openChannel.id}
+            onClose={() => setShowChannelMembers(false)}
+          />
+        )}
       </div>
     );
   }
   if (openAdminDm && currentUser) {
     return (
       <div className="h-full flex flex-col" style={{ minHeight: 'calc(100vh - 200px)' }}>
-        <DmThread dm={openAdminDm} tenantId={tenantId} currentUser={currentUser} otherName={getOtherName(openAdminDm)} />
+        <DmThread dm={openAdminDm} tenantId={tenantId} includeNull={includeNullTenant} currentUser={currentUser} otherName={getOtherName(openAdminDm)} onOpenAttachment={onOpenAttachment} />
       </div>
     );
   }
   if (openMemberDm && currentUser) {
     return (
       <div className="h-full flex flex-col" style={{ minHeight: 'calc(100vh - 200px)' }}>
-        <DmThread dm={openMemberDm} tenantId={tenantId} currentUser={currentUser} otherName={getOtherName(openMemberDm)} />
+        <DmThread dm={openMemberDm} tenantId={tenantId} includeNull={includeNullTenant} currentUser={currentUser} otherName={getOtherName(openMemberDm)} onOpenAttachment={onOpenAttachment} />
       </div>
     );
   }
@@ -1041,12 +1118,6 @@ const AdminCommunity: React.FC = () => {
 
   return (
     <div className="max-w-3xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center gap-2 mb-5">
-        <MessageSquare size={22} style={{ color: 'var(--brand-color, #d4a017)' }} />
-        <h2 className="text-xl font-bold text-gray-900">Community Chat</h2>
-      </div>
-
       {/* Tabs */}
       <div className="flex gap-1 bg-gray-100 rounded-xl p-1 mb-5">
         {([['channels', 'Channels'], ['admin-dms', 'Admin DMs'], ['member-dms', 'Member DMs']] as [MainTab, string][]).map(([id, label]) => (

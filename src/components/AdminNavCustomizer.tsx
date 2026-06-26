@@ -34,8 +34,10 @@ interface AdminNavCustomizerProps {
   allTabs: NavTab[];
   /** IDs currently assigned to the bottom bar (in order). */
   currentPrimaryIds: string[];
-  /** Called with the new ordered primary IDs after a successful save. */
-  onSave: (primaryIds: string[]) => void;
+  /** IDs currently in the More drawer (in order). */
+  currentDrawerIds?: string[];
+  /** Called with the new ordered bottom-bar AND More-drawer IDs after a save. */
+  onSave: (primaryIds: string[], drawerIds: string[]) => void;
   /** Called when the user cancels without saving. */
   onCancel: () => void;
 }
@@ -88,6 +90,7 @@ const MAX_BAR_ITEMS = 4;
 const AdminNavCustomizer: React.FC<AdminNavCustomizerProps> = ({
   allTabs,
   currentPrimaryIds,
+  currentDrawerIds,
   onSave,
   onCancel,
 }) => {
@@ -100,7 +103,13 @@ const AdminNavCustomizer: React.FC<AdminNavCustomizerProps> = ({
   };
   const initialDrawer = (): NavTab[] => {
     const barSet = new Set(currentPrimaryIds.slice(0, MAX_BAR_ITEMS));
-    return allTabs.filter((t) => !barSet.has(t.id));
+    const drawer = allTabs.filter((t) => !barSet.has(t.id));
+    // Respect the saved drawer order when provided.
+    if (currentDrawerIds && currentDrawerIds.length > 0) {
+      const orderIdx = new Map(currentDrawerIds.map((id, i) => [id, i]));
+      drawer.sort((a, b) => (orderIdx.get(a.id) ?? 999) - (orderIdx.get(b.id) ?? 999));
+    }
+    return drawer;
   };
 
   const [barItems, setBarItems] = useState<NavTab[]>(initialBar);
@@ -202,12 +211,13 @@ const AdminNavCustomizer: React.FC<AdminNavCustomizerProps> = ({
     setSaving(true);
     try {
       const primaryIds = barRef.current.map((i) => i.id);
+      const drawerIds = drawerRef.current.map((i) => i.id);
       if (auth.currentUser) {
         await updateDoc(doc(db, 'users', auth.currentUser.uid), {
-          adminNavConfig: { primaryTabIds: primaryIds },
+          adminNavConfig: { primaryTabIds: primaryIds, moreTabIds: drawerIds },
         });
       }
-      onSave(primaryIds);
+      onSave(primaryIds, drawerIds);
     } catch (e) {
       console.error('Failed to save nav config:', e);
       setSaving(false);
