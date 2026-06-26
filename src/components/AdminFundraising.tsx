@@ -2,25 +2,14 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, ToggleLeft, ToggleRight, Heart, DollarSign } from 'lucide-react';
 import {
-  collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc, doc, limit, serverTimestamp,
+  collection, addDoc, updateDoc, deleteDoc, doc, serverTimestamp,
 } from 'firebase/firestore';
-import { db, auth } from '../firebase';
-import { getTenantScope } from '../utils/tenant-scope';
-import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
+import { db } from '../firebase';
 import { notifyError } from '../utils/notify';
-import { sortByNumber } from '../utils/query-helpers';
-
-interface Campaign {
-  id: string;
-  title: string;
-  description: string;
-  coverImage?: string;
-  goal: number;
-  raised: number;
-  endDate?: string;
-  isActive: boolean;
-  tenantId?: string;
-}
+import { useAdminHeader, HeaderActionButton } from './AdminScreenHeader';
+import { useQueryClient } from '@tanstack/react-query';
+import { useAppStore } from '../store/useAppStore';
+import { useCampaigns } from '../hooks/queries/useCampaignQueries';
 
 const empty: Omit<Campaign, 'id'> = {
   title: '',
@@ -35,40 +24,41 @@ const empty: Omit<Campaign, 'id'> = {
 const fmt = (n: number) =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n);
 
-const AdminFundraising: React.FC = () => {
-  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [tenantId, setTenantId] = useState<string | null>(null);
+interface AdminFundraisingProps {
+  /** Deep-link: open this campaign on mount (e.g. from a chat attachment card). */
+  initialCampaignId?: string;
+  /** Called once the deep-linked campaign has been opened, to clear the URL param. */
+  onItemConsumed?: () => void;
+}
+
+const AdminFundraising: React.FC<AdminFundraisingProps> = ({ initialCampaignId, onItemConsumed }) => {
+  const { setHeaderAction } = useAdminHeader();
+  const queryClient = useQueryClient();
+  const { currentTenantId: tenantId, isAuthReady } = useAppStore();
+
+  const { data: campaigns = [], isLoading: loading } = useCampaigns(tenantId, isAuthReady);
+
   const [editing, setEditing] = useState<Campaign | null>(null);
   const [form, setForm] = useState<Omit<Campaign, 'id'>>(empty);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
-  useEffect(() => {
-    let unsub: (() => void) | null = null;
-    let cancelled = false;
-    (async () => {
-      const tid = await getTenantScope();
-      if (cancelled) return;
-      setTenantId(tid);
-      // Single-field filter only (tenantId); sort client-side to avoid a composite index.
-      const q = tid
-        ? query(collection(db, 'campaigns'), where('tenantId', '==', tid), limit(100))
-        : query(collection(db, 'campaigns'), limit(100));
-      unsub = onSnapshot(q, (snap) => {
-        setCampaigns(sortByNumber(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Campaign), 'isActive', 'desc'));
-        setLoading(false);
-      }, (err) => {
-        try { handleFirestoreError(err, OperationType.GET, 'campaigns'); } catch (e) { console.error(e); }
-        setLoading(false);
-      });
-    })();
-    return () => { cancelled = true; unsub?.(); };
-  }, []);
-
   const openCreate = () => { setEditing(null); setForm(empty); setShowForm(true); };
   const openEdit = (c: Campaign) => { setEditing(c); setForm({ ...c }); setShowForm(true); };
+
+  // Publish the "New Campaign" action into the shared header.
+  useEffect(() => {
+    setHeaderAction(<HeaderActionButton label="New Campaign" onClick={() => { setEditing(null); setForm(empty); setShowForm(true); }} />);
+    return () => setHeaderAction(null);
+  }, [setHeaderAction]);
+
+  // Deep-link: open a specific campaign when navigated to /admin/fundraising/:id.
+  useEffect(() => {
+    if (!initialCampaignId) return;
+    const c = campaigns.find(x => x.id === initialCampaignId);
+    if (c) { setEditing(c); setForm({ ...c }); setShowForm(true); onItemConsumed?.(); }
+  }, [initialCampaignId, campaigns]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSave = async () => {
     if (!form.title.trim()) return;
@@ -84,6 +74,7 @@ const AdminFundraising: React.FC = () => {
           updatedAt: serverTimestamp(),
         });
       }
+      await queryClient.invalidateQueries({ queryKey: ['campaigns', tenantId] });
       setShowForm(false);
     } catch (e) {
       notifyError('Failed to save campaign', e);
@@ -95,20 +86,22 @@ const AdminFundraising: React.FC = () => {
   const toggleActive = async (c: Campaign) => {
     try {
       if (!c.isActive) {
-        // Deactivate all other campaigns first (only 1 active at a time)
         const others = campaigns.filter((other) => other.id !== c.id && other.isActive);
         await Promise.all(
           others.map((other) => updateDoc(doc(db, 'campaigns', other.id), { isActive: false }))
         );
       }
       await updateDoc(doc(db, 'campaigns', c.id), { isActive: !c.isActive });
+      await queryClient.invalidateQueries({ queryKey: ['campaigns', tenantId] });
     } catch (e) { notifyError('Failed to update campaign', e); }
   };
 
   const confirmDelete = async () => {
     if (!deleteId) return;
-    try { await deleteDoc(doc(db, 'campaigns', deleteId)); }
-    catch (e) { notifyError('Failed to delete campaign', e); }
+    try {
+      await deleteDoc(doc(db, 'campaigns', deleteId));
+      await queryClient.invalidateQueries({ queryKey: ['campaigns', tenantId] });
+    } catch (e) { notifyError('Failed to delete campaign', e); }
     setDeleteId(null);
   };
 
@@ -118,20 +111,6 @@ const AdminFundraising: React.FC = () => {
 
   return (
     <div className="max-w-3xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-2">
-          <Heart size={22} style={{ color: 'var(--brand-color, #d4a017)' }} />
-          <h2 className="text-xl font-bold text-gray-900">Fundraising Campaigns</h2>
-        </div>
-        <button
-          onClick={openCreate}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white"
-          style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}
-        >
-          <Plus size={16} /> New Campaign
-        </button>
-      </div>
-
       {campaigns.length === 0 ? (
         <div className="text-center py-16 text-gray-400">
           <Heart size={40} className="mx-auto mb-3 opacity-30" />

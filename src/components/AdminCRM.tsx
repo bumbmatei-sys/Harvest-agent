@@ -1,54 +1,26 @@
 "use client";
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  Plus, Search, Edit2, Trash2, Users, Mail, Phone, ArrowLeft,
+  Plus, Search, Edit2, Trash2, Users, Mail, Phone,
   MessageSquare, DollarSign, PhoneCall, Calendar, Clock, ChevronRight, MapPin
 } from 'lucide-react';
 import {
-  collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc,
-  doc, limit, serverTimestamp, Timestamp, getDocs
+  collection, addDoc, updateDoc, deleteDoc,
+  doc, serverTimestamp, Timestamp,
 } from 'firebase/firestore';
 import { db, auth } from '../firebase';
-import { getTenantScope } from '../utils/tenant-scope';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { sortByTime, sortByString } from '../utils/query-helpers';
 import { notifyError } from '../utils/notify';
 import AnalyticsAndRoles, { Permission } from './AnalyticsAndRoles';
-
-interface Contact {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-  type: 'donor' | 'member' | 'both';
-  address?: {
-    street?: string;
-    city?: string;
-    state?: string;
-    zip?: string;
-    country?: string;
-  };
-  notes: string;
-  tags: string[];
-  totalDonated: number;
-  lastDonationAt: Timestamp | null;
-  memberSince: Timestamp | null;
-  createdAt: Timestamp | null;
-  createdBy: string;
-  updatedAt: Timestamp | null;
-  tenantId?: string;
-}
-
-interface ContactActivity {
-  id: string;
-  contactId: string;
-  type: 'note' | 'donation' | 'email' | 'call' | 'meeting';
-  description: string;
-  amount: number | null;
-  createdAt: Timestamp | null;
-  createdBy: string;
-}
+import { useAdminHeader, HeaderActionButton } from './AdminScreenHeader';
+import { useQueryClient } from '@tanstack/react-query';
+import { useAppStore } from '../store/useAppStore';
+import {
+  useContacts, useContactActivities, useContactOnboardingAnswers,
+  type Contact, type ContactActivity,
+} from '../hooks/queries/useCRMQueries';
+import { useTenant as useTenantDoc } from '../hooks/queries/useTenantQueries';
 
 const TYPE_LABELS: Record<Contact['type'], string> = {
   donor: 'Donor',
@@ -91,69 +63,80 @@ type ViewMode = 'list' | 'detail' | 'form';
 interface AdminCRMProps {
   currentUserRole?: string;
   currentUserPermissions?: Permission | null;
+  /** Deep-link: open this contact's detail on mount (e.g. from a chat attachment). */
+  initialContactId?: string;
+  /** Called once the deep-linked contact has been opened, to clear the URL param. */
+  onItemConsumed?: () => void;
 }
 
-const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermissions }) => {
-  // Scroll-to-top container reference — attached to the wrapping div of every CRM view.
-  // Whenever the user switches between list / detail / form views (or Analytics sub-tab),
-  // we find the nearest scrollable ancestor and reset its scroll position to the top.
-  // This is the systematic scroll-reset pattern used across admin screens that share a
-  // parent scroll container inside FocusScreen.
+const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermissions, initialContactId, onItemConsumed }) => {
+  const { setHeaderAction, setHeaderOverride } = useAdminHeader();
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [contacts, setContacts] = useState<Contact[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const { currentTenantId: tenantId, isAuthReady } = useAppStore();
+
+  // React Query for contacts list
+  const { data: contacts = [], isLoading: loading } = useContacts(tenantId, isAuthReady);
+
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | Contact['type']>('all');
-  const [tenantId, setTenantId] = useState<string | null>(null);
   const [view, setView] = useState<ViewMode>('list');
   const [selected, setSelected] = useState<Contact | null>(null);
   const [form, setForm] = useState(emptyContact);
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-
-  const [activities, setActivities] = useState<ContactActivity[]>([]);
   const [showAddActivity, setShowAddActivity] = useState(false);
   const [actForm, setActForm] = useState({ type: 'note' as ContactActivity['type'], description: '', amount: '' });
   const [savingAct, setSavingAct] = useState(false);
-
-  // CRM sub-view: Contacts (default) or user registration Analytics
   const [crmSubView, setCrmSubView] = useState<'contacts' | 'analytics'>('contacts');
 
+  // Drive the shared header: in detail/form sub-views the back chevron steps
+  // back within CRM; on the list view it shows the "Add Contact" action.
   useEffect(() => {
-    let unsub: (() => void) | null = null;
-    let cancelled = false;
-    getTenantScope().then(tid => {
-      if (cancelled) return;
-      setTenantId(tid);
-      // Single-field filter only (tenantId); sort client-side by lastName to avoid a composite index.
-      const q = tid
-        ? query(collection(db, 'contacts'), where('tenantId', '==', tid), limit(500))
-        : query(collection(db, 'contacts'), limit(500));
-      unsub = onSnapshot(q, snap => {
-        setContacts(sortByString(snap.docs.map(d => ({ id: d.id, ...d.data() }) as Contact), 'lastName', 'asc'));
-        setLoading(false);
-      }, err => {
-        try { handleFirestoreError(err, OperationType.GET, 'contacts'); } catch (e) { console.error(e); }
-        setLoading(false);
+    if (view === 'form') {
+      setHeaderOverride({
+        title: isEditing ? 'Edit Contact' : 'Add Contact',
+        onBack: () => setView(isEditing ? 'detail' : 'list'),
       });
-    });
-    return () => { cancelled = true; unsub?.(); };
-  }, []);
+    } else if (view === 'detail' && selected) {
+      setHeaderOverride({
+        title: `${selected.firstName} ${selected.lastName}`.trim() || 'Contact',
+        onBack: () => { setSelected(null); setView('list'); },
+      });
+    } else {
+      setHeaderOverride(null);
+    }
+    return () => setHeaderOverride(null);
+  }, [view, selected, isEditing, setHeaderOverride]);
+
+  // Publish the "Add Contact" action into the shared header — but only on the
+  // Contacts sub-view (the Analytics sub-view renders AnalyticsAndRoles, which
+  // manages its own header action). Re-asserts when the sub-view changes back.
+  useEffect(() => {
+    if (crmSubView !== 'contacts') { setHeaderAction(null); return; }
+    setHeaderAction(<HeaderActionButton label="Add Contact" onClick={() => { setIsEditing(false); setForm(emptyContact); setView('form'); }} />);
+    return () => setHeaderAction(null);
+  }, [setHeaderAction, crmSubView]);
+
+  // React Query for contact activities
+  const { data: activities = [] } = useContactActivities(tenantId, selected?.id);
+
+  // Tenant onboarding questions via React Query
+  const { data: tenantData } = useTenantDoc(tenantId);
+  const onboardingQuestions = tenantData?.config?.onboardingQuestions
+    ? [...tenantData.config.onboardingQuestions].sort((a, b) => a.order - b.order)
+    : [];
+
+  // Onboarding answers — fetched via React Query when a contact is selected
+  const { data: onboardingAnswers = null, isLoading: loadingAnswers } = useContactOnboardingAnswers(selected?.email);
 
   useEffect(() => {
-    if (!selected) return;
-    // Single-field filter only (contactId); sort client-side to avoid a composite index.
-    const q = query(
-      collection(db, 'contactActivities'),
-      where('contactId', '==', selected.id),
-      limit(200)
-    );
-    const unsub = onSnapshot(q, snap => {
-      setActivities(sortByTime(snap.docs.map(d => ({ id: d.id, ...d.data() }) as ContactActivity), 'createdAt', 'desc'));
-    });
-    return unsub;
-  }, [selected]);
+    const el = scrollRef.current;
+    if (!el) return;
+    const scroller = el.closest('[class*="overflow-y-auto"], [class*="overflow-auto"]') as HTMLElement | null;
+    if (scroller) scroller.scrollTo({ top: 0, left: 0 });
+  }, [view, crmSubView, selected?.id]);
 
   // Reset scroll position to top whenever the user navigates between CRM views
   // (list → detail → form, Contacts ↔ Analytics, or selecting a new contact).
@@ -192,6 +175,14 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
 
   const openDetail = (c: Contact) => { setSelected(c); setView('detail'); };
 
+  // Deep-link: open a specific contact when navigated to /admin/crm/:id
+  // (e.g. tapping "View Contact" on a chat attachment card).
+  useEffect(() => {
+    if (!initialContactId) return;
+    const c = contacts.find(x => x.id === initialContactId);
+    if (c) { setSelected(c); setView('detail'); onItemConsumed?.(); }
+  }, [initialContactId, contacts]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleSave = async () => {
     if (!form.firstName.trim()) return;
     setSaving(true);
@@ -212,6 +203,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
           createdAt: serverTimestamp(), createdBy: auth.currentUser?.uid || '',
         });
       }
+      await queryClient.invalidateQueries({ queryKey: ['contacts', tenantId] });
       setView(isEditing ? 'detail' : 'list');
     } catch (e) { notifyError('Failed to save contact', e); }
     finally { setSaving(false); }
@@ -219,8 +211,10 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
 
   const confirmDelete = async () => {
     if (!deleteId) return;
-    try { await deleteDoc(doc(db, 'contacts', deleteId)); }
-    catch (e) { notifyError('Failed to delete contact', e); }
+    try {
+      await deleteDoc(doc(db, 'contacts', deleteId));
+      await queryClient.invalidateQueries({ queryKey: ['contacts', tenantId] });
+    } catch (e) { notifyError('Failed to delete contact', e); }
     setDeleteId(null);
     if (view === 'detail') setView('list');
   };
@@ -239,7 +233,9 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
         const newTotal = (selected.totalDonated || 0) + Number(actForm.amount);
         await updateDoc(doc(db, 'contacts', selected.id), { totalDonated: newTotal, lastDonationAt: serverTimestamp() });
         setSelected({ ...selected, totalDonated: newTotal });
+        await queryClient.invalidateQueries({ queryKey: ['contacts', tenantId] });
       }
+      await queryClient.invalidateQueries({ queryKey: ['contactActivities', tenantId, selected.id] });
       setShowAddActivity(false);
       setActForm({ type: 'note', description: '', amount: '' });
     } catch (e) { notifyError('Failed to add activity', e); }
@@ -250,7 +246,6 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
     return <div className="flex items-center justify-center h-40"><div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--brand-color, #d4a017)', borderTopColor: 'transparent' }} /></div>;
   }
 
-  // Sub-tab bar — visible in all sub-views (Contacts / Analytics)
   const subTabBar = (
     <div className="flex gap-1 mb-5 border-b border-gray-200">
       <button
@@ -276,7 +271,6 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
     </div>
   );
 
-  // ── Analytics sub-view ──
   if (crmSubView === 'analytics') {
     return (
       <div ref={scrollRef} className="max-w-3xl mx-auto">
@@ -296,17 +290,10 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
     );
   }
 
-  // ── Form View ──
   if (view === 'form') {
     return (
       <div ref={scrollRef} className="max-w-2xl mx-auto">
         {subTabBar}
-        <div className="flex items-center gap-3 mb-6">
-          <button onClick={() => setView(isEditing ? 'detail' : 'list')} className="p-2 rounded-xl hover:bg-gray-100">
-            <ArrowLeft size={18} className="text-gray-600" />
-          </button>
-          <h2 className="text-xl font-bold text-gray-900">{isEditing ? 'Edit Contact' : 'Add Contact'}</h2>
-        </div>
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-5">
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -382,27 +369,21 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
     );
   }
 
-  // ── Detail View ──
   if (view === 'detail' && selected) {
     return (
       <div ref={scrollRef} className="max-w-2xl mx-auto">
         {subTabBar}
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-3">
-            <button onClick={() => { setSelected(null); setView('list'); }} className="p-2 rounded-xl hover:bg-gray-100">
-              <ArrowLeft size={18} className="text-gray-600" />
-            </button>
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold text-white flex-shrink-0"
-                style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}>
-                {selected.firstName.charAt(0).toUpperCase()}
-              </div>
-              <div>
-                <h2 className="text-xl font-bold text-gray-900">{selected.firstName} {selected.lastName}</h2>
-                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${TYPE_COLORS[selected.type]}`}>
-                  {TYPE_LABELS[selected.type]}
-                </span>
-              </div>
+            <div className="w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold text-white flex-shrink-0"
+              style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}>
+              {selected.firstName.charAt(0).toUpperCase()}
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-gray-900">{selected.firstName} {selected.lastName}</h2>
+              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${TYPE_COLORS[selected.type]}`}>
+                {TYPE_LABELS[selected.type]}
+              </span>
             </div>
           </div>
           <div className="flex gap-2">
@@ -415,7 +396,6 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
           </div>
         </div>
 
-        {/* Contact info card */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 mb-4">
           <div className="grid grid-cols-2 gap-3">
             {selected.email && (
@@ -482,7 +462,6 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
           </div>
         </div>
 
-        {/* Activity timeline */}
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-bold text-gray-700">Activity Timeline</h3>
           <button
@@ -497,7 +476,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
         {activities.length === 0 ? (
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 text-center text-gray-400">
             <Clock size={28} className="mx-auto mb-2 opacity-30" />
-            <p className="text-sm">Activities will appear here when the user makes donations or attends events.</p>
+            <p className="text-sm">No activities recorded yet — add the first one</p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -520,7 +499,32 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
           </div>
         )}
 
-        {/* Add Activity Modal */}
+        {/* Onboarding Answers */}
+        <div className="mt-5">
+          <h3 className="text-sm font-bold text-gray-700 mb-3">Onboarding Answers</h3>
+          {loadingAnswers ? (
+            <div className="flex justify-center py-6">
+              <div className="w-6 h-6 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--brand-color, #d4a017)', borderTopColor: 'transparent' }} />
+            </div>
+          ) : !onboardingAnswers || Object.keys(onboardingAnswers).length === 0 ? (
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 text-center text-gray-400 text-sm">
+              No onboarding responses yet.
+            </div>
+          ) : (
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
+              {(onboardingQuestions.length > 0
+                ? onboardingQuestions.filter(q => onboardingAnswers[q.id])
+                : Object.keys(onboardingAnswers).map(id => ({ id, label: id.replace(/_/g, ' '), order: 0 }))
+              ).map(q => (
+                <div key={q.id}>
+                  <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">{q.label}</p>
+                  <p className="text-sm text-gray-800">{onboardingAnswers[q.id]}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
         {showAddActivity && (
           <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center bg-black/50 p-4">
             <div className="bg-white rounded-2xl w-full max-w-md">
@@ -579,7 +583,6 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
     );
   }
 
-  // ── List View ──
   const totalGiven = contacts.reduce((s, c) => s + (c.totalDonated || 0), 0);
   const memberCount = contacts.filter(c => c.type === 'member' || c.type === 'both').length;
   const donorCount = contacts.filter(c => c.type === 'donor' || c.type === 'both').length;
@@ -587,20 +590,6 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
   return (
     <div className="max-w-3xl mx-auto">
       {subTabBar}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-2">
-          <Users size={22} style={{ color: 'var(--brand-color, #d4a017)' }} />
-          <h2 className="text-xl font-bold text-gray-900">CRM</h2>
-          <span className="text-sm text-gray-400 font-normal">— Donors & Members</span>
-        </div>
-        <button onClick={openCreate}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white"
-          style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}>
-          <Plus size={16} /> Add Contact
-        </button>
-      </div>
-
-      {/* Analytics */}
       <div className="grid grid-cols-3 gap-3 mb-5">
         <div className="bg-white rounded-xl p-3 border border-gray-100 text-center shadow-sm">
           <div className="text-xl font-bold text-gray-900">{memberCount}</div>
@@ -616,7 +605,6 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
         </div>
       </div>
 
-      {/* Search + filter */}
       <div className="flex gap-2 mb-5">
         <div className="relative flex-1">
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -624,7 +612,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
             placeholder="Search by name or email..."
             className="w-full pl-9 pr-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-[#d4a017]" />
         </div>
-        <select value={filter} onChange={e => setFilter(e.target.value as any)}
+        <select value={filter} onChange={e => setFilter(e.target.value as 'all' | Contact['type'])}
           className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#d4a017] bg-white">
           <option value="all">All</option>
           <option value="donor">Donors</option>

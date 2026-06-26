@@ -44,7 +44,7 @@ const CampaignWidget: React.FC<CampaignWidgetProps> = ({ onDonate }) => {
       const tenantId = await getTenantScope();
       if (cancelled) return;
 
-      // Single-field filter only (isActive); tenant scoping applied client-side to avoid a composite index.
+      // Single-field filter only (isActive); tenant scoping applied in-memory to avoid a composite index.
       const q = query(collection(db, 'campaigns'), where('isActive', '==', true), limit(20));
 
       unsub = onSnapshot(q, (snap) => {

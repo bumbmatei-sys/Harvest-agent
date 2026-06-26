@@ -2,51 +2,21 @@
 import React, { useState, useEffect } from 'react';
 import {
   Plus, Edit2, Trash2, CalendarCheck, Users, MapPin, Clock, DollarSign,
-  ArrowLeft, Check, Download, Search, ChevronRight, Globe, X, Pin
+  Check, Download, Search, ChevronRight, Globe, X, Pin
 } from 'lucide-react';
 import {
-  collection, query, where, orderBy, onSnapshot, addDoc, updateDoc, deleteDoc,
-  doc, limit, serverTimestamp, Timestamp, getDocs
+  collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc,
+  doc, limit, serverTimestamp, Timestamp,
 } from 'firebase/firestore';
 import { db, auth } from '../firebase';
-import { getTenantScope } from '../utils/tenant-scope';
 import { sortByTime } from '../utils/query-helpers';
-import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { notifyError } from '../utils/notify';
+import { useAdminHeader, HeaderActionButton } from './AdminScreenHeader';
+import { useQueryClient } from '@tanstack/react-query';
+import { useAppStore } from '../store/useAppStore';
+import { useEvents } from '../hooks/queries/useEventQueries';
 
-interface Event {
-  id: string;
-  title: string;
-  description: string;
-  coverImage: string | null;
-  location: string;
-  isOnline: boolean;
-  onlineLink: string | null;
-  startDate: Timestamp | null;
-  endDate: Timestamp | null;
-  capacity: number | null;
-  registrationDeadline: Timestamp | null;
-  price: number;
-  currency: string;
-  status: 'draft' | 'published' | 'cancelled' | 'completed';
-  pinned?: boolean;
-  createdAt: Timestamp | null;
-  createdBy: string;
-  tenantId: string;
-}
-
-interface Registration {
-  id: string;
-  eventId: string;
-  userId: string | null;
-  name: string;
-  email: string;
-  phone: string | null;
-  ticketCode: string;
-  status: 'confirmed' | 'cancelled' | 'attended';
-  amount: number;
-  registeredAt: Timestamp | null;
-}
+import type { Event, Registration } from '../hooks/queries/useEventQueries';
 
 type ViewMode = 'list' | 'create' | 'edit' | 'detail';
 
@@ -90,9 +60,12 @@ const emptyForm = {
 };
 
 const AdminEvents: React.FC = () => {
-  const [tenantId, setTenantId] = useState<string | null>(null);
-  const [events, setEvents] = useState<Event[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { setHeaderAction, setHeaderOverride } = useAdminHeader();
+  const queryClient = useQueryClient();
+  const { currentTenantId: tenantId, isAuthReady } = useAppStore();
+
+  const { data: events = [], isLoading: loading } = useEvents(tenantId, isAuthReady);
+
   const [view, setView] = useState<ViewMode>('list');
   const [selected, setSelected] = useState<Event | null>(null);
   const [form, setForm] = useState(emptyForm);
@@ -104,28 +77,29 @@ const AdminEvents: React.FC = () => {
   const [regSearch, setRegSearch] = useState('');
   const [checkingIn, setCheckingIn] = useState<string | null>(null);
 
+  // Drive the shared header. In a sub-view (create/edit/detail) the back chevron
+  // returns to the event list; on the list it shows the "Create Event" action.
   useEffect(() => {
-    let unsub: (() => void) | null = null;
-    let cancelled = false;
-    getTenantScope().then(tid => {
-      if (cancelled) return;
-      setTenantId(tid);
-      if (!tid) { setLoading(false); return; }
-      const q = query(
-        collection(db, 'tenants', tid, 'events'),
-        orderBy('startDate', 'desc'),
-        limit(100)
-      );
-      unsub = onSnapshot(q, snap => {
-        setEvents(snap.docs.map(d => ({ id: d.id, ...d.data() }) as Event));
-        setLoading(false);
-      }, err => {
-        try { handleFirestoreError(err, OperationType.GET, 'events'); } catch (e) { console.error(e); }
-        setLoading(false);
+    if (view === 'create' || view === 'edit') {
+      setHeaderOverride({
+        title: view === 'edit' ? 'Edit Event' : 'Create Event',
+        onBack: () => { setView('list'); setSelected(null); },
       });
-    });
-    return () => { cancelled = true; unsub?.(); };
-  }, []);
+    } else if (view === 'detail' && selected) {
+      setHeaderOverride({
+        title: selected.title || 'Event',
+        onBack: () => { setView('list'); setSelected(null); },
+      });
+    } else {
+      setHeaderOverride(null);
+    }
+    return () => setHeaderOverride(null);
+  }, [view, selected, setHeaderOverride]);
+
+  useEffect(() => {
+    setHeaderAction(<HeaderActionButton label="Create Event" onClick={() => { setSelected(null); setForm(emptyForm); setView('create'); }} />);
+    return () => setHeaderAction(null);
+  }, [setHeaderAction]);
 
   // Load registrations when viewing event detail
   useEffect(() => {
@@ -200,6 +174,7 @@ const AdminEvents: React.FC = () => {
           updatedAt: serverTimestamp(),
         });
         setSelected({ ...selected, ...data } as Event);
+        await queryClient.invalidateQueries({ queryKey: ['events', tenantId] });
         setView('detail');
       } else {
         const ref = await addDoc(collection(db, 'tenants', tenantId, 'events'), {
@@ -228,6 +203,7 @@ const AdminEvents: React.FC = () => {
           createdBy: auth.currentUser?.uid || '',
           pinned: false,
         };
+        await queryClient.invalidateQueries({ queryKey: ['events', tenantId] });
         setSelected(newEvent);
         setView('detail');
       }
@@ -237,8 +213,10 @@ const AdminEvents: React.FC = () => {
 
   const confirmDelete = async () => {
     if (!deleteId || !tenantId) return;
-    try { await deleteDoc(doc(db, 'tenants', tenantId, 'events', deleteId)); }
-    catch (e) { notifyError('Failed to delete event', e); }
+    try {
+      await deleteDoc(doc(db, 'tenants', tenantId, 'events', deleteId));
+      await queryClient.invalidateQueries({ queryKey: ['events', tenantId] });
+    } catch (e) { notifyError('Failed to delete event', e); }
     setDeleteId(null);
     if (view === 'detail') setView('list');
   };
@@ -247,6 +225,7 @@ const AdminEvents: React.FC = () => {
     if (!tenantId) return;
     try {
       await updateDoc(doc(db, 'tenants', tenantId, 'events', ev.id), { pinned: !ev.pinned });
+      await queryClient.invalidateQueries({ queryKey: ['events', tenantId] });
     } catch (e) { notifyError('Failed to update event', e); }
   };
 
@@ -287,12 +266,6 @@ const AdminEvents: React.FC = () => {
   if (view === 'create' || view === 'edit') {
     return (
       <div className="max-w-2xl mx-auto pb-32">
-        <div className="flex items-center gap-3 mb-6">
-          <button onClick={() => setView('list')} className="p-2 rounded-xl hover:bg-gray-100">
-            <ArrowLeft size={18} className="text-gray-600" />
-          </button>
-          <h2 className="text-xl font-bold text-gray-900">{view === 'edit' ? 'Edit Event' : 'Create Event'}</h2>
-        </div>
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-5">
           <div className="grid grid-cols-1 gap-5">
             <div>
@@ -394,16 +367,11 @@ const AdminEvents: React.FC = () => {
     return (
       <div className="max-w-3xl mx-auto">
         <div className="flex items-center justify-between mb-5">
-          <div className="flex items-center gap-3">
-            <button onClick={() => setView('list')} className="p-2 rounded-xl hover:bg-gray-100">
-              <ArrowLeft size={18} className="text-gray-600" />
-            </button>
-            <div>
-              <h2 className="text-xl font-bold text-gray-900 truncate">{selected.title}</h2>
-              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${STATUS_COLORS[selected.status]}`}>
-                {selected.status}
-              </span>
-            </div>
+          <div>
+            <h2 className="text-xl font-bold text-gray-900 truncate">{selected.title}</h2>
+            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${STATUS_COLORS[selected.status]}`}>
+              {selected.status}
+            </span>
           </div>
           <div className="flex items-center gap-2">
             <button onClick={() => openEdit(selected)} className="p-2 rounded-xl border border-gray-200 hover:bg-gray-50">
@@ -488,18 +456,6 @@ const AdminEvents: React.FC = () => {
   // ── List View ──
   return (
     <div className="max-w-3xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-2">
-          <CalendarCheck size={22} style={{ color: 'var(--brand-color, #d4a017)' }} />
-          <h2 className="text-xl font-bold text-gray-900">Events</h2>
-        </div>
-        <button onClick={openCreate}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white"
-          style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}>
-          <Plus size={16} /> Create Event
-        </button>
-      </div>
-
       {events.length === 0 ? (
         <div className="text-center py-16 text-gray-400">
           <CalendarCheck size={40} className="mx-auto mb-3 opacity-30" />

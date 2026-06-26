@@ -14,23 +14,24 @@ import NewsTab from './NewsTab';
 import AllNews from './AllNews';
 import CourseExperience from '../components/CoursePage';
 import AIChat from './AIChat';
+import UserMessages from './UserMessages';
 import ErrorBoundary from './ErrorBoundary';
 import NotificationPrompt from './NotificationPrompt';
 import BiblePage from './BiblePage';
 import ReferralTracker from './ReferralTracker';
-import { TenantPlan } from '../types/tenant.types';
 import { getPlanFeatures } from '../utils/plan-features';
 import { auth } from '../firebase';
 import { isSuperAdminEmail } from '../utils/super-admins';
+import { useAppStore } from '../store/useAppStore';
 
 const ChurchMap = dynamic(() => import('./ChurchMap'), { ssr: false });
 
 interface MainAppProps {
   onNavigate: (page: string) => void;
-  tenantPlan?: TenantPlan;
 }
 
-const MainApp: React.FC<MainAppProps> = ({ onNavigate, tenantPlan }) => {
+const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
+  const { tenantPlan } = useAppStore();
   const [activeBottomTab, setActiveBottomTab] = useState('home');
   const [activeTopTab, setActiveTopTab] = useState('news');
   const [isNavVisible, setIsNavVisible] = useState(true);
@@ -56,7 +57,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, tenantPlan }) => {
     (async () => {
       try {
         const tenantId = await getTenantScope();
-        // Single-field filter only (status); tenant scoping applied client-side.
+        // Single-field filter only (status); tenant scoping applied in-memory to avoid a composite index.
         const q = query(collection(db, 'courses'), where('status', '==', 'published'), limit(50));
         const snap = await getDocs(q);
         const has = tenantId ? snap.docs.some(d => d.data().tenantId === tenantId) : !snap.empty;
@@ -81,6 +82,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, tenantPlan }) => {
     (isMainSite || features?.blog !== false) && { id: 'blog', label: 'Blog' },
     // Only include Courses tab once we know at least 1 course exists
     coursesStatus === 'present' && { id: 'courses', label: 'Courses' },
+    { id: 'messages', label: 'Messages' },
     { id: 'partner', label: 'Partner with Us' },
   ].filter(Boolean) as { id: string; label: string }[];
 
@@ -280,7 +282,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, tenantPlan }) => {
 
         {/* Main Content Area */}
         <ErrorBoundary>
-        <div className={`flex-1 overflow-x-hidden relative ${activeBottomTab === 'map' ? '' : activeBottomTab === 'chat' ? 'overflow-y-auto pb-[65px] lg:pb-0' : 'overflow-y-auto pb-24 lg:pb-0'}`} onScroll={handleScroll}>
+        <div className={`flex-1 overflow-x-hidden relative ${activeBottomTab === 'map' ? '' : activeBottomTab === 'chat' ? 'overflow-hidden pb-[65px] lg:pb-0' : 'overflow-y-auto pb-24 lg:pb-0'}`} onScroll={handleScroll}>
           {activeBottomTab === 'home' ? (
             <div className="relative w-full h-full lg:max-w-5xl lg:mx-auto">
               <AnimatePresence initial={false} custom={direction} mode="popLayout">
@@ -317,7 +319,12 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, tenantPlan }) => {
                   {activeTopTab === 'courses' && (
                     <CourseExperience onOpenCourse={(courseId, lessonId) => setFullScreenView({type: 'course', data: {courseId, lessonId}})} />
                   )}
-                  {activeTopTab !== 'news' && activeTopTab !== 'partner' && activeTopTab !== 'blog' && activeTopTab !== 'courses' && (
+                  {activeTopTab === 'messages' && (
+                    <div className="-m-4 h-full">
+                      <UserMessages embedded onBack={() => {}} />
+                    </div>
+                  )}
+                  {activeTopTab !== 'news' && activeTopTab !== 'partner' && activeTopTab !== 'blog' && activeTopTab !== 'courses' && activeTopTab !== 'messages' && (
                     <div className="flex flex-col items-center justify-center h-64 text-gray-400">
                       <p>{topTabs.find(t => t.id === activeTopTab)?.label} content coming soon.</p>
                     </div>
@@ -332,12 +339,11 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate, tenantPlan }) => {
                 onGoToCourses={() => { setActiveBottomTab('home'); setActiveTopTab('courses'); }}
                 onGoToPartner={() => { setActiveBottomTab('home'); setActiveTopTab('partner'); }}
                 onGoToMap={() => setActiveBottomTab('map')}
-                tenantPlan={tenantPlan}
               />
             </div>
           ) : activeBottomTab === 'chat' ? (
              <div className="w-full lg:max-w-5xl lg:mx-auto h-full">
-              <AIChat onBack={() => setActiveBottomTab('home')} tenantPlan={tenantPlan} />
+              <AIChat onBack={() => setActiveBottomTab('home')} />
              </div>
           ) : activeBottomTab === 'map' ? (
              <div className="w-full lg:max-w-5xl lg:mx-auto h-full">

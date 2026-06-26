@@ -1,7 +1,7 @@
 "use client";
-import React, { useState, useEffect } from 'react';
-import Image from 'next/image';
-import { LayoutDashboard, Church, FileText, Rss, BrainCircuit, Inbox, ArrowLeft, GraduationCap, ChevronLeft, ChevronRight, Building2, Settings, MoreHorizontal, Mail, SlidersHorizontal, Heart, Users, MessageSquare, Receipt, CalendarCheck, ShieldCheck } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { LayoutDashboard, Church, FileText, Rss, BrainCircuit, Inbox, GraduationCap, ChevronLeft, ChevronRight, Building2, Settings, MoreHorizontal, Mail, SlidersHorizontal, Heart, Users, MessageSquare, Receipt, CalendarCheck, ShieldCheck } from 'lucide-react';
 import AdminBlog from './AdminBlog';
 import AdminPosts from './AdminPosts';
 import AdminInbox from './AdminInbox';
@@ -24,78 +24,92 @@ import AdminCommunity from './AdminCommunity';
 import AdminAccounting from './AdminAccounting';
 import AdminEvents from './AdminEvents';
 import PlanUpgradeScreen from './PlanUpgradeScreen';
-import { TenantPlan } from '../types/tenant.types';
+import { AdminScreenHeader, AdminHeaderContext, AdminHeaderOverride } from './AdminScreenHeader';
 import { getPlanFeatures } from '../utils/plan-features';
 import { db, auth } from '../firebase';
-import { collection, query, where, onSnapshot, doc, getDoc, limit } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, limit } from 'firebase/firestore';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
-import { getTenantScope, isSuperAdmin as checkIsSuperAdmin, PLATFORM_TENANT_ID } from '../utils/tenant-scope';
+import { isSuperAdmin as checkIsSuperAdmin, PLATFORM_TENANT_ID } from '../utils/tenant-scope';
+import { useAppStore } from '../store/useAppStore';
+import { useCurrentUser } from '../hooks/queries/useUserQueries';
+import { useTenant as useTenantDoc } from '../hooks/queries/useTenantQueries';
 
-
+// URL slug ↔ internal tab id. Most ids map 1:1; only these two differ so the
+// URLs read nicely (/admin/ai-knowledge, /admin/roles).
+const SLUG_TO_TAB: Record<string, string> = { 'ai-knowledge': 'ai', 'roles': 'admin_roles' };
+const TAB_TO_SLUG: Record<string, string> = { 'ai': 'ai-knowledge', 'admin_roles': 'roles' };
 
 interface AdminDashboardProps {
   onNavigate: (page: string) => void;
-  tenantPlan?: TenantPlan; // undefined = super admin (all features)
 }
 
-const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, tenantPlan }) => {
-  const [activeTab, setActiveTab] = useState('dashboard');
+const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
+  const { tenantPlan, currentTenantId, isAuthReady } = useAppStore();
+  const navigate = useNavigate();
+  const { section, itemId } = useParams();
+  const activeTab = section ? (SLUG_TO_TAB[section] || section) : 'dashboard';
+
+  // Tenant and user data from React Query
+  const tenantId = currentTenantId;
+  const { data: tenantData } = useTenantDoc(tenantId);
+  const tenantName = tenantData?.name ?? tenantData?.config?.name ?? 'Ministry';
+  const { data: userData, isLoading: userLoading } = useCurrentUser(auth.currentUser?.uid);
+
+  const userRole = userData?.role ?? 'user';
+  const userPermissions: Permission | null = (userData?.permissions as Permission) ?? null;
+
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [pendingChurchesCount, setPendingChurchesCount] = useState(0);
   const [showMoreSheet, setShowMoreSheet] = useState(false);
-  const [userRole, setUserRole] = useState<string>('user');
-  const [userPermissions, setUserPermissions] = useState<Permission | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [canvasId, setCanvasId] = useState<string | null>(null);
   const [canvasName, setCanvasName] = useState<string>('');
   const [newsletterView, setNewsletterView] = useState<'list' | 'editor'>('list');
-  const [tenantId, setTenantId] = useState<string | null>(null);
-  const [tenantName, setTenantName] = useState<string>('Ministry');
   // Nav customizer state
   const [showNavCustomizer, setShowNavCustomizer] = useState(false);
   // Ordered IDs for the bottom bar; null means use default (first 4 from allTabs)
   const [customPrimaryIds, setCustomPrimaryIds] = useState<string[] | null>(null);
+  // Independent ordered IDs for the More drawer; null means default (allTabs order)
+  const [customMoreIds, setCustomMoreIds] = useState<string[] | null>(null);
+  // Primary action published by the active screen into the shared header.
+  const [headerAction, setHeaderAction] = useState<React.ReactNode>(null);
+  // Full header override published by a sub-view (e.g. an open chat thread).
+  const [headerOverride, setHeaderOverride] = useState<AdminHeaderOverride | null>(null);
+  const headerApi = React.useMemo(() => ({ setHeaderAction, setHeaderOverride }), []);
 
+  // Restore saved nav configuration from user data
+  const navInitialized = useRef(false);
   useEffect(() => {
-    getTenantScope().then(async (id) => {
-      setTenantId(id);
-      if (id) {
-        try {
-          const tenantDoc = await getDoc(doc(db, 'tenants', id));
-          if (tenantDoc.exists()) {
-            const data = tenantDoc.data();
-            setTenantName(data.name || data.config?.name || 'Ministry');
-          }
-        } catch (e) {
-          console.error('Failed to load tenant name:', e);
-        }
+    if (!navInitialized.current && userData) {
+      navInitialized.current = true;
+      if (userData.adminNavConfig?.primaryTabIds?.length) {
+        setCustomPrimaryIds(userData.adminNavConfig.primaryTabIds);
       }
-    });
-  }, []);
+      if (userData.adminNavConfig?.moreTabIds?.length) {
+        setCustomMoreIds(userData.adminNavConfig.moreTabIds);
+      }
+    }
+  }, [userData]);
 
-  useEffect(() => {
-    const fetchUserPermissions = async () => {
-      if (auth.currentUser) {
-        try {
-          const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
-          if (userDoc.exists()) {
-            const data = userDoc.data();
-            setUserRole(data.role || 'user');
-            setUserPermissions(data.permissions || null);
-            // Restore saved nav configuration if present
-            if (data.adminNavConfig?.primaryTabIds?.length) {
-              setCustomPrimaryIds(data.adminNavConfig.primaryTabIds);
-            }
-          }
-        } catch (error) {
-          try { handleFirestoreError(error, OperationType.GET, `users/${auth.currentUser?.uid}`); } catch (e) { console.error(e); }
-        }
-      }
-      setIsLoading(false);
-    };
-    fetchUserPermissions();
-  }, []);
+  /** Navigate to a tab by internal id (resets transient sub-views). */
+  const go = useCallback((id: string) => {
+    setShowMoreSheet(false);
+    setNewsletterView('list');
+    navigate(id === 'dashboard' ? '/admin' : `/admin/${TAB_TO_SLUG[id] || id}`);
+  }, [navigate]);
+
+  /** Back arrow: go where the user came from, or fall back to the dashboard. */
+  const smartBack = useCallback(() => {
+    const idx = (typeof window !== 'undefined' && (window.history.state as any)?.idx) || 0;
+    if (idx > 0) navigate(-1);
+    else navigate('/admin', { replace: true });
+  }, [navigate]);
+
+  /** Clear the :itemId deep-link param once a screen has consumed it. */
+  const clearItemId = useCallback(() => {
+    navigate(`/admin/${TAB_TO_SLUG[activeTab] || activeTab}`, { replace: true });
+  }, [navigate, activeTab]);
+
 
   useEffect(() => {
     let unsub1: (() => void) | null = null;
@@ -105,7 +119,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, tenantPlan 
     const loadCounts = async () => {
     const tenantId = await getTenantScope();
     if (cancelled) return;
-    // Single-field filter only (status); tenant scoping applied client-side to avoid a composite index.
+    // Single-field filter only (status); tenant scoping applied in-memory to avoid a composite index.
     const q = query(collection(db, 'submissions'), where('status', '==', 'pending'), limit(300));
     unsub1 = onSnapshot(q, (snapshot) => {
       const docs = tenantId ? snapshot.docs.filter(d => d.data().tenantId === tenantId) : snapshot.docs;
@@ -124,7 +138,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, tenantPlan 
     };
 
     loadCounts();
-    
+
     return () => {
       cancelled = true;
       if (unsub1) unsub1();
@@ -134,10 +148,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, tenantPlan 
 
   const isSuperAdmin = userRole === 'super_admin' || checkIsSuperAdmin();
   const isChurchAdmin = userRole === 'church_admin';
-  const perms = userPermissions || {} as Permission;
+  const perms = userPermissions ?? {} as Permission;
   const features = tenantPlan ? getPlanFeatures(tenantPlan) : null;
   const isTenantAdmin = !!tenantPlan;
   const hasFullAccess = isSuperAdmin || isChurchAdmin || perms.fullAccess;
+  const isLoading = !isAuthReady || userLoading;
 
   const showInbox = hasFullAccess || perms.seeFormsInbox;
 
@@ -185,57 +200,82 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, tenantPlan 
 
   // Mobile: 4 tabs in the bottom bar. If the admin has saved a custom order,
   // use it (filtered to still-permitted tabs). Otherwise default to first 4.
+  // The More drawer keeps its OWN independent saved order (customMoreIds).
   let primaryTabs;
-  let moreTabs;
+  let drawerTabs; // reorderable drawer tabs (excludes the fixed Inbox/Settings)
   if (customPrimaryIds && customPrimaryIds.length > 0) {
-    // Preserve saved order, only include tabs the user still has permission for
     const orderedBar = customPrimaryIds
       .map((id) => allTabs.find((t) => t.id === id))
       .filter(Boolean)
       .slice(0, 4) as typeof allTabs;
     const barSet = new Set(orderedBar.map((t) => t.id));
     primaryTabs = orderedBar;
-    moreTabs = [
-      ...allTabs.filter((t) => !barSet.has(t.id)),
-      ...(showInbox ? [{ id: 'inbox', label: 'Inbox', icon: Inbox }] : []),
-      { id: 'settings', label: 'Settings', icon: Settings },
-    ];
+    drawerTabs = allTabs.filter((t) => !barSet.has(t.id));
   } else {
     primaryTabs = allTabs.slice(0, 4);
-    moreTabs = [
-      ...allTabs.slice(4),
-      ...(showInbox ? [{ id: 'inbox', label: 'Inbox', icon: Inbox }] : []),
-      { id: 'settings', label: 'Settings', icon: Settings },
-    ];
+    drawerTabs = allTabs.slice(4);
   }
+
+  // Apply the saved More-drawer order on top of the permitted drawer tabs.
+  if (customMoreIds && customMoreIds.length > 0) {
+    const drawerSet = new Set(drawerTabs.map((t) => t.id));
+    const ordered = customMoreIds
+      .filter((id) => drawerSet.has(id))
+      .map((id) => drawerTabs.find((t) => t.id === id)!)
+      .filter(Boolean);
+    const orderedSet = new Set(ordered.map((t) => t.id));
+    // Append any newly-permitted tabs not yet in the saved order.
+    drawerTabs = [...ordered, ...drawerTabs.filter((t) => !orderedSet.has(t.id))];
+  }
+
+  const moreTabs = [
+    ...drawerTabs,
+    ...(showInbox ? [{ id: 'inbox', label: 'Inbox', icon: Inbox }] : []),
+    { id: 'settings', label: 'Settings', icon: Settings },
+  ];
 
   // If the active tab is not in the allowed tabs, switch to the first allowed tab
   const allTabIds = allTabs.map(t => t.id).join(',');
   useEffect(() => {
-    if (!isLoading && allTabs.length > 0 && !allTabs.find(t => t.id === activeTab) && activeTab !== 'inbox' && activeTab !== 'settings') {
-      setActiveTab(allTabs[0].id);
+    const known = new Set([...allTabs.map(t => t.id), 'inbox', 'settings', 'canvas']);
+    if (!isLoading && allTabs.length > 0 && !known.has(activeTab)) {
+      go(allTabs[0].id);
     }
   }, [isLoading, allTabIds, activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Header title for the active screen (Dashboard, CRM, Community Chat, …).
+  const TITLE_OVERRIDES: Record<string, string> = {
+    dashboard: 'Dashboard',
+    community: 'Community Chat',
+    ai: 'AI Knowledge',
+    inbox: 'Inbox',
+    settings: 'Settings',
+    canvas: canvasName || 'Canvas',
+  };
+  const headerTitle = TITLE_OVERRIDES[activeTab]
+    || allTabs.find(t => t.id === activeTab)?.label
+    || 'Dashboard';
 
   if (isLoading) {
     return <div className="flex items-center justify-center h-screen bg-[#f8f9fa]"><div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--brand-color, #d4a017)', borderTopColor: 'transparent' }}></div></div>;
   }
 
   return (
+    <AdminHeaderContext.Provider value={headerApi}>
     <div className="flex flex-col lg:flex-row h-screen bg-[#f8f9fa] font-sans overflow-hidden transition-colors duration-300">
-      
+
       {/* Side/Bottom Navigation */}
       <div className={`bg-white border-t lg:border-t-0 lg:border-r border-gray-100 flex justify-center lg:justify-start py-2 lg:py-6 px-2 lg:px-4 pb-safe lg:pb-0 fixed lg:relative bottom-0 lg:bottom-auto w-full ${isSidebarCollapsed ? 'lg:w-[88px]' : 'lg:w-64'} lg:h-screen z-[100] shadow-[0_-4px_20px_rgba(0,0,0,0.05)] lg:shadow-[2px_0_10px_rgba(0,0,0,0.02)] transition-all duration-300`}>
         <div className={`flex lg:flex-col justify-around lg:justify-start items-center lg:items-stretch w-full lg:max-w-none lg:gap-2 ${isSidebarCollapsed ? 'lg:items-center' : ''}`}>
           {/* Desktop Logo */}
-          <button 
+          <button
             onClick={() => onNavigate('home')}
             className={`hidden lg:flex items-center mb-8 shrink-0 text-left hover:opacity-80 transition-opacity ${isSidebarCollapsed ? 'justify-center px-0 w-full' : 'gap-3 px-4'}`}
           >
-            <img 
-              src="https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png" 
-              alt="Admin" 
-              className="w-10 h-10 object-contain shrink-0" 
+            <img
+              src="https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png"
+              alt="Admin"
+              className="w-10 h-10 object-contain shrink-0"
             />
             {!isSidebarCollapsed && <span className="text-xl font-bold text-gray-900 truncate">Admin</span>}
           </button>
@@ -248,7 +288,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, tenantPlan 
               return (
                 <button
                   key={tab.id}
-                  onClick={() => { setActiveTab(tab.id); setShowMoreSheet(false); setNewsletterView('list'); }}
+                  onClick={() => go(tab.id)}
                   className={`flex flex-col items-center justify-center gap-1 w-16 h-12 rounded-xl transition-all relative ${
                     isActive ? '' : 'text-gray-400'
                   }`}
@@ -282,7 +322,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, tenantPlan 
               return (
                 <button
                   key={tab.id}
-                  onClick={() => { setActiveTab(tab.id); setNewsletterView('list'); }}
+                  onClick={() => go(tab.id)}
                   className={`flex flex-col items-center justify-center gap-1 rounded-xl transition-all relative shrink-0 ${
                     isSidebarCollapsed
                       ? 'lg:w-14 lg:h-14 lg:p-0'
@@ -310,7 +350,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, tenantPlan 
               );
             })}
           </div>
-          
+
           {/* Collapse Button (Bottom) */}
           <div className="hidden lg:flex flex-1 items-end pb-6 mt-auto">
             <button
@@ -327,31 +367,18 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, tenantPlan 
 
       {/* Main Container */}
       <div className="flex-1 flex flex-col h-screen relative bg-[#f8f9fa] overflow-hidden min-w-0">
-        {/* Top Header */}
-        <div className="bg-white px-4 py-3 flex items-center justify-between shadow-sm z-10 lg:hidden">
-          <div className="flex items-center gap-3">
-            <button 
-              onClick={() => onNavigate('home')}
-              className="w-8 h-8 flex items-center justify-center rounded-full bg-[#fdf8ed] text-[#d4a017] hover:bg-[#fcefc7] transition-colors relative"
-            >
-              <Image src="https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png" alt="Harvest Logo" fill sizes="20px" priority className="object-contain p-1.5" />
-            </button>
-            <h1 className="text-lg font-bold text-gray-900">Harvest Admin</h1>
-          </div>
-        </div>
-
-        {/* Top Header Desktop */}
-        <div className="hidden lg:flex bg-white px-8 py-4 items-center justify-end gap-3 shadow-sm z-10 w-full">
-          <button 
-            onClick={() => setActiveTab('settings')}
+        {/* Desktop utility header — quick access to Settings & Inbox (no logo/title) */}
+        <div className="hidden lg:flex bg-white px-8 py-2 items-center justify-end gap-3 border-b border-gray-100 z-10 w-full">
+          <button
+            onClick={() => go('settings')}
             className="text-gray-500 hover:text-gray-900 transition-colors"
             style={activeTab === 'settings' ? { color: 'var(--brand-color, #d4a017)' } : undefined}
           >
             <Settings size={22} />
           </button>
           {showInbox && (
-            <button 
-              onClick={() => setActiveTab('inbox')}
+            <button
+              onClick={() => go('inbox')}
               className="text-gray-500 hover:text-gray-900 transition-colors relative"
               style={activeTab === 'inbox' ? { color: 'var(--brand-color, #d4a017)' } : undefined}
             >
@@ -365,12 +392,20 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, tenantPlan 
           )}
         </div>
 
+        {/* Unified screen header — back + title + screen action. No back on Dashboard.
+            A sub-view (e.g. an open chat thread) can fully override it. */}
+        <AdminScreenHeader
+          title={headerOverride?.title ?? headerTitle}
+          titleIcon={headerOverride?.titleIcon}
+          onBack={headerOverride ? headerOverride.onBack : (activeTab === 'dashboard' ? undefined : smartBack)}
+          action={headerOverride ? headerOverride.action : headerAction}
+        />
+
         {/* Main Content Area */}
         <div className={`flex-1 overflow-y-auto pb-24 lg:pb-8 p-0 lg:p-6 ${showMoreSheet ? 'overflow-hidden' : ''}`}>
           {activeTab === 'dashboard' ? (
             <div className="flex flex-col items-center justify-center h-full p-8 text-center text-gray-400">
               <LayoutDashboard size={48} strokeWidth={1.5} className="mb-4 opacity-20" />
-              <h2 className="text-lg font-bold text-gray-500 mb-1">Dashboard</h2>
               <p className="text-sm text-gray-400">Select a tool from the navigation to get started.</p>
             </div>
           ) : activeTab === 'admin_roles' ? (
@@ -404,14 +439,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, tenantPlan 
               ) : (
                 <NewsletterCampaigns
                   tenantId={tenantId || PLATFORM_TENANT_ID}
-                  onBack={() => setActiveTab('dashboard')}
+                  onBack={() => go('dashboard')}
                   onCreateNew={() => setNewsletterView('editor')}
                 />
               )}
             </div>
           ) : activeTab === 'canvas' ? (
-            // CanvasEditor is rendered inside FocusScreen (fixed overlay) when canvasId is set.
-            // Here we only render CanvasList so the user can pick a canvas.
             !canvasId ? (
               <div className="p-4 lg:p-0">
                 <CanvasList
@@ -421,32 +454,48 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, tenantPlan 
             ) : null
           ) : activeTab === 'fundraising' ? (
             (isSuperAdmin || !isTenantAdmin || (features && features.fundraising))
-              ? <div className="p-4 lg:p-0"><AdminFundraising /></div>
-              : <PlanUpgradeScreen featureName="Fundraising" featureKey="fundraising" onBack={() => setActiveTab('dashboard')} onUpgrade={() => setActiveTab('settings')} />
+              ? <div className="p-4 lg:p-0"><AdminFundraising initialCampaignId={itemId} onItemConsumed={clearItemId} /></div>
+              : <PlanUpgradeScreen featureName="Fundraising" featureKey="fundraising" onBack={() => go('dashboard')} onUpgrade={() => go('settings')} />
           ) : activeTab === 'docs' ? (
             (isSuperAdmin || !isTenantAdmin || (features && features.docs))
-              ? <div className="p-4 lg:p-0"><AdminDocs /></div>
-              : <PlanUpgradeScreen featureName="Docs" featureKey="docs" onBack={() => setActiveTab('dashboard')} onUpgrade={() => setActiveTab('settings')} />
-          ) : activeTab === 'events' || activeTab === 'crm' || activeTab === 'accounting' || activeTab === 'community' ? (
-            null // rendered by FocusScreen overlays below
+              ? <div className="p-4 lg:p-0"><AdminDocs initialDocId={itemId} onItemConsumed={clearItemId} /></div>
+              : <PlanUpgradeScreen featureName="Docs" featureKey="docs" onBack={() => go('dashboard')} onUpgrade={() => go('settings')} />
+          ) : activeTab === 'events' ? (
+            (isSuperAdmin || !isTenantAdmin || (features && features.eventRegistration))
+              ? <div className="p-4 lg:p-0"><AdminEvents /></div>
+              : <PlanUpgradeScreen featureName="Events" featureKey="event_registration" onBack={() => go('dashboard')} onUpgrade={() => go('settings')} />
+          ) : activeTab === 'crm' ? (
+            (isSuperAdmin || !isTenantAdmin || (features && features.crm))
+              ? <div className="p-4 lg:p-0"><AdminCRM currentUserRole={isSuperAdmin ? 'super_admin' : userRole} currentUserPermissions={isChurchAdmin ? { fullAccess: true } as any : userPermissions} initialContactId={itemId} onItemConsumed={clearItemId} /></div>
+              : <PlanUpgradeScreen featureName="CRM" featureKey="crm" onBack={() => go('dashboard')} onUpgrade={() => go('settings')} />
+          ) : activeTab === 'accounting' ? (
+            (isSuperAdmin || !isTenantAdmin || (features && features.accountingTools))
+              ? <div className="p-4 lg:p-0"><AdminAccounting /></div>
+              : <PlanUpgradeScreen featureName="Accounting" featureKey="accounting" onBack={() => go('dashboard')} onUpgrade={() => go('settings')} />
+          ) : activeTab === 'community' ? (
+            (isSuperAdmin || !isTenantAdmin || (features && features.communityGroups))
+              ? <div className="p-4 lg:p-0 h-full"><AdminCommunity onOpenAttachment={(type, id) => {
+                  if (type === 'doc') navigate(`/admin/docs/${id}`);
+                  else if (type === 'contact') navigate(`/admin/crm/${id}`);
+                  else if (type === 'campaign') navigate(`/admin/fundraising/${id}`);
+                }} /></div>
+              : <PlanUpgradeScreen featureName="Community Groups" featureKey="community_chat" onBack={() => go('dashboard')} onUpgrade={() => go('settings')} />
           ) : activeTab === 'tenants' ? (
             <div className="p-4 lg:p-0"><AdminTenants /></div>
           ) : activeTab === 'settings' ? (
             <AdminSettings
-              onBack={() => setActiveTab('dashboard')}
-              currentPlan={tenantPlan || undefined}
-              tenantId={tenantId || undefined}
-              email={auth.currentUser?.email || undefined}
+              onBack={() => go('dashboard')}
+              currentPlan={tenantPlan ?? undefined}
+              tenantId={tenantId ?? undefined}
+              email={auth.currentUser?.email ?? undefined}
               onChangePlan={async (plan) => {
-                // Update plan in Firestore
                 if (auth.currentUser) {
                   const { updateDoc } = await import('firebase/firestore');
                   await updateDoc(doc(db, 'users', auth.currentUser.uid), { plan });
-                  window.location.reload(); // Refresh to apply new plan
+                  window.location.reload();
                 }
               }}
               onCancelPlan={async () => {
-                // Mark tenant as suspended
                 if (auth.currentUser) {
                   const { updateDoc } = await import('firebase/firestore');
                   await updateDoc(doc(db, 'users', auth.currentUser.uid), { planStatus: 'cancelled' });
@@ -482,11 +531,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, tenantPlan 
                     return (
                       <button
                         key={tab.id}
-                        onClick={() => {
-                          setActiveTab(tab.id);
-                          setShowMoreSheet(false);
-                          setNewsletterView('list');
-                        }}
+                        onClick={() => go(tab.id)}
                         className="flex flex-col items-center gap-2 py-3 rounded-xl hover:bg-gray-50 transition-colors relative"
                       >
                         <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${
@@ -519,7 +564,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, tenantPlan 
                     </div>
                     <div className="text-left">
                       <p className="text-sm font-semibold text-gray-800">Customize Navigation</p>
-                      <p className="text-xs text-gray-400">Rearrange bottom bar items</p>
+                      <p className="text-xs text-gray-400">Rearrange bottom bar & More drawer</p>
                     </div>
                   </button>
                 </div>
@@ -534,8 +579,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, tenantPlan 
           <AdminNavCustomizer
             allTabs={allTabs}
             currentPrimaryIds={customPrimaryIds ?? primaryTabs.map((t) => t.id)}
-            onSave={(ids) => {
-              setCustomPrimaryIds(ids);
+            currentDrawerIds={drawerTabs.map((t) => t.id)}
+            onSave={(primaryIds, drawerIds) => {
+              setCustomPrimaryIds(primaryIds);
+              setCustomMoreIds(drawerIds);
               setShowNavCustomizer(false);
             }}
             onCancel={() => setShowNavCustomizer(false)}
@@ -555,51 +602,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, tenantPlan 
           />
         </FocusScreen>
       )}
-
-      {/* Events focus mode */}
-      {activeTab === 'events' && (
-        <FocusScreen onBack={() => setActiveTab('dashboard')}>
-          <div className="h-full overflow-y-auto bg-[#f8f9fa] p-4 lg:p-6 pb-8">
-            {(isSuperAdmin || !isTenantAdmin || (features && features.eventRegistration))
-              ? <AdminEvents />
-              : <PlanUpgradeScreen featureName="Events" featureKey="event_registration" onBack={() => setActiveTab('dashboard')} onUpgrade={() => setActiveTab('settings')} />}
-          </div>
-        </FocusScreen>
-      )}
-
-      {/* CRM focus mode */}
-      {activeTab === 'crm' && (
-        <FocusScreen onBack={() => setActiveTab('dashboard')}>
-          <div className="h-full overflow-y-auto bg-[#f8f9fa] p-4 lg:p-6 pb-8">
-            {(isSuperAdmin || !isTenantAdmin || (features && features.crm))
-              ? <AdminCRM currentUserRole={isSuperAdmin ? 'super_admin' : userRole} currentUserPermissions={isChurchAdmin ? { fullAccess: true } as any : userPermissions} />
-              : <PlanUpgradeScreen featureName="CRM" featureKey="crm" onBack={() => setActiveTab('dashboard')} onUpgrade={() => setActiveTab('settings')} />}
-          </div>
-        </FocusScreen>
-      )}
-
-      {/* Accounting focus mode */}
-      {activeTab === 'accounting' && (
-        <FocusScreen onBack={() => setActiveTab('dashboard')}>
-          <div className="h-full overflow-y-auto bg-[#f8f9fa] p-4 lg:p-6 pb-8">
-            {(isSuperAdmin || !isTenantAdmin || (features && features.accountingTools))
-              ? <AdminAccounting />
-              : <PlanUpgradeScreen featureName="Accounting" featureKey="accounting" onBack={() => setActiveTab('dashboard')} onUpgrade={() => setActiveTab('settings')} />}
-          </div>
-        </FocusScreen>
-      )}
-
-      {/* Community focus mode */}
-      {activeTab === 'community' && (
-        <FocusScreen onBack={() => setActiveTab('dashboard')}>
-          <div className="h-full overflow-y-auto bg-[#f8f9fa] p-4 lg:p-6 pb-8">
-            {(isSuperAdmin || !isTenantAdmin || (features && features.communityGroups))
-              ? <AdminCommunity />
-              : <PlanUpgradeScreen featureName="Community Groups" featureKey="community_chat" onBack={() => setActiveTab('dashboard')} onUpgrade={() => setActiveTab('settings')} />}
-          </div>
-        </FocusScreen>
-      )}
     </div>
+    </AdminHeaderContext.Provider>
   );
 };
 

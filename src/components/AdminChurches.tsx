@@ -9,10 +9,12 @@ import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { getTenantScope } from '../utils/tenant-scope';
 import { sendPushNotification } from '../utils/send-notification';
 import { useTenant } from '@/contexts/TenantContext';
+import { useAdminHeader, HeaderActionButton } from './AdminScreenHeader';
 
 
 const AdminChurches: React.FC = () => {
   const { tenantId, tenantPlan } = useTenant();
+  const { setHeaderAction } = useAdminHeader();
   const [churches, setChurches] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -140,6 +142,11 @@ const AdminChurches: React.FC = () => {
     setIsAdding(true);
   };
 
+  useEffect(() => {
+    setHeaderAction(<HeaderActionButton label="Add Church" onClick={() => handleAddChurchClick()} />);
+    return () => setHeaderAction(null);
+  }, [setHeaderAction]);
+
   const filteredChurches = churches.filter(church => {
     const matchesSearch = searchTerm === '' || 
       church.name?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -183,23 +190,11 @@ const AdminChurches: React.FC = () => {
 
   return (
     <div className="space-y-6 lg:max-w-5xl lg:mx-auto w-full">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Church List</h2>
-          {isEnterprise && (
-            <p className="text-xs text-gray-500 mt-1">
-              {churches.length} church{churches.length !== 1 ? 'es' : ''} · ${churches.length * ENTERPRISE_PRICE_PER_CHURCH}/mo
-            </p>
-          )}
-        </div>
-        <button
-          onClick={handleAddChurchClick}
-          className="flex items-center gap-1.5 bg-[#d4a017] text-white px-4 py-2 text-sm rounded-lg font-medium hover:bg-[#b58812] transition-colors shadow-md shadow-[#d4a017]/20"
-        >
-          <Plus size={16} strokeWidth={2.5} />
-          Add Church
-        </button>
-      </div>
+      {isEnterprise && (
+        <p className="text-xs text-gray-500">
+          {churches.length} church{churches.length !== 1 ? 'es' : ''} · ${churches.length * ENTERPRISE_PRICE_PER_CHURCH}/mo
+        </p>
+      )}
 
       {/* Billing Notice */}
       {billingNotice && (
