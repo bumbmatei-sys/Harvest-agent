@@ -4,7 +4,7 @@ import { Stripe } from 'stripe';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import { Resend } from 'resend';
 
-// ─── Init Firebase Admin ───────────────────────────────────────────
+// ─── Init Firebase Admin ──────────────────────────────────────────────────
 admin.initializeApp();
 const db = admin.firestore();
 const STORAGE_BUCKET = 'harvest-receipts-233a1';
@@ -12,7 +12,7 @@ const getBucket = () => admin.storage().bucket(STORAGE_BUCKET);
 
 const SUPER_ADMIN_EMAILS = ['bumbmatei@proton.me', 'bumbmatei@zohomail.eu'];
 
-// ─── Helper: generate single receipt PDF ───────────────────────────
+// ─── Helper: generate single receipt PDF ───────────────────────────────────
 async function generateReceiptPDF(invoice: any): Promise<Uint8Array> {
   const pdf = await PDFDocument.create();
   const page = pdf.addPage([595, 842]); // A4
@@ -61,7 +61,7 @@ async function generateReceiptPDF(invoice: any): Promise<Uint8Array> {
   return pdf.save();
 }
 
-// ─── Helper: generate annual receipt PDF ───────────────────────────
+// ─── Helper: generate annual receipt PDF ──────────────────────────────────
 interface DonorData {
   name: string;
   email: string;
@@ -115,7 +115,7 @@ async function generateAnnualReceiptPDF(donor: DonorData, year: number): Promise
   return pdf.save();
 }
 
-// ─── Helper: upsert contact ────────────────────────────────────────
+// ─── Helper: upsert contact ──────────────────────────────────────────────────
 async function upsertContact(opts: {
   tenantId: string;
   email: string;
@@ -161,7 +161,7 @@ async function upsertContact(opts: {
   return ref.id;
 }
 
-// ─── 1. onUserCreated ───────────────────────────────────────────────
+// ─── 1. onUserCreated ──────────────────────────────────────────────────────────────
 export const onUserCreated = functions.auth.user().onCreate(async (user) => {
   console.log(`onUserCreated: ${user.uid} (${user.email})`);
 
@@ -195,7 +195,7 @@ export const onUserCreated = functions.auth.user().onCreate(async (user) => {
   console.log(`onUserCreated: CRM contact ${contactId} for ${user.email} in tenant ${tenantId}`);
 });
 
-// ─── 2. onPartnershipPayment ────────────────────────────────────────
+// ─── 2. onPartnershipPayment ───────────────────────────────────────────────────────
 export const onPartnershipPayment = functions.https.onRequest(async (req, res) => {
   if (req.method !== 'POST') {
     res.status(405).send('Method Not Allowed');
@@ -213,7 +213,7 @@ export const onPartnershipPayment = functions.https.onRequest(async (req, res) =
   const stripe = new Stripe(stripeKey);
   const sig = req.headers['stripe-signature'] as string;
 
-  let event: Stripe.Event;
+  let event: any;
   try {
     event = stripe.webhooks.constructEvent(req.rawBody!, sig, webhookSecret);
   } catch (err: any) {
@@ -227,7 +227,7 @@ export const onPartnershipPayment = functions.https.onRequest(async (req, res) =
     return;
   }
 
-  const pi = event.data.object as Stripe.PaymentIntent;
+  const pi = event.data.object;
   const meta = pi.metadata || {};
 
   if (meta.type !== 'partnership') {
@@ -244,13 +244,7 @@ export const onPartnershipPayment = functions.https.onRequest(async (req, res) =
     return;
   }
 
-  console.log(`onPartnershipPayment: $${(amount / 100).toFixed(2)} from ${donorEmail} for tenant ${tenantId}`);
-
-  const contactId = await upsertContact({
-    tenantId,
-    email: donorEmail,
-    type: 'donor',
-  });
+  const contactId = await upsertContact({ tenantId, email: donorEmail, type: 'donor' });
 
   await db.collection('contacts').doc(contactId).update({
     totalDonated: admin.firestore.FieldValue.increment(amount),
@@ -258,8 +252,7 @@ export const onPartnershipPayment = functions.https.onRequest(async (req, res) =
   });
 
   await db.collection('contactActivities').add({
-    contactId,
-    type: 'donation',
+    contactId, type: 'donation',
     description: 'Partnership donation via Stripe',
     amount,
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -268,32 +261,23 @@ export const onPartnershipPayment = functions.https.onRequest(async (req, res) =
 
   const tenantDoc = await db.collection('tenants').doc(tenantId).get();
   const tenantName = tenantDoc.data()?.name || tenantDoc.data()?.displayName || '';
-
   const contactDoc = await db.collection('contacts').doc(contactId).get();
   const cData = contactDoc.data() || {};
   const recipientName = `${cData.firstName || ''} ${cData.lastName || ''}`.trim() || donorEmail;
 
   const receiptNumber = `R-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
   await db.collection('tenants').doc(tenantId).collection('invoices').add({
-    type: 'donation_receipt',
-    recipientName,
-    recipientEmail: donorEmail,
-    amount,
-    currency: pi.currency || 'usd',
-    description: 'Partnership donation',
-    relatedId: pi.id,
-    receiptNumber,
+    type: 'donation_receipt', recipientName, recipientEmail: donorEmail,
+    amount, currency: pi.currency || 'usd', description: 'Partnership donation',
+    relatedId: pi.id, receiptNumber,
     issuedAt: admin.firestore.FieldValue.serverTimestamp(),
-    tenantName,
-    pdfUrl: null,
-    status: 'pending',
+    tenantName, pdfUrl: null, status: 'pending',
   });
 
-  console.log(`onPartnershipPayment: Created invoice + activity for ${donorEmail}`);
   res.json({ received: true, processed: true, contactId });
 });
 
-// ─── 3. backfillCRMContacts ─────────────────────────────────────────
+// ─── 3. backfillCRMContacts ─────────────────────────────────────────────────────────
 export const backfillCRMContacts = functions.https.onCall(async (_data, context) => {
   if (!context.auth) {
     throw new functions.https.HttpsError('unauthenticated', 'Must be signed in');
@@ -312,8 +296,6 @@ export const backfillCRMContacts = functions.https.onCall(async (_data, context)
     throw new functions.https.HttpsError('permission-denied', 'Super admin only');
   }
 
-  console.log('backfillCRMContacts: Starting backfill...');
-
   const usersSnap = await db.collection('users').get();
   let created = 0, updated = 0, skipped = 0;
 
@@ -323,18 +305,15 @@ export const backfillCRMContacts = functions.https.onCall(async (_data, context)
     const userEmail = data.email || '';
     if (!tenantId || !userEmail) { skipped++; continue; }
 
-    // Check if contact already exists
     const existingSnap = await db.collection('contacts')
       .where('email', '==', userEmail)
       .where('tenantId', '==', tenantId)
       .limit(1).get();
 
     const wasNew = existingSnap.empty;
-
     const [firstName, ...lastNameParts] = (data.displayName || data.firstName || '').split(' ');
     await upsertContact({
-      tenantId,
-      email: userEmail,
+      tenantId, email: userEmail,
       firstName: firstName || '',
       lastName: lastNameParts.join(' ') || '',
       userId: doc.id,
@@ -350,7 +329,7 @@ export const backfillCRMContacts = functions.https.onCall(async (_data, context)
   return result;
 });
 
-// ─── 4. generateSingleReceipt ───────────────────────────────────────
+// ─── 4. generateSingleReceipt ───────────────────────────────────────────────────────
 export const generateSingleReceipt = functions.firestore
   .document('tenants/{tenantId}/invoices/{invoiceId}')
   .onCreate(async (snap, context) => {
@@ -358,41 +337,27 @@ export const generateSingleReceipt = functions.firestore
     const tenantId = context.params.tenantId;
     const invoiceId = context.params.invoiceId;
 
-    console.log(`generateSingleReceipt: Generating PDF for invoice ${invoiceId} in tenant ${tenantId}`);
-
     try {
       const pdfBytes = await generateReceiptPDF(invoiceData);
-
       const bucket = getBucket();
       const filePath = `tenants/${tenantId}/invoices/${invoiceId}.pdf`;
       const file = bucket.file(filePath);
       await file.save(Buffer.from(pdfBytes), { metadata: { contentType: 'application/pdf' } });
       await file.makePublic();
-
       const pdfUrl = `https://storage.googleapis.com/${bucket.name}/${filePath}`;
-
-      await snap.ref.update({
-        pdfUrl,
-        status: 'generated',
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
-
-      console.log(`generateSingleReceipt: PDF generated and uploaded for ${invoiceId}`);
+      await snap.ref.update({ pdfUrl, status: 'generated', updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+      console.log(`generateSingleReceipt: PDF generated for ${invoiceId}`);
     } catch (error: any) {
       console.error(`generateSingleReceipt: Failed for ${invoiceId}:`, error?.message || error);
     }
   });
 
-// ─── 5. generateAnnualReceipts ──────────────────────────────────────
+// ─── 5. generateAnnualReceipts ──────────────────────────────────────────────────────
 export const generateAnnualReceipts = functions.https.onCall(async (data, context) => {
-  if (!context.auth) {
-    throw new functions.https.HttpsError('unauthenticated', 'Must be signed in');
-  }
+  if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Must be signed in');
 
   const { year, tenantId } = data;
-  if (!year || !tenantId) {
-    throw new functions.https.HttpsError('invalid-argument', 'year and tenantId required');
-  }
+  if (!year || !tenantId) throw new functions.https.HttpsError('invalid-argument', 'year and tenantId required');
 
   const uid = context.auth.uid;
   const email = context.auth.token.email || '';
@@ -406,8 +371,6 @@ export const generateAnnualReceipts = functions.https.onCall(async (data, contex
   if (!isSuperAdmin && userData?.tenantId !== tenantId) {
     throw new functions.https.HttpsError('permission-denied', 'Access denied to this tenant');
   }
-
-  console.log(`generateAnnualReceipts: year=${year}, tenantId=${tenantId}`);
 
   const startOfYear = new Date(Number(year), 0, 1);
   const endOfYear = new Date(Number(year), 11, 31, 23, 59, 59);
@@ -426,20 +389,13 @@ export const generateAnnualReceipts = functions.https.onCall(async (data, contex
   const tenantDoc = await db.collection('tenants').doc(tenantId).get();
   const tenantName = tenantDoc.data()?.name || tenantDoc.data()?.displayName || '';
 
-  // Group by donor email
   const donorsMap = new Map<string, DonorData>();
-
   for (const doc of invoicesSnap.docs) {
     const inv = doc.data();
     const donorEmail = inv.recipientEmail;
     if (!donorEmail) continue;
     if (!donorsMap.has(donorEmail)) {
-      donorsMap.set(donorEmail, {
-        name: inv.recipientName || donorEmail,
-        email: donorEmail,
-        total: 0,
-        donations: [],
-      });
+      donorsMap.set(donorEmail, { name: inv.recipientName || donorEmail, email: donorEmail, total: 0, donations: [] });
     }
     const donor = donorsMap.get(donorEmail)!;
     donor.total += inv.amount;
@@ -454,42 +410,31 @@ export const generateAnnualReceipts = functions.https.onCall(async (data, contex
   let sent = 0, generated = 0;
   const failedEmails: string[] = [];
 
-  for (const [email, donor] of donorsMap) {
+  for (const [donorEmail, donor] of donorsMap) {
     try {
       const pdfBytes = await generateAnnualReceiptPDF(donor, Number(year));
-
-      const filePath = `tenants/${tenantId}/annual-receipts/${year}/${email}.pdf`;
+      const filePath = `tenants/${tenantId}/annual-receipts/${year}/${donorEmail}.pdf`;
       const file = bucket.file(filePath);
       await file.save(Buffer.from(pdfBytes), { metadata: { contentType: 'application/pdf' } });
       await file.makePublic();
-
       generated++;
 
       const resendKey = process.env.RESEND_API_KEY;
       if (resendKey) {
         const resend = new Resend(resendKey);
         const pdfBase64 = Buffer.from(pdfBytes).toString('base64');
-
         const { error } = await resend.emails.send({
           from: 'Harvest <noreply@theharvest.app>',
-          to: email,
+          to: donorEmail,
           subject: `Annual Tax Receipt ${year} — ${tenantName || 'Harvest'}`,
           html: `<p>Dear ${donor.name},</p><p>Please find your annual tax receipt attached for the year ${year}.</p><p>Total donations: <strong>$${(donor.total / 100).toFixed(2)}</strong></p><p>Thank you for your partnership!</p><br><p>— ${tenantName || 'Harvest'}</p>`,
           attachments: [{ filename: `tax-receipt-${year}.pdf`, content: pdfBase64 }],
         });
-
-        if (error) {
-          console.error(`generateAnnualReceipts: Failed to email ${email}:`, error);
-          failedEmails.push(email);
-        } else {
-          sent++;
-        }
-      } else {
-        console.log('generateAnnualReceipts: No Resend key — PDF generated but not emailed');
+        if (error) { failedEmails.push(donorEmail); } else { sent++; }
       }
     } catch (err: any) {
-      console.error(`generateAnnualReceipts: Failed for ${email}:`, err?.message || err);
-      failedEmails.push(email);
+      console.error(`generateAnnualReceipts: Failed for ${donorEmail}:`, err?.message || err);
+      failedEmails.push(donorEmail);
     }
   }
 
@@ -498,18 +443,12 @@ export const generateAnnualReceipts = functions.https.onCall(async (data, contex
   return result;
 });
 
-// ─── 6. addChurchBilling ────────────────────────────────────────────
-// Called from the client after a new church is created on an Organization plan.
-// Adds a $15/mo subscription item to the tenant's existing Stripe subscription.
+// ─── 6. addChurchBilling ───────────────────────────────────────────────────────────
 export const addChurchBilling = functions.https.onCall(async (data, context) => {
-  if (!context.auth) {
-    throw new functions.https.HttpsError('unauthenticated', 'Must be signed in');
-  }
+  if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Must be signed in');
 
   const { tenantId, churchId, churchName } = data;
-  if (!tenantId || !churchId) {
-    throw new functions.https.HttpsError('invalid-argument', 'tenantId and churchId required');
-  }
+  if (!tenantId || !churchId) throw new functions.https.HttpsError('invalid-argument', 'tenantId and churchId required');
 
   const uid = context.auth.uid;
   const email = context.auth.token.email || '';
@@ -520,63 +459,45 @@ export const addChurchBilling = functions.https.onCall(async (data, context) => 
     || userData?.role === 'super_admin'
     || context.auth.token.superAdmin === true;
 
-  // Verify the user belongs to this tenant (or is super admin)
   if (!isSuperAdmin && userData?.tenantId !== tenantId) {
     throw new functions.https.HttpsError('permission-denied', 'Access denied to this tenant');
   }
 
   const stripeKey = process.env.STRIPE_SECRET_KEY;
-  if (!stripeKey) {
-    throw new functions.https.HttpsError('failed-precondition', 'Stripe not configured');
-  }
+  if (!stripeKey) throw new functions.https.HttpsError('failed-precondition', 'Stripe not configured');
   const stripe = new Stripe(stripeKey);
 
   const tenantDoc = await db.collection('tenants').doc(tenantId).get();
   const tenantData = tenantDoc.data();
-  if (!tenantData) {
-    throw new functions.https.HttpsError('not-found', 'Tenant not found');
-  }
+  if (!tenantData) throw new functions.https.HttpsError('not-found', 'Tenant not found');
 
   const subscriptionId = tenantData?.stripeSubscriptionId;
-  if (!subscriptionId) {
-    throw new functions.https.HttpsError('failed-precondition', 'Tenant has no active Stripe subscription');
-  }
+  if (!subscriptionId) throw new functions.https.HttpsError('failed-precondition', 'Tenant has no active Stripe subscription');
 
-  console.log(`addChurchBilling: Adding $15/mo for church ${churchId} on subscription ${subscriptionId}`);
-
-  // Create subscription item with inline price_data (no pre-created product needed)
   const subItem = await stripe.subscriptionItems.create({
     subscription: subscriptionId,
     price_data: {
       currency: 'usd',
-      unit_amount: 1500, // $15.00/mo
+      unit_amount: 1500,
       recurring: { interval: 'month' },
       product_data: {
         name: `Additional Church: ${churchName || churchId}`,
         metadata: { tenantId, churchId, type: 'per_church' },
       },
     } as any,
-    metadata: {
-      tenantId,
-      churchId,
-      type: 'per_church',
-    },
+    metadata: { tenantId, churchId, type: 'per_church' },
   });
 
-  // Store the subscription item ID on the church document
   await db.collection('churches').doc(churchId).update({
     stripeSubscriptionItemId: subItem.id,
     billingAmount: 1500,
     billingAddedAt: admin.firestore.FieldValue.serverTimestamp(),
   });
 
-  console.log(`addChurchBilling: Created subscription item ${subItem.id} for church ${churchId}`);
   return { success: true, subscriptionItemId: subItem.id };
 });
 
-// ─── 7. removeChurchBilling ────────────────────────────────────────
-// Triggered when a church document is deleted — removes the $15/mo
-// subscription item from the tenant's Stripe subscription automatically.
+// ─── 7. removeChurchBilling ─────────────────────────────────────────────────────────
 export const removeChurchBilling = functions.firestore
   .document('churches/{churchId}')
   .onDelete(async (snap, context) => {
@@ -584,23 +505,177 @@ export const removeChurchBilling = functions.firestore
     if (!churchData) return;
 
     const subscriptionItemId = churchData.stripeSubscriptionItemId;
-    if (!subscriptionItemId) {
-      console.log(`removeChurchBilling: Church ${context.params.churchId} has no subscription item — skipping`);
-      return;
-    }
+    if (!subscriptionItemId) return;
 
     const stripeKey = process.env.STRIPE_SECRET_KEY;
-    if (!stripeKey) {
-      console.error('removeChurchBilling: STRIPE_SECRET_KEY not configured');
-      return;
-    }
+    if (!stripeKey) { console.error('removeChurchBilling: STRIPE_SECRET_KEY not configured'); return; }
     const stripe = new Stripe(stripeKey);
 
     try {
       await stripe.subscriptionItems.del(subscriptionItemId);
-      console.log(`removeChurchBilling: Removed subscription item ${subscriptionItemId} for deleted church ${context.params.churchId}`);
+      console.log(`removeChurchBilling: Removed ${subscriptionItemId} for church ${context.params.churchId}`);
     } catch (err: any) {
-      console.error(`removeChurchBilling: Failed to remove subscription item ${subscriptionItemId}:`, err?.message || err);
-      // Don't throw — the church is already deleted, we don't want to block deletion
+      console.error(`removeChurchBilling: Failed to remove ${subscriptionItemId}:`, err?.message || err);
     }
   });
+
+// ─── 8. telegramWebhook ──────────────────────────────────────────────────────────────
+export const telegramWebhook = functions.https.onRequest(async (req, res) => {
+  if (req.method !== 'POST') {
+    res.status(405).send('Method Not Allowed');
+    return;
+  }
+
+  const botToken = process.env.TELEGRAM_BOT_TOKEN;
+  const mimoKey = process.env.MIMO_API_KEY;
+
+  if (!botToken) {
+    console.error('telegramWebhook: TELEGRAM_BOT_TOKEN not configured');
+    res.status(500).send('Bot not configured');
+    return;
+  }
+
+  const update = req.body;
+  const message = update?.message;
+  if (!message) {
+    res.json({ ok: true });
+    return;
+  }
+
+  const chatId = message.chat?.id;
+  const text = (message.text || '').trim();
+  const username = message.from?.username || '';
+
+  if (!chatId || !text) {
+    res.json({ ok: true });
+    return;
+  }
+
+  const sendMessage = async (replyText: string) => {
+    try {
+      await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: chatId, text: replyText }),
+      });
+    } catch (err) {
+      console.error('telegramWebhook: sendMessage failed:', err);
+    }
+  };
+
+  // Handle /start {uid} deep link
+  if (text.startsWith('/start')) {
+    const uid = text.split(' ')[1]?.trim();
+
+    if (!uid) {
+      await sendMessage('Welcome to Harvest AI Assistant! Please use the Connect button in your Harvest admin settings to activate your assistant.');
+      res.json({ ok: true });
+      return;
+    }
+
+    try {
+      const userDoc = await db.collection('users').doc(uid).get();
+      if (!userDoc.exists) {
+        await sendMessage('User not found. Please try again from your Harvest admin settings.');
+        res.json({ ok: true });
+        return;
+      }
+
+      const userData = userDoc.data()!;
+      if (!userData.hasAIAssistant) {
+        await sendMessage('You don\'t have an AI Assistant subscription. Please subscribe from your Harvest admin settings at theharvest.app');
+        res.json({ ok: true });
+        return;
+      }
+
+      await db.collection('users').doc(uid).update({
+        telegramChatId: String(chatId),
+        telegramUsername: username || null,
+        aiAssistantConnected: true,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      await sendMessage('Your Harvest AI Assistant is now connected! Ask me anything about your ministry, members, events, or how to use Harvest. What can I help you with today?');
+    } catch (err: any) {
+      console.error('telegramWebhook: /start handler error:', err?.message || err);
+      await sendMessage('Something went wrong. Please try again.');
+    }
+
+    res.json({ ok: true });
+    return;
+  }
+
+  // Handle regular messages — find user by chatId
+  try {
+    const usersSnap = await db.collection('users')
+      .where('telegramChatId', '==', String(chatId))
+      .limit(1)
+      .get();
+
+    if (usersSnap.empty) {
+      await sendMessage('Your Telegram account is not connected to a Harvest account. Please connect from your admin settings at theharvest.app');
+      res.json({ ok: true });
+      return;
+    }
+
+    const userData = usersSnap.docs[0].data();
+
+    if (!userData.hasAIAssistant || !userData.aiAssistantConnected) {
+      await sendMessage('Your AI Assistant subscription is no longer active. Please check your subscription at theharvest.app');
+      res.json({ ok: true });
+      return;
+    }
+
+    if (!mimoKey) {
+      await sendMessage('AI service is not configured. Please contact support.');
+      res.json({ ok: true });
+      return;
+    }
+
+    // Fetch tenant context
+    let tenantContext = '';
+    if (userData.tenantId) {
+      try {
+        const tenantDoc = await db.collection('tenants').doc(userData.tenantId).get();
+        if (tenantDoc.exists) {
+          const t = tenantDoc.data()!;
+          tenantContext = `Ministry: ${t.name || userData.tenantId}. Plan: ${t.plan || 'unknown'}.`;
+        }
+      } catch { /* non-fatal */ }
+    }
+
+    const systemPrompt = `You are a personal AI assistant for a ministry leader using Harvest, a church management platform. ${tenantContext} Be helpful, concise, and faith-affirming. Help with ministry management, sermon preparation, member care, events, and using Harvest features.`;
+
+    const aiResponse = await fetch('https://token-plan-cn.xiaomimimo.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${mimoKey}`,
+      },
+      body: JSON.stringify({
+        model: 'mimo-v2.5',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: text },
+        ],
+        max_tokens: 1000,
+      }),
+    });
+
+    if (!aiResponse.ok) {
+      console.error('telegramWebhook: Mimo API error:', aiResponse.status);
+      await sendMessage('Sorry, I couldn\'t process your request right now. Please try again in a moment.');
+      res.json({ ok: true });
+      return;
+    }
+
+    const aiData = await aiResponse.json() as any;
+    const reply = aiData?.choices?.[0]?.message?.content || 'I could not generate a response. Please try again.';
+    await sendMessage(reply);
+  } catch (err: any) {
+    console.error('telegramWebhook: Message handler error:', err?.message || err);
+    await sendMessage('Sorry, something went wrong. Please try again.');
+  }
+
+  res.json({ ok: true });
+});
