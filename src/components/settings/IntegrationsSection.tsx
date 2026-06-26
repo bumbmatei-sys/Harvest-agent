@@ -1,17 +1,19 @@
 "use client";
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Instagram, Mail, Plug } from 'lucide-react';
+import { Instagram, Mail, Star } from 'lucide-react';
 import { authFetch } from '../../utils/auth-fetch';
 
-interface IntegrationsSectionProps {}
-
-const IntegrationsSection: React.FC<IntegrationsSectionProps> = () => {
+const IntegrationsSection: React.FC = () => {
   const [instagramStatus, setInstagramStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected');
   const [instagramAccount, setInstagramAccount] = useState<string | null>(null);
+  const [isPrimaryInstagram, setIsPrimaryInstagram] = useState(false);
   const [instagramLoading, setInstagramLoading] = useState(false);
+
   const [mailchimpStatus, setMailchimpStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected');
   const [mailchimpAccount, setMailchimpAccount] = useState<string | null>(null);
+  const [isPrimaryMailchimp, setIsPrimaryMailchimp] = useState(false);
   const [mailchimpLoading, setMailchimpLoading] = useState(false);
+
   const [loaded, setLoaded] = useState(false);
   const pollingRef = useRef<{ intervals: NodeJS.Timeout[]; timeouts: NodeJS.Timeout[] }>({ intervals: [], timeouts: [] });
 
@@ -35,27 +37,27 @@ const IntegrationsSection: React.FC<IntegrationsSectionProps> = () => {
   const loadIntegrations = useCallback(async () => {
     if (loaded) return;
     try {
-      const tid = await getTenantId();
-      if (!tid) return;
-      const { doc, getDoc } = await import('firebase/firestore');
-      const { db } = await import('../../firebase');
+      const [igResp, mcResp] = await Promise.all([
+        authFetch('/api/composio/instagram/status'),
+        authFetch('/api/composio/mailchimp/status'),
+      ]);
 
-      const igDoc = await getDoc(doc(db, 'tenants', tid, 'integrations', 'instagram'));
-      if (igDoc.exists()) {
-        const igData = igDoc.data();
-        if (igData.status === 'connected' || igData.status === 'active') {
+      if (igResp.ok) {
+        const igData = await igResp.json();
+        if (igData.connected) {
           setInstagramStatus('connected');
           setInstagramAccount(igData.username || null);
         }
+        setIsPrimaryInstagram(igData.isPrimary || false);
       }
 
-      const mcDoc = await getDoc(doc(db, 'tenants', tid, 'integrations', 'mailchimp'));
-      if (mcDoc.exists()) {
-        const mcData = mcDoc.data();
-        if (mcData.status === 'connected' || mcData.status === 'active') {
+      if (mcResp.ok) {
+        const mcData = await mcResp.json();
+        if (mcData.connected) {
           setMailchimpStatus('connected');
           setMailchimpAccount(mcData.email || null);
         }
+        setIsPrimaryMailchimp(mcData.isPrimary || false);
       }
     } catch (e) {
       console.error('Failed to load integrations:', e);
@@ -64,6 +66,34 @@ const IntegrationsSection: React.FC<IntegrationsSectionProps> = () => {
   }, [loaded]);
 
   useEffect(() => { loadIntegrations(); }, [loadIntegrations]);
+
+  const handleMakePrimaryInstagram = async () => {
+    try {
+      const { auth } = await import('../../firebase');
+      const { db } = await import('../../firebase');
+      const { doc, updateDoc } = await import('firebase/firestore');
+      const tid = await getTenantId();
+      if (!tid || !auth.currentUser) return;
+      await updateDoc(doc(db, 'tenants', tid), { primaryInstagramAdmin: auth.currentUser.uid });
+      setIsPrimaryInstagram(true);
+    } catch (e) {
+      console.error('Failed to set primary Instagram admin:', e);
+    }
+  };
+
+  const handleMakePrimaryMailchimp = async () => {
+    try {
+      const { auth } = await import('../../firebase');
+      const { db } = await import('../../firebase');
+      const { doc, updateDoc } = await import('firebase/firestore');
+      const tid = await getTenantId();
+      if (!tid || !auth.currentUser) return;
+      await updateDoc(doc(db, 'tenants', tid), { primaryMailchimpAdmin: auth.currentUser.uid });
+      setIsPrimaryMailchimp(true);
+    } catch (e) {
+      console.error('Failed to set primary Mailchimp admin:', e);
+    }
+  };
 
   const handleInstagramConnect = async () => {
     const tid = await getTenantId();
@@ -80,11 +110,12 @@ const IntegrationsSection: React.FC<IntegrationsSectionProps> = () => {
         window.open(data.redirectUrl, '_blank');
         const pollInterval = setInterval(async () => {
           try {
-            const statusResp = await authFetch(`/api/composio/instagram/status?tenantId=${tid}`);
+            const statusResp = await authFetch('/api/composio/instagram/status');
             const statusData = await statusResp.json();
             if (statusData.connected) {
               setInstagramStatus('connected');
               setInstagramAccount(statusData.username || null);
+              setIsPrimaryInstagram(statusData.isPrimary || false);
               clearInterval(pollInterval);
             }
           } catch { /* keep polling */ }
@@ -118,11 +149,12 @@ const IntegrationsSection: React.FC<IntegrationsSectionProps> = () => {
         window.open(data.redirectUrl, '_blank');
         const pollInterval = setInterval(async () => {
           try {
-            const statusResp = await authFetch(`/api/composio/mailchimp/status?tenantId=${tid}`);
+            const statusResp = await authFetch('/api/composio/mailchimp/status');
             const statusData = await statusResp.json();
             if (statusData.connected) {
               setMailchimpStatus('connected');
               setMailchimpAccount(statusData.email || null);
+              setIsPrimaryMailchimp(statusData.isPrimary || false);
               clearInterval(pollInterval);
             }
           } catch { /* keep polling */ }
@@ -142,16 +174,12 @@ const IntegrationsSection: React.FC<IntegrationsSectionProps> = () => {
   };
 
   const handleInstagramDisconnect = async () => {
-    const tid = await getTenantId();
-    if (!tid) return;
     setInstagramLoading(true);
     try {
-      await authFetch('/api/composio/instagram/disconnect', {
-        method: 'POST',
-        body: JSON.stringify({ tenantId: tid }),
-      });
+      await authFetch('/api/composio/instagram/disconnect', { method: 'POST' });
       setInstagramStatus('disconnected');
       setInstagramAccount(null);
+      setIsPrimaryInstagram(false);
     } catch (e) {
       console.error('Instagram disconnect error:', e);
       alert('Failed to disconnect Instagram.');
@@ -161,16 +189,12 @@ const IntegrationsSection: React.FC<IntegrationsSectionProps> = () => {
   };
 
   const handleMailchimpDisconnect = async () => {
-    const tid = await getTenantId();
-    if (!tid) return;
     setMailchimpLoading(true);
     try {
-      await authFetch('/api/composio/mailchimp/disconnect', {
-        method: 'POST',
-        body: JSON.stringify({ tenantId: tid }),
-      });
+      await authFetch('/api/composio/mailchimp/disconnect', { method: 'POST' });
       setMailchimpStatus('disconnected');
       setMailchimpAccount(null);
+      setIsPrimaryMailchimp(false);
     } catch (e) {
       console.error('Mailchimp disconnect error:', e);
       alert('Failed to disconnect Mailchimp.');
@@ -182,7 +206,7 @@ const IntegrationsSection: React.FC<IntegrationsSectionProps> = () => {
   return (
     <div className="space-y-4">
       <p className="text-sm text-gray-600">
-        Connect your social media and email marketing platforms to automate newsletter distribution and social posting.
+        Connect your social media and email marketing platforms to automate newsletter distribution.
       </p>
 
       {/* Instagram Card */}
@@ -192,31 +216,48 @@ const IntegrationsSection: React.FC<IntegrationsSectionProps> = () => {
             <Instagram size={24} className="text-white" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold text-gray-900">Instagram</p>
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-bold text-gray-900">Instagram</p>
+              {instagramStatus === 'connected' && isPrimaryInstagram && (
+                <span className="flex items-center gap-1 text-xs text-[#d4a017] font-medium">
+                  <Star size={11} fill="currentColor" /> Primary
+                </span>
+              )}
+            </div>
             {instagramStatus === 'connected' ? (
               <p className="text-xs text-green-600">Connected{instagramAccount ? ` — @${instagramAccount}` : ''}</p>
             ) : instagramStatus === 'connecting' ? (
               <p className="text-xs text-yellow-600">Waiting for authorization...</p>
             ) : (
-              <p className="text-xs text-gray-500">Auto-publish posts and stories from your newsletter</p>
+              <p className="text-xs text-gray-500">Auto-generate newsletters from your Instagram posts</p>
             )}
           </div>
-          {instagramStatus === 'connected' ? (
-            <button onClick={handleInstagramDisconnect} disabled={instagramLoading}
-              className="px-4 py-2 border border-red-200 text-red-600 rounded-xl text-xs font-semibold hover:bg-red-50 transition-colors disabled:opacity-50">
-              {instagramLoading ? 'Disconnecting...' : 'Disconnect'}
-            </button>
-          ) : (
-            <button onClick={handleInstagramConnect} disabled={instagramLoading || instagramStatus === 'connecting'}
-              className="px-4 py-2 bg-[#d4a017] text-white rounded-xl text-xs font-semibold hover:bg-[#b8941a] transition-colors disabled:opacity-50">
-              {instagramLoading ? (
-                <span className="flex items-center gap-2">
-                  <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Connecting...
-                </span>
-              ) : instagramStatus === 'connecting' ? 'Waiting...' : 'Connect'}
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            {instagramStatus === 'connected' && !isPrimaryInstagram && (
+              <button
+                onClick={handleMakePrimaryInstagram}
+                className="px-3 py-1.5 border border-[#d4a017] text-[#d4a017] rounded-lg text-xs font-semibold hover:bg-yellow-50 transition-colors"
+              >
+                Make Primary
+              </button>
+            )}
+            {instagramStatus === 'connected' ? (
+              <button onClick={handleInstagramDisconnect} disabled={instagramLoading}
+                className="px-4 py-2 border border-red-200 text-red-600 rounded-xl text-xs font-semibold hover:bg-red-50 transition-colors disabled:opacity-50">
+                {instagramLoading ? 'Disconnecting...' : 'Disconnect'}
+              </button>
+            ) : (
+              <button onClick={handleInstagramConnect} disabled={instagramLoading || instagramStatus === 'connecting'}
+                className="px-4 py-2 bg-[#d4a017] text-white rounded-xl text-xs font-semibold hover:bg-[#b8941a] transition-colors disabled:opacity-50">
+                {instagramLoading ? (
+                  <span className="flex items-center gap-2">
+                    <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Connecting...
+                  </span>
+                ) : instagramStatus === 'connecting' ? 'Waiting...' : 'Connect'}
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -227,7 +268,14 @@ const IntegrationsSection: React.FC<IntegrationsSectionProps> = () => {
             <Mail size={24} className="text-yellow-600" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold text-gray-900">Mailchimp</p>
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-bold text-gray-900">Mailchimp</p>
+              {mailchimpStatus === 'connected' && isPrimaryMailchimp && (
+                <span className="flex items-center gap-1 text-xs text-[#d4a017] font-medium">
+                  <Star size={11} fill="currentColor" /> Primary
+                </span>
+              )}
+            </div>
             {mailchimpStatus === 'connected' ? (
               <p className="text-xs text-green-600">Connected{mailchimpAccount ? ` — ${mailchimpAccount}` : ''}</p>
             ) : mailchimpStatus === 'connecting' ? (
@@ -236,22 +284,32 @@ const IntegrationsSection: React.FC<IntegrationsSectionProps> = () => {
               <p className="text-xs text-gray-500">Sync subscribers and send campaigns via Mailchimp</p>
             )}
           </div>
-          {mailchimpStatus === 'connected' ? (
-            <button onClick={handleMailchimpDisconnect} disabled={mailchimpLoading}
-              className="px-4 py-2 border border-red-200 text-red-600 rounded-xl text-xs font-semibold hover:bg-red-50 transition-colors disabled:opacity-50">
-              {mailchimpLoading ? 'Disconnecting...' : 'Disconnect'}
-            </button>
-          ) : (
-            <button onClick={handleMailchimpConnect} disabled={mailchimpLoading || mailchimpStatus === 'connecting'}
-              className="px-4 py-2 bg-[#d4a017] text-white rounded-xl text-xs font-semibold hover:bg-[#b8941a] transition-colors disabled:opacity-50">
-              {mailchimpLoading ? (
-                <span className="flex items-center gap-2">
-                  <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Connecting...
-                </span>
-              ) : mailchimpStatus === 'connecting' ? 'Waiting...' : 'Connect'}
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            {mailchimpStatus === 'connected' && !isPrimaryMailchimp && (
+              <button
+                onClick={handleMakePrimaryMailchimp}
+                className="px-3 py-1.5 border border-[#d4a017] text-[#d4a017] rounded-lg text-xs font-semibold hover:bg-yellow-50 transition-colors"
+              >
+                Make Primary
+              </button>
+            )}
+            {mailchimpStatus === 'connected' ? (
+              <button onClick={handleMailchimpDisconnect} disabled={mailchimpLoading}
+                className="px-4 py-2 border border-red-200 text-red-600 rounded-xl text-xs font-semibold hover:bg-red-50 transition-colors disabled:opacity-50">
+                {mailchimpLoading ? 'Disconnecting...' : 'Disconnect'}
+              </button>
+            ) : (
+              <button onClick={handleMailchimpConnect} disabled={mailchimpLoading || mailchimpStatus === 'connecting'}
+                className="px-4 py-2 bg-[#d4a017] text-white rounded-xl text-xs font-semibold hover:bg-[#b8941a] transition-colors disabled:opacity-50">
+                {mailchimpLoading ? (
+                  <span className="flex items-center gap-2">
+                    <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Connecting...
+                  </span>
+                ) : mailchimpStatus === 'connecting' ? 'Waiting...' : 'Connect'}
+              </button>
+            )}
+          </div>
         </div>
       </div>
 

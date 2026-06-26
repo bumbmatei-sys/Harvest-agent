@@ -129,6 +129,23 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // Resolve short affiliate code (<=16 chars) to userId for webhook processing
+    let resolvedReferrerId = referrerId;
+    if (referrerId && referrerId.length <= 16) {
+      try {
+        const affiliateSnap = await adminDb
+          .collection('users')
+          .where('affiliateCode', '==', referrerId)
+          .limit(1)
+          .get();
+        if (!affiliateSnap.empty) {
+          resolvedReferrerId = affiliateSnap.docs[0].id;
+        }
+      } catch (resolveErr) {
+        console.warn('Failed to resolve affiliate code, using as-is:', resolveErr);
+      }
+    }
+
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://theharvest.app';
 
     const session = await stripe.checkout.sessions.create({
@@ -138,7 +155,7 @@ export async function POST(request: NextRequest) {
       success_url: `${baseUrl}/?stripe=success&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${baseUrl}/?stripe=cancel`,
       subscription_data: {
-        metadata: { tenantId, plan, billing, ...(referrerId ? { referrerId } : {}) },
+        metadata: { tenantId, plan, billing, ...(resolvedReferrerId ? { referrerId: resolvedReferrerId } : {}) },
       },
     });
 

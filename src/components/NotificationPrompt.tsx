@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect, useRef } from 'react';
 import { Bell, X } from 'lucide-react';
+import { Capacitor } from '@capacitor/core';
 import { getToken, onMessage } from 'firebase/messaging';
 import { doc, updateDoc, arrayUnion, getDoc } from 'firebase/firestore';
 import { db, auth, messaging, VAPID_KEY } from '../firebase';
@@ -10,11 +11,15 @@ import firebaseConfig from '../firebase-applet-config.json';
 const STORAGE_KEY = 'harvest_notification_prompt_dismissed';
 
 const NotificationPrompt: React.FC = () => {
+  const isNative = Capacitor.isNativePlatform();
   const [visible, setVisible] = useState(false);
   const [requesting, setRequesting] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
+    // Native platforms handle push via useCapacitorPush hook in App.tsx.
+    if (isNative) return;
+
     let cancelled = false;
 
     const checkAndShow = async () => {
@@ -42,10 +47,12 @@ const NotificationPrompt: React.FC = () => {
       cancelled = true;
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, []);
+  }, [isNative]);
 
-  // Foreground message listener + send config to service worker
+  // Foreground message listener + send config to service worker (web only)
   useEffect(() => {
+    if (isNative) return;
+
     let mounted = true;
     let unsubscribe: (() => void) | null = null;
 
@@ -132,7 +139,7 @@ const NotificationPrompt: React.FC = () => {
     sessionStorage.setItem(STORAGE_KEY, '1');
   };
 
-  if (!visible) return null;
+  if (isNative || !visible) return null;
 
   return (
     <div className="fixed bottom-20 lg:bottom-6 left-4 right-4 lg:left-auto lg:right-6 lg:w-96 z-[200] animate-in slide-in-from-bottom-4 duration-300">

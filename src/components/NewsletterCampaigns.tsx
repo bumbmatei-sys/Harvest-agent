@@ -29,7 +29,7 @@ const NewsletterCampaigns: React.FC<NewsletterCampaignsProps> = ({ tenantId, onB
           </div>
           <h3 className="text-lg font-bold text-gray-900 mb-2">No newsletters yet</h3>
           <p className="text-sm text-gray-500 mb-6 max-w-md mx-auto">
-            Create and send newsletters to keep your community engaged. Schedule campaigns, track open rates, and grow your audience.
+            Create and send newsletters to keep your community engaged. Connect Instagram to auto-generate content from your posts.
           </p>
           <button
             onClick={onCreateNew}
@@ -43,25 +43,27 @@ const NewsletterCampaigns: React.FC<NewsletterCampaignsProps> = ({ tenantId, onB
         <div className="space-y-3">
           {campaigns.map((campaign) => (
             <div key={campaign.id} className="bg-white rounded-2xl border border-gray-100 p-5 flex items-center gap-4">
-              <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
-                <Mail size={20} className="text-blue-600" />
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                campaign.status === 'sent' ? 'bg-green-50' :
+                campaign.status === 'scheduled' ? 'bg-blue-50' : 'bg-gray-50'
+              }`}>
+                <Mail size={20} className={
+                  campaign.status === 'sent' ? 'text-green-600' :
+                  campaign.status === 'scheduled' ? 'text-blue-600' : 'text-gray-400'
+                } />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-gray-900 truncate">{campaign.subject}</p>
+                <p className="text-sm font-bold text-gray-900 truncate">{campaign.subject || 'Untitled'}</p>
                 <div className="flex items-center gap-3 mt-1">
-                  {campaign.status === 'sent' ? (
-                    <span className="flex items-center gap-1 text-xs text-green-600">
-                      <CheckCircle size={12} /> Sent
-                    </span>
-                  ) : (
-                    <span className="flex items-center gap-1 text-xs text-yellow-600">
-                      <Clock size={12} /> Draft
+                  {statusBadge(campaign.status)}
+                  <span className="text-xs text-gray-400">
+                    {campaign.status === 'sent' ? formatDate(campaign.sentAt) : formatDate(campaign.generatedAt)}
+                  </span>
+                  {campaign.postsUsed != null && campaign.postsUsed > 0 && (
+                    <span className="flex items-center gap-1 text-xs text-gray-400">
+                      <Users size={12} /> {campaign.postsUsed} posts
                     </span>
                   )}
-                  <span className="text-xs text-gray-400">{campaign.sentAt}</span>
-                  <span className="flex items-center gap-1 text-xs text-gray-500">
-                    <Users size={12} /> {campaign.openRate}% opened
-                  </span>
                 </div>
               </div>
             </div>

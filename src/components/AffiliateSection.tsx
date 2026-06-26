@@ -1,12 +1,14 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Share2, DollarSign, Users, ExternalLink } from 'lucide-react';
+import { Share2, DollarSign, Users, ExternalLink, MousePointer } from 'lucide-react';
 
 interface AffiliateStatus {
   isAffiliate: boolean;
   userId: string;
   stripeConnectAccountId: string | null;
+  affiliateCode: string | null;
+  affiliateClicks: number;
   totalEarnings: number;
   pendingPayouts: number;
   referralCount: number;
@@ -68,13 +70,16 @@ export default function AffiliateSection() {
     }
   };
 
+  const getReferralLink = () => {
+    const base = typeof window !== 'undefined' ? window.location.origin : 'https://theharvest.app';
+    if (status?.affiliateCode) return `${base}/r/${status.affiliateCode}`;
+    return `${base}/?ref=${status?.userId || ''}`;
+  };
+
   const handleCopyLink = () => {
-    if (typeof window !== 'undefined' && status?.userId) {
-      const link = `${window.location.origin}/?ref=${status.userId}`;
-      navigator.clipboard.writeText(link);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
+    navigator.clipboard.writeText(getReferralLink());
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   if (loading) {
@@ -104,37 +109,42 @@ export default function AffiliateSection() {
             <input
               type="text"
               readOnly
-              value={`${window.location.origin}/?ref=${status.userId}`}
-              className="flex-1 bg-transparent text-sm text-gray-700 outline-none"
+              value={getReferralLink()}
+              className="flex-1 bg-transparent text-sm text-gray-700 outline-none min-w-0"
             />
             <button
               onClick={handleCopyLink}
-              className="text-xs font-medium px-3 py-1.5 rounded-lg bg-black text-white hover:bg-gray-800 transition-colors"
+              className="text-xs font-medium px-3 py-1.5 rounded-lg bg-black text-white hover:bg-gray-800 transition-colors shrink-0"
             >
               {copied ? 'Copied!' : 'Copy'}
             </button>
           </div>
 
-          {/* Stats */}
-          <div className="grid grid-cols-3 gap-3">
+          {/* Stats — 4 columns */}
+          <div className="grid grid-cols-4 gap-2">
             <div className="bg-gray-50 rounded-xl p-3 text-center">
-              <DollarSign size={18} className="mx-auto text-green-500 mb-1" />
+              <MousePointer size={16} className="mx-auto text-purple-500 mb-1" />
+              <p className="text-lg font-bold text-gray-900">{status.affiliateClicks}</p>
+              <p className="text-xs text-gray-500">Clicks</p>
+            </div>
+            <div className="bg-gray-50 rounded-xl p-3 text-center">
+              <Users size={16} className="mx-auto text-blue-500 mb-1" />
+              <p className="text-lg font-bold text-gray-900">{status.referralCount}</p>
+              <p className="text-xs text-gray-500">Referrals</p>
+            </div>
+            <div className="bg-gray-50 rounded-xl p-3 text-center">
+              <DollarSign size={16} className="mx-auto text-green-500 mb-1" />
               <p className="text-lg font-bold text-gray-900">
                 ${(status.totalEarnings / 100).toFixed(2)}
               </p>
-              <p className="text-xs text-gray-500">Total Earnings</p>
+              <p className="text-xs text-gray-500">Paid</p>
             </div>
             <div className="bg-gray-50 rounded-xl p-3 text-center">
-              <DollarSign size={18} className="mx-auto text-yellow-500 mb-1" />
+              <DollarSign size={16} className="mx-auto text-yellow-500 mb-1" />
               <p className="text-lg font-bold text-gray-900">
                 ${(status.pendingPayouts / 100).toFixed(2)}
               </p>
               <p className="text-xs text-gray-500">Pending</p>
-            </div>
-            <div className="bg-gray-50 rounded-xl p-3 text-center">
-              <Users size={18} className="mx-auto text-blue-500 mb-1" />
-              <p className="text-lg font-bold text-gray-900">{status.referralCount}</p>
-              <p className="text-xs text-gray-500">Referrals</p>
             </div>
           </div>
 

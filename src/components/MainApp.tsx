@@ -207,7 +207,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
               alt="Harvest" 
               className="w-10 h-10 object-contain shrink-0" 
             />
-            {!isSidebarCollapsed && <span className="text-xl font-bold text-gray-900 truncate">Harvest</span>}
+            {!isSidebarCollapsed && <span className="text-xl font-extrabold truncate" style={{ color: 'var(--brand-color, #D4AF37)' }}>Harvest</span>}
           </div>
 
           {bottomTabs.map((tab) => {

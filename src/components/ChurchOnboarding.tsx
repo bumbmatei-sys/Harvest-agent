@@ -413,6 +413,14 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ onComplete, signupP
                           return;
                         }
                         const token = await user.getIdToken();
+                        let referrerId: string | undefined;
+                        try {
+                          const stored = localStorage.getItem('affiliateReferrerId');
+                          if (stored) {
+                            const parsed = JSON.parse(stored);
+                            referrerId = parsed.id || undefined;
+                          }
+                        } catch {}
                         const resp = await fetch('/api/stripe/checkout', {
                           method: 'POST',
                           headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -422,6 +430,7 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ onComplete, signupP
                             tenantId: createdTenantId,
                             tenantName: subdomain,
                             email: user.email || undefined,
+                            ...(referrerId ? { referrerId } : {}),
                           }),
                         });
                         const data = await resp.json();
@@ -478,11 +487,11 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ onComplete, signupP
                 </button>
               ) : <div />}
 
-              {isBrandingStep ? (
+              {(isBrandingStep || (isInfoStep && !hasBranding)) ? (
                 <button
                   onClick={handleFinish}
-                  disabled={saving}
-                  style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#D4AF37', color: '#ffffff', fontWeight: 700, padding: '12px 24px', borderRadius: '12px', border: 'none', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.5 : 1, boxShadow: '0 4px 12px rgba(212,175,55,0.3)' }}
+                  disabled={saving || (isInfoStep && !canProceedInfo && subdomainStatus !== 'checking')}
+                  style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#D4AF37', color: '#ffffff', fontWeight: 700, padding: '12px 24px', borderRadius: '12px', border: 'none', cursor: (saving || (isInfoStep && !canProceedInfo && subdomainStatus !== 'checking')) ? 'not-allowed' : 'pointer', opacity: (saving || (isInfoStep && !canProceedInfo && subdomainStatus !== 'checking')) ? 0.5 : 1, boxShadow: '0 4px 12px rgba(212,175,55,0.3)' }}
                 >
                   {saving ? (
                     <><Loader2 size={16} className="animate-spin" /> Setting up...</>
