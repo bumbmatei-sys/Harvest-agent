@@ -5,49 +5,18 @@ import {
   Check, Download, Search, ChevronRight, Globe, X, Pin
 } from 'lucide-react';
 import {
-  collection, query, where, orderBy, onSnapshot, addDoc, updateDoc, deleteDoc,
-  doc, limit, serverTimestamp, Timestamp, getDocs
+  collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc,
+  doc, limit, serverTimestamp, Timestamp,
 } from 'firebase/firestore';
 import { db, auth } from '../firebase';
-import { getTenantScope } from '../utils/tenant-scope';
 import { sortByTime } from '../utils/query-helpers';
-import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { notifyError } from '../utils/notify';
 import { useAdminHeader, HeaderActionButton } from './AdminScreenHeader';
+import { useQueryClient } from '@tanstack/react-query';
+import { useAppStore } from '../store/useAppStore';
+import { useEvents } from '../hooks/queries/useEventQueries';
 
-interface Event {
-  id: string;
-  title: string;
-  description: string;
-  coverImage: string | null;
-  location: string;
-  isOnline: boolean;
-  onlineLink: string | null;
-  startDate: Timestamp | null;
-  endDate: Timestamp | null;
-  capacity: number | null;
-  registrationDeadline: Timestamp | null;
-  price: number;
-  currency: string;
-  status: 'draft' | 'published' | 'cancelled' | 'completed';
-  pinned?: boolean;
-  createdAt: Timestamp | null;
-  createdBy: string;
-  tenantId: string;
-}
-
-interface Registration {
-  id: string;
-  eventId: string;
-  userId: string | null;
-  name: string;
-  email: string;
-  phone: string | null;
-  ticketCode: string;
-  status: 'confirmed' | 'cancelled' | 'attended';
-  amount: number;
-  registeredAt: Timestamp | null;
-}
+import type { Event, Registration } from '../hooks/queries/useEventQueries';
 
 type ViewMode = 'list' | 'create' | 'edit' | 'detail';
 
@@ -92,9 +61,11 @@ const emptyForm = {
 
 const AdminEvents: React.FC = () => {
   const { setHeaderAction, setHeaderOverride } = useAdminHeader();
-  const [tenantId, setTenantId] = useState<string | null>(null);
-  const [events, setEvents] = useState<Event[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const { currentTenantId: tenantId, isAuthReady } = useAppStore();
+
+  const { data: events = [], isLoading: loading } = useEvents(tenantId, isAuthReady);
+
   const [view, setView] = useState<ViewMode>('list');
   const [selected, setSelected] = useState<Event | null>(null);
   const [form, setForm] = useState(emptyForm);
@@ -129,29 +100,6 @@ const AdminEvents: React.FC = () => {
     setHeaderAction(<HeaderActionButton label="Create Event" onClick={() => { setSelected(null); setForm(emptyForm); setView('create'); }} />);
     return () => setHeaderAction(null);
   }, [setHeaderAction]);
-
-  useEffect(() => {
-    let unsub: (() => void) | null = null;
-    let cancelled = false;
-    getTenantScope().then(tid => {
-      if (cancelled) return;
-      setTenantId(tid);
-      if (!tid) { setLoading(false); return; }
-      const q = query(
-        collection(db, 'tenants', tid, 'events'),
-        orderBy('startDate', 'desc'),
-        limit(100)
-      );
-      unsub = onSnapshot(q, snap => {
-        setEvents(snap.docs.map(d => ({ id: d.id, ...d.data() }) as Event));
-        setLoading(false);
-      }, err => {
-        try { handleFirestoreError(err, OperationType.GET, 'events'); } catch (e) { console.error(e); }
-        setLoading(false);
-      });
-    });
-    return () => { cancelled = true; unsub?.(); };
-  }, []);
 
   // Load registrations when viewing event detail
   useEffect(() => {
@@ -226,6 +174,7 @@ const AdminEvents: React.FC = () => {
           updatedAt: serverTimestamp(),
         });
         setSelected({ ...selected, ...data } as Event);
+        await queryClient.invalidateQueries({ queryKey: ['events', tenantId] });
         setView('detail');
       } else {
         const ref = await addDoc(collection(db, 'tenants', tenantId, 'events'), {
@@ -254,6 +203,7 @@ const AdminEvents: React.FC = () => {
           createdBy: auth.currentUser?.uid || '',
           pinned: false,
         };
+        await queryClient.invalidateQueries({ queryKey: ['events', tenantId] });
         setSelected(newEvent);
         setView('detail');
       }
@@ -263,8 +213,10 @@ const AdminEvents: React.FC = () => {
 
   const confirmDelete = async () => {
     if (!deleteId || !tenantId) return;
-    try { await deleteDoc(doc(db, 'tenants', tenantId, 'events', deleteId)); }
-    catch (e) { notifyError('Failed to delete event', e); }
+    try {
+      await deleteDoc(doc(db, 'tenants', tenantId, 'events', deleteId));
+      await queryClient.invalidateQueries({ queryKey: ['events', tenantId] });
+    } catch (e) { notifyError('Failed to delete event', e); }
     setDeleteId(null);
     if (view === 'detail') setView('list');
   };
@@ -273,6 +225,7 @@ const AdminEvents: React.FC = () => {
     if (!tenantId) return;
     try {
       await updateDoc(doc(db, 'tenants', tenantId, 'events', ev.id), { pinned: !ev.pinned });
+      await queryClient.invalidateQueries({ queryKey: ['events', tenantId] });
     } catch (e) { notifyError('Failed to update event', e); }
   };
 

@@ -8,6 +8,8 @@ import {
   useNavigate,
   useLocation,
 } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { auth, db } from './firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
@@ -24,10 +26,21 @@ import { TenantPlan } from './types/tenant.types';
 import { TenantProvider, useTenant } from './contexts/TenantContext';
 import { useClaimsFreshness } from './hooks/useClaimsFreshness';
 import { isSuperAdminEmail } from './utils/super-admins';
+import { useAppStore } from './store/useAppStore';
 
 /** Paths that represent the auth / onboarding funnel (used to decide redirects). */
 const FUNNEL_PATHS = ['/auth', '/onboarding', '/church-onboarding'];
 const ADMIN_ROLES = ['admin', 'church_admin', 'super_admin'];
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5, // 5 minutes
+      retry: 2,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 /** Error page shown when a tenant subdomain doesn't resolve to a valid tenant */
 const TenantNotFound: React.FC<{ tenantId: string; message: string }> = ({ tenantId, message }) => (
@@ -69,9 +82,22 @@ const AppInner: React.FC = () => {
   useEffect(() => { pathnameRef.current = location.pathname; }, [location.pathname]);
 
   const [isAuthReady, setIsAuthReady] = useState(false);
-  const [tenantPlan, setTenantPlan] = useState<TenantPlan | undefined>(undefined);
   const [userRole, setUserRole] = useState<string>('user');
   const { tenantId, isAdminDomain, error: tenantError, isLoading: tenantLoading, setTenantPlan: ctxSetTenantPlan } = useTenant();
+
+  const {
+    setCurrentUser,
+    setIsAuthReady: storeSetIsAuthReady,
+    setTenantPlan,
+    setIsSuperAdmin,
+    setCurrentTenant,
+    tenantPlan,
+  } = useAppStore();
+
+  // Sync tenantId from TenantContext into the Zustand store
+  useEffect(() => {
+    setCurrentTenant(null, tenantId);
+  }, [tenantId, setCurrentTenant]);
 
   // Check if user arrived from presentation site "Start Ministry" button
   const signupParam = typeof window !== 'undefined'
@@ -98,6 +124,10 @@ const AppInner: React.FC = () => {
         try {
           const userDoc = await getDoc(doc(db, 'users', user.uid));
           const path = pathnameRef.current;
+
+          // Initialize store with authenticated user
+          setCurrentUser(user);
+          setIsSuperAdmin(isSuperAdminEmail(user.email));
 
           if (userDoc.exists()) {
             const data = userDoc.data();
@@ -143,15 +173,18 @@ const AppInner: React.FC = () => {
           if (FUNNEL_PATHS.includes(pathnameRef.current)) navigate('/', { replace: true });
         }
       } else {
-        // Signed out — clear state and send to auth, dropping any deep link.
-        setTenantPlan(undefined);
+        // Signed out — clear store and send to auth, dropping any deep link.
+        setCurrentUser(null);
+        setTenantPlan(null);
+        setIsSuperAdmin(false);
         setUserRole('user');
         navigate('/auth', { replace: true });
       }
       setIsAuthReady(true);
+      storeSetIsAuthReady(true);
     });
     return () => unsubscribe();
-  }, [isChurchSignup, signupPlan, isAdminDomain, ctxSetTenantPlan, navigate]);
+  }, [isChurchSignup, signupPlan, isAdminDomain, ctxSetTenantPlan, navigate, setCurrentUser, setIsSuperAdmin, setTenantPlan, storeSetIsAuthReady]);
 
   // Map legacy string-based navigation (onNavigate('admin'|'home'|...)) to routes
   // so child components keep their existing API while routing is URL-driven.
@@ -186,7 +219,7 @@ const AppInner: React.FC = () => {
   const adminElement = (
     <RequireAdmin>
       <ErrorBoundary>
-        <AdminDashboard onNavigate={handleNavigate} tenantPlan={tenantPlan} />
+        <AdminDashboard onNavigate={handleNavigate} />
       </ErrorBoundary>
     </RequireAdmin>
   );
@@ -210,7 +243,7 @@ const AppInner: React.FC = () => {
           path="/"
           element={
             <ErrorBoundary>
-              <MainApp onNavigate={handleNavigate} tenantPlan={tenantPlan} />
+              <MainApp onNavigate={handleNavigate} />
             </ErrorBoundary>
           }
         />
@@ -222,14 +255,17 @@ const AppInner: React.FC = () => {
   );
 };
 
-/** Outer App: wraps everything in BrowserRouter + TenantProvider. */
+/** Outer App: wraps everything in BrowserRouter + TenantProvider + QueryClientProvider. */
 const App: React.FC = () => {
   return (
-    <BrowserRouter>
-      <TenantProvider>
-        <AppInner />
-      </TenantProvider>
-    </BrowserRouter>
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <TenantProvider>
+          <AppInner />
+        </TenantProvider>
+      </BrowserRouter>
+      <ReactQueryDevtools initialIsOpen={false} />
+    </QueryClientProvider>
   );
 };
 

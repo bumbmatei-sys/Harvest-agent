@@ -6,7 +6,7 @@ import { collection, addDoc, serverTimestamp, query, where, getDocs, deleteDoc, 
 import { isSuperAdminEmail } from '../utils/super-admins';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { getTenantScope } from '../utils/tenant-scope';
-import { TenantPlan } from '../types/tenant.types';
+import { useAppStore } from '../store/useAppStore';
 
 // AI API calls are proxied through /api/gemini to keep API keys server-side
 // Embeddings: Gemini | Chat: Xiaomi MiMo
@@ -390,7 +390,8 @@ function PaywallOverlay({ onBack, onSubscribe }: { onBack?: () => void; onSubscr
 // ═══════════════════════════════════════════════
 // MAIN AI CHAT
 // ═══════════════════════════════════════════════
-export default function AIChat({ onBack, tenantPlan }: { onBack?: () => void; tenantPlan?: TenantPlan | null }) {
+export default function AIChat({ onBack }: { onBack?: () => void }) {
+  const { tenantPlan } = useAppStore();
   const [history, setHistory] = useState<Chat[]>([]);
   const [activeChat, setActiveChat] = useState<Chat | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);

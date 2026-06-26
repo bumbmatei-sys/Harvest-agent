@@ -5,51 +5,21 @@ import {
   MessageSquare, DollarSign, PhoneCall, Calendar, Clock, ChevronRight, MapPin
 } from 'lucide-react';
 import {
-  collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc,
-  doc, limit, serverTimestamp, Timestamp, getDocs, getDoc
+  collection, addDoc, updateDoc, deleteDoc,
+  doc, serverTimestamp, Timestamp,
 } from 'firebase/firestore';
 import { db, auth } from '../firebase';
-import { getTenantScope } from '../utils/tenant-scope';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { notifyError } from '../utils/notify';
-import { sortByString } from '../utils/query-helpers';
 import AnalyticsAndRoles, { Permission } from './AnalyticsAndRoles';
 import { useAdminHeader, HeaderActionButton } from './AdminScreenHeader';
-
-interface Contact {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-  type: 'donor' | 'member' | 'both';
-  address?: {
-    street?: string;
-    city?: string;
-    state?: string;
-    zip?: string;
-    country?: string;
-  };
-  notes: string;
-  tags: string[];
-  totalDonated: number;
-  lastDonationAt: Timestamp | null;
-  memberSince: Timestamp | null;
-  createdAt: Timestamp | null;
-  createdBy: string;
-  updatedAt: Timestamp | null;
-  tenantId?: string;
-}
-
-interface ContactActivity {
-  id: string;
-  contactId: string;
-  type: 'note' | 'donation' | 'email' | 'call' | 'meeting';
-  description: string;
-  amount: number | null;
-  createdAt: Timestamp | null;
-  createdBy: string;
-}
+import { useQueryClient } from '@tanstack/react-query';
+import { useAppStore } from '../store/useAppStore';
+import {
+  useContacts, useContactActivities, useContactOnboardingAnswers,
+  type Contact, type ContactActivity,
+} from '../hooks/queries/useCRMQueries';
+import { useTenant as useTenantDoc } from '../hooks/queries/useTenantQueries';
 
 const TYPE_LABELS: Record<Contact['type'], string> = {
   donor: 'Donor',
@@ -101,15 +71,24 @@ interface AdminCRMProps {
 const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermissions, initialContactId, onItemConsumed }) => {
   const { setHeaderAction, setHeaderOverride } = useAdminHeader();
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [contacts, setContacts] = useState<Contact[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const { currentTenantId: tenantId, isAuthReady } = useAppStore();
+
+  // React Query for contacts list
+  const { data: contacts = [], isLoading: loading } = useContacts(tenantId, isAuthReady);
+
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | Contact['type']>('all');
-  const [tenantId, setTenantId] = useState<string | null>(null);
   const [view, setView] = useState<ViewMode>('list');
   const [selected, setSelected] = useState<Contact | null>(null);
   const [form, setForm] = useState(emptyContact);
   const [isEditing, setIsEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [showAddActivity, setShowAddActivity] = useState(false);
+  const [actForm, setActForm] = useState({ type: 'note' as ContactActivity['type'], description: '', amount: '' });
+  const [savingAct, setSavingAct] = useState(false);
+  const [crmSubView, setCrmSubView] = useState<'contacts' | 'analytics'>('contacts');
 
   // Drive the shared header: in detail/form sub-views the back chevron steps
   // back within CRM; on the list view it shows the "Add Contact" action.
@@ -139,100 +118,17 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
     return () => setHeaderAction(null);
   }, [setHeaderAction, crmSubView]);
 
-  const [saving, setSaving] = useState(false);
-  const [deleteId, setDeleteId] = useState<string | null>(null);
+  // React Query for contact activities
+  const { data: activities = [] } = useContactActivities(tenantId, selected?.id);
 
-  const [activities, setActivities] = useState<ContactActivity[]>([]);
-  const [showAddActivity, setShowAddActivity] = useState(false);
-  const [actForm, setActForm] = useState({ type: 'note' as ContactActivity['type'], description: '', amount: '' });
-  const [savingAct, setSavingAct] = useState(false);
+  // Tenant onboarding questions via React Query
+  const { data: tenantData } = useTenantDoc(tenantId);
+  const onboardingQuestions = tenantData?.config?.onboardingQuestions
+    ? [...tenantData.config.onboardingQuestions].sort((a, b) => a.order - b.order)
+    : [];
 
-  const [crmSubView, setCrmSubView] = useState<'contacts' | 'analytics'>('contacts');
-
-  // Onboarding answers
-  const [onboardingAnswers, setOnboardingAnswers] = useState<Record<string, string> | null>(null);
-  const [onboardingQuestions, setOnboardingQuestions] = useState<Array<{ id: string; label: string; order: number }>>([]);
-  const [loadingAnswers, setLoadingAnswers] = useState(false);
-
-  useEffect(() => {
-    let unsub: (() => void) | null = null;
-    let cancelled = false;
-    getTenantScope().then(tid => {
-      if (cancelled) return;
-      setTenantId(tid);
-      // Single-field filter only (tenantId); sort client-side by lastName to avoid a composite index.
-      const q = tid
-        ? query(collection(db, 'contacts'), where('tenantId', '==', tid), limit(500))
-        : query(collection(db, 'contacts'), limit(500));
-      unsub = onSnapshot(q, snap => {
-        setContacts(sortByString(snap.docs.map(d => ({ id: d.id, ...d.data() }) as Contact), 'lastName', 'asc'));
-        setLoading(false);
-      }, err => {
-        try { handleFirestoreError(err, OperationType.GET, 'contacts'); } catch (e) { console.error(e); }
-        setLoading(false);
-      });
-    });
-    return () => { cancelled = true; unsub?.(); };
-  }, []);
-
-  useEffect(() => {
-    if (!selected) {
-      setOnboardingAnswers(null);
-      setOnboardingQuestions([]);
-      return;
-    }
-    setLoadingAnswers(true);
-    const fetchAnswers = async () => {
-      try {
-        if (selected.email) {
-          const usersQ = query(collection(db, 'users'), where('email', '==', selected.email), limit(1));
-          const usersSnap = await getDocs(usersQ);
-          if (!usersSnap.empty) {
-            const userData = usersSnap.docs[0].data();
-            setOnboardingAnswers(userData.onboardingAnswers || null);
-          } else {
-            setOnboardingAnswers(null);
-          }
-        } else {
-          setOnboardingAnswers(null);
-        }
-        if (tenantId) {
-          const tenantSnap = await getDoc(doc(db, 'tenants', tenantId));
-          if (tenantSnap.exists()) {
-            const qs: Array<{ id: string; label: string; order: number }> =
-              tenantSnap.data()?.config?.onboardingQuestions || [];
-            setOnboardingQuestions([...qs].sort((a, b) => a.order - b.order));
-          }
-        }
-      } catch (e) {
-        console.error('Failed to load onboarding answers', e);
-      } finally {
-        setLoadingAnswers(false);
-      }
-    };
-    fetchAnswers();
-  }, [selected?.id, selected?.email, tenantId]);
-
-  useEffect(() => {
-    if (!selected) return;
-    // Single-field filter only (contactId); tenant scoping + newest-first sort
-    // are applied on the client so no composite index is required.
-    const q = query(
-      collection(db, 'contactActivities'),
-      where('contactId', '==', selected.id),
-      limit(200)
-    );
-    const unsub = onSnapshot(q, snap => {
-      let rows = snap.docs.map(d => ({ id: d.id, ...d.data() }) as ContactActivity);
-      if (tenantId) rows = rows.filter(r => (r as any).tenantId === tenantId);
-      rows.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
-      setActivities(rows);
-    }, err => {
-      try { handleFirestoreError(err, OperationType.GET, 'contactActivities'); } catch (e) { console.error(e); }
-      setActivities([]);
-    });
-    return unsub;
-  }, [selected, tenantId]);
+  // Onboarding answers — fetched via React Query when a contact is selected
+  const { data: onboardingAnswers = null, isLoading: loadingAnswers } = useContactOnboardingAnswers(selected?.email);
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -294,6 +190,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
           createdAt: serverTimestamp(), createdBy: auth.currentUser?.uid || '',
         });
       }
+      await queryClient.invalidateQueries({ queryKey: ['contacts', tenantId] });
       setView(isEditing ? 'detail' : 'list');
     } catch (e) { notifyError('Failed to save contact', e); }
     finally { setSaving(false); }
@@ -301,8 +198,10 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
 
   const confirmDelete = async () => {
     if (!deleteId) return;
-    try { await deleteDoc(doc(db, 'contacts', deleteId)); }
-    catch (e) { notifyError('Failed to delete contact', e); }
+    try {
+      await deleteDoc(doc(db, 'contacts', deleteId));
+      await queryClient.invalidateQueries({ queryKey: ['contacts', tenantId] });
+    } catch (e) { notifyError('Failed to delete contact', e); }
     setDeleteId(null);
     if (view === 'detail') setView('list');
   };
@@ -321,7 +220,9 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
         const newTotal = (selected.totalDonated || 0) + Number(actForm.amount);
         await updateDoc(doc(db, 'contacts', selected.id), { totalDonated: newTotal, lastDonationAt: serverTimestamp() });
         setSelected({ ...selected, totalDonated: newTotal });
+        await queryClient.invalidateQueries({ queryKey: ['contacts', tenantId] });
       }
+      await queryClient.invalidateQueries({ queryKey: ['contactActivities', tenantId, selected.id] });
       setShowAddActivity(false);
       setActForm({ type: 'note', description: '', amount: '' });
     } catch (e) { notifyError('Failed to add activity', e); }

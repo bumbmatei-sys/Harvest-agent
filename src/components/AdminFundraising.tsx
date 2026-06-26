@@ -2,26 +2,14 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, ToggleLeft, ToggleRight, Heart, DollarSign } from 'lucide-react';
 import {
-  collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc, doc, limit, serverTimestamp,
+  collection, addDoc, updateDoc, deleteDoc, doc, serverTimestamp,
 } from 'firebase/firestore';
-import { db, auth } from '../firebase';
-import { getTenantScope } from '../utils/tenant-scope';
-import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
+import { db } from '../firebase';
 import { notifyError } from '../utils/notify';
-import { sortByNumber } from '../utils/query-helpers';
 import { useAdminHeader, HeaderActionButton } from './AdminScreenHeader';
-
-interface Campaign {
-  id: string;
-  title: string;
-  description: string;
-  coverImage?: string;
-  goal: number;
-  raised: number;
-  endDate?: string;
-  isActive: boolean;
-  tenantId?: string;
-}
+import { useQueryClient } from '@tanstack/react-query';
+import { useAppStore } from '../store/useAppStore';
+import { useCampaigns } from '../hooks/queries/useCampaignQueries';
 
 const empty: Omit<Campaign, 'id'> = {
   title: '',
@@ -45,36 +33,16 @@ interface AdminFundraisingProps {
 
 const AdminFundraising: React.FC<AdminFundraisingProps> = ({ initialCampaignId, onItemConsumed }) => {
   const { setHeaderAction } = useAdminHeader();
-  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [tenantId, setTenantId] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const { currentTenantId: tenantId, isAuthReady } = useAppStore();
+
+  const { data: campaigns = [], isLoading: loading } = useCampaigns(tenantId, isAuthReady);
+
   const [editing, setEditing] = useState<Campaign | null>(null);
   const [form, setForm] = useState<Omit<Campaign, 'id'>>(empty);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-
-  useEffect(() => {
-    let unsub: (() => void) | null = null;
-    let cancelled = false;
-    (async () => {
-      const tid = await getTenantScope();
-      if (cancelled) return;
-      setTenantId(tid);
-      // Single-field filter only (tenantId); sort client-side to avoid a composite index.
-      const q = tid
-        ? query(collection(db, 'campaigns'), where('tenantId', '==', tid), limit(100))
-        : query(collection(db, 'campaigns'), limit(100));
-      unsub = onSnapshot(q, (snap) => {
-        setCampaigns(sortByNumber(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Campaign), 'isActive', 'desc'));
-        setLoading(false);
-      }, (err) => {
-        try { handleFirestoreError(err, OperationType.GET, 'campaigns'); } catch (e) { console.error(e); }
-        setLoading(false);
-      });
-    })();
-    return () => { cancelled = true; unsub?.(); };
-  }, []);
 
   const openCreate = () => { setEditing(null); setForm(empty); setShowForm(true); };
   const openEdit = (c: Campaign) => { setEditing(c); setForm({ ...c }); setShowForm(true); };
@@ -106,6 +74,7 @@ const AdminFundraising: React.FC<AdminFundraisingProps> = ({ initialCampaignId, 
           updatedAt: serverTimestamp(),
         });
       }
+      await queryClient.invalidateQueries({ queryKey: ['campaigns', tenantId] });
       setShowForm(false);
     } catch (e) {
       notifyError('Failed to save campaign', e);
@@ -117,20 +86,22 @@ const AdminFundraising: React.FC<AdminFundraisingProps> = ({ initialCampaignId, 
   const toggleActive = async (c: Campaign) => {
     try {
       if (!c.isActive) {
-        // Deactivate all other campaigns first (only 1 active at a time)
         const others = campaigns.filter((other) => other.id !== c.id && other.isActive);
         await Promise.all(
           others.map((other) => updateDoc(doc(db, 'campaigns', other.id), { isActive: false }))
         );
       }
       await updateDoc(doc(db, 'campaigns', c.id), { isActive: !c.isActive });
+      await queryClient.invalidateQueries({ queryKey: ['campaigns', tenantId] });
     } catch (e) { notifyError('Failed to update campaign', e); }
   };
 
   const confirmDelete = async () => {
     if (!deleteId) return;
-    try { await deleteDoc(doc(db, 'campaigns', deleteId)); }
-    catch (e) { notifyError('Failed to delete campaign', e); }
+    try {
+      await deleteDoc(doc(db, 'campaigns', deleteId));
+      await queryClient.invalidateQueries({ queryKey: ['campaigns', tenantId] });
+    } catch (e) { notifyError('Failed to delete campaign', e); }
     setDeleteId(null);
   };
 
