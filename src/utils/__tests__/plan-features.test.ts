@@ -1,5 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { getPlanFeatures, getPlanDisplayName, hasFeature } from '../plan-features';
+import {
+  getPlanFeatures,
+  getPlanDisplayName,
+  hasFeature,
+  PLAN_PRICING,
+  PLAN_DONATION_RETENTION,
+  AI_ASSISTANT_ADDON_PRICING,
+  formatPlanPrice,
+} from '../plan-features';
 
 describe('getPlanFeatures', () => {
   it('returns correct features for plus plan', () => {
@@ -57,7 +65,6 @@ describe('hasFeature', () => {
 
   it('returns false for disabled boolean features', () => {
     expect(hasFeature('plus', 'aiChat')).toBe(false);
-    expect(hasFeature('plus', 'aiAssistant')).toBe(false);
   });
 
   it('returns true for non-zero numeric features', () => {

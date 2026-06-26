@@ -19,7 +19,7 @@ export interface PlanFeatures {
   maxAdmins: number;
   /** Allow custom domain */
   customDomain: boolean;
-  /** Allow custom background image on auth page */
+  /** Allow full rebranding (logo + brand color) */
   customBackground: boolean;
   /** Newsletter automation */
   newsletterAutomation: boolean;
@@ -42,6 +42,14 @@ export interface PlanFeatures {
   /** Community groups (Rocket.Chat integration) */
   communityGroups: boolean;
 }
+
+// ─── Feature matrix ───────────────────────────────────────────────────────────
+//
+// IMPORTANT: this matrix must match the pricing table on theharvest.site.
+// If you change any cell, update the marketing site copy too — or switch the
+// marketing site to consume /api/plans so they can never drift again.
+// The contract test in __tests__/plan-features.test.ts will fail CI if this
+// matrix changes without an explicit update to that test.
 
 const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
   // Individual
@@ -136,6 +144,37 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
   },
 };
 
+// ─── Pricing (source of truth) ────────────────────────────────────────────────
+
+/** Base plan pricing in USD. null = custom quote / contact sales. */
+export const PLAN_PRICING: Record<TenantPlan, { monthlyUsd: number | null; yearlyUsd: number | null }> = {
+  plus:       { monthlyUsd: 49,   yearlyUsd: 490  },
+  pro:        { monthlyUsd: 99,   yearlyUsd: 990  },
+  max:        { monthlyUsd: 199,  yearlyUsd: 1990 },
+  ultra:      { monthlyUsd: 349,  yearlyUsd: 3490 },
+  enterprise: { monthlyUsd: null, yearlyUsd: null },
+};
+
+/**
+ * Percentage of donation payments the ministry retains after platform fee.
+ * Source of truth: theharvest.site pricing table "Donations Retained" row.
+ */
+export const PLAN_DONATION_RETENTION: Record<TenantPlan, number> = {
+  plus:       85,
+  pro:        90,
+  max:        95,
+  ultra:      100,
+  enterprise: 100,
+};
+
+/** AI Assistant add-on pricing (available on all plans; free on ultra/enterprise). */
+export const AI_ASSISTANT_ADDON_PRICING = {
+  setupFeeUsd: 150,
+  monthlyUsd:  100,
+} as const;
+
+// ─── Accessors ────────────────────────────────────────────────────────────────
+
 /**
  * Get feature flags for a given plan.
  * Defaults to 'plus' if plan is unknown.
@@ -155,21 +194,30 @@ export const PLAN_DISPLAY_NAMES: Record<TenantPlan, string> = {
   ultra: 'Ministry',
 };
 
-/**
- * Get the display name for a given plan.
- * Defaults to 'Individual' if plan is unknown.
- */
+/** Get the display name for a given plan. Defaults to 'Individual' if unknown. */
 export function getPlanDisplayName(plan: TenantPlan): string {
   return PLAN_DISPLAY_NAMES[plan] || PLAN_DISPLAY_NAMES.plus;
 }
 
 /**
  * Check if a specific feature is enabled for a plan.
+ * For aiAssistant: returns true for both 'included' and 'addon' (it's always available).
+ * Use `getPlanFeatures(plan).aiAssistant === 'included'` to check if it's bundled.
  */
 export function hasFeature(plan: TenantPlan, feature: keyof PlanFeatures): boolean {
   const features = getPlanFeatures(plan);
   const value = features[feature];
   if (typeof value === 'boolean') return value;
   if (typeof value === 'number') return value !== 0;
+  if (typeof value === 'string') return value.length > 0; // 'included' | 'addon'
   return false;
+}
+
+/** Format a plan price as a display string, e.g. "$49/mo" or "Custom". */
+export function formatPlanPrice(plan: TenantPlan, billing: 'monthly' | 'yearly'): string {
+  const pricing = PLAN_PRICING[plan];
+  if (!pricing) return 'Custom';
+  const amount = billing === 'monthly' ? pricing.monthlyUsd : pricing.yearlyUsd;
+  if (amount === null) return 'Custom';
+  return `$${amount.toLocaleString()}/${billing === 'monthly' ? 'mo' : 'yr'}`;
 }

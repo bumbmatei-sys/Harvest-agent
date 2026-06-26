@@ -2,7 +2,16 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { Zap, Crown, Star, Building2 } from 'lucide-react';
 import { TenantPlan } from '../../types/tenant.types';
-import { getPlanFeatures, PlanFeatures } from '../../utils/plan-features';
+import {
+  getPlanFeatures,
+  getPlanDisplayName,
+  PLAN_DISPLAY_NAMES,
+  PLAN_PRICING,
+  PLAN_DONATION_RETENTION,
+  AI_ASSISTANT_ADDON_PRICING,
+  formatPlanPrice,
+  PlanFeatures,
+} from '../../utils/plan-features';
 import { authFetch } from '../../utils/auth-fetch';
 import { getTenantId } from './useTenantId';
 
@@ -162,28 +171,34 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
       )}
 
       {/* Plan Cards Carousel */}
-      <style>{`
-        .scrollbar-hide::-webkit-scrollbar { display: none; }
-      `}</style>
+      <style>{`.scrollbar-hide::-webkit-scrollbar { display: none; }`}</style>
       <div
         ref={planScrollRef}
         onScroll={handlePlanScroll}
-        className='flex overflow-x-auto gap-4 pb-4 snap-x snap-mandatory scrollbar-hide'
+        className="flex overflow-x-auto gap-4 pb-4 snap-x snap-mandatory scrollbar-hide"
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
-        {PLANS.map((plan) => {
-          const features = getPlanFeatures(plan.id);
-          const isCurrent = plan.id === currentPlan;
-          const isDowngrade = PLANS.findIndex(p => p.id === plan.id) < PLANS.findIndex(p => p.id === currentPlan);
+        {PLAN_ORDER.map((planId) => {
+          const meta = PLAN_META[planId];
+          const features = getPlanFeatures(planId);
+          const name = PLAN_DISPLAY_NAMES[planId];
+          const monthlyPrice = formatPlanPrice(planId, 'monthly');
+          const displayPrice = formatPlanPrice(planId, billingPeriod);
+          const yearlyOriginalUsd = PLAN_PRICING[planId].monthlyUsd
+            ? `$${(PLAN_PRICING[planId].monthlyUsd! * 12).toLocaleString()}/yr`
+            : '';
+          const donationPct = PLAN_DONATION_RETENTION[planId];
+          const isCurrent = planId === currentPlan;
+          const isDowngrade = PLAN_ORDER.indexOf(planId) < PLAN_ORDER.indexOf(currentPlan ?? 'plus');
 
           return (
             <div
-              key={plan.id}
+              key={planId}
               className={`relative bg-white rounded-2xl border-2 p-5 transition-all min-w-[280px] max-w-[320px] flex-shrink-0 snap-center ${
                 isCurrent ? 'border-[#d4a017] shadow-lg' : 'border-gray-100 hover:border-gray-200'
               }`}
             >
-              {plan.popular && !isCurrent && (
+              {meta.popular && !isCurrent && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-[#d4a017] text-white text-xs font-bold rounded-full">
                   Popular
                 </div>
@@ -195,12 +210,12 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
               )}
 
               <div className="text-center mb-4">
-                <div className="w-12 h-12 mx-auto rounded-xl flex items-center justify-center mb-3" style={{ backgroundColor: `${plan.color}15` }}>
-                  <plan.icon size={24} style={{ color: plan.color }} />
+                <div className="w-12 h-12 mx-auto rounded-xl flex items-center justify-center mb-3" style={{ backgroundColor: `${meta.color}15` }}>
+                  <meta.icon size={24} style={{ color: meta.color }} />
                 </div>
-                <h3 className="text-lg font-bold text-gray-900">{plan.name}</h3>
-                {billingPeriod === 'yearly' && plan.yearlyOriginal && (
-                  <p className="text-sm text-gray-400 line-through">{plan.yearlyOriginal}/yr</p>
+                <h3 className="text-lg font-bold text-gray-900">{name}</h3>
+                {billingPeriod === 'yearly' && yearlyOriginalUsd && (
+                  <p className="text-sm text-gray-400 line-through">{yearlyOriginalUsd}</p>
                 )}
                 <p className="text-2xl font-bold text-gray-900 mt-1">
                   {billingPeriod === 'monthly' ? plan.monthlyPrice : plan.yearlyPrice}
@@ -211,13 +226,20 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
               </div>
 
               <div className="space-y-2 mb-5">
-                {FEATURE_COMPARISON.map(({ key, label, format }) => {
+                {FEATURE_ROWS.map(({ key, label, format }) => {
                   const value = features[key];
-                  const display = format ? format(value) : (value ? '✓' : '✗');
+                  const isPositive = key === 'maxChurches'
+                    ? (value as number) !== 1
+                    : key === 'aiAssistant'
+                    ? true
+                    : Boolean(value);
+                  const display = format
+                    ? format(value)
+                    : (value ? '✓' : '✗');
                   return (
                     <div key={key} className="flex items-center justify-between text-sm">
                       <span className="text-gray-600">{label}</span>
-                      <span className={value ? 'text-green-600 font-medium' : 'text-gray-400'}>{display}</span>
+                      <span className={isPositive ? 'text-green-600 font-medium' : 'text-gray-400'}>{display}</span>
                     </div>
                   );
                 })}
@@ -248,18 +270,18 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
                     handleManageSubscription();
                   }
                 }}
-                disabled={isCurrent || checkoutLoading === plan.id}
+                disabled={isCurrent || checkoutLoading === planId}
                 className={`w-full py-2.5 rounded-xl text-sm font-semibold transition-colors ${
                   isCurrent
                     ? 'bg-gray-100 text-gray-400 cursor-default'
                     : isDowngrade
                     ? 'border border-gray-200 text-gray-600 hover:bg-gray-50'
-                    : checkoutLoading === plan.id
+                    : checkoutLoading === planId
                     ? 'bg-[#d4a017]/70 text-white cursor-wait'
                     : 'bg-[#d4a017] text-white hover:bg-[#b8941a]'
                 }`}
               >
-                {checkoutLoading === plan.id ? (
+                {checkoutLoading === planId ? (
                   <span className="flex items-center justify-center gap-2">
                     <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     Redirecting...
@@ -273,27 +295,23 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
 
       {/* Carousel Dot Indicators */}
       <div className="flex justify-center gap-2 py-2">
-        {PLANS.map((_, index) => (
+        {PLAN_ORDER.map((_, index) => (
           <button
             key={index}
             onClick={() => {
               const container = planScrollRef.current;
-              if (container) {
-                container.scrollTo({ left: index * 300, behavior: 'smooth' });
-              }
+              if (container) container.scrollTo({ left: index * 300, behavior: 'smooth' });
               setActivePlanIndex(index);
             }}
             className={`transition-all rounded-full ${
-              activePlanIndex === index
-                ? 'w-6 h-2 bg-[#d4a017]'
-                : 'w-2 h-2 bg-gray-300 hover:bg-gray-400'
+              activePlanIndex === index ? 'w-6 h-2 bg-[#d4a017]' : 'w-2 h-2 bg-gray-300 hover:bg-gray-400'
             }`}
             aria-label={`Go to plan ${index + 1}`}
           />
         ))}
       </div>
 
-      {/* Feature Comparison Table */}
+      {/* Full Feature Comparison Table */}
       <div className="bg-white rounded-2xl border border-gray-100 p-6 mt-6">
         <h3 className="text-lg font-bold text-gray-900 mb-4">Full Feature Comparison</h3>
         <div className="overflow-x-auto">
@@ -301,21 +319,28 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
             <thead>
               <tr className="border-b border-gray-100">
                 <th className="text-left py-3 px-3 text-gray-500 font-medium">Feature</th>
-                {PLANS.map(p => (
-                  <th key={p.id} className="text-center py-3 px-3 text-gray-500 font-medium">{p.name}</th>
+                {PLAN_ORDER.map(planId => (
+                  <th key={planId} className="text-center py-3 px-3 text-gray-500 font-medium">
+                    {PLAN_DISPLAY_NAMES[planId]}
+                  </th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {FEATURE_COMPARISON.map(({ key, label, format }) => (
+              {FEATURE_ROWS.map(({ key, label, format }) => (
                 <tr key={key} className="border-b border-gray-50">
                   <td className="py-3 px-3 text-gray-900 font-medium">{label}</td>
-                  {PLANS.map(p => {
-                    const features = getPlanFeatures(p.id);
+                  {PLAN_ORDER.map(planId => {
+                    const features = getPlanFeatures(planId);
                     const value = features[key];
+                    const isPositive = key === 'maxChurches'
+                      ? (value as number) !== 1
+                      : key === 'aiAssistant'
+                      ? true
+                      : Boolean(value);
                     const display = format ? format(value) : (value ? '✓' : '✗');
                     return (
-                      <td key={p.id} className={`py-3 px-3 text-center ${value ? 'text-green-600' : 'text-gray-400'}`}>
+                      <td key={planId} className={`py-3 px-3 text-center ${isPositive ? 'text-green-600' : 'text-gray-400'}`}>
                         {display}
                       </td>
                     );
@@ -341,6 +366,9 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
             </tbody>
           </table>
         </div>
+        <p className="text-xs text-gray-400 mt-3">
+          * AI Assistant: ${AI_ASSISTANT_ADDON_PRICING.setupFeeUsd} one-time setup + ${AI_ASSISTANT_ADDON_PRICING.monthlyUsd}/mo on all plans. Included at no extra cost on Ministry &amp; Enterprise.
+        </p>
       </div>
 
       {/* Billing & Payments */}
