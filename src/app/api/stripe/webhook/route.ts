@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import Stripe from 'stripe';
-import { adminDb } from '@/lib/firebase-admin';
+import { adminDb, adminAuth } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { generateAccessCode } from '@/lib/ai-utils';
 import { PLAN_PRICES, getPlanFromPriceId } from '@/lib/stripe-config';
+import { Resend } from 'resend';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,7 +36,6 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    // Idempotency: skip already-processed events
     const eventId = event.id;
     const eventRef = adminDb.collection('webhook_events').doc(eventId);
     const eventDoc = await eventRef.get();
@@ -43,7 +43,6 @@ export async function POST(request: NextRequest) {
       console.log(`⏭️ Skipping duplicate webhook event ${eventId}`);
       return NextResponse.json({ received: true, duplicate: true });
     }
-    // Mark event as processing (will be overwritten if handler fails)
     await eventRef.set({ type: event.type, processedAt: new Date().toISOString() });
 
     switch (event.type) {
@@ -51,7 +50,6 @@ export async function POST(request: NextRequest) {
         const session = event.data.object as Stripe.Checkout.Session;
         const subscriptionId = session.subscription as string | null;
 
-        // Metadata lives on subscription_data → retrieve subscription to get it
         let meta: Record<string, string> = {};
         if (subscriptionId) {
           try {
@@ -84,8 +82,67 @@ export async function POST(request: NextRequest) {
           break;
         }
 
+        // Handle standalone AI Assistant purchase (from theharvest.site)
+        if (meta.type === 'standalone_ai_assistant' && subscriptionId) {
+          const standaloneEmail = meta.email;
+          if (!standaloneEmail) {
+            console.error('Standalone AI checkout: No email in metadata');
+            break;
+          }
+
+          let standaloneUid: string;
+          try {
+            const existingUser = await adminAuth.getUserByEmail(standaloneEmail);
+            standaloneUid = existingUser.uid;
+          } catch {
+            const newUser = await adminAuth.createUser({ email: standaloneEmail, emailVerified: true });
+            standaloneUid = newUser.uid;
+          }
+
+          const platformTenantId = process.env.PLATFORM_TENANT_ID || 'platform';
+          const userRef = adminDb.collection('users').doc(standaloneUid);
+          const standaloneUserDoc = await userRef.get();
+          if (!standaloneUserDoc.exists) {
+            await userRef.set({
+              email: standaloneEmail,
+              hasAIAssistant: true,
+              role: 'standalone_ai_user',
+              tenantId: platformTenantId,
+              aiAssistantConnected: false,
+              telegramChatId: null,
+              telegramUsername: null,
+              aiAssistantSubscriptionItemId: subscriptionId,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            });
+          } else {
+            await userRef.update({
+              hasAIAssistant: true,
+              aiAssistantSubscriptionItemId: subscriptionId,
+              updatedAt: new Date().toISOString(),
+            });
+          }
+
+          const customToken = await adminAuth.createCustomToken(standaloneUid);
+          const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://theharvest.app';
+          const magicLink = `${baseUrl}/ai-assistant?token=${customToken}`;
+
+          const resendKey = process.env.RESEND_API_KEY;
+          if (resendKey) {
+            const resend = new Resend(resendKey);
+            await resend.emails.send({
+              from: 'Harvest <noreply@theharvest.app>',
+              to: standaloneEmail,
+              subject: 'Welcome to your Harvest AI Assistant',
+              html: `<div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px"><h2 style="color:#d4a017;font-size:24px;margin-bottom:8px">Welcome to Harvest AI Assistant</h2><p style="color:#555;margin-bottom:24px">Your subscription is confirmed! Click below to connect your personal AI assistant to Telegram.</p><a href="${magicLink}" style="display:inline-block;background:#d4a017;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px">Activate My AI Assistant</a><p style="color:#999;font-size:12px;margin-top:24px">This link expires in 1 hour. You can request a new one at <a href="${baseUrl}/ai-assistant" style="color:#d4a017">${baseUrl}/ai-assistant</a></p></div>`,
+            });
+          }
+
+          console.log(`✅ Standalone AI Assistant activated for ${standaloneEmail}`);
+          break;
+        }
+
         if (tenantId && subscriptionId) {
-          // Handle AI Assistant add-on checkout
           if (meta.addOn === 'ai-assistant') {
             const accessCode = generateAccessCode();
             await adminDb.collection('tenants').doc(tenantId).update({
@@ -93,11 +150,18 @@ export async function POST(request: NextRequest) {
               addOnAiAssistantCode: accessCode,
               updatedAt: new Date().toISOString(),
             });
+            // Update per-user hasAIAssistant flag
+            if (userId) {
+              await adminDb.collection('users').doc(userId).update({
+                hasAIAssistant: true,
+                aiAssistantSubscriptionItemId: subscriptionId,
+                updatedAt: new Date().toISOString(),
+              });
+            }
             console.log(`✅ Tenant ${tenantId} added AI Assistant add-on (code: ${accessCode})`);
           } else {
             const plan = meta.plan;
             if (plan) {
-              // Cancel old subscription if exists (prevents double billing on upgrade)
               const tenantDoc = await adminDb.collection('tenants').doc(tenantId).get();
               const oldSubId = tenantDoc.data()?.stripeSubscriptionId;
               if (oldSubId && oldSubId !== subscriptionId) {
@@ -120,103 +184,99 @@ export async function POST(request: NextRequest) {
                 updatedAt: new Date().toISOString(),
               };
 
-              // Ultra/Enterprise: AI assistant is included — auto-generate code if not present
-              if ((plan === 'ultra' || plan === 'enterprise') && !tenantDoc.data()?.addOnAiAssistantCode) {
+              if (plan === 'ultra' && !tenantDoc.data()?.addOnAiAssistantCode) {
                 updateData.addOnAiAssistantCode = generateAccessCode();
+                // Grant hasAIAssistant to the first admin
+                try {
+                  const firstAdminEmail = tenantDoc.data()?.adminEmails?.[0];
+                  if (firstAdminEmail) {
+                    const firstAdminUser = await adminAuth.getUserByEmail(firstAdminEmail);
+                    await adminDb.collection('users').doc(firstAdminUser.uid).update({
+                      hasAIAssistant: true,
+                      updatedAt: new Date().toISOString(),
+                    });
+                  }
+                } catch (ultraErr) {
+                  console.error('Failed to grant AI Assistant to ultra plan first admin:', ultraErr);
+                }
               }
 
               await adminDb.collection('tenants').doc(tenantId).update(updateData);
 
-              // Affiliate commission: record if checkout has a referrerId
               const referrerId = meta.referrerId;
               if (referrerId) {
-                // P0: Prevent self-referral
                 const tenantOwner = tenantDoc.data()?.ownerId || tenantDoc.data()?.createdBy;
                 if (referrerId === tenantOwner) {
                   console.log('⚠️ Self-referral blocked for tenant', tenantId);
                 } else {
-                // P0: Dedup — check if commission already exists for this subscription's first payment
-                const existingCommission = await adminDb.collection('affiliate_commissions')
-                  .where('stripeSubscriptionId', '==', subscriptionId)
-                  .where('type', '==', 'initial')
-                  .limit(1)
-                  .get();
-                if (!existingCommission.empty) {
-                  console.log('⚠️ Commission already exists for subscription', subscriptionId);
-                } else {
-                const commissionAmount = Math.round(
-                  (session.amount_total || 0) * 0.10 // 10% commission
-                );
-                // Look up referrer's Stripe Connect account for payout
-                let commissionStatus = 'pending';
-                try {
-                  const referrerDoc = await adminDb.collection('users').doc(referrerId).get();
-                  const connectAccountId = referrerDoc.data()?.affiliateStripeAccountId;
-                  const connectStatus = referrerDoc.data()?.affiliateConnectStatus;
-                  if (connectAccountId && connectStatus === 'active' && commissionAmount > 0) {
-                    const transfer = await stripe.transfers.create({
-                      amount: commissionAmount,
-                      currency: 'usd',
-                      destination: connectAccountId,
-                      metadata: { referrerId, tenantId, plan, type: 'affiliate_commission' },
-                    });
-                    commissionStatus = 'paid';
-                    // Store transfer ID for tracking
-                    await adminDb.collection('affiliate_commissions').add({
-                      referrerId,
-                      tenantId,
-                      plan,
-                      amount: session.amount_total || 0,
-                      commission: commissionAmount,
-                      status: commissionStatus,
-                      type: 'initial',
-                      stripeSubscriptionId: subscriptionId,
-                      stripeTransferId: transfer.id,
-                      createdAt: new Date().toISOString(),
-                    });
+                  const existingCommissionSnap = await adminDb.collection('affiliate_commissions')
+                    .where('stripeSubscriptionId', '==', subscriptionId)
+                    .limit(10)
+                    .get();
+                  const hasInitialCommission = existingCommissionSnap.docs.some(d => d.data().type === 'initial');
+                  if (hasInitialCommission) {
+                    console.log('⚠️ Commission already exists for subscription', subscriptionId);
                   } else {
-                    // No active Connect account — record as pending
-                    await adminDb.collection('affiliate_commissions').add({
-                      referrerId,
-                      tenantId,
-                      plan,
-                      amount: session.amount_total || 0,
-                      commission: commissionAmount,
-                      status: 'pending',
-                      type: 'initial',
-                      stripeSubscriptionId: subscriptionId,
-                      createdAt: new Date().toISOString(),
+                    const commissionAmount = Math.round((session.amount_total || 0) * 0.10);
+                    let commissionStatus = 'pending';
+                    try {
+                      const referrerDoc = await adminDb.collection('users').doc(referrerId).get();
+                      const connectAccountId = referrerDoc.data()?.affiliateStripeAccountId;
+                      const connectStatus = referrerDoc.data()?.affiliateConnectStatus;
+                      if (connectAccountId && connectStatus === 'active' && commissionAmount > 0) {
+                        const transfer = await stripe.transfers.create({
+                          amount: commissionAmount,
+                          currency: 'usd',
+                          destination: connectAccountId,
+                          metadata: { referrerId, tenantId, plan, type: 'affiliate_commission' },
+                        });
+                        commissionStatus = 'paid';
+                        await adminDb.collection('affiliate_commissions').add({
+                          referrerId, tenantId, plan,
+                          amount: session.amount_total || 0,
+                          commission: commissionAmount,
+                          status: commissionStatus,
+                          type: 'initial',
+                          stripeSubscriptionId: subscriptionId,
+                          stripeTransferId: transfer.id,
+                          createdAt: new Date().toISOString(),
+                        });
+                      } else {
+                        await adminDb.collection('affiliate_commissions').add({
+                          referrerId, tenantId, plan,
+                          amount: session.amount_total || 0,
+                          commission: commissionAmount,
+                          status: 'pending',
+                          type: 'initial',
+                          stripeSubscriptionId: subscriptionId,
+                          createdAt: new Date().toISOString(),
+                        });
+                      }
+                    } catch (transferErr) {
+                      console.error('Affiliate transfer failed (will remain pending):', transferErr);
+                      await adminDb.collection('affiliate_commissions').add({
+                        referrerId, tenantId, plan,
+                        amount: session.amount_total || 0,
+                        commission: commissionAmount,
+                        status: 'pending',
+                        type: 'initial',
+                        stripeSubscriptionId: subscriptionId,
+                        createdAt: new Date().toISOString(),
+                      });
+                    }
+                    await adminDb.collection('users').doc(referrerId).update({
+                      affiliateEarnings: FieldValue.increment(commissionAmount),
+                      affiliatePendingPayouts: commissionStatus === 'paid'
+                        ? FieldValue.increment(0)
+                        : FieldValue.increment(commissionAmount),
+                      affiliateReferralCount: FieldValue.increment(1),
+                      updatedAt: new Date().toISOString(),
                     });
+                    console.log(`💰 Affiliate commission ${commissionStatus} for referrer ${referrerId}: $${(commissionAmount / 100).toFixed(2)}`);
                   }
-                } catch (transferErr) {
-                  console.error('Affiliate transfer failed (will remain pending):', transferErr);
-                  await adminDb.collection('affiliate_commissions').add({
-                    referrerId,
-                    tenantId,
-                    plan,
-                    amount: session.amount_total || 0,
-                    commission: commissionAmount,
-                    status: 'pending',
-                    type: 'initial',
-                    stripeSubscriptionId: subscriptionId,
-                    createdAt: new Date().toISOString(),
-                  });
                 }
-                // Increment referrer's earnings and referral count
-                await adminDb.collection('users').doc(referrerId).update({
-                  affiliateEarnings: FieldValue.increment(commissionAmount),
-                  affiliatePendingPayouts: commissionStatus === 'paid'
-                    ? FieldValue.increment(0)
-                    : FieldValue.increment(commissionAmount),
-                  affiliateReferralCount: FieldValue.increment(1),
-                  updatedAt: new Date().toISOString(),
-                });
-                console.log(`💰 Affiliate commission ${commissionStatus} for referrer ${referrerId}: $${(commissionAmount / 100).toFixed(2)}`);
-                } // end dedup check
-                } // end self-referral check
               }
 
-              // Update all users belonging to this tenant
               const usersSnap = await adminDb.collection('users')
                 .where('tenantId', '==', tenantId)
                 .get();
@@ -238,7 +298,6 @@ export async function POST(request: NextRequest) {
         const tenantId = subscription.metadata?.tenantId;
         const subUserId = subscription.metadata?.userId;
 
-        // Handle AI Chat subscription update
         if (subscription.metadata?.addOn === 'ai-chat' && subUserId) {
           const status = subscription.status === 'active' ? 'active' :
                          subscription.status === 'past_due' ? 'past_due' : 'cancelled';
@@ -259,25 +318,18 @@ export async function POST(request: NextRequest) {
             updatedAt: new Date().toISOString(),
           };
 
-          // Detect plan from metadata or price ID (handles portal changes)
           let plan = subscription.metadata?.plan || null;
           if (!plan && subscription.items?.data?.[0]?.price?.id) {
             plan = getPlanFromPriceId(subscription.items.data[0].price.id);
           }
           if (plan) updateData.plan = plan;
 
-          // Sync subscription status
-          if (subscription.status === 'active') {
-            updateData.status = 'active';
-          } else if (subscription.status === 'past_due') {
-            updateData.status = 'past_due';
-          } else if (subscription.status === 'canceled') {
-            updateData.status = 'cancelled';
-          }
+          if (subscription.status === 'active') updateData.status = 'active';
+          else if (subscription.status === 'past_due') updateData.status = 'past_due';
+          else if (subscription.status === 'canceled') updateData.status = 'cancelled';
 
           await adminDb.collection('tenants').doc(tenantId).update(updateData);
 
-          // Update user docs if plan changed
           if (plan) {
             const usersSnap = await adminDb.collection('users')
               .where('tenantId', '==', tenantId)
@@ -299,6 +351,7 @@ export async function POST(request: NextRequest) {
         const tenantId = subscription.metadata?.tenantId;
         const addOn = subscription.metadata?.addOn;
         const delUserId = subscription.metadata?.userId;
+        const subType = subscription.metadata?.type;
 
         // Handle AI Chat subscription cancellation
         if (addOn === 'ai-chat' && delUserId) {
@@ -310,49 +363,94 @@ export async function POST(request: NextRequest) {
           break;
         }
 
-        if (tenantId) {
-          if (addOn === 'ai-assistant') {
-            // AI Assistant add-on cancelled — revoke access code and bindings
-            const bindingsSnap = await adminDb.collection('ai_assistant_bindings')
-              .where('tenantId', '==', tenantId)
-              .get();
-            const batch = adminDb.batch();
-            bindingsSnap.docs.forEach(doc => batch.delete(doc.ref));
-            await batch.commit();
+        // Handle standalone AI Assistant cancellation
+        if (subType === 'standalone_ai_assistant') {
+          const standaloneEmail = subscription.metadata?.email;
+          if (standaloneEmail) {
+            try {
+              const standaloneUser = await adminAuth.getUserByEmail(standaloneEmail);
+              await adminDb.collection('users').doc(standaloneUser.uid).update({
+                hasAIAssistant: false,
+                aiAssistantConnected: false,
+                telegramChatId: null,
+                aiAssistantSubscriptionItemId: null,
+                updatedAt: new Date().toISOString(),
+              });
+              console.log(`❌ Standalone AI Assistant cancelled for ${standaloneEmail}`);
+            } catch (standaloneErr) {
+              console.error('Failed to revoke standalone AI Assistant:', standaloneErr);
+            }
+          }
+          break;
+        }
 
+        // Handle AI Assistant add-on cancellation
+        if (addOn === 'ai-assistant') {
+          if (delUserId) {
+            await adminDb.collection('users').doc(delUserId).update({
+              hasAIAssistant: false,
+              aiAssistantConnected: false,
+              telegramChatId: null,
+              aiAssistantSubscriptionItemId: null,
+              updatedAt: new Date().toISOString(),
+            });
+          } else {
+            const affectedSnap = await adminDb.collection('users')
+              .where('aiAssistantSubscriptionItemId', '==', subscription.id)
+              .limit(10).get();
+            if (!affectedSnap.empty) {
+              const b = adminDb.batch();
+              affectedSnap.docs.forEach(d => b.update(d.ref, {
+                hasAIAssistant: false, aiAssistantConnected: false,
+                telegramChatId: null, aiAssistantSubscriptionItemId: null,
+                updatedAt: new Date().toISOString(),
+              }));
+              await b.commit();
+            }
+          }
+
+          if (tenantId) {
+            const bindingsSnap = await adminDb.collection('ai_assistant_bindings')
+              .where('tenantId', '==', tenantId).get();
+            if (!bindingsSnap.empty) {
+              const b2 = adminDb.batch();
+              bindingsSnap.docs.forEach(d => b2.delete(d.ref));
+              await b2.commit();
+            }
             await adminDb.collection('tenants').doc(tenantId).update({
               addOnAiAssistant: null,
               addOnAiAssistantCode: null,
               updatedAt: new Date().toISOString(),
             });
-            console.log(`❌ Tenant ${tenantId} AI Assistant add-on cancelled (${bindingsSnap.size} bindings removed)`);
-          } else {
-            // Downgrade to plus (lowest plan) on cancellation
-            await adminDb.collection('tenants').doc(tenantId).update({
-              plan: 'plus',
-              status: 'cancelled',
-              stripeSubscriptionId: null,
-              updatedAt: new Date().toISOString(),
-            });
-
-            const usersSnap = await adminDb.collection('users')
-              .where('tenantId', '==', tenantId)
-              .get();
-            const batch = adminDb.batch();
-            usersSnap.docs.forEach(doc => {
-              batch.update(doc.ref, { plan: 'plus' });
-            });
-            await batch.commit();
-
-            console.log(`❌ Tenant ${tenantId} subscription cancelled, downgraded to plus`);
           }
+          console.log(`❌ AI Assistant add-on cancelled (user: ${delUserId || 'unknown'}, tenant: ${tenantId || 'none'})`);
+          break;
+        }
+
+        if (tenantId) {
+          await adminDb.collection('tenants').doc(tenantId).update({
+            plan: 'plus',
+            status: 'cancelled',
+            stripeSubscriptionId: null,
+            updatedAt: new Date().toISOString(),
+          });
+
+          const usersSnap = await adminDb.collection('users')
+            .where('tenantId', '==', tenantId)
+            .get();
+          const batch = adminDb.batch();
+          usersSnap.docs.forEach(doc => {
+            batch.update(doc.ref, { plan: 'plus' });
+          });
+          await batch.commit();
+
+          console.log(`❌ Tenant ${tenantId} subscription cancelled, downgraded to plus`);
         }
         break;
       }
 
       case 'invoice.payment_failed': {
         const invoice = event.data.object as Stripe.Invoice;
-        // Invoice metadata doesn't include tenantId — must look up from subscription
         const invSubId = invoice.subscription as string | null;
         if (invSubId) {
           try {
@@ -374,7 +472,6 @@ export async function POST(request: NextRequest) {
 
       case 'invoice.payment_succeeded': {
         const invoice = event.data.object as Stripe.Invoice;
-        // Invoice metadata doesn't include tenantId — must look up from subscription
         const invoiceSubId = invoice.subscription as string | null;
         let tenantId: string | null = null;
         if (invoiceSubId) {
@@ -386,7 +483,6 @@ export async function POST(request: NextRequest) {
           }
         }
         if (tenantId) {
-          // Reactivate suspended accounts on successful payment
           const tenantDoc = await adminDb.collection('tenants').doc(tenantId).get();
           if (!!tenantDoc.exists && tenantDoc.data()?.status === 'suspended') {
             await adminDb.collection('tenants').doc(tenantId).update({
@@ -396,15 +492,12 @@ export async function POST(request: NextRequest) {
             console.log(`✅ Tenant ${tenantId} reactivated after successful payment`);
           }
 
-          // Affiliate commission on RECURRING invoice payments only
-          // Skip subscription_create (first invoice) — already handled in checkout.session.completed
           const billingReason = (invoice as any).billing_reason;
           if (invoiceSubId && billingReason !== 'subscription_create') {
             try {
               const subscription = await stripe.subscriptions.retrieve(invoiceSubId);
               const referrerId = subscription.metadata?.referrerId;
               if (referrerId) {
-                // P0: Dedup — check if commission already exists for this invoice
                 const existingCommission = await adminDb.collection('affiliate_commissions')
                   .where('stripeInvoiceId', '==', invoice.id)
                   .limit(1)
@@ -412,48 +505,47 @@ export async function POST(request: NextRequest) {
                 if (!existingCommission.empty) {
                   console.log('⚠️ Commission already exists for invoice', invoice.id);
                 } else {
-                const commissionAmount = Math.round((invoice.amount_paid || 0) * 0.10);
-                let commissionStatus = 'pending';
-                let stripeTransferId: string | undefined;
-                try {
-                  const referrerDoc = await adminDb.collection('users').doc(referrerId).get();
-                  const connectAccountId = referrerDoc.data()?.affiliateStripeAccountId;
-                  const connectStatus = referrerDoc.data()?.affiliateConnectStatus;
-                  if (connectAccountId && connectStatus === 'active' && commissionAmount > 0) {
-                    const transfer = await stripe.transfers.create({
-                      amount: commissionAmount,
-                      currency: 'usd',
-                      destination: connectAccountId,
-                      metadata: { referrerId, tenantId, plan: subscription.metadata?.plan || 'unknown', type: 'affiliate_commission_recurring' },
-                    });
-                    commissionStatus = 'paid';
-                    stripeTransferId = transfer.id;
+                  const commissionAmount = Math.round((invoice.amount_paid || 0) * 0.10);
+                  let commissionStatus = 'pending';
+                  let stripeTransferId: string | undefined;
+                  try {
+                    const referrerDoc = await adminDb.collection('users').doc(referrerId).get();
+                    const connectAccountId = referrerDoc.data()?.affiliateStripeAccountId;
+                    const connectStatus = referrerDoc.data()?.affiliateConnectStatus;
+                    if (connectAccountId && connectStatus === 'active' && commissionAmount > 0) {
+                      const transfer = await stripe.transfers.create({
+                        amount: commissionAmount,
+                        currency: 'usd',
+                        destination: connectAccountId,
+                        metadata: { referrerId, tenantId, plan: subscription.metadata?.plan || 'unknown', type: 'affiliate_commission_recurring' },
+                      });
+                      commissionStatus = 'paid';
+                      stripeTransferId = transfer.id;
+                    }
+                  } catch (transferErr) {
+                    console.error('Affiliate recurring transfer failed:', transferErr);
                   }
-                } catch (transferErr) {
-                  console.error('Affiliate recurring transfer failed:', transferErr);
+                  await adminDb.collection('affiliate_commissions').add({
+                    referrerId, tenantId,
+                    plan: subscription.metadata?.plan || 'unknown',
+                    amount: invoice.amount_paid || 0,
+                    commission: commissionAmount,
+                    status: commissionStatus,
+                    type: 'recurring',
+                    stripeSubscriptionId: invoiceSubId,
+                    stripeInvoiceId: invoice.id,
+                    ...(stripeTransferId ? { stripeTransferId } : {}),
+                    createdAt: new Date().toISOString(),
+                  });
+                  await adminDb.collection('users').doc(referrerId).update({
+                    affiliateEarnings: FieldValue.increment(commissionAmount),
+                    affiliatePendingPayouts: commissionStatus === 'paid'
+                      ? FieldValue.increment(0)
+                      : FieldValue.increment(commissionAmount),
+                    updatedAt: new Date().toISOString(),
+                  });
+                  console.log(`💰 Recurring affiliate commission ${commissionStatus} for referrer ${referrerId}: $${(commissionAmount / 100).toFixed(2)}`);
                 }
-                await adminDb.collection('affiliate_commissions').add({
-                  referrerId,
-                  tenantId,
-                  plan: subscription.metadata?.plan || 'unknown',
-                  amount: invoice.amount_paid || 0,
-                  commission: commissionAmount,
-                  status: commissionStatus,
-                  type: 'recurring',
-                  stripeSubscriptionId: invoiceSubId,
-                  stripeInvoiceId: invoice.id,
-                  ...(stripeTransferId ? { stripeTransferId } : {}),
-                  createdAt: new Date().toISOString(),
-                });
-                await adminDb.collection('users').doc(referrerId).update({
-                  affiliateEarnings: FieldValue.increment(commissionAmount),
-                  affiliatePendingPayouts: commissionStatus === 'paid'
-                    ? FieldValue.increment(0)
-                    : FieldValue.increment(commissionAmount),
-                  updatedAt: new Date().toISOString(),
-                });
-                console.log(`💰 Recurring affiliate commission ${commissionStatus} for referrer ${referrerId}: $${(commissionAmount / 100).toFixed(2)}`);
-                } // end dedup check
               }
             } catch (subErr) {
               console.error('Failed to check subscription for affiliate commission:', subErr);
@@ -466,7 +558,6 @@ export async function POST(request: NextRequest) {
       case 'charge.refunded': {
         const charge = event.data.object as Stripe.Charge;
         let tenantId = charge.metadata?.tenantId;
-        // Fallback: look up tenant by customer ID
         if (!tenantId && charge.customer) {
           const tenantSnap = await adminDb.collection('tenants')
             .where('stripeCustomerId', '==', charge.customer as string)
@@ -486,7 +577,6 @@ export async function POST(request: NextRequest) {
       case 'charge.dispute.created': {
         const dispute = event.data.object as Stripe.Dispute;
         let tenantId = dispute.metadata?.tenantId;
-        // Fallback: look up tenant by customer ID (dispute has charge → customer)
         if (!tenantId && (dispute as any).charge) {
           try {
             const charge = await stripe.charges.retrieve((dispute as any).charge as string);
@@ -512,17 +602,14 @@ export async function POST(request: NextRequest) {
       case 'transfer.failed': {
         const transfer = event.data.object as Stripe.Transfer;
         const referrerId = transfer.metadata?.referrerId;
-        const tenantId = transfer.metadata?.tenantId;
         if (referrerId) {
           try {
-            // Update commission status
             const commissionsSnap = await adminDb.collection('affiliate_commissions')
               .where('stripeTransferId', '==', transfer.id)
               .limit(1).get();
             if (!commissionsSnap.empty) {
               await commissionsSnap.docs[0].ref.update({ status: 'failed' });
             }
-            // Revert pending payout
             const commissionAmount = transfer.amount || 0;
             await adminDb.collection('users').doc(referrerId).update({
               affiliatePendingPayouts: FieldValue.increment(-commissionAmount),
@@ -531,6 +618,67 @@ export async function POST(request: NextRequest) {
             console.log(`❌ Transfer failed for referrer ${referrerId}: $${(commissionAmount / 100).toFixed(2)}`);
           } catch (err) {
             console.error('Error handling transfer.failed:', err);
+          }
+        }
+        break;
+      }
+
+      case 'payment_intent.succeeded': {
+        const pi = event.data.object as Stripe.PaymentIntent;
+        const meta = pi.metadata || {};
+
+        if (meta.type === 'partnership' && meta.tenantId) {
+          const donorEmail = pi.receipt_email || '';
+          const amount = pi.amount_received || pi.amount || 0;
+          const tenantId = meta.tenantId;
+
+          if (donorEmail) {
+            const existingContactSnap = await adminDb.collection('contacts')
+              .where('email', '==', donorEmail)
+              .limit(20).get();
+            const existingContactDoc = existingContactSnap.docs.find(d => d.data().tenantId === tenantId);
+
+            let contactId: string;
+            if (existingContactDoc) {
+              contactId = existingContactDoc.id;
+              const contactData = existingContactDoc.data();
+              const newType = contactData.type === 'member' ? 'both' : (contactData.type as string);
+              await existingContactDoc.ref.update({
+                type: newType,
+                totalDonated: FieldValue.increment(amount),
+                lastDonationAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+              });
+            } else {
+              const ref = await adminDb.collection('contacts').add({
+                firstName: '', lastName: '', email: donorEmail, phone: '',
+                type: 'donor', userId: '', tenantId,
+                totalDonated: amount, lastDonationAt: new Date().toISOString(),
+                memberSince: null, notes: '', tags: [],
+                createdAt: new Date().toISOString(), createdBy: 'system',
+              });
+              contactId = ref.id;
+            }
+
+            await adminDb.collection('contactActivities').add({
+              contactId, type: 'donation',
+              description: 'Partnership donation via Stripe',
+              amount, createdAt: new Date().toISOString(), createdBy: 'system',
+            });
+
+            const tenantDoc = await adminDb.collection('tenants').doc(tenantId).get();
+            const tenantName = tenantDoc.data()?.name || tenantDoc.data()?.displayName || '';
+            const contactDoc = await adminDb.collection('contacts').doc(contactId).get();
+            const cData = contactDoc.data() || {};
+            const recipientName = `${cData.firstName || ''} ${cData.lastName || ''}`.trim() || donorEmail;
+
+            const receiptNumber = `R-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+            await adminDb.collection('tenants').doc(tenantId).collection('invoices').add({
+              type: 'donation_receipt', recipientName, recipientEmail: donorEmail,
+              amount, currency: pi.currency || 'usd', description: 'Partnership donation',
+              relatedId: pi.id, receiptNumber, issuedAt: new Date().toISOString(),
+              tenantName, pdfUrl: null, status: 'pending',
+            });
           }
         }
         break;
@@ -547,7 +695,6 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Helpers to get price IDs for webhook processing
 function getMonthlyPriceId(plan: string): string {
   return PLAN_PRICES[plan]?.monthly || '';
 }

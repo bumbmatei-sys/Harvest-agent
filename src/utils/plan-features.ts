@@ -21,15 +21,30 @@ export interface PlanFeatures {
   customDomain: boolean;
   /** Allow custom background image on auth page */
   customBackground: boolean;
-  /** Newsletter automation (coming soon) */
+  /** Newsletter automation */
   newsletterAutomation: boolean;
   /** SMS automation (coming soon) */
   smsAutomation: boolean;
-  /** AI Assistant included in plan */
-  aiAssistant: boolean;
+  /** Number of AI assistants (0 = none, 1 = one, -1 = unlimited) */
+  aiAssistant: number;
+  /** Fundraising campaigns feature */
+  fundraising: boolean;
+  /** Event registration integration */
+  eventRegistration: boolean;
+  /** Docs / TipTap notes integration */
+  docs: boolean;
+  /** CRM for donors and members */
+  crm: boolean;
+  /** Accounting tools integration */
+  accountingTools: boolean;
+  /** Tax receipt generation */
+  taxReceipt: boolean;
+  /** Community groups (Rocket.Chat integration) */
+  communityGroups: boolean;
 }
 
 const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
+  // Individual
   plus: {
     blog: true,
     aiChat: false,
@@ -37,60 +52,67 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     map: true,
     churchDirectory: false,
     maxChurches: 1,
-    maxCourses: 5,
-    maxAdmins: 2,
+    maxCourses: 2,
+    maxAdmins: 1,
     customDomain: false,
     customBackground: false,
     newsletterAutomation: false,
     smsAutomation: false,
-    aiAssistant: false,
+    aiAssistant: 0,
+    fundraising: true,
+    eventRegistration: false,
+    docs: false,
+    crm: false,
+    accountingTools: false,
+    taxReceipt: false,
+    communityGroups: false,
   },
+  // Small Team
   pro: {
     blog: true,
     aiChat: true,
     aiKnowledge: true,
     map: true,
-    churchDirectory: false,
     maxChurches: 1,
-    maxCourses: -1,
+    maxCourses: 5,
     maxAdmins: 5,
     customDomain: false,
     customBackground: false,
     newsletterAutomation: true,
     smsAutomation: false,
-    aiAssistant: false,
+    aiAssistant: 0,
+    fundraising: true,
+    eventRegistration: false,
+    docs: false,
+    crm: false,
+    accountingTools: false,
+    taxReceipt: false,
+    communityGroups: false,
   },
+  // Community
   max: {
     blog: true,
     aiChat: true,
     aiKnowledge: true,
     map: true,
-    churchDirectory: false,
     maxChurches: 1,
     maxCourses: -1,
-    maxAdmins: -1,
+    maxAdmins: 10,
     customDomain: true,
     customBackground: true,
     newsletterAutomation: true,
-    smsAutomation: true,
-    aiAssistant: false,
+    smsAutomation: false,
+    aiAssistant: 0,
+    fundraising: true,
+    eventRegistration: true,
+    docs: true,
+    crm: false,
+    accountingTools: false,
+    taxReceipt: false,
+    communityGroups: false,
   },
+  // Ministry (top plan — replaces Organization/enterprise)
   ultra: {
-    blog: true,
-    aiChat: true,
-    aiKnowledge: true,
-    map: true,
-    churchDirectory: false,
-    maxChurches: 1,
-    maxCourses: -1,
-    maxAdmins: -1,
-    customDomain: true,
-    customBackground: true,
-    newsletterAutomation: true,
-    smsAutomation: true,
-    aiAssistant: true,
-  },
-  enterprise: {
     blog: true,
     aiChat: true,
     aiKnowledge: true,
@@ -98,12 +120,19 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     churchDirectory: true,
     maxChurches: -1,
     maxCourses: -1,
-    maxAdmins: -1,
+    maxAdmins: 15,
     customDomain: true,
     customBackground: true,
     newsletterAutomation: true,
-    smsAutomation: true,
-    aiAssistant: true,
+    smsAutomation: false,
+    aiAssistant: -1,
+    fundraising: true,
+    eventRegistration: true,
+    docs: true,
+    crm: true,
+    accountingTools: true,
+    taxReceipt: true,
+    communityGroups: true,
   },
 };
 
@@ -117,14 +146,13 @@ export function getPlanFeatures(plan: TenantPlan): PlanFeatures {
 
 /**
  * Human-readable display names for each plan tier.
- * Internal IDs (plus/pro/max/ultra/enterprise) stay the same.
+ * Internal IDs (plus/pro/max/ultra) stay the same.
  */
 export const PLAN_DISPLAY_NAMES: Record<TenantPlan, string> = {
   plus: 'Individual',
-  pro: 'Community',
-  max: 'Church',
+  pro: 'Small Team',
+  max: 'Community',
   ultra: 'Ministry',
-  enterprise: 'Enterprise',
 };
 
 /**

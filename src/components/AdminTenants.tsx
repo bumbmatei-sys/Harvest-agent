@@ -6,13 +6,13 @@ import { Building2, Plus, Search, Edit2, Trash2, Pause, Play, X, Check } from 'l
 import { Tenant, TenantPlan, TenantStatus } from '../types/tenant.types';
 import { createTenant, updateTenant, isSubdomainAvailable } from '../utils/tenant.utils';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
+import { useAdminHeader, HeaderActionButton } from './AdminScreenHeader';
 
 const PLAN_LABELS: Record<TenantPlan, string> = {
   plus: 'Plus',
   pro: 'Pro',
   max: 'Max',
   ultra: 'Ultra',
-  enterprise: 'Enterprise',
 };
 
 const PLAN_COLORS: Record<TenantPlan, string> = {
@@ -20,7 +20,6 @@ const PLAN_COLORS: Record<TenantPlan, string> = {
   pro: 'bg-purple-100 text-purple-700',
   max: 'bg-amber-100 text-amber-700',
   ultra: 'bg-amber-100 text-amber-700',
-  enterprise: 'bg-emerald-100 text-emerald-700',
 };
 
 const STATUS_COLORS: Record<TenantStatus, string> = {
@@ -58,6 +57,7 @@ const AdminTenants: React.FC = () => {
   const [error, setError] = useState('');
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState('');
+  const { setHeaderAction } = useAdminHeader();
 
   useEffect(() => {
     const q = collection(db, 'tenants');
@@ -83,6 +83,11 @@ const AdminTenants: React.FC = () => {
     setError('');
     setShowForm(true);
   };
+
+  useEffect(() => {
+    setHeaderAction(<HeaderActionButton label="Add Tenant" onClick={openCreate} />);
+    return () => setHeaderAction(null);
+  }, [setHeaderAction]);
 
   const openEdit = (tenant: Tenant) => {
     setForm({
@@ -174,21 +179,6 @@ const AdminTenants: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Tenants</h2>
-          <p className="text-sm text-gray-500 mt-1">Manage church instances and their subscriptions.</p>
-        </div>
-        <button
-          onClick={openCreate}
-          className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#d4a017] text-white font-semibold rounded-xl hover:bg-yellow-600 transition-colors shadow-sm"
-        >
-          <Plus size={18} />
-          New Tenant
-        </button>
-      </div>
-
       {/* Search */}
       <div className="relative">
         <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -354,15 +344,14 @@ const AdminTenants: React.FC = () => {
                   onChange={e => setForm({ ...form, plan: e.target.value as TenantPlan })}
                   className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#d4a017] focus:border-[#d4a017] outline-none bg-white"
                 >
-                  <option value="plus">Plus — $79/mo</option>
-                  <option value="pro">Pro — $199/mo</option>
-                  <option value="max">Max — $399/mo</option>
-                  <option value="ultra">Ultra — $699/mo</option>
-                  <option value="enterprise">Enterprise — Custom</option>
+                  <option value="plus">Individual — $59/mo</option>
+                  <option value="pro">Small Team — $119/mo</option>
+                  <option value="max">Community — $239/mo</option>
+                  <option value="ultra">Ministry — $479/mo</option>
                 </select>
               </div>
 
-              {(form.plan === 'max' || form.plan === 'ultra' || form.plan === 'enterprise') && (
+              {(form.plan === 'max' || form.plan === 'ultra') && (
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-1">Custom Domain</label>
                   <input

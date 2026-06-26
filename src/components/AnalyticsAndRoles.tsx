@@ -2,7 +2,9 @@ import React, { useState, useEffect, CSSProperties } from "react";
 import { collection, query, getDocs, doc, updateDoc, where, deleteDoc } from "firebase/firestore";
 import { db, auth } from "../firebase";
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
+import { notifyError } from '../utils/notify';
 import { getTenantScope, SUPER_ADMIN_EMAIL } from '../utils/tenant-scope';
+import { useAdminHeader, HeaderActionButton } from './AdminScreenHeader';
 
 
 
@@ -61,7 +63,6 @@ export interface AdminUser {
   picture: string;
   role: "super_admin" | "admin" | "user";
   permissions: Permission;
-  assignedRegions: string[];
 }
 
 const emptyPermission = (): Permission => ({
@@ -191,10 +192,9 @@ function PermissionEditor({ admin, isNew, onSave, onClose, allUsers }: Permissio
   const [form, setForm] = useState<AdminUser>(
     admin || {
       id: "", name: "", email: "", picture: "", role: "admin",
-      permissions: emptyPermission(), assignedRegions: [],
+      permissions: emptyPermission(),
     }
   );
-  const [regionInput, setRegionInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<UserRecord[]>([]);
 
@@ -237,16 +237,6 @@ function PermissionEditor({ admin, isNew, onSave, onClose, allUsers }: Permissio
     }
   };
 
-  const addRegion = (): void => {
-    const r = regionInput.trim();
-    if (!r || form.assignedRegions.includes(r)) return;
-    setForm((f) => ({ ...f, assignedRegions: [...f.assignedRegions, r] }));
-    setRegionInput("");
-  };
-
-  const removeRegion = (r: string): void =>
-    setForm((f) => ({ ...f, assignedRegions: f.assignedRegions.filter((x) => x !== r) }));
-
   const PERMISSION_ROWS: { key: keyof Permission; label: string; desc: string; icon: string; superOnly?: boolean }[] = [
     { key: "writeArticles", label: "Write Articles", desc: "Create, edit and publish blog articles", icon: "✍️" },
     { key: "createPosts", label: "Create Posts", desc: "Create posts, polls and events in the feed", icon: "📣" },
@@ -269,7 +259,7 @@ function PermissionEditor({ admin, isNew, onSave, onClose, allUsers }: Permissio
           <button onClick={onClose} style={{ background: "none", border: "none", color: TEXT2, cursor: "pointer", fontSize: 20 }}>✕</button>
         </div>
 
-        <div style={{ overflowY: "auto", flex: 1, padding: "16px 20px 32px", display: "flex", flexDirection: "column", gap: 20 }}>
+        <div style={{ overflowY: "auto", flex: 1, paddingTop: 16, paddingBottom: 200, paddingLeft: 20, paddingRight: 20, display: "flex", flexDirection: "column", gap: 20 }}>
           {isNew && !form.id && (
             <div style={{ display: "flex", flexDirection: "column", gap: 10, position: "relative" }}>
               <label style={s.label}>Search User</label>
@@ -334,50 +324,24 @@ function PermissionEditor({ admin, isNew, onSave, onClose, allUsers }: Permissio
             </div>
           )}
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <label style={s.label}>Assigned Regions</label>
-            <div style={{ fontSize: 12, color: TEXT2, marginTop: -6 }}>
-              Cities or countries this admin can access. Leave empty for global access.
-            </div>
-            <div style={{ display: "flex", gap: 8 }}>
-              <input style={{ ...s.input, flex: 1 }} placeholder="e.g. Lagos, Nigeria, UK..."
-                value={regionInput} onChange={(e) => setRegionInput(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && addRegion()} />
-              <button onClick={addRegion}
-                style={{ background: GOLD_BTN, border: "none", color: "#fff", fontWeight: 700, padding: "0 16px", borderRadius: 10, cursor: "pointer", fontSize: 13, fontFamily: "inherit", whiteSpace: "nowrap" }}>
-                Add
-              </button>
-            </div>
-            {form.assignedRegions.length > 0 && (
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                {form.assignedRegions.map((r) => (
-                  <div key={r} style={{ display: "flex", alignItems: "center", gap: 6, background: GOLD_LIGHT, border: `1.5px solid ${GOLD}`, borderRadius: 99, padding: "4px 12px" }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: GOLD }}>📍 {r}</span>
-                    <button onClick={() => removeRegion(r)} style={{ background: "none", border: "none", color: GOLD, cursor: "pointer", fontSize: 12, padding: 0, lineHeight: 1, fontWeight: 700 }}>✕</button>
-                  </div>
-                ))}
-              </div>
-            )}
-            {form.assignedRegions.length === 0 && (
-              <div style={{ fontSize: 12, color: TEXT2, fontStyle: "italic" }}>No regions assigned — global access if Analytics is enabled.</div>
-            )}
+          {/* Action buttons scroll with the content (paddingBottom on the
+              container keeps them clear of the bottom navigation bar). */}
+          <div style={{ display: "flex", gap: 10 }}>
+            <button onClick={onClose} style={{ flex: 1, background: "transparent", border: `1.5px solid ${BORDER}`, color: TEXT2, padding: "12px", borderRadius: 12, cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 14 }}>Cancel</button>
+            <button onClick={() => onSave(form)} disabled={!form.id}
+              style={{ flex: 2, background: GOLD_BTN, border: "none", color: "#fff", fontWeight: 800, padding: "12px", borderRadius: 12, cursor: "pointer", fontFamily: "inherit", fontSize: 14, boxShadow: "0 2px 10px rgba(201,150,58,0.35)", opacity: form.id ? 1 : 0.5 }}>
+              {isNew ? "Add Admin" : "Save Changes"}
+            </button>
           </div>
-        </div>
 
-        <div style={{ padding: "12px 20px 28px", borderTop: `1px solid ${BORDER}`, display: "flex", gap: 10, flexShrink: 0 }}>
-          <button onClick={onClose} style={{ flex: 1, background: "transparent", border: `1.5px solid ${BORDER}`, color: TEXT2, padding: "12px", borderRadius: 12, cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 14 }}>Cancel</button>
-          <button onClick={() => onSave(form)} disabled={!form.id}
-            style={{ flex: 2, background: GOLD_BTN, border: "none", color: "#fff", fontWeight: 800, padding: "12px", borderRadius: 12, cursor: "pointer", fontFamily: "inherit", fontSize: 14, boxShadow: "0 2px 10px rgba(201,150,58,0.35)", opacity: form.id ? 1 : 0.5 }}>
-            {isNew ? "Add Admin" : "Save Changes"}
-          </button>
         </div>
       </div>
     </div>
   );
 }
 
-export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissions }: { currentUserRole: string, currentUserPermissions?: Permission | null }) {
-  const [tab, setTab] = useState<MainTab>("analytics");
+export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissions, mode = "full" }: { currentUserRole: string, currentUserPermissions?: Permission | null, mode?: "full" | "analytics" | "roles" }) {
+  const [tab, setTab] = useState<MainTab>(mode === "roles" ? "roles" : "analytics");
   const [subView, setSubView] = useState<"main" | "all_users" | "countries" | "country_users">("main");
   const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
   const [listSearchQuery, setListSearchQuery] = useState("");
@@ -434,7 +398,6 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
               picture: data.photoURL || "",
               role: data.email === SUPER_ADMIN_EMAIL ? "super_admin" : data.role,
               permissions: data.permissions || emptyPermission(),
-              assignedRegions: data.assignedRegions || []
             });
           }
         });
@@ -664,13 +627,16 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
   const periodAll = filterByPeriod(allUsers, period);
   const countries = new Set(allUsers.map((u) => u.country).filter(Boolean)).size;
 
-  const handleSaveAdmin = async (admin: AdminUser): void => {
+  const handleSaveAdmin = async (admin: AdminUser): Promise<void> => {
+    if (!admin.id) {
+      notifyError('Select a user before adding them as an admin', 'No user selected');
+      return;
+    }
     try {
       const userRef = doc(db, "users", admin.id);
       await updateDoc(userRef, {
         role: admin.role,
         permissions: admin.permissions,
-        assignedRegions: admin.assignedRegions
       });
 
       // Update custom claims for Firestore security rules
@@ -696,17 +662,17 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
       setShowEditor(false);
       setEditingAdmin(null);
     } catch (error) {
-      try { handleFirestoreError(error, OperationType.UPDATE, `users/${admin.id}`); } catch (e) { console.error(e); }
+      handleFirestoreError(error, OperationType.UPDATE, `users/${admin.id}`);
+      notifyError('Failed to save admin', error);
     }
   };
 
-  const handleRemoveAdmin = async (id: string): void => {
+  const handleRemoveAdmin = async (id: string): Promise<void> => {
     try {
       const userRef = doc(db, "users", id);
       await updateDoc(userRef, {
         role: "user",
         permissions: emptyPermission(),
-        assignedRegions: []
       });
 
       // Update custom claims (remove admin flag)
@@ -733,6 +699,14 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
 
   const openNewAdmin = (): void => { setEditingAdmin(null); setIsNewAdmin(true); setShowEditor(true); };
   const openEditAdmin = (admin: AdminUser): void => { setEditingAdmin(admin); setIsNewAdmin(false); setShowEditor(true); };
+
+  const { setHeaderAction } = useAdminHeader();
+
+  useEffect(() => {
+    if (mode !== "roles") { setHeaderAction(null); return; }
+    setHeaderAction(<HeaderActionButton label="Add Admin" onClick={openNewAdmin} />);
+    return () => setHeaderAction(null);
+  }, [setHeaderAction]);
 
   return (
     <div style={pageStyle}>
@@ -773,7 +747,7 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
         </div>
       )}
 
-      {(currentUserRole === "super_admin" || currentUserPermissions?.manageAdmins || currentUserPermissions?.fullAccess) && (
+      {mode === "full" && (currentUserRole === "super_admin" || currentUserPermissions?.manageAdmins || currentUserPermissions?.fullAccess) && (
         <div style={s.tabBar}>
           {([["analytics", "📊 Analytics"], ["roles", "👥 Admin Roles"]] as [MainTab, string][]).map(([id, label]) => (
             <button key={id} onClick={() => setTab(id)}
@@ -907,8 +881,6 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
                 </div>
               </div>
 
-              <button onClick={openNewAdmin} style={s.newBtn}>+ Add Admin</button>
-
               {admins.map((admin) => {
                 const isSuperAdmin = admin.role === "super_admin";
                 const perms = admin.permissions;
@@ -945,15 +917,6 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
                           ))}
                           {activePerms.length === 0 && <span style={{ fontSize: 11, color: TEXT2, fontStyle: "italic" }}>No permissions assigned</span>}
                         </div>
-
-                        {admin.assignedRegions.length > 0 && (
-                          <div style={{ fontSize: 11, color: TEXT2, marginTop: 5 }}>
-                            📍 {admin.assignedRegions.join(", ")}
-                          </div>
-                        )}
-                        {!isSuperAdmin && admin.assignedRegions.length === 0 && (
-                          <div style={{ fontSize: 11, color: TEXT2, marginTop: 5 }}>🌍 Global access</div>
-                        )}
                       </div>
 
                       {!isSuperAdmin && (

@@ -29,11 +29,12 @@ const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
 async function checkRateLimit(ip: string): Promise<boolean> {
   try {
     const windowStart = new Date(Date.now() - RATE_LIMIT_WINDOW_MS).toISOString();
+    // Single-field filter only (ip); time window applied in-memory to avoid a composite index.
     const snap = await adminDb.collection('enterprise_leads')
       .where('ip', '==', ip)
-      .where('createdAt', '>', windowStart)
       .get();
-    return snap.size < RATE_LIMIT_MAX;
+    const recent = snap.docs.filter(d => String(d.data().createdAt || '') > windowStart);
+    return recent.length < RATE_LIMIT_MAX;
   } catch {
     return true; // fail open — don't block on rate limit errors
   }
@@ -90,7 +91,8 @@ export async function POST(request: NextRequest) {
     });
 
     // 2. Send email notification to admin
-    const adminEmail = process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || 'bumbmatei@proton.me';
+    const adminEmails = ['bumbmatei@proton.me', 'bumbmatei@zohomail.eu'];
+    const adminEmail = adminEmails[0];
 
     if (process.env.RESEND_API_KEY) {
       try {

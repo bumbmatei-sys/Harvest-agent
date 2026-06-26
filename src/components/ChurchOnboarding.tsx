@@ -15,21 +15,20 @@ interface ChurchOnboardingProps {
 }
 
 const PLAN_NAMES: Record<TenantPlan, string> = {
-  plus: 'Plus',
-  pro: 'Pro',
-  max: 'Max',
-  ultra: 'Ultra',
-  enterprise: 'Enterprise',
+  plus: 'Individual',
+  pro: 'Small Team',
+  max: 'Community',
+  ultra: 'Ministry',
 };
 
 const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ onComplete, signupPlan }) => {
   const urlPlan = typeof window !== 'undefined'
     ? new URLSearchParams(window.location.search).get('plan') as TenantPlan | null
     : null;
-  const selectedPlan = signupPlan || (urlPlan && ['plus', 'pro', 'max', 'ultra', 'enterprise'].includes(urlPlan) ? urlPlan : 'plus');
+  const selectedPlan = signupPlan || (urlPlan && ['plus', 'pro', 'max', 'ultra'].includes(urlPlan) ? urlPlan : 'plus');
 
-  const hasBranding = selectedPlan === 'max' || selectedPlan === 'ultra' || selectedPlan === 'enterprise';
-  const hasCustomDomain = selectedPlan === 'max' || selectedPlan === 'ultra' || selectedPlan === 'enterprise';
+  const hasBranding = selectedPlan === 'max' || selectedPlan === 'ultra';
+  const hasCustomDomain = selectedPlan === 'max' || selectedPlan === 'ultra';
 
   const [step, setStep] = useState(0);
   const [ministryName, setMinistryName] = useState('');
@@ -339,7 +338,7 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ onComplete, signupP
               </div>
             )}
 
-            {/* Step 1: Branding (Max/Ultra/Enterprise only) */}
+            {/* Step 1: Branding (Community/Ministry/Organization only) */}
             {isBrandingStep && (
               <div className="animate-fade-in-up">
                 <div style={{ textAlign: 'center', marginBottom: '32px' }}>

@@ -3,7 +3,7 @@ import type { NextRequest } from 'next/server';
 import Stripe from 'stripe';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireAuth } from '@/lib/api-auth';
-import { PLAN_PRICES, AI_ASSISTANT_MONTHLY, AI_ASSISTANT_SETUP, AI_CHAT_MONTHLY } from '@/lib/stripe-config';
+import { PLAN_PRICES, AI_ASSISTANT_MONTHLY, AI_CHAT_MONTHLY } from '@/lib/stripe-config';
 
 export const dynamic = 'force-dynamic';
 
@@ -91,14 +91,11 @@ export async function POST(request: NextRequest) {
       const session = await stripe.checkout.sessions.create({
         customer: customerId,
         mode: 'subscription',
-        line_items: [
-          { price: AI_ASSISTANT_SETUP, quantity: 1 },
-          { price: AI_ASSISTANT_MONTHLY, quantity: 1 },
-        ],
+        line_items: [{ price: AI_ASSISTANT_MONTHLY, quantity: 1 }],
         success_url: `${baseUrl}/?stripe=success&session_id={CHECKOUT_SESSION_ID}&addon=ai-assistant`,
         cancel_url: `${baseUrl}/?stripe=cancel`,
         subscription_data: {
-          metadata: { tenantId, addOn: 'ai-assistant' },
+          metadata: { tenantId, addOn: 'ai-assistant', userId: userOrErr.uid },
         },
       });
 

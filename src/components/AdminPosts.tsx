@@ -1,13 +1,15 @@
 "use client";
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
-import { collection, query, where, orderBy, onSnapshot, addDoc, deleteDoc, doc, getDoc, updateDoc, arrayUnion, arrayRemove, limit } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, addDoc, deleteDoc, doc, getDoc, updateDoc, arrayUnion, arrayRemove, limit } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { ImageUpload } from './ImageUpload';
 import { MessageSquare, BarChart2, Calendar as CalendarIcon, Image as ImageIcon, Send, MoreVertical, ThumbsUp, Check, X } from 'lucide-react';
+import { useAdminHeader, HeaderActionButton } from './AdminScreenHeader';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { getTenantScope } from '../utils/tenant-scope';
 import { sendPushNotification } from '../utils/send-notification';
+import { sortByTime } from '../utils/query-helpers';
 
 
 
@@ -65,16 +67,12 @@ interface AdminPostsProps {
 const AdminPosts: React.FC<AdminPostsProps> = ({ userRole, userPermissions }) => {
  const [posts, setPosts] = useState<CommunityPost[]>([]);
  const [loading, setLoading] = useState(true);
- const [activeTab, setActiveTab] = useState<'post' | 'poll' | 'event'>('post');
- 
+ const [activeTab, setActiveTab] = useState<'post' | 'poll'>('post');
+
  // Composer state
  const [content, setContent] = useState('');
  const [imageUrl, setImageUrl] = useState('');
  const [pollOptions, setPollOptions] = useState([{ id: '1', text: '' }, { id: '2', text: '' }]);
- const [eventTitle, setEventTitle] = useState('');
- const [eventDate, setEventDate] = useState('');
- const [eventTime, setEventTime] = useState('');
- const [eventLocation, setEventLocation] = useState('');
 
  const [isSubmitting, setIsSubmitting] = useState(false);
  const [editingPostId, setEditingPostId] = useState<string | null>(null);
@@ -87,14 +85,15 @@ const AdminPosts: React.FC<AdminPostsProps> = ({ userRole, userPermissions }) =>
  let unsubscribe: (() => void) | null = null;
  (async () => {
    const tenantId = await getTenantScope();
+   // Single-field filter only (tenantId); sort client-side to avoid a composite index.
    const q = tenantId
-     ? query(collection(db, 'community_posts'), where('tenantId', '==', tenantId), orderBy('createdAt', 'desc'), limit(50))
-     : query(collection(db, 'community_posts'), orderBy('createdAt', 'desc'), limit(50));
+     ? query(collection(db, 'community_posts'), where('tenantId', '==', tenantId), limit(100))
+     : query(collection(db, 'community_posts'), limit(100));
    unsubscribe = onSnapshot(q, (snapshot) => {
-     const postsData = snapshot.docs.map(doc => ({
+     const postsData = sortByTime(snapshot.docs.map(doc => ({
        id: doc.id,
        ...doc.data()
-     })) as CommunityPost[];
+     })) as CommunityPost[], 'createdAt', 'desc');
 
      const sortedPosts = [...postsData].sort((a, b) => {
        if (a.isPinned && !b.isPinned) return -1;
@@ -124,8 +123,7 @@ const AdminPosts: React.FC<AdminPostsProps> = ({ userRole, userPermissions }) =>
  };
 
  const handlePost = async () => {
- if (!content.trim() && activeTab !== 'event') return;
- if (activeTab === 'event' && (!eventTitle.trim() || !eventDate || !eventTime || !eventLocation)) return;
+ if (!content.trim()) return;
  if (activeTab === 'poll' && pollOptions.filter(o => o.text.trim()).length < 2) return;
 
  setIsSubmitting(true);
@@ -153,16 +151,6 @@ const AdminPosts: React.FC<AdminPostsProps> = ({ userRole, userPermissions }) =>
  .map(o => ({ id: o.id, text: o.text.trim(), votes: [] }));
  }
 
- if (activeTab === 'event') {
- postData.eventDetails = {
- title: eventTitle.trim(),
- date: eventDate,
- time: eventTime,
- location: eventLocation.trim(),
- attendees: []
- };
- }
-
  const tenantId = await getTenantScope();
  if (editingPostId) {
    if (tenantId) {
@@ -188,10 +176,6 @@ const AdminPosts: React.FC<AdminPostsProps> = ({ userRole, userPermissions }) =>
  setContent('');
  setImageUrl('');
  setPollOptions([{ id: '1', text: '' }, { id: '2', text: '' }]);
- setEventTitle('');
- setEventDate('');
- setEventTime('');
- setEventLocation('');
     } catch (error) {
  try { handleFirestoreError(error, OperationType.WRITE, `community_posts`); } catch (e) { console.error(e); }
  setErrorMessage('Failed to create post');
@@ -201,7 +185,20 @@ const AdminPosts: React.FC<AdminPostsProps> = ({ userRole, userPermissions }) =>
  }
  };
 
+ const { setHeaderAction } = useAdminHeader();
+ const composerRef = useRef<HTMLTextAreaElement>(null);
+ useEffect(() => {
+   // The post composer is always visible at the top of this screen, so the
+   // header action simply reveals + focuses it (there is no separate editor).
+   setHeaderAction(<HeaderActionButton label="New Post" onClick={() => {
+     composerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+     composerRef.current?.focus();
+   }} />);
+   return () => setHeaderAction(null);
+ }, [setHeaderAction]);
+
  const handleEdit = (post: CommunityPost) => {
+ if (post.type === 'event') return; // Legacy event posts cannot be edited
  setActiveTab(post.type);
  setContent(post.content);
  setImageUrl(post.imageUrl || '');
@@ -210,17 +207,6 @@ const AdminPosts: React.FC<AdminPostsProps> = ({ userRole, userPermissions }) =>
  } else {
  setPollOptions([{ id: '1', text: '' }, { id: '2', text: '' }]);
  }
- if (post.type === 'event' && post.eventDetails) {
- setEventTitle(post.eventDetails.title);
- setEventDate(post.eventDetails.date);
- setEventTime(post.eventDetails.time);
- setEventLocation(post.eventDetails.location);
-    } else {
-      setEventTitle('');
-      setEventDate('');
-      setEventTime('');
-      setEventLocation('');
-    }
     setEditingPostId(post.id);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -408,27 +394,21 @@ const AdminPosts: React.FC<AdminPostsProps> = ({ userRole, userPermissions }) =>
  <MessageSquare size={16} />
  Post
  </button>
- <button 
+ <button
  onClick={() => setActiveTab('poll')}
  className={`flex items-center gap-2 text-sm font-medium transition-colors ${activeTab === 'poll' ? 'text-[#d4a017] border-b-2 border-[#d4a017] pb-3 -mb-[13px]' : 'text-gray-500 hover:text-gray-700 :text-gray-200'}`}
  >
  <BarChart2 size={16} />
  Poll
  </button>
- <button 
- onClick={() => setActiveTab('event')}
- className={`flex items-center gap-2 text-sm font-medium transition-colors ${activeTab === 'event' ? 'text-[#d4a017] border-b-2 border-[#d4a017] pb-3 -mb-[13px]' : 'text-gray-500 hover:text-gray-700 :text-gray-200'}`}
- >
- <CalendarIcon size={16} />
- Event
- </button>
  </div>
 
  <div className="space-y-3">
  <textarea
+ ref={composerRef}
  value={content}
  onChange={(e) => setContent(e.target.value)}
- placeholder={activeTab === 'poll' ? "Ask a question..." : activeTab === 'event' ? "Event description..." : "Share an update with the community..."}
+ placeholder={activeTab === 'poll' ? "Ask a question..." : "Share an update with the community..."}
  className="w-full bg-transparent border-none focus:ring-0 resize-none text-gray-900 placeholder-gray-400 text-sm min-h-[60px] p-0"
  />
 
@@ -468,40 +448,7 @@ const AdminPosts: React.FC<AdminPostsProps> = ({ userRole, userPermissions }) =>
  </div>
  )}
 
- {activeTab === 'event' && (
- <div className="space-y-3 bg-gray-50 p-3 rounded-xl border border-gray-100 ">
- <input
- type="text"
- value={eventTitle}
- onChange={(e) => setEventTitle(e.target.value)}
- placeholder="Event Title"
- className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-1 focus:ring-[#d4a017] outline-none"
- />
- <div className="flex gap-2">
- <input
- type="date"
- value={eventDate}
- onChange={(e) => setEventDate(e.target.value)}
- className="flex-1 h-[38px] px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-1 focus:ring-[#d4a017] outline-none"
- />
- <input
- type="time"
- value={eventTime}
- onChange={(e) => setEventTime(e.target.value)}
- className="flex-1 h-[38px] px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-1 focus:ring-[#d4a017] outline-none"
- />
- </div>
- <input
- type="text"
- value={eventLocation}
- onChange={(e) => setEventLocation(e.target.value)}
- placeholder="Location"
- className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-1 focus:ring-[#d4a017] outline-none"
- />
- </div>
- )}
-
- {(activeTab === 'post' || activeTab === 'event') && (
+ {activeTab === 'post' && (
  <div className="flex flex-col gap-2">
  <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
  <ImageIcon size={18} className="text-gray-400" />
@@ -521,12 +468,7 @@ const AdminPosts: React.FC<AdminPostsProps> = ({ userRole, userPermissions }) =>
  setContent('');
  setImageUrl('');
  setPollOptions([{ id: '1', text: '' }, { id: '2', text: '' }]);
- setEventTitle('');
- setEventDate('');
- setEventTime('');
- setEventLocation('');
-
-}}
+ }}
                 className="px-4 py-2 text-gray-500 hover:bg-gray-100 :bg-gray-800 rounded-lg font-medium text-sm transition-colors"
  >
  Cancel
@@ -534,7 +476,7 @@ const AdminPosts: React.FC<AdminPostsProps> = ({ userRole, userPermissions }) =>
  )}
  <button
  onClick={handlePost}
- disabled={isSubmitting || (!content.trim() && activeTab !== 'event')}
+ disabled={isSubmitting || !content.trim()}
  className="flex items-center gap-2 px-6 py-2 bg-[#e6b325] text-white rounded-lg font-medium text-sm hover:bg-[#d4a017] transition-colors disabled:opacity-50"
  >
  <Send size={16} />
@@ -588,12 +530,14 @@ const AdminPosts: React.FC<AdminPostsProps> = ({ userRole, userPermissions }) =>
  >
  {post.isPinned ? 'Unpin Post' : 'Pin Post'}
  </button>
- <button 
+ {post.type !== 'event' && (
+ <button
  onClick={() => handleEdit(post)}
  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 :bg-gray-800"
  >
  Edit
  </button>
+ )}
  <button 
  onClick={() => setDeleteConfirmId(post.id)}
  className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 :bg-red-900/20 rounded-b-lg"

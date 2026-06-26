@@ -82,8 +82,8 @@ const EnterpriseContactModal: React.FC<EnterpriseContactModalProps> = ({ isOpen,
           <div className="w-14 h-14 bg-[#d4a017]/20 rounded-2xl flex items-center justify-center mb-4">
             <Building2 size={28} className="text-[#d4a017]" />
           </div>
-          <h2 className="text-2xl font-bold text-white">Enterprise Plan</h2>
-          <p className="text-gray-400 text-sm mt-1">Unlimited churches, custom pricing, dedicated support</p>
+          <h2 className="text-2xl font-bold text-white">Organization Plan</h2>
+          <p className="text-gray-400 text-sm mt-1">Unlimited churches & AI assistants, custom pricing, dedicated support</p>
         </div>
 
         <div className="px-6 py-6">
@@ -94,7 +94,7 @@ const EnterpriseContactModal: React.FC<EnterpriseContactModalProps> = ({ isOpen,
               </div>
               <h3 className="text-xl font-bold text-gray-900 mb-2">{"We'll be in touch!"}</h3>
               <p className="text-gray-500 text-sm mb-6">
-                Our team will review your request and reach out within 24 hours to discuss your Enterprise plan.
+                Our team will review your request and reach out within 24 hours to discuss your Organization plan.
               </p>
               <button
                 onClick={handleClose}
@@ -183,7 +183,7 @@ const EnterpriseContactModal: React.FC<EnterpriseContactModalProps> = ({ isOpen,
                 ) : (
                   <>
                     <Send size={16} />
-                    Request Enterprise Plan
+                    Request Organization Plan
                   </>
                 )}
               </button>
