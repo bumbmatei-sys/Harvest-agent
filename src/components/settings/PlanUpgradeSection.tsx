@@ -14,7 +14,6 @@ import {
 } from '../../utils/plan-features';
 import { authFetch } from '../../utils/auth-fetch';
 import { getTenantId } from './useTenantId';
-import EnterpriseContactModal from '../EnterpriseContactModal';
 
 interface PlanUpgradeSectionProps {
   currentPlan?: TenantPlan;
@@ -22,40 +21,41 @@ interface PlanUpgradeSectionProps {
   email?: string;
 }
 
-const PLAN_META: Record<TenantPlan, { icon: React.ElementType; color: string; popular?: boolean }> = {
-  plus:       { icon: Zap,       color: '#6366f1' },
-  pro:        { icon: Crown,     color: '#d4a017' },
-  max:        { icon: Star,      color: '#8b5cf6', popular: true },
-  ultra:      { icon: Building2, color: '#b45309' },
-  enterprise: { icon: Building2, color: '#0b1121' },
-};
+const PLANS: { id: TenantPlan; name: string; monthlyPrice: string; yearlyPrice: string; yearlyPromo: string; yearlyOriginal: string; icon: any; color: string; popular?: boolean; comingSoon: string[] }[] = [
+  { id: 'plus', name: 'Individual', monthlyPrice: '$59/mo', yearlyPrice: '$590/yr', yearlyPromo: '$590', yearlyOriginal: '$708', icon: Zap, color: '#6366f1', comingSoon: [] },
+  { id: 'pro', name: 'Small Team', monthlyPrice: '$119/mo', yearlyPrice: '$1,190/yr', yearlyPromo: '$1,190', yearlyOriginal: '$1,428', icon: Crown, color: '#d4a017', comingSoon: [] },
+  { id: 'max', name: 'Community', monthlyPrice: '$239/mo', yearlyPrice: '$2,390/yr', yearlyPromo: '$2,390', yearlyOriginal: '$2,868', icon: Star, color: '#8b5cf6', popular: true, comingSoon: ['Automated Devotional'] },
+  { id: 'ultra', name: 'Ministry', monthlyPrice: '$479/mo', yearlyPrice: '$4,790/yr', yearlyPromo: '$4,790', yearlyOriginal: '$5,748', icon: Building2, color: '#b45309', comingSoon: ['Automated Blog Articles'] },
+];
 
-const PLAN_ORDER: TenantPlan[] = ['plus', 'pro', 'max', 'ultra', 'enterprise'];
+const FEATURE_COMPARISON: { key: keyof PlanFeatures; label: string; format?: (v: any) => string }[] = [
+  { key: 'blog', label: 'Blog' },
+  { key: 'aiChat', label: 'AI Chat' },
+  { key: 'aiKnowledge', label: 'AI Knowledge Base' },
+  { key: 'map', label: 'Church Map' },
+  { key: 'newsletterAutomation', label: 'Newsletter' },
+  { key: 'maxCourses', label: 'Courses', format: (v) => v === -1 ? 'Unlimited' : `${v}` },
+  { key: 'maxAdmins', label: 'Admin Accounts', format: (v) => v === -1 ? 'Unlimited' : `${v}` },
+  { key: 'customDomain', label: 'Custom Branding' },
+  { key: 'aiAssistant', label: 'AI Assistant', format: (v) => v === -1 ? 'Unlimited' : v === 0 ? '—' : `${v}` },
+  { key: 'maxChurches', label: 'Churches', format: (v) => v === -1 ? 'Unlimited' : `${v}` },
+  { key: 'fundraising', label: 'Fundraising' },
+  { key: 'eventRegistration', label: 'Event Registration' },
+  { key: 'docs', label: 'Docs' },
+  { key: 'crm', label: 'CRM (Donors & Members)' },
+  { key: 'accountingTools', label: 'Accounting Tools' },
+  { key: 'communityGroups', label: 'Community Groups' },
+  { key: 'taxReceipt', label: 'Tax Receipts' },
+];
 
-const FEATURE_ROWS: { key: keyof PlanFeatures; label: string; format?: (v: any) => string }[] = [
-  { key: 'blog',                 label: 'Blog & Publishing' },
-  { key: 'newsletterAutomation', label: 'Newsletter Automation (Soon)' },
-  { key: 'aiChat',               label: 'AI Chat' },
-  { key: 'aiKnowledge',          label: 'AI Knowledge Base' },
-  {
-    key: 'aiAssistant',
-    label: 'AI Assistant',
-    format: (v: PlanFeatures['aiAssistant']) =>
-      v === 'included' ? 'Included' : `Add-on ($${AI_ASSISTANT_ADDON_PRICING.monthlyUsd}/mo)`,
-  },
-  { key: 'maxCourses',     label: 'Courses',        format: (v) => v === -1 ? 'Unlimited' : String(v) },
-  { key: 'maxAdmins',      label: 'Admin Accounts', format: (v) => v === -1 ? 'Unlimited' : String(v) },
-  { key: 'customDomain',   label: 'Custom Domain' },
-  { key: 'customBackground', label: 'Full Rebranding (logo, colors)' },
-  { key: 'smsAutomation',  label: 'SMS Automation (Soon)' },
-  { key: 'map',            label: 'Church Map Directory' },
-  { key: 'maxChurches',    label: 'Multiple Churches', format: (v) => v === -1 ? 'Unlimited' : v === 1 ? '—' : String(v) },
+const SOON_FEATURES: { label: string; plans: TenantPlan[] }[] = [
+  { label: 'Automated Devotional', plans: ['max', 'ultra'] },
+  { label: 'Automated Blog Articles', plans: ['ultra'] },
 ];
 
 const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, tenantId, email }) => {
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly');
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
-  const [enterpriseModalOpen, setEnterpriseModalOpen] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
   const [activePlanIndex, setActivePlanIndex] = useState(0);
   const planScrollRef = useRef<HTMLDivElement>(null);
@@ -63,8 +63,10 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
   const handlePlanScroll = useCallback(() => {
     const container = planScrollRef.current;
     if (!container) return;
-    const index = Math.round(container.scrollLeft / 300);
-    setActivePlanIndex(Math.min(index, PLAN_ORDER.length - 1));
+    const scrollLeft = container.scrollLeft;
+    const cardWidth = 300;
+    const index = Math.round(scrollLeft / cardWidth);
+    setActivePlanIndex(Math.min(index, PLANS.length - 1));
   }, []);
 
   const resolveTenantId = async (): Promise<string | null> => {
@@ -215,8 +217,10 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
                 {billingPeriod === 'yearly' && yearlyOriginalUsd && (
                   <p className="text-sm text-gray-400 line-through">{yearlyOriginalUsd}</p>
                 )}
-                <p className="text-2xl font-bold text-gray-900 mt-1">{displayPrice}</p>
-                {billingPeriod === 'yearly' && planId !== 'enterprise' && (
+                <p className="text-2xl font-bold text-gray-900 mt-1">
+                  {billingPeriod === 'monthly' ? plan.monthlyPrice : plan.yearlyPrice}
+                </p>
+                {billingPeriod === 'yearly' && (
                   <p className="text-xs text-green-600 font-medium mt-1">Save 2 months</p>
                 )}
               </div>
@@ -239,18 +243,29 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
                     </div>
                   );
                 })}
+
+                {plan.comingSoon.length > 0 && (
+                  <div className="pt-2 mt-1 border-t border-amber-100">
+                    <p className="text-[10px] font-semibold text-amber-500 uppercase tracking-wider mb-1.5">Coming Soon</p>
+                    {plan.comingSoon.map((item) => (
+                      <div key={item} className="flex items-center justify-between text-sm">
+                        <span className="text-gray-500">{item}</span>
+                        <span className="text-amber-500 text-xs font-semibold">Soon</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
                 <div className="flex items-center justify-between text-sm pt-2 border-t border-gray-100">
-                  <span className="text-gray-900 font-semibold">Donations retained</span>
-                  <span className="text-green-600 font-bold">{donationPct}%</span>
+                  <span className="text-gray-900 font-semibold">Donation retention</span>
+                  <span className="text-green-600 font-bold">{plan.id === 'plus' ? '90%' : plan.id === 'pro' ? '95%' : '100%'} to you</span>
                 </div>
               </div>
 
               <button
                 onClick={() => {
-                  if (!isCurrent && !isDowngrade && planId === 'enterprise') {
-                    setEnterpriseModalOpen(true);
-                  } else if (!isCurrent && !isDowngrade) {
-                    handleStripeCheckout(planId);
+                  if (!isCurrent && !isDowngrade) {
+                    handleStripeCheckout(plan.id);
                   } else if (!isCurrent && isDowngrade) {
                     handleManageSubscription();
                   }
@@ -271,13 +286,7 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
                     <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     Redirecting...
                   </span>
-                ) : isCurrent
-                  ? 'Current Plan'
-                  : isDowngrade
-                  ? `Downgrade to ${name}`
-                  : planId === 'enterprise'
-                  ? 'Contact Sales'
-                  : `Upgrade to ${name}`}
+                ) : isCurrent ? 'Current Plan' : isDowngrade ? `Downgrade to ${plan.name}` : `Upgrade to ${plan.name}`}
               </button>
             </div>
           );
@@ -338,14 +347,22 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
                   })}
                 </tr>
               ))}
-              <tr className="border-b border-gray-50 font-semibold">
-                <td className="py-3 px-3 text-gray-900">Donations retained</td>
-                {PLAN_ORDER.map(planId => (
-                  <td key={planId} className="py-3 px-3 text-center text-green-600">
-                    {PLAN_DONATION_RETENTION[planId]}%
-                  </td>
-                ))}
+              {/* Coming soon section header */}
+              <tr>
+                <td colSpan={5} className="pt-5 pb-2 px-3">
+                  <span className="text-[10px] font-semibold tracking-widest uppercase text-amber-500">Coming Soon</span>
+                </td>
               </tr>
+              {SOON_FEATURES.map(({ label, plans: planIds }) => (
+                <tr key={label} className="border-b border-gray-50">
+                  <td className="py-3 px-3 text-gray-900 font-medium">{label}</td>
+                  {PLANS.map(p => (
+                    <td key={p.id} className={`py-3 px-3 text-center ${planIds.includes(p.id) ? 'text-amber-500' : 'text-gray-400'}`}>
+                      {planIds.includes(p.id) ? <span className="text-xs font-semibold">Soon</span> : '—'}
+                    </td>
+                  ))}
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
@@ -354,7 +371,7 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
         </p>
       </div>
 
-      {/* Manage Subscription */}
+      {/* Billing & Payments */}
       <div className="flex flex-col items-center gap-3 pt-2">
         <button
           onClick={handleManageSubscription}
@@ -373,10 +390,6 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
         <p className="text-xs text-gray-400">Powered by Stripe</p>
       </div>
 
-      <EnterpriseContactModal
-        isOpen={enterpriseModalOpen}
-        onClose={() => setEnterpriseModalOpen(false)}
-      />
     </div>
   );
 };

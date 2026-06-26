@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/api-auth';
 import { adminDb } from '@/lib/firebase-admin';
 
-const SUPER_ADMIN_EMAIL = process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || 'bumbmatei@proton.me';
-
 /**
  * DELETE /api/tenants/delete?id=<tenantId>
  * Server-side tenant deletion using Firebase Admin SDK (bypasses Firestore rules).
@@ -20,13 +18,13 @@ const SUPER_ADMIN_EMAIL = process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || 'bumbmate
  * full cleanup of those is required, that needs to be handled
  * separately (e.g. a batched query-and-delete per collection).
  */
+
 export async function DELETE(request: NextRequest) {
   const userOrResponse = await requireAuth(request);
   if (userOrResponse instanceof NextResponse) return userOrResponse;
 
-  // Check super admin by email (token claim may be stale)
-  const isSuper = userOrResponse.isSuperAdmin || userOrResponse.email === SUPER_ADMIN_EMAIL;
-  if (!isSuper) {
+  // Super admin check (isSuperAdmin already includes email fallback from api-auth)
+  if (!userOrResponse.isSuperAdmin) {
     return NextResponse.json({ error: 'Super admin access required' }, { status: 403 });
   }
 
@@ -54,4 +52,3 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: 'Delete failed' }, { status: 500 });
   }
 }
-

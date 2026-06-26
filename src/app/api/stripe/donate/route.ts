@@ -11,7 +11,6 @@ const FEE_MAP: Record<string, number> = {
   pro: 0.10,
   max: 0.05,
   ultra: 0,
-  enterprise: 0,
 };
 
 export async function POST(request: NextRequest) {
@@ -84,6 +83,11 @@ export async function POST(request: NextRequest) {
             destination: connectAccountId,
           },
           application_fee_amount: applicationFeeAmount,
+          metadata: {
+            tenantId,
+            type: 'partnership',
+            donationType,
+          },
         },
         success_url: `${baseUrl}/?donation=success`,
         cancel_url: `${baseUrl}/?donation=cancel`,

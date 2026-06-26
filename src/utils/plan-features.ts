@@ -23,13 +23,22 @@ export interface PlanFeatures {
   newsletterAutomation: boolean;
   /** SMS automation (coming soon) */
   smsAutomation: boolean;
-  /**
-   * AI Assistant availability for this plan tier.
-   * 'included' — bundled in the base plan price (Ministry / Enterprise).
-   * 'addon'    — NOT included but purchasable as a paid add-on on any plan
-   *              ($150 one-time setup + $100/mo recurring — see AI_ASSISTANT_ADDON_PRICING).
-   */
-  aiAssistant: 'included' | 'addon';
+  /** Number of AI assistants (0 = none, 1 = one, -1 = unlimited) */
+  aiAssistant: number;
+  /** Fundraising campaigns feature */
+  fundraising: boolean;
+  /** Event registration integration */
+  eventRegistration: boolean;
+  /** Docs / TipTap notes integration */
+  docs: boolean;
+  /** CRM for donors and members */
+  crm: boolean;
+  /** Accounting tools integration */
+  accountingTools: boolean;
+  /** Tax receipt generation */
+  taxReceipt: boolean;
+  /** Community groups (Rocket.Chat integration) */
+  communityGroups: boolean;
 }
 
 // ─── Feature matrix ───────────────────────────────────────────────────────────
@@ -41,75 +50,93 @@ export interface PlanFeatures {
 // matrix changes without an explicit update to that test.
 
 const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
+  // Individual
   plus: {
     blog: true,
     aiChat: false,
     aiKnowledge: false,
     map: false,
     maxChurches: 1,
-    maxCourses: 5,
-    maxAdmins: 2,
+    maxCourses: 2,
+    maxAdmins: 1,
     customDomain: false,
     customBackground: false,
     newsletterAutomation: false,
     smsAutomation: false,
-    aiAssistant: 'addon',
+    aiAssistant: 0,
+    fundraising: true,
+    eventRegistration: false,
+    docs: false,
+    crm: false,
+    accountingTools: false,
+    taxReceipt: false,
+    communityGroups: false,
   },
+  // Small Team
   pro: {
     blog: true,
     aiChat: true,
     aiKnowledge: true,
-    map: false,
+    map: true,
     maxChurches: 1,
-    maxCourses: -1,
+    maxCourses: 5,
     maxAdmins: 5,
     customDomain: false,
     customBackground: false,
     newsletterAutomation: true,
     smsAutomation: false,
-    aiAssistant: 'addon',
+    aiAssistant: 0,
+    fundraising: true,
+    eventRegistration: false,
+    docs: false,
+    crm: false,
+    accountingTools: false,
+    taxReceipt: false,
+    communityGroups: false,
   },
+  // Community
   max: {
     blog: true,
     aiChat: true,
     aiKnowledge: true,
-    map: false,
+    map: true,
     maxChurches: 1,
     maxCourses: -1,
-    maxAdmins: -1,
+    maxAdmins: 10,
     customDomain: true,
     customBackground: true,
     newsletterAutomation: true,
-    smsAutomation: true,
-    aiAssistant: 'addon',
+    smsAutomation: false,
+    aiAssistant: 0,
+    fundraising: true,
+    eventRegistration: true,
+    docs: true,
+    crm: false,
+    accountingTools: false,
+    taxReceipt: false,
+    communityGroups: false,
   },
+  // Ministry (top plan — replaces Organization/enterprise)
   ultra: {
-    blog: true,
-    aiChat: true,
-    aiKnowledge: true,
-    map: false,
-    maxChurches: 1,
-    maxCourses: -1,
-    maxAdmins: -1,
-    customDomain: true,
-    customBackground: true,
-    newsletterAutomation: true,
-    smsAutomation: true,
-    aiAssistant: 'included',
-  },
-  enterprise: {
     blog: true,
     aiChat: true,
     aiKnowledge: true,
     map: true,
     maxChurches: -1,
     maxCourses: -1,
-    maxAdmins: -1,
+    maxAdmins: 15,
     customDomain: true,
     customBackground: true,
     newsletterAutomation: true,
-    smsAutomation: true,
-    aiAssistant: 'included',
+    smsAutomation: false,
+    aiAssistant: -1,
+    fundraising: true,
+    eventRegistration: true,
+    docs: true,
+    crm: true,
+    accountingTools: true,
+    taxReceipt: true,
+    communityGroups: true,
   },
 };
 
@@ -154,14 +181,13 @@ export function getPlanFeatures(plan: TenantPlan): PlanFeatures {
 
 /**
  * Human-readable display names for each plan tier.
- * Internal IDs (plus/pro/max/ultra/enterprise) are stable — these are UI labels only.
+ * Internal IDs (plus/pro/max/ultra) stay the same.
  */
 export const PLAN_DISPLAY_NAMES: Record<TenantPlan, string> = {
-  plus:       'Individual',
-  pro:        'Community',
-  max:        'Church',
-  ultra:      'Ministry',
-  enterprise: 'Enterprise',
+  plus: 'Individual',
+  pro: 'Small Team',
+  max: 'Community',
+  ultra: 'Ministry',
 };
 
 /** Get the display name for a given plan. Defaults to 'Individual' if unknown. */

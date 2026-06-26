@@ -1,11 +1,38 @@
 import { auth, db } from '../firebase';
 import { doc, getDoc } from 'firebase/firestore';
+import { isSuperAdminEmail, SUPER_ADMIN_EMAILS } from './super-admins';
 
 // Module-level cache for tenantId
 let _cachedTenantId: string | null | undefined = undefined;
 let _cachedUid: string | null = null;
 
-const SUPER_ADMIN_EMAIL = process.env.NEXT_PUBLIC_SUPER_ADMIN_EMAIL || 'bumbmatei@proton.me';
+// Keep backward-compatible export — first email in the array
+const SUPER_ADMIN_EMAIL = SUPER_ADMIN_EMAILS[0] || 'bumbmatei@proton.me';
+
+/** Platform tenant ID — used as fallback for super admin flows (newsletter, partner, etc.) */
+export const PLATFORM_TENANT_ID = process.env.NEXT_PUBLIC_PLATFORM_TENANT_ID || 'harvest';
+
+/** Subdomains that are NOT tenants (root/marketing/app aliases) */
+const NON_TENANT_SUBDOMAINS = new Set(['www', 'app', 'admin']);
+
+/**
+ * Resolve the tenantId from the current subdomain. This is the AUTHORITATIVE
+ * tenant boundary: on `nations.theharvest.app` the tenant is always `nations`,
+ * regardless of which user (even a super admin) is signed in. Returns null on
+ * the root/marketing domain, custom domains, or when running on the server.
+ *
+ * Keep this in sync with the subdomain logic in TenantContext.
+ */
+export function getTenantIdFromHost(): string | null {
+  if (typeof window === 'undefined') return null;
+  const hostname = window.location.hostname;
+  const parts = hostname.split('.');
+  if (parts.length >= 3 && (hostname.endsWith('.theharvest.app') || hostname.endsWith('.vercel.app'))) {
+    const sub = parts[0];
+    if (sub && !NON_TENANT_SUBDOMAINS.has(sub)) return sub;
+  }
+  return null;
+}
 
 /**
  * Get the current user's tenantId from their Firestore user doc.
@@ -50,15 +77,23 @@ export function clearTenantCache(): void {
  */
 export function isSuperAdmin(): boolean {
   const user = auth.currentUser;
-  return !!user && user.email === SUPER_ADMIN_EMAIL;
+  return isSuperAdminEmail(user?.email);
 }
 
 /**
  * Build a Firestore query constraint for tenant scoping.
  * Returns the tenantId to use in where() clauses.
- * Super admins get null (no filtering — see all data).
+ *
+ * The subdomain is the authoritative tenant boundary, so a query on
+ * `nations.theharvest.app` is ALWAYS scoped to `nations` — even for a super
+ * admin. This prevents one tenant's data from leaking into another tenant's
+ * app. Only on the root/marketing domain (no tenant subdomain) does a super
+ * admin get null (unscoped — see all data); regular users there are scoped to
+ * their own tenant from their user doc.
  */
 export async function getTenantScope(): Promise<string | null> {
+  const hostScope = getTenantIdFromHost();
+  if (hostScope) return hostScope;
   if (isSuperAdmin()) return null;
   return getTenantId();
 }

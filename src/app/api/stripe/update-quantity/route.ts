@@ -50,12 +50,12 @@ export async function POST(request: NextRequest) {
       .get();
     const churchCount = churchesSnap.size;
 
-    if (plan !== 'enterprise') {
+    if (plan !== 'ultra') {
       return NextResponse.json({ 
         success: true, 
         churchCount, 
         newAmount: null,
-        message: 'Not an enterprise plan — quantity update not applicable' 
+        message: 'Not a Ministry plan — quantity update not applicable' 
       });
     }
 
