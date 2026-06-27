@@ -4,6 +4,7 @@ import { requireAdmin } from '@/lib/api-auth';
 import { executeComposioAction } from '@/lib/composio-client';
 import { adminDb } from '@/lib/firebase-admin';
 import { hasFeature } from '@/utils/plan-features';
+import { PLATFORM_TENANT_ID } from '@/utils/tenant-scope';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,13 +16,19 @@ export async function POST(request: NextRequest) {
   try {
     const userOrResponse = await requireAdmin(request);
     if (userOrResponse instanceof NextResponse) return userOrResponse;
-    const { tenantId } = userOrResponse;
+    const { tenantId, uid, isSuperAdmin } = userOrResponse;
 
-    if (!tenantId) {
-      return NextResponse.json({ error: 'No tenant associated with this user' }, { status: 400 });
+    const resolvedTenantId = tenantId || PLATFORM_TENANT_ID;
+
+    let body: { startDate?: string; endDate?: string } = {};
+    try {
+      body = await request.json();
+    } catch {
+      // body is optional
     }
+    const { startDate, endDate } = body;
 
-    const tenantDoc = await adminDb.collection('tenants').doc(tenantId).get();
+    const tenantDoc = await adminDb.collection('tenants').doc(resolvedTenantId).get();
     if (!tenantDoc.exists) {
       return NextResponse.json({ error: 'Tenant not found' }, { status: 404 });
     }
@@ -34,9 +41,9 @@ export async function POST(request: NextRequest) {
     const tenantPlan = tenantData.plan || 'plus';
     const tenantName = tenantData.name || 'Your Ministry';
 
-    if (!hasFeature(tenantPlan, 'newsletterAutomation')) {
+    if (!isSuperAdmin && !hasFeature(tenantPlan, 'automatedNewsletter')) {
       return NextResponse.json(
-        { error: 'Newsletter automation is not available on your current plan. Please upgrade to Pro or higher.' },
+        { error: 'AI newsletter generation requires the Community plan or higher.' },
         { status: 403 }
       );
     }
@@ -44,8 +51,8 @@ export async function POST(request: NextRequest) {
     // Rate limit: max 5 per tenant per day
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     const recentNewsletters = await adminDb
-      .collection('tenants').doc(tenantId).collection('newsletters')
-      .where('generatedAt', '>', twentyFourHoursAgo).get();
+      .collection('tenants').doc(resolvedTenantId).collection('newsletters')
+      .where('createdAt', '>', twentyFourHoursAgo).get();
 
     if (recentNewsletters.size >= RATE_LIMIT) {
       return NextResponse.json(
@@ -60,14 +67,14 @@ export async function POST(request: NextRequest) {
 
     if (primaryInstagramAdmin) {
       const adminIgDoc = await adminDb
-        .collection('tenants').doc(tenantId)
+        .collection('tenants').doc(resolvedTenantId)
         .collection('integrations').doc(`${primaryInstagramAdmin}_instagram`).get();
       if (adminIgDoc.exists) instagramData = adminIgDoc.data() ?? undefined;
     }
 
     if (!instagramData) {
       const legacyIgDoc = await adminDb
-        .collection('tenants').doc(tenantId)
+        .collection('tenants').doc(resolvedTenantId)
         .collection('integrations').doc('instagram').get();
       if (legacyIgDoc.exists) instagramData = legacyIgDoc.data() ?? undefined;
     }
@@ -91,8 +98,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No Instagram connected account found' }, { status: 400 });
     }
 
-    // Fetch posts from last 30 days
-    const thirtyDaysAgo = Math.floor((Date.now() - 30 * 24 * 60 * 60 * 1000) / 1000);
+    // Compute date range for IG post filtering
+    const sinceTs = startDate
+      ? Math.floor(new Date(startDate).getTime() / 1000)
+      : Math.floor((Date.now() - 30 * 24 * 60 * 60 * 1000) / 1000);
+    const untilTs = endDate
+      ? Math.floor(new Date(endDate + 'T23:59:59').getTime() / 1000)
+      : Math.floor(Date.now() / 1000);
 
     let posts: any[] = [];
     try {
@@ -100,7 +112,8 @@ export async function POST(request: NextRequest) {
         'INSTAGRAM_GET_IG_USER_MEDIA',
         {
           ig_user_id: 'me',
-          since: thirtyDaysAgo,
+          since: sinceTs,
+          until: untilTs,
           fields: 'id,caption,media_type,permalink,timestamp,like_count,comments_count',
         },
         connectedAccountId
@@ -117,7 +130,7 @@ export async function POST(request: NextRequest) {
 
     if (posts.length === 0) {
       return NextResponse.json(
-        { error: 'No Instagram posts found from the past 30 days. Post some content first!' },
+        { error: 'No Instagram posts found in the selected date range. Try a wider range or post some content first!' },
         { status: 404 }
       );
     }
@@ -127,9 +140,9 @@ export async function POST(request: NextRequest) {
       return `Post ${i + 1}:\n- Type: ${post.media_type || 'Unknown'}\n- Caption: ${caption}${caption.length >= 300 ? '...' : ''}\n- Likes: ${post.like_count || 0}\n- Comments: ${post.comments_count || 0}\n- Link: ${post.permalink || 'N/A'}\n- Date: ${post.timestamp || 'Unknown'}`;
     }).join('\n\n');
 
-    const systemPrompt = `You are a newsletter writer for a church/ministry called "${tenantName}". Based on the Instagram posts from the past month, create an engaging newsletter in HTML format.\n\nInclude:\n1. A warm, personal greeting\n2. A compelling subject line (on its own line, prefixed with "SUBJECT:")\n3. Top post highlights with engaging descriptions\n4. Key themes from the month's content\n5. A closing encouragement or call to action\n\nFormat the newsletter as clean, inline-styled HTML that works in email clients. Use these design colors:\n- Gold accent: #C9963A\n- Navy text: #0b1121\n- White background\n- Font: Arial, sans-serif\n\nAfter the HTML, add a separator "---PLAIN_TEXT---" and provide a plain text version of the newsletter.\n\nKeep the tone warm, encouraging, and community-focused. Do NOT include <html>, <head>, or <body> tags — just the newsletter content as a div.`;
+    const systemPrompt = `You are a newsletter writer for a church/ministry called "${tenantName}". Based on the Instagram posts provided, create an engaging newsletter in HTML format.\n\nInclude:\n1. A warm, personal greeting\n2. A compelling subject line (on its own line, prefixed with "SUBJECT:")\n3. Top post highlights with engaging descriptions\n4. Key themes from the content\n5. A closing encouragement or call to action\n\nFormat the newsletter as clean, inline-styled HTML that works in email clients. Use these design colors:\n- Gold accent: #B8962E\n- Dark text: #1a1a1a\n- White background\n- Font: Arial, sans-serif\n\nAfter the HTML, add a separator "---PLAIN_TEXT---" and provide a plain text version.\n\nKeep the tone warm, encouraging, and community-focused. Do NOT include <html>, <head>, or <body> tags — just the newsletter content as a div.`;
 
-    const userPrompt = `Here are the Instagram posts from ${tenantName} over the past 30 days:\n\n${postSummaries}\n\nPlease create an engaging newsletter based on these posts.`;
+    const userPrompt = `Here are the Instagram posts from ${tenantName}:\n\n${postSummaries}\n\nPlease create an engaging newsletter based on these posts.`;
 
     if (!process.env.MIMO_API_KEY) {
       return NextResponse.json({ error: 'AI service is not configured' }, { status: 500 });
@@ -178,30 +191,30 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'AI returned an empty response. Please try again.' }, { status: 502 });
     }
 
-    let subject = `${tenantName} Monthly Newsletter`;
-    let htmlContent = aiResponse;
+    let subject = `${tenantName} Newsletter`;
+    let bodyHtml = aiResponse;
     let plainText = '';
     const parseWarnings: string[] = [];
 
     const subjectMatch = aiResponse.match(/subject:\s*(.+)/i);
     if (subjectMatch) {
       subject = subjectMatch[1].trim();
-      htmlContent = htmlContent.replace(/subject:\s*.+/i, '').trim();
+      bodyHtml = bodyHtml.replace(/subject:\s*.+/i, '').trim();
     } else {
       parseWarnings.push('Could not extract SUBJECT line from AI response');
     }
 
-    const plainTextSplit = htmlContent.split(/-{2,}\s*plain_text\s*-{2,}/i);
+    const plainTextSplit = bodyHtml.split(/-{2,}\s*plain_text\s*-{2,}/i);
     if (plainTextSplit.length >= 2) {
-      htmlContent = plainTextSplit[0].trim();
+      bodyHtml = plainTextSplit[0].trim();
       plainText = plainTextSplit.slice(1).join('---PLAIN_TEXT---').trim();
     } else {
-      plainText = htmlContent.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+      plainText = bodyHtml.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
       parseWarnings.push('Could not find ---PLAIN_TEXT--- separator');
     }
 
-    if (!/<[a-z][\s\S]*>/i.test(htmlContent)) {
-      htmlContent = `<div style="font-family:Arial,sans-serif;color:#0b1121;">${htmlContent}</div>`;
+    if (!/<[a-z][\s\S]*>/i.test(bodyHtml)) {
+      bodyHtml = `<div style="font-family:Arial,sans-serif;color:#1a1a1a;">${bodyHtml}</div>`;
       parseWarnings.push('AI response had no HTML tags; wrapped in <div>');
     }
 
@@ -210,20 +223,22 @@ export async function POST(request: NextRequest) {
     }
 
     const newsletterRef = adminDb
-      .collection('tenants').doc(tenantId).collection('newsletters').doc();
+      .collection('tenants').doc(resolvedTenantId).collection('newsletters').doc();
 
+    const now = new Date().toISOString();
     const newsletterDoc = {
       id: newsletterRef.id,
-      tenantId,
+      tenantId: resolvedTenantId,
       tenantName,
       subject,
-      htmlContent,
+      bodyHtml,
       plainText,
       postsUsed: posts.length,
       postIds: posts.slice(0, 20).map((p: any) => p.id).filter(Boolean),
       status: 'draft',
-      generatedAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      createdAt: now,
+      createdBy: uid,
+      updatedAt: now,
     };
 
     await newsletterRef.set(newsletterDoc);
@@ -231,7 +246,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       newsletterId: newsletterRef.id,
       subject,
-      htmlContent,
+      bodyHtml,
       plainText,
       postsUsed: posts.length,
     });
