@@ -130,7 +130,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
       label: 'Giving Statements',
       icon: <FileText size={20} className="text-[#B8962E]" />,
       content: <GivingStatementsSection />,
-      hidden: !isSuperAdmin && !currentFeatures?.taxReceipt,
+      hidden: !isSuperAdmin && !currentFeatures?.givingStatements,
     },
     {
       id: 'sms',
