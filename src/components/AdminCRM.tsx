@@ -28,10 +28,11 @@ const TYPE_LABELS: Record<Contact['type'], string> = {
   both: 'Donor & Member',
 };
 
+// Soft pastel tag styles used on the list/detail badges (Atomic CRM style).
 const TYPE_COLORS: Record<Contact['type'], string> = {
-  donor: 'bg-amber-100 text-amber-700',
-  member: 'bg-blue-100 text-blue-700',
-  both: 'bg-purple-100 text-purple-700',
+  donor: 'bg-amber-50 text-amber-600',
+  member: 'bg-blue-50 text-blue-600',
+  both: 'bg-purple-50 text-purple-600',
 };
 
 const ACTIVITY_ICONS: Record<ContactActivity['type'], React.ReactNode> = {
@@ -243,27 +244,24 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center h-40"><div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--brand-color, #d4a017)', borderTopColor: 'transparent' }} /></div>;
+    return <div className="flex items-center justify-center h-40"><div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--brand-color, #B8962E)', borderTopColor: 'transparent' }} /></div>;
   }
 
+  // Pill segmented control for the Contacts / Analytics sub-views.
   const subTabBar = (
-    <div className="flex gap-1 mb-5 border-b border-gray-200">
+    <div className="flex gap-1 bg-gray-100 rounded-xl p-1 mb-5 w-fit">
       <button
         onClick={() => setCrmSubView('contacts')}
-        className={`px-4 py-2 text-sm font-semibold border-b-2 transition-colors ${
-          crmSubView === 'contacts'
-            ? 'border-[#d4a017] text-[#d4a017]'
-            : 'border-transparent text-gray-400 hover:text-gray-600'
+        className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+          crmSubView === 'contacts' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-400'
         }`}
       >
         Contacts
       </button>
       <button
         onClick={() => { setCrmSubView('analytics'); setView('list'); setSelected(null); }}
-        className={`px-4 py-2 text-sm font-semibold border-b-2 transition-colors ${
-          crmSubView === 'analytics'
-            ? 'border-[#d4a017] text-[#d4a017]'
-            : 'border-transparent text-gray-400 hover:text-gray-600'
+        className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+          crmSubView === 'analytics' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-400'
         }`}
       >
         Analytics
@@ -294,23 +292,23 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
     return (
       <div ref={scrollRef} className="max-w-2xl mx-auto">
         {subTabBar}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-5">
+        <div className="bg-white rounded-2xl border border-[#EDEBE8] shadow-sm p-6 space-y-5">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-xs font-semibold text-gray-700 mb-1 block">First Name *</label>
+              <label className="text-xs font-semibold text-gray-500 mb-1 block">First Name *</label>
               <input value={form.firstName} onChange={e => setForm({ ...form, firstName: e.target.value })}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#d4a017]" placeholder="First name" />
+                className="w-full rounded-xl border border-[#EDEBE8] px-3 py-2.5 text-sm focus:border-[#B8962E] focus:outline-none" placeholder="First name" />
             </div>
             <div>
-              <label className="text-xs font-semibold text-gray-700 mb-1 block">Last Name</label>
+              <label className="text-xs font-semibold text-gray-500 mb-1 block">Last Name</label>
               <input value={form.lastName} onChange={e => setForm({ ...form, lastName: e.target.value })}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#d4a017]" placeholder="Last name" />
+                className="w-full rounded-xl border border-[#EDEBE8] px-3 py-2.5 text-sm focus:border-[#B8962E] focus:outline-none" placeholder="Last name" />
             </div>
           </div>
           <div>
-            <label className="text-xs font-semibold text-gray-700 mb-1 block">Type</label>
+            <label className="text-xs font-semibold text-gray-500 mb-1 block">Type</label>
             <select value={form.type} onChange={e => setForm({ ...form, type: e.target.value as Contact['type'] })}
-              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#d4a017] bg-white">
+              className="w-full rounded-xl border border-[#EDEBE8] px-3 py-2.5 text-sm focus:border-[#B8962E] focus:outline-none bg-white">
               <option value="member">Member</option>
               <option value="donor">Donor</option>
               <option value="both">Donor & Member</option>
@@ -318,49 +316,50 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-xs font-semibold text-gray-700 mb-1 block">Email</label>
+              <label className="text-xs font-semibold text-gray-500 mb-1 block">Email</label>
               <input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#d4a017]" placeholder="email@example.com" />
+                className="w-full rounded-xl border border-[#EDEBE8] px-3 py-2.5 text-sm focus:border-[#B8962E] focus:outline-none" placeholder="email@example.com" />
             </div>
             <div>
-              <label className="text-xs font-semibold text-gray-700 mb-1 block">Phone</label>
+              <label className="text-xs font-semibold text-gray-500 mb-1 block">Phone</label>
               <input type="tel" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#d4a017]" placeholder="+1 555 000 0000" />
+                className="w-full rounded-xl border border-[#EDEBE8] px-3 py-2.5 text-sm focus:border-[#B8962E] focus:outline-none" placeholder="+1 555 000 0000" />
             </div>
           </div>
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mt-2 mb-3">Address</p>
           <div>
-            <label className="text-xs font-semibold text-gray-700 mb-1 block">Street Address</label>
+            <label className="text-xs font-semibold text-gray-500 mb-1 block">Street Address</label>
             <input value={form.address.street || ''} onChange={e => setForm({ ...form, address: { ...form.address, street: e.target.value } })}
-              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#d4a017]" placeholder="123 Main St" />
+              className="w-full rounded-xl border border-[#EDEBE8] px-3 py-2.5 text-sm focus:border-[#B8962E] focus:outline-none" placeholder="123 Main St" />
           </div>
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="text-xs font-semibold text-gray-700 mb-1 block">City</label>
+              <label className="text-xs font-semibold text-gray-500 mb-1 block">City</label>
               <input value={form.address.city || ''} onChange={e => setForm({ ...form, address: { ...form.address, city: e.target.value } })}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#d4a017]" />
+                className="w-full rounded-xl border border-[#EDEBE8] px-3 py-2.5 text-sm focus:border-[#B8962E] focus:outline-none" />
             </div>
             <div>
-              <label className="text-xs font-semibold text-gray-700 mb-1 block">State</label>
+              <label className="text-xs font-semibold text-gray-500 mb-1 block">State</label>
               <input value={form.address.state || ''} onChange={e => setForm({ ...form, address: { ...form.address, state: e.target.value } })}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#d4a017]" />
+                className="w-full rounded-xl border border-[#EDEBE8] px-3 py-2.5 text-sm focus:border-[#B8962E] focus:outline-none" />
             </div>
             <div>
-              <label className="text-xs font-semibold text-gray-700 mb-1 block">ZIP</label>
+              <label className="text-xs font-semibold text-gray-500 mb-1 block">ZIP</label>
               <input value={form.address.zip || ''} onChange={e => setForm({ ...form, address: { ...form.address, zip: e.target.value } })}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#d4a017]" />
+                className="w-full rounded-xl border border-[#EDEBE8] px-3 py-2.5 text-sm focus:border-[#B8962E] focus:outline-none" />
             </div>
           </div>
           <div>
-            <label className="text-xs font-semibold text-gray-700 mb-1 block">Notes</label>
+            <label className="text-xs font-semibold text-gray-500 mb-1 block">Notes</label>
             <textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })}
-              rows={3} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#d4a017] resize-none"
+              rows={3} className="w-full rounded-xl border border-[#EDEBE8] px-3 py-2.5 text-sm focus:border-[#B8962E] focus:outline-none resize-none"
               placeholder="Any notes about this contact..." />
           </div>
-          <div className="flex gap-3 pt-2">
-            <button onClick={() => setView(isEditing ? 'detail' : 'list')} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600">Cancel</button>
+          <div className="space-y-2 pt-2">
+            <button onClick={() => setView(isEditing ? 'detail' : 'list')} className="w-full py-3 rounded-xl border border-[#EDEBE8] text-sm font-semibold text-gray-600">Cancel</button>
             <button onClick={handleSave} disabled={saving || !form.firstName.trim()}
-              className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
-              style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}>
+              className="w-full py-3 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
+              style={{ backgroundColor: 'var(--brand-color, #B8962E)' }}>
               {saving ? 'Saving...' : isEditing ? 'Save Changes' : 'Add Contact'}
             </button>
           </div>
@@ -373,30 +372,45 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
     return (
       <div ref={scrollRef} className="max-w-2xl mx-auto">
         {subTabBar}
-        <div className="flex items-center justify-between mb-5">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold text-white flex-shrink-0"
-              style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}>
+
+        {/* Hero */}
+        <div className="flex items-start justify-between mb-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-2xl font-black text-white flex-shrink-0"
+              style={{ backgroundColor: 'var(--brand-color, #B8962E)' }}>
               {selected.firstName.charAt(0).toUpperCase()}
             </div>
-            <div>
-              <h2 className="text-xl font-bold text-gray-900">{selected.firstName} {selected.lastName}</h2>
-              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${TYPE_COLORS[selected.type]}`}>
-                {TYPE_LABELS[selected.type]}
-              </span>
+            <div className="min-w-0">
+              <h2 className="text-2xl font-black text-gray-900 leading-tight truncate">{selected.firstName} {selected.lastName}</h2>
+              <div className="flex items-center gap-2 mt-1 flex-wrap">
+                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${TYPE_COLORS[selected.type]}`}>
+                  {TYPE_LABELS[selected.type]}
+                </span>
+                {selected.memberSince && <span className="text-xs text-gray-400">· Member since {fmtDate(selected.memberSince)}</span>}
+              </div>
             </div>
           </div>
-          <div className="flex gap-2">
-            <button onClick={() => openEdit(selected)} className="p-2 rounded-xl border border-gray-200 hover:bg-gray-50">
+          <div className="flex gap-2 flex-shrink-0">
+            <button onClick={() => openEdit(selected)} className="p-2 rounded-xl border border-[#EDEBE8] hover:bg-gray-50">
               <Edit2 size={14} className="text-gray-500" />
             </button>
-            <button onClick={() => setDeleteId(selected.id)} className="p-2 rounded-xl border border-red-100 hover:bg-red-50">
+            <button onClick={() => setDeleteId(selected.id)} className="p-2 rounded-xl border border-[#EDEBE8] hover:bg-red-50">
               <Trash2 size={14} className="text-red-400" />
             </button>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 mb-4">
+        {/* Stats strip */}
+        <div className="flex gap-2 flex-wrap mb-5">
+          <span className="bg-[#FBF3E4] text-[#B8962E] text-xs font-semibold px-3 py-1.5 rounded-full">{fmt(selected.totalDonated || 0)} total given</span>
+          <span className="bg-[#FBF3E4] text-[#B8962E] text-xs font-semibold px-3 py-1.5 rounded-full">
+            {selected.lastDonationAt ? `Last gift ${fmtDate(selected.lastDonationAt)}` : 'No donations yet'}
+          </span>
+          <span className="bg-[#FBF3E4] text-[#B8962E] text-xs font-semibold px-3 py-1.5 rounded-full">{activities.length} {activities.length === 1 ? 'activity' : 'activities'}</span>
+        </div>
+
+        {/* Contact info card */}
+        <div className="bg-white rounded-2xl border border-[#EDEBE8] shadow-sm p-4 mb-4">
           <div className="grid grid-cols-2 gap-3">
             {selected.email && (
               <div className="flex items-center gap-2">
@@ -407,25 +421,15 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
             {selected.phone && (
               <div className="flex items-center gap-2">
                 <Phone size={14} className="text-gray-400 flex-shrink-0" />
-                <span className="text-sm text-gray-700">{selected.phone}</span>
+                <span className="text-sm text-gray-700 truncate">{selected.phone}</span>
               </div>
             )}
-            {selected.memberSince && (
+            {selected.address?.street && (
               <div className="flex items-center gap-2">
-                <Calendar size={14} className="text-gray-400 flex-shrink-0" />
-                <span className="text-sm text-gray-700">Member since {fmtDate(selected.memberSince)}</span>
+                <MapPin size={14} className="text-gray-400 flex-shrink-0" />
+                <span className="text-sm text-gray-700 truncate">{selected.address.street}</span>
               </div>
             )}
-            <div className="flex items-center gap-2">
-              <DollarSign size={14} style={{ color: 'var(--brand-color, #d4a017)' }} className="flex-shrink-0" />
-              <span className="text-sm font-semibold text-gray-900">{fmt(selected.totalDonated || 0)} total</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Clock size={14} className="text-gray-400 flex-shrink-0" />
-              <span className="text-sm text-gray-700">
-                {selected.lastDonationAt ? `Last gift ${fmtDate(selected.lastDonationAt)}` : 'No donations yet'}
-              </span>
-            </div>
             {selected.address?.city && (
               <div className="flex items-center gap-2">
                 <MapPin size={14} className="text-gray-400 flex-shrink-0" />
@@ -436,14 +440,14 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
             )}
           </div>
           {selected.tags && selected.tags.length > 0 && (
-            <div className="mt-3 pt-3 border-t border-gray-100 flex flex-wrap gap-1.5">
+            <div className="mt-3 pt-3 border-t border-[#EDEBE8] flex flex-wrap gap-1.5">
               {selected.tags.map(tag => (
                 <span key={tag} className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">{tag}</span>
               ))}
             </div>
           )}
-          <div className="mt-3 pt-3 border-t border-gray-100">
-            <label className="text-xs font-semibold text-gray-700 mb-1 block">Admin Notes</label>
+          <div className="border-t border-[#EDEBE8] pt-3 mt-3">
+            <label className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1 block">Admin Notes</label>
             <textarea
               defaultValue={selected.notes || ''}
               onBlur={async (e) => {
@@ -456,40 +460,45 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
                 }
               }}
               rows={3}
-              className="w-full text-xs text-gray-600 border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:border-[#d4a017] resize-none leading-relaxed"
+              className="border-0 focus:outline-none text-sm text-gray-700 resize-none w-full bg-transparent leading-relaxed"
               placeholder="Add notes about this contact..."
             />
           </div>
         </div>
 
+        {/* Activity Timeline */}
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-bold text-gray-700">Activity Timeline</h3>
+          <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Activity Timeline</h3>
           <button
             onClick={() => setShowAddActivity(true)}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-white"
-            style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}
+            style={{ backgroundColor: 'var(--brand-color, #B8962E)' }}
           >
             <Plus size={12} /> Add Activity
           </button>
         </div>
 
         {activities.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 text-center text-gray-400">
+          <div className="bg-white rounded-2xl border border-[#EDEBE8] shadow-sm p-8 text-center text-gray-400">
             <Clock size={28} className="mx-auto mb-2 opacity-30" />
             <p className="text-sm">No activities recorded yet — add the first one</p>
           </div>
         ) : (
-          <div className="space-y-2">
+          <div className="relative pl-6 ml-1 border-l-2 border-[#EDEBE8] space-y-5">
             {activities.map(act => (
-              <div key={act.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex gap-3">
-                <div className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-white"
-                  style={{ backgroundColor: act.type === 'donation' ? 'var(--brand-color, #d4a017)' : '#6b7280' }}>
-                  {ACTIVITY_ICONS[act.type]}
+              <div key={act.id} className="relative">
+                <div className="absolute -left-[25px] top-1 w-4 h-4 rounded-full border-2 border-white flex items-center justify-center"
+                  style={{ backgroundColor: act.type === 'donation' ? 'var(--brand-color, #B8962E)' : '#E5E7EB' }}>
+                  <span className="text-white flex items-center justify-center" style={{ fontSize: 8 }}>
+                    {ACTIVITY_ICONS[act.type]}
+                  </span>
                 </div>
-                <div className="flex-1 min-w-0">
+                <div>
                   <div className="flex items-center gap-2 mb-0.5">
-                    <span className="text-xs font-semibold text-gray-500 capitalize">{act.type}</span>
-                    {act.amount && <span className="text-xs font-bold" style={{ color: 'var(--brand-color, #d4a017)' }}>{fmt(act.amount)}</span>}
+                    <span className="text-xs font-bold text-gray-500 capitalize">{act.type}</span>
+                    {act.amount && (
+                      <span className="text-xs font-bold" style={{ color: 'var(--brand-color, #B8962E)' }}>{fmt(act.amount)}</span>
+                    )}
                     <span className="text-[10px] text-gray-400 ml-auto">{fmtDate(act.createdAt)}</span>
                   </div>
                   <p className="text-sm text-gray-700">{act.description}</p>
@@ -499,26 +508,26 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
           </div>
         )}
 
-        {/* Onboarding Answers */}
-        <div className="mt-5">
-          <h3 className="text-sm font-bold text-gray-700 mb-3">Onboarding Answers</h3>
+        {/* Onboarding Responses */}
+        <div className="mt-6">
+          <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Onboarding Responses</h3>
           {loadingAnswers ? (
             <div className="flex justify-center py-6">
-              <div className="w-6 h-6 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--brand-color, #d4a017)', borderTopColor: 'transparent' }} />
+              <div className="w-6 h-6 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--brand-color, #B8962E)', borderTopColor: 'transparent' }} />
             </div>
           ) : !onboardingAnswers || Object.keys(onboardingAnswers).length === 0 ? (
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 text-center text-gray-400 text-sm">
+            <div className="bg-white rounded-2xl border border-[#EDEBE8] shadow-sm p-6 text-center text-gray-400 text-sm">
               No onboarding responses yet.
             </div>
           ) : (
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
+            <div className="space-y-3">
               {(onboardingQuestions.length > 0
                 ? onboardingQuestions.filter(q => onboardingAnswers[q.id])
                 : Object.keys(onboardingAnswers).map(id => ({ id, label: id.replace(/_/g, ' '), order: 0 }))
               ).map(q => (
-                <div key={q.id}>
-                  <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">{q.label}</p>
-                  <p className="text-sm text-gray-800">{onboardingAnswers[q.id]}</p>
+                <div key={q.id} className="bg-[#F7F6F3] rounded-xl p-4">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{q.label}</p>
+                  <p className="text-sm text-gray-800 mt-0.5">{onboardingAnswers[q.id]}</p>
                 </div>
               ))}
             </div>
@@ -527,39 +536,45 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
 
         {showAddActivity && (
           <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center bg-black/50 p-4">
-            <div className="bg-white rounded-2xl w-full max-w-md">
-              <div className="p-5 border-b border-gray-100"><h3 className="font-bold text-gray-900">Add Activity</h3></div>
+            <div className="bg-white rounded-3xl w-full max-w-md">
+              <div className="p-5 border-b border-[#EDEBE8]"><h3 className="font-bold text-gray-900">Add Activity</h3></div>
               <div className="p-5 space-y-4">
                 <div>
-                  <label className="text-xs font-semibold text-gray-700 mb-1 block">Type</label>
-                  <select value={actForm.type} onChange={e => setActForm({ ...actForm, type: e.target.value as ContactActivity['type'] })}
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#d4a017] bg-white">
-                    <option value="note">Note</option>
-                    <option value="donation">Donation</option>
-                    <option value="email">Email</option>
-                    <option value="call">Call</option>
-                    <option value="meeting">Meeting</option>
-                  </select>
+                  <label className="text-xs font-semibold text-gray-500 mb-2 block">Type</label>
+                  <div className="flex gap-2 overflow-x-auto pb-1">
+                    {(['note', 'donation', 'email', 'call', 'meeting'] as ContactActivity['type'][]).map(t => (
+                      <button
+                        key={t}
+                        onClick={() => setActForm({ ...actForm, type: t })}
+                        className={`px-3 py-1.5 rounded-full text-xs font-semibold capitalize whitespace-nowrap transition-colors ${actForm.type === t ? 'text-white' : 'bg-gray-100 text-gray-500'}`}
+                        style={actForm.type === t ? { backgroundColor: 'var(--brand-color, #B8962E)' } : undefined}
+                      >
+                        {t}
+                      </button>
+                    ))}
+                  </div>
                 </div>
                 {actForm.type === 'donation' && (
                   <div>
-                    <label className="text-xs font-semibold text-gray-700 mb-1 block">Amount ($)</label>
+                    <label className="text-xs font-semibold text-gray-500 mb-1 block">Amount ($)</label>
                     <input type="number" min={0} value={actForm.amount} onChange={e => setActForm({ ...actForm, amount: e.target.value })}
-                      className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#d4a017]" placeholder="0.00" />
+                      className="w-full rounded-xl border border-[#EDEBE8] px-3 py-2.5 text-sm focus:border-[#B8962E] focus:outline-none" placeholder="0.00" />
                   </div>
                 )}
                 <div>
-                  <label className="text-xs font-semibold text-gray-700 mb-1 block">Description *</label>
-                  <textarea value={actForm.description} onChange={e => setActForm({ ...actForm, description: e.target.value })}
-                    rows={3} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#d4a017] resize-none"
-                    placeholder="What happened?" />
+                  <label className="text-xs font-semibold text-gray-500 mb-1 block">Description *</label>
+                  <div className="bg-[#F7F6F3] rounded-xl p-3">
+                    <textarea value={actForm.description} onChange={e => setActForm({ ...actForm, description: e.target.value })}
+                      rows={3} className="border-0 focus:outline-none text-sm text-gray-700 resize-none w-full bg-transparent"
+                      placeholder="What happened?" />
+                  </div>
                 </div>
               </div>
-              <div className="p-5 border-t border-gray-100 flex gap-3">
-                <button onClick={() => setShowAddActivity(false)} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600">Cancel</button>
+              <div className="p-5 border-t border-[#EDEBE8] space-y-2">
+                <button onClick={() => setShowAddActivity(false)} className="w-full py-2.5 rounded-xl border border-[#EDEBE8] text-sm font-semibold text-gray-600">Cancel</button>
                 <button onClick={addActivity} disabled={savingAct || !actForm.description.trim()}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
-                  style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}>
+                  className="w-full py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
+                  style={{ backgroundColor: 'var(--brand-color, #B8962E)' }}>
                   {savingAct ? 'Saving...' : 'Add'}
                 </button>
               </div>
@@ -569,11 +584,11 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
 
         {deleteId && (
           <div className="fixed inset-0 z-[210] flex items-center justify-center bg-black/50 p-4">
-            <div className="bg-white rounded-2xl p-6 w-full max-w-sm text-center">
+            <div className="bg-white rounded-3xl p-6 w-full max-w-sm text-center">
               <p className="font-bold text-gray-900 mb-2">Delete contact?</p>
               <p className="text-sm text-gray-500 mb-5">This cannot be undone.</p>
               <div className="flex gap-3">
-                <button onClick={() => setDeleteId(null)} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600">Cancel</button>
+                <button onClick={() => setDeleteId(null)} className="flex-1 py-2.5 rounded-xl border border-[#EDEBE8] text-sm font-semibold text-gray-600">Cancel</button>
                 <button onClick={confirmDelete} className="flex-1 py-2.5 rounded-xl bg-red-500 text-white text-sm font-semibold">Delete</button>
               </div>
             </div>
@@ -588,37 +603,38 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
   const donorCount = contacts.filter(c => c.type === 'donor' || c.type === 'both').length;
 
   return (
-    <div className="max-w-3xl mx-auto">
+    <div ref={scrollRef} className="max-w-3xl mx-auto">
       {subTabBar}
-      <div className="grid grid-cols-3 gap-3 mb-5">
-        <div className="bg-white rounded-xl p-3 border border-gray-100 text-center shadow-sm">
-          <div className="text-xl font-bold text-gray-900">{memberCount}</div>
-          <div className="text-xs text-gray-500 mt-0.5">Members</div>
-        </div>
-        <div className="bg-white rounded-xl p-3 border border-gray-100 text-center shadow-sm">
-          <div className="text-xl font-bold text-gray-900">{donorCount}</div>
-          <div className="text-xs text-gray-500 mt-0.5">Donors</div>
-        </div>
-        <div className="bg-white rounded-xl p-3 border border-gray-100 text-center shadow-sm">
-          <div className="text-base font-bold text-gray-900">{fmt(totalGiven)}</div>
-          <div className="text-xs text-gray-500 mt-0.5">Total Given</div>
-        </div>
+
+      {/* Summary header pill-row */}
+      <div className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-5 flex-wrap">
+        <span>👥 {memberCount} Members</span>
+        <span className="text-gray-300">·</span>
+        <span>💛 {donorCount} Donors</span>
+        <span className="text-gray-300">·</span>
+        <span>{fmt(totalGiven)} Total</span>
       </div>
 
-      <div className="flex gap-2 mb-5">
-        <div className="relative flex-1">
+      {/* Search + pill filters */}
+      <div className="flex flex-col gap-3 mb-5">
+        <div className="relative">
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Search by name or email..."
-            className="w-full pl-9 pr-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-[#d4a017]" />
+            className="w-full bg-white pl-9 pr-3 py-2.5 text-sm border border-[#EDEBE8] rounded-2xl focus:outline-none focus:border-[#B8962E]" />
         </div>
-        <select value={filter} onChange={e => setFilter(e.target.value as 'all' | Contact['type'])}
-          className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#d4a017] bg-white">
-          <option value="all">All</option>
-          <option value="donor">Donors</option>
-          <option value="member">Members</option>
-          <option value="both">Both</option>
-        </select>
+        <div className="flex gap-2">
+          {([['all', 'All'], ['member', 'Members'], ['donor', 'Donors']] as ['all' | Contact['type'], string][]).map(([val, label]) => (
+            <button
+              key={val}
+              onClick={() => setFilter(val)}
+              className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-colors ${filter === val ? 'text-white' : 'border border-[#EDEBE8] text-gray-500'}`}
+              style={filter === val ? { backgroundColor: 'var(--brand-color, #B8962E)' } : undefined}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {filtered.length === 0 ? (
@@ -633,28 +649,24 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
             <div
               key={c.id}
               onClick={() => openDetail(c)}
-              className="bg-white rounded-2xl px-4 py-3 border border-gray-100 shadow-sm flex items-center gap-3 cursor-pointer hover:border-[#d4a017]/30 transition-all"
+              className="bg-white rounded-2xl border border-[#EDEBE8] px-4 py-3.5 flex items-center gap-3 cursor-pointer hover:border-[#B8962E]/40 hover:shadow-sm transition-all"
             >
-              <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold text-white flex-shrink-0"
-                style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}>
+              <div className="w-11 h-11 rounded-full flex items-center justify-center text-sm font-bold text-white flex-shrink-0"
+                style={{ backgroundColor: 'var(--brand-color, #B8962E)' }}>
                 {c.firstName?.charAt(0)?.toUpperCase() || '?'}
               </div>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold text-gray-900 text-sm truncate">{c.firstName} {c.lastName}</span>
+                <p className="text-sm font-bold text-gray-900 truncate">{c.firstName} {c.lastName}</p>
+                {(c.email || c.phone) && (
+                  <p className="text-xs text-gray-400 truncate">{[c.email, c.phone].filter(Boolean).join(' · ')}</p>
+                )}
+                <div className="flex items-center gap-1.5 mt-1.5">
                   <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${TYPE_COLORS[c.type]}`}>{TYPE_LABELS[c.type]}</span>
-                </div>
-                <div className="flex items-center gap-3 mt-0.5">
-                  {c.email && <span className="text-xs text-gray-400 truncate flex items-center gap-1"><Mail size={11} />{c.email}</span>}
-                  {c.phone && <span className="text-xs text-gray-400 flex items-center gap-1"><Phone size={11} />{c.phone}</span>}
+                  {c.totalDonated > 0 && (
+                    <span className="bg-[#FBF3E4] text-[#B8962E] text-[10px] font-semibold px-2 py-0.5 rounded-full">{fmt(c.totalDonated)} donated</span>
+                  )}
                 </div>
               </div>
-              {c.totalDonated > 0 && (
-                <div className="text-right flex-shrink-0">
-                  <div className="text-sm font-bold text-gray-800">{fmt(c.totalDonated)}</div>
-                  <div className="text-[10px] text-gray-400">donated</div>
-                </div>
-              )}
               <ChevronRight size={14} className="text-gray-300 flex-shrink-0" />
             </div>
           ))}
@@ -663,11 +675,11 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
 
       {deleteId && (
         <div className="fixed inset-0 z-[210] flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-sm text-center">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-sm text-center">
             <p className="font-bold text-gray-900 mb-2">Delete contact?</p>
             <p className="text-sm text-gray-500 mb-5">This cannot be undone.</p>
             <div className="flex gap-3">
-              <button onClick={() => setDeleteId(null)} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600">Cancel</button>
+              <button onClick={() => setDeleteId(null)} className="flex-1 py-2.5 rounded-xl border border-[#EDEBE8] text-sm font-semibold text-gray-600">Cancel</button>
               <button onClick={confirmDelete} className="flex-1 py-2.5 rounded-xl bg-red-500 text-white text-sm font-semibold">Delete</button>
             </div>
           </div>

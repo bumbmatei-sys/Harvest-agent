@@ -172,6 +172,38 @@ const fmtTime = (ts: Timestamp | null) => {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 };
 
+// Group consecutive messages from the same sender (within 3 minutes) so the
+// avatar + name header renders only on the first message of each run. Generic
+// over both channel and DM message shapes (senderRole is optional for DMs).
+interface GroupableMessage {
+  id: string;
+  senderId: string;
+  senderName: string;
+  senderRole?: string;
+  createdAt: Timestamp | null;
+}
+
+function groupMessages<T extends GroupableMessage>(msgs: T[]) {
+  const groups: { sender: string; senderName: string; senderRole: string; messages: T[] }[] = [];
+  for (const msg of msgs) {
+    const last = groups[groups.length - 1];
+    const lastMsg = last?.messages[last.messages.length - 1];
+    const isSameSender = last?.sender === msg.senderId;
+    const isWithin3min = last && msg.createdAt && lastMsg?.createdAt
+      ? Math.abs(
+          ((msg.createdAt as any)?.toDate?.()?.getTime?.() ?? 0) -
+          ((lastMsg.createdAt as any)?.toDate?.()?.getTime?.() ?? 0)
+        ) < 3 * 60 * 1000
+      : false;
+    if (isSameSender && isWithin3min) {
+      last.messages.push(msg);
+    } else {
+      groups.push({ sender: msg.senderId, senderName: msg.senderName, senderRole: msg.senderRole || '', messages: [msg] });
+    }
+  }
+  return groups;
+}
+
 // Admin (gold) / User (grey) role badge shown next to channel message senders.
 const RoleBadge: React.FC<{ role?: string }> = ({ role }) => {
   const isAdmin = role === 'admin' || role === 'church_admin' || role === 'super_admin';
@@ -191,7 +223,7 @@ const AttachmentCard: React.FC<{ attachment: MessageAttachment; onOpen?: () => v
   const icon = attachment.type === 'doc' ? '📄' : attachment.type === 'contact' ? '👤' : attachment.type === 'form' ? '📝' : '🎯';
   const label = attachment.type === 'doc' ? 'Open Doc' : attachment.type === 'contact' ? 'View Contact' : attachment.type === 'form' ? 'Open Form' : 'View Campaign';
   return (
-    <div className="mt-1.5 bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm" style={{ maxWidth: 224 }}>
+    <div className="mt-1.5 bg-white border border-[#EDEBE8] rounded-2xl overflow-hidden shadow-sm" style={{ maxWidth: 224 }}>
       <div className="flex items-start gap-2 p-3 pb-2">
         <span className="text-lg leading-none flex-shrink-0">{icon}</span>
         <div className="flex-1 min-w-0">
@@ -200,7 +232,7 @@ const AttachmentCard: React.FC<{ attachment: MessageAttachment; onOpen?: () => v
         </div>
       </div>
       <div className="px-3 pb-3">
-        <div className="h-px bg-gray-100 mb-2" />
+        <div className="h-px bg-[#EDEBE8] mb-2" />
         <button
           onClick={onOpen}
           disabled={!onOpen}
@@ -451,8 +483,8 @@ const ChannelMembersSheet: React.FC<{
   return (
     <div className="fixed inset-0 z-[300] flex items-end">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative w-full bg-white rounded-t-2xl max-h-[75vh] flex flex-col">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 flex-shrink-0">
+      <div className="relative w-full bg-white rounded-t-3xl max-h-[75vh] flex flex-col">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[#EDEBE8] flex-shrink-0">
           <h3 className="font-bold text-gray-900 text-sm">Channel Members</h3>
           <button onClick={onClose}><X size={18} className="text-gray-400" /></button>
         </div>
@@ -466,14 +498,15 @@ const ChannelMembersSheet: React.FC<{
             <p className="text-center py-4 text-sm text-gray-400">No members yet</p>
           ) : memberUsers.map(u => (
             <div key={u.id} className="flex items-center gap-3 px-5 py-2.5">
-              <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white flex-shrink-0"
-                style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}>
+              <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
+                style={{ backgroundColor: 'var(--brand-color, #B8962E)' }}>
                 {u.displayName?.charAt(0)?.toUpperCase() || '?'}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-gray-900 truncate">{u.displayName || 'Unknown'}</p>
                 <p className="text-xs text-gray-400 truncate">{u.email}</p>
               </div>
+              <RoleBadge role={u.role} />
               <button onClick={() => removeMember(u.id)} className="p-1.5 rounded-lg hover:bg-red-50">
                 <X size={15} className="text-red-400" />
               </button>
@@ -482,8 +515,8 @@ const ChannelMembersSheet: React.FC<{
         </div>
 
         {/* Add members */}
-        <div className="px-4 pt-3 pb-2 border-t border-gray-100 flex-shrink-0">
-          <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 px-1">Add Members</p>
+        <div className="px-4 pt-3 pb-2 border-t border-[#EDEBE8] flex-shrink-0">
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 px-1">Add Members</p>
           <div className="relative">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
@@ -503,16 +536,25 @@ const ChannelMembersSheet: React.FC<{
             <p className="text-center py-8 text-sm text-gray-400">{search ? 'No users found' : 'No users found in this tenant'}</p>
           ) : addable.map(u => (
             <button key={u.id} onClick={() => addMember(u.id)} className="w-full flex items-center gap-3 px-5 py-2.5 text-left hover:bg-gray-50">
-              <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white flex-shrink-0 bg-gray-400">
+              <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0 bg-gray-400">
                 {u.displayName?.charAt(0)?.toUpperCase() || '?'}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-gray-900 truncate">{u.displayName || 'Unknown'}</p>
                 <p className="text-xs text-gray-400 truncate">{u.email}</p>
               </div>
-              <UserPlus size={16} style={{ color: 'var(--brand-color, #d4a017)' }} className="flex-shrink-0" />
+              <UserPlus size={16} style={{ color: 'var(--brand-color, #B8962E)' }} className="flex-shrink-0" />
             </button>
           ))}
+        </div>
+        <div className="p-4 border-t border-[#EDEBE8] flex-shrink-0">
+          <button
+            onClick={onClose}
+            className="w-full py-2.5 rounded-xl text-sm font-semibold text-white"
+            style={{ backgroundColor: 'var(--brand-color, #B8962E)' }}
+          >
+            Done
+          </button>
         </div>
       </div>
     </div>
@@ -595,57 +637,66 @@ const ChannelThread: React.FC<{
             <p className="text-sm">No messages yet. Be the first to post.</p>
           </div>
         )}
-        {messages.map(m => (
-          <div key={m.id} className="flex gap-3">
-            <MessageAvatar senderId={m.senderId} senderName={m.senderName} />
-            <div>
-              <div className="flex items-baseline gap-2 mb-0.5">
-                <span className="text-sm font-semibold text-gray-900">{m.senderName}</span>
-                <RoleBadge role={m.senderRole} />
-                <span className="text-[10px] text-gray-400">{fmtTime(m.createdAt)}</span>
+        {groupMessages(messages).map(group => (
+          <div key={group.messages[0].id} className="flex gap-3">
+            <MessageAvatar senderId={group.sender} senderName={group.senderName} />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-baseline gap-2 mb-1">
+                <span className="text-sm font-semibold text-gray-900">{group.senderName}</span>
+                <RoleBadge role={group.senderRole} />
+                <span className="text-[10px] text-gray-400">{fmtTime(group.messages[0].createdAt)}</span>
               </div>
-              {m.content && (
-                <p className="text-sm text-gray-700 bg-white px-3 py-2 rounded-2xl rounded-tl-sm border border-gray-100 shadow-sm max-w-xs lg:max-w-md">
-                  {m.content}
-                </p>
-              )}
-              {m.attachments?.map((a, i) => (
-                <AttachmentCard
-                  key={i}
-                  attachment={a}
-                  onOpen={
-                    a.type === 'form'
-                      ? () => window.open(`https://${tenantId}.theharvest.app/form/${a.id}`, '_blank', 'noopener')
-                      : (onOpenAttachment ? () => onOpenAttachment(a.type, a.id) : undefined)
-                  }
-                />
-              ))}
+              <div className="space-y-1">
+                {group.messages.map(m => (
+                  <div key={m.id} className="group flex items-end gap-2">
+                    <div className="max-w-[78%]">
+                      {m.content && (
+                        <p className="bg-white border border-[#EDEBE8] rounded-2xl rounded-tl-sm px-3 py-2 text-sm text-gray-800 shadow-sm break-words">
+                          {m.content}
+                        </p>
+                      )}
+                      {m.attachments?.map((a, i) => (
+                        <AttachmentCard
+                          key={i}
+                          attachment={a}
+                          onOpen={
+                            a.type === 'form'
+                              ? () => window.open(`https://${tenantId}.theharvest.app/form/${a.id}`, '_blank', 'noopener')
+                              : (onOpenAttachment ? () => onOpenAttachment(a.type, a.id) : undefined)
+                          }
+                        />
+                      ))}
+                    </div>
+                    <span className="text-[10px] text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 mb-1">{fmtTime(m.createdAt)}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         ))}
         <div ref={bottomRef} />
       </div>
 
-      <div className="bg-white border-t border-gray-100 flex-shrink-0 px-4 pt-3" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 8px)' }}>
+      <div className="bg-white border-t border-[#EDEBE8] flex-shrink-0 px-4 pt-3" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 8px)' }}>
         {attachments.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-2">
             {attachments.map((a, i) => (
-              <div key={i} className="flex items-center gap-1.5 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1">
+              <div key={i} className="flex items-center gap-1.5 bg-[#FBF3E4] border border-[#F0D9A0] rounded-lg px-2.5 py-1 text-xs font-medium text-[#B8962E]">
                 <span className="text-sm">{a.type === 'doc' ? '📄' : a.type === 'contact' ? '👤' : a.type === 'form' ? '📝' : '🎯'}</span>
-                <span className="text-xs font-medium text-gray-700 max-w-[90px] truncate">{a.title}</span>
+                <span className="max-w-[90px] truncate">{a.title}</span>
                 <button onClick={() => setAttachments(prev => prev.filter((_, idx) => idx !== i))}>
-                  <X size={11} className="text-gray-400" />
+                  <X size={11} className="text-[#B8962E]/60" />
                 </button>
               </div>
             ))}
           </div>
         )}
-        <div className="flex gap-2 items-center bg-gray-50 rounded-2xl px-3 py-2 border border-gray-200">
+        <div className="flex gap-2 items-center bg-[#F7F6F3] rounded-2xl px-3 py-2.5 border border-[#EDEBE8] focus-within:border-[#B8962E]/40 transition-colors">
           <button
             onClick={() => setShowPicker(true)}
-            className="flex-shrink-0 p-1 rounded-lg hover:bg-gray-200 transition-colors"
+            className="flex-shrink-0 p-1 rounded-lg hover:bg-[#EDEBE8] transition-colors"
           >
-            <Paperclip size={16} className="text-gray-500" />
+            <Paperclip size={16} className="text-gray-400" />
           </button>
           <input
             value={text}
@@ -657,10 +708,10 @@ const ChannelThread: React.FC<{
           <button
             onClick={send}
             disabled={(!text.trim() && attachments.length === 0) || sending}
-            className="w-8 h-8 rounded-full flex items-center justify-center disabled:opacity-40 transition-opacity"
-            style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}
+            className="w-9 h-9 rounded-xl flex items-center justify-center disabled:opacity-30 transition-opacity"
+            style={{ backgroundColor: 'var(--brand-color, #B8962E)' }}
           >
-            <Send size={14} className="text-white" />
+            <Send size={15} color="white" />
           </button>
         </div>
       </div>
@@ -754,59 +805,87 @@ const DmThread: React.FC<{
             <p className="text-sm">Start the conversation</p>
           </div>
         )}
-        {messages.map(m => {
-          const isMine = m.senderId === currentUser.uid;
+        {groupMessages(messages).map(group => {
+          const isMe = group.sender === currentUser.uid;
           return (
-            <div key={m.id} className={`flex gap-3 ${isMine ? 'flex-row-reverse' : ''}`}>
-              <MessageAvatar senderId={m.senderId} senderName={m.senderName} bg={isMine ? '#B8962E' : '#6b7280'} />
-              <div className={`max-w-xs lg:max-w-md ${isMine ? 'items-end' : 'items-start'} flex flex-col`}>
-                <div className={`flex items-baseline gap-2 mb-0.5 ${isMine ? 'flex-row-reverse' : ''}`}>
-                  <span className="text-xs text-gray-400">{fmtTime(m.createdAt)}</span>
-                </div>
-                {m.content && (
-                  <p className={`text-sm px-3 py-2 rounded-2xl ${isMine ? 'rounded-tr-sm text-white' : 'rounded-tl-sm text-gray-700 bg-white border border-gray-100 shadow-sm'}`}
-                    style={isMine ? { backgroundColor: 'var(--brand-color, #d4a017)' } : undefined}>
-                    {m.content}
-                  </p>
-                )}
-                {m.attachments?.map((a, i) => (
-                  <AttachmentCard
-                    key={i}
-                    attachment={a}
-                    onOpen={
-                      a.type === 'form'
-                        ? () => window.open(`https://${tenantId}.theharvest.app/form/${a.id}`, '_blank', 'noopener')
-                        : (onOpenAttachment ? () => onOpenAttachment(a.type, a.id) : undefined)
-                    }
-                  />
-                ))}
-              </div>
+            <div key={group.messages[0].id} className="space-y-1">
+              {group.messages.map((m, mi) => {
+                const isFirst = mi === 0;
+                if (isMe) {
+                  return (
+                    <div key={m.id} className="flex justify-end">
+                      <div className="flex flex-col items-end max-w-[78%]">
+                        {m.content && (
+                          <div className="bg-[#B8962E] text-white rounded-2xl rounded-br-sm px-3.5 py-2.5 text-sm break-words">{m.content}</div>
+                        )}
+                        {m.attachments?.map((a, i) => (
+                          <AttachmentCard
+                            key={i}
+                            attachment={a}
+                            onOpen={
+                              a.type === 'form'
+                                ? () => window.open(`https://${tenantId}.theharvest.app/form/${a.id}`, '_blank', 'noopener')
+                                : (onOpenAttachment ? () => onOpenAttachment(a.type, a.id) : undefined)
+                            }
+                          />
+                        ))}
+                        <span className="text-[10px] text-gray-400 mt-0.5 text-right">{fmtTime(m.createdAt)}</span>
+                      </div>
+                    </div>
+                  );
+                }
+                return (
+                  <div key={m.id} className="flex gap-2.5 items-end">
+                    {isFirst
+                      ? <MessageAvatar senderId={group.sender} senderName={group.senderName} bg="#6b7280" />
+                      : <div className="w-8 flex-shrink-0" />}
+                    <div className="flex flex-col items-start max-w-[78%]">
+                      {isFirst && <span className="text-[10px] font-semibold text-gray-400 mb-0.5 ml-1">{group.senderName}</span>}
+                      {m.content && (
+                        <div className="bg-[#F0EDE8] text-gray-800 rounded-2xl rounded-bl-sm px-3.5 py-2.5 text-sm break-words">{m.content}</div>
+                      )}
+                      {m.attachments?.map((a, i) => (
+                        <AttachmentCard
+                          key={i}
+                          attachment={a}
+                          onOpen={
+                            a.type === 'form'
+                              ? () => window.open(`https://${tenantId}.theharvest.app/form/${a.id}`, '_blank', 'noopener')
+                              : (onOpenAttachment ? () => onOpenAttachment(a.type, a.id) : undefined)
+                          }
+                        />
+                      ))}
+                      <span className="text-[10px] text-gray-400 mt-0.5">{fmtTime(m.createdAt)}</span>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           );
         })}
         <div ref={bottomRef} />
       </div>
 
-      <div className="p-4 bg-white border-t border-gray-100">
+      <div className="bg-white border-t border-[#EDEBE8] flex-shrink-0 px-4 pt-3" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 8px)' }}>
         {attachments.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-2">
             {attachments.map((a, i) => (
-              <div key={i} className="flex items-center gap-1.5 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1">
+              <div key={i} className="flex items-center gap-1.5 bg-[#FBF3E4] border border-[#F0D9A0] rounded-lg px-2.5 py-1 text-xs font-medium text-[#B8962E]">
                 <span className="text-sm">{a.type === 'doc' ? '📄' : a.type === 'contact' ? '👤' : a.type === 'form' ? '📝' : '🎯'}</span>
-                <span className="text-xs font-medium text-gray-700 max-w-[90px] truncate">{a.title}</span>
+                <span className="max-w-[90px] truncate">{a.title}</span>
                 <button onClick={() => setAttachments(prev => prev.filter((_, idx) => idx !== i))}>
-                  <X size={11} className="text-gray-400" />
+                  <X size={11} className="text-[#B8962E]/60" />
                 </button>
               </div>
             ))}
           </div>
         )}
-        <div className="flex gap-2 items-center bg-gray-50 rounded-2xl px-3 py-2 border border-gray-200">
+        <div className="flex gap-2 items-center bg-[#F7F6F3] rounded-2xl px-3 py-2.5 border border-[#EDEBE8] focus-within:border-[#B8962E]/40 transition-colors">
           <button
             onClick={() => setShowPicker(true)}
-            className="flex-shrink-0 p-1 rounded-lg hover:bg-gray-200 transition-colors"
+            className="flex-shrink-0 p-1 rounded-lg hover:bg-[#EDEBE8] transition-colors"
           >
-            <Paperclip size={16} className="text-gray-500" />
+            <Paperclip size={16} className="text-gray-400" />
           </button>
           <input
             value={text}
@@ -818,10 +897,10 @@ const DmThread: React.FC<{
           <button
             onClick={send}
             disabled={(!text.trim() && attachments.length === 0) || sending}
-            className="w-8 h-8 rounded-full flex items-center justify-center disabled:opacity-40 transition-opacity"
-            style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}
+            className="w-9 h-9 rounded-xl flex items-center justify-center disabled:opacity-30 transition-opacity"
+            style={{ backgroundColor: 'var(--brand-color, #B8962E)' }}
           >
-            <Send size={14} className="text-white" />
+            <Send size={15} color="white" />
           </button>
         </div>
       </div>
@@ -1210,14 +1289,20 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
                 <button
                   key={ch.id}
                   onClick={() => setOpenChannel(ch)}
-                  className="w-full bg-white rounded-2xl px-4 py-3 border border-gray-100 shadow-sm flex items-center gap-3 hover:border-[#d4a017]/30 transition-all text-left"
+                  className="w-full bg-white rounded-2xl px-4 py-3.5 border border-[#EDEBE8] flex items-center gap-3 hover:border-[#B8962E]/40 hover:shadow-sm transition-all text-left"
                 >
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: 'var(--brand-color, #d4a017)10' }}>
-                    <Hash size={18} style={{ color: 'var(--brand-color, #d4a017)' }} />
+                  <div className="relative flex-shrink-0">
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'var(--brand-color, #B8962E)1A' }}>
+                      <Hash size={18} style={{ color: 'var(--brand-color, #B8962E)' }} />
+                    </div>
+                    {((ch as any).unreadCount || 0) > 0 && <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-[#B8962E]" />}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-gray-900 text-sm truncate">#{ch.name}</p>
+                    <p className="text-sm font-bold text-gray-900 truncate">#{ch.name}</p>
                     {ch.description && <p className="text-xs text-gray-400 truncate">{ch.description}</p>}
+                    <p className="text-[10px] text-gray-400 mt-0.5">
+                      {(ch.members?.length || 0)} {(ch.members?.length || 0) === 1 ? 'member' : 'members'}{ch.lastMessageAt ? ` · ${fmtTime(ch.lastMessageAt)}` : ''}
+                    </p>
                   </div>
                   <ChevronRight size={16} className="text-gray-300 flex-shrink-0" />
                 </button>
@@ -1251,14 +1336,14 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
                 <button
                   key={dm.id}
                   onClick={() => setOpenAdminDm(dm)}
-                  className="w-full bg-white rounded-2xl px-4 py-3 border border-gray-100 shadow-sm flex items-center gap-3 hover:border-[#d4a017]/30 transition-all text-left"
+                  className="w-full bg-white rounded-2xl px-4 py-3.5 border border-[#EDEBE8] flex items-center gap-3 hover:border-[#B8962E]/40 hover:shadow-sm transition-all text-left"
                 >
-                  <div className="w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center text-sm font-bold text-white"
-                    style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}>
+                  <div className="w-11 h-11 rounded-full flex-shrink-0 flex items-center justify-center text-sm font-bold text-white"
+                    style={{ backgroundColor: 'var(--brand-color, #B8962E)' }}>
                     {getOtherName(dm).charAt(0).toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-gray-900 text-sm truncate">{getOtherName(dm)}</p>
+                    <p className="text-sm font-bold text-gray-900 truncate">{getOtherName(dm)}</p>
                     {dm.lastMessage && <p className="text-xs text-gray-400 truncate">{dm.lastMessage}</p>}
                   </div>
                   {dm.lastMessageAt && <span className="text-[10px] text-gray-400 flex-shrink-0">{fmtTime(dm.lastMessageAt)}</span>}
@@ -1294,13 +1379,13 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
                 <button
                   key={dm.id}
                   onClick={() => setOpenMemberDm(dm)}
-                  className="w-full bg-white rounded-2xl px-4 py-3 border border-gray-100 shadow-sm flex items-center gap-3 hover:border-[#d4a017]/30 transition-all text-left"
+                  className="w-full bg-white rounded-2xl px-4 py-3.5 border border-[#EDEBE8] flex items-center gap-3 hover:border-[#B8962E]/40 hover:shadow-sm transition-all text-left"
                 >
-                  <div className="w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center text-sm font-bold text-white bg-blue-500">
+                  <div className="w-11 h-11 rounded-full flex-shrink-0 flex items-center justify-center text-sm font-bold text-white bg-blue-500">
                     {getOtherName(dm).charAt(0).toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-gray-900 text-sm truncate">{getOtherName(dm)}</p>
+                    <p className="text-sm font-bold text-gray-900 truncate">{getOtherName(dm)}</p>
                     {dm.lastMessage && <p className="text-xs text-gray-400 truncate">{dm.lastMessage}</p>}
                   </div>
                   {dm.lastMessageAt && <span className="text-[10px] text-gray-400 flex-shrink-0">{fmtTime(dm.lastMessageAt)}</span>}
@@ -1314,32 +1399,32 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
       {/* New Channel Modal */}
       {showNewChannel && (
         <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-2xl w-full max-w-md">
-            <div className="p-5 border-b border-gray-100 flex items-center justify-between">
+          <div className="bg-white rounded-3xl w-full max-w-md">
+            <div className="p-5 border-b border-[#EDEBE8] flex items-center justify-between">
               <h3 className="font-bold text-gray-900">New Channel</h3>
               <button onClick={() => setShowNewChannel(false)}><X size={18} className="text-gray-400" /></button>
             </div>
             <div className="p-5 space-y-4 max-h-[55vh] overflow-y-auto">
               <div>
-                <label className="text-xs font-semibold text-gray-700 mb-1 block">Channel Name *</label>
+                <label className="text-xs font-semibold text-gray-500 mb-1 block">Channel Name *</label>
                 <input
                   value={newChannelName}
                   onChange={e => setNewChannelName(e.target.value)}
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#d4a017]"
+                  className="w-full rounded-xl border border-[#EDEBE8] px-3 py-2.5 text-sm focus:border-[#B8962E] focus:outline-none"
                   placeholder="e.g. announcements"
                 />
               </div>
               <div>
-                <label className="text-xs font-semibold text-gray-700 mb-1 block">Description</label>
+                <label className="text-xs font-semibold text-gray-500 mb-1 block">Description</label>
                 <input
                   value={newChannelDesc}
                   onChange={e => setNewChannelDesc(e.target.value)}
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#d4a017]"
+                  className="w-full rounded-xl border border-[#EDEBE8] px-3 py-2.5 text-sm focus:border-[#B8962E] focus:outline-none"
                   placeholder="What is this channel about?"
                 />
               </div>
               <div>
-                <label className="text-xs font-semibold text-gray-700 mb-1 block">
+                <label className="text-xs font-semibold text-gray-500 mb-1 block">
                   Members {selectedMembers.length > 0 && <span className="text-gray-400 font-normal">· {selectedMembers.length} selected</span>}
                 </label>
                 <p className="text-[11px] text-gray-400 mb-2">You are added automatically as the channel creator.</p>
@@ -1349,10 +1434,10 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
                     value={channelMemberSearch}
                     onChange={e => setChannelMemberSearch(e.target.value)}
                     placeholder="Search users by name or email..."
-                    className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-[#d4a017]"
+                    className="w-full pl-8 pr-3 py-2 text-sm rounded-xl border border-[#EDEBE8] focus:border-[#B8962E] focus:outline-none"
                   />
                 </div>
-                <div className="max-h-44 overflow-y-auto border border-gray-100 rounded-xl divide-y divide-gray-50">
+                <div className="max-h-44 overflow-y-auto border border-[#EDEBE8] rounded-xl divide-y divide-[#EDEBE8]">
                   {(() => {
                     const pool = channelPool
                       .filter(u => u.id !== currentUser?.uid)
@@ -1371,8 +1456,8 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
                           onClick={() => setSelectedMembers(prev => checked ? prev.filter(id => id !== u.id) : [...prev, u.id])}
                           className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-gray-50"
                         >
-                          <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
-                            style={{ backgroundColor: checked ? 'var(--brand-color, #d4a017)' : '#9ca3af' }}>
+                          <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white flex-shrink-0"
+                            style={{ backgroundColor: checked ? 'var(--brand-color, #B8962E)' : '#9ca3af' }}>
                             {u.displayName?.charAt(0)?.toUpperCase() || '?'}
                           </div>
                           <div className="flex-1 min-w-0">
@@ -1380,8 +1465,8 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
                             <p className="text-xs text-gray-400 truncate">{u.email}</p>
                             {membershipBadge(u.id)}
                           </div>
-                          <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 ${checked ? 'border-[#d4a017]' : 'border-gray-300'}`}
-                            style={checked ? { backgroundColor: 'var(--brand-color, #d4a017)' } : undefined}>
+                          <div className={`w-5 h-5 rounded-md border flex items-center justify-center flex-shrink-0 ${checked ? 'border-transparent' : 'border-[#EDEBE8]'}`}
+                            style={checked ? { backgroundColor: 'var(--brand-color, #B8962E)' } : undefined}>
                             {checked && (
                               <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
                             )}
@@ -1393,11 +1478,11 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
                 </div>
               </div>
             </div>
-            <div className="p-5 border-t border-gray-100 flex gap-3">
-              <button onClick={() => setShowNewChannel(false)} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600">Cancel</button>
+            <div className="p-5 border-t border-[#EDEBE8] flex gap-3">
+              <button onClick={() => setShowNewChannel(false)} className="flex-1 py-2.5 rounded-xl border border-[#EDEBE8] text-sm font-semibold text-gray-600">Cancel</button>
               <button onClick={createChannel} disabled={savingChannel || !newChannelName.trim()}
                 className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
-                style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}>
+                style={{ backgroundColor: 'var(--brand-color, #B8962E)' }}>
                 {savingChannel ? 'Creating...' : 'Create'}
               </button>
             </div>
