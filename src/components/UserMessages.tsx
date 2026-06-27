@@ -1,20 +1,30 @@
 "use client";
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, Send, MessageSquare, Hash, Megaphone } from 'lucide-react';
+import { ArrowLeft, Send, MessageSquare, Hash, Megaphone, Paperclip, X, Search, PenSquare } from 'lucide-react';
 import {
   collection, query, where, onSnapshot, addDoc, updateDoc, doc,
-  serverTimestamp, limit, Timestamp
+  serverTimestamp, limit, orderBy, getDocs, Timestamp
 } from 'firebase/firestore';
 import { db, auth } from '../firebase';
-import { getTenantScope } from '../utils/tenant-scope';
+import { getTenantScope, PLATFORM_TENANT_ID } from '../utils/tenant-scope';
+import { isSuperAdminEmail } from '../utils/super-admins';
 import { sortByTime } from '../utils/query-helpers';
 
 interface MessageAttachment {
-  type: 'doc' | 'contact' | 'campaign';
+  type: 'doc' | 'contact' | 'campaign' | 'form';
   id: string;
   title: string;
   subtitle: string;
 }
+
+interface AdminContact {
+  id: string;
+  displayName: string;
+  photoURL?: string;
+  role: string;
+}
+
+const ADMIN_ROLES = ['admin', 'church_admin', 'super_admin'];
 
 interface DirectMessage {
   id: string;
@@ -82,18 +92,138 @@ const fmtTime = (ts: Timestamp | null) => {
 
 // ─── Attachment Card (view-only for users) ───────────────────────────────────
 
-const AttachmentCard: React.FC<{ attachment: MessageAttachment }> = ({ attachment }) => {
-  const icon = attachment.type === 'doc' ? '📄' : attachment.type === 'contact' ? '👤' : '🎯';
-  const label = attachment.type === 'doc' ? 'Note / Doc' : attachment.type === 'contact' ? 'Contact' : 'Campaign';
+const AttachmentCard: React.FC<{ attachment: MessageAttachment; tenantId?: string }> = ({ attachment, tenantId }) => {
+  const icon = attachment.type === 'doc' ? '📄' : attachment.type === 'contact' ? '👤' : attachment.type === 'form' ? '📝' : '🎯';
+  const label = attachment.type === 'doc' ? 'Note / Doc' : attachment.type === 'contact' ? 'Contact' : attachment.type === 'form' ? 'Form' : 'Campaign';
+  // Forms link to the public, no-auth form page on the tenant subdomain.
+  const formUrl = attachment.type === 'form' && tenantId
+    ? `https://${tenantId}.theharvest.app/form/${attachment.id}`
+    : null;
   return (
     <div className="mt-1.5 bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm" style={{ maxWidth: 210 }}>
-      <div className="flex items-start gap-2 p-3">
+      <div className={`flex items-start gap-2 p-3 ${formUrl ? 'pb-2' : ''}`}>
         <span className="text-lg leading-none flex-shrink-0">{icon}</span>
         <div className="flex-1 min-w-0">
           <p className="text-[10px] font-bold uppercase tracking-wide text-gray-400 mb-0.5">{label}</p>
           <p className="text-xs font-semibold text-gray-900 truncate leading-tight">{attachment.title}</p>
           <p className="text-[10px] text-gray-400 truncate mt-0.5">{attachment.subtitle}</p>
         </div>
+      </div>
+      {formUrl && (
+        <div className="px-3 pb-3">
+          <a
+            href={formUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block w-full text-center text-[11px] font-bold py-1.5 rounded-lg text-white transition-opacity hover:opacity-90"
+            style={{ backgroundColor: 'var(--brand-color, #B8962E)' }}
+          >
+            Open Form
+          </a>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ─── Form Picker (forms-only; for attaching a form in a DM) ───────────────────
+
+const FormPicker: React.FC<{
+  tenantId: string;
+  selected: MessageAttachment[];
+  onToggle: (a: MessageAttachment) => void;
+  onClose: () => void;
+}> = ({ tenantId, selected, onToggle, onClose }) => {
+  const [items, setItems] = useState<MessageAttachment[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState('');
+
+  useEffect(() => {
+    if (!tenantId) return;
+    setLoading(true);
+    let cancelled = false;
+    (async () => {
+      try {
+        // Forms live in the tenant subcollection; only publicly-openable (active) forms.
+        const snap = await getDocs(query(collection(db, 'tenants', tenantId, 'forms'), orderBy('createdAt', 'desc'), limit(50)));
+        if (cancelled) return;
+        setItems(snap.docs
+          .filter(d => d.data().active !== false)
+          .map(d => {
+            const data = d.data();
+            const count = (data.submissionCount as number) || 0;
+            return { type: 'form' as const, id: d.id, title: (data.title as string) || 'Untitled Form', subtitle: `${count} ${count === 1 ? 'submission' : 'submissions'}` };
+          }));
+      } catch { if (!cancelled) setItems([]); }
+      finally { if (!cancelled) setLoading(false); }
+    })();
+    return () => { cancelled = true; };
+  }, [tenantId]);
+
+  const filtered = search
+    ? items.filter(i => i.title.toLowerCase().includes(search.toLowerCase()))
+    : items;
+  const isSelected = (id: string) => selected.some(s => s.id === id);
+
+  return (
+    <div className="fixed inset-0 z-[300] flex items-end">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="relative w-full bg-white rounded-t-2xl max-h-[70vh] flex flex-col">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 flex-shrink-0">
+          <h3 className="font-bold text-gray-900 text-sm">Attach a Form</h3>
+          <button onClick={onClose}><X size={18} className="text-gray-400" /></button>
+        </div>
+        <div className="relative mx-4 mt-3 mb-2 flex-shrink-0">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search forms..."
+            className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-[#B8962E]"
+          />
+        </div>
+        <div className="overflow-y-auto flex-1">
+          {loading ? (
+            <div className="flex items-center justify-center py-10">
+              <div className="w-6 h-6 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--brand-color, #B8962E)', borderTopColor: 'transparent' }} />
+            </div>
+          ) : filtered.length === 0 ? (
+            <p className="text-center py-10 text-sm text-gray-400">{search ? 'Nothing found' : 'No active forms yet'}</p>
+          ) : filtered.map(item => {
+            const sel = isSelected(item.id);
+            return (
+              <button
+                key={item.id}
+                onClick={() => onToggle(item)}
+                className={`w-full flex items-center gap-3 px-5 py-3 text-left transition-colors ${sel ? 'bg-amber-50' : 'hover:bg-gray-50'}`}
+              >
+                <span className="text-xl flex-shrink-0">📝</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-gray-900 truncate">{item.title}</p>
+                  <p className="text-xs text-gray-400 truncate">{item.subtitle}</p>
+                </div>
+                {sel && (
+                  <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: 'var(--brand-color, #B8962E)' }}>
+                    <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
+                      <path d="M2 6l3 3 5-5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </div>
+                )}
+              </button>
+            );
+          })}
+        </div>
+        {selected.length > 0 && (
+          <div className="p-4 border-t border-gray-100 flex-shrink-0">
+            <button
+              onClick={onClose}
+              className="w-full py-2.5 rounded-xl text-sm font-semibold text-white"
+              style={{ backgroundColor: 'var(--brand-color, #B8962E)' }}
+            >
+              Done · {selected.length} attached
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -109,7 +239,16 @@ const DmThread: React.FC<{
   const [messages, setMessages] = useState<DmMessage[]>([]);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
+  const [attachments, setAttachments] = useState<MessageAttachment[]>([]);
+  const [showPicker, setShowPicker] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  const toggleAttachment = (a: MessageAttachment) => {
+    setAttachments(prev => {
+      const idx = prev.findIndex(p => p.id === a.id);
+      return idx >= 0 ? prev.filter((_, i) => i !== idx) : [...prev, a];
+    });
+  };
 
   useEffect(() => {
     // Single-field filter only (dmId); sort client-side to avoid a composite index.
@@ -135,23 +274,26 @@ const DmThread: React.FC<{
   }, [messages]);
 
   const send = async () => {
-    if (!text.trim() || sending) return;
+    if ((!text.trim() && attachments.length === 0) || sending) return;
     setSending(true);
     try {
       const content = text.trim();
-      await addDoc(collection(db, 'tenants', tenantId, 'dmMessages'), {
+      const payload: Record<string, unknown> = {
         dmId: dm.id,
         senderId: currentUser.uid,
         senderName: currentUser.name,
         content,
         createdAt: serverTimestamp(),
         read: false,
-      });
+      };
+      if (attachments.length > 0) payload.attachments = attachments;
+      await addDoc(collection(db, 'tenants', tenantId, 'dmMessages'), payload);
       await updateDoc(doc(db, 'tenants', tenantId, 'directMessages', dm.id), {
-        lastMessage: content,
+        lastMessage: content || (attachments.length > 0 ? `📎 ${attachments[0].title}` : ''),
         lastMessageAt: serverTimestamp(),
       });
       setText('');
+      setAttachments([]);
     } catch (e) { console.error(e); }
     finally { setSending(false); }
   };
@@ -191,7 +333,7 @@ const DmThread: React.FC<{
                     {m.content}
                   </p>
                 )}
-                {m.attachments?.map((a, i) => <AttachmentCard key={i} attachment={a} />)}
+                {m.attachments?.map((a, i) => <AttachmentCard key={i} attachment={a} tenantId={tenantId} />)}
                 <span className="text-[10px] text-gray-400 mt-0.5">{fmtTime(m.createdAt)}</span>
               </div>
             </div>
@@ -201,7 +343,27 @@ const DmThread: React.FC<{
       </div>
 
       <div className="p-4 bg-white border-t border-gray-100">
+        {attachments.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-2">
+            {attachments.map((a, i) => (
+              <div key={i} className="flex items-center gap-1.5 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1">
+                <span className="text-sm">📝</span>
+                <span className="text-xs font-medium text-gray-700 max-w-[90px] truncate">{a.title}</span>
+                <button onClick={() => setAttachments(prev => prev.filter((_, idx) => idx !== i))}>
+                  <X size={11} className="text-gray-400" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
         <div className="flex gap-2 items-center bg-gray-50 rounded-2xl px-3 py-2 border border-gray-200">
+          <button
+            onClick={() => setShowPicker(true)}
+            className="flex-shrink-0 p-1 rounded-lg hover:bg-gray-200 transition-colors"
+            aria-label="Attach a form"
+          >
+            <Paperclip size={16} className="text-gray-500" />
+          </button>
           <input
             value={text}
             onChange={e => setText(e.target.value)}
@@ -211,7 +373,7 @@ const DmThread: React.FC<{
           />
           <button
             onClick={send}
-            disabled={!text.trim() || sending}
+            disabled={(!text.trim() && attachments.length === 0) || sending}
             className="w-8 h-8 rounded-full flex items-center justify-center disabled:opacity-40 transition-opacity"
             style={{ backgroundColor: 'var(--brand-color, #B8962E)' }}
           >
@@ -219,6 +381,15 @@ const DmThread: React.FC<{
           </button>
         </div>
       </div>
+
+      {showPicker && (
+        <FormPicker
+          tenantId={tenantId}
+          selected={attachments}
+          onToggle={toggleAttachment}
+          onClose={() => setShowPicker(false)}
+        />
+      )}
     </div>
   );
 };
@@ -312,7 +483,7 @@ const ChannelView: React.FC<{
                     {m.content}
                   </p>
                 )}
-                {m.attachments?.map((a, i) => <AttachmentCard key={i} attachment={a} />)}
+                {m.attachments?.map((a, i) => <AttachmentCard key={i} attachment={a} tenantId={tenantId} />)}
               </div>
             </div>
           );
@@ -357,20 +528,34 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false })
   const [loading, setLoading] = useState(true);
   const [openDm, setOpenDm] = useState<DirectMessage | null>(null);
   const [openChannel, setOpenChannel] = useState<Channel | null>(null);
+  const [showNewMessage, setShowNewMessage] = useState(false);
+  const [admins, setAdmins] = useState<AdminContact[]>([]);
+  const [adminsLoading, setAdminsLoading] = useState(false);
+  const [adminSearch, setAdminSearch] = useState('');
+  const [creating, setCreating] = useState<string | null>(null);
+  // Only admins / super admins can list the tenant's users (Firestore rules), so the
+  // "New Message" admin picker is only shown to them — a regular member would just
+  // hit a permission-denied list query and an empty picker.
+  const [canStartDm, setCanStartDm] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     getTenantScope().then(async tid => {
       if (cancelled) return;
-      setTenantId(tid);
+      // On the apex/root there is no subdomain tenant; a signed-in super admin
+      // operates as the platform tenant so DMs resolve under `harvest`, not null.
+      const resolved = tid || (isSuperAdminEmail(auth.currentUser?.email) ? PLATFORM_TENANT_ID : null);
+      setTenantId(resolved);
       if (!auth.currentUser) { setLoading(false); return; }
       const { getDoc } = await import('firebase/firestore');
       const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
       const name = userDoc.exists()
         ? (userDoc.data().displayName || auth.currentUser.displayName || 'You')
         : (auth.currentUser.displayName || 'You');
+      const role = userDoc.exists() ? (userDoc.data().role || 'user') : 'user';
       if (cancelled) return;
       setCurrentUser({ uid: auth.currentUser.uid, name });
+      setCanStartDm(isSuperAdminEmail(auth.currentUser.email) || ADMIN_ROLES.includes(role));
       setLoading(false);
     });
     return () => { cancelled = true; };
@@ -409,6 +594,83 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false })
     const otherId = dm.participants.find(p => p !== currentUser.uid) || '';
     return (dm as any).participantNames?.[otherId] || 'Admin';
   };
+
+  // Load the tenant's admins for the "New Message" picker. Single-field equality
+  // query (no composite index); roles filtered client-side. For the platform tenant
+  // under a super admin, legacy null-tenant admin docs are merged in too.
+  // (Firestore rules only permit super admins / tenant admins to list users, so for
+  // a regular member this resolves to an empty list — handled gracefully in the UI.)
+  const loadAdmins = async () => {
+    if (!tenantId || !currentUser) return;
+    setAdminsLoading(true);
+    try {
+      const includeNull = isSuperAdminEmail(auth.currentUser?.email) && tenantId === PLATFORM_TENANT_ID;
+      const snaps = await Promise.all([
+        getDocs(query(collection(db, 'users'), where('tenantId', '==', tenantId), limit(200))),
+        ...(includeNull ? [getDocs(query(collection(db, 'users'), where('tenantId', '==', null), limit(200)))] : []),
+      ]);
+      const seen = new Set<string>();
+      const rows: AdminContact[] = [];
+      snaps.forEach(snap => snap.docs.forEach(d => {
+        if (seen.has(d.id) || d.id === currentUser.uid) return;
+        const data = d.data();
+        if (!ADMIN_ROLES.includes(data.role)) return;
+        seen.add(d.id);
+        rows.push({ id: d.id, displayName: data.displayName || data.email || 'Admin', photoURL: data.photoURL, role: data.role });
+      }));
+      rows.sort((a, b) => a.displayName.localeCompare(b.displayName));
+      setAdmins(rows);
+    } catch {
+      setAdmins([]);
+    } finally {
+      setAdminsLoading(false);
+    }
+  };
+
+  const openNewMessage = () => {
+    setAdminSearch('');
+    setShowNewMessage(true);
+    loadAdmins();
+  };
+
+  // Create (or reopen) a DM with the chosen admin, then jump into the thread.
+  const startDm = async (admin: AdminContact) => {
+    if (!tenantId || !currentUser || creating) return;
+    const existing = dms.find(dm => dm.participants.includes(admin.id) && dm.participants.includes(currentUser.uid));
+    if (existing) { setOpenDm(existing); setShowNewMessage(false); return; }
+    setCreating(admin.id);
+    try {
+      const participantNames = { [currentUser.uid]: currentUser.name, [admin.id]: admin.displayName };
+      const participantRoles = { [currentUser.uid]: 'user', [admin.id]: 'admin' };
+      const ref = await addDoc(collection(db, 'tenants', tenantId, 'directMessages'), {
+        participants: [currentUser.uid, admin.id],
+        participantRoles,
+        participantNames,
+        createdAt: serverTimestamp(),
+        lastMessage: '',
+        lastMessageAt: serverTimestamp(),
+        initiatedBy: currentUser.uid,
+      });
+      setShowNewMessage(false);
+      setOpenDm({
+        id: ref.id,
+        participants: [currentUser.uid, admin.id],
+        participantRoles,
+        participantNames,
+        lastMessage: '',
+        lastMessageAt: null,
+        initiatedBy: currentUser.uid,
+      });
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setCreating(null);
+    }
+  };
+
+  const filteredAdmins = adminSearch
+    ? admins.filter(a => a.displayName.toLowerCase().includes(adminSearch.toLowerCase()))
+    : admins;
 
   if (loading) {
     return (
@@ -460,6 +722,15 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false })
           </button>
         )}
         <h2 className="text-lg font-bold text-gray-900">Messages</h2>
+        {canStartDm && (
+          <button
+            onClick={openNewMessage}
+            className="ml-auto flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold text-white"
+            style={{ backgroundColor: 'var(--brand-color, #B8962E)' }}
+          >
+            <PenSquare size={15} /> New Message
+          </button>
+        )}
       </div>
 
       <div className="flex-1 p-4">
@@ -467,7 +738,11 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false })
           <div className="text-center py-16 text-gray-400">
             <MessageSquare size={40} className="mx-auto mb-3 opacity-30" />
             <p className="font-medium">No messages yet</p>
-            <p className="text-sm mt-1">No messages yet — your admin will reach out here</p>
+            <p className="text-sm mt-1">
+              {canStartDm
+                ? <>Tap <span className="font-semibold text-gray-500">New Message</span> to start a conversation.</>
+                : 'Your admin will reach out here.'}
+            </p>
           </div>
         ) : (
           <>
@@ -520,6 +795,59 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false })
           </>
         )}
       </div>
+
+      {showNewMessage && (
+        <div className="fixed inset-0 z-[300] flex items-end">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setShowNewMessage(false)} />
+          <div className="relative w-full bg-white rounded-t-2xl max-h-[70vh] flex flex-col">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 flex-shrink-0">
+              <h3 className="font-bold text-gray-900 text-sm">New Message</h3>
+              <button onClick={() => setShowNewMessage(false)}><X size={18} className="text-gray-400" /></button>
+            </div>
+            <div className="relative mx-4 mt-3 mb-2 flex-shrink-0">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                value={adminSearch}
+                onChange={e => setAdminSearch(e.target.value)}
+                placeholder="Search admins..."
+                className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-[#B8962E]"
+              />
+            </div>
+            <div className="overflow-y-auto flex-1">
+              {adminsLoading ? (
+                <div className="flex items-center justify-center py-10">
+                  <div className="w-6 h-6 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--brand-color, #B8962E)', borderTopColor: 'transparent' }} />
+                </div>
+              ) : filteredAdmins.length === 0 ? (
+                <p className="text-center py-10 text-sm text-gray-400 px-6">{adminSearch ? 'Nothing found' : 'No admins available to message yet.'}</p>
+              ) : filteredAdmins.map(a => (
+                <button
+                  key={a.id}
+                  onClick={() => startDm(a)}
+                  disabled={!!creating}
+                  className="w-full flex items-center gap-3 px-5 py-3 text-left hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                >
+                  {a.photoURL ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={a.photoURL} alt={a.displayName} className="w-9 h-9 rounded-full object-cover flex-shrink-0" />
+                  ) : (
+                    <div className="w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold text-white" style={{ backgroundColor: '#B8962E' }}>
+                      {a.displayName.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-900 truncate">{a.displayName}</p>
+                    <p className="text-xs text-gray-400 truncate">{a.role === 'super_admin' ? 'Super Admin' : a.role === 'church_admin' ? 'Church Admin' : 'Admin'}</p>
+                  </div>
+                  {creating === a.id && (
+                    <div className="w-4 h-4 border-2 border-t-transparent rounded-full animate-spin flex-shrink-0" style={{ borderColor: '#B8962E', borderTopColor: 'transparent' }} />
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

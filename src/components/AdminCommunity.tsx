@@ -100,7 +100,7 @@ const MessageAvatar: React.FC<{ senderId: string; senderName: string; bg?: strin
 };
 
 interface MessageAttachment {
-  type: 'doc' | 'contact' | 'campaign';
+  type: 'doc' | 'contact' | 'campaign' | 'form';
   id: string;
   title: string;
   subtitle: string;
@@ -159,7 +159,7 @@ interface AdminUser {
 }
 
 type MainTab = 'channels' | 'admin-dms' | 'member-dms';
-type AttachTab = 'docs' | 'contacts' | 'campaigns';
+type AttachTab = 'docs' | 'contacts' | 'campaigns' | 'forms';
 
 const fmtTime = (ts: Timestamp | null) => {
   if (!ts) return '';
@@ -188,8 +188,8 @@ const RoleBadge: React.FC<{ role?: string }> = ({ role }) => {
 // ─── Attachment Card ─────────────────────────────────────────────────────────
 
 const AttachmentCard: React.FC<{ attachment: MessageAttachment; onOpen?: () => void }> = ({ attachment, onOpen }) => {
-  const icon = attachment.type === 'doc' ? '📄' : attachment.type === 'contact' ? '👤' : '🎯';
-  const label = attachment.type === 'doc' ? 'Open Doc' : attachment.type === 'contact' ? 'View Contact' : 'View Campaign';
+  const icon = attachment.type === 'doc' ? '📄' : attachment.type === 'contact' ? '👤' : attachment.type === 'form' ? '📝' : '🎯';
+  const label = attachment.type === 'doc' ? 'Open Doc' : attachment.type === 'contact' ? 'View Contact' : attachment.type === 'form' ? 'Open Form' : 'View Campaign';
   return (
     <div className="mt-1.5 bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm" style={{ maxWidth: 224 }}>
       <div className="flex items-start gap-2 p-3 pb-2">
@@ -268,7 +268,7 @@ const AttachPicker: React.FC<{
             const subtitle = data.email ? `${badge} · ${data.email}` : badge;
             return { type: 'contact' as const, id: d.id, title: name, subtitle };
           }));
-        } else {
+        } else if (tab === 'campaigns') {
           const campaignDocs = await dualTenantDocs('campaigns', tenantId, includeNull, 50);
           if (cancelled) return;
           setItems(campaignDocs.map(d => {
@@ -281,6 +281,19 @@ const AttachPicker: React.FC<{
               : `$${raised.toLocaleString()} raised`;
             return { type: 'campaign' as const, id: d.id, title: (data.title as string) || 'Campaign', subtitle: `${money} · ${status}` };
           }));
+        } else {
+          // Forms live in the tenant SUBCOLLECTION (tenants/{tenantId}/forms), not a
+          // flat tenantId-scoped collection — so dualTenantDocs does not apply here.
+          // Only list forms that are publicly openable (active !== false).
+          const snap = await getDocs(query(collection(db, 'tenants', tenantId, 'forms'), orderBy('createdAt', 'desc'), limit(50)));
+          if (cancelled) return;
+          setItems(snap.docs
+            .filter(d => d.data().active !== false)
+            .map(d => {
+              const data = d.data();
+              const count = (data.submissionCount as number) || 0;
+              return { type: 'form' as const, id: d.id, title: (data.title as string) || 'Untitled Form', subtitle: `${count} ${count === 1 ? 'submission' : 'submissions'}` };
+            }));
         }
       } catch (e) {
         if (!cancelled) {
@@ -295,7 +308,7 @@ const AttachPicker: React.FC<{
     return () => { cancelled = true; };
   }, [tab, tenantId, includeNull]);
 
-  const emptyLabel = tab === 'docs' ? 'No docs yet' : tab === 'contacts' ? 'No contacts yet' : 'No campaigns yet';
+  const emptyLabel = tab === 'docs' ? 'No docs yet' : tab === 'contacts' ? 'No contacts yet' : tab === 'forms' ? 'No active forms yet' : 'No campaigns yet';
 
   const filtered = search
     ? items.filter(i =>
@@ -315,7 +328,7 @@ const AttachPicker: React.FC<{
           <button onClick={onClose}><X size={18} className="text-gray-400" /></button>
         </div>
         <div className="flex gap-1 bg-gray-100 rounded-xl p-1 mx-4 mt-3 mb-2 flex-shrink-0">
-          {([['docs', 'Notes & Docs'], ['contacts', 'Contacts'], ['campaigns', 'Fundraising']] as [AttachTab, string][]).map(([id, lbl]) => (
+          {([['docs', 'Notes & Docs'], ['contacts', 'Contacts'], ['campaigns', 'Fundraising'], ['forms', 'Forms']] as [AttachTab, string][]).map(([id, lbl]) => (
             <button
               key={id}
               onClick={() => { setTab(id as AttachTab); setSearch(''); }}
@@ -343,7 +356,7 @@ const AttachPicker: React.FC<{
             <p className="text-center py-10 text-sm text-gray-400">{search ? 'Nothing found' : emptyLabel}</p>
           ) : filtered.map(item => {
             const sel = isSelected(item.id);
-            const icon = item.type === 'doc' ? '📄' : item.type === 'contact' ? '👤' : '🎯';
+            const icon = item.type === 'doc' ? '📄' : item.type === 'contact' ? '👤' : item.type === 'form' ? '📝' : '🎯';
             return (
               <button
                 key={item.id}
@@ -597,7 +610,15 @@ const ChannelThread: React.FC<{
                 </p>
               )}
               {m.attachments?.map((a, i) => (
-                <AttachmentCard key={i} attachment={a} onOpen={onOpenAttachment ? () => onOpenAttachment(a.type, a.id) : undefined} />
+                <AttachmentCard
+                  key={i}
+                  attachment={a}
+                  onOpen={
+                    a.type === 'form'
+                      ? () => window.open(`https://${tenantId}.theharvest.app/form/${a.id}`, '_blank', 'noopener')
+                      : (onOpenAttachment ? () => onOpenAttachment(a.type, a.id) : undefined)
+                  }
+                />
               ))}
             </div>
           </div>
@@ -610,7 +631,7 @@ const ChannelThread: React.FC<{
           <div className="flex flex-wrap gap-2 mb-2">
             {attachments.map((a, i) => (
               <div key={i} className="flex items-center gap-1.5 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1">
-                <span className="text-sm">{a.type === 'doc' ? '📄' : a.type === 'contact' ? '👤' : '🎯'}</span>
+                <span className="text-sm">{a.type === 'doc' ? '📄' : a.type === 'contact' ? '👤' : a.type === 'form' ? '📝' : '🎯'}</span>
                 <span className="text-xs font-medium text-gray-700 max-w-[90px] truncate">{a.title}</span>
                 <button onClick={() => setAttachments(prev => prev.filter((_, idx) => idx !== i))}>
                   <X size={11} className="text-gray-400" />
@@ -749,7 +770,15 @@ const DmThread: React.FC<{
                   </p>
                 )}
                 {m.attachments?.map((a, i) => (
-                  <AttachmentCard key={i} attachment={a} onOpen={onOpenAttachment ? () => onOpenAttachment(a.type, a.id) : undefined} />
+                  <AttachmentCard
+                    key={i}
+                    attachment={a}
+                    onOpen={
+                      a.type === 'form'
+                        ? () => window.open(`https://${tenantId}.theharvest.app/form/${a.id}`, '_blank', 'noopener')
+                        : (onOpenAttachment ? () => onOpenAttachment(a.type, a.id) : undefined)
+                    }
+                  />
                 ))}
               </div>
             </div>
@@ -763,7 +792,7 @@ const DmThread: React.FC<{
           <div className="flex flex-wrap gap-2 mb-2">
             {attachments.map((a, i) => (
               <div key={i} className="flex items-center gap-1.5 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1">
-                <span className="text-sm">{a.type === 'doc' ? '📄' : a.type === 'contact' ? '👤' : '🎯'}</span>
+                <span className="text-sm">{a.type === 'doc' ? '📄' : a.type === 'contact' ? '👤' : a.type === 'form' ? '📝' : '🎯'}</span>
                 <span className="text-xs font-medium text-gray-700 max-w-[90px] truncate">{a.title}</span>
                 <button onClick={() => setAttachments(prev => prev.filter((_, idx) => idx !== i))}>
                   <X size={11} className="text-gray-400" />
