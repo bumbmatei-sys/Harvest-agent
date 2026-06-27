@@ -24,6 +24,8 @@ import { auth } from '../firebase';
 import { isSuperAdminEmail } from '../utils/super-admins';
 import { useAppStore } from '../store/useAppStore';
 import { useTenant } from '../contexts/TenantContext';
+import LiveNowBanner from './LiveNowBanner';
+import LivestreamView from './LivestreamView';
 
 const PLATFORM_TENANT_ID = process.env.NEXT_PUBLIC_PLATFORM_TENANT_ID || 'harvest';
 const DEFAULT_LOGO = 'https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png';
@@ -48,7 +50,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const lastScrollYRef = useRef(0);
   const [direction, setDirection] = useState(0);
-  const [fullScreenView, setFullScreenView] = useState<{type: 'none' | 'all-news' | 'article' | 'course', id?: string, data?: any}>({type: 'none'});
+  const [fullScreenView, setFullScreenView] = useState<{type: 'none' | 'all-news' | 'article' | 'course' | 'livestream', id?: string, data?: any}>({type: 'none'});
 
   // Main site users (no tenantPlan) get all features — Chat behind paywall, Map included.
   // Super admins always get all features regardless of their tenant plan.
@@ -195,10 +197,20 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
 
   if (fullScreenView.type === 'course' && fullScreenView.data) {
     return (
-      <CourseExperience 
-        initialCourseId={fullScreenView.data.courseId} 
+      <CourseExperience
+        initialCourseId={fullScreenView.data.courseId}
         initialLessonId={fullScreenView.data.lessonId}
-        onBack={() => setFullScreenView({type: 'none'})} 
+        onBack={() => setFullScreenView({type: 'none'})}
+      />
+    );
+  }
+
+  if (fullScreenView.type === 'livestream') {
+    return (
+      <LivestreamView
+        tenantId={tenantId}
+        onBack={() => setFullScreenView({ type: 'none' })}
+        onDonate={() => { setFullScreenView({ type: 'none' }); setActiveBottomTab('home'); setActiveTopTab('partner'); }}
       />
     );
   }
@@ -315,10 +327,13 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
                 >
                   {/* Content based on activeTopTab */}
                   {activeTopTab === 'news' && (
-                    <NewsTab 
-                      onOpenAllNews={() => setFullScreenView({type: 'all-news'})} 
-                      onOpenArticle={(post) => setFullScreenView({type: 'article', data: post})} 
-                    />
+                    <>
+                      <LiveNowBanner tenantId={tenantId} onOpen={() => setFullScreenView({ type: 'livestream' })} />
+                      <NewsTab
+                        onOpenAllNews={() => setFullScreenView({type: 'all-news'})}
+                        onOpenArticle={(post) => setFullScreenView({type: 'article', data: post})}
+                      />
+                    </>
                   )}
                   {activeTopTab === 'partner' && (
                     <PartnerWithUsTab />
