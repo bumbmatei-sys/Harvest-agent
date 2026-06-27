@@ -301,11 +301,13 @@ service cloud.firestore {
         allow write: if isTenantAdmin(tenantId);
       }
 
-      // Custom forms — admins manage forms; submissions are written server-side
-      // via the admin SDK (public form page → /api/forms/submit), so client
-      // access stays admin-only here.
+      // Custom forms — admins manage (write) forms; any tenant member may read
+      // form metadata so forms can be attached in channel/DM messages and opened.
+      // Form content is public anyway (rendered on the no-auth /form/{id} page).
+      // Submissions remain admin-only (read server-side via the admin SDK).
       match /forms/{formId} {
-        allow read, write: if isTenantAdmin(tenantId);
+        allow read: if belongsToTenant(tenantId);
+        allow write: if isTenantAdmin(tenantId);
 
         match /submissions/{submissionId} {
           allow read, write: if isTenantAdmin(tenantId);

@@ -135,7 +135,21 @@ const AdminCheckin: React.FC = () => {
         createdBy: auth.currentUser?.uid || '',
       });
       await updateDoc(doc(db, 'tenants', tenantId, 'checkinSessions', ref.id), { qrCodeUrl: checkinUrl(ref.id) });
-      setView('list');
+      // Open the new session's detail view so its QR code shows immediately.
+      // (createdAt is a server sentinel at write time, so use null client-side.)
+      setSelected({
+        id: ref.id,
+        name: name.trim(),
+        date: date ? new Date(date).toISOString() : null,
+        location: location.trim() || undefined,
+        linkedEventId: linkedEventId || null,
+        status: 'active',
+        attendeeCount: 0,
+        createdAt: null,
+        createdBy: auth.currentUser?.uid || '',
+      });
+      setName(''); setDate(''); setLocation(''); setLinkedEventId('');
+      setView('detail');
     } catch (e) {
       console.error('Failed to create session:', e);
       alert('Failed to create session. Please try again.');
@@ -213,7 +227,7 @@ const AdminCheckin: React.FC = () => {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">Linked Event <span className="text-gray-400 font-normal">(optional)</span></label>
             <select value={linkedEventId} onChange={e => setLinkedEventId(e.target.value)} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#B8962E] bg-white">
-              <option value="">None</option>
+              <option value="">No linked event</option>
               {events.map(ev => <option key={ev.id} value={ev.id}>{ev.title}</option>)}
             </select>
           </div>
@@ -321,6 +335,9 @@ const AdminCheckin: React.FC = () => {
 
   return (
     <div className="max-w-3xl mx-auto" style={{ paddingBottom: 120 }}>
+      <p className="text-sm text-gray-500 mb-4 leading-relaxed">
+        Create a session, then show its QR code (project or print). People scan it to check in on their phones, and you&apos;ll see them appear live below — export the list to CSV anytime.
+      </p>
       {sessions.length === 0 ? (
         <div className="text-center py-16 text-gray-400">
           <QrCode size={40} className="mx-auto mb-3 opacity-30" />
