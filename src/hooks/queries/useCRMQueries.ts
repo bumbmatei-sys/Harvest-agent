@@ -3,7 +3,7 @@ import { collection, query, where, getDocs, getDoc, doc, limit } from 'firebase/
 import { db } from '../../firebase';
 import type { Timestamp } from 'firebase/firestore';
 import { sortByString, sortByTime } from '../../utils/query-helpers';
-import { PLATFORM_TENANT_ID } from '../../utils/tenant-scope';
+import { PLATFORM_TENANT_ID, getTenantScope } from '../../utils/tenant-scope';
 
 /** CRM pipeline stages, from first contact through to deeply-invested leader. */
 export type PipelineStage =
@@ -75,6 +75,98 @@ export const useContacts = (tenantId: string | null | undefined, isAuthReady = t
         rows = snap.docs.map(d => ({ id: d.id, stage: 'new', ...d.data() }) as Contact);
       }
       return sortByString(rows, 'lastName', 'asc');
+    },
+    enabled: isAuthReady && tenantId !== undefined,
+    staleTime: 1000 * 60 * 5,
+  });
+
+/** Turn an app `users` doc into a synthetic Member-type Contact for the CRM. */
+const userDocToMemberContact = (
+  id: string,
+  u: Record<string, any>,
+  fallbackTenantId: string | null | undefined,
+): Contact => {
+  const fullName = String(u.displayName || u.name || '').trim();
+  const parts = fullName ? fullName.split(/\s+/) : [];
+  return {
+    id,
+    firstName: parts[0] || '',
+    lastName: parts.slice(1).join(' '),
+    email: u.email || '',
+    phone: u.phone || '',
+    type: 'member',
+    stage: 'new',
+    address: {
+      city: u.city || undefined,
+      country: u.country || undefined,
+    },
+    notes: '',
+    tags: [],
+    totalDonated: 0,
+    lastDonationAt: null,
+    memberSince: null,
+    createdAt: null,
+    createdBy: id,
+    updatedAt: null,
+    tenantId: (u.tenantId ?? fallbackTenantId ?? PLATFORM_TENANT_ID) as string,
+  };
+};
+
+/**
+ * CRM contacts list that ALSO surfaces app members from the `users` collection.
+ *
+ * The CRM `contacts` collection only holds manually-added records, so a tenant's
+ * actual app members (who sign up via the app and live in `users`) never appeared
+ * in the CRM. This merges both: real contacts first, then every app user that
+ * isn't already a contact (matched by email) as a Member-type row. Users are
+ * scoped exactly like the Analytics tab (`getTenantScope`) so a platform super
+ * admin sees every member — including legacy rows with a null/missing tenantId.
+ */
+export const useContactsWithUsers = (tenantId: string | null | undefined, isAuthReady = true) =>
+  useQuery({
+    // Shares the ['contacts', tenantId] prefix so existing invalidations refresh it.
+    queryKey: ['contacts', tenantId, 'with-users'],
+    queryFn: async (): Promise<Contact[]> => {
+      // 1) Real CRM contacts (same scoping as useContacts).
+      let contactRows: Contact[];
+      if (!tenantId || tenantId === PLATFORM_TENANT_ID) {
+        const snap = await getDocs(query(collection(db, 'contacts'), limit(1000)));
+        contactRows = snap.docs
+          .map(d => ({ id: d.id, stage: 'new', ...d.data() }) as Contact)
+          .filter(c => c.tenantId == null || c.tenantId === '' || c.tenantId === PLATFORM_TENANT_ID);
+      } else {
+        const snap = await getDocs(
+          query(collection(db, 'contacts'), where('tenantId', '==', tenantId), limit(500)),
+        );
+        contactRows = snap.docs.map(d => ({ id: d.id, stage: 'new', ...d.data() }) as Contact);
+      }
+
+      // 2) App members from `users`, scoped like the Analytics tab.
+      let userDocs: Awaited<ReturnType<typeof getDocs>>['docs'] = [];
+      try {
+        const scope = await getTenantScope();
+        const usersQ = scope
+          ? query(collection(db, 'users'), where('tenantId', '==', scope), limit(1000))
+          : query(collection(db, 'users'), limit(1000));
+        userDocs = (await getDocs(usersQ)).docs;
+      } catch (e) {
+        console.error('[CRM] failed to load app members from users:', e);
+      }
+
+      // Merge: skip any user already present as a manual contact (by email).
+      const seenEmails = new Set(
+        contactRows.map(c => (c.email || '').toLowerCase()).filter(Boolean),
+      );
+      const userMembers: Contact[] = [];
+      for (const d of userDocs) {
+        const u = d.data() as Record<string, any>;
+        const email = String(u.email || '').toLowerCase();
+        if (email && seenEmails.has(email)) continue;
+        if (email) seenEmails.add(email);
+        userMembers.push(userDocToMemberContact(d.id, u, tenantId));
+      }
+
+      return sortByString([...contactRows, ...userMembers], 'lastName', 'asc');
     },
     enabled: isAuthReady && tenantId !== undefined,
     staleTime: 1000 * 60 * 5,

@@ -34,6 +34,29 @@ async function dualTenantDocs(
   return [...primary.docs, ...legacy.docs.filter(d => !seen.has(d.id))];
 }
 
+/**
+ * Load `users` docs for an admin scope. For the platform super admin (includeNull),
+ * members created BEFORE the tenant existed may carry a null OR a *missing*
+ * tenantId — which an equality query can't union (Firestore can't match a missing
+ * field) — so fetch and keep the platform-owned rows (tenantId == tenant / null /
+ * '' / missing). A super admin may read the whole `users` collection. Regular
+ * tenant admins keep the cheap, precise equality query.
+ */
+async function loadScopedUserDocs(
+  tenantId: string,
+  includeNull: boolean,
+  max: number,
+): Promise<QueryDocumentSnapshot[]> {
+  if (!includeNull) {
+    return (await getDocs(query(collection(db, 'users'), where('tenantId', '==', tenantId), limit(max)))).docs;
+  }
+  const snap = await getDocs(query(collection(db, 'users'), limit(max)));
+  return snap.docs.filter(d => {
+    const t = (d.data() as { tenantId?: string | null }).tenantId;
+    return t == null || t === '' || t === tenantId;
+  });
+}
+
 /** Avatar initials from a display name: first letter of first + last word. */
 function initialsFromName(name?: string): string {
   if (!name || !name.trim()) return '?';
@@ -452,7 +475,7 @@ const ChannelMembersSheet: React.FC<{
   useEffect(() => {
     let cancelled = false;
     console.log('[ChannelMembersSheet] currentTenantId:', tenantId, 'includeNull:', includeNull);
-    dualTenantDocs('users', tenantId, includeNull, 200)
+    loadScopedUserDocs(tenantId, includeNull, 200)
       .then(docs => {
         if (cancelled) return;
         setUsers(docs.map(d => ({ id: d.id, ...d.data() }) as AdminUser));
@@ -1073,7 +1096,7 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
     if (!tenantId) return;
     try {
       console.log('[AdminCommunity] loadAdmins currentTenantId:', tenantId, 'includeNull:', includeNullTenant);
-      const docs = await dualTenantDocs('users', tenantId, includeNullTenant, 200);
+      const docs = await loadScopedUserDocs(tenantId, includeNullTenant, 200);
       const adminRoles = ['admin', 'church_admin', 'super_admin'];
       setAdmins(docs
         .map(d => ({ id: d.id, ...d.data() }) as AdminUser)
@@ -1087,7 +1110,7 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
     if (!tenantId) return;
     try {
       console.log('[AdminCommunity] loadMembers currentTenantId:', tenantId, 'includeNull:', includeNullTenant);
-      const docs = await dualTenantDocs('users', tenantId, includeNullTenant, 200);
+      const docs = await loadScopedUserDocs(tenantId, includeNullTenant, 200);
       setMembers(docs
         .map(d => ({ id: d.id, ...d.data() }) as AdminUser)
         .filter(m => m.role === 'user')
@@ -1100,7 +1123,7 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
     if (!tenantId) return;
     try {
       console.log('[AdminCommunity] loadChannelPool currentTenantId:', tenantId, 'includeNull:', includeNullTenant);
-      const snap = { docs: await dualTenantDocs('users', tenantId, includeNullTenant, 200) };
+      const snap = { docs: await loadScopedUserDocs(tenantId, includeNullTenant, 200) };
       setChannelPool(snap.docs.map(d => ({ id: d.id, ...d.data() }) as AdminUser));
     } catch (e) { notifyError('Failed to load users', e); }
   }, [tenantId, includeNullTenant]);

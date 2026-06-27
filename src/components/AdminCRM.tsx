@@ -6,7 +6,7 @@ import {
   List, LayoutGrid
 } from 'lucide-react';
 import {
-  collection, addDoc, updateDoc, deleteDoc,
+  collection, addDoc, deleteDoc, setDoc,
   doc, serverTimestamp, Timestamp,
 } from 'firebase/firestore';
 import { db, auth } from '../firebase';
@@ -18,7 +18,7 @@ import { useAdminHeader, HeaderActionButton } from './AdminScreenHeader';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAppStore } from '../store/useAppStore';
 import {
-  useContacts, useContactActivities, useContactOnboardingAnswers,
+  useContactsWithUsers, useContactActivities, useContactOnboardingAnswers,
   type Contact, type ContactActivity, type PipelineStage,
 } from '../hooks/queries/useCRMQueries';
 import { useTenant as useTenantDoc } from '../hooks/queries/useTenantQueries';
@@ -186,7 +186,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
   const { currentTenantId: tenantId, isAuthReady } = useAppStore();
 
   // React Query for contacts list
-  const { data: contacts = [], isLoading: loading } = useContacts(tenantId, isAuthReady);
+  const { data: contacts = [], isLoading: loading } = useContactsWithUsers(tenantId, isAuthReady);
 
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | Contact['type']>('all');
@@ -307,7 +307,12 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
         address: form.address, updatedAt: serverTimestamp(),
       };
       if (isEditing && selected) {
-        await updateDoc(doc(db, 'contacts', selected.id), data);
+        // Upsert (not updateDoc): a member surfaced from the `users` collection
+        // has no `contacts` doc yet, so editing it should CREATE the contact.
+        await setDoc(doc(db, 'contacts', selected.id), {
+          ...data,
+          tenantId: selected.tenantId || tenantId || PLATFORM_TENANT_ID,
+        }, { merge: true });
         setSelected({ ...selected, ...data, updatedAt: null });
       } else {
         await addDoc(collection(db, 'contacts'), {
@@ -334,10 +339,19 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
 
   const handleStageChange = async (contactId: string, newStage: PipelineStage) => {
     try {
-      await updateDoc(doc(db, 'contacts', contactId), {
+      // Upsert with the row's identifying fields so dragging a member that came
+      // from the `users` collection (no contacts doc yet) creates it correctly.
+      const existing = contacts.find(c => c.id === contactId);
+      await setDoc(doc(db, 'contacts', contactId), {
+        firstName: existing?.firstName ?? '',
+        lastName: existing?.lastName ?? '',
+        email: existing?.email ?? '',
+        phone: existing?.phone ?? '',
+        type: existing?.type ?? 'member',
+        tenantId: existing?.tenantId || tenantId || PLATFORM_TENANT_ID,
         stage: newStage,
         updatedAt: serverTimestamp(),
-      });
+      }, { merge: true });
       // Keep the open detail view in sync without waiting for the refetch.
       if (selected?.id === contactId) setSelected({ ...selected, stage: newStage });
       await queryClient.invalidateQueries({ queryKey: ['contacts', tenantId] });
@@ -358,7 +372,12 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
       });
       if (actForm.type === 'donation' && actForm.amount) {
         const newTotal = (selected.totalDonated || 0) + Number(actForm.amount);
-        await updateDoc(doc(db, 'contacts', selected.id), { totalDonated: newTotal, lastDonationAt: serverTimestamp() });
+        await setDoc(doc(db, 'contacts', selected.id), {
+          firstName: selected.firstName ?? '', lastName: selected.lastName ?? '',
+          email: selected.email ?? '', phone: selected.phone ?? '', type: selected.type ?? 'member',
+          tenantId: selected.tenantId || tenantId || PLATFORM_TENANT_ID,
+          totalDonated: newTotal, lastDonationAt: serverTimestamp(),
+        }, { merge: true });
         setSelected({ ...selected, totalDonated: newTotal });
         await queryClient.invalidateQueries({ queryKey: ['contacts', tenantId] });
       }
@@ -615,7 +634,12 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
                 const val = e.target.value.trim();
                 if (val !== (selected.notes || '')) {
                   try {
-                    await updateDoc(doc(db, 'contacts', selected.id), { notes: val });
+                    await setDoc(doc(db, 'contacts', selected.id), {
+                      firstName: selected.firstName ?? '', lastName: selected.lastName ?? '',
+                      email: selected.email ?? '', phone: selected.phone ?? '', type: selected.type ?? 'member',
+                      tenantId: selected.tenantId || tenantId || PLATFORM_TENANT_ID,
+                      notes: val,
+                    }, { merge: true });
                     setSelected({ ...selected, notes: val });
                   } catch (err) { console.error('Failed to save notes:', err); }
                 }
