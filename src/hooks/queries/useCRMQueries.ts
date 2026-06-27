@@ -3,6 +3,15 @@ import { collection, query, where, getDocs, getDoc, doc, limit } from 'firebase/
 import { db } from '../../firebase';
 import type { Timestamp } from 'firebase/firestore';
 import { sortByString, sortByTime } from '../../utils/query-helpers';
+import { PLATFORM_TENANT_ID } from '../../utils/tenant-scope';
+
+/** CRM pipeline stages, from first contact through to deeply-invested leader. */
+export type PipelineStage =
+  | 'new'         // Just added / first contact
+  | 'connected'   // Reached out, in conversation
+  | 'active'      // Regular attender / member
+  | 'giving'      // Active donor
+  | 'champion';   // Deeply invested, volunteer, leader
 
 export interface Contact {
   id: string;
@@ -11,6 +20,7 @@ export interface Contact {
   email: string;
   phone: string;
   type: 'donor' | 'member' | 'both';
+  stage?: PipelineStage; // defaults to 'new' if missing
   address?: {
     street?: string;
     city?: string;
@@ -44,15 +54,28 @@ export const useContacts = (tenantId: string | null | undefined, isAuthReady = t
   useQuery({
     queryKey: ['contacts', tenantId],
     queryFn: async (): Promise<Contact[]> => {
-      const q = tenantId
-        ? query(collection(db, 'contacts'), where('tenantId', '==', tenantId), limit(500))
-        : query(collection(db, 'contacts'), limit(500));
-      const snap = await getDocs(q);
-      return sortByString(
-        snap.docs.map(d => ({ id: d.id, ...d.data() }) as Contact),
-        'lastName',
-        'asc',
-      );
+      let rows: Contact[];
+      if (!tenantId || tenantId === PLATFORM_TENANT_ID) {
+        // Platform tenant: contacts may be stored with tenantId: null OR tenantId: 'harvest'
+        // (legacy rows written before the tenant fix used null). Fetch both sets and merge
+        // (two single-field queries, no composite index needed).
+        const [nullSnap, harvestSnap] = await Promise.all([
+          getDocs(query(collection(db, 'contacts'), where('tenantId', '==', null), limit(500))),
+          getDocs(query(collection(db, 'contacts'), where('tenantId', '==', PLATFORM_TENANT_ID), limit(500))),
+        ]);
+        // Deduplicate by id (a row could theoretically match both queries over time)
+        const seen = new Set<string>();
+        rows = [];
+        for (const d of [...nullSnap.docs, ...harvestSnap.docs]) {
+          if (!seen.has(d.id)) { seen.add(d.id); rows.push({ id: d.id, stage: 'new', ...d.data() } as Contact); }
+        }
+      } else {
+        const snap = await getDocs(
+          query(collection(db, 'contacts'), where('tenantId', '==', tenantId), limit(500))
+        );
+        rows = snap.docs.map(d => ({ id: d.id, stage: 'new', ...d.data() }) as Contact);
+      }
+      return sortByString(rows, 'lastName', 'asc');
     },
     enabled: isAuthReady && tenantId !== undefined,
     staleTime: 1000 * 60 * 5,
