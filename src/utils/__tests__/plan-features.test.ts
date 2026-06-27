@@ -113,4 +113,11 @@ describe('hasFeature', () => {
     expect(hasFeature('max', 'checkInSystem')).toBe(false);
     expect(hasFeature('ultra', 'checkInSystem')).toBe(true);
   });
+
+  it('livestream is available on Ministry (ultra) only', () => {
+    expect(hasFeature('plus', 'livestream')).toBe(false);
+    expect(hasFeature('pro', 'livestream')).toBe(false);
+    expect(hasFeature('max', 'livestream')).toBe(false);
+    expect(hasFeature('ultra', 'livestream')).toBe(true);
+  });
 });

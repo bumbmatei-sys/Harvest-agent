@@ -322,6 +322,22 @@ service cloud.firestore {
           allow read, write: if isTenantAdmin(tenantId);
         }
       }
+
+      // Livestream — viewers read the current stream doc; admins manage streams.
+      // Viewer counts + prayers are written server-side via the admin SDK
+      // (/api/livestream/*), so client writes stay admin-only.
+      match /livestream/{docId} {
+        allow read: if isAuthenticated();
+        allow write: if isTenantAdmin(tenantId);
+      }
+
+      match /livestreamSessions/{sessionId} {
+        allow read, write: if isTenantAdmin(tenantId);
+
+        match /prayers/{prayerId} {
+          allow read, write: if isTenantAdmin(tenantId);
+        }
+      }
     }
 
     // ─── Docs & Doc Folders ───────────────────────────────────────────

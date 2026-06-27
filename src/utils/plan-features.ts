@@ -49,6 +49,8 @@ export interface PlanFeatures {
   customForms: boolean;
   /** Check-in system with QR attendance (Ministry only) */
   checkInSystem: boolean;
+  /** Livestream + live giving (Ministry only) */
+  livestream: boolean;
 }
 
 // ─── Feature matrix ───────────────────────────────────────────────────────────
@@ -86,6 +88,7 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     communityGroups: false,
     customForms: false,
     checkInSystem: false,
+    livestream: false,
   },
   // Small Team
   pro: {
@@ -113,6 +116,7 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     communityGroups: false,
     customForms: false,
     checkInSystem: false,
+    livestream: false,
   },
   // Community
   max: {
@@ -140,6 +144,7 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     communityGroups: false,
     customForms: false,
     checkInSystem: false,
+    livestream: false,
   },
   // Ministry (top plan)
   ultra: {
@@ -167,6 +172,7 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     communityGroups: true,
     customForms: true,
     checkInSystem: true,
+    livestream: true,
   },
 };
 

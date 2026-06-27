@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { LayoutDashboard, Church, FileText, Rss, BrainCircuit, Inbox, GraduationCap, ChevronLeft, ChevronRight, Building2, Settings, MoreHorizontal, Mail, SlidersHorizontal, Heart, Users, MessageSquare, Receipt, CalendarCheck, ShieldCheck, ClipboardList, QrCode } from 'lucide-react';
+import { LayoutDashboard, Church, FileText, Rss, BrainCircuit, Inbox, GraduationCap, ChevronLeft, ChevronRight, Building2, Settings, MoreHorizontal, Mail, SlidersHorizontal, Heart, Users, MessageSquare, Receipt, CalendarCheck, ShieldCheck, ClipboardList, QrCode, Radio } from 'lucide-react';
 import AdminBlog from './AdminBlog';
 import AdminPosts from './AdminPosts';
 import AdminInbox from './AdminInbox';
@@ -24,6 +24,7 @@ import AdminCommunity from './AdminCommunity';
 import AdminAccounting from './AdminAccounting';
 import AdminForms from './AdminForms';
 import AdminCheckin from './AdminCheckin';
+import AdminLivestream from './AdminLivestream';
 import AdminEvents from './AdminEvents';
 import PlanUpgradeScreen from './PlanUpgradeScreen';
 import { AdminScreenHeader, AdminHeaderContext, AdminHeaderOverride } from './AdminScreenHeader';
@@ -199,6 +200,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
     (isSuperAdmin || !isTenantAdmin || (features && features.checkInSystem)) &&
       hasFullAccess &&
       { id: 'checkin', label: 'Check-In', icon: QrCode },
+    // Livestream (YouTube + live giving)
+    (isSuperAdmin || !isTenantAdmin || (features && features.livestream)) &&
+      hasFullAccess &&
+      { id: 'livestream', label: 'Livestream', icon: Radio },
     // Community (Rocket.Chat)
     (isSuperAdmin || !isTenantAdmin || (features && features.communityGroups)) &&
       hasFullAccess &&
@@ -491,6 +496,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
             (isSuperAdmin || !isTenantAdmin || (features && features.checkInSystem))
               ? <div className="p-4 lg:p-0"><AdminCheckin /></div>
               : <PlanUpgradeScreen featureName="Check-In" featureKey="checkInSystem" onBack={() => go('dashboard')} onUpgrade={() => go('settings')} />
+          ) : activeTab === 'livestream' ? (
+            (isSuperAdmin || !isTenantAdmin || (features && features.livestream))
+              ? <div className="p-4 lg:p-0"><AdminLivestream /></div>
+              : <PlanUpgradeScreen featureName="Livestream" featureKey="livestream" onBack={() => go('dashboard')} onUpgrade={() => go('settings')} />
           ) : activeTab === 'community' ? (
             (isSuperAdmin || !isTenantAdmin || (features && features.communityGroups))
               ? <div className="p-4 lg:p-0 h-full"><AdminCommunity onOpenAttachment={(type, id) => {

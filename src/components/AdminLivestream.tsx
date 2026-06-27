@@ -1,0 +1,255 @@
+"use client";
+import React, { useState, useEffect } from 'react';
+import {
+  collection, query, orderBy, onSnapshot, doc, addDoc, updateDoc, setDoc, getDocs,
+  serverTimestamp, Timestamp, limit,
+} from 'firebase/firestore';
+import { Radio, Eye, HandHeart, Check, Loader2, Video } from 'lucide-react';
+import { db, auth } from '../firebase';
+import { useAppStore } from '../store/useAppStore';
+
+const GOLD = '#B8962E';
+
+/** Extract a YouTube video id from a URL or accept a raw id. */
+function parseYouTubeId(input: string): string {
+  const s = input.trim();
+  if (/^[\w-]{11}$/.test(s)) return s;
+  const patterns = [
+    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/live\/|youtube\.com\/embed\/)([\w-]{11})/,
+    /[?&]v=([\w-]{11})/,
+  ];
+  for (const p of patterns) {
+    const m = s.match(p);
+    if (m) return m[1];
+  }
+  return '';
+}
+
+interface CurrentStream {
+  active?: boolean;
+  youtubeVideoId?: string;
+  title?: string;
+  startedAt?: Timestamp | null;
+  viewerCount?: number;
+  prayerCount?: number;
+  sessionId?: string;
+}
+
+interface Prayer {
+  id: string;
+  name: string;
+  prayerText: string;
+  submittedAt: Timestamp | null;
+  prayed: boolean;
+}
+
+interface PastSession {
+  id: string;
+  title: string;
+  youtubeVideoId: string;
+  startedAt: Timestamp | null;
+  endedAt: Timestamp | null;
+  peakViewers?: number;
+  prayerCount?: number;
+}
+
+const AdminLivestream: React.FC = () => {
+  const { currentTenantId: tenantId, isAuthReady } = useAppStore();
+
+  const [current, setCurrent] = useState<CurrentStream | null>(null);
+  const [prayers, setPrayers] = useState<Prayer[]>([]);
+  const [pastSessions, setPastSessions] = useState<PastSession[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const [urlInput, setUrlInput] = useState('');
+  const [titleInput, setTitleInput] = useState('');
+  const [starting, setStarting] = useState(false);
+
+  // Subscribe to current stream
+  useEffect(() => {
+    if (!isAuthReady || !tenantId) { setLoading(false); return; }
+    const unsub = onSnapshot(doc(db, 'tenants', tenantId, 'livestream', 'current'), snap => {
+      setCurrent(snap.exists() ? (snap.data() as CurrentStream) : null);
+      setLoading(false);
+    }, () => setLoading(false));
+    return () => unsub();
+  }, [tenantId, isAuthReady]);
+
+  // Subscribe to prayers of the active session
+  useEffect(() => {
+    if (!tenantId || !current?.active || !current.sessionId) { setPrayers([]); return; }
+    const q = query(
+      collection(db, 'tenants', tenantId, 'livestreamSessions', current.sessionId, 'prayers'),
+      orderBy('submittedAt', 'desc'), limit(500),
+    );
+    const unsub = onSnapshot(q, snap => setPrayers(snap.docs.map(d => ({ id: d.id, ...d.data() }) as Prayer)));
+    return () => unsub();
+  }, [tenantId, current?.active, current?.sessionId]);
+
+  // Load past sessions
+  useEffect(() => {
+    if (!tenantId) return;
+    getDocs(query(collection(db, 'tenants', tenantId, 'livestreamSessions'), orderBy('startedAt', 'desc'), limit(50)))
+      .then(snap => setPastSessions(snap.docs.map(d => ({ id: d.id, ...d.data() }) as PastSession)))
+      .catch(() => setPastSessions([]));
+  }, [tenantId, current?.active]);
+
+  const startStream = async () => {
+    if (!tenantId) return;
+    const videoId = parseYouTubeId(urlInput);
+    if (!videoId) { alert('Enter a valid YouTube URL or video ID.'); return; }
+    setStarting(true);
+    try {
+      const sessionRef = await addDoc(collection(db, 'tenants', tenantId, 'livestreamSessions'), {
+        youtubeVideoId: videoId,
+        title: titleInput.trim() || 'Live Service',
+        startedAt: serverTimestamp(),
+        endedAt: null,
+        peakViewers: 0,
+        prayerCount: 0,
+        createdBy: auth.currentUser?.uid || '',
+      });
+      await setDoc(doc(db, 'tenants', tenantId, 'livestream', 'current'), {
+        active: true,
+        youtubeVideoId: videoId,
+        title: titleInput.trim() || 'Live Service',
+        startedAt: serverTimestamp(),
+        viewerCount: 0,
+        prayerCount: 0,
+        sessionId: sessionRef.id,
+      });
+      setUrlInput(''); setTitleInput('');
+    } catch (e) {
+      console.error('Failed to start stream:', e);
+      alert('Failed to start stream. Please try again.');
+    } finally {
+      setStarting(false);
+    }
+  };
+
+  const endStream = async () => {
+    if (!tenantId || !current?.sessionId) return;
+    if (!confirm('End the stream? The live banner will disappear for all viewers.')) return;
+    try {
+      await updateDoc(doc(db, 'tenants', tenantId, 'livestream', 'current'), { active: false });
+      await updateDoc(doc(db, 'tenants', tenantId, 'livestreamSessions', current.sessionId), { endedAt: serverTimestamp() });
+    } catch (e) {
+      console.error('Failed to end stream:', e);
+    }
+  };
+
+  const markPrayed = async (prayerId: string) => {
+    if (!tenantId || !current?.sessionId) return;
+    await updateDoc(doc(db, 'tenants', tenantId, 'livestreamSessions', current.sessionId, 'prayers', prayerId), { prayed: true });
+  };
+
+  const fmtDate = (ts: Timestamp | null) =>
+    ts?.toDate ? ts.toDate().toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—';
+
+  const activePrayers = prayers.filter(p => !p.prayed);
+
+  if (loading) {
+    return <div className="flex items-center justify-center h-40"><Loader2 size={28} className="animate-spin" style={{ color: GOLD }} /></div>;
+  }
+
+  return (
+    <div className="max-w-3xl mx-auto" style={{ paddingBottom: 120 }}>
+      {current?.active ? (
+        <>
+          {/* Active stream card */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-4">
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div className="flex items-center gap-2">
+                <span className="relative flex h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500" />
+                </span>
+                <span className="font-bold text-gray-900">{current.title}</span>
+              </div>
+              <button onClick={endStream} className="px-4 py-2 rounded-xl text-sm font-semibold text-red-600 bg-red-50 hover:bg-red-100">
+                End Stream
+              </button>
+            </div>
+            <div className="flex items-center gap-5 mt-3 text-sm text-gray-600">
+              <span className="flex items-center gap-1.5"><Eye size={15} /> {Math.max(0, current.viewerCount || 0)} watching</span>
+              <span className="flex items-center gap-1.5"><HandHeart size={15} /> {current.prayerCount || 0} prayers</span>
+              <span className="text-gray-400">Live since {fmtDate(current.startedAt || null)}</span>
+            </div>
+            <p className="text-xs text-gray-400 mt-2">Video ID: {current.youtubeVideoId}</p>
+          </div>
+
+          {/* Live prayer panel */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+            <div className="px-4 py-3 border-b border-gray-50 flex items-center justify-between">
+              <h3 className="text-sm font-bold text-gray-700">Prayer Requests</h3>
+              <span className="text-xs text-gray-400">{activePrayers.length} active</span>
+            </div>
+            {activePrayers.length === 0 ? (
+              <p className="text-center py-10 text-gray-400 text-sm">No active prayer requests.</p>
+            ) : (
+              <div className="divide-y divide-gray-50">
+                {activePrayers.map(p => (
+                  <div key={p.id} className="flex items-start gap-3 px-4 py-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium text-gray-900">{p.name}</div>
+                      <div className="text-sm text-gray-600">{p.prayerText}</div>
+                      <div className="text-xs text-gray-300 mt-0.5">{fmtDate(p.submittedAt)}</div>
+                    </div>
+                    <button onClick={() => markPrayed(p.id)} className="flex items-center gap-1 text-xs font-semibold text-green-600 hover:bg-green-50 rounded-lg px-2 py-1 shrink-0">
+                      <Check size={14} /> Prayed
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </>
+      ) : (
+        /* Go Live form */
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-4">
+          <div className="flex items-center gap-2 mb-4">
+            <Radio size={18} style={{ color: GOLD }} />
+            <h3 className="text-sm font-bold text-gray-700">Go Live</h3>
+          </div>
+          <div className="space-y-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">YouTube Live URL or Video ID</label>
+              <input value={urlInput} onChange={e => setUrlInput(e.target.value)} placeholder="https://youtube.com/watch?v=… or dQw4w9WgXcQ" className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#B8962E]" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Title</label>
+              <input value={titleInput} onChange={e => setTitleInput(e.target.value)} placeholder="Sunday Service — June 29" className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#B8962E]" />
+            </div>
+            <button onClick={startStream} disabled={starting} className="w-full py-2.5 rounded-xl text-white text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: GOLD }}>
+              {starting ? 'Starting…' : 'Start Stream'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Past streams */}
+      {pastSessions.filter(s => s.endedAt).length > 0 && (
+        <div className="mt-6">
+          <h3 className="text-sm font-bold text-gray-700 mb-3">Past Streams</h3>
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm divide-y divide-gray-50">
+            {pastSessions.filter(s => s.endedAt).map(s => (
+              <div key={s.id} className="flex items-center gap-3 px-4 py-3">
+                <Video size={16} className="text-gray-300 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium text-gray-900 truncate">{s.title}</div>
+                  <div className="text-xs text-gray-400">{fmtDate(s.startedAt)}</div>
+                </div>
+                <div className="text-xs text-gray-500 text-right shrink-0">
+                  <div className="flex items-center gap-1 justify-end"><Eye size={12} /> {s.peakViewers || 0}</div>
+                  <div className="flex items-center gap-1 justify-end"><HandHeart size={12} /> {s.prayerCount || 0}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default AdminLivestream;
