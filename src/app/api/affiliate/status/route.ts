@@ -28,13 +28,15 @@ export async function GET(request: NextRequest) {
 
     let affiliateCode = userData?.affiliateCode || null;
 
-    // Backfill short code for existing affiliates who don't have one yet
-    if (isAffiliate && !affiliateCode) {
+    // Always generate a short code on first load so the referral link is
+    // available instantly — Stripe Connect is only required to receive payouts,
+    // not to generate a link.
+    if (!affiliateCode) {
       try {
         affiliateCode = await generateUniqueAffiliateCode();
         await adminDb.collection('users').doc(userOrErr.uid).update({
           affiliateCode,
-          affiliateClicks: 0,
+          affiliateClicks: userData?.affiliateClicks || 0,
           updatedAt: new Date().toISOString(),
         });
       } catch (codeErr) {
@@ -43,15 +45,35 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Compute this month's earnings from affiliate_commissions collection
+    let thisMonthEarnings = 0;
+    try {
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+      const monthSnap = await adminDb
+        .collection('affiliate_commissions')
+        .where('referrerId', '==', userOrErr.uid)
+        .where('status', '==', 'paid')
+        .get();
+      // Filter client-side (avoid compound index)
+      thisMonthEarnings = monthSnap.docs
+        .filter(d => (d.data().createdAt || '') >= startOfMonth)
+        .reduce((sum, d) => sum + (d.data().commission || 0), 0);
+    } catch (monthErr) {
+      console.warn('Failed to compute monthly earnings:', monthErr);
+    }
+
     return NextResponse.json({
       isAffiliate,
       userId: userOrErr.uid,
       stripeConnectAccountId,
+      affiliateConnectStatus: userData?.affiliateConnectStatus || null,
       affiliateCode,
       affiliateClicks: userData?.affiliateClicks || 0,
       totalEarnings: userData?.affiliateEarnings || 0,
       pendingPayouts: userData?.affiliatePendingPayouts || 0,
       referralCount: userData?.affiliateReferralCount || 0,
+      thisMonthEarnings,
     });
   } catch (error: any) {
     console.error('Affiliate status error:', error?.message || error);

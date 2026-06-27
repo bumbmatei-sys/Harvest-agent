@@ -1,9 +1,8 @@
 "use client";
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Crown, Palette, Globe, CreditCard, Settings2, Bot, Plug, AlertTriangle, Share2, Check, ChevronRight, FileText, MessageSquare } from 'lucide-react';
+import { ArrowLeft, Crown, Palette, Globe, CreditCard, Settings2, Bot, Plug, AlertTriangle, Check, ChevronRight, FileText, MessageSquare } from 'lucide-react';
 import { TenantPlan } from '../types/tenant.types';
 import { getPlanFeatures, PlanFeatures } from '../utils/plan-features';
-import AffiliateSection from './AffiliateSection';
 import SettingsAccordion from './settings/SettingsAccordion';
 import PlanUpgradeSection from './settings/PlanUpgradeSection';
 import BrandingSection from './settings/BrandingSection';
@@ -149,12 +148,6 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
       icon: <Plug size={20} className="text-blue-600" />,
       content: <IntegrationsSection />,
       hidden: !currentFeatures?.newsletterAutomation,
-    },
-    {
-      id: 'affiliate',
-      label: 'Affiliate Program',
-      icon: <Share2 size={20} className="text-green-600" />,
-      content: <AffiliateSection />,
     },
     {
       id: 'billing',
