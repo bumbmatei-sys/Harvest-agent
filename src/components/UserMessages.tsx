@@ -533,6 +533,10 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false })
   const [adminsLoading, setAdminsLoading] = useState(false);
   const [adminSearch, setAdminSearch] = useState('');
   const [creating, setCreating] = useState<string | null>(null);
+  // Only admins / super admins can list the tenant's users (Firestore rules), so the
+  // "New Message" admin picker is only shown to them — a regular member would just
+  // hit a permission-denied list query and an empty picker.
+  const [canStartDm, setCanStartDm] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -548,8 +552,10 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false })
       const name = userDoc.exists()
         ? (userDoc.data().displayName || auth.currentUser.displayName || 'You')
         : (auth.currentUser.displayName || 'You');
+      const role = userDoc.exists() ? (userDoc.data().role || 'user') : 'user';
       if (cancelled) return;
       setCurrentUser({ uid: auth.currentUser.uid, name });
+      setCanStartDm(isSuperAdminEmail(auth.currentUser.email) || ADMIN_ROLES.includes(role));
       setLoading(false);
     });
     return () => { cancelled = true; };
@@ -716,13 +722,15 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false })
           </button>
         )}
         <h2 className="text-lg font-bold text-gray-900">Messages</h2>
-        <button
-          onClick={openNewMessage}
-          className="ml-auto flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold text-white"
-          style={{ backgroundColor: 'var(--brand-color, #B8962E)' }}
-        >
-          <PenSquare size={15} /> New Message
-        </button>
+        {canStartDm && (
+          <button
+            onClick={openNewMessage}
+            className="ml-auto flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold text-white"
+            style={{ backgroundColor: 'var(--brand-color, #B8962E)' }}
+          >
+            <PenSquare size={15} /> New Message
+          </button>
+        )}
       </div>
 
       <div className="flex-1 p-4">
@@ -730,7 +738,11 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false })
           <div className="text-center py-16 text-gray-400">
             <MessageSquare size={40} className="mx-auto mb-3 opacity-30" />
             <p className="font-medium">No messages yet</p>
-            <p className="text-sm mt-1">Tap <span className="font-semibold text-gray-500">New Message</span> to start a conversation, or your admin will reach out here.</p>
+            <p className="text-sm mt-1">
+              {canStartDm
+                ? <>Tap <span className="font-semibold text-gray-500">New Message</span> to start a conversation.</>
+                : 'Your admin will reach out here.'}
+            </p>
           </div>
         ) : (
           <>
