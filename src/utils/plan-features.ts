@@ -191,9 +191,9 @@ export const PLAN_PRICING: Record<TenantPlan, { monthlyUsd: number; yearlyUsd: n
  * Source of truth: theharvest.site pricing table "Donations Retained" row.
  */
 export const PLAN_DONATION_RETENTION: Record<TenantPlan, number> = {
-  plus:  85,
-  pro:   90,
-  max:   95,
+  plus:  90,
+  pro:   95,
+  max:   100,
   ultra: 100,
 };
 
