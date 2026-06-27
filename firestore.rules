@@ -284,7 +284,15 @@ service cloud.firestore {
       match /dmMessages/{msgId} {
         allow read: if belongsToTenant(tenantId);
         allow create: if belongsToTenant(tenantId);
-        allow update, delete: if isTenantAdmin(tenantId);
+        // A recipient may mark a message they DIDN'T send as read (only the `read`
+        // flag) — this is what lets a member's DM read-receipt write succeed.
+        // Edits / deletes remain admin-only.
+        allow update: if isTenantAdmin(tenantId) || (
+          belongsToTenant(tenantId) &&
+          resource.data.senderId != request.auth.uid &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read'])
+        );
+        allow delete: if isTenantAdmin(tenantId);
       }
 
       match /invoices/{invoiceId} {
