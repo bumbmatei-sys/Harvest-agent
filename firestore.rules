@@ -2,7 +2,7 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ─── Helper functions ────────────────────────────────────────────
+    // ─── Helper functions ──────────────────────────────────────────────────────
 
     function isAuthenticated() {
       return request.auth != null;
@@ -73,7 +73,7 @@ service cloud.firestore {
         (isSuperAdmin() || request.resource.data.tenantId == userTenantId());
     }
 
-    // ─── Users ───────────────────────────────────────────────────────
+    // ─── Users ────────────────────────────────────────────────────────────────
 
     match /users/{userId} {
       allow read: if isAuthenticated() &&
@@ -95,7 +95,7 @@ service cloud.firestore {
       allow delete: if isSuperAdmin();
     }
 
-    // ─── Submissions ─────────────────────────────────────────────────
+    // ─── Submissions ───────────────────────────────────────────────────────────────
 
     match /submissions/{subId} {
       allow read: if isAuthenticated() && isAdmin();
@@ -104,7 +104,7 @@ service cloud.firestore {
       allow delete: if isAuthenticated() && isTenantAdmin(resource.data.tenantId);
     }
 
-    // ─── Community Posts ─────────────────────────────────────────────
+    // ─── Community Posts ───────────────────────────────────────────────────────────
 
     match /community_posts/{postId} {
       allow read: if isAuthenticated();
@@ -138,7 +138,7 @@ service cloud.firestore {
       }
     }
 
-    // ─── Blog Posts ─────────────────────────────────────────────────
+    // ─── Blog Posts ───────────────────────────────────────────────────────────────
 
     match /blog_posts/{postId} {
       allow read: if isAuthenticated();
@@ -147,7 +147,7 @@ service cloud.firestore {
       allow delete: if isAuthenticated() && isTenantAdmin(resource.data.tenantId);
     }
 
-    // ─── Courses ────────────────────────────────────────────────────
+    // ─── Courses ──────────────────────────────────────────────────────────────────
 
     match /courses/{courseId} {
       allow read: if isAuthenticated();
@@ -156,7 +156,7 @@ service cloud.firestore {
       allow delete: if isAuthenticated() && isTenantAdmin(resource.data.tenantId);
     }
 
-    // ─── Churches ───────────────────────────────────────────────────
+    // ─── Churches ───────────────────────────────────────────────────────────────────
 
     match /churches/{churchId} {
       allow read: if isAuthenticated();
@@ -172,7 +172,7 @@ service cloud.firestore {
       }
     }
 
-    // ─── RAG Sources & Chunks ───────────────────────────────────────
+    // ─── RAG Sources & Chunks ───────────────────────────────────────────────────────────
 
     match /rag_sources/{sourceId} {
       allow read: if isAuthenticated() && isAdmin();
@@ -188,7 +188,7 @@ service cloud.firestore {
       allow delete: if isAuthenticated() && isTenantAdmin(resource.data.tenantId);
     }
 
-    // ─── Authors & Categories ────────────────────────────────────────
+    // ─── Authors & Categories ──────────────────────────────────────────────────────────
 
     match /authors/{authorId} {
       allow read: if isAuthenticated();
@@ -202,7 +202,7 @@ service cloud.firestore {
         (isSuperAdmin() || belongsToTenant(request.resource.data.tenantId) || belongsToTenant(resource.data.tenantId));
     }
 
-    // ─── Tenants ────────────────────────────────────────────────────
+    // ─── Tenants ──────────────────────────────────────────────────────────────────
 
     match /tenants/{tenantId} {
       allow read: if true;
@@ -290,9 +290,14 @@ service cloud.firestore {
       match /invoices/{invoiceId} {
         allow read, write: if isTenantAdmin(tenantId);
       }
+
+      match /newsletters/{newsletterId} {
+        allow read: if isTenantAdmin(tenantId);
+        allow write: if isTenantAdmin(tenantId);
+      }
     }
 
-    // ─── Docs & Doc Folders ───────────────────────────────────────────
+    // ─── Docs & Doc Folders ─────────────────────────────────────────────────────────
 
     match /docs/{docId} {
       allow read: if isAuthenticated() &&
@@ -311,7 +316,7 @@ service cloud.firestore {
       allow update, delete: if isAuthenticated() && isTenantAdmin(resource.data.get('tenantId', ''));
     }
 
-    // ─── Fundraising Campaigns ───────────────────────────────────────
+    // ─── Fundraising Campaigns ─────────────────────────────────────────────────────────
 
     match /campaigns/{campaignId} {
       allow read: if isAuthenticated();
@@ -320,7 +325,7 @@ service cloud.firestore {
       allow delete: if isAuthenticated() && isTenantAdmin(resource.data.get('tenantId', ''));
     }
 
-    // ─── CRM Contacts & Activities ───────────────────────────────────
+    // ─── CRM Contacts & Activities ─────────────────────────────────────────────────────
 
     match /contacts/{contactId} {
       allow read: if isAuthenticated() && isTenantAdmin(resource.data.get('tenantId', ''));
@@ -335,7 +340,7 @@ service cloud.firestore {
       allow update, delete: if isAuthenticated() && isTenantAdmin(resource.data.get('tenantId', ''));
     }
 
-    // ─── Donations ───────────────────────────────────────────────────
+    // ─── Donations ───────────────────────────────────────────────────────────────────
 
     match /donations/{donationId} {
       allow read: if isAuthenticated() && isAdmin();
@@ -343,14 +348,14 @@ service cloud.firestore {
       allow update, delete: if isAuthenticated() && isAdmin();
     }
 
-    // ─── Email Log ───────────────────────────────────────────────────
+    // ─── Email Log ───────────────────────────────────────────────────────────────────
 
     match /email_log/{logId} {
       allow read: if isAuthenticated() && isAdmin();
       allow create: if false;
     }
 
-    // ─── Enterprise Leads ────────────────────────────────────────────
+    // ─── Enterprise Leads ──────────────────────────────────────────────────────────
 
     match /enterprise_leads/{leadId} {
       allow read: if isSuperAdmin();
@@ -358,7 +363,7 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
-    // ─── Affiliate Commissions ───────────────────────────────────────
+    // ─── Affiliate Commissions ─────────────────────────────────────────────────────────
 
     match /affiliate_commissions/{commissionId} {
       allow read: if isAuthenticated() &&

@@ -435,6 +435,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
                   tenantId={tenantId || PLATFORM_TENANT_ID}
                   tenantName={tenantName}
                   onBack={() => setNewsletterView('list')}
+                  canAutoGenerate={isSuperAdmin || !!(features?.automatedNewsletter)}
                 />
               ) : (
                 <NewsletterCampaigns
@@ -564,7 +565,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
                     </div>
                     <div className="text-left">
                       <p className="text-sm font-semibold text-gray-800">Customize Navigation</p>
-                      <p className="text-xs text-gray-400">Rearrange bottom bar & More drawer</p>
+                      <p className="text-xs text-gray-400">Rearrange bottom bar &amp; More drawer</p>
                     </div>
                   </button>
                 </div>
