@@ -7,7 +7,7 @@ export interface PlanFeatures {
   aiChat: boolean;
   /** Show AI Knowledge Base in admin */
   aiKnowledge: boolean;
-  /** Show church map in user app (own locations — all plans) */
+  /** Show church map in user app (pro and above) */
   map: boolean;
   /** Show global multi-church discovery directory (Ministry only) */
   churchDirectory: boolean;
@@ -57,7 +57,7 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     blog: true,
     aiChat: false,
     aiKnowledge: false,
-    map: true,
+    map: false,
     churchDirectory: false,
     maxChurches: 1,
     maxCourses: 2,
