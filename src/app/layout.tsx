@@ -47,6 +47,14 @@ export default function RootLayout({
         <Script id="sw-register" strategy="afterInteractive">
           {`
             if ('serviceWorker' in navigator) {
+              // When a new service worker takes control (new deploy + skipWaiting),
+              // reload once so PWA users immediately get the latest UI bundles.
+              var swRefreshing = false;
+              navigator.serviceWorker.addEventListener('controllerchange', function() {
+                if (swRefreshing) return;
+                swRefreshing = true;
+                window.location.reload();
+              });
               navigator.serviceWorker.register('/sw.js').then(function(reg) {
                 reg.update();
               }).catch(function(err) {

@@ -55,6 +55,12 @@ export interface PlanFeatures {
   sermonNotes: boolean;
   /** AI-generated SEO blog articles on schedule from Knowledge Base */
   automatedBlog: boolean;
+  /** Annual giving statements (year-end tax summaries) — Ministry only */
+  givingStatements: boolean;
+  /** Installable Progressive Web App (mobile app) — all plans */
+  pwaApp: boolean;
+  /** Percentage of donation payments the ministry retains after platform fee */
+  donationRetention: number;
 }
 
 // ─── Feature matrix ───────────────────────────────────────────────────────────
@@ -95,6 +101,9 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     livestream: false,
     sermonNotes: false,
     automatedBlog: false,
+    givingStatements: false,
+    pwaApp: true,
+    donationRetention: 90,
   },
   // Small Team
   pro: {
@@ -125,6 +134,9 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     livestream: false,
     sermonNotes: false,
     automatedBlog: false,
+    givingStatements: false,
+    pwaApp: true,
+    donationRetention: 95,
   },
   // Community
   max: {
@@ -155,6 +167,9 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     livestream: false,
     sermonNotes: false,
     automatedBlog: true,
+    givingStatements: false,
+    pwaApp: true,
+    donationRetention: 100,
   },
   // Ministry (top plan)
   ultra: {
@@ -185,6 +200,9 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     livestream: true,
     sermonNotes: true,
     automatedBlog: true,
+    givingStatements: true,
+    pwaApp: true,
+    donationRetention: 100,
   },
 };
 
@@ -201,12 +219,13 @@ export const PLAN_PRICING: Record<TenantPlan, { monthlyUsd: number; yearlyUsd: n
 /**
  * Percentage of donation payments the ministry retains after platform fee.
  * Source of truth: theharvest.site pricing table "Donations Retained" row.
+ * Derived from the feature matrix so the two can never drift apart.
  */
 export const PLAN_DONATION_RETENTION: Record<TenantPlan, number> = {
-  plus:  90,
-  pro:   95,
-  max:   100,
-  ultra: 100,
+  plus:  PLAN_FEATURES.plus.donationRetention,
+  pro:   PLAN_FEATURES.pro.donationRetention,
+  max:   PLAN_FEATURES.max.donationRetention,
+  ultra: PLAN_FEATURES.ultra.donationRetention,
 };
 
 /** AI Assistant add-on pricing (available on all plans; included on Ministry). */

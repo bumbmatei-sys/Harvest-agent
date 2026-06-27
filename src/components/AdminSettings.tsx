@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Crown, Palette, Globe, CreditCard, Settings2, Bot, Plug, AlertTriangle, Check, ChevronRight, FileText, MessageSquare } from 'lucide-react';
 import { TenantPlan } from '../types/tenant.types';
 import { getPlanFeatures, PlanFeatures } from '../utils/plan-features';
+import { useAppStore } from '../store/useAppStore';
 import SettingsAccordion from './settings/SettingsAccordion';
 import PlanUpgradeSection from './settings/PlanUpgradeSection';
 import BrandingSection from './settings/BrandingSection';
@@ -28,11 +29,13 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
   const [stripeAddon, setStripeAddon] = useState<string | null>(null);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
+  const { isSuperAdmin } = useAppStore();
 
   const currentPlanData = currentPlan ? PLANS_DISPLAY.find(p => p.id === currentPlan) : null;
   const currentFeatures = currentPlan ? getPlanFeatures(currentPlan) : null;
-  const hasBranding = currentFeatures?.customBranding;
-  const hasCustomDomain = currentFeatures?.customDomain;
+  // Super admins (platform tenant, no plan) always see every section regardless of plan.
+  const hasBranding = isSuperAdmin || !!currentFeatures?.customBranding;
+  const hasCustomDomain = isSuperAdmin || !!currentFeatures?.customDomain;
   const [forceOpen, setForceOpen] = useState<string | null>(null);
 
   // Handle Stripe return URL params
@@ -127,14 +130,14 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
       label: 'Giving Statements',
       icon: <FileText size={20} className="text-[#B8962E]" />,
       content: <GivingStatementsSection />,
-      hidden: !currentFeatures?.taxReceipt,
+      hidden: !isSuperAdmin && !currentFeatures?.givingStatements,
     },
     {
       id: 'sms',
       label: 'SMS (Twilio)',
       icon: <MessageSquare size={20} className="text-green-600" />,
       content: <SmsSection />,
-      hidden: !currentFeatures?.smsAutomation,
+      hidden: !isSuperAdmin && !currentFeatures?.smsAutomation,
     },
     {
       id: 'ai-assistant',
@@ -147,7 +150,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
       label: 'Integrations',
       icon: <Plug size={20} className="text-blue-600" />,
       content: <IntegrationsSection />,
-      hidden: !currentFeatures?.newsletterAutomation,
+      hidden: !isSuperAdmin && !currentFeatures?.newsletterAutomation,
     },
     {
       id: 'billing',

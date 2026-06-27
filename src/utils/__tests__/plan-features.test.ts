@@ -141,6 +141,20 @@ describe('hasFeature', () => {
     expect(hasFeature('max', 'automatedBlog')).toBe(true);
     expect(hasFeature('ultra', 'automatedBlog')).toBe(true);
   });
+
+  it('givingStatements is available on Ministry (ultra) only', () => {
+    expect(hasFeature('plus', 'givingStatements')).toBe(false);
+    expect(hasFeature('pro', 'givingStatements')).toBe(false);
+    expect(hasFeature('max', 'givingStatements')).toBe(false);
+    expect(hasFeature('ultra', 'givingStatements')).toBe(true);
+  });
+
+  it('pwaApp (mobile app) is available on all plans', () => {
+    expect(hasFeature('plus', 'pwaApp')).toBe(true);
+    expect(hasFeature('pro', 'pwaApp')).toBe(true);
+    expect(hasFeature('max', 'pwaApp')).toBe(true);
+    expect(hasFeature('ultra', 'pwaApp')).toBe(true);
+  });
 });
 
 describe('PLAN_DONATION_RETENTION', () => {
@@ -150,5 +164,11 @@ describe('PLAN_DONATION_RETENTION', () => {
     expect(PLAN_DONATION_RETENTION.pro).toBe(95);
     expect(PLAN_DONATION_RETENTION.max).toBe(100);
     expect(PLAN_DONATION_RETENTION.ultra).toBe(100);
+  });
+
+  it('stays in sync with the donationRetention field in the feature matrix', () => {
+    (['plus', 'pro', 'max', 'ultra'] as const).forEach((plan) => {
+      expect(getPlanFeatures(plan).donationRetention).toBe(PLAN_DONATION_RETENTION[plan]);
+    });
   });
 });
