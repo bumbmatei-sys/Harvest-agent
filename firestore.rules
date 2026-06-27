@@ -290,6 +290,11 @@ service cloud.firestore {
       match /invoices/{invoiceId} {
         allow read, write: if isTenantAdmin(tenantId);
       }
+
+      match /newsletters/{newsletterId} {
+        allow read: if isTenantAdmin(tenantId);
+        allow write: if isTenantAdmin(tenantId);
+      }
     }
 
     // ─── Docs & Doc Folders ───────────────────────────────────────────

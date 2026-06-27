@@ -78,4 +78,11 @@ describe('hasFeature', () => {
     expect(hasFeature('max', 'map')).toBe(true);
     expect(hasFeature('ultra', 'map')).toBe(true);
   });
+
+  it('automatedNewsletter is available on max and above only', () => {
+    expect(hasFeature('plus', 'automatedNewsletter')).toBe(false);
+    expect(hasFeature('pro', 'automatedNewsletter')).toBe(false);
+    expect(hasFeature('max', 'automatedNewsletter')).toBe(true);
+    expect(hasFeature('ultra', 'automatedNewsletter')).toBe(true);
+  });
 });

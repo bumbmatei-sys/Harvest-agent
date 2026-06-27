@@ -4,6 +4,7 @@ import { requireAdmin } from '@/lib/api-auth';
 import { executeComposioAction } from '@/lib/composio-client';
 import { adminDb } from '@/lib/firebase-admin';
 import { hasFeature } from '@/utils/plan-features';
+import { PLATFORM_TENANT_ID } from '@/utils/tenant-scope';
 import sanitizeHtml from 'sanitize-html';
 
 export const dynamic = 'force-dynamic';
@@ -12,13 +13,19 @@ export async function POST(request: NextRequest) {
   try {
     const userOrResponse = await requireAdmin(request);
     if (userOrResponse instanceof NextResponse) return userOrResponse;
-    const { tenantId } = userOrResponse;
+    const { tenantId, uid, isSuperAdmin } = userOrResponse;
 
-    if (!tenantId) {
-      return NextResponse.json({ error: 'No tenant associated with this user' }, { status: 400 });
-    }
+    const resolvedTenantId = tenantId || PLATFORM_TENANT_ID;
 
-    let body: { newsletterId?: string; schedule?: string; action?: string; subject?: string; htmlContent?: string; plainText?: string };
+    let body: {
+      newsletterId?: string;
+      schedule?: string;
+      action?: string;
+      subject?: string;
+      bodyHtml?: string;
+      bodyJson?: unknown;
+      plainText?: string;
+    };
     try {
       body = await request.json();
     } catch {
@@ -45,23 +52,34 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Handle save_draft action
+    const newsletterRef = adminDb
+      .collection('tenants').doc(resolvedTenantId).collection('newsletters').doc(newsletterId);
+
+    // Handle save_draft — upserts the doc (creates if new, updates if existing)
     if (action === 'save_draft') {
-      const newsletterRef = adminDb
-        .collection('tenants').doc(tenantId).collection('newsletters').doc(newsletterId);
-      const newsletterDoc = await newsletterRef.get();
-      if (!newsletterDoc.exists) {
-        return NextResponse.json({ error: 'Newsletter not found' }, { status: 404 });
-      }
-      const updates: Record<string, unknown> = { updatedAt: new Date().toISOString() };
-      if (body.subject) updates.subject = body.subject;
-      if (body.htmlContent) updates.htmlContent = body.htmlContent;
+      const now = new Date().toISOString();
+      const updates: Record<string, unknown> = {
+        tenantId: resolvedTenantId,
+        status: 'draft',
+        updatedAt: now,
+      };
+      if (body.subject !== undefined) updates.subject = body.subject;
+      if (body.bodyHtml !== undefined) updates.bodyHtml = body.bodyHtml;
+      if (body.bodyJson !== undefined) updates.bodyJson = body.bodyJson;
       if (body.plainText !== undefined) updates.plainText = body.plainText;
-      await newsletterRef.update(updates);
+
+      // Set createdAt only on first save
+      const existing = await newsletterRef.get();
+      if (!existing.exists) {
+        updates.createdAt = now;
+        updates.createdBy = uid;
+      }
+
+      await newsletterRef.set(updates, { merge: true });
       return NextResponse.json({ success: true, status: 'draft', message: 'Draft saved' });
     }
 
-    const tenantDoc = await adminDb.collection('tenants').doc(tenantId).get();
+    const tenantDoc = await adminDb.collection('tenants').doc(resolvedTenantId).get();
     if (!tenantDoc.exists) {
       return NextResponse.json({ error: 'Tenant not found' }, { status: 404 });
     }
@@ -74,15 +92,13 @@ export async function POST(request: NextRequest) {
     const tenantPlan = tenantData.plan || 'plus';
     const tenantName = tenantData.name || 'Your Ministry';
 
-    if (!hasFeature(tenantPlan, 'newsletterAutomation')) {
+    if (!isSuperAdmin && !hasFeature(tenantPlan, 'newsletterAutomation')) {
       return NextResponse.json(
-        { error: 'Newsletter automation is not available on your current plan.' },
+        { error: 'Newsletter is not available on your current plan.' },
         { status: 403 }
       );
     }
 
-    const newsletterRef = adminDb
-      .collection('tenants').doc(tenantId).collection('newsletters').doc(newsletterId);
     const newsletterDoc = await newsletterRef.get();
     if (!newsletterDoc.exists) {
       return NextResponse.json({ error: 'Newsletter not found' }, { status: 404 });
@@ -97,7 +113,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'This newsletter has already been sent' }, { status: 400 });
     }
 
-    const { subject, htmlContent } = newsletterData;
+    const { subject } = newsletterData;
+    // Support both bodyHtml (new) and htmlContent (legacy) field names
+    const htmlContent = newsletterData.bodyHtml || newsletterData.htmlContent;
     if (!htmlContent) {
       return NextResponse.json({ error: 'Newsletter has no content' }, { status: 400 });
     }
@@ -108,14 +126,14 @@ export async function POST(request: NextRequest) {
 
     if (primaryMailchimpAdmin) {
       const adminMcDoc = await adminDb
-        .collection('tenants').doc(tenantId)
+        .collection('tenants').doc(resolvedTenantId)
         .collection('integrations').doc(`${primaryMailchimpAdmin}_mailchimp`).get();
       if (adminMcDoc.exists) mailchimpData = adminMcDoc.data() ?? undefined;
     }
 
     if (!mailchimpData) {
       const legacyMcDoc = await adminDb
-        .collection('tenants').doc(tenantId)
+        .collection('tenants').doc(resolvedTenantId)
         .collection('integrations').doc('mailchimp').get();
       if (legacyMcDoc.exists) mailchimpData = legacyMcDoc.data() ?? undefined;
     }

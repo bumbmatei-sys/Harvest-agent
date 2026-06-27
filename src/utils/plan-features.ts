@@ -21,8 +21,10 @@ export interface PlanFeatures {
   customDomain: boolean;
   /** Allow full rebranding (logo + brand color) */
   customBackground: boolean;
-  /** Newsletter automation */
+  /** Newsletter (manual + Mailchimp) — Small Team / pro+ */
   newsletterAutomation: boolean;
+  /** AI-generated newsletter from Instagram (Community / max+) */
+  automatedNewsletter: boolean;
   /** SMS automation (coming soon) */
   smsAutomation: boolean;
   /** Number of AI assistants (0 = none, 1 = one, -1 = unlimited) */
@@ -65,6 +67,7 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     customDomain: false,
     customBackground: false,
     newsletterAutomation: false,
+    automatedNewsletter: false,
     smsAutomation: false,
     aiAssistant: 0,
     fundraising: true,
@@ -88,6 +91,7 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     customDomain: false,
     customBackground: false,
     newsletterAutomation: true,
+    automatedNewsletter: false,
     smsAutomation: false,
     aiAssistant: 0,
     fundraising: true,
@@ -111,6 +115,7 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     customDomain: true,
     customBackground: true,
     newsletterAutomation: true,
+    automatedNewsletter: true,
     smsAutomation: false,
     aiAssistant: 0,
     fundraising: true,
@@ -134,6 +139,7 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     customDomain: true,
     customBackground: true,
     newsletterAutomation: true,
+    automatedNewsletter: true,
     smsAutomation: false,
     aiAssistant: -1,
     fundraising: true,
