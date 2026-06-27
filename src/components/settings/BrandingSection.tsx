@@ -119,7 +119,7 @@ export const BrandingSection: React.FC<BrandingSectionProps> = ({ currentFeature
         </div>
       </div>
 
-      {/* Background Image (Ultra/Enterprise only) */}
+      {/* Background Image (Ministry only) */}
       {currentFeatures?.customBackground && (
         <div className="bg-white rounded-2xl border border-gray-100 p-6">
           <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">Background Image</h3>

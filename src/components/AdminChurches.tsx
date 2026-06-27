@@ -30,7 +30,7 @@ const AdminChurches: React.FC = () => {
   const [showBillingConfirm, setShowBillingConfirm] = useState(false);
   const [billingLoading, setBillingLoading] = useState(false);
 
-  const isEnterprise = tenantPlan === 'ultra';
+  const isMinistry = tenantPlan === 'ultra';
   const ENTERPRISE_PRICE_PER_CHURCH = 15; // $15/church/mo
 
   const openFilterPopup = (type: 'city' | 'pastor' | 'country') => {
@@ -102,7 +102,7 @@ const AdminChurches: React.FC = () => {
         }
       }
       // Remove Stripe $15/mo billing for this church before deleting
-      if (isEnterprise && resolvedTenantId) {
+      if (isMinistry && resolvedTenantId) {
         await authFetch('/api/churches/remove-billing', {
           method: 'POST',
           body: JSON.stringify({ tenantId: resolvedTenantId, churchId: id }),
@@ -121,7 +121,7 @@ const AdminChurches: React.FC = () => {
     setEditingChurch(null);
 
     // Call addChurchBilling Cloud Function when a new church is created
-    if (isEnterprise && wasAdding && churchData?.id) {
+    if (isMinistry && wasAdding && churchData?.id) {
       setBillingNotice('Adding $15/mo to your subscription...');
       await addChurchBilling(churchData.id, churchData.name || '');
       setBillingNotice(`$15/mo added to your bill for "${churchData.name || 'New Church'}"`);
@@ -130,7 +130,7 @@ const AdminChurches: React.FC = () => {
   };
 
   const handleAddChurchClick = () => {
-    if (isEnterprise) {
+    if (isMinistry) {
       setShowBillingConfirm(true);
     } else {
       setIsAdding(true);
@@ -190,7 +190,7 @@ const AdminChurches: React.FC = () => {
 
   return (
     <div className="space-y-6 lg:max-w-5xl lg:mx-auto w-full">
-      {isEnterprise && (
+      {isMinistry && (
         <p className="text-xs text-gray-500">
           {churches.length} church{churches.length !== 1 ? 'es' : ''} · ${churches.length * ENTERPRISE_PRICE_PER_CHURCH}/mo
         </p>
@@ -345,7 +345,7 @@ const AdminChurches: React.FC = () => {
             <h3 className="text-xl font-bold text-gray-900 mb-2">Delete Church</h3>
             <p className="text-gray-600 mb-6">
               Are you sure you want to delete this church? This action cannot be undone.
-              {isEnterprise && (
+              {isMinistry && (
                 <span className="block text-sm text-green-700 mt-1">
                   This will automatically remove the $15/mo charge from your subscription.
                 </span>

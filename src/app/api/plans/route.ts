@@ -11,7 +11,7 @@ import { TenantPlan } from '@/types/tenant.types';
 export const dynamic = 'force-static';
 export const revalidate = 3600; // CDN cache: re-generate at most once per hour
 
-const PLAN_ORDER: TenantPlan[] = ['plus', 'pro', 'max', 'ultra', 'enterprise'];
+const PLAN_ORDER: TenantPlan[] = ['plus', 'pro', 'max', 'ultra'];
 
 /**
  * GET /api/plans
@@ -34,7 +34,7 @@ export async function GET() {
       pricing: {
         monthlyUsd: pricing.monthlyUsd,
         yearlyUsd: pricing.yearlyUsd,
-        yearlyOriginalUsd: pricing.monthlyUsd != null ? pricing.monthlyUsd * 12 : null,
+        yearlyOriginalUsd: pricing.monthlyUsd * 12,
       },
       donationRetentionPct: PLAN_DONATION_RETENTION[id],
       features: {
@@ -63,7 +63,7 @@ export async function GET() {
           monthlyUsd: AI_ASSISTANT_ADDON_PRICING.monthlyUsd,
           description: 'Connects to 900+ apps, automates tasks, manages schedules.',
           includedOn: PLAN_ORDER.filter(
-            (id) => getPlanFeatures(id).aiAssistant === 'included'
+            (id) => getPlanFeatures(id).aiAssistant === -1
           ),
         },
       },
