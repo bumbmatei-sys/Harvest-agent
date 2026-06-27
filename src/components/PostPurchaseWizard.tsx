@@ -76,7 +76,7 @@ const PostPurchaseWizard: React.FC<PostPurchaseWizardProps> = ({ tenantId, onCom
       },
     ];
 
-    if (['pro', 'max', 'ultra', 'enterprise'].includes(p)) {
+    if (['pro', 'max', 'ultra'].includes(p)) {
       steps.push({
         id: 'instagram',
         title: 'Connect Instagram',
@@ -95,7 +95,7 @@ const PostPurchaseWizard: React.FC<PostPurchaseWizardProps> = ({ tenantId, onCom
       });
     }
 
-    if (['max', 'ultra', 'enterprise'].includes(p)) {
+    if (['max', 'ultra'].includes(p)) {
       steps.push({
         id: 'domain',
         title: 'Custom Domain',

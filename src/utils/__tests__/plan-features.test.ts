@@ -33,7 +33,7 @@ describe('getPlanFeatures', () => {
     const f = getPlanFeatures('ultra');
     expect(f.aiAssistant).toBe(-1);
     expect(f.customDomain).toBe(true);
-    expect(f.maxAdmins).toBe(15);
+    expect(f.maxAdmins).toBe(-1);
     expect(f.maxChurches).toBe(-1);
     expect(f.map).toBe(true);
   });

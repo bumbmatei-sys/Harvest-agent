@@ -184,9 +184,7 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
           const name = PLAN_DISPLAY_NAMES[planId];
           const monthlyPrice = formatPlanPrice(planId, 'monthly');
           const displayPrice = formatPlanPrice(planId, billingPeriod);
-          const yearlyOriginalUsd = PLAN_PRICING[planId].monthlyUsd
-            ? `$${(PLAN_PRICING[planId].monthlyUsd! * 12).toLocaleString()}/yr`
-            : '';
+          const yearlyOriginalUsd = `$${(PLAN_PRICING[planId].monthlyUsd * 12).toLocaleString()}/yr`;
           const donationPct = PLAN_DONATION_RETENTION[planId];
           const isCurrent = planId === currentPlan;
           const isDowngrade = PLAN_ORDER.indexOf(planId) < PLAN_ORDER.indexOf(currentPlan ?? 'plus');
@@ -367,7 +365,7 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
           </table>
         </div>
         <p className="text-xs text-gray-400 mt-3">
-          * AI Assistant: ${AI_ASSISTANT_ADDON_PRICING.setupFeeUsd} one-time setup + ${AI_ASSISTANT_ADDON_PRICING.monthlyUsd}/mo on all plans. Included at no extra cost on Ministry &amp; Enterprise.
+          * AI Assistant: ${AI_ASSISTANT_ADDON_PRICING.setupFeeUsd} one-time setup + ${AI_ASSISTANT_ADDON_PRICING.monthlyUsd}/mo on all plans. Included at no extra cost on Ministry.
         </p>
       </div>
 

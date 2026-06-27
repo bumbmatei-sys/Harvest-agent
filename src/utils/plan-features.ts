@@ -9,7 +9,7 @@ export interface PlanFeatures {
   aiKnowledge: boolean;
   /** Show church map in user app (own locations — all plans) */
   map: boolean;
-  /** Show global multi-church discovery directory (Enterprise-only) */
+  /** Show global multi-church discovery directory (Ministry only) */
   churchDirectory: boolean;
   /** Max number of churches (0 = hidden, -1 = unlimited) */
   maxChurches: number;
@@ -81,6 +81,7 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     aiChat: true,
     aiKnowledge: true,
     map: true,
+    churchDirectory: false,
     maxChurches: 1,
     maxCourses: 5,
     maxAdmins: 5,
@@ -103,6 +104,7 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     aiChat: true,
     aiKnowledge: true,
     map: true,
+    churchDirectory: false,
     maxChurches: 1,
     maxCourses: -1,
     maxAdmins: 10,
@@ -119,7 +121,7 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     taxReceipt: false,
     communityGroups: false,
   },
-  // Ministry (top plan — replaces Organization/enterprise)
+  // Ministry (top plan)
   ultra: {
     blog: true,
     aiChat: true,
@@ -128,7 +130,7 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     churchDirectory: true,
     maxChurches: -1,
     maxCourses: -1,
-    maxAdmins: 15,
+    maxAdmins: -1,
     customDomain: true,
     customBackground: true,
     newsletterAutomation: true,
@@ -146,13 +148,12 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
 
 // ─── Pricing (source of truth) ────────────────────────────────────────────────
 
-/** Base plan pricing in USD. null = custom quote / contact sales. */
-export const PLAN_PRICING: Record<TenantPlan, { monthlyUsd: number | null; yearlyUsd: number | null }> = {
-  plus:       { monthlyUsd: 49,   yearlyUsd: 490  },
-  pro:        { monthlyUsd: 99,   yearlyUsd: 990  },
-  max:        { monthlyUsd: 199,  yearlyUsd: 1990 },
-  ultra:      { monthlyUsd: 349,  yearlyUsd: 3490 },
-  enterprise: { monthlyUsd: null, yearlyUsd: null },
+/** Base plan pricing in USD. */
+export const PLAN_PRICING: Record<TenantPlan, { monthlyUsd: number; yearlyUsd: number }> = {
+  plus:  { monthlyUsd: 59,   yearlyUsd: 590  },
+  pro:   { monthlyUsd: 119,  yearlyUsd: 1190 },
+  max:   { monthlyUsd: 239,  yearlyUsd: 2390 },
+  ultra: { monthlyUsd: 479,  yearlyUsd: 4790 },
 };
 
 /**
@@ -160,14 +161,13 @@ export const PLAN_PRICING: Record<TenantPlan, { monthlyUsd: number | null; yearl
  * Source of truth: theharvest.site pricing table "Donations Retained" row.
  */
 export const PLAN_DONATION_RETENTION: Record<TenantPlan, number> = {
-  plus:       85,
-  pro:        90,
-  max:        95,
-  ultra:      100,
-  enterprise: 100,
+  plus:  85,
+  pro:   90,
+  max:   95,
+  ultra: 100,
 };
 
-/** AI Assistant add-on pricing (available on all plans; free on ultra/enterprise). */
+/** AI Assistant add-on pricing (available on all plans; included on Ministry). */
 export const AI_ASSISTANT_ADDON_PRICING = {
   setupFeeUsd: 150,
   monthlyUsd:  100,
@@ -213,11 +213,10 @@ export function hasFeature(plan: TenantPlan, feature: keyof PlanFeatures): boole
   return false;
 }
 
-/** Format a plan price as a display string, e.g. "$49/mo" or "Custom". */
+/** Format a plan price as a display string, e.g. "$59/mo" */
 export function formatPlanPrice(plan: TenantPlan, billing: 'monthly' | 'yearly'): string {
   const pricing = PLAN_PRICING[plan];
   if (!pricing) return 'Custom';
   const amount = billing === 'monthly' ? pricing.monthlyUsd : pricing.yearlyUsd;
-  if (amount === null) return 'Custom';
   return `$${amount.toLocaleString()}/${billing === 'monthly' ? 'mo' : 'yr'}`;
 }

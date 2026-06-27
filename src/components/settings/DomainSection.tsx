@@ -72,7 +72,7 @@ export const DomainSection: React.FC<DomainSectionProps> = ({ hasCustomDomain, o
         </div>
       </div>
 
-      {/* Custom Domain (Ultra/Enterprise only) */}
+      {/* Custom Domain (Ministry only) */}
       {hasCustomDomain ? (
         <div className="bg-white rounded-2xl border border-gray-100 p-6">
           <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">Custom Domain</h3>
@@ -121,7 +121,7 @@ export const DomainSection: React.FC<DomainSectionProps> = ({ hasCustomDomain, o
         <div className="bg-white rounded-2xl border border-gray-100 p-6">
           <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">Custom Domain</h3>
           <p className="text-gray-600 text-sm mb-4">
-            Custom domains are available on <strong>Max</strong>, <strong>Ultra</strong>, and <strong>Enterprise</strong> plans.
+            Custom domains are available on the <strong>Ministry</strong> plan.
             Upgrade to use your own domain name.
           </p>
           <button

@@ -39,14 +39,14 @@ src/
 │   ├── AdminDashboard.tsx    # Admin panel
 │   ├── AdminBlog.tsx         # Blog management
 │   ├── AdminCourses.tsx      # Course management
-│   ├── AdminChurches.tsx     # Church management (Enterprise)
+│   ├── AdminChurches.tsx     # Church management (Ministry)
 │   ├── AdminSettings.tsx     # Tenant settings
 │   ├── AdminTenants.tsx      # Super admin tenant management
 │   ├── AIChat.tsx            # AI chat interface
 │   ├── AuthPage.tsx          # Login/signup
 │   ├── Profile.tsx           # User profile
 │   ├── BlogTab.tsx           # User blog view
-│   ├── ChurchMap.tsx         # Church map (Enterprise)
+│   ├── ChurchMap.tsx         # Church map
 │   ├── EnterpriseContactModal.tsx
 │   ├── Onboarding.tsx        # Tenant onboarding flow
 │   └── course/               # Course components
@@ -67,22 +67,20 @@ src/
 ```
 
 ## Pricing Tiers (TenantPlan)
-| Plan | Display Name | Price | Blog | AI | Map | Church Directory | Churches | Courses | Admins | Custom Domain | AI Assistant |
-|------|-------------|-------|------|-----|-----|-----------------|----------|---------|--------|---------------|-------------|
-| plus | Individual | $49/mo | ✅ | ❌ | ✅ (own) | ❌ | 1 | 5 | 2 | ❌ | ❌ |
-| pro | Community | $99/mo | ✅ | ✅ | ✅ (own) | ❌ | 1 | ∞ | 5 | ❌ | ❌ |
-| max | Church | $199/mo | ✅ | ✅ | ✅ (own) | ❌ | 1 | ∞ | ∞ | ✅ | ❌ |
-| ultra | Ministry | $349/mo | ✅ | ✅ | ✅ (own) | ❌ | 1 | ∞ | ∞ | ✅ | ✅ |
-| enterprise | Enterprise | custom | ✅ | ✅ | ✅ | ✅ (global discovery) | ∞ | ∞ | ∞ | ✅ | ✅ |
+| Plan  | Display Name | Price    | Blog | AI  | Custom Domain | Event Reg | CRM | Accounting | AI Assistant | Community Groups |
+|-------|-------------|----------|------|-----|---------------|-----------|-----|------------|-------------|------------------|
+| plus  | Individual  | $59/mo   | ✅   | ❌  | ❌            | ❌        | ❌  | ❌         | ❌          | ❌               |
+| pro   | Small Team  | $119/mo  | ✅   | ✅  | ❌            | ❌        | ❌  | ❌         | ❌          | ❌               |
+| max   | Community   | $239/mo  | ✅   | ✅  | ❌            | ✅        | ❌  | ❌         | ❌          | ❌               |
+| ultra | Ministry    | $479/mo  | ✅   | ✅  | ✅            | ✅        | ✅  | ✅         | ✅          | ✅               |
 
-Map note: All plans show their own church location(s) on the map. The global multi-church discovery directory (browsing all tenants' churches) is Enterprise-only (`churchDirectory` feature flag).
+Map note: All plans show their own church location(s) on the map. The global multi-church discovery directory (browsing all tenants' churches) is Ministry only (`churchDirectory` feature flag).
 
 ## Revenue Sharing (Stripe Connect)
-- Individual (plus): 85% to church
-- Community (pro): 90% to church
-- Church (max): 95% to church
-- Ministry (ultra): 100% to church
-- Enterprise: 100% to church
+- Individual (plus): 90% to ministry
+- Small Team (pro): 95% to ministry
+- Community (max): 100% to ministry
+- Ministry (ultra): 100% to ministry
 
 ## Design System
 - **Background**: White
@@ -121,7 +119,7 @@ Map note: All plans show their own church location(s) on the map. The global mul
 2. Always set git config before committing: `git config --global user.email "bumbmatei@gmail.com" && git config --global user.name "Matei"`
 3. `git config` defaults to root@vps which breaks Vercel deployments
 4. Git PAT: `/tmp/git-askpass.sh` → set `GIT_ASKPASS=/tmp/git-askpass.sh`
-5. **Churches as sub-entities**, not separate tenants (Enterprise)
+5. **Churches as sub-entities**, not separate tenants
 6. Always verify which branch/version is deployed before editing
 7. Run bug analysis after feature implementation (3+ files changed)
 
@@ -131,9 +129,12 @@ Map note: All plans show their own church location(s) on the map. The global mul
 - `Harvest-Site---STABLE` — stable backup (DO NOT MODIFY)
 
 ## Current Status (as of last commits)
-- Enterprise checkout flow with contact form + email notification
-- Per-church announcements (admin CRUD + My Church 2-tab view)
-- RAG chat switched from Gemini to MiMo
-- Security hardening (tenant isolation, charge metadata, claims batching)
-- 12 critical/high bugs fixed
-- Phase 4: AI Assistant access codes + anti-sharing
+- Plans: Individual ($59), Small Team ($119), Community ($239), Ministry ($479)
+- No enterprise plan — Ministry is the top tier
+- AI Assistant (Telegram bot) live on Ministry
+- Newsletter live
+- Community Groups live
+- CRM, Accounting, Tax Receipts live on Ministry
+- Zustand + TanStack Query in place
+- React Router migrated
+- Composite index refactor done

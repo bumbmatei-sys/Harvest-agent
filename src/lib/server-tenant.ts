@@ -24,7 +24,7 @@ export async function getTenantFromHost(host: string): Promise<Tenant | null> {
     }
   }
 
-  // Custom domain fallback (Ultra/Enterprise)
+  // Custom domain fallback (Ministry only)
   try {
     const snap = await adminDb
       .collection('tenants')
