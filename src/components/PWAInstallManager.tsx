@@ -18,6 +18,12 @@ export default function PWAInstallManager() {
       return;
     }
 
+    // Install is now handled as a mandatory onboarding step; once that step has
+    // run (installed OR skipped) we never show this legacy popup again.
+    if (localStorage.getItem('pwa_installed') === 'true') {
+      return;
+    }
+
     // 2. Platform Detection
     const userAgent = window.navigator.userAgent.toLowerCase();
     const isIOS = /iphone|ipad|ipod/.test(userAgent);
