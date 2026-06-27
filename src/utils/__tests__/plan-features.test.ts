@@ -106,4 +106,11 @@ describe('hasFeature', () => {
     expect(hasFeature('max', 'customForms')).toBe(false);
     expect(hasFeature('ultra', 'customForms')).toBe(true);
   });
+
+  it('checkInSystem is available on Ministry (ultra) only', () => {
+    expect(hasFeature('plus', 'checkInSystem')).toBe(false);
+    expect(hasFeature('pro', 'checkInSystem')).toBe(false);
+    expect(hasFeature('max', 'checkInSystem')).toBe(false);
+    expect(hasFeature('ultra', 'checkInSystem')).toBe(true);
+  });
 });

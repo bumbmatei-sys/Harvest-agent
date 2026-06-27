@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { LayoutDashboard, Church, FileText, Rss, BrainCircuit, Inbox, GraduationCap, ChevronLeft, ChevronRight, Building2, Settings, MoreHorizontal, Mail, SlidersHorizontal, Heart, Users, MessageSquare, Receipt, CalendarCheck, ShieldCheck, ClipboardList } from 'lucide-react';
+import { LayoutDashboard, Church, FileText, Rss, BrainCircuit, Inbox, GraduationCap, ChevronLeft, ChevronRight, Building2, Settings, MoreHorizontal, Mail, SlidersHorizontal, Heart, Users, MessageSquare, Receipt, CalendarCheck, ShieldCheck, ClipboardList, QrCode } from 'lucide-react';
 import AdminBlog from './AdminBlog';
 import AdminPosts from './AdminPosts';
 import AdminInbox from './AdminInbox';
@@ -23,6 +23,7 @@ import AdminDocs from './AdminDocs';
 import AdminCommunity from './AdminCommunity';
 import AdminAccounting from './AdminAccounting';
 import AdminForms from './AdminForms';
+import AdminCheckin from './AdminCheckin';
 import AdminEvents from './AdminEvents';
 import PlanUpgradeScreen from './PlanUpgradeScreen';
 import { AdminScreenHeader, AdminHeaderContext, AdminHeaderOverride } from './AdminScreenHeader';
@@ -194,6 +195,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
     (isSuperAdmin || !isTenantAdmin || (features && features.customForms)) &&
       hasFullAccess &&
       { id: 'forms', label: 'Forms', icon: ClipboardList },
+    // Check-In System (QR attendance)
+    (isSuperAdmin || !isTenantAdmin || (features && features.checkInSystem)) &&
+      hasFullAccess &&
+      { id: 'checkin', label: 'Check-In', icon: QrCode },
     // Community (Rocket.Chat)
     (isSuperAdmin || !isTenantAdmin || (features && features.communityGroups)) &&
       hasFullAccess &&
@@ -482,6 +487,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
             (isSuperAdmin || !isTenantAdmin || (features && features.customForms))
               ? <div className="p-4 lg:p-0"><AdminForms /></div>
               : <PlanUpgradeScreen featureName="Forms" featureKey="customForms" onBack={() => go('dashboard')} onUpgrade={() => go('settings')} />
+          ) : activeTab === 'checkin' ? (
+            (isSuperAdmin || !isTenantAdmin || (features && features.checkInSystem))
+              ? <div className="p-4 lg:p-0"><AdminCheckin /></div>
+              : <PlanUpgradeScreen featureName="Check-In" featureKey="checkInSystem" onBack={() => go('dashboard')} onUpgrade={() => go('settings')} />
           ) : activeTab === 'community' ? (
             (isSuperAdmin || !isTenantAdmin || (features && features.communityGroups))
               ? <div className="p-4 lg:p-0 h-full"><AdminCommunity onOpenAttachment={(type, id) => {

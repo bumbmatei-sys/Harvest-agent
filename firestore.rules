@@ -311,6 +311,17 @@ service cloud.firestore {
           allow read, write: if isTenantAdmin(tenantId);
         }
       }
+
+      // Check-in sessions — admins manage; public check-ins are written
+      // server-side via the admin SDK (/api/checkin/submit), so client access
+      // stays admin-only here.
+      match /checkinSessions/{sessionId} {
+        allow read, write: if isTenantAdmin(tenantId);
+
+        match /attendees/{attendeeId} {
+          allow read, write: if isTenantAdmin(tenantId);
+        }
+      }
     }
 
     // ─── Docs & Doc Folders ───────────────────────────────────────────
