@@ -99,4 +99,11 @@ describe('hasFeature', () => {
     expect(hasFeature('max', 'customDomain')).toBe(false);
     expect(hasFeature('ultra', 'customDomain')).toBe(true);
   });
+
+  it('customForms is available on Ministry (ultra) only', () => {
+    expect(hasFeature('plus', 'customForms')).toBe(false);
+    expect(hasFeature('pro', 'customForms')).toBe(false);
+    expect(hasFeature('max', 'customForms')).toBe(false);
+    expect(hasFeature('ultra', 'customForms')).toBe(true);
+  });
 });

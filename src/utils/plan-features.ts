@@ -45,6 +45,8 @@ export interface PlanFeatures {
   taxReceipt: boolean;
   /** Community groups (Rocket.Chat integration) */
   communityGroups: boolean;
+  /** Custom forms → CRM pipeline (Ministry only) */
+  customForms: boolean;
 }
 
 // ─── Feature matrix ───────────────────────────────────────────────────────────
@@ -80,6 +82,7 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     accountingTools: false,
     taxReceipt: false,
     communityGroups: false,
+    customForms: false,
   },
   // Small Team
   pro: {
@@ -105,6 +108,7 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     accountingTools: false,
     taxReceipt: false,
     communityGroups: false,
+    customForms: false,
   },
   // Community
   max: {
@@ -130,6 +134,7 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     accountingTools: false,
     taxReceipt: false,
     communityGroups: false,
+    customForms: false,
   },
   // Ministry (top plan)
   ultra: {
@@ -155,6 +160,7 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     accountingTools: true,
     taxReceipt: true,
     communityGroups: true,
+    customForms: true,
   },
 };
 

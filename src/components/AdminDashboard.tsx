@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { LayoutDashboard, Church, FileText, Rss, BrainCircuit, Inbox, GraduationCap, ChevronLeft, ChevronRight, Building2, Settings, MoreHorizontal, Mail, SlidersHorizontal, Heart, Users, MessageSquare, Receipt, CalendarCheck, ShieldCheck } from 'lucide-react';
+import { LayoutDashboard, Church, FileText, Rss, BrainCircuit, Inbox, GraduationCap, ChevronLeft, ChevronRight, Building2, Settings, MoreHorizontal, Mail, SlidersHorizontal, Heart, Users, MessageSquare, Receipt, CalendarCheck, ShieldCheck, ClipboardList } from 'lucide-react';
 import AdminBlog from './AdminBlog';
 import AdminPosts from './AdminPosts';
 import AdminInbox from './AdminInbox';
@@ -22,6 +22,7 @@ import AdminCRM from './AdminCRM';
 import AdminDocs from './AdminDocs';
 import AdminCommunity from './AdminCommunity';
 import AdminAccounting from './AdminAccounting';
+import AdminForms from './AdminForms';
 import AdminEvents from './AdminEvents';
 import PlanUpgradeScreen from './PlanUpgradeScreen';
 import { AdminScreenHeader, AdminHeaderContext, AdminHeaderOverride } from './AdminScreenHeader';
@@ -189,6 +190,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
     (isSuperAdmin || !isTenantAdmin || (features && features.accountingTools)) &&
       hasFullAccess &&
       { id: 'accounting', label: 'Accounting', icon: Receipt },
+    // Custom Forms → CRM pipeline
+    (isSuperAdmin || !isTenantAdmin || (features && features.customForms)) &&
+      hasFullAccess &&
+      { id: 'forms', label: 'Forms', icon: ClipboardList },
     // Community (Rocket.Chat)
     (isSuperAdmin || !isTenantAdmin || (features && features.communityGroups)) &&
       hasFullAccess &&
@@ -473,6 +478,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
             (isSuperAdmin || !isTenantAdmin || (features && features.accountingTools))
               ? <div className="p-4 lg:p-0"><AdminAccounting /></div>
               : <PlanUpgradeScreen featureName="Accounting" featureKey="accounting" onBack={() => go('dashboard')} onUpgrade={() => go('settings')} />
+          ) : activeTab === 'forms' ? (
+            (isSuperAdmin || !isTenantAdmin || (features && features.customForms))
+              ? <div className="p-4 lg:p-0"><AdminForms /></div>
+              : <PlanUpgradeScreen featureName="Forms" featureKey="customForms" onBack={() => go('dashboard')} onUpgrade={() => go('settings')} />
           ) : activeTab === 'community' ? (
             (isSuperAdmin || !isTenantAdmin || (features && features.communityGroups))
               ? <div className="p-4 lg:p-0 h-full"><AdminCommunity onOpenAttachment={(type, id) => {
