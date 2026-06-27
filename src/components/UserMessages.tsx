@@ -90,6 +90,38 @@ const fmtTime = (ts: Timestamp | null) => {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 };
 
+// Group consecutive messages from the same sender (within 3 minutes) so the
+// avatar + name header renders only on the first message of each run. Generic
+// over both channel and DM message shapes (senderRole / senderId optional).
+interface GroupableMessage {
+  id: string;
+  senderId?: string;
+  senderName: string;
+  senderRole?: string;
+  createdAt: Timestamp | null;
+}
+
+function groupMessages<T extends GroupableMessage>(msgs: T[]) {
+  const groups: { sender: string; senderName: string; senderRole: string; messages: T[] }[] = [];
+  for (const msg of msgs) {
+    const last = groups[groups.length - 1];
+    const lastMsg = last?.messages[last.messages.length - 1];
+    const isSameSender = last?.sender === (msg.senderId || '');
+    const isWithin3min = last && msg.createdAt && lastMsg?.createdAt
+      ? Math.abs(
+          ((msg.createdAt as any)?.toDate?.()?.getTime?.() ?? 0) -
+          ((lastMsg.createdAt as any)?.toDate?.()?.getTime?.() ?? 0)
+        ) < 3 * 60 * 1000
+      : false;
+    if (isSameSender && isWithin3min) {
+      last.messages.push(msg);
+    } else {
+      groups.push({ sender: msg.senderId || '', senderName: msg.senderName, senderRole: msg.senderRole || '', messages: [msg] });
+    }
+  }
+  return groups;
+}
+
 // ─── Attachment Card (view-only for users) ───────────────────────────────────
 
 const AttachmentCard: React.FC<{ attachment: MessageAttachment; tenantId?: string }> = ({ attachment, tenantId }) => {
@@ -300,15 +332,18 @@ const DmThread: React.FC<{
 
   return (
     <div className="flex flex-col h-full bg-[#F7F6F3]">
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 bg-white">
-        <button onClick={onBack} className="p-1.5 rounded-lg hover:bg-gray-100">
-          <ArrowLeft size={18} className="text-gray-600" />
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-[#EDEBE8] bg-white">
+        <button onClick={onBack} className="p-1 -ml-1">
+          <ArrowLeft size={22} style={{ color: 'var(--brand-color, #B8962E)' }} />
         </button>
-        <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
+        <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white flex-shrink-0"
           style={{ backgroundColor: 'var(--brand-color, #B8962E)' }}>
           {otherName.charAt(0).toUpperCase()}
         </div>
-        <p className="font-bold text-gray-900 text-sm">{otherName}</p>
+        <div className="flex-1 min-w-0">
+          <p className="font-bold text-gray-900 text-sm">{otherName}</p>
+          <p className="text-[10px] text-gray-400">Direct Message</p>
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
@@ -318,51 +353,75 @@ const DmThread: React.FC<{
             <p className="text-sm">No messages yet</p>
           </div>
         )}
-        {messages.map(m => {
-          const isMine = m.senderId === currentUser.uid;
+        {groupMessages(messages).map(group => {
+          const isMine = group.sender === currentUser.uid;
           return (
-            <div key={m.id} className={`flex gap-3 ${isMine ? 'flex-row-reverse' : ''}`}>
-              <div className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold text-white"
-                style={{ backgroundColor: isMine ? 'var(--brand-color, #B8962E)' : '#6b7280' }}>
-                {m.senderName.charAt(0).toUpperCase()}
-              </div>
-              <div className={`max-w-[72%] ${isMine ? 'items-end' : 'items-start'} flex flex-col`}>
-                {m.content && (
-                  <p className={`text-sm px-3 py-2 rounded-2xl ${isMine ? 'rounded-tr-sm text-white' : 'rounded-tl-sm text-gray-700 bg-white border border-gray-100 shadow-sm'}`}
-                    style={isMine ? { backgroundColor: 'var(--brand-color, #B8962E)' } : undefined}>
-                    {m.content}
-                  </p>
-                )}
-                {m.attachments?.map((a, i) => <AttachmentCard key={i} attachment={a} tenantId={tenantId} />)}
-                <span className="text-[10px] text-gray-400 mt-0.5">{fmtTime(m.createdAt)}</span>
-              </div>
+            <div key={group.messages[0].id} className="space-y-1">
+              {group.messages.map((m, mi) => {
+                const isFirst = mi === 0;
+                if (isMine) {
+                  return (
+                    <div key={m.id} className="flex justify-end">
+                      <div className="flex flex-col items-end max-w-[78%]">
+                        {m.content && (
+                          <div className="bg-[#B8962E] text-white rounded-2xl rounded-br-sm px-3.5 py-2.5 text-sm break-words">{m.content}</div>
+                        )}
+                        {m.attachments?.map((a, i) => <AttachmentCard key={i} attachment={a} tenantId={tenantId} />)}
+                        <span className="text-[10px] text-[#B8962E]/60 text-right mt-0.5">{fmtTime(m.createdAt)}</span>
+                      </div>
+                    </div>
+                  );
+                }
+                const senderRole = dm.participantRoles?.[m.senderId || ''];
+                const isAdminSender = ADMIN_ROLES.includes(senderRole);
+                return (
+                  <div key={m.id} className="flex gap-2.5 items-end">
+                    {isFirst ? (
+                      <div className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold text-white"
+                        style={{ backgroundColor: isAdminSender ? 'var(--brand-color, #B8962E)' : '#9ca3af' }}>
+                        {(group.senderName || 'A').charAt(0).toUpperCase()}
+                      </div>
+                    ) : (
+                      <div className="w-8 flex-shrink-0" />
+                    )}
+                    <div className="flex flex-col items-start max-w-[78%]">
+                      {isFirst && <span className="text-[10px] font-semibold text-gray-400 mb-0.5 ml-1">{group.senderName}</span>}
+                      {m.content && (
+                        <div className="bg-[#F0EDE8] text-gray-800 rounded-2xl rounded-bl-sm px-3.5 py-2.5 text-sm break-words">{m.content}</div>
+                      )}
+                      {m.attachments?.map((a, i) => <AttachmentCard key={i} attachment={a} tenantId={tenantId} />)}
+                      <span className="text-[10px] text-gray-400 mt-0.5">{fmtTime(m.createdAt)}</span>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           );
         })}
         <div ref={bottomRef} />
       </div>
 
-      <div className="p-4 bg-white border-t border-gray-100">
+      <div className="bg-white border-t border-[#EDEBE8] flex-shrink-0 px-4 pt-3" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 8px)' }}>
         {attachments.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-2">
             {attachments.map((a, i) => (
-              <div key={i} className="flex items-center gap-1.5 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1">
+              <div key={i} className="flex items-center gap-1.5 bg-[#FBF3E4] border border-[#F0D9A0] rounded-lg px-2.5 py-1 text-xs font-medium text-[#B8962E]">
                 <span className="text-sm">📝</span>
-                <span className="text-xs font-medium text-gray-700 max-w-[90px] truncate">{a.title}</span>
+                <span className="max-w-[90px] truncate">{a.title}</span>
                 <button onClick={() => setAttachments(prev => prev.filter((_, idx) => idx !== i))}>
-                  <X size={11} className="text-gray-400" />
+                  <X size={11} className="text-[#B8962E]/60" />
                 </button>
               </div>
             ))}
           </div>
         )}
-        <div className="flex gap-2 items-center bg-gray-50 rounded-2xl px-3 py-2 border border-gray-200">
+        <div className="flex gap-2 items-center bg-[#F7F6F3] rounded-2xl px-3 py-2.5 border border-[#EDEBE8] focus-within:border-[#B8962E]/40 transition-colors">
           <button
             onClick={() => setShowPicker(true)}
-            className="flex-shrink-0 p-1 rounded-lg hover:bg-gray-200 transition-colors"
+            className="flex-shrink-0 p-1 rounded-lg hover:bg-[#EDEBE8] transition-colors"
             aria-label="Attach a form"
           >
-            <Paperclip size={16} className="text-gray-500" />
+            <Paperclip size={16} className="text-gray-400" />
           </button>
           <input
             value={text}
@@ -374,10 +433,10 @@ const DmThread: React.FC<{
           <button
             onClick={send}
             disabled={(!text.trim() && attachments.length === 0) || sending}
-            className="w-8 h-8 rounded-full flex items-center justify-center disabled:opacity-40 transition-opacity"
+            className="w-9 h-9 rounded-xl flex items-center justify-center disabled:opacity-30 transition-opacity"
             style={{ backgroundColor: 'var(--brand-color, #B8962E)' }}
           >
-            <Send size={14} className="text-white" />
+            <Send size={15} className="text-white" />
           </button>
         </div>
       </div>
@@ -446,13 +505,16 @@ const ChannelView: React.FC<{
 
   return (
     <div className="flex flex-col h-full bg-[#F7F6F3]">
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 bg-white flex-shrink-0">
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-[#EDEBE8] bg-white flex-shrink-0">
         <button onClick={onBack} className="p-1 -ml-1 flex-shrink-0" aria-label="Back">
-          <ArrowLeft size={22} style={{ color: '#B8962E' }} />
+          <ArrowLeft size={22} style={{ color: 'var(--brand-color, #B8962E)' }} />
         </button>
-        <Hash size={18} style={{ color: 'var(--brand-color, #B8962E)' }} className="flex-shrink-0" />
+        <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+          style={{ backgroundColor: 'var(--brand-color, #B8962E)1A' }}>
+          <Hash size={16} style={{ color: 'var(--brand-color, #B8962E)' }} />
+        </div>
         <div className="flex-1 min-w-0">
-          <p className="font-bold text-gray-900 text-sm truncate">{channel.name}</p>
+          <p className="font-bold text-gray-900 text-sm truncate">#{channel.name}</p>
           {channel.description && <p className="text-xs text-gray-400 truncate">{channel.description}</p>}
         </div>
       </div>
@@ -464,26 +526,35 @@ const ChannelView: React.FC<{
             <p className="text-sm">No messages yet</p>
           </div>
         )}
-        {messages.map(m => {
-          const isMine = m.senderId === currentUser.uid;
+        {groupMessages(messages).map(group => {
+          const isAdmin = group.senderRole === 'admin' || group.senderRole === 'church_admin' || group.senderRole === 'super_admin';
           return (
-            <div key={m.id} className="flex gap-3">
+            <div key={group.messages[0].id} className="flex gap-3">
               <div className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold text-white"
-                style={{ backgroundColor: isMine ? 'var(--brand-color, #B8962E)' : '#6b7280' }}>
-                {(m.senderName || 'A').charAt(0).toUpperCase()}
+                style={{ backgroundColor: isAdmin ? 'var(--brand-color, #B8962E)' : '#6b7280' }}>
+                {(group.senderName || 'A').charAt(0).toUpperCase()}
               </div>
-              <div>
-                <div className="flex items-baseline gap-2 mb-0.5">
-                  <span className="text-sm font-semibold text-gray-900">{m.senderName || 'Member'}</span>
-                  <RoleBadge role={m.senderRole} />
-                  <span className="text-[10px] text-gray-400">{fmtTime(m.createdAt)}</span>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-baseline gap-2 mb-1">
+                  <span className="text-sm font-semibold text-gray-900">{group.senderName || 'Member'}</span>
+                  <RoleBadge role={group.senderRole} />
+                  <span className="text-[10px] text-gray-400">{fmtTime(group.messages[0].createdAt)}</span>
                 </div>
-                {m.content && (
-                  <p className="text-sm text-gray-700 bg-white px-3 py-2 rounded-2xl rounded-tl-sm border border-gray-100 shadow-sm max-w-xs lg:max-w-md">
-                    {m.content}
-                  </p>
-                )}
-                {m.attachments?.map((a, i) => <AttachmentCard key={i} attachment={a} tenantId={tenantId} />)}
+                <div className="space-y-1">
+                  {group.messages.map(m => (
+                    <div key={m.id} className="group flex items-end gap-2">
+                      <div className="max-w-[78%]">
+                        {m.content && (
+                          <p className="bg-white border border-[#EDEBE8] rounded-2xl rounded-tl-sm px-3 py-2 text-sm text-gray-800 shadow-sm break-words">
+                            {m.content}
+                          </p>
+                        )}
+                        {m.attachments?.map((a, i) => <AttachmentCard key={i} attachment={a} tenantId={tenantId} />)}
+                      </div>
+                      <span className="text-[10px] text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 mb-1">{fmtTime(m.createdAt)}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           );
@@ -491,8 +562,8 @@ const ChannelView: React.FC<{
         <div ref={bottomRef} />
       </div>
 
-      <div className="bg-white border-t border-gray-100 flex-shrink-0 px-4 pt-3" style={{ paddingBottom: 'calc(12px + env(safe-area-inset-bottom))' }}>
-        <div className="flex gap-2 items-center bg-gray-50 rounded-2xl px-3 py-2 border border-gray-200">
+      <div className="bg-white border-t border-[#EDEBE8] flex-shrink-0 px-4 pt-3" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 8px)' }}>
+        <div className="flex gap-2 items-center bg-[#F7F6F3] rounded-2xl px-3 py-2.5 border border-[#EDEBE8] focus-within:border-[#B8962E]/40 transition-colors">
           <input
             value={text}
             onChange={e => setText(e.target.value)}
@@ -503,10 +574,10 @@ const ChannelView: React.FC<{
           <button
             onClick={send}
             disabled={!text.trim() || sending}
-            className="w-8 h-8 rounded-full flex items-center justify-center disabled:opacity-40 transition-opacity"
+            className="w-9 h-9 rounded-xl flex items-center justify-center disabled:opacity-30 transition-opacity"
             style={{ backgroundColor: 'var(--brand-color, #B8962E)' }}
           >
-            <Send size={14} className="text-white" />
+            <Send size={15} className="text-white" />
           </button>
         </div>
       </div>
@@ -675,13 +746,13 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false })
   if (loading) {
     return (
       <div className="flex flex-col min-h-full bg-[#F7F6F3]">
-        <div className="flex items-center gap-3 px-4 py-4 bg-white border-b border-gray-100">
+        <div className="flex items-center gap-3 px-4 py-4 bg-white border-b border-[#EDEBE8]">
           {!embedded && (
             <button onClick={onBack} className="p-1 -ml-1" aria-label="Back">
-              <ArrowLeft size={22} style={{ color: '#B8962E' }} />
+              <ArrowLeft size={22} style={{ color: 'var(--brand-color, #B8962E)' }} />
             </button>
           )}
-          <h2 className="text-lg font-bold text-gray-900">Messages</h2>
+          <h2 className="text-lg font-black text-gray-900">Messages</h2>
         </div>
         <div className="flex items-center justify-center h-40">
           <div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin"
@@ -715,13 +786,13 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false })
 
   return (
     <div className="flex flex-col min-h-full bg-[#F7F6F3]">
-      <div className="flex items-center gap-3 px-4 py-4 bg-white border-b border-gray-100">
+      <div className="flex items-center gap-3 px-4 py-4 bg-white border-b border-[#EDEBE8]">
         {!embedded && (
           <button onClick={onBack} className="p-1 -ml-1" aria-label="Back">
-            <ArrowLeft size={22} style={{ color: '#B8962E' }} />
+            <ArrowLeft size={22} style={{ color: 'var(--brand-color, #B8962E)' }} />
           </button>
         )}
-        <h2 className="text-lg font-bold text-gray-900">Messages</h2>
+        <h2 className="text-lg font-black text-gray-900">Messages</h2>
         {canStartDm && (
           <button
             onClick={openNewMessage}
@@ -748,20 +819,20 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false })
           <>
             {channels.length > 0 && (
               <div className="mb-5">
-                <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Channels</p>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Channels</p>
                 <div className="space-y-2">
                   {channels.map(ch => (
                     <button
                       key={ch.id}
                       onClick={() => setOpenChannel(ch)}
-                      className="w-full bg-white rounded-2xl px-4 py-3 border border-gray-100 shadow-sm flex items-center gap-3 hover:border-[#B8962E]/30 transition-all text-left"
+                      className="w-full bg-white rounded-2xl border border-[#EDEBE8] px-4 py-3.5 flex items-center gap-3 hover:border-[#B8962E]/40 hover:shadow-sm transition-all text-left"
                     >
-                      <div className="w-11 h-11 rounded-xl flex-shrink-0 flex items-center justify-center"
-                        style={{ backgroundColor: 'var(--brand-color, #B8962E)' }}>
-                        <Hash size={18} className="text-white" />
+                      <div className="w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center"
+                        style={{ backgroundColor: 'var(--brand-color, #B8962E)1A' }}>
+                        <Hash size={18} style={{ color: 'var(--brand-color, #B8962E)' }} />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-gray-900 text-sm truncate">#{ch.name}</p>
+                        <p className="text-sm font-bold text-gray-900 truncate">#{ch.name}</p>
                         <p className="text-xs text-gray-400 truncate">{ch.lastMessage || ch.description || 'No messages yet'}</p>
                       </div>
                       {ch.lastMessageAt && <span className="text-[10px] text-gray-400 flex-shrink-0">{fmtTime(ch.lastMessageAt)}</span>}
@@ -771,21 +842,21 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false })
               </div>
             )}
             {dms.length > 0 && (
-              <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Direct Messages</p>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Direct Messages</p>
             )}
             <div className="space-y-2">
             {dms.map(dm => (
               <button
                 key={dm.id}
                 onClick={() => setOpenDm(dm)}
-                className="w-full bg-white rounded-2xl px-4 py-3 border border-gray-100 shadow-sm flex items-center gap-3 hover:border-[#B8962E]/30 transition-all text-left"
+                className="w-full bg-white rounded-2xl border border-[#EDEBE8] px-4 py-3.5 flex items-center gap-3 hover:border-[#B8962E]/40 hover:shadow-sm transition-all text-left"
               >
                 <div className="w-11 h-11 rounded-full flex-shrink-0 flex items-center justify-center text-sm font-bold text-white"
                   style={{ backgroundColor: 'var(--brand-color, #B8962E)' }}>
                   {getOtherName(dm).charAt(0).toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-gray-900 text-sm">{getOtherName(dm)}</p>
+                  <p className="text-sm font-bold text-gray-900 truncate">{getOtherName(dm)}</p>
                   {dm.lastMessage && <p className="text-xs text-gray-400 truncate">{dm.lastMessage}</p>}
                 </div>
                 {dm.lastMessageAt && <span className="text-[10px] text-gray-400 flex-shrink-0">{fmtTime(dm.lastMessageAt)}</span>}
