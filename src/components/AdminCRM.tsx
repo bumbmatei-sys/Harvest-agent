@@ -21,6 +21,7 @@ import {
   type Contact, type ContactActivity,
 } from '../hooks/queries/useCRMQueries';
 import { useTenant as useTenantDoc } from '../hooks/queries/useTenantQueries';
+import { PLATFORM_TENANT_ID } from '../utils/tenant-scope';
 
 const TYPE_LABELS: Record<Contact['type'], string> = {
   donor: 'Donor',
@@ -199,7 +200,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
         setSelected({ ...selected, ...data, updatedAt: null });
       } else {
         await addDoc(collection(db, 'contacts'), {
-          ...data, tenantId: tenantId || null,
+          ...data, tenantId: tenantId || PLATFORM_TENANT_ID,
           lastDonationAt: null, memberSince: null,
           createdAt: serverTimestamp(), createdBy: auth.currentUser?.uid || '',
         });
