@@ -9,6 +9,17 @@ import { Resend } from 'resend';
 
 export const dynamic = 'force-dynamic';
 
+/** Returns the affiliate commission rate for a given plan. */
+function getAffiliateRate(plan: string): number {
+  switch (plan) {
+    case 'ultra': return 0.20;
+    case 'max':   return 0.15;
+    case 'pro':   return 0.10;
+    case 'plus':  return 0.10;
+    default:      return 0.10;
+  }
+}
+
 export async function POST(request: NextRequest) {
   const stripeKey = process.env.STRIPE_SECRET_KEY;
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -217,7 +228,7 @@ export async function POST(request: NextRequest) {
                   if (hasInitialCommission) {
                     console.log('⚠️ Commission already exists for subscription', subscriptionId);
                   } else {
-                    const commissionAmount = Math.round((session.amount_total || 0) * 0.10);
+                    const commissionAmount = Math.round((session.amount_total || 0) * getAffiliateRate(plan));
                     let commissionStatus = 'pending';
                     try {
                       const referrerDoc = await adminDb.collection('users').doc(referrerId).get();
@@ -445,6 +456,32 @@ export async function POST(request: NextRequest) {
           await batch.commit();
 
           console.log(`❌ Tenant ${tenantId} subscription cancelled, downgraded to plus`);
+
+          // Mark any pending affiliate commissions for this subscription as inactive
+          try {
+            const referrerId = subscription.metadata?.referrerId;
+            if (referrerId) {
+              await adminDb.collection('users').doc(referrerId).update({
+                // Decrement active referral count if it's tracked separately in future
+                // For now, add a cancellation record for the dashboard
+                updatedAt: new Date().toISOString(),
+              });
+              await adminDb.collection('affiliate_commissions').add({
+                referrerId,
+                tenantId,
+                plan: subscription.metadata?.plan || 'unknown',
+                amount: 0,
+                commission: 0,
+                status: 'cancelled',
+                type: 'cancellation',
+                stripeSubscriptionId: subscription.id,
+                createdAt: new Date().toISOString(),
+              });
+              console.log(`📭 Affiliate commission stream ended for referrer ${referrerId} (tenant ${tenantId} cancelled)`);
+            }
+          } catch (cancelCommissionErr) {
+            console.error('Failed to record commission cancellation:', cancelCommissionErr);
+          }
         }
         break;
       }
@@ -505,7 +542,8 @@ export async function POST(request: NextRequest) {
                 if (!existingCommission.empty) {
                   console.log('⚠️ Commission already exists for invoice', invoice.id);
                 } else {
-                  const commissionAmount = Math.round((invoice.amount_paid || 0) * 0.10);
+                  const subscriptionPlan = subscription.metadata?.plan || 'plus';
+                  const commissionAmount = Math.round((invoice.amount_paid || 0) * getAffiliateRate(subscriptionPlan));
                   let commissionStatus = 'pending';
                   let stripeTransferId: string | undefined;
                   try {
