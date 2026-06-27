@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { LayoutDashboard, Church, FileText, Rss, BrainCircuit, Inbox, GraduationCap, ChevronLeft, ChevronRight, Building2, Settings, MoreHorizontal, Mail, SlidersHorizontal, Heart, Users, MessageSquare, Receipt, CalendarCheck, ShieldCheck, ClipboardList, QrCode, Radio, ExternalLink } from 'lucide-react';
+import { LayoutDashboard, Church, FileText, Rss, BrainCircuit, Inbox, GraduationCap, ChevronLeft, ChevronRight, Building2, Settings, MoreHorizontal, Mail, SlidersHorizontal, Heart, Users, MessageSquare, Receipt, CalendarCheck, ShieldCheck, ClipboardList, QrCode, Radio, ExternalLink, Link2 } from 'lucide-react';
 import AdminBlog from './AdminBlog';
 import AdminPosts from './AdminPosts';
 import AdminInbox from './AdminInbox';
@@ -10,6 +10,7 @@ import AdminCourses from './AdminCourses';
 import AdminRAG from './AdminRAG';
 import AdminTenants from './AdminTenants';
 import AdminSettings from './AdminSettings';
+import AffiliateSection from './AffiliateSection';
 import NewsletterEditor from './NewsletterEditor';
 import NewsletterCampaigns from './NewsletterCampaigns';
 import CanvasList from './CanvasList';
@@ -216,6 +217,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
     isSuperAdmin && { id: 'tenants', label: 'Tenants', icon: Building2 },
     // Admin Roles — placed last so it falls into the mobile "More" drawer by default
     (isSuperAdmin || hasFullAccess || perms.manageAdmins) && { id: 'admin_roles', label: 'Admin Roles', icon: ShieldCheck },
+    // Affiliate — standalone section (near the bottom, above Settings)
+    (isSuperAdmin || hasFullAccess) && { id: 'affiliate', label: 'Affiliate', icon: Link2 },
   ].filter(Boolean) as { id: string; label: string; icon: any }[];
 
   // Mobile: 4 tabs in the bottom bar. If the admin has saved a custom order,
@@ -525,6 +528,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
               : <PlanUpgradeScreen featureName="Community Groups" featureKey="community_chat" onBack={() => go('dashboard')} onUpgrade={() => go('settings')} />
           ) : activeTab === 'tenants' ? (
             <div className="p-4 lg:p-0"><AdminTenants /></div>
+          ) : activeTab === 'affiliate' ? (
+            <div className="p-4 lg:p-0"><AffiliateSection /></div>
           ) : activeTab === 'settings' ? (
             <AdminSettings
               onBack={() => go('dashboard')}
