@@ -140,6 +140,11 @@ export const TenantProvider: React.FC<TenantProviderProps> = ({
         }
         if (data.name) {
           setTenantName(data.name as string);
+          // White-label: reflect the ministry name in the browser tab title.
+          const platformId = process.env.NEXT_PUBLIC_PLATFORM_TENANT_ID || 'harvest';
+          if (typeof document !== 'undefined' && tenantId && tenantId !== platformId) {
+            document.title = data.name as string;
+          }
         }
         if (data.config) {
           setBranding(data.config as TenantConfig);

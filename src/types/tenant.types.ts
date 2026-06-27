@@ -6,6 +6,8 @@ export interface TenantConfig {
   primaryColor?: string; // hex color, e.g. "#D4AF37"
   description?: string;
   customDomain?: string; // e.g. "yourchurch.com" (Ultra only)
+  customDomainVerified?: boolean; // true once Vercel verifies the custom domain
+  customDomainStatus?: 'pending' | 'verified' | 'failed'; // Vercel provisioning status
   backgroundImage?: string; // URL to custom background image for auth page
   onboardingQuestions?: {
     id: string;

@@ -29,7 +29,7 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ onComplete, signupP
   const selectedPlan = signupPlan || (urlPlan && ['plus', 'pro', 'max', 'ultra'].includes(urlPlan) ? urlPlan : 'plus');
 
   const hasBranding = selectedPlan === 'max' || selectedPlan === 'ultra';
-  const hasCustomDomain = selectedPlan === 'max' || selectedPlan === 'ultra';
+  const hasCustomDomain = selectedPlan === 'ultra';
 
   const [step, setStep] = useState(0);
   const [ministryName, setMinistryName] = useState('');

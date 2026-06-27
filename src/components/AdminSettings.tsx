@@ -30,7 +30,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
 
   const currentPlanData = currentPlan ? PLANS_DISPLAY.find(p => p.id === currentPlan) : null;
   const currentFeatures = currentPlan ? getPlanFeatures(currentPlan) : null;
-  const hasBranding = currentFeatures?.customBackground;
+  const hasBranding = currentFeatures?.customBranding;
   const hasCustomDomain = currentFeatures?.customDomain;
   const [forceOpen, setForceOpen] = useState<string | null>(null);
 

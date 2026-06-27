@@ -23,6 +23,10 @@ import { getPlanFeatures } from '../utils/plan-features';
 import { auth } from '../firebase';
 import { isSuperAdminEmail } from '../utils/super-admins';
 import { useAppStore } from '../store/useAppStore';
+import { useTenant } from '../contexts/TenantContext';
+
+const PLATFORM_TENANT_ID = process.env.NEXT_PUBLIC_PLATFORM_TENANT_ID || 'harvest';
+const DEFAULT_LOGO = 'https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png';
 
 const ChurchMap = dynamic(() => import('./ChurchMap'), { ssr: false });
 
@@ -32,6 +36,12 @@ interface MainAppProps {
 
 const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
   const { tenantPlan } = useAppStore();
+  const { tenantId, tenantName, branding } = useTenant();
+  // White-label tenants (any real tenant other than the platform) show their own
+  // name + logo; the platform / super-admin view keeps the "Harvest" brand.
+  const isWhiteLabel = !!tenantId && tenantId !== PLATFORM_TENANT_ID;
+  const displayName = isWhiteLabel && tenantName ? tenantName : 'Harvest';
+  const displayLogo = isWhiteLabel && branding?.logo ? branding.logo : DEFAULT_LOGO;
   const [activeBottomTab, setActiveBottomTab] = useState('home');
   const [activeTopTab, setActiveTopTab] = useState('news');
   const [isNavVisible, setIsNavVisible] = useState(true);
@@ -202,12 +212,12 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
         <div className={`flex lg:flex-col justify-around lg:justify-start items-center lg:items-stretch w-full lg:max-w-none lg:gap-2 ${isSidebarCollapsed ? 'lg:items-center' : ''}`}>
           {/* Desktop Logo */}
           <div className={`hidden lg:flex items-center mb-8 shrink-0 ${isSidebarCollapsed ? 'justify-center px-0 w-full' : 'gap-3 px-4'}`}>
-            <img 
-              src="https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png" 
-              alt="Harvest" 
-              className="w-10 h-10 object-contain shrink-0" 
+            <img
+              src={displayLogo}
+              alt={displayName}
+              className="w-10 h-10 object-contain shrink-0"
             />
-            {!isSidebarCollapsed && <span className="text-xl font-extrabold truncate" style={{ color: 'var(--brand-color, #D4AF37)' }}>Harvest</span>}
+            {!isSidebarCollapsed && <span className="text-xl font-extrabold truncate" style={{ color: 'var(--brand-color, #D4AF37)' }}>{displayName}</span>}
           </div>
 
           {bottomTabs.map((tab) => {

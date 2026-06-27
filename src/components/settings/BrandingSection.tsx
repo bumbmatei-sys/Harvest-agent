@@ -8,8 +8,9 @@ interface BrandingSectionProps {
 }
 
 export const BrandingSection: React.FC<BrandingSectionProps> = ({ currentFeatures }) => {
+  const [ministryName, setMinistryName] = useState('');
   const [brandingLogo, setBrandingLogo] = useState('');
-  const [brandingColor, setBrandingColor] = useState('#D4AF37');
+  const [brandingColor, setBrandingColor] = useState('#B8962E');
   const [brandingBackgroundImage, setBrandingBackgroundImage] = useState('');
   const [brandingSaving, setBrandingSaving] = useState(false);
   const [brandingSaved, setBrandingSaved] = useState(false);
@@ -28,7 +29,9 @@ export const BrandingSection: React.FC<BrandingSectionProps> = ({ currentFeature
           if (tenantId) {
             const tenantDoc = await getDoc(doc(db, 'tenants', tenantId));
             if (tenantDoc.exists()) {
-              const config = tenantDoc.data().config || {};
+              const data = tenantDoc.data();
+              if (data.name) setMinistryName(data.name);
+              const config = data.config || {};
               if (config.logo) setBrandingLogo(config.logo);
               if (config.primaryColor) setBrandingColor(config.primaryColor);
               if (config.backgroundImage) setBrandingBackgroundImage(config.backgroundImage);
@@ -47,31 +50,85 @@ export const BrandingSection: React.FC<BrandingSectionProps> = ({ currentFeature
     loadBranding();
   }, []);
 
+  // Live-apply the chosen color so the preview matches the rest of the app
+  const handleColorChange = (color: string) => {
+    setBrandingColor(color);
+    if (typeof document !== 'undefined') {
+      document.documentElement.style.setProperty('--brand-color', color);
+    }
+  };
+
+  const handleSave = async () => {
+    setBrandingSaving(true);
+    setBrandingSaved(false);
+    try {
+      const { auth, db } = await import('../../firebase');
+      const { doc, getDoc, updateDoc } = await import('firebase/firestore');
+      if (auth.currentUser) {
+        const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
+        if (userDoc.exists()) {
+          const tenantId = userDoc.data().tenantId;
+          if (tenantId) {
+            const updates: Record<string, unknown> = {
+              'config.logo': brandingLogo || null,
+              'config.primaryColor': brandingColor,
+              'config.backgroundImage': brandingBackgroundImage || null,
+              updatedAt: new Date().toISOString(),
+            };
+            // Custom ministry name (white-label) — only persist when provided
+            if (ministryName.trim()) {
+              updates.name = ministryName.trim();
+            }
+            await updateDoc(doc(db, 'tenants', tenantId), updates);
+            setBrandingSaved(true);
+            setTimeout(() => setBrandingSaved(false), 3000);
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Failed to save branding:', e);
+      alert('Failed to save branding. Please try again.');
+    } finally {
+      setBrandingSaving(false);
+    }
+  };
+
   return (
-    <div className="space-y-6">
-      <p className="text-gray-600">Update your ministry&apos;s logo and brand color. Changes apply across your entire app.</p>
+    <div className="space-y-6" style={{ paddingBottom: 120 }}>
+      <p className="text-gray-600">Customize your ministry&apos;s name, logo, and brand color. Changes apply across your entire app.</p>
+
+      {/* Ministry Name */}
+      <div className="bg-white rounded-2xl border border-gray-100 p-6">
+        <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">Ministry Name</h3>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Display Name</label>
+        <input
+          type="text"
+          value={ministryName}
+          onChange={(e) => setMinistryName(e.target.value)}
+          placeholder="e.g. Grace Community Church"
+          className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#B8962E] focus:border-transparent"
+        />
+        <p className="text-xs text-gray-400 mt-1">Shown in your app header, login page, and emails for your white-label site.</p>
+      </div>
 
       {/* Logo Upload */}
       <div className="bg-white rounded-2xl border border-gray-100 p-6">
         <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">Logo</h3>
-        <div className="flex items-center gap-6">
-          <div className="w-24 h-24 rounded-xl bg-gray-50 flex items-center justify-center overflow-hidden border border-gray-100">
+        <div className="flex items-start gap-6">
+          <div className="w-24 h-24 rounded-xl bg-gray-50 flex items-center justify-center overflow-hidden border border-gray-100 shrink-0">
             {brandingLogo ? (
+              // eslint-disable-next-line @next/next/no-img-element
               <img src={brandingLogo} alt="Logo" className="w-full h-full object-contain" />
             ) : (
               <span className="text-gray-300 text-sm">No logo</span>
             )}
           </div>
-          <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Logo URL</label>
-            <input
-              type="url"
+          <div className="flex-1 min-w-0">
+            <ImageUpload
               value={brandingLogo}
-              onChange={(e) => setBrandingLogo(e.target.value)}
-              placeholder="https://example.com/logo.png"
-              className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#d4a017] focus:border-transparent"
+              onChange={setBrandingLogo}
+              placeholder="Or paste a logo URL (PNG, SVG, JPG)"
             />
-            <p className="text-xs text-gray-400 mt-1">Paste a URL to your logo image (PNG, SVG, or JPG)</p>
           </div>
         </div>
       </div>
@@ -84,7 +141,7 @@ export const BrandingSection: React.FC<BrandingSectionProps> = ({ currentFeature
             <input
               type="color"
               value={brandingColor}
-              onChange={(e) => setBrandingColor(e.target.value)}
+              onChange={(e) => handleColorChange(e.target.value)}
               className="w-16 h-16 rounded-xl cursor-pointer border-2 border-gray-200 p-1"
             />
           </div>
@@ -93,9 +150,9 @@ export const BrandingSection: React.FC<BrandingSectionProps> = ({ currentFeature
             <input
               type="text"
               value={brandingColor}
-              onChange={(e) => setBrandingColor(e.target.value)}
-              placeholder="#D4AF37"
-              className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[#d4a017] focus:border-transparent"
+              onChange={(e) => handleColorChange(e.target.value)}
+              placeholder="#B8962E"
+              className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[#B8962E] focus:border-transparent"
             />
             <p className="text-xs text-gray-400 mt-1">Used for buttons, accents, and highlights throughout your app</p>
           </div>
@@ -135,37 +192,9 @@ export const BrandingSection: React.FC<BrandingSectionProps> = ({ currentFeature
       {/* Save Button */}
       <div className="flex items-center gap-3">
         <button
-          onClick={async () => {
-            setBrandingSaving(true);
-            setBrandingSaved(false);
-            try {
-              const { auth, db } = await import('../../firebase');
-              const { doc, getDoc, updateDoc } = await import('firebase/firestore');
-              if (auth.currentUser) {
-                const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
-                if (userDoc.exists()) {
-                  const tenantId = userDoc.data().tenantId;
-                  if (tenantId) {
-                    await updateDoc(doc(db, 'tenants', tenantId), {
-                      'config.logo': brandingLogo || null,
-                      'config.primaryColor': brandingColor,
-                      'config.backgroundImage': brandingBackgroundImage || null,
-                      updatedAt: new Date().toISOString(),
-                    });
-                    setBrandingSaved(true);
-                    setTimeout(() => setBrandingSaved(false), 3000);
-                  }
-                }
-              }
-            } catch (e) {
-              console.error('Failed to save branding:', e);
-              alert('Failed to save branding. Please try again.');
-            } finally {
-              setBrandingSaving(false);
-            }
-          }}
+          onClick={handleSave}
           disabled={brandingSaving}
-          className="px-6 py-2.5 bg-[#d4a017] text-white rounded-xl text-sm font-semibold hover:bg-[#b8941a] transition-colors disabled:opacity-50"
+          className="px-6 py-2.5 bg-[#B8962E] text-white rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
         >
           {brandingSaving ? 'Saving...' : 'Save Branding'}
         </button>
