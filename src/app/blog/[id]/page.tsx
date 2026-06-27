@@ -15,6 +15,13 @@ interface BlogPost {
   publishedAt?: string;
   createdAt: string;
   tenantId?: string | null;
+  // SEO fields (present on AI-generated posts)
+  seoTitle?: string;
+  seoDescription?: string;
+  slug?: string;
+  keywords?: string[];
+  estimatedReadTime?: number;
+  isAiGenerated?: boolean;
 }
 
 const SANITIZE_OPTIONS: sanitizeHtml.IOptions = {
@@ -43,21 +50,24 @@ export async function generateMetadata({
 
   const post = snap.data() as BlogPost;
   const excerpt = post.content.replace(/<[^>]*>/g, '').slice(0, 160).trim();
+  const metaTitle = post.seoTitle || post.title;
+  const metaDescription = post.seoDescription || excerpt;
 
   return {
-    title: post.title,
-    description: excerpt,
+    title: metaTitle,
+    description: metaDescription,
+    ...(post.keywords && post.keywords.length > 0 ? { keywords: post.keywords.join(', ') } : {}),
     openGraph: {
-      title: post.title,
-      description: excerpt,
+      title: metaTitle,
+      description: metaDescription,
       type: 'article',
       publishedTime: post.publishedAt,
       ...(post.featuredImage ? { images: [post.featuredImage] } : {}),
     },
     twitter: {
       card: 'summary_large_image',
-      title: post.title,
-      description: excerpt,
+      title: metaTitle,
+      description: metaDescription,
       ...(post.featuredImage ? { images: [post.featuredImage] } : {}),
     },
   };
@@ -88,8 +98,23 @@ export default async function BlogPostPage({
   const appUrl = '/';
   const backLabel = tenant ? `Back to ${tenant.name}` : 'Back to Harvest';
 
+  // JSON-LD Article structured data for search engines.
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline: post.seoTitle || post.title,
+    description: post.seoDescription || post.content.replace(/<[^>]*>/g, '').slice(0, 160).trim(),
+    ...(post.publishedAt ? { datePublished: post.publishedAt } : {}),
+    author: { '@type': 'Organization', name: tenant?.name || 'Harvest' },
+    ...(post.keywords && post.keywords.length > 0 ? { keywords: post.keywords.join(', ') } : {}),
+  };
+
   return (
     <div className="min-h-screen bg-white">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       {/* Minimal header */}
       <header className="border-b border-gray-100">
         <div className="max-w-2xl mx-auto px-4 py-4">

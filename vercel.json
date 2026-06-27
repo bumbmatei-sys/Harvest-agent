@@ -2,6 +2,7 @@
   "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }],
   "crons": [
     { "path": "/api/affiliate/retry-transfers", "schedule": "0 9 * * *" },
-    { "path": "/api/canvas/cleanup", "schedule": "0 3 * * *" }
+    { "path": "/api/canvas/cleanup", "schedule": "0 3 * * *" },
+    { "path": "/api/blog/auto-generate", "schedule": "0 8 * * *" }
   ]
 }

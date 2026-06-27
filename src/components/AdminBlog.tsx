@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Edit2, Trash2, MoreVertical, Filter, FileText } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, MoreVertical, Filter, FileText, Sparkles, X } from 'lucide-react';
 import { collection, onSnapshot, query, where, deleteDoc, doc, getDoc, limit } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import AdminBlogPostEditor from './AdminBlogPostEditor';
@@ -8,6 +8,12 @@ import { useAdminHeader, HeaderActionButton } from './AdminScreenHeader';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { getTenantScope } from '../utils/tenant-scope';
 import { sortByTime } from '../utils/query-helpers';
+import { useAppStore } from '../store/useAppStore';
+import { getPlanFeatures } from '../utils/plan-features';
+import { authFetch } from '../utils/auth-fetch';
+import { notifyError } from '../utils/notify';
+
+const GOLD = '#B8962E';
 
 
 
@@ -23,6 +29,7 @@ interface BlogPost {
  featuredImage?: string;
  tags?: string[];
  publishedAt?: string;
+ isAiGenerated?: boolean;
 }
 
 const AdminBlog: React.FC = () => {
@@ -35,6 +42,28 @@ const AdminBlog: React.FC = () => {
  const [editingPost, setEditingPost] = useState<BlogPost | null>(null);
  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+ // ── Automated SEO blog ──
+ const { tenantPlan, isSuperAdmin } = useAppStore();
+ const canAutomate = isSuperAdmin ||
+   (tenantPlan ? getPlanFeatures(tenantPlan).automatedBlog : false);
+ const [showAutomation, setShowAutomation] = useState(false);
+ const [automation, setAutomation] = useState<{
+   enabled: boolean;
+   frequency: string;
+   dayOfWeek: number;
+   hour: number;
+   topicHint: string;
+   lastGeneratedAt: string | null;
+   nextScheduledAt: string | null;
+   totalGenerated: number;
+ }>({
+   enabled: false, frequency: 'weekly', dayOfWeek: 1,
+   hour: 8, topicHint: '', lastGeneratedAt: null,
+   nextScheduledAt: null, totalGenerated: 0,
+ });
+ const [savingAutomation, setSavingAutomation] = useState(false);
+ const [generatingNow, setGeneratingNow] = useState(false);
 
  useEffect(() => {
   let unsubscribe: (() => void) | null = null;
@@ -60,6 +89,22 @@ const AdminBlog: React.FC = () => {
   })();
   return () => { cancelled = true; if (unsubscribe) unsubscribe(); };
  }, []);
+
+ // Load automation settings (only for plans that support it).
+ useEffect(() => {
+   if (!canAutomate) return;
+   let cancelled = false;
+   (async () => {
+     try {
+       const resp = await authFetch('/api/blog/automate');
+       if (resp.ok && !cancelled) {
+         const data = await resp.json();
+         setAutomation(a => ({ ...a, ...data }));
+       }
+     } catch {}
+   })();
+   return () => { cancelled = true; };
+ }, [canAutomate]);
 
  const categories = Array.from(new Set(posts.map(post => post.category)));
  const filterCategories = ['All', ...categories];
@@ -99,9 +144,61 @@ const AdminBlog: React.FC = () => {
 
  const { setHeaderAction } = useAdminHeader();
  useEffect(() => {
-   setHeaderAction(<HeaderActionButton label="New Post" onClick={() => handleNewPost()} />);
+   setHeaderAction(
+     <div className="flex items-center gap-2">
+       {canAutomate && (
+         <button
+           onClick={() => setShowAutomation(true)}
+           className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold border border-gray-200 text-gray-700 hover:bg-gray-50"
+         >
+           <Sparkles size={14} style={{ color: GOLD }} /> Automate
+         </button>
+       )}
+       <HeaderActionButton label="New Post" onClick={() => handleNewPost()} />
+     </div>
+   );
    return () => setHeaderAction(null);
- }, [setHeaderAction]);
+ }, [setHeaderAction, canAutomate]);
+
+ const handleSaveAutomation = async () => {
+   setSavingAutomation(true);
+   try {
+     const resp = await authFetch('/api/blog/automate', {
+       method: 'POST',
+       body: JSON.stringify({
+         enabled: automation.enabled,
+         frequency: automation.frequency,
+         dayOfWeek: automation.dayOfWeek,
+         hour: 8, // default to 8 AM UTC
+         topicHint: automation.topicHint,
+       }),
+     });
+     if (!resp.ok) throw new Error('Failed to save');
+     setShowAutomation(false);
+   } catch (e) {
+     notifyError('Failed to save automation settings', e);
+   } finally {
+     setSavingAutomation(false);
+   }
+ };
+
+ const handleGenerateNow = async () => {
+   setGeneratingNow(true);
+   try {
+     const resp = await authFetch('/api/blog/generate', {
+       method: 'POST',
+       body: JSON.stringify({ topicHint: automation.topicHint }),
+     });
+     const data = await resp.json();
+     if (!resp.ok) throw new Error(data.error || 'Failed to generate');
+     // The existing onSnapshot listener will pick up the new post automatically.
+     setShowAutomation(false);
+   } catch (e) {
+     notifyError('Failed to generate article', e);
+   } finally {
+     setGeneratingNow(false);
+   }
+ };
 
  const handleEditPost = (post: BlogPost) => {
  setEditingPost(post);
@@ -205,7 +302,15 @@ const AdminBlog: React.FC = () => {
  filteredPosts.map((post) => (
  <tr key={post.id} className="hover:bg-gray-50 :bg-[#1a1d27] transition-colors group">
  <td className="px-6 py-4">
+ <div className="flex items-center gap-2">
  <p className="text-sm font-medium text-gray-900 line-clamp-1">{post.title}</p>
+ {post.isAiGenerated && (
+ <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0"
+ style={{ backgroundColor: '#FBF3E4', color: '#B8962E' }}>
+ AI
+ </span>
+ )}
+ </div>
  </td>
  <td className="px-6 py-4">
  <span className="text-sm text-gray-600 ">{post.category}</span>
@@ -266,6 +371,138 @@ const AdminBlog: React.FC = () => {
  Delete
  </button>
  </div>
+ </div>
+ </div>
+ )}
+
+ {/* Automated Blog Settings */}
+ {showAutomation && (
+ <div className="fixed inset-0 z-[200] bg-black/50 flex items-end">
+ <div className="bg-white rounded-t-3xl w-full max-w-lg mx-auto p-6 space-y-5"
+ style={{ paddingBottom: 'calc(24px + env(safe-area-inset-bottom))' }}>
+
+ {/* Header */}
+ <div className="flex items-center justify-between">
+ <div>
+ <h3 className="font-black text-gray-900">Automated Blog</h3>
+ <p className="text-xs text-gray-400 mt-0.5">
+ AI generates SEO articles from your Knowledge Base
+ </p>
+ </div>
+ <button onClick={() => setShowAutomation(false)}>
+ <X size={20} className="text-gray-400" />
+ </button>
+ </div>
+
+ {/* Enable toggle */}
+ <div className="flex items-center justify-between py-3 border-b border-gray-100">
+ <div>
+ <p className="text-sm font-semibold text-gray-800">Auto-publish articles</p>
+ <p className="text-xs text-gray-400">Posts directly to your blog</p>
+ </div>
+ <button
+ onClick={() => setAutomation(a => ({ ...a, enabled: !a.enabled }))}
+ className={`w-12 h-6 rounded-full transition-colors relative ${automation.enabled ? 'bg-[#B8962E]' : 'bg-gray-200'}`}
+ >
+ <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all ${automation.enabled ? 'left-7' : 'left-1'}`} />
+ </button>
+ </div>
+
+ {/* Frequency */}
+ <div>
+ <label className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 block">
+ Frequency
+ </label>
+ <div className="grid grid-cols-2 gap-2">
+ {(['daily', 'weekly', 'biweekly', 'monthly'] as const).map(f => (
+ <button key={f}
+ onClick={() => setAutomation(a => ({ ...a, frequency: f }))}
+ className={`py-2.5 rounded-xl text-sm font-semibold capitalize border transition-colors ${
+ automation.frequency === f
+ ? 'text-white border-transparent'
+ : 'text-gray-600 border-gray-200 bg-white'
+ }`}
+ style={automation.frequency === f ? { backgroundColor: '#B8962E' } : {}}
+ >
+ {f === 'biweekly' ? 'Every 2 weeks' : f.charAt(0).toUpperCase() + f.slice(1)}
+ </button>
+ ))}
+ </div>
+ </div>
+
+ {/* Day of week (shown for weekly/biweekly) */}
+ {(automation.frequency === 'weekly' || automation.frequency === 'biweekly') && (
+ <div>
+ <label className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 block">
+ Day to post
+ </label>
+ <div className="flex gap-1.5 flex-wrap">
+ {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((day, i) => (
+ <button key={day}
+ onClick={() => setAutomation(a => ({ ...a, dayOfWeek: i }))}
+ className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+ automation.dayOfWeek === i
+ ? 'text-white border-transparent'
+ : 'text-gray-600 border-gray-200'
+ }`}
+ style={automation.dayOfWeek === i ? { backgroundColor: '#B8962E' } : {}}
+ >
+ {day}
+ </button>
+ ))}
+ </div>
+ </div>
+ )}
+
+ {/* Topic hint */}
+ <div>
+ <label className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 block">
+ Topic focus <span className="font-normal normal-case">(optional)</span>
+ </label>
+ <input
+ value={automation.topicHint}
+ onChange={e => setAutomation(a => ({ ...a, topicHint: e.target.value }))}
+ placeholder="e.g. discipleship, faith, church growth"
+ className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#B8962E]"
+ />
+ <p className="text-xs text-gray-400 mt-1">
+ Guides the AI when choosing what to write about from your Knowledge Base.
+ </p>
+ </div>
+
+ {/* Stats (if any posts generated) */}
+ {automation.totalGenerated > 0 && (
+ <div className="bg-[#FBF3E4] rounded-xl px-4 py-3 flex items-center justify-between">
+ <span className="text-sm font-semibold text-[#B8962E]">
+ {automation.totalGenerated} article{automation.totalGenerated !== 1 ? 's' : ''} generated
+ </span>
+ {automation.nextScheduledAt && !isNaN(new Date(automation.nextScheduledAt as any).getTime()) && (
+ <span className="text-xs text-gray-500">
+ Next: {new Date(automation.nextScheduledAt as any).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+ </span>
+ )}
+ </div>
+ )}
+
+ {/* Actions */}
+ <div className="flex gap-3 pt-1">
+ <button
+ onClick={handleGenerateNow}
+ disabled={generatingNow}
+ className="flex-1 py-3 rounded-xl text-sm font-semibold border border-gray-200 text-gray-700 disabled:opacity-50"
+ >
+ {generatingNow ? 'Generating…' : '⚡ Generate Now'}
+ </button>
+ <button
+ onClick={handleSaveAutomation}
+ disabled={savingAutomation}
+ className="flex-1 py-3 rounded-xl text-sm font-bold text-white disabled:opacity-50"
+ style={{ backgroundColor: '#B8962E' }}
+ >
+ {savingAutomation ? 'Saving…' : 'Save Settings'}
+ </button>
+ </div>
+
  </div>
  </div>
  )}

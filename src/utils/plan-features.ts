@@ -53,6 +53,8 @@ export interface PlanFeatures {
   livestream: boolean;
   /** Sermon notes shared to livestream (viewer read-only panel) */
   sermonNotes: boolean;
+  /** AI-generated SEO blog articles on schedule from Knowledge Base */
+  automatedBlog: boolean;
 }
 
 // ─── Feature matrix ───────────────────────────────────────────────────────────
@@ -92,6 +94,7 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     checkInSystem: false,
     livestream: false,
     sermonNotes: false,
+    automatedBlog: false,
   },
   // Small Team
   pro: {
@@ -121,6 +124,7 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     checkInSystem: false,
     livestream: false,
     sermonNotes: false,
+    automatedBlog: false,
   },
   // Community
   max: {
@@ -150,6 +154,7 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     checkInSystem: false,
     livestream: false,
     sermonNotes: false,
+    automatedBlog: true,
   },
   // Ministry (top plan)
   ultra: {
@@ -179,6 +184,7 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     checkInSystem: true,
     livestream: true,
     sermonNotes: true,
+    automatedBlog: true,
   },
 };
 
