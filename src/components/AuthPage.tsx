@@ -1,20 +1,32 @@
 "use client";
 import React, { useState, useEffect } from 'react';
-import Image from 'next/image';
 import { auth, db } from '../firebase';
 import { signInWithPopup, GoogleAuthProvider, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { useTenant } from '../contexts/TenantContext';
+import { Eye, EyeOff } from 'lucide-react';
 
+const HARVEST_GOLD = '#B8962E';
+const HARVEST_LOGO = 'https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png';
+
+/** Multi-colour Google "G" mark. */
+const GoogleIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+    <path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.71-1.57 2.68-3.88 2.68-6.62z" />
+    <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.8.54-1.83.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.33A9 9 0 0 0 9 18z" />
+    <path fill="#FBBC05" d="M3.97 10.72a5.4 5.4 0 0 1 0-3.44V4.95H.96a9 9 0 0 0 0 8.1l3.01-2.33z" />
+    <path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58C13.46.89 11.43 0 9 0A9 9 0 0 0 .96 4.95l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58z" />
+  </svg>
+);
 
 interface AuthPageProps {
- onNavigate: (page: string) => void;
+  onNavigate: (page: string) => void;
 }
 
 const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
   const [isLogin, setIsLogin] = useState(true);
-  const [showEmailForm, setShowEmailForm] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [forgotEmail, setForgotEmail] = useState('');
   const [email, setEmail] = useState('');
@@ -26,11 +38,16 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
   const { branding, tenantId: ctxTenantId, tenantName, tenantPlan } = useTenant();
   const isSubdomain = !!ctxTenantId;
   const hasCustomBranding = tenantPlan === 'max' || tenantPlan === 'ultra';
-  
+
   const [legalModalContent, setLegalModalContent] = useState<'terms' | 'privacy' | null>(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Branding: logo + brand colour only gate on plan; the page is always white.
+  const brandColor = hasCustomBranding && branding.primaryColor ? branding.primaryColor : HARVEST_GOLD;
+  const logoSrc = hasCustomBranding && branding.logo ? branding.logo : HARVEST_LOGO;
+  const appName = isChurchSignup ? 'Ministry' : (isSubdomain && tenantName ? tenantName : 'Harvest');
 
   useEffect(() => {
     // Derive tenantId from hostname (not spoofable) — cookie is fallback for custom domains
@@ -53,498 +70,466 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
     }
   }, []);
 
- const handleGoogleSignIn = async () => {
- try {
- setLoading(true);
- setError('');
- 
- 
- 
- const provider = new GoogleAuthProvider();
- const result = await signInWithPopup(auth, provider);
- 
- // Store user in Firestore
- const userRef = doc(db, 'users', result.user.uid);
- let userSnap;
- try {
- userSnap = await getDoc(userRef);
- } catch (err) {
- try { handleFirestoreError(err, OperationType.GET, `users/${result.user.uid}`); } catch (e) { console.error(e); }
- return;
- }
- 
- if (!userSnap.exists()) {
- try {
- const userData: any = {
-   uid: result.user.uid,
-   email: result.user.email,
-   createdAt: new Date().toISOString(),
-   role: 'user',
-   tenantId: tenantId || null,
-   newsletter: newsletter,
-   termsAccepted: true
- };
- if (result.user.displayName) userData.displayName = result.user.displayName;
- if (result.user.photoURL) userData.photoURL = result.user.photoURL;
+  const handleGoogleSignIn = async () => {
+    try {
+      setLoading(true);
+      setError('');
 
- await setDoc(userRef, userData);
- } catch (err) {
- try { handleFirestoreError(err, OperationType.WRITE, `users/${result.user.uid}`); } catch (e) { console.error(e); }
- return;
- }
- } else {
- // Update termsAccepted and newsletter for existing users
- try {
- await updateDoc(userRef, {
- termsAccepted: true,
- newsletter: newsletter
- });
- } catch (err) {
- try { handleFirestoreError(err, OperationType.UPDATE, `users/${result.user.uid}`); } catch (e) { console.error(e); }
- return;
- }
- }
+      const provider = new GoogleAuthProvider();
+      const result = await signInWithPopup(auth, provider);
 
- // Set custom claims on server, then force-refresh token to pick them up
- try {
-   const token = await result.user.getIdToken();
-   await fetch('/api/auth/set-claims', {
-     method: 'POST',
-     headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-     body: JSON.stringify({ uid: result.user.uid }),
-   });
-   // Force token refresh so subsequent Firestore/API calls have the new claims
-   await result.user.getIdToken(true);
- } catch (claimsErr) {
-   console.error('Failed to refresh custom claims:', claimsErr);
- }
+      // Store user in Firestore
+      const userRef = doc(db, 'users', result.user.uid);
+      let userSnap;
+      try {
+        userSnap = await getDoc(userRef);
+      } catch (err) {
+        try { handleFirestoreError(err, OperationType.GET, `users/${result.user.uid}`); } catch (e) { console.error(e); }
+        return;
+      }
 
- // For now don't do anything after connection, just maybe show a success state or stay here
- // The user said "after they get connected, for now dont do anything"
- // We could navigate to home or just show a message.
- } catch (err: any) {
- console.error(err);
- if (err.code === 'auth/popup-closed-by-user') {
- setError('Sign-in was cancelled.');
- } else {
- setError(err.message || 'Failed to sign in with Google.');
- }
- } finally {
- setLoading(false);
- }
- };
+      if (!userSnap.exists()) {
+        try {
+          const userData: any = {
+            uid: result.user.uid,
+            email: result.user.email,
+            createdAt: new Date().toISOString(),
+            role: 'user',
+            tenantId: tenantId || null,
+            newsletter: newsletter,
+            termsAccepted: true,
+          };
+          if (result.user.displayName) userData.displayName = result.user.displayName;
+          if (result.user.photoURL) userData.photoURL = result.user.photoURL;
 
- const handleEmailAuth = async (e: React.FormEvent) => {
- e.preventDefault();
- try {
- setLoading(true);
- setError('');
- setSuccess('');
- 
- 
- 
- if (isLogin) {
- const userCredential = await signInWithEmailAndPassword(auth, email, password);
+          await setDoc(userRef, userData);
+        } catch (err) {
+          try { handleFirestoreError(err, OperationType.WRITE, `users/${result.user.uid}`); } catch (e) { console.error(e); }
+          return;
+        }
+      } else {
+        // Update termsAccepted and newsletter for existing users
+        try {
+          await updateDoc(userRef, {
+            termsAccepted: true,
+            newsletter: newsletter,
+          });
+        } catch (err) {
+          try { handleFirestoreError(err, OperationType.UPDATE, `users/${result.user.uid}`); } catch (e) { console.error(e); }
+          return;
+        }
+      }
 
- // Update termsAccepted and newsletter for existing users
- try {
- const userRef = doc(db, 'users', userCredential.user.uid);
- await updateDoc(userRef, {
-   termsAccepted: true,
-   newsletter: newsletter
- });
- } catch (err) {
- try { handleFirestoreError(err, OperationType.UPDATE, `users/${userCredential.user.uid}`); } catch (e) { console.error(e); }
- return;
- }
+      // Set custom claims on server, then force-refresh token to pick them up
+      try {
+        const token = await result.user.getIdToken();
+        await fetch('/api/auth/set-claims', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ uid: result.user.uid }),
+        });
+        // Force token refresh so subsequent Firestore/API calls have the new claims
+        await result.user.getIdToken(true);
+      } catch (claimsErr) {
+        console.error('Failed to refresh custom claims:', claimsErr);
+      }
+    } catch (err: any) {
+      console.error(err);
+      if (err.code === 'auth/popup-closed-by-user') {
+        setError('Sign-in was cancelled.');
+      } else {
+        setError(err.message || 'Failed to sign in with Google.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
- // Set custom claims on server, then force-refresh token
- try {
-   const token = await userCredential.user.getIdToken();
-   await fetch('/api/auth/set-claims', {
-     method: 'POST',
-     headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-     body: JSON.stringify({ uid: userCredential.user.uid }),
-   });
-   await userCredential.user.getIdToken(true);
- } catch (claimsErr) {
-   console.error('Failed to refresh custom claims:', claimsErr);
- }
- } else {
- if (password !== confirmPassword) {
- setError('Passwords do not match.');
- setLoading(false);
- return;
- }
- 
- const passwordRegex = /^(?=.*[A-Z])(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{10,}$/;
- if (!passwordRegex.test(password)) {
- setError('Password must be at least 10 characters long, contain at least 1 capital letter, and 1 symbol.');
- setLoading(false);
- return;
- }
+  const handleEmailAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      setLoading(true);
+      setError('');
+      setSuccess('');
 
- const result = await createUserWithEmailAndPassword(auth, email, password);
+      if (isLogin) {
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
 
- // Store user in Firestore
- try {
- await setDoc(doc(db, 'users', result.user.uid), {
-   uid: result.user.uid,
-   email: result.user.email,
-   displayName: email.split('@')[0],
-   createdAt: new Date().toISOString(),
-   role: 'user',
-   tenantId: tenantId || null,
-   newsletter: newsletter,
-   termsAccepted: true
- });
- } catch (err) {
- try { handleFirestoreError(err, OperationType.WRITE, `users/${result.user.uid}`); } catch (e) { console.error(e); }
- return;
- }
+        // Update termsAccepted and newsletter for existing users
+        try {
+          const userRef = doc(db, 'users', userCredential.user.uid);
+          await updateDoc(userRef, {
+            termsAccepted: true,
+            newsletter: newsletter,
+          });
+        } catch (err) {
+          try { handleFirestoreError(err, OperationType.UPDATE, `users/${userCredential.user.uid}`); } catch (e) { console.error(e); }
+          return;
+        }
 
- setSuccess('Account created successfully!');
+        // Set custom claims on server, then force-refresh token
+        try {
+          const token = await userCredential.user.getIdToken();
+          await fetch('/api/auth/set-claims', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ uid: userCredential.user.uid }),
+          });
+          await userCredential.user.getIdToken(true);
+        } catch (claimsErr) {
+          console.error('Failed to refresh custom claims:', claimsErr);
+        }
+      } else {
+        if (password !== confirmPassword) {
+          setError('Passwords do not match.');
+          setLoading(false);
+          return;
+        }
 
- // Set custom claims for Firestore security rules, then force-refresh token
- try {
-   const token = await result.user.getIdToken();
-   await fetch('/api/auth/set-claims', {
-     method: 'POST',
-     headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-     body: JSON.stringify({ uid: result.user.uid }),
-   });
-   await result.user.getIdToken(true);
- } catch (claimsErr) {
-   console.error('Failed to set custom claims:', claimsErr);
- }
- }
- } catch (err: any) {
- console.error(err);
- if (err.code === 'auth/operation-not-allowed') {
- setError('Email/Password sign-in is not enabled. Please enable it in the Firebase Console.');
- } else {
- setError(err.message || 'Authentication failed.');
- }
- } finally {
- setLoading(false);
- }
- };
+        const passwordRegex = /^(?=.*[A-Z])(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{10,}$/;
+        if (!passwordRegex.test(password)) {
+          setError('Password must be at least 10 characters long, contain at least 1 capital letter, and 1 symbol.');
+          setLoading(false);
+          return;
+        }
 
- const handleForgotPassword = async (e: React.FormEvent) => {
-  e.preventDefault();
-  try {
-   setLoading(true);
-   setError('');
-   setSuccess('');
-   await sendPasswordResetEmail(auth, forgotEmail);
-   setSuccess('Password reset email sent! Check your inbox.');
-   setShowForgotPassword(false);
-   setForgotEmail('');
-  } catch (err: any) {
-   console.error(err);
-   if (err.code === 'auth/user-not-found') {
-    setError('No account found with that email address.');
-   } else if (err.code === 'auth/invalid-email') {
-    setError('Please enter a valid email address.');
-   } else {
-    setError(err.message || 'Failed to send reset email.');
-   }
-  } finally {
-   setLoading(false);
-  }
- };
+        const result = await createUserWithEmailAndPassword(auth, email, password);
 
- return (
- <div className="min-h-screen flex items-center justify-center bg-background-dark px-4 py-12 relative overflow-hidden">
- {/* Background Image & Overlay */}
- <div className="absolute inset-0 z-0">
- <Image 
- src={hasCustomBranding && branding.backgroundImage ? branding.backgroundImage : 'https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/No_people_just_2k_202512231746.jpeg'}
- alt="Harvest Background" 
- fill
- sizes="100vw"
- priority
- className="object-cover"
- />
- <div className="absolute inset-0 bg-gradient-to-b from-background-dark/80 via-background-dark/60 to-background-dark/95 mix-blend-multiply"></div>
- <div className="absolute inset-0 bg-black/40"></div>
- </div>
+        // Store user in Firestore
+        try {
+          await setDoc(doc(db, 'users', result.user.uid), {
+            uid: result.user.uid,
+            email: result.user.email,
+            displayName: email.split('@')[0],
+            createdAt: new Date().toISOString(),
+            role: 'user',
+            tenantId: tenantId || null,
+            newsletter: newsletter,
+            termsAccepted: true,
+          });
+        } catch (err) {
+          try { handleFirestoreError(err, OperationType.WRITE, `users/${result.user.uid}`); } catch (e) { console.error(e); }
+          return;
+        }
 
- {/* Background Ambience */}
- <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80vw] h-[80vw] bg-primary/10 blur-[150px] rounded-full pointer-events-none mix-blend-overlay z-0"></div>
+        setSuccess('Account created successfully!');
 
- <div className="max-w-md w-full bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl shadow-2xl overflow-hidden z-10 relative">
- <div className="p-8 sm:p-12">
- <div className="text-center mb-10">
- <div className="flex justify-center mb-6">
- <Image 
- src={hasCustomBranding && branding.logo ? branding.logo : 'https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png'}
- alt="Harvest Logo" 
- width={128}
- height={128}
- className="h-32 w-auto drop-shadow-2xl"
- />
- </div>
- <h2 className="text-2xl font-medium text-white/80">
-   {isChurchSignup ? 'Set up your' : 'Welcome to'}
- </h2>
- <h1 className="text-4xl font-black text-white mt-1">
-   {isChurchSignup ? 'Ministry' : (isSubdomain && tenantName ? tenantName : 'Harvest')}
- </h1>
- {isChurchSignup && (
-   <p className="text-white/70 text-sm mt-2">
-     Create your account to set up your church&apos;s app
-   </p>
- )}
- </div>
+        // Set custom claims for Firestore security rules, then force-refresh token
+        try {
+          const token = await result.user.getIdToken();
+          await fetch('/api/auth/set-claims', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ uid: result.user.uid }),
+          });
+          await result.user.getIdToken(true);
+        } catch (claimsErr) {
+          console.error('Failed to set custom claims:', claimsErr);
+        }
+      }
+    } catch (err: any) {
+      console.error(err);
+      if (err.code === 'auth/operation-not-allowed') {
+        setError('Email/Password sign-in is not enabled. Please enable it in the Firebase Console.');
+      } else {
+        setError(err.message || 'Authentication failed.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
- {error && (
- <div className="mb-6 p-4 bg-red-500/20 border-l-4 border-red-500 text-red-100 text-sm rounded backdrop-blur-sm">
- {error}
- </div>
- )}
- {success && (
- <div className="mb-6 p-4 bg-green-500/20 border-l-4 border-green-500 text-green-100 text-sm rounded backdrop-blur-sm">
- {success}
- </div>
- )}
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      setLoading(true);
+      setError('');
+      setSuccess('');
+      await sendPasswordResetEmail(auth, forgotEmail);
+      setSuccess('Password reset email sent! Check your inbox.');
+      setShowForgotPassword(false);
+      setForgotEmail('');
+    } catch (err: any) {
+      console.error(err);
+      if (err.code === 'auth/user-not-found') {
+        setError('No account found with that email address.');
+      } else if (err.code === 'auth/invalid-email') {
+        setError('Please enter a valid email address.');
+      } else {
+        setError(err.message || 'Failed to send reset email.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
- <button
- onClick={handleGoogleSignIn}
- disabled={loading}
- className="w-full flex items-center justify-center gap-3 bg-white/10 border text-white font-bold py-3 px-4 rounded-xl hover:bg-white/20 transition-all duration-100 mb-4 disabled:opacity-50"
- style={hasCustomBranding && branding.primaryColor ? { borderColor: branding.primaryColor + '40' } : { borderColor: 'rgba(255,255,255,0.3)' }}
- >
- <Image src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" width={24} height={24} className="w-6 h-6" />
- Continue with Google
- </button>
+  // Shared input styling: white bg, light border, dark text, brand-coloured focus ring.
+  const inputClass =
+    'w-full px-4 py-3 rounded-xl bg-white text-[#111111] placeholder-[#AAAAAA] border outline-none transition-colors';
+  const focusHandlers = {
+    onFocus: (e: React.FocusEvent<HTMLInputElement>) => { e.currentTarget.style.borderColor = brandColor; },
+    onBlur: (e: React.FocusEvent<HTMLInputElement>) => { e.currentTarget.style.borderColor = '#E2E2E2'; },
+  };
 
- {!showEmailForm ? (
- <button
- onClick={() => setShowEmailForm(true)}
- className="w-full flex items-center justify-center gap-3 bg-white/5 border text-white font-bold py-3 px-4 rounded-xl hover:bg-white/10 transition-all duration-100 mb-6"
- style={hasCustomBranding && branding.primaryColor ? { borderColor: branding.primaryColor + '30' } : { borderColor: 'rgba(255,255,255,0.2)' }}
- >
- <span className="material-symbols-outlined">mail</span>
- Continue with Email
- </button>
- ) : (
- <div className="animate-fade-in-up">
- <div className="flex items-center mb-6">
- <button 
-  onClick={() => {
-   setShowEmailForm(false);
-   setShowForgotPassword(false);
-  }}
-  className="text-white/60 hover:text-white transition-colors flex items-center gap-1 text-sm"
- >
-  <span className="material-symbols-outlined text-sm">arrow_back</span>
-  Back
- </button>
- </div>
+  return (
+    <div className="min-h-screen bg-white">
+      <div className="max-w-sm mx-auto px-6 min-h-screen flex flex-col justify-center">
+        {/* Logo */}
+        <div className="flex justify-center mb-5">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={logoSrc} alt={`${appName} logo`} className="h-20 w-auto object-contain" />
+        </div>
 
- {showForgotPassword ? (
- <form onSubmit={handleForgotPassword} className="space-y-5">
-  <p className="text-white/80 text-sm">
-   Enter your email address and we&apos;ll send you a link to reset your password.
-  </p>
-  <div>
-  <label className="block text-sm font-bold text-white mb-1">Email Address</label>
-  <input
-   type="email"
-   required
-   value={forgotEmail}
-   onChange={(e) => setForgotEmail(e.target.value)}
-   className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/20 text-white placeholder-gray-400 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
-   placeholder="you@example.com"
-  />
-  </div>
-  <button
-   type="submit"
-   disabled={loading}
-   className="w-full text-white font-bold py-3 px-4 rounded-xl transition-all duration-100 shadow-lg disabled:opacity-50"
-   style={hasCustomBranding && branding.primaryColor ? { backgroundColor: branding.primaryColor, boxShadow: `0 10px 15px -3px ${branding.primaryColor}4D` } : {}}
-  >
-   {loading ? 'Sending...' : 'Send Reset Link'}
-  </button>
-  <div className="text-center">
-   <button
-    type="button"
-    onClick={() => setShowForgotPassword(false)}
-    className="text-primary text-sm font-bold hover:text-yellow-400 hover:underline transition-colors"
-   >
-    Back to sign in
-   </button>
-  </div>
- </form>
- ) : (
- <>
- <form onSubmit={handleEmailAuth} className="space-y-5">
- <div>
- <label className="block text-sm font-bold text-white mb-1">Email Address</label>
- <input
- type="email"
- required
- value={email}
- onChange={(e) => setEmail(e.target.value)}
- className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/20 text-white placeholder-gray-400 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
- placeholder="you@example.com"
- />
- </div>
- <div>
- <label className="block text-sm font-bold text-white mb-1">Password</label>
- <input
- type="password"
- required
- value={password}
- onChange={(e) => setPassword(e.target.value)}
- className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/20 text-white placeholder-gray-400 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
- placeholder="••••••••"
- />
- {!isLogin && (
- <p className="text-xs text-white/60 mt-2">
- Must be at least 10 characters, 1 capital letter, and 1 symbol.
- </p>
- )}
- {isLogin && (
- <button
-  type="button"
-  onClick={() => {
-   setShowForgotPassword(true);
-   setForgotEmail(email);
-   setError('');
-   setSuccess('');
-  }}
-  className="text-xs text-primary hover:text-yellow-400 hover:underline transition-colors mt-2"
- >
-  Forgot password?
- </button>
- )}
- </div>
+        {/* App name + tagline */}
+        <h1 className="text-center font-semibold" style={{ fontSize: 22, color: '#111111' }}>
+          {appName}
+        </h1>
+        <p className="text-center mt-1" style={{ fontSize: 13, color: '#888888' }}>
+          {isChurchSignup
+            ? "Create your account to set up your church's app"
+            : (isLogin ? 'Sign in to continue' : 'Create your account')}
+        </p>
 
- {!isLogin && (
- <div>
- <label className="block text-sm font-bold text-white mb-1">Confirm Password</label>
- <input
- type="password"
- required
- value={confirmPassword}
- onChange={(e) => setConfirmPassword(e.target.value)}
- className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/20 text-white placeholder-gray-400 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
- placeholder="••••••••"
- />
- </div>
- )}
+        {/* Messages */}
+        {error && (
+          <div className="mt-6 p-3 bg-red-50 border border-red-100 text-red-600 text-sm rounded-xl">
+            {error}
+          </div>
+        )}
+        {success && (
+          <div className="mt-6 p-3 bg-green-50 border border-green-100 text-green-700 text-sm rounded-xl">
+            {success}
+          </div>
+        )}
 
- {!isLogin && (
- <div className="space-y-4 mt-4">
- <label className="flex items-start gap-3 cursor-pointer group">
- <div className="relative flex items-center pt-0.5">
- <input
- type="checkbox"
- checked={newsletter}
- onChange={(e) => setNewsletter(e.target.checked)}
- className="w-5 h-5 rounded border-white/30 bg-white/10 text-primary focus:ring-primary focus:ring-offset-0 transition-all cursor-pointer"
- />
- </div>
- <span className="text-sm text-white/80 group-hover:text-white transition-colors">
- Sign up for the Harvest newsletter to receive updates and news.
- </span>
- </label>
- </div>
- )}
+        {showForgotPassword ? (
+          /* ── Forgot password sub-view ── */
+          <form onSubmit={handleForgotPassword} className="mt-7 space-y-4">
+            <p className="text-sm" style={{ color: '#666666' }}>
+              Enter your email address and we&apos;ll send you a link to reset your password.
+            </p>
+            <input
+              type="email"
+              required
+              value={forgotEmail}
+              onChange={(e) => setForgotEmail(e.target.value)}
+              className={inputClass}
+              style={{ borderColor: '#E2E2E2' }}
+              {...focusHandlers}
+              placeholder="you@example.com"
+            />
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full text-white font-semibold py-3 px-4 rounded-xl transition-all disabled:opacity-50"
+              style={{ backgroundColor: brandColor }}
+            >
+              {loading ? 'Sending…' : 'Send reset link'}
+            </button>
+            <div className="text-center">
+              <button
+                type="button"
+                onClick={() => { setShowForgotPassword(false); setError(''); setSuccess(''); }}
+                className="text-sm font-semibold hover:underline"
+                style={{ color: brandColor }}
+              >
+                Back to sign in
+              </button>
+            </div>
+          </form>
+        ) : (
+          /* ── Main auth view ── */
+          <div className="mt-7">
+            {/* Google */}
+            <button
+              onClick={handleGoogleSignIn}
+              disabled={loading}
+              className="w-full flex items-center justify-center gap-3 bg-white rounded-xl shadow-sm border py-3 px-4 font-semibold transition-colors hover:bg-gray-50 disabled:opacity-50"
+              style={{ borderColor: '#E2E2E2', color: '#111111' }}
+            >
+              <GoogleIcon /> Sign in with Google
+            </button>
 
- <button
- type="submit"
- disabled={loading}
- className="w-full text-white font-bold py-3 px-4 rounded-xl transition-all duration-100 shadow-lg disabled:opacity-50"
- style={hasCustomBranding && branding.primaryColor ? { backgroundColor: branding.primaryColor, boxShadow: `0 10px 15px -3px ${branding.primaryColor}4D` } : {}}
- >
- {loading ? 'Please wait...' : (isLogin ? 'Sign In' : 'Create Account')}
- </button>
- </form>
+            {/* Divider */}
+            <div className="flex items-center gap-3 my-3">
+              <div className="h-px flex-1" style={{ backgroundColor: '#EEEEEE' }} />
+              <span className="text-xs" style={{ color: '#999999' }}>or</span>
+              <div className="h-px flex-1" style={{ backgroundColor: '#EEEEEE' }} />
+            </div>
 
- <div className="mt-8 text-center">
- <p className="text-white/80 text-sm">
- {isLogin ? "Don't have an account?" : "Already have an account?"}{' '}
- <button 
- onClick={() => setIsLogin(!isLogin)}
- className="text-primary font-bold hover:text-yellow-400 hover:underline transition-colors"
- >
- {isLogin ? 'Sign up' : 'Log in'}
- </button>
- </p>
- </div>
- </>
- )}
- </div>
- )}
+            <form onSubmit={handleEmailAuth} className="space-y-3">
+              {/* Email */}
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className={inputClass}
+                style={{ borderColor: '#E2E2E2' }}
+                {...focusHandlers}
+                placeholder="you@example.com"
+              />
 
- <div className="mt-6 text-center">
- <p className="text-xs text-white/60">
- By registering you accept the{' '}
- <button 
- type="button" 
- onClick={(e) => { e.preventDefault(); e.stopPropagation(); setLegalModalContent('terms'); }} 
- className="text-primary hover:text-yellow-400 hover:underline transition-colors"
- >
- Terms of Use
- </button>
- {' '}and{' '}
- <button 
- type="button" 
- onClick={(e) => { e.preventDefault(); e.stopPropagation(); setLegalModalContent('privacy'); }} 
- className="text-primary hover:text-yellow-400 hover:underline transition-colors"
- >
- Privacy Policy
- </button>
- .
- </p>
- </div>
- </div>
- </div>
+              {/* Password with show/hide toggle */}
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className={`${inputClass} pr-11`}
+                  style={{ borderColor: '#E2E2E2' }}
+                  {...focusHandlers}
+                  placeholder="Password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(s => !s)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#999999] hover:text-[#555555] transition-colors"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  tabIndex={-1}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
 
- {legalModalContent && (
- <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
- <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col overflow-hidden animate-fade-in-up">
- <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
- <h3 className="text-2xl font-bold text-gray-900">
- {legalModalContent === 'terms' ? 'Terms of Use' : 'Privacy Policy'}
- </h3>
- <button onClick={() => setLegalModalContent(null)} className="text-gray-400 hover:text-gray-600 transition-colors">
- <span className="material-symbols-outlined">close</span>
- </button>
- </div>
- <div className="p-6 overflow-y-auto text-gray-600 space-y-4">
- {legalModalContent === 'terms' ? (
- <>
- <p><strong>1. Acceptance of Terms</strong><br/>By accessing and using the Harvest App, you accept and agree to be bound by the terms and provision of this agreement.</p>
- <p><strong>2. Description of Service</strong><br/>Harvest provides users with access to a rich collection of resources, including various communications tools, forums, shopping services, and personalized content.</p>
- <p><strong>3. User Conduct</strong><br/>You agree to use the service only for lawful purposes and in a way that does not infringe the rights of, restrict or inhibit anyone else&apos;s use and enjoyment of the website.</p>
- <p><strong>4. Intellectual Property</strong><br/>All content included on this site, such as text, graphics, logos, button icons, images, audio clips, digital downloads, data compilations, and software, is the property of Harvest or its content suppliers.</p>
- </>
- ) : (
- <>
- <p><strong>1. Information We Collect</strong><br/>We collect information to provide better services to all our users. We collect information in the following ways: information you give us, and information we get from your use of our services.</p>
- <p><strong>2. How We Use Information</strong><br/>We use the information we collect from all our services to provide, maintain, protect and improve them, to develop new ones, and to protect Harvest and our users.</p>
- <p><strong>3. Information We Share</strong><br/>We do not share personal information with companies, organizations and individuals outside of Harvest unless one of the following circumstances applies: with your consent, for external processing, or for legal reasons.</p>
- <p><strong>4. Data Security</strong><br/>We work hard to protect Harvest and our users from unauthorized access to or unauthorized alteration, disclosure or destruction of information we hold.</p>
- </>
- )}
- </div>
- <div className="p-6 border-t border-gray-100 bg-gray-50 flex justify-end">
- <button 
- onClick={() => setLegalModalContent(null)}
- className="px-6 py-2 bg-primary text-white font-bold rounded-xl hover:bg-yellow-600 transition-colors"
- >
- Close
- </button>
- </div>
- </div>
- </div>
- )}
- </div>
- );
+              {!isLogin && (
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className={inputClass}
+                  style={{ borderColor: '#E2E2E2' }}
+                  {...focusHandlers}
+                  placeholder="Confirm password"
+                />
+              )}
+
+              {!isLogin && (
+                <p className="text-xs" style={{ color: '#999999' }}>
+                  Must be at least 10 characters, 1 capital letter, and 1 symbol.
+                </p>
+              )}
+
+              {!isLogin && (
+                <label className="flex items-start gap-2.5 cursor-pointer pt-1">
+                  <input
+                    type="checkbox"
+                    checked={newsletter}
+                    onChange={(e) => setNewsletter(e.target.checked)}
+                    className="w-4 h-4 mt-0.5 rounded border-gray-300 cursor-pointer"
+                    style={{ accentColor: brandColor }}
+                  />
+                  <span className="text-xs" style={{ color: '#666666' }}>
+                    Sign up for the Harvest newsletter to receive updates and news.
+                  </span>
+                </label>
+              )}
+
+              {isLogin && (
+                <div className="text-right">
+                  <button
+                    type="button"
+                    onClick={() => { setShowForgotPassword(true); setForgotEmail(email); setError(''); setSuccess(''); }}
+                    className="text-sm font-medium hover:underline"
+                    style={{ color: brandColor }}
+                  >
+                    Forgot password?
+                  </button>
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full text-white font-semibold py-3 px-4 rounded-xl transition-all disabled:opacity-50 !mt-4"
+                style={{ backgroundColor: brandColor }}
+              >
+                {loading ? 'Please wait…' : (isLogin ? 'Sign In' : 'Sign Up')}
+              </button>
+            </form>
+
+            {/* Toggle login / signup */}
+            <p className="text-center text-sm mt-4" style={{ color: '#666666' }}>
+              {isLogin ? "Don't have an account?" : 'Already have an account?'}{' '}
+              <button
+                onClick={() => { setIsLogin(!isLogin); setError(''); setSuccess(''); }}
+                className="font-semibold hover:underline"
+                style={{ color: brandColor }}
+              >
+                {isLogin ? 'Sign up' : 'Sign in'}
+              </button>
+            </p>
+          </div>
+        )}
+
+        {/* Terms */}
+        <p className="text-center text-xs mt-8 mb-2" style={{ color: '#999999' }}>
+          By registering you accept the{' '}
+          <button
+            type="button"
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setLegalModalContent('terms'); }}
+            className="hover:underline"
+            style={{ color: brandColor }}
+          >
+            Terms of Use
+          </button>
+          {' '}and{' '}
+          <button
+            type="button"
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setLegalModalContent('privacy'); }}
+            className="hover:underline"
+            style={{ color: brandColor }}
+          >
+            Privacy Policy
+          </button>
+          .
+        </p>
+      </div>
+
+      {legalModalContent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col overflow-hidden">
+            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+              <h3 className="text-2xl font-bold text-gray-900">
+                {legalModalContent === 'terms' ? 'Terms of Use' : 'Privacy Policy'}
+              </h3>
+              <button onClick={() => setLegalModalContent(null)} className="text-gray-400 hover:text-gray-600 transition-colors">
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto text-gray-600 space-y-4">
+              {legalModalContent === 'terms' ? (
+                <>
+                  <p><strong>1. Acceptance of Terms</strong><br/>By accessing and using the Harvest App, you accept and agree to be bound by the terms and provision of this agreement.</p>
+                  <p><strong>2. Description of Service</strong><br/>Harvest provides users with access to a rich collection of resources, including various communications tools, forums, shopping services, and personalized content.</p>
+                  <p><strong>3. User Conduct</strong><br/>You agree to use the service only for lawful purposes and in a way that does not infringe the rights of, restrict or inhibit anyone else&apos;s use and enjoyment of the website.</p>
+                  <p><strong>4. Intellectual Property</strong><br/>All content included on this site, such as text, graphics, logos, button icons, images, audio clips, digital downloads, data compilations, and software, is the property of Harvest or its content suppliers.</p>
+                </>
+              ) : (
+                <>
+                  <p><strong>1. Information We Collect</strong><br/>We collect information to provide better services to all our users. We collect information in the following ways: information you give us, and information we get from your use of our services.</p>
+                  <p><strong>2. How We Use Information</strong><br/>We use the information we collect from all our services to provide, maintain, protect and improve them, to develop new ones, and to protect Harvest and our users.</p>
+                  <p><strong>3. Information We Share</strong><br/>We do not share personal information with companies, organizations and individuals outside of Harvest unless one of the following circumstances applies: with your consent, for external processing, or for legal reasons.</p>
+                  <p><strong>4. Data Security</strong><br/>We work hard to protect Harvest and our users from unauthorized access to or unauthorized alteration, disclosure or destruction of information we hold.</p>
+                </>
+              )}
+            </div>
+            <div className="p-6 border-t border-gray-100 bg-gray-50 flex justify-end">
+              <button
+                onClick={() => setLegalModalContent(null)}
+                className="px-6 py-2 text-white font-bold rounded-xl transition-colors"
+                style={{ backgroundColor: brandColor }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 };
 
 export default AuthPage;

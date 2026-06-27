@@ -24,6 +24,9 @@ const NotificationPrompt: React.FC = () => {
 
     const checkAndShow = async () => {
       if (sessionStorage.getItem(STORAGE_KEY)) return;
+      // Notifications are now handled as a mandatory onboarding step; once that
+      // step has run (enabled OR skipped) we never show this legacy popup again.
+      if (localStorage.getItem('notifications_prompted')) return;
       if (typeof window === 'undefined' || !('Notification' in window)) return;
       if (Notification.permission === 'granted' || Notification.permission === 'denied') return;
       if (!auth.currentUser) return;

@@ -1,12 +1,16 @@
 "use client";
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'motion/react';
-import { auth, db } from '../firebase';
-import { doc, updateDoc, getDoc } from 'firebase/firestore';
+import { auth, db, messaging, VAPID_KEY } from '../firebase';
+import { doc, updateDoc, getDoc, arrayUnion } from 'firebase/firestore';
+import { getToken } from 'firebase/messaging';
 import CountrySelect from './CountrySelect';
 import { getTenantScope } from '../utils/tenant-scope';
-import { CheckCircle2, ArrowRight, ArrowLeft, MapPin } from 'lucide-react';
+import { CheckCircle2, ArrowRight, ArrowLeft, MapPin, Share, Download, Bell } from 'lucide-react';
+import type { TenantPlan } from '../types/tenant.types';
+
+const GOLD = '#B8962E';
 
 interface OnboardingQuestion {
   id: string;
@@ -19,21 +23,225 @@ interface OnboardingQuestion {
 
 interface OnboardingProps {
   onComplete: () => void;
+  /** Plan the user is signing up for (passed from the router; not required here). */
+  signupPlan?: TenantPlan;
 }
 
 interface StepDef {
-  kind: 'default_name' | 'default_location' | 'default_phone' | 'default_faith' | 'custom' | 'done';
+  kind:
+    | 'default_name'
+    | 'default_location'
+    | 'default_phone'
+    | 'default_faith'
+    | 'custom'
+    | 'pwaInstall'
+    | 'notifications'
+    | 'done';
   question?: OnboardingQuestion;
   faithLabel?: string;
 }
 
-const DEFAULT_STEPS: StepDef[] = [
+/** System steps appear after all admin-configured questions, before entering the app. */
+const isSystemKind = (k: StepDef['kind']) =>
+  k === 'pwaInstall' || k === 'notifications' || k === 'done';
+
+const DEFAULT_QUESTION_STEPS: StepDef[] = [
   { kind: 'default_name' },
   { kind: 'default_location' },
   { kind: 'default_phone' },
   { kind: 'default_faith', faithLabel: 'Have you accepted Jesus?' },
-  { kind: 'done' },
 ];
+
+// ─── System Step: Install the App ─────────────────────────────────────────────
+
+const InstructionRow: React.FC<{ num: number; children: React.ReactNode }> = ({ num, children }) => (
+  <div className="flex items-start gap-3 bg-white/5 rounded-xl px-3.5 py-3">
+    <span
+      className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white"
+      style={{ backgroundColor: GOLD }}
+    >
+      {num}
+    </span>
+    <span className="text-sm text-gray-200 leading-snug pt-0.5">{children}</span>
+  </div>
+);
+
+const PwaInstallStep: React.FC<{
+  deferredPrompt: React.MutableRefObject<any>;
+  onDone: () => void;
+}> = ({ deferredPrompt, onDone }) => {
+  const isIOS = typeof navigator !== 'undefined' && /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isAndroid = typeof navigator !== 'undefined' && /android/i.test(navigator.userAgent);
+  const isMobile = isIOS || isAndroid;
+  const [installing, setInstalling] = useState(false);
+
+  const finish = () => {
+    try { localStorage.setItem('pwa_installed', 'true'); } catch { /* ignore */ }
+    onDone();
+  };
+
+  // Desktop (neither iOS nor Android): skip this step silently.
+  useEffect(() => {
+    if (!isMobile) finish();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  if (!isMobile) return null;
+
+  const handleAndroidInstall = async () => {
+    const dp = deferredPrompt.current;
+    if (!dp) return; // fallback instructions are rendered instead
+    setInstalling(true);
+    try {
+      dp.prompt();
+      await dp.userChoice;
+    } catch { /* ignore */ }
+    deferredPrompt.current = null;
+    setInstalling(false);
+    finish();
+  };
+
+  // Android with a native install prompt available → one-tap install.
+  const showNativeInstall = isAndroid && !!deferredPrompt.current;
+
+  const manualInstructions = (
+    <div className="space-y-2.5 mb-6">
+      <InstructionRow num={1}>
+        Tap the <strong className="font-semibold text-white">Share</strong> button at the bottom of
+        your browser <Share size={15} className="inline-block align-text-bottom" style={{ color: GOLD }} />
+      </InstructionRow>
+      <InstructionRow num={2}>
+        Scroll down and tap <strong className="font-semibold text-white">Add to Home Screen</strong>
+      </InstructionRow>
+      <InstructionRow num={3}>
+        Tap <strong className="font-semibold text-white">Add</strong> — you&apos;re done! 🎉
+      </InstructionRow>
+    </div>
+  );
+
+  return (
+    <div className="py-2">
+      <div
+        className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-5"
+        style={{ backgroundColor: `${GOLD}22` }}
+      >
+        {isIOS ? <Share size={28} style={{ color: GOLD }} /> : <Download size={28} style={{ color: GOLD }} />}
+      </div>
+      <h1 className="text-2xl font-black text-white text-center mb-1.5">Install the App</h1>
+      <p className="text-gray-300 text-sm text-center mb-6">
+        {showNativeInstall
+          ? 'Get the full experience on your home screen'
+          : 'Access Harvest instantly from your home screen'}
+      </p>
+
+      {showNativeInstall ? (
+        <button
+          onClick={handleAndroidInstall}
+          disabled={installing}
+          className="w-full flex items-center justify-center gap-2 text-white font-bold py-3.5 px-6 rounded-xl transition-all shadow-lg disabled:opacity-50 mb-3"
+          style={{ backgroundColor: GOLD, boxShadow: `0 10px 15px -3px ${GOLD}4D` }}
+        >
+          <Download size={18} /> {installing ? 'Installing…' : 'Install App'}
+        </button>
+      ) : (
+        <>
+          {manualInstructions}
+          <button
+            onClick={finish}
+            className="w-full text-white font-bold py-3.5 px-6 rounded-xl transition-all shadow-lg mb-3"
+            style={{ backgroundColor: GOLD, boxShadow: `0 10px 15px -3px ${GOLD}4D` }}
+          >
+            I&apos;ve added it
+          </button>
+        </>
+      )}
+
+      <button
+        onClick={finish}
+        className="w-full text-center text-sm text-gray-400 hover:text-white transition-colors py-1"
+      >
+        Skip for now
+      </button>
+    </div>
+  );
+};
+
+// ─── System Step: Enable Notifications ────────────────────────────────────────
+
+const NotificationsStep: React.FC<{ onDone: () => void }> = ({ onDone }) => {
+  const [requesting, setRequesting] = useState(false);
+
+  const finish = () => {
+    try { localStorage.setItem('notifications_prompted', 'true'); } catch { /* ignore */ }
+    onDone();
+  };
+
+  const handleEnable = async () => {
+    setRequesting(true);
+    try {
+      if (typeof Notification !== 'undefined') {
+        const permission = await Notification.requestPermission();
+        if (permission === 'granted') {
+          // Best-effort: register the FCM token so push actually reaches this device.
+          try {
+            const msg = await messaging;
+            const user = auth.currentUser;
+            if (msg && user) {
+              const token = await getToken(msg, { vapidKey: VAPID_KEY });
+              if (token) {
+                const tenantId = await getTenantScope();
+                await updateDoc(doc(db, 'users', user.uid), {
+                  fcmTokens: arrayUnion(token),
+                  tenantId: tenantId || null,
+                });
+              }
+            }
+          } catch (e) {
+            console.error('Failed to register notification token:', e);
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Notification permission request failed:', e);
+    } finally {
+      setRequesting(false);
+      finish();
+    }
+  };
+
+  return (
+    <div className="py-2">
+      <div
+        className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-5"
+        style={{ backgroundColor: `${GOLD}22` }}
+      >
+        <Bell size={28} style={{ color: GOLD }} />
+      </div>
+      <h1 className="text-2xl font-black text-white text-center mb-1.5">Stay Connected</h1>
+      <p className="text-gray-300 text-sm text-center mb-6">
+        Enable notifications to receive messages, prayer updates, and announcements from your
+        ministry.
+      </p>
+
+      <button
+        onClick={handleEnable}
+        disabled={requesting}
+        className="w-full flex items-center justify-center gap-2 text-white font-bold py-3.5 px-6 rounded-xl transition-all shadow-lg disabled:opacity-50 mb-3"
+        style={{ backgroundColor: GOLD, boxShadow: `0 10px 15px -3px ${GOLD}4D` }}
+      >
+        <Bell size={18} /> {requesting ? 'Enabling…' : 'Enable Notifications'}
+      </button>
+      <button
+        onClick={finish}
+        className="w-full text-center text-sm text-gray-400 hover:text-white transition-colors py-1"
+      >
+        Maybe later
+      </button>
+    </div>
+  );
+};
+
+// ─── Main Onboarding ──────────────────────────────────────────────────────────
 
 const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
   const [name, setName] = useState('');
@@ -49,22 +257,46 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
   const [questionsLoaded, setQuestionsLoaded] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
   const [dir, setDir] = useState(1);
+  const deferredPrompt = useRef<any>(null);
 
   const steps = useMemo<StepDef[]>(() => {
-    if (!questionsLoaded || customQuestions.length === 0) return DEFAULT_STEPS;
-    const result: StepDef[] = [];
-    let locationAdded = false;
-    for (const q of customQuestions) {
-      if (q.id === 'default_name') {
-        result.push({ kind: 'default_name' });
-      } else if (q.id === 'default_country' || q.id === 'default_city') {
-        if (!locationAdded) { result.push({ kind: 'default_location' }); locationAdded = true; }
-      } else if (q.id === 'default_phone') {
-        result.push({ kind: 'default_phone' });
-      } else if (q.id === 'default_accepted_jesus') {
-        result.push({ kind: 'default_faith', faithLabel: q.label || 'Have you accepted Jesus?' });
-      } else {
-        result.push({ kind: 'custom', question: q });
+    // 1) Build the admin-configured question steps.
+    let questionSteps: StepDef[];
+    if (!questionsLoaded || customQuestions.length === 0) {
+      questionSteps = DEFAULT_QUESTION_STEPS;
+    } else {
+      questionSteps = [];
+      let locationAdded = false;
+      for (const q of customQuestions) {
+        if (q.id === 'default_name') {
+          questionSteps.push({ kind: 'default_name' });
+        } else if (q.id === 'default_country' || q.id === 'default_city') {
+          if (!locationAdded) { questionSteps.push({ kind: 'default_location' }); locationAdded = true; }
+        } else if (q.id === 'default_phone') {
+          questionSteps.push({ kind: 'default_phone' });
+        } else if (q.id === 'default_accepted_jesus') {
+          questionSteps.push({ kind: 'default_faith', faithLabel: q.label || 'Have you accepted Jesus?' });
+        } else {
+          questionSteps.push({ kind: 'custom', question: q });
+        }
+      }
+    }
+
+    // 2) Append the system steps (install + notifications) unless already handled.
+    const result: StepDef[] = [...questionSteps];
+    if (typeof window !== 'undefined') {
+      if (
+        !localStorage.getItem('pwa_installed') &&
+        !window.matchMedia('(display-mode: standalone)').matches
+      ) {
+        result.push({ kind: 'pwaInstall' });
+      }
+      if (
+        !localStorage.getItem('notifications_prompted') &&
+        typeof Notification !== 'undefined' &&
+        Notification.permission === 'default'
+      ) {
+        result.push({ kind: 'notifications' });
       }
     }
     result.push({ kind: 'done' });
@@ -73,7 +305,8 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
 
   const currentStep = steps[stepIndex] ?? { kind: 'done' as const };
   const isDone = currentStep.kind === 'done';
-  const questionStepCount = steps.filter(s => s.kind !== 'done').length;
+  const isSystemStep = currentStep.kind === 'pwaInstall' || currentStep.kind === 'notifications';
+  const questionStepCount = steps.filter(s => !isSystemKind(s.kind)).length;
 
   useEffect(() => {
     if (auth.currentUser?.displayName) setName(auth.currentUser.displayName);
@@ -125,6 +358,13 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
     }
   }, []);
 
+  // Cache the Android install prompt so the PWA step can trigger it on demand.
+  useEffect(() => {
+    const handler = (e: any) => { e.preventDefault(); deferredPrompt.current = e; };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
   const handleUseGPS = () => {
     if (!navigator.geolocation) { setError('Geolocation not supported.'); return; }
     setGpsLoading(true);
@@ -172,15 +412,30 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
       acceptedJesus: acceptedJesus === 'yes',
       onboardingCompleted: true,
     };
-    if (customQuestions.length > 0 && Object.values(customAnswers).some(v => v?.trim())) {
-      updateData.onboardingAnswers = customAnswers;
+    // Only persist real custom answers — the default_* ids are stored as
+    // top-level fields (displayName/country/city/phone/acceptedJesus), so
+    // writing them here too would just pollute onboardingAnswers with blanks.
+    const customOnly = Object.fromEntries(
+      Object.entries(customAnswers).filter(([k, v]) => !k.startsWith('default_') && !!v?.trim())
+    );
+    if (Object.keys(customOnly).length > 0) {
+      updateData.onboardingAnswers = customOnly;
     }
     await updateDoc(doc(db, 'users', user.uid), updateData);
-    sessionStorage.setItem('pwa_prompt_ready', 'true');
-    window.dispatchEvent(new Event('onboardingComplete'));
+  };
+
+  // Advance handler used by the self-managed system steps.
+  const advanceStep = () => {
+    setError('');
+    setDir(1);
+    setStepIndex(i => i + 1);
   };
 
   const goNext = async () => {
+    // Don't let the user advance until the tenant's question set is finalized,
+    // otherwise a fast Enter on the default steps could be invalidated when the
+    // (possibly reordered/custom) questions load and the steps array recomputes.
+    if (!questionsLoaded) return;
     const err = validate(currentStep);
     if (err) { setError(err); return; }
     setError('');
@@ -188,7 +443,10 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
     const nextIdx = stepIndex + 1;
     const nextStep = steps[nextIdx];
 
-    if (nextStep?.kind === 'done') {
+    // Persist answers once, at the transition from the last question step to the
+    // first system step (pwaInstall / notifications / done). This means the user
+    // can close the browser mid-install without losing their answers.
+    if (nextStep && isSystemKind(nextStep.kind)) {
       setLoading(true);
       try {
         await saveToFirestore();
@@ -218,7 +476,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
       case 'default_phone': return { title: 'Your phone number', sub: 'So your church can reach you when it matters.' };
       case 'default_faith': return { title: s.faithLabel || 'Have you accepted Jesus?', sub: '' };
       case 'custom': return { title: s.question?.label || '', sub: '' };
-      case 'done': return { title: '', sub: '' };
+      default: return { title: '', sub: '' };
     }
   };
 
@@ -332,7 +590,11 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
   };
 
   const heading = getHeading(currentStep);
-  const progressPct = Math.min(100, Math.round(((stepIndex + 1) / Math.max(steps.length, 1)) * 100));
+  // Keep the bar in step with the "Step X of N" counter (which counts only
+  // question steps); system steps are the home stretch, so show a full bar.
+  const progressPct = isSystemStep
+    ? 100
+    : Math.min(100, Math.round(((stepIndex + 1) / Math.max(questionStepCount, 1)) * 100));
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background-dark px-4 py-12 relative overflow-hidden">
@@ -347,12 +609,13 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
         {!isDone && (
           <div className="mb-5">
             <div className="flex justify-between text-xs text-gray-400 mb-1.5">
-              <span>Step {stepIndex + 1} of {questionStepCount}</span>
+              <span>{isSystemStep ? 'Final steps' : `Step ${stepIndex + 1} of ${questionStepCount}`}</span>
               <span>{progressPct}%</span>
             </div>
             <div className="h-1 bg-white/10 rounded-full overflow-hidden">
               <motion.div
-                className="h-full bg-primary rounded-full"
+                className="h-full rounded-full"
+                style={{ backgroundColor: GOLD }}
                 initial={false}
                 animate={{ width: `${progressPct}%` }}
                 transition={{ duration: 0.3, ease: 'easeOut' }}
@@ -388,10 +651,15 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                     Welcome to Harvest. Everything&apos;s ready for you.
                   </p>
                   <button onClick={onComplete}
-                    className="inline-flex items-center gap-2 bg-primary text-white font-bold py-3 px-8 rounded-xl hover:bg-yellow-600 transition-all shadow-lg shadow-primary/30">
+                    className="inline-flex items-center gap-2 text-white font-bold py-3 px-8 rounded-xl transition-all shadow-lg"
+                    style={{ backgroundColor: GOLD, boxShadow: `0 10px 15px -3px ${GOLD}4D` }}>
                     Let&apos;s go <ArrowRight size={18} />
                   </button>
                 </div>
+              ) : currentStep.kind === 'pwaInstall' ? (
+                <PwaInstallStep deferredPrompt={deferredPrompt} onDone={advanceStep} />
+              ) : currentStep.kind === 'notifications' ? (
+                <NotificationsStep onDone={advanceStep} />
               ) : (
                 <>
                   <div className="mb-6">
@@ -409,7 +677,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
             </motion.div>
           </AnimatePresence>
 
-          {!isDone && (
+          {!isDone && !isSystemStep && (
             <div className="px-8 pb-8 sm:px-10 sm:pb-10 pt-0 flex items-center justify-between">
               {stepIndex > 0 ? (
                 <button onClick={goBack}
@@ -417,8 +685,9 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                   <ArrowLeft size={16} /> Back
                 </button>
               ) : <div />}
-              <button onClick={goNext} disabled={loading}
-                className="flex items-center gap-2 bg-primary text-white font-bold py-3 px-6 rounded-xl hover:bg-yellow-600 transition-all shadow-lg shadow-primary/30 disabled:opacity-50">
+              <button onClick={goNext} disabled={loading || !questionsLoaded}
+                className="flex items-center gap-2 text-white font-bold py-3 px-6 rounded-xl transition-all shadow-lg disabled:opacity-50"
+                style={{ backgroundColor: GOLD, boxShadow: `0 10px 15px -3px ${GOLD}4D` }}>
                 {loading ? 'Saving…' : stepIndex === questionStepCount - 1 ? 'Finish' : 'Continue'}
                 <ArrowRight size={16} />
               </button>

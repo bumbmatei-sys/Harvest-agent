@@ -121,6 +121,13 @@ describe('hasFeature', () => {
     expect(hasFeature('ultra', 'livestream')).toBe(true);
   });
 
+  it('sermonNotes is available on Ministry (ultra) only', () => {
+    expect(hasFeature('plus', 'sermonNotes')).toBe(false);
+    expect(hasFeature('pro', 'sermonNotes')).toBe(false);
+    expect(hasFeature('max', 'sermonNotes')).toBe(false);
+    expect(hasFeature('ultra', 'sermonNotes')).toBe(true);
+  });
+
   it('smsAutomation is available on Ministry (ultra) only', () => {
     expect(hasFeature('plus', 'smsAutomation')).toBe(false);
     expect(hasFeature('pro', 'smsAutomation')).toBe(false);
