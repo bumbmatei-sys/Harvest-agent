@@ -134,6 +134,13 @@ describe('hasFeature', () => {
     expect(hasFeature('max', 'smsAutomation')).toBe(false);
     expect(hasFeature('ultra', 'smsAutomation')).toBe(true);
   });
+
+  it('automatedBlog is available on Community (max) and Ministry (ultra) only', () => {
+    expect(hasFeature('plus', 'automatedBlog')).toBe(false);
+    expect(hasFeature('pro', 'automatedBlog')).toBe(false);
+    expect(hasFeature('max', 'automatedBlog')).toBe(true);
+    expect(hasFeature('ultra', 'automatedBlog')).toBe(true);
+  });
 });
 
 describe('PLAN_DONATION_RETENTION', () => {

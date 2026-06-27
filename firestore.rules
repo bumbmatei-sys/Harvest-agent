@@ -252,6 +252,11 @@ service cloud.firestore {
         allow read, write: if isTenantAdmin(tenantId);
       }
 
+      // Automated SEO blog scheduling settings (single 'settings' doc).
+      match /blogAutomation/{doc} {
+        allow read, write: if isTenantAdmin(tenantId);
+      }
+
       match /channels/{channelId} {
         allow read: if belongsToTenant(tenantId);
         allow write: if isTenantAdmin(tenantId);
