@@ -47,6 +47,8 @@ export interface PlanFeatures {
   communityGroups: boolean;
   /** Custom forms → CRM pipeline (Ministry only) */
   customForms: boolean;
+  /** Check-in system with QR attendance (Ministry only) */
+  checkInSystem: boolean;
 }
 
 // ─── Feature matrix ───────────────────────────────────────────────────────────
@@ -83,6 +85,7 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     taxReceipt: false,
     communityGroups: false,
     customForms: false,
+    checkInSystem: false,
   },
   // Small Team
   pro: {
@@ -109,6 +112,7 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     taxReceipt: false,
     communityGroups: false,
     customForms: false,
+    checkInSystem: false,
   },
   // Community
   max: {
@@ -135,6 +139,7 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     taxReceipt: false,
     communityGroups: false,
     customForms: false,
+    checkInSystem: false,
   },
   // Ministry (top plan)
   ultra: {
@@ -161,6 +166,7 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     taxReceipt: true,
     communityGroups: true,
     customForms: true,
+    checkInSystem: true,
   },
 };
 
