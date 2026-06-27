@@ -27,7 +27,7 @@ const PLANS: { id: TenantPlan; name: string; monthlyPrice: string; yearlyPrice: 
   { id: 'plus', name: 'Individual', monthlyPrice: '$59/mo', yearlyPrice: '$590/yr', yearlyPromo: '$590', yearlyOriginal: '$708', icon: Zap, color: '#6366f1', comingSoon: [] },
   { id: 'pro', name: 'Small Team', monthlyPrice: '$119/mo', yearlyPrice: '$1,190/yr', yearlyPromo: '$1,190', yearlyOriginal: '$1,428', icon: Crown, color: '#d4a017', comingSoon: [] },
   { id: 'max', name: 'Community', monthlyPrice: '$239/mo', yearlyPrice: '$2,390/yr', yearlyPromo: '$2,390', yearlyOriginal: '$2,868', icon: Star, color: '#8b5cf6', popular: true, comingSoon: [] },
-  { id: 'ultra', name: 'Ministry', monthlyPrice: '$479/mo', yearlyPrice: '$4,790/yr', yearlyPromo: '$4,790', yearlyOriginal: '$5,748', icon: Building2, color: '#b45309', comingSoon: ['Automated Blog Articles'] },
+  { id: 'ultra', name: 'Ministry', monthlyPrice: '$479/mo', yearlyPrice: '$4,790/yr', yearlyPromo: '$4,790', yearlyOriginal: '$5,748', icon: Building2, color: '#b45309', comingSoon: [] },
 ];
 
 // Keyed lookup so we can resolve plan metadata by id (icon/color/popular).
@@ -66,9 +66,9 @@ const FEATURE_COMPARISON: { key: keyof PlanFeatures; label: string; format?: (v:
   { key: 'donationRetention', label: 'Donation Retention', format: (v) => `${v}%` },
 ];
 
-const SOON_FEATURES: { label: string; plans: TenantPlan[] }[] = [
-  { label: 'Automated Blog Articles', plans: ['ultra'] },
-];
+// No features are "coming soon" right now — Automated Blog Articles shipped on
+// Community + Ministry. Add entries here to re-enable the table's Coming Soon row.
+const SOON_FEATURES: { label: string; plans: TenantPlan[] }[] = [];
 
 const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, tenantId, email }) => {
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly');
@@ -357,12 +357,14 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
                   })}
                 </tr>
               ))}
-              {/* Coming soon section header */}
-              <tr>
-                <td colSpan={5} className="pt-5 pb-2 px-3">
-                  <span className="text-[10px] font-semibold tracking-widest uppercase text-amber-500">Coming Soon</span>
-                </td>
-              </tr>
+              {/* Coming soon section — only rendered when there are upcoming features */}
+              {SOON_FEATURES.length > 0 && (
+                <tr>
+                  <td colSpan={5} className="pt-5 pb-2 px-3">
+                    <span className="text-[10px] font-semibold tracking-widest uppercase text-amber-500">Coming Soon</span>
+                  </td>
+                </tr>
+              )}
               {SOON_FEATURES.map(({ label, plans: planIds }) => (
                 <tr key={label} className="border-b border-gray-50">
                   <td className="py-3 px-3 text-gray-900 font-medium">{label}</td>
