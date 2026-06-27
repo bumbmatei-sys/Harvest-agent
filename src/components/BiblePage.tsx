@@ -7,7 +7,7 @@ import { useState, useEffect, useCallback } from "react";
 // Tailwind CSS, Inter + Crimson Pro
 // ─────────────────────────────────────────────
 
-const GOLD = "#C9963A";
+const GOLD = "var(--brand-color, #C9963A)";
 const GOLD_LIGHT = "#FBF3E4";
 
 // ── Types ──────────────────────────────────────

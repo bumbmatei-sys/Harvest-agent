@@ -219,7 +219,7 @@ const IntegrationsSection: React.FC = () => {
             <div className="flex items-center gap-2">
               <p className="text-sm font-bold text-gray-900">Instagram</p>
               {instagramStatus === 'connected' && isPrimaryInstagram && (
-                <span className="flex items-center gap-1 text-xs text-[#d4a017] font-medium">
+                <span className="flex items-center gap-1 text-xs text-gold font-medium">
                   <Star size={11} fill="currentColor" /> Primary
                 </span>
               )}
@@ -236,7 +236,7 @@ const IntegrationsSection: React.FC = () => {
             {instagramStatus === 'connected' && !isPrimaryInstagram && (
               <button
                 onClick={handleMakePrimaryInstagram}
-                className="px-3 py-1.5 border border-[#d4a017] text-[#d4a017] rounded-lg text-xs font-semibold hover:bg-yellow-50 transition-colors"
+                className="px-3 py-1.5 border border-gold text-gold rounded-lg text-xs font-semibold hover:bg-yellow-50 transition-colors"
               >
                 Make Primary
               </button>
@@ -248,7 +248,7 @@ const IntegrationsSection: React.FC = () => {
               </button>
             ) : (
               <button onClick={handleInstagramConnect} disabled={instagramLoading || instagramStatus === 'connecting'}
-                className="px-4 py-2 bg-[#d4a017] text-white rounded-xl text-xs font-semibold hover:bg-[#b8941a] transition-colors disabled:opacity-50">
+                className="px-4 py-2 bg-gold text-white rounded-xl text-xs font-semibold hover:bg-gold transition-colors disabled:opacity-50">
                 {instagramLoading ? (
                   <span className="flex items-center gap-2">
                     <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -271,7 +271,7 @@ const IntegrationsSection: React.FC = () => {
             <div className="flex items-center gap-2">
               <p className="text-sm font-bold text-gray-900">Mailchimp</p>
               {mailchimpStatus === 'connected' && isPrimaryMailchimp && (
-                <span className="flex items-center gap-1 text-xs text-[#d4a017] font-medium">
+                <span className="flex items-center gap-1 text-xs text-gold font-medium">
                   <Star size={11} fill="currentColor" /> Primary
                 </span>
               )}
@@ -288,7 +288,7 @@ const IntegrationsSection: React.FC = () => {
             {mailchimpStatus === 'connected' && !isPrimaryMailchimp && (
               <button
                 onClick={handleMakePrimaryMailchimp}
-                className="px-3 py-1.5 border border-[#d4a017] text-[#d4a017] rounded-lg text-xs font-semibold hover:bg-yellow-50 transition-colors"
+                className="px-3 py-1.5 border border-gold text-gold rounded-lg text-xs font-semibold hover:bg-yellow-50 transition-colors"
               >
                 Make Primary
               </button>
@@ -300,7 +300,7 @@ const IntegrationsSection: React.FC = () => {
               </button>
             ) : (
               <button onClick={handleMailchimpConnect} disabled={mailchimpLoading || mailchimpStatus === 'connecting'}
-                className="px-4 py-2 bg-[#d4a017] text-white rounded-xl text-xs font-semibold hover:bg-[#b8941a] transition-colors disabled:opacity-50">
+                className="px-4 py-2 bg-gold text-white rounded-xl text-xs font-semibold hover:bg-gold transition-colors disabled:opacity-50">
                 {mailchimpLoading ? (
                   <span className="flex items-center gap-2">
                     <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />

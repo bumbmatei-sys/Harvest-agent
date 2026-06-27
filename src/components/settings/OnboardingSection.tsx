@@ -149,7 +149,7 @@ const OnboardingSection: React.FC = () => {
       {/* Add Question Button */}
       <button
         onClick={addQuestion}
-        className="px-4 py-2 bg-[#d4a017] text-white rounded-xl text-sm font-semibold hover:bg-[#b8941a] transition-colors"
+        className="px-4 py-2 bg-gold text-white rounded-xl text-sm font-semibold hover:bg-gold transition-colors"
       >
         + Add Question
       </button>
@@ -195,7 +195,7 @@ const OnboardingSection: React.FC = () => {
         <button
           onClick={saveAllQuestions}
           disabled={onboardingSaving}
-          className="px-6 py-2.5 bg-[#d4a017] text-white rounded-xl text-sm font-semibold hover:bg-[#b8941a] transition-colors disabled:opacity-50"
+          className="px-6 py-2.5 bg-gold text-white rounded-xl text-sm font-semibold hover:bg-gold transition-colors disabled:opacity-50"
         >
           {onboardingSaving ? 'Saving...' : 'Save Questions'}
         </button>
@@ -219,7 +219,7 @@ const OnboardingSection: React.FC = () => {
                 value={editingQuestion.label}
                 onChange={(e) => setEditingQuestion({ ...editingQuestion, label: e.target.value })}
                 placeholder="e.g. What is your favorite verse?"
-                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#d4a017]"
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-gold"
               />
             </div>
 
@@ -228,7 +228,7 @@ const OnboardingSection: React.FC = () => {
               <select
                 value={editingQuestion.type}
                 onChange={(e) => setEditingQuestion({ ...editingQuestion, type: e.target.value as any })}
-                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#d4a017]"
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-gold"
               >
                 {questionTypeOptions.map(opt => (
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -244,7 +244,7 @@ const OnboardingSection: React.FC = () => {
                   value={(editingQuestion.options || []).join(', ')}
                   onChange={(e) => setEditingQuestion({ ...editingQuestion, options: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })}
                   placeholder="e.g. Option A, Option B, Option C"
-                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#d4a017]"
+                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-gold"
                 />
               </div>
             )}
@@ -253,7 +253,7 @@ const OnboardingSection: React.FC = () => {
               <label className="text-sm font-medium text-gray-700">Required</label>
               <button
                 onClick={() => setEditingQuestion({ ...editingQuestion, required: !editingQuestion.required })}
-                className={`w-10 h-6 rounded-full relative transition-colors ${editingQuestion.required ? 'bg-[#d4a017]' : 'bg-gray-200'}`}
+                className={`w-10 h-6 rounded-full relative transition-colors ${editingQuestion.required ? 'bg-gold' : 'bg-gray-200'}`}
               >
                 <div className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-all ${editingQuestion.required ? 'left-5' : 'left-1'}`} />
               </button>
@@ -269,7 +269,7 @@ const OnboardingSection: React.FC = () => {
               <button
                 onClick={saveQuestion}
                 disabled={!editingQuestion.label.trim()}
-                className="px-4 py-2 bg-[#d4a017] text-white rounded-xl text-sm font-semibold hover:bg-[#b8941a] transition-colors disabled:opacity-50"
+                className="px-4 py-2 bg-gold text-white rounded-xl text-sm font-semibold hover:bg-gold transition-colors disabled:opacity-50"
               >
                 Save
               </button>

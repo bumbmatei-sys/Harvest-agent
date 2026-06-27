@@ -34,7 +34,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ course, onBack }) => {
  </button>
 
  <div className="absolute bottom-6 left-0 w-full px-4 sm:px-8 text-white">
- <span className="inline-block bg-[#d4a017] text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider mb-3">
+ <span className="inline-block bg-gold text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider mb-3">
  {course.category}
  </span>
  <h1 className="text-3xl sm:text-4xl font-bold mb-2 leading-tight">{course.title}</h1>
@@ -64,7 +64,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ course, onBack }) => {
  {/* Curriculum Placeholder */}
  <section>
  <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
- <BookOpen size={20} className="text-[#d4a017]" />
+ <BookOpen size={20} className="text-gold" />
  Curriculum
  </h2>
  <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
@@ -77,7 +77,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ course, onBack }) => {
  <div className="divide-y divide-gray-50 ">
  {[1, 2, 3].map((lesson) => (
  <div key={lesson} className="p-4 flex items-center gap-4 hover:bg-gray-50 :bg-gray-800/50 transition-colors cursor-pointer group">
- <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 group-hover:bg-[#d4a017] group-hover:text-white transition-colors">
+ <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 group-hover:bg-gold group-hover:text-white transition-colors">
  <PlayCircle size={16} />
  </div>
  <div className="flex-1">
@@ -97,20 +97,20 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ course, onBack }) => {
  <h3 className="font-bold text-gray-900 mb-4">Course Features</h3>
  <ul className="space-y-4">
  <li className="flex items-start gap-3 text-sm text-gray-600 ">
- <CheckCircle2 size={18} className="text-[#d4a017] flex-shrink-0 mt-0.5" />
+ <CheckCircle2 size={18} className="text-gold flex-shrink-0 mt-0.5" />
  <span>Self-paced learning</span>
  </li>
  <li className="flex items-start gap-3 text-sm text-gray-600 ">
- <CheckCircle2 size={18} className="text-[#d4a017] flex-shrink-0 mt-0.5" />
+ <CheckCircle2 size={18} className="text-gold flex-shrink-0 mt-0.5" />
  <span>Access on mobile and desktop</span>
  </li>
  <li className="flex items-start gap-3 text-sm text-gray-600 ">
- <CheckCircle2 size={18} className="text-[#d4a017] flex-shrink-0 mt-0.5" />
+ <CheckCircle2 size={18} className="text-gold flex-shrink-0 mt-0.5" />
  <span>Certificate of completion</span>
  </li>
  </ul>
 
- <button className="w-full mt-8 bg-[#d4a017] hover:bg-[#b8860b] text-white font-bold py-3.5 rounded-xl transition-colors shadow-md flex items-center justify-center gap-2">
+ <button className="w-full mt-8 bg-gold hover:bg-[#b8860b] text-white font-bold py-3.5 rounded-xl transition-colors shadow-md flex items-center justify-center gap-2">
  <PlayCircle size={20} />
  Start Course
  </button>

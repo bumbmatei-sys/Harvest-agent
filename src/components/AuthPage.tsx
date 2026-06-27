@@ -7,7 +7,7 @@ import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { useTenant } from '../contexts/TenantContext';
 import { Eye, EyeOff } from 'lucide-react';
 
-const HARVEST_GOLD = '#B8962E';
+const HARVEST_GOLD = 'var(--brand-color, #B8962E)';
 const HARVEST_LOGO = 'https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png';
 
 /** Multi-colour Google "G" mark. */

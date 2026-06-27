@@ -238,7 +238,7 @@ const ChurchDetailsModal: React.FC<ChurchDetailsModalProps> = ({
        <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4">Announcements</h3>
        {loadingAnnouncements ? (
          <div className="flex justify-center py-8">
-           <div className="w-6 h-6 border-4 border-[#d4a017]/30 border-t-[#d4a017] rounded-full animate-spin"></div>
+           <div className="w-6 h-6 border-4 border-[color-mix(in_srgb,var(--brand-color)_30%,transparent)] border-t-gold rounded-full animate-spin"></div>
          </div>
        ) : announcements.length === 0 ? (
          <div className="text-center py-8">

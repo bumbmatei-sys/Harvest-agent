@@ -210,11 +210,11 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
             <div
               key={planId}
               className={`relative bg-white rounded-2xl border-2 p-5 transition-all min-w-[280px] max-w-[320px] flex-shrink-0 snap-center ${
-                isCurrent ? 'border-[#d4a017] shadow-lg' : 'border-gray-100 hover:border-gray-200'
+                isCurrent ? 'border-gold shadow-lg' : 'border-gray-100 hover:border-gray-200'
               }`}
             >
               {meta.popular && !isCurrent && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-[#d4a017] text-white text-xs font-bold rounded-full">
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-gold text-white text-xs font-bold rounded-full">
                   Popular
                 </div>
               )}
@@ -287,8 +287,8 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
                     : isDowngrade
                     ? 'border border-gray-200 text-gray-600 hover:bg-gray-50'
                     : checkoutLoading === planId
-                    ? 'bg-[#d4a017]/70 text-white cursor-wait'
-                    : 'bg-[#d4a017] text-white hover:bg-[#b8941a]'
+                    ? 'bg-[color-mix(in_srgb,var(--brand-color)_70%,transparent)] text-white cursor-wait'
+                    : 'bg-gold text-white hover:bg-gold'
                 }`}
               >
                 {checkoutLoading === planId ? (
@@ -314,7 +314,7 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
               setActivePlanIndex(index);
             }}
             className={`transition-all rounded-full ${
-              activePlanIndex === index ? 'w-6 h-2 bg-[#d4a017]' : 'w-2 h-2 bg-gray-300 hover:bg-gray-400'
+              activePlanIndex === index ? 'w-6 h-2 bg-gold' : 'w-2 h-2 bg-gray-300 hover:bg-gray-400'
             }`}
             aria-label={`Go to plan ${index + 1}`}
           />

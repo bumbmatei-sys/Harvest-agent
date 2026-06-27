@@ -60,11 +60,11 @@ const PartnerWithUsTab: React.FC = () => {
       {/* Top Icon & Text */}
       <div className="flex flex-col items-center text-center mb-8 mt-4">
         <div className="w-16 h-16 bg-[#fdf8ed] rounded-full flex items-center justify-center mb-4">
-          <HeartHandshake size={32} className="text-[#d4a017]" />
+          <HeartHandshake size={32} className="text-gold" />
         </div>
         <h2 className="text-2xl font-bold text-[#0b1121] mb-1">Partner with Us</h2>
         {tenantName && (
-          <p className="text-[#d4a017] font-semibold text-sm mb-2">{tenantName}</p>
+          <p className="text-gold font-semibold text-sm mb-2">{tenantName}</p>
         )}
         <p className="text-[#64748b] text-sm leading-relaxed">
           Your partnership keeps this platform free for the new believer and scalable for the nations.
@@ -77,7 +77,7 @@ const PartnerWithUsTab: React.FC = () => {
           onClick={() => setDonationType('one-time')}
           className={`flex-1 py-3 rounded-lg text-sm font-bold transition-colors ${
             donationType === 'one-time'
-              ? 'bg-[#d4a017] text-white'
+              ? 'bg-gold text-white'
               : 'text-[#64748b] hover:bg-gray-50'
           }`}
         >
@@ -87,7 +87,7 @@ const PartnerWithUsTab: React.FC = () => {
           onClick={() => setDonationType('monthly')}
           className={`flex-1 py-3 rounded-lg text-sm font-bold transition-colors flex items-center justify-center gap-2 ${
             donationType === 'monthly'
-              ? 'bg-[#d4a017] text-white'
+              ? 'bg-gold text-white'
               : 'text-[#64748b] hover:bg-gray-50'
           }`}
         >
@@ -107,7 +107,7 @@ const PartnerWithUsTab: React.FC = () => {
               onClick={() => setAmount(preset)}
               className={`py-3 rounded-xl text-sm font-bold transition-colors border ${
                 amount === preset
-                  ? 'bg-[#fdf8ed] border-[#d4a017] text-[#d4a017]'
+                  ? 'bg-[#fdf8ed] border-gold text-gold'
                   : 'bg-white border-transparent text-[#0b1121] shadow-sm'
               }`}
             >
@@ -145,7 +145,7 @@ const PartnerWithUsTab: React.FC = () => {
       <button
         onClick={handleDonate}
         disabled={isLoading}
-        className="w-full bg-[#d4a017] hover:bg-[#b88a14] disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold py-4 rounded-xl shadow-lg shadow-[#d4a017]/20 transition-all flex items-center justify-center gap-2"
+        className="w-full bg-gold hover:bg-[#b88a14] disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold py-4 rounded-xl shadow-lg shadow-[color-mix(in_srgb,var(--brand-color)_20%,transparent)] transition-all flex items-center justify-center gap-2"
       >
         {isLoading ? (
           <>

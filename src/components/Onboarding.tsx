@@ -10,7 +10,7 @@ import { getTenantScope } from '../utils/tenant-scope';
 import { CheckCircle2, ArrowRight, ArrowLeft, MapPin, Share, Download, Bell } from 'lucide-react';
 import type { TenantPlan } from '../types/tenant.types';
 
-const GOLD = '#B8962E';
+const GOLD = 'var(--brand-color, #B8962E)';
 
 interface OnboardingQuestion {
   id: string;
@@ -123,7 +123,7 @@ const PwaInstallStep: React.FC<{
     <div className="py-2">
       <div
         className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-5"
-        style={{ backgroundColor: `${GOLD}22` }}
+        style={{ backgroundColor: `color-mix(in srgb, var(--brand-color) 13%, transparent)` }}
       >
         {isIOS ? <Share size={28} style={{ color: GOLD }} /> : <Download size={28} style={{ color: GOLD }} />}
       </div>
@@ -139,7 +139,7 @@ const PwaInstallStep: React.FC<{
           onClick={handleAndroidInstall}
           disabled={installing}
           className="w-full flex items-center justify-center gap-2 text-white font-bold py-3.5 px-6 rounded-xl transition-all shadow-lg disabled:opacity-50 mb-3"
-          style={{ backgroundColor: GOLD, boxShadow: `0 10px 15px -3px ${GOLD}4D` }}
+          style={{ backgroundColor: GOLD, boxShadow: `0 10px 15px -3px color-mix(in srgb, var(--brand-color) 30%, transparent)` }}
         >
           <Download size={18} /> {installing ? 'Installing…' : 'Install App'}
         </button>
@@ -149,7 +149,7 @@ const PwaInstallStep: React.FC<{
           <button
             onClick={finish}
             className="w-full text-white font-bold py-3.5 px-6 rounded-xl transition-all shadow-lg mb-3"
-            style={{ backgroundColor: GOLD, boxShadow: `0 10px 15px -3px ${GOLD}4D` }}
+            style={{ backgroundColor: GOLD, boxShadow: `0 10px 15px -3px color-mix(in srgb, var(--brand-color) 30%, transparent)` }}
           >
             I&apos;ve added it
           </button>
@@ -213,7 +213,7 @@ const NotificationsStep: React.FC<{ onDone: () => void }> = ({ onDone }) => {
     <div className="py-2">
       <div
         className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-5"
-        style={{ backgroundColor: `${GOLD}22` }}
+        style={{ backgroundColor: `color-mix(in srgb, var(--brand-color) 13%, transparent)` }}
       >
         <Bell size={28} style={{ color: GOLD }} />
       </div>
@@ -227,7 +227,7 @@ const NotificationsStep: React.FC<{ onDone: () => void }> = ({ onDone }) => {
         onClick={handleEnable}
         disabled={requesting}
         className="w-full flex items-center justify-center gap-2 text-white font-bold py-3.5 px-6 rounded-xl transition-all shadow-lg disabled:opacity-50 mb-3"
-        style={{ backgroundColor: GOLD, boxShadow: `0 10px 15px -3px ${GOLD}4D` }}
+        style={{ backgroundColor: GOLD, boxShadow: `0 10px 15px -3px color-mix(in srgb, var(--brand-color) 30%, transparent)` }}
       >
         <Bell size={18} /> {requesting ? 'Enabling…' : 'Enable Notifications'}
       </button>
@@ -652,7 +652,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                   </p>
                   <button onClick={onComplete}
                     className="inline-flex items-center gap-2 text-white font-bold py-3 px-8 rounded-xl transition-all shadow-lg"
-                    style={{ backgroundColor: GOLD, boxShadow: `0 10px 15px -3px ${GOLD}4D` }}>
+                    style={{ backgroundColor: GOLD, boxShadow: `0 10px 15px -3px color-mix(in srgb, var(--brand-color) 30%, transparent)` }}>
                     Let&apos;s go <ArrowRight size={18} />
                   </button>
                 </div>
@@ -687,7 +687,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
               ) : <div />}
               <button onClick={goNext} disabled={loading || !questionsLoaded}
                 className="flex items-center gap-2 text-white font-bold py-3 px-6 rounded-xl transition-all shadow-lg disabled:opacity-50"
-                style={{ backgroundColor: GOLD, boxShadow: `0 10px 15px -3px ${GOLD}4D` }}>
+                style={{ backgroundColor: GOLD, boxShadow: `0 10px 15px -3px color-mix(in srgb, var(--brand-color) 30%, transparent)` }}>
                 {loading ? 'Saving…' : stepIndex === questionStepCount - 1 ? 'Finish' : 'Continue'}
                 <ArrowRight size={16} />
               </button>

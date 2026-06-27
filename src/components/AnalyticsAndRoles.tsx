@@ -8,7 +8,7 @@ import { useAdminHeader, HeaderActionButton } from './AdminScreenHeader';
 
 
 
-const GOLD = "#C9963A";
+const GOLD = "var(--brand-color, #C9963A)";
 const GOLD_LIGHT = "#FBF3E4";
 const GOLD_BTN = "linear-gradient(135deg, #C9963A, #D4A843)";
 const BG = "#F2F4F7";
@@ -922,7 +922,7 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
                       {!isSuperAdmin && (
                         <div style={{ display: "flex", flexDirection: "column", gap: 6, flexShrink: 0 }}>
                           <button onClick={() => openEditAdmin(admin)}
-                            style={{ background: GOLD_LIGHT, border: `1px solid ${GOLD}33`, color: GOLD, borderRadius: 8, padding: "5px 12px", cursor: "pointer", fontSize: 12, fontFamily: "inherit", fontWeight: 700 }}>
+                            style={{ background: GOLD_LIGHT, border: `1px solid color-mix(in srgb, var(--brand-color) 20%, transparent)`, color: GOLD, borderRadius: 8, padding: "5px 12px", cursor: "pointer", fontSize: 12, fontFamily: "inherit", fontWeight: 700 }}>
                             Edit
                           </button>
                           <button onClick={() => setShowRemoveConfirm(admin.id)}

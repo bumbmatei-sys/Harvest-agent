@@ -360,7 +360,7 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack }) => {
         )}
         {loading ? (
           <div className="flex justify-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#d4a017]"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gold"></div>
           </div>
         ) : posts.length === 0 ? (
           <div className="text-center py-12 text-gray-500">No news yet.</div>
@@ -379,7 +379,7 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack }) => {
                   <div className="flex items-center gap-2">
                     <div className="font-bold text-gray-900 text-sm">{post.authorName}</div>
                     {post.isPinned && (
-                      <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-[#d4a017] bg-[#fcefc7] px-2 py-0.5 rounded-full">
+                      <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-gold bg-[#fcefc7] px-2 py-0.5 rounded-full">
                         Pinned
                       </span>
                     )}
@@ -413,8 +413,8 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack }) => {
                         disabled={!!hasVoted}
                         className={`w-full relative overflow-hidden rounded-xl border p-3 text-left transition-all ${
                           isMyVote 
-                            ? 'border-[#d4a017] bg-[#fcefc7] ' 
-                            : 'border-gray-200 hover:border-[#d4a017] :border-[#d4a017]'
+                            ? 'border-gold bg-[#fcefc7] ' 
+                            : 'border-gray-200 hover:border-gold :border-gold'
                         }`}
                       >
                         {hasVoted && (
@@ -424,7 +424,7 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack }) => {
                           />
                         )}
                         <div className="relative flex justify-between items-center z-10">
-                          <span className={`text-sm font-medium ${isMyVote ? 'text-[#d4a017] ' : 'text-gray-700 '}`}>
+                          <span className={`text-sm font-medium ${isMyVote ? 'text-gold ' : 'text-gray-700 '}`}>
                             {option.text}
                           </span>
                           {hasVoted && (
@@ -468,7 +468,7 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack }) => {
                       className={`px-6 py-2 font-medium rounded-lg text-sm flex items-center gap-1.5 transition-colors ${
                         post.eventDetails.attendees.includes(auth.currentUser.uid)
                           ? 'bg-green-100 text-green-700 '
-                          : 'bg-[#e6b325] text-white hover:bg-[#d4a017]'
+                          : 'bg-[#e6b325] text-white hover:bg-gold'
                       }`}
                     >
                       {post.eventDetails.attendees.includes(auth.currentUser.uid) ? (
@@ -486,8 +486,8 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack }) => {
                   onClick={() => handleLike(post.id, post.likes)}
                   className={`flex items-center gap-1.5 text-xs transition-colors ${
                     auth.currentUser && post.likes.includes(auth.currentUser.uid)
-                      ? 'text-[#d4a017]'
-                      : 'text-gray-500 hover:text-[#d4a017]'
+                      ? 'text-gold'
+                      : 'text-gray-500 hover:text-gold'
                   }`}
                 >
                   <ThumbsUp size={16} className={auth.currentUser && post.likes.includes(auth.currentUser.uid) ? 'fill-current' : ''} />
@@ -496,7 +496,7 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack }) => {
                 <button
                   onClick={() => toggleComments(post.id)}
                   className={`flex items-center gap-1.5 text-xs transition-colors ${
-                    commentsOpen[post.id] ? 'text-[#d4a017]' : 'text-gray-500 hover:text-[#d4a017]'
+                    commentsOpen[post.id] ? 'text-gold' : 'text-gray-500 hover:text-gold'
                   }`}
                 >
                   <MessageSquare size={16} />
@@ -554,12 +554,12 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack }) => {
                         onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleComment(post.id); } }}
                         placeholder="Write a comment..."
                         maxLength={280}
-                        className="flex-1 px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-full text-xs text-gray-900 focus:ring-1 focus:ring-[#d4a017] outline-none"
+                        className="flex-1 px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-full text-xs text-gray-900 focus:ring-1 focus:ring-gold outline-none"
                       />
                       <button
                         onClick={() => handleComment(post.id)}
                         disabled={!(commentInputs[post.id] || '').trim()}
-                        className="p-1.5 text-[#d4a017] hover:text-[#e6b325] disabled:opacity-30 transition-colors"
+                        className="p-1.5 text-gold hover:text-[#e6b325] disabled:opacity-30 transition-colors"
                       >
                         <Send size={16} />
                       </button>
@@ -588,7 +588,7 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack }) => {
                   type="text"
                   value={attendeeName}
                   onChange={(e) => setAttendeeName(e.target.value)}
-                  className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:ring-2 focus:ring-[#d4a017] outline-none"
+                  className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:ring-2 focus:ring-gold outline-none"
                   placeholder="John Doe"
                 />
               </div>
@@ -598,7 +598,7 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack }) => {
                   type="email"
                   value={attendeeEmail}
                   onChange={(e) => setAttendeeEmail(e.target.value)}
-                  className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:ring-2 focus:ring-[#d4a017] outline-none"
+                  className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:ring-2 focus:ring-gold outline-none"
                   placeholder="john@example.com"
                 />
               </div>
@@ -618,7 +618,7 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack }) => {
               <button
                 onClick={submitAttend}
                 disabled={!attendeeName.trim() || !attendeeEmail.trim()}
-                className="flex-1 px-4 py-2 bg-[#d4a017] text-white rounded-xl font-medium hover:bg-[#e6b325] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 px-4 py-2 bg-gold text-white rounded-xl font-medium hover:bg-[#e6b325] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Confirm
               </button>

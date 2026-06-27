@@ -172,7 +172,7 @@ const AdminTenants: React.FC = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="w-8 h-8 border-4 border-[#d4a017] border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-8 h-8 border-4 border-gold border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -187,7 +187,7 @@ const AdminTenants: React.FC = () => {
           placeholder="Search tenants..."
           value={searchTerm}
           onChange={e => setSearchTerm(e.target.value)}
-          className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#d4a017] focus:border-[#d4a017] outline-none transition-all"
+          className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-gold focus:border-gold outline-none transition-all"
         />
       </div>
 
@@ -314,7 +314,7 @@ const AdminTenants: React.FC = () => {
                   type="text"
                   value={form.name}
                   onChange={e => setForm({ ...form, name: e.target.value })}
-                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#d4a017] focus:border-[#d4a017] outline-none"
+                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-gold focus:border-gold outline-none"
                   placeholder="Grace Community Church"
                 />
               </div>
@@ -327,7 +327,7 @@ const AdminTenants: React.FC = () => {
                     value={form.subdomain}
                     onChange={e => setForm({ ...form, subdomain: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') })}
                     disabled={!!editingId}
-                    className={`flex-1 px-4 py-2.5 border border-gray-200 rounded-l-xl text-sm focus:ring-2 focus:ring-[#d4a017] focus:border-[#d4a017] outline-none font-mono ${editingId ? 'bg-gray-50 text-gray-400' : ''}`}
+                    className={`flex-1 px-4 py-2.5 border border-gray-200 rounded-l-xl text-sm focus:ring-2 focus:ring-gold focus:border-gold outline-none font-mono ${editingId ? 'bg-gray-50 text-gray-400' : ''}`}
                     placeholder="gracechurch"
                   />
                   <span className="px-3 py-2.5 bg-gray-50 border border-l-0 border-gray-200 rounded-r-xl text-sm text-gray-500">
@@ -342,7 +342,7 @@ const AdminTenants: React.FC = () => {
                 <select
                   value={form.plan}
                   onChange={e => setForm({ ...form, plan: e.target.value as TenantPlan })}
-                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#d4a017] focus:border-[#d4a017] outline-none bg-white"
+                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-gold focus:border-gold outline-none bg-white"
                 >
                   <option value="plus">Individual — $59/mo</option>
                   <option value="pro">Small Team — $119/mo</option>
@@ -358,7 +358,7 @@ const AdminTenants: React.FC = () => {
                     type="text"
                     value={form.customDomain}
                     onChange={e => setForm({ ...form, customDomain: e.target.value })}
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#d4a017] focus:border-[#d4a017] outline-none"
+                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-gold focus:border-gold outline-none"
                     placeholder="yourchurch.com"
                   />
                   <p className="text-xs text-gray-400 mt-1">The church&apos;s own domain. DNS must point to Vercel.</p>
@@ -371,7 +371,7 @@ const AdminTenants: React.FC = () => {
                   type="email"
                   value={form.adminEmail}
                   onChange={e => setForm({ ...form, adminEmail: e.target.value })}
-                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#d4a017] focus:border-[#d4a017] outline-none"
+                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-gold focus:border-gold outline-none"
                   placeholder="pastor@church.com"
                 />
               </div>
@@ -381,7 +381,7 @@ const AdminTenants: React.FC = () => {
                 <textarea
                   value={form.description}
                   onChange={e => setForm({ ...form, description: e.target.value })}
-                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#d4a017] focus:border-[#d4a017] outline-none resize-none"
+                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-gold focus:border-gold outline-none resize-none"
                   rows={3}
                   placeholder="A brief description of the ministry..."
                 />
@@ -398,7 +398,7 @@ const AdminTenants: React.FC = () => {
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="px-6 py-2.5 bg-[#d4a017] text-white font-semibold rounded-xl hover:bg-yellow-600 transition-colors disabled:opacity-50 shadow-sm"
+                className="px-6 py-2.5 bg-gold text-white font-semibold rounded-xl hover:bg-yellow-600 transition-colors disabled:opacity-50 shadow-sm"
               >
                 {saving ? 'Saving...' : (editingId ? 'Save Changes' : 'Create Tenant')}
               </button>

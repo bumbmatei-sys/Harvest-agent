@@ -13,7 +13,7 @@ import { getPlanFeatures } from '../utils/plan-features';
 import { authFetch } from '../utils/auth-fetch';
 import { notifyError } from '../utils/notify';
 
-const GOLD = '#B8962E';
+const GOLD = 'var(--brand-color, #B8962E)';
 
 
 
@@ -249,7 +249,7 @@ const AdminBlog: React.FC = () => {
  placeholder="Search posts..." 
  value={searchQuery}
  onChange={(e) => setSearchQuery(e.target.value)}
- className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#d4a017] focus:border-transparent outline-none text-gray-900 transition-all"
+ className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-gold focus:border-transparent outline-none text-gray-900 transition-all"
  />
  </div>
  <div className="relative min-w-[160px]">
@@ -257,7 +257,7 @@ const AdminBlog: React.FC = () => {
  <select 
  value={selectedCategory}
  onChange={(e) => setSelectedCategory(e.target.value)}
- className="w-full pl-10 pr-8 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#d4a017] focus:border-transparent outline-none text-gray-900 appearance-none transition-all"
+ className="w-full pl-10 pr-8 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-gold focus:border-transparent outline-none text-gray-900 appearance-none transition-all"
  >
  {filterCategories.map(category => (
  <option key={category} value={category}>{category}</option>
@@ -283,7 +283,7 @@ const AdminBlog: React.FC = () => {
  <tr>
  <td colSpan={5} className="px-6 py-8 text-center text-gray-500 ">
  <div className="flex items-center justify-center gap-2">
- <div className="w-4 h-4 border-2 border-[#d4a017] border-t-transparent rounded-full animate-spin"></div>
+ <div className="w-4 h-4 border-2 border-gold border-t-transparent rounded-full animate-spin"></div>
  <span>Loading posts...</span>
  </div>
  </td>
@@ -402,7 +402,7 @@ const AdminBlog: React.FC = () => {
  </div>
  <button
  onClick={() => setAutomation(a => ({ ...a, enabled: !a.enabled }))}
- className={`w-12 h-6 rounded-full transition-colors relative ${automation.enabled ? 'bg-[#B8962E]' : 'bg-gray-200'}`}
+ className={`w-12 h-6 rounded-full transition-colors relative ${automation.enabled ? 'bg-gold' : 'bg-gray-200'}`}
  >
  <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all ${automation.enabled ? 'left-7' : 'left-1'}`} />
  </button>
@@ -463,7 +463,7 @@ const AdminBlog: React.FC = () => {
  value={automation.topicHint}
  onChange={e => setAutomation(a => ({ ...a, topicHint: e.target.value }))}
  placeholder="e.g. discipleship, faith, church growth"
- className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#B8962E]"
+ className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold"
  />
  <p className="text-xs text-gray-400 mt-1">
  Guides the AI when choosing what to write about from your Knowledge Base.
@@ -473,7 +473,7 @@ const AdminBlog: React.FC = () => {
  {/* Stats (if any posts generated) */}
  {automation.totalGenerated > 0 && (
  <div className="bg-[#FBF3E4] rounded-xl px-4 py-3 flex items-center justify-between">
- <span className="text-sm font-semibold text-[#B8962E]">
+ <span className="text-sm font-semibold text-gold">
  {automation.totalGenerated} article{automation.totalGenerated !== 1 ? 's' : ''} generated
  </span>
  {automation.nextScheduledAt && !isNaN(new Date(automation.nextScheduledAt as any).getTime()) && (

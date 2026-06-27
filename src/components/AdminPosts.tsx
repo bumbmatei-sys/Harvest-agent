@@ -389,14 +389,14 @@ const AdminPosts: React.FC<AdminPostsProps> = ({ userRole, userPermissions }) =>
  <div className="flex items-center gap-6 border-b border-gray-100 pb-3 mb-4">
  <button 
  onClick={() => setActiveTab('post')}
- className={`flex items-center gap-2 text-sm font-medium transition-colors ${activeTab === 'post' ? 'text-[#d4a017] border-b-2 border-[#d4a017] pb-3 -mb-[13px]' : 'text-gray-500 hover:text-gray-700 :text-gray-200'}`}
+ className={`flex items-center gap-2 text-sm font-medium transition-colors ${activeTab === 'post' ? 'text-gold border-b-2 border-gold pb-3 -mb-[13px]' : 'text-gray-500 hover:text-gray-700 :text-gray-200'}`}
  >
  <MessageSquare size={16} />
  Post
  </button>
  <button
  onClick={() => setActiveTab('poll')}
- className={`flex items-center gap-2 text-sm font-medium transition-colors ${activeTab === 'poll' ? 'text-[#d4a017] border-b-2 border-[#d4a017] pb-3 -mb-[13px]' : 'text-gray-500 hover:text-gray-700 :text-gray-200'}`}
+ className={`flex items-center gap-2 text-sm font-medium transition-colors ${activeTab === 'poll' ? 'text-gold border-b-2 border-gold pb-3 -mb-[13px]' : 'text-gray-500 hover:text-gray-700 :text-gray-200'}`}
  >
  <BarChart2 size={16} />
  Poll
@@ -425,7 +425,7 @@ const AdminPosts: React.FC<AdminPostsProps> = ({ userRole, userPermissions }) =>
  setPollOptions(newOptions);
  }}
  placeholder={`Option ${index + 1}`}
- className="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-1 focus:ring-[#d4a017] outline-none"
+ className="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-1 focus:ring-gold outline-none"
  />
  {pollOptions.length > 2 && (
  <button 
@@ -440,7 +440,7 @@ const AdminPosts: React.FC<AdminPostsProps> = ({ userRole, userPermissions }) =>
  {pollOptions.length < 5 && (
  <button 
  onClick={() => setPollOptions([...pollOptions, { id: Date.now().toString(), text: '' }])}
- className="text-sm text-[#d4a017] font-medium hover:underline"
+ className="text-sm text-gold font-medium hover:underline"
  >
  + Add option
  </button>
@@ -477,7 +477,7 @@ const AdminPosts: React.FC<AdminPostsProps> = ({ userRole, userPermissions }) =>
  <button
  onClick={handlePost}
  disabled={isSubmitting || !content.trim()}
- className="flex items-center gap-2 px-6 py-2 bg-[#e6b325] text-white rounded-lg font-medium text-sm hover:bg-[#d4a017] transition-colors disabled:opacity-50"
+ className="flex items-center gap-2 px-6 py-2 bg-[#e6b325] text-white rounded-lg font-medium text-sm hover:bg-gold transition-colors disabled:opacity-50"
  >
  <Send size={16} />
  {editingPostId ? 'Update' : 'Post'}
@@ -490,7 +490,7 @@ const AdminPosts: React.FC<AdminPostsProps> = ({ userRole, userPermissions }) =>
  <div className="space-y-4">
  {loading ? (
  <div className="flex justify-center py-8">
- <div className="w-8 h-8 border-4 border-[#d4a017] border-t-transparent rounded-full animate-spin"></div>
+ <div className="w-8 h-8 border-4 border-gold border-t-transparent rounded-full animate-spin"></div>
  </div>
  ) : posts.length === 0 ? (
  <div className="text-center py-8 text-gray-500">No posts yet.</div>
@@ -510,7 +510,7 @@ const AdminPosts: React.FC<AdminPostsProps> = ({ userRole, userPermissions }) =>
  <div className="flex items-center gap-2">
  <h4 className="font-bold text-gray-900 text-sm">{post.authorName}</h4>
  {post.isPinned && (
- <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-[#d4a017] bg-[#fcefc7] px-2 py-0.5 rounded-full">
+ <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-gold bg-[#fcefc7] px-2 py-0.5 rounded-full">
  Pinned
                         </span>
                       )}
@@ -573,8 +573,8 @@ const AdminPosts: React.FC<AdminPostsProps> = ({ userRole, userPermissions }) =>
  disabled={hasVoted}
  className={`relative w-full h-10 border rounded-lg overflow-hidden flex items-center px-3 transition-colors ${
  userVotedThis 
- ? 'border-[#d4a017] bg-[#fcefc7]/50 ' 
- : 'border-gray-200 bg-gray-50 hover:border-[#d4a017]'
+ ? 'border-gold bg-[#fcefc7]/50 ' 
+ : 'border-gray-200 bg-gray-50 hover:border-gold'
  }`}
  >
  {hasVoted && (
@@ -586,7 +586,7 @@ const AdminPosts: React.FC<AdminPostsProps> = ({ userRole, userPermissions }) =>
  <div className="relative z-10 flex justify-between w-full text-sm font-medium text-gray-800 ">
  <span className="flex items-center gap-2">
  {option.text}
- {userVotedThis && <Check size={14} className="text-[#d4a017]" />}
+ {userVotedThis && <Check size={14} className="text-gold" />}
  </span>
  {hasVoted && <span className="text-gray-500">{percentage}%</span>}
  </div>
@@ -621,7 +621,7 @@ const AdminPosts: React.FC<AdminPostsProps> = ({ userRole, userPermissions }) =>
  {post.eventDetails.attendeeDetails && post.eventDetails.attendeeDetails.length > 0 && (
  <button 
  onClick={() => downloadCSV(post)} 
- className="ml-2 text-[#d4a017] hover:underline font-medium"
+ className="ml-2 text-gold hover:underline font-medium"
  >
  Download CSV
  </button>
@@ -633,7 +633,7 @@ const AdminPosts: React.FC<AdminPostsProps> = ({ userRole, userPermissions }) =>
  className={`px-6 py-2 font-medium rounded-lg text-sm flex items-center gap-1.5 transition-colors ${
  post.eventDetails.attendees.includes(auth.currentUser.uid)
  ? 'bg-green-100 text-green-700 '
- : 'bg-[#e6b325] text-white hover:bg-[#d4a017]'
+ : 'bg-[#e6b325] text-white hover:bg-gold'
  }`}
  >
  {post.eventDetails.attendees.includes(auth.currentUser.uid) ? (
@@ -651,8 +651,8 @@ const AdminPosts: React.FC<AdminPostsProps> = ({ userRole, userPermissions }) =>
  onClick={() => handleLike(post.id, post.likes)}
  className={`flex items-center gap-1.5 text-sm transition-colors ${
  auth.currentUser && post.likes.includes(auth.currentUser.uid)
- ? 'text-[#d4a017]'
- : 'hover:text-[#d4a017]'
+ ? 'text-gold'
+ : 'hover:text-gold'
  }`}
  >
  <ThumbsUp size={16} className={auth.currentUser && post.likes.includes(auth.currentUser.uid) ? 'fill-current' : ''} />

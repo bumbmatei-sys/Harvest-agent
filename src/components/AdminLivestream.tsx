@@ -8,7 +8,7 @@ import { Radio, Eye, HandHeart, Check, Loader2, Video } from 'lucide-react';
 import { db, auth } from '../firebase';
 import { useAppStore } from '../store/useAppStore';
 
-const GOLD = '#B8962E';
+const GOLD = 'var(--brand-color, #B8962E)';
 
 /** Extract a YouTube video id from a URL or accept a raw id. */
 function parseYouTubeId(input: string): string {
@@ -222,11 +222,11 @@ const AdminLivestream: React.FC = () => {
           <div className="space-y-3">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">YouTube Live URL or Video ID</label>
-              <input value={urlInput} onChange={e => setUrlInput(e.target.value)} placeholder="https://youtube.com/watch?v=… or dQw4w9WgXcQ" className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#B8962E]" />
+              <input value={urlInput} onChange={e => setUrlInput(e.target.value)} placeholder="https://youtube.com/watch?v=… or dQw4w9WgXcQ" className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-gold" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Title</label>
-              <input value={titleInput} onChange={e => setTitleInput(e.target.value)} placeholder="Sunday Service — June 29" className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#B8962E]" />
+              <input value={titleInput} onChange={e => setTitleInput(e.target.value)} placeholder="Sunday Service — June 29" className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-gold" />
             </div>
             <button onClick={startStream} disabled={starting} className="w-full py-2.5 rounded-xl text-white text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: GOLD }}>
               {starting ? 'Starting…' : 'Start Stream'}

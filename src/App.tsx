@@ -59,7 +59,7 @@ const TenantNotFound: React.FC<{ tenantId: string; message: string }> = ({ tenan
       </p>
       <a
         href="https://theharvest.app"
-        className="inline-block px-6 py-3 bg-[#e6b325] text-white rounded-lg font-medium hover:bg-[#d4a017] transition-colors"
+        className="inline-block px-6 py-3 bg-[#e6b325] text-white rounded-lg font-medium hover:bg-gold transition-colors"
       >
         Go to Harvest Home
       </a>

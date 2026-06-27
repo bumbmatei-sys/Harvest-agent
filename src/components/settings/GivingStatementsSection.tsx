@@ -87,7 +87,7 @@ export const GivingStatementsSection: React.FC = () => {
             value={ein}
             onChange={(e) => setEin(e.target.value)}
             placeholder="e.g. 12-3456789"
-            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#B8962E] focus:border-transparent"
+            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-gold focus:border-transparent"
           />
         </div>
         <div>
@@ -97,7 +97,7 @@ export const GivingStatementsSection: React.FC = () => {
             onChange={(e) => setAddress(e.target.value)}
             placeholder="123 Faith St&#10;City, State ZIP"
             rows={3}
-            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#B8962E] focus:border-transparent"
+            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-gold focus:border-transparent"
           />
         </div>
         <div>
@@ -106,7 +106,7 @@ export const GivingStatementsSection: React.FC = () => {
             value={footer}
             onChange={(e) => setFooter(e.target.value)}
             rows={2}
-            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#B8962E] focus:border-transparent"
+            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-gold focus:border-transparent"
           />
           <p className="text-xs text-gray-400 mt-1">Required IRS disclosure text. A sensible default is provided.</p>
         </div>
@@ -116,7 +116,7 @@ export const GivingStatementsSection: React.FC = () => {
         <button
           onClick={handleSave}
           disabled={saving}
-          className="px-6 py-2.5 bg-[#B8962E] text-white rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
+          className="px-6 py-2.5 bg-gold text-white rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
         >
           {saving ? 'Saving...' : 'Save'}
         </button>

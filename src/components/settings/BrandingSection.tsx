@@ -106,7 +106,7 @@ export const BrandingSection: React.FC<BrandingSectionProps> = ({ currentFeature
           value={ministryName}
           onChange={(e) => setMinistryName(e.target.value)}
           placeholder="e.g. Grace Community Church"
-          className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#B8962E] focus:border-transparent"
+          className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-gold focus:border-transparent"
         />
         <p className="text-xs text-gray-400 mt-1">Shown in your app header, login page, and emails for your white-label site.</p>
       </div>
@@ -152,7 +152,7 @@ export const BrandingSection: React.FC<BrandingSectionProps> = ({ currentFeature
               value={brandingColor}
               onChange={(e) => handleColorChange(e.target.value)}
               placeholder="#B8962E"
-              className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[#B8962E] focus:border-transparent"
+              className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-mono focus:outline-none focus:ring-2 focus:ring-gold focus:border-transparent"
             />
             <p className="text-xs text-gray-400 mt-1">Used for buttons, accents, and highlights throughout your app</p>
           </div>
@@ -194,7 +194,7 @@ export const BrandingSection: React.FC<BrandingSectionProps> = ({ currentFeature
         <button
           onClick={handleSave}
           disabled={brandingSaving}
-          className="px-6 py-2.5 bg-[#B8962E] text-white rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
+          className="px-6 py-2.5 bg-gold text-white rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
         >
           {brandingSaving ? 'Saving...' : 'Save Branding'}
         </button>

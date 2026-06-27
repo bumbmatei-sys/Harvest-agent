@@ -119,11 +119,11 @@ const ImageUploadModal = ({
           <div>
             <div
               onClick={() => !isUploading && fileInputRef.current?.click()}
-              className="w-full h-40 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 flex flex-col items-center justify-center text-gray-500 hover:bg-gray-100 hover:border-[#d4a017] transition-colors cursor-pointer"
+              className="w-full h-40 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 flex flex-col items-center justify-center text-gray-500 hover:bg-gray-100 hover:border-gold transition-colors cursor-pointer"
             >
               {isUploading ? (
                 <>
-                  <Loader2 size={28} className="animate-spin mb-2 text-[#d4a017]" />
+                  <Loader2 size={28} className="animate-spin mb-2 text-gold" />
                   <span className="text-sm font-medium text-gray-600">Uploading...</span>
                 </>
               ) : (
@@ -144,13 +144,13 @@ const ImageUploadModal = ({
               onChange={(e) => setUrl(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleUrlInsert()}
               placeholder="https://example.com/image.jpg"
-              className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#d4a017] focus:border-transparent outline-none"
+              className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-gold focus:border-transparent outline-none"
               autoFocus
             />
             <button
               onClick={handleUrlInsert}
               disabled={!url.trim()}
-              className="w-full py-2.5 bg-[#d4a017] text-white rounded-xl text-sm font-medium hover:bg-[#b8860b] transition-colors disabled:opacity-50"
+              className="w-full py-2.5 bg-gold text-white rounded-xl text-sm font-medium hover:bg-[#b8860b] transition-colors disabled:opacity-50"
             >
               Insert Image
             </button>
@@ -319,14 +319,14 @@ const SlashCommandList = ({
             }}
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors ${
               index === selectedIndex
-                ? 'bg-[#d4a017]/10 text-gray-900'
+                ? 'bg-[color-mix(in_srgb,var(--brand-color)_10%,transparent)] text-gray-900'
                 : 'text-gray-700 hover:bg-gray-50'
             }`}
           >
             <div
               className={`flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg border ${
                 index === selectedIndex
-                  ? 'border-[#d4a017] bg-[#d4a017]/5 text-[#d4a017]'
+                  ? 'border-gold bg-[color-mix(in_srgb,var(--brand-color)_5%,transparent)] text-gold'
                   : 'border-gray-200 bg-gray-50 text-gray-500'
               }`}
             >
@@ -479,7 +479,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
       Underline,
       Link.configure({
         openOnClick: false,
-        HTMLAttributes: { class: 'text-[#d4a017] underline cursor-pointer' },
+        HTMLAttributes: { class: 'text-gold underline cursor-pointer' },
       }),
       Image.configure({ HTMLAttributes: { referrerPolicy: 'no-referrer' } }),
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
@@ -571,11 +571,11 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
                   if (e.key === 'Escape') { setShowLinkInput(false); }
                 }}
                 placeholder="https://..."
-                className="w-40 sm:w-56 px-2.5 py-1.5 text-sm bg-white text-gray-900 border-0 rounded-lg focus:ring-2 focus:ring-[#d4a017] outline-none"
+                className="w-40 sm:w-56 px-2.5 py-1.5 text-sm bg-white text-gray-900 border-0 rounded-lg focus:ring-2 focus:ring-gold outline-none"
               />
               <button
                 onMouseDown={(e) => { e.preventDefault(); applyLink(); }}
-                className="px-2.5 py-1.5 bg-[#d4a017] text-white text-sm font-medium rounded-lg hover:bg-[#b8860b]"
+                className="px-2.5 py-1.5 bg-gold text-white text-sm font-medium rounded-lg hover:bg-[#b8860b]"
               >
                 ✓
               </button>

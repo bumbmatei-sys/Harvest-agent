@@ -173,29 +173,29 @@ const AdminFundraising: React.FC<AdminFundraisingProps> = ({ initialCampaignId, 
               <div>
                 <label className="text-xs font-semibold text-gray-700 mb-1 block">Title *</label>
                 <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#d4a017]"
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold"
                   placeholder="Campaign title" />
               </div>
               <div>
                 <label className="text-xs font-semibold text-gray-700 mb-1 block">Description</label>
                 <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })}
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#d4a017] resize-none"
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold resize-none"
                   rows={3} placeholder="What is this campaign for?" />
               </div>
               <div>
                 <label className="text-xs font-semibold text-gray-700 mb-1 block">Goal ($)</label>
                 <input type="number" min={0} value={form.goal} onChange={(e) => setForm({ ...form, goal: Number(e.target.value) })}
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#d4a017]" />
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold" />
               </div>
               <div>
                 <label className="text-xs font-semibold text-gray-700 mb-1 block">End Date</label>
                 <input type="date" value={form.endDate || ''} onChange={(e) => setForm({ ...form, endDate: e.target.value })}
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#d4a017]" />
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold" />
               </div>
               <div>
                 <label className="text-xs font-semibold text-gray-700 mb-1 block">Cover Image URL</label>
                 <input value={form.coverImage || ''} onChange={(e) => setForm({ ...form, coverImage: e.target.value })}
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#d4a017]"
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold"
                   placeholder="https://..." />
               </div>
               <div className="flex items-center justify-between py-2">

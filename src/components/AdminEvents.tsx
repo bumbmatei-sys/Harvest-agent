@@ -271,69 +271,69 @@ const AdminEvents: React.FC = () => {
             <div>
               <label className="text-xs font-semibold text-gray-700 mb-1.5 block">Event Title *</label>
               <input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#d4a017]" placeholder="Event name" />
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold" placeholder="Event name" />
             </div>
             <div>
               <label className="text-xs font-semibold text-gray-700 mb-1.5 block">Description</label>
               <textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })}
-                rows={3} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#d4a017] resize-none"
+                rows={3} className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold resize-none"
                 placeholder="What is this event about?" />
             </div>
             <div>
               <label className="text-xs font-semibold text-gray-700 mb-1.5 block">Cover Image URL</label>
               <input value={form.coverImage} onChange={e => setForm({ ...form, coverImage: e.target.value })}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#d4a017]" placeholder="https://..." />
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold" placeholder="https://..." />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-xs font-semibold text-gray-700 mb-1.5 block">Start Date & Time *</label>
                 <input type="datetime-local" value={form.startDate} onChange={e => setForm({ ...form, startDate: e.target.value })}
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#d4a017]" />
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold" />
               </div>
               <div>
                 <label className="text-xs font-semibold text-gray-700 mb-1.5 block">End Date & Time</label>
                 <input type="datetime-local" value={form.endDate} onChange={e => setForm({ ...form, endDate: e.target.value })}
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#d4a017]" />
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold" />
               </div>
             </div>
             <div>
               <div className="flex items-center justify-between mb-3">
                 <label className="text-xs font-semibold text-gray-700">Online Event</label>
                 <button onClick={() => setForm({ ...form, isOnline: !form.isOnline })} className="transition-colors">
-                  <div className={`w-10 h-5 rounded-full transition-colors flex items-center px-0.5 ${form.isOnline ? 'bg-[#d4a017]' : 'bg-gray-200'}`}>
+                  <div className={`w-10 h-5 rounded-full transition-colors flex items-center px-0.5 ${form.isOnline ? 'bg-gold' : 'bg-gray-200'}`}>
                     <div className={`w-4 h-4 rounded-full bg-white shadow transition-transform ${form.isOnline ? 'translate-x-5' : ''}`} />
                   </div>
                 </button>
               </div>
               {form.isOnline ? (
                 <input value={form.onlineLink} onChange={e => setForm({ ...form, onlineLink: e.target.value })}
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#d4a017]" placeholder="Meeting link (Zoom, Google Meet...)" />
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold" placeholder="Meeting link (Zoom, Google Meet...)" />
               ) : (
                 <input value={form.location} onChange={e => setForm({ ...form, location: e.target.value })}
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#d4a017]" placeholder="Event location / address" />
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold" placeholder="Event location / address" />
               )}
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-xs font-semibold text-gray-700 mb-1.5 block">Capacity (blank = unlimited)</label>
                 <input type="number" min={0} value={form.capacity} onChange={e => setForm({ ...form, capacity: e.target.value })}
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#d4a017]" placeholder="e.g. 100" />
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold" placeholder="e.g. 100" />
               </div>
               <div>
                 <label className="text-xs font-semibold text-gray-700 mb-1.5 block">Ticket Price ($)</label>
                 <input type="number" min={0} value={form.price} onChange={e => setForm({ ...form, price: e.target.value })}
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#d4a017]" placeholder="0 = free" />
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold" placeholder="0 = free" />
               </div>
             </div>
             <div>
               <label className="text-xs font-semibold text-gray-700 mb-1.5 block">Registration Deadline</label>
               <input type="datetime-local" value={form.registrationDeadline} onChange={e => setForm({ ...form, registrationDeadline: e.target.value })}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#d4a017]" />
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold" />
             </div>
             <div>
               <label className="text-xs font-semibold text-gray-700 mb-1.5 block">Status</label>
               <select value={form.status} onChange={e => setForm({ ...form, status: e.target.value as Event['status'] })}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#d4a017] bg-white">
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold bg-white">
                 <option value="draft">Draft</option>
                 <option value="published">Published</option>
                 <option value="cancelled">Cancelled</option>
@@ -404,7 +404,7 @@ const AdminEvents: React.FC = () => {
           <div className="relative flex-1">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input value={regSearch} onChange={e => setRegSearch(e.target.value)}
-              placeholder="Search attendees..." className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-[#d4a017]" />
+              placeholder="Search attendees..." className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-gold" />
           </div>
           {registrations.length > 0 && (
             <button onClick={exportCSV} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50">
@@ -467,7 +467,7 @@ const AdminEvents: React.FC = () => {
           {events.map(ev => (
             <div
               key={ev.id}
-              className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm cursor-pointer hover:border-[#d4a017]/30 transition-all"
+              className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm cursor-pointer hover:border-[color-mix(in_srgb,var(--brand-color)_30%,transparent)] transition-all"
               onClick={() => openDetail(ev)}
             >
               {ev.coverImage && (

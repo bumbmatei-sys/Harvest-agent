@@ -163,7 +163,7 @@ export default function PWAInstallManager() {
                 <div className="mt-3 flex justify-end">
                   <button 
                     onClick={dismissPrompt} 
-                    className="text-sm font-semibold text-[#e6b325] hover:text-[#c9963a] px-2 py-1"
+                    className="text-sm font-semibold text-[#e6b325] hover:text-gold px-2 py-1"
                   >
                     Got it
                   </button>
@@ -192,7 +192,7 @@ export default function PWAInstallManager() {
                     <div className="mt-3 flex justify-end">
                       <button 
                         onClick={dismissPrompt} 
-                        className="text-sm font-semibold text-[#e6b325] hover:text-[#c9963a] px-2 py-1"
+                        className="text-sm font-semibold text-[#e6b325] hover:text-gold px-2 py-1"
                       >
                         Got it
                       </button>

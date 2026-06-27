@@ -174,7 +174,7 @@ const CanvasEditor: React.FC<CanvasEditorProps> = ({ canvasId, canvasName: initi
     return (
       <div className="fixed inset-0 z-[9999] bg-white flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <Loader2 className="w-8 h-8 animate-spin text-[#C9963A]" />
+          <Loader2 className="w-8 h-8 animate-spin text-gold" />
           <span className="text-sm text-gray-500">Loading canvas...</span>
         </div>
       </div>
@@ -188,7 +188,7 @@ const CanvasEditor: React.FC<CanvasEditorProps> = ({ canvasId, canvasName: initi
         <div className="flex flex-col items-center gap-4">
           <AlertCircle className="w-10 h-10 text-red-400" />
           <span className="text-sm text-gray-600">{error}</span>
-          <button onClick={handleBack} className="text-sm text-[#C9963A] hover:underline">Go back</button>
+          <button onClick={handleBack} className="text-sm text-gold hover:underline">Go back</button>
         </div>
       </div>
     );

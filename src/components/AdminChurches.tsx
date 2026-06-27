@@ -228,7 +228,7 @@ const AdminChurches: React.FC = () => {
               </button>
               <button
                 onClick={confirmBillingAndAdd}
-                className="flex items-center gap-1.5 px-4 py-2 bg-[#d4a017] text-white rounded-xl hover:bg-[#b58812] transition-colors font-medium"
+                className="flex items-center gap-1.5 px-4 py-2 bg-gold text-white rounded-xl hover:bg-[#b58812] transition-colors font-medium"
               >
                 <DollarSign size={16} />
                 Confirm & Add Church ($15/mo)
@@ -241,33 +241,33 @@ const AdminChurches: React.FC = () => {
       {/* Filters */}
       <div className="flex flex-wrap gap-2 mb-4">
         <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#d4a017]" size={14} strokeWidth={2.5} />
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gold" size={14} strokeWidth={2.5} />
           <input
             type="text"
             placeholder="Search"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-8 pr-3 py-1.5 text-sm bg-white border border-[#d4a017] rounded-full focus:outline-none text-gray-900 font-medium placeholder:text-gray-500 w-32 focus:w-48 transition-all duration-300"
+            className="pl-8 pr-3 py-1.5 text-sm bg-white border border-gold rounded-full focus:outline-none text-gray-900 font-medium placeholder:text-gray-500 w-32 focus:w-48 transition-all duration-300"
           />
         </div>
         
         <button
           onClick={() => openFilterPopup('city')}
-          className={`px-3 py-1.5 text-sm rounded-full border transition-colors ${cityFilter ? 'bg-[#d4a017] text-white border-[#d4a017]' : 'bg-white text-gray-700 border-gray-300 hover:border-[#d4a017]'}`}
+          className={`px-3 py-1.5 text-sm rounded-full border transition-colors ${cityFilter ? 'bg-gold text-white border-gold' : 'bg-white text-gray-700 border-gray-300 hover:border-gold'}`}
         >
           {cityFilter ? `City: ${cityFilter}` : 'City'}
         </button>
 
         <button
           onClick={() => openFilterPopup('pastor')}
-          className={`px-3 py-1.5 text-sm rounded-full border transition-colors ${pastorFilter ? 'bg-[#d4a017] text-white border-[#d4a017]' : 'bg-white text-gray-700 border-gray-300 hover:border-[#d4a017]'}`}
+          className={`px-3 py-1.5 text-sm rounded-full border transition-colors ${pastorFilter ? 'bg-gold text-white border-gold' : 'bg-white text-gray-700 border-gray-300 hover:border-gold'}`}
         >
           {pastorFilter ? `Pastor: ${pastorFilter}` : 'Pastor'}
         </button>
 
         <button
           onClick={() => openFilterPopup('country')}
-          className={`px-3 py-1.5 text-sm rounded-full border transition-colors ${countryFilter ? 'bg-[#d4a017] text-white border-[#d4a017]' : 'bg-white text-gray-700 border-gray-300 hover:border-[#d4a017]'}`}
+          className={`px-3 py-1.5 text-sm rounded-full border transition-colors ${countryFilter ? 'bg-gold text-white border-gold' : 'bg-white text-gray-700 border-gray-300 hover:border-gold'}`}
         >
           {countryFilter ? `Country: ${countryFilter}` : 'Country'}
         </button>
@@ -290,7 +290,7 @@ const AdminChurches: React.FC = () => {
                 <tr>
                   <td colSpan={4} className="p-8 text-center">
                     <div className="flex justify-center">
-                      <div className="w-8 h-8 border-4 border-[#d4a017]/30 border-t-[#d4a017] rounded-full animate-spin"></div>
+                      <div className="w-8 h-8 border-4 border-[color-mix(in_srgb,var(--brand-color)_30%,transparent)] border-t-gold rounded-full animate-spin"></div>
                     </div>
                   </td>
                 </tr>
@@ -385,7 +385,7 @@ const AdminChurches: React.FC = () => {
               onKeyDown={(e) => {
                 if (e.key === 'Enter') applyFilter();
               }}
-              className="w-full px-4 py-2 rounded-lg border border-gray-300 bg-gray-50 text-gray-900 focus:outline-none focus:border-[#d4a017] mb-6"
+              className="w-full px-4 py-2 rounded-lg border border-gray-300 bg-gray-50 text-gray-900 focus:outline-none focus:border-gold mb-6"
             />
             <div className="flex justify-end gap-3">
               <button
@@ -405,7 +405,7 @@ const AdminChurches: React.FC = () => {
               </button>
               <button
                 onClick={() => applyFilter(tempFilterValue)}
-                className="px-4 py-2 text-sm font-medium bg-[#d4a017] text-white rounded-lg hover:bg-[#b58812]"
+                className="px-4 py-2 text-sm font-medium bg-gold text-white rounded-lg hover:bg-[#b58812]"
               >
                 Apply
               </button>
@@ -491,7 +491,7 @@ const AnnouncementsSection: React.FC<{ churchId: string }> = ({ churchId }) => {
   return (
     <div className="border-t border-gray-100 p-4">
       <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-        <Megaphone size={18} className="text-[#d4a017]" />
+        <Megaphone size={18} className="text-gold" />
         Announcements
       </h3>
 
@@ -502,19 +502,19 @@ const AnnouncementsSection: React.FC<{ churchId: string }> = ({ churchId }) => {
           placeholder="Announcement title"
           value={newTitle}
           onChange={(e) => setNewTitle(e.target.value)}
-          className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm mb-2 focus:outline-none focus:border-[#d4a017]"
+          className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm mb-2 focus:outline-none focus:border-gold"
         />
         <textarea
           placeholder="Announcement content"
           value={newContent}
           onChange={(e) => setNewContent(e.target.value)}
           rows={3}
-          className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm mb-2 focus:outline-none focus:border-[#d4a017] resize-none"
+          className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm mb-2 focus:outline-none focus:border-gold resize-none"
         />
         <button
           onClick={handleCreate}
           disabled={saving || !newTitle.trim() || !newContent.trim()}
-          className="flex items-center gap-2 bg-[#d4a017] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#b58812] transition-colors disabled:opacity-50"
+          className="flex items-center gap-2 bg-gold text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#b58812] transition-colors disabled:opacity-50"
         >
           <Plus size={14} />
           {saving ? 'Adding...' : 'Add Announcement'}
@@ -524,7 +524,7 @@ const AnnouncementsSection: React.FC<{ churchId: string }> = ({ churchId }) => {
       {/* List */}
       {loading ? (
         <div className="flex justify-center py-4">
-          <div className="w-6 h-6 border-4 border-[#d4a017]/30 border-t-[#d4a017] rounded-full animate-spin"></div>
+          <div className="w-6 h-6 border-4 border-[color-mix(in_srgb,var(--brand-color)_30%,transparent)] border-t-gold rounded-full animate-spin"></div>
         </div>
       ) : announcements.length === 0 ? (
         <p className="text-sm text-gray-500 text-center py-4">No announcements yet</p>
@@ -538,13 +538,13 @@ const AnnouncementsSection: React.FC<{ churchId: string }> = ({ churchId }) => {
                     type="text"
                     value={editTitle}
                     onChange={(e) => setEditTitle(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm mb-2 focus:outline-none focus:border-[#d4a017]"
+                    className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm mb-2 focus:outline-none focus:border-gold"
                   />
                   <textarea
                     value={editContent}
                     onChange={(e) => setEditContent(e.target.value)}
                     rows={3}
-                    className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm mb-2 focus:outline-none focus:border-[#d4a017] resize-none"
+                    className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm mb-2 focus:outline-none focus:border-gold resize-none"
                   />
                   <div className="flex gap-2">
                     <button

@@ -88,7 +88,7 @@ const CanvasList: React.FC<CanvasListProps> = ({ onOpenCanvas }) => {
         <button
           onClick={handleCreate}
           disabled={creating}
-          className="flex items-center gap-2 px-5 py-2 bg-[#d4a017] text-white rounded-xl text-sm font-semibold hover:bg-[#b8941a] transition-colors disabled:opacity-50"
+          className="flex items-center gap-2 px-5 py-2 bg-gold text-white rounded-xl text-sm font-semibold hover:bg-gold transition-colors disabled:opacity-50"
         >
           <Plus size={16} />
           {creating ? 'Creating...' : 'New Canvas'}
@@ -107,7 +107,7 @@ const CanvasList: React.FC<CanvasListProps> = ({ onOpenCanvas }) => {
           <button
             onClick={handleCreate}
             disabled={creating}
-            className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#d4a017] text-white rounded-xl text-sm font-semibold hover:bg-[#b8941a] transition-colors disabled:opacity-50"
+            className="inline-flex items-center gap-2 px-6 py-2.5 bg-gold text-white rounded-xl text-sm font-semibold hover:bg-gold transition-colors disabled:opacity-50"
           >
             <Plus size={16} />
             Create Your First Canvas

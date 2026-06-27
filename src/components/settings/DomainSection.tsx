@@ -223,7 +223,7 @@ export const DomainSection: React.FC<DomainSectionProps> = ({ hasCustomDomain, o
                 value={customDomain}
                 onChange={(e) => setCustomDomain(e.target.value)}
                 placeholder="e.g. ministry.yourchurch.org"
-                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#B8962E] focus:border-transparent"
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-gold focus:border-transparent"
               />
               <p className="text-xs text-gray-400 mt-1">
                 Enter your custom domain, then point a CNAME record at <span className="font-mono">theharvest.app</span>.
@@ -265,7 +265,7 @@ export const DomainSection: React.FC<DomainSectionProps> = ({ hasCustomDomain, o
           </p>
           <button
             onClick={onUpgrade}
-            className="px-4 py-2 bg-[#B8962E] text-white rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity"
+            className="px-4 py-2 bg-gold text-white rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity"
           >
             Upgrade to Unlock
           </button>
@@ -278,7 +278,7 @@ export const DomainSection: React.FC<DomainSectionProps> = ({ hasCustomDomain, o
           <button
             onClick={handleSave}
             disabled={domainSaving}
-            className="px-6 py-2.5 bg-[#B8962E] text-white rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
+            className="px-6 py-2.5 bg-gold text-white rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
           >
             {domainSaving ? 'Saving...' : 'Save Domain'}
           </button>

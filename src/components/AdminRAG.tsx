@@ -12,7 +12,7 @@ import { getTenantScope } from '../utils/tenant-scope';
 // Admin page to feed content into Firebase vector DB
 // ─────────────────────────────────────────────
 
-const GOLD = "#C9963A";
+const GOLD = "var(--brand-color, #C9963A)";
 const GOLD_LIGHT = "#FBF3E4";
 const GOLD_BTN = "linear-gradient(135deg, #C9963A, #D4A843)";
 const BG = "#F2F4F7";
@@ -584,7 +584,7 @@ export default function AdminRAG() {
  </div>
  );
  })}
- <div style={{ background:GOLD_LIGHT, border:`1px solid ${GOLD}33`, borderRadius:99, padding:"5px 14px", fontSize:12, fontWeight:700, color:GOLD }}>
+ <div style={{ background:GOLD_LIGHT, border:`1px solid color-mix(in srgb, var(--brand-color) 20%, transparent)`, borderRadius:99, padding:"5px 14px", fontSize:12, fontWeight:700, color:GOLD }}>
  🧠 {totalChunks} total chunks
  </div>
  </div>

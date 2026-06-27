@@ -376,7 +376,7 @@ const AttachPicker: React.FC<{
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Search..."
-            className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-[#d4a017]"
+            className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-gold"
           />
         </div>
         <div className="overflow-y-auto flex-1">
@@ -523,7 +523,7 @@ const ChannelMembersSheet: React.FC<{
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search by name or email..."
-              className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-[#d4a017]"
+              className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-gold"
             />
           </div>
         </div>
@@ -681,17 +681,17 @@ const ChannelThread: React.FC<{
         {attachments.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-2">
             {attachments.map((a, i) => (
-              <div key={i} className="flex items-center gap-1.5 bg-[#FBF3E4] border border-[#F0D9A0] rounded-lg px-2.5 py-1 text-xs font-medium text-[#B8962E]">
+              <div key={i} className="flex items-center gap-1.5 bg-[#FBF3E4] border border-[#F0D9A0] rounded-lg px-2.5 py-1 text-xs font-medium text-gold">
                 <span className="text-sm">{a.type === 'doc' ? '📄' : a.type === 'contact' ? '👤' : a.type === 'form' ? '📝' : '🎯'}</span>
                 <span className="max-w-[90px] truncate">{a.title}</span>
                 <button onClick={() => setAttachments(prev => prev.filter((_, idx) => idx !== i))}>
-                  <X size={11} className="text-[#B8962E]/60" />
+                  <X size={11} className="text-[color-mix(in_srgb,var(--brand-color)_60%,transparent)]" />
                 </button>
               </div>
             ))}
           </div>
         )}
-        <div className="flex gap-2 items-center bg-[#F7F6F3] rounded-2xl px-3 py-2.5 border border-[#EDEBE8] focus-within:border-[#B8962E]/40 transition-colors">
+        <div className="flex gap-2 items-center bg-[#F7F6F3] rounded-2xl px-3 py-2.5 border border-[#EDEBE8] focus-within:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] transition-colors">
           <button
             onClick={() => setShowPicker(true)}
             className="flex-shrink-0 p-1 rounded-lg hover:bg-[#EDEBE8] transition-colors"
@@ -816,7 +816,7 @@ const DmThread: React.FC<{
                     <div key={m.id} className="flex justify-end">
                       <div className="flex flex-col items-end max-w-[78%]">
                         {m.content && (
-                          <div className="bg-[#B8962E] text-white rounded-2xl rounded-br-sm px-3.5 py-2.5 text-sm break-words">{m.content}</div>
+                          <div className="bg-gold text-white rounded-2xl rounded-br-sm px-3.5 py-2.5 text-sm break-words">{m.content}</div>
                         )}
                         {m.attachments?.map((a, i) => (
                           <AttachmentCard
@@ -870,17 +870,17 @@ const DmThread: React.FC<{
         {attachments.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-2">
             {attachments.map((a, i) => (
-              <div key={i} className="flex items-center gap-1.5 bg-[#FBF3E4] border border-[#F0D9A0] rounded-lg px-2.5 py-1 text-xs font-medium text-[#B8962E]">
+              <div key={i} className="flex items-center gap-1.5 bg-[#FBF3E4] border border-[#F0D9A0] rounded-lg px-2.5 py-1 text-xs font-medium text-gold">
                 <span className="text-sm">{a.type === 'doc' ? '📄' : a.type === 'contact' ? '👤' : a.type === 'form' ? '📝' : '🎯'}</span>
                 <span className="max-w-[90px] truncate">{a.title}</span>
                 <button onClick={() => setAttachments(prev => prev.filter((_, idx) => idx !== i))}>
-                  <X size={11} className="text-[#B8962E]/60" />
+                  <X size={11} className="text-[color-mix(in_srgb,var(--brand-color)_60%,transparent)]" />
                 </button>
               </div>
             ))}
           </div>
         )}
-        <div className="flex gap-2 items-center bg-[#F7F6F3] rounded-2xl px-3 py-2.5 border border-[#EDEBE8] focus-within:border-[#B8962E]/40 transition-colors">
+        <div className="flex gap-2 items-center bg-[#F7F6F3] rounded-2xl px-3 py-2.5 border border-[#EDEBE8] focus-within:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] transition-colors">
           <button
             onClick={() => setShowPicker(true)}
             className="flex-shrink-0 p-1 rounded-lg hover:bg-[#EDEBE8] transition-colors"
@@ -1289,13 +1289,13 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
                 <button
                   key={ch.id}
                   onClick={() => setOpenChannel(ch)}
-                  className="w-full bg-white rounded-2xl px-4 py-3.5 border border-[#EDEBE8] flex items-center gap-3 hover:border-[#B8962E]/40 hover:shadow-sm transition-all text-left"
+                  className="w-full bg-white rounded-2xl px-4 py-3.5 border border-[#EDEBE8] flex items-center gap-3 hover:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] hover:shadow-sm transition-all text-left"
                 >
                   <div className="relative flex-shrink-0">
                     <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'var(--brand-color, #B8962E)1A' }}>
                       <Hash size={18} style={{ color: 'var(--brand-color, #B8962E)' }} />
                     </div>
-                    {((ch as any).unreadCount || 0) > 0 && <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-[#B8962E]" />}
+                    {((ch as any).unreadCount || 0) > 0 && <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-gold" />}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-bold text-gray-900 truncate">#{ch.name}</p>
@@ -1336,7 +1336,7 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
                 <button
                   key={dm.id}
                   onClick={() => setOpenAdminDm(dm)}
-                  className="w-full bg-white rounded-2xl px-4 py-3.5 border border-[#EDEBE8] flex items-center gap-3 hover:border-[#B8962E]/40 hover:shadow-sm transition-all text-left"
+                  className="w-full bg-white rounded-2xl px-4 py-3.5 border border-[#EDEBE8] flex items-center gap-3 hover:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] hover:shadow-sm transition-all text-left"
                 >
                   <div className="w-11 h-11 rounded-full flex-shrink-0 flex items-center justify-center text-sm font-bold text-white"
                     style={{ backgroundColor: 'var(--brand-color, #B8962E)' }}>
@@ -1379,7 +1379,7 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
                 <button
                   key={dm.id}
                   onClick={() => setOpenMemberDm(dm)}
-                  className="w-full bg-white rounded-2xl px-4 py-3.5 border border-[#EDEBE8] flex items-center gap-3 hover:border-[#B8962E]/40 hover:shadow-sm transition-all text-left"
+                  className="w-full bg-white rounded-2xl px-4 py-3.5 border border-[#EDEBE8] flex items-center gap-3 hover:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] hover:shadow-sm transition-all text-left"
                 >
                   <div className="w-11 h-11 rounded-full flex-shrink-0 flex items-center justify-center text-sm font-bold text-white bg-blue-500">
                     {getOtherName(dm).charAt(0).toUpperCase()}
@@ -1410,7 +1410,7 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
                 <input
                   value={newChannelName}
                   onChange={e => setNewChannelName(e.target.value)}
-                  className="w-full rounded-xl border border-[#EDEBE8] px-3 py-2.5 text-sm focus:border-[#B8962E] focus:outline-none"
+                  className="w-full rounded-xl border border-[#EDEBE8] px-3 py-2.5 text-sm focus:border-gold focus:outline-none"
                   placeholder="e.g. announcements"
                 />
               </div>
@@ -1419,7 +1419,7 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
                 <input
                   value={newChannelDesc}
                   onChange={e => setNewChannelDesc(e.target.value)}
-                  className="w-full rounded-xl border border-[#EDEBE8] px-3 py-2.5 text-sm focus:border-[#B8962E] focus:outline-none"
+                  className="w-full rounded-xl border border-[#EDEBE8] px-3 py-2.5 text-sm focus:border-gold focus:outline-none"
                   placeholder="What is this channel about?"
                 />
               </div>
@@ -1434,7 +1434,7 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
                     value={channelMemberSearch}
                     onChange={e => setChannelMemberSearch(e.target.value)}
                     placeholder="Search users by name or email..."
-                    className="w-full pl-8 pr-3 py-2 text-sm rounded-xl border border-[#EDEBE8] focus:border-[#B8962E] focus:outline-none"
+                    className="w-full pl-8 pr-3 py-2 text-sm rounded-xl border border-[#EDEBE8] focus:border-gold focus:outline-none"
                   />
                 </div>
                 <div className="max-h-44 overflow-y-auto border border-[#EDEBE8] rounded-xl divide-y divide-[#EDEBE8]">
@@ -1540,7 +1540,7 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
                   value={memberSearch}
                   onChange={e => setMemberSearch(e.target.value)}
                   placeholder="Search by name or email..."
-                  className="w-full pl-9 pr-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-[#d4a017]"
+                  className="w-full pl-9 pr-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-gold"
                 />
               </div>
             </div>

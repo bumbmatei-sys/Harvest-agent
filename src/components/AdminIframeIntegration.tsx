@@ -103,7 +103,7 @@ const AdminIframeIntegration: React.FC<AdminIframeIntegrationProps> = ({
               onChange={(e) => setInputUrl(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSave()}
               placeholder={urlPlaceholder}
-              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#d4a017] mb-2"
+              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold mb-2"
             />
             <p className="text-xs text-gray-400 mb-5">{urlHelp}</p>
             <div className="flex gap-3">

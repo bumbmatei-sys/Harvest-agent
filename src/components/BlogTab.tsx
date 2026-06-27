@@ -118,7 +118,7 @@ const BlogTab: React.FC<BlogTabProps> = ({ onOpenArticle, initialPost, onBack, i
  if (loading) {
  return (
  <div className="flex flex-col items-center justify-center h-64 text-gray-500 ">
- <div className="w-8 h-8 border-4 border-[#d4a017] border-t-transparent rounded-full animate-spin mb-4"></div>
+ <div className="w-8 h-8 border-4 border-gold border-t-transparent rounded-full animate-spin mb-4"></div>
  <p>Loading articles...</p>
  </div>
  );
@@ -226,7 +226,7 @@ const BlogTab: React.FC<BlogTabProps> = ({ onOpenArticle, initialPost, onBack, i
  }
  window.scrollTo(0, 0);
  }}
- className="flex gap-3 bg-white rounded-xl p-3 shadow-sm border border-gray-100 cursor-pointer hover:border-[#d4a017] transition-colors"
+ className="flex gap-3 bg-white rounded-xl p-3 shadow-sm border border-gray-100 cursor-pointer hover:border-gold transition-colors"
  >
  {relatedPost.featuredImage && (
  <div className="w-20 h-20 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100 relative">
@@ -243,7 +243,7 @@ const BlogTab: React.FC<BlogTabProps> = ({ onOpenArticle, initialPost, onBack, i
  <div className="flex-1 min-w-0 flex flex-col justify-center">
  <h4 className="font-bold text-gray-900 text-sm line-clamp-2 mb-1">{relatedPost.title}</h4>
  <div className="flex items-center gap-2 text-xs text-gray-500">
- <span className="uppercase tracking-wider font-medium text-[#d4a017]">{relatedPost.category}</span>
+ <span className="uppercase tracking-wider font-medium text-gold">{relatedPost.category}</span>
  <span>•</span>
  <span>{formatDate(relatedPost.publishedAt || relatedPost.createdAt)}</span>
  </div>
@@ -276,7 +276,7 @@ const BlogTab: React.FC<BlogTabProps> = ({ onOpenArticle, initialPost, onBack, i
  value={searchQuery}
  onChange={(e) => setSearchQuery(e.target.value)}
  placeholder="Search articles by title, content, or tags..."
- className="w-full pl-9 pr-3 py-1.5 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-[#d4a017] focus:border-transparent outline-none transition-all"
+ className="w-full pl-9 pr-3 py-1.5 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-gold focus:border-transparent outline-none transition-all"
  />
  </div>
 
@@ -289,8 +289,8 @@ const BlogTab: React.FC<BlogTabProps> = ({ onOpenArticle, initialPost, onBack, i
  onClick={() => setSelectedCategory(category)}
  className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
  selectedCategory === category
- ? 'bg-[#d4a017] text-white'
- : 'bg-white text-gray-600 border border-gray-200 hover:border-[#d4a017] :border-[#d4a017]'
+ ? 'bg-gold text-white'
+ : 'bg-white text-gray-600 border border-gray-200 hover:border-gold :border-gold'
  }`}
  >
  {category}

@@ -496,7 +496,7 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToCourses, onGoToPart
  <p className="text-sm text-gray-500">You don&apos;t have an active partnership</p>
  <button
  onClick={onGoToPartner}
- className="mt-2 text-sm font-bold text-[#d4a017]"
+ className="mt-2 text-sm font-bold text-gold"
  >
  Partner with Us →
  </button>

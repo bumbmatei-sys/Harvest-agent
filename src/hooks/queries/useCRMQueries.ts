@@ -56,19 +56,18 @@ export const useContacts = (tenantId: string | null | undefined, isAuthReady = t
     queryFn: async (): Promise<Contact[]> => {
       let rows: Contact[];
       if (!tenantId || tenantId === PLATFORM_TENANT_ID) {
-        // Platform tenant: contacts may be stored with tenantId: null OR tenantId: 'harvest'
-        // (legacy rows written before the tenant fix used null). Fetch both sets and merge
-        // (two single-field queries, no composite index needed).
-        const [nullSnap, harvestSnap] = await Promise.all([
-          getDocs(query(collection(db, 'contacts'), where('tenantId', '==', null), limit(500))),
-          getDocs(query(collection(db, 'contacts'), where('tenantId', '==', PLATFORM_TENANT_ID), limit(500))),
-        ]);
-        // Deduplicate by id (a row could theoretically match both queries over time)
-        const seen = new Set<string>();
-        rows = [];
-        for (const d of [...nullSnap.docs, ...harvestSnap.docs]) {
-          if (!seen.has(d.id)) { seen.add(d.id); rows.push({ id: d.id, stage: 'new', ...d.data() } as Contact); }
-        }
+        // Platform / super-admin CRM. The platform's own contacts can carry
+        // tenantId: 'harvest', null, '', OR no tenantId field at all (legacy rows
+        // written before multi-tenancy). Firestore can't match a missing field and
+        // an equality query can't union all those, so — as a super admin who may
+        // read the whole collection — fetch and keep only the platform-owned rows,
+        // dropping any that belong to a *named* tenant (no cross-tenant leakage).
+        // NOTE: at larger scale, replace this scan with a one-time migration that
+        // stamps every legacy/null contact with tenantId 'harvest'.
+        const snap = await getDocs(query(collection(db, 'contacts'), limit(1000)));
+        rows = snap.docs
+          .map(d => ({ id: d.id, stage: 'new', ...d.data() }) as Contact)
+          .filter(c => c.tenantId == null || c.tenantId === '' || c.tenantId === PLATFORM_TENANT_ID);
       } else {
         const snap = await getDocs(
           query(collection(db, 'contacts'), where('tenantId', '==', tenantId), limit(500))

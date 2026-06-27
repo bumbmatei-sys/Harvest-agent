@@ -211,7 +211,7 @@ const FormPicker: React.FC<{
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Search forms..."
-            className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-[#B8962E]"
+            className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-gold"
           />
         </div>
         <div className="overflow-y-auto flex-1">
@@ -364,10 +364,10 @@ const DmThread: React.FC<{
                     <div key={m.id} className="flex justify-end">
                       <div className="flex flex-col items-end max-w-[78%]">
                         {m.content && (
-                          <div className="bg-[#B8962E] text-white rounded-2xl rounded-br-sm px-3.5 py-2.5 text-sm break-words">{m.content}</div>
+                          <div className="bg-gold text-white rounded-2xl rounded-br-sm px-3.5 py-2.5 text-sm break-words">{m.content}</div>
                         )}
                         {m.attachments?.map((a, i) => <AttachmentCard key={i} attachment={a} tenantId={tenantId} />)}
-                        <span className="text-[10px] text-[#B8962E]/60 text-right mt-0.5">{fmtTime(m.createdAt)}</span>
+                        <span className="text-[10px] text-[color-mix(in_srgb,var(--brand-color)_60%,transparent)] text-right mt-0.5">{fmtTime(m.createdAt)}</span>
                       </div>
                     </div>
                   );
@@ -405,17 +405,17 @@ const DmThread: React.FC<{
         {attachments.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-2">
             {attachments.map((a, i) => (
-              <div key={i} className="flex items-center gap-1.5 bg-[#FBF3E4] border border-[#F0D9A0] rounded-lg px-2.5 py-1 text-xs font-medium text-[#B8962E]">
+              <div key={i} className="flex items-center gap-1.5 bg-[#FBF3E4] border border-[#F0D9A0] rounded-lg px-2.5 py-1 text-xs font-medium text-gold">
                 <span className="text-sm">📝</span>
                 <span className="max-w-[90px] truncate">{a.title}</span>
                 <button onClick={() => setAttachments(prev => prev.filter((_, idx) => idx !== i))}>
-                  <X size={11} className="text-[#B8962E]/60" />
+                  <X size={11} className="text-[color-mix(in_srgb,var(--brand-color)_60%,transparent)]" />
                 </button>
               </div>
             ))}
           </div>
         )}
-        <div className="flex gap-2 items-center bg-[#F7F6F3] rounded-2xl px-3 py-2.5 border border-[#EDEBE8] focus-within:border-[#B8962E]/40 transition-colors">
+        <div className="flex gap-2 items-center bg-[#F7F6F3] rounded-2xl px-3 py-2.5 border border-[#EDEBE8] focus-within:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] transition-colors">
           <button
             onClick={() => setShowPicker(true)}
             className="flex-shrink-0 p-1 rounded-lg hover:bg-[#EDEBE8] transition-colors"
@@ -563,7 +563,7 @@ const ChannelView: React.FC<{
       </div>
 
       <div className="bg-white border-t border-[#EDEBE8] flex-shrink-0 px-4 pt-3" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 8px)' }}>
-        <div className="flex gap-2 items-center bg-[#F7F6F3] rounded-2xl px-3 py-2.5 border border-[#EDEBE8] focus-within:border-[#B8962E]/40 transition-colors">
+        <div className="flex gap-2 items-center bg-[#F7F6F3] rounded-2xl px-3 py-2.5 border border-[#EDEBE8] focus-within:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] transition-colors">
           <input
             value={text}
             onChange={e => setText(e.target.value)}
@@ -825,7 +825,7 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false })
                     <button
                       key={ch.id}
                       onClick={() => setOpenChannel(ch)}
-                      className="w-full bg-white rounded-2xl border border-[#EDEBE8] px-4 py-3.5 flex items-center gap-3 hover:border-[#B8962E]/40 hover:shadow-sm transition-all text-left"
+                      className="w-full bg-white rounded-2xl border border-[#EDEBE8] px-4 py-3.5 flex items-center gap-3 hover:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] hover:shadow-sm transition-all text-left"
                     >
                       <div className="w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center"
                         style={{ backgroundColor: 'var(--brand-color, #B8962E)1A' }}>
@@ -849,7 +849,7 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false })
               <button
                 key={dm.id}
                 onClick={() => setOpenDm(dm)}
-                className="w-full bg-white rounded-2xl border border-[#EDEBE8] px-4 py-3.5 flex items-center gap-3 hover:border-[#B8962E]/40 hover:shadow-sm transition-all text-left"
+                className="w-full bg-white rounded-2xl border border-[#EDEBE8] px-4 py-3.5 flex items-center gap-3 hover:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] hover:shadow-sm transition-all text-left"
               >
                 <div className="w-11 h-11 rounded-full flex-shrink-0 flex items-center justify-center text-sm font-bold text-white"
                   style={{ backgroundColor: 'var(--brand-color, #B8962E)' }}>
@@ -881,7 +881,7 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false })
                 value={adminSearch}
                 onChange={e => setAdminSearch(e.target.value)}
                 placeholder="Search admins..."
-                className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-[#B8962E]"
+                className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-gold"
               />
             </div>
             <div className="overflow-y-auto flex-1">
