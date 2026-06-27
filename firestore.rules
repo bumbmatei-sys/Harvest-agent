@@ -295,6 +295,11 @@ service cloud.firestore {
         allow read: if isTenantAdmin(tenantId);
         allow write: if isTenantAdmin(tenantId);
       }
+
+      match /givingStatements/{statementId} {
+        allow read: if isTenantAdmin(tenantId);
+        allow write: if isTenantAdmin(tenantId);
+      }
     }
 
     // ─── Docs & Doc Folders ───────────────────────────────────────────

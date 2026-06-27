@@ -45,3 +45,7 @@ if (!admin.apps.length) {
 
 export const adminDb = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 export const adminAuth = admin.auth();
+
+// Storage bucket for generated receipts / giving statements (matches functions/).
+export const RECEIPTS_BUCKET = 'harvest-receipts-233a1';
+export const getReceiptsBucket = () => admin.storage().bucket(RECEIPTS_BUCKET);
