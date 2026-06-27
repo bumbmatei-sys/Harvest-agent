@@ -1,7 +1,7 @@
 // ─── Design Tokens ──────────────────────────────────────────────
 // Single source of truth for all course UI colors, shadows, spacing.
 
-export const GOLD = '#C9963A';
+export const GOLD = 'var(--brand-color, #C9963A)';
 export const GOLD_LIGHT = '#FBF3E4';
 export const GOLD_HOVER = '#b8860b';
 export const GOLD_BTN = 'linear-gradient(135deg, #C9963A, #D4A843)';

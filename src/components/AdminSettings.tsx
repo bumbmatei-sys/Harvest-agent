@@ -97,7 +97,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
     {
       id: 'plan',
       label: 'Subscription Plan',
-      icon: <Crown size={20} className="text-[#d4a017]" />,
+      icon: <Crown size={20} className="text-gold" />,
       content: <PlanUpgradeSection currentPlan={currentPlan} tenantId={tenantId} email={email} />,
     },
     {
@@ -109,7 +109,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
     {
       id: 'branding',
       label: 'Branding & Appearance',
-      icon: <Palette size={20} className="text-[#d4a017]" />,
+      icon: <Palette size={20} className="text-gold" />,
       content: <BrandingSection currentFeatures={currentFeatures} />,
       hidden: !hasBranding,
     },
@@ -128,7 +128,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
     {
       id: 'giving-statements',
       label: 'Giving Statements',
-      icon: <FileText size={20} className="text-[#B8962E]" />,
+      icon: <FileText size={20} className="text-gold" />,
       content: <GivingStatementsSection />,
       hidden: !isSuperAdmin && !currentFeatures?.givingStatements,
     },

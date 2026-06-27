@@ -87,7 +87,7 @@ const AdminInbox = () => {
  case 'church_suggestion': return <MapPin size={20} className="text-green-500" />;
  case 'feature': return <Lightbulb size={20} className="text-purple-500" />;
  case 'prayer': return <HeartHandshake size={20} className="text-orange-500" />;
- case 'enrollment': return <Church size={20} className="text-[#d4a017]" />;
+ case 'enrollment': return <Church size={20} className="text-gold" />;
  default: return <Mail size={20} className="text-gray-500" />;
  }
  };
@@ -119,7 +119,7 @@ const AdminInbox = () => {
  if (loading) {
  return (
  <div className="flex items-center justify-center h-full">
- <div className="w-8 h-8 border-4 border-[#d4a017]/30 border-t-[#d4a017] rounded-full animate-spin"></div>
+ <div className="w-8 h-8 border-4 border-[color-mix(in_srgb,var(--brand-color)_30%,transparent)] border-t-gold rounded-full animate-spin"></div>
  </div>
  );
  }
@@ -134,8 +134,8 @@ const AdminInbox = () => {
  onClick={() => setFilterType(type)}
  className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
  filterType === type
- ? 'bg-[#d4a017] text-white'
- : 'bg-white text-gray-600 border border-gray-200 hover:border-[#d4a017] :border-[#d4a017]'
+ ? 'bg-gold text-white'
+ : 'bg-white text-gray-600 border border-gray-200 hover:border-gold :border-gold'
  }`}
  >
  {type === 'church_suggestion' ? 'Church Suggestion' : type.charAt(0).toUpperCase() + type.slice(1)}
@@ -160,7 +160,7 @@ const AdminInbox = () => {
  const isPending = sub.status === 'pending';
 
  return (
- <div key={sub.id} className={`bg-white rounded-2xl shadow-sm border ${isPending ? 'border-[#d4a017]/30 ' : 'border-gray-100 '} overflow-hidden transition-all duration-300`}>
+ <div key={sub.id} className={`bg-white rounded-2xl shadow-sm border ${isPending ? 'border-[color-mix(in_srgb,var(--brand-color)_30%,transparent)] ' : 'border-gray-100 '} overflow-hidden transition-all duration-300`}>
  <div 
  onClick={() => toggleExpand(sub.id)}
  className="p-4 flex items-start gap-4 cursor-pointer hover:bg-gray-50 :bg-gray-800/50 transition-colors"
@@ -186,7 +186,7 @@ const AdminInbox = () => {
  
  <div className="flex items-center gap-2">
  {isPending && (
- <span className="w-2 h-2 rounded-full bg-[#d4a017]"></span>
+ <span className="w-2 h-2 rounded-full bg-gold"></span>
  )}
  {isExpanded ? <ChevronUp size={20} className="text-gray-400" /> : <ChevronDown size={20} className="text-gray-400" />}
  </div>

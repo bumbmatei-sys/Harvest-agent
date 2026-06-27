@@ -12,7 +12,7 @@ import { db, auth } from '../firebase';
 import { useAppStore } from '../store/useAppStore';
 import { useAdminHeader, HeaderActionButton } from './AdminScreenHeader';
 
-const GOLD = '#B8962E';
+const GOLD = 'var(--brand-color, #B8962E)';
 
 type FieldType = 'short_text' | 'long_text' | 'email' | 'phone' | 'number' | 'dropdown' | 'radio' | 'checkbox' | 'date';
 
@@ -278,7 +278,7 @@ const AdminForms: React.FC<AdminFormsProps> = () => {
         ) : (
           <div className="space-y-4">
             <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-3">
-              <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Form title" className="w-full text-lg font-bold px-0 py-1 border-0 border-b border-gray-100 focus:outline-none focus:border-[#B8962E]" />
+              <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Form title" className="w-full text-lg font-bold px-0 py-1 border-0 border-b border-gray-100 focus:outline-none focus:border-gold" />
               <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Description (optional)" rows={2} className="w-full text-sm px-0 py-1 border-0 focus:outline-none resize-none text-gray-600" />
             </div>
 
@@ -288,11 +288,11 @@ const AdminForms: React.FC<AdminFormsProps> = () => {
                   <GripVertical size={16} className="text-gray-300 mt-2.5 shrink-0" />
                   <div className="flex-1 min-w-0 space-y-2">
                     <div className="flex items-center gap-2">
-                      <input value={f.label} onChange={e => updateField(f.id, { label: e.target.value })} placeholder="Field label" className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#B8962E]" />
+                      <input value={f.label} onChange={e => updateField(f.id, { label: e.target.value })} placeholder="Field label" className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gold" />
                       <span className="text-[10px] font-semibold px-2 py-1 rounded-full bg-gray-100 text-gray-500 whitespace-nowrap">{FIELD_TYPES.find(t => t.type === f.type)?.label}</span>
                     </div>
                     {(f.type !== 'dropdown' && f.type !== 'radio' && f.type !== 'checkbox') && (
-                      <input value={f.placeholder || ''} onChange={e => updateField(f.id, { placeholder: e.target.value })} placeholder="Placeholder (optional)" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#B8962E]" />
+                      <input value={f.placeholder || ''} onChange={e => updateField(f.id, { placeholder: e.target.value })} placeholder="Placeholder (optional)" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gold" />
                     )}
                     {(f.type === 'dropdown' || f.type === 'radio' || f.type === 'checkbox') && (
                       <textarea
@@ -300,7 +300,7 @@ const AdminForms: React.FC<AdminFormsProps> = () => {
                         onChange={e => updateField(f.id, { options: e.target.value.split('\n').filter(Boolean) })}
                         placeholder="One option per line"
                         rows={3}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#B8962E]"
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gold"
                       />
                     )}
                     <label className="flex items-center gap-2 text-xs text-gray-600">

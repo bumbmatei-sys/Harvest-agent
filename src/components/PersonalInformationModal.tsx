@@ -308,7 +308,7 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
  placeholder="Current Password"
  value={currentPassword}
  onChange={(e) => setCurrentPassword(e.target.value)}
- className="w-full bg-[#f8f9fa] rounded-xl px-4 py-3 text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-[#d4a017]/20 mb-4"
+ className="w-full bg-[#f8f9fa] rounded-xl px-4 py-3 text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_20%,transparent)] mb-4"
  />
  {passwordMessage && (
  <p className="text-sm mb-4 text-red-600">{passwordMessage}</p>
@@ -317,7 +317,7 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
  <button 
  onClick={handleVerifyCurrentPassword}
  disabled={isPasswordLoading || !currentPassword}
- className="w-full py-3 rounded-xl font-bold text-white bg-[#d4a017] disabled:opacity-50"
+ className="w-full py-3 rounded-xl font-bold text-white bg-gold disabled:opacity-50"
  >
  {isPasswordLoading ? 'Verifying...' : 'Confirm'}
  </button>
@@ -326,7 +326,7 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
  setPasswordFlowState('forgot');
  setPasswordMessage('');
  }}
- className="text-sm text-[#d4a017] font-medium mt-2"
+ className="text-sm text-gold font-medium mt-2"
  >
  Forgot Password?
  </button>
@@ -347,14 +347,14 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
  placeholder="New Password"
  value={newPassword}
  onChange={(e) => setNewPassword(e.target.value)}
- className="w-full bg-[#f8f9fa] rounded-xl px-4 py-3 text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-[#d4a017]/20 mb-3"
+ className="w-full bg-[#f8f9fa] rounded-xl px-4 py-3 text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_20%,transparent)] mb-3"
  />
  <input
  type="password"
  placeholder="Confirm New Password"
  value={confirmNewPassword}
  onChange={(e) => setConfirmNewPassword(e.target.value)}
- className="w-full bg-[#f8f9fa] rounded-xl px-4 py-3 text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-[#d4a017]/20 mb-4"
+ className="w-full bg-[#f8f9fa] rounded-xl px-4 py-3 text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_20%,transparent)] mb-4"
  />
  {passwordMessage && (
  <p className={`text-sm mb-4 ${passwordMessage.includes('success') ? 'text-green-600' : 'text-red-600'}`}>
@@ -364,7 +364,7 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
  <button 
  onClick={handleUpdatePassword}
  disabled={isPasswordLoading || !newPassword || !confirmNewPassword}
- className="w-full py-3 rounded-xl font-bold text-white bg-[#d4a017] disabled:opacity-50"
+ className="w-full py-3 rounded-xl font-bold text-white bg-gold disabled:opacity-50"
  >
  {isPasswordLoading ? 'Updating...' : 'Update Password'}
  </button>
@@ -394,7 +394,7 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
  <button 
  onClick={handleForgotPassword}
  disabled={isPasswordLoading}
- className="w-full py-3 rounded-xl font-bold text-white bg-[#d4a017] disabled:opacity-50"
+ className="w-full py-3 rounded-xl font-bold text-white bg-gold disabled:opacity-50"
  >
  {isPasswordLoading ? 'Sending...' : 'Send Reset Link'}
  </button>
@@ -416,7 +416,7 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
  <button 
  onClick={handleSave} 
  disabled={isSaving}
- className="text-[#d4a017] font-bold text-sm px-2"
+ className="text-gold font-bold text-sm px-2"
  >
  {isSaving ? 'Saving...' : 'Save'}
  </button>
@@ -437,7 +437,7 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
  </div>
  <button 
  onClick={handlePhotoClick}
- className="absolute bottom-0 right-0 w-10 h-10 bg-[#d4a017] rounded-full flex items-center justify-center text-white border-4 border-[#f8f9fa] shadow-sm"
+ className="absolute bottom-0 right-0 w-10 h-10 bg-gold rounded-full flex items-center justify-center text-white border-4 border-[#f8f9fa] shadow-sm"
  >
  <Edit2 size={16} fill="currentColor" />
  </button>
@@ -465,7 +465,7 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
  type="text"
  value={name}
  onChange={(e) => setName(e.target.value)}
- className="w-full bg-[#f8f9fa] rounded-2xl px-4 py-4 text-gray-900 font-bold focus:outline-none focus:ring-2 focus:ring-[#d4a017]/20"
+ className="w-full bg-[#f8f9fa] rounded-2xl px-4 py-4 text-gray-900 font-bold focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_20%,transparent)]"
  />
  </div>
 
@@ -478,7 +478,7 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
  value={country}
  onChange={setCountry}
  className="w-full"
- buttonClassName="!bg-[#f8f9fa] !border-transparent !text-gray-900 !font-bold focus-within:!ring-2 focus-within:!ring-[#d4a017]/20 !py-4 !rounded-2xl"
+ buttonClassName="!bg-[#f8f9fa] !border-transparent !text-gray-900 !font-bold focus-within:!ring-2 focus-within:!ring-[color-mix(in_srgb,var(--brand-color)_20%,transparent)] !py-4 !rounded-2xl"
  />
  </div>
 
@@ -491,7 +491,7 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
  type="text"
  value={city}
  onChange={(e) => setCity(e.target.value)}
- className="w-full bg-[#f8f9fa] rounded-2xl px-4 py-4 text-gray-900 font-bold focus:outline-none focus:ring-2 focus:ring-[#d4a017]/20"
+ className="w-full bg-[#f8f9fa] rounded-2xl px-4 py-4 text-gray-900 font-bold focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_20%,transparent)]"
  />
  </div>
 
@@ -504,7 +504,7 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
  type="tel"
  value={phone}
  onChange={(e) => setPhone(e.target.value)}
- className="w-full bg-[#f8f9fa] rounded-2xl px-4 py-4 text-gray-900 font-bold focus:outline-none focus:ring-2 focus:ring-[#d4a017]/20"
+ className="w-full bg-[#f8f9fa] rounded-2xl px-4 py-4 text-gray-900 font-bold focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_20%,transparent)]"
  />
  </div>
 
@@ -524,7 +524,7 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
                 className="peer sr-only"
                 required
               />
-              <div className="w-full bg-[#f8f9fa] rounded-2xl px-4 py-4 text-center text-gray-900 font-bold peer-checked:bg-[#d4a017]/10 peer-checked:text-[#d4a017] peer-checked:ring-2 peer-checked:ring-[#d4a017]/30 transition-all">
+              <div className="w-full bg-[#f8f9fa] rounded-2xl px-4 py-4 text-center text-gray-900 font-bold peer-checked:bg-[color-mix(in_srgb,var(--brand-color)_10%,transparent)] peer-checked:text-gold peer-checked:ring-2 peer-checked:ring-[color-mix(in_srgb,var(--brand-color)_30%,transparent)] transition-all">
                 Yes
               </div>
             </label>

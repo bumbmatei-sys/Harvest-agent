@@ -2,8 +2,12 @@
 import React, { createContext, useContext } from 'react';
 import { ChevronLeft } from 'lucide-react';
 
-/** Brand gold used for the back chevron and header action buttons. */
-export const HEADER_GOLD = '#B8962E';
+/**
+ * Brand color used for the back chevron and header action buttons.
+ * Resolves to the tenant's custom branding color (`--brand-color`, set from
+ * `config.primaryColor` in TenantContext), falling back to the platform gold.
+ */
+export const HEADER_GOLD = 'var(--brand-color, #B8962E)';
 
 interface AdminScreenHeaderProps {
   /** Centered page title. */
@@ -30,7 +34,7 @@ export const AdminScreenHeader: React.FC<AdminScreenHeaderProps> = ({ title, onB
           aria-label="Back"
           className="p-1 -ml-1 transition-opacity hover:opacity-70 active:opacity-50"
         >
-          <ChevronLeft size={24} color={HEADER_GOLD} strokeWidth={2.5} />
+          <ChevronLeft size={24} strokeWidth={2.5} className="text-gold" />
         </button>
       )}
     </div>

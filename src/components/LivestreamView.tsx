@@ -12,7 +12,7 @@ interface LivestreamViewProps {
   onDonate: () => void;
 }
 
-const GOLD = '#B8962E';
+const GOLD = 'var(--brand-color, #B8962E)';
 
 const LivestreamView: React.FC<LivestreamViewProps> = ({ tenantId, onBack, onDonate }) => {
   const [active, setActive] = useState<boolean | null>(null);
@@ -83,7 +83,7 @@ const LivestreamView: React.FC<LivestreamViewProps> = ({ tenantId, onBack, onDon
       {/* Header */}
       <div className="flex items-center gap-2 px-3 py-3 text-white">
         <button onClick={onBack} aria-label="Back" className="p-1 hover:opacity-70">
-          <ChevronLeft size={26} color={GOLD} strokeWidth={2.5} />
+          <ChevronLeft size={26} strokeWidth={2.5} className="text-gold" />
         </button>
         <span className="font-bold truncate flex-1">{title || 'Livestream'}</span>
         {active && (
@@ -117,7 +117,7 @@ const LivestreamView: React.FC<LivestreamViewProps> = ({ tenantId, onBack, onDon
                 className="flex items-center justify-between w-full px-4 py-3 text-white"
               >
                 <span className="flex items-center gap-2 text-sm font-semibold">
-                  <BookOpen size={15} color={GOLD} /> Sermon Notes
+                  <BookOpen size={15} className="text-gold" /> Sermon Notes
                 </span>
                 <ChevronDown
                   size={16}
@@ -172,14 +172,14 @@ const LivestreamView: React.FC<LivestreamViewProps> = ({ tenantId, onBack, onDon
                   value={prayerName}
                   onChange={(e) => setPrayerName(e.target.value)}
                   placeholder="Your name"
-                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-[#B8962E]"
+                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-gold"
                 />
                 <textarea
                   value={prayerText}
                   onChange={(e) => setPrayerText(e.target.value)}
                   placeholder="How can we pray for you?"
                   rows={3}
-                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#B8962E]"
+                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-gold"
                 />
                 <button
                   onClick={submitPrayer}

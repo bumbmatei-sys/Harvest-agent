@@ -16,7 +16,7 @@ import { useAppStore } from '../store/useAppStore';
 // Mobile-first, matches Harvest design system
 // ─────────────────────────────────────────────
 
-const GOLD = "#C9963A";
+const GOLD = "var(--brand-color, #C9963A)";
 const GOLD_LIGHT = "var(--chat-gold-light)";
 const GOLD_BTN = "var(--chat-gold-btn)";
 const BG = "var(--chat-bg)";
@@ -736,7 +736,7 @@ Friendly neighbor, not a corporate chatbot. Short. Helpful. Human.`;
  {/* History icon button */}
  <button onClick={() => setShowHistory(true)}
  style={{ background: "none", border: "none", cursor: "pointer", padding: 6, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 8 }}>
- <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+ <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-gold" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
  <path d="M12 8v4l3 3" /><circle cx="12" cy="12" r="9" />
  </svg>
  </button>

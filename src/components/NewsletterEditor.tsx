@@ -24,7 +24,7 @@ const EditorToolbar: React.FC<{ editor: ReturnType<typeof useEditor> }> = ({ edi
       type="button"
       onClick={onClick}
       className={`px-2.5 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
-        active ? 'bg-[#B8962E]/10 text-[#B8962E]' : 'text-gray-500 hover:bg-gray-100'
+        active ? 'bg-[color-mix(in_srgb,var(--brand-color)_10%,transparent)] text-gold' : 'text-gray-500 hover:bg-gray-100'
       }`}
     >
       {label}
@@ -197,7 +197,7 @@ const NewsletterEditor: React.FC<NewsletterEditorProps> = ({
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-3">
-          <button onClick={onBack} className="text-[#B8962E] hover:opacity-70 transition-opacity cursor-pointer">
+          <button onClick={onBack} className="text-gold hover:opacity-70 transition-opacity cursor-pointer">
             <ChevronLeft size={24} />
           </button>
           <div>
@@ -214,7 +214,7 @@ const NewsletterEditor: React.FC<NewsletterEditorProps> = ({
             <button
               onClick={() => setShowPreview(!showPreview)}
               className={`flex items-center gap-1.5 px-3 py-2 border rounded-xl text-sm font-medium transition-colors cursor-pointer ${
-                showPreview ? 'border-[#B8962E] text-[#B8962E] bg-[#B8962E]/5' : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                showPreview ? 'border-gold text-gold bg-[color-mix(in_srgb,var(--brand-color)_5%,transparent)]' : 'border-gray-200 text-gray-600 hover:bg-gray-50'
               }`}
             >
               <Eye size={15} />
@@ -231,7 +231,7 @@ const NewsletterEditor: React.FC<NewsletterEditorProps> = ({
             <button
               onClick={() => handleSend()}
               disabled={!hasContent || sending || !mailchimpConnected}
-              className="flex items-center gap-1.5 px-4 py-2 bg-[#B8962E] text-white rounded-xl text-sm font-semibold hover:bg-[#a07820] transition-colors disabled:opacity-50 cursor-pointer"
+              className="flex items-center gap-1.5 px-4 py-2 bg-gold text-white rounded-xl text-sm font-semibold hover:bg-[#a07820] transition-colors disabled:opacity-50 cursor-pointer"
             >
               <Send size={15} />
               {sending ? 'Sending...' : 'Send to All Partners'}
@@ -278,8 +278,8 @@ const NewsletterEditor: React.FC<NewsletterEditorProps> = ({
           {canAutoGenerate && (
             <div className="bg-white border border-gray-100 rounded-2xl p-6">
               <div className="flex items-start gap-4 mb-5">
-                <div className="w-12 h-12 rounded-2xl bg-[#B8962E]/10 flex items-center justify-center flex-shrink-0">
-                  <Wand2 size={22} className="text-[#B8962E]" />
+                <div className="w-12 h-12 rounded-2xl bg-[color-mix(in_srgb,var(--brand-color)_10%,transparent)] flex items-center justify-center flex-shrink-0">
+                  <Wand2 size={22} className="text-gold" />
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-gray-900">Generate from Instagram</h3>
@@ -293,7 +293,7 @@ const NewsletterEditor: React.FC<NewsletterEditorProps> = ({
                     type="date"
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#B8962E]/30 focus:border-[#B8962E]"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_30%,transparent)] focus:border-gold"
                   />
                 </div>
                 <div className="flex-1">
@@ -303,14 +303,14 @@ const NewsletterEditor: React.FC<NewsletterEditorProps> = ({
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
                     max={new Date().toISOString().split('T')[0]}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#B8962E]/30 focus:border-[#B8962E]"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_30%,transparent)] focus:border-gold"
                   />
                 </div>
               </div>
               <button
                 onClick={handleGenerate}
                 disabled={generating}
-                className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-[#B8962E] text-white rounded-xl text-sm font-bold hover:bg-[#a07820] transition-all disabled:opacity-50 cursor-pointer"
+                className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-gold text-white rounded-xl text-sm font-bold hover:bg-[#a07820] transition-all disabled:opacity-50 cursor-pointer"
               >
                 {generating ? (
                   <><Loader2 size={18} className="animate-spin" /> Generating newsletter...</>
@@ -370,7 +370,7 @@ const NewsletterEditor: React.FC<NewsletterEditorProps> = ({
                   <button
                     onClick={handleGenerate}
                     disabled={generating}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[#B8962E] hover:bg-[#B8962E]/5 border border-[#B8962E]/20 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gold hover:bg-[color-mix(in_srgb,var(--brand-color)_5%,transparent)] border border-[color-mix(in_srgb,var(--brand-color)_20%,transparent)] rounded-lg transition-colors cursor-pointer disabled:opacity-50"
                   >
                     <Wand2 size={12} />
                     {generating ? 'Generating...' : 'Regenerate'}
@@ -398,7 +398,7 @@ const NewsletterEditor: React.FC<NewsletterEditorProps> = ({
                     value={scheduleDate}
                     onChange={(e) => setScheduleDate(e.target.value)}
                     min={new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16)}
-                    className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#B8962E]/30 focus:border-[#B8962E]"
+                    className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_30%,transparent)] focus:border-gold"
                   />
                   <button
                     onClick={() => handleSend(scheduleDate)}

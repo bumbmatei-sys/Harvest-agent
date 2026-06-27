@@ -148,7 +148,7 @@ const NotificationPrompt: React.FC = () => {
     <div className="fixed bottom-20 lg:bottom-6 left-4 right-4 lg:left-auto lg:right-6 lg:w-96 z-[200] animate-in slide-in-from-bottom-4 duration-300">
       <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-4 flex items-start gap-3">
         <div className="w-10 h-10 rounded-full bg-[#fcefc7] flex items-center justify-center flex-shrink-0">
-          <Bell size={20} className="text-[#d4a017]" />
+          <Bell size={20} className="text-gold" />
         </div>
         <div className="flex-1 min-w-0">
           <h4 className="font-bold text-gray-900 text-sm mb-1">Stay updated</h4>
@@ -159,7 +159,7 @@ const NotificationPrompt: React.FC = () => {
             <button
               onClick={handleEnable}
               disabled={requesting}
-              className="px-4 py-1.5 bg-[#e6b325] text-white rounded-lg text-xs font-medium hover:bg-[#d4a017] transition-colors disabled:opacity-50"
+              className="px-4 py-1.5 bg-[#e6b325] text-white rounded-lg text-xs font-medium hover:bg-gold transition-colors disabled:opacity-50"
             >
               {requesting ? 'Enabling...' : 'Enable'}
             </button>

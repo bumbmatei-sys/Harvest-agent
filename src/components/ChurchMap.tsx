@@ -115,7 +115,7 @@ const LocationButton = ({ setUserLocation }: { setUserLocation: (loc: {lat: numb
  e.stopPropagation();
  locateUser();
  }}
- className="bg-white p-3 rounded-full shadow-md text-gray-700 hover:text-[#d4a017] transition-colors"
+ className="bg-white p-3 rounded-full shadow-md text-gray-700 hover:text-gold transition-colors"
  >
  <LocateFixed size={24} />
  </button>
@@ -249,7 +249,7 @@ const ChurchMap: React.FC<ChurchMapProps> = ({ onBack, onMapInteraction }) => {
  <div className="absolute top-4 left-4 right-4 z-[1000] flex justify-between items-center pointer-events-none">
  <button 
  onClick={onBack}
- className="pointer-events-auto bg-white p-3 rounded-full shadow-md text-gray-700 hover:text-[#d4a017] transition-colors"
+ className="pointer-events-auto bg-white p-3 rounded-full shadow-md text-gray-700 hover:text-gold transition-colors"
  >
  <ArrowLeft size={24} />
  </button>
@@ -263,7 +263,7 @@ const ChurchMap: React.FC<ChurchMapProps> = ({ onBack, onMapInteraction }) => {
  <div className="flex flex-col gap-2 pointer-events-auto">
  <button 
  onClick={() => setViewMode(viewMode === 'map' ? 'list' : 'map')}
- className="bg-white p-3 rounded-full shadow-md text-gray-700 hover:text-[#d4a017] transition-colors flex items-center justify-center"
+ className="bg-white p-3 rounded-full shadow-md text-gray-700 hover:text-gold transition-colors flex items-center justify-center"
  >
  {viewMode === 'map' ? <List size={24} /> : <MapIcon size={24} />}
  </button>
@@ -328,7 +328,7 @@ const ChurchMap: React.FC<ChurchMapProps> = ({ onBack, onMapInteraction }) => {
  }}
  className={`bg-white rounded-2xl p-3 flex gap-3 shadow-sm transition-all duration-500 cursor-pointer ${
  isHighlighted 
- ? 'border-2 border-[#d4a017] ring-4 ring-[#d4a017]/20 scale-[1.02]' 
+ ? 'border-2 border-gold ring-4 ring-[color-mix(in_srgb,var(--brand-color)_20%,transparent)] scale-[1.02]' 
  : 'border border-gray-100 '
  }`}
  >
@@ -349,7 +349,7 @@ const ChurchMap: React.FC<ChurchMapProps> = ({ onBack, onMapInteraction }) => {
  <div className="flex justify-between items-start">
  <h3 className="font-bold text-base text-gray-900 flex items-center gap-1 leading-tight">
  {church.name}
- <CheckCircle size={12} className="text-[#d4a017] flex-shrink-0" />
+ <CheckCircle size={12} className="text-gold flex-shrink-0" />
  </h3>
  <span className="text-xs font-semibold text-gray-400 whitespace-nowrap ml-2">
  {distanceStr}
@@ -385,7 +385,7 @@ const ChurchMap: React.FC<ChurchMapProps> = ({ onBack, onMapInteraction }) => {
  setSelectedChurchId(church.id);
  setIsChurchDetailsOpen(true);
  }}
- className="w-8 h-8 rounded-lg bg-[#d4a017] flex items-center justify-center shadow-sm hover:bg-[#b8860b] transition-colors text-white"
+ className="w-8 h-8 rounded-lg bg-gold flex items-center justify-center shadow-sm hover:bg-[#b8860b] transition-colors text-white"
  title="Church Information"
  >
  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m18 7 4 2v11a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9l4-2"/><path d="M14 22v-4a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v4"/><path d="M18 22V5l-6-3-6 3v17"/><path d="M12 7v5"/><path d="M10 9h4"/></svg>

@@ -29,7 +29,7 @@ const PrivacyTermsModal: React.FC<PrivacyTermsModalProps> = ({ isOpen, onClose }
  onClick={() => setActiveTab('privacy')}
  className={`flex-1 py-3 text-sm font-bold rounded-xl transition-colors ${
  activeTab === 'privacy'
- ? 'bg-[#fdf8e7] text-[#d4a017]'
+ ? 'bg-[#fdf8e7] text-gold'
  : 'text-gray-500 hover:text-gray-700 :text-gray-300'
  }`}
  >
@@ -39,7 +39,7 @@ const PrivacyTermsModal: React.FC<PrivacyTermsModalProps> = ({ isOpen, onClose }
  onClick={() => setActiveTab('terms')}
  className={`flex-1 py-3 text-sm font-bold rounded-xl transition-colors ${
  activeTab === 'terms'
- ? 'bg-[#fdf8e7] text-[#d4a017]'
+ ? 'bg-[#fdf8e7] text-gold'
  : 'text-gray-500 hover:text-gray-700 :text-gray-300'
  }`}
  >

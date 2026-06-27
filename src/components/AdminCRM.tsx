@@ -108,7 +108,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ contacts, stages, onOpenConta
                 <div
                   key={c.id}
                   onClick={() => onOpenContact(c)}
-                  className="bg-white rounded-xl border border-[#EDEBE8] p-3 cursor-pointer hover:shadow-sm hover:border-[#B8962E]/40 transition-all"
+                  className="bg-white rounded-xl border border-[#EDEBE8] p-3 cursor-pointer hover:shadow-sm hover:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] transition-all"
                 >
                   {/* Avatar + name */}
                   <div className="flex items-center gap-2 mb-2">
@@ -134,7 +134,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ contacts, stages, onOpenConta
                       {TYPE_LABELS[c.type]}
                     </span>
                     {c.totalDonated > 0 && (
-                      <span className="text-[9px] font-bold text-[#B8962E]">
+                      <span className="text-[9px] font-bold text-gold">
                         {fmt(c.totalDonated)}
                       </span>
                     )}
@@ -423,18 +423,18 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
             <div>
               <label className="text-xs font-semibold text-gray-500 mb-1 block">First Name *</label>
               <input value={form.firstName} onChange={e => setForm({ ...form, firstName: e.target.value })}
-                className="w-full rounded-xl border border-[#EDEBE8] px-3 py-2.5 text-sm focus:border-[#B8962E] focus:outline-none" placeholder="First name" />
+                className="w-full rounded-xl border border-[#EDEBE8] px-3 py-2.5 text-sm focus:border-gold focus:outline-none" placeholder="First name" />
             </div>
             <div>
               <label className="text-xs font-semibold text-gray-500 mb-1 block">Last Name</label>
               <input value={form.lastName} onChange={e => setForm({ ...form, lastName: e.target.value })}
-                className="w-full rounded-xl border border-[#EDEBE8] px-3 py-2.5 text-sm focus:border-[#B8962E] focus:outline-none" placeholder="Last name" />
+                className="w-full rounded-xl border border-[#EDEBE8] px-3 py-2.5 text-sm focus:border-gold focus:outline-none" placeholder="Last name" />
             </div>
           </div>
           <div>
             <label className="text-xs font-semibold text-gray-500 mb-1 block">Type</label>
             <select value={form.type} onChange={e => setForm({ ...form, type: e.target.value as Contact['type'] })}
-              className="w-full rounded-xl border border-[#EDEBE8] px-3 py-2.5 text-sm focus:border-[#B8962E] focus:outline-none bg-white">
+              className="w-full rounded-xl border border-[#EDEBE8] px-3 py-2.5 text-sm focus:border-gold focus:outline-none bg-white">
               <option value="member">Member</option>
               <option value="donor">Donor</option>
               <option value="both">Donor & Member</option>
@@ -463,41 +463,41 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
             <div>
               <label className="text-xs font-semibold text-gray-500 mb-1 block">Email</label>
               <input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })}
-                className="w-full rounded-xl border border-[#EDEBE8] px-3 py-2.5 text-sm focus:border-[#B8962E] focus:outline-none" placeholder="email@example.com" />
+                className="w-full rounded-xl border border-[#EDEBE8] px-3 py-2.5 text-sm focus:border-gold focus:outline-none" placeholder="email@example.com" />
             </div>
             <div>
               <label className="text-xs font-semibold text-gray-500 mb-1 block">Phone</label>
               <input type="tel" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })}
-                className="w-full rounded-xl border border-[#EDEBE8] px-3 py-2.5 text-sm focus:border-[#B8962E] focus:outline-none" placeholder="+1 555 000 0000" />
+                className="w-full rounded-xl border border-[#EDEBE8] px-3 py-2.5 text-sm focus:border-gold focus:outline-none" placeholder="+1 555 000 0000" />
             </div>
           </div>
           <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mt-2 mb-3">Address</p>
           <div>
             <label className="text-xs font-semibold text-gray-500 mb-1 block">Street Address</label>
             <input value={form.address.street || ''} onChange={e => setForm({ ...form, address: { ...form.address, street: e.target.value } })}
-              className="w-full rounded-xl border border-[#EDEBE8] px-3 py-2.5 text-sm focus:border-[#B8962E] focus:outline-none" placeholder="123 Main St" />
+              className="w-full rounded-xl border border-[#EDEBE8] px-3 py-2.5 text-sm focus:border-gold focus:outline-none" placeholder="123 Main St" />
           </div>
           <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="text-xs font-semibold text-gray-500 mb-1 block">City</label>
               <input value={form.address.city || ''} onChange={e => setForm({ ...form, address: { ...form.address, city: e.target.value } })}
-                className="w-full rounded-xl border border-[#EDEBE8] px-3 py-2.5 text-sm focus:border-[#B8962E] focus:outline-none" />
+                className="w-full rounded-xl border border-[#EDEBE8] px-3 py-2.5 text-sm focus:border-gold focus:outline-none" />
             </div>
             <div>
               <label className="text-xs font-semibold text-gray-500 mb-1 block">State</label>
               <input value={form.address.state || ''} onChange={e => setForm({ ...form, address: { ...form.address, state: e.target.value } })}
-                className="w-full rounded-xl border border-[#EDEBE8] px-3 py-2.5 text-sm focus:border-[#B8962E] focus:outline-none" />
+                className="w-full rounded-xl border border-[#EDEBE8] px-3 py-2.5 text-sm focus:border-gold focus:outline-none" />
             </div>
             <div>
               <label className="text-xs font-semibold text-gray-500 mb-1 block">ZIP</label>
               <input value={form.address.zip || ''} onChange={e => setForm({ ...form, address: { ...form.address, zip: e.target.value } })}
-                className="w-full rounded-xl border border-[#EDEBE8] px-3 py-2.5 text-sm focus:border-[#B8962E] focus:outline-none" />
+                className="w-full rounded-xl border border-[#EDEBE8] px-3 py-2.5 text-sm focus:border-gold focus:outline-none" />
             </div>
           </div>
           <div>
             <label className="text-xs font-semibold text-gray-500 mb-1 block">Notes</label>
             <textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })}
-              rows={3} className="w-full rounded-xl border border-[#EDEBE8] px-3 py-2.5 text-sm focus:border-[#B8962E] focus:outline-none resize-none"
+              rows={3} className="w-full rounded-xl border border-[#EDEBE8] px-3 py-2.5 text-sm focus:border-gold focus:outline-none resize-none"
               placeholder="Any notes about this contact..." />
           </div>
           <div className="space-y-2 pt-2">
@@ -563,11 +563,11 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
 
         {/* Stats strip */}
         <div className="flex gap-2 flex-wrap mb-5">
-          <span className="bg-[#FBF3E4] text-[#B8962E] text-xs font-semibold px-3 py-1.5 rounded-full">{fmt(selected.totalDonated || 0)} total given</span>
-          <span className="bg-[#FBF3E4] text-[#B8962E] text-xs font-semibold px-3 py-1.5 rounded-full">
+          <span className="bg-[#FBF3E4] text-gold text-xs font-semibold px-3 py-1.5 rounded-full">{fmt(selected.totalDonated || 0)} total given</span>
+          <span className="bg-[#FBF3E4] text-gold text-xs font-semibold px-3 py-1.5 rounded-full">
             {selected.lastDonationAt ? `Last gift ${fmtDate(selected.lastDonationAt)}` : 'No donations yet'}
           </span>
-          <span className="bg-[#FBF3E4] text-[#B8962E] text-xs font-semibold px-3 py-1.5 rounded-full">{activities.length} {activities.length === 1 ? 'activity' : 'activities'}</span>
+          <span className="bg-[#FBF3E4] text-gold text-xs font-semibold px-3 py-1.5 rounded-full">{activities.length} {activities.length === 1 ? 'activity' : 'activities'}</span>
         </div>
 
         {/* Contact info card */}
@@ -719,7 +719,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
                   <div>
                     <label className="text-xs font-semibold text-gray-500 mb-1 block">Amount ($)</label>
                     <input type="number" min={0} value={actForm.amount} onChange={e => setActForm({ ...actForm, amount: e.target.value })}
-                      className="w-full rounded-xl border border-[#EDEBE8] px-3 py-2.5 text-sm focus:border-[#B8962E] focus:outline-none" placeholder="0.00" />
+                      className="w-full rounded-xl border border-[#EDEBE8] px-3 py-2.5 text-sm focus:border-gold focus:outline-none" placeholder="0.00" />
                   </div>
                 )}
                 <div>
@@ -783,7 +783,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
             <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input value={search} onChange={e => setSearch(e.target.value)}
               placeholder="Search by name or email..."
-              className="w-full bg-white pl-9 pr-3 py-2.5 text-sm border border-[#EDEBE8] rounded-2xl focus:outline-none focus:border-[#B8962E]" />
+              className="w-full bg-white pl-9 pr-3 py-2.5 text-sm border border-[#EDEBE8] rounded-2xl focus:outline-none focus:border-gold" />
           </div>
           {/* List / Kanban view toggle */}
           {crmSubView === 'contacts' && view === 'list' && (
@@ -838,7 +838,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
             <div
               key={c.id}
               onClick={() => openDetail(c)}
-              className="bg-white rounded-2xl border border-[#EDEBE8] px-4 py-3.5 flex items-center gap-3 cursor-pointer hover:border-[#B8962E]/40 hover:shadow-sm transition-all"
+              className="bg-white rounded-2xl border border-[#EDEBE8] px-4 py-3.5 flex items-center gap-3 cursor-pointer hover:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] hover:shadow-sm transition-all"
             >
               <div className="w-11 h-11 rounded-full flex items-center justify-center text-sm font-bold text-white flex-shrink-0"
                 style={{ backgroundColor: 'var(--brand-color, #B8962E)' }}>
@@ -852,7 +852,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
                 <div className="flex items-center gap-1.5 mt-1.5">
                   <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${TYPE_COLORS[c.type]}`}>{TYPE_LABELS[c.type]}</span>
                   {c.totalDonated > 0 && (
-                    <span className="bg-[#FBF3E4] text-[#B8962E] text-[10px] font-semibold px-2 py-0.5 rounded-full">{fmt(c.totalDonated)} donated</span>
+                    <span className="bg-[#FBF3E4] text-gold text-[10px] font-semibold px-2 py-0.5 rounded-full">{fmt(c.totalDonated)} donated</span>
                   )}
                 </div>
               </div>

@@ -27,7 +27,7 @@ const InputField = ({ placeholder, type = "text", name, value, onChange, require
  onChange={onChange}
  required={required}
  placeholder={placeholder}
- className="w-full bg-[#f8f9fa] rounded-xl px-4 py-3 text-sm text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-[#d4a017]/20 mb-4 placeholder-gray-400 border border-transparent "
+ className="w-full bg-[#f8f9fa] rounded-xl px-4 py-3 text-sm text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_20%,transparent)] mb-4 placeholder-gray-400 border border-transparent "
  />
 );
 
@@ -39,7 +39,7 @@ const TextAreaField = ({ placeholder, name, value, onChange, required }: any) =>
  onChange={onChange}
  required={required}
  rows={4}
- className="w-full bg-[#f8f9fa] rounded-xl px-4 py-3 text-sm text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-[#d4a017]/20 mb-4 placeholder-gray-400 resize-none border border-transparent "
+ className="w-full bg-[#f8f9fa] rounded-xl px-4 py-3 text-sm text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_20%,transparent)] mb-4 placeholder-gray-400 resize-none border border-transparent "
  />
 );
 
@@ -47,7 +47,7 @@ const SubmitButton = ({ children, isSubmitting }: { children: React.ReactNode, i
  <button 
  type="submit"
  disabled={isSubmitting}
- className={`w-full bg-[#d4a017] hover:bg-[#b8860b] text-white font-bold py-3.5 px-4 rounded-xl transition-colors shadow-sm mt-2 flex items-center justify-center gap-2 ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}
+ className={`w-full bg-gold hover:bg-[#b8860b] text-white font-bold py-3.5 px-4 rounded-xl transition-colors shadow-sm mt-2 flex items-center justify-center gap-2 ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}
  >
  {isSubmitting ? (
  <>
@@ -244,7 +244,7 @@ const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) => {
  Help us connect more people to a local body of believers. Please fill out all relevant details below.
  </div>
 
- <h5 className="text-[10px] font-bold text-[#d4a017] tracking-wider uppercase mb-4 mt-6">CONTACT INFO</h5>
+ <h5 className="text-[10px] font-bold text-gold tracking-wider uppercase mb-4 mt-6">CONTACT INFO</h5>
  <InputLabel>CONTACT PERSON</InputLabel>
  <InputField required name="contactName" value={churchForm.contactName} onChange={(e: any) => setChurchForm({...churchForm, contactName: e.target.value})} placeholder="Pastor or Admin Name" />
  <div className="flex gap-3">
@@ -258,7 +258,7 @@ const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) => {
  </div>
  </div>
 
- <h5 className="text-[10px] font-bold text-[#d4a017] tracking-wider uppercase mb-4 mt-2">LOCATION</h5>
+ <h5 className="text-[10px] font-bold text-gold tracking-wider uppercase mb-4 mt-2">LOCATION</h5>
  <div className="flex gap-3">
  <div className="flex-1">
  <InputLabel>CITY</InputLabel>
@@ -270,11 +270,11 @@ const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) => {
  </div>
  </div>
 
- <h5 className="text-[10px] font-bold text-[#d4a017] tracking-wider uppercase mb-4 mt-2">MESSAGE</h5>
+ <h5 className="text-[10px] font-bold text-gold tracking-wider uppercase mb-4 mt-2">MESSAGE</h5>
  <InputLabel>WHY JOIN HARVEST?</InputLabel>
  <TextAreaField required name="reason" value={churchForm.reason} onChange={(e: any) => setChurchForm({...churchForm, reason: e.target.value})} placeholder="Tell us why you want to be a part of Harvest..." />
 
- <h5 className="text-[10px] font-bold text-[#d4a017] tracking-wider uppercase mb-4 mt-2">LINKS</h5>
+ <h5 className="text-[10px] font-bold text-gold tracking-wider uppercase mb-4 mt-2">LINKS</h5>
  <InputLabel>WEBSITE</InputLabel>
  <InputField name="website" value={churchForm.website} onChange={(e: any) => setChurchForm({...churchForm, website: e.target.value})} placeholder="https://mychurch.com" />
  <InputLabel>FACEBOOK</InputLabel>

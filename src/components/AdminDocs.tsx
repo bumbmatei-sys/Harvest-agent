@@ -123,7 +123,7 @@ const RenameModal: React.FC<{
           value={value}
           onChange={e => setValue(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter') onConfirm(value); if (e.key === 'Escape') onCancel(); }}
-          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#d4a017] mb-4"
+          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold mb-4"
           placeholder="Name"
           autoFocus
         />
@@ -279,7 +279,7 @@ const FolderNode: React.FC<{
   return (
     <div>
       <div
-        className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg cursor-pointer group transition-colors ${isActive ? 'bg-[#d4a017]/10' : 'hover:bg-gray-100'}`}
+        className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg cursor-pointer group transition-colors ${isActive ? 'bg-[color-mix(in_srgb,var(--brand-color)_10%,transparent)]' : 'hover:bg-gray-100'}`}
         style={{ paddingLeft: `${8 + depth * 16}px` }}
         onClick={() => { setOpen(!open); onSelectFolder(folder.id); }}
       >
@@ -316,7 +316,7 @@ const FolderNode: React.FC<{
             <div
               key={d.id}
               onClick={() => onSelectDoc(d)}
-              className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg cursor-pointer group transition-colors ${activeDocId === d.id ? 'bg-[#d4a017]/10' : 'hover:bg-gray-100'}`}
+              className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg cursor-pointer group transition-colors ${activeDocId === d.id ? 'bg-[color-mix(in_srgb,var(--brand-color)_10%,transparent)]' : 'hover:bg-gray-100'}`}
               style={{ paddingLeft: `${24 + depth * 16}px` }}
             >
               <FileText size={13} className="text-gray-400 flex-shrink-0" />
@@ -675,7 +675,7 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
                     <p className="text-sm font-semibold text-gray-800">{admin.name}</p>
                     {admin.email && <p className="text-xs text-gray-400">{admin.email}</p>}
                   </div>
-                  <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${isShared ? 'bg-[#d4a017] border-[#d4a017]' : 'border-gray-300'}`}>
+                  <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${isShared ? 'bg-gold border-gold' : 'border-gray-300'}`}>
                     {isShared && <Check size={12} className="text-white" />}
                   </div>
                 </button>
@@ -696,7 +696,7 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
             <h3 className="font-bold text-gray-900 mb-4">New Folder</h3>
             <input value={newFolderName} onChange={e => setNewFolderName(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && createFolder()}
-              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#d4a017] mb-4"
+              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold mb-4"
               placeholder="Folder name" autoFocus />
             <div className="flex gap-3">
               <button onClick={() => setShowNewFolder(false)} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600">Cancel</button>
@@ -817,7 +817,7 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
                   <div
                     key={d.id}
                     onClick={() => openDocument(d)}
-                    className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg cursor-pointer group transition-colors ${openDoc?.id === d.id ? 'bg-[#d4a017]/10' : 'hover:bg-gray-100'}`}
+                    className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg cursor-pointer group transition-colors ${openDoc?.id === d.id ? 'bg-[color-mix(in_srgb,var(--brand-color)_10%,transparent)]' : 'hover:bg-gray-100'}`}
                   >
                     <FileText size={13} className="text-gray-400 flex-shrink-0" />
                     <span className="text-xs text-gray-700 flex-1 truncate">{d.title || 'Untitled'}</span>
@@ -855,7 +855,7 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
                       <div
                         key={d.id}
                         onClick={() => openDocument(d)}
-                        className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg cursor-pointer group transition-colors ${openDoc?.id === d.id ? 'bg-[#d4a017]/10' : 'hover:bg-gray-100'}`}
+                        className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg cursor-pointer group transition-colors ${openDoc?.id === d.id ? 'bg-[color-mix(in_srgb,var(--brand-color)_10%,transparent)]' : 'hover:bg-gray-100'}`}
                       >
                         <Share2 size={13} className="text-gray-400 flex-shrink-0" />
                         <span className="text-xs text-gray-700 flex-1 truncate">{d.title || 'Untitled'}</span>
@@ -930,7 +930,7 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
             {rootFolders.map(f => (
               <div
                 key={f.id}
-                className={`relative group flex items-center gap-2 p-3 rounded-2xl border transition-all text-left ${activeFolderId === f.id ? 'border-[#d4a017]/40 bg-[#d4a017]/5' : 'border-gray-100 bg-white hover:border-gray-200 shadow-sm'}`}
+                className={`relative group flex items-center gap-2 p-3 rounded-2xl border transition-all text-left ${activeFolderId === f.id ? 'border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] bg-[color-mix(in_srgb,var(--brand-color)_5%,transparent)]' : 'border-gray-100 bg-white hover:border-gray-200 shadow-sm'}`}
               >
                 <button
                   onClick={() => setActiveFolderId(activeFolderId === f.id ? null : f.id)}
@@ -957,7 +957,7 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
               <div
                 key={d.id}
                 onClick={() => openDocument(d)}
-                className="relative bg-white rounded-2xl p-4 border border-gray-100 shadow-sm cursor-pointer hover:border-[#d4a017]/40 hover:shadow-md transition-all group"
+                className="relative bg-white rounded-2xl p-4 border border-gray-100 shadow-sm cursor-pointer hover:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] hover:shadow-md transition-all group"
               >
                 <div className="flex items-start gap-2 mb-2">
                   <Share2 size={18} className="text-gray-300 flex-shrink-0 mt-0.5" />
@@ -997,7 +997,7 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
               <div
                 key={d.id}
                 onClick={() => openDocument(d)}
-                className="relative bg-white rounded-2xl p-4 border border-gray-100 shadow-sm cursor-pointer hover:border-[#d4a017]/40 hover:shadow-md transition-all group"
+                className="relative bg-white rounded-2xl p-4 border border-gray-100 shadow-sm cursor-pointer hover:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] hover:shadow-md transition-all group"
               >
                 <div className="flex items-start justify-between gap-2 mb-2">
                   <FileText size={18} className="text-gray-300 flex-shrink-0 mt-0.5" />

@@ -53,7 +53,7 @@ const AboutUsModal: React.FC<AboutUsModalProps> = ({ isOpen, onClose, onOpenPart
  <div>
  <div className="flex items-center gap-3 mb-4">
  <div className="w-10 h-10 rounded-full bg-[#fdf8e7] flex items-center justify-center">
- <Eye size={20} className="text-[#d4a017]" />
+ <Eye size={20} className="text-gold" />
  </div>
  <h3 className="text-xl font-bold text-gray-900 ">The Vision</h3>
  </div>
@@ -107,7 +107,7 @@ const AboutUsModal: React.FC<AboutUsModalProps> = ({ isOpen, onClose, onOpenPart
  </div>
  <div>
  <h5 className="font-bold text-gray-900 ">Matei Bumb</h5>
- <p className="text-[10px] font-bold text-[#d4a017] tracking-wider uppercase mt-0.5">President of Harvest</p>
+ <p className="text-[10px] font-bold text-gold tracking-wider uppercase mt-0.5">President of Harvest</p>
  </div>
  </div>
  </div>
@@ -121,7 +121,7 @@ const AboutUsModal: React.FC<AboutUsModalProps> = ({ isOpen, onClose, onOpenPart
  </p>
  <button 
  onClick={onOpenPartner}
- className="w-full bg-[#d4a017] hover:bg-[#b8860b] text-white font-bold py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-colors"
+ className="w-full bg-gold hover:bg-[#b8860b] text-white font-bold py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-colors"
  >
  <HeartHandshake size={20} />
  Partner Today

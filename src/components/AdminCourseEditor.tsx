@@ -28,7 +28,7 @@ import { getTenantScope } from '../utils/tenant-scope';
 // ═══════════════════════════════════════════════
 // CONSTANTS
 // ═══════════════════════════════════════════════
-const GOLD = "#C9963A";
+const GOLD = "var(--brand-color, #C9963A)";
 const GOLD_LIGHT = "#FBF3E4";
 const GOLD_BTN = "linear-gradient(135deg, #C9963A, #D4A843)";
 const BG = "#F2F4F7";

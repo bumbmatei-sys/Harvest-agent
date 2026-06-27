@@ -215,7 +215,7 @@ export function CourseOverview({ course, authors, onBack, onStartLesson, complet
                               </div>
                             </div>
                             {isCurrent && (
-                              <svg width="16" height="16" viewBox="0 0 24 24" fill={GOLD} stroke="none">
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none" className="text-gold">
                                 <polygon points="8,5 19,12 8,19" />
                               </svg>
                             )}

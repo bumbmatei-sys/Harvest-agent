@@ -97,7 +97,7 @@ const NewsletterCampaigns: React.FC<NewsletterCampaignsProps> = ({ tenantId, onB
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 size={24} className="animate-spin text-[#B8962E]" />
+        <Loader2 size={24} className="animate-spin text-gold" />
       </div>
     );
   }
@@ -109,7 +109,7 @@ const NewsletterCampaigns: React.FC<NewsletterCampaignsProps> = ({ tenantId, onB
         <p className="text-sm text-gray-600 mb-4">{error}</p>
         <button
           onClick={onCreateNew}
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#B8962E] text-white rounded-xl text-sm font-semibold cursor-pointer hover:bg-[#a07820] transition-colors"
+          className="inline-flex items-center gap-2 px-5 py-2.5 bg-gold text-white rounded-xl text-sm font-semibold cursor-pointer hover:bg-[#a07820] transition-colors"
         >
           <Plus size={16} /> New Newsletter
         </button>
@@ -122,8 +122,8 @@ const NewsletterCampaigns: React.FC<NewsletterCampaignsProps> = ({ tenantId, onB
   if (!hasAny) {
     return (
       <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
-        <div className="w-16 h-16 mx-auto rounded-2xl bg-[#B8962E]/10 flex items-center justify-center mb-4">
-          <Mail size={28} className="text-[#B8962E]" />
+        <div className="w-16 h-16 mx-auto rounded-2xl bg-[color-mix(in_srgb,var(--brand-color)_10%,transparent)] flex items-center justify-center mb-4">
+          <Mail size={28} className="text-gold" />
         </div>
         <h3 className="text-lg font-bold text-gray-900 mb-2">No newsletters yet</h3>
         <p className="text-sm text-gray-500 mb-6 max-w-md mx-auto">
@@ -131,7 +131,7 @@ const NewsletterCampaigns: React.FC<NewsletterCampaignsProps> = ({ tenantId, onB
         </p>
         <button
           onClick={onCreateNew}
-          className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#B8962E] text-white rounded-xl text-sm font-semibold hover:bg-[#a07820] transition-colors cursor-pointer"
+          className="inline-flex items-center gap-2 px-6 py-2.5 bg-gold text-white rounded-xl text-sm font-semibold hover:bg-[#a07820] transition-colors cursor-pointer"
         >
           <Plus size={16} />
           Create Your First Newsletter

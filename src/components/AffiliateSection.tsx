@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Copy, Check, Share2, ExternalLink, TrendingUp, ChevronRight } from 'lucide-react';
 
-const GOLD = '#B8962E';
+const GOLD = 'var(--brand-color, #B8962E)';
 const GOLD_LIGHT = '#FBF3E4';
 
 interface AffiliateStatus {

@@ -79,8 +79,8 @@ const EnterpriseContactModal: React.FC<EnterpriseContactModalProps> = ({ isOpen,
 
         {/* Header */}
         <div className="bg-[#0b1121] pt-12 pb-8 px-6">
-          <div className="w-14 h-14 bg-[#d4a017]/20 rounded-2xl flex items-center justify-center mb-4">
-            <Building2 size={28} className="text-[#d4a017]" />
+          <div className="w-14 h-14 bg-[color-mix(in_srgb,var(--brand-color)_20%,transparent)] rounded-2xl flex items-center justify-center mb-4">
+            <Building2 size={28} className="text-gold" />
           </div>
           <h2 className="text-2xl font-bold text-white">Organization Plan</h2>
           <p className="text-gray-400 text-sm mt-1">Unlimited churches & AI assistants, custom pricing, dedicated support</p>
@@ -98,7 +98,7 @@ const EnterpriseContactModal: React.FC<EnterpriseContactModalProps> = ({ isOpen,
               </p>
               <button
                 onClick={handleClose}
-                className="w-full py-3 bg-[#d4a017] text-white font-bold rounded-xl hover:bg-[#b58812] transition-colors"
+                className="w-full py-3 bg-gold text-white font-bold rounded-xl hover:bg-[#b58812] transition-colors"
               >
                 Done
               </button>
@@ -114,7 +114,7 @@ const EnterpriseContactModal: React.FC<EnterpriseContactModalProps> = ({ isOpen,
                   required
                   placeholder="Pastor John"
                   maxLength={100}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-[#d4a017] text-gray-900"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-gold text-gray-900"
                 />
               </div>
 
@@ -127,7 +127,7 @@ const EnterpriseContactModal: React.FC<EnterpriseContactModalProps> = ({ isOpen,
                   required
                   placeholder="john@church.org"
                   maxLength={200}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-[#d4a017] text-gray-900"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-gold text-gray-900"
                 />
               </div>
 
@@ -140,7 +140,7 @@ const EnterpriseContactModal: React.FC<EnterpriseContactModalProps> = ({ isOpen,
                   required
                   placeholder="Grace Community Church"
                   maxLength={200}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-[#d4a017] text-gray-900"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-gold text-gray-900"
                 />
               </div>
 
@@ -153,7 +153,7 @@ const EnterpriseContactModal: React.FC<EnterpriseContactModalProps> = ({ isOpen,
                   min="1"
                   max="10000"
                   placeholder="e.g. 5"
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-[#d4a017] text-gray-900"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-gold text-gray-900"
                 />
               </div>
 
@@ -165,7 +165,7 @@ const EnterpriseContactModal: React.FC<EnterpriseContactModalProps> = ({ isOpen,
                   rows={3}
                   placeholder="Tell us about your needs..."
                   maxLength={2000}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-[#d4a017] text-gray-900 resize-none"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-gold text-gray-900 resize-none"
                 />
               </div>
 

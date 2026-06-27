@@ -246,7 +246,7 @@ const CampaignWidget: React.FC<CampaignWidgetProps> = ({ onDonate }) => {
                 value={customAmount}
                 onChange={e => { setCustomAmount(e.target.value); setSelectedAmount(null); }}
                 placeholder="Custom amount ($)"
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#d4a017]"
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold"
               />
             </div>
 
@@ -257,14 +257,14 @@ const CampaignWidget: React.FC<CampaignWidgetProps> = ({ onDonate }) => {
                 value={donorName}
                 onChange={e => setDonorName(e.target.value)}
                 placeholder="Your name"
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#d4a017]"
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold"
               />
               <input
                 type="email"
                 value={donorEmail}
                 onChange={e => setDonorEmail(e.target.value)}
                 placeholder="Your email *"
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#d4a017]"
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold"
               />
             </div>
 

@@ -448,7 +448,7 @@ const AdminAccounting: React.FC = () => {
               <select
                 value={yearFilter}
                 onChange={e => setYearFilter(e.target.value)}
-                className="border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-[#d4a017] bg-white"
+                className="border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-gold bg-white"
               >
                 <option value="all">All Years</option>
                 {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
@@ -498,7 +498,7 @@ const AdminAccounting: React.FC = () => {
               <select
                 value={statementYear}
                 onChange={e => setStatementYear(Number(e.target.value))}
-                className="border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-[#d4a017] bg-white"
+                className="border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-gold bg-white"
               >
                 {[...new Set([new Date().getFullYear(), ...availableYears.map(Number)])]
                   .sort((a, b) => b - a)
@@ -553,7 +553,7 @@ const AdminAccounting: React.FC = () => {
                         <td className="px-3 py-2 text-center text-gray-600">{s.donationCount}</td>
                         <td className="px-3 py-2 text-center">
                           {s.pdfUrl ? (
-                            <a href={s.pdfUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[#d4a017] hover:underline text-xs font-medium">
+                            <a href={s.pdfUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-gold hover:underline text-xs font-medium">
                               <Download size={12} /> Preview
                             </a>
                           ) : <span className="text-gray-300">—</span>}
@@ -590,10 +590,10 @@ const AdminAccounting: React.FC = () => {
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input value={search} onChange={e => setSearch(e.target.value)}
               placeholder="Search by name, email or receipt #..."
-              className="w-full pl-9 pr-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-[#d4a017]" />
+              className="w-full pl-9 pr-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-gold" />
           </div>
           <select value={typeFilter} onChange={e => setTypeFilter(e.target.value as any)}
-            className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#d4a017] bg-white">
+            className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold bg-white">
             <option value="all">All Types</option>
             <option value="donation_receipt">Donation Receipts</option>
             <option value="event_ticket">Event Tickets</option>

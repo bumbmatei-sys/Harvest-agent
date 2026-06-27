@@ -154,7 +154,7 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
           </button>
           <button
             onClick={handleNext}
-            className="flex items-center gap-1.5 px-4 py-2 bg-[#d4a017] text-white rounded-lg text-sm font-medium hover:bg-[#b8860b] transition-colors shadow-sm"
+            className="flex items-center gap-1.5 px-4 py-2 bg-gold text-white rounded-lg text-sm font-medium hover:bg-[#b8860b] transition-colors shadow-sm"
           >
             <span>Next</span>
             <ArrowRight size={16} />
@@ -247,7 +247,7 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
-                  className="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 focus:ring-2 focus:ring-[#d4a017] focus:border-transparent outline-none text-sm"
+                  className="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 focus:ring-2 focus:ring-gold focus:border-transparent outline-none text-sm"
                 >
                   <option value="" disabled>Select a category</option>
                   {availableCategories.map(cat => (
@@ -278,13 +278,13 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
                   value={newCategory}
                   onChange={(e) => setNewCategory(e.target.value)}
                   placeholder="Category name"
-                  className="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 focus:ring-2 focus:ring-[#d4a017] focus:border-transparent outline-none text-sm"
+                  className="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 focus:ring-2 focus:ring-gold focus:border-transparent outline-none text-sm"
                   autoFocus
                 />
                 <button
                   onClick={handleAddCategory}
                   disabled={!newCategory.trim()}
-                  className="px-3 py-2 bg-[#d4a017] text-white rounded-lg hover:bg-[#b8860b] transition-colors disabled:opacity-50 text-sm font-medium"
+                  className="px-3 py-2 bg-gold text-white rounded-lg hover:bg-[#b8860b] transition-colors disabled:opacity-50 text-sm font-medium"
                 >
                   Add
                 </button>
@@ -323,7 +323,7 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
               onChange={(e) => setNewTag(e.target.value)}
               onKeyDown={handleAddTag}
               placeholder="Type a tag and press Enter"
-              className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 focus:ring-2 focus:ring-[#d4a017] focus:border-transparent outline-none text-sm"
+              className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 focus:ring-2 focus:ring-gold focus:border-transparent outline-none text-sm"
             />
           </div>
 
@@ -334,7 +334,7 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
               type="datetime-local"
               value={scheduledDate}
               onChange={(e) => setScheduledDate(e.target.value)}
-              className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 focus:ring-2 focus:ring-[#d4a017] focus:border-transparent outline-none text-sm"
+              className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 focus:ring-2 focus:ring-gold focus:border-transparent outline-none text-sm"
             />
           </div>
         </div>
@@ -366,7 +366,7 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
           <button
             onClick={() => handleSave('published')}
             disabled={isSaving}
-            className="flex-[1.5] py-2.5 px-3 bg-[#d4a017] text-white rounded-lg text-sm font-medium hover:bg-[#b8860b] transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50 shadow-sm"
+            className="flex-[1.5] py-2.5 px-3 bg-gold text-white rounded-lg text-sm font-medium hover:bg-[#b8860b] transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50 shadow-sm"
           >
             <Send size={16} />
             <span>Publish Now</span>

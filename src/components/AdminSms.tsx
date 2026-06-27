@@ -6,7 +6,7 @@ import { db } from '../firebase';
 import { useAppStore } from '../store/useAppStore';
 import { authFetch } from '../utils/auth-fetch';
 
-const GOLD = '#B8962E';
+const GOLD = 'var(--brand-color, #B8962E)';
 
 type Group = 'all_members' | 'all_donors' | 'tag';
 
@@ -124,18 +124,18 @@ const AdminSms: React.FC = () => {
           <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-3">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Recipients</label>
-              <select value={group} onChange={e => setGroup(e.target.value as Group)} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:border-[#B8962E]">
+              <select value={group} onChange={e => setGroup(e.target.value as Group)} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:border-gold">
                 <option value="all_members">All Members</option>
                 <option value="all_donors">All Donors</option>
                 <option value="tag">Custom Tag</option>
               </select>
             </div>
             {group === 'tag' && (
-              <input value={tag} onChange={e => setTag(e.target.value)} placeholder="Tag name" className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#B8962E]" />
+              <input value={tag} onChange={e => setTag(e.target.value)} placeholder="Tag name" className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-gold" />
             )}
             <p className="text-xs text-gray-500">Will send to <strong>{recipientCount ?? '…'}</strong> contact(s) with a phone number.</p>
             <div>
-              <textarea value={message} onChange={e => setMessage(e.target.value)} placeholder="Your message…" rows={4} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#B8962E]" />
+              <textarea value={message} onChange={e => setMessage(e.target.value)} placeholder="Your message…" rows={4} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-gold" />
               <div className="flex justify-between text-xs text-gray-400 mt-1">
                 <span>{message.length} chars</span>
                 <span>{segments} SMS segment{segments > 1 ? 's' : ''}</span>
@@ -143,7 +143,7 @@ const AdminSms: React.FC = () => {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Schedule <span className="text-gray-400 font-normal">(optional)</span></label>
-              <input type="datetime-local" value={scheduledAt} onChange={e => setScheduledAt(e.target.value)} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#B8962E]" />
+              <input type="datetime-local" value={scheduledAt} onChange={e => setScheduledAt(e.target.value)} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-gold" />
             </div>
             <button onClick={send} disabled={sending} className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-white text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: GOLD }}>
               {sending ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
@@ -184,7 +184,7 @@ const AdminSms: React.FC = () => {
                   <span className="text-sm font-semibold text-gray-800">{t.label}</span>
                   <label className="relative inline-flex items-center cursor-pointer">
                     <input type="checkbox" className="sr-only peer" checked={!!tpl.enabled} onChange={e => setTpl(t.key, { enabled: e.target.checked })} />
-                    <div className="w-10 h-6 bg-gray-200 peer-checked:bg-[#B8962E] rounded-full peer transition-colors after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-4" />
+                    <div className="w-10 h-6 bg-gray-200 peer-checked:bg-gold rounded-full peer transition-colors after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-4" />
                   </label>
                 </div>
                 <textarea
@@ -192,7 +192,7 @@ const AdminSms: React.FC = () => {
                   onChange={e => setTpl(t.key, { text: e.target.value })}
                   placeholder={t.placeholder}
                   rows={2}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#B8962E]"
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gold"
                 />
               </div>
             );

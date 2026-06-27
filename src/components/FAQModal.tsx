@@ -26,9 +26,9 @@ const FAQItem: React.FC<{
  >
  <h4 className="text-sm font-bold text-gray-900 pr-4">{question}</h4>
  {isOpen ? (
- <ChevronUp size={20} className="text-[#d4a017] flex-shrink-0" />
+ <ChevronUp size={20} className="text-gold flex-shrink-0" />
  ) : (
- <ChevronDown size={20} className="text-[#d4a017] flex-shrink-0" />
+ <ChevronDown size={20} className="text-gold flex-shrink-0" />
  )}
  </button>
  

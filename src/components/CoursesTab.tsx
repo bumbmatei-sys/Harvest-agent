@@ -45,7 +45,7 @@ const CoursesTab: React.FC<CoursesTabProps> = ({ onOpenCourse }) => {
  if (loading) {
  return (
  <div className="flex flex-col items-center justify-center h-64">
- <div className="w-8 h-8 border-4 border-[#d4a017] border-t-transparent rounded-full animate-spin"></div>
+ <div className="w-8 h-8 border-4 border-gold border-t-transparent rounded-full animate-spin"></div>
  <p className="mt-4 text-gray-500 font-medium">Loading courses...</p>
  </div>
  );
@@ -98,7 +98,7 @@ const CoursesTab: React.FC<CoursesTabProps> = ({ onOpenCourse }) => {
  </div>
  
  <div className="p-5 flex flex-col flex-1">
- <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-2 group-hover:text-[#d4a017] transition-colors">
+ <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-2 group-hover:text-gold transition-colors">
  {course.title}
  </h3>
  
@@ -107,7 +107,7 @@ const CoursesTab: React.FC<CoursesTabProps> = ({ onOpenCourse }) => {
  </div>
  
  <div className="mt-auto pt-4 border-t border-gray-100 flex items-center justify-between">
- <div className="flex items-center gap-1.5 text-[#d4a017] text-sm font-bold">
+ <div className="flex items-center gap-1.5 text-gold text-sm font-bold">
  <span>View Course</span>
  <ChevronRight size={16} />
  </div>
