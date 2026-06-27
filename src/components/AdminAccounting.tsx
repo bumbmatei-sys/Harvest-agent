@@ -1,14 +1,15 @@
 "use client";
 import React, { useState, useEffect } from 'react';
-import { Receipt, TrendingUp, Download, Search, Filter, ArrowUpRight, FileText, Lock, ChevronRight, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
+import { Receipt, TrendingUp, Download, Search, ArrowUpRight, FileText, Lock, Loader2, CheckCircle, AlertCircle, RefreshCw, ExternalLink, Link2 } from 'lucide-react';
 import {
-  collection, query, where, orderBy, onSnapshot, limit, Timestamp
+  collection, query, orderBy, onSnapshot, limit, Timestamp
 } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { db } from '../firebase';
 import { getTenantScope } from '../utils/tenant-scope';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { useTenantOptional } from '../contexts/TenantContext';
+import { authFetch } from '../utils/auth-fetch';
 
 interface Invoice {
   id: string;
@@ -24,6 +25,8 @@ interface Invoice {
   tenantName: string;
   pdfUrl: string | null;
   status: 'pending' | 'generated' | 'sent';
+  quickbooksSyncStatus?: 'synced' | 'failed' | null;
+  quickbooksReceiptId?: string | null;
 }
 
 const TYPE_LABELS: Record<Invoice['type'], string> = {
@@ -55,6 +58,7 @@ const fmtDate = (ts: Timestamp | null) => {
 const AdminAccounting: React.FC = () => {
   const ctx = useTenantOptional();
   const isTaxReceiptsEnabled = ctx?.planFeatures?.taxReceipt ?? true;
+  const isQbEnabled = ctx?.planFeatures?.accountingTools ?? true;
 
   const [tenantId, setTenantId] = useState<string | null>(null);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -66,6 +70,108 @@ const AdminAccounting: React.FC = () => {
   // Annual receipt generation state
   const [generating, setGenerating] = useState(false);
   const [genResult, setGenResult] = useState<{ ok: boolean; msg: string } | null>(null);
+
+  // QuickBooks integration state
+  const [qbConnected, setQbConnected] = useState(false);
+  const [qbCompany, setQbCompany] = useState<string | null>(null);
+  const [qbLoading, setQbLoading] = useState(true);
+  const [qbConnecting, setQbConnecting] = useState(false);
+  const [qbSyncing, setQbSyncing] = useState(false);
+  const [qbLastSyncedAt, setQbLastSyncedAt] = useState<string | null>(null);
+  const [qbSyncMsg, setQbSyncMsg] = useState<{ ok: boolean; msg: string } | null>(null);
+  const [retryingId, setRetryingId] = useState<string | null>(null);
+
+  const loadQbStatus = async () => {
+    try {
+      const resp = await authFetch('/api/composio/quickbooks/status');
+      if (resp.ok) {
+        const data = await resp.json();
+        setQbConnected(!!data.connected);
+        setQbCompany(data.companyName || null);
+      }
+    } catch (e) {
+      console.warn('Failed to load QuickBooks status:', e);
+    } finally {
+      setQbLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadQbStatus();
+  }, []);
+
+  const handleConnectQb = async () => {
+    setQbConnecting(true);
+    try {
+      const resp = await authFetch('/api/composio/quickbooks/connect', { method: 'POST', body: '{}' });
+      const data = await resp.json();
+      if (resp.ok && data.redirectUrl) {
+        window.open(data.redirectUrl, '_blank', 'noopener');
+        // Poll for connection completion (up to ~2 min)
+        let tries = 0;
+        const poll = setInterval(async () => {
+          tries++;
+          try {
+            const s = await authFetch('/api/composio/quickbooks/status');
+            const sd = await s.json();
+            if (sd.connected) {
+              setQbConnected(true);
+              setQbCompany(sd.companyName || null);
+              clearInterval(poll);
+              setQbConnecting(false);
+            }
+          } catch { /* keep polling */ }
+          if (tries >= 40) { clearInterval(poll); setQbConnecting(false); }
+        }, 3000);
+      } else {
+        alert(data.error || 'Failed to start QuickBooks connection');
+        setQbConnecting(false);
+      }
+    } catch (e) {
+      console.error('QuickBooks connect error:', e);
+      alert('Failed to connect QuickBooks. Please try again.');
+      setQbConnecting(false);
+    }
+  };
+
+  const handleDisconnectQb = async () => {
+    if (!confirm('Disconnect QuickBooks? Synced receipts will remain in QuickBooks.')) return;
+    try {
+      await authFetch('/api/composio/quickbooks/disconnect', { method: 'POST', body: '{}' });
+      setQbConnected(false);
+      setQbCompany(null);
+    } catch (e) {
+      console.error('QuickBooks disconnect error:', e);
+    }
+  };
+
+  const handleSyncNow = async (invoiceId?: string) => {
+    if (invoiceId) setRetryingId(invoiceId); else setQbSyncing(true);
+    setQbSyncMsg(null);
+    try {
+      const resp = await authFetch('/api/quickbooks/sync', {
+        method: 'POST',
+        body: JSON.stringify(invoiceId ? { invoiceId } : {}),
+      });
+      const data = await resp.json();
+      if (resp.ok) {
+        setQbLastSyncedAt(new Date().toISOString());
+        setQbSyncMsg({
+          ok: data.failed === 0,
+          msg: invoiceId
+            ? (data.synced > 0 ? 'Invoice synced to QuickBooks' : 'Failed to sync invoice')
+            : `Synced ${data.synced} • ${data.failed} failed`,
+        });
+      } else {
+        setQbSyncMsg({ ok: false, msg: data.error || 'Sync failed' });
+      }
+    } catch (e: any) {
+      setQbSyncMsg({ ok: false, msg: e?.message || 'Sync failed' });
+    } finally {
+      setQbSyncing(false);
+      setRetryingId(null);
+    }
+  };
 
   const handleGenerateAnnualReceipts = async () => {
     if (!tenantId) return;
@@ -176,6 +282,71 @@ const AdminAccounting: React.FC = () => {
         </div>
       </div>
 
+      {/* QuickBooks Section */}
+      {isQbEnabled && (
+        <div className="mb-6">
+          <h3 className="text-sm font-bold text-gray-700 mb-3">QuickBooks</h3>
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+            {qbLoading ? (
+              <div className="flex items-center gap-2 text-sm text-gray-400"><Loader2 size={15} className="animate-spin" /> Checking connection…</div>
+            ) : qbConnected ? (
+              <div>
+                <div className="flex items-center justify-between flex-wrap gap-3">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle size={16} className="text-green-600" />
+                    <span className="text-sm font-medium text-gray-900">Connected{qbCompany ? ` — ${qbCompany}` : ''}</span>
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <a
+                      href="https://qbo.intuit.com"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold border border-gray-200 text-gray-700 hover:bg-gray-50"
+                    >
+                      <ExternalLink size={14} /> Open QB
+                    </a>
+                    <button
+                      onClick={() => handleSyncNow()}
+                      disabled={qbSyncing}
+                      className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
+                      style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}
+                    >
+                      {qbSyncing ? <><Loader2 size={14} className="animate-spin" /> Syncing…</> : <><RefreshCw size={14} /> Sync Now</>}
+                    </button>
+                    <button onClick={handleDisconnectQb} className="px-3 py-2 rounded-xl text-sm font-semibold text-red-600 hover:bg-red-50">
+                      Disconnect
+                    </button>
+                  </div>
+                </div>
+                {qbLastSyncedAt && (
+                  <p className="text-xs text-gray-400 mt-2">Last synced {new Date(qbLastSyncedAt).toLocaleString()}</p>
+                )}
+                {qbSyncMsg && (
+                  <div className={`mt-3 p-3 rounded-xl text-sm flex items-center gap-2 ${
+                    qbSyncMsg.ok ? 'bg-green-50 text-green-700 border border-green-100' : 'bg-amber-50 text-amber-700 border border-amber-100'
+                  }`}>
+                    {qbSyncMsg.ok ? <CheckCircle size={14} /> : <AlertCircle size={14} />}
+                    {qbSyncMsg.msg}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="flex items-center justify-between flex-wrap gap-3">
+                <p className="text-sm text-gray-600">Connect QuickBooks to automatically sync donations and event payments as Sales Receipts.</p>
+                <button
+                  onClick={handleConnectQb}
+                  disabled={qbConnecting}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
+                  style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}
+                >
+                  {qbConnecting ? <><Loader2 size={14} className="animate-spin" /> Connecting…</> : <><Link2 size={14} /> Connect QuickBooks</>}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Tax Receipts Section */}
       <div className="mb-6">
         <div className="flex items-center justify-between mb-3">
@@ -269,6 +440,7 @@ const AdminAccounting: React.FC = () => {
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Type</th>
                     <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Amount</th>
                     <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+                    {isQbEnabled && <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">QuickBooks</th>}
                     <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
@@ -291,6 +463,26 @@ const AdminAccounting: React.FC = () => {
                           {inv.status}
                         </span>
                       </td>
+                      {isQbEnabled && (
+                        <td className="px-4 py-3 text-center">
+                          {inv.quickbooksSyncStatus === 'synced' ? (
+                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700">synced</span>
+                          ) : inv.quickbooksSyncStatus === 'failed' ? (
+                            <button
+                              onClick={() => handleSyncNow(inv.id)}
+                              disabled={!qbConnected || retryingId === inv.id}
+                              className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-100 text-red-700 hover:bg-red-200 disabled:opacity-50"
+                              title={qbConnected ? 'Retry sync' : 'Connect QuickBooks to retry'}
+                            >
+                              {retryingId === inv.id ? <Loader2 size={10} className="animate-spin" /> : <RefreshCw size={10} />} retry
+                            </button>
+                          ) : (inv.type === 'donation_receipt' || inv.type === 'event_ticket') ? (
+                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-400">not synced</span>
+                          ) : (
+                            <span className="text-gray-300">—</span>
+                          )}
+                        </td>
+                      )}
                       <td className="px-4 py-3 text-right">
                         <div className="flex items-center justify-end gap-1">
                           {inv.pdfUrl && (
