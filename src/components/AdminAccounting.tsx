@@ -29,6 +29,19 @@ interface Invoice {
   quickbooksReceiptId?: string | null;
 }
 
+interface GivingStatement {
+  id: string;
+  donorId: string;
+  donorEmail: string;
+  donorName: string;
+  year: number;
+  totalAmount: number; // cents
+  donationCount: number;
+  pdfUrl?: string | null;
+  sentAt?: string | null;
+  status: 'generated' | 'sent' | 'failed';
+}
+
 const TYPE_LABELS: Record<Invoice['type'], string> = {
   donation_receipt: 'Donation Receipt',
   event_ticket: 'Event Ticket',
@@ -80,6 +93,57 @@ const AdminAccounting: React.FC = () => {
   const [qbLastSyncedAt, setQbLastSyncedAt] = useState<string | null>(null);
   const [qbSyncMsg, setQbSyncMsg] = useState<{ ok: boolean; msg: string } | null>(null);
   const [retryingId, setRetryingId] = useState<string | null>(null);
+
+  // Giving statements state
+  const [statements, setStatements] = useState<GivingStatement[]>([]);
+  const [statementYear, setStatementYear] = useState<number>(new Date().getFullYear());
+  const [genStatements, setGenStatements] = useState(false);
+  const [sendingAll, setSendingAll] = useState(false);
+  const [resendingDonor, setResendingDonor] = useState<string | null>(null);
+  const [statementsMsg, setStatementsMsg] = useState<{ ok: boolean; msg: string } | null>(null);
+
+  const runStatements = async (opts: { send: boolean; donorEmail?: string }) => {
+    setStatementsMsg(null);
+    try {
+      const resp = await authFetch('/api/giving-statements/generate', {
+        method: 'POST',
+        body: JSON.stringify({ year: statementYear, send: opts.send, ...(opts.donorEmail ? { donorEmail: opts.donorEmail } : {}) }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) {
+        setStatementsMsg({ ok: false, msg: data.error || 'Failed to generate statements' });
+        return;
+      }
+      if (data.totalDonors === 0) {
+        setStatementsMsg({ ok: false, msg: data.message || `No donations found for ${statementYear}` });
+        return;
+      }
+      const emailNote = opts.send
+        ? (data.emailConfigured ? ` — emailed ${data.sent}` : ' (email not configured)')
+        : '';
+      setStatementsMsg({ ok: true, msg: `Generated ${data.generated} statement(s)${emailNote}` });
+    } catch (e: any) {
+      setStatementsMsg({ ok: false, msg: e?.message || 'Failed to generate statements' });
+    }
+  };
+
+  const handleGenerateStatements = async () => {
+    setGenStatements(true);
+    await runStatements({ send: false });
+    setGenStatements(false);
+  };
+
+  const handleSendAll = async () => {
+    setSendingAll(true);
+    await runStatements({ send: true });
+    setSendingAll(false);
+  };
+
+  const handleResendStatement = async (donorEmail: string) => {
+    setResendingDonor(donorEmail);
+    await runStatements({ send: true, donorEmail });
+    setResendingDonor(null);
+  };
 
   const loadQbStatus = async () => {
     try {
@@ -219,6 +283,24 @@ const AdminAccounting: React.FC = () => {
     });
     return () => { cancelled = true; unsub?.(); };
   }, []);
+
+  // Subscribe to giving statements for the selected year
+  useEffect(() => {
+    if (!tenantId) return;
+    const q = query(
+      collection(db, 'tenants', tenantId, 'givingStatements'),
+      orderBy('generatedAt', 'desc'),
+      limit(1000)
+    );
+    const unsub = onSnapshot(q, snap => {
+      setStatements(snap.docs.map(d => ({ id: d.id, ...d.data() }) as GivingStatement));
+    }, err => {
+      try { handleFirestoreError(err, OperationType.GET, 'givingStatements'); } catch (e) { console.error(e); }
+    });
+    return () => unsub();
+  }, [tenantId]);
+
+  const yearStatements = statements.filter(s => s.year === statementYear);
 
   const now = new Date();
   const thisMonth = invoices.filter(inv => {
@@ -403,6 +485,102 @@ const AdminAccounting: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Giving Statements Section */}
+      {isTaxReceiptsEnabled && (
+        <div className="mb-6">
+          <h3 className="text-sm font-bold text-gray-700 mb-3">Giving Statements</h3>
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+            <p className="text-sm text-gray-600 mb-4">
+              Generate annual giving statements (charitable contribution receipts) for each donor, then email them as PDFs.
+            </p>
+            <div className="flex gap-3 flex-wrap items-center">
+              <select
+                value={statementYear}
+                onChange={e => setStatementYear(Number(e.target.value))}
+                className="border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-[#d4a017] bg-white"
+              >
+                {[...new Set([new Date().getFullYear(), ...availableYears.map(Number)])]
+                  .sort((a, b) => b - a)
+                  .map(y => <option key={y} value={y}>{y}</option>)}
+              </select>
+              <button
+                className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
+                style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}
+                onClick={handleGenerateStatements}
+                disabled={genStatements || sendingAll}
+              >
+                {genStatements ? <><Loader2 size={15} className="animate-spin" /> Generating…</> : <><FileText size={15} /> Generate Statements</>}
+              </button>
+              <button
+                className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border border-gray-200 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                onClick={handleSendAll}
+                disabled={genStatements || sendingAll}
+              >
+                {sendingAll ? <><Loader2 size={15} className="animate-spin" /> Sending…</> : <>Send All</>}
+              </button>
+            </div>
+            {statementsMsg && (
+              <div className={`mt-3 p-3 rounded-xl text-sm flex items-center gap-2 ${
+                statementsMsg.ok ? 'bg-green-50 text-green-700 border border-green-100' : 'bg-amber-50 text-amber-700 border border-amber-100'
+              }`}>
+                {statementsMsg.ok ? <CheckCircle size={14} /> : <AlertCircle size={14} />}
+                {statementsMsg.msg}
+              </div>
+            )}
+
+            {yearStatements.length > 0 && (
+              <div className="mt-4 overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-100">
+                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Donor</th>
+                      <th className="px-3 py-2 text-right text-xs font-semibold text-gray-500 uppercase">Total</th>
+                      <th className="px-3 py-2 text-center text-xs font-semibold text-gray-500 uppercase"># Gifts</th>
+                      <th className="px-3 py-2 text-center text-xs font-semibold text-gray-500 uppercase">Statement</th>
+                      <th className="px-3 py-2 text-center text-xs font-semibold text-gray-500 uppercase">Status</th>
+                      <th className="px-3 py-2 text-right text-xs font-semibold text-gray-500 uppercase">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {yearStatements.map(s => (
+                      <tr key={s.id} className="hover:bg-gray-50">
+                        <td className="px-3 py-2">
+                          <div className="font-medium text-gray-900">{s.donorName}</div>
+                          <div className="text-xs text-gray-400">{s.donorEmail}</div>
+                        </td>
+                        <td className="px-3 py-2 text-right font-semibold text-gray-900">{fmt(s.totalAmount / 100)}</td>
+                        <td className="px-3 py-2 text-center text-gray-600">{s.donationCount}</td>
+                        <td className="px-3 py-2 text-center">
+                          {s.pdfUrl ? (
+                            <a href={s.pdfUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[#d4a017] hover:underline text-xs font-medium">
+                              <Download size={12} /> Preview
+                            </a>
+                          ) : <span className="text-gray-300">—</span>}
+                        </td>
+                        <td className="px-3 py-2 text-center">
+                          <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                            s.status === 'sent' ? 'bg-blue-100 text-blue-700' : s.status === 'failed' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
+                          }`}>{s.status}</span>
+                        </td>
+                        <td className="px-3 py-2 text-right">
+                          <button
+                            onClick={() => handleResendStatement(s.donorEmail)}
+                            disabled={resendingDonor === s.donorEmail}
+                            className="text-xs font-medium text-gray-600 hover:text-gray-900 disabled:opacity-50"
+                          >
+                            {resendingDonor === s.donorEmail ? 'Sending…' : 'Resend Email'}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Invoices List */}
       <div>

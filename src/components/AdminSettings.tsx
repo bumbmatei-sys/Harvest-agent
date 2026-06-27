@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Crown, Palette, Globe, CreditCard, Settings2, Bot, Plug, AlertTriangle, Share2, Check, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Crown, Palette, Globe, CreditCard, Settings2, Bot, Plug, AlertTriangle, Share2, Check, ChevronRight, FileText } from 'lucide-react';
 import { TenantPlan } from '../types/tenant.types';
 import { getPlanFeatures, PlanFeatures } from '../utils/plan-features';
 import AffiliateSection from './AffiliateSection';
@@ -10,6 +10,7 @@ import BrandingSection from './settings/BrandingSection';
 import DomainSection from './settings/DomainSection';
 import PaymentSection from './settings/PaymentSection';
 import OnboardingSection from './settings/OnboardingSection';
+import GivingStatementsSection from './settings/GivingStatementsSection';
 import AiAssistantSection from './settings/AiAssistantSection';
 import IntegrationsSection from './settings/IntegrationsSection';
 
@@ -120,6 +121,13 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
       label: 'Onboarding Questions',
       icon: <Settings2 size={20} className="text-green-600" />,
       content: <OnboardingSection />,
+    },
+    {
+      id: 'giving-statements',
+      label: 'Giving Statements',
+      icon: <FileText size={20} className="text-[#B8962E]" />,
+      content: <GivingStatementsSection />,
+      hidden: !currentFeatures?.taxReceipt,
     },
     {
       id: 'ai-assistant',
