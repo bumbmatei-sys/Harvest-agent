@@ -7,7 +7,6 @@ import {
   getPlanDisplayName,
   PLAN_DISPLAY_NAMES,
   PLAN_PRICING,
-  PLAN_DONATION_RETENTION,
   AI_ASSISTANT_ADDON_PRICING,
   formatPlanPrice,
   PlanFeatures,
@@ -27,7 +26,7 @@ const PLAN_ORDER: TenantPlan[] = ['plus', 'pro', 'max', 'ultra'];
 const PLANS: { id: TenantPlan; name: string; monthlyPrice: string; yearlyPrice: string; yearlyPromo: string; yearlyOriginal: string; icon: any; color: string; popular?: boolean; comingSoon: string[] }[] = [
   { id: 'plus', name: 'Individual', monthlyPrice: '$59/mo', yearlyPrice: '$590/yr', yearlyPromo: '$590', yearlyOriginal: '$708', icon: Zap, color: '#6366f1', comingSoon: [] },
   { id: 'pro', name: 'Small Team', monthlyPrice: '$119/mo', yearlyPrice: '$1,190/yr', yearlyPromo: '$1,190', yearlyOriginal: '$1,428', icon: Crown, color: '#d4a017', comingSoon: [] },
-  { id: 'max', name: 'Community', monthlyPrice: '$239/mo', yearlyPrice: '$2,390/yr', yearlyPromo: '$2,390', yearlyOriginal: '$2,868', icon: Star, color: '#8b5cf6', popular: true, comingSoon: ['Automated Devotional'] },
+  { id: 'max', name: 'Community', monthlyPrice: '$239/mo', yearlyPrice: '$2,390/yr', yearlyPromo: '$2,390', yearlyOriginal: '$2,868', icon: Star, color: '#8b5cf6', popular: true, comingSoon: [] },
   { id: 'ultra', name: 'Ministry', monthlyPrice: '$479/mo', yearlyPrice: '$4,790/yr', yearlyPromo: '$4,790', yearlyOriginal: '$5,748', icon: Building2, color: '#b45309', comingSoon: ['Automated Blog Articles'] },
 ];
 
@@ -39,13 +38,15 @@ const PLAN_META = Object.fromEntries(PLANS.map((p) => [p.id, p])) as Record<
 
 const FEATURE_COMPARISON: { key: keyof PlanFeatures; label: string; format?: (v: any) => string }[] = [
   { key: 'blog', label: 'Blog' },
+  { key: 'pwaApp', label: 'Mobile App (PWA)' },
   { key: 'aiChat', label: 'AI Chat' },
   { key: 'aiKnowledge', label: 'AI Knowledge Base' },
   { key: 'map', label: 'Church Map' },
   { key: 'newsletterAutomation', label: 'Newsletter' },
   { key: 'maxCourses', label: 'Courses', format: (v) => v === -1 ? 'Unlimited' : `${v}` },
   { key: 'maxAdmins', label: 'Admin Accounts', format: (v) => v === -1 ? 'Unlimited' : `${v}` },
-  { key: 'customDomain', label: 'Custom Branding' },
+  { key: 'customBranding', label: 'Custom Branding' },
+  { key: 'customDomain', label: 'Custom Domain' },
   { key: 'aiAssistant', label: 'AI Assistant', format: (v) => v === -1 ? 'Unlimited' : v === 0 ? '—' : `${v}` },
   { key: 'maxChurches', label: 'Churches', format: (v) => v === -1 ? 'Unlimited' : `${v}` },
   { key: 'fundraising', label: 'Fundraising' },
@@ -53,12 +54,19 @@ const FEATURE_COMPARISON: { key: keyof PlanFeatures; label: string; format?: (v:
   { key: 'docs', label: 'Notes' },
   { key: 'crm', label: 'CRM (Donors & Members)' },
   { key: 'accountingTools', label: 'Accounting Tools' },
-  { key: 'communityGroups', label: 'Community Groups' },
   { key: 'taxReceipt', label: 'Tax Receipts' },
+  { key: 'givingStatements', label: 'Giving Statements' },
+  { key: 'customForms', label: 'Custom Forms → CRM' },
+  { key: 'checkInSystem', label: 'Check-In (QR)' },
+  { key: 'livestream', label: 'Livestream + Live Giving' },
+  { key: 'smsAutomation', label: 'SMS Automation' },
+  { key: 'sermonNotes', label: 'Sermon Notes → Livestream' },
+  { key: 'automatedBlog', label: 'Automated Blog Articles' },
+  { key: 'communityGroups', label: 'Community Groups' },
+  { key: 'donationRetention', label: 'Donation Retention', format: (v) => `${v}%` },
 ];
 
 const SOON_FEATURES: { label: string; plans: TenantPlan[] }[] = [
-  { label: 'Automated Devotional', plans: ['max', 'ultra'] },
   { label: 'Automated Blog Articles', plans: ['ultra'] },
 ];
 
@@ -195,7 +203,6 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
           const monthlyPrice = formatPlanPrice(planId, 'monthly');
           const displayPrice = formatPlanPrice(planId, billingPeriod);
           const yearlyOriginalUsd = `$${(PLAN_PRICING[planId].monthlyUsd * 12).toLocaleString()}/yr`;
-          const donationPct = PLAN_DONATION_RETENTION[planId];
           const isCurrent = planId === currentPlan;
           const isDowngrade = PLAN_ORDER.indexOf(planId) < PLAN_ORDER.indexOf(currentPlan ?? 'plus');
 
@@ -263,11 +270,6 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
                     ))}
                   </div>
                 )}
-
-                <div className="flex items-center justify-between text-sm pt-2 border-t border-gray-100">
-                  <span className="text-gray-900 font-semibold">Donation retention</span>
-                  <span className="text-green-600 font-bold">{plan.id === 'plus' ? '90%' : plan.id === 'pro' ? '95%' : '100%'} to you</span>
-                </div>
               </div>
 
               <button
