@@ -31,6 +31,12 @@ const PLANS: { id: TenantPlan; name: string; monthlyPrice: string; yearlyPrice: 
   { id: 'ultra', name: 'Ministry', monthlyPrice: '$479/mo', yearlyPrice: '$4,790/yr', yearlyPromo: '$4,790', yearlyOriginal: '$5,748', icon: Building2, color: '#b45309', comingSoon: ['Automated Blog Articles'] },
 ];
 
+// Keyed lookup so we can resolve plan metadata by id (icon/color/popular).
+const PLAN_META = Object.fromEntries(PLANS.map((p) => [p.id, p])) as Record<
+  TenantPlan,
+  (typeof PLANS)[number]
+>;
+
 const FEATURE_COMPARISON: { key: keyof PlanFeatures; label: string; format?: (v: any) => string }[] = [
   { key: 'blog', label: 'Blog' },
   { key: 'aiChat', label: 'AI Chat' },
@@ -44,7 +50,7 @@ const FEATURE_COMPARISON: { key: keyof PlanFeatures; label: string; format?: (v:
   { key: 'maxChurches', label: 'Churches', format: (v) => v === -1 ? 'Unlimited' : `${v}` },
   { key: 'fundraising', label: 'Fundraising' },
   { key: 'eventRegistration', label: 'Event Registration' },
-  { key: 'docs', label: 'Docs' },
+  { key: 'docs', label: 'Notes' },
   { key: 'crm', label: 'CRM (Donors & Members)' },
   { key: 'accountingTools', label: 'Accounting Tools' },
   { key: 'communityGroups', label: 'Community Groups' },
@@ -183,6 +189,7 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
       >
         {PLAN_ORDER.map((planId) => {
           const meta = PLAN_META[planId];
+          const plan = meta;
           const features = getPlanFeatures(planId);
           const name = PLAN_DISPLAY_NAMES[planId];
           const monthlyPrice = formatPlanPrice(planId, 'monthly');
@@ -227,7 +234,7 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
               </div>
 
               <div className="space-y-2 mb-5">
-                {FEATURE_ROWS.map(({ key, label, format }) => {
+                {FEATURE_COMPARISON.map(({ key, label, format }) => {
                   const value = features[key];
                   const isPositive = key === 'maxChurches'
                     ? (value as number) !== 1
@@ -328,7 +335,7 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
               </tr>
             </thead>
             <tbody>
-              {FEATURE_ROWS.map(({ key, label, format }) => (
+              {FEATURE_COMPARISON.map(({ key, label, format }) => (
                 <tr key={key} className="border-b border-gray-50">
                   <td className="py-3 px-3 text-gray-900 font-medium">{label}</td>
                   {PLAN_ORDER.map(planId => {

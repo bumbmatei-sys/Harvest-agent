@@ -28,6 +28,7 @@ import { TenantProvider, useTenant } from './contexts/TenantContext';
 import { useClaimsFreshness } from './hooks/useClaimsFreshness';
 import { isSuperAdminEmail } from './utils/super-admins';
 import { useAppStore } from './store/useAppStore';
+import { PLATFORM_TENANT_ID } from './utils/tenant-scope';
 
 /** Paths that represent the auth / onboarding funnel (used to decide redirects). */
 const FUNNEL_PATHS = ['/auth', '/onboarding', '/church-onboarding'];
@@ -94,10 +95,17 @@ const AppInner: React.FC = () => {
     tenantPlan,
   } = useAppStore();
 
-  // Sync tenantId from TenantContext into the Zustand store
+  // Sync tenantId from TenantContext into the Zustand store.
+  // On the apex/root domain there is no subdomain tenant. The apex IS the platform
+  // tenant, so a signed-in super admin must operate as `harvest` (PLATFORM_TENANT_ID),
+  // otherwise every tenant-scoped write (events, forms, check-in, livestream, SMS, CRM)
+  // silently no-ops on a null tenant.
   useEffect(() => {
-    setCurrentTenant(null, tenantId);
-  }, [tenantId, setCurrentTenant]);
+    const effectiveTenantId =
+      tenantId ||
+      (isSuperAdminEmail(auth.currentUser?.email) ? PLATFORM_TENANT_ID : null);
+    setCurrentTenant(null, effectiveTenantId);
+  }, [tenantId, isAuthReady, setCurrentTenant]);
 
   const signupParam = typeof window !== 'undefined'
     ? new URLSearchParams(window.location.search).get('signup') : null;
@@ -146,10 +154,11 @@ const AppInner: React.FC = () => {
               // PWA / refresh persistence: only redirect away from the auth funnel.
               // A deep link (e.g. /admin/crm) on refresh is left intact so the user
               // stays on the page they were on.
-              const homeBase = isAdminDomain ? '/admin' : '/';
+              const hasAdminRole = ADMIN_ROLES.includes(role) || isSuperAdminEmail(user?.email);
+              const homeBase = (isAdminDomain || hasAdminRole) ? '/admin' : '/';
               if (FUNNEL_PATHS.includes(path)) {
                 navigate(homeBase, { replace: true });
-              } else if (path === '/' && isAdminDomain) {
+              } else if (path === '/' && (isAdminDomain || hasAdminRole)) {
                 navigate('/admin', { replace: true });
               }
               // else: keep the current deep-linked path

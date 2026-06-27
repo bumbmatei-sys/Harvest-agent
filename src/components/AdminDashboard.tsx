@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { LayoutDashboard, Church, FileText, Rss, BrainCircuit, Inbox, GraduationCap, ChevronLeft, ChevronRight, Building2, Settings, MoreHorizontal, Mail, SlidersHorizontal, Heart, Users, MessageSquare, Receipt, CalendarCheck, ShieldCheck, ClipboardList, QrCode, Radio } from 'lucide-react';
+import { LayoutDashboard, Church, FileText, Rss, BrainCircuit, Inbox, GraduationCap, ChevronLeft, ChevronRight, Building2, Settings, MoreHorizontal, Mail, SlidersHorizontal, Heart, Users, MessageSquare, Receipt, CalendarCheck, ShieldCheck, ClipboardList, QrCode, Radio, ExternalLink } from 'lucide-react';
 import AdminBlog from './AdminBlog';
 import AdminPosts from './AdminPosts';
 import AdminInbox from './AdminInbox';
@@ -184,7 +184,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
     // Docs (TipTap)
     (isSuperAdmin || !isTenantAdmin || (features && features.docs)) &&
       hasFullAccess &&
-      { id: 'docs', label: 'Docs', icon: FileText },
+      { id: 'docs', label: 'Notes', icon: FileText },
     // CRM (includes user registration analytics as a sub-tab)
     (isSuperAdmin || !isTenantAdmin || (features && features.crm)) &&
       hasFullAccess &&
@@ -390,6 +390,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
         {/* Desktop utility header — quick access to Settings & Inbox (no logo/title) */}
         <div className="hidden lg:flex bg-white px-8 py-2 items-center justify-end gap-3 border-b border-gray-100 z-10 w-full">
           <button
+            onClick={() => onNavigate('home')}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold border border-gray-200 text-gray-700 hover:bg-gray-50"
+          >
+            <ExternalLink size={15} /> View App
+          </button>
+          <button
             onClick={() => go('settings')}
             className="text-gray-500 hover:text-gray-900 transition-colors"
             style={activeTab === 'settings' ? { color: 'var(--brand-color, #d4a017)' } : undefined}
@@ -480,7 +486,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
           ) : activeTab === 'docs' ? (
             (isSuperAdmin || !isTenantAdmin || (features && features.docs))
               ? <div className="p-4 lg:p-0"><AdminDocs initialDocId={itemId} onItemConsumed={clearItemId} /></div>
-              : <PlanUpgradeScreen featureName="Docs" featureKey="docs" onBack={() => go('dashboard')} onUpgrade={() => go('settings')} />
+              : <PlanUpgradeScreen featureName="Notes" featureKey="docs" onBack={() => go('dashboard')} onUpgrade={() => go('settings')} />
           ) : activeTab === 'events' ? (
             (isSuperAdmin || !isTenantAdmin || (features && features.eventRegistration))
               ? <div className="p-4 lg:p-0"><AdminEvents /></div>
