@@ -128,3 +128,13 @@ describe('hasFeature', () => {
     expect(hasFeature('ultra', 'smsAutomation')).toBe(true);
   });
 });
+
+describe('PLAN_DONATION_RETENTION', () => {
+  // Source of truth: theharvest.site pricing "Donation Retention" row.
+  it('matches the marketing site retention tiers (90/95/100/100)', () => {
+    expect(PLAN_DONATION_RETENTION.plus).toBe(90);
+    expect(PLAN_DONATION_RETENTION.pro).toBe(95);
+    expect(PLAN_DONATION_RETENTION.max).toBe(100);
+    expect(PLAN_DONATION_RETENTION.ultra).toBe(100);
+  });
+});
