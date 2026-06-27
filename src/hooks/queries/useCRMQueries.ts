@@ -5,6 +5,14 @@ import type { Timestamp } from 'firebase/firestore';
 import { sortByString, sortByTime } from '../../utils/query-helpers';
 import { PLATFORM_TENANT_ID } from '../../utils/tenant-scope';
 
+/** CRM pipeline stages, from first contact through to deeply-invested leader. */
+export type PipelineStage =
+  | 'new'         // Just added / first contact
+  | 'connected'   // Reached out, in conversation
+  | 'active'      // Regular attender / member
+  | 'giving'      // Active donor
+  | 'champion';   // Deeply invested, volunteer, leader
+
 export interface Contact {
   id: string;
   firstName: string;
@@ -12,6 +20,7 @@ export interface Contact {
   email: string;
   phone: string;
   type: 'donor' | 'member' | 'both';
+  stage?: PipelineStage; // defaults to 'new' if missing
   address?: {
     street?: string;
     city?: string;
@@ -58,13 +67,13 @@ export const useContacts = (tenantId: string | null | undefined, isAuthReady = t
         const seen = new Set<string>();
         rows = [];
         for (const d of [...nullSnap.docs, ...harvestSnap.docs]) {
-          if (!seen.has(d.id)) { seen.add(d.id); rows.push({ id: d.id, ...d.data() } as Contact); }
+          if (!seen.has(d.id)) { seen.add(d.id); rows.push({ id: d.id, stage: 'new', ...d.data() } as Contact); }
         }
       } else {
         const snap = await getDocs(
           query(collection(db, 'contacts'), where('tenantId', '==', tenantId), limit(500))
         );
-        rows = snap.docs.map(d => ({ id: d.id, ...d.data() }) as Contact);
+        rows = snap.docs.map(d => ({ id: d.id, stage: 'new', ...d.data() }) as Contact);
       }
       return sortByString(rows, 'lastName', 'asc');
     },

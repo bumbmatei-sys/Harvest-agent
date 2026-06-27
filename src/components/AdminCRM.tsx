@@ -2,7 +2,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Plus, Search, Edit2, Trash2, Users, Mail, Phone,
-  MessageSquare, DollarSign, PhoneCall, Calendar, Clock, ChevronRight, MapPin
+  MessageSquare, DollarSign, PhoneCall, Calendar, Clock, ChevronRight, MapPin,
+  List, LayoutGrid
 } from 'lucide-react';
 import {
   collection, addDoc, updateDoc, deleteDoc,
@@ -18,7 +19,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useAppStore } from '../store/useAppStore';
 import {
   useContacts, useContactActivities, useContactOnboardingAnswers,
-  type Contact, type ContactActivity,
+  type Contact, type ContactActivity, type PipelineStage,
 } from '../hooks/queries/useCRMQueries';
 import { useTenant as useTenantDoc } from '../hooks/queries/useTenantQueries';
 import { PLATFORM_TENANT_ID } from '../utils/tenant-scope';
@@ -46,9 +47,19 @@ const ACTIVITY_ICONS: Record<ContactActivity['type'], React.ReactNode> = {
 
 const emptyContact = {
   firstName: '', lastName: '', email: '', phone: '', type: 'member' as Contact['type'],
+  stage: 'new' as PipelineStage,
   notes: '', tags: [] as string[], totalDonated: 0,
   address: { street: '', city: '', state: '', zip: '', country: '' },
 };
+
+// Pipeline stage definitions: ordered left→right on the kanban board.
+const STAGES: { id: PipelineStage; label: string; color: string; bg: string }[] = [
+  { id: 'new',       label: 'New',       color: '#6B7280', bg: '#F3F4F6' },
+  { id: 'connected', label: 'Connected', color: '#3B82F6', bg: '#EFF6FF' },
+  { id: 'active',    label: 'Active',    color: '#8B5CF6', bg: '#F5F3FF' },
+  { id: 'giving',    label: 'Giving',    color: '#B8962E', bg: '#FBF3E4' },
+  { id: 'champion',  label: 'Champion',  color: '#10B981', bg: '#ECFDF5' },
+];
 
 const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n);
 
@@ -61,6 +72,103 @@ const fmtDate = (ts: Timestamp | null) => {
 };
 
 type ViewMode = 'list' | 'detail' | 'form';
+
+interface KanbanBoardProps {
+  contacts: Contact[];
+  stages: typeof STAGES;
+  onOpenContact: (c: Contact) => void;
+  onStageChange: (contactId: string, newStage: PipelineStage) => void;
+}
+
+// Horizontal pipeline board: one column per stage, contacts sorted into the
+// column matching their `stage` (defaulting to 'new'). The dotted footer on
+// each card is a quick "stage mover" — tap a dot to send the contact to that
+// stage without opening the detail view.
+const KanbanBoard: React.FC<KanbanBoardProps> = ({ contacts, stages, onOpenContact, onStageChange }) => {
+  return (
+    <div className="flex gap-3 overflow-x-auto pb-4 -mx-4 px-4">
+      {stages.map(stage => {
+        const stageContacts = contacts.filter(c => (c.stage || 'new') === stage.id);
+        return (
+          <div key={stage.id} className="flex-shrink-0 w-[220px]">
+            {/* Column header */}
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: stage.color }} />
+                <span className="text-xs font-bold text-gray-700">{stage.label}</span>
+              </div>
+              <span className="text-[10px] font-semibold text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full">
+                {stageContacts.length}
+              </span>
+            </div>
+
+            {/* Cards */}
+            <div className="space-y-2">
+              {stageContacts.map(c => (
+                <div
+                  key={c.id}
+                  onClick={() => onOpenContact(c)}
+                  className="bg-white rounded-xl border border-[#EDEBE8] p-3 cursor-pointer hover:shadow-sm hover:border-[#B8962E]/40 transition-all"
+                >
+                  {/* Avatar + name */}
+                  <div className="flex items-center gap-2 mb-2">
+                    <div
+                      className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
+                      style={{ backgroundColor: 'var(--brand-color, #B8962E)' }}
+                    >
+                      {(c.firstName?.[0] || c.lastName?.[0] || '?').toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-gray-900 truncate">
+                        {[c.firstName, c.lastName].filter(Boolean).join(' ') || 'Unnamed'}
+                      </p>
+                      <p className="text-[10px] text-gray-400 truncate">{c.email}</p>
+                    </div>
+                  </div>
+
+                  {/* Type badge */}
+                  <div className="flex items-center justify-between">
+                    <span
+                      className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${TYPE_COLORS[c.type]}`}
+                    >
+                      {TYPE_LABELS[c.type]}
+                    </span>
+                    {c.totalDonated > 0 && (
+                      <span className="text-[9px] font-bold text-[#B8962E]">
+                        {fmt(c.totalDonated)}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Stage mover — tap to move to that stage */}
+                  <div className="flex gap-1 mt-2 pt-2 border-t border-[#F0EDE8]">
+                    {stages.map(s => (
+                      <button
+                        key={s.id}
+                        onClick={(e) => { e.stopPropagation(); onStageChange(c.id, s.id); }}
+                        className="flex-1 h-1.5 rounded-full transition-colors"
+                        style={{
+                          backgroundColor: (c.stage || 'new') === s.id ? s.color : '#E5E7EB',
+                        }}
+                        title={s.label}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
+
+              {stageContacts.length === 0 && (
+                <div className="rounded-xl border-2 border-dashed border-[#EDEBE8] p-4 text-center">
+                  <p className="text-[10px] text-gray-400">No contacts</p>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
 
 interface AdminCRMProps {
   currentUserRole?: string;
@@ -92,6 +200,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
   const [actForm, setActForm] = useState({ type: 'note' as ContactActivity['type'], description: '', amount: '' });
   const [savingAct, setSavingAct] = useState(false);
   const [crmSubView, setCrmSubView] = useState<'contacts' | 'analytics'>('contacts');
+  const [listMode, setListMode] = useState<'list' | 'kanban'>('list');
 
   // Drive the shared header: in detail/form sub-views the back chevron steps
   // back within CRM; on the list view it shows the "Add Contact" action.
@@ -167,7 +276,8 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
     setIsEditing(true);
     setForm({
       firstName: c.firstName || '', lastName: c.lastName || '', email: c.email || '',
-      phone: c.phone || '', type: c.type, notes: c.notes || '', tags: c.tags || [],
+      phone: c.phone || '', type: c.type, stage: c.stage || 'new',
+      notes: c.notes || '', tags: c.tags || [],
       totalDonated: c.totalDonated || 0,
       address: { ...{ street: '', city: '', state: '', zip: '', country: '' }, ...c.address },
     });
@@ -192,6 +302,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
       const data = {
         firstName: form.firstName.trim(), lastName: form.lastName.trim(),
         email: form.email.trim(), phone: form.phone.trim(), type: form.type,
+        stage: form.stage || 'new',
         notes: form.notes.trim(), tags: form.tags, totalDonated: form.totalDonated,
         address: form.address, updatedAt: serverTimestamp(),
       };
@@ -219,6 +330,20 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
     } catch (e) { notifyError('Failed to delete contact', e); }
     setDeleteId(null);
     if (view === 'detail') setView('list');
+  };
+
+  const handleStageChange = async (contactId: string, newStage: PipelineStage) => {
+    try {
+      await updateDoc(doc(db, 'contacts', contactId), {
+        stage: newStage,
+        updatedAt: serverTimestamp(),
+      });
+      // Keep the open detail view in sync without waiting for the refetch.
+      if (selected?.id === contactId) setSelected({ ...selected, stage: newStage });
+      await queryClient.invalidateQueries({ queryKey: ['contacts', tenantId] });
+    } catch (err) {
+      notifyError('Failed to update stage', err);
+    }
   };
 
   const addActivity = async () => {
@@ -315,6 +440,25 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
               <option value="both">Donor & Member</option>
             </select>
           </div>
+          <div>
+            <label className="text-xs font-semibold text-gray-500 mb-2 block">Pipeline Stage</label>
+            <div className="flex gap-1.5 flex-wrap">
+              {STAGES.map(s => (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => setForm(f => ({ ...f, stage: s.id }))}
+                  className="px-3 py-1.5 rounded-full text-xs font-bold transition-colors"
+                  style={{
+                    backgroundColor: (form.stage || 'new') === s.id ? s.color : s.bg,
+                    color: (form.stage || 'new') === s.id ? '#fff' : s.color,
+                  }}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
+          </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="text-xs font-semibold text-gray-500 mb-1 block">Email</label>
@@ -388,6 +532,22 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
                   {TYPE_LABELS[selected.type]}
                 </span>
                 {selected.memberSince && <span className="text-xs text-gray-400">· Member since {fmtDate(selected.memberSince)}</span>}
+              </div>
+              {/* Stage selector in detail view */}
+              <div className="flex gap-1.5 flex-wrap mt-2">
+                {STAGES.map(s => (
+                  <button
+                    key={s.id}
+                    onClick={() => handleStageChange(selected.id, s.id)}
+                    className="px-2.5 py-1 rounded-full text-[10px] font-bold transition-colors"
+                    style={{
+                      backgroundColor: (selected.stage || 'new') === s.id ? s.color : s.bg,
+                      color: (selected.stage || 'new') === s.id ? '#fff' : s.color,
+                    }}
+                  >
+                    {s.label}
+                  </button>
+                ))}
               </div>
             </div>
           </div>
@@ -618,11 +778,32 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
 
       {/* Search + pill filters */}
       <div className="flex flex-col gap-3 mb-5">
-        <div className="relative">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input value={search} onChange={e => setSearch(e.target.value)}
-            placeholder="Search by name or email..."
-            className="w-full bg-white pl-9 pr-3 py-2.5 text-sm border border-[#EDEBE8] rounded-2xl focus:outline-none focus:border-[#B8962E]" />
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input value={search} onChange={e => setSearch(e.target.value)}
+              placeholder="Search by name or email..."
+              className="w-full bg-white pl-9 pr-3 py-2.5 text-sm border border-[#EDEBE8] rounded-2xl focus:outline-none focus:border-[#B8962E]" />
+          </div>
+          {/* List / Kanban view toggle */}
+          {crmSubView === 'contacts' && view === 'list' && (
+            <div className="flex gap-0.5 bg-gray-100 rounded-lg p-0.5 ml-auto flex-shrink-0">
+              <button
+                onClick={() => setListMode('list')}
+                className={`p-1.5 rounded-md transition-colors ${listMode === 'list' ? 'bg-white shadow-sm' : ''}`}
+                title="List view"
+              >
+                <List size={14} className={listMode === 'list' ? 'text-gray-900' : 'text-gray-400'} />
+              </button>
+              <button
+                onClick={() => setListMode('kanban')}
+                className={`p-1.5 rounded-md transition-colors ${listMode === 'kanban' ? 'bg-white shadow-sm' : ''}`}
+                title="Kanban view"
+              >
+                <LayoutGrid size={14} className={listMode === 'kanban' ? 'text-gray-900' : 'text-gray-400'} />
+              </button>
+            </div>
+          )}
         </div>
         <div className="flex gap-2">
           {([['all', 'All'], ['member', 'Members'], ['donor', 'Donors']] as ['all' | Contact['type'], string][]).map(([val, label]) => (
@@ -638,7 +819,14 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
         </div>
       </div>
 
-      {filtered.length === 0 ? (
+      {listMode === 'kanban' ? (
+        <KanbanBoard
+          contacts={filtered}
+          stages={STAGES}
+          onOpenContact={openDetail}
+          onStageChange={handleStageChange}
+        />
+      ) : filtered.length === 0 ? (
         <div className="text-center py-16 text-gray-400">
           <Users size={40} className="mx-auto mb-3 opacity-30" />
           <p className="font-medium">{search || filter !== 'all' ? 'No contacts match' : 'No contacts yet'}</p>
