@@ -120,4 +120,11 @@ describe('hasFeature', () => {
     expect(hasFeature('max', 'livestream')).toBe(false);
     expect(hasFeature('ultra', 'livestream')).toBe(true);
   });
+
+  it('smsAutomation is available on Ministry (ultra) only', () => {
+    expect(hasFeature('plus', 'smsAutomation')).toBe(false);
+    expect(hasFeature('pro', 'smsAutomation')).toBe(false);
+    expect(hasFeature('max', 'smsAutomation')).toBe(false);
+    expect(hasFeature('ultra', 'smsAutomation')).toBe(true);
+  });
 });

@@ -338,6 +338,20 @@ service cloud.firestore {
           allow read, write: if isTenantAdmin(tenantId);
         }
       }
+
+      // SMS broadcasts + logs — admin-only. Sends happen server-side via the
+      // admin SDK (/api/sms/*); admins read history client-side.
+      match /smsBroadcasts/{broadcastId} {
+        allow read, write: if isTenantAdmin(tenantId);
+
+        match /logs/{logId} {
+          allow read, write: if isTenantAdmin(tenantId);
+        }
+      }
+
+      match /smsLogs/{logId} {
+        allow read, write: if isTenantAdmin(tenantId);
+      }
     }
 
     // ─── Docs & Doc Folders ───────────────────────────────────────────
