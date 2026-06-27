@@ -161,7 +161,7 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     customBackground: true,
     newsletterAutomation: true,
     automatedNewsletter: true,
-    smsAutomation: false,
+    smsAutomation: true,
     aiAssistant: -1,
     fundraising: true,
     eventRegistration: true,

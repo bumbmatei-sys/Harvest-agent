@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { FieldValue } from 'firebase-admin/firestore';
 import { adminDb } from '@/lib/firebase-admin';
+import { sendAutomatedSms } from '@/lib/twilio';
 
 export const dynamic = 'force-dynamic';
 
@@ -55,6 +56,12 @@ export async function POST(request: NextRequest) {
           createdAt: FieldValue.serverTimestamp(),
           createdBy: 'checkin',
         });
+        // Automated SMS thank-you (if the matched contact has a phone & the
+        // tenant enabled the trigger). Best-effort — never blocks check-in.
+        const phone = match.data().phone as string | undefined;
+        if (phone) {
+          await sendAutomatedSms(tenantId, 'checkin_thankyou', phone, { name: firstName });
+        }
       }
     }
 

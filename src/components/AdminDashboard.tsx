@@ -25,6 +25,7 @@ import AdminAccounting from './AdminAccounting';
 import AdminForms from './AdminForms';
 import AdminCheckin from './AdminCheckin';
 import AdminLivestream from './AdminLivestream';
+import AdminSms from './AdminSms';
 import AdminEvents from './AdminEvents';
 import PlanUpgradeScreen from './PlanUpgradeScreen';
 import { AdminScreenHeader, AdminHeaderContext, AdminHeaderOverride } from './AdminScreenHeader';
@@ -204,6 +205,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
     (isSuperAdmin || !isTenantAdmin || (features && features.livestream)) &&
       hasFullAccess &&
       { id: 'livestream', label: 'Livestream', icon: Radio },
+    // SMS Automation (Twilio)
+    (isSuperAdmin || !isTenantAdmin || (features && features.smsAutomation)) &&
+      hasFullAccess &&
+      { id: 'sms', label: 'SMS', icon: MessageSquare },
     // Community (Rocket.Chat)
     (isSuperAdmin || !isTenantAdmin || (features && features.communityGroups)) &&
       hasFullAccess &&
@@ -500,6 +505,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
             (isSuperAdmin || !isTenantAdmin || (features && features.livestream))
               ? <div className="p-4 lg:p-0"><AdminLivestream /></div>
               : <PlanUpgradeScreen featureName="Livestream" featureKey="livestream" onBack={() => go('dashboard')} onUpgrade={() => go('settings')} />
+          ) : activeTab === 'sms' ? (
+            (isSuperAdmin || !isTenantAdmin || (features && features.smsAutomation))
+              ? <div className="p-4 lg:p-0"><AdminSms /></div>
+              : <PlanUpgradeScreen featureName="SMS" featureKey="smsAutomation" onBack={() => go('dashboard')} onUpgrade={() => go('settings')} />
           ) : activeTab === 'community' ? (
             (isSuperAdmin || !isTenantAdmin || (features && features.communityGroups))
               ? <div className="p-4 lg:p-0 h-full"><AdminCommunity onOpenAttachment={(type, id) => {
