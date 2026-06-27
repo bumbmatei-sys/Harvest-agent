@@ -1238,7 +1238,7 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
   // ── Thread views ── (header is rendered by the shared AdminScreenHeader override)
   if (openChannel && currentUser) {
     return (
-      <div className="h-full flex flex-col" style={{ minHeight: 'calc(100vh - 200px)' }}>
+      <div className="h-full flex flex-col min-h-0" style={{ minHeight: 'calc(100dvh - 200px)' }}>
         <ChannelThread channel={openChannel} tenantId={tenantId} includeNull={includeNullTenant} currentUser={currentUser} onOpenAttachment={onOpenAttachment} />
         {showChannelMembers && (
           <ChannelMembersSheet
@@ -1253,14 +1253,14 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
   }
   if (openAdminDm && currentUser) {
     return (
-      <div className="h-full flex flex-col" style={{ minHeight: 'calc(100vh - 200px)' }}>
+      <div className="h-full flex flex-col min-h-0" style={{ minHeight: 'calc(100dvh - 200px)' }}>
         <DmThread dm={openAdminDm} tenantId={tenantId} includeNull={includeNullTenant} currentUser={currentUser} otherName={getOtherName(openAdminDm)} onOpenAttachment={onOpenAttachment} />
       </div>
     );
   }
   if (openMemberDm && currentUser) {
     return (
-      <div className="h-full flex flex-col" style={{ minHeight: 'calc(100vh - 200px)' }}>
+      <div className="h-full flex flex-col min-h-0" style={{ minHeight: 'calc(100dvh - 200px)' }}>
         <DmThread dm={openMemberDm} tenantId={tenantId} includeNull={includeNullTenant} currentUser={currentUser} otherName={getOtherName(openMemberDm)} onOpenAttachment={onOpenAttachment} />
       </div>
     );
