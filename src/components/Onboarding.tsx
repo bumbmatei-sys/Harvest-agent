@@ -412,8 +412,14 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
       acceptedJesus: acceptedJesus === 'yes',
       onboardingCompleted: true,
     };
-    if (customQuestions.length > 0 && Object.values(customAnswers).some(v => v?.trim())) {
-      updateData.onboardingAnswers = customAnswers;
+    // Only persist real custom answers — the default_* ids are stored as
+    // top-level fields (displayName/country/city/phone/acceptedJesus), so
+    // writing them here too would just pollute onboardingAnswers with blanks.
+    const customOnly = Object.fromEntries(
+      Object.entries(customAnswers).filter(([k, v]) => !k.startsWith('default_') && !!v?.trim())
+    );
+    if (Object.keys(customOnly).length > 0) {
+      updateData.onboardingAnswers = customOnly;
     }
     await updateDoc(doc(db, 'users', user.uid), updateData);
   };
@@ -426,6 +432,10 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
   };
 
   const goNext = async () => {
+    // Don't let the user advance until the tenant's question set is finalized,
+    // otherwise a fast Enter on the default steps could be invalidated when the
+    // (possibly reordered/custom) questions load and the steps array recomputes.
+    if (!questionsLoaded) return;
     const err = validate(currentStep);
     if (err) { setError(err); return; }
     setError('');
@@ -580,7 +590,11 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
   };
 
   const heading = getHeading(currentStep);
-  const progressPct = Math.min(100, Math.round(((stepIndex + 1) / Math.max(steps.length, 1)) * 100));
+  // Keep the bar in step with the "Step X of N" counter (which counts only
+  // question steps); system steps are the home stretch, so show a full bar.
+  const progressPct = isSystemStep
+    ? 100
+    : Math.min(100, Math.round(((stepIndex + 1) / Math.max(questionStepCount, 1)) * 100));
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background-dark px-4 py-12 relative overflow-hidden">
@@ -671,7 +685,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                   <ArrowLeft size={16} /> Back
                 </button>
               ) : <div />}
-              <button onClick={goNext} disabled={loading}
+              <button onClick={goNext} disabled={loading || !questionsLoaded}
                 className="flex items-center gap-2 text-white font-bold py-3 px-6 rounded-xl transition-all shadow-lg disabled:opacity-50"
                 style={{ backgroundColor: GOLD, boxShadow: `0 10px 15px -3px ${GOLD}4D` }}>
                 {loading ? 'Saving…' : stepIndex === questionStepCount - 1 ? 'Finish' : 'Continue'}
