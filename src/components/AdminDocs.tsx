@@ -2,15 +2,16 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Plus, FileText, Trash2, Clock, FolderOpen, Folder, ChevronRight, ChevronDown,
-  PanelLeft, X, ArrowLeft, MoreVertical, Edit2, Move, Pin, MoreHorizontal, Share2, Check, Download, Upload
+  PanelLeft, X, ArrowLeft, MoreVertical, Edit2, Move, Pin, MoreHorizontal, Share2, Check, Download, Upload, Radio
 } from 'lucide-react';
 import {
   collection, query, where, addDoc, updateDoc, deleteDoc,
-  doc, serverTimestamp, Timestamp, getDocs, arrayUnion, arrayRemove
+  doc, getDoc, serverTimestamp, Timestamp, getDocs, arrayUnion, arrayRemove
 } from 'firebase/firestore';
 import { toast } from 'sonner';
 import { db, auth } from '../firebase';
 import { notifyError } from '../utils/notify';
+import { getPlanFeatures } from '../utils/plan-features';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAppStore } from '../store/useAppStore';
 import { useDocs, useDocFolders, useSharedDocs } from '../hooks/queries/useDocsQueries';
@@ -154,7 +155,9 @@ const EditorMenu: React.FC<{
   onRename: () => void;
   onDelete: () => void;
   onShare: () => void;
-}> = ({ title, content, createdBy, currentUid, isPinned, onPin, onRename, onDelete, onShare }) => {
+  onShareToLivestream: () => void;
+  canShareToLivestream: boolean;
+}> = ({ title, content, createdBy, currentUid, isPinned, onPin, onRename, onDelete, onShare, onShareToLivestream, canShareToLivestream }) => {
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -223,6 +226,12 @@ const EditorMenu: React.FC<{
                 <Share2 size={13} /> Share with Admins
               </button>
             </>
+          )}
+          {canShareToLivestream && (
+            <button onClick={() => { setOpen(false); onShareToLivestream(); }}
+              className="flex items-center gap-2 w-full px-3 py-2 text-xs text-gray-700 hover:bg-gray-50">
+              <Radio size={13} /> Share to Livestream
+            </button>
           )}
           <div className="border-t border-gray-100 my-1" />
           <button onClick={() => { setOpen(false); onPin(); }}
@@ -339,7 +348,10 @@ interface AdminDocsProps {
 const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) => {
   const { setHeaderAction } = useAdminHeader();
   const queryClient = useQueryClient();
-  const { currentTenantId: tenantId, isAuthReady } = useAppStore();
+  const { currentTenantId: tenantId, isAuthReady, tenantPlan, isSuperAdmin } = useAppStore();
+
+  // "Share to Livestream" is a Ministry-only feature (super admins always allowed).
+  const canShareToLivestream = isSuperAdmin || (tenantPlan ? getPlanFeatures(tenantPlan).sermonNotes : false);
 
   const { data: docs = [], isLoading: loading } = useDocs(tenantId, isAuthReady);
   const { data: folders = [] } = useDocFolders(tenantId, isAuthReady);
@@ -596,6 +608,36 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
     } catch (e) { notifyError('Failed to update sharing', e); }
   };
 
+  // Share this note to the currently-live stream so viewers see it read-only.
+  // There is only ever one active stream (livestream/current); if none is live,
+  // surface an error instead of silently no-op'ing.
+  const handleShareToLivestream = async (docId: string, title: string, contentHtml: string) => {
+    if (!tenantId) return;
+    try {
+      const currentRef = doc(db, 'tenants', tenantId, 'livestream', 'current');
+      const snap = await getDoc(currentRef);
+      const data = snap.data();
+
+      if (!data?.active) {
+        toast.error('No livestream is currently active. Start a stream first.');
+        return;
+      }
+
+      await updateDoc(currentRef, {
+        sermonNote: {
+          docId,
+          title: title || 'Untitled',
+          contentHtml,
+          sharedAt: serverTimestamp(),
+          sharedBy: auth.currentUser?.uid || '',
+        },
+      });
+      toast.success('Sermon notes shared to livestream');
+    } catch (e) {
+      notifyError('Failed to share to livestream', e);
+    }
+  };
+
   const rootFolders = folders.filter(f => !f.parentId);
   const rootDocs = docs.filter(d => !d.folderId).sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0));
   const folderDocs = activeFolderId
@@ -746,6 +788,8 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
             onRename={() => setRenameDocData({ id: openDoc.id, name: editTitle })}
             onDelete={() => setDeleteDocId(openDoc.id)}
             onShare={() => openShareModal(openDoc.id)}
+            canShareToLivestream={canShareToLivestream}
+            onShareToLivestream={() => handleShareToLivestream(openDoc.id, editTitle, editContent)}
           />
         }
       >

@@ -33,6 +33,13 @@ interface CurrentStream {
   viewerCount?: number;
   prayerCount?: number;
   sessionId?: string;
+  sermonNote?: {
+    docId: string;
+    title: string;
+    contentHtml: string;
+    sharedAt: Timestamp | null;
+    sharedBy: string;
+  } | null;
 }
 
 interface Prayer {
@@ -131,7 +138,8 @@ const AdminLivestream: React.FC = () => {
     if (!tenantId || !current?.sessionId) return;
     if (!confirm('End the stream? The live banner will disappear for all viewers.')) return;
     try {
-      await updateDoc(doc(db, 'tenants', tenantId, 'livestream', 'current'), { active: false });
+      // Clear any shared sermon note so it doesn't linger past the stream.
+      await updateDoc(doc(db, 'tenants', tenantId, 'livestream', 'current'), { active: false, sermonNote: null });
       await updateDoc(doc(db, 'tenants', tenantId, 'livestreamSessions', current.sessionId), { endedAt: serverTimestamp() });
     } catch (e) {
       console.error('Failed to end stream:', e);

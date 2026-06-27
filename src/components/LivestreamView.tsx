@@ -1,9 +1,10 @@
 "use client";
 import React, { useEffect, useRef, useState } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
-import { ChevronLeft, Heart, Eye } from 'lucide-react';
+import { ChevronLeft, Heart, Eye, BookOpen, ChevronDown } from 'lucide-react';
 import { db, auth } from '../firebase';
 import { authFetch } from '../utils/auth-fetch';
+import TipTapReadOnly from './TipTapReadOnly';
 
 interface LivestreamViewProps {
   tenantId: string | null;
@@ -18,6 +19,8 @@ const LivestreamView: React.FC<LivestreamViewProps> = ({ tenantId, onBack, onDon
   const [videoId, setVideoId] = useState('');
   const [title, setTitle] = useState('');
   const [viewerCount, setViewerCount] = useState(0);
+  const [sermonNote, setSermonNote] = useState<{ title: string; contentHtml: string } | null>(null);
+  const [notesOpen, setNotesOpen] = useState(false);
   const [showPrayer, setShowPrayer] = useState(false);
   const [prayerName, setPrayerName] = useState(auth.currentUser?.displayName || '');
   const [prayerText, setPrayerText] = useState('');
@@ -37,6 +40,11 @@ const LivestreamView: React.FC<LivestreamViewProps> = ({ tenantId, onBack, onDon
         setVideoId(data?.youtubeVideoId || '');
         setTitle(data?.title || '');
         setViewerCount(Math.max(0, data?.viewerCount || 0));
+        setSermonNote(
+          data?.sermonNote
+            ? { title: data.sermonNote.title || '', contentHtml: data.sermonNote.contentHtml || '' }
+            : null,
+        );
       },
       () => setActive(false),
     );
@@ -101,6 +109,32 @@ const LivestreamView: React.FC<LivestreamViewProps> = ({ tenantId, onBack, onDon
               allowFullScreen
             />
           </div>
+
+          {sermonNote && (
+            <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden mx-4 mt-3 max-w-2xl md:mx-auto">
+              <button
+                onClick={() => setNotesOpen(p => !p)}
+                className="flex items-center justify-between w-full px-4 py-3 text-white"
+              >
+                <span className="flex items-center gap-2 text-sm font-semibold">
+                  <BookOpen size={15} color={GOLD} /> Sermon Notes
+                </span>
+                <ChevronDown
+                  size={16}
+                  className="transition-transform"
+                  style={{ transform: notesOpen ? 'rotate(180deg)' : 'rotate(0deg)', color: GOLD }}
+                />
+              </button>
+              {notesOpen && (
+                <div className="px-4 pb-4 text-white/80 text-sm leading-relaxed">
+                  {sermonNote.title && (
+                    <h3 className="text-white font-semibold text-base mb-2">{sermonNote.title}</h3>
+                  )}
+                  <TipTapReadOnly contentHtml={sermonNote.contentHtml} />
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="p-4 space-y-3 max-w-2xl mx-auto">
             <button
