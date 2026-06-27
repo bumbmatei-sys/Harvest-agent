@@ -1,17 +1,22 @@
 "use client";
 import React, { useState, useEffect } from 'react';
-import { Globe } from 'lucide-react';
+import { Globe, CheckCircle2, Clock, XCircle } from 'lucide-react';
+import { authFetch } from '../../utils/auth-fetch';
 
 interface DomainSectionProps {
   hasCustomDomain: boolean;
   onUpgrade?: () => void;
 }
 
+type DomainStatus = 'pending' | 'verified' | 'failed' | null;
+
 export const DomainSection: React.FC<DomainSectionProps> = ({ hasCustomDomain, onUpgrade }) => {
   const [subdomain, setSubdomain] = useState('');
   const [customDomain, setCustomDomain] = useState('');
+  const [status, setStatus] = useState<DomainStatus>(null);
   const [domainSaving, setDomainSaving] = useState(false);
   const [domainSaved, setDomainSaved] = useState(false);
+  const [checking, setChecking] = useState(false);
   const [domainLoaded, setDomainLoaded] = useState(false);
 
   // Load current domain settings from tenant doc
@@ -30,6 +35,11 @@ export const DomainSection: React.FC<DomainSectionProps> = ({ hasCustomDomain, o
             if (tenantDoc.exists()) {
               const config = tenantDoc.data().config || {};
               if (config.customDomain) setCustomDomain(config.customDomain);
+              if (config.customDomainStatus) {
+                setStatus(config.customDomainStatus as DomainStatus);
+              } else if (config.customDomainVerified != null) {
+                setStatus(config.customDomainVerified ? 'verified' : 'pending');
+              }
             }
           }
         }
@@ -45,8 +55,131 @@ export const DomainSection: React.FC<DomainSectionProps> = ({ hasCustomDomain, o
     loadDomain();
   }, []);
 
+  const normalize = (d: string) =>
+    d.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '').replace(/^www\./, '');
+
+  const handleSave = async () => {
+    setDomainSaving(true);
+    setDomainSaved(false);
+    try {
+      const normalizedDomain = normalize(customDomain);
+
+      // Try Vercel provisioning first; it persists to Firestore + domains collection.
+      let provisioned = false;
+      if (normalizedDomain) {
+        try {
+          const resp = await authFetch('/api/domains/provision', {
+            method: 'POST',
+            body: JSON.stringify({ domain: normalizedDomain }),
+          });
+          if (resp.ok) {
+            const data = await resp.json();
+            setStatus((data.status as DomainStatus) || 'pending');
+            provisioned = true;
+          } else if (resp.status !== 501) {
+            const data = await resp.json().catch(() => ({}));
+            throw new Error(data.error || 'Failed to add domain');
+          }
+          // 501 = Vercel not configured; fall back to a plain Firestore write below.
+        } catch (provisionErr) {
+          if (provisionErr instanceof Error && provisionErr.message !== 'Failed to fetch') {
+            throw provisionErr;
+          }
+        }
+      }
+
+      // Fallback (or domain removal): write tenant config + domains lookup directly.
+      if (!provisioned) {
+        const { auth, db } = await import('../../firebase');
+        const { doc, getDoc, updateDoc, setDoc, deleteDoc } = await import('firebase/firestore');
+        if (auth.currentUser) {
+          const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
+          if (userDoc.exists()) {
+            const tenantId = userDoc.data().tenantId;
+            if (tenantId) {
+              const tenantDoc = await getDoc(doc(db, 'tenants', tenantId));
+              const oldDomain = tenantDoc.exists() ? tenantDoc.data().config?.customDomain : null;
+
+              await updateDoc(doc(db, 'tenants', tenantId), {
+                'config.customDomain': normalizedDomain || null,
+                'config.customDomainStatus': normalizedDomain ? 'pending' : null,
+                'config.customDomainVerified': normalizedDomain ? false : null,
+                updatedAt: new Date().toISOString(),
+              });
+
+              if (normalizedDomain) {
+                await setDoc(doc(db, 'domains', normalizedDomain), { tenantId });
+                setStatus('pending');
+              } else {
+                setStatus(null);
+              }
+              if (oldDomain && oldDomain !== normalizedDomain) {
+                await deleteDoc(doc(db, 'domains', oldDomain)).catch(() => {});
+              }
+            }
+          }
+        }
+      }
+
+      setDomainSaved(true);
+      setTimeout(() => setDomainSaved(false), 3000);
+    } catch (e) {
+      console.error('Failed to save domain settings:', e);
+      alert(e instanceof Error ? e.message : 'Failed to save domain settings. Please try again.');
+    } finally {
+      setDomainSaving(false);
+    }
+  };
+
+  const handleCheckStatus = async () => {
+    const normalizedDomain = normalize(customDomain);
+    if (!normalizedDomain) return;
+    setChecking(true);
+    try {
+      const resp = await authFetch(`/api/domains/provision?domain=${encodeURIComponent(normalizedDomain)}`);
+      if (resp.ok) {
+        const data = await resp.json();
+        setStatus((data.status as DomainStatus) || 'pending');
+      } else if (resp.status === 501) {
+        alert('Domain verification is not configured on the server yet.');
+      } else {
+        setStatus('failed');
+      }
+    } catch (e) {
+      console.error('Failed to check domain status:', e);
+      setStatus('failed');
+    } finally {
+      setChecking(false);
+    }
+  };
+
+  const statusBadge = () => {
+    if (status === 'verified') {
+      return (
+        <span className="inline-flex items-center gap-1.5 text-sm font-medium text-green-600">
+          <CheckCircle2 size={16} /> Verified
+        </span>
+      );
+    }
+    if (status === 'failed') {
+      return (
+        <span className="inline-flex items-center gap-1.5 text-sm font-medium text-red-600">
+          <XCircle size={16} /> Failed
+        </span>
+      );
+    }
+    if (status === 'pending') {
+      return (
+        <span className="inline-flex items-center gap-1.5 text-sm font-medium text-amber-600">
+          <Clock size={16} /> Pending verification
+        </span>
+      );
+    }
+    return null;
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" style={{ paddingBottom: 120 }}>
       <p className="text-gray-600">
         Manage your ministry&apos;s web address. Your subdomain is <strong>{subdomain}.theharvest.app</strong>.
       </p>
@@ -75,9 +208,12 @@ export const DomainSection: React.FC<DomainSectionProps> = ({ hasCustomDomain, o
       {/* Custom Domain (Ministry only) */}
       {hasCustomDomain ? (
         <div className="bg-white rounded-2xl border border-gray-100 p-6">
-          <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">Custom Domain</h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Custom Domain</h3>
+            {statusBadge()}
+          </div>
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-purple-50 flex items-center justify-center">
+            <div className="w-12 h-12 rounded-xl bg-purple-50 flex items-center justify-center shrink-0">
               <Globe size={24} className="text-purple-600" />
             </div>
             <div className="flex-1">
@@ -87,10 +223,10 @@ export const DomainSection: React.FC<DomainSectionProps> = ({ hasCustomDomain, o
                 value={customDomain}
                 onChange={(e) => setCustomDomain(e.target.value)}
                 placeholder="e.g. ministry.yourchurch.org"
-                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#d4a017] focus:border-transparent"
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#B8962E] focus:border-transparent"
               />
               <p className="text-xs text-gray-400 mt-1">
-                Enter your custom domain. You&apos;ll need to add a CNAME record pointing to <span className="font-mono">theharvest.app</span>.
+                Enter your custom domain, then point a CNAME record at <span className="font-mono">theharvest.app</span>.
               </p>
             </div>
           </div>
@@ -114,6 +250,9 @@ export const DomainSection: React.FC<DomainSectionProps> = ({ hasCustomDomain, o
                   <span className="text-gray-900">theharvest.app</span>
                 </div>
               </div>
+              <p className="text-xs text-gray-400 mt-2">
+                DNS changes can take up to 48 hours to propagate. Use &quot;Check Status&quot; to refresh verification.
+              </p>
             </div>
           </div>
         </div>
@@ -126,69 +265,32 @@ export const DomainSection: React.FC<DomainSectionProps> = ({ hasCustomDomain, o
           </p>
           <button
             onClick={onUpgrade}
-            className="px-4 py-2 bg-[#d4a017] text-white rounded-xl text-sm font-semibold hover:bg-[#b8941a] transition-colors"
+            className="px-4 py-2 bg-[#B8962E] text-white rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity"
           >
             Upgrade to Unlock
           </button>
         </div>
       )}
 
-      {/* Save Button (only for custom domain) */}
+      {/* Save / Verify buttons (only for custom domain) */}
       {hasCustomDomain && (
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <button
-            onClick={async () => {
-              setDomainSaving(true);
-              setDomainSaved(false);
-              try {
-                const { auth, db } = await import('../../firebase');
-                const { doc, getDoc, updateDoc, setDoc, deleteDoc } = await import('firebase/firestore');
-                if (auth.currentUser) {
-                  const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
-                  if (userDoc.exists()) {
-                    const tenantId = userDoc.data().tenantId;
-                    if (tenantId) {
-                      // Normalize domain: lowercase, strip protocol, trailing slashes, www prefix
-                      const normalizedDomain = customDomain.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '').replace(/^www\./, '');
-
-                      // Get old domain to clean up domains collection
-                      const tenantDoc = await getDoc(doc(db, 'tenants', tenantId));
-                      const oldDomain = tenantDoc.exists() ? tenantDoc.data().config?.customDomain : null;
-
-                      await updateDoc(doc(db, 'tenants', tenantId), {
-                        'config.customDomain': normalizedDomain || null,
-                        updatedAt: new Date().toISOString(),
-                      });
-
-                      // Write to domains collection for fast API lookup
-                      if (normalizedDomain) {
-                        await setDoc(doc(db, 'domains', normalizedDomain), { tenantId });
-                      }
-
-                      // Delete old domain entry if domain changed
-                      if (oldDomain && oldDomain !== normalizedDomain) {
-                        await deleteDoc(doc(db, 'domains', oldDomain)).catch(() => {});
-                      }
-
-                      setDomainSaved(true);
-                      setTimeout(() => setDomainSaved(false), 3000);
-                    }
-                  }
-                }
-              } catch (e) {
-                console.error('Failed to save domain settings:', e);
-                alert('Failed to save domain settings. Please try again.');
-              } finally {
-                setDomainSaving(false);
-              }
-            }}
+            onClick={handleSave}
             disabled={domainSaving}
-            className="px-6 py-2.5 bg-[#d4a017] text-white rounded-xl text-sm font-semibold hover:bg-[#b8941a] transition-colors disabled:opacity-50"
+            className="px-6 py-2.5 bg-[#B8962E] text-white rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
           >
-            {domainSaving ? 'Saving...' : 'Save Domain Settings'}
+            {domainSaving ? 'Saving...' : 'Save Domain'}
+          </button>
+          <button
+            onClick={handleCheckStatus}
+            disabled={checking || !customDomain.trim()}
+            className="px-6 py-2.5 border border-gray-200 text-gray-700 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors disabled:opacity-50"
+          >
+            {checking ? 'Checking...' : 'Check Status'}
           </button>
           {domainSaved && (
-            <span className="text-sm text-green-600 font-medium">✓ Domain settings saved successfully</span>
+            <span className="text-sm text-green-600 font-medium">✓ Domain settings saved</span>
           )}
         </div>
       )}

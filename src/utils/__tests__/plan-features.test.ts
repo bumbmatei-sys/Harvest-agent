@@ -85,4 +85,18 @@ describe('hasFeature', () => {
     expect(hasFeature('max', 'automatedNewsletter')).toBe(true);
     expect(hasFeature('ultra', 'automatedNewsletter')).toBe(true);
   });
+
+  it('customBranding (logo/colors/name) is available on max and above only', () => {
+    expect(hasFeature('plus', 'customBranding')).toBe(false);
+    expect(hasFeature('pro', 'customBranding')).toBe(false);
+    expect(hasFeature('max', 'customBranding')).toBe(true);
+    expect(hasFeature('ultra', 'customBranding')).toBe(true);
+  });
+
+  it('customDomain is available on Ministry (ultra) only', () => {
+    expect(hasFeature('plus', 'customDomain')).toBe(false);
+    expect(hasFeature('pro', 'customDomain')).toBe(false);
+    expect(hasFeature('max', 'customDomain')).toBe(false);
+    expect(hasFeature('ultra', 'customDomain')).toBe(true);
+  });
 });

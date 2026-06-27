@@ -17,9 +17,11 @@ export interface PlanFeatures {
   maxCourses: number;
   /** Max number of admin accounts (-1 = unlimited) */
   maxAdmins: number;
-  /** Allow custom domain */
+  /** Allow custom domain (Ministry / ultra only) */
   customDomain: boolean;
-  /** Allow full rebranding (logo + brand color) */
+  /** Allow custom branding — logo, colors, ministry name (Community / max+) */
+  customBranding: boolean;
+  /** Allow custom auth-page background image (Community / max+) */
   customBackground: boolean;
   /** Newsletter (manual + Mailchimp) — Small Team / pro+ */
   newsletterAutomation: boolean;
@@ -65,6 +67,7 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     maxCourses: 2,
     maxAdmins: 1,
     customDomain: false,
+    customBranding: false,
     customBackground: false,
     newsletterAutomation: false,
     automatedNewsletter: false,
@@ -89,6 +92,7 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     maxCourses: 5,
     maxAdmins: 5,
     customDomain: false,
+    customBranding: false,
     customBackground: false,
     newsletterAutomation: true,
     automatedNewsletter: false,
@@ -112,7 +116,8 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     maxChurches: 1,
     maxCourses: -1,
     maxAdmins: 10,
-    customDomain: true,
+    customDomain: false,
+    customBranding: true,
     customBackground: true,
     newsletterAutomation: true,
     automatedNewsletter: true,
@@ -137,6 +142,7 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     maxCourses: -1,
     maxAdmins: -1,
     customDomain: true,
+    customBranding: true,
     customBackground: true,
     newsletterAutomation: true,
     automatedNewsletter: true,
