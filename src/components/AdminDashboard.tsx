@@ -285,7 +285,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
 
   return (
     <AdminHeaderContext.Provider value={headerApi}>
-    <div className="flex flex-col lg:flex-row h-screen bg-[#f8f9fa] font-sans overflow-hidden transition-colors duration-300">
+    <div className="flex flex-col lg:flex-row h-[100dvh] bg-[#f8f9fa] font-sans overflow-hidden transition-colors duration-300">
 
       {/* Side/Bottom Navigation */}
       <div className={`bg-white border-t lg:border-t-0 lg:border-r border-gray-100 flex justify-center lg:justify-start py-2 lg:py-6 px-2 lg:px-4 pb-safe lg:pb-0 fixed lg:relative bottom-0 lg:bottom-auto w-full ${isSidebarCollapsed ? 'lg:w-[88px]' : 'lg:w-64'} lg:h-screen z-[100] shadow-[0_-4px_20px_rgba(0,0,0,0.05)] lg:shadow-[2px_0_10px_rgba(0,0,0,0.02)] transition-all duration-300`}>
@@ -389,7 +389,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
       </div>
 
       {/* Main Container */}
-      <div className="flex-1 flex flex-col h-screen relative bg-[#f8f9fa] overflow-hidden min-w-0">
+      <div className="flex-1 flex flex-col h-[100dvh] relative bg-[#f8f9fa] overflow-hidden min-w-0">
         {/* Desktop utility header — quick access to Settings & Inbox (no logo/title) */}
         <div className="hidden lg:flex bg-white px-8 py-2 items-center justify-end gap-3 border-b border-gray-100 z-10 w-full">
           <button
