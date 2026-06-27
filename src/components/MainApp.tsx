@@ -52,12 +52,12 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
   const [direction, setDirection] = useState(0);
   const [fullScreenView, setFullScreenView] = useState<{type: 'none' | 'all-news' | 'article' | 'course' | 'livestream', id?: string, data?: any}>({type: 'none'});
 
-  // Main site users (no tenantPlan) get all features — Chat behind paywall, Map included.
-  // Super admins always get all features regardless of their tenant plan.
-  // Tenant users are gated by their plan.
+  // The platform tenant (apex/harvest) and super admins get all features.
+  // White-label tenants are gated strictly by their plan. While the plan is still
+  // loading for a white-label tenant, default to the MOST restrictive set (no leaks).
   const isSuperUser = isSuperAdminEmail(auth.currentUser?.email);
-  const isMainSite = !tenantPlan || isSuperUser;
-  const features = tenantPlan && !isSuperUser ? getPlanFeatures(tenantPlan) : null;
+  const isMainSite = !isWhiteLabel || isSuperUser;
+  const features = isMainSite ? null : getPlanFeatures(tenantPlan ?? 'plus');
 
   // 'loading' means we haven't fetched yet — hide tab until we know.
   // 'empty' means 0 published courses — hide tab.
@@ -91,7 +91,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
 
   const topTabs = [
     { id: 'news', label: 'News' },
-    (isMainSite || features?.blog !== false) && { id: 'blog', label: 'Blog' },
+    (isMainSite || features?.blog === true) && { id: 'blog', label: 'Blog' },
     // Only include Courses tab once we know at least 1 course exists
     coursesStatus === 'present' && { id: 'courses', label: 'Courses' },
     { id: 'messages', label: 'Messages' },
@@ -101,7 +101,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
   const bottomTabs = [
     { id: 'home', label: 'Home', icon: Home },
     { id: 'bible', label: 'Bible', icon: BookOpen },
-    (isMainSite || features?.aiChat !== false) && { id: 'chat', label: 'Chat', icon: MessageCircle },
+    (isMainSite || features?.aiChat === true) && { id: 'chat', label: 'Chat', icon: MessageCircle },
     (isMainSite || features?.map === true) && { id: 'map', label: 'Map', icon: MapIcon },
     { id: 'profile', label: 'My Profile', icon: User },
   ].filter(Boolean) as { id: string; label: string; icon: any }[];

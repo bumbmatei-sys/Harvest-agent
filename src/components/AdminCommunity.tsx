@@ -574,7 +574,7 @@ const ChannelThread: React.FC<{
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full min-h-0">
       <div className="flex-1 min-h-0 overflow-y-auto px-4 pt-4 pb-4 space-y-3">
         {messages.length === 0 && (
           <div className="text-center py-12 text-gray-400">
@@ -605,7 +605,7 @@ const ChannelThread: React.FC<{
         <div ref={bottomRef} />
       </div>
 
-      <div className="bg-white border-t border-gray-100 flex-shrink-0 px-4 pt-3" style={{ paddingBottom: 'calc(12px + env(safe-area-inset-bottom))' }}>
+      <div className="bg-white border-t border-gray-100 flex-shrink-0 px-4 pt-3" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 8px)' }}>
         {attachments.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-2">
             {attachments.map((a, i) => (
