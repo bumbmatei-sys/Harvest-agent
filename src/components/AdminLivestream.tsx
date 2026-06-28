@@ -7,6 +7,7 @@ import {
 import { Radio, Eye, HandHeart, Check, Loader2, Video } from 'lucide-react';
 import { db, auth } from '../firebase';
 import { useAppStore } from '../store/useAppStore';
+import { PLATFORM_TENANT_ID } from '../utils/tenant-scope';
 
 const GOLD = 'var(--brand-color, #B8962E)';
 
@@ -61,7 +62,11 @@ interface PastSession {
 }
 
 const AdminLivestream: React.FC = () => {
-  const { currentTenantId: tenantId, isAuthReady } = useAppStore();
+  // Fall back to the platform tenant for a super admin if the store value is
+  // briefly null (e.g. on a refresh) so "Start Stream" never silently no-ops.
+  // On a tenant subdomain currentTenantId is set and takes precedence.
+  const { currentTenantId, isAuthReady, isSuperAdmin } = useAppStore();
+  const tenantId = currentTenantId || (isSuperAdmin ? PLATFORM_TENANT_ID : null);
 
   const [current, setCurrent] = useState<CurrentStream | null>(null);
   const [prayers, setPrayers] = useState<Prayer[]>([]);
@@ -102,7 +107,7 @@ const AdminLivestream: React.FC = () => {
   }, [tenantId, current?.active]);
 
   const startStream = async () => {
-    if (!tenantId) return;
+    if (!tenantId) { alert('Could not determine your workspace. Please refresh and try again.'); return; }
     const videoId = parseYouTubeId(urlInput);
     if (!videoId) { alert('Enter a valid YouTube URL or video ID.'); return; }
     setStarting(true);

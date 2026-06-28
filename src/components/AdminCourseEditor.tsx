@@ -6,7 +6,7 @@ import { db, auth } from "../firebase";
 import { ImageUpload } from './ImageUpload';
 import RichTextEditor from './RichTextEditor';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
-import { getTenantScope } from '../utils/tenant-scope';
+import { getTenantScope, getWriteTenantScope } from '../utils/tenant-scope';
 
 
 
@@ -664,7 +664,10 @@ export default function CourseBuilder({ course: initialCourse, onClose }: Course
        }
        await updateDoc(doc(db, "courses", course.id), payload as any);
      } else {
-       const docRef = await addDoc(collection(db, "courses"), { ...payload, tenantId: tenantId || null });
+       // Platform-aware: a super admin on the apex persists the platform tenant
+       // instead of null so the course is never orphaned. (The edit branch above
+       // keeps getTenantScope() for its ownership check.)
+       const docRef = await addDoc(collection(db, "courses"), { ...payload, tenantId: await getWriteTenantScope() });
        setCourse(c => ({ ...c, id: docRef.id }));
      }
  setSaved(true);

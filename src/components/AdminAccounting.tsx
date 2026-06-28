@@ -6,7 +6,7 @@ import {
 } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { db } from '../firebase';
-import { getTenantScope } from '../utils/tenant-scope';
+import { getWriteTenantScope } from '../utils/tenant-scope';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { useTenantOptional } from '../contexts/TenantContext';
 import { authFetch } from '../utils/auth-fetch';
@@ -264,7 +264,12 @@ const AdminAccounting: React.FC = () => {
   useEffect(() => {
     let unsub: (() => void) | null = null;
     let cancelled = false;
-    getTenantScope().then(tid => {
+    // Resolve write-aware: this tenantId drives the scoped receipt-generation
+    // action (generateAnnualReceipts) as well as the invoice/statement lists, so
+    // a super admin on the apex must operate as the platform tenant rather than
+    // null (which would no-op the whole screen). On a subdomain the host tenant
+    // takes precedence, unchanged.
+    getWriteTenantScope().then(tid => {
       if (cancelled) return;
       setTenantId(tid);
       if (!tid) { setLoading(false); return; }

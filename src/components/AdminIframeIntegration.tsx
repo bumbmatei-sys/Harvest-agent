@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { ExternalLink, Settings2, Check, Loader2 } from 'lucide-react';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
-import { getTenantScope } from '../utils/tenant-scope';
+import { getWriteTenantScope } from '../utils/tenant-scope';
 
 interface AdminIframeIntegrationProps {
   /** Firestore key used in tenants/{id}/integrations/{integrationKey} */
@@ -38,7 +38,11 @@ const AdminIframeIntegration: React.FC<AdminIframeIntegrationProps> = ({
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const tid = await getTenantScope();
+      // Write-aware: the integration doc lives at tenants/{tid}/integrations/...,
+      // so a super admin on the apex needs the platform tenant (not null) for
+      // both reading the saved config and the setDoc in handleSave. On a
+      // subdomain the host tenant takes precedence, unchanged.
+      const tid = await getWriteTenantScope();
       if (cancelled) return;
       setTenantId(tid);
       if (!tid) { setLoading(false); return; }

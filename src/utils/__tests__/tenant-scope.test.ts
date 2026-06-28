@@ -7,7 +7,7 @@ const { authMock } = vi.hoisted(() => ({
 }));
 vi.mock('../../firebase', () => ({ auth: authMock, db: {} }));
 
-const { getTenantIdFromHost, isPlatformContext, hasPlatformOverride } = await import('../tenant-scope');
+const { getTenantIdFromHost, isPlatformContext, hasPlatformOverride, getWriteTenantScope, PLATFORM_TENANT_ID } = await import('../tenant-scope');
 
 const SUPER_ADMIN_EMAIL = 'bumbmatei@proton.me'; // present in SUPER_ADMIN_EMAILS
 const REGULAR_EMAIL = 'someone@example.com';
@@ -81,5 +81,25 @@ describe('isPlatformContext / hasPlatformOverride', () => {
     expect(isPlatformContext()).toBe(true);
     setHostname('admin.theharvest.app');
     expect(isPlatformContext()).toBe(true);
+  });
+});
+
+describe('getWriteTenantScope', () => {
+  it('resolves a super admin on the apex to the platform tenant (never null)', async () => {
+    setHostname('theharvest.app');
+    authMock.currentUser = { email: SUPER_ADMIN_EMAIL };
+    await expect(getWriteTenantScope()).resolves.toBe(PLATFORM_TENANT_ID);
+  });
+
+  it('resolves to the subdomain tenant on a tenant subdomain, even for a super admin (no platform fallback)', async () => {
+    setHostname('nations.theharvest.app');
+    authMock.currentUser = { email: SUPER_ADMIN_EMAIL };
+    await expect(getWriteTenantScope()).resolves.toBe('nations');
+  });
+
+  it('resolves to null on the apex when signed out (no platform fallback for non-super-admins)', async () => {
+    setHostname('theharvest.app');
+    authMock.currentUser = null;
+    await expect(getWriteTenantScope()).resolves.toBeNull();
   });
 });

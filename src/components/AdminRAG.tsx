@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { db, auth } from '../firebase';
 import { collection, addDoc, serverTimestamp, query, where, getDocs, getDoc, deleteDoc, onSnapshot, updateDoc, doc } from 'firebase/firestore';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
-import { getTenantScope } from '../utils/tenant-scope';
+import { getTenantScope, getWriteTenantScope } from '../utils/tenant-scope';
 
 
 // Gemini API calls are proxied through /api/gemini to keep the API key server-side
@@ -191,7 +191,7 @@ export default function AdminRAG() {
  setPasteTitle(""); setPasteText(""); setTab("sources"); setPasteLoading(true);
 
  // Add to Firestore rag_sources
- const tenantId = await getTenantScope();
+ const tenantId = await getWriteTenantScope();
  await addDoc(collection(db, "rag_sources"), {
    sourceId,
    title,
@@ -199,7 +199,7 @@ export default function AdminRAG() {
    status: "processing",
    chunks: 0,
    addedAt: serverTimestamp(),
-   tenantId: tenantId || null
+   tenantId
  });
 
  const chunks = await chunkAndEmbed(pasteText, sourceId, title, "text", tenantId);
@@ -228,7 +228,7 @@ export default function AdminRAG() {
  setTab("sources");
 
  // Add to Firestore rag_sources
- const tenantId = await getTenantScope();
+ const tenantId = await getWriteTenantScope();
  await addDoc(collection(db, "rag_sources"), {
    sourceId,
    title: file.name,
@@ -236,7 +236,7 @@ export default function AdminRAG() {
    status: "processing",
    chunks: 0,
    addedAt: serverTimestamp(),
-   tenantId: tenantId || null
+   tenantId
  });
 
  let text = "";

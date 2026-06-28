@@ -10,6 +10,7 @@ import PaymentSection from './settings/PaymentSection';
 import { useAdminHeader, HeaderActionButton } from './AdminScreenHeader';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAppStore } from '../store/useAppStore';
+import { PLATFORM_TENANT_ID } from '../utils/tenant-scope';
 import { useCampaigns } from '../hooks/queries/useCampaignQueries';
 
 const empty: Omit<Campaign, 'id'> = {
@@ -35,7 +36,11 @@ interface AdminFundraisingProps {
 const AdminFundraising: React.FC<AdminFundraisingProps> = ({ initialCampaignId, onItemConsumed }) => {
   const { setHeaderAction } = useAdminHeader();
   const queryClient = useQueryClient();
-  const { currentTenantId: tenantId, isAuthReady } = useAppStore();
+  // Fall back to the platform tenant for a super admin if the store value is
+  // briefly null so a saved campaign is never orphaned with a null tenantId. On
+  // a tenant subdomain currentTenantId is set and takes precedence.
+  const { currentTenantId, isAuthReady, isSuperAdmin } = useAppStore();
+  const tenantId = currentTenantId || (isSuperAdmin ? PLATFORM_TENANT_ID : null);
 
   const { data: campaigns = [], isLoading: loading } = useCampaigns(tenantId, isAuthReady);
 
@@ -71,7 +76,7 @@ const AdminFundraising: React.FC<AdminFundraisingProps> = ({ initialCampaignId, 
       } else {
         await addDoc(collection(db, 'campaigns'), {
           ...form,
-          tenantId: tenantId || null,
+          tenantId,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
         });
