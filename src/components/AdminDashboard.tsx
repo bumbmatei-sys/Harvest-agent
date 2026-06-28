@@ -26,6 +26,7 @@ import AdminCRM from './AdminCRM';
 import AdminDocs from './AdminDocs';
 import AdminCommunity from './AdminCommunity';
 import AdminAccounting from './AdminAccounting';
+import AdminGivingStatements from './AdminGivingStatements';
 import AdminForms from './AdminForms';
 import AdminCheckin from './AdminCheckin';
 import AdminQR from './AdminQR';
@@ -57,7 +58,7 @@ const MORE_GROUPS: { label: string; ids: string[] }[] = [
   // Dashboard home (Members card / "View Members") — both are valid entry points.
   // Analytics & Admin Roles live inside the CRM screen as internal tabs, not as
   // their own drawer entries.
-  { label: 'MINISTRY', ids: ['crm', 'churches', 'community', 'fundraising', 'forms', 'accounting'] },
+  { label: 'MINISTRY', ids: ['crm', 'churches', 'community', 'fundraising', 'forms', 'accounting', 'giving-statements'] },
   // Broadcasting: outbound / live engagement channels.
   { label: 'BROADCASTING', ids: ['events', 'checkin', 'qr', 'sms', 'livestream'] },
   // Platform: super-admin-only surfaces (Tenants + the platform Inbox).
@@ -249,6 +250,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
     (platformOverride || !isTenantAdmin || (features && features.accountingTools)) &&
       hasFullAccess &&
       { id: 'accounting', label: 'Accounting', icon: Receipt },
+    // Annual giving statements (year-end tax summaries)
+    (platformOverride || !isTenantAdmin || (features && features.givingStatements)) &&
+      hasFullAccess &&
+      { id: 'giving-statements', label: 'Statements', icon: Receipt },
     // Custom Forms → CRM pipeline
     (platformOverride || !isTenantAdmin || (features && features.customForms)) &&
       hasFullAccess &&
@@ -589,6 +594,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
             (platformOverride || !isTenantAdmin || (features && features.accountingTools))
               ? <div className="p-4 lg:p-0"><AdminAccounting /></div>
               : <PlanUpgradeScreen featureName="Accounting" featureKey="accounting" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
+          ) : activeTab === 'giving-statements' ? (
+            (platformOverride || !isTenantAdmin || (features && features.givingStatements))
+              ? <div className="p-4 lg:p-0"><AdminGivingStatements /></div>
+              : <PlanUpgradeScreen featureName="Giving Statements" featureKey="givingStatements" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
           ) : activeTab === 'forms' ? (
             (platformOverride || !isTenantAdmin || (features && features.customForms))
               ? <div className="p-4 lg:p-0"><AdminForms /></div>
