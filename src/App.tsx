@@ -176,8 +176,16 @@ const AppInner: React.FC = () => {
               // One-shot intent flag: when an admin taps "Go to User App", the admin
               // dashboard sets sessionStorage.intentionalUserView before navigating to
               // "/" so this auto-redirect doesn't bounce them straight back to /admin.
+              // Read it, then consume it immediately — regardless of the current path —
+              // so it's truly one-shot and can't linger across navigations to suppress a
+              // later legitimate "/" → "/admin" redirect. (Client-side navigation never
+              // fires this callback, so the explicit tap still lands on "/" and stays;
+              // the flag only matters on the next auth callback / refresh.)
               let intentionalUserView = false;
-              try { intentionalUserView = sessionStorage.getItem('intentionalUserView') === 'true'; } catch {}
+              try {
+                intentionalUserView = sessionStorage.getItem('intentionalUserView') === 'true';
+                if (intentionalUserView) sessionStorage.removeItem('intentionalUserView');
+              } catch {}
 
               if (FUNNEL_PATHS.includes(path)) {
                 navigate(homeBase, { replace: true });
@@ -185,12 +193,6 @@ const AppInner: React.FC = () => {
                 navigate('/admin', { replace: true });
               }
               // else: keep the current deep-linked path
-
-              // Clear the one-shot flag once we've honored it, so a later refresh
-              // resumes normal admin-home routing.
-              if (path === '/' && intentionalUserView) {
-                try { sessionStorage.removeItem('intentionalUserView'); } catch {}
-              }
             } else if (isChurchSignup || signupPlan || role === 'church_admin') {
               navigate('/church-onboarding', { replace: true });
             } else {
