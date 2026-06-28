@@ -6,7 +6,7 @@ import { db, auth } from '../firebase';
 import AdminBlogPostEditor from './AdminBlogPostEditor';
 import { useAdminHeader, HeaderActionButton } from './AdminScreenHeader';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
-import { getTenantScope } from '../utils/tenant-scope';
+import { getTenantScope, hasPlatformOverride } from '../utils/tenant-scope';
 import { sortByTime } from '../utils/query-helpers';
 import { useAppStore } from '../store/useAppStore';
 import { getPlanFeatures } from '../utils/plan-features';
@@ -44,8 +44,10 @@ const AdminBlog: React.FC = () => {
  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
  // ── Automated SEO blog ──
- const { tenantPlan, isSuperAdmin } = useAppStore();
- const canAutomate = isSuperAdmin ||
+ const { tenantPlan } = useAppStore();
+ // Platform-context super admins (apex) get this feature; on a tenant subdomain
+ // it's gated by the tenant's plan, even for a super admin.
+ const canAutomate = hasPlatformOverride() ||
    (tenantPlan ? getPlanFeatures(tenantPlan).automatedBlog : false);
  const [showAutomation, setShowAutomation] = useState(false);
  const [automation, setAutomation] = useState<{

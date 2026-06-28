@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { db, auth } from '../firebase';
 import { notifyError } from '../utils/notify';
 import { getPlanFeatures } from '../utils/plan-features';
+import { hasPlatformOverride } from '../utils/tenant-scope';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAppStore } from '../store/useAppStore';
 import { useDocs, useDocFolders, useSharedDocs } from '../hooks/queries/useDocsQueries';
@@ -348,10 +349,12 @@ interface AdminDocsProps {
 const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) => {
   const { setHeaderAction } = useAdminHeader();
   const queryClient = useQueryClient();
-  const { currentTenantId: tenantId, isAuthReady, tenantPlan, isSuperAdmin } = useAppStore();
+  const { currentTenantId: tenantId, isAuthReady, tenantPlan } = useAppStore();
 
-  // "Share to Livestream" is a Ministry-only feature (super admins always allowed).
-  const canShareToLivestream = isSuperAdmin || (tenantPlan ? getPlanFeatures(tenantPlan).sermonNotes : false);
+  // "Share to Livestream" is a Ministry-only feature. Platform-context super
+  // admins (apex) always get it; on a tenant subdomain it's gated by the
+  // tenant's plan, even for a super admin.
+  const canShareToLivestream = hasPlatformOverride() || (tenantPlan ? getPlanFeatures(tenantPlan).sermonNotes : false);
 
   const { data: docs = [], isLoading: loading } = useDocs(tenantId, isAuthReady);
   const { data: folders = [] } = useDocFolders(tenantId, isAuthReady);
