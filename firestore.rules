@@ -104,6 +104,18 @@ service cloud.firestore {
       allow delete: if isAuthenticated() && isTenantAdmin(resource.data.tenantId);
     }
 
+    // ─── Platform Inbox ──────────────────────────────────────────────
+    // Contact Support / Feature / Bug reports route here. Anyone signed in can
+    // file one; ONLY the platform owner (super admin) may read, triage, or
+    // delete them. They never surface to tenant admins.
+
+    match /platform_inbox/{reportId} {
+      allow read: if isSuperAdmin();
+      allow create: if isAuthenticated();
+      allow update: if isSuperAdmin();
+      allow delete: if isSuperAdmin();
+    }
+
     // ─── Community Posts ─────────────────────────────────────────────
 
     match /community_posts/{postId} {
@@ -136,6 +148,33 @@ service cloud.firestore {
           resource.data.authorId == request.auth.uid;
         allow update: if false;
       }
+    }
+
+    // ─── Prayer Requests ─────────────────────────────────────────────
+    // Communal prayer feed, tenant-scoped via a `tenantId` field (mirrors
+    // community_posts). Everyone in the tenant can read & "pray" (🙏); authors
+    // and tenant admins can delete.
+
+    match /prayer_requests/{prayerId} {
+      // Anyone signed in within the tenant can read the wall.
+      allow read: if isAuthenticated();
+
+      // Create: author must be the signed-in user, correct tenant, request <= 200 chars.
+      allow create: if isAuthenticated()
+        && request.resource.data.authorId == request.auth.uid
+        && requestHasCorrectTenant()
+        && request.resource.data.request is string
+        && request.resource.data.request.size() <= 200;
+
+      // Update: only the prayedBy array may change (the 🙏 toggle), within the tenant.
+      allow update: if isAuthenticated()
+        && belongsToTenant(resource.data.tenantId)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['prayedBy']);
+
+      // Delete: author or tenant admin.
+      allow delete: if isAuthenticated()
+        && (resource.data.authorId == request.auth.uid
+            || isTenantAdmin(resource.data.tenantId));
     }
 
     // ─── Blog Posts ─────────────────────────────────────────────────

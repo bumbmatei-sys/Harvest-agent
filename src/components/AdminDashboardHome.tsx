@@ -122,7 +122,10 @@ const AdminDashboardHome: React.FC<AdminDashboardHomeProps> = ({ tenantId, isSup
     return () => { cancelled = true; };
   }, [tenantId, isSuperAdmin]);
 
-  const stats = isSuperAdmin && !tenantId
+  // Platform context = super admin on the apex domain. The Platform Inbox only
+  // exists there; tenant admins no longer have an inbox, so we don't surface it.
+  const isPlatform = isSuperAdmin && !tenantId;
+  const stats = isPlatform
     ? [
         { label: 'Tenants', value: tenantCount, icon: Building2, tab: 'tenants' },
         { label: 'Members', value: memberCount, icon: Users, tab: 'crm' },
@@ -133,13 +136,13 @@ const AdminDashboardHome: React.FC<AdminDashboardHomeProps> = ({ tenantId, isSup
         { label: 'Members', value: memberCount, icon: Users, tab: 'crm' },
         { label: 'Posts', value: postCount, icon: Rss, tab: 'posts' },
         { label: 'Courses', value: courseCount, icon: GraduationCap, tab: 'courses' },
-        { label: 'Inbox', value: unreadCount, icon: Inbox, tab: 'inbox' },
       ];
 
   const quickActions = [
     { label: '+ New Post', tab: 'posts' },
     { label: '+ New Course', tab: 'courses' },
-    { label: 'View Inbox', tab: 'inbox' },
+    // Inbox is platform-only now — only surface it for the platform owner.
+    ...(isPlatform ? [{ label: 'View Inbox', tab: 'inbox' }] : []),
     { label: 'View Members (CRM)', tab: 'crm' },
   ];
 

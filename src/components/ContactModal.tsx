@@ -1,17 +1,28 @@
 "use client";
 import React, { useState } from 'react';
-import { ArrowLeft, Mail, MapPin, Lightbulb, ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowLeft, Mail, Lightbulb, Bug, ChevronDown, ChevronUp } from 'lucide-react';
 import { db, auth } from '../firebase';
-import { collection, addDoc, doc, getDoc } from 'firebase/firestore';
+import { collection, addDoc } from 'firebase/firestore';
 import { getTenantScope } from '../utils/tenant-scope';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
-import { sendEmail, contactFormNotification } from '../utils/email';
 
 
 interface ContactModalProps {
  isOpen: boolean;
  onClose: () => void;
 }
+
+// Bug-report "Where did it happen?" options — swapped based on the reporter's
+// role so the report is categorized against the area they actually saw.
+const ADMIN_AREAS = [
+ 'Dashboard', 'Posts', 'Blog', 'Courses', 'Newsletter', 'AI Knowledge', 'CRM',
+ 'Fundraising', 'Events', 'Check-In', 'Forms', 'SMS', 'Accounting', 'Affiliate',
+ 'Livestream', 'Branding', 'Settings', 'Other',
+];
+const USER_AREAS = [
+ 'Home/News', 'Prayer', 'Blog', 'Courses', 'Messages', 'Partner with Us',
+ 'Bible', 'Chat', 'Map', 'Profile', 'Other',
+];
 
 const InputLabel = ({ children }: { children: React.ReactNode }) => (
  <label className="text-[10px] font-bold text-gray-400 tracking-wider uppercase mb-2 block">
@@ -43,11 +54,11 @@ const TextAreaField = ({ placeholder, name, value, onChange, required }: any) =>
  />
 );
 
-const SubmitButton = ({ children, isSubmitting }: { children: React.ReactNode, isSubmitting?: boolean }) => (
- <button 
+const SubmitButton = ({ children, isSubmitting, disabled }: { children: React.ReactNode, isSubmitting?: boolean, disabled?: boolean }) => (
+ <button
  type="submit"
- disabled={isSubmitting}
- className={`w-full bg-gold hover:bg-[#b8860b] text-white font-bold py-3.5 px-4 rounded-xl transition-colors shadow-sm mt-2 flex items-center justify-center gap-2 ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}
+ disabled={isSubmitting || disabled}
+ className={`w-full bg-gold hover:bg-[#b8860b] text-white font-bold py-3.5 px-4 rounded-xl transition-colors shadow-sm mt-2 flex items-center justify-center gap-2 ${(isSubmitting || disabled) ? 'opacity-70 cursor-not-allowed' : ''}`}
  >
  {isSubmitting ? (
  <>
@@ -58,19 +69,19 @@ const SubmitButton = ({ children, isSubmitting }: { children: React.ReactNode, i
  </button>
 );
 
-const AccordionItem = ({ 
- id, 
- icon, 
- iconBg, 
- title, 
- subtitle, 
- isOpen, 
- onToggle, 
- children 
+const AccordionItem = ({
+ id,
+ icon,
+ iconBg,
+ title,
+ subtitle,
+ isOpen,
+ onToggle,
+ children
 }: any) => {
  return (
  <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-4 transition-all duration-300">
- <button 
+ <button
  onClick={() => onToggle(id)}
  className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-50 :bg-gray-800/50 transition-colors"
  >
@@ -89,7 +100,7 @@ const AccordionItem = ({
  <ChevronDown size={20} className="text-gray-400" />
  )}
  </button>
- 
+
  {isOpen && (
  <div className="p-4 border-t border-gray-50 animate-in slide-in-from-top-2 duration-200">
  {children}
@@ -107,8 +118,16 @@ const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) => {
 
  // Form states
  const [supportForm, setSupportForm] = useState({ name: '', email: '', subject: '', message: '' });
- const [churchForm, setChurchForm] = useState({ contactName: '', phone: '', email: '', city: '', country: '', reason: '', website: '', facebook: '', instagram: '' });
  const [featureForm, setFeatureForm] = useState({ title: '', details: '' });
+ const [bugForm, setBugForm] = useState({
+   role: 'user',          // 'admin' | 'user'
+   title: '',
+   area: '',
+   areaOther: '',
+   steps: '',
+   expected: '',
+   device: typeof navigator !== 'undefined' ? navigator.userAgent : '',
+ });
 
  if (!isOpen) return null;
 
@@ -130,36 +149,25 @@ const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) => {
 
  try {
  const tenantId = await getTenantScope();
- await addDoc(collection(db, 'submissions'), {
-   type,
+ // Contact Support, Feature, and Bug always go to the PLATFORM owner —
+ // never to tenant admins — on every plan. We still record which tenant
+ // the report came from (for context) but it lands in platform_inbox.
+ await addDoc(collection(db, 'platform_inbox'), {
+   type,                       // 'contact' | 'feature' | 'bug'
    status: 'pending',
    createdAt: new Date().toISOString(),
    userId: auth.currentUser?.uid || null,
+   userEmail: auth.currentUser?.email || null,
    data,
-   tenantId: tenantId || null
+   fromTenantId: tenantId || null,   // context only, NOT a scoping key
+   // For bug reports, capture where the reporter was. (device is already in
+   // data via the form's auto-prefill; pageUrl is added here.)
+   ...(type === 'bug' ? { pageUrl: typeof window !== 'undefined' ? window.location.href : null } : {}),
  });
 
- // Fire-and-forget admin notification email
- if (tenantId) {
-   try {
-     const tenantSnap = await getDoc(doc(db, 'tenants', tenantId));
-     if (tenantSnap.exists()) {
-       const adminEmails: string[] = tenantSnap.data().adminEmails || [];
-       const submitterName = data.name || data.contactName || 'Someone';
-       const submitterEmail = data.email || '';
-       const message = data.message || data.request || data.details || data.reason || '';
-       const ministryName = tenantSnap.data().name || 'Your Ministry';
-       adminEmails.forEach((adminEmail: string) => {
-         if (adminEmail) {
-           const emailData = contactFormNotification(adminEmail, submitterName, submitterEmail, message, ministryName);
-           sendEmail(emailData).catch(console.error);
-         }
-       });
-     }
-   } catch (emailErr) {
-     console.error('Failed to send admin notification:', emailErr);
-   }
- }
+ // Notify the platform owner (super admin) only — never tenant admins.
+ // (Optional) a server route could email PLATFORM_OWNER_EMAIL here,
+ // fire-and-forget. Intentionally kept simple.
 
  setSuccessMessage('Successfully submitted! Thank you.');
  resetForm();
@@ -168,12 +176,21 @@ const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) => {
  setOpenSection(null);
  }, 3000);
  } catch (error) {
- handleFirestoreError(error, OperationType.WRITE, `submissions`);
+ handleFirestoreError(error, OperationType.WRITE, `platform_inbox`);
  setErrorMessage("Something went wrong. Please try again later.");
  } finally {
  setIsSubmitting(false);
  }
  };
+
+ // Bug report is only submittable once the reproduction-critical fields are filled.
+ const bugValid = !!(
+   bugForm.role &&
+   bugForm.title.trim() &&
+   bugForm.area &&
+   (bugForm.area !== 'Other' || bugForm.areaOther.trim()) &&
+   bugForm.steps.trim()
+ );
 
  return (
  <div className="fixed inset-0 z-50 flex flex-col bg-[#f8f9fa] animate-in slide-in-from-bottom-full duration-300 overflow-hidden">
@@ -215,73 +232,17 @@ const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) => {
  <form onSubmit={(e) => handleSubmit(e, 'contact', supportForm, () => setSupportForm({ name: '', email: '', subject: '', message: '' }))}>
  <InputLabel>YOUR NAME</InputLabel>
  <InputField required name="name" value={supportForm.name} onChange={(e: any) => setSupportForm({...supportForm, name: e.target.value})} placeholder="John Doe" />
- 
+
  <InputLabel>EMAIL</InputLabel>
  <InputField required name="email" value={supportForm.email} onChange={(e: any) => setSupportForm({...supportForm, email: e.target.value})} placeholder="john@example.com" type="email" />
- 
+
  <InputLabel>SUBJECT</InputLabel>
  <InputField required name="subject" value={supportForm.subject} onChange={(e: any) => setSupportForm({...supportForm, subject: e.target.value})} placeholder="Topic of your message" />
- 
+
  <InputLabel>MESSAGE</InputLabel>
  <TextAreaField required name="message" value={supportForm.message} onChange={(e: any) => setSupportForm({...supportForm, message: e.target.value})} placeholder="How can we help you?" />
- 
+
  <SubmitButton isSubmitting={isSubmitting}>Send Message</SubmitButton>
- </form>
- </AccordionItem>
-
- <AccordionItem
- id="church"
- icon={<MapPin size={20} className="text-green-500" />}
- iconBg="bg-green-50 "
- title="Suggest a Church"
- subtitle="Add a local body to the map."
- isOpen={openSection === 'church'}
- onToggle={toggleSection}
- >
- <form onSubmit={(e) => handleSubmit(e, 'church_suggestion', churchForm, () => setChurchForm({ contactName: '', phone: '', email: '', city: '', country: '', reason: '', website: '', facebook: '', instagram: '' }))}>
- <div className="bg-green-50 text-green-700 text-xs p-3 rounded-xl mb-6 leading-relaxed border border-green-100 ">
- Help us connect more people to a local body of believers. Please fill out all relevant details below.
- </div>
-
- <h5 className="text-[10px] font-bold text-gold tracking-wider uppercase mb-4 mt-6">CONTACT INFO</h5>
- <InputLabel>CONTACT PERSON</InputLabel>
- <InputField required name="contactName" value={churchForm.contactName} onChange={(e: any) => setChurchForm({...churchForm, contactName: e.target.value})} placeholder="Pastor or Admin Name" />
- <div className="flex gap-3">
- <div className="flex-1">
- <InputLabel>PHONE NUMBER</InputLabel>
- <InputField required name="phone" value={churchForm.phone} onChange={(e: any) => setChurchForm({...churchForm, phone: e.target.value})} placeholder="+1 234 567 890" />
- </div>
- <div className="flex-1">
- <InputLabel>EMAIL</InputLabel>
- <InputField required name="email" value={churchForm.email} onChange={(e: any) => setChurchForm({...churchForm, email: e.target.value})} placeholder="contact@church.co" type="email" />
- </div>
- </div>
-
- <h5 className="text-[10px] font-bold text-gold tracking-wider uppercase mb-4 mt-2">LOCATION</h5>
- <div className="flex gap-3">
- <div className="flex-1">
- <InputLabel>CITY</InputLabel>
- <InputField required name="city" value={churchForm.city} onChange={(e: any) => setChurchForm({...churchForm, city: e.target.value})} placeholder="New York" />
- </div>
- <div className="flex-1">
- <InputLabel>COUNTRY</InputLabel>
- <InputField required name="country" value={churchForm.country} onChange={(e: any) => setChurchForm({...churchForm, country: e.target.value})} placeholder="USA" />
- </div>
- </div>
-
- <h5 className="text-[10px] font-bold text-gold tracking-wider uppercase mb-4 mt-2">MESSAGE</h5>
- <InputLabel>WHY JOIN HARVEST?</InputLabel>
- <TextAreaField required name="reason" value={churchForm.reason} onChange={(e: any) => setChurchForm({...churchForm, reason: e.target.value})} placeholder="Tell us why you want to be a part of Harvest..." />
-
- <h5 className="text-[10px] font-bold text-gold tracking-wider uppercase mb-4 mt-2">LINKS</h5>
- <InputLabel>WEBSITE</InputLabel>
- <InputField name="website" value={churchForm.website} onChange={(e: any) => setChurchForm({...churchForm, website: e.target.value})} placeholder="https://mychurch.com" />
- <InputLabel>FACEBOOK</InputLabel>
- <InputField name="facebook" value={churchForm.facebook} onChange={(e: any) => setChurchForm({...churchForm, facebook: e.target.value})} placeholder="https://facebook.com/..." />
- <InputLabel>INSTAGRAM</InputLabel>
- <InputField name="instagram" value={churchForm.instagram} onChange={(e: any) => setChurchForm({...churchForm, instagram: e.target.value})} placeholder="https://instagram.com/..." />
-
- <SubmitButton isSubmitting={isSubmitting}>Submit Church</SubmitButton>
  </form>
  </AccordionItem>
 
@@ -301,11 +262,76 @@ const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) => {
 
  <InputLabel>FEATURE TITLE</InputLabel>
  <InputField required name="title" value={featureForm.title} onChange={(e: any) => setFeatureForm({...featureForm, title: e.target.value})} placeholder="e.g. Dark Mode for Maps" />
- 
+
  <InputLabel>DETAILS</InputLabel>
  <TextAreaField required name="details" value={featureForm.details} onChange={(e: any) => setFeatureForm({...featureForm, details: e.target.value})} placeholder="Describe your idea..." />
- 
+
  <SubmitButton isSubmitting={isSubmitting}>Submit Suggestion</SubmitButton>
+ </form>
+ </AccordionItem>
+
+ <AccordionItem
+ id="bug"
+ icon={<Bug size={20} className="text-red-500" />}
+ iconBg="bg-red-50 "
+ title="Report a Bug"
+ subtitle="Tell us what broke, and where."
+ isOpen={openSection === 'bug'}
+ onToggle={toggleSection}
+ >
+ <form onSubmit={(e) => handleSubmit(e, 'bug', bugForm, () => setBugForm({ role: 'user', title: '', area: '', areaOther: '', steps: '', expected: '', device: typeof navigator !== 'undefined' ? navigator.userAgent : '' }))}>
+ <div className="bg-red-50 text-red-700 text-xs p-3 rounded-xl mb-6 leading-relaxed border border-red-100 ">
+ Found something broken? Give us as much detail as you can so we can reproduce and fix it fast.
+ </div>
+
+ <InputLabel>WHO ARE YOU?</InputLabel>
+ <div className="flex gap-2 mb-4">
+ {[{ v: 'admin', l: 'Admin' }, { v: 'user', l: 'Member / User' }].map((opt) => (
+ <button
+ type="button"
+ key={opt.v}
+ onClick={() => setBugForm({ ...bugForm, role: opt.v, area: '', areaOther: '' })}
+ className={`flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold border transition-colors ${
+ bugForm.role === opt.v
+ ? 'bg-gold text-white border-gold'
+ : 'bg-white text-gray-600 border-gray-200 hover:border-gold'
+ }`}
+ >
+ {opt.l}
+ </button>
+ ))}
+ </div>
+
+ <InputLabel>WHAT WENT WRONG?</InputLabel>
+ <InputField required name="title" value={bugForm.title} onChange={(e: any) => setBugForm({ ...bugForm, title: e.target.value })} placeholder="e.g. Create button does nothing on the Events page" />
+
+ <InputLabel>WHERE DID IT HAPPEN?</InputLabel>
+ <select
+ name="area"
+ value={bugForm.area}
+ onChange={(e) => setBugForm({ ...bugForm, area: e.target.value, areaOther: e.target.value === 'Other' ? bugForm.areaOther : '' })}
+ required
+ className="w-full bg-[#f8f9fa] rounded-xl px-4 py-3 text-sm text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_20%,transparent)] mb-4 border border-transparent"
+ >
+ <option value="" disabled>Select an area…</option>
+ {(bugForm.role === 'admin' ? ADMIN_AREAS : USER_AREAS).map((a) => (
+ <option key={a} value={a}>{a}</option>
+ ))}
+ </select>
+ {bugForm.area === 'Other' && (
+ <InputField required name="areaOther" value={bugForm.areaOther} onChange={(e: any) => setBugForm({ ...bugForm, areaOther: e.target.value })} placeholder="Describe where it happened" />
+ )}
+
+ <InputLabel>WHAT WERE YOU DOING WHEN IT HAPPENED?</InputLabel>
+ <TextAreaField required name="steps" value={bugForm.steps} onChange={(e: any) => setBugForm({ ...bugForm, steps: e.target.value })} placeholder="Step by step, what did you click / tap right before the bug? e.g. 1) Opened Events 2) Tapped Create 3) Nothing happened" />
+
+ <InputLabel>WHAT DID YOU EXPECT TO HAPPEN?</InputLabel>
+ <TextAreaField name="expected" value={bugForm.expected} onChange={(e: any) => setBugForm({ ...bugForm, expected: e.target.value })} placeholder="What should have happened instead?" />
+
+ <InputLabel>DEVICE / BROWSER (AUTO-DETECTED, EDIT IF NEEDED)</InputLabel>
+ <InputField name="device" value={bugForm.device} onChange={(e: any) => setBugForm({ ...bugForm, device: e.target.value })} placeholder="Device / browser" />
+
+ <SubmitButton isSubmitting={isSubmitting} disabled={!bugValid}>Submit Bug Report</SubmitButton>
  </form>
  </AccordionItem>
 
