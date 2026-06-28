@@ -28,6 +28,7 @@ import AdminCommunity from './AdminCommunity';
 import AdminAccounting from './AdminAccounting';
 import AdminForms from './AdminForms';
 import AdminCheckin from './AdminCheckin';
+import AdminQR from './AdminQR';
 import AdminLivestream from './AdminLivestream';
 import AdminSms from './AdminSms';
 import AdminEvents from './AdminEvents';
@@ -58,7 +59,7 @@ const MORE_GROUPS: { label: string; ids: string[] }[] = [
   // their own drawer entries.
   { label: 'MINISTRY', ids: ['crm', 'churches', 'community', 'fundraising', 'forms', 'accounting'] },
   // Broadcasting: outbound / live engagement channels.
-  { label: 'BROADCASTING', ids: ['events', 'checkin', 'sms', 'livestream'] },
+  { label: 'BROADCASTING', ids: ['events', 'checkin', 'qr', 'sms', 'livestream'] },
   // Platform: super-admin-only surfaces (Tenants + the platform Inbox).
   { label: 'PLATFORM', ids: ['tenants', 'inbox'] },
   { label: 'MORE', ids: ['affiliate', 'branding'] },
@@ -256,6 +257,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
     (platformOverride || !isTenantAdmin || (features && features.checkInSystem)) &&
       hasFullAccess &&
       { id: 'checkin', label: 'Check-In', icon: QrCode },
+    // QR Code generator — available on all plans
+    (hasFullAccess || !isTenantAdmin) && { id: 'qr', label: 'QR Codes', icon: QrCode },
     // Livestream (YouTube + live giving)
     (platformOverride || !isTenantAdmin || (features && features.livestream)) &&
       hasFullAccess &&
@@ -594,6 +597,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
             (platformOverride || !isTenantAdmin || (features && features.checkInSystem))
               ? <div className="p-4 lg:p-0"><AdminCheckin /></div>
               : <PlanUpgradeScreen featureName="Check-In" featureKey="checkInSystem" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
+          ) : activeTab === 'qr' ? (
+            <div className="p-4 lg:p-0"><AdminQR /></div>
           ) : activeTab === 'livestream' ? (
             (platformOverride || !isTenantAdmin || (features && features.livestream))
               ? <div className="p-4 lg:p-0"><AdminLivestream /></div>
