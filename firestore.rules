@@ -156,8 +156,11 @@ service cloud.firestore {
     // and tenant admins can delete.
 
     match /prayer_requests/{prayerId} {
-      // Anyone signed in within the tenant can read the wall.
-      allow read: if isAuthenticated();
+      // Members of the tenant read their own wall; super admins (platform
+      // context) may read across tenants. Scoping the read server-side — not
+      // just via the client query — keeps one tenant's prayers (and author
+      // names) from being read by another tenant via an unfiltered query.
+      allow read: if isAuthenticated() && belongsToTenant(resource.data.tenantId);
 
       // Create: author must be the signed-in user, correct tenant, request <= 200 chars.
       allow create: if isAuthenticated()

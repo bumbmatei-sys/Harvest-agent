@@ -61,6 +61,11 @@ const MORE_GROUPS: { label: string; ids: string[] }[] = [
   { label: 'ADMIN', ids: ['admin_roles', 'integrations'] },
 ];
 const GROUPED_MORE_IDS = new Set(MORE_GROUPS.flatMap((g) => g.ids));
+// Tabs that are intentionally NOT part of the More drawer (they live in the
+// bottom nav / sidebar). Keeping them out of the drawer's catch-all avoids a
+// stray one-item "MORE" section. They remain reachable via the desktop sidebar
+// and the nav customizer.
+const DRAWER_EXCLUDED_IDS = new Set(['community']);
 
 interface AdminDashboardProps {
   onNavigate: (page: string) => void;
@@ -701,7 +706,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
                     (e.g. a tab moved out of the bottom bar) — never leave one unreachable. */}
                 {(() => {
                   const leftover = moreTabs.filter(
-                    (t) => t.id !== 'settings' && !GROUPED_MORE_IDS.has(t.id),
+                    (t) => t.id !== 'settings' && !GROUPED_MORE_IDS.has(t.id) && !DRAWER_EXCLUDED_IDS.has(t.id),
                   );
                   if (leftover.length === 0) return null;
                   return (
