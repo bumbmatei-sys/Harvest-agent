@@ -155,6 +155,34 @@ describe('hasFeature', () => {
     expect(hasFeature('max', 'pwaApp')).toBe(true);
     expect(hasFeature('ultra', 'pwaApp')).toBe(true);
   });
+
+  it('eventRegistration is available on Small Team (pro) and above', () => {
+    expect(hasFeature('plus', 'eventRegistration')).toBe(false);
+    expect(hasFeature('pro', 'eventRegistration')).toBe(true);
+    expect(hasFeature('max', 'eventRegistration')).toBe(true);
+    expect(hasFeature('ultra', 'eventRegistration')).toBe(true);
+  });
+
+  it('publicCalendar is available on all plans (public-facing)', () => {
+    expect(hasFeature('plus', 'publicCalendar')).toBe(true);
+    expect(hasFeature('pro', 'publicCalendar')).toBe(true);
+    expect(hasFeature('max', 'publicCalendar')).toBe(true);
+    expect(hasFeature('ultra', 'publicCalendar')).toBe(true);
+  });
+
+  it('pledgeCampaigns is available on Community (max) and above', () => {
+    expect(hasFeature('plus', 'pledgeCampaigns')).toBe(false);
+    expect(hasFeature('pro', 'pledgeCampaigns')).toBe(false);
+    expect(hasFeature('max', 'pledgeCampaigns')).toBe(true);
+    expect(hasFeature('ultra', 'pledgeCampaigns')).toBe(true);
+  });
+
+  it('textToGive is available on Ministry (ultra) only', () => {
+    expect(hasFeature('plus', 'textToGive')).toBe(false);
+    expect(hasFeature('pro', 'textToGive')).toBe(false);
+    expect(hasFeature('max', 'textToGive')).toBe(false);
+    expect(hasFeature('ultra', 'textToGive')).toBe(true);
+  });
 });
 
 describe('PLAN_DONATION_RETENTION', () => {
