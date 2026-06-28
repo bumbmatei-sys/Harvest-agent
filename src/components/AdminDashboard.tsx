@@ -52,10 +52,11 @@ const TAB_TO_SLUG: Record<string, string> = { 'ai': 'ai-knowledge' };
 // its tab id; order matters. Groups with no permitted tabs are omitted entirely.
 const MORE_GROUPS: { label: string; ids: string[] }[] = [
   { label: 'CONTENT', ids: ['posts', 'blog', 'courses', 'newsletter', 'ai', 'docs'] },
-  // Ministry: the "who" + giving. CRM is intentionally absent — it's opened from
-  // the Dashboard home (Members card / "View Members"), and Analytics & Admin
-  // Roles live inside the CRM screen as internal tabs, not as drawer entries.
-  { label: 'MINISTRY', ids: ['churches', 'community', 'fundraising', 'forms', 'accounting'] },
+  // Ministry: the "who" + giving. CRM leads the group AND is surfaced on the
+  // Dashboard home (Members card / "View Members") — both are valid entry points.
+  // Analytics & Admin Roles live inside the CRM screen as internal tabs, not as
+  // their own drawer entries.
+  { label: 'MINISTRY', ids: ['crm', 'churches', 'community', 'fundraising', 'forms', 'accounting'] },
   // Broadcasting: outbound / live engagement channels.
   { label: 'BROADCASTING', ids: ['events', 'checkin', 'sms', 'livestream'] },
   // Platform: super-admin-only surfaces (Tenants + the platform Inbox).
@@ -63,13 +64,6 @@ const MORE_GROUPS: { label: string; ids: string[] }[] = [
   { label: 'MORE', ids: ['affiliate', 'branding'] },
 ];
 const GROUPED_MORE_IDS = new Set(MORE_GROUPS.flatMap((g) => g.ids));
-
-// Features that exist in allTabs (desktop sidebar, routing, the nav customizer)
-// but are intentionally NOT rendered as More-drawer rows because they're reached
-// elsewhere: CRM is opened from the Dashboard home, with Analytics & Roles as
-// internal tabs of the CRM screen. Kept out of both the groups and the safety
-// catch-all so it never resurfaces at the bottom of the drawer.
-const DRAWER_HIDDEN_IDS = new Set(['crm']);
 
 interface AdminDashboardProps {
   onNavigate: (page: string) => void;
@@ -695,12 +689,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
 
                 {/* Safety catch-all: any permitted drawer tab not assigned to a group
                     above (e.g. a tab a user dragged out of the bottom bar) — never
-                    leave one unreachable. Intentionally-hidden tabs (CRM, reached from
-                    the Dashboard) and the Settings row are excluded. Empty in normal
-                    use, so it renders nothing. */}
+                    leave one unreachable. Empty in normal use, so it renders nothing. */}
                 {(() => {
                   const leftover = moreTabs.filter(
-                    (t) => t.id !== 'settings' && !GROUPED_MORE_IDS.has(t.id) && !DRAWER_HIDDEN_IDS.has(t.id),
+                    (t) => t.id !== 'settings' && !GROUPED_MORE_IDS.has(t.id),
                   );
                   if (leftover.length === 0) return null;
                   return (
