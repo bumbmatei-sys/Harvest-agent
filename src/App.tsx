@@ -81,10 +81,6 @@ const AppInner: React.FC = () => {
   const location = useLocation();
   const pathnameRef = useRef(location.pathname);
   useEffect(() => { pathnameRef.current = location.pathname; }, [location.pathname]);
-  // Guards the one-time "send admins to /admin on first load" redirect so an
-  // admin who deliberately opens the member app ("View App") at "/" can stay
-  // there instead of being bounced back on every later auth-callback fire.
-  const didInitialRouteRef = useRef(false);
 
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [userRole, setUserRole] = useState<string>('user');
@@ -176,16 +172,27 @@ const AppInner: React.FC = () => {
               // stays on the page they were on.
               const hasAdminRole = ADMIN_ROLES.includes(role) || isSuperAdminEmail(user?.email);
               const homeBase = (isAdminDomain || hasAdminRole) ? '/admin' : '/';
+
+              // One-shot intent flag: when an admin taps "Go to User App", the admin
+              // dashboard sets sessionStorage.intentionalUserView before navigating to
+              // "/" so this auto-redirect doesn't bounce them straight back to /admin.
+              // Read it, then consume it immediately — regardless of the current path —
+              // so it's truly one-shot and can't linger across navigations to suppress a
+              // later legitimate "/" → "/admin" redirect. (Client-side navigation never
+              // fires this callback, so the explicit tap still lands on "/" and stays;
+              // the flag only matters on the next auth callback / refresh.)
+              let intentionalUserView = false;
+              try {
+                intentionalUserView = sessionStorage.getItem('intentionalUserView') === 'true';
+                if (intentionalUserView) sessionStorage.removeItem('intentionalUserView');
+              } catch {}
+
               if (FUNNEL_PATHS.includes(path)) {
                 navigate(homeBase, { replace: true });
-              } else if (!didInitialRouteRef.current && path === '/' && (isAdminDomain || hasAdminRole)) {
-                // First load only: land admins on their dashboard. After that, an
-                // admin who chose "View App" can stay at "/" — don't re-bounce them
-                // on later auth-callback fires (token refresh, re-subscribes, etc.).
+              } else if (path === '/' && (isAdminDomain || hasAdminRole) && !intentionalUserView) {
                 navigate('/admin', { replace: true });
               }
               // else: keep the current deep-linked path
-              didInitialRouteRef.current = true;
             } else if (isChurchSignup || signupPlan || role === 'church_admin') {
               navigate('/church-onboarding', { replace: true });
             } else {

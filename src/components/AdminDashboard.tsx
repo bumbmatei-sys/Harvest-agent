@@ -52,12 +52,15 @@ const TAB_TO_SLUG: Record<string, string> = { 'ai': 'ai-knowledge' };
 // its tab id; order matters. Groups with no permitted tabs are omitted entirely.
 const MORE_GROUPS: { label: string; ids: string[] }[] = [
   { label: 'CONTENT', ids: ['posts', 'blog', 'courses', 'newsletter', 'ai', 'docs'] },
-  // CRM leads Ministry (it's the "who"); Church & Community sit alongside it.
-  // Admin Roles now lives inside the CRM page, not as its own drawer entry.
+  // Ministry: the "who" + giving. CRM leads the group AND is surfaced on the
+  // Dashboard home (Members card / "View Members") — both are valid entry points.
+  // Analytics & Admin Roles live inside the CRM screen as internal tabs, not as
+  // their own drawer entries.
   { label: 'MINISTRY', ids: ['crm', 'churches', 'community', 'fundraising', 'forms', 'accounting'] },
   // Broadcasting: outbound / live engagement channels.
-  { label: 'BROADCASTING', ids: ['livestream', 'sms', 'checkin', 'events'] },
-  { label: 'PLATFORM', ids: ['tenants'] },
+  { label: 'BROADCASTING', ids: ['events', 'checkin', 'sms', 'livestream'] },
+  // Platform: super-admin-only surfaces (Tenants + the platform Inbox).
+  { label: 'PLATFORM', ids: ['tenants', 'inbox'] },
   { label: 'MORE', ids: ['affiliate', 'branding'] },
 ];
 const GROUPED_MORE_IDS = new Set(MORE_GROUPS.flatMap((g) => g.ids));
@@ -137,6 +140,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
   const handleLogout = useCallback(async () => {
     try { await signOut(auth); } catch (e) { console.error('Error signing out:', e); }
   }, []);
+
+  /** Open the member app at "/" and STAY there. Sets a one-shot intent flag that
+   *  App.tsx reads so the admin → /admin auto-redirect won't bounce us back. */
+  const handleViewApp = useCallback(() => {
+    try { sessionStorage.setItem('intentionalUserView', 'true'); } catch {}
+    setShowMoreSheet(false);
+    onNavigate('home');
+  }, [onNavigate]);
 
 
   useEffect(() => {
@@ -371,10 +382,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
       {/* Side/Bottom Navigation */}
       <div className={`bg-white border-t lg:border-t-0 lg:border-r border-gray-100 flex justify-center lg:justify-start py-2 lg:py-6 px-2 lg:px-4 pb-safe lg:pb-0 fixed lg:relative bottom-0 lg:bottom-auto w-full ${isSidebarCollapsed ? 'lg:w-[88px]' : 'lg:w-64'} lg:h-screen z-[100] shadow-[0_-4px_20px_rgba(0,0,0,0.05)] lg:shadow-[2px_0_10px_rgba(0,0,0,0.02)] transition-all duration-300`}>
         <div className={`flex lg:flex-col justify-around lg:justify-start items-center lg:items-stretch w-full lg:max-w-none lg:gap-2 ${isSidebarCollapsed ? 'lg:items-center' : ''}`}>
-          {/* Desktop Logo */}
+          {/* Desktop Logo — the member-app entry point on desktop (the More-drawer
+              "Go to User App" row is mobile-only). Routes through handleViewApp so
+              the one-shot intent flag keeps us on "/" instead of bouncing to /admin. */}
           <button
-            onClick={() => onNavigate('home')}
-            className={`hidden lg:flex items-center mb-3 shrink-0 text-left hover:opacity-80 transition-opacity ${isSidebarCollapsed ? 'justify-center px-0 w-full' : 'gap-3 px-4'}`}
+            onClick={handleViewApp}
+            className={`hidden lg:flex items-center mb-6 shrink-0 text-left hover:opacity-80 transition-opacity ${isSidebarCollapsed ? 'justify-center px-0 w-full' : 'gap-3 px-4'}`}
           >
             <img
               src="https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png"
@@ -383,18 +396,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
             />
             {!isSidebarCollapsed && <span className="text-xl font-bold text-gray-900 truncate">Admin</span>}
           </button>
-
-          {/* Desktop: View App — only on the dashboard; returns to the member app */}
-          {activeTab === 'dashboard' && (
-            <button
-              onClick={() => onNavigate('home')}
-              className={`hidden lg:flex items-center mb-6 shrink-0 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-colors ${isSidebarCollapsed ? 'justify-center w-full py-2.5' : 'gap-2 px-3 py-2.5 w-full'}`}
-              title="View member app"
-            >
-              <ExternalLink size={16} className="shrink-0" style={{ color: 'var(--brand-color, #d4a017)' }} />
-              {!isSidebarCollapsed && <span>View App</span>}
-            </button>
-          )}
 
           {/* Mobile: primary tabs + More button */}
           <div className="flex lg:hidden justify-around items-center w-full">
@@ -515,16 +516,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
           titleIcon={headerOverride?.titleIcon}
           onBack={headerOverride ? headerOverride.onBack : (activeTab === 'dashboard' ? undefined : smartBack)}
           action={headerOverride ? headerOverride.action : headerAction}
-          leftAccessory={headerOverride ? undefined : (activeTab === 'dashboard' ? (
-            <button
-              onClick={() => onNavigate('home')}
-              className="lg:hidden flex items-center gap-1.5 text-xs font-semibold rounded-full px-3 py-1.5 border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-colors"
-              title="View member app"
-            >
-              <ExternalLink size={14} style={{ color: 'var(--brand-color, #d4a017)' }} />
-              <span>View App</span>
-            </button>
-          ) : undefined)}
         />
 
         {/* Main Content Area */}
@@ -696,8 +687,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
                   );
                 })}
 
-                {/* Catch-all: any permitted drawer tab not assigned to a group above
-                    (e.g. a tab moved out of the bottom bar) — never leave one unreachable. */}
+                {/* Safety catch-all: any permitted drawer tab not assigned to a group
+                    above (e.g. a tab a user dragged out of the bottom bar) — never
+                    leave one unreachable. Empty in normal use, so it renders nothing. */}
                 {(() => {
                   const leftover = moreTabs.filter(
                     (t) => t.id !== 'settings' && !GROUPED_MORE_IDS.has(t.id),
@@ -716,19 +708,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
                 {/* Divider */}
                 <div className="mx-4 my-2 border-t border-gray-100" />
 
-                {/* Settings row */}
-                <button
-                  onClick={() => go('settings')}
-                  className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors hover:bg-gray-50 text-left"
-                >
-                  <Settings size={16} className="text-gray-500" />
-                  <span className="text-sm font-medium text-gray-800">Settings</span>
-                </button>
-
-                {/* Divider */}
-                <div className="mx-4 my-2 border-t border-gray-100" />
-
-                {/* Upgrade Plan — always last, gold accent */}
+                {/* Upgrade Plan — gold accent; kept reachable above the action stack */}
                 <button
                   onClick={() => go('upgrade')}
                   className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors hover:bg-amber-50 text-left mb-2"
@@ -743,7 +723,29 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
                 {/* Divider */}
                 <div className="mx-4 my-2 border-t border-gray-100" />
 
-                {/* Log Out — at the very end of the drawer */}
+                {/* Action stack — Settings · Go to User App · Log Out, one consistent
+                    row style so the three read as a single block. */}
+                <button
+                  onClick={() => go('settings')}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors hover:bg-gray-50 text-left"
+                >
+                  <Settings size={16} className="text-gray-500" />
+                  <span className="text-sm font-medium text-gray-800">Settings</span>
+                </button>
+
+                {/* Go to User App — gold accent; opens the member app and stays there
+                    (one-shot intent flag, see handleViewApp + App.tsx). */}
+                <button
+                  onClick={handleViewApp}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors hover:bg-gray-50 text-left"
+                >
+                  <ExternalLink size={16} style={{ color: 'var(--brand-color, #d4a017)' }} />
+                  <span className="text-sm font-semibold" style={{ color: 'var(--brand-color, #d4a017)' }}>
+                    Go to User App
+                  </span>
+                </button>
+
+                {/* Log Out — the very last row of the drawer */}
                 <button
                   onClick={handleLogout}
                   className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors hover:bg-red-50 text-left mb-2"
