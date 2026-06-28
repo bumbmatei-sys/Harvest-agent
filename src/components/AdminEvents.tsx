@@ -14,6 +14,7 @@ import { notifyError } from '../utils/notify';
 import { useAdminHeader, HeaderActionButton } from './AdminScreenHeader';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAppStore } from '../store/useAppStore';
+import { PLATFORM_TENANT_ID } from '../utils/tenant-scope';
 import { useEvents } from '../hooks/queries/useEventQueries';
 
 import type { Event, Registration } from '../hooks/queries/useEventQueries';
@@ -62,7 +63,13 @@ const emptyForm = {
 const AdminEvents: React.FC = () => {
   const { setHeaderAction, setHeaderOverride } = useAdminHeader();
   const queryClient = useQueryClient();
-  const { currentTenantId: tenantId, isAuthReady } = useAppStore();
+  // Resolve the tenant from the store, falling back to the platform tenant for a
+  // super admin if the store value is briefly null (e.g. on a refresh before the
+  // App store effect has resolved). This keeps every create/write below from
+  // dying on a transient null. On a tenant subdomain currentTenantId is set and
+  // takes precedence.
+  const { currentTenantId, isAuthReady, isSuperAdmin } = useAppStore();
+  const tenantId = currentTenantId || (isSuperAdmin ? PLATFORM_TENANT_ID : null);
 
   const { data: events = [], isLoading: loading } = useEvents(tenantId, isAuthReady);
 

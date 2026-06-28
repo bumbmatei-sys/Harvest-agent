@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { db, auth } from '../firebase';
 import { useAppStore } from '../store/useAppStore';
+import { PLATFORM_TENANT_ID } from '../utils/tenant-scope';
 import { useAdminHeader, HeaderActionButton } from './AdminScreenHeader';
 
 const GOLD = 'var(--brand-color, #B8962E)';
@@ -38,7 +39,11 @@ interface Attendee {
 interface EventOption { id: string; title: string }
 
 const AdminCheckin: React.FC = () => {
-  const { currentTenantId: tenantId, isAuthReady } = useAppStore();
+  // Fall back to the platform tenant for a super admin if the store value is
+  // briefly null (e.g. on a refresh) so create/QR never silently no-ops. On a
+  // tenant subdomain currentTenantId is set and takes precedence.
+  const { currentTenantId, isAuthReady, isSuperAdmin } = useAppStore();
+  const tenantId = currentTenantId || (isSuperAdmin ? PLATFORM_TENANT_ID : null);
   const { setHeaderAction, setHeaderOverride } = useAdminHeader();
 
   const [view, setView] = useState<'list' | 'create' | 'detail'>('list');
@@ -119,7 +124,7 @@ const AdminCheckin: React.FC = () => {
   };
 
   const handleCreate = async () => {
-    if (!tenantId) return;
+    if (!tenantId) { alert('Could not determine your workspace. Please refresh and try again.'); return; }
     if (!name.trim()) { alert('Please name the session.'); return; }
     setSaving(true);
     try {

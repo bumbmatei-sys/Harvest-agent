@@ -4,6 +4,7 @@ import { collection, query, orderBy, onSnapshot, limit, Timestamp } from 'fireba
 import { Send, MessageSquare, Loader2, Save } from 'lucide-react';
 import { db } from '../firebase';
 import { useAppStore } from '../store/useAppStore';
+import { PLATFORM_TENANT_ID } from '../utils/tenant-scope';
 import { authFetch } from '../utils/auth-fetch';
 
 const GOLD = 'var(--brand-color, #B8962E)';
@@ -33,7 +34,11 @@ const TRIGGERS: TriggerDef[] = [
 ];
 
 const AdminSms: React.FC = () => {
-  const { currentTenantId: tenantId, isAuthReady } = useAppStore();
+  // Fall back to the platform tenant for a super admin if the store value is
+  // briefly null so the history loader and send guard resolve. On a tenant
+  // subdomain currentTenantId is set and takes precedence.
+  const { currentTenantId, isAuthReady, isSuperAdmin } = useAppStore();
+  const tenantId = currentTenantId || (isSuperAdmin ? PLATFORM_TENANT_ID : null);
   const [tab, setTab] = useState<'broadcast' | 'automated'>('broadcast');
 
   // Broadcast
@@ -76,6 +81,7 @@ const AdminSms: React.FC = () => {
 
   const send = async () => {
     if (!message.trim()) { setSendMsg({ ok: false, text: 'Message is required.' }); return; }
+    if (!tenantId) { setSendMsg({ ok: false, text: 'Could not determine your workspace. Please refresh and try again.' }); return; }
     setSending(true);
     setSendMsg(null);
     try {

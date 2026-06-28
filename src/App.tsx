@@ -28,7 +28,7 @@ import { TenantProvider, useTenant } from './contexts/TenantContext';
 import { useClaimsFreshness } from './hooks/useClaimsFreshness';
 import { isSuperAdminEmail } from './utils/super-admins';
 import { useAppStore } from './store/useAppStore';
-import { PLATFORM_TENANT_ID, getTenantIdFromHost, isPlatformContext } from './utils/tenant-scope';
+import { PLATFORM_TENANT_ID, getTenantIdFromHost } from './utils/tenant-scope';
 
 /** Paths that represent the auth / onboarding funnel (used to decide redirects). */
 const FUNNEL_PATHS = ['/auth', '/onboarding', '/church-onboarding'];
@@ -93,6 +93,7 @@ const AppInner: React.FC = () => {
     setIsSuperAdmin,
     setCurrentTenant,
     tenantPlan,
+    isSuperAdmin: storeIsSuperAdmin,
   } = useAppStore();
 
   // Sync tenantId from TenantContext into the Zustand store.
@@ -100,12 +101,23 @@ const AppInner: React.FC = () => {
   // tenant, so a signed-in super admin must operate as `harvest` (PLATFORM_TENANT_ID),
   // otherwise every tenant-scoped write (events, forms, check-in, livestream, SMS, CRM)
   // silently no-ops on a null tenant.
+  //
+  // IMPORTANT: key the platform fallback off the stable store `isSuperAdmin`
+  // (set inside onAuthStateChanged once auth hydrates) rather than reading
+  // auth.currentUser directly. Reading auth here was racy — this effect can run
+  // before Firebase hydrates currentUser, resolve to null, and (because
+  // currentUser is not a dependency) never recompute. Depending on
+  // `storeIsSuperAdmin` makes the effect re-run the moment auth resolves.
+  //
+  // The fallback stays apex-only: on a tenant subdomain `getTenantIdFromHost()`
+  // is non-null, so we never substitute the platform tenant there — the
+  // subdomain tenant always takes precedence (preserves doc-1 scoping).
   useEffect(() => {
     const effectiveTenantId =
       tenantId ||
-      (isPlatformContext() ? PLATFORM_TENANT_ID : null);
+      (storeIsSuperAdmin && getTenantIdFromHost() === null ? PLATFORM_TENANT_ID : null);
     setCurrentTenant(null, effectiveTenantId);
-  }, [tenantId, isAuthReady, setCurrentTenant]);
+  }, [tenantId, isAuthReady, storeIsSuperAdmin, setCurrentTenant]);
 
   // On a tenant subdomain, the tenant's own plan (from the tenant doc, via
   // TenantContext) is authoritative for gating — NOT the signed-in user's plan.

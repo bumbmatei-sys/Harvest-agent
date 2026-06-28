@@ -6,7 +6,7 @@ import { db, auth } from '../firebase';
 import { ImageUpload } from './ImageUpload';
 import RichTextEditor from './RichTextEditor';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
-import { getTenantScope } from '../utils/tenant-scope';
+import { getTenantScope, getWriteTenantScope } from '../utils/tenant-scope';
 
 interface BlogPost {
   id?: string;
@@ -128,7 +128,10 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
         await addDoc(collection(db, 'blog_posts'), {
           ...postData,
           createdAt: new Date().toISOString(),
-          tenantId: tenantId || null,
+          // Platform-aware: a super admin on the apex persists the platform
+          // tenant instead of null so the post is never orphaned. (The edit
+          // branch above keeps getTenantScope() for its ownership check.)
+          tenantId: await getWriteTenantScope(),
         });
       }
       onClose();

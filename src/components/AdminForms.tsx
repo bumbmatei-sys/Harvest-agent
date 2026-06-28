@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { db, auth } from '../firebase';
 import { useAppStore } from '../store/useAppStore';
+import { PLATFORM_TENANT_ID } from '../utils/tenant-scope';
 import { useAdminHeader, HeaderActionButton } from './AdminScreenHeader';
 
 const GOLD = 'var(--brand-color, #B8962E)';
@@ -64,7 +65,11 @@ interface AdminFormsProps {
 }
 
 const AdminForms: React.FC<AdminFormsProps> = () => {
-  const { currentTenantId: tenantId, isAuthReady } = useAppStore();
+  // Fall back to the platform tenant for a super admin if the store value is
+  // briefly null so creating/saving a form never silently no-ops. On a tenant
+  // subdomain currentTenantId is set and takes precedence.
+  const { currentTenantId, isAuthReady, isSuperAdmin } = useAppStore();
+  const tenantId = currentTenantId || (isSuperAdmin ? PLATFORM_TENANT_ID : null);
   const { setHeaderAction, setHeaderOverride } = useAdminHeader();
 
   const [view, setView] = useState<'list' | 'builder' | 'submissions'>('list');
@@ -150,7 +155,7 @@ const AdminForms: React.FC<AdminFormsProps> = () => {
   };
 
   const handleSave = async () => {
-    if (!tenantId) return;
+    if (!tenantId) { alert('Could not determine your workspace. Please refresh and try again.'); return; }
     if (!title.trim()) { alert('Please give your form a title.'); return; }
     setSaving(true);
     try {

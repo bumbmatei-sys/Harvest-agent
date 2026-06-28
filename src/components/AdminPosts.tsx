@@ -7,7 +7,7 @@ import { ImageUpload } from './ImageUpload';
 import { MessageSquare, BarChart2, Calendar as CalendarIcon, Image as ImageIcon, Send, MoreVertical, ThumbsUp, Check, X } from 'lucide-react';
 import { useAdminHeader, HeaderActionButton } from './AdminScreenHeader';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
-import { getTenantScope } from '../utils/tenant-scope';
+import { getTenantScope, getWriteTenantScope } from '../utils/tenant-scope';
 import { sendPushNotification } from '../utils/send-notification';
 import { sortByTime } from '../utils/query-helpers';
 
@@ -165,7 +165,10 @@ const AdminPosts: React.FC<AdminPostsProps> = ({ userRole, userPermissions }) =>
  } else {
    await addDoc(collection(db, 'community_posts'), {
      ...postData,
-     tenantId: tenantId || null,
+     // Platform-aware: a super admin on the apex persists the platform tenant
+     // here instead of null, so the post is never orphaned. (The edit branch
+     // above keeps getTenantScope() for its cross-tenant ownership check.)
+     tenantId: await getWriteTenantScope(),
    });
    // Fire-and-forget push notification
    const preview = content.trim().slice(0, 100);

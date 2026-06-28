@@ -121,4 +121,19 @@ export async function getTenantScope(): Promise<string | null> {
   return getTenantId();
 }
 
+/**
+ * Like getTenantScope(), but on the apex domain a super admin resolves to the
+ * platform tenant instead of null — so writes are never orphaned with a null
+ * tenantId. Use this for WRITE paths; use getTenantScope() for read scoping.
+ *
+ * Safe to call from user-initiated handlers (button clicks) and from effects in
+ * admin screens, which only mount after auth has hydrated — so isSuperAdmin()
+ * (which reads auth.currentUser) is reliable in those contexts.
+ */
+export async function getWriteTenantScope(): Promise<string | null> {
+  const scope = await getTenantScope();
+  if (scope) return scope;
+  return isSuperAdmin() ? PLATFORM_TENANT_ID : null;
+}
+
 export { SUPER_ADMIN_EMAIL };
