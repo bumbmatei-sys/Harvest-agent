@@ -38,10 +38,13 @@ interface StatementConfig {
   ein?: string;
   address?: string;
   footer?: string;
+  country?: string;
 }
 
 const DEFAULT_FOOTER =
   'No goods or services were provided in exchange for these contributions.';
+
+const RECEIPT_DEFAULT_FOOTER = 'This receipt is valid for tax purposes.';
 
 /** Stable, Firestore-safe donor id derived from the email. */
 function donorIdFromEmail(email: string): string {
@@ -79,6 +82,16 @@ async function buildStatementPdf(
   const left = 50;
   let y = 800;
 
+  // International format: AU/NZ/Other issue an "Official Donation Receipt" with a
+  // "Registration No."; US/CA issue a "Charitable Contribution Statement" with EIN.
+  const country = cfg.country || 'US';
+  const isReceiptStyle = country === 'AU' || country === 'NZ' || country === 'Other';
+  const titleLine = isReceiptStyle
+    ? `Official Donation Receipt — ${year}`
+    : `Charitable Contribution Statement — ${year}`;
+  const idLabel = isReceiptStyle ? 'Registration No.' : 'EIN';
+  const defaultFooter = isReceiptStyle ? RECEIPT_DEFAULT_FOOTER : DEFAULT_FOOTER;
+
   // Ministry name (top-left) + address (top-right block)
   page.drawText(tenantName || 'Harvest', { x: left, y, size: 22, font: boldFont, color: rgb(0.72, 0.59, 0.18) });
   if (cfg.address) {
@@ -86,7 +99,7 @@ async function buildStatementPdf(
   }
   y -= 36;
 
-  page.drawText(`Charitable Contribution Statement — ${year}`, { x: left, y, size: 13, font: boldFont, color: rgb(0.2, 0.2, 0.2) });
+  page.drawText(titleLine, { x: left, y, size: 13, font: boldFont, color: rgb(0.2, 0.2, 0.2) });
   y -= 18;
   page.drawText(`Statement date: ${new Date().toLocaleDateString('en-US')}`, { x: left, y, size: 9, font, color: rgb(0.5, 0.5, 0.5) });
   y -= 28;
@@ -122,12 +135,12 @@ async function buildStatementPdf(
   page.drawText('Total contributions:', { x: 350, y, size: 12, font: boldFont });
   page.drawText(`$${(donor.total / 100).toFixed(2)}`, { x: 460, y, size: 12, font: boldFont, color: rgb(0.72, 0.59, 0.18) });
 
-  // Footer note + EIN + signature line
+  // Footer note + EIN / Registration No. + signature line
   let fy = 110;
-  fy = drawWrapped(page, cfg.footer || DEFAULT_FOOTER, left, fy, 8, font, 95);
+  fy = drawWrapped(page, cfg.footer || defaultFooter, left, fy, 8, font, 95);
   fy -= 8;
   if (cfg.ein) {
-    page.drawText(`EIN: ${cfg.ein}`, { x: left, y: fy, size: 8, font, color: rgb(0.4, 0.4, 0.4) });
+    page.drawText(`${idLabel}: ${cfg.ein}`, { x: left, y: fy, size: 8, font, color: rgb(0.4, 0.4, 0.4) });
     fy -= 14;
   }
   page.drawLine({ start: { x: left, y: 45 }, end: { x: 230, y: 45 }, thickness: 0.5, color: rgb(0.6, 0.6, 0.6) });

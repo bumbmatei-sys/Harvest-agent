@@ -113,6 +113,18 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
     setIsNavVisible(true);
   }, [activeBottomTab]);
 
+  // Deep-link from a QR / Text-to-Give link (`/?giving=1`): jump straight to the
+  // giving ("Partner with Us") flow, then strip the param so a refresh is clean.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('giving') === '1') {
+      setActiveBottomTab('home');
+      setActiveTopTab('partner');
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
+
   const topTabsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {

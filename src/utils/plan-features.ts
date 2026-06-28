@@ -57,6 +57,12 @@ export interface PlanFeatures {
   automatedBlog: boolean;
   /** Annual giving statements (year-end tax summaries) — Ministry only */
   givingStatements: boolean;
+  /** Public event calendar page — all plans (it's public-facing) */
+  publicCalendar: boolean;
+  /** Pledge campaigns — Community (max) and above */
+  pledgeCampaigns: boolean;
+  /** Text-to-Give via inbound SMS keyword */
+  textToGive: boolean;
   /** Installable Progressive Web App (mobile app) — all plans */
   pwaApp: boolean;
   /** Percentage of donation payments the ministry retains after platform fee */
@@ -102,6 +108,9 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     sermonNotes: false,
     automatedBlog: false,
     givingStatements: false,
+    publicCalendar: true,
+    pledgeCampaigns: false,
+    textToGive: false,
     pwaApp: true,
     donationRetention: 90,
   },
@@ -123,7 +132,7 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     smsAutomation: false,
     aiAssistant: 0,
     fundraising: true,
-    eventRegistration: false,
+    eventRegistration: true,
     docs: false,
     crm: false,
     accountingTools: false,
@@ -135,6 +144,9 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     sermonNotes: false,
     automatedBlog: false,
     givingStatements: false,
+    publicCalendar: true,
+    pledgeCampaigns: false,
+    textToGive: false,
     pwaApp: true,
     donationRetention: 95,
   },
@@ -168,6 +180,9 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     sermonNotes: false,
     automatedBlog: true,
     givingStatements: false,
+    publicCalendar: true,
+    pledgeCampaigns: true,
+    textToGive: false,
     pwaApp: true,
     donationRetention: 100,
   },
@@ -201,6 +216,9 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     sermonNotes: true,
     automatedBlog: true,
     givingStatements: true,
+    publicCalendar: true,
+    pledgeCampaigns: true,
+    textToGive: true,
     pwaApp: true,
     donationRetention: 100,
   },

@@ -13,6 +13,8 @@ export interface Campaign {
   endDate?: string;
   isActive: boolean;
   tenantId?: string;
+  campaignType?: 'fundraising' | 'pledge'; // default 'fundraising'
+  pledgeDeadline?: string | null;          // ISO date — pledge campaigns only
 }
 
 export const useCampaigns = (tenantId: string | null | undefined, isAuthReady = true) =>

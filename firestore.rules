@@ -356,6 +356,13 @@ service cloud.firestore {
         allow write: if isTenantAdmin(tenantId);
       }
 
+      // Pledge campaign commitments — admins manage; public pledge submissions
+      // are written server-side via the admin SDK (/api/pledge/submit), so client
+      // access stays admin-only here.
+      match /pledges/{pledgeId} {
+        allow read, write: if isTenantAdmin(tenantId);
+      }
+
       // Custom forms — admins manage (write) forms; any tenant member may read
       // form metadata so forms can be attached in channel/DM messages and opened.
       // Form content is public anyway (rendered on the no-auth /form/{id} page).

@@ -3,6 +3,23 @@ import { collection, query, where, getDocs, getDoc, doc, limit, orderBy } from '
 import { db } from '../../firebase';
 import type { Timestamp } from 'firebase/firestore';
 
+export interface TicketType {
+  id: string;             // uuid generated client-side
+  name: string;           // e.g. "Adult", "Child", "Volunteer"
+  description?: string | null; // null (never undefined) so Firestore accepts the write
+  price: number;          // in cents (0 = free)
+  capacity: number | null; // null = unlimited
+  order: number;          // display order
+}
+
+export interface DiscountCode {
+  code: string;           // e.g. "SCHOLAR50"
+  type: 'percent' | 'fixed'; // percent off or fixed cents off
+  value: number;          // percent (0-100) or cents
+  maxUses: number | null; // null = unlimited
+  usedCount: number;
+}
+
 export interface Event {
   id: string;
   title: string;
@@ -22,6 +39,12 @@ export interface Event {
   createdAt: Timestamp | null;
   createdBy: string;
   tenantId: string;
+  // Registration engine
+  registrationEnabled?: boolean;       // hybrid toggle — false by default
+  ticketTypes?: TicketType[];          // empty array by default
+  waitlistEnabled?: boolean;           // false by default
+  discountCodes?: DiscountCode[];      // empty array by default
+  showOnPublicCalendar?: boolean;      // true by default for published events
 }
 
 export interface Registration {
@@ -32,9 +55,15 @@ export interface Registration {
   email: string;
   phone: string | null;
   ticketCode: string;
-  status: 'confirmed' | 'cancelled' | 'attended';
+  status: 'confirmed' | 'cancelled' | 'attended' | 'waitlisted';
   amount: number;
   registeredAt: Timestamp | null;
+  ticketTypeId?: string | null;
+  ticketTypeName?: string | null;
+  waitlisted?: boolean;
+  discountCode?: string | null;
+  discountAmount?: number;         // cents saved
+  additionalAttendees?: { name: string; email?: string }[]; // household/group
 }
 
 export const useEvents = (tenantId: string | null | undefined, isAuthReady = true) =>

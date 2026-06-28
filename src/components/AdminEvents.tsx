@@ -2,12 +2,14 @@
 import React, { useState, useEffect } from 'react';
 import {
   Plus, Edit2, Trash2, CalendarCheck, Users, MapPin, Clock, DollarSign,
-  Check, Download, Search, ChevronRight, Globe, X, Pin
+  Check, Download, Search, ChevronRight, Globe, X, Pin, QrCode, Copy,
+  Ticket, Tag, ArrowUp, ArrowDown, Link2,
 } from 'lucide-react';
 import {
   collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc,
   doc, limit, serverTimestamp, Timestamp,
 } from 'firebase/firestore';
+import QRCode from 'qrcode';
 import { db, auth } from '../firebase';
 import { sortByTime } from '../utils/query-helpers';
 import { notifyError } from '../utils/notify';
@@ -17,9 +19,27 @@ import { useAppStore } from '../store/useAppStore';
 import { PLATFORM_TENANT_ID } from '../utils/tenant-scope';
 import { useEvents } from '../hooks/queries/useEventQueries';
 
-import type { Event, Registration } from '../hooks/queries/useEventQueries';
+import type { Event, Registration, TicketType, DiscountCode } from '../hooks/queries/useEventQueries';
 
 type ViewMode = 'list' | 'create' | 'edit' | 'detail';
+
+/** Client-side id generator (uuid is not a dependency). */
+const genId = () => Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 6);
+
+/** Format a cents price for display ("Free" / "$12.00"). */
+const fmtCents = (cents: number) => (cents > 0 ? `$${(cents / 100).toFixed(2)}` : 'Free');
+
+/** Small pill toggle matching the existing online-event toggle style. */
+const Toggle: React.FC<{ on: boolean; onClick: () => void }> = ({ on, onClick }) => (
+  <button onClick={onClick} className="transition-colors shrink-0" aria-pressed={on}>
+    <div className={`w-10 h-5 rounded-full transition-colors flex items-center px-0.5 ${on ? 'bg-gold' : 'bg-gray-200'}`}>
+      <div className={`w-4 h-4 rounded-full bg-white shadow transition-transform ${on ? 'translate-x-5' : ''}`} />
+    </div>
+  </button>
+);
+
+/** Format a discount code's value for display. */
+const fmtDiscount = (d: DiscountCode) => (d.type === 'percent' ? `${d.value}% off` : `${fmtCents(d.value)} off`);
 
 const STATUS_COLORS: Record<Event['status'], string> = {
   draft: 'bg-gray-100 text-gray-500',
@@ -58,6 +78,12 @@ const emptyForm = {
   price: '0',
   currency: 'usd',
   status: 'draft' as Event['status'],
+  // Registration engine
+  registrationEnabled: false,
+  ticketTypes: [] as TicketType[],
+  waitlistEnabled: false,
+  discountCodes: [] as DiscountCode[],
+  showOnPublicCalendar: true,
 };
 
 const AdminEvents: React.FC = () => {
@@ -83,6 +109,18 @@ const AdminEvents: React.FC = () => {
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [regSearch, setRegSearch] = useState('');
   const [checkingIn, setCheckingIn] = useState<string | null>(null);
+  const [qrDataUrl, setQrDataUrl] = useState('');
+  const [copied, setCopied] = useState(false);
+
+  // Registration-engine sub-forms (inside the create/edit form)
+  const emptyTicket = { name: '', description: '', price: '0', capacity: '' };
+  const [ticketDraft, setTicketDraft] = useState(emptyTicket);
+  const [showTicketForm, setShowTicketForm] = useState(false);
+  const emptyDiscount = { code: '', type: 'percent' as DiscountCode['type'], value: '', maxUses: '' };
+  const [discountDraft, setDiscountDraft] = useState(emptyDiscount);
+  const [showDiscountForm, setShowDiscountForm] = useState(false);
+
+  const registrationUrl = (eventId: string) => `https://${tenantId}.theharvest.app/event/${eventId}`;
 
   // Drive the shared header. In a sub-view (create/edit/detail) the back chevron
   // returns to the event list; on the list it shows the "Create Event" action.
@@ -123,6 +161,17 @@ const AdminEvents: React.FC = () => {
     return unsub;
   }, [view, selected, tenantId]);
 
+  // Generate the registration QR code when viewing a registration-enabled event.
+  useEffect(() => {
+    if (view === 'detail' && selected && selected.registrationEnabled && tenantId) {
+      QRCode.toDataURL(registrationUrl(selected.id), { width: 320, margin: 1 })
+        .then(setQrDataUrl).catch(() => setQrDataUrl(''));
+    } else {
+      setQrDataUrl('');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view, selected, tenantId]);
+
   const openCreate = () => {
     setForm(emptyForm);
     setSelected(null);
@@ -144,7 +193,14 @@ const AdminEvents: React.FC = () => {
       price: ev.price.toString(),
       currency: ev.currency,
       status: ev.status,
+      registrationEnabled: ev.registrationEnabled ?? false,
+      ticketTypes: Array.isArray(ev.ticketTypes) ? ev.ticketTypes : [],
+      waitlistEnabled: ev.waitlistEnabled ?? false,
+      discountCodes: Array.isArray(ev.discountCodes) ? ev.discountCodes : [],
+      showOnPublicCalendar: ev.showOnPublicCalendar ?? true,
     });
+    setShowTicketForm(false);
+    setShowDiscountForm(false);
     setSelected(ev);
     setView('edit');
   };
@@ -174,6 +230,11 @@ const AdminEvents: React.FC = () => {
         price: Number(form.price) || 0,
         currency: form.currency,
         status: form.status,
+        registrationEnabled: form.registrationEnabled,
+        ticketTypes: form.ticketTypes,
+        waitlistEnabled: form.waitlistEnabled,
+        discountCodes: form.discountCodes,
+        showOnPublicCalendar: form.showOnPublicCalendar,
       };
       if (view === 'edit' && selected) {
         await updateDoc(doc(db, 'tenants', tenantId, 'events', selected.id), {
@@ -209,6 +270,11 @@ const AdminEvents: React.FC = () => {
           createdAt: null,
           createdBy: auth.currentUser?.uid || '',
           pinned: false,
+          registrationEnabled: data.registrationEnabled || false,
+          ticketTypes: data.ticketTypes || [],
+          waitlistEnabled: data.waitlistEnabled || false,
+          discountCodes: data.discountCodes || [],
+          showOnPublicCalendar: data.showOnPublicCalendar ?? true,
         };
         await queryClient.invalidateQueries({ queryKey: ['events', tenantId] });
         setSelected(newEvent);
@@ -243,6 +309,64 @@ const AdminEvents: React.FC = () => {
       await updateDoc(doc(db, 'tenants', tenantId, 'registrations', reg.id), { status: 'attended' });
     } catch (e) { notifyError('Failed to check in attendee', e); }
     finally { setCheckingIn(null); }
+  };
+
+  // ── Registration engine: ticket type management (within the form) ──
+  const saveTicketDraft = () => {
+    if (!ticketDraft.name.trim()) return;
+    const t: TicketType = {
+      id: genId(),
+      name: ticketDraft.name.trim(),
+      // Use null, never undefined — the Firestore client SDK rejects undefined
+      // field values (including nested inside the ticketTypes array).
+      description: ticketDraft.description.trim() || null,
+      price: Math.max(0, Math.round((Number(ticketDraft.price) || 0) * 100)),
+      capacity: ticketDraft.capacity ? Number(ticketDraft.capacity) : null,
+      order: form.ticketTypes.length,
+    };
+    setForm({ ...form, ticketTypes: [...form.ticketTypes, t] });
+    setTicketDraft(emptyTicket);
+    setShowTicketForm(false);
+  };
+
+  const removeTicket = (id: string) =>
+    setForm({ ...form, ticketTypes: form.ticketTypes.filter(t => t.id !== id).map((t, i) => ({ ...t, order: i })) });
+
+  const moveTicket = (id: string, dir: -1 | 1) => {
+    const arr = [...form.ticketTypes];
+    const idx = arr.findIndex(t => t.id === id);
+    const swap = idx + dir;
+    if (idx < 0 || swap < 0 || swap >= arr.length) return;
+    [arr[idx], arr[swap]] = [arr[swap], arr[idx]];
+    setForm({ ...form, ticketTypes: arr.map((t, i) => ({ ...t, order: i })) });
+  };
+
+  // ── Registration engine: discount code management ──
+  const saveDiscountDraft = () => {
+    const code = discountDraft.code.trim().toUpperCase();
+    if (!code) return;
+    if (form.discountCodes.some(d => d.code === code)) { notifyError('A discount code with that name already exists', null); return; }
+    const isPercent = discountDraft.type === 'percent';
+    const raw = Number(discountDraft.value) || 0;
+    const value = isPercent ? Math.min(100, Math.max(0, Math.round(raw))) : Math.max(0, Math.round(raw * 100));
+    const d: DiscountCode = {
+      code,
+      type: discountDraft.type,
+      value,
+      maxUses: discountDraft.maxUses ? Number(discountDraft.maxUses) : null,
+      usedCount: 0,
+    };
+    setForm({ ...form, discountCodes: [...form.discountCodes, d] });
+    setDiscountDraft(emptyDiscount);
+    setShowDiscountForm(false);
+  };
+
+  const removeDiscount = (code: string) =>
+    setForm({ ...form, discountCodes: form.discountCodes.filter(d => d.code !== code) });
+
+  const copyRegUrl = async () => {
+    if (!selected) return;
+    try { await navigator.clipboard.writeText(registrationUrl(selected.id)); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { /* ignore */ }
   };
 
   const exportCSV = () => {
@@ -337,6 +461,151 @@ const AdminEvents: React.FC = () => {
               <input type="datetime-local" value={form.registrationDeadline} onChange={e => setForm({ ...form, registrationDeadline: e.target.value })}
                 className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold" />
             </div>
+
+            {/* ── Registration engine ── */}
+            <div className="border-t border-gray-100 pt-5">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-gray-900">Enable Registrations</p>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    When enabled, attendees can sign up for this event via a public registration page with QR code access.
+                  </p>
+                </div>
+                <Toggle on={form.registrationEnabled} onClick={() => setForm({ ...form, registrationEnabled: !form.registrationEnabled })} />
+              </div>
+
+              {form.registrationEnabled && (
+                <div className="mt-5 space-y-5">
+                  {/* Ticket Types */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="text-xs font-bold text-gray-700 flex items-center gap-1.5"><Ticket size={13} /> Ticket Types</h4>
+                      {!showTicketForm && (
+                        <button onClick={() => { setTicketDraft(emptyTicket); setShowTicketForm(true); }}
+                          className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50">
+                          <Plus size={12} /> Add Ticket Type
+                        </button>
+                      )}
+                    </div>
+
+                    {form.ticketTypes.length === 0 && !showTicketForm && (
+                      <p className="text-xs text-gray-400 bg-gray-50 rounded-xl p-3">
+                        Add at least one ticket type. Attendees will choose one when registering.
+                      </p>
+                    )}
+
+                    <div className="space-y-2">
+                      {form.ticketTypes.map((t, i) => (
+                        <div key={t.id} className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-3 py-2.5">
+                          <div className="flex flex-col">
+                            <button onClick={() => moveTicket(t.id, -1)} disabled={i === 0} className="text-gray-300 hover:text-gray-500 disabled:opacity-30"><ArrowUp size={12} /></button>
+                            <button onClick={() => moveTicket(t.id, 1)} disabled={i === form.ticketTypes.length - 1} className="text-gray-300 hover:text-gray-500 disabled:opacity-30"><ArrowDown size={12} /></button>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-gray-900 truncate">{t.name}</p>
+                            <p className="text-xs text-gray-400">
+                              {fmtCents(t.price)} · {t.capacity == null ? 'Unlimited' : `${t.capacity} cap`}
+                              {t.description ? ` · ${t.description}` : ''}
+                            </p>
+                          </div>
+                          <button onClick={() => removeTicket(t.id)} className="p-1.5 rounded-lg hover:bg-red-50"><X size={14} className="text-red-400" /></button>
+                        </div>
+                      ))}
+                    </div>
+
+                    {showTicketForm && (
+                      <div className="mt-2 bg-gray-50 rounded-xl p-3 space-y-2.5">
+                        <input value={ticketDraft.name} onChange={e => setTicketDraft({ ...ticketDraft, name: e.target.value })}
+                          placeholder="Name (e.g. Adult)" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold" />
+                        <input value={ticketDraft.description} onChange={e => setTicketDraft({ ...ticketDraft, description: e.target.value })}
+                          placeholder="Description (optional)" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold" />
+                        <div className="grid grid-cols-2 gap-2">
+                          <input type="number" min={0} step="0.01" value={ticketDraft.price} onChange={e => setTicketDraft({ ...ticketDraft, price: e.target.value })}
+                            placeholder="Price ($) — 0 = Free" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold" />
+                          <input type="number" min={0} value={ticketDraft.capacity} onChange={e => setTicketDraft({ ...ticketDraft, capacity: e.target.value })}
+                            placeholder="Capacity (blank = ∞)" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold" />
+                        </div>
+                        <div className="flex gap-2">
+                          <button onClick={() => { setShowTicketForm(false); setTicketDraft(emptyTicket); }} className="flex-1 py-2 rounded-lg border border-gray-200 text-xs font-semibold text-gray-600">Cancel</button>
+                          <button onClick={saveTicketDraft} disabled={!ticketDraft.name.trim()}
+                            className="flex-1 py-2 rounded-lg text-xs font-semibold text-white disabled:opacity-50" style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}>Add</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Waitlist — only when at least one ticket type is capped */}
+                  {form.ticketTypes.some(t => t.capacity != null) && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-gray-700">Enable waitlist when capacity is full</span>
+                      <Toggle on={form.waitlistEnabled} onClick={() => setForm({ ...form, waitlistEnabled: !form.waitlistEnabled })} />
+                    </div>
+                  )}
+
+                  {/* Discount Codes */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="text-xs font-bold text-gray-700 flex items-center gap-1.5"><Tag size={13} /> Discount Codes</h4>
+                      {!showDiscountForm && (
+                        <button onClick={() => { setDiscountDraft(emptyDiscount); setShowDiscountForm(true); }}
+                          className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50">
+                          <Plus size={12} /> Add Discount Code
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      {form.discountCodes.map(d => (
+                        <div key={d.code} className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-3 py-2.5">
+                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${d.type === 'percent' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>{d.type === 'percent' ? '%' : '$'}</span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-gray-900 truncate font-mono">{d.code}</p>
+                            <p className="text-xs text-gray-400">{fmtDiscount(d)} · {d.usedCount}{d.maxUses == null ? '' : `/${d.maxUses}`} used</p>
+                          </div>
+                          <button onClick={() => removeDiscount(d.code)} className="p-1.5 rounded-lg hover:bg-red-50"><X size={14} className="text-red-400" /></button>
+                        </div>
+                      ))}
+                    </div>
+
+                    {showDiscountForm && (
+                      <div className="mt-2 bg-gray-50 rounded-xl p-3 space-y-2.5">
+                        <input value={discountDraft.code} onChange={e => setDiscountDraft({ ...discountDraft, code: e.target.value.toUpperCase() })}
+                          placeholder="CODE (e.g. SCHOLAR50)" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-gold" />
+                        <div className="flex gap-3">
+                          <label className="flex items-center gap-1.5 text-sm text-gray-700">
+                            <input type="radio" name="discountType" checked={discountDraft.type === 'percent'} onChange={() => setDiscountDraft({ ...discountDraft, type: 'percent' })} /> Percent off
+                          </label>
+                          <label className="flex items-center gap-1.5 text-sm text-gray-700">
+                            <input type="radio" name="discountType" checked={discountDraft.type === 'fixed'} onChange={() => setDiscountDraft({ ...discountDraft, type: 'fixed' })} /> Fixed ($) off
+                          </label>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <input type="number" min={0} step={discountDraft.type === 'percent' ? '1' : '0.01'} value={discountDraft.value} onChange={e => setDiscountDraft({ ...discountDraft, value: e.target.value })}
+                            placeholder={discountDraft.type === 'percent' ? 'Percent (0–100)' : 'Amount ($)'} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold" />
+                          <input type="number" min={0} value={discountDraft.maxUses} onChange={e => setDiscountDraft({ ...discountDraft, maxUses: e.target.value })}
+                            placeholder="Max uses (blank = ∞)" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold" />
+                        </div>
+                        <div className="flex gap-2">
+                          <button onClick={() => { setShowDiscountForm(false); setDiscountDraft(emptyDiscount); }} className="flex-1 py-2 rounded-lg border border-gray-200 text-xs font-semibold text-gray-600">Cancel</button>
+                          <button onClick={saveDiscountDraft} disabled={!discountDraft.code.trim()}
+                            className="flex-1 py-2 rounded-lg text-xs font-semibold text-white disabled:opacity-50" style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}>Add</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Public calendar */}
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-gray-700">Show on public calendar</span>
+                      <Toggle on={form.showOnPublicCalendar} onClick={() => setForm({ ...form, showOnPublicCalendar: !form.showOnPublicCalendar })} />
+                    </div>
+                    <p className="text-xs text-gray-400 mt-1">Your public calendar is at {tenantId || 'your-ministry'}.theharvest.app/calendar</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div>
               <label className="text-xs font-semibold text-gray-700 mb-1.5 block">Status</label>
               <select value={form.status} onChange={e => setForm({ ...form, status: e.target.value as Event['status'] })}
@@ -365,6 +634,8 @@ const AdminEvents: React.FC = () => {
   if (view === 'detail' && selected) {
     const attended = registrations.filter(r => r.status === 'attended').length;
     const confirmed = registrations.filter(r => r.status === 'confirmed').length;
+    const waitlistedCount = registrations.filter(r => r.waitlisted).length;
+    const ticketTypes = Array.isArray(selected.ticketTypes) ? selected.ticketTypes : [];
     const filteredRegs = registrations.filter(r =>
       !regSearch ||
       r.name.toLowerCase().includes(regSearch.toLowerCase()) ||
@@ -406,6 +677,60 @@ const AdminEvents: React.FC = () => {
           </div>
         </div>
 
+        {/* Registration panel — only for registration-enabled events */}
+        {selected.registrationEnabled && (
+          <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm mb-5">
+            <h3 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-1.5"><Ticket size={14} /> Public Registration</h3>
+            <div className="grid sm:grid-cols-[auto_1fr] gap-4 items-start">
+              <div className="text-center">
+                {qrDataUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={qrDataUrl} alt="Registration QR code" className="w-36 h-36 mx-auto" />
+                ) : (
+                  <div className="w-36 h-36 mx-auto flex items-center justify-center text-gray-300 border border-dashed border-gray-200 rounded-xl"><QrCode size={40} /></div>
+                )}
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-gray-500 mb-1">Registration link</p>
+                <p className="text-xs text-gray-500 break-all mb-2">{registrationUrl(selected.id)}</p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button onClick={copyRegUrl} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border border-gray-200 text-gray-700 hover:bg-gray-50">
+                    {copied ? <Check size={13} /> : <Copy size={13} />} {copied ? 'Copied!' : 'Copy link'}
+                  </button>
+                  {qrDataUrl && (
+                    <a href={qrDataUrl} download={`${selected.title.replace(/[^a-z0-9]/gi, '_')}_qr.png`}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border border-gray-200 text-gray-700 hover:bg-gray-50">
+                      <Download size={13} /> QR
+                    </a>
+                  )}
+                  <a href={registrationUrl(selected.id)} target="_blank" rel="noreferrer"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border border-gray-200 text-gray-700 hover:bg-gray-50">
+                    <Link2 size={13} /> Open
+                  </a>
+                </div>
+
+                {/* Ticket type breakdown */}
+                {ticketTypes.length > 0 && (
+                  <div className="mt-4 space-y-1.5">
+                    {ticketTypes.map(t => {
+                      const count = registrations.filter(r => r.ticketTypeId === t.id && !r.waitlisted).length;
+                      return (
+                        <div key={t.id} className="flex items-center justify-between text-xs">
+                          <span className="text-gray-700 font-medium truncate">{t.name}</span>
+                          <span className="text-gray-400">{count} registered{t.capacity == null ? '' : ` / ${t.capacity} capacity`}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                {selected.waitlistEnabled && (
+                  <p className="text-xs text-amber-600 mt-3 font-medium">{waitlistedCount} on waitlist</p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Attendee list */}
         <div className="flex items-center gap-3 mb-3">
           <div className="relative flex-1">
@@ -438,10 +763,13 @@ const AdminEvents: React.FC = () => {
                     <p className="text-sm font-semibold text-gray-900 truncate">{r.name}</p>
                     <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
                       r.status === 'attended' ? 'bg-green-100 text-green-700' :
-                      r.status === 'confirmed' ? 'bg-blue-100 text-blue-700' : 'bg-red-100 text-red-600'
+                      r.status === 'confirmed' ? 'bg-blue-100 text-blue-700' :
+                      r.status === 'waitlisted' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-600'
                     }`}>{r.status}</span>
                   </div>
-                  <p className="text-xs text-gray-400">{r.email} · #{r.ticketCode}</p>
+                  <p className="text-xs text-gray-400">
+                    {r.email} · #{r.ticketCode}{r.ticketTypeName ? ` · ${r.ticketTypeName}` : ''}
+                  </p>
                 </div>
                 {r.status === 'confirmed' && (
                   <button
@@ -461,8 +789,24 @@ const AdminEvents: React.FC = () => {
   }
 
   // ── List View ──
+  const calendarUrl = `https://${tenantId}.theharvest.app/calendar`;
+  const copyCalendarUrl = async () => {
+    try { await navigator.clipboard.writeText(calendarUrl); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { /* ignore */ }
+  };
   return (
     <div className="max-w-3xl mx-auto">
+      {events.length > 0 && tenantId && (
+        <div className="flex items-center gap-2 bg-gray-50 border border-gray-100 rounded-xl px-3 py-2.5 mb-4 text-xs">
+          <span className="text-gray-400 shrink-0">Public calendar:</span>
+          <span className="text-gray-600 truncate flex-1 min-w-0">{calendarUrl}</span>
+          <button onClick={copyCalendarUrl} className="flex items-center gap-1 px-2 py-1 rounded-lg border border-gray-200 text-gray-600 hover:bg-white shrink-0">
+            {copied ? <Check size={12} /> : <Copy size={12} />} {copied ? 'Copied' : 'Copy'}
+          </button>
+          <a href={calendarUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1 px-2 py-1 rounded-lg border border-gray-200 text-gray-600 hover:bg-white shrink-0">
+            <Link2 size={12} /> Open
+          </a>
+        </div>
+      )}
       {events.length === 0 ? (
         <div className="text-center py-16 text-gray-400">
           <CalendarCheck size={40} className="mx-auto mb-3 opacity-30" />
