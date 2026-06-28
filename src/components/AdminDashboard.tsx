@@ -37,7 +37,7 @@ import { getPlanFeatures } from '../utils/plan-features';
 import { db, auth } from '../firebase';
 import { collection, query, where, onSnapshot, limit } from 'firebase/firestore';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
-import { isSuperAdmin as checkIsSuperAdmin, PLATFORM_TENANT_ID } from '../utils/tenant-scope';
+import { isSuperAdmin as checkIsSuperAdmin, hasPlatformOverride, getTenantScope, PLATFORM_TENANT_ID } from '../utils/tenant-scope';
 import { useAppStore } from '../store/useAppStore';
 import { useCurrentUser } from '../hooks/queries/useUserQueries';
 import { useTenant as useTenantDoc } from '../hooks/queries/useTenantQueries';
@@ -168,6 +168,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
   }, []);
 
   const isSuperAdmin = userRole === 'super_admin' || checkIsSuperAdmin();
+  // Feature unlock only happens in the platform context (apex domain). On a
+  // tenant subdomain a super admin keeps full *access* (isSuperAdmin) but their
+  // *features* are gated by the tenant's plan — so platformOverride is false.
+  const platformOverride = hasPlatformOverride();
   const isChurchAdmin = userRole === 'church_admin';
   const perms = userPermissions ?? {} as Permission;
   const features = tenantPlan ? getPlanFeatures(tenantPlan) : null;
@@ -178,7 +182,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
   // Branding tab/page entitlement — keyed off the branding-family feature flags
   // (matches the old Settings branding gate). Used both in allTabs and the render
   // guard so direct navigation to /admin/branding is gated like every other tab.
-  const canBranding = !!((isSuperAdmin || !isTenantAdmin ||
+  const canBranding = !!((platformOverride || !isTenantAdmin ||
     (features && (features.customBranding || features.customBackground || features.customDomain))) && hasFullAccess);
 
   const showInbox = hasFullAccess || perms.seeFormsInbox;
@@ -188,52 +192,52 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
     // Dashboard is always visible — placeholder/welcome screen (analytics moved to CRM)
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     (hasFullAccess || perms.modifyChurches) && { id: 'churches', label: isTenantAdmin && features && features.maxChurches === 1 ? 'Church' : 'Church List', icon: Church },
-    (isSuperAdmin || !isTenantAdmin || (features && features.blog)) && (hasFullAccess || perms.createCourses) && { id: 'courses', label: 'Courses', icon: GraduationCap },
-    (isSuperAdmin || !isTenantAdmin || (features && features.blog)) && (hasFullAccess || perms.writeArticles) && { id: 'blog', label: 'Blog', icon: FileText },
+    (platformOverride || !isTenantAdmin || (features && features.blog)) && (hasFullAccess || perms.createCourses) && { id: 'courses', label: 'Courses', icon: GraduationCap },
+    (platformOverride || !isTenantAdmin || (features && features.blog)) && (hasFullAccess || perms.writeArticles) && { id: 'blog', label: 'Blog', icon: FileText },
     (hasFullAccess || perms.createPosts) && { id: 'posts', label: 'Posts', icon: Rss },
-    (isSuperAdmin || !isTenantAdmin || (features && features.aiKnowledge)) && (hasFullAccess || perms.uploadRag) && { id: 'ai', label: 'AI Knowledge', icon: BrainCircuit },
+    (platformOverride || !isTenantAdmin || (features && features.aiKnowledge)) && (hasFullAccess || perms.uploadRag) && { id: 'ai', label: 'AI Knowledge', icon: BrainCircuit },
     // Newsletter tab — gated behind plan feature
-    (isSuperAdmin || !isTenantAdmin || (features && features.newsletterAutomation)) &&
+    (platformOverride || !isTenantAdmin || (features && features.newsletterAutomation)) &&
       (hasFullAccess || perms.createPosts) &&
       { id: 'newsletter', label: 'Newsletter', icon: Mail },
     // Fundraising campaigns
-    (isSuperAdmin || !isTenantAdmin || (features && features.fundraising)) &&
+    (platformOverride || !isTenantAdmin || (features && features.fundraising)) &&
       hasFullAccess &&
       { id: 'fundraising', label: 'Fundraising', icon: Heart },
     // Event registration (Pretix)
-    (isSuperAdmin || !isTenantAdmin || (features && features.eventRegistration)) &&
+    (platformOverride || !isTenantAdmin || (features && features.eventRegistration)) &&
       hasFullAccess &&
       { id: 'events', label: 'Events', icon: CalendarCheck },
     // Docs (TipTap)
-    (isSuperAdmin || !isTenantAdmin || (features && features.docs)) &&
+    (platformOverride || !isTenantAdmin || (features && features.docs)) &&
       hasFullAccess &&
       { id: 'docs', label: 'Notes', icon: FileText },
     // CRM (includes user registration analytics as a sub-tab)
-    (isSuperAdmin || !isTenantAdmin || (features && features.crm)) &&
+    (platformOverride || !isTenantAdmin || (features && features.crm)) &&
       hasFullAccess &&
       { id: 'crm', label: 'CRM', icon: Users },
     // Accounting (Crater)
-    (isSuperAdmin || !isTenantAdmin || (features && features.accountingTools)) &&
+    (platformOverride || !isTenantAdmin || (features && features.accountingTools)) &&
       hasFullAccess &&
       { id: 'accounting', label: 'Accounting', icon: Receipt },
     // Custom Forms → CRM pipeline
-    (isSuperAdmin || !isTenantAdmin || (features && features.customForms)) &&
+    (platformOverride || !isTenantAdmin || (features && features.customForms)) &&
       hasFullAccess &&
       { id: 'forms', label: 'Forms', icon: ClipboardList },
     // Check-In System (QR attendance)
-    (isSuperAdmin || !isTenantAdmin || (features && features.checkInSystem)) &&
+    (platformOverride || !isTenantAdmin || (features && features.checkInSystem)) &&
       hasFullAccess &&
       { id: 'checkin', label: 'Check-In', icon: QrCode },
     // Livestream (YouTube + live giving)
-    (isSuperAdmin || !isTenantAdmin || (features && features.livestream)) &&
+    (platformOverride || !isTenantAdmin || (features && features.livestream)) &&
       hasFullAccess &&
       { id: 'livestream', label: 'Livestream', icon: Radio },
     // SMS Automation (Twilio)
-    (isSuperAdmin || !isTenantAdmin || (features && features.smsAutomation)) &&
+    (platformOverride || !isTenantAdmin || (features && features.smsAutomation)) &&
       hasFullAccess &&
       { id: 'sms', label: 'SMS', icon: MessageSquare },
     // Community (Rocket.Chat)
-    (isSuperAdmin || !isTenantAdmin || (features && features.communityGroups)) &&
+    (platformOverride || !isTenantAdmin || (features && features.communityGroups)) &&
       hasFullAccess &&
       { id: 'community', label: 'Community', icon: MessageSquare },
     isSuperAdmin && { id: 'tenants', label: 'Tenants', icon: Building2 },
@@ -539,7 +543,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
                   tenantId={tenantId || PLATFORM_TENANT_ID}
                   tenantName={tenantName}
                   onBack={() => setNewsletterView('list')}
-                  canAutoGenerate={isSuperAdmin || !!(features?.automatedNewsletter)}
+                  canAutoGenerate={platformOverride || !!(features?.automatedNewsletter)}
                 />
               ) : (
                 <NewsletterCampaigns
@@ -558,43 +562,43 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
               </div>
             ) : null
           ) : activeTab === 'fundraising' ? (
-            (isSuperAdmin || !isTenantAdmin || (features && features.fundraising))
+            (platformOverride || !isTenantAdmin || (features && features.fundraising))
               ? <div className="p-4 lg:p-0"><AdminFundraising initialCampaignId={itemId} onItemConsumed={clearItemId} /></div>
               : <PlanUpgradeScreen featureName="Fundraising" featureKey="fundraising" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
           ) : activeTab === 'docs' ? (
-            (isSuperAdmin || !isTenantAdmin || (features && features.docs))
+            (platformOverride || !isTenantAdmin || (features && features.docs))
               ? <div className="p-4 lg:p-0"><AdminDocs initialDocId={itemId} onItemConsumed={clearItemId} /></div>
               : <PlanUpgradeScreen featureName="Notes" featureKey="docs" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
           ) : activeTab === 'events' ? (
-            (isSuperAdmin || !isTenantAdmin || (features && features.eventRegistration))
+            (platformOverride || !isTenantAdmin || (features && features.eventRegistration))
               ? <div className="p-4 lg:p-0"><AdminEvents /></div>
               : <PlanUpgradeScreen featureName="Events" featureKey="event_registration" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
           ) : activeTab === 'crm' ? (
-            (isSuperAdmin || !isTenantAdmin || (features && features.crm))
+            (platformOverride || !isTenantAdmin || (features && features.crm))
               ? <div className="p-4 lg:p-0"><AdminCRM currentUserRole={isSuperAdmin ? 'super_admin' : userRole} currentUserPermissions={isChurchAdmin ? { fullAccess: true } as any : userPermissions} initialContactId={itemId} onItemConsumed={clearItemId} /></div>
               : <PlanUpgradeScreen featureName="CRM" featureKey="crm" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
           ) : activeTab === 'accounting' ? (
-            (isSuperAdmin || !isTenantAdmin || (features && features.accountingTools))
+            (platformOverride || !isTenantAdmin || (features && features.accountingTools))
               ? <div className="p-4 lg:p-0"><AdminAccounting /></div>
               : <PlanUpgradeScreen featureName="Accounting" featureKey="accounting" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
           ) : activeTab === 'forms' ? (
-            (isSuperAdmin || !isTenantAdmin || (features && features.customForms))
+            (platformOverride || !isTenantAdmin || (features && features.customForms))
               ? <div className="p-4 lg:p-0"><AdminForms /></div>
               : <PlanUpgradeScreen featureName="Forms" featureKey="customForms" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
           ) : activeTab === 'checkin' ? (
-            (isSuperAdmin || !isTenantAdmin || (features && features.checkInSystem))
+            (platformOverride || !isTenantAdmin || (features && features.checkInSystem))
               ? <div className="p-4 lg:p-0"><AdminCheckin /></div>
               : <PlanUpgradeScreen featureName="Check-In" featureKey="checkInSystem" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
           ) : activeTab === 'livestream' ? (
-            (isSuperAdmin || !isTenantAdmin || (features && features.livestream))
+            (platformOverride || !isTenantAdmin || (features && features.livestream))
               ? <div className="p-4 lg:p-0"><AdminLivestream /></div>
               : <PlanUpgradeScreen featureName="Livestream" featureKey="livestream" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
           ) : activeTab === 'sms' ? (
-            (isSuperAdmin || !isTenantAdmin || (features && features.smsAutomation))
+            (platformOverride || !isTenantAdmin || (features && features.smsAutomation))
               ? <div className="p-4 lg:p-0"><AdminSms /></div>
               : <PlanUpgradeScreen featureName="SMS" featureKey="smsAutomation" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
           ) : activeTab === 'community' ? (
-            (isSuperAdmin || !isTenantAdmin || (features && features.communityGroups))
+            (platformOverride || !isTenantAdmin || (features && features.communityGroups))
               ? <div className="p-4 lg:p-0 h-full"><AdminCommunity onOpenAttachment={(type, id) => {
                   if (type === 'doc') navigate(`/admin/docs/${id}`);
                   else if (type === 'contact') navigate(`/admin/crm/${id}`);

@@ -1,8 +1,7 @@
 "use client";
-import { auth } from '../firebase';
 import { useTenantOptional } from '../contexts/TenantContext';
 import { getPlanFeatures, PlanFeatures } from '../utils/plan-features';
-import { isSuperAdminEmail } from '../utils/super-admins';
+import { hasPlatformOverride } from '../utils/tenant-scope';
 
 type FeatureKey =
   | 'fundraising'
@@ -43,9 +42,9 @@ export const FEATURE_MIN_PLAN: Record<FeatureKey, string> = {
 export function usePlanGate(feature: FeatureKey): boolean {
   const ctx = useTenantOptional();
 
-  // Super admin always gets all features, regardless of tenant plan
-  const userEmail = auth.currentUser?.email;
-  if (isSuperAdminEmail(userEmail)) return true;
+  // Platform-context super admin (apex domain) gets all features. On a tenant
+  // subdomain everyone — including super admins — is gated by the tenant plan.
+  if (hasPlatformOverride()) return true;
 
   if (!ctx || !ctx.tenantPlan) return true; // global platform or no plan loaded yet
   const key = FEATURE_MAP[feature];

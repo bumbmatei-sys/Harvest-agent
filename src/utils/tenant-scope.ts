@@ -81,6 +81,29 @@ export function isSuperAdmin(): boolean {
 }
 
 /**
+ * True only when the super admin is operating in the platform-wide context
+ * (root/apex domain, no tenant subdomain). In this context they get the
+ * unlocked cross-tenant view. On any tenant subdomain this returns false —
+ * even for a super admin — so they are scoped and plan-gated as that tenant.
+ */
+export function isPlatformContext(): boolean {
+  // A tenant subdomain is the authoritative tenant boundary. If we are on one,
+  // we are NOT in the platform context, regardless of who is signed in.
+  if (getTenantIdFromHost() !== null) return false;
+  // Otherwise (apex/custom/preview), only a super admin gets the platform view.
+  return isSuperAdmin();
+}
+
+/**
+ * True when the signed-in user should receive the unlocked, all-features,
+ * cross-tenant super-admin experience. This is the ONLY condition under which
+ * plan gating and tenant scoping should be bypassed.
+ */
+export function hasPlatformOverride(): boolean {
+  return isPlatformContext();
+}
+
+/**
  * Build a Firestore query constraint for tenant scoping.
  * Returns the tenantId to use in where() clauses.
  *

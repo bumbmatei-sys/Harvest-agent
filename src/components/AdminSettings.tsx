@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Crown, Settings2, Bot, Plug, AlertTriangle, Check, FileText, MessageSquare, SlidersHorizontal, ChevronRight } from 'lucide-react';
 import { TenantPlan } from '../types/tenant.types';
 import { getPlanFeatures } from '../utils/plan-features';
-import { useAppStore } from '../store/useAppStore';
+import { hasPlatformOverride } from '../utils/tenant-scope';
 import SettingsAccordion from './settings/SettingsAccordion';
 import OnboardingSection from './settings/OnboardingSection';
 import GivingStatementsSection from './settings/GivingStatementsSection';
@@ -26,7 +26,10 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
   const [stripeStatus, setStripeStatus] = useState<string | null>(null);
   const [stripeAddon, setStripeAddon] = useState<string | null>(null);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
-  const { isSuperAdmin } = useAppStore();
+  // Platform-context super admins (apex) see every settings section. On a tenant
+  // subdomain these plan-gated sections are gated by the tenant's plan, even for
+  // a super admin.
+  const platformOverride = hasPlatformOverride();
 
   const currentPlanData = currentPlan ? PLANS_DISPLAY.find(p => p.id === currentPlan) : null;
   const currentFeatures = currentPlan ? getPlanFeatures(currentPlan) : null;
@@ -108,14 +111,14 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
       label: 'Giving Statements',
       icon: <FileText size={18} />,
       content: <GivingStatementsSection />,
-      hidden: !isSuperAdmin && !currentFeatures?.givingStatements,
+      hidden: !platformOverride && !currentFeatures?.givingStatements,
     },
     {
       id: 'sms',
       label: 'SMS (Twilio)',
       icon: <MessageSquare size={18} />,
       content: <SmsSection />,
-      hidden: !isSuperAdmin && !currentFeatures?.smsAutomation,
+      hidden: !platformOverride && !currentFeatures?.smsAutomation,
     },
     {
       id: 'ai-assistant',
@@ -128,7 +131,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
       label: 'Integrations',
       icon: <Plug size={18} />,
       content: <IntegrationsSection />,
-      hidden: !isSuperAdmin && !currentFeatures?.newsletterAutomation,
+      hidden: !platformOverride && !currentFeatures?.newsletterAutomation,
     },
     {
       id: 'cancel-plan',
