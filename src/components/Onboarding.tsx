@@ -1,16 +1,17 @@
 "use client";
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import Image from 'next/image';
 import { motion, AnimatePresence } from 'motion/react';
 import { auth, db, messaging, VAPID_KEY } from '../firebase';
 import { doc, updateDoc, getDoc, arrayUnion } from 'firebase/firestore';
 import { getToken } from 'firebase/messaging';
 import CountrySelect from './CountrySelect';
+import { useTenant } from '../contexts/TenantContext';
 import { getTenantScope } from '../utils/tenant-scope';
 import { CheckCircle2, ArrowRight, ArrowLeft, MapPin, Share, Download, Bell } from 'lucide-react';
 import type { TenantPlan } from '../types/tenant.types';
 
 const GOLD = 'var(--brand-color, #B8962E)';
+const HARVEST_LOGO = 'https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png';
 
 interface OnboardingQuestion {
   id: string;
@@ -55,14 +56,14 @@ const DEFAULT_QUESTION_STEPS: StepDef[] = [
 // ─── System Step: Install the App ─────────────────────────────────────────────
 
 const InstructionRow: React.FC<{ num: number; children: React.ReactNode }> = ({ num, children }) => (
-  <div className="flex items-start gap-3 bg-white/5 rounded-xl px-3.5 py-3">
+  <div className="flex items-start gap-3 bg-gray-50 rounded-xl px-3.5 py-3">
     <span
       className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white"
       style={{ backgroundColor: GOLD }}
     >
       {num}
     </span>
-    <span className="text-sm text-gray-200 leading-snug pt-0.5">{children}</span>
+    <span className="text-sm text-gray-700 leading-snug pt-0.5">{children}</span>
   </div>
 );
 
@@ -107,14 +108,14 @@ const PwaInstallStep: React.FC<{
   const manualInstructions = (
     <div className="space-y-2.5 mb-6">
       <InstructionRow num={1}>
-        Tap the <strong className="font-semibold text-white">Share</strong> button at the bottom of
+        Tap the <strong className="font-semibold text-gray-900">Share</strong> button at the bottom of
         your browser <Share size={15} className="inline-block align-text-bottom" style={{ color: GOLD }} />
       </InstructionRow>
       <InstructionRow num={2}>
-        Scroll down and tap <strong className="font-semibold text-white">Add to Home Screen</strong>
+        Scroll down and tap <strong className="font-semibold text-gray-900">Add to Home Screen</strong>
       </InstructionRow>
       <InstructionRow num={3}>
-        Tap <strong className="font-semibold text-white">Add</strong> — you&apos;re done! 🎉
+        Tap <strong className="font-semibold text-gray-900">Add</strong> — you&apos;re done! 🎉
       </InstructionRow>
     </div>
   );
@@ -123,12 +124,12 @@ const PwaInstallStep: React.FC<{
     <div className="py-2">
       <div
         className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-5"
-        style={{ backgroundColor: `color-mix(in srgb, var(--brand-color) 13%, transparent)` }}
+        style={{ backgroundColor: `color-mix(in srgb, var(--brand-color) 13%, white)` }}
       >
         {isIOS ? <Share size={28} style={{ color: GOLD }} /> : <Download size={28} style={{ color: GOLD }} />}
       </div>
-      <h1 className="text-2xl font-black text-white text-center mb-1.5">Install the App</h1>
-      <p className="text-gray-300 text-sm text-center mb-6">
+      <h1 className="text-[22px] font-semibold text-[#111111] text-center mb-1.5">Install the App</h1>
+      <p className="text-sm text-[#888888] text-center mb-6">
         {showNativeInstall
           ? 'Get the full experience on your home screen'
           : 'Access Harvest instantly from your home screen'}
@@ -138,8 +139,8 @@ const PwaInstallStep: React.FC<{
         <button
           onClick={handleAndroidInstall}
           disabled={installing}
-          className="w-full flex items-center justify-center gap-2 text-white font-bold py-3.5 px-6 rounded-xl transition-all shadow-lg disabled:opacity-50 mb-3"
-          style={{ backgroundColor: GOLD, boxShadow: `0 10px 15px -3px color-mix(in srgb, var(--brand-color) 30%, transparent)` }}
+          className="w-full flex items-center justify-center gap-2 text-white font-semibold py-3.5 px-6 rounded-xl transition-all disabled:opacity-50 mb-3"
+          style={{ backgroundColor: GOLD }}
         >
           <Download size={18} /> {installing ? 'Installing…' : 'Install App'}
         </button>
@@ -148,8 +149,8 @@ const PwaInstallStep: React.FC<{
           {manualInstructions}
           <button
             onClick={finish}
-            className="w-full text-white font-bold py-3.5 px-6 rounded-xl transition-all shadow-lg mb-3"
-            style={{ backgroundColor: GOLD, boxShadow: `0 10px 15px -3px color-mix(in srgb, var(--brand-color) 30%, transparent)` }}
+            className="w-full text-white font-semibold py-3.5 px-6 rounded-xl transition-all mb-3"
+            style={{ backgroundColor: GOLD }}
           >
             I&apos;ve added it
           </button>
@@ -158,7 +159,7 @@ const PwaInstallStep: React.FC<{
 
       <button
         onClick={finish}
-        className="w-full text-center text-sm text-gray-400 hover:text-white transition-colors py-1"
+        className="w-full text-center text-sm text-gray-400 hover:text-gray-600 transition-colors py-1"
       >
         Skip for now
       </button>
@@ -213,12 +214,12 @@ const NotificationsStep: React.FC<{ onDone: () => void }> = ({ onDone }) => {
     <div className="py-2">
       <div
         className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-5"
-        style={{ backgroundColor: `color-mix(in srgb, var(--brand-color) 13%, transparent)` }}
+        style={{ backgroundColor: `color-mix(in srgb, var(--brand-color) 13%, white)` }}
       >
         <Bell size={28} style={{ color: GOLD }} />
       </div>
-      <h1 className="text-2xl font-black text-white text-center mb-1.5">Stay Connected</h1>
-      <p className="text-gray-300 text-sm text-center mb-6">
+      <h1 className="text-[22px] font-semibold text-[#111111] text-center mb-1.5">Stay Connected</h1>
+      <p className="text-sm text-[#888888] text-center mb-6">
         Enable notifications to receive messages, prayer updates, and announcements from your
         ministry.
       </p>
@@ -226,14 +227,14 @@ const NotificationsStep: React.FC<{ onDone: () => void }> = ({ onDone }) => {
       <button
         onClick={handleEnable}
         disabled={requesting}
-        className="w-full flex items-center justify-center gap-2 text-white font-bold py-3.5 px-6 rounded-xl transition-all shadow-lg disabled:opacity-50 mb-3"
-        style={{ backgroundColor: GOLD, boxShadow: `0 10px 15px -3px color-mix(in srgb, var(--brand-color) 30%, transparent)` }}
+        className="w-full flex items-center justify-center gap-2 text-white font-semibold py-3.5 px-6 rounded-xl transition-all disabled:opacity-50 mb-3"
+        style={{ backgroundColor: GOLD }}
       >
         <Bell size={18} /> {requesting ? 'Enabling…' : 'Enable Notifications'}
       </button>
       <button
         onClick={finish}
-        className="w-full text-center text-sm text-gray-400 hover:text-white transition-colors py-1"
+        className="w-full text-center text-sm text-gray-400 hover:text-gray-600 transition-colors py-1"
       >
         Maybe later
       </button>
@@ -258,6 +259,21 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
   const [stepIndex, setStepIndex] = useState(0);
   const [dir, setDir] = useState(1);
   const deferredPrompt = useRef<any>(null);
+
+  // Logo: tenant logo (plan-gated) with the Harvest mark as fallback — same
+  // treatment as AuthPage so the auth → onboarding transition feels continuous.
+  const { branding, tenantPlan } = useTenant();
+  const hasCustomBranding = tenantPlan === 'max' || tenantPlan === 'ultra';
+  const logoSrc = hasCustomBranding && branding.logo ? branding.logo : HARVEST_LOGO;
+
+  // Shared light input styling (mirrors AuthPage): white bg, soft border,
+  // dark text, brand-coloured focus border.
+  const inputClass =
+    'w-full px-4 py-3 rounded-xl bg-white text-[#111111] placeholder-[#AAAAAA] border border-[#E5E5E5] outline-none transition-colors';
+  const focusHandlers = {
+    onFocus: (e: React.FocusEvent<HTMLElement>) => { e.currentTarget.style.borderColor = GOLD; },
+    onBlur: (e: React.FocusEvent<HTMLElement>) => { e.currentTarget.style.borderColor = '#E5E5E5'; },
+  };
 
   const steps = useMemo<StepDef[]>(() => {
     // 1) Build the admin-configured question steps.
@@ -488,7 +504,9 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
             type="text" value={name}
             onChange={e => setName(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && !loading && goNext()}
-            className="w-full px-4 py-4 rounded-xl bg-white/5 border border-white/20 text-white text-lg placeholder-gray-400 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
+            className={inputClass}
+            style={{ borderColor: '#E5E5E5' }}
+            {...focusHandlers}
             placeholder="Your full name" autoFocus
           />
         );
@@ -496,20 +514,21 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
         return (
           <div className="space-y-3">
             <button type="button" onClick={handleUseGPS} disabled={gpsLoading}
-              className="w-full flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 text-white text-sm font-medium py-2.5 px-4 rounded-xl transition-colors disabled:opacity-50">
+              className="w-full flex items-center justify-center gap-2 bg-white hover:bg-gray-50 text-gray-700 text-sm font-medium py-2.5 px-4 rounded-xl border border-gray-200 transition-colors disabled:opacity-50">
               <MapPin size={15} />
               {gpsLoading ? 'Detecting location…' : 'Use my current location'}
             </button>
             <div className="relative z-50">
-              <label className="block text-xs font-semibold text-gray-400 mb-1 uppercase tracking-wide">Country</label>
-              <CountrySelect value={country} onChange={setCountry} className="w-full"
-                buttonClassName="!bg-white/5 !border-white/20 !text-white focus:!ring-2 focus:!ring-primary focus:!border-primary !py-3 !rounded-xl" />
+              <label className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">Country</label>
+              <CountrySelect value={country} onChange={setCountry} className="w-full" />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-400 mb-1 uppercase tracking-wide">City</label>
+              <label className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">City</label>
               <input type="text" value={city} onChange={e => setCity(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && !loading && goNext()}
-                className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/20 text-white placeholder-gray-400 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
+                className={inputClass}
+                style={{ borderColor: '#E5E5E5' }}
+                {...focusHandlers}
                 placeholder="Your city" />
             </div>
           </div>
@@ -519,7 +538,9 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
           <input type="tel" value={phone}
             onChange={e => setPhone(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && !loading && goNext()}
-            className="w-full px-4 py-4 rounded-xl bg-white/5 border border-white/20 text-white text-lg placeholder-gray-400 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
+            className={inputClass}
+            style={{ borderColor: '#E5E5E5' }}
+            {...focusHandlers}
             placeholder="+1 234 567 8900" autoFocus
           />
         );
@@ -528,11 +549,11 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
           <div className="flex gap-4">
             <label className="flex-1 cursor-pointer">
               <input type="radio" name="acceptedJesus" value="yes" checked={acceptedJesus === 'yes'} onChange={e => setAcceptedJesus(e.target.value)} className="peer sr-only" />
-              <div className="w-full px-4 py-5 rounded-xl bg-white/5 border-2 border-white/20 text-center text-white peer-checked:bg-primary/20 peer-checked:border-primary peer-checked:text-primary transition-all font-bold text-lg">Yes</div>
+              <div className="w-full px-4 py-5 rounded-xl bg-white border-2 border-gray-200 text-center text-gray-800 transition-all font-bold text-lg peer-checked:bg-[color-mix(in_srgb,var(--brand-color)_12%,white)] peer-checked:border-[var(--brand-color)] peer-checked:text-[var(--brand-color)]">Yes</div>
             </label>
             <label className="flex-1 cursor-pointer">
               <input type="radio" name="acceptedJesus" value="no" checked={acceptedJesus === 'no'} onChange={e => setAcceptedJesus(e.target.value)} className="peer sr-only" />
-              <div className="w-full px-4 py-5 rounded-xl bg-white/5 border-2 border-white/20 text-center text-white peer-checked:bg-white/15 peer-checked:border-white/40 transition-all font-bold text-lg">Not yet</div>
+              <div className="w-full px-4 py-5 rounded-xl bg-white border-2 border-gray-200 text-center text-gray-800 transition-all font-bold text-lg peer-checked:bg-gray-100 peer-checked:border-gray-400 peer-checked:text-gray-900">Not yet</div>
             </label>
           </div>
         );
@@ -552,23 +573,29 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
           <input type="text" value={value}
             onChange={e => setCustomAnswers(p => ({ ...p, [question.id]: e.target.value }))}
             onKeyDown={e => e.key === 'Enter' && !loading && goNext()}
-            className="w-full px-4 py-4 rounded-xl bg-white/5 border border-white/20 text-white text-lg placeholder-gray-400 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
+            className={inputClass}
+            style={{ borderColor: '#E5E5E5' }}
+            {...focusHandlers}
             placeholder={question.label} autoFocus />
         );
       case 'textarea':
         return (
           <textarea value={value}
             onChange={e => setCustomAnswers(p => ({ ...p, [question.id]: e.target.value }))}
-            className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/20 text-white placeholder-gray-400 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all resize-none"
+            className={`${inputClass} resize-none`}
+            style={{ borderColor: '#E5E5E5' }}
+            {...focusHandlers}
             placeholder={question.label} rows={3} />
         );
       case 'select':
         return (
           <select value={value}
             onChange={e => setCustomAnswers(p => ({ ...p, [question.id]: e.target.value }))}
-            className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/20 text-white focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all appearance-none">
-            <option value="" className="bg-gray-800">Select…</option>
-            {(question.options || []).map(opt => <option key={opt} value={opt} className="bg-gray-800">{opt}</option>)}
+            className={`${inputClass} appearance-none`}
+            style={{ borderColor: '#E5E5E5' }}
+            {...focusHandlers}>
+            <option value="">Select…</option>
+            {(question.options || []).map(opt => <option key={opt} value={opt}>{opt}</option>)}
           </select>
         );
       case 'radio':
@@ -578,7 +605,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
               <label key={opt} className="flex-1 cursor-pointer min-w-[100px]">
                 <input type="radio" name={`custom_${question.id}`} value={opt} checked={value === opt}
                   onChange={e => setCustomAnswers(p => ({ ...p, [question.id]: e.target.value }))} className="peer sr-only" />
-                <div className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/20 text-center text-white peer-checked:bg-primary/20 peer-checked:border-primary peer-checked:text-primary transition-all font-semibold text-sm">
+                <div className="w-full px-4 py-3 rounded-xl bg-white border border-gray-200 text-center text-gray-800 transition-all font-semibold text-sm peer-checked:bg-[color-mix(in_srgb,var(--brand-color)_12%,white)] peer-checked:border-[var(--brand-color)] peer-checked:text-[var(--brand-color)]">
                   {opt}
                 </div>
               </label>
@@ -597,22 +624,22 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
     : Math.min(100, Math.round(((stepIndex + 1) / Math.max(questionStepCount, 1)) * 100));
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background-dark px-4 py-12 relative overflow-hidden">
-      <div className="absolute inset-0 z-0">
-        <Image src="https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/No_people_just_2k_202512231746.jpeg"
-          alt="Harvest Background" fill sizes="100vw" priority className="object-cover" />
-        <div className="absolute inset-0 bg-gradient-to-b from-background-dark/80 via-background-dark/60 to-background-dark/95 mix-blend-multiply" />
-        <div className="absolute inset-0 bg-black/40" />
-      </div>
+    <div className="min-h-screen bg-white px-6 py-12 flex flex-col">
+      <div className="max-w-sm w-full mx-auto flex-1 flex flex-col justify-center">
+        {/* Logo */}
+        <div className="flex justify-center mb-6">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={logoSrc} alt="Harvest logo" className="h-20 w-auto object-contain" />
+        </div>
 
-      <div className="max-w-md w-full z-10 relative">
+        {/* Progress */}
         {!isDone && (
-          <div className="mb-5">
-            <div className="flex justify-between text-xs text-gray-400 mb-1.5">
+          <div className="mb-6">
+            <div className="flex justify-between text-xs text-gray-500 mb-1.5">
               <span>{isSystemStep ? 'Final steps' : `Step ${stepIndex + 1} of ${questionStepCount}`}</span>
               <span>{progressPct}%</span>
             </div>
-            <div className="h-1 bg-white/10 rounded-full overflow-hidden">
+            <div className="h-1 bg-gray-100 rounded-full overflow-hidden">
               <motion.div
                 className="h-full rounded-full"
                 style={{ backgroundColor: GOLD }}
@@ -624,7 +651,9 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
           </div>
         )}
 
-        <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl shadow-2xl overflow-hidden">
+        {/* Step content — sits directly on white, no card. overflowX:clip
+            contains the horizontal slide without clipping the country dropdown. */}
+        <div style={{ overflowX: 'clip' }}>
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
               key={stepIndex}
@@ -632,7 +661,6 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: dir * -40 }}
               transition={{ duration: 0.2, ease: 'easeOut' }}
-              className="p-8 sm:p-10"
             >
               {isDone ? (
                 <div className="text-center py-6">
@@ -640,19 +668,19 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
                     transition={{ type: 'spring', stiffness: 280, damping: 20, delay: 0.05 }}
-                    className="w-20 h-20 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-6"
+                    className="w-20 h-20 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-6"
                   >
-                    <CheckCircle2 size={40} className="text-green-400" />
+                    <CheckCircle2 size={40} className="text-green-500" />
                   </motion.div>
-                  <h1 className="text-2xl font-black text-white mb-2">
+                  <h1 className="text-[22px] font-semibold text-[#111111] mb-2">
                     You&apos;re all set{name ? `, ${name.split(' ')[0]}` : ''}!
                   </h1>
-                  <p className="text-gray-300 text-sm mb-8">
+                  <p className="text-sm text-[#888888] mb-8">
                     Welcome to Harvest. Everything&apos;s ready for you.
                   </p>
                   <button onClick={onComplete}
-                    className="inline-flex items-center gap-2 text-white font-bold py-3 px-8 rounded-xl transition-all shadow-lg"
-                    style={{ backgroundColor: GOLD, boxShadow: `0 10px 15px -3px color-mix(in srgb, var(--brand-color) 30%, transparent)` }}>
+                    className="inline-flex items-center gap-2 text-white font-semibold py-3 px-8 rounded-xl transition-all"
+                    style={{ backgroundColor: GOLD }}>
                     Let&apos;s go <ArrowRight size={18} />
                   </button>
                 </div>
@@ -663,11 +691,11 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
               ) : (
                 <>
                   <div className="mb-6">
-                    <h1 className="text-2xl font-black text-white mb-1">{heading.title}</h1>
-                    {heading.sub && <p className="text-gray-300 text-sm">{heading.sub}</p>}
+                    <h1 className="text-[22px] font-semibold text-[#111111] mb-1">{heading.title}</h1>
+                    {heading.sub && <p className="text-sm text-[#888888]">{heading.sub}</p>}
                   </div>
                   {error && (
-                    <div className="mb-4 p-3 bg-red-500/20 border-l-4 border-red-500 text-red-100 text-sm rounded">
+                    <div className="mb-4 p-3 bg-red-50 border border-red-100 text-red-600 text-sm rounded-xl">
                       {error}
                     </div>
                   )}
@@ -676,24 +704,24 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
               )}
             </motion.div>
           </AnimatePresence>
-
-          {!isDone && !isSystemStep && (
-            <div className="px-8 pb-8 sm:px-10 sm:pb-10 pt-0 flex items-center justify-between">
-              {stepIndex > 0 ? (
-                <button onClick={goBack}
-                  className="flex items-center gap-1.5 text-gray-400 hover:text-white text-sm font-medium transition-colors">
-                  <ArrowLeft size={16} /> Back
-                </button>
-              ) : <div />}
-              <button onClick={goNext} disabled={loading || !questionsLoaded}
-                className="flex items-center gap-2 text-white font-bold py-3 px-6 rounded-xl transition-all shadow-lg disabled:opacity-50"
-                style={{ backgroundColor: GOLD, boxShadow: `0 10px 15px -3px color-mix(in srgb, var(--brand-color) 30%, transparent)` }}>
-                {loading ? 'Saving…' : stepIndex === questionStepCount - 1 ? 'Finish' : 'Continue'}
-                <ArrowRight size={16} />
-              </button>
-            </div>
-          )}
         </div>
+
+        {!isDone && !isSystemStep && (
+          <div className="mt-8 flex items-center justify-between">
+            {stepIndex > 0 ? (
+              <button onClick={goBack}
+                className="flex items-center gap-1.5 text-gray-500 hover:text-gray-800 text-sm font-medium transition-colors">
+                <ArrowLeft size={16} /> Back
+              </button>
+            ) : <div />}
+            <button onClick={goNext} disabled={loading || !questionsLoaded}
+              className="flex items-center gap-2 text-white font-semibold py-3 px-6 rounded-xl transition-all disabled:opacity-50"
+              style={{ backgroundColor: GOLD }}>
+              {loading ? 'Saving…' : stepIndex === questionStepCount - 1 ? 'Finish' : 'Continue'}
+              <ArrowRight size={16} />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

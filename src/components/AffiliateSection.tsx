@@ -82,8 +82,8 @@ export default function AffiliateSection() {
   };
 
   const getReferralLink = () => {
-    if (status?.affiliateCode) return `https://theharvest.app/r/${status.affiliateCode}`;
-    return `https://theharvest.app/?ref=${status?.userId || ''}`;
+    const code = status?.affiliateCode || status?.userId || '';
+    return `https://theharvest.site/pricing?ref=${code}`;
   };
 
   const handleCopy = () => {
@@ -153,7 +153,7 @@ export default function AffiliateSection() {
           <Share2 size={16} style={{ color: GOLD }} className="flex-shrink-0" />
           <span className="flex-1 text-sm text-gray-700 truncate font-mono">
             {status?.affiliateCode
-              ? `theharvest.app/r/${status.affiliateCode}`
+              ? `theharvest.site/pricing?ref=${status.affiliateCode}`
               : 'Generating your link…'}
           </span>
           <button
