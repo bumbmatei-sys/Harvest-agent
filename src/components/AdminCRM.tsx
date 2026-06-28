@@ -199,7 +199,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
   const [showAddActivity, setShowAddActivity] = useState(false);
   const [actForm, setActForm] = useState({ type: 'note' as ContactActivity['type'], description: '', amount: '' });
   const [savingAct, setSavingAct] = useState(false);
-  const [crmSubView, setCrmSubView] = useState<'contacts' | 'analytics'>('contacts');
+  const [crmSubView, setCrmSubView] = useState<'contacts' | 'analytics' | 'roles'>('contacts');
   const [listMode, setListMode] = useState<'list' | 'kanban'>('list');
 
   // Drive the shared header: in detail/form sub-views the back chevron steps
@@ -392,7 +392,14 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
     return <div className="flex items-center justify-center h-40"><div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--brand-color, #B8962E)', borderTopColor: 'transparent' }} /></div>;
   }
 
-  // Pill segmented control for the Contacts / Analytics sub-views.
+  // Admin Roles lives here (next to Contacts & Analytics) rather than as its own
+  // top-level tab. Only show it to users who can actually manage admins.
+  const canManageRoles =
+    currentUserRole === 'super_admin' ||
+    !!currentUserPermissions?.fullAccess ||
+    !!currentUserPermissions?.manageAdmins;
+
+  // Pill segmented control for the Contacts / Analytics / Roles sub-views.
   const subTabBar = (
     <div className="flex gap-1 bg-gray-100 rounded-xl p-1 mb-5 w-fit">
       <button
@@ -411,6 +418,16 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
       >
         Analytics
       </button>
+      {canManageRoles && (
+        <button
+          onClick={() => { setCrmSubView('roles'); setView('list'); setSelected(null); }}
+          className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+            crmSubView === 'roles' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-400'
+          }`}
+        >
+          Roles
+        </button>
+      )}
     </div>
   );
 
@@ -427,6 +444,25 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
         ) : (
           <div className="text-center py-16 text-gray-400">
             <p className="text-sm">Analytics unavailable.</p>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (crmSubView === 'roles') {
+    return (
+      <div ref={scrollRef} className="max-w-3xl mx-auto">
+        {subTabBar}
+        {canManageRoles && currentUserRole ? (
+          <AnalyticsAndRoles
+            currentUserRole={currentUserRole}
+            currentUserPermissions={currentUserPermissions}
+            mode="roles"
+          />
+        ) : (
+          <div className="text-center py-16 text-gray-400">
+            <p className="text-sm">You don&apos;t have access to manage roles.</p>
           </div>
         )}
       </div>

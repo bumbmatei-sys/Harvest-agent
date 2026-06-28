@@ -81,6 +81,10 @@ const AppInner: React.FC = () => {
   const location = useLocation();
   const pathnameRef = useRef(location.pathname);
   useEffect(() => { pathnameRef.current = location.pathname; }, [location.pathname]);
+  // Guards the one-time "send admins to /admin on first load" redirect so an
+  // admin who deliberately opens the member app ("View App") at "/" can stay
+  // there instead of being bounced back on every later auth-callback fire.
+  const didInitialRouteRef = useRef(false);
 
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [userRole, setUserRole] = useState<string>('user');
@@ -174,10 +178,14 @@ const AppInner: React.FC = () => {
               const homeBase = (isAdminDomain || hasAdminRole) ? '/admin' : '/';
               if (FUNNEL_PATHS.includes(path)) {
                 navigate(homeBase, { replace: true });
-              } else if (path === '/' && (isAdminDomain || hasAdminRole)) {
+              } else if (!didInitialRouteRef.current && path === '/' && (isAdminDomain || hasAdminRole)) {
+                // First load only: land admins on their dashboard. After that, an
+                // admin who chose "View App" can stay at "/" — don't re-bounce them
+                // on later auth-callback fires (token refresh, re-subscribes, etc.).
                 navigate('/admin', { replace: true });
               }
               // else: keep the current deep-linked path
+              didInitialRouteRef.current = true;
             } else if (isChurchSignup || signupPlan || role === 'church_admin') {
               navigate('/church-onboarding', { replace: true });
             } else {

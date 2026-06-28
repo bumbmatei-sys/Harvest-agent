@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { LayoutDashboard, Church, FileText, Rss, BrainCircuit, Inbox, GraduationCap, ChevronLeft, ChevronRight, Building2, Settings, MoreHorizontal, Mail, Heart, Users, MessageSquare, Receipt, CalendarCheck, ShieldCheck, ClipboardList, QrCode, Radio, ExternalLink, Link2, Crown, Palette } from 'lucide-react';
+import { LayoutDashboard, Church, FileText, Rss, BrainCircuit, Inbox, GraduationCap, ChevronLeft, ChevronRight, Building2, Settings, MoreHorizontal, Mail, Heart, Users, MessageSquare, Receipt, CalendarCheck, LogOut, ClipboardList, QrCode, Radio, ExternalLink, Link2, Crown, Palette } from 'lucide-react';
 import AdminBlog from './AdminBlog';
 import AdminPosts from './AdminPosts';
 import PlatformInbox from './PlatformInbox';
@@ -18,7 +18,7 @@ import NewsletterEditor from './NewsletterEditor';
 import NewsletterCampaigns from './NewsletterCampaigns';
 import CanvasList from './CanvasList';
 import CanvasEditor from './CanvasEditor';
-import AnalyticsAndRoles, { Permission } from './AnalyticsAndRoles';
+import { Permission } from './AnalyticsAndRoles';
 import AdminNavCustomizer from './AdminNavCustomizer';
 import FocusScreen from './FocusScreen';
 import AdminFundraising from './AdminFundraising';
@@ -35,6 +35,7 @@ import PlanUpgradeScreen from './PlanUpgradeScreen';
 import { AdminScreenHeader, AdminHeaderContext, AdminHeaderOverride } from './AdminScreenHeader';
 import { getPlanFeatures } from '../utils/plan-features';
 import { db, auth } from '../firebase';
+import { signOut } from 'firebase/auth';
 import { collection, query, where, onSnapshot, limit } from 'firebase/firestore';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { isSuperAdmin as checkIsSuperAdmin, hasPlatformOverride, getTenantScope, PLATFORM_TENANT_ID } from '../utils/tenant-scope';
@@ -44,28 +45,22 @@ import { useTenant as useTenantDoc } from '../hooks/queries/useTenantQueries';
 
 // URL slug ↔ internal tab id. Most ids map 1:1; only these two differ so the
 // URLs read nicely (/admin/ai-knowledge, /admin/roles).
-const SLUG_TO_TAB: Record<string, string> = { 'ai-knowledge': 'ai', 'roles': 'admin_roles' };
-const TAB_TO_SLUG: Record<string, string> = { 'ai': 'ai-knowledge', 'admin_roles': 'roles' };
+const SLUG_TO_TAB: Record<string, string> = { 'ai-knowledge': 'ai' };
+const TAB_TO_SLUG: Record<string, string> = { 'ai': 'ai-knowledge' };
 
 // More-drawer groupings (Vercel-style). The section a tab appears in is keyed by
 // its tab id; order matters. Groups with no permitted tabs are omitted entirely.
 const MORE_GROUPS: { label: string; ids: string[] }[] = [
   { label: 'CONTENT', ids: ['posts', 'blog', 'courses', 'newsletter', 'ai', 'docs'] },
-  // CRM folded into Ministry (it's the "who" of ministry); the old one-item
-  // People group is gone. Inbox is platform-only now, Community lives in the
-  // bottom nav — neither belongs in a drawer group.
-  { label: 'MINISTRY', ids: ['crm', 'fundraising', 'events', 'checkin', 'forms', 'sms', 'accounting'] },
-  { label: 'GROWTH', ids: ['affiliate', 'livestream'] },
-  { label: 'APPEARANCE', ids: ['branding'] },
+  // CRM leads Ministry (it's the "who"); Church & Community sit alongside it.
+  // Admin Roles now lives inside the CRM page, not as its own drawer entry.
+  { label: 'MINISTRY', ids: ['crm', 'churches', 'community', 'fundraising', 'forms', 'accounting'] },
+  // Broadcasting: outbound / live engagement channels.
+  { label: 'BROADCASTING', ids: ['livestream', 'sms', 'checkin', 'events'] },
   { label: 'PLATFORM', ids: ['tenants'] },
-  { label: 'ADMIN', ids: ['admin_roles', 'integrations'] },
+  { label: 'MORE', ids: ['affiliate', 'branding'] },
 ];
 const GROUPED_MORE_IDS = new Set(MORE_GROUPS.flatMap((g) => g.ids));
-// Tabs that are intentionally NOT part of the More drawer (they live in the
-// bottom nav / sidebar). Keeping them out of the drawer's catch-all avoids a
-// stray one-item "MORE" section. They remain reachable via the desktop sidebar
-// and the nav customizer.
-const DRAWER_EXCLUDED_IDS = new Set(['community']);
 
 interface AdminDashboardProps {
   onNavigate: (page: string) => void;
@@ -137,6 +132,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
   const clearItemId = useCallback(() => {
     navigate(`/admin/${TAB_TO_SLUG[activeTab] || activeTab}`, { replace: true });
   }, [navigate, activeTab]);
+
+  /** Sign out; the App router redirects to /auth on the auth-state change. */
+  const handleLogout = useCallback(async () => {
+    try { await signOut(auth); } catch (e) { console.error('Error signing out:', e); }
+  }, []);
 
 
   useEffect(() => {
@@ -258,8 +258,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
       hasFullAccess &&
       { id: 'community', label: 'Community', icon: MessageSquare },
     isSuperAdmin && { id: 'tenants', label: 'Tenants', icon: Building2 },
-    // Admin Roles — placed last so it falls into the mobile "More" drawer by default
-    (isSuperAdmin || hasFullAccess || perms.manageAdmins) && { id: 'admin_roles', label: 'Admin Roles', icon: ShieldCheck },
+    // Admin Roles is no longer a standalone tab — it lives inside the CRM page
+    // (Contacts · Analytics · Roles), so it's intentionally absent here.
     // Affiliate — standalone section (near the bottom, above Settings)
     (isSuperAdmin || hasFullAccess) && { id: 'affiliate', label: 'Affiliate', icon: Link2 },
     // Branding — standalone appearance tab (logo, color, background, domain)
@@ -384,15 +384,17 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
             {!isSidebarCollapsed && <span className="text-xl font-bold text-gray-900 truncate">Admin</span>}
           </button>
 
-          {/* Desktop: View App — return to the member-facing app */}
-          <button
-            onClick={() => onNavigate('home')}
-            className={`hidden lg:flex items-center mb-6 shrink-0 rounded-lg text-xs font-medium text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-colors ${isSidebarCollapsed ? 'justify-center w-full py-2' : 'gap-2 px-3 py-2 w-full'}`}
-            title="View member app"
-          >
-            <ExternalLink size={16} className="shrink-0" />
-            {!isSidebarCollapsed && <span>View App</span>}
-          </button>
+          {/* Desktop: View App — only on the dashboard; returns to the member app */}
+          {activeTab === 'dashboard' && (
+            <button
+              onClick={() => onNavigate('home')}
+              className={`hidden lg:flex items-center mb-6 shrink-0 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-colors ${isSidebarCollapsed ? 'justify-center w-full py-2.5' : 'gap-2 px-3 py-2.5 w-full'}`}
+              title="View member app"
+            >
+              <ExternalLink size={16} className="shrink-0" style={{ color: 'var(--brand-color, #d4a017)' }} />
+              {!isSidebarCollapsed && <span>View App</span>}
+            </button>
+          )}
 
           {/* Mobile: primary tabs + More button */}
           <div className="flex lg:hidden justify-around items-center w-full">
@@ -513,16 +515,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
           titleIcon={headerOverride?.titleIcon}
           onBack={headerOverride ? headerOverride.onBack : (activeTab === 'dashboard' ? undefined : smartBack)}
           action={headerOverride ? headerOverride.action : headerAction}
-          leftAccessory={headerOverride ? undefined : (
+          leftAccessory={headerOverride ? undefined : (activeTab === 'dashboard' ? (
             <button
               onClick={() => onNavigate('home')}
-              className="lg:hidden flex items-center gap-1 text-xs font-medium text-gray-400 hover:text-gray-600 transition-colors"
+              className="lg:hidden flex items-center gap-1.5 text-xs font-semibold rounded-full px-3 py-1.5 border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-colors"
               title="View member app"
             >
-              <ExternalLink size={15} />
-              <span className="hidden sm:inline">App</span>
+              <ExternalLink size={14} style={{ color: 'var(--brand-color, #d4a017)' }} />
+              <span>View App</span>
             </button>
-          )}
+          ) : undefined)}
         />
 
         {/* Main Content Area */}
@@ -534,14 +536,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
                 isSuperAdmin={isSuperAdmin}
                 unreadCount={unreadCount}
                 onNavigate={go}
-              />
-            </div>
-          ) : activeTab === 'admin_roles' ? (
-            <div className="p-4 lg:p-0">
-              <AnalyticsAndRoles
-                currentUserRole={isSuperAdmin ? 'super_admin' : userRole}
-                currentUserPermissions={isChurchAdmin ? { fullAccess: true } as any : userPermissions}
-                mode="roles"
               />
             </div>
           ) : activeTab === 'blog' ? (
@@ -706,13 +700,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
                     (e.g. a tab moved out of the bottom bar) — never leave one unreachable. */}
                 {(() => {
                   const leftover = moreTabs.filter(
-                    (t) => t.id !== 'settings' && !GROUPED_MORE_IDS.has(t.id) && !DRAWER_EXCLUDED_IDS.has(t.id),
+                    (t) => t.id !== 'settings' && !GROUPED_MORE_IDS.has(t.id),
                   );
                   if (leftover.length === 0) return null;
                   return (
                     <div>
                       <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 px-4 pt-4 pb-1">
-                        MORE
+                        OTHER
                       </p>
                       {leftover.map(renderMoreRow)}
                     </div>
@@ -744,6 +738,18 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
                     Upgrade Plan
                   </span>
                   <ChevronRight size={14} className="ml-auto text-amber-400" />
+                </button>
+
+                {/* Divider */}
+                <div className="mx-4 my-2 border-t border-gray-100" />
+
+                {/* Log Out — at the very end of the drawer */}
+                <button
+                  onClick={handleLogout}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors hover:bg-red-50 text-left mb-2"
+                >
+                  <LogOut size={16} className="text-red-500" />
+                  <span className="text-sm font-semibold text-red-600">Log Out</span>
                 </button>
               </div>
             </div>
