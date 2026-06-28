@@ -317,7 +317,9 @@ const AdminEvents: React.FC = () => {
     const t: TicketType = {
       id: genId(),
       name: ticketDraft.name.trim(),
-      description: ticketDraft.description.trim() || undefined,
+      // Use null, never undefined — the Firestore client SDK rejects undefined
+      // field values (including nested inside the ticketTypes array).
+      description: ticketDraft.description.trim() || null,
       price: Math.max(0, Math.round((Number(ticketDraft.price) || 0) * 100)),
       capacity: ticketDraft.capacity ? Number(ticketDraft.capacity) : null,
       order: form.ticketTypes.length,

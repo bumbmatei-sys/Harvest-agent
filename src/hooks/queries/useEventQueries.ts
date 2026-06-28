@@ -6,7 +6,7 @@ import type { Timestamp } from 'firebase/firestore';
 export interface TicketType {
   id: string;             // uuid generated client-side
   name: string;           // e.g. "Adult", "Child", "Volunteer"
-  description?: string;
+  description?: string | null; // null (never undefined) so Firestore accepts the write
   price: number;          // in cents (0 = free)
   capacity: number | null; // null = unlimited
   order: number;          // display order
