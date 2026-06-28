@@ -11,6 +11,7 @@ import Profile from './Profile';
 import PartnerWithUsTab from './PartnerWithUsTab';
 import BlogTab from './BlogTab';
 import NewsTab from './NewsTab';
+import PrayerWall from './PrayerWall';
 import AllNews from './AllNews';
 import CourseExperience from '../components/CoursePage';
 import AIChat from './AIChat';
@@ -96,6 +97,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
     // Only include Courses tab once we know at least 1 course exists
     coursesStatus === 'present' && { id: 'courses', label: 'Courses' },
     { id: 'messages', label: 'Messages' },
+    { id: 'prayer', label: 'Prayer' },        // all plans, all users
     { id: 'partner', label: 'Partner with Us' },
   ].filter(Boolean) as { id: string; label: string }[];
 
@@ -350,7 +352,10 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
                       <UserMessages embedded onBack={() => {}} />
                     </div>
                   )}
-                  {activeTopTab !== 'news' && activeTopTab !== 'partner' && activeTopTab !== 'blog' && activeTopTab !== 'courses' && activeTopTab !== 'messages' && (
+                  {activeTopTab === 'prayer' && (
+                    <PrayerWall />
+                  )}
+                  {activeTopTab !== 'news' && activeTopTab !== 'partner' && activeTopTab !== 'blog' && activeTopTab !== 'courses' && activeTopTab !== 'messages' && activeTopTab !== 'prayer' && (
                     <div className="flex flex-col items-center justify-center h-64 text-gray-400">
                       <p>{topTabs.find(t => t.id === activeTopTab)?.label} content coming soon.</p>
                     </div>

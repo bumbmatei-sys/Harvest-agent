@@ -4,7 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { LayoutDashboard, Church, FileText, Rss, BrainCircuit, Inbox, GraduationCap, ChevronLeft, ChevronRight, Building2, Settings, MoreHorizontal, Mail, Heart, Users, MessageSquare, Receipt, CalendarCheck, ShieldCheck, ClipboardList, QrCode, Radio, ExternalLink, Link2, Crown, Palette } from 'lucide-react';
 import AdminBlog from './AdminBlog';
 import AdminPosts from './AdminPosts';
-import AdminInbox from './AdminInbox';
+import PlatformInbox from './PlatformInbox';
 import AdminChurches from './AdminChurches';
 import AdminCourses from './AdminCourses';
 import AdminRAG from './AdminRAG';
@@ -51,14 +51,21 @@ const TAB_TO_SLUG: Record<string, string> = { 'ai': 'ai-knowledge', 'admin_roles
 // its tab id; order matters. Groups with no permitted tabs are omitted entirely.
 const MORE_GROUPS: { label: string; ids: string[] }[] = [
   { label: 'CONTENT', ids: ['posts', 'blog', 'courses', 'newsletter', 'ai', 'docs'] },
-  { label: 'PEOPLE', ids: ['crm', 'community', 'inbox'] },
-  { label: 'MINISTRY', ids: ['fundraising', 'events', 'checkin', 'forms', 'giving_statements', 'sms', 'accounting'] },
+  // CRM folded into Ministry (it's the "who" of ministry); the old one-item
+  // People group is gone. Inbox is platform-only now, Community lives in the
+  // bottom nav — neither belongs in a drawer group.
+  { label: 'MINISTRY', ids: ['crm', 'fundraising', 'events', 'checkin', 'forms', 'sms', 'accounting'] },
   { label: 'GROWTH', ids: ['affiliate', 'livestream'] },
   { label: 'APPEARANCE', ids: ['branding'] },
   { label: 'PLATFORM', ids: ['tenants'] },
   { label: 'ADMIN', ids: ['admin_roles', 'integrations'] },
 ];
 const GROUPED_MORE_IDS = new Set(MORE_GROUPS.flatMap((g) => g.ids));
+// Tabs that are intentionally NOT part of the More drawer (they live in the
+// bottom nav / sidebar). Keeping them out of the drawer's catch-all avoids a
+// stray one-item "MORE" section. They remain reachable via the desktop sidebar
+// and the nav customizer.
+const DRAWER_EXCLUDED_IDS = new Set(['community']);
 
 interface AdminDashboardProps {
   onNavigate: (page: string) => void;
@@ -140,14 +147,20 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
     const loadCounts = async () => {
     const tenantId = await getTenantScope();
     if (cancelled) return;
-    // Single-field filter only (status); tenant scoping applied in-memory to avoid a composite index.
-    const q = query(collection(db, 'submissions'), where('status', '==', 'pending'), limit(300));
-    unsub1 = onSnapshot(q, (snapshot) => {
-      const docs = tenantId ? snapshot.docs.filter(d => d.data().tenantId === tenantId) : snapshot.docs;
-      setUnreadCount(docs.length);
-    }, (error) => {
-      try { handleFirestoreError(error, OperationType.GET, `submissions`); } catch (e) { console.error(e); }
-    });
+    // Inbox is platform-only now: only the super admin on the apex domain has a
+    // Platform Inbox. Count pending platform_inbox reports for its badge; for
+    // tenant admins there is no inbox, so the count stays 0 (and we don't
+    // subscribe — reading platform_inbox is super-admin-only).
+    if (hasPlatformOverride()) {
+      const q = query(collection(db, 'platform_inbox'), where('status', '==', 'pending'), limit(300));
+      unsub1 = onSnapshot(q, (snapshot) => {
+        setUnreadCount(snapshot.size);
+      }, (error) => {
+        try { handleFirestoreError(error, OperationType.GET, `platform_inbox`); } catch (e) { console.error(e); }
+      });
+    } else {
+      setUnreadCount(0);
+    }
 
     const qChurches = query(collection(db, 'churches'), where('status', '==', 'pending'), limit(300));
     unsub2 = onSnapshot(qChurches, (snapshot) => {
@@ -185,7 +198,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
   const canBranding = !!((platformOverride || !isTenantAdmin ||
     (features && (features.customBranding || features.customBackground || features.customDomain))) && hasFullAccess);
 
-  const showInbox = hasFullAccess || perms.seeFormsInbox;
+  // The inbox is platform-only now (Contact / Feature / Bug reports go to the
+  // platform owner). It shows ONLY for a super admin in the platform context
+  // (apex domain, no tenant subdomain). Tenant admins — and super admins
+  // browsing a tenant subdomain — get no inbox tab at all.
+  const showInbox = platformOverride;
 
   // All available tabs (permission-filtered)
   const allTabs = [
@@ -281,7 +298,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
 
   const moreTabs = [
     ...drawerTabs,
-    ...(showInbox ? [{ id: 'inbox', label: 'Inbox', icon: Inbox }] : []),
+    ...(showInbox ? [{ id: 'inbox', label: 'Platform Inbox', icon: Inbox }] : []),
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
 
@@ -291,7 +308,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
     // 'branding' is intentionally NOT hard-coded here — it is only "known" when it
     // is present in allTabs (i.e. the user is entitled), so unauthorized direct
     // navigation to /admin/branding redirects away. 'upgrade' is universally reachable.
-    const known = new Set([...allTabs.map(t => t.id), 'inbox', 'settings', 'canvas', 'upgrade']);
+    // 'inbox' is only a known/reachable tab in the platform context (super admin
+    // on apex). For tenant admins, direct navigation to /admin/inbox redirects
+    // away just like any other unentitled tab.
+    const known = new Set([...allTabs.map(t => t.id), ...(showInbox ? ['inbox'] : []), 'settings', 'canvas', 'upgrade']);
     if (!isLoading && allTabs.length > 0 && !known.has(activeTab)) {
       go(allTabs[0].id);
     }
@@ -302,7 +322,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
     dashboard: 'Dashboard',
     community: 'Community Chat',
     ai: 'AI Knowledge',
-    inbox: 'Inbox',
+    inbox: 'Platform Inbox',
     settings: 'Settings',
     upgrade: 'Plan & Billing',
     branding: 'Branding',
@@ -529,7 +549,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
           ) : activeTab === 'posts' ? (
             <div className="p-4 lg:p-0"><AdminPosts userRole={isSuperAdmin ? 'super_admin' : userRole} userPermissions={userPermissions} /></div>
           ) : activeTab === 'inbox' ? (
-            <div className="p-4 lg:p-0"><AdminInbox /></div>
+            <div className="p-4 lg:p-0"><PlatformInbox /></div>
           ) : activeTab === 'churches' ? (
             <div className="p-4 lg:p-0"><AdminChurches /></div>
           ) : activeTab === 'courses' ? (
@@ -686,7 +706,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
                     (e.g. a tab moved out of the bottom bar) — never leave one unreachable. */}
                 {(() => {
                   const leftover = moreTabs.filter(
-                    (t) => t.id !== 'settings' && !GROUPED_MORE_IDS.has(t.id),
+                    (t) => t.id !== 'settings' && !GROUPED_MORE_IDS.has(t.id) && !DRAWER_EXCLUDED_IDS.has(t.id),
                   );
                   if (leftover.length === 0) return null;
                   return (

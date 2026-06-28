@@ -21,7 +21,7 @@ import {
 import Image from 'next/image';
 import { auth, db } from '../firebase';
 import { signOut, updateProfile } from 'firebase/auth';
-import { doc, onSnapshot, updateDoc, collection, query, where, getDocs, addDoc } from 'firebase/firestore';
+import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
 import PersonalInformationModal from './PersonalInformationModal';
 import { authFetch } from '../utils/auth-fetch';
 import ContactModal from './ContactModal';
@@ -30,7 +30,7 @@ import FAQModal from './FAQModal';
 import ChurchDetailsModal from './ChurchDetailsModal';
 import UserEvents from './UserEvents';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
-import { SUPER_ADMIN_EMAIL, isSuperAdmin as checkIsSuperAdmin, getTenantScope } from '../utils/tenant-scope';
+import { SUPER_ADMIN_EMAIL, isSuperAdmin as checkIsSuperAdmin } from '../utils/tenant-scope';
 import { isSuperAdminEmail } from '../utils/super-admins';
 import { getPlanFeatures } from '../utils/plan-features';
 import { useAppStore } from '../store/useAppStore';
@@ -47,12 +47,6 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap 
   const [showMyEvents, setShowMyEvents] = useState(false);
  const [isPersonalInfoOpen, setIsPersonalInfoOpen] = useState(false);
  const [isContactOpen, setIsContactOpen] = useState(false);
-
- // Prayer request card (surfaced directly on the profile page)
- const [prayerName, setPrayerName] = useState(auth.currentUser?.displayName ?? '');
- const [prayerRequest, setPrayerRequest] = useState('');
- const [prayerSubmitting, setPrayerSubmitting] = useState(false);
- const [prayerSuccess, setPrayerSuccess] = useState(false);
  const [isPrivacyTermsOpen, setIsPrivacyTermsOpen] = useState(false);
  const [isFAQOpen, setIsFAQOpen] = useState(false);
  const [isChurchDetailsOpen, setIsChurchDetailsOpen] = useState(false);
@@ -157,8 +151,6 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap 
    } else {
      setUserName(auth.currentUser?.displayName || 'User');
    }
-   // Pre-fill the prayer name from the loaded display name if the user hasn't typed one.
-   setPrayerName(prev => prev || data.displayName || auth.currentUser?.displayName || '');
    if (data.photoURL) {
      setProfilePic(data.photoURL);
    }
@@ -211,37 +203,6 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap 
  } catch (error) {
  console.error('Error signing out:', error);
  }
- };
-
- const handlePrayerSubmit = async () => {
-   if (!prayerRequest.trim()) return;
-   setPrayerSubmitting(true);
-   try {
-     // Subdomain-authoritative tenant resolution (matches ContactModal/AdminInbox),
-     // so the request lands in the correct tenant's inbox on white-label domains.
-     const tenantId = await getTenantScope();
-     // Nest details under `data` so the submission renders in AdminInbox (which
-     // maps over sub.data) and matches the existing prayer submission shape.
-     await addDoc(collection(db, 'submissions'), {
-       type: 'prayer',
-       status: 'pending',
-       createdAt: new Date().toISOString(),
-       userId: auth.currentUser?.uid ?? null,
-       tenantId,
-       data: {
-         name: prayerName.trim(),
-         email: auth.currentUser?.email ?? '',
-         request: prayerRequest.trim(),
-       },
-     });
-     setPrayerSuccess(true);
-     setPrayerRequest('');
-     setTimeout(() => setPrayerSuccess(false), 4000);
-   } catch (e) {
-     console.error('Prayer submission error:', e);
-   } finally {
-     setPrayerSubmitting(false);
-   }
  };
 
  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -515,54 +476,6 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap 
  className="mt-2 text-sm font-bold text-gold"
  >
  Partner with Us →
- </button>
- </div>
- )}
- </div>
- </div>
-
- {/* Prayer Request */}
- <div>
- <h4 className="text-[10px] font-bold text-gray-400 tracking-wider uppercase mb-3 ml-2">Prayer</h4>
- <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-5">
- <div className="flex items-center gap-3 mb-4">
- <div className="w-9 h-9 rounded-full bg-orange-50 flex items-center justify-center flex-shrink-0">
- <HeartHandshake size={18} className="text-orange-400" />
- </div>
- <div>
- <p className="text-sm font-bold text-gray-900">Prayer Request</p>
- <p className="text-xs text-gray-400">We stand with you in faith.</p>
- </div>
- </div>
-
- {prayerSuccess ? (
- <div className="bg-green-50 border border-green-100 rounded-2xl p-4 text-center">
- <p className="text-sm font-semibold text-green-700">🙏 Your request has been received.</p>
- <p className="text-xs text-green-600 mt-1">We&apos;ll be praying for you.</p>
- </div>
- ) : (
- <div className="space-y-3">
- <input
- type="text"
- value={prayerName}
- onChange={(e) => setPrayerName(e.target.value)}
- placeholder="Your name"
- className="w-full px-4 py-2.5 bg-gray-50 rounded-xl text-sm text-gray-800 placeholder-gray-400 border border-gray-100 focus:outline-none focus:ring-2 focus:ring-orange-200 focus:border-transparent"
- />
- <textarea
- value={prayerRequest}
- onChange={(e) => setPrayerRequest(e.target.value)}
- placeholder="How can we pray for you?"
- rows={3}
- className="w-full px-4 py-2.5 bg-gray-50 rounded-xl text-sm text-gray-800 placeholder-gray-400 border border-gray-100 focus:outline-none focus:ring-2 focus:ring-orange-200 focus:border-transparent resize-none"
- />
- <button
- onClick={handlePrayerSubmit}
- disabled={prayerSubmitting || !prayerRequest.trim()}
- className="w-full py-3 rounded-2xl text-sm font-bold text-white transition-colors disabled:opacity-50"
- style={{ backgroundColor: prayerSubmitting ? '#e5a050' : 'var(--brand-color, #d4a017)' }}
- >
- {prayerSubmitting ? 'Sending...' : 'Send Prayer Request →'}
  </button>
  </div>
  )}
