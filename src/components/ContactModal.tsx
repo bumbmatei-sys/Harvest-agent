@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from 'react';
-import { ArrowLeft, Mail, MapPin, Lightbulb, HeartHandshake, ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowLeft, Mail, MapPin, Lightbulb, ChevronDown, ChevronUp } from 'lucide-react';
 import { db, auth } from '../firebase';
 import { collection, addDoc, doc, getDoc } from 'firebase/firestore';
 import { getTenantScope } from '../utils/tenant-scope';
@@ -109,7 +109,6 @@ const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) => {
  const [supportForm, setSupportForm] = useState({ name: '', email: '', subject: '', message: '' });
  const [churchForm, setChurchForm] = useState({ contactName: '', phone: '', email: '', city: '', country: '', reason: '', website: '', facebook: '', instagram: '' });
  const [featureForm, setFeatureForm] = useState({ title: '', details: '' });
- const [prayerForm, setPrayerForm] = useState({ name: '', email: '', request: '' });
 
  if (!isOpen) return null;
 
@@ -307,33 +306,6 @@ const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) => {
  <TextAreaField required name="details" value={featureForm.details} onChange={(e: any) => setFeatureForm({...featureForm, details: e.target.value})} placeholder="Describe your idea..." />
  
  <SubmitButton isSubmitting={isSubmitting}>Submit Suggestion</SubmitButton>
- </form>
- </AccordionItem>
-
- <AccordionItem
- id="prayer"
- icon={<HeartHandshake size={20} className="text-orange-500" />}
- iconBg="bg-orange-50 "
- title="Prayer Request"
- subtitle="Let us stand with you in faith."
- isOpen={openSection === 'prayer'}
- onToggle={toggleSection}
- >
- <form onSubmit={(e) => handleSubmit(e, 'prayer', prayerForm, () => setPrayerForm({ name: '', email: '', request: '' }))}>
- <div className="bg-orange-50 text-orange-700 text-xs p-3 rounded-xl mb-6 leading-relaxed border border-orange-100 ">
- We believe in the power of prayer. Share your request, and our team will stand in faith with you.
- </div>
-
- <InputLabel>YOUR NAME</InputLabel>
- <InputField required name="name" value={prayerForm.name} onChange={(e: any) => setPrayerForm({...prayerForm, name: e.target.value})} placeholder="Your Name" />
- 
- <InputLabel>EMAIL</InputLabel>
- <InputField name="email" value={prayerForm.email} onChange={(e: any) => setPrayerForm({...prayerForm, email: e.target.value})} placeholder="Email (Optional)" type="email" />
- 
- <InputLabel>PRAYER REQUEST</InputLabel>
- <TextAreaField required name="request" value={prayerForm.request} onChange={(e: any) => setPrayerForm({...prayerForm, request: e.target.value})} placeholder="How can we pray for you?" />
- 
- <SubmitButton isSubmitting={isSubmitting}>Send Request</SubmitButton>
  </form>
  </AccordionItem>
 

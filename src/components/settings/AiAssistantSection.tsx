@@ -101,7 +101,7 @@ const AiAssistantSection: React.FC<AiAssistantSectionProps> = ({ email }) => {
   if (!loaded) {
     return (
       <div className="mb-4">
-        <h4 className="text-base font-bold text-gray-900 mb-1">AI Assistant</h4>
+        <h4 className="text-sm font-semibold text-gray-900 mb-1">AI Assistant</h4>
         <div className="h-8 bg-gray-100 rounded animate-pulse" />
       </div>
     );
@@ -113,7 +113,7 @@ const AiAssistantSection: React.FC<AiAssistantSectionProps> = ({ email }) => {
 
   return (
     <div className="mb-4">
-      <h4 className="text-base font-bold text-gray-900 mb-1">AI Assistant</h4>
+      <h4 className="text-sm font-semibold text-gray-900 mb-1">AI Assistant</h4>
       <p className="text-sm text-gray-600 mb-3">
         Your personal AI assistant on Telegram — available 24/7 for sermon prep, member care, and ministry guidance.
       </p>
@@ -121,13 +121,13 @@ const AiAssistantSection: React.FC<AiAssistantSectionProps> = ({ email }) => {
       {!hasAssistant ? (
         <div>
           <div className="flex items-baseline gap-2 mb-3">
-            <span className="text-2xl font-bold text-gray-900">$200</span>
+            <span className="text-base font-semibold text-gray-900">$200</span>
             <span className="text-sm text-gray-500">/mo per admin</span>
           </div>
           <button
             onClick={handleCheckout}
             disabled={checkoutLoading}
-            className="w-full px-5 py-2.5 bg-amber-500 text-white rounded-xl text-sm font-semibold hover:bg-amber-600 transition-colors disabled:opacity-50"
+            className="w-full px-4 py-2 bg-amber-500 text-white rounded-lg text-sm font-medium hover:bg-amber-600 transition-colors disabled:opacity-50"
           >
             {checkoutLoading ? (
               <>
@@ -154,7 +154,7 @@ const AiAssistantSection: React.FC<AiAssistantSectionProps> = ({ email }) => {
             href={`https://t.me/${BOT_USERNAME}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center justify-center gap-2 w-full py-2.5 mb-2 bg-[#0088cc] text-white text-sm font-semibold rounded-xl hover:bg-[#006da3] transition-colors"
+            className="flex items-center justify-center gap-2 w-full px-4 py-2 mb-2 bg-[#0088cc] text-white text-sm font-medium rounded-lg hover:bg-[#006da3] transition-colors"
           >
             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z" /></svg>
             Open Telegram
@@ -162,7 +162,7 @@ const AiAssistantSection: React.FC<AiAssistantSectionProps> = ({ email }) => {
           <button
             onClick={handleDisconnect}
             disabled={disconnectLoading}
-            className="w-full px-5 py-2.5 border border-gray-200 text-gray-600 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
+            className="w-full px-4 py-2 border border-gray-200 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
           >
             {disconnectLoading ? 'Disconnecting...' : 'Disconnect Telegram'}
           </button>
@@ -177,7 +177,7 @@ const AiAssistantSection: React.FC<AiAssistantSectionProps> = ({ email }) => {
             href={`https://t.me/${BOT_USERNAME}?start=${userData?.uid}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center justify-center gap-2 w-full py-2.5 bg-amber-500 text-white text-sm font-semibold rounded-xl hover:bg-amber-600 transition-colors"
+            className="flex items-center justify-center gap-2 w-full px-4 py-2 bg-amber-500 text-white text-sm font-medium rounded-lg hover:bg-amber-600 transition-colors"
           >
             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z" /></svg>
             Connect Telegram Bot

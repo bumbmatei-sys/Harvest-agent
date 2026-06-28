@@ -1,14 +1,10 @@
 "use client";
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Crown, Palette, Globe, CreditCard, Settings2, Bot, Plug, AlertTriangle, Check, ChevronRight, FileText, MessageSquare } from 'lucide-react';
+import { Crown, Settings2, Bot, Plug, AlertTriangle, Check, FileText, MessageSquare, SlidersHorizontal, ChevronRight } from 'lucide-react';
 import { TenantPlan } from '../types/tenant.types';
-import { getPlanFeatures, PlanFeatures } from '../utils/plan-features';
+import { getPlanFeatures } from '../utils/plan-features';
 import { useAppStore } from '../store/useAppStore';
 import SettingsAccordion from './settings/SettingsAccordion';
-import PlanUpgradeSection from './settings/PlanUpgradeSection';
-import BrandingSection from './settings/BrandingSection';
-import DomainSection from './settings/DomainSection';
-import PaymentSection from './settings/PaymentSection';
 import OnboardingSection from './settings/OnboardingSection';
 import GivingStatementsSection from './settings/GivingStatementsSection';
 import SmsSection from './settings/SmsSection';
@@ -22,20 +18,27 @@ interface AdminSettingsProps {
   onCancelPlan: () => void;
   tenantId?: string;
   email?: string;
+  /** Opens the bottom-bar / More-drawer customizer (lives in AdminDashboard). */
+  onCustomizeNav?: () => void;
 }
 
-const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onChangePlan, onCancelPlan, tenantId, email }) => {
+const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onChangePlan, onCancelPlan, tenantId, email, onCustomizeNav }) => {
   const [stripeStatus, setStripeStatus] = useState<string | null>(null);
   const [stripeAddon, setStripeAddon] = useState<string | null>(null);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
-  const [portalLoading, setPortalLoading] = useState(false);
   const { isSuperAdmin } = useAppStore();
 
   const currentPlanData = currentPlan ? PLANS_DISPLAY.find(p => p.id === currentPlan) : null;
   const currentFeatures = currentPlan ? getPlanFeatures(currentPlan) : null;
-  // Super admins (platform tenant, no plan) always see every section regardless of plan.
-  const hasBranding = isSuperAdmin || !!currentFeatures?.customBranding;
-  const hasCustomDomain = isSuperAdmin || !!currentFeatures?.customDomain;
+  // Compact, comma/dot-separated plan summary, e.g. "Unlimited courses · Blog · AI Chat".
+  const planSummary = currentFeatures
+    ? [
+        `${currentFeatures.maxCourses === -1 ? 'Unlimited' : currentFeatures.maxCourses} courses`,
+        currentFeatures.blog ? 'Blog' : null,
+        currentFeatures.aiChat ? 'AI Chat' : null,
+        currentFeatures.crm ? 'CRM' : null,
+      ].filter(Boolean).join(' · ')
+    : '';
   const [forceOpen, setForceOpen] = useState<string | null>(null);
 
   // Handle Stripe return URL params
@@ -73,7 +76,6 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
     }
     if (!tid) { alert('Unable to find your organization.'); return; }
 
-    setPortalLoading(true);
     try {
       const resp = await authFetch('/api/stripe/portal', {
         method: 'POST',
@@ -88,102 +90,56 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
     } catch (e) {
       console.error('Portal error:', e);
       alert('Failed to open billing portal. Please try again.');
-    } finally {
-      setPortalLoading(false);
     }
   };
 
+  // Sections kept in Settings after the nav overhaul. Plan, Payment, Branding,
+  // Domain, and Billing now live in their own tabs/pages (Upgrade, Branding,
+  // Fundraising). Icons are neutral gray (no rainbow), rendered at 18px.
   const sections = [
-    {
-      id: 'plan',
-      label: 'Subscription Plan',
-      icon: <Crown size={20} className="text-gold" />,
-      content: <PlanUpgradeSection currentPlan={currentPlan} tenantId={tenantId} email={email} />,
-    },
-    {
-      id: 'payment',
-      label: 'Payment Settings',
-      icon: <CreditCard size={20} className="text-purple-600" />,
-      content: <PaymentSection />,
-    },
-    {
-      id: 'branding',
-      label: 'Branding & Appearance',
-      icon: <Palette size={20} className="text-gold" />,
-      content: <BrandingSection currentFeatures={currentFeatures} />,
-      hidden: !hasBranding,
-    },
-    {
-      id: 'domain',
-      label: 'Domain Settings',
-      icon: <Globe size={20} className="text-blue-600" />,
-      content: <DomainSection hasCustomDomain={!!hasCustomDomain} />,
-    },
     {
       id: 'onboarding',
       label: 'Onboarding Questions',
-      icon: <Settings2 size={20} className="text-green-600" />,
+      icon: <Settings2 size={18} />,
       content: <OnboardingSection />,
     },
     {
       id: 'giving-statements',
       label: 'Giving Statements',
-      icon: <FileText size={20} className="text-gold" />,
+      icon: <FileText size={18} />,
       content: <GivingStatementsSection />,
       hidden: !isSuperAdmin && !currentFeatures?.givingStatements,
     },
     {
       id: 'sms',
       label: 'SMS (Twilio)',
-      icon: <MessageSquare size={20} className="text-green-600" />,
+      icon: <MessageSquare size={18} />,
       content: <SmsSection />,
       hidden: !isSuperAdmin && !currentFeatures?.smsAutomation,
     },
     {
       id: 'ai-assistant',
       label: 'AI Assistant',
-      icon: <Bot size={20} className="text-indigo-600" />,
+      icon: <Bot size={18} />,
       content: <AiAssistantSection currentPlan={currentPlan} email={email} />,
     },
     {
       id: 'integrations',
       label: 'Integrations',
-      icon: <Plug size={20} className="text-blue-600" />,
+      icon: <Plug size={18} />,
       content: <IntegrationsSection />,
       hidden: !isSuperAdmin && !currentFeatures?.newsletterAutomation,
     },
     {
-      id: 'billing',
-      label: 'Billing & Payments',
-      icon: <CreditCard size={20} className="text-gray-600" />,
-      content: (
-        <div>
-          <p className="text-sm text-gray-600 mb-4">Manage your subscription, update payment methods, and view invoices through Stripe.</p>
-          <button
-            onClick={handleManageSubscription}
-            disabled={portalLoading}
-            className="flex items-center gap-2 px-5 py-2.5 bg-gray-900 text-white rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50"
-          >
-            {portalLoading ? (
-              <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Opening portal...</>
-            ) : (
-              <>Manage Subscription <ChevronRight size={16} /></>
-            )}
-          </button>
-          <p className="text-xs text-gray-400 mt-3">Powered by Stripe</p>
-        </div>
-      ),
-    },
-    {
       id: 'cancel-plan',
       label: 'Cancel Subscription',
-      icon: <AlertTriangle size={20} className="text-red-500" />,
+      icon: <AlertTriangle size={18} />,
       content: (
         <div>
           <p className="text-gray-600 text-sm mb-4">Cancel your subscription. Your ministry will remain active until the end of the current billing period.</p>
           <button
             onClick={() => setShowCancelConfirm(true)}
-            className="px-4 py-2 border border-red-200 text-red-600 rounded-xl text-sm font-semibold hover:bg-red-50 transition-colors"
+            className="px-4 py-2 border border-red-200 text-red-600 rounded-lg text-sm font-medium hover:bg-red-50 transition-colors"
           >
             Cancel Subscription
           </button>
@@ -197,7 +153,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
     <div className="p-4 lg:p-6 max-w-6xl mx-auto">
       {/* Stripe status banners */}
       {stripeStatus === 'success' && stripeAddon === 'ai-assistant' && (
-        <div className="bg-green-50 border border-green-200 rounded-2xl p-4 mb-4">
+        <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-4">
           <div className="flex items-center gap-3 mb-3">
             <Check size={20} className="text-green-600" />
             <div>
@@ -218,7 +174,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
         </div>
       )}
       {stripeStatus === 'success' && !stripeAddon && (
-        <div className="bg-green-50 border border-green-200 rounded-2xl p-4 flex items-center gap-3 mb-4">
+        <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center gap-3 mb-4">
           <Check size={20} className="text-green-600" />
           <div>
             <p className="text-sm font-semibold text-green-800">Payment successful!</p>
@@ -228,7 +184,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
         </div>
       )}
       {stripeStatus === 'cancel' && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-4 flex items-center gap-3 mb-4">
+        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 flex items-center gap-3 mb-4">
           <AlertTriangle size={20} className="text-yellow-600" />
           <div>
             <p className="text-sm font-semibold text-yellow-800">Checkout cancelled</p>
@@ -240,65 +196,45 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
 
       {/* Current Plan Summary */}
       {currentPlan ? (
-        <div className="bg-white rounded-2xl border border-gray-100 p-6 mb-4">
-          <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">Current Plan</h3>
-          <div className="flex items-center gap-4">
-            {currentPlanData && (
-              <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${currentPlanData.color}15` }}>
-                <currentPlanData.icon size={24} style={{ color: currentPlanData.color }} />
-              </div>
-            )}
-            <div>
-              <p className="text-xl font-bold text-gray-900">{currentPlanData?.name || 'Unknown'}</p>
-              <p className="text-gray-500">{currentPlanData?.monthlyPrice || 'N/A'}</p>
-            </div>
-          </div>
-          <div className="mt-4 pt-4 border-t border-gray-100">
-            <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
-              <div className="text-center">
-                <p className="text-2xl font-bold text-gray-900">{currentFeatures?.maxChurches === -1 ? '∞' : currentFeatures?.maxChurches}</p>
-                <p className="text-xs text-gray-500">Churches</p>
-              </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold text-gray-900">{currentFeatures?.maxAdmins === -1 ? '∞' : currentFeatures?.maxAdmins}</p>
-                <p className="text-xs text-gray-500">Admins</p>
-              </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold text-gray-900">{currentFeatures?.maxCourses === -1 ? '∞' : currentFeatures?.maxCourses}</p>
-                <p className="text-xs text-gray-500">Courses</p>
-              </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold text-gray-900">{currentFeatures?.blog ? '✓' : '✗'}</p>
-                <p className="text-xs text-gray-500">Blog</p>
-              </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold text-gray-900">{currentFeatures?.aiChat ? '✓' : '✗'}</p>
-                <p className="text-xs text-gray-500">AI Chat</p>
-              </div>
-            </div>
+        <div className="bg-white rounded-xl border border-gray-200 p-4 mb-4 flex items-center gap-3">
+          <Crown size={18} style={{ color: 'var(--brand-color, #d4a017)' }} className="shrink-0" />
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-gray-900">{currentPlanData?.name || 'Current'} plan</p>
+            <p className="text-xs text-gray-500">{planSummary}</p>
           </div>
         </div>
       ) : (
-        <div className="bg-white rounded-2xl border border-gray-100 p-6 mb-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-amber-50">
-              <span className="text-amber-500 text-lg">👑</span>
-            </div>
-            <div>
-              <p className="text-xl font-bold text-gray-900">Super Admin</p>
-              <p className="text-gray-500 text-sm">Platform-wide access — manage all tenants</p>
-            </div>
+        <div className="bg-white rounded-xl border border-gray-200 p-4 mb-4 flex items-center gap-3">
+          <Crown size={18} style={{ color: 'var(--brand-color, #d4a017)' }} className="shrink-0" />
+          <div>
+            <p className="text-sm font-semibold text-gray-900">Super Admin</p>
+            <p className="text-xs text-gray-500">Platform-wide access — manage all tenants</p>
           </div>
         </div>
       )}
 
       {/* Accordion Sections */}
-      <SettingsAccordion sections={sections} defaultOpen="plan" forceOpen={forceOpen} />
+      <SettingsAccordion sections={sections} forceOpen={forceOpen} />
+
+      {/* Customize Navigation — opens the bottom-bar / More-drawer reorder tool */}
+      {onCustomizeNav && (
+        <button
+          onClick={onCustomizeNav}
+          className="mt-4 w-full flex items-center gap-3 px-4 py-3.5 bg-white rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors text-left"
+        >
+          <SlidersHorizontal size={18} className="text-gray-400 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-gray-800">Customize Navigation</p>
+            <p className="text-xs text-gray-400">Rearrange your bottom bar &amp; More drawer</p>
+          </div>
+          <ChevronRight size={16} className="text-gray-400" />
+        </button>
+      )}
 
       {/* Cancel Confirmation Modal */}
       {showCancelConfirm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[200] p-4">
-          <div className="bg-white rounded-2xl p-6 max-w-md w-full">
+          <div className="bg-white rounded-xl p-6 max-w-md w-full">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center">
                 <AlertTriangle size={20} className="text-red-500" />

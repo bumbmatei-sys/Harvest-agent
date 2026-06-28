@@ -180,13 +180,13 @@ export const DomainSection: React.FC<DomainSectionProps> = ({ hasCustomDomain, o
 
   return (
     <div className="space-y-6" style={{ paddingBottom: 120 }}>
-      <p className="text-gray-600">
+      <p className="text-sm text-gray-600">
         Manage your ministry&apos;s web address. Your subdomain is <strong>{subdomain}.theharvest.app</strong>.
       </p>
 
       {/* Subdomain (read-only) */}
-      <div className="bg-white rounded-2xl border border-gray-100 p-6">
-        <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">Subdomain</h3>
+      <div className="bg-white rounded-xl border border-gray-100 p-4">
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">Subdomain</h3>
         <div className="flex items-center gap-4">
           <div className="flex-1">
             <div className="flex items-center">
@@ -194,9 +194,9 @@ export const DomainSection: React.FC<DomainSectionProps> = ({ hasCustomDomain, o
                 type="text"
                 value={subdomain}
                 disabled
-                className="w-full px-4 py-2.5 border border-gray-200 rounded-l-xl text-sm bg-gray-50 text-gray-600 cursor-not-allowed"
+                className="w-full px-4 py-2 border border-gray-200 rounded-l-lg text-sm bg-gray-50 text-gray-600 cursor-not-allowed"
               />
-              <span className="px-4 py-2.5 border border-l-0 border-gray-200 rounded-r-xl text-sm text-gray-500 bg-gray-100">.theharvest.app</span>
+              <span className="px-4 py-2 border border-l-0 border-gray-200 rounded-r-lg text-sm text-gray-500 bg-gray-100">.theharvest.app</span>
             </div>
             <p className="text-xs text-gray-400 mt-2">
               To change your subdomain, please contact support. Subdomain changes require migration and may affect your existing links.
@@ -207,15 +207,13 @@ export const DomainSection: React.FC<DomainSectionProps> = ({ hasCustomDomain, o
 
       {/* Custom Domain (Ministry only) */}
       {hasCustomDomain ? (
-        <div className="bg-white rounded-2xl border border-gray-100 p-6">
+        <div className="bg-white rounded-xl border border-gray-100 p-4">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Custom Domain</h3>
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500">Custom Domain</h3>
             {statusBadge()}
           </div>
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-purple-50 flex items-center justify-center shrink-0">
-              <Globe size={24} className="text-purple-600" />
-            </div>
+            <Globe size={20} className="text-gray-400 shrink-0" />
             <div className="flex-1">
               <label className="block text-sm font-medium text-gray-700 mb-2">Your Custom Domain</label>
               <input
@@ -223,7 +221,7 @@ export const DomainSection: React.FC<DomainSectionProps> = ({ hasCustomDomain, o
                 value={customDomain}
                 onChange={(e) => setCustomDomain(e.target.value)}
                 placeholder="e.g. ministry.yourchurch.org"
-                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-gold focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gold focus:border-transparent"
               />
               <p className="text-xs text-gray-400 mt-1">
                 Enter your custom domain, then point a CNAME record at <span className="font-mono">theharvest.app</span>.
@@ -257,15 +255,15 @@ export const DomainSection: React.FC<DomainSectionProps> = ({ hasCustomDomain, o
           </div>
         </div>
       ) : (
-        <div className="bg-white rounded-2xl border border-gray-100 p-6">
-          <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">Custom Domain</h3>
-          <p className="text-gray-600 text-sm mb-4">
+        <div className="bg-white rounded-xl border border-gray-100 p-4">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">Custom Domain</h3>
+          <p className="text-sm text-gray-600 mb-4">
             Custom domains are available on the <strong>Ministry</strong> plan.
             Upgrade to use your own domain name.
           </p>
           <button
             onClick={onUpgrade}
-            className="px-4 py-2 bg-gold text-white rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity"
+            className="px-4 py-2 bg-gold text-white rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
           >
             Upgrade to Unlock
           </button>
@@ -278,14 +276,14 @@ export const DomainSection: React.FC<DomainSectionProps> = ({ hasCustomDomain, o
           <button
             onClick={handleSave}
             disabled={domainSaving}
-            className="px-6 py-2.5 bg-gold text-white rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
+            className="px-4 py-2 bg-gold text-white rounded-lg text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
           >
             {domainSaving ? 'Saving...' : 'Save Domain'}
           </button>
           <button
             onClick={handleCheckStatus}
             disabled={checking || !customDomain.trim()}
-            className="px-6 py-2.5 border border-gray-200 text-gray-700 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors disabled:opacity-50"
+            className="px-4 py-2 border border-gray-200 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
           >
             {checking ? 'Checking...' : 'Check Status'}
           </button>

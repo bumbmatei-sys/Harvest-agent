@@ -95,25 +95,25 @@ export const BrandingSection: React.FC<BrandingSectionProps> = ({ currentFeature
 
   return (
     <div className="space-y-6" style={{ paddingBottom: 120 }}>
-      <p className="text-gray-600">Customize your ministry&apos;s name, logo, and brand color. Changes apply across your entire app.</p>
+      <p className="text-sm text-gray-600">Customize your ministry&apos;s name, logo, and brand color. Changes apply across your entire app.</p>
 
       {/* Ministry Name */}
-      <div className="bg-white rounded-2xl border border-gray-100 p-6">
-        <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">Ministry Name</h3>
+      <div className="bg-white rounded-xl border border-gray-100 p-4">
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">Ministry Name</h3>
         <label className="block text-sm font-medium text-gray-700 mb-2">Display Name</label>
         <input
           type="text"
           value={ministryName}
           onChange={(e) => setMinistryName(e.target.value)}
           placeholder="e.g. Grace Community Church"
-          className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-gold focus:border-transparent"
+          className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gold focus:border-transparent"
         />
         <p className="text-xs text-gray-400 mt-1">Shown in your app header, login page, and emails for your white-label site.</p>
       </div>
 
       {/* Logo Upload */}
-      <div className="bg-white rounded-2xl border border-gray-100 p-6">
-        <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">Logo</h3>
+      <div className="bg-white rounded-xl border border-gray-100 p-4">
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">Logo</h3>
         <div className="flex items-start gap-6">
           <div className="w-24 h-24 rounded-xl bg-gray-50 flex items-center justify-center overflow-hidden border border-gray-100 shrink-0">
             {brandingLogo ? (
@@ -134,15 +134,15 @@ export const BrandingSection: React.FC<BrandingSectionProps> = ({ currentFeature
       </div>
 
       {/* Brand Color */}
-      <div className="bg-white rounded-2xl border border-gray-100 p-6">
-        <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">Brand Color</h3>
+      <div className="bg-white rounded-xl border border-gray-100 p-4">
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">Brand Color</h3>
         <div className="flex items-center gap-6">
           <div className="relative">
             <input
               type="color"
               value={brandingColor}
               onChange={(e) => handleColorChange(e.target.value)}
-              className="w-16 h-16 rounded-xl cursor-pointer border-2 border-gray-200 p-1"
+              className="w-16 h-16 rounded-lg cursor-pointer border-2 border-gray-200 p-1"
             />
           </div>
           <div className="flex-1">
@@ -152,7 +152,7 @@ export const BrandingSection: React.FC<BrandingSectionProps> = ({ currentFeature
               value={brandingColor}
               onChange={(e) => handleColorChange(e.target.value)}
               placeholder="#B8962E"
-              className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-mono focus:outline-none focus:ring-2 focus:ring-gold focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-gold focus:border-transparent"
             />
             <p className="text-xs text-gray-400 mt-1">Used for buttons, accents, and highlights throughout your app</p>
           </div>
@@ -163,7 +163,7 @@ export const BrandingSection: React.FC<BrandingSectionProps> = ({ currentFeature
           <p className="text-sm font-medium text-gray-700 mb-3">Preview</p>
           <div className="flex items-center gap-3">
             <button
-              className="px-6 py-2.5 rounded-xl text-white text-sm font-semibold"
+              className="px-4 py-2 rounded-lg text-white text-sm font-medium"
               style={{ backgroundColor: brandingColor }}
             >
               Sample Button
@@ -178,9 +178,9 @@ export const BrandingSection: React.FC<BrandingSectionProps> = ({ currentFeature
 
       {/* Background Image (Ministry only) */}
       {currentFeatures?.customBackground && (
-        <div className="bg-white rounded-2xl border border-gray-100 p-6">
-          <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">Background Image</h3>
-          <p className="text-gray-600 text-sm mb-4">Set a custom background image for your auth/login page.</p>
+        <div className="bg-white rounded-xl border border-gray-100 p-4">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">Background Image</h3>
+          <p className="text-sm text-gray-600 mb-4">Set a custom background image for your auth/login page.</p>
           <ImageUpload
             value={brandingBackgroundImage}
             onChange={setBrandingBackgroundImage}
@@ -194,7 +194,7 @@ export const BrandingSection: React.FC<BrandingSectionProps> = ({ currentFeature
         <button
           onClick={handleSave}
           disabled={brandingSaving}
-          className="px-6 py-2.5 bg-gold text-white rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
+          className="px-4 py-2 bg-gold text-white rounded-lg text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
         >
           {brandingSaving ? 'Saving...' : 'Save Branding'}
         </button>

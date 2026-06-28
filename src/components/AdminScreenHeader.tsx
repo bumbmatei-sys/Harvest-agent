@@ -18,6 +18,8 @@ interface AdminScreenHeaderProps {
   action?: React.ReactNode;
   /** Optional element rendered just before the title (e.g. a `#` for a channel). */
   titleIcon?: React.ReactNode;
+  /** Optional element pinned to the far left (e.g. mobile "View App" shortcut). */
+  leftAccessory?: React.ReactNode;
 }
 
 /**
@@ -25,9 +27,9 @@ interface AdminScreenHeaderProps {
  * `←` back chevron (gold) · centered title · optional right-side action.
  * Rendered once per screen — screens must NOT repeat their own title below it.
  */
-export const AdminScreenHeader: React.FC<AdminScreenHeaderProps> = ({ title, onBack, action, titleIcon }) => (
+export const AdminScreenHeader: React.FC<AdminScreenHeaderProps> = ({ title, onBack, action, titleIcon, leftAccessory }) => (
   <div className="relative bg-white px-3 flex items-center justify-between border-b border-gray-100 shadow-sm min-h-[52px] flex-shrink-0 z-20">
-    <div className="flex items-center z-10 min-w-[40px]">
+    <div className="flex items-center gap-1.5 z-10 min-w-[40px]">
       {onBack && (
         <button
           onClick={onBack}
@@ -37,6 +39,7 @@ export const AdminScreenHeader: React.FC<AdminScreenHeaderProps> = ({ title, onB
           <ChevronLeft size={24} strokeWidth={2.5} className="text-gold" />
         </button>
       )}
+      {leftAccessory}
     </div>
 
     <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1.5 max-w-[55%]">
