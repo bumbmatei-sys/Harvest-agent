@@ -21,6 +21,24 @@ interface PublicEventRegistrationProps {
 
 const fmtCents = (cents: number) => (cents > 0 ? `$${(cents / 100).toFixed(2)}` : 'Free');
 
+// Module-scope so its identity is stable across renders (a render-time nested
+// component would remount the whole subtree on every keystroke → focus loss).
+const Shell: React.FC<{ logo: string | null; tenantName: string; primaryColor: string; children: React.ReactNode }> = ({ logo, tenantName, primaryColor, children }) => (
+  <div className="min-h-screen bg-[#F7F6F3] py-10 px-4">
+    <div className="max-w-xl mx-auto">
+      <div className="text-center mb-6">
+        {logo ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={logo} alt={tenantName} className="h-12 mx-auto mb-2 object-contain" />
+        ) : (
+          <div className="text-lg font-extrabold" style={{ color: primaryColor }}>{tenantName}</div>
+        )}
+      </div>
+      {children}
+    </div>
+  </div>
+);
+
 const fmtDateTime = (iso: string | null) => {
   if (!iso) return null;
   try {
@@ -136,22 +154,6 @@ const PublicEventRegistration: React.FC<PublicEventRegistrationProps> = ({
     }
   };
 
-  const Shell: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-    <div className="min-h-screen bg-[#F7F6F3] py-10 px-4">
-      <div className="max-w-xl mx-auto">
-        <div className="text-center mb-6">
-          {logo ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={logo} alt={tenantName} className="h-12 mx-auto mb-2 object-contain" />
-          ) : (
-            <div className="text-lg font-extrabold" style={{ color: primaryColor }}>{tenantName}</div>
-          )}
-        </div>
-        {children}
-      </div>
-    </div>
-  );
-
   const startLabel = fmtDateTime(event.startDate);
 
   const EventHeader = (
@@ -180,7 +182,7 @@ const PublicEventRegistration: React.FC<PublicEventRegistrationProps> = ({
   // ── Success ──
   if (done) {
     return (
-      <Shell>
+      <Shell logo={logo} tenantName={tenantName} primaryColor={primaryColor}>
         {EventHeader}
         <div className="bg-white rounded-[14px] shadow-sm border border-gray-100 p-8 text-center">
           <CheckCircle2 size={48} className="mx-auto mb-4" style={{ color: primaryColor }} />
@@ -204,7 +206,7 @@ const PublicEventRegistration: React.FC<PublicEventRegistrationProps> = ({
   // ── Event already taken place ──
   if (event.status === 'completed') {
     return (
-      <Shell>
+      <Shell logo={logo} tenantName={tenantName} primaryColor={primaryColor}>
         {EventHeader}
         <div className="bg-white rounded-[14px] shadow-sm border border-gray-100 p-8 text-center">
           <p className="text-gray-600">This event has already taken place.</p>
@@ -216,7 +218,7 @@ const PublicEventRegistration: React.FC<PublicEventRegistrationProps> = ({
   // ── Registration not available online ──
   if (!event.registrationEnabled) {
     return (
-      <Shell>
+      <Shell logo={logo} tenantName={tenantName} primaryColor={primaryColor}>
         {EventHeader}
         <div className="bg-white rounded-[14px] shadow-sm border border-gray-100 p-8 text-center">
           <p className="text-gray-600">Registration is not available online. Contact {tenantName} to sign up.</p>
@@ -227,7 +229,7 @@ const PublicEventRegistration: React.FC<PublicEventRegistrationProps> = ({
 
   // ── Registration form ──
   return (
-    <Shell>
+    <Shell logo={logo} tenantName={tenantName} primaryColor={primaryColor}>
       {EventHeader}
       <div className="bg-white rounded-[14px] shadow-sm border border-gray-100 p-6" style={{ paddingBottom: 24 }}>
         {/* Ticket type selector */}

@@ -13,6 +13,24 @@ interface PublicPledgeProps {
 const fmt = (n: number) =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n || 0);
 
+// Module-scope so its identity is stable across renders (a render-time nested
+// component would remount the whole subtree on every keystroke → focus loss).
+const Shell: React.FC<{ logo: string | null; tenantName: string; primaryColor: string; children: React.ReactNode }> = ({ logo, tenantName, primaryColor, children }) => (
+  <div className="min-h-screen bg-[#F7F6F3] py-10 px-4">
+    <div className="max-w-xl mx-auto">
+      <div className="text-center mb-6">
+        {logo ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={logo} alt={tenantName} className="h-12 mx-auto mb-2 object-contain" />
+        ) : (
+          <div className="text-lg font-extrabold" style={{ color: primaryColor }}>{tenantName}</div>
+        )}
+      </div>
+      {children}
+    </div>
+  </div>
+);
+
 const PublicPledge: React.FC<PublicPledgeProps> = ({ tenantId, tenantName, logo, primaryColor, campaign }) => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -60,25 +78,9 @@ const PublicPledge: React.FC<PublicPledgeProps> = ({ tenantId, tenantName, logo,
     }
   };
 
-  const Shell: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-    <div className="min-h-screen bg-[#F7F6F3] py-10 px-4">
-      <div className="max-w-xl mx-auto">
-        <div className="text-center mb-6">
-          {logo ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={logo} alt={tenantName} className="h-12 mx-auto mb-2 object-contain" />
-          ) : (
-            <div className="text-lg font-extrabold" style={{ color: primaryColor }}>{tenantName}</div>
-          )}
-        </div>
-        {children}
-      </div>
-    </div>
-  );
-
   if (done) {
     return (
-      <Shell>
+      <Shell logo={logo} tenantName={tenantName} primaryColor={primaryColor}>
         <div className="bg-white rounded-[14px] shadow-sm border border-gray-100 p-8 text-center">
           <CheckCircle2 size={48} className="mx-auto mb-4" style={{ color: primaryColor }} />
           <h1 className="text-xl font-bold text-gray-900 mb-2">Thank you, {name}!</h1>
@@ -89,7 +91,7 @@ const PublicPledge: React.FC<PublicPledgeProps> = ({ tenantId, tenantName, logo,
   }
 
   return (
-    <Shell>
+    <Shell logo={logo} tenantName={tenantName} primaryColor={primaryColor}>
       <div className="bg-white rounded-[14px] shadow-sm border border-gray-100 p-6" style={{ paddingBottom: 24 }}>
         <h1 className="text-2xl font-bold text-gray-900 mb-2">{campaign.title}</h1>
         {campaign.description && <p className="text-sm text-gray-500 mb-4 whitespace-pre-line">{campaign.description}</p>}
