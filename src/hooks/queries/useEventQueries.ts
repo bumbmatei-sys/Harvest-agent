@@ -55,7 +55,7 @@ export interface Registration {
   email: string;
   phone: string | null;
   ticketCode: string;
-  status: 'confirmed' | 'cancelled' | 'attended';
+  status: 'confirmed' | 'cancelled' | 'attended' | 'waitlisted';
   amount: number;
   registeredAt: Timestamp | null;
   ticketTypeId?: string | null;
