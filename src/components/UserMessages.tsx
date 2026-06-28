@@ -6,7 +6,7 @@ import {
   serverTimestamp, limit, orderBy, getDocs, Timestamp
 } from 'firebase/firestore';
 import { db, auth } from '../firebase';
-import { getTenantScope, PLATFORM_TENANT_ID } from '../utils/tenant-scope';
+import { getTenantScope, isPlatformContext, PLATFORM_TENANT_ID } from '../utils/tenant-scope';
 import { isSuperAdminEmail } from '../utils/super-admins';
 import { sortByTime } from '../utils/query-helpers';
 
@@ -613,9 +613,10 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false })
     let cancelled = false;
     getTenantScope().then(async tid => {
       if (cancelled) return;
-      // On the apex/root there is no subdomain tenant; a signed-in super admin
-      // operates as the platform tenant so DMs resolve under `harvest`, not null.
-      const resolved = tid || (isSuperAdminEmail(auth.currentUser?.email) ? PLATFORM_TENANT_ID : null);
+      // tid is the subdomain tenant when on one (authoritative). The platform
+      // fallback applies ONLY in platform context (apex domain, super admin) so we
+      // never leak the platform tenant's DMs into a tenant subdomain view.
+      const resolved = tid || (isPlatformContext() ? PLATFORM_TENANT_ID : null);
       setTenantId(resolved);
       if (!auth.currentUser) { setLoading(false); return; }
       const { getDoc } = await import('firebase/firestore');
@@ -675,6 +676,9 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false })
     if (!tenantId || !currentUser) return;
     setAdminsLoading(true);
     try {
+      // Only applies in platform context: a subdomain's tenantId is never
+      // PLATFORM_TENANT_ID, so legacy null-tenant users are merged in for the
+      // platform tenant only — never into a tenant subdomain's user list.
       const includeNull = isSuperAdminEmail(auth.currentUser?.email) && tenantId === PLATFORM_TENANT_ID;
       const snaps = await Promise.all([
         getDocs(query(collection(db, 'users'), where('tenantId', '==', tenantId), limit(200))),

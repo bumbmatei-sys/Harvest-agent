@@ -20,8 +20,7 @@ import NotificationPrompt from './NotificationPrompt';
 import BiblePage from './BiblePage';
 import ReferralTracker from './ReferralTracker';
 import { getPlanFeatures } from '../utils/plan-features';
-import { auth } from '../firebase';
-import { isSuperAdminEmail } from '../utils/super-admins';
+import { hasPlatformOverride } from '../utils/tenant-scope';
 import { useAppStore } from '../store/useAppStore';
 import { useTenant } from '../contexts/TenantContext';
 import LiveNowBanner from './LiveNowBanner';
@@ -55,8 +54,10 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
   // The platform tenant (apex/harvest) and super admins get all features.
   // White-label tenants are gated strictly by their plan. While the plan is still
   // loading for a white-label tenant, default to the MOST restrictive set (no leaks).
-  const isSuperUser = isSuperAdminEmail(auth.currentUser?.email);
-  const isMainSite = !isWhiteLabel || isSuperUser;
+  // Platform context (apex domain, super admin) => all features. On a tenant
+  // subdomain everyone is gated by the tenant plan, including super admins.
+  const platformOverride = hasPlatformOverride();
+  const isMainSite = !isWhiteLabel || platformOverride;
   const features = isMainSite ? null : getPlanFeatures(tenantPlan ?? 'plus');
 
   // 'loading' means we haven't fetched yet — hide tab until we know.

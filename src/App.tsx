@@ -28,7 +28,7 @@ import { TenantProvider, useTenant } from './contexts/TenantContext';
 import { useClaimsFreshness } from './hooks/useClaimsFreshness';
 import { isSuperAdminEmail } from './utils/super-admins';
 import { useAppStore } from './store/useAppStore';
-import { PLATFORM_TENANT_ID } from './utils/tenant-scope';
+import { PLATFORM_TENANT_ID, getTenantIdFromHost, isPlatformContext } from './utils/tenant-scope';
 
 /** Paths that represent the auth / onboarding funnel (used to decide redirects). */
 const FUNNEL_PATHS = ['/auth', '/onboarding', '/church-onboarding'];
@@ -84,7 +84,7 @@ const AppInner: React.FC = () => {
 
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [userRole, setUserRole] = useState<string>('user');
-  const { tenantId, isAdminDomain, error: tenantError, isLoading: tenantLoading, setTenantPlan: ctxSetTenantPlan } = useTenant();
+  const { tenantId, isAdminDomain, error: tenantError, isLoading: tenantLoading, setTenantPlan: ctxSetTenantPlan, tenantPlan: ctxTenantPlan } = useTenant();
 
   const {
     setCurrentUser,
@@ -103,9 +103,20 @@ const AppInner: React.FC = () => {
   useEffect(() => {
     const effectiveTenantId =
       tenantId ||
-      (isSuperAdminEmail(auth.currentUser?.email) ? PLATFORM_TENANT_ID : null);
+      (isPlatformContext() ? PLATFORM_TENANT_ID : null);
     setCurrentTenant(null, effectiveTenantId);
   }, [tenantId, isAuthReady, setCurrentTenant]);
+
+  // On a tenant subdomain, the tenant's own plan (from the tenant doc, via
+  // TenantContext) is authoritative for gating — NOT the signed-in user's plan.
+  // This makes a super admin browsing nations.theharvest.app see exactly the
+  // features nations' plan includes (and gives regular members the correct plan too).
+  useEffect(() => {
+    const onSubdomain = getTenantIdFromHost() !== null;
+    if (onSubdomain && ctxTenantPlan) {
+      setTenantPlan(ctxTenantPlan);
+    }
+  }, [ctxTenantPlan, setTenantPlan]);
 
   const signupParam = typeof window !== 'undefined'
     ? new URLSearchParams(window.location.search).get('signup') : null;
@@ -141,9 +152,14 @@ const AppInner: React.FC = () => {
             const onboardingDone = data.onboardingCompleted;
 
             if (onboardingDone) {
-              // Read plan from user doc first (avoids tenant fetch permission issues).
-              // Only set plan on tenant subdomains — main site users get all features.
-              if (isAdminDomain) {
+              // Plan source of truth:
+              //  - On a tenant subdomain, the TENANT's plan (tenant doc, via
+              //    TenantContext) is authoritative — applied by the effect above.
+              //    Do NOT overwrite it with the signed-in user's own plan here, or a
+              //    super admin browsing a tenant would be gated by their (wrong) plan.
+              //  - Off a subdomain (apex/admin domain), fall back to the user doc plan.
+              const onSubdomain = getTenantIdFromHost() !== null;
+              if (!onSubdomain && isAdminDomain) {
                 const userPlan = data.plan as TenantPlan | undefined;
                 if (userPlan) {
                   setTenantPlan(userPlan);

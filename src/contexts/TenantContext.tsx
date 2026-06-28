@@ -4,8 +4,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { TenantPlan, TenantConfig } from '../types/tenant.types';
 import { getPlanFeatures, PlanFeatures } from '../utils/plan-features';
-import { auth } from '../firebase';
-import { isSuperAdminEmail } from '../utils/super-admins';
+import { hasPlatformOverride } from '../utils/tenant-scope';
 
 /** What the context exposes to consumers */
 export interface TenantContextValue {
@@ -175,11 +174,13 @@ export const TenantProvider: React.FC<TenantProviderProps> = ({
     setTenantPlanState(plan);
   }, []);
 
-  // Super admin gets all features regardless of tenant plan
-  const isSuperUser = isSuperAdminEmail(auth.currentUser?.email);
-  const planFeatures = tenantPlan
-    ? (isSuperUser ? getPlanFeatures('ultra') : getPlanFeatures(tenantPlan))
-    : null;
+  // Platform-context super admins (apex domain) get all features.
+  // On a tenant subdomain, EVERYONE — including super admins — is gated by the
+  // tenant's actual plan.
+  const platformOverride = hasPlatformOverride();
+  const planFeatures = platformOverride
+    ? getPlanFeatures('ultra')
+    : (tenantPlan ? getPlanFeatures(tenantPlan) : null);
 
   return (
     <TenantContext.Provider

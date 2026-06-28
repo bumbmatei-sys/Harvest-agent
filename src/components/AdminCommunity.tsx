@@ -9,7 +9,7 @@ import {
   type QueryDocumentSnapshot
 } from 'firebase/firestore';
 import { db, auth } from '../firebase';
-import { getTenantId, getTenantIdFromHost, PLATFORM_TENANT_ID } from '../utils/tenant-scope';
+import { getTenantId, getTenantIdFromHost, isPlatformContext, PLATFORM_TENANT_ID } from '../utils/tenant-scope';
 import { isSuperAdminEmail } from '../utils/super-admins';
 import { notifyError } from '../utils/notify';
 import { sortByTime } from '../utils/query-helpers';
@@ -983,6 +983,8 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
 
   // Platform tenant ('harvest') viewed by a super admin also surfaces legacy
   // records whose `tenantId` is null (the root cause of empty Harvest results).
+  // This only applies in platform context: a tenant subdomain's tenantId is
+  // never PLATFORM_TENANT_ID, so null-tenant docs never leak into a subdomain.
   const includeNullTenant = isSuperAdminEmail(auth.currentUser?.email) && tenantId === PLATFORM_TENANT_ID;
 
   // Drive the shared screen header. When a thread is open the header shows the
@@ -1047,8 +1049,10 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
       // On the root platform domain a super admin has no subdomain and a null
       // tenant on their user doc — land them directly in the platform's own
       // community chat instead of a picker. Regular admins keep their tenant
-      // (or null, which shows the not-an-admin message below).
-      const resolved = tid || (isSuperAdminEmail(user?.email) ? PLATFORM_TENANT_ID : null);
+      // (or null, which shows the not-an-admin message below). The platform
+      // fallback is gated by platform context so it never fires on a tenant
+      // subdomain (where getTenantId/host already yields the correct tenant).
+      const resolved = tid || (isPlatformContext() ? PLATFORM_TENANT_ID : null);
       setTenantId(resolved);
       await loadCurrentUser();
       setLoading(false);

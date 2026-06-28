@@ -55,6 +55,9 @@ export const useContacts = (tenantId: string | null | undefined, isAuthReady = t
     queryKey: ['contacts', tenantId],
     queryFn: async (): Promise<Contact[]> => {
       let rows: Contact[];
+      // This unscoped/legacy-merge branch is platform-context only: a tenant
+      // subdomain passes its own tenantId (never PLATFORM_TENANT_ID), so it always
+      // takes the scoped query below — no cross-tenant leakage on a subdomain.
       if (!tenantId || tenantId === PLATFORM_TENANT_ID) {
         // Platform / super-admin CRM. The platform's own contacts can carry
         // tenantId: 'harvest', null, '', OR no tenantId field at all (legacy rows
