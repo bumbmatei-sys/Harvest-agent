@@ -361,7 +361,6 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
             <div className="w-full lg:max-w-5xl lg:mx-auto">
               <Profile
                 onNavigate={onNavigate}
-                onGoToCourses={() => { setActiveBottomTab('home'); setActiveTopTab('courses'); }}
                 onGoToPartner={() => { setActiveBottomTab('home'); setActiveTopTab('partner'); }}
                 onGoToMap={() => setActiveBottomTab('map')}
               />

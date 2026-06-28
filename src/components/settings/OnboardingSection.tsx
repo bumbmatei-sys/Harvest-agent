@@ -142,34 +142,34 @@ const OnboardingSection: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <p className="text-gray-600">
+      <p className="text-sm text-gray-600">
         These are the questions new members see when signing up. Edit, reorder, or delete any question. Add your own custom questions below.
       </p>
 
       {/* Add Question Button */}
       <button
         onClick={addQuestion}
-        className="px-4 py-2 bg-gold text-white rounded-xl text-sm font-semibold hover:bg-gold transition-colors"
+        className="px-4 py-2 bg-gold text-white rounded-lg text-sm font-medium hover:bg-gold transition-colors"
       >
         + Add Question
       </button>
 
       {/* Questions List */}
       {onboardingQuestions.length === 0 && (
-        <div className="bg-white rounded-2xl border border-gray-100 p-8 text-center">
-          <p className="text-gray-400 text-sm">No custom questions yet. Click &quot;Add Question&quot; to create one.</p>
+        <div className="bg-white rounded-xl border border-gray-100 p-8 text-center">
+          <p className="text-xs text-gray-400">No custom questions yet. Click &quot;Add Question&quot; to create one.</p>
         </div>
       )}
 
       {onboardingQuestions.map((q, index) => (
-        <div key={q.id} className="bg-white rounded-2xl border border-gray-100 p-4 flex items-start gap-4">
+        <div key={q.id} className="bg-white rounded-xl border border-gray-100 p-4 flex items-start gap-4">
           <div className="flex flex-col gap-1 pt-1">
             <button onClick={() => moveQuestion(index, 'up')} disabled={index === 0} className="text-gray-400 hover:text-gray-600 disabled:opacity-30 text-xs">▲</button>
             <button onClick={() => moveQuestion(index, 'down')} disabled={index === onboardingQuestions.length - 1} className="text-gray-400 hover:text-gray-600 disabled:opacity-30 text-xs">▼</button>
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
-              <span className="text-sm font-bold text-gray-900">{q.label || '(Untitled)'}</span>
+              <span className="text-sm font-semibold text-gray-900">{q.label || '(Untitled)'}</span>
               <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">{q.type}</span>
               {q.required && <span className="text-xs bg-red-50 text-red-500 px-2 py-0.5 rounded-full">Required</span>}
             </div>
@@ -195,7 +195,7 @@ const OnboardingSection: React.FC = () => {
         <button
           onClick={saveAllQuestions}
           disabled={onboardingSaving}
-          className="px-6 py-2.5 bg-gold text-white rounded-xl text-sm font-semibold hover:bg-gold transition-colors disabled:opacity-50"
+          className="px-4 py-2 bg-gold text-white rounded-lg text-sm font-medium hover:bg-gold transition-colors disabled:opacity-50"
         >
           {onboardingSaving ? 'Saving...' : 'Save Questions'}
         </button>
@@ -207,8 +207,8 @@ const OnboardingSection: React.FC = () => {
       {/* Question Editor Modal */}
       {showQuestionModal && editingQuestion && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[200] p-4">
-          <div className="bg-white rounded-2xl p-6 max-w-md w-full space-y-4">
-            <h3 className="text-lg font-bold text-gray-900">
+          <div className="bg-white rounded-xl p-4 max-w-md w-full space-y-4">
+            <h3 className="text-sm font-semibold text-gray-900">
               {onboardingQuestions.find(q => q.id === editingQuestion.id) ? 'Edit Question' : 'Add Question'}
             </h3>
 
@@ -219,7 +219,7 @@ const OnboardingSection: React.FC = () => {
                 value={editingQuestion.label}
                 onChange={(e) => setEditingQuestion({ ...editingQuestion, label: e.target.value })}
                 placeholder="e.g. What is your favorite verse?"
-                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-gold"
+                className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gold"
               />
             </div>
 
@@ -228,7 +228,7 @@ const OnboardingSection: React.FC = () => {
               <select
                 value={editingQuestion.type}
                 onChange={(e) => setEditingQuestion({ ...editingQuestion, type: e.target.value as any })}
-                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-gold"
+                className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gold"
               >
                 {questionTypeOptions.map(opt => (
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -244,7 +244,7 @@ const OnboardingSection: React.FC = () => {
                   value={(editingQuestion.options || []).join(', ')}
                   onChange={(e) => setEditingQuestion({ ...editingQuestion, options: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })}
                   placeholder="e.g. Option A, Option B, Option C"
-                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-gold"
+                  className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gold"
                 />
               </div>
             )}
@@ -262,14 +262,14 @@ const OnboardingSection: React.FC = () => {
             <div className="flex gap-3 justify-end pt-2">
               <button
                 onClick={() => { setShowQuestionModal(false); setEditingQuestion(null); }}
-                className="px-4 py-2 text-gray-600 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors"
+                className="px-4 py-2 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={saveQuestion}
                 disabled={!editingQuestion.label.trim()}
-                className="px-4 py-2 bg-gold text-white rounded-xl text-sm font-semibold hover:bg-gold transition-colors disabled:opacity-50"
+                className="px-4 py-2 bg-gold text-white rounded-lg text-sm font-medium hover:bg-gold transition-colors disabled:opacity-50"
               >
                 Save
               </button>

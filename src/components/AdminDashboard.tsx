@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { LayoutDashboard, Church, FileText, Rss, BrainCircuit, Inbox, GraduationCap, ChevronLeft, ChevronRight, Building2, Settings, MoreHorizontal, Mail, SlidersHorizontal, Heart, Users, MessageSquare, Receipt, CalendarCheck, ShieldCheck, ClipboardList, QrCode, Radio, ExternalLink, Link2 } from 'lucide-react';
+import { LayoutDashboard, Church, FileText, Rss, BrainCircuit, Inbox, GraduationCap, ChevronLeft, ChevronRight, Building2, Settings, MoreHorizontal, Mail, Heart, Users, MessageSquare, Receipt, CalendarCheck, ShieldCheck, ClipboardList, QrCode, Radio, ExternalLink, Link2, Crown, Palette } from 'lucide-react';
 import AdminBlog from './AdminBlog';
 import AdminPosts from './AdminPosts';
 import AdminInbox from './AdminInbox';
@@ -10,6 +10,9 @@ import AdminCourses from './AdminCourses';
 import AdminRAG from './AdminRAG';
 import AdminTenants from './AdminTenants';
 import AdminSettings from './AdminSettings';
+import AdminUpgradePage from './AdminUpgradePage';
+import AdminBranding from './AdminBranding';
+import AdminDashboardHome from './AdminDashboardHome';
 import AffiliateSection from './AffiliateSection';
 import NewsletterEditor from './NewsletterEditor';
 import NewsletterCampaigns from './NewsletterCampaigns';
@@ -43,6 +46,19 @@ import { useTenant as useTenantDoc } from '../hooks/queries/useTenantQueries';
 // URLs read nicely (/admin/ai-knowledge, /admin/roles).
 const SLUG_TO_TAB: Record<string, string> = { 'ai-knowledge': 'ai', 'roles': 'admin_roles' };
 const TAB_TO_SLUG: Record<string, string> = { 'ai': 'ai-knowledge', 'admin_roles': 'roles' };
+
+// More-drawer groupings (Vercel-style). The section a tab appears in is keyed by
+// its tab id; order matters. Groups with no permitted tabs are omitted entirely.
+const MORE_GROUPS: { label: string; ids: string[] }[] = [
+  { label: 'CONTENT', ids: ['posts', 'blog', 'courses', 'newsletter', 'ai', 'docs'] },
+  { label: 'PEOPLE', ids: ['crm', 'community', 'inbox'] },
+  { label: 'MINISTRY', ids: ['fundraising', 'events', 'checkin', 'forms', 'giving_statements', 'sms', 'accounting'] },
+  { label: 'GROWTH', ids: ['affiliate', 'livestream'] },
+  { label: 'APPEARANCE', ids: ['branding'] },
+  { label: 'PLATFORM', ids: ['tenants'] },
+  { label: 'ADMIN', ids: ['admin_roles', 'integrations'] },
+];
+const GROUPED_MORE_IDS = new Set(MORE_GROUPS.flatMap((g) => g.ids));
 
 interface AdminDashboardProps {
   onNavigate: (page: string) => void;
@@ -159,6 +175,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
   const hasFullAccess = isSuperAdmin || isChurchAdmin || perms.fullAccess;
   const isLoading = !isAuthReady || userLoading;
 
+  // Branding tab/page entitlement — keyed off the branding-family feature flags
+  // (matches the old Settings branding gate). Used both in allTabs and the render
+  // guard so direct navigation to /admin/branding is gated like every other tab.
+  const canBranding = !!((isSuperAdmin || !isTenantAdmin ||
+    (features && (features.customBranding || features.customBackground || features.customDomain))) && hasFullAccess);
+
   const showInbox = hasFullAccess || perms.seeFormsInbox;
 
   // All available tabs (permission-filtered)
@@ -219,6 +241,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
     (isSuperAdmin || hasFullAccess || perms.manageAdmins) && { id: 'admin_roles', label: 'Admin Roles', icon: ShieldCheck },
     // Affiliate — standalone section (near the bottom, above Settings)
     (isSuperAdmin || hasFullAccess) && { id: 'affiliate', label: 'Affiliate', icon: Link2 },
+    // Branding — standalone appearance tab (logo, color, background, domain)
+    canBranding && { id: 'branding', label: 'Branding', icon: Palette },
   ].filter(Boolean) as { id: string; label: string; icon: any }[];
 
   // Mobile: 4 tabs in the bottom bar. If the admin has saved a custom order,
@@ -260,7 +284,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
   // If the active tab is not in the allowed tabs, switch to the first allowed tab
   const allTabIds = allTabs.map(t => t.id).join(',');
   useEffect(() => {
-    const known = new Set([...allTabs.map(t => t.id), 'inbox', 'settings', 'canvas']);
+    // 'branding' is intentionally NOT hard-coded here — it is only "known" when it
+    // is present in allTabs (i.e. the user is entitled), so unauthorized direct
+    // navigation to /admin/branding redirects away. 'upgrade' is universally reachable.
+    const known = new Set([...allTabs.map(t => t.id), 'inbox', 'settings', 'canvas', 'upgrade']);
     if (!isLoading && allTabs.length > 0 && !known.has(activeTab)) {
       go(allTabs[0].id);
     }
@@ -273,11 +300,41 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
     ai: 'AI Knowledge',
     inbox: 'Inbox',
     settings: 'Settings',
+    upgrade: 'Plan & Billing',
+    branding: 'Branding',
     canvas: canvasName || 'Canvas',
   };
   const headerTitle = TITLE_OVERRIDES[activeTab]
     || allTabs.find(t => t.id === activeTab)?.label
     || 'Dashboard';
+
+  /** A single full-width row in the grouped More drawer. */
+  const renderMoreRow = (tab: { id: string; label: string; icon: any }) => {
+    const Icon = tab.icon;
+    const isActive = activeTab === tab.id;
+    return (
+      <button
+        key={tab.id}
+        onClick={() => go(tab.id)}
+        className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors text-left ${
+          isActive ? 'bg-amber-50/60' : 'hover:bg-gray-50 active:bg-gray-100'
+        }`}
+      >
+        <Icon size={16} style={{ color: isActive ? 'var(--brand-color, #d4a017)' : '#6b7280' }} />
+        <span
+          className="text-sm font-medium flex-1"
+          style={{ color: isActive ? 'var(--brand-color, #d4a017)' : '#1a1a1a' }}
+        >
+          {tab.label}
+        </span>
+        {tab.id === 'inbox' && unreadCount > 0 && (
+          <span className="text-xs font-bold text-white bg-red-500 rounded-full px-1.5 py-0.5 min-w-[18px] text-center">
+            {unreadCount > 9 ? '9+' : unreadCount}
+          </span>
+        )}
+      </button>
+    );
+  };
 
   if (isLoading) {
     return <div className="flex items-center justify-center h-screen bg-[#f8f9fa]"><div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--brand-color, #d4a017)', borderTopColor: 'transparent' }}></div></div>;
@@ -293,7 +350,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
           {/* Desktop Logo */}
           <button
             onClick={() => onNavigate('home')}
-            className={`hidden lg:flex items-center mb-8 shrink-0 text-left hover:opacity-80 transition-opacity ${isSidebarCollapsed ? 'justify-center px-0 w-full' : 'gap-3 px-4'}`}
+            className={`hidden lg:flex items-center mb-3 shrink-0 text-left hover:opacity-80 transition-opacity ${isSidebarCollapsed ? 'justify-center px-0 w-full' : 'gap-3 px-4'}`}
           >
             <img
               src="https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png"
@@ -301,6 +358,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
               className="w-10 h-10 object-contain shrink-0"
             />
             {!isSidebarCollapsed && <span className="text-xl font-bold text-gray-900 truncate">Admin</span>}
+          </button>
+
+          {/* Desktop: View App — return to the member-facing app */}
+          <button
+            onClick={() => onNavigate('home')}
+            className={`hidden lg:flex items-center mb-6 shrink-0 rounded-lg text-xs font-medium text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-colors ${isSidebarCollapsed ? 'justify-center w-full py-2' : 'gap-2 px-3 py-2 w-full'}`}
+            title="View member app"
+          >
+            <ExternalLink size={16} className="shrink-0" />
+            {!isSidebarCollapsed && <span>View App</span>}
           </button>
 
           {/* Mobile: primary tabs + More button */}
@@ -393,12 +460,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
         {/* Desktop utility header — quick access to Settings & Inbox (no logo/title) */}
         <div className="hidden lg:flex bg-white px-8 py-2 items-center justify-end gap-3 border-b border-gray-100 z-10 w-full">
           <button
-            onClick={() => onNavigate('home')}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold border border-gray-200 text-gray-700 hover:bg-gray-50"
-          >
-            <ExternalLink size={15} /> View App
-          </button>
-          <button
             onClick={() => go('settings')}
             className="text-gray-500 hover:text-gray-900 transition-colors"
             style={activeTab === 'settings' ? { color: 'var(--brand-color, #d4a017)' } : undefined}
@@ -428,14 +489,28 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
           titleIcon={headerOverride?.titleIcon}
           onBack={headerOverride ? headerOverride.onBack : (activeTab === 'dashboard' ? undefined : smartBack)}
           action={headerOverride ? headerOverride.action : headerAction}
+          leftAccessory={headerOverride ? undefined : (
+            <button
+              onClick={() => onNavigate('home')}
+              className="lg:hidden flex items-center gap-1 text-xs font-medium text-gray-400 hover:text-gray-600 transition-colors"
+              title="View member app"
+            >
+              <ExternalLink size={15} />
+              <span className="hidden sm:inline">App</span>
+            </button>
+          )}
         />
 
         {/* Main Content Area */}
         <div className={`flex-1 overflow-y-auto pb-24 lg:pb-8 p-0 lg:p-6 ${showMoreSheet ? 'overflow-hidden' : ''}`}>
           {activeTab === 'dashboard' ? (
-            <div className="flex flex-col items-center justify-center h-full p-8 text-center text-gray-400">
-              <LayoutDashboard size={48} strokeWidth={1.5} className="mb-4 opacity-20" />
-              <p className="text-sm text-gray-400">Select a tool from the navigation to get started.</p>
+            <div className="p-4 lg:p-0">
+              <AdminDashboardHome
+                tenantId={tenantId ?? null}
+                isSuperAdmin={isSuperAdmin}
+                unreadCount={unreadCount}
+                onNavigate={go}
+              />
             </div>
           ) : activeTab === 'admin_roles' ? (
             <div className="p-4 lg:p-0">
@@ -485,39 +560,39 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
           ) : activeTab === 'fundraising' ? (
             (isSuperAdmin || !isTenantAdmin || (features && features.fundraising))
               ? <div className="p-4 lg:p-0"><AdminFundraising initialCampaignId={itemId} onItemConsumed={clearItemId} /></div>
-              : <PlanUpgradeScreen featureName="Fundraising" featureKey="fundraising" onBack={() => go('dashboard')} onUpgrade={() => go('settings')} />
+              : <PlanUpgradeScreen featureName="Fundraising" featureKey="fundraising" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
           ) : activeTab === 'docs' ? (
             (isSuperAdmin || !isTenantAdmin || (features && features.docs))
               ? <div className="p-4 lg:p-0"><AdminDocs initialDocId={itemId} onItemConsumed={clearItemId} /></div>
-              : <PlanUpgradeScreen featureName="Notes" featureKey="docs" onBack={() => go('dashboard')} onUpgrade={() => go('settings')} />
+              : <PlanUpgradeScreen featureName="Notes" featureKey="docs" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
           ) : activeTab === 'events' ? (
             (isSuperAdmin || !isTenantAdmin || (features && features.eventRegistration))
               ? <div className="p-4 lg:p-0"><AdminEvents /></div>
-              : <PlanUpgradeScreen featureName="Events" featureKey="event_registration" onBack={() => go('dashboard')} onUpgrade={() => go('settings')} />
+              : <PlanUpgradeScreen featureName="Events" featureKey="event_registration" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
           ) : activeTab === 'crm' ? (
             (isSuperAdmin || !isTenantAdmin || (features && features.crm))
               ? <div className="p-4 lg:p-0"><AdminCRM currentUserRole={isSuperAdmin ? 'super_admin' : userRole} currentUserPermissions={isChurchAdmin ? { fullAccess: true } as any : userPermissions} initialContactId={itemId} onItemConsumed={clearItemId} /></div>
-              : <PlanUpgradeScreen featureName="CRM" featureKey="crm" onBack={() => go('dashboard')} onUpgrade={() => go('settings')} />
+              : <PlanUpgradeScreen featureName="CRM" featureKey="crm" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
           ) : activeTab === 'accounting' ? (
             (isSuperAdmin || !isTenantAdmin || (features && features.accountingTools))
               ? <div className="p-4 lg:p-0"><AdminAccounting /></div>
-              : <PlanUpgradeScreen featureName="Accounting" featureKey="accounting" onBack={() => go('dashboard')} onUpgrade={() => go('settings')} />
+              : <PlanUpgradeScreen featureName="Accounting" featureKey="accounting" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
           ) : activeTab === 'forms' ? (
             (isSuperAdmin || !isTenantAdmin || (features && features.customForms))
               ? <div className="p-4 lg:p-0"><AdminForms /></div>
-              : <PlanUpgradeScreen featureName="Forms" featureKey="customForms" onBack={() => go('dashboard')} onUpgrade={() => go('settings')} />
+              : <PlanUpgradeScreen featureName="Forms" featureKey="customForms" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
           ) : activeTab === 'checkin' ? (
             (isSuperAdmin || !isTenantAdmin || (features && features.checkInSystem))
               ? <div className="p-4 lg:p-0"><AdminCheckin /></div>
-              : <PlanUpgradeScreen featureName="Check-In" featureKey="checkInSystem" onBack={() => go('dashboard')} onUpgrade={() => go('settings')} />
+              : <PlanUpgradeScreen featureName="Check-In" featureKey="checkInSystem" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
           ) : activeTab === 'livestream' ? (
             (isSuperAdmin || !isTenantAdmin || (features && features.livestream))
               ? <div className="p-4 lg:p-0"><AdminLivestream /></div>
-              : <PlanUpgradeScreen featureName="Livestream" featureKey="livestream" onBack={() => go('dashboard')} onUpgrade={() => go('settings')} />
+              : <PlanUpgradeScreen featureName="Livestream" featureKey="livestream" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
           ) : activeTab === 'sms' ? (
             (isSuperAdmin || !isTenantAdmin || (features && features.smsAutomation))
               ? <div className="p-4 lg:p-0"><AdminSms /></div>
-              : <PlanUpgradeScreen featureName="SMS" featureKey="smsAutomation" onBack={() => go('dashboard')} onUpgrade={() => go('settings')} />
+              : <PlanUpgradeScreen featureName="SMS" featureKey="smsAutomation" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
           ) : activeTab === 'community' ? (
             (isSuperAdmin || !isTenantAdmin || (features && features.communityGroups))
               ? <div className="p-4 lg:p-0 h-full"><AdminCommunity onOpenAttachment={(type, id) => {
@@ -525,17 +600,31 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
                   else if (type === 'contact') navigate(`/admin/crm/${id}`);
                   else if (type === 'campaign') navigate(`/admin/fundraising/${id}`);
                 }} /></div>
-              : <PlanUpgradeScreen featureName="Community Groups" featureKey="community_chat" onBack={() => go('dashboard')} onUpgrade={() => go('settings')} />
+              : <PlanUpgradeScreen featureName="Community Groups" featureKey="community_chat" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
           ) : activeTab === 'tenants' ? (
             <div className="p-4 lg:p-0"><AdminTenants /></div>
           ) : activeTab === 'affiliate' ? (
             <div className="p-4 lg:p-0"><AffiliateSection /></div>
+          ) : activeTab === 'branding' ? (
+            canBranding
+              ? <div className="p-4 lg:p-0"><AdminBranding currentFeatures={features} onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} /></div>
+              : <PlanUpgradeScreen featureName="Branding" featureKey="customBranding" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
+          ) : activeTab === 'upgrade' ? (
+            <div className="p-4 lg:p-0">
+              <AdminUpgradePage
+                currentPlan={tenantPlan ?? undefined}
+                tenantId={tenantId ?? undefined}
+                email={auth.currentUser?.email ?? undefined}
+                onBack={() => go('dashboard')}
+              />
+            </div>
           ) : activeTab === 'settings' ? (
             <AdminSettings
               onBack={() => go('dashboard')}
               currentPlan={tenantPlan ?? undefined}
               tenantId={tenantId ?? undefined}
               email={auth.currentUser?.email ?? undefined}
+              onCustomizeNav={() => setShowNavCustomizer(true)}
               onChangePlan={async (plan) => {
                 if (auth.currentUser) {
                   const { updateDoc } = await import('firebase/firestore');
@@ -566,56 +655,72 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
               onClick={() => setShowMoreSheet(false)}
             />
             <div
-              className="fixed bottom-0 left-0 right-0 bg-white rounded-t-2xl z-[102] lg:hidden shadow-[0_-8px_30px_rgba(0,0,0,0.12)] max-h-[70vh] overflow-y-auto"
+              className="fixed bottom-0 left-0 right-0 bg-white rounded-t-2xl z-[102] lg:hidden shadow-[0_-8px_30px_rgba(0,0,0,0.12)] max-h-[80vh] overflow-y-auto"
               style={{ animation: 'slideUp 0.25s ease-out' }}
             >
-              <div className="w-9 h-1 bg-gray-300 rounded-full mx-auto mt-3 mb-2" />
-              <div className="px-4 pb-4">
-                <h3 className="text-sm font-bold text-gray-900 mb-3">More Tools</h3>
-                <div className="grid grid-cols-4 gap-3">
-                  {moreTabs.map((tab) => {
-                    const Icon = tab.icon;
-                    const isActive = activeTab === tab.id;
-                    return (
-                      <button
-                        key={tab.id}
-                        onClick={() => go(tab.id)}
-                        className="flex flex-col items-center gap-2 py-3 rounded-xl hover:bg-gray-50 transition-colors relative"
-                      >
-                        <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${
-                          isActive ? 'bg-[#fefce8]' : 'bg-gray-100'
-                        }`}>
-                          <Icon size={20} style={isActive ? { color: 'var(--brand-color, #d4a017)' } : { color: '#666' }} />
-                        </div>
-                        <span className="text-[10px] font-semibold text-gray-700">{tab.label}</span>
-                        {tab.id === 'inbox' && unreadCount > 0 && (
-                          <span className="absolute top-1 right-2 w-4 h-4 bg-red-500 rounded-full border-2 border-white text-[8px] font-bold text-white flex items-center justify-center">
-                            {unreadCount > 9 ? '9+' : unreadCount}
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
+              <div className="w-9 h-1 bg-gray-300 rounded-full mx-auto mt-3 mb-1" />
+              <div className="pb-4">
+                <h3 className="text-sm font-bold text-gray-900 px-4 pt-1">More Tools</h3>
 
-                {/* Customize Navigation — admin-only shortcut at the bottom of the sheet */}
-                <div className="mt-4 pt-3 border-t border-gray-100">
-                  <button
-                    onClick={() => {
-                      setShowMoreSheet(false);
-                      setShowNavCustomizer(true);
-                    }}
-                    className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-gray-50 transition-colors"
-                  >
-                    <div className="w-11 h-11 rounded-xl flex items-center justify-center bg-gray-100 flex-shrink-0">
-                      <SlidersHorizontal size={20} color="#666" />
+                {/* Grouped, Vercel-style list. Groups with no permitted tabs are omitted. */}
+                {MORE_GROUPS.map((group) => {
+                  const groupTabs = group.ids
+                    .map((id) => moreTabs.find((t) => t.id === id))
+                    .filter(Boolean) as { id: string; label: string; icon: any }[];
+                  if (groupTabs.length === 0) return null;
+                  return (
+                    <div key={group.label}>
+                      <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 px-4 pt-4 pb-1">
+                        {group.label}
+                      </p>
+                      {groupTabs.map(renderMoreRow)}
                     </div>
-                    <div className="text-left">
-                      <p className="text-sm font-semibold text-gray-800">Customize Navigation</p>
-                      <p className="text-xs text-gray-400">Rearrange bottom bar &amp; More drawer</p>
+                  );
+                })}
+
+                {/* Catch-all: any permitted drawer tab not assigned to a group above
+                    (e.g. a tab moved out of the bottom bar) — never leave one unreachable. */}
+                {(() => {
+                  const leftover = moreTabs.filter(
+                    (t) => t.id !== 'settings' && !GROUPED_MORE_IDS.has(t.id),
+                  );
+                  if (leftover.length === 0) return null;
+                  return (
+                    <div>
+                      <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 px-4 pt-4 pb-1">
+                        MORE
+                      </p>
+                      {leftover.map(renderMoreRow)}
                     </div>
-                  </button>
-                </div>
+                  );
+                })()}
+
+                {/* Divider */}
+                <div className="mx-4 my-2 border-t border-gray-100" />
+
+                {/* Settings row */}
+                <button
+                  onClick={() => go('settings')}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors hover:bg-gray-50 text-left"
+                >
+                  <Settings size={16} className="text-gray-500" />
+                  <span className="text-sm font-medium text-gray-800">Settings</span>
+                </button>
+
+                {/* Divider */}
+                <div className="mx-4 my-2 border-t border-gray-100" />
+
+                {/* Upgrade Plan — always last, gold accent */}
+                <button
+                  onClick={() => go('upgrade')}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors hover:bg-amber-50 text-left mb-2"
+                >
+                  <Crown size={16} style={{ color: 'var(--brand-color, #d4a017)' }} />
+                  <span className="text-sm font-semibold" style={{ color: 'var(--brand-color, #d4a017)' }}>
+                    Upgrade Plan
+                  </span>
+                  <ChevronRight size={14} className="ml-auto text-amber-400" />
+                </button>
               </div>
             </div>
             <style>{`@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }`}</style>

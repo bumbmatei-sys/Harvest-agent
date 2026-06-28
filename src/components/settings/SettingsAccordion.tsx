@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useCallback, ReactNode, useEffect, useRef } from 'react';
+import React, { useState, useCallback, ReactNode, useEffect } from 'react';
 import { ChevronDown } from 'lucide-react';
 
 interface SettingsSection {
@@ -19,7 +19,6 @@ interface SettingsAccordionProps {
 
 const SettingsAccordion: React.FC<SettingsAccordionProps> = ({ sections, defaultOpen, forceOpen }) => {
   const [expanded, setExpanded] = useState<string | null>(defaultOpen || null);
-  const contentRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   // Allow external control (e.g. Stripe return URL opens a specific section)
   useEffect(() => {
@@ -31,36 +30,25 @@ const SettingsAccordion: React.FC<SettingsAccordionProps> = ({ sections, default
   }, []);
 
   return (
-    <div className="space-y-3">
+    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
       {sections.filter(s => !s.hidden).map(section => (
-        <div key={section.id} className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+        <div key={section.id} className="border-b border-gray-100 last:border-0">
           <button
             onClick={() => toggle(section.id)}
-            className="w-full flex items-center justify-between p-5 text-left hover:bg-gray-50 transition-colors"
+            className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-gray-50 transition-colors text-left"
           >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-600">
-                {section.icon}
-              </div>
-              <span className="font-semibold text-gray-900">{section.label}</span>
-            </div>
+            <span className="text-gray-400 flex items-center">{section.icon}</span>
+            <span className="flex-1 text-sm font-medium text-gray-800">{section.label}</span>
             <ChevronDown
-              size={20}
-              className={`text-gray-400 transition-transform duration-200 ${expanded === section.id ? 'rotate-180' : ''}`}
+              size={16}
+              className={`text-gray-400 transition-transform ${expanded === section.id ? 'rotate-180' : ''}`}
             />
           </button>
-          <div
-            ref={el => { contentRefs.current[section.id] = el; }}
-            style={{
-              maxHeight: expanded === section.id ? (contentRefs.current[section.id]?.scrollHeight || 2000) + 'px' : '0',
-              overflow: 'hidden',
-              transition: 'max-height 0.3s ease-in-out',
-            }}
-          >
-            <div className="px-5 pb-5 border-t border-gray-100 pt-4">
+          {expanded === section.id && (
+            <div className="px-4 py-4 border-t border-gray-100 bg-white">
               {section.content}
             </div>
-          </div>
+          )}
         </div>
       ))}
     </div>

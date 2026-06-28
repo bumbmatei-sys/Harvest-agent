@@ -1,11 +1,12 @@
 "use client";
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, ToggleLeft, ToggleRight, Heart, DollarSign } from 'lucide-react';
+import { Plus, Edit2, Trash2, ToggleLeft, ToggleRight, Heart, DollarSign, ChevronDown } from 'lucide-react';
 import {
   collection, addDoc, updateDoc, deleteDoc, doc, serverTimestamp,
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { notifyError } from '../utils/notify';
+import PaymentSection from './settings/PaymentSection';
 import { useAdminHeader, HeaderActionButton } from './AdminScreenHeader';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAppStore } from '../store/useAppStore';
@@ -43,6 +44,7 @@ const AdminFundraising: React.FC<AdminFundraisingProps> = ({ initialCampaignId, 
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [showPayment, setShowPayment] = useState(false);
 
   const openCreate = () => { setEditing(null); setForm(empty); setShowForm(true); };
   const openEdit = (c: Campaign) => { setEditing(c); setForm({ ...c }); setShowForm(true); };
@@ -111,6 +113,26 @@ const AdminFundraising: React.FC<AdminFundraisingProps> = ({ initialCampaignId, 
 
   return (
     <div className="max-w-3xl mx-auto">
+      {/* Payment Setup — Stripe Connect for receiving donations (moved from Settings) */}
+      <div className="mb-4 bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <button
+          onClick={() => setShowPayment((v) => !v)}
+          className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-gray-50 transition-colors text-left"
+        >
+          <DollarSign size={18} className="text-gray-400 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-gray-900">Payment Setup</p>
+            <p className="text-xs text-gray-400">Connect Stripe to receive donations</p>
+          </div>
+          <ChevronDown size={16} className={`text-gray-400 transition-transform ${showPayment ? 'rotate-180' : ''}`} />
+        </button>
+        {showPayment && (
+          <div className="px-4 py-4 border-t border-gray-100">
+            <PaymentSection />
+          </div>
+        )}
+      </div>
+
       {campaigns.length === 0 ? (
         <div className="text-center py-16 text-gray-400">
           <Heart size={40} className="mx-auto mb-3 opacity-30" />

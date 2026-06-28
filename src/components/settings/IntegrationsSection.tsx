@@ -212,12 +212,10 @@ const IntegrationsSection: React.FC = () => {
       {/* Instagram Card */}
       <div className="bg-gray-50 rounded-xl p-4">
         <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-            <Instagram size={24} className="text-white" />
-          </div>
+          <Instagram size={20} className="text-gray-400" />
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <p className="text-sm font-bold text-gray-900">Instagram</p>
+              <p className="text-sm font-semibold text-gray-900">Instagram</p>
               {instagramStatus === 'connected' && isPrimaryInstagram && (
                 <span className="flex items-center gap-1 text-xs text-gold font-medium">
                   <Star size={11} fill="currentColor" /> Primary
@@ -236,19 +234,19 @@ const IntegrationsSection: React.FC = () => {
             {instagramStatus === 'connected' && !isPrimaryInstagram && (
               <button
                 onClick={handleMakePrimaryInstagram}
-                className="px-3 py-1.5 border border-gold text-gold rounded-lg text-xs font-semibold hover:bg-yellow-50 transition-colors"
+                className="px-4 py-2 border border-gold text-gold rounded-lg text-sm font-medium hover:bg-yellow-50 transition-colors"
               >
                 Make Primary
               </button>
             )}
             {instagramStatus === 'connected' ? (
               <button onClick={handleInstagramDisconnect} disabled={instagramLoading}
-                className="px-4 py-2 border border-red-200 text-red-600 rounded-xl text-xs font-semibold hover:bg-red-50 transition-colors disabled:opacity-50">
+                className="px-4 py-2 border border-red-200 text-red-600 rounded-lg text-sm font-medium hover:bg-red-50 transition-colors disabled:opacity-50">
                 {instagramLoading ? 'Disconnecting...' : 'Disconnect'}
               </button>
             ) : (
               <button onClick={handleInstagramConnect} disabled={instagramLoading || instagramStatus === 'connecting'}
-                className="px-4 py-2 bg-gold text-white rounded-xl text-xs font-semibold hover:bg-gold transition-colors disabled:opacity-50">
+                className="px-4 py-2 bg-gold text-white rounded-lg text-sm font-medium hover:bg-gold transition-colors disabled:opacity-50">
                 {instagramLoading ? (
                   <span className="flex items-center gap-2">
                     <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -264,12 +262,10 @@ const IntegrationsSection: React.FC = () => {
       {/* Mailchimp Card */}
       <div className="bg-gray-50 rounded-xl p-4">
         <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-yellow-50 flex items-center justify-center">
-            <Mail size={24} className="text-yellow-600" />
-          </div>
+          <Mail size={20} className="text-gray-400" />
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <p className="text-sm font-bold text-gray-900">Mailchimp</p>
+              <p className="text-sm font-semibold text-gray-900">Mailchimp</p>
               {mailchimpStatus === 'connected' && isPrimaryMailchimp && (
                 <span className="flex items-center gap-1 text-xs text-gold font-medium">
                   <Star size={11} fill="currentColor" /> Primary
@@ -288,19 +284,19 @@ const IntegrationsSection: React.FC = () => {
             {mailchimpStatus === 'connected' && !isPrimaryMailchimp && (
               <button
                 onClick={handleMakePrimaryMailchimp}
-                className="px-3 py-1.5 border border-gold text-gold rounded-lg text-xs font-semibold hover:bg-yellow-50 transition-colors"
+                className="px-4 py-2 border border-gold text-gold rounded-lg text-sm font-medium hover:bg-yellow-50 transition-colors"
               >
                 Make Primary
               </button>
             )}
             {mailchimpStatus === 'connected' ? (
               <button onClick={handleMailchimpDisconnect} disabled={mailchimpLoading}
-                className="px-4 py-2 border border-red-200 text-red-600 rounded-xl text-xs font-semibold hover:bg-red-50 transition-colors disabled:opacity-50">
+                className="px-4 py-2 border border-red-200 text-red-600 rounded-lg text-sm font-medium hover:bg-red-50 transition-colors disabled:opacity-50">
                 {mailchimpLoading ? 'Disconnecting...' : 'Disconnect'}
               </button>
             ) : (
               <button onClick={handleMailchimpConnect} disabled={mailchimpLoading || mailchimpStatus === 'connecting'}
-                className="px-4 py-2 bg-gold text-white rounded-xl text-xs font-semibold hover:bg-gold transition-colors disabled:opacity-50">
+                className="px-4 py-2 bg-gold text-white rounded-lg text-sm font-medium hover:bg-gold transition-colors disabled:opacity-50">
                 {mailchimpLoading ? (
                   <span className="flex items-center gap-2">
                     <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
