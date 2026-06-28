@@ -22,6 +22,7 @@ export async function GET(request: NextRequest) {
     accountSid: d.accountSid || '',
     fromNumber: d.fromNumber || '',
     templates: d.templates || {},
+    text2give: d.text2give || { keyword: '', responseTemplate: '', enabled: false },
   });
 }
 
@@ -36,6 +37,7 @@ export async function POST(request: NextRequest) {
     authToken?: string;
     fromNumber?: string;
     templates?: Record<string, { enabled: boolean; text: string }>;
+    text2give?: { keyword?: string; responseTemplate?: string; enabled?: boolean };
   };
   try {
     body = await request.json();
@@ -50,7 +52,24 @@ export async function POST(request: NextRequest) {
   if (body.authToken) updates.authToken = body.authToken.trim();
   if (body.fromNumber !== undefined) updates.fromNumber = body.fromNumber.trim();
   if (body.templates !== undefined) updates.templates = body.templates;
+  if (body.text2give !== undefined) {
+    updates.text2give = {
+      keyword: (body.text2give.keyword || '').toUpperCase().trim(),
+      responseTemplate: body.text2give.responseTemplate || '',
+      enabled: !!body.text2give.enabled,
+    };
+  }
 
   await TWILIO_DOC(tenantId).set(updates, { merge: true });
+
+  // Maintain the top-level number → tenant index used by inbound SMS routing
+  // (/api/sms/incoming). Write it whenever a from-number is provided.
+  if (body.fromNumber !== undefined) {
+    const sanitized = body.fromNumber.replace(/\D/g, '');
+    if (sanitized) {
+      await adminDb.collection('twilioNumbers').doc(sanitized).set({ tenantId }, { merge: true });
+    }
+  }
+
   return NextResponse.json({ success: true });
 }

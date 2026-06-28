@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { collection, query, orderBy, onSnapshot, limit, Timestamp } from 'firebase/firestore';
-import { Send, MessageSquare, Loader2, Save } from 'lucide-react';
+import { Send, MessageSquare, Loader2, Save, Gift } from 'lucide-react';
 import { db } from '../firebase';
 import { useAppStore } from '../store/useAppStore';
 import { PLATFORM_TENANT_ID } from '../utils/tenant-scope';
@@ -56,8 +56,16 @@ const AdminSms: React.FC = () => {
   const [savingTpl, setSavingTpl] = useState(false);
   const [tplSaved, setTplSaved] = useState(false);
 
+  // Text-to-Give
+  const [t2g, setT2g] = useState<{ keyword: string; responseTemplate: string; enabled: boolean }>({ keyword: '', responseTemplate: '', enabled: false });
+  const [savingT2g, setSavingT2g] = useState(false);
+  const [t2gSaved, setT2gSaved] = useState(false);
+
   useEffect(() => {
-    authFetch('/api/sms/config').then(r => r.json()).then(d => setTemplates(d.templates || {})).catch(() => {});
+    authFetch('/api/sms/config').then(r => r.json()).then(d => {
+      setTemplates(d.templates || {});
+      if (d.text2give) setT2g({ keyword: d.text2give.keyword || '', responseTemplate: d.text2give.responseTemplate || '', enabled: !!d.text2give.enabled });
+    }).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -115,6 +123,18 @@ const AdminSms: React.FC = () => {
 
   const setTpl = (key: string, patch: Partial<{ enabled: boolean; text: string }>) =>
     setTemplates(t => ({ ...t, [key]: { enabled: false, text: '', ...t[key], ...patch } }));
+
+  const saveT2g = async () => {
+    setSavingT2g(true);
+    setT2gSaved(false);
+    try {
+      await authFetch('/api/sms/config', { method: 'POST', body: JSON.stringify({ text2give: t2g }) });
+      setT2gSaved(true);
+      setTimeout(() => setT2gSaved(false), 2500);
+    } finally {
+      setSavingT2g(false);
+    }
+  };
 
   const fmtDate = (s?: string) => s ? new Date(s).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—';
 
@@ -207,6 +227,53 @@ const AdminSms: React.FC = () => {
             <Save size={15} /> {savingTpl ? 'Saving…' : 'Save Templates'}
           </button>
           {tplSaved && <span className="text-sm text-green-600 font-medium ml-2">✓ Saved</span>}
+
+          {/* ── Text-to-Give ── */}
+          <div className="bg-white rounded-2xl border border-gray-100 p-4 mt-6">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-sm font-bold text-gray-800 flex items-center gap-1.5"><Gift size={15} style={{ color: GOLD }} /> Text-to-Give</span>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" className="sr-only peer" checked={t2g.enabled} onChange={e => setT2g({ ...t2g, enabled: e.target.checked })} />
+                <div className="w-10 h-6 bg-gray-200 peer-checked:bg-gold rounded-full peer transition-colors after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-4" />
+              </label>
+            </div>
+            <p className="text-xs text-gray-400 mb-3">People text a keyword to your Twilio number and instantly receive a link to your giving page.</p>
+
+            {t2g.enabled && (
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Keyword</label>
+                  <input value={t2g.keyword} onChange={e => setT2g({ ...t2g, keyword: e.target.value.toUpperCase() })}
+                    placeholder="GIVE" className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm font-mono focus:outline-none focus:border-gold" />
+                  <p className="text-[11px] text-gray-400 mt-1">People text this word to receive a giving link.</p>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Reply Message</label>
+                  <textarea value={t2g.responseTemplate} onChange={e => setT2g({ ...t2g, responseTemplate: e.target.value })}
+                    rows={2} placeholder="Thank you! Give here: {link}"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-gold resize-none" />
+                  <p className="text-[11px] text-gray-400 mt-1"><code className="bg-gray-100 px-1 rounded">{'{link}'}</code> will be replaced with your giving page URL.</p>
+                  <p className="text-[11px] text-gray-400 mt-1">Preview link: <span className="font-mono">https://{tenantId || 'your-ministry'}.theharvest.app/?giving=1</span></p>
+                </div>
+                <div className="bg-gray-50 border border-gray-100 rounded-xl p-3">
+                  <p className="text-[11px] text-gray-500 mb-1">Add this URL to your Twilio phone number as the inbound SMS webhook:</p>
+                  <p className="text-xs font-mono text-gray-800 break-all">https://theharvest.app/api/sms/incoming</p>
+                  <p className="text-[11px] text-gray-400 mt-1">(Method: HTTP POST)</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <button onClick={saveT2g} disabled={savingT2g} className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-white text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: GOLD }}>
+                    <Save size={15} /> {savingT2g ? 'Saving…' : 'Save Text-to-Give'}
+                  </button>
+                  {t2gSaved && <span className="text-sm text-green-600 font-medium">✓ Saved</span>}
+                </div>
+              </div>
+            )}
+            {!t2g.enabled && (
+              <button onClick={saveT2g} disabled={savingT2g} className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border border-gray-200 text-gray-600 disabled:opacity-50">
+                <Save size={14} /> {savingT2g ? 'Saving…' : 'Save'}
+              </button>
+            )}
+          </div>
         </div>
       )}
     </div>
