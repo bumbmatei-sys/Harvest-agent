@@ -787,8 +787,24 @@ const AdminEvents: React.FC = () => {
   }
 
   // ── List View ──
+  const calendarUrl = `https://${tenantId}.theharvest.app/calendar`;
+  const copyCalendarUrl = async () => {
+    try { await navigator.clipboard.writeText(calendarUrl); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { /* ignore */ }
+  };
   return (
     <div className="max-w-3xl mx-auto">
+      {events.length > 0 && tenantId && (
+        <div className="flex items-center gap-2 bg-gray-50 border border-gray-100 rounded-xl px-3 py-2.5 mb-4 text-xs">
+          <span className="text-gray-400 shrink-0">Public calendar:</span>
+          <span className="text-gray-600 truncate flex-1 min-w-0">{calendarUrl}</span>
+          <button onClick={copyCalendarUrl} className="flex items-center gap-1 px-2 py-1 rounded-lg border border-gray-200 text-gray-600 hover:bg-white shrink-0">
+            {copied ? <Check size={12} /> : <Copy size={12} />} {copied ? 'Copied' : 'Copy'}
+          </button>
+          <a href={calendarUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1 px-2 py-1 rounded-lg border border-gray-200 text-gray-600 hover:bg-white shrink-0">
+            <Link2 size={12} /> Open
+          </a>
+        </div>
+      )}
       {events.length === 0 ? (
         <div className="text-center py-16 text-gray-400">
           <CalendarCheck size={40} className="mx-auto mb-3 opacity-30" />
