@@ -134,7 +134,7 @@ service cloud.firestore {
     // ─── Community Posts ─────────────────────────────────────────────
 
     match /community_posts/{postId} {
-      allow read: if isAuthenticated();
+      allow read: if isAuthenticated() && belongsToTenant(resource.data.get('tenantId', ''));
 
       allow create: if isAuthenticated() &&
         request.resource.data.authorId == request.auth.uid &&
@@ -153,7 +153,8 @@ service cloud.firestore {
          isTenantAdmin(resource.data.tenantId));
 
       match /comments/{commentId} {
-        allow read: if isAuthenticated();
+        allow read: if isAuthenticated() &&
+          belongsToTenant(get(/databases/$(database)/documents/community_posts/$(postId)).data.get('tenantId', ''));
         allow create: if isAuthenticated() &&
           request.resource.data.authorId == request.auth.uid &&
           request.resource.data.content is string &&
@@ -198,7 +199,7 @@ service cloud.firestore {
     // ─── Blog Posts ─────────────────────────────────────────────────
 
     match /blog_posts/{postId} {
-      allow read: if isAuthenticated();
+      allow read: if isAuthenticated() && belongsToTenant(resource.data.get('tenantId', ''));
       allow create: if isAuthenticated() && isTenantAdmin(request.resource.data.get('tenantId', ''));
       allow update: if isAuthenticated() && isTenantAdmin(resource.data.tenantId);
       allow delete: if isAuthenticated() && isTenantAdmin(resource.data.tenantId);
@@ -207,7 +208,7 @@ service cloud.firestore {
     // ─── Courses ────────────────────────────────────────────────────
 
     match /courses/{courseId} {
-      allow read: if isAuthenticated();
+      allow read: if isAuthenticated() && belongsToTenant(resource.data.get('tenantId', ''));
       allow create: if isAuthenticated() && isTenantAdmin(request.resource.data.get('tenantId', ''));
       allow update: if isAuthenticated() && isTenantAdmin(resource.data.tenantId);
       allow delete: if isAuthenticated() && isTenantAdmin(resource.data.tenantId);
@@ -467,7 +468,7 @@ service cloud.firestore {
     // ─── Fundraising Campaigns ───────────────────────────────────────
 
     match /campaigns/{campaignId} {
-      allow read: if isAuthenticated();
+      allow read: if isAuthenticated() && belongsToTenant(resource.data.get('tenantId', ''));
       allow create: if isAuthenticated() && isTenantAdmin(request.resource.data.get('tenantId', ''));
       allow update: if isAuthenticated() && isTenantAdmin(resource.data.get('tenantId', ''));
       allow delete: if isAuthenticated() && isTenantAdmin(resource.data.get('tenantId', ''));
