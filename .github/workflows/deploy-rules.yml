@@ -1,4 +1,4 @@
-name: Deploy Firestore Rules
+name: Deploy Firestore + Storage Rules
 
 on:
   push:
@@ -6,11 +6,13 @@ on:
       - main
     paths:
       - 'firestore.rules'
+      - 'storage.rules'
+      - 'firebase.json'
   workflow_dispatch:
 
 jobs:
   deploy-rules:
-    name: Deploy Firestore Security Rules
+    name: Deploy Firestore + Storage Security Rules
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -25,7 +27,13 @@ jobs:
       - name: Write service account key
         run: echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > /tmp/firebase-sa.json
 
-      - name: Deploy Firestore rules
-        run: firebase deploy --only firestore:rules --project harvest-agent-233a1
+      - name: Show configured storage buckets
+        # The storage rules must reach harvest-receipts-233a1 (where the financial PDFs
+        # live), not just the default bucket. firebase.json lists both; print them so the
+        # deploy log confirms the multi-bucket targeting.
+        run: node -e "const f=require('./firebase.json'); const s=Array.isArray(f.storage)?f.storage.map(x=>x.bucket):['(single, default bucket only)']; console.log('storage rule targets:', JSON.stringify(s));"
+
+      - name: Deploy Firestore + Storage rules
+        run: firebase deploy --only firestore:rules,storage --project harvest-agent-233a1
         env:
           GOOGLE_APPLICATION_CREDENTIALS: /tmp/firebase-sa.json
