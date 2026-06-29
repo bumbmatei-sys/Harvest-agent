@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import Stripe from 'stripe';
 import { adminDb } from '@/lib/firebase-admin';
-import { requireAuth } from '@/lib/api-auth';
+import { requireAdmin } from '@/lib/api-auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,7 +12,7 @@ export const dynamic = 'force-dynamic';
  */
 export async function POST(request: NextRequest) {
   try {
-    const userOrErr = await requireAuth(request);
+    const userOrErr = await requireAdmin(request);
     if (userOrErr instanceof Response) return userOrErr;
 
     const stripeKey = process.env.STRIPE_SECRET_KEY;
@@ -33,10 +33,27 @@ export async function POST(request: NextRequest) {
     const churchData = churchDoc.data();
 
     if (!churchData) {
-      // Church already deleted — check if we got subscriptionItemId in the body
+      // Church already deleted — caller passes the known subscriptionItemId. Verify
+      // it belongs to THIS admin's own tenant subscription before deleting, so a
+      // tenant admin can't cancel another tenant's billing line by guessing an ID.
       const subItemId = body.subscriptionItemId;
       if (!subItemId) {
         return NextResponse.json({ error: 'Church not found and no subscriptionItemId provided' }, { status: 404 });
+      }
+      if (!userOrErr.isSuperAdmin) {
+        if (!userOrErr.tenantId) {
+          return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+        }
+        const callerTenant = await adminDb.collection('tenants').doc(userOrErr.tenantId).get();
+        const subscriptionId = callerTenant.data()?.stripeSubscriptionId;
+        if (!subscriptionId) {
+          return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+        }
+        const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+        const owns = subscription.items.data.some((it) => it.id === subItemId);
+        if (!owns) {
+          return NextResponse.json({ error: 'Subscription item does not belong to your tenant' }, { status: 403 });
+        }
       }
       await stripe.subscriptionItems.del(subItemId);
       return NextResponse.json({ success: true, removed: subItemId });
