@@ -29,7 +29,12 @@ export async function setCustomClaims(uid: string) {
       claims.tenantId = tenantId;
     }
 
-    // Set admin claims based on role
+    // Set admin claims based on role. Build-on-payment standardises the church
+    // owner on role 'admin' (the webhook sets it), which maps here. We deliberately
+    // do NOT broaden the GLOBAL admin claim to the legacy 'church_admin' role —
+    // some Firestore rules honour an unscoped isAdmin(), so granting church_admin
+    // a global admin claim would leak cross-tenant access. Legacy church_admins
+    // stay scoped to their tenant via adminEmails.
     if (role === 'super_admin') {
       claims.admin = true;
       claims.superAdmin = true;

@@ -5,6 +5,7 @@ import { adminDb, adminAuth } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { generateAccessCode } from '@/lib/ai-utils';
 import { PLAN_PRICES, getPlanFromPriceId } from '@/lib/stripe-config';
+import { setCustomClaims } from '@/lib/set-custom-claims';
 import { Resend } from 'resend';
 
 export const dynamic = 'force-dynamic';
@@ -18,6 +19,121 @@ function getAffiliateRate(plan: string): number {
     case 'plus':  return 0.10;
     default:      return 0.10;
   }
+}
+
+/**
+ * Pay-out the one-time ("initial") affiliate commission for a paid signup/upgrade.
+ * Shared by the existing-tenant plan-change path and the build-on-payment new-tenant
+ * path. Guards against self-referral and double-paying the same subscription.
+ */
+async function processInitialAffiliateCommission(opts: {
+  stripe: Stripe;
+  referrerId: string;
+  ownerId: string | null | undefined;
+  tenantId: string;
+  plan: string;
+  amountTotal: number;
+  subscriptionId: string;
+}): Promise<void> {
+  const { stripe, referrerId, ownerId, tenantId, plan, amountTotal, subscriptionId } = opts;
+
+  if (ownerId && referrerId === ownerId) {
+    console.log('⚠️ Self-referral blocked for tenant', tenantId);
+    return;
+  }
+
+  const existingCommissionSnap = await adminDb.collection('affiliate_commissions')
+    .where('stripeSubscriptionId', '==', subscriptionId)
+    .limit(10)
+    .get();
+  const hasInitialCommission = existingCommissionSnap.docs.some(d => d.data().type === 'initial');
+  if (hasInitialCommission) {
+    console.log('⚠️ Commission already exists for subscription', subscriptionId);
+    return;
+  }
+
+  const commissionAmount = Math.round((amountTotal || 0) * getAffiliateRate(plan));
+  let commissionStatus = 'pending';
+  try {
+    const referrerDoc = await adminDb.collection('users').doc(referrerId).get();
+    const connectAccountId = referrerDoc.data()?.affiliateStripeAccountId;
+    const connectStatus = referrerDoc.data()?.affiliateConnectStatus;
+    if (connectAccountId && connectStatus === 'active' && commissionAmount > 0) {
+      const transfer = await stripe.transfers.create({
+        amount: commissionAmount,
+        currency: 'usd',
+        destination: connectAccountId,
+        metadata: { referrerId, tenantId, plan, type: 'affiliate_commission' },
+      });
+      commissionStatus = 'paid';
+      await adminDb.collection('affiliate_commissions').add({
+        referrerId, tenantId, plan,
+        amount: amountTotal || 0,
+        commission: commissionAmount,
+        status: commissionStatus,
+        type: 'initial',
+        stripeSubscriptionId: subscriptionId,
+        stripeTransferId: transfer.id,
+        createdAt: new Date().toISOString(),
+      });
+    } else {
+      await adminDb.collection('affiliate_commissions').add({
+        referrerId, tenantId, plan,
+        amount: amountTotal || 0,
+        commission: commissionAmount,
+        status: 'pending',
+        type: 'initial',
+        stripeSubscriptionId: subscriptionId,
+        createdAt: new Date().toISOString(),
+      });
+    }
+  } catch (transferErr) {
+    console.error('Affiliate transfer failed (will remain pending):', transferErr);
+    await adminDb.collection('affiliate_commissions').add({
+      referrerId, tenantId, plan,
+      amount: amountTotal || 0,
+      commission: commissionAmount,
+      status: 'pending',
+      type: 'initial',
+      stripeSubscriptionId: subscriptionId,
+      createdAt: new Date().toISOString(),
+    });
+  }
+
+  await adminDb.collection('users').doc(referrerId).update({
+    affiliateEarnings: FieldValue.increment(commissionAmount),
+    affiliatePendingPayouts: commissionStatus === 'paid'
+      ? FieldValue.increment(0)
+      : FieldValue.increment(commissionAmount),
+    affiliateReferralCount: FieldValue.increment(1),
+    updatedAt: new Date().toISOString(),
+  });
+  console.log(`💰 Affiliate commission ${commissionStatus} for referrer ${referrerId}: $${(commissionAmount / 100).toFixed(2)}`);
+}
+
+/**
+ * Build-on-payment: turn a ministry name into a unique, free tenant subdomain.
+ * Lowercases, keeps [a-z0-9-], collapses whitespace to '-', then appends a short
+ * random suffix until no tenant doc exists at that id (and avoids reserved labels).
+ */
+async function generateUniqueSubdomain(ministryName: string): Promise<string> {
+  const RESERVED = new Set(['www', 'app', 'admin', 'api', 'harvest', 'nations', 'platform']);
+  const base = (ministryName || 'ministry')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 30) || 'ministry';
+
+  let candidate = base;
+  for (let i = 0; i < 10; i++) {
+    const exists = (await adminDb.collection('tenants').doc(candidate).get()).exists;
+    if (!RESERVED.has(candidate) && !exists) return candidate;
+    const suffix = Math.random().toString(36).slice(2, 6); // 4 random alphanumerics
+    candidate = `${base}-${suffix}`.slice(0, 40);
+  }
+  return candidate;
 }
 
 export async function POST(request: NextRequest) {
@@ -68,6 +184,11 @@ export async function POST(request: NextRequest) {
             meta = (sub.metadata || {}) as Record<string, string>;
           } catch (subErr) {
             console.error('Failed to retrieve subscription metadata:', subErr);
+            // Without metadata we can't tell a new-ministry signup from an upgrade,
+            // and would silently strand a paying customer (no tenant created). Undo
+            // the idempotency marker and 5xx so Stripe redelivers this event.
+            await eventRef.delete().catch(() => { /* best effort */ });
+            return NextResponse.json({ error: 'Could not load subscription metadata; will retry' }, { status: 503 });
           }
         }
 
@@ -131,6 +252,98 @@ export async function POST(request: NextRequest) {
           }
 
           console.log(`✅ Standalone AI Assistant activated for ${standaloneEmail}`);
+          break;
+        }
+
+        // ── Build-on-payment: CREATE the tenant for a brand-new ministry. ─────
+        // Clients can no longer create tenants (firestore.rules); the paying
+        // signup arrives here with `newTenant: 'true'` and no tenantId, so the
+        // Admin SDK builds the account, makes the payer its admin, and mints
+        // their claim. Plan changes on an existing tenant carry `tenantId` and
+        // fall through to the block below — unchanged.
+        if (meta.newTenant === 'true' && !tenantId && subscriptionId && meta.userId && meta.plan) {
+          // Idempotency / safety: if this user already has a tenant (a prior
+          // checkout already built one, or they belong to an org), don't build a
+          // second one and overwrite their account. The webhook_events dedup
+          // covers redelivery of the SAME event; this covers a distinct second
+          // paid session for the same user.
+          const existingUserSnap = await adminDb.collection('users').doc(meta.userId).get();
+          if (existingUserSnap.exists && existingUserSnap.data()?.tenantId) {
+            console.log(`⏭️ User ${meta.userId} already has tenant ${existingUserSnap.data()?.tenantId}; skipping new-tenant build`);
+            break;
+          }
+
+          const newTenantId = await generateUniqueSubdomain(meta.ministryName || '');
+
+          // Paying user's email — from Firebase Auth, falling back to the customer.
+          let userEmail = '';
+          try {
+            const u = await adminAuth.getUser(meta.userId);
+            userEmail = u.email || '';
+          } catch (userErr) {
+            console.error('new-tenant: failed to load paying user:', userErr);
+          }
+          if (!userEmail && session.customer) {
+            try {
+              const cust = await stripe.customers.retrieve(session.customer as string);
+              if (cust && !(cust as any).deleted) userEmail = (cust as Stripe.Customer).email || '';
+            } catch { /* best effort */ }
+          }
+
+          const now = new Date().toISOString();
+          await adminDb.collection('tenants').doc(newTenantId).set({
+            name: meta.ministryName || 'My Ministry',
+            subdomain: newTenantId,
+            plan: meta.plan,
+            status: 'active',
+            config: {},
+            adminEmails: userEmail ? [userEmail] : [],
+            ownerId: meta.userId,
+            createdBy: meta.userId,
+            stripeCustomerId: session.customer as string,
+            stripeSubscriptionId: subscriptionId,
+            stripePriceId: meta.billing === 'yearly'
+              ? getYearlyPriceId(meta.plan)
+              : getMonthlyPriceId(meta.plan),
+            setupCompleted: false, // gates the first-run "Finish setup" screen
+            createdAt: now,
+            updatedAt: now,
+          });
+
+          // Tag the subscription with the new tenant id so later lifecycle
+          // events (subscription.updated/deleted, invoice.*) resolve to it — the
+          // subscription was created before the tenant existed, so it had none.
+          try {
+            await stripe.subscriptions.update(subscriptionId, { metadata: { tenantId: newTenantId } });
+          } catch (metaErr) {
+            console.error('new-tenant: failed to tag subscription with tenantId:', metaErr);
+          }
+
+          // Assign the paying user as admin and mint their claim.
+          await adminDb.collection('users').doc(meta.userId).update({
+            tenantId: newTenantId,
+            role: 'admin',
+            plan: meta.plan,
+            onboardingCompleted: true,
+            signupInProgress: false,
+            updatedAt: now,
+          });
+          await setCustomClaims(meta.userId);
+
+          // Affiliate commission for this paid signup (owner = the paying user).
+          if (meta.referrerId) {
+            await processInitialAffiliateCommission({
+              stripe,
+              referrerId: meta.referrerId,
+              ownerId: meta.userId,
+              tenantId: newTenantId,
+              plan: meta.plan,
+              amountTotal: session.amount_total || 0,
+              subscriptionId,
+            });
+          }
+
+          console.log(`✅ Created tenant ${newTenantId} for new ministry "${meta.ministryName}" (admin ${meta.userId})`);
           break;
         }
 
@@ -198,75 +411,15 @@ export async function POST(request: NextRequest) {
               const referrerId = meta.referrerId;
               if (referrerId) {
                 const tenantOwner = tenantDoc.data()?.ownerId || tenantDoc.data()?.createdBy;
-                if (referrerId === tenantOwner) {
-                  console.log('⚠️ Self-referral blocked for tenant', tenantId);
-                } else {
-                  const existingCommissionSnap = await adminDb.collection('affiliate_commissions')
-                    .where('stripeSubscriptionId', '==', subscriptionId)
-                    .limit(10)
-                    .get();
-                  const hasInitialCommission = existingCommissionSnap.docs.some(d => d.data().type === 'initial');
-                  if (hasInitialCommission) {
-                    console.log('⚠️ Commission already exists for subscription', subscriptionId);
-                  } else {
-                    const commissionAmount = Math.round((session.amount_total || 0) * getAffiliateRate(plan));
-                    let commissionStatus = 'pending';
-                    try {
-                      const referrerDoc = await adminDb.collection('users').doc(referrerId).get();
-                      const connectAccountId = referrerDoc.data()?.affiliateStripeAccountId;
-                      const connectStatus = referrerDoc.data()?.affiliateConnectStatus;
-                      if (connectAccountId && connectStatus === 'active' && commissionAmount > 0) {
-                        const transfer = await stripe.transfers.create({
-                          amount: commissionAmount,
-                          currency: 'usd',
-                          destination: connectAccountId,
-                          metadata: { referrerId, tenantId, plan, type: 'affiliate_commission' },
-                        });
-                        commissionStatus = 'paid';
-                        await adminDb.collection('affiliate_commissions').add({
-                          referrerId, tenantId, plan,
-                          amount: session.amount_total || 0,
-                          commission: commissionAmount,
-                          status: commissionStatus,
-                          type: 'initial',
-                          stripeSubscriptionId: subscriptionId,
-                          stripeTransferId: transfer.id,
-                          createdAt: new Date().toISOString(),
-                        });
-                      } else {
-                        await adminDb.collection('affiliate_commissions').add({
-                          referrerId, tenantId, plan,
-                          amount: session.amount_total || 0,
-                          commission: commissionAmount,
-                          status: 'pending',
-                          type: 'initial',
-                          stripeSubscriptionId: subscriptionId,
-                          createdAt: new Date().toISOString(),
-                        });
-                      }
-                    } catch (transferErr) {
-                      console.error('Affiliate transfer failed (will remain pending):', transferErr);
-                      await adminDb.collection('affiliate_commissions').add({
-                        referrerId, tenantId, plan,
-                        amount: session.amount_total || 0,
-                        commission: commissionAmount,
-                        status: 'pending',
-                        type: 'initial',
-                        stripeSubscriptionId: subscriptionId,
-                        createdAt: new Date().toISOString(),
-                      });
-                    }
-                    await adminDb.collection('users').doc(referrerId).update({
-                      affiliateEarnings: FieldValue.increment(commissionAmount),
-                      affiliatePendingPayouts: commissionStatus === 'paid'
-                        ? FieldValue.increment(0)
-                        : FieldValue.increment(commissionAmount),
-                      affiliateReferralCount: FieldValue.increment(1),
-                      updatedAt: new Date().toISOString(),
-                    });
-                    console.log(`💰 Affiliate commission ${commissionStatus} for referrer ${referrerId}: $${(commissionAmount / 100).toFixed(2)}`);
-                  }
-                }
+                await processInitialAffiliateCommission({
+                  stripe,
+                  referrerId,
+                  ownerId: tenantOwner,
+                  tenantId,
+                  plan,
+                  amountTotal: session.amount_total || 0,
+                  subscriptionId,
+                });
               }
 
               const usersSnap = await adminDb.collection('users')

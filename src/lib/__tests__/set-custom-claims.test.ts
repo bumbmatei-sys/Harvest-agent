@@ -56,6 +56,20 @@ describe('setCustomClaims', () => {
     expect(mockSetCustomUserClaims).not.toHaveBeenCalled();
   });
 
+  it('does NOT grant a global admin claim to legacy church_admin role', async () => {
+    // church_admin must stay scoped to its tenant (adminEmails), not gain the
+    // unscoped global admin claim — only tenantId is set.
+    mockGetDoc.mockResolvedValue({
+      exists: true,
+      data: () => ({ role: 'church_admin', tenantId: 't1' }),
+    });
+    mockGetUser.mockResolvedValue({ customClaims: {} });
+
+    await setCustomClaims('user123');
+
+    expect(mockSetCustomUserClaims).toHaveBeenCalledWith('user123', { tenantId: 't1' });
+  });
+
   it('sets superAdmin for super_admin role', async () => {
     mockGetDoc.mockResolvedValue({
       exists: true,
