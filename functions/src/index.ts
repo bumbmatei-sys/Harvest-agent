@@ -343,9 +343,8 @@ export const generateSingleReceipt = functions.firestore
       const filePath = `tenants/${tenantId}/invoices/${invoiceId}.pdf`;
       const file = bucket.file(filePath);
       await file.save(Buffer.from(pdfBytes), { metadata: { contentType: 'application/pdf' } });
-      await file.makePublic();
-      const pdfUrl = `https://storage.googleapis.com/${bucket.name}/${filePath}`;
-      await snap.ref.update({ pdfUrl, status: 'generated', updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+      // Private file — downloaded on demand via an authenticated signed URL, never public.
+      await snap.ref.update({ pdfPath: filePath, pdfUrl: null, status: 'generated', updatedAt: admin.firestore.FieldValue.serverTimestamp() });
       console.log(`generateSingleReceipt: PDF generated for ${invoiceId}`);
     } catch (error: any) {
       console.error(`generateSingleReceipt: Failed for ${invoiceId}:`, error?.message || error);
@@ -416,7 +415,7 @@ export const generateAnnualReceipts = functions.https.onCall(async (data, contex
       const filePath = `tenants/${tenantId}/annual-receipts/${year}/${donorEmail}.pdf`;
       const file = bucket.file(filePath);
       await file.save(Buffer.from(pdfBytes), { metadata: { contentType: 'application/pdf' } });
-      await file.makePublic();
+      // Donors receive the PDF as the email attachment below — the stored copy stays private.
       generated++;
 
       const resendKey = process.env.RESEND_API_KEY;

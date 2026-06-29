@@ -1,15 +1,14 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    // Invoice PDFs — readable by anyone (receipt links), writable by admin only
+    // Invoice + receipt PDFs are financial documents — never publicly readable.
+    // Written by Cloud Functions (Admin SDK) and downloaded on demand through an
+    // authenticated signed-URL endpoint; both bypass these rules, so deny direct access.
     match /tenants/{tenantId}/invoices/{fileName} {
-      allow read: if true;
-      allow write: if false; // Cloud Functions use Admin SDK (bypasses rules)
+      allow read, write: if false;
     }
-    // Annual receipt PDFs — readable by anyone, writable by admin only
     match /tenants/{tenantId}/annual-receipts/{allPaths=**} {
-      allow read: if true;
-      allow write: if false;
+      allow read, write: if false;
     }
     // Default deny
     match /{allPaths=**} {

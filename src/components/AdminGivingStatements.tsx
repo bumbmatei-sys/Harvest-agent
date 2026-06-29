@@ -6,6 +6,7 @@ import { db } from '../firebase';
 import { useAppStore } from '../store/useAppStore';
 import { PLATFORM_TENANT_ID } from '../utils/tenant-scope';
 import { authFetch } from '../utils/auth-fetch';
+import { openStatementPdf } from '../utils/open-statement-pdf';
 import { useAdminHeader, HeaderActionButton } from './AdminScreenHeader';
 
 const GOLD = 'var(--brand-color, #B8962E)';
@@ -27,7 +28,7 @@ interface StatementStatus {
   totalAmount: number; // cents
   status: string;
   generatedAt?: string;
-  pdfUrl?: string;
+  pdfPath?: string;
 }
 
 const fmtMoney = (cents: number) =>
@@ -230,10 +231,10 @@ const AdminGivingStatements: React.FC = () => {
                 </div>
                 <p className="text-xs text-gray-400 truncate">{s.donorEmail} · {fmtMoney(s.totalAmount)}</p>
               </div>
-              {s.pdfUrl && (
-                <a href={s.pdfUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-xs font-semibold text-gray-600 hover:text-gray-900 shrink-0">
+              {s.pdfPath && (
+                <button onClick={() => openStatementPdf(s.pdfPath)} className="flex items-center gap-1 text-xs font-semibold text-gray-600 hover:text-gray-900 shrink-0">
                   <FileText size={13} /> PDF
-                </a>
+                </button>
               )}
             </div>
           ))}

@@ -222,8 +222,7 @@ export async function POST(request: NextRequest) {
         const filePath = `receipts/${resolvedTenantId}/statements/${year}/${donorId}.pdf`;
         const file = bucket.file(filePath);
         await file.save(Buffer.from(pdfBytes), { metadata: { contentType: 'application/pdf' } });
-        await file.makePublic();
-        const pdfUrl = `https://storage.googleapis.com/${bucket.name}/${filePath}`;
+        // Private file — admins download it on demand via an authenticated signed URL.
         generated++;
 
         let didSend = false;
@@ -247,7 +246,7 @@ export async function POST(request: NextRequest) {
           year,
           totalAmount: donor.total,
           donationCount: donor.donations.length,
-          pdfUrl,
+          pdfPath: filePath,
           sentAt: didSend ? new Date().toISOString() : null,
           status: didSend ? 'sent' : 'generated',
           generatedAt: new Date().toISOString(),

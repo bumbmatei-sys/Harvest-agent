@@ -10,6 +10,7 @@ import { getWriteTenantScope } from '../utils/tenant-scope';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { useTenantOptional } from '../contexts/TenantContext';
 import { authFetch } from '../utils/auth-fetch';
+import { openStatementPdf } from '../utils/open-statement-pdf';
 
 interface Invoice {
   id: string;
@@ -24,6 +25,7 @@ interface Invoice {
   issuedAt: Timestamp | null;
   tenantName: string;
   pdfUrl: string | null;
+  pdfPath?: string | null;
   status: 'pending' | 'generated' | 'sent';
   quickbooksSyncStatus?: 'synced' | 'failed' | null;
   quickbooksReceiptId?: string | null;
@@ -37,7 +39,7 @@ interface GivingStatement {
   year: number;
   totalAmount: number; // cents
   donationCount: number;
-  pdfUrl?: string | null;
+  pdfPath?: string | null;
   sentAt?: string | null;
   status: 'generated' | 'sent' | 'failed';
 }
@@ -557,10 +559,10 @@ const AdminAccounting: React.FC = () => {
                         <td className="px-3 py-2 text-right font-semibold text-gray-900">{fmt(s.totalAmount / 100)}</td>
                         <td className="px-3 py-2 text-center text-gray-600">{s.donationCount}</td>
                         <td className="px-3 py-2 text-center">
-                          {s.pdfUrl ? (
-                            <a href={s.pdfUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-gold hover:underline text-xs font-medium">
+                          {s.pdfPath ? (
+                            <button onClick={() => openStatementPdf(s.pdfPath)} className="inline-flex items-center gap-1 text-gold hover:underline text-xs font-medium">
                               <Download size={12} /> Preview
-                            </a>
+                            </button>
                           ) : <span className="text-gray-300">—</span>}
                         </td>
                         <td className="px-3 py-2 text-center">
@@ -668,11 +670,11 @@ const AdminAccounting: React.FC = () => {
                       )}
                       <td className="px-4 py-3 text-right">
                         <div className="flex items-center justify-end gap-1">
-                          {inv.pdfUrl && (
-                            <a href={inv.pdfUrl} target="_blank" rel="noopener noreferrer"
+                          {inv.pdfPath && (
+                            <button onClick={() => openStatementPdf(inv.pdfPath)}
                               className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors text-gray-500" title="Download PDF">
                               <Download size={13} />
-                            </a>
+                            </button>
                           )}
                         </div>
                       </td>
