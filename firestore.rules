@@ -253,7 +253,18 @@ service cloud.firestore {
         request.resource.data.keys().hasAll(['name', 'subdomain', 'plan', 'status']) &&
         request.resource.data.status in ['active', 'setup', 'pending'];
 
-      allow update: if isAuthenticated() && isTenantAdmin(tenantId);
+      // plan / status / Stripe / add-on fields are billing authority, written only
+      // by the Stripe webhook + billing routes via the Admin SDK. Tenant admins may
+      // edit everything else; super admins (platform tenant mgmt) are unrestricted.
+      allow update: if isAuthenticated() && (
+        isSuperAdmin() ||
+        (isTenantAdmin(tenantId) &&
+         !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+           'plan', 'status',
+           'stripeCustomerId', 'stripeSubscriptionId', 'stripePriceId',
+           'addOnAiAssistant', 'addOnAiAssistantCode', 'aiAssistantSubscriptionItemId'
+         ]))
+      );
 
       allow delete: if isSuperAdmin();
 
