@@ -48,17 +48,16 @@ const BlogTab: React.FC<BlogTabProps> = ({ onOpenArticle, initialPost, onBack, i
     const tenantId = await getTenantScope();
     if (cancelled) return;
     // Single-field filter only (status); tenant filter applied client-side.
-    const q = query(
-      collection(db, 'blog_posts'),
-      where('status', '==', 'published')
-    );
+    const q = tenantId
+      ? query(collection(db, 'blog_posts'), where('tenantId', '==', tenantId))
+      : query(collection(db, 'blog_posts'), where('status', '==', 'published'));
 
     unsubscribe = onSnapshot(q, (snapshot) => {
   let fetchedPosts = snapshot.docs.map(doc => ({
   id: doc.id,
   ...doc.data()
   })) as BlogPost[];
-  if (tenantId) fetchedPosts = fetchedPosts.filter(p => (p as any).tenantId === tenantId);
+  fetchedPosts = fetchedPosts.filter(p => (p as any).status === 'published');
  
   // Filter out scheduled posts that haven't reached their publish date yet
   const now = new Date().toISOString();

@@ -183,14 +183,16 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle }) => {
 
       // Fetch articles
       // Single-field filter only (status); tenant filter + sort applied client-side.
-      const articlesQ = query(collection(db, 'blog_posts'), where('status', '==', 'published'), limit(30));
+      const articlesQ = tenantId
+        ? query(collection(db, 'blog_posts'), where('tenantId', '==', tenantId), limit(50))
+        : query(collection(db, 'blog_posts'), where('status', '==', 'published'), limit(50));
 
       unsubArticles = onSnapshot(articlesQ, (snapshot) => {
         let articlesData = snapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
         })) as BlogPost[];
-        if (tenantId) articlesData = articlesData.filter(a => (a as any).tenantId === tenantId);
+        articlesData = articlesData.filter(a => (a as any).status === 'published');
         setArticles(sortByTime(articlesData, 'publishedAt', 'desc').slice(0, 5));
       }, (error) => {
         console.error('Failed to load articles:', error);

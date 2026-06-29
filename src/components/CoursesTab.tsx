@@ -24,13 +24,15 @@ const CoursesTab: React.FC<CoursesTabProps> = ({ onOpenCourse }) => {
  try {
  const tenantId = await getTenantScope();
  // Single-field filter only (status); tenant filter + sort applied client-side.
- const q = query(collection(db, 'courses'), where('status', '==', 'published'), limit(100));
+ const q = tenantId
+   ? query(collection(db, 'courses'), where('tenantId', '==', tenantId), limit(100))
+   : query(collection(db, 'courses'), where('status', '==', 'published'), limit(100));
  const querySnapshot = await getDocs(q);
  let fetchedCourses: Course[] = [];
  querySnapshot.forEach((doc) => {
  fetchedCourses.push({ id: doc.id, ...doc.data() } as Course);
  });
- if (tenantId) fetchedCourses = fetchedCourses.filter(c => (c as any).tenantId === tenantId);
+ fetchedCourses = fetchedCourses.filter(c => (c as any).status === 'published');
  setCourses(sortByTime(fetchedCourses, 'createdAt', 'desc'));
  } catch (error) {
  handleFirestoreError(error, OperationType.GET, `courses`);
