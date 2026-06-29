@@ -70,47 +70,11 @@ describe('auth gate', () => {
   });
 });
 
-// ── Plan gating for generate action ───────────────────────────────────────
+// ── Access & usage limits for generate action ─────────────────────────────
 
-describe('generate — tenant plan gating', () => {
-  it('returns 403 for plus-plan tenant (AI not included)', async () => {
+describe('generate — access (no plan/subscription gating)', () => {
+  it('allows a plus-plan tenant (previously blocked) for non-chat generate', async () => {
     mockRequireAuth.mockResolvedValue(mockUser({ tenantId: 'tenant1' }));
-    mockDocGet.mockResolvedValue({ exists: true, data: () => ({ plan: 'plus' }) });
-
-    const res = await POST(makeRequest({ action: 'generate', prompt: 'hello' }));
-    expect(res.status).toBe(403);
-    const body = await res.json();
-    expect(body.error).toMatch(/individual plan/i);
-  });
-
-  it('returns 403 for main-site user with no subscription', async () => {
-    mockRequireAuth.mockResolvedValue(mockUser({ tenantId: null }));
-    mockDocGet.mockResolvedValue({ exists: true, data: () => ({ aiChatSubscription: null }) });
-
-    const res = await POST(makeRequest({ action: 'generate', prompt: 'hello' }));
-    expect(res.status).toBe(403);
-    const body = await res.json();
-    expect(body.error).toMatch(/subscription required/i);
-  });
-
-  it('returns 403 for main-site user with past_due subscription', async () => {
-    mockRequireAuth.mockResolvedValue(mockUser({ tenantId: null }));
-    mockDocGet.mockResolvedValue({
-      exists: true,
-      data: () => ({ aiChatSubscription: { status: 'past_due' } }),
-    });
-
-    const res = await POST(makeRequest({ action: 'generate', prompt: 'hello' }));
-    expect(res.status).toBe(403);
-  });
-
-  it('passes main-site user through when subscription is active', async () => {
-    mockRequireAuth.mockResolvedValue(mockUser({ tenantId: null }));
-    mockDocGet.mockResolvedValue({
-      exists: true,
-      data: () => ({ aiChatSubscription: { status: 'active' } }),
-    });
-    // Mock fetch (MiMo API)
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,
       json: vi.fn().mockResolvedValue({ choices: [{ message: { content: 'Hello!' } }] }),
@@ -122,15 +86,14 @@ describe('generate — tenant plan gating', () => {
     expect(body.text).toBe('Hello!');
   });
 
-  it('passes pro-plan tenant through without checking subscription', async () => {
-    mockRequireAuth.mockResolvedValue(mockUser({ tenantId: 'tenant1' }));
-    mockDocGet.mockResolvedValue({ exists: true, data: () => ({ plan: 'pro' }) });
+  it('allows a main-site user with no subscription for non-chat generate', async () => {
+    mockRequireAuth.mockResolvedValue(mockUser({ tenantId: null }));
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,
       json: vi.fn().mockResolvedValue({ choices: [{ message: { content: 'Grace!' } }] }),
     }));
 
-    const res = await POST(makeRequest({ action: 'generate', prompt: 'What is grace?' }));
+    const res = await POST(makeRequest({ action: 'generate', prompt: 'hello' }));
     expect(res.status).toBe(200);
   });
 });

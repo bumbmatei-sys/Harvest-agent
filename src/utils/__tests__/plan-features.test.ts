@@ -13,7 +13,9 @@ describe('getPlanFeatures', () => {
   it('returns correct features for plus plan', () => {
     const f = getPlanFeatures('plus');
     expect(f.blog).toBe(true);
-    expect(f.aiChat).toBe(false);
+    // AI RAG chat is free for all signed-in users (capped server-side), so it
+    // is now available on every plan, including Individual.
+    expect(f.aiChat).toBe(true);
     expect(f.maxChurches).toBe(1);
     expect(f.maxCourses).toBe(2);
     expect(f.maxAdmins).toBe(1);
@@ -63,8 +65,15 @@ describe('hasFeature', () => {
     expect(hasFeature('plus', 'blog')).toBe(true);
   });
 
+  it('AI chat is available on every plan (free for all signed-in users)', () => {
+    expect(hasFeature('plus', 'aiChat')).toBe(true);
+    expect(hasFeature('pro', 'aiChat')).toBe(true);
+    expect(hasFeature('max', 'aiChat')).toBe(true);
+    expect(hasFeature('ultra', 'aiChat')).toBe(true);
+  });
+
   it('returns false for disabled boolean features', () => {
-    expect(hasFeature('plus', 'aiChat')).toBe(false);
+    expect(hasFeature('plus', 'aiKnowledge')).toBe(false);
   });
 
   it('returns true for non-zero numeric features', () => {

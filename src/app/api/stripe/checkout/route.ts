@@ -3,7 +3,7 @@ import type { NextRequest } from 'next/server';
 import Stripe from 'stripe';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireAuth } from '@/lib/api-auth';
-import { PLAN_PRICES, AI_ASSISTANT_MONTHLY, AI_CHAT_MONTHLY } from '@/lib/stripe-config';
+import { PLAN_PRICES, AI_ASSISTANT_MONTHLY } from '@/lib/stripe-config';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,43 +20,6 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const { plan, billing, tenantId, tenantName, email, addOn, referrerId } = body;
-
-    // Handle AI Chat user subscription (no tenant required)
-    if (addOn === 'ai-chat') {
-      const userId = userOrErr.uid;
-      const userEmail = email || userOrErr.email;
-
-      const userDoc = await adminDb.collection('users').doc(userId).get();
-      const userData = userDoc.data();
-      let customerId = userData?.aiChatStripeCustomerId;
-
-      if (!customerId) {
-        const customer = await stripe.customers.create({
-          email: userEmail || undefined,
-          metadata: { userId, app: 'harvest', type: 'ai-chat' },
-        });
-        customerId = customer.id;
-        await adminDb.collection('users').doc(userId).update({
-          aiChatStripeCustomerId: customerId,
-          updatedAt: new Date().toISOString(),
-        });
-      }
-
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://theharvest.app';
-
-      const session = await stripe.checkout.sessions.create({
-        customer: customerId,
-        mode: 'subscription',
-        line_items: [{ price: AI_CHAT_MONTHLY, quantity: 1 }],
-        success_url: `${baseUrl}/?stripe=success&session_id={CHECKOUT_SESSION_ID}&addon=ai-chat`,
-        cancel_url: `${baseUrl}/?stripe=cancel`,
-        subscription_data: {
-          metadata: { userId, addOn: 'ai-chat' },
-        },
-      });
-
-      return NextResponse.json({ url: session.url });
-    }
 
     // All remaining routes require tenantId
     if (!userOrErr.isSuperAdmin && userOrErr.tenantId !== tenantId) {

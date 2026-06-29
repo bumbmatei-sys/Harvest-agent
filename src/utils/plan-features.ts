@@ -81,7 +81,9 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
   // Individual
   plus: {
     blog: true,
-    aiChat: false,
+    // AI RAG chat is free for all signed-in users; usage is capped server-side
+    // (see /api/gemini), so it is available on every plan.
+    aiChat: true,
     aiKnowledge: false,
     map: false,
     churchDirectory: false,

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { PLAN_PRICES, getPlanFromPriceId, AI_CHAT_MONTHLY, AI_ASSISTANT_MONTHLY, AI_ASSISTANT_SETUP } from '../stripe-config';
+import { PLAN_PRICES, getPlanFromPriceId, AI_ASSISTANT_MONTHLY, AI_ASSISTANT_SETUP } from '../stripe-config';
 
 describe('PLAN_PRICES', () => {
   it('has all 4 plans with monthly and yearly prices', () => {
@@ -34,11 +34,6 @@ describe('getPlanFromPriceId', () => {
 });
 
 describe('AI price IDs', () => {
-  it('exports AI_CHAT_MONTHLY', () => {
-    expect(AI_CHAT_MONTHLY).toBeTruthy();
-    expect(AI_CHAT_MONTHLY).toMatch(/^price_/);
-  });
-
   it('exports AI_ASSISTANT_SETUP (AI_ASSISTANT_MONTHLY requires STRIPE_PRICE_AI_MONTHLY env var)', () => {
     expect(AI_ASSISTANT_SETUP).toBeTruthy();
   });
