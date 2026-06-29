@@ -7,7 +7,8 @@
     "source": "functions",
     "runtime": "nodejs20"
   },
-  "storage": {
-    "rules": "storage.rules"
-  }
+  "storage": [
+    { "bucket": "harvest-agent-233a1.firebasestorage.app", "rules": "storage.rules" },
+    { "bucket": "harvest-receipts-233a1", "rules": "storage.rules" }
+  ]
 }
