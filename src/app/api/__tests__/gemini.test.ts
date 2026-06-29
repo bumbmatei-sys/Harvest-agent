@@ -3,9 +3,10 @@ import { NextRequest } from 'next/server';
 
 // ── Hoisted mocks ──────────────────────────────────────────────────────────
 
-const { mockRequireAuth, mockDocGet, mockCollectionGet } = vi.hoisted(() => ({
+const { mockRequireAuth, mockDocGet, mockChatUsageSet, mockCollectionGet } = vi.hoisted(() => ({
   mockRequireAuth: vi.fn(),
   mockDocGet: vi.fn(),
+  mockChatUsageSet: vi.fn().mockResolvedValue(undefined),
   mockCollectionGet: vi.fn().mockResolvedValue({ docs: [], empty: true }),
 }));
 
@@ -17,7 +18,7 @@ vi.mock('@/lib/api-auth', () => ({
 vi.mock('@/lib/firebase-admin', () => ({
   adminDb: {
     collection: vi.fn(() => ({
-      doc: vi.fn(() => ({ get: mockDocGet, update: vi.fn() })),
+      doc: vi.fn(() => ({ get: mockDocGet, set: mockChatUsageSet, update: vi.fn() })),
       where: vi.fn().mockReturnThis(),
       limit: vi.fn().mockReturnThis(),
       get: mockCollectionGet,
@@ -70,47 +71,11 @@ describe('auth gate', () => {
   });
 });
 
-// ── Plan gating for generate action ───────────────────────────────────────
+// ── Access & usage limits for generate action ─────────────────────────────
 
-describe('generate — tenant plan gating', () => {
-  it('returns 403 for plus-plan tenant (AI not included)', async () => {
+describe('generate — access (no plan/subscription gating)', () => {
+  it('allows a plus-plan tenant (previously blocked) for non-chat generate', async () => {
     mockRequireAuth.mockResolvedValue(mockUser({ tenantId: 'tenant1' }));
-    mockDocGet.mockResolvedValue({ exists: true, data: () => ({ plan: 'plus' }) });
-
-    const res = await POST(makeRequest({ action: 'generate', prompt: 'hello' }));
-    expect(res.status).toBe(403);
-    const body = await res.json();
-    expect(body.error).toMatch(/individual plan/i);
-  });
-
-  it('returns 403 for main-site user with no subscription', async () => {
-    mockRequireAuth.mockResolvedValue(mockUser({ tenantId: null }));
-    mockDocGet.mockResolvedValue({ exists: true, data: () => ({ aiChatSubscription: null }) });
-
-    const res = await POST(makeRequest({ action: 'generate', prompt: 'hello' }));
-    expect(res.status).toBe(403);
-    const body = await res.json();
-    expect(body.error).toMatch(/subscription required/i);
-  });
-
-  it('returns 403 for main-site user with past_due subscription', async () => {
-    mockRequireAuth.mockResolvedValue(mockUser({ tenantId: null }));
-    mockDocGet.mockResolvedValue({
-      exists: true,
-      data: () => ({ aiChatSubscription: { status: 'past_due' } }),
-    });
-
-    const res = await POST(makeRequest({ action: 'generate', prompt: 'hello' }));
-    expect(res.status).toBe(403);
-  });
-
-  it('passes main-site user through when subscription is active', async () => {
-    mockRequireAuth.mockResolvedValue(mockUser({ tenantId: null }));
-    mockDocGet.mockResolvedValue({
-      exists: true,
-      data: () => ({ aiChatSubscription: { status: 'active' } }),
-    });
-    // Mock fetch (MiMo API)
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,
       json: vi.fn().mockResolvedValue({ choices: [{ message: { content: 'Hello!' } }] }),
@@ -122,16 +87,86 @@ describe('generate — tenant plan gating', () => {
     expect(body.text).toBe('Hello!');
   });
 
-  it('passes pro-plan tenant through without checking subscription', async () => {
-    mockRequireAuth.mockResolvedValue(mockUser({ tenantId: 'tenant1' }));
-    mockDocGet.mockResolvedValue({ exists: true, data: () => ({ plan: 'pro' }) });
+  it('allows a main-site user with no subscription for non-chat generate', async () => {
+    mockRequireAuth.mockResolvedValue(mockUser({ tenantId: null }));
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,
       json: vi.fn().mockResolvedValue({ choices: [{ message: { content: 'Grace!' } }] }),
     }));
 
-    const res = await POST(makeRequest({ action: 'generate', prompt: 'What is grace?' }));
+    const res = await POST(makeRequest({ action: 'generate', prompt: 'hello' }));
     expect(res.status).toBe(200);
+  });
+});
+
+describe('generate — chat usage limits (purpose: "chat")', () => {
+  it('answers within the free allowance and records usage', async () => {
+    mockRequireAuth.mockResolvedValue(mockUser({ tenantId: 'tenant1' }));
+    mockDocGet.mockResolvedValue({ exists: false }); // fresh chat_usage doc
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue({ choices: [{ message: { content: 'Peace!' } }] }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const res = await POST(makeRequest({ action: 'generate', prompt: 'hello', purpose: 'chat' }));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.text).toBe('Peace!');
+    expect(fetchMock).toHaveBeenCalledTimes(1); // MiMo was called
+    expect(mockChatUsageSet).toHaveBeenCalledWith(
+      expect.objectContaining({ windowCount: 1, cooldownUntil: null }),
+      { merge: true }
+    );
+  });
+
+  it('returns the Holy-Spirit redirect past the free allowance, without calling MiMo', async () => {
+    const now = Date.now();
+    mockRequireAuth.mockResolvedValue(mockUser({ tenantId: 'tenant1' }));
+    mockDocGet.mockResolvedValue({
+      exists: true,
+      data: () => ({ windowCount: 10, cooldownUntil: null, lastMessageAt: now }),
+    });
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+
+    const res = await POST(makeRequest({ action: 'generate', prompt: 'q', purpose: 'chat' }));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.text).toMatch(/The Holy Spirit is your true Helper/);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('rests during an active cooldown, without calling MiMo', async () => {
+    const now = Date.now();
+    mockRequireAuth.mockResolvedValue(mockUser({ tenantId: 'tenant1' }));
+    mockDocGet.mockResolvedValue({
+      exists: true,
+      data: () => ({ windowCount: 13, cooldownUntil: now + 3_600_000, lastMessageAt: now }),
+    });
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+
+    const res = await POST(makeRequest({ action: 'generate', prompt: 'q', purpose: 'chat' }));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.limited).toBe(true);
+    expect(body.text).toMatch(/Let's pause here for a little while/);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('exempts super admins from the chat usage limit', async () => {
+    mockRequireAuth.mockResolvedValue(mockUser({ tenantId: null, isSuperAdmin: true }));
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue({ choices: [{ message: { content: 'Always on' } }] }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const res = await POST(makeRequest({ action: 'generate', prompt: 'hi', purpose: 'chat' }));
+    expect(res.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(mockDocGet).not.toHaveBeenCalled(); // never touched chat_usage
   });
 });
 

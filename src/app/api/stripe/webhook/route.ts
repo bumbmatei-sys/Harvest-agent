@@ -74,25 +74,6 @@ export async function POST(request: NextRequest) {
         const tenantId = meta.tenantId;
         const userId = meta.userId;
 
-        // Handle AI Chat user subscription
-        if (meta.addOn === 'ai-chat' && userId && subscriptionId) {
-          const sub = await stripe.subscriptions.retrieve(subscriptionId);
-          await adminDb.collection('users').doc(userId).update({
-            aiChatSubscription: {
-              status: 'active',
-              stripeSubscriptionId: subscriptionId,
-              stripeCustomerId: session.customer as string,
-              currentPeriodEnd: sub.current_period_end
-                ? new Date(sub.current_period_end * 1000).toISOString()
-                : null,
-              createdAt: new Date().toISOString(),
-            },
-            updatedAt: new Date().toISOString(),
-          });
-          console.log(`✅ User ${userId} subscribed to AI Chat`);
-          break;
-        }
-
         // Handle standalone AI Assistant purchase (from theharvest.site)
         if (meta.type === 'standalone_ai_assistant' && subscriptionId) {
           const standaloneEmail = meta.email;
@@ -307,21 +288,6 @@ export async function POST(request: NextRequest) {
       case 'customer.subscription.updated': {
         const subscription = event.data.object as Stripe.Subscription;
         const tenantId = subscription.metadata?.tenantId;
-        const subUserId = subscription.metadata?.userId;
-
-        if (subscription.metadata?.addOn === 'ai-chat' && subUserId) {
-          const status = subscription.status === 'active' ? 'active' :
-                         subscription.status === 'past_due' ? 'past_due' : 'cancelled';
-          await adminDb.collection('users').doc(subUserId).update({
-            'aiChatSubscription.status': status,
-            'aiChatSubscription.currentPeriodEnd': subscription.current_period_end
-              ? new Date(subscription.current_period_end * 1000).toISOString()
-              : null,
-            updatedAt: new Date().toISOString(),
-          });
-          console.log(`📝 AI Chat subscription updated for user ${subUserId}: ${status}`);
-          break;
-        }
 
         if (tenantId) {
           const updateData: Record<string, unknown> = {
@@ -363,16 +329,6 @@ export async function POST(request: NextRequest) {
         const addOn = subscription.metadata?.addOn;
         const delUserId = subscription.metadata?.userId;
         const subType = subscription.metadata?.type;
-
-        // Handle AI Chat subscription cancellation
-        if (addOn === 'ai-chat' && delUserId) {
-          await adminDb.collection('users').doc(delUserId).update({
-            'aiChatSubscription.status': 'cancelled',
-            updatedAt: new Date().toISOString(),
-          });
-          console.log(`❌ AI Chat subscription cancelled for user ${delUserId}`);
-          break;
-        }
 
         // Handle standalone AI Assistant cancellation
         if (subType === 'standalone_ai_assistant') {

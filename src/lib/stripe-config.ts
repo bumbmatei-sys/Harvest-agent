@@ -30,9 +30,6 @@ export const PLAN_PRICES: Record<string, { monthly: string; yearly: string }> = 
 export const AI_ASSISTANT_MONTHLY = process.env.STRIPE_PRICE_AI_MONTHLY ?? 'price_1TmgRP1YKkcSbTf3wjxEsdr';
 export const AI_ASSISTANT_SETUP = process.env.STRIPE_PRICE_AI_SETUP ?? 'price_1TjKTd1YKkcSbTf3tQVxQfC5';
 
-// AI Chat user subscription price ID
-export const AI_CHAT_MONTHLY = process.env.STRIPE_PRICE_AI_CHAT_MONTHLY ?? 'price_1TjnO51YKkcSbTf3YqlOlPlK';
-
 // Reverse mapping: price ID → plan name (for webhook)
 export function getPlanFromPriceId(priceId: string): string | null {
   for (const [plan, prices] of Object.entries(PLAN_PRICES)) {

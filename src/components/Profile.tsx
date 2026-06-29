@@ -15,7 +15,6 @@ import {
   Moon,
   Play,
   X,
-  Sparkles,
   CalendarCheck
 } from 'lucide-react';
 import Image from 'next/image';
@@ -60,11 +59,6 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap 
  const [isCancelingPartnership, setIsCancelingPartnership] = useState(false);
  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
- // AI Chat subscription state
- const [aiChatSub, setAiChatSub] = useState<{ status: string; cancelAt?: string } | null>(null);
- const [isCancelingAI, setIsCancelingAI] = useState(false);
- const [showAICancelConfirm, setShowAICancelConfirm] = useState(false);
-
  useEffect(() => {
  const savedHomeChurch = localStorage.getItem('homeChurchId');
  if (savedHomeChurch) {
@@ -106,30 +100,6 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap 
  setHasMounted(true);
  }, []);
 
- // AI Chat cancel handler
- const handleCancelAI = async () => {
-   if (!auth.currentUser) return;
-   setIsCancelingAI(true);
-   try {
-     const token = await auth.currentUser.getIdToken();
-     const res = await fetch('/api/stripe/cancel-ai-chat', {
-       method: 'POST',
-       headers: { 'Authorization': `Bearer ${token}` },
-     });
-     const data = await res.json();
-     if (res.ok) {
-       setAiChatSub(prev => prev ? { ...prev, cancelAt: new Date().toISOString() } : null);
-       setShowAICancelConfirm(false);
-     } else {
-       console.error('Cancel AI chat error:', data.error);
-     }
-   } catch (err) {
-     console.error('Cancel AI chat error:', err);
-   } finally {
-     setIsCancelingAI(false);
-   }
- };
-
  const [profilePic, setProfilePic] = useState<string | null>(auth.currentUser?.photoURL || null);
  const [userName, setUserName] = useState<string>('Loading...');
  const [isAdmin, setIsAdmin] = useState(false);
@@ -161,12 +131,6 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap 
    setDonationAmount(data.donationAmount || null);
    setDonationChurchName(data.donationChurchName || null);
    setDonationSubscriptionId(data.donationSubscriptionId || null);
-   // AI Chat subscription data
-   if (data.aiChatSubscription && (data.aiChatSubscription.status === 'active' || data.aiChatSubscription.status === 'trialing')) {
-     setAiChatSub({ status: data.aiChatSubscription.status, cancelAt: data.aiChatSubscription.cancelAt });
-   } else {
-     setAiChatSub(null);
-   }
  } else {
  setUserName(auth.currentUser?.displayName || 'User');
  }
@@ -361,62 +325,6 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap 
  )}
  </div>
  </div>
-
- {/* AI Subscription */}
- {aiChatSub && (
- <div>
- <h4 className="text-[10px] font-bold text-gray-400 tracking-wider uppercase mb-3 ml-2">AI Subscription</h4>
- <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden p-4">
- <div className="flex items-center gap-3 mb-3">
- <div className="w-7 h-7 rounded-full flex items-center justify-center bg-amber-50">
- <Sparkles size={16} className="text-amber-500" />
- </div>
- <div>
- <p className="text-sm font-bold text-gray-900">Harvest AI — $5.99/mo</p>
- <p className="text-xs text-gray-500">
- {aiChatSub.cancelAt
- ? 'Cancels at end of billing period'
- : 'Active — auto-renews monthly'}
- </p>
- </div>
- </div>
- {aiChatSub.cancelAt ? (
- <div className="w-full flex items-center justify-center p-3 bg-gray-50 rounded-xl mt-1">
- <span className="text-sm font-medium text-gray-500">Cancellation scheduled</span>
- </div>
- ) : showAICancelConfirm ? (
- <div className="bg-red-50 rounded-xl p-3 mt-2">
- <p className="text-xs text-red-600 font-medium text-center mb-3">
- Your AI access will continue until the end of this billing period.
- </p>
- <div className="flex gap-2">
- <button
- onClick={() => setShowAICancelConfirm(false)}
- className="flex-1 py-2 bg-white text-gray-700 rounded-xl font-medium text-sm border border-gray-200"
- >
- Keep
- </button>
- <button
- onClick={handleCancelAI}
- disabled={isCancelingAI}
- className="flex-1 py-2 bg-red-600 text-white rounded-xl font-bold text-sm disabled:opacity-50"
- >
- {isCancelingAI ? 'Canceling...' : 'Cancel'}
- </button>
- </div>
- </div>
- ) : (
- <button
- onClick={() => setShowAICancelConfirm(true)}
- className="w-full flex items-center justify-between p-3 bg-red-50 rounded-xl hover:bg-red-100 transition-colors mt-1"
- >
- <span className="text-sm font-bold text-red-600">Cancel Subscription</span>
- <X size={16} className="text-red-400" />
- </button>
- )}
- </div>
- </div>
- )}
 
  {/* Partnership */}
  <div>
