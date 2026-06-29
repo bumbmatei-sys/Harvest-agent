@@ -302,7 +302,8 @@ service cloud.firestore {
 
       match /registrations/{regId} {
         allow read: if isAuthenticated() && (isTenantAdmin(tenantId) || resource.data.userId == request.auth.uid);
-        allow create: if isAuthenticated();
+        allow create: if isAuthenticated() && belongsToTenant(tenantId) &&
+          request.resource.data.get('userId', '') == request.auth.uid;
         allow update: if isAuthenticated() && isTenantAdmin(tenantId);
         allow delete: if isAuthenticated() && isTenantAdmin(tenantId);
       }
