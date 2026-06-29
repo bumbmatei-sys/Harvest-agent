@@ -119,6 +119,7 @@ const CampaignWidget: React.FC<CampaignWidgetProps> = ({ onDonate }) => {
         },
         body: JSON.stringify({
           amount: Math.round(amount * 100),
+          donationType: 'one-time',
           metadata: {
             type: 'donation',
             campaignId: campaign.id,

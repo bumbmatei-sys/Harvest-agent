@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import Stripe from 'stripe';
 import { adminDb } from '@/lib/firebase-admin';
-import { requireAuth } from '@/lib/api-auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,9 +14,9 @@ const FEE_MAP: Record<string, number> = {
 
 export async function POST(request: NextRequest) {
   try {
-    const userOrErr = await requireAuth(request);
-    if (userOrErr instanceof Response) return userOrErr;
-
+    // Public giving: donations must work for anonymous and cross-church donors.
+    // The donor pays through Stripe Checkout, so an open endpoint has no abuse vector
+    // (an unpaid session expires and records nothing).
     const stripeKey = process.env.STRIPE_SECRET_KEY;
     if (!stripeKey) {
       return NextResponse.json({ error: 'Stripe not configured' }, { status: 500 });
@@ -25,12 +24,9 @@ export async function POST(request: NextRequest) {
     const stripe = new Stripe(stripeKey);
 
     const body = await request.json();
-    const { amount, tenantId, donationType, donorEmail } = body;
-
-    // Verify tenant membership
-    if (!userOrErr.isSuperAdmin && userOrErr.tenantId !== tenantId) {
-      return NextResponse.json({ error: 'Access denied to this tenant' }, { status: 403 });
-    }
+    // Accept fields at the top level OR nested under `metadata` (the campaign widget nests them).
+    const src = { ...(body.metadata || {}), ...body };
+    const { amount, tenantId, donationType, donorEmail, donorName, campaignId } = src;
 
     if (!amount || !tenantId || !donationType) {
       return NextResponse.json({ error: 'Missing required fields: amount, tenantId, donationType' }, { status: 400 });
@@ -87,6 +83,8 @@ export async function POST(request: NextRequest) {
             tenantId,
             type: 'partnership',
             donationType,
+            campaignId: campaignId || '',
+            donorName: donorName || '',
           },
         },
         success_url: `${baseUrl}/?donation=success`,
@@ -96,15 +94,17 @@ export async function POST(request: NextRequest) {
           tenantId,
           donationType,
           plan,
+          campaignId: campaignId || '',
+          donorName: donorName || '',
         },
       });
 
       return NextResponse.json({ url: session.url });
     }
 
-    // Monthly (subscription)
-    // application_fee_amount is valid in the Stripe API but the TS types for v22
-    // don't expose it on SubscriptionData, so we use Stripe's raw API params.
+    // Monthly (subscription): Stripe Checkout subscriptions take a PERCENT fee
+    // (application_fee_percent), not a fixed amount — application_fee_amount is only
+    // valid on one-time PaymentIntents. feePercent is a decimal (0.15) → ×100 = 15.
     const subParams = {
       mode: 'subscription' as const,
       line_items: [
@@ -124,11 +124,13 @@ export async function POST(request: NextRequest) {
         transfer_data: {
           destination: connectAccountId,
         },
-        application_fee_amount: applicationFeeAmount,
+        application_fee_percent: feePercent * 100,
         metadata: {
           tenantId,
           donationType,
           plan,
+          campaignId: campaignId || '',
+          donorName: donorName || '',
         },
       },
       success_url: `${baseUrl}/?donation=success`,
