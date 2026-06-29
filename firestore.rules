@@ -110,6 +110,13 @@ service cloud.firestore {
       allow delete: if isSuperAdmin();
     }
 
+    // ─── AI RAG chat usage (server-only) ─────────────────────────────
+
+    match /chat_usage/{uid} {
+      allow read: if isAuthenticated() && request.auth.uid == uid;
+      allow write: if false; // server-only (Admin SDK)
+    }
+
     // ─── Submissions ─────────────────────────────────────────────────
 
     match /submissions/{subId} {

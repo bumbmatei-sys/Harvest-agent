@@ -204,6 +204,10 @@ export default function AIChat({ onBack }: { onBack?: () => void }) {
   const [input, setInput] = useState<string>("");
   const [typing, setTyping] = useState<boolean>(false);
   const [showHistory, setShowHistory] = useState<boolean>(false);
+  // When the server-side usage limit kicks in, it returns `limited: true` and a
+  // canned "resting" reply. We surface a small note; the input stays usable so
+  // the user is never hard-locked out (the server is the real gate).
+  const [resting, setResting] = useState<boolean>(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -359,10 +363,15 @@ Friendly neighbor, not a corporate chatbot. Short. Helpful. Human.`;
      action: 'generate',
      prompt,
      systemInstruction,
+     purpose: 'chat',
    }),
  });
  const genData = await response.json();
  if (!response.ok) throw new Error(genData.error || 'Generate request failed');
+
+ // The server returns `limited: true` with a canned reply once the per-user
+ // usage limit is reached (Holy-Spirit redirect, then a cooldown rest).
+ setResting(genData.limited === true);
 
  const aiText = genData.text || "I'm sorry, I couldn't generate a response.";
  
@@ -538,18 +547,23 @@ Friendly neighbor, not a corporate chatbot. Short. Helpful. Human.`;
 
  {/* ── INPUT BAR ── */}
  <div style={{ background: CARD, borderTop: `1px solid ${BORDER}`, padding: "8px 12px 20px", flexShrink: 0 }}>
+ {resting && (
+ <div style={{ textAlign: "center", fontSize: 11, color: TEXT2, padding: "0 8px 8px", lineHeight: 1.5 }}>
+ Resting for a little while — spend some time with God directly. The chat will be ready again soon.
+ </div>
+ )}
  <div style={{ display: "flex", alignItems: "center", gap: 8, background: BG, borderRadius: 99, border: `1.5px solid ${BORDER}`, padding: "0 6px 0 16px", minHeight: 44 }}>
  <textarea
  ref={inputRef}
  value={input}
- onChange={(e) => { setInput(e.target.value); e.target.style.height = "auto"; e.target.style.height = Math.min(e.target.scrollHeight, 100) + "px"; }}
+ onChange={(e) => { setInput(e.target.value); if (resting) setResting(false); e.target.style.height = "auto"; e.target.style.height = Math.min(e.target.scrollHeight, 100) + "px"; }}
  onKeyDown={handleKeyDown}
  placeholder="Ask about Scripture, theology, prayer..."
  rows={1}
  style={{ flex: 1, border: "none", background: "transparent", color: TEXT, fontSize: 14, fontFamily: "inherit", lineHeight: 1.5, maxHeight: 100, overflowY: "auto", padding: "10px 0", verticalAlign: "middle" }}
  />
- <button onClick={() => sendMessage(input)} disabled={!input.trim() || typing}
- style={{ width: 34, height: 34, borderRadius: 99, background: input.trim() && !typing ? GOLD_BTN : BORDER, border: "none", cursor: input.trim() && !typing ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "background 0.2s", boxShadow: input.trim() && !typing ? "0 2px 8px rgba(201,150,58,0.35)" : "none" }}>
+ <button onClick={() => sendMessage(input)} disabled={!input.trim() || typing || resting}
+ style={{ width: 34, height: 34, borderRadius: 99, background: input.trim() && !typing && !resting ? GOLD_BTN : BORDER, border: "none", cursor: input.trim() && !typing && !resting ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "background 0.2s", boxShadow: input.trim() && !typing && !resting ? "0 2px 8px rgba(201,150,58,0.35)" : "none" }}>
  <svg width="15" height="15" viewBox="0 0 24 24" fill="white">
  <path d="M2 21l21-9L2 3v7l15 2-15 2v7z" />
  </svg>
