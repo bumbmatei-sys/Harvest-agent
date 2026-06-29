@@ -113,7 +113,7 @@ service cloud.firestore {
     // ─── Submissions ─────────────────────────────────────────────────
 
     match /submissions/{subId} {
-      allow read: if isAuthenticated() && isAdmin();
+      allow read: if isAuthenticated() && isTenantAdmin(resource.data.get('tenantId', ''));
       allow create: if isAuthenticated() && requestHasCorrectTenant();
       allow update: if isAuthenticated() && isTenantAdmin(resource.data.tenantId);
       allow delete: if isAuthenticated() && isTenantAdmin(resource.data.tenantId);
