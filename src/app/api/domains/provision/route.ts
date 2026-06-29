@@ -70,6 +70,16 @@ export async function POST(request: NextRequest) {
 
   const tenantId = await resolveTenantId(request, authResult);
 
+  // Ownership guard: never let one tenant claim a domain another tenant already owns.
+  const existingClaim = await adminDb.collection('domains').doc(domain).get();
+  const claimedBy = existingClaim.exists ? existingClaim.data()?.tenantId : null;
+  if (claimedBy && claimedBy !== tenantId) {
+    return NextResponse.json(
+      { error: 'This domain is already connected to another account.' },
+      { status: 409 }
+    );
+  }
+
   try {
     const resp = await fetch(`${VERCEL_API}/v10/projects/${projectId}/domains${teamQuery(teamId)}`, {
       method: 'POST',
@@ -81,12 +91,20 @@ export async function POST(request: NextRequest) {
     });
     const data = await resp.json();
 
-    // Vercel returns 409 if the domain is already attached to the project — treat
-    // that as success so re-saving the same domain is idempotent.
-    if (!resp.ok && data?.error?.code !== 'domain_already_in_use' && resp.status !== 409) {
+    const alreadyInUse = resp.status === 409 || data?.error?.code === 'domain_already_in_use';
+    if (!resp.ok && !alreadyInUse) {
       return NextResponse.json(
         { error: data?.error?.message || 'Failed to add domain to Vercel' },
         { status: 502 }
+      );
+    }
+    // "Already in use" is only safe if WE already own this domain in Firestore
+    // (idempotent re-save). If we don't own it yet, it's attached to another
+    // project/account — refuse instead of silently claiming it.
+    if (alreadyInUse && !claimedBy) {
+      return NextResponse.json(
+        { error: 'This domain is already in use elsewhere and cannot be connected.' },
+        { status: 409 }
       );
     }
 
