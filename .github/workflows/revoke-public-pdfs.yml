@@ -1,0 +1,36 @@
+name: Revoke Public Financial PDFs
+
+# One-time (re-runnable) cleanup that revokes public-read ACLs on financial PDFs
+# already generated before the privacy fix (annual receipts, giving statements,
+# invoices) in the harvest-receipts-233a1 bucket. Manual trigger only.
+#
+# Run it once with "commit" unchecked to see the count (dry run), then re-run with
+# "commit" checked to actually revoke. makePrivate() only removes public access —
+# it deletes nothing.
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit:
+        description: 'Revoke public access (makePrivate). Leave unchecked for a dry run.'
+        type: boolean
+        default: false
+
+jobs:
+  revoke:
+    name: ${{ inputs.commit && 'Revoke public access (COMMIT)' || 'Dry run (count only)' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install firebase-admin
+        run: npm install firebase-admin@^12
+
+      - name: Revoke public access on financial PDFs
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: node scripts/make-receipts-private.mjs ${{ inputs.commit && '--commit' || '' }}
