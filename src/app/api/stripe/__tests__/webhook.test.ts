@@ -6,12 +6,16 @@ const {
   mockConstructEvent,
   mockSubsRetrieve,
   mockSubsCancel,
+  mockSubsUpdate,
+  mockCustomersRetrieve,
   mockTransfersCreate,
   mockChargesRetrieve,
 } = vi.hoisted(() => ({
   mockConstructEvent: vi.fn(),
   mockSubsRetrieve: vi.fn(),
   mockSubsCancel: vi.fn().mockResolvedValue(undefined),
+  mockSubsUpdate: vi.fn().mockResolvedValue({ id: 'sub_updated' }),
+  mockCustomersRetrieve: vi.fn().mockResolvedValue({ email: 'pastor@grace.org' }),
   mockTransfersCreate: vi.fn().mockResolvedValue({ id: 'tr_123' }),
   mockChargesRetrieve: vi.fn(),
 }));
@@ -24,6 +28,7 @@ const {
   mockBatchUpdate,
   mockBatchCommit,
   mockAdd,
+  mockGetUser,
 } = vi.hoisted(() => ({
   mockDocGet: vi.fn(),
   mockDocSet: vi.fn().mockResolvedValue(undefined),
@@ -32,12 +37,14 @@ const {
   mockBatchUpdate: vi.fn(),
   mockBatchCommit: vi.fn().mockResolvedValue(undefined),
   mockAdd: vi.fn().mockResolvedValue({ id: 'new-id' }),
+  mockGetUser: vi.fn().mockResolvedValue({ uid: 'u1', email: 'pastor@grace.org' }),
 }));
 
 vi.mock('stripe', () => ({
   default: class MockStripe {
     webhooks = { constructEvent: mockConstructEvent };
-    subscriptions = { retrieve: mockSubsRetrieve, cancel: mockSubsCancel };
+    subscriptions = { retrieve: mockSubsRetrieve, cancel: mockSubsCancel, update: mockSubsUpdate };
+    customers = { retrieve: mockCustomersRetrieve };
     transfers = { create: mockTransfersCreate };
     charges = { retrieve: mockChargesRetrieve };
   },
@@ -63,7 +70,11 @@ vi.mock('@/lib/firebase-admin', () => ({
       commit: mockBatchCommit,
     })),
   },
-  adminAuth: { verifyIdToken: vi.fn() },
+  adminAuth: { verifyIdToken: vi.fn(), getUser: mockGetUser },
+}));
+
+vi.mock('@/lib/set-custom-claims', () => ({
+  setCustomClaims: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('firebase-admin/firestore', () => ({
@@ -202,6 +213,43 @@ describe('checkout.session.completed', () => {
     expect(mockDocUpdate).toHaveBeenCalledWith(
       expect.objectContaining({ plan: 'ultra', addOnAiAssistantCode: 'CODE-1234' })
     );
+  });
+
+  it('builds a new tenant when meta.newTenant is set (no existing tenantId)', async () => {
+    const session = { id: 'cs_new', subscription: 'sub_new', customer: 'cus_new', amount_total: 11900 };
+    mockConstructEvent.mockReturnValue(makeEvent('checkout.session.completed', session));
+    mockSubsRetrieve.mockResolvedValue({
+      id: 'sub_new',
+      metadata: { newTenant: 'true', userId: 'u1', plan: 'pro', billing: 'monthly', ministryName: 'Grace Church' },
+    });
+    // webhook_events dedup → not duplicate; subdomain availability → free.
+    mockDocGet.mockResolvedValue({ exists: false });
+    mockGetUser.mockResolvedValue({ uid: 'u1', email: 'pastor@grace.org' });
+
+    const res = await POST(makeRequest());
+    expect(res.status).toBe(200);
+
+    // Tenant doc created: active, gated for first-run, on the paid plan.
+    expect(mockDocSet).toHaveBeenCalledWith(
+      expect.objectContaining({
+        subdomain: 'grace-church',
+        plan: 'pro',
+        status: 'active',
+        setupCompleted: false,
+        adminEmails: ['pastor@grace.org'],
+      })
+    );
+    // Paying user promoted to admin and signup marker cleared.
+    expect(mockDocUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tenantId: 'grace-church',
+        role: 'admin',
+        onboardingCompleted: true,
+        signupInProgress: false,
+      })
+    );
+    // Subscription tagged with the new tenant id for future lifecycle events.
+    expect(mockSubsUpdate).toHaveBeenCalledWith('sub_new', { metadata: { tenantId: 'grace-church' } });
   });
 
   it('blocks self-referral commissions', async () => {

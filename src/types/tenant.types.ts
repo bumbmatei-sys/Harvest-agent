@@ -27,6 +27,13 @@ export interface Tenant {
   status: TenantStatus;
   config: TenantConfig;
   adminEmails: string[]; // emails of church admins for this tenant
+  /**
+   * Gates the one-time first-run "Finish setup" screen. The Stripe webhook
+   * creates new tenants with `setupCompleted: false`; the first-run flow flips it
+   * to `true` once the admin claims a subdomain and configures branding. Legacy
+   * tenants created before build-on-payment have no field (treated as done).
+   */
+  setupCompleted?: boolean;
   createdAt: string;     // ISO date string
   updatedAt: string;     // ISO date string
   // Stripe billing fields

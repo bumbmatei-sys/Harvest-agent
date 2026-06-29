@@ -20,6 +20,7 @@ import Onboarding from './components/Onboarding';
 import ChurchOnboarding from './components/ChurchOnboarding';
 import ErrorBoundary from './components/ErrorBoundary';
 import AdminDashboard from './components/AdminDashboard';
+import OnboardingGate from './components/OnboardingGate';
 import PWAInstallManager from './components/PWAInstallManager';
 import PostPurchaseWizard from './components/PostPurchaseWizard';
 import { OperationType, handleFirestoreError } from './utils/firestore-errors';
@@ -132,6 +133,10 @@ const AppInner: React.FC = () => {
 
   const signupParam = typeof window !== 'undefined'
     ? new URLSearchParams(window.location.search).get('signup') : null;
+  // Returning from Stripe Checkout (build-on-payment). The OnboardingGate handles
+  // this case, so don't let a transient host-tenant lookup block the paid user.
+  const isStripeReturn = typeof window !== 'undefined'
+    && new URLSearchParams(window.location.search).has('stripe');
   const isChurchSignup = signupParam === 'church';
   const signupPlan = signupParam && ['plus', 'pro', 'max', 'ultra'].includes(signupParam)
     ? signupParam as TenantPlan : undefined;
@@ -205,6 +210,11 @@ const AppInner: React.FC = () => {
                 navigate('/admin', { replace: true });
               }
               // else: keep the current deep-linked path
+            } else if (data.signupInProgress && !data.tenantId) {
+              // Build-on-payment: a signup is mid-flight (paid not yet confirmed,
+              // or payment abandoned). The OnboardingGate renders the right
+              // "Setting up…" / "Complete your payment" screen — don't bounce them
+              // into the generic onboarding funnel.
             } else if (isChurchSignup || signupPlan || role === 'church_admin') {
               navigate('/church-onboarding', { replace: true });
             } else {
@@ -254,7 +264,7 @@ const AppInner: React.FC = () => {
     return renderLoading();
   }
 
-  if (tenantError && tenantId && !signupParam) {
+  if (tenantError && tenantId && !signupParam && !isStripeReturn) {
     return <TenantNotFound tenantId={tenantId} message={tenantError} />;
   }
 
@@ -272,6 +282,7 @@ const AppInner: React.FC = () => {
 
   return (
     <>
+      <OnboardingGate>
       <Routes>
         <Route path="/auth" element={<AuthPage onNavigate={handleNavigate} />} />
         <Route
@@ -296,6 +307,7 @@ const AppInner: React.FC = () => {
         {/* Unknown routes fall back to user home */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      </OnboardingGate>
       <PWAInstallManager />
     </>
   );
