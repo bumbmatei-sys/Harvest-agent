@@ -157,7 +157,17 @@ const OnboardingGate: React.FC<{ children: React.ReactNode }> = ({ children }) =
   }
 
   if (status === 'first-run' && tenantId) {
-    return <FirstRunSetup tenantId={tenantId} onFinished={() => { window.location.href = '/admin'; }} />;
+    return (
+      <FirstRunSetup
+        tenantId={tenantId}
+        onFinished={(finalTenantId) => {
+          // Hand the new owner off to their own subdomain admin. (Auth is per-origin,
+          // so they'll sign in once on the subdomain — expected until we add a
+          // seamless cross-subdomain handoff.)
+          window.location.href = `https://${finalTenantId}.theharvest.app/admin`;
+        }}
+      />
+    );
   }
 
   // needs-payment: closed the Stripe tab before paying.
