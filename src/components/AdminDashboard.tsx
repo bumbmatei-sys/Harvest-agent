@@ -44,6 +44,9 @@ import { isSuperAdmin as checkIsSuperAdmin, hasPlatformOverride, getTenantScope,
 import { useAppStore } from '../store/useAppStore';
 import { useCurrentUser } from '../hooks/queries/useUserQueries';
 import { useTenant as useTenantDoc } from '../hooks/queries/useTenantQueries';
+import { useTenant } from '../contexts/TenantContext';
+
+const DEFAULT_LOGO = 'https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png';
 
 // URL slug ↔ internal tab id. Most ids map 1:1; only these two differ so the
 // URLs read nicely (/admin/ai-knowledge, /admin/roles).
@@ -81,6 +84,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
   const tenantId = currentTenantId;
   const { data: tenantData } = useTenantDoc(tenantId);
   const tenantName = tenantData?.name ?? tenantData?.config?.name ?? 'Ministry';
+  // Mirror MainApp: white-label tenants show their own logo; the platform /
+  // super-admin view keeps the default Harvest mark.
+  const { branding } = useTenant();
+  const isWhiteLabel = !!tenantId && tenantId !== PLATFORM_TENANT_ID;
+  const displayLogo = isWhiteLabel && branding?.logo ? branding.logo : DEFAULT_LOGO;
   const { data: userData, isLoading: userLoading } = useCurrentUser(auth.currentUser?.uid);
 
   const userRole = userData?.role ?? 'user';
@@ -367,8 +375,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
         key={tab.id}
         onClick={() => go(tab.id)}
         className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors text-left ${
-          isActive ? 'bg-amber-50/60' : 'hover:bg-gray-50 active:bg-gray-100'
+          isActive ? '' : 'hover:bg-gray-50 active:bg-gray-100'
         }`}
+        style={{ backgroundColor: isActive ? 'color-mix(in srgb, var(--brand-color, #d4a017) 12%, transparent)' : undefined }}
       >
         <Icon size={16} style={{ color: isActive ? 'var(--brand-color, #d4a017)' : '#6b7280' }} />
         <span
@@ -405,8 +414,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
             className={`hidden lg:flex items-center mb-6 shrink-0 text-left hover:opacity-80 transition-opacity ${isSidebarCollapsed ? 'justify-center px-0 w-full' : 'gap-3 px-4'}`}
           >
             <img
-              src="https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png"
-              alt="Admin"
+              src={displayLogo}
+              alt={isWhiteLabel ? tenantName : 'Admin'}
               className="w-10 h-10 object-contain shrink-0"
             />
             {!isSidebarCollapsed && <span className="text-xl font-bold text-gray-900 truncate">Admin</span>}
@@ -460,9 +469,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
                       ? 'lg:w-14 lg:h-14 lg:p-0'
                       : 'lg:flex-row lg:justify-start lg:gap-4 lg:w-full lg:h-14 lg:px-4'
                   } ${
-                    isActive ? 'lg:bg-[#fefce8]' : 'text-gray-400 hover:text-gray-600 lg:hover:bg-gray-50'
+                    isActive ? '' : 'text-gray-400 hover:text-gray-600 lg:hover:bg-gray-50'
                   }`}
-                  style={isActive ? { color: 'var(--brand-color, #d4a017)' } : undefined}
+                  style={isActive ? { color: 'var(--brand-color, #d4a017)', backgroundColor: 'color-mix(in srgb, var(--brand-color, #d4a017) 12%, transparent)' } : undefined}
                   title={isSidebarCollapsed ? tab.label : undefined}
                 >
                   <Icon

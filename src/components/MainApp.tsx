@@ -261,9 +261,9 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
                     ? 'lg:w-14 lg:h-14 lg:p-0 w-16 h-12' 
                     : 'lg:flex-row lg:justify-start lg:gap-4 lg:w-full lg:h-14 lg:px-4 w-16 h-12'
                 } ${
-                  isActive ? 'lg:bg-[#fefce8]' : 'text-gray-400 hover:text-gray-600 lg:hover:bg-gray-50'
+                  isActive ? '' : 'text-gray-400 hover:text-gray-600 lg:hover:bg-gray-50'
                 }`}
-                style={isActive ? { color: 'var(--brand-color, #e6b325)' } : undefined}
+                style={isActive ? { color: 'var(--brand-color, #e6b325)', backgroundColor: 'color-mix(in srgb, var(--brand-color, #e6b325) 12%, transparent)' } : undefined}
                 title={isSidebarCollapsed ? tab.label : undefined}
               >
                 <Icon 
