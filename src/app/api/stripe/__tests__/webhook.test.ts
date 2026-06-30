@@ -284,7 +284,8 @@ describe('customer.subscription.updated', () => {
       current_period_end: 1800000000,
     };
     mockConstructEvent.mockReturnValue(makeEvent('customer.subscription.updated', subscription));
-    mockDocGet.mockResolvedValue({ exists: false }); // not duplicate
+    // Dedup get → new event; tenant get → this IS the tenant's current subscription.
+    mockDocGet.mockResolvedValue({ exists: false, data: () => ({ stripeSubscriptionId: 'sub_001' }) });
     mockCollGet.mockResolvedValue({
       docs: [{ ref: {}, data: () => ({}) }],
       empty: false,
@@ -307,13 +308,32 @@ describe('customer.subscription.updated', () => {
       items: { data: [] },
     };
     mockConstructEvent.mockReturnValue(makeEvent('customer.subscription.updated', subscription));
-    mockDocGet.mockResolvedValue({ exists: false });
+    mockDocGet.mockResolvedValue({ exists: false, data: () => ({ stripeSubscriptionId: 'sub_001' }) });
 
     const res = await POST(makeRequest());
     expect(res.status).toBe(200);
     expect(mockDocUpdate).toHaveBeenCalledWith(
       expect.objectContaining({ status: 'past_due' })
     );
+  });
+
+  it('ignores an update for a stale (non-current) subscription', async () => {
+    // The old plan being cancelled during an upgrade fires an update for a sub
+    // that is no longer the tenant's current one — it must not touch tenant state.
+    const subscription = {
+      id: 'sub_old',
+      status: 'canceled',
+      metadata: { tenantId: 'tenant1', plan: 'plus' },
+      items: { data: [{ price: { id: 'price_plus_m' } }] },
+    };
+    mockConstructEvent.mockReturnValue(makeEvent('customer.subscription.updated', subscription));
+    // Tenant's current sub is sub_new, not the sub_old this event is for.
+    mockDocGet.mockResolvedValue({ exists: false, data: () => ({ stripeSubscriptionId: 'sub_new' }) });
+
+    const res = await POST(makeRequest());
+    expect(res.status).toBe(200);
+    expect(mockDocUpdate).not.toHaveBeenCalled();
+    expect(mockBatchCommit).not.toHaveBeenCalled();
   });
 });
 
@@ -326,13 +346,29 @@ describe('customer.subscription.deleted', () => {
       metadata: { tenantId: 'tenant1' },
     };
     mockConstructEvent.mockReturnValue(makeEvent('customer.subscription.deleted', subscription));
-    mockDocGet.mockResolvedValue({ exists: false });
+    // The cancelled sub IS the tenant's current one → the downgrade should apply.
+    mockDocGet.mockResolvedValue({ exists: false, data: () => ({ stripeSubscriptionId: 'sub_001' }) });
 
     const res = await POST(makeRequest());
     expect(res.status).toBe(200);
     expect(mockDocUpdate).toHaveBeenCalledWith(
       expect.objectContaining({ plan: 'plus', status: 'cancelled', stripeSubscriptionId: null })
     );
+  });
+
+  it('ignores deletion of a stale (non-current) subscription', async () => {
+    // During an upgrade the OLD sub is deliberately cancelled after the tenant has
+    // already moved to the NEW sub. That stale deletion must NOT downgrade them.
+    const subscription = {
+      id: 'sub_old',
+      metadata: { tenantId: 'tenant1' },
+    };
+    mockConstructEvent.mockReturnValue(makeEvent('customer.subscription.deleted', subscription));
+    mockDocGet.mockResolvedValue({ exists: false, data: () => ({ stripeSubscriptionId: 'sub_new' }) });
+
+    const res = await POST(makeRequest());
+    expect(res.status).toBe(200);
+    expect(mockDocUpdate).not.toHaveBeenCalled();
   });
 
   it('revokes AI assistant bindings when add-on is cancelled', async () => {
