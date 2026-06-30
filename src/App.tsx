@@ -142,16 +142,6 @@ const AppInner: React.FC = () => {
     ? signupParam as TenantPlan : undefined;
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const hostname = window.location.hostname;
-    const isMainSite = hostname === 'theharvest.app' || hostname === 'www.theharvest.app';
-    if (isMainSite && signupParam && !isAdminDomain) {
-      const url = new URL(window.location.href);
-      window.location.href = `https://nations.theharvest.app${url.pathname}${url.search}`;
-    }
-  }, [signupParam, isAdminDomain]);
-
-  useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         try {
