@@ -443,6 +443,14 @@ export async function POST(request: NextRequest) {
         const tenantId = subscription.metadata?.tenantId;
 
         if (tenantId) {
+          // Ignore updates for a stale subscription (e.g. the old plan being cancelled
+          // during an upgrade) — only the tenant's current subscription drives state.
+          const updTenantSnap = await adminDb.collection('tenants').doc(tenantId).get();
+          const updCurrentSubId = updTenantSnap.data()?.stripeSubscriptionId;
+          if (updCurrentSubId && updCurrentSubId !== subscription.id) {
+            console.log(`↩︎ Ignoring stale subscription update ${subscription.id} for tenant ${tenantId} (current ${updCurrentSubId})`);
+            break;
+          }
           const updateData: Record<string, unknown> = {
             stripeSubscriptionId: subscription.id,
             updatedAt: new Date().toISOString(),
@@ -548,6 +556,15 @@ export async function POST(request: NextRequest) {
         }
 
         if (tenantId) {
+          // Only the tenant's CURRENT subscription ending should downgrade them.
+          // During an upgrade we deliberately cancel the OLD subscription after moving
+          // the tenant to the new one — that stale cancellation must NOT reset the plan.
+          const delTenantSnap = await adminDb.collection('tenants').doc(tenantId).get();
+          const delCurrentSubId = delTenantSnap.data()?.stripeSubscriptionId;
+          if (delCurrentSubId && delCurrentSubId !== subscription.id) {
+            console.log(`↩︎ Ignoring stale subscription deletion ${subscription.id} for tenant ${tenantId} (current ${delCurrentSubId})`);
+            break;
+          }
           await adminDb.collection('tenants').doc(tenantId).update({
             plan: 'plus',
             status: 'cancelled',
