@@ -131,8 +131,23 @@ const AppInner: React.FC = () => {
     }
   }, [ctxTenantPlan, setTenantPlan]);
 
-  const signupParam = typeof window !== 'undefined'
+  // Capture the signup intent (?signup=<plan|church>) into sessionStorage the moment it
+  // appears, so it survives the redirect to /auth (which drops the query string) and stays
+  // stable across re-renders. Without this, a new church admin lands on the generic member
+  // onboarding after authenticating instead of the build-on-payment church onboarding.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const p = new URLSearchParams(window.location.search).get('signup');
+    if (p) { try { sessionStorage.setItem('harvest_signup', p); } catch {} }
+  }, []);
+
+  const urlSignup = typeof window !== 'undefined'
     ? new URLSearchParams(window.location.search).get('signup') : null;
+  const storedSignup = typeof window !== 'undefined'
+    ? (() => { try { return sessionStorage.getItem('harvest_signup'); } catch { return null; } })()
+    : null;
+  const signupParam = urlSignup || storedSignup;
+
   // Returning from Stripe Checkout (build-on-payment). The OnboardingGate handles
   // this case, so don't let a transient host-tenant lookup block the paid user.
   const isStripeReturn = typeof window !== 'undefined'
@@ -159,6 +174,8 @@ const AppInner: React.FC = () => {
             const onboardingDone = data.onboardingCompleted;
 
             if (onboardingDone) {
+              // Signup funnel finished — clear any stored signup intent.
+              try { sessionStorage.removeItem('harvest_signup'); } catch {}
               // Plan source of truth:
               //  - On a tenant subdomain, the TENANT's plan (tenant doc, via
               //    TenantContext) is authoritative — applied by the effect above.
