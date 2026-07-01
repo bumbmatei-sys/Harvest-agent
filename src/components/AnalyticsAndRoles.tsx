@@ -1089,7 +1089,9 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
 
               {admins.map((admin) => {
                 const isSuperAdmin = admin.role === "super_admin";
-                const isOwner = !!tenantOwnerId && admin.id === tenantOwnerId;
+                // Platform super admins are the one party the owner-protection rule
+                // still lets edit the owner, so they keep the Edit/Remove buttons.
+                const isOwner = !!tenantOwnerId && admin.id === tenantOwnerId && currentUserRole !== "super_admin";
                 const perms = admin.permissions;
                 const activePerms = isSuperAdmin || perms.fullAccess
                   ? ["Full Access"]
