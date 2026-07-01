@@ -360,6 +360,15 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
   const [showRemoveConfirm, setShowRemoveConfirm] = useState<string | null>(null);
   const [userToDelete, setUserToDelete] = useState<string | null>(null);
 
+  // Follow the `mode` prop. AdminCRM renders this component with mode="analytics"
+  // and mode="roles" for its two sub-tabs; switching between them reuses the same
+  // instance (only the prop changes), so the internal `tab` view must be re-synced
+  // to the prop or it goes stale and the shown view stops matching the sub-tab.
+  useEffect(() => {
+    if (mode === "roles") setTab("roles");
+    else if (mode === "analytics") setTab("analytics");
+  }, [mode]);
+
   useEffect(() => {
     setListSearchQuery("");
   }, [subView]);
