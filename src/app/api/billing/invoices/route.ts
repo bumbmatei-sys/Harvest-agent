@@ -57,6 +57,8 @@ export async function GET(request: NextRequest) {
     if (subscriptionId) {
       try {
         const sub = await stripe.subscriptions.retrieve(subscriptionId);
+        // In the current Stripe API version (dahlia) current_period_end lives on
+        // the subscription item, not the top-level subscription.
         const item = sub.items?.data?.[0];
         const nextAmount = item?.price?.unit_amount != null
           ? item.price.unit_amount * (item.quantity || 1)
@@ -64,7 +66,7 @@ export async function GET(request: NextRequest) {
         subscription = {
           plan: tenantData.plan ?? null,
           status: tenantData.status ?? sub.status ?? null,
-          currentPeriodEnd: sub.current_period_end ?? null,
+          currentPeriodEnd: item?.current_period_end ?? null,
           nextAmount,
           currency: item?.price?.currency || 'usd',
           cancelAtPeriodEnd: !!sub.cancel_at_period_end,

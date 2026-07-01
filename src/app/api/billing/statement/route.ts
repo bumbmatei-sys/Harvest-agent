@@ -175,8 +175,10 @@ export async function POST(request: NextRequest) {
       if (subscriptionId) {
         try {
           const sub = await stripe.subscriptions.retrieve(subscriptionId);
+          // In the current Stripe API version (dahlia) current_period_end lives on
+          // the subscription item, not the top-level subscription.
           const item = sub.items?.data?.[0];
-          if (sub.current_period_end) nextBillingDate = new Date(sub.current_period_end * 1000);
+          if (item?.current_period_end) nextBillingDate = new Date(item.current_period_end * 1000);
           if (item?.price?.unit_amount != null) nextAmount = item.price.unit_amount * (item.quantity || 1);
           if (item?.price?.currency) currency = item.price.currency;
         } catch (subErr) {
