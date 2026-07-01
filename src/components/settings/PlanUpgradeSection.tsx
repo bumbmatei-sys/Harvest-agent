@@ -18,6 +18,11 @@ interface PlanUpgradeSectionProps {
   currentPlan?: TenantPlan;
   tenantId?: string;
   email?: string;
+  /**
+   * Hide the plan cards + comparison table (there's nothing to upgrade to on the
+   * top tier). The "Manage Subscription" / cancel action stays available.
+   */
+  hideUpgrade?: boolean;
 }
 
 // Plan tiers in ascending order — used to determine upgrade vs downgrade.
@@ -70,7 +75,7 @@ const FEATURE_COMPARISON: { key: keyof PlanFeatures; label: string; format?: (v:
 // Community + Ministry. Add entries here to re-enable the table's Coming Soon row.
 const SOON_FEATURES: { label: string; plans: TenantPlan[] }[] = [];
 
-const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, tenantId, email }) => {
+const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, tenantId, email, hideUpgrade }) => {
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly');
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);
@@ -155,6 +160,8 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
 
   return (
     <div className="space-y-6">
+      {!hideUpgrade ? (
+      <>
       <h2 className="text-2xl font-bold text-gray-900">Upgrade Your Plan</h2>
       <p className="text-gray-500">Choose the plan that best fits your ministry&apos;s needs.</p>
 
@@ -382,6 +389,13 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
           * AI Assistant: ${AI_ASSISTANT_ADDON_PRICING.setupFeeUsd} one-time setup + ${AI_ASSISTANT_ADDON_PRICING.monthlyUsd}/mo on all plans. Included at no extra cost on Ministry.
         </p>
       </div>
+      </>
+      ) : (
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-900">Billing</h2>
+          <p className="text-gray-500 mt-1">You&apos;re on the Ministry plan — the highest tier. Manage or cancel your subscription below.</p>
+        </div>
+      )}
 
       {/* Billing & Payments */}
       <div className="flex flex-col items-center gap-3 pt-2">

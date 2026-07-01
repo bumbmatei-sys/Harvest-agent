@@ -11,6 +11,7 @@ import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { useTenantOptional } from '../contexts/TenantContext';
 import { authFetch } from '../utils/auth-fetch';
 import { openStatementPdf } from '../utils/open-statement-pdf';
+import AdminGivingStatements from './AdminGivingStatements';
 
 interface Invoice {
   id: string;
@@ -74,6 +75,15 @@ const AdminAccounting: React.FC = () => {
   const ctx = useTenantOptional();
   const isTaxReceiptsEnabled = ctx?.planFeatures?.taxReceipt ?? true;
   const isQbEnabled = ctx?.planFeatures?.accountingTools ?? true;
+
+  // Statements is now nested here as a sub-tab. Each keeps its own feature gate:
+  // Accounting behind accountingTools, Statements behind givingStatements. If a
+  // tenant has only one feature, only that tab is shown (and forced active).
+  const accountingEnabled = ctx?.planFeatures?.accountingTools ?? true;
+  const statementsEnabled = ctx?.planFeatures?.givingStatements ?? true;
+  const [subTab, setSubTab] = useState<'accounting' | 'statements'>('accounting');
+  const showBothSubTabs = accountingEnabled && statementsEnabled;
+  const activeSubTab = !accountingEnabled ? 'statements' : !statementsEnabled ? 'accounting' : subTab;
 
   const [tenantId, setTenantId] = useState<string | null>(null);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -340,12 +350,50 @@ const AdminAccounting: React.FC = () => {
     return matchType && matchYear && matchSearch;
   });
 
+  // Native pill segmented control (matches the CRM Contacts/Analytics toggle).
+  const subTabBar = showBothSubTabs ? (
+    <div className="flex gap-1 bg-gray-100 rounded-xl p-1 mb-5 w-fit">
+      <button
+        onClick={() => setSubTab('accounting')}
+        className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+          activeSubTab === 'accounting' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-400'
+        }`}
+      >
+        Accounting
+      </button>
+      <button
+        onClick={() => setSubTab('statements')}
+        className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+          activeSubTab === 'statements' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-400'
+        }`}
+      >
+        Statements
+      </button>
+    </div>
+  ) : null;
+
+  // Statements sub-tab — the standalone giving-statements screen.
+  if (activeSubTab === 'statements') {
+    return (
+      <div className="max-w-4xl mx-auto">
+        {subTabBar}
+        <AdminGivingStatements />
+      </div>
+    );
+  }
+
   if (loading) {
-    return <div className="flex items-center justify-center h-40"><div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--brand-color, #d4a017)', borderTopColor: 'transparent' }} /></div>;
+    return (
+      <div className="max-w-4xl mx-auto">
+        {subTabBar}
+        <div className="flex items-center justify-center h-40"><div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--brand-color, #d4a017)', borderTopColor: 'transparent' }} /></div>
+      </div>
+    );
   }
 
   return (
     <div className="max-w-4xl mx-auto">
+      {subTabBar}
       {/* Summary Cards */}
       <div className="grid grid-cols-3 gap-3 mb-6">
         <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">

@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { LayoutDashboard, Church, FileText, Rss, BrainCircuit, Inbox, GraduationCap, ChevronLeft, ChevronRight, Building2, Settings, MoreHorizontal, Mail, Heart, Users, MessageSquare, Receipt, CalendarCheck, LogOut, ClipboardList, QrCode, Radio, ExternalLink, Link2, Crown, Palette } from 'lucide-react';
+import { LayoutDashboard, Church, FileText, Rss, BrainCircuit, Inbox, GraduationCap, ChevronLeft, ChevronRight, Building2, Settings, MoreHorizontal, Mail, Heart, Users, MessageSquare, Receipt, CalendarCheck, LogOut, ClipboardList, QrCode, Radio, ExternalLink, Link2, Crown, Palette, X } from 'lucide-react';
 import AdminBlog from './AdminBlog';
 import AdminPosts from './AdminPosts';
 import PlatformInbox from './PlatformInbox';
@@ -26,14 +26,15 @@ import AdminCRM from './AdminCRM';
 import AdminDocs from './AdminDocs';
 import AdminCommunity from './AdminCommunity';
 import AdminAccounting from './AdminAccounting';
-import AdminGivingStatements from './AdminGivingStatements';
 import AdminForms from './AdminForms';
 import AdminCheckin from './AdminCheckin';
-import AdminQR from './AdminQR';
 import AdminLivestream from './AdminLivestream';
 import AdminSms from './AdminSms';
 import AdminEvents from './AdminEvents';
 import PlanUpgradeScreen from './PlanUpgradeScreen';
+import Profile from './Profile';
+import MyAccountMenu from './MyAccountMenu';
+import BillingAndPayments from './BillingAndPayments';
 import { AdminScreenHeader, AdminHeaderContext, AdminHeaderOverride } from './AdminScreenHeader';
 import { getPlanFeatures } from '../utils/plan-features';
 import { db, auth } from '../firebase';
@@ -61,9 +62,11 @@ const MORE_GROUPS: { label: string; ids: string[] }[] = [
   // Dashboard home (Members card / "View Members") — both are valid entry points.
   // Analytics & Admin Roles live inside the CRM screen as internal tabs, not as
   // their own drawer entries.
-  { label: 'MINISTRY', ids: ['crm', 'churches', 'community', 'fundraising', 'forms', 'accounting', 'giving-statements'] },
+  // Statements now live as a sub-tab inside Accounting (not a standalone entry).
+  { label: 'MINISTRY', ids: ['crm', 'churches', 'community', 'fundraising', 'forms', 'accounting'] },
   // Broadcasting: outbound / live engagement channels.
-  { label: 'BROADCASTING', ids: ['events', 'checkin', 'qr', 'sms', 'livestream'] },
+  // QR Codes now live as a sub-tab inside Check-In (not a standalone entry).
+  { label: 'BROADCASTING', ids: ['events', 'checkin', 'sms', 'livestream'] },
   // Platform: super-admin-only surfaces (Tenants + the platform Inbox).
   { label: 'PLATFORM', ids: ['tenants', 'inbox'] },
   { label: 'MORE', ids: ['affiliate', 'branding'] },
@@ -98,6 +101,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [pendingChurchesCount, setPendingChurchesCount] = useState(0);
   const [showMoreSheet, setShowMoreSheet] = useState(false);
+  // My Account menu → My Profile / Billing & Payments overlays.
+  const [showProfile, setShowProfile] = useState(false);
+  const [showBilling, setShowBilling] = useState(false);
   const [canvasId, setCanvasId] = useState<string | null>(null);
   const [canvasName, setCanvasName] = useState<string>('');
   const [newsletterView, setNewsletterView] = useState<'list' | 'editor'>('list');
@@ -220,6 +226,21 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
   const hasFullAccess = isSuperAdmin || isChurchAdmin || perms.fullAccess;
   const isLoading = !isAuthReady || userLoading;
 
+  // My Account menu (top-right avatar). Owner identity gates Billing & Payments —
+  // ownerId is the buyer uid set by the Stripe webhook at tenant creation.
+  const currentUid = auth.currentUser?.uid;
+  const isOwner = !!currentUid && !!tenantData?.ownerId && currentUid === tenantData.ownerId;
+  const accountMenuProps = {
+    photoURL: userData?.photoURL ?? null,
+    displayName: userData?.displayName ?? null,
+    email: userData?.email ?? auth.currentUser?.email ?? null,
+    isOwner,
+    onOpenProfile: () => setShowProfile(true),
+    // Billing item is shown only to the owner (MyAccountMenu also guards on isOwner).
+    onOpenBilling: isOwner ? () => setShowBilling(true) : undefined,
+    onLogout: handleLogout,
+  };
+
   // Branding tab/page entitlement — keyed off the branding-family feature flags
   // (matches the old Settings branding gate). Used both in allTabs and the render
   // guard so direct navigation to /admin/branding is gated like every other tab.
@@ -261,24 +282,20 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
     (platformOverride || !isTenantAdmin || (features && features.crm)) &&
       hasFullAccess &&
       { id: 'crm', label: 'CRM', icon: Users },
-    // Accounting (Crater)
-    (platformOverride || !isTenantAdmin || (features && features.accountingTools)) &&
+    // Accounting (Crater) — Statements is now a sub-tab inside this screen, so the
+    // entry is shown when EITHER the accounting or giving-statements feature is on.
+    (platformOverride || !isTenantAdmin || (features && (features.accountingTools || features.givingStatements))) &&
       hasFullAccess &&
       { id: 'accounting', label: 'Accounting', icon: Receipt },
-    // Annual giving statements (year-end tax summaries)
-    (platformOverride || !isTenantAdmin || (features && features.givingStatements)) &&
-      hasFullAccess &&
-      { id: 'giving-statements', label: 'Statements', icon: Receipt },
     // Custom Forms → CRM pipeline
     (platformOverride || !isTenantAdmin || (features && features.customForms)) &&
       hasFullAccess &&
       { id: 'forms', label: 'Forms', icon: ClipboardList },
-    // Check-In System (QR attendance)
-    (platformOverride || !isTenantAdmin || (features && features.checkInSystem)) &&
-      hasFullAccess &&
-      { id: 'checkin', label: 'Check-In', icon: QrCode },
-    // QR Code generator — available on all plans
-    (hasFullAccess || !isTenantAdmin) && { id: 'qr', label: 'QR Codes', icon: QrCode },
+    // Check-In System (QR attendance) — the QR Code generator is now a sub-tab
+    // inside this screen. QR is available on all plans, so the entry shows for
+    // every full-access admin; the Check-In sub-tab itself stays gated to plans
+    // with checkInSystem inside AdminCheckin.
+    (hasFullAccess || !isTenantAdmin) && { id: 'checkin', label: 'Check-In', icon: QrCode },
     // Livestream (YouTube + live giving)
     (platformOverride || !isTenantAdmin || (features && features.livestream)) &&
       hasFullAccess &&
@@ -531,6 +548,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
               )}
             </button>
           )}
+          {/* My Account menu (desktop) — avatar → Profile / Billing / Log out */}
+          <MyAccountMenu {...accountMenuProps} />
         </div>
 
         {/* Unified screen header — back + title + screen action. No back on Dashboard.
@@ -540,6 +559,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
           titleIcon={headerOverride?.titleIcon}
           onBack={headerOverride ? headerOverride.onBack : (activeTab === 'dashboard' ? undefined : smartBack)}
           action={headerOverride ? headerOverride.action : headerAction}
+          rightAccessory={<div className="lg:hidden"><MyAccountMenu {...accountMenuProps} /></div>}
         />
 
         {/* Main Content Area */}
@@ -607,23 +627,17 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
               ? <div className="p-4 lg:p-0"><AdminCRM currentUserRole={isSuperAdmin ? 'super_admin' : userRole} currentUserPermissions={isChurchAdmin ? { fullAccess: true } as any : userPermissions} initialContactId={itemId} onItemConsumed={clearItemId} /></div>
               : <PlanUpgradeScreen featureName="CRM" featureKey="crm" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
           ) : activeTab === 'accounting' ? (
-            (platformOverride || !isTenantAdmin || (features && features.accountingTools))
+            (platformOverride || !isTenantAdmin || (features && (features.accountingTools || features.givingStatements)))
               ? <div className="p-4 lg:p-0"><AdminAccounting /></div>
               : <PlanUpgradeScreen featureName="Accounting" featureKey="accounting" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
-          ) : activeTab === 'giving-statements' ? (
-            (platformOverride || !isTenantAdmin || (features && features.givingStatements))
-              ? <div className="p-4 lg:p-0"><AdminGivingStatements /></div>
-              : <PlanUpgradeScreen featureName="Giving Statements" featureKey="givingStatements" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
           ) : activeTab === 'forms' ? (
             (platformOverride || !isTenantAdmin || (features && features.customForms))
               ? <div className="p-4 lg:p-0"><AdminForms /></div>
               : <PlanUpgradeScreen featureName="Forms" featureKey="customForms" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
           ) : activeTab === 'checkin' ? (
-            (platformOverride || !isTenantAdmin || (features && features.checkInSystem))
-              ? <div className="p-4 lg:p-0"><AdminCheckin /></div>
-              : <PlanUpgradeScreen featureName="Check-In" featureKey="checkInSystem" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
-          ) : activeTab === 'qr' ? (
-            <div className="p-4 lg:p-0"><AdminQR /></div>
+            // QR is available on all plans; AdminCheckin renders only the QR sub-tab
+            // when the tenant lacks checkInSystem, so it's always safe to mount here.
+            <div className="p-4 lg:p-0"><AdminCheckin /></div>
           ) : activeTab === 'livestream' ? (
             (platformOverride || !isTenantAdmin || (features && features.livestream))
               ? <div className="p-4 lg:p-0"><AdminLivestream /></div>
@@ -816,6 +830,56 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
             onBack={() => { setCanvasId(null); setCanvasName(''); }}
           />
         </FocusScreen>
+      )}
+
+      {/* My Profile — the user-app Profile screen shown as an admin overlay so the
+          admin never navigates away. A slim top bar provides the close affordance;
+          Profile's own sub-modals (fixed inset-0) cover it while open. */}
+      {showProfile && (
+        <div className="fixed inset-0 z-[200] bg-[#f8f9fa] flex flex-col">
+          <div className="flex items-center gap-1 h-12 px-3 bg-white border-b border-gray-100 shrink-0">
+            <button
+              onClick={() => setShowProfile(false)}
+              aria-label="Close profile"
+              className="p-1.5 -ml-1 text-gray-600 hover:text-gray-900 transition-colors"
+            >
+              <X size={22} />
+            </button>
+            <span className="text-sm font-bold text-gray-900">My Profile</span>
+          </div>
+          <div className="flex-1 overflow-y-auto">
+            <Profile
+              onNavigate={(page) => { setShowProfile(false); if (page !== 'admin') onNavigate(page); }}
+              onGoToPartner={() => { setShowProfile(false); onNavigate('home'); }}
+              onGoToMap={() => { setShowProfile(false); onNavigate('home'); }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Billing & Payments — owner-only overlay (the item is hidden for non-owners
+          and the /api/billing/* routes enforce the same owner gate server-side). */}
+      {showBilling && isOwner && (
+        <div className="fixed inset-0 z-[200] bg-[#f8f9fa] flex flex-col">
+          <div className="flex items-center gap-1 h-12 px-3 bg-white border-b border-gray-100 shrink-0">
+            <button
+              onClick={() => setShowBilling(false)}
+              aria-label="Close billing"
+              className="p-1.5 -ml-1 text-gray-600 hover:text-gray-900 transition-colors"
+            >
+              <X size={22} />
+            </button>
+            <span className="text-sm font-bold text-gray-900">Billing &amp; Payments</span>
+          </div>
+          <div className="flex-1 overflow-y-auto p-4 lg:p-6">
+            <BillingAndPayments
+              currentPlan={tenantPlan ?? undefined}
+              tenantId={tenantId ?? undefined}
+              email={auth.currentUser?.email ?? undefined}
+              tenantName={tenantName}
+            />
+          </div>
+        </div>
       )}
     </div>
     </AdminHeaderContext.Provider>
