@@ -28,19 +28,10 @@ interface EventDetails {
  attendeeDetails?: { uid: string; name: string; email: string }[];
 }
 
-export interface Permission {
-  analytics: boolean;
-  analyticsLocations: string[];
-  writeArticles: boolean;
-  createPosts: boolean;
-  postRegions: string[];
-  uploadRag: boolean;
-  modifyChurches: boolean;
-  seeFormsInbox: boolean;
-  createCourses: boolean;
-  manageAdmins: boolean;
-  fullAccess: boolean;
-}
+// Single source of truth for the permission model lives in AnalyticsAndRoles.
+// Imported for local use and re-exported so existing importers keep working.
+import type { Permission } from './AnalyticsAndRoles';
+export type { Permission };
 
 interface CommunityPost {
  id: string;

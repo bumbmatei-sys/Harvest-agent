@@ -5,12 +5,23 @@ import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { notifyError } from '../utils/notify';
 import { getTenantScope, SUPER_ADMIN_EMAIL } from '../utils/tenant-scope';
 import { useAdminHeader, HeaderActionButton } from './AdminScreenHeader';
+import {
+  FileText, Rss, GraduationCap, BrainCircuit, Mail, StickyNote,
+  Church, Users, MessageCircle, ClipboardList, Heart, Receipt, FileSpreadsheet,
+  CalendarCheck, ClipboardCheck, QrCode, Radio, MessageSquare,
+  BarChart3, Shield, Palette, Link2, Plug, Crown,
+  Search, X, ChevronDown, type LucideIcon,
+} from "lucide-react";
 
 
 
 const GOLD = "var(--brand-color, #C9963A)";
 const GOLD_LIGHT = "#FBF3E4";
 const GOLD_BTN = "linear-gradient(135deg, #C9963A, #D4A843)";
+// Brand-adaptive accents for the redesigned Add/Edit Admin sheet (white-label:
+// every accent derives from the tenant's --brand-color).
+const GOLD_SOFT = "color-mix(in srgb, var(--brand-color, #C9963A) 12%, white)";
+const GOLD_GLOW = "0 4px 14px color-mix(in srgb, var(--brand-color, #C9963A) 35%, transparent)";
 const BG = "#F2F4F7";
 const CARD = "#FFFFFF";
 const TEXT = "#111111";
@@ -50,11 +61,31 @@ export interface Permission {
   postRegions: string[];
   uploadRag: boolean;
   modifyChurches: boolean;
-  seeFormsInbox: boolean;
+  manageForms: boolean;
   createCourses: boolean;
   manageAdmins: boolean;
+  // Expanded catalog (2024 roles redesign) — one flag per manageable section.
+  manageNewsletter: boolean;
+  manageDocs: boolean;
+  manageCRM: boolean;
+  manageCommunity: boolean;
+  manageFundraising: boolean;
+  manageAccounting: boolean;
+  manageGivingStatements: boolean;
+  manageEvents: boolean;
+  manageCheckin: boolean;
+  manageQR: boolean;
+  manageLivestream: boolean;
+  manageSms: boolean;
+  manageBranding: boolean;
+  manageAffiliate: boolean;
+  manageSettings: boolean;
   fullAccess: boolean;
 }
+
+// Every catalog key is a boolean flag on Permission (the two array fields and the
+// fullAccess master toggle are handled separately).
+export type PermissionKey = Exclude<keyof Permission, "analyticsLocations" | "postRegions" | "fullAccess">;
 
 export interface AdminUser {
   id: string;
@@ -65,11 +96,91 @@ export interface AdminUser {
   permissions: Permission;
 }
 
-const emptyPermission = (): Permission => ({
-  analytics: false, analyticsLocations: [], writeArticles: false,
-  createPosts: false, postRegions: [], uploadRag: false,
-  modifyChurches: false, seeFormsInbox: false, createCourses: false, manageAdmins: false, fullAccess: false,
-});
+/* ------------------------------------------------------------------ */
+/*  Permission catalog — the single source of truth the Add/Edit form, */
+/*  the admin-card badges, and the reference list all read from. Keep   */
+/*  every drawer gate in AdminDashboard in sync with these keys.        */
+/* ------------------------------------------------------------------ */
+interface PermissionItem { key: PermissionKey; label: string; desc: string; icon: LucideIcon; }
+interface PermissionCategory { id: string; label: string; items: PermissionItem[]; }
+
+export const PERMISSION_CATEGORIES: PermissionCategory[] = [
+  {
+    id: "content", label: "Content", items: [
+      { key: "writeArticles", label: "Blog", desc: "Write, edit and publish blog articles", icon: FileText },
+      { key: "createPosts", label: "Posts", desc: "Post updates, polls and events to the community feed", icon: Rss },
+      { key: "createCourses", label: "Courses", desc: "Build and edit discipleship courses", icon: GraduationCap },
+      { key: "uploadRag", label: "AI Knowledge", desc: "Add sources the AI chat can draw answers from", icon: BrainCircuit },
+      { key: "manageNewsletter", label: "Newsletter", desc: "Write and send newsletter campaigns", icon: Mail },
+      { key: "manageDocs", label: "Docs", desc: "Create and share internal notes and documents", icon: StickyNote },
+    ],
+  },
+  {
+    id: "ministry", label: "Ministry", items: [
+      { key: "modifyChurches", label: "Church Directory", desc: "Approve, edit and remove church map listings", icon: Church },
+      { key: "manageCRM", label: "CRM & Contacts", desc: "Manage the donor and member pipeline", icon: Users },
+      { key: "manageCommunity", label: "Community Groups", desc: "Moderate community chat channels", icon: MessageCircle },
+      { key: "manageForms", label: "Forms", desc: "Build forms and work submissions into the pipeline", icon: ClipboardList },
+      { key: "manageFundraising", label: "Fundraising", desc: "Run campaigns and track pledges", icon: Heart },
+      { key: "manageAccounting", label: "Accounting", desc: "Manage invoices and giving receipts", icon: Receipt },
+      { key: "manageGivingStatements", label: "Giving Statements", desc: "Generate and send year-end tax statements", icon: FileSpreadsheet },
+    ],
+  },
+  {
+    id: "broadcasting", label: "Broadcasting", items: [
+      { key: "manageEvents", label: "Events", desc: "Create events and manage registration, tickets and waitlists", icon: CalendarCheck },
+      { key: "manageCheckin", label: "Check-In", desc: "Run attendance check-in sessions", icon: ClipboardCheck },
+      { key: "manageQR", label: "QR Codes", desc: "Generate QR codes for giving, events, forms and check-in", icon: QrCode },
+      { key: "manageLivestream", label: "Livestream", desc: "Go live and moderate live prayer requests", icon: Radio },
+      { key: "manageSms", label: "SMS Broadcasts", desc: "Send SMS broadcasts and set up Text-to-Give", icon: MessageSquare },
+    ],
+  },
+  {
+    id: "admin", label: "Administration", items: [
+      { key: "analytics", label: "Analytics", desc: "View registration analytics", icon: BarChart3 },
+      { key: "manageAdmins", label: "Manage Admins", desc: "Create admins and edit their permissions", icon: Shield },
+      { key: "manageBranding", label: "Branding", desc: "Change logo, colors, background and domain", icon: Palette },
+      { key: "manageAffiliate", label: "Affiliate Program", desc: "View commission rates and referral payouts", icon: Link2 },
+      { key: "manageSettings", label: "Settings & Integrations", desc: "Configure SMS, AI Assistant and third-party integrations", icon: Plug },
+    ],
+  },
+];
+
+export const ALL_PERMISSION_DEFS: PermissionItem[] = PERMISSION_CATEGORIES.flatMap((c) => c.items);
+
+// Build a Permission with every catalog flag set to `value` (and fullAccess set
+// explicitly). Built as a plain record and cast once, so adding a catalog key
+// never means editing a hand-written literal here.
+const buildPermission = (value: boolean, fullAccess: boolean): Permission => {
+  const p: Record<string, unknown> = { analyticsLocations: [], postRegions: [], fullAccess };
+  ALL_PERMISSION_DEFS.forEach((d) => { p[d.key] = value; });
+  return p as unknown as Permission;
+};
+
+const emptyPermission = (): Permission => buildPermission(false, false);
+// "Grant everything" preset for the Full Access toggle — every catalog flag on.
+const allPermissionsTrue = (): Permission => buildPermission(true, true);
+
+// Normalise stored permissions on read so old admin docs keep working:
+//  - legacy `seeFormsInbox: true` counts as `manageForms: true` (Forms migration)
+//  - any missing new flags default to false, arrays default to []
+// Defensive against undefined / non-object values (old or partial docs).
+export const normalizePermissions = (raw: unknown): Permission => {
+  const out: Record<string, unknown> = { analyticsLocations: [], postRegions: [], fullAccess: false };
+  ALL_PERMISSION_DEFS.forEach((d) => { out[d.key] = false; });
+  if (raw && typeof raw === "object") {
+    const src = raw as Record<string, unknown>;
+    ALL_PERMISSION_DEFS.forEach((d) => {
+      if (typeof src[d.key] === "boolean") out[d.key] = src[d.key];
+    });
+    if (typeof src.fullAccess === "boolean") out.fullAccess = src.fullAccess;
+    // Legacy Forms permission → manageForms (don't downgrade an already-set flag).
+    if (src.seeFormsInbox === true) out.manageForms = true;
+    if (Array.isArray(src.analyticsLocations)) out.analyticsLocations = src.analyticsLocations;
+    if (Array.isArray(src.postRegions)) out.postRegions = src.postRegions;
+  }
+  return out as unknown as Permission;
+};
 
 const filterByPeriod = (users: UserRecord[], days: TimePeriod): UserRecord[] => {
   const cutoff = new Date();
@@ -180,6 +291,14 @@ function StatCard({ label, value, sub, color = GOLD, icon, onClick }: StatCardPr
   );
 }
 
+function Toggle({ on, color }: { on: boolean; color: string }) {
+  return (
+    <div style={{ width: 42, height: 24, borderRadius: 99, background: on ? color : BORDER, position: "relative", flexShrink: 0, transition: "background 0.2s" }}>
+      <div style={{ position: "absolute", top: 3, left: on ? 21 : 3, width: 18, height: 18, borderRadius: "50%", background: "#fff", boxShadow: "0 1px 4px rgba(0,0,0,0.25)", transition: "left 0.2s" }} />
+    </div>
+  );
+}
+
 interface PermissionEditorProps {
   admin: AdminUser | null;
   isNew: boolean;
@@ -197,6 +316,8 @@ function PermissionEditor({ admin, isNew, onSave, onClose, allUsers }: Permissio
   );
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<UserRecord[]>([]);
+  const [permSearch, setPermSearch] = useState("");
+  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (isNew && searchQuery.trim().length > 1) {
@@ -223,53 +344,61 @@ function PermissionEditor({ admin, isNew, onSave, onClose, allUsers }: Permissio
   const setPerm = <K extends keyof Permission>(k: K, v: Permission[K]): void =>
     setForm((f) => ({ ...f, permissions: { ...f.permissions, [k]: v } }));
 
-  const toggleFullAccess = (val: boolean): void => {
-    if (val) {
-      setForm((f) => ({
-        ...f, permissions: {
-          analytics: true, analyticsLocations: [], writeArticles: true,
-          createPosts: true, postRegions: [], uploadRag: true,
-          modifyChurches: true, seeFormsInbox: true, createCourses: true, manageAdmins: true, fullAccess: true,
-        }
-      }));
-    } else {
-      setForm((f) => ({ ...f, permissions: { ...f.permissions, fullAccess: false } }));
-    }
-  };
+  // Full Access is the master toggle: on → grant the whole catalog; off → just
+  // clear fullAccess and keep whatever individual flags were set.
+  const toggleFullAccess = (val: boolean): void =>
+    setForm((f) => ({ ...f, permissions: val ? allPermissionsTrue() : { ...f.permissions, fullAccess: false } }));
 
-  const PERMISSION_ROWS: { key: keyof Permission; label: string; desc: string; icon: string; superOnly?: boolean }[] = [
-    { key: "writeArticles", label: "Write Articles", desc: "Create, edit and publish blog articles", icon: "✍️" },
-    { key: "createPosts", label: "Create Posts", desc: "Create posts, polls and events in the feed", icon: "📣" },
-    { key: "createCourses", label: "Create Courses", desc: "Create and edit learning courses", icon: "🎓" },
-    { key: "uploadRag", label: "Upload to AI", desc: "Add knowledge to the AI RAG database", icon: "🧠" },
-    { key: "modifyChurches", label: "Modify Churches", desc: "Approve, reject and edit church entries", icon: "⛪" },
-    { key: "seeFormsInbox", label: "Forms Inbox", desc: "View contact, prayer and church form submissions", icon: "📥" },
-    { key: "analytics", label: "Analytics Access", desc: "View analytics data for assigned regions", icon: "📊" },
-    { key: "manageAdmins", label: "Manage Admins", desc: "Create and edit admin roles", icon: "🛡️" },
-  ];
+  const toggleCategory = (id: string): void =>
+    setCollapsedCategories((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+
+  const enabledCount = ALL_PERMISSION_DEFS.filter((d) => form.permissions[d.key]).length;
+  const totalCount = ALL_PERMISSION_DEFS.length;
+  const q = permSearch.trim().toLowerCase();
+  const matchesQuery = (item: PermissionItem): boolean =>
+    !q || item.label.toLowerCase().includes(q) || item.desc.toLowerCase().includes(q);
+  const noMatches = q.length > 0 && PERMISSION_CATEGORIES.every((cat) => cat.items.filter(matchesQuery).length === 0);
+  const initial = (form.name || form.email || "?").trim().charAt(0).toUpperCase();
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 99, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
-      <div style={{ background: CARD, borderRadius: "20px 20px 0 0", width: "100%", maxWidth: 480, maxHeight: "92vh", display: "flex", flexDirection: "column", boxShadow: "0 -8px 32px rgba(0,0,0,0.2)" }}>
+    <div style={{ position: "fixed", inset: 0, background: "rgba(17,17,17,0.5)", zIndex: 1000, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+      <div style={{ background: CARD, borderRadius: "22px 22px 0 0", width: "100%", maxWidth: 480, maxHeight: "92vh", display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: "0 -12px 40px rgba(0,0,0,0.25)" }}>
+        {/* Fixed drag handle + header */}
         <div style={{ padding: "10px 0 0", display: "flex", justifyContent: "center", flexShrink: 0 }}>
           <div style={{ width: 36, height: 4, background: BORDER, borderRadius: 99 }} />
         </div>
-        <div style={{ padding: "12px 20px 14px", borderBottom: `1px solid ${BORDER}`, display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
-          <span style={{ fontWeight: 800, fontSize: 16, color: TEXT }}>{isNew ? "Add Admin" : `Edit — ${form.name}`}</span>
-          <button onClick={onClose} style={{ background: "none", border: "none", color: TEXT2, cursor: "pointer", fontSize: 20 }}>✕</button>
+        <div style={{ padding: "14px 20px 16px", borderBottom: `1px solid ${BORDER}`, display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexShrink: 0 }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontWeight: 800, fontSize: 17, color: TEXT }}>{isNew ? "Add Admin" : form.name}</div>
+            <div style={{ fontSize: 12.5, color: TEXT2, marginTop: 2 }}>{isNew ? "Choose what this person can see and manage." : form.email}</div>
+          </div>
+          <button onClick={onClose} style={s.closeBtn} aria-label="Close"><X size={16} /></button>
         </div>
 
-        <div style={{ overflowY: "auto", flex: 1, paddingTop: 16, paddingBottom: 200, paddingLeft: 20, paddingRight: 20, display: "flex", flexDirection: "column", gap: 20 }}>
+        {/* Scrolling body — this is what makes every permission (and the footer)
+            reachable on a phone-height screen: overflowY auto + flex 1 + minHeight 0
+            inside the maxHeight:92vh sheet. */}
+        <div style={{ overflowY: "auto", flex: 1, minHeight: 0, padding: "18px 20px", display: "flex", flexDirection: "column", gap: 18 }}>
           {isNew && !form.id && (
             <div style={{ display: "flex", flexDirection: "column", gap: 10, position: "relative" }}>
               <label style={s.label}>Search User</label>
-              <input style={s.input} placeholder="Search by name or email..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+              <div style={{ position: "relative" }}>
+                <Search size={15} style={{ position: "absolute", left: 13, top: "50%", transform: "translateY(-50%)", color: TEXT2, pointerEvents: "none" }} />
+                <input style={{ ...s.input, paddingLeft: 36 }} placeholder="Search by name or email..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+              </div>
               {searchResults.length > 0 && (
-                <div style={{ position: "absolute", top: "100%", left: 0, right: 0, background: CARD, border: `1px solid ${BORDER}`, borderRadius: 8, maxHeight: 200, overflowY: "auto", zIndex: 10, boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
-                  {searchResults.map(u => (
-                    <div key={u.id} onClick={() => selectUser(u)} style={{ padding: "10px 12px", borderBottom: `1px solid ${BORDER}`, cursor: "pointer" }}>
-                      <div style={{ fontWeight: 700, fontSize: 14 }}>{u.name}</div>
-                      <div style={{ fontSize: 12, color: TEXT2 }}>{u.email}</div>
+                <div style={{ position: "absolute", top: "100%", left: 0, right: 0, background: CARD, border: `1px solid ${BORDER}`, borderRadius: 12, maxHeight: 220, overflowY: "auto", zIndex: 10, boxShadow: "0 8px 24px rgba(0,0,0,0.14)" }}>
+                  {searchResults.map((u) => (
+                    <div key={u.id} onClick={() => selectUser(u)} style={{ padding: "10px 12px", borderBottom: `1px solid ${BORDER}`, cursor: "pointer", display: "flex", alignItems: "center", gap: 10 }}>
+                      <div style={s.avatarInitial}>{u.name.charAt(0).toUpperCase()}</div>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontWeight: 700, fontSize: 14, color: TEXT }}>{u.name}</div>
+                        <div style={{ fontSize: 12, color: TEXT2 }}>{u.email}</div>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -278,62 +407,116 @@ function PermissionEditor({ admin, isNew, onSave, onClose, allUsers }: Permissio
           )}
 
           {form.id && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              <label style={s.label}>User Details</label>
-              <div style={{ padding: "12px", background: "#FAFAFA", border: `1.5px solid ${BORDER}`, borderRadius: 10 }}>
-                <div style={{ fontWeight: 700, fontSize: 15 }}>{form.name}</div>
-                <div style={{ fontSize: 13, color: TEXT2 }}>{form.email}</div>
-                {isNew && <button onClick={() => setForm(f => ({...f, id: "", name: "", email: ""}))} style={{ marginTop: 8, fontSize: 12, color: BLUE, background: "none", border: "none", cursor: "pointer" }}>Change User</button>}
+            <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", background: "#FAFAFA", border: `1.5px solid ${BORDER}`, borderRadius: 14 }}>
+              <div style={s.avatarInitial}>{initial}</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 700, fontSize: 15, color: TEXT }}>{form.name}</div>
+                <div style={{ fontSize: 12.5, color: TEXT2 }}>{form.email}</div>
               </div>
+              {isNew && <button onClick={() => setForm((f) => ({ ...f, id: "", name: "", email: "" }))} style={{ fontSize: 12, color: BLUE, background: "none", border: "none", cursor: "pointer", fontWeight: 700, flexShrink: 0 }}>Change</button>}
             </div>
           )}
 
+          {/* Full Access master toggle */}
           <div onClick={() => toggleFullAccess(!form.permissions.fullAccess)}
-            style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px", borderRadius: 14, border: `1.5px solid ${form.permissions.fullAccess ? PURPLE : BORDER}`, background: form.permissions.fullAccess ? PURPLE_BG : BG, cursor: "pointer", transition: "all 0.2s" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <span style={{ fontSize: 22 }}>🔓</span>
+            style={{
+              display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 18px", borderRadius: 16, cursor: "pointer", transition: "all 0.2s",
+              border: `1.5px solid ${form.permissions.fullAccess ? PURPLE : BORDER}`,
+              background: form.permissions.fullAccess ? "linear-gradient(135deg, #F5F3FF, #EDE9FE)" : BG,
+              boxShadow: form.permissions.fullAccess ? "0 6px 20px rgba(124,58,237,0.18)" : "none",
+            }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 13 }}>
+              <div style={{ width: 40, height: 40, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, background: form.permissions.fullAccess ? PURPLE : "#fff", color: form.permissions.fullAccess ? "#fff" : TEXT2, border: form.permissions.fullAccess ? "none" : `1.5px solid ${BORDER}` }}>
+                <Crown size={19} />
+              </div>
               <div>
-                <div style={{ fontWeight: 700, fontSize: 14, color: form.permissions.fullAccess ? PURPLE : TEXT }}>Full Access</div>
-                <div style={{ fontSize: 12, color: TEXT2, marginTop: 1 }}>All permissions enabled, global scope</div>
+                <div style={{ fontWeight: 800, fontSize: 14.5, color: form.permissions.fullAccess ? PURPLE : TEXT }}>Full Access</div>
+                <div style={{ fontSize: 12, color: TEXT2, marginTop: 1 }}>Unlocks every section below — current and future</div>
               </div>
             </div>
-            <div style={{ width: 44, height: 24, borderRadius: 99, background: form.permissions.fullAccess ? PURPLE : BORDER, position: "relative", transition: "background 0.2s", flexShrink: 0 }}>
-              <div style={{ position: "absolute", top: 3, left: form.permissions.fullAccess ? 22 : 3, width: 18, height: 18, borderRadius: "50%", background: "#fff", boxShadow: "0 1px 4px rgba(0,0,0,0.2)", transition: "left 0.2s" }} />
-            </div>
+            <Toggle on={form.permissions.fullAccess} color={PURPLE} />
           </div>
 
           {!form.permissions.fullAccess && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              <label style={s.label}>Permissions</label>
-              {PERMISSION_ROWS.map(({ key, label, desc, icon }) => {
-                const val = form.permissions[key] as boolean;
+            <>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <label style={s.label}>Permissions</label>
+                  <span style={{ fontSize: 11.5, color: TEXT2, fontWeight: 700 }}>{enabledCount} of {totalCount} enabled</span>
+                </div>
+                <div style={{ height: 5, borderRadius: 99, background: BORDER, overflow: "hidden" }}>
+                  <div style={{ height: "100%", width: `${totalCount ? (enabledCount / totalCount) * 100 : 0}%`, background: GOLD, borderRadius: 99, transition: "width 0.2s" }} />
+                </div>
+                <div style={{ position: "relative", marginTop: 4 }}>
+                  <Search size={14} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: TEXT2, pointerEvents: "none" }} />
+                  <input style={{ ...s.input, paddingLeft: 34, paddingRight: permSearch ? 32 : 13, fontSize: 13 }} placeholder="Search permissions..." value={permSearch} onChange={(e) => setPermSearch(e.target.value)} />
+                  {permSearch && (
+                    <button onClick={() => setPermSearch("")} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: TEXT2, cursor: "pointer", display: "flex", padding: 2 }} aria-label="Clear search">
+                      <X size={14} />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {PERMISSION_CATEGORIES.map((cat) => {
+                const matched = cat.items.filter(matchesQuery);
+                if (matched.length === 0) return null;
+                const catEnabled = cat.items.filter((i) => form.permissions[i.key]).length;
+                const expanded = q ? true : !collapsedCategories.has(cat.id);
                 return (
-                  <div key={key} onClick={() => setPerm(key, !val)}
-                    style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", borderRadius: 12, border: `1.5px solid ${val ? GOLD : BORDER}`, background: val ? GOLD_LIGHT : CARD, cursor: "pointer", transition: "all 0.15s" }}>
-                    <span style={{ fontSize: 20, flexShrink: 0 }}>{icon}</span>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 700, fontSize: 13, color: val ? GOLD : TEXT }}>{label}</div>
-                      <div style={{ fontSize: 11, color: TEXT2, marginTop: 1 }}>{desc}</div>
+                  <div key={cat.id} style={s.card}>
+                    <div onClick={() => toggleCategory(cat.id)}
+                      style={{ ...s.sectionHeading, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: expanded ? `1px solid ${BORDER}` : "none" }}>
+                      <span>{cat.label}</span>
+                      <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: catEnabled > 0 ? GOLD : TEXT2, background: catEnabled > 0 ? GOLD_SOFT : "#F2F2F2", borderRadius: 99, padding: "2px 8px", textTransform: "none", letterSpacing: "normal" }}>
+                          {catEnabled}/{cat.items.length}
+                        </span>
+                        <ChevronDown size={14} style={{ color: TEXT2, transform: expanded ? "rotate(180deg)" : "none", transition: "transform 0.2s" }} />
+                      </span>
                     </div>
-                    <div style={{ width: 38, height: 22, borderRadius: 99, background: val ? GOLD : BORDER, position: "relative", flexShrink: 0, transition: "background 0.2s" }}>
-                      <div style={{ position: "absolute", top: 2, left: val ? 18 : 2, width: 18, height: 18, borderRadius: "50%", background: "#fff", boxShadow: "0 1px 3px rgba(0,0,0,0.2)", transition: "left 0.2s" }} />
-                    </div>
+                    {expanded && (
+                      <div style={{ padding: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+                        {matched.map((item) => {
+                          const val = form.permissions[item.key];
+                          const Icon = item.icon;
+                          return (
+                            <div key={item.key} onClick={() => setPerm(item.key, !val)}
+                              style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 12px", borderRadius: 12, border: `1.5px solid ${val ? GOLD : BORDER}`, background: val ? GOLD_SOFT : CARD, cursor: "pointer", transition: "background 0.15s, border-color 0.15s" }}>
+                              <div style={{ width: 30, height: 30, borderRadius: 9, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, background: val ? "#fff" : "#F5F5F5", color: val ? GOLD : TEXT2 }}>
+                                <Icon size={15} />
+                              </div>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ fontWeight: 700, fontSize: 13, color: val ? GOLD : TEXT }}>{item.label}</div>
+                                <div style={{ fontSize: 11, color: TEXT2, marginTop: 1 }}>{item.desc}</div>
+                              </div>
+                              <Toggle on={val} color={GOLD} />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 );
               })}
-            </div>
+
+              {noMatches && (
+                <div style={{ textAlign: "center", padding: "24px 12px", color: TEXT2 }}>
+                  <div style={{ fontSize: 13 }}>No permissions match &ldquo;{permSearch}&rdquo;.</div>
+                  <button onClick={() => setPermSearch("")} style={{ marginTop: 8, fontSize: 12.5, color: BLUE, background: "none", border: "none", cursor: "pointer", fontWeight: 700 }}>Clear search</button>
+                </div>
+              )}
+            </>
           )}
+        </div>
 
-          {/* Action buttons scroll with the content (paddingBottom on the
-              container keeps them clear of the bottom navigation bar). */}
-          <div style={{ display: "flex", gap: 10 }}>
-            <button onClick={onClose} style={{ flex: 1, background: "transparent", border: `1.5px solid ${BORDER}`, color: TEXT2, padding: "12px", borderRadius: 12, cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 14 }}>Cancel</button>
-            <button onClick={() => onSave(form)} disabled={!form.id}
-              style={{ flex: 2, background: GOLD_BTN, border: "none", color: "#fff", fontWeight: 800, padding: "12px", borderRadius: 12, cursor: "pointer", fontFamily: "inherit", fontSize: 14, boxShadow: "0 2px 10px rgba(201,150,58,0.35)", opacity: form.id ? 1 : 0.5 }}>
-              {isNew ? "Add Admin" : "Save Changes"}
-            </button>
-          </div>
-
+        {/* Fixed footer — Cancel / Save always visible above the fold */}
+        <div style={{ display: "flex", gap: 10, padding: "14px 20px", borderTop: `1px solid ${BORDER}`, background: CARD, flexShrink: 0 }}>
+          <button onClick={onClose} style={{ flex: 1, background: "transparent", border: `1.5px solid ${BORDER}`, color: TEXT2, padding: "12px", borderRadius: 12, cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 14 }}>Cancel</button>
+          <button onClick={() => onSave(form)} disabled={!form.id}
+            style={{ flex: 2, background: GOLD_BTN, border: "none", color: "#fff", fontWeight: 800, padding: "12px", borderRadius: 12, cursor: "pointer", fontFamily: "inherit", fontSize: 14, boxShadow: GOLD_GLOW, opacity: form.id ? 1 : 0.5 }}>
+            {isNew ? "Add Admin" : "Save Changes"}
+          </button>
         </div>
       </div>
     </div>
@@ -406,7 +589,7 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
               email: user.email,
               picture: data.photoURL || "",
               role: data.email === SUPER_ADMIN_EMAIL ? "super_admin" : data.role,
-              permissions: data.permissions || emptyPermission(),
+              permissions: normalizePermissions(data.permissions),
             });
           }
         });
@@ -893,17 +1076,11 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
               {admins.map((admin) => {
                 const isSuperAdmin = admin.role === "super_admin";
                 const perms = admin.permissions;
-                const activePerms = isSuperAdmin ? ["Full Access"] : [
-                  perms.fullAccess && "Full Access",
-                  perms.writeArticles && "Articles",
-                  perms.createPosts && "Posts",
-                  perms.createCourses && "Courses",
-                  perms.uploadRag && "AI RAG",
-                  perms.modifyChurches && "Churches",
-                  perms.seeFormsInbox && "Inbox",
-                  perms.analytics && "Analytics",
-                  perms.manageAdmins && "Manage Admins",
-                ].filter(Boolean) as string[];
+                const activePerms = isSuperAdmin || perms.fullAccess
+                  ? ["Full Access"]
+                  : ALL_PERMISSION_DEFS.filter((d) => perms[d.key]).map((d) => d.label);
+                const visiblePerms = activePerms.slice(0, 4);
+                const extraCount = activePerms.length - visiblePerms.length;
 
                 return (
                   <div key={admin.id} style={s.card}>
@@ -921,9 +1098,10 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
                         <div style={{ fontSize: 12, color: TEXT2, marginTop: 1 }}>{admin.email}</div>
 
                         <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginTop: 8 }}>
-                          {activePerms.map((p) => (
+                          {visiblePerms.map((p) => (
                             <span key={p} style={{ fontSize: 10, fontWeight: 700, background: GOLD_LIGHT, color: GOLD, borderRadius: 99, padding: "2px 8px" }}>{p}</span>
                           ))}
+                          {extraCount > 0 && <span style={{ fontSize: 10, fontWeight: 700, background: "#F2F2F2", color: TEXT2, borderRadius: 99, padding: "2px 8px" }}>+{extraCount} more</span>}
                           {activePerms.length === 0 && <span style={{ fontSize: 11, color: TEXT2, fontStyle: "italic" }}>No permissions assigned</span>}
                         </div>
                       </div>
@@ -947,24 +1125,29 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
 
               <div style={{ ...s.card, marginTop: 4 }}>
                 <div style={s.sectionHeading}>Permission Reference</div>
-                <div style={{ padding: "14px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
-                  {[
-                    ["✍️", "Write Articles", "Create, edit and publish blog articles"],
-                    ["📣", "Create Posts", "Create posts, polls and events in the user feed"],
-                    ["🎓", "Create Courses", "Create and edit learning courses"],
-                    ["🧠", "Upload to AI", "Add knowledge sources to the AI RAG database"],
-                    ["⛪", "Modify Churches", "Approve, reject and edit church entries on the map"],
-                    ["📥", "Forms Inbox", "View contact, prayer request, and church application submissions"],
-                    ["📊", "Analytics", "View user registration analytics for assigned region(s)"],
-                    ["🛡️", "Manage Admins", "Create and edit admin roles"],
-                    ["🔓", "Full Access", "All of the above with global scope"],
-                  ].map(([icon, name, desc]) => (
-                    <div key={name} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-                      <span style={{ fontSize: 16, flexShrink: 0, marginTop: 1 }}>{icon}</span>
-                      <div>
-                        <div style={{ fontWeight: 700, fontSize: 13, color: TEXT }}>{name}</div>
-                        <div style={{ fontSize: 12, color: TEXT2, marginTop: 1 }}>{desc}</div>
-                      </div>
+                <div style={{ padding: "14px 16px", display: "flex", flexDirection: "column", gap: 14 }}>
+                  <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                    <div style={{ width: 26, height: 26, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, background: PURPLE_BG, color: PURPLE }}><Crown size={14} /></div>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: 13, color: TEXT }}>Full Access</div>
+                      <div style={{ fontSize: 12, color: TEXT2, marginTop: 1 }}>Every permission below, current and future</div>
+                    </div>
+                  </div>
+                  {PERMISSION_CATEGORIES.map((cat) => (
+                    <div key={cat.id} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                      <div style={{ fontSize: 10.5, fontWeight: 800, color: TEXT2, letterSpacing: "0.08em", textTransform: "uppercase" }}>{cat.label}</div>
+                      {cat.items.map((item) => {
+                        const Icon = item.icon;
+                        return (
+                          <div key={item.key} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                            <div style={{ width: 26, height: 26, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, background: "#F5F5F5", color: TEXT2 }}><Icon size={14} /></div>
+                            <div>
+                              <div style={{ fontWeight: 700, fontSize: 13, color: TEXT }}>{item.label}</div>
+                              <div style={{ fontSize: 12, color: TEXT2, marginTop: 1 }}>{item.desc}</div>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   ))}
                 </div>
@@ -1020,4 +1203,6 @@ const s: Record<string, CSSProperties> = {
   downloadBtn: { background: GREEN_BG, border: `1px solid ${GREEN}33`, color: GREEN, padding: "6px 12px", borderRadius: 8, cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 13 },
   th: { padding: "12px 16px", fontSize: 12, fontWeight: 700, color: TEXT2, textTransform: "uppercase", letterSpacing: "0.05em" },
   td: { padding: "12px 16px", fontSize: 14, color: TEXT },
+  closeBtn: { width: 30, height: 30, borderRadius: "50%", background: "#F2F4F7", border: "none", color: TEXT2, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 },
+  avatarInitial: { width: 34, height: 34, borderRadius: "50%", background: GOLD_SOFT, color: GOLD, fontWeight: 800, fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 },
 };
