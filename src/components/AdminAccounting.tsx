@@ -71,16 +71,24 @@ const fmtDate = (ts: Timestamp | null) => {
   return ts.toDate().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 };
 
-const AdminAccounting: React.FC = () => {
+interface AdminAccountingProps {
+  /** Admin holds manageAccounting (or full access). Defaults true when unset. */
+  canManageAccounting?: boolean;
+  /** Admin holds manageGivingStatements (or full access). Defaults true when unset. */
+  canManageStatements?: boolean;
+}
+
+const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting = true, canManageStatements = true }) => {
   const ctx = useTenantOptional();
   const isTaxReceiptsEnabled = ctx?.planFeatures?.taxReceipt ?? true;
   const isQbEnabled = ctx?.planFeatures?.accountingTools ?? true;
 
-  // Statements is now nested here as a sub-tab. Each keeps its own feature gate:
-  // Accounting behind accountingTools, Statements behind givingStatements. If a
-  // tenant has only one feature, only that tab is shown (and forced active).
-  const accountingEnabled = ctx?.planFeatures?.accountingTools ?? true;
-  const statementsEnabled = ctx?.planFeatures?.givingStatements ?? true;
+  // Statements is now nested here as a sub-tab. Each keeps its own gate combining
+  // the plan feature AND the admin's permission: Accounting behind accountingTools
+  // + manageAccounting, Statements behind givingStatements + manageGivingStatements.
+  // If only one is available, only that tab is shown (and forced active).
+  const accountingEnabled = (ctx?.planFeatures?.accountingTools ?? true) && canManageAccounting;
+  const statementsEnabled = (ctx?.planFeatures?.givingStatements ?? true) && canManageStatements;
   const [subTab, setSubTab] = useState<'accounting' | 'statements'>('accounting');
   const showBothSubTabs = accountingEnabled && statementsEnabled;
   const activeSubTab = !accountingEnabled ? 'statements' : !statementsEnabled ? 'accounting' : subTab;
