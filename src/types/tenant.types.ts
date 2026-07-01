@@ -28,6 +28,12 @@ export interface Tenant {
   config: TenantConfig;
   adminEmails: string[]; // emails of church admins for this tenant
   /**
+   * The plan owner (buyer) uid. Set by the Stripe webhook at tenant creation
+   * (ownerId = paying user's uid) and immutable — the correct gate for owner-only
+   * surfaces like Billing & Payments.
+   */
+  ownerId?: string;
+  /**
    * Gates the one-time first-run "Finish setup" screen. The Stripe webhook
    * creates new tenants with `setupCompleted: false`; the first-run flow flips it
    * to `true` once the admin claims a subdomain and configures branding. Legacy

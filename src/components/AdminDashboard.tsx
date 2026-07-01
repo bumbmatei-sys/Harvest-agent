@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { LayoutDashboard, Church, FileText, Rss, BrainCircuit, Inbox, GraduationCap, ChevronLeft, ChevronRight, Building2, Settings, MoreHorizontal, Mail, Heart, Users, MessageSquare, Receipt, CalendarCheck, LogOut, ClipboardList, QrCode, Radio, ExternalLink, Link2, Crown, Palette } from 'lucide-react';
+import { LayoutDashboard, Church, FileText, Rss, BrainCircuit, Inbox, GraduationCap, ChevronLeft, ChevronRight, Building2, Settings, MoreHorizontal, Mail, Heart, Users, MessageSquare, Receipt, CalendarCheck, LogOut, ClipboardList, QrCode, Radio, ExternalLink, Link2, Crown, Palette, X } from 'lucide-react';
 import AdminBlog from './AdminBlog';
 import AdminPosts from './AdminPosts';
 import PlatformInbox from './PlatformInbox';
@@ -32,6 +32,8 @@ import AdminLivestream from './AdminLivestream';
 import AdminSms from './AdminSms';
 import AdminEvents from './AdminEvents';
 import PlanUpgradeScreen from './PlanUpgradeScreen';
+import Profile from './Profile';
+import MyAccountMenu from './MyAccountMenu';
 import { AdminScreenHeader, AdminHeaderContext, AdminHeaderOverride } from './AdminScreenHeader';
 import { getPlanFeatures } from '../utils/plan-features';
 import { db, auth } from '../firebase';
@@ -98,6 +100,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [pendingChurchesCount, setPendingChurchesCount] = useState(0);
   const [showMoreSheet, setShowMoreSheet] = useState(false);
+  // My Account menu → My Profile overlay (reuses the user-app Profile screen).
+  const [showProfile, setShowProfile] = useState(false);
   const [canvasId, setCanvasId] = useState<string | null>(null);
   const [canvasName, setCanvasName] = useState<string>('');
   const [newsletterView, setNewsletterView] = useState<'list' | 'editor'>('list');
@@ -219,6 +223,19 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
   const isTenantAdmin = !!tenantPlan;
   const hasFullAccess = isSuperAdmin || isChurchAdmin || perms.fullAccess;
   const isLoading = !isAuthReady || userLoading;
+
+  // My Account menu (top-right avatar). Owner identity gates Billing & Payments —
+  // ownerId is the buyer uid set by the Stripe webhook at tenant creation.
+  const currentUid = auth.currentUser?.uid;
+  const isOwner = !!currentUid && !!tenantData?.ownerId && currentUid === tenantData.ownerId;
+  const accountMenuProps = {
+    photoURL: userData?.photoURL ?? null,
+    displayName: userData?.displayName ?? null,
+    email: userData?.email ?? auth.currentUser?.email ?? null,
+    isOwner,
+    onOpenProfile: () => setShowProfile(true),
+    onLogout: handleLogout,
+  };
 
   // Branding tab/page entitlement — keyed off the branding-family feature flags
   // (matches the old Settings branding gate). Used both in allTabs and the render
@@ -527,6 +544,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
               )}
             </button>
           )}
+          {/* My Account menu (desktop) — avatar → Profile / Billing / Log out */}
+          <MyAccountMenu {...accountMenuProps} />
         </div>
 
         {/* Unified screen header — back + title + screen action. No back on Dashboard.
@@ -536,6 +555,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
           titleIcon={headerOverride?.titleIcon}
           onBack={headerOverride ? headerOverride.onBack : (activeTab === 'dashboard' ? undefined : smartBack)}
           action={headerOverride ? headerOverride.action : headerAction}
+          rightAccessory={<div className="lg:hidden"><MyAccountMenu {...accountMenuProps} /></div>}
         />
 
         {/* Main Content Area */}
@@ -806,6 +826,31 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
             onBack={() => { setCanvasId(null); setCanvasName(''); }}
           />
         </FocusScreen>
+      )}
+
+      {/* My Profile — the user-app Profile screen shown as an admin overlay so the
+          admin never navigates away. A slim top bar provides the close affordance;
+          Profile's own sub-modals (fixed inset-0) cover it while open. */}
+      {showProfile && (
+        <div className="fixed inset-0 z-[200] bg-[#f8f9fa] flex flex-col">
+          <div className="flex items-center gap-1 h-12 px-3 bg-white border-b border-gray-100 shrink-0">
+            <button
+              onClick={() => setShowProfile(false)}
+              aria-label="Close profile"
+              className="p-1.5 -ml-1 text-gray-600 hover:text-gray-900 transition-colors"
+            >
+              <X size={22} />
+            </button>
+            <span className="text-sm font-bold text-gray-900">My Profile</span>
+          </div>
+          <div className="flex-1 overflow-y-auto">
+            <Profile
+              onNavigate={(page) => { setShowProfile(false); if (page !== 'admin') onNavigate(page); }}
+              onGoToPartner={() => { setShowProfile(false); onNavigate('home'); }}
+              onGoToMap={() => { setShowProfile(false); onNavigate('home'); }}
+            />
+          </div>
+        </div>
       )}
     </div>
     </AdminHeaderContext.Provider>
