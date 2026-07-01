@@ -24,6 +24,8 @@ export interface TenantContextValue {
   planFeatures: PlanFeatures | null;
   /** Update the tenant plan locally (e.g. after a plan change) */
   setTenantPlan: (plan: TenantPlan) => void;
+  /** Re-fetch the tenant's branding from Firestore and apply it immediately */
+  refreshBranding: () => Promise<void>;
   /** Whether this is the admin subdomain */
   isAdminDomain: boolean;
 }
@@ -77,6 +79,29 @@ export const TenantProvider: React.FC<TenantProviderProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [isAdminDomain, setIsAdminDomain] = useState(false);
   const planInitialized = useRef(false);
+
+  const applyBranding = useCallback((config: TenantConfig) => {
+    setBranding(config);
+    const color = (config as any).primaryColor;
+    if (color) {
+      document.documentElement.style.setProperty('--brand-color', color);
+    }
+  }, []);
+
+  const refreshBranding = useCallback(async () => {
+    if (!tenantId) return;
+    try {
+      const tenantDoc = await getDoc(doc(db, 'tenants', tenantId));
+      if (tenantDoc.exists()) {
+        const data = tenantDoc.data();
+        if (data.config) {
+          applyBranding(data.config as TenantConfig);
+        }
+      }
+    } catch (e) {
+      console.error('Failed to refresh branding:', e);
+    }
+  }, [tenantId, applyBranding]);
 
   // Detect admin subdomain
   useEffect(() => {
@@ -146,12 +171,7 @@ export const TenantProvider: React.FC<TenantProviderProps> = ({
           }
         }
         if (data.config) {
-          setBranding(data.config as TenantConfig);
-          // Apply branding CSS custom property
-          const color = data.config?.primaryColor;
-          if (color) {
-            document.documentElement.style.setProperty('--brand-color', color);
-          }
+          applyBranding(data.config as TenantConfig);
         }
         setError(null);
       } catch (e) {
@@ -168,7 +188,7 @@ export const TenantProvider: React.FC<TenantProviderProps> = ({
 
     validateTenant();
     return () => { cancelled = true; };
-  }, [tenantId, initialPlan, initialTenantId]);
+  }, [tenantId, initialPlan, initialTenantId, applyBranding]);
 
   const setTenantPlan = useCallback((plan: TenantPlan) => {
     setTenantPlanState(plan);
@@ -193,6 +213,7 @@ export const TenantProvider: React.FC<TenantProviderProps> = ({
         error,
         planFeatures,
         setTenantPlan,
+        refreshBranding,
         isAdminDomain,
       }}
     >

@@ -2,12 +2,14 @@
 import React, { useState, useEffect } from 'react';
 import { ImageUpload } from '../ImageUpload';
 import { PlanFeatures } from '../../utils/plan-features';
+import { useTenant } from '../../contexts/TenantContext';
 
 interface BrandingSectionProps {
   currentFeatures?: PlanFeatures;
 }
 
 export const BrandingSection: React.FC<BrandingSectionProps> = ({ currentFeatures }) => {
+  const { refreshBranding } = useTenant();
   const [ministryName, setMinistryName] = useState('');
   const [brandingLogo, setBrandingLogo] = useState('');
   const [brandingColor, setBrandingColor] = useState('#B8962E');
@@ -80,6 +82,7 @@ export const BrandingSection: React.FC<BrandingSectionProps> = ({ currentFeature
               updates.name = ministryName.trim();
             }
             await updateDoc(doc(db, 'tenants', tenantId), updates);
+            await refreshBranding();
             setBrandingSaved(true);
             setTimeout(() => setBrandingSaved(false), 3000);
           }
