@@ -384,7 +384,7 @@ function PermissionEditor({ admin, isNew, onSave, onClose, allUsers }: Permissio
             inside the maxHeight:92vh sheet. */}
         <div style={{ overflowY: "auto", flex: 1, minHeight: 0, padding: "18px 20px", display: "flex", flexDirection: "column", gap: 18 }}>
           {isNew && !form.id && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 10, position: "relative" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, position: "relative", flexShrink: 0 }}>
               <label style={s.label}>Search User</label>
               <div style={{ position: "relative" }}>
                 <Search size={15} style={{ position: "absolute", left: 13, top: "50%", transform: "translateY(-50%)", color: TEXT2, pointerEvents: "none" }} />
@@ -407,7 +407,7 @@ function PermissionEditor({ admin, isNew, onSave, onClose, allUsers }: Permissio
           )}
 
           {form.id && (
-            <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", background: "#FAFAFA", border: `1.5px solid ${BORDER}`, borderRadius: 14 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", background: "#FAFAFA", border: `1.5px solid ${BORDER}`, borderRadius: 14, flexShrink: 0 }}>
               <div style={s.avatarInitial}>{initial}</div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontWeight: 700, fontSize: 15, color: TEXT }}>{form.name}</div>
@@ -424,6 +424,7 @@ function PermissionEditor({ admin, isNew, onSave, onClose, allUsers }: Permissio
               border: `1.5px solid ${form.permissions.fullAccess ? PURPLE : BORDER}`,
               background: form.permissions.fullAccess ? "linear-gradient(135deg, #F5F3FF, #EDE9FE)" : BG,
               boxShadow: form.permissions.fullAccess ? "0 6px 20px rgba(124,58,237,0.18)" : "none",
+              flexShrink: 0,
             }}>
             <div style={{ display: "flex", alignItems: "center", gap: 13 }}>
               <div style={{ width: 40, height: 40, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, background: form.permissions.fullAccess ? PURPLE : "#fff", color: form.permissions.fullAccess ? "#fff" : TEXT2, border: form.permissions.fullAccess ? "none" : `1.5px solid ${BORDER}` }}>
@@ -439,7 +440,7 @@ function PermissionEditor({ admin, isNew, onSave, onClose, allUsers }: Permissio
 
           {!form.permissions.fullAccess && (
             <>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, flexShrink: 0 }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                   <label style={s.label}>Permissions</label>
                   <span style={{ fontSize: 11.5, color: TEXT2, fontWeight: 700 }}>{enabledCount} of {totalCount} enabled</span>
@@ -464,7 +465,7 @@ function PermissionEditor({ admin, isNew, onSave, onClose, allUsers }: Permissio
                 const catEnabled = cat.items.filter((i) => form.permissions[i.key]).length;
                 const expanded = q ? true : !collapsedCategories.has(cat.id);
                 return (
-                  <div key={cat.id} style={s.card}>
+                  <div key={cat.id} style={{ ...s.card, flexShrink: 0 }}>
                     <div onClick={() => toggleCategory(cat.id)}
                       style={{ ...s.sectionHeading, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: expanded ? `1px solid ${BORDER}` : "none" }}>
                       <span>{cat.label}</span>
