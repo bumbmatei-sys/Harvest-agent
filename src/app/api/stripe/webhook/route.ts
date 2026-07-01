@@ -64,6 +64,15 @@ async function processInitialAffiliateCommission(opts: {
         currency: 'usd',
         destination: connectAccountId,
         metadata: { referrerId, tenantId, plan, type: 'affiliate_commission' },
+      }, {
+        // Idempotency across webhook retries. The initial commission is paid once
+        // per subscription, but the transfer moves money BEFORE its dedup record is
+        // written — so if the transfer succeeds and the commission-doc write then
+        // fails, the retry (now enabled by the marker-undo on failure) re-enters
+        // here and the affiliate_commissions guard, seeing no record, would pay
+        // again. This key makes Stripe return the original transfer instead of
+        // issuing a second one, so the affiliate is paid exactly once.
+        idempotencyKey: `aff_initial_${subscriptionId}`,
       });
       commissionStatus = 'paid';
       await adminDb.collection('affiliate_commissions').add({
@@ -162,14 +171,20 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
   }
 
+  // Idempotency marker + whether THIS invocation wrote it. On failure we undo only
+  // a marker of our own — never one left by an earlier successful run (e.g. Stripe
+  // redelivers a completed event and the dedup read fails transiently: deleting that
+  // marker would let the retry double-process a money event).
+  const eventRef = adminDb.collection('webhook_events').doc(event.id);
+  let markerWritten = false;
+
   try {
-    const eventId = event.id;
-    const eventRef = adminDb.collection('webhook_events').doc(eventId);
     const eventDoc = await eventRef.get();
     if (eventDoc.exists) {
-      console.log(`⏭️ Skipping duplicate webhook event ${eventId}`);
+      console.log(`⏭️ Skipping duplicate webhook event ${event.id}`);
       return NextResponse.json({ received: true, duplicate: true });
     }
+    markerWritten = true; // flipped before the write so an ambiguous set() failure still gets undone
     await eventRef.set({ type: event.type, processedAt: new Date().toISOString() });
 
     switch (event.type) {
@@ -855,6 +870,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ received: true });
   } catch (error: any) {
     console.error('Webhook handler error:', error?.message || error);
+    if (markerWritten) {
+      // Undo the idempotency marker so Stripe's retry re-processes this event.
+      // Without this, a mid-processing failure leaves the event marked "done" and
+      // the redelivery is skipped as a duplicate — silently losing the event.
+      await eventRef.delete().catch(() => { /* best effort */ });
+    }
     return NextResponse.json({ error: 'Webhook handler failed' }, { status: 500 });
   }
 }

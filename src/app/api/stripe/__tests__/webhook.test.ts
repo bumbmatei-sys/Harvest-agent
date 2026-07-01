@@ -24,6 +24,7 @@ const {
   mockDocGet,
   mockDocSet,
   mockDocUpdate,
+  mockDocDelete,
   mockCollGet,
   mockBatchUpdate,
   mockBatchCommit,
@@ -33,6 +34,7 @@ const {
   mockDocGet: vi.fn(),
   mockDocSet: vi.fn().mockResolvedValue(undefined),
   mockDocUpdate: vi.fn().mockResolvedValue(undefined),
+  mockDocDelete: vi.fn().mockResolvedValue(undefined),
   mockCollGet: vi.fn().mockResolvedValue({ docs: [], empty: true, forEach: vi.fn() }),
   mockBatchUpdate: vi.fn(),
   mockBatchCommit: vi.fn().mockResolvedValue(undefined),
@@ -57,6 +59,7 @@ vi.mock('@/lib/firebase-admin', () => ({
         get: mockDocGet,
         set: mockDocSet,
         update: mockDocUpdate,
+        delete: mockDocDelete,
       })),
       where: vi.fn().mockReturnThis(),
       limit: vi.fn().mockReturnThis(),
@@ -167,6 +170,34 @@ describe('idempotency', () => {
     expect(body.duplicate).toBe(true);
     expect(mockDocUpdate).not.toHaveBeenCalled();
   });
+
+  it('undoes the idempotency marker and 500s when processing fails, so the retry re-processes', async () => {
+    const session = { subscription: 'sub_new', customer: 'cus_001', amount_total: 9900 };
+    mockConstructEvent.mockReturnValue(makeEvent('checkout.session.completed', session));
+    mockSubsRetrieve.mockResolvedValue({
+      id: 'sub_new',
+      metadata: { tenantId: 'tenant1', plan: 'pro', billing: 'monthly' },
+      current_period_end: 1800000000,
+    });
+    // Dedup get → new event; tenant get → transient Firestore failure mid-processing.
+    mockDocGet.mockResolvedValueOnce({ exists: false })
+              .mockRejectedValueOnce(new Error('Firestore unavailable'));
+
+    const res = await POST(makeRequest());
+    expect(res.status).toBe(500); // Stripe retries on 5xx
+    expect(mockDocDelete).toHaveBeenCalled(); // marker undone → redelivery is NOT skipped
+  });
+
+  it('does not delete a marker it did not write (dedup read fails)', async () => {
+    // If the duplicate check itself fails, the marker (if any) belongs to a prior
+    // successful run — deleting it would let the retry double-process the event.
+    mockConstructEvent.mockReturnValue(makeEvent('customer.subscription.updated', {}));
+    mockDocGet.mockRejectedValueOnce(new Error('Firestore unavailable'));
+
+    const res = await POST(makeRequest());
+    expect(res.status).toBe(500);
+    expect(mockDocDelete).not.toHaveBeenCalled();
+  });
 });
 
 // ── checkout.session.completed ─────────────────────────────────────────────
@@ -250,6 +281,28 @@ describe('checkout.session.completed', () => {
     );
     // Subscription tagged with the new tenant id for future lifecycle events.
     expect(mockSubsUpdate).toHaveBeenCalledWith('sub_new', { metadata: { tenantId: 'grace-church' } });
+  });
+
+  it('pays the initial affiliate transfer with a per-subscription idempotency key (retry-safe)', async () => {
+    const session = { subscription: 'sub_aff', customer: 'cus_1', amount_total: 11900 };
+    mockConstructEvent.mockReturnValue(makeEvent('checkout.session.completed', session));
+    mockSubsRetrieve.mockResolvedValue({
+      id: 'sub_aff',
+      metadata: { tenantId: 'tenant1', plan: 'pro', billing: 'monthly', referrerId: 'refUser' },
+      current_period_end: 1800000000,
+    });
+    mockDocGet
+      .mockResolvedValueOnce({ exists: false }) // webhook_events dedup → new event
+      .mockResolvedValueOnce({ exists: true, data: () => ({ stripeSubscriptionId: null, ownerId: 'someoneElse', addOnAiAssistantCode: null }) }) // tenant (owner != referrer)
+      .mockResolvedValueOnce({ exists: true, data: () => ({ affiliateStripeAccountId: 'acct_ref', affiliateConnectStatus: 'active' }) }); // referrer w/ active Connect
+
+    const res = await POST(makeRequest());
+    expect(res.status).toBe(200);
+    // A retry of this event must not move money twice: Stripe dedups on the key.
+    expect(mockTransfersCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ amount: 1190, destination: 'acct_ref' }),
+      expect.objectContaining({ idempotencyKey: 'aff_initial_sub_aff' }),
+    );
   });
 
   it('blocks self-referral commissions', async () => {
