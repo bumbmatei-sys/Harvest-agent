@@ -18,7 +18,7 @@ import NewsletterEditor from './NewsletterEditor';
 import NewsletterCampaigns from './NewsletterCampaigns';
 import CanvasList from './CanvasList';
 import CanvasEditor from './CanvasEditor';
-import { Permission } from './AnalyticsAndRoles';
+import { Permission, normalizePermissions } from './AnalyticsAndRoles';
 import AdminNavCustomizer from './AdminNavCustomizer';
 import FocusScreen from './FocusScreen';
 import AdminFundraising from './AdminFundraising';
@@ -95,7 +95,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
   const { data: userData, isLoading: userLoading } = useCurrentUser(auth.currentUser?.uid);
 
   const userRole = userData?.role ?? 'user';
-  const userPermissions: Permission | null = (userData?.permissions as Permission) ?? null;
+  // Normalise on read so legacy docs keep working (seeFormsInbox → manageForms,
+  // missing new flags default to false). This is what the drawer gates read.
+  const userPermissions: Permission | null = userData?.permissions ? normalizePermissions(userData.permissions) : null;
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -245,7 +247,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
   // (matches the old Settings branding gate). Used both in allTabs and the render
   // guard so direct navigation to /admin/branding is gated like every other tab.
   const canBranding = !!((platformOverride || !isTenantAdmin ||
-    (features && (features.customBranding || features.customBackground || features.customDomain))) && hasFullAccess);
+    (features && (features.customBranding || features.customBackground || features.customDomain))) && (hasFullAccess || perms.manageBranding));
+
+  // Settings tab entitlement — a manageSettings admin (or full access / super
+  // admin) can reach the integrations/config screen. Branding lives in its own
+  // tab (canBranding), so a branding-only admin reaches Branding, not Settings.
+  const canSettings = hasFullAccess || !!perms.manageSettings;
 
   // The inbox is platform-only now (Contact / Feature / Bug reports go to the
   // platform owner). It shows ONLY for a super admin in the platform context
@@ -264,55 +271,59 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
     (platformOverride || !isTenantAdmin || (features && features.aiKnowledge)) && (hasFullAccess || perms.uploadRag) && { id: 'ai', label: 'AI Knowledge', icon: BrainCircuit },
     // Newsletter tab — gated behind plan feature
     (platformOverride || !isTenantAdmin || (features && features.newsletterAutomation)) &&
-      (hasFullAccess || perms.createPosts) &&
+      (hasFullAccess || perms.manageNewsletter) &&
       { id: 'newsletter', label: 'Newsletter', icon: Mail },
     // Fundraising campaigns
     (platformOverride || !isTenantAdmin || (features && features.fundraising)) &&
-      hasFullAccess &&
+      (hasFullAccess || perms.manageFundraising) &&
       { id: 'fundraising', label: 'Fundraising', icon: Heart },
     // Event registration (Pretix)
     (platformOverride || !isTenantAdmin || (features && features.eventRegistration)) &&
-      hasFullAccess &&
+      (hasFullAccess || perms.manageEvents) &&
       { id: 'events', label: 'Events', icon: CalendarCheck },
     // Docs (TipTap)
     (platformOverride || !isTenantAdmin || (features && features.docs)) &&
-      hasFullAccess &&
+      (hasFullAccess || perms.manageDocs) &&
       { id: 'docs', label: 'Notes', icon: FileText },
-    // CRM (includes user registration analytics as a sub-tab)
+    // CRM (Contacts · Analytics · Roles sub-tabs). Shown to anyone who can use ANY
+    // sub-tab: manageCRM (Contacts), analytics (Analytics) or manageAdmins (Roles),
+    // since those screens only live inside the CRM page.
     (platformOverride || !isTenantAdmin || (features && features.crm)) &&
-      hasFullAccess &&
+      (hasFullAccess || perms.manageCRM || perms.analytics || perms.manageAdmins) &&
       { id: 'crm', label: 'CRM', icon: Users },
     // Accounting (Crater) — Statements is now a sub-tab inside this screen, so the
-    // entry is shown when EITHER the accounting or giving-statements feature is on.
+    // entry is shown when EITHER the accounting or giving-statements feature is on,
+    // and the admin holds either permission.
     (platformOverride || !isTenantAdmin || (features && (features.accountingTools || features.givingStatements))) &&
-      hasFullAccess &&
+      (hasFullAccess || perms.manageAccounting || perms.manageGivingStatements) &&
       { id: 'accounting', label: 'Accounting', icon: Receipt },
     // Custom Forms → CRM pipeline
     (platformOverride || !isTenantAdmin || (features && features.customForms)) &&
-      hasFullAccess &&
+      (hasFullAccess || perms.manageForms) &&
       { id: 'forms', label: 'Forms', icon: ClipboardList },
     // Check-In System (QR attendance) — the QR Code generator is now a sub-tab
     // inside this screen. QR is available on all plans, so the entry shows for
-    // every full-access admin; the Check-In sub-tab itself stays gated to plans
-    // with checkInSystem inside AdminCheckin.
-    (hasFullAccess || !isTenantAdmin) && { id: 'checkin', label: 'Check-In', icon: QrCode },
+    // every full-access admin, an admin with manageCheckin/manageQR, or any
+    // platform (non-tenant) admin; the Check-In sub-tab itself stays gated to
+    // plans with checkInSystem inside AdminCheckin.
+    (hasFullAccess || perms.manageCheckin || perms.manageQR || !isTenantAdmin) && { id: 'checkin', label: 'Check-In', icon: QrCode },
     // Livestream (YouTube + live giving)
     (platformOverride || !isTenantAdmin || (features && features.livestream)) &&
-      hasFullAccess &&
+      (hasFullAccess || perms.manageLivestream) &&
       { id: 'livestream', label: 'Livestream', icon: Radio },
     // SMS Automation (Twilio)
     (platformOverride || !isTenantAdmin || (features && features.smsAutomation)) &&
-      hasFullAccess &&
+      (hasFullAccess || perms.manageSms) &&
       { id: 'sms', label: 'SMS', icon: MessageSquare },
     // Community (Rocket.Chat)
     (platformOverride || !isTenantAdmin || (features && features.communityGroups)) &&
-      hasFullAccess &&
+      (hasFullAccess || perms.manageCommunity) &&
       { id: 'community', label: 'Community', icon: MessageSquare },
     isSuperAdmin && { id: 'tenants', label: 'Tenants', icon: Building2 },
     // Admin Roles is no longer a standalone tab — it lives inside the CRM page
     // (Contacts · Analytics · Roles), so it's intentionally absent here.
     // Affiliate — standalone section (near the bottom, above Settings)
-    (isSuperAdmin || hasFullAccess) && { id: 'affiliate', label: 'Affiliate', icon: Link2 },
+    (isSuperAdmin || hasFullAccess || perms.manageAffiliate) && { id: 'affiliate', label: 'Affiliate', icon: Link2 },
     // Branding — standalone appearance tab (logo, color, background, domain)
     canBranding && { id: 'branding', label: 'Branding', icon: Palette },
   ].filter(Boolean) as { id: string; label: string; icon: any }[];
@@ -350,7 +361,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
   const moreTabs = [
     ...drawerTabs,
     ...(showInbox ? [{ id: 'inbox', label: 'Platform Inbox', icon: Inbox }] : []),
-    { id: 'settings', label: 'Settings', icon: Settings },
+    ...(canSettings ? [{ id: 'settings', label: 'Settings', icon: Settings }] : []),
   ];
 
   // If the active tab is not in the allowed tabs, switch to the first allowed tab
@@ -362,7 +373,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
     // 'inbox' is only a known/reachable tab in the platform context (super admin
     // on apex). For tenant admins, direct navigation to /admin/inbox redirects
     // away just like any other unentitled tab.
-    const known = new Set([...allTabs.map(t => t.id), ...(showInbox ? ['inbox'] : []), 'settings', 'canvas', 'upgrade']);
+    const known = new Set([...allTabs.map(t => t.id), ...(showInbox ? ['inbox'] : []), ...(canSettings ? ['settings'] : []), 'canvas', 'upgrade']);
     if (!isLoading && allTabs.length > 0 && !known.has(activeTab)) {
       go(allTabs[0].id);
     }
@@ -628,7 +639,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
               : <PlanUpgradeScreen featureName="CRM" featureKey="crm" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
           ) : activeTab === 'accounting' ? (
             (platformOverride || !isTenantAdmin || (features && (features.accountingTools || features.givingStatements)))
-              ? <div className="p-4 lg:p-0"><AdminAccounting /></div>
+              ? <div className="p-4 lg:p-0"><AdminAccounting canManageAccounting={hasFullAccess || !!perms.manageAccounting} canManageStatements={hasFullAccess || !!perms.manageGivingStatements} /></div>
               : <PlanUpgradeScreen featureName="Accounting" featureKey="accounting" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
           ) : activeTab === 'forms' ? (
             (platformOverride || !isTenantAdmin || (features && features.customForms))
@@ -637,7 +648,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
           ) : activeTab === 'checkin' ? (
             // QR is available on all plans; AdminCheckin renders only the QR sub-tab
             // when the tenant lacks checkInSystem, so it's always safe to mount here.
-            <div className="p-4 lg:p-0"><AdminCheckin /></div>
+            <div className="p-4 lg:p-0"><AdminCheckin canCheckin={hasFullAccess || !!perms.manageCheckin} canQR={hasFullAccess || !!perms.manageQR} /></div>
           ) : activeTab === 'livestream' ? (
             (platformOverride || !isTenantAdmin || (features && features.livestream))
               ? <div className="p-4 lg:p-0"><AdminLivestream /></div>

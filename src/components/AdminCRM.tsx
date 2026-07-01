@@ -199,7 +199,15 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
   const [showAddActivity, setShowAddActivity] = useState(false);
   const [actForm, setActForm] = useState({ type: 'note' as ContactActivity['type'], description: '', amount: '' });
   const [savingAct, setSavingAct] = useState(false);
-  const [crmSubView, setCrmSubView] = useState<'contacts' | 'analytics' | 'roles'>('contacts');
+  // Sub-view entitlements. Contacts = manageCRM, Analytics = analytics, Roles =
+  // manageAdmins (full access / super admin see all three). The CRM drawer entry
+  // shows when the admin has ANY of these, so default to one they can actually view.
+  const canViewContacts = currentUserRole === 'super_admin' || !!currentUserPermissions?.fullAccess || !!currentUserPermissions?.manageCRM;
+  const canViewAnalytics = currentUserRole === 'super_admin' || !!currentUserPermissions?.fullAccess || !!currentUserPermissions?.analytics;
+  const canManageRoles = currentUserRole === 'super_admin' || !!currentUserPermissions?.fullAccess || !!currentUserPermissions?.manageAdmins;
+  const [crmSubView, setCrmSubView] = useState<'contacts' | 'analytics' | 'roles'>(
+    canViewContacts ? 'contacts' : canViewAnalytics ? 'analytics' : canManageRoles ? 'roles' : 'contacts'
+  );
   const [listMode, setListMode] = useState<'list' | 'kanban'>('list');
 
   // Drive the shared header: in detail/form sub-views the back chevron steps
@@ -395,32 +403,31 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
     return <div className="flex items-center justify-center h-40"><div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--brand-color, #B8962E)', borderTopColor: 'transparent' }} /></div>;
   }
 
-  // Admin Roles lives here (next to Contacts & Analytics) rather than as its own
-  // top-level tab. Only show it to users who can actually manage admins.
-  const canManageRoles =
-    currentUserRole === 'super_admin' ||
-    !!currentUserPermissions?.fullAccess ||
-    !!currentUserPermissions?.manageAdmins;
-
-  // Pill segmented control for the Contacts / Analytics / Roles sub-views.
+  // Pill segmented control for the Contacts / Analytics / Roles sub-views. Each
+  // pill is shown only to admins entitled to that sub-view (Roles lives here
+  // rather than as its own top-level tab).
   const subTabBar = (
     <div className="flex gap-1 bg-gray-100 rounded-xl p-1 mb-5 w-fit">
-      <button
-        onClick={() => setCrmSubView('contacts')}
-        className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
-          crmSubView === 'contacts' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-400'
-        }`}
-      >
-        Contacts
-      </button>
-      <button
-        onClick={() => { setCrmSubView('analytics'); setView('list'); setSelected(null); }}
-        className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
-          crmSubView === 'analytics' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-400'
-        }`}
-      >
-        Analytics
-      </button>
+      {canViewContacts && (
+        <button
+          onClick={() => setCrmSubView('contacts')}
+          className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+            crmSubView === 'contacts' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-400'
+          }`}
+        >
+          Contacts
+        </button>
+      )}
+      {canViewAnalytics && (
+        <button
+          onClick={() => { setCrmSubView('analytics'); setView('list'); setSelected(null); }}
+          className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+            crmSubView === 'analytics' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-400'
+          }`}
+        >
+          Analytics
+        </button>
+      )}
       {canManageRoles && (
         <button
           onClick={() => { setCrmSubView('roles'); setView('list'); setSelected(null); }}
@@ -438,7 +445,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
     return (
       <div ref={scrollRef} className="max-w-3xl mx-auto">
         {subTabBar}
-        {currentUserRole ? (
+        {canViewAnalytics && currentUserRole ? (
           <AnalyticsAndRoles
             currentUserRole={currentUserRole}
             currentUserPermissions={currentUserPermissions}

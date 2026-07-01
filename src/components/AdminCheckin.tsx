@@ -40,7 +40,14 @@ interface Attendee {
 
 interface EventOption { id: string; title: string }
 
-const AdminCheckin: React.FC = () => {
+interface AdminCheckinProps {
+  /** Admin holds manageCheckin (or full access). Defaults true when unset. */
+  canCheckin?: boolean;
+  /** Admin holds manageQR (or full access). Defaults true when unset. */
+  canQR?: boolean;
+}
+
+const AdminCheckin: React.FC<AdminCheckinProps> = ({ canCheckin = true, canQR = true }) => {
   // Fall back to the platform tenant for a super admin if the store value is
   // briefly null (e.g. on a refresh) so create/QR never silently no-ops. On a
   // tenant subdomain currentTenantId is set and takes precedence.
@@ -48,13 +55,21 @@ const AdminCheckin: React.FC = () => {
   const tenantId = currentTenantId || (isSuperAdmin ? PLATFORM_TENANT_ID : null);
   const { setHeaderAction, setHeaderOverride } = useAdminHeader();
 
-  // QR Codes is now nested here as a sub-tab. QR is available on all plans; the
-  // Check-In sub-tab stays gated to plans with the checkInSystem feature. When
-  // that feature is absent, only the QR tab is shown (and forced active).
+  // QR Codes is now nested here as a sub-tab. Each sub-tab combines its gate with
+  // the admin's permission: Check-In behind checkInSystem + manageCheckin, QR
+  // behind manageQR (QR itself is available on every plan). When only one is
+  // available, only that tab is shown (and forced active).
   const ctx = useTenantOptional();
-  const checkInEnabled = ctx?.planFeatures?.checkInSystem ?? true;
+  const checkInEnabled = (ctx?.planFeatures?.checkInSystem ?? true) && canCheckin;
+  const qrEnabled = canQR;
   const [tab, setTab] = useState<'checkin' | 'qr'>('checkin');
-  const activeSubTab = checkInEnabled ? tab : 'qr';
+  const showBothSubTabs = checkInEnabled && qrEnabled;
+  // Pick the active sub-tab from what's actually available. Crucially, don't
+  // fall through to QR when QR isn't enabled — a manageCheckin-only admin on a
+  // plan without checkInSystem holds neither, and must not be dropped into the
+  // QR generator. 'none' renders a graceful empty state below.
+  const activeSubTab: 'checkin' | 'qr' | 'none' =
+    checkInEnabled && qrEnabled ? tab : checkInEnabled ? 'checkin' : qrEnabled ? 'qr' : 'none';
 
   const [view, setView] = useState<'list' | 'create' | 'detail'>('list');
   const [sessions, setSessions] = useState<CheckinSession[]>([]);
@@ -229,7 +244,8 @@ const AdminCheckin: React.FC = () => {
     ts?.toDate ? ts.toDate().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : '';
 
   // Native pill segmented control (matches the CRM Contacts/Analytics toggle).
-  const subTabBar = checkInEnabled ? (
+  // Only shown when the admin can reach BOTH sub-tabs.
+  const subTabBar = showBothSubTabs ? (
     <div className="flex gap-1 bg-gray-100 rounded-xl p-1 mb-5 w-fit">
       <button
         onClick={() => setTab('checkin')}
@@ -249,6 +265,17 @@ const AdminCheckin: React.FC = () => {
       </button>
     </div>
   ) : null;
+
+  // Neither sub-tab is available to this admin (e.g. manageCheckin only, on a
+  // plan without checkInSystem, and no manageQR). Show a graceful empty state
+  // rather than dropping them into a generator they aren't permitted to use.
+  if (activeSubTab === 'none') {
+    return (
+      <div className="max-w-2xl mx-auto text-center py-16 text-gray-400">
+        <p className="text-sm">You don&apos;t have access to Check-In or QR Codes.</p>
+      </div>
+    );
+  }
 
   // QR Codes sub-tab — the standalone QR generator.
   if (activeSubTab === 'qr') {
