@@ -214,7 +214,16 @@ const AppInner: React.FC = () => {
               if (FUNNEL_PATHS.includes(path)) {
                 navigate(homeBase, { replace: true });
               } else if (path === '/' && (isAdminDomain || hasAdminRole) && !intentionalUserView) {
-                navigate('/admin', { replace: true });
+                // If the user belongs to a real tenant but is currently on the apex
+                // (e.g. they clicked a "buy a plan" link while already signed in), send
+                // them to THEIR tenant's subdomain admin instead of the apex admin —
+                // which resolves no tenant and shows a broken/limited view. Super admins
+                // (no tenantId) stay on the apex admin as before.
+                if (data.tenantId && !onSubdomain) {
+                  window.location.href = `https://${data.tenantId}.theharvest.app/admin`;
+                } else {
+                  navigate('/admin', { replace: true });
+                }
               }
               // else: keep the current deep-linked path
             } else if (data.signupInProgress && !data.tenantId) {

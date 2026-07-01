@@ -7,6 +7,27 @@ import { PLAN_PRICES, AI_ASSISTANT_MONTHLY } from '@/lib/stripe-config';
 
 export const dynamic = 'force-dynamic';
 
+// Returns a valid customer id for the current Stripe mode. If the stored id is
+// missing/deleted/wrong-mode, creates a fresh customer and persists it via `persist`.
+async function getValidCustomerId(
+  stripe: Stripe,
+  storedId: string | undefined | null,
+  createParams: Stripe.CustomerCreateParams,
+  persist: (id: string) => Promise<void>,
+): Promise<string> {
+  if (storedId) {
+    try {
+      const c = await stripe.customers.retrieve(storedId);
+      if (c && !(c as any).deleted) return storedId;
+    } catch {
+      // missing / deleted / wrong-mode → fall through and create a fresh one
+    }
+  }
+  const created = await stripe.customers.create(createParams);
+  await persist(created.id);
+  return created.id;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const userOrErr = await requireAuth(request);
@@ -34,20 +55,21 @@ export async function POST(request: NextRequest) {
       }
       const tenantDoc = await adminDb.collection('tenants').doc(tenantId).get();
       const tenantData = tenantDoc.data();
-      let customerId = tenantData?.stripeCustomerId;
-
-      if (!customerId) {
-        const customer = await stripe.customers.create({
+      const customerId = await getValidCustomerId(
+        stripe,
+        tenantData?.stripeCustomerId,
+        {
           email: email || undefined,
           name: tenantName || tenantData?.name || tenantId,
           metadata: { tenantId, app: 'harvest' },
-        });
-        customerId = customer.id;
-        await adminDb.collection('tenants').doc(tenantId).update({
-          stripeCustomerId: customerId,
-          updatedAt: new Date().toISOString(),
-        });
-      }
+        },
+        async (id) => {
+          await adminDb.collection('tenants').doc(tenantId).update({
+            stripeCustomerId: id,
+            updatedAt: new Date().toISOString(),
+          });
+        },
+      );
 
       const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://theharvest.app';
 
@@ -158,20 +180,21 @@ export async function POST(request: NextRequest) {
 
     const tenantDoc = await adminDb.collection('tenants').doc(tenantId).get();
     const tenantData = tenantDoc.data();
-    let customerId = tenantData?.stripeCustomerId;
-
-    if (!customerId) {
-      const customer = await stripe.customers.create({
+    const customerId = await getValidCustomerId(
+      stripe,
+      tenantData?.stripeCustomerId,
+      {
         email: email || undefined,
         name: tenantName || tenantData?.name || tenantId,
         metadata: { tenantId, app: 'harvest' },
-      });
-      customerId = customer.id;
-      await adminDb.collection('tenants').doc(tenantId).update({
-        stripeCustomerId: customerId,
-        updatedAt: new Date().toISOString(),
-      });
-    }
+      },
+      async (id) => {
+        await adminDb.collection('tenants').doc(tenantId).update({
+          stripeCustomerId: id,
+          updatedAt: new Date().toISOString(),
+        });
+      },
+    );
 
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
