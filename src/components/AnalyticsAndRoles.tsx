@@ -1,5 +1,5 @@
 import React, { useState, useEffect, CSSProperties } from "react";
-import { collection, query, getDocs, doc, updateDoc, where, deleteDoc } from "firebase/firestore";
+import { collection, query, getDocs, getDoc, doc, updateDoc, where, deleteDoc } from "firebase/firestore";
 import { db, auth } from "../firebase";
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { notifyError } from '../utils/notify';
@@ -532,6 +532,9 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
   
   const [allUsers, setAllUsers] = useState<UserRecord[]>([]);
   const [admins, setAdmins] = useState<AdminUser[]>([]);
+  // tenants/{id}.ownerId — the buyer. Their card gets an Owner badge instead of
+  // Edit/Remove (firestore.rules is the real guard; this avoids a dead-end UI).
+  const [tenantOwnerId, setTenantOwnerId] = useState<string | null>(null);
 
   const [locationQuery, setLocationQuery] = useState("");
   const [period, setPeriod] = useState<TimePeriod>(7);
@@ -561,6 +564,16 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
     const fetchUsers = async () => {
       try {
         const tenantId = await getTenantScope();
+        if (tenantId) {
+          try {
+            const tenantDoc = await getDoc(doc(db, "tenants", tenantId));
+            setTenantOwnerId(tenantDoc.data()?.ownerId || null);
+          } catch (ownerErr) {
+            // Badge-only degradation: without ownerId the owner card shows the usual
+            // buttons, but firestore.rules still rejects any role/permissions change.
+            console.error("Failed to load tenant ownerId:", ownerErr);
+          }
+        }
         const q = tenantId
           ? query(collection(db, "users"), where("tenantId", "==", tenantId))
           : query(collection(db, "users"));
@@ -1076,6 +1089,7 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
 
               {admins.map((admin) => {
                 const isSuperAdmin = admin.role === "super_admin";
+                const isOwner = !!tenantOwnerId && admin.id === tenantOwnerId;
                 const perms = admin.permissions;
                 const activePerms = isSuperAdmin || perms.fullAccess
                   ? ["Full Access"]
@@ -1107,7 +1121,14 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
                         </div>
                       </div>
 
-                      {!isSuperAdmin && (
+                      {!isSuperAdmin && (isOwner ? (
+                        // The owner's role/permissions are locked by firestore.rules —
+                        // no Edit/Remove, just a badge so the lock isn't a dead end.
+                        <div title="The plan owner's admin access is locked and cannot be edited or removed."
+                          style={{ display: "flex", alignItems: "center", gap: 5, background: GOLD_LIGHT, color: GOLD, borderRadius: 99, padding: "5px 12px", fontSize: 12, fontWeight: 800, flexShrink: 0 }}>
+                          <Crown size={13} /> Owner
+                        </div>
+                      ) : (
                         <div style={{ display: "flex", flexDirection: "column", gap: 6, flexShrink: 0 }}>
                           <button onClick={() => openEditAdmin(admin)}
                             style={{ background: GOLD_LIGHT, border: `1px solid color-mix(in srgb, var(--brand-color) 20%, transparent)`, color: GOLD, borderRadius: 8, padding: "5px 12px", cursor: "pointer", fontSize: 12, fontFamily: "inherit", fontWeight: 700 }}>
@@ -1118,7 +1139,7 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
                             Remove
                           </button>
                         </div>
-                      )}
+                      ))}
                     </div>
                   </div>
                 );

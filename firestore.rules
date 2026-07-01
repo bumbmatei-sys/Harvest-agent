@@ -68,6 +68,14 @@ service cloud.firestore {
       );
     }
 
+    // The tenant owner is the buyer: tenants/{id}.ownerId, set by the Stripe
+    // webhook at tenant creation and immutable thereafter.
+    function isTenantOwner(uid, tenantId) {
+      return tenantId is string && tenantId.size() > 0
+        && exists(/databases/$(database)/documents/tenants/$(tenantId))
+        && uid == get(/databases/$(database)/documents/tenants/$(tenantId)).data.get('ownerId', '');
+    }
+
     function requestHasCorrectTenant() {
       return isAuthenticated() &&
         (isSuperAdmin() || request.resource.data.tenantId == userTenantId());
@@ -105,6 +113,14 @@ service cloud.firestore {
             'affiliateEarnings', 'affiliatePendingPayouts', 'affiliateCode'
           ])) ||
         isSuperAdmin()
+      ) && (
+        // Owner protection: the tenant owner's role & permissions are immutable within
+        // the tenant — nobody (not even the owner, not another Full Access admin) may
+        // change them. Only a platform super admin can. The owner loses admin access
+        // solely by cancelling the subscription (handled server-side).
+        isSuperAdmin()
+        || !isTenantOwner(userId, resource.data.get('tenantId', ''))
+        || !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'permissions'])
       );
 
       allow delete: if isSuperAdmin();
