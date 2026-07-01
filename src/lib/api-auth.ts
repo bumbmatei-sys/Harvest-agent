@@ -38,13 +38,24 @@ export async function verifyAuth(request: NextRequest): Promise<AuthenticatedUse
     const idToken = authHeader.split('Bearer ')[1];
     const decoded = await adminAuth.verifyIdToken(idToken);
 
-    // Get tenantId from custom claims or user doc
+    // Admin status: prefer the token claim, but fall back to the authoritative
+    // server-read user-doc role. A freshly-provisioned owner (build-on-payment) has
+    // role 'admin' in their doc, but their cached ID token may not carry the 'admin'
+    // claim yet (claims propagate only on token refresh). Without this fallback the
+    // client lets them into /admin (it reads the doc role) while requireAdmin routes
+    // reject them — e.g. custom domains failing with "Not authorized". The role is
+    // server-controlled (users can't self-escalate it via rules), so this is safe.
     let tenantId = decoded.tenantId as string | null || null;
-    if (!tenantId) {
+    let isAdmin = decoded.admin === true;
+    if (!tenantId || !isAdmin) {
       try {
         const userDoc = await adminDb.collection('users').doc(decoded.uid).get();
         if (userDoc.exists) {
-          tenantId = userDoc.data()?.tenantId || null;
+          const data = userDoc.data();
+          tenantId = tenantId || data?.tenantId || null;
+          if (!isAdmin && ['admin', 'church_admin', 'super_admin'].includes(data?.role)) {
+            isAdmin = true;
+          }
         }
       } catch {
         // Ignore — user doc might not exist yet
@@ -55,7 +66,7 @@ export async function verifyAuth(request: NextRequest): Promise<AuthenticatedUse
       uid: decoded.uid,
       email: decoded.email,
       tenantId,
-      isAdmin: decoded.admin === true,
+      isAdmin,
       isSuperAdmin: decoded.superAdmin === true || isSuperAdminEmail(decoded.email),
     };
   } catch {
