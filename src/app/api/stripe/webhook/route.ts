@@ -64,6 +64,15 @@ async function processInitialAffiliateCommission(opts: {
         currency: 'usd',
         destination: connectAccountId,
         metadata: { referrerId, tenantId, plan, type: 'affiliate_commission' },
+      }, {
+        // Idempotency across webhook retries. The initial commission is paid once
+        // per subscription, but the transfer moves money BEFORE its dedup record is
+        // written — so if the transfer succeeds and the commission-doc write then
+        // fails, the retry (now enabled by the marker-undo on failure) re-enters
+        // here and the affiliate_commissions guard, seeing no record, would pay
+        // again. This key makes Stripe return the original transfer instead of
+        // issuing a second one, so the affiliate is paid exactly once.
+        idempotencyKey: `aff_initial_${subscriptionId}`,
       });
       commissionStatus = 'paid';
       await adminDb.collection('affiliate_commissions').add({

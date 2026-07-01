@@ -283,6 +283,28 @@ describe('checkout.session.completed', () => {
     expect(mockSubsUpdate).toHaveBeenCalledWith('sub_new', { metadata: { tenantId: 'grace-church' } });
   });
 
+  it('pays the initial affiliate transfer with a per-subscription idempotency key (retry-safe)', async () => {
+    const session = { subscription: 'sub_aff', customer: 'cus_1', amount_total: 11900 };
+    mockConstructEvent.mockReturnValue(makeEvent('checkout.session.completed', session));
+    mockSubsRetrieve.mockResolvedValue({
+      id: 'sub_aff',
+      metadata: { tenantId: 'tenant1', plan: 'pro', billing: 'monthly', referrerId: 'refUser' },
+      current_period_end: 1800000000,
+    });
+    mockDocGet
+      .mockResolvedValueOnce({ exists: false }) // webhook_events dedup → new event
+      .mockResolvedValueOnce({ exists: true, data: () => ({ stripeSubscriptionId: null, ownerId: 'someoneElse', addOnAiAssistantCode: null }) }) // tenant (owner != referrer)
+      .mockResolvedValueOnce({ exists: true, data: () => ({ affiliateStripeAccountId: 'acct_ref', affiliateConnectStatus: 'active' }) }); // referrer w/ active Connect
+
+    const res = await POST(makeRequest());
+    expect(res.status).toBe(200);
+    // A retry of this event must not move money twice: Stripe dedups on the key.
+    expect(mockTransfersCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ amount: 1190, destination: 'acct_ref' }),
+      expect.objectContaining({ idempotencyKey: 'aff_initial_sub_aff' }),
+    );
+  });
+
   it('blocks self-referral commissions', async () => {
     const session = { subscription: 'sub_001', customer: 'cus_001', amount_total: 9900 };
     mockConstructEvent.mockReturnValue(makeEvent('checkout.session.completed', session));
