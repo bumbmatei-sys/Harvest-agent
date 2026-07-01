@@ -11,7 +11,9 @@ import {
 import { db, auth } from '../firebase';
 import { useAppStore } from '../store/useAppStore';
 import { PLATFORM_TENANT_ID } from '../utils/tenant-scope';
+import { useTenantOptional } from '../contexts/TenantContext';
 import { useAdminHeader, HeaderActionButton } from './AdminScreenHeader';
+import AdminQR from './AdminQR';
 
 const GOLD = 'var(--brand-color, #B8962E)';
 
@@ -45,6 +47,14 @@ const AdminCheckin: React.FC = () => {
   const { currentTenantId, isAuthReady, isSuperAdmin } = useAppStore();
   const tenantId = currentTenantId || (isSuperAdmin ? PLATFORM_TENANT_ID : null);
   const { setHeaderAction, setHeaderOverride } = useAdminHeader();
+
+  // QR Codes is now nested here as a sub-tab. QR is available on all plans; the
+  // Check-In sub-tab stays gated to plans with the checkInSystem feature. When
+  // that feature is absent, only the QR tab is shown (and forced active).
+  const ctx = useTenantOptional();
+  const checkInEnabled = ctx?.planFeatures?.checkInSystem ?? true;
+  const [tab, setTab] = useState<'checkin' | 'qr'>('checkin');
+  const activeSubTab = checkInEnabled ? tab : 'qr';
 
   const [view, setView] = useState<'list' | 'create' | 'detail'>('list');
   const [sessions, setSessions] = useState<CheckinSession[]>([]);
@@ -92,6 +102,12 @@ const AdminCheckin: React.FC = () => {
 
   // ── Header wiring ────────────────────────────────────────────────
   useEffect(() => {
+    // The QR sub-tab (AdminQR) publishes no header action of its own — clear ours.
+    if (activeSubTab !== 'checkin') {
+      setHeaderOverride(null);
+      setHeaderAction(null);
+      return () => { setHeaderAction(null); };
+    }
     if (view === 'list') {
       setHeaderOverride(null);
       setHeaderAction(<HeaderActionButton label="New Session" onClick={() => { setName(''); setDate(''); setLocation(''); setLinkedEventId(''); setView('create'); }} />);
@@ -103,7 +119,7 @@ const AdminCheckin: React.FC = () => {
       setHeaderAction(null);
     }
     return () => { setHeaderAction(null); };
-  }, [view, selected, setHeaderAction, setHeaderOverride]);
+  }, [activeSubTab, view, selected, setHeaderAction, setHeaderOverride]);
 
   // ── Live attendees + QR when a session is open ───────────────────
   useEffect(() => {
@@ -211,6 +227,38 @@ const AdminCheckin: React.FC = () => {
 
   const fmtTime = (ts: Timestamp | null) =>
     ts?.toDate ? ts.toDate().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : '';
+
+  // Native pill segmented control (matches the CRM Contacts/Analytics toggle).
+  const subTabBar = checkInEnabled ? (
+    <div className="flex gap-1 bg-gray-100 rounded-xl p-1 mb-5 w-fit">
+      <button
+        onClick={() => setTab('checkin')}
+        className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+          activeSubTab === 'checkin' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-400'
+        }`}
+      >
+        Check-In
+      </button>
+      <button
+        onClick={() => setTab('qr')}
+        className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+          activeSubTab === 'qr' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-400'
+        }`}
+      >
+        QR Codes
+      </button>
+    </div>
+  ) : null;
+
+  // QR Codes sub-tab — the standalone QR generator.
+  if (activeSubTab === 'qr') {
+    return (
+      <div className="max-w-2xl mx-auto">
+        {subTabBar}
+        <AdminQR />
+      </div>
+    );
+  }
 
   // ════════════════════════════════════════════════════════════════
   if (view === 'create') {
@@ -335,11 +383,17 @@ const AdminCheckin: React.FC = () => {
 
   // ── List view ────────────────────────────────────────────────────
   if (loading) {
-    return <div className="flex items-center justify-center h-40"><Loader2 size={28} className="animate-spin" style={{ color: GOLD }} /></div>;
+    return (
+      <div className="max-w-3xl mx-auto">
+        {subTabBar}
+        <div className="flex items-center justify-center h-40"><Loader2 size={28} className="animate-spin" style={{ color: GOLD }} /></div>
+      </div>
+    );
   }
 
   return (
     <div className="max-w-3xl mx-auto" style={{ paddingBottom: 120 }}>
+      {subTabBar}
       <p className="text-sm text-gray-500 mb-4 leading-relaxed">
         Create a session, then show its QR code (project or print). People scan it to check in on their phones, and you&apos;ll see them appear live below — export the list to CSV anytime.
       </p>

@@ -26,10 +26,8 @@ import AdminCRM from './AdminCRM';
 import AdminDocs from './AdminDocs';
 import AdminCommunity from './AdminCommunity';
 import AdminAccounting from './AdminAccounting';
-import AdminGivingStatements from './AdminGivingStatements';
 import AdminForms from './AdminForms';
 import AdminCheckin from './AdminCheckin';
-import AdminQR from './AdminQR';
 import AdminLivestream from './AdminLivestream';
 import AdminSms from './AdminSms';
 import AdminEvents from './AdminEvents';
@@ -61,9 +59,11 @@ const MORE_GROUPS: { label: string; ids: string[] }[] = [
   // Dashboard home (Members card / "View Members") — both are valid entry points.
   // Analytics & Admin Roles live inside the CRM screen as internal tabs, not as
   // their own drawer entries.
-  { label: 'MINISTRY', ids: ['crm', 'churches', 'community', 'fundraising', 'forms', 'accounting', 'giving-statements'] },
+  // Statements now live as a sub-tab inside Accounting (not a standalone entry).
+  { label: 'MINISTRY', ids: ['crm', 'churches', 'community', 'fundraising', 'forms', 'accounting'] },
   // Broadcasting: outbound / live engagement channels.
-  { label: 'BROADCASTING', ids: ['events', 'checkin', 'qr', 'sms', 'livestream'] },
+  // QR Codes now live as a sub-tab inside Check-In (not a standalone entry).
+  { label: 'BROADCASTING', ids: ['events', 'checkin', 'sms', 'livestream'] },
   // Platform: super-admin-only surfaces (Tenants + the platform Inbox).
   { label: 'PLATFORM', ids: ['tenants', 'inbox'] },
   { label: 'MORE', ids: ['affiliate', 'branding'] },
@@ -261,24 +261,20 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
     (platformOverride || !isTenantAdmin || (features && features.crm)) &&
       hasFullAccess &&
       { id: 'crm', label: 'CRM', icon: Users },
-    // Accounting (Crater)
-    (platformOverride || !isTenantAdmin || (features && features.accountingTools)) &&
+    // Accounting (Crater) — Statements is now a sub-tab inside this screen, so the
+    // entry is shown when EITHER the accounting or giving-statements feature is on.
+    (platformOverride || !isTenantAdmin || (features && (features.accountingTools || features.givingStatements))) &&
       hasFullAccess &&
       { id: 'accounting', label: 'Accounting', icon: Receipt },
-    // Annual giving statements (year-end tax summaries)
-    (platformOverride || !isTenantAdmin || (features && features.givingStatements)) &&
-      hasFullAccess &&
-      { id: 'giving-statements', label: 'Statements', icon: Receipt },
     // Custom Forms → CRM pipeline
     (platformOverride || !isTenantAdmin || (features && features.customForms)) &&
       hasFullAccess &&
       { id: 'forms', label: 'Forms', icon: ClipboardList },
-    // Check-In System (QR attendance)
-    (platformOverride || !isTenantAdmin || (features && features.checkInSystem)) &&
-      hasFullAccess &&
-      { id: 'checkin', label: 'Check-In', icon: QrCode },
-    // QR Code generator — available on all plans
-    (hasFullAccess || !isTenantAdmin) && { id: 'qr', label: 'QR Codes', icon: QrCode },
+    // Check-In System (QR attendance) — the QR Code generator is now a sub-tab
+    // inside this screen. QR is available on all plans, so the entry shows for
+    // every full-access admin; the Check-In sub-tab itself stays gated to plans
+    // with checkInSystem inside AdminCheckin.
+    (hasFullAccess || !isTenantAdmin) && { id: 'checkin', label: 'Check-In', icon: QrCode },
     // Livestream (YouTube + live giving)
     (platformOverride || !isTenantAdmin || (features && features.livestream)) &&
       hasFullAccess &&
@@ -607,23 +603,17 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
               ? <div className="p-4 lg:p-0"><AdminCRM currentUserRole={isSuperAdmin ? 'super_admin' : userRole} currentUserPermissions={isChurchAdmin ? { fullAccess: true } as any : userPermissions} initialContactId={itemId} onItemConsumed={clearItemId} /></div>
               : <PlanUpgradeScreen featureName="CRM" featureKey="crm" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
           ) : activeTab === 'accounting' ? (
-            (platformOverride || !isTenantAdmin || (features && features.accountingTools))
+            (platformOverride || !isTenantAdmin || (features && (features.accountingTools || features.givingStatements)))
               ? <div className="p-4 lg:p-0"><AdminAccounting /></div>
               : <PlanUpgradeScreen featureName="Accounting" featureKey="accounting" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
-          ) : activeTab === 'giving-statements' ? (
-            (platformOverride || !isTenantAdmin || (features && features.givingStatements))
-              ? <div className="p-4 lg:p-0"><AdminGivingStatements /></div>
-              : <PlanUpgradeScreen featureName="Giving Statements" featureKey="givingStatements" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
           ) : activeTab === 'forms' ? (
             (platformOverride || !isTenantAdmin || (features && features.customForms))
               ? <div className="p-4 lg:p-0"><AdminForms /></div>
               : <PlanUpgradeScreen featureName="Forms" featureKey="customForms" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
           ) : activeTab === 'checkin' ? (
-            (platformOverride || !isTenantAdmin || (features && features.checkInSystem))
-              ? <div className="p-4 lg:p-0"><AdminCheckin /></div>
-              : <PlanUpgradeScreen featureName="Check-In" featureKey="checkInSystem" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
-          ) : activeTab === 'qr' ? (
-            <div className="p-4 lg:p-0"><AdminQR /></div>
+            // QR is available on all plans; AdminCheckin renders only the QR sub-tab
+            // when the tenant lacks checkInSystem, so it's always safe to mount here.
+            <div className="p-4 lg:p-0"><AdminCheckin /></div>
           ) : activeTab === 'livestream' ? (
             (platformOverride || !isTenantAdmin || (features && features.livestream))
               ? <div className="p-4 lg:p-0"><AdminLivestream /></div>
