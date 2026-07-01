@@ -706,7 +706,7 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
     if (mode !== "roles") { setHeaderAction(null); return; }
     setHeaderAction(<HeaderActionButton label="Add Admin" onClick={openNewAdmin} />);
     return () => setHeaderAction(null);
-  }, [setHeaderAction]);
+  }, [setHeaderAction, mode]);
 
   return (
     <div style={pageStyle}>

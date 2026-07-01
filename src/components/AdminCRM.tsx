@@ -225,7 +225,10 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
   // Contacts sub-view (the Analytics sub-view renders AnalyticsAndRoles, which
   // manages its own header action). Re-asserts when the sub-view changes back.
   useEffect(() => {
-    if (crmSubView !== 'contacts') { setHeaderAction(null); return; }
+    // Only the Contacts sub-view owns the shared header action. Analytics/Roles
+    // render AnalyticsAndRoles, which publishes its own action (e.g. "Add Admin"),
+    // so do NOT clear the slot here on those sub-views or we'd clobber theirs.
+    if (crmSubView !== 'contacts') return;
     setHeaderAction(<HeaderActionButton label="Add Contact" onClick={() => { setIsEditing(false); setForm(emptyContact); setView('form'); }} />);
     return () => setHeaderAction(null);
   }, [setHeaderAction, crmSubView]);
