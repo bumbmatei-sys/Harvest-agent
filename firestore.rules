@@ -296,13 +296,17 @@ service cloud.firestore {
       allow create: if isSuperAdmin();
 
       // plan / status / Stripe / add-on fields are billing authority, written only
-      // by the Stripe webhook + billing routes via the Admin SDK. Tenant admins may
-      // edit everything else; super admins (platform tenant mgmt) are unrestricted.
+      // by the Stripe webhook + billing routes via the Admin SDK. ownerId is owner
+      // authority (set once by the webhook; gates owner-only billing routes and the
+      // users-rule owner protection) and adminEmails is the admin roster the rules
+      // themselves trust — both are server/super-admin-only, or the owner lock could
+      // be dodged by rewriting them. Tenant admins may edit everything else; super
+      // admins (platform tenant mgmt) are unrestricted.
       allow update: if isAuthenticated() && (
         isSuperAdmin() ||
         (isTenantAdmin(tenantId) &&
          !request.resource.data.diff(resource.data).affectedKeys().hasAny([
-           'plan', 'status',
+           'plan', 'status', 'ownerId', 'adminEmails',
            'stripeCustomerId', 'stripeSubscriptionId', 'stripePriceId',
            'addOnAiAssistant', 'addOnAiAssistantCode', 'aiAssistantSubscriptionItemId'
          ]))
