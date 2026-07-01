@@ -118,6 +118,48 @@ export async function requireTenantMember(
   return userOrResponse;
 }
 
+/** Result of a successful owner check: the user plus their resolved tenant. */
+export interface OwnerContext {
+  user: AuthenticatedUser;
+  tenantId: string;
+  tenantData: FirebaseFirestore.DocumentData;
+}
+
+/**
+ * Require the authenticated user to be the plan OWNER of their own tenant.
+ *
+ * Owner identity is `tenants/{tenantId}.ownerId` (the buyer uid, set by the
+ * Stripe webhook at tenant creation and immutable). The tenant is resolved from
+ * the caller's own token/user-doc — never a client-supplied id — so a user can
+ * only ever reach their own tenant's owner-gated surfaces. A created (non-owner)
+ * admin, or an admin of a different tenant, gets 403.
+ *
+ * Returns 401 (unauthenticated), 403 (not admin / not owner / no tenant), or 404
+ * (tenant missing) as a NextResponse; otherwise the OwnerContext.
+ */
+export async function requireOwner(request: NextRequest): Promise<OwnerContext | NextResponse> {
+  const userOrResponse = await requireAdmin(request);
+  if (userOrResponse instanceof NextResponse) return userOrResponse;
+  const user = userOrResponse;
+
+  const tenantId = user.tenantId;
+  if (!tenantId) {
+    return NextResponse.json({ error: 'No tenant associated with this account' }, { status: 403 });
+  }
+
+  const tenantDoc = await adminDb.collection('tenants').doc(tenantId).get();
+  if (!tenantDoc.exists) {
+    return NextResponse.json({ error: 'Tenant not found' }, { status: 404 });
+  }
+  const tenantData = tenantDoc.data() || {};
+
+  if (tenantData.ownerId !== user.uid) {
+    return NextResponse.json({ error: 'Owner access required' }, { status: 403 });
+  }
+
+  return { user, tenantId, tenantData };
+}
+
 /**
  * Require tenant admin. Returns 403 if not admin of the specified tenant.
  */
