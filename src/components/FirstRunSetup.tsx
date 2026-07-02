@@ -113,7 +113,9 @@ const FirstRunSetup: React.FC<FirstRunSetupProps> = ({ tenantId, onFinished }) =
           </div>
           <h1 className="text-2xl font-bold text-gray-900">Finish setting up your ministry</h1>
           <p className="text-sm text-gray-500 mt-2">
-            Claim your web address and brand your app. You can change all of this later in Settings.
+            {features?.customBranding || features?.customDomain
+              ? 'Claim your web address and brand your app. You can change all of this later in Settings.'
+              : 'Claim your web address. You can change it later in Settings.'}
           </p>
         </div>
 
@@ -153,17 +155,21 @@ const FirstRunSetup: React.FC<FirstRunSetupProps> = ({ tenantId, onFinished }) =
           </div>
         </div>
 
-        {/* Branding (reused settings section) */}
-        <div className="bg-white rounded-2xl border border-gray-100 p-5 mb-6">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">Branding</h3>
-          <BrandingSection currentFeatures={features ?? undefined} />
-        </div>
+        {/* Branding — only for plans that include custom branding (Community / max+) */}
+        {features?.customBranding && (
+          <div className="bg-white rounded-2xl border border-gray-100 p-5 mb-6">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">Branding</h3>
+            <BrandingSection currentFeatures={features ?? undefined} />
+          </div>
+        )}
 
-        {/* Custom domain (reused settings section) */}
-        <div className="bg-white rounded-2xl border border-gray-100 p-5 mb-6">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">Custom Domain</h3>
-          <DomainSection hasCustomDomain={!!features?.customDomain} />
-        </div>
+        {/* Custom domain — only for plans that include it (Ministry / ultra) */}
+        {features?.customDomain && (
+          <div className="bg-white rounded-2xl border border-gray-100 p-5 mb-6">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">Custom Domain</h3>
+            <DomainSection hasCustomDomain={!!features?.customDomain} />
+          </div>
+        )}
 
         {/* Finish */}
         <div className="flex justify-end pb-10">

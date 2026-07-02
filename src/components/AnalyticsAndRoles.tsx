@@ -1,4 +1,4 @@
-import React, { useState, useEffect, CSSProperties } from "react";
+import React, { useState, useEffect, useRef, CSSProperties } from "react";
 import { collection, query, getDocs, getDoc, doc, updateDoc, where, deleteDoc } from "firebase/firestore";
 import { db, auth } from "../firebase";
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
@@ -32,7 +32,6 @@ const GREEN_BG = "#F0FDF4";
 const RED = "#E74C3C";
 const RED_BG = "#FEF2F2";
 const BLUE = "#2563EB";
-const BLUE_BG = "#EFF6FF";
 const PURPLE = "#7C3AED";
 const PURPLE_BG = "#F5F3FF";
 
@@ -298,6 +297,40 @@ function Toggle({ on, color }: { on: boolean; color: string }) {
     </div>
   );
 }
+
+// Single brand-coloured "⬇ Download ▾" control that replaces the old paired
+// export buttons. Opens to two choices (contact details / onboarding data);
+// closes on outside-click, Esc, or selection. Pure React — no libraries.
+const DownloadMenu: React.FC<{ onContacts: () => void; onOnboarding: () => void; style?: React.CSSProperties; }>
+  = ({ onContacts, onOnboarding, style }) => {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('mousedown', onDoc);
+    document.addEventListener('keydown', onKey);
+    return () => { document.removeEventListener('mousedown', onDoc); document.removeEventListener('keydown', onKey); };
+  }, [open]);
+  const pick = (fn: () => void) => { fn(); setOpen(false); };
+  const BRAND = 'var(--brand-color, #C9963A)';
+  const item: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left', padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, color: TEXT };
+  return (
+    <div ref={ref} style={{ position: 'relative', ...style }}>
+      <button onClick={() => setOpen(o => !o)}
+        style={{ background: 'color-mix(in srgb, var(--brand-color, #C9963A) 10%, white)', border: '1px solid color-mix(in srgb, var(--brand-color, #C9963A) 35%, white)', color: BRAND, padding: '6px 12px', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
+        ⬇ Download <ChevronDown size={13} style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
+      </button>
+      {open && (
+        <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 4, background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 20, overflow: 'hidden', minWidth: 190 }}>
+          <button onClick={() => pick(onContacts)} style={item}>⬇ Contact details</button>
+          <button onClick={() => pick(onOnboarding)} style={{ ...item, borderTop: `1px solid ${BORDER}` }}>📋 Onboarding data</button>
+        </div>
+      )}
+    </div>
+  );
+};
 
 interface PermissionEditorProps {
   admin: AdminUser | null;
@@ -648,8 +681,7 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
           <button onClick={() => setSubView("main")} style={s.backBtn}>← Back</button>
           <h2 style={{ fontSize: 20, fontWeight: 800, color: TEXT }}>All Users ({filtered.length})</h2>
           <div style={{ flex: 1 }} />
-          <button onClick={() => downloadOnboardingCSV(filtered, "all_users_onboarding.csv")} style={{ ...s.downloadBtn, marginRight: 8 }}>📋 Onboarding Data</button>
-          <button onClick={() => downloadUsersCSV(filtered, "all_users.csv")} style={s.downloadBtn}>⬇ Download CSV</button>
+          <DownloadMenu onContacts={() => downloadUsersCSV(filtered, "all_users.csv")} onOnboarding={() => downloadOnboardingCSV(filtered, "all_users_onboarding.csv")} />
         </div>
         
         <input 
@@ -771,7 +803,7 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
           <button onClick={() => setSubView("countries")} style={s.backBtn}>← Back</button>
           <h2 style={{ fontSize: 20, fontWeight: 800, color: TEXT }}>Users in {selectedCountry} ({filtered.length})</h2>
           <div style={{ flex: 1 }} />
-          <button onClick={() => downloadUsersCSV(filtered, `users_${selectedCountry}.csv`)} style={s.downloadBtn}>⬇ Download CSV</button>
+          <DownloadMenu onContacts={() => downloadUsersCSV(filtered, `users_${selectedCountry}.csv`)} onOnboarding={() => downloadOnboardingCSV(filtered, `onboarding_${selectedCountry}.csv`)} />
         </div>
         
         <input 
@@ -1022,16 +1054,10 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
                             {locationQuery ? ` in "${locationQuery}"` : ""} — last {period} day{period !== 1 ? "s" : ""}
                           </span>
                           {filteredUsers.length > 0 && (
-                            <div style={{ display: "flex", gap: 6 }}>
-                              <button onClick={() => downloadOnboardingCSV(filteredUsers, `onboarding-${locationQuery || "all"}-${period}days.csv`)}
-                                style={{ background: BLUE_BG, border: `1px solid ${BLUE}33`, color: BLUE, borderRadius: 8, padding: "4px 12px", cursor: "pointer", fontSize: 11, fontFamily: "inherit", fontWeight: 700, display: "flex", alignItems: "center", gap: 5 }}>
-                                📋 Onboarding
-                              </button>
-                              <button onClick={() => downloadCSV(filteredUsers, period, locationQuery)}
-                                style={{ background: GREEN_BG, border: `1px solid ${GREEN}33`, color: GREEN, borderRadius: 8, padding: "4px 12px", cursor: "pointer", fontSize: 11, fontFamily: "inherit", fontWeight: 700, display: "flex", alignItems: "center", gap: 5 }}>
-                                ⬇ CSV
-                              </button>
-                            </div>
+                            <DownloadMenu
+                              onContacts={() => downloadCSV(filteredUsers, period, locationQuery)}
+                              onOnboarding={() => downloadOnboardingCSV(filteredUsers, `onboarding-${locationQuery || "all"}-${period}days.csv`)}
+                            />
                           )}
                         </div>
 
@@ -1224,7 +1250,6 @@ const s: Record<string, CSSProperties> = {
   input: { background: "#FAFAFA", border: `1.5px solid ${BORDER}`, borderRadius: 10, color: TEXT, padding: "10px 13px", fontSize: 14, width: "100%", fontFamily: "inherit" },
   newBtn: { background: GOLD_BTN, border: "none", color: "#fff", fontWeight: 700, padding: "13px", borderRadius: 12, cursor: "pointer", fontSize: 14, width: "100%", fontFamily: "inherit", boxShadow: "0 2px 8px rgba(201,150,58,0.3)" },
   backBtn: { background: "transparent", border: `1.5px solid ${BORDER}`, color: TEXT2, padding: "6px 12px", borderRadius: 8, cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 13 },
-  downloadBtn: { background: GREEN_BG, border: `1px solid ${GREEN}33`, color: GREEN, padding: "6px 12px", borderRadius: 8, cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 13 },
   th: { padding: "12px 16px", fontSize: 12, fontWeight: 700, color: TEXT2, textTransform: "uppercase", letterSpacing: "0.05em" },
   td: { padding: "12px 16px", fontSize: 14, color: TEXT },
   closeBtn: { width: 30, height: 30, borderRadius: "50%", background: "#F2F4F7", border: "none", color: TEXT2, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 },
