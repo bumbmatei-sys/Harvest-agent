@@ -7,7 +7,7 @@ import { requireAdmin } from '@/lib/api-auth';
 export const dynamic = 'force-dynamic';
 
 /**
- * Removes a $15/mo subscription item when an Organization plan admin deletes a church.
+ * Removes a $10/mo subscription item when an Organization plan admin deletes a church.
  * Called from the client before or after church document deletion.
  */
 export async function POST(request: NextRequest) {

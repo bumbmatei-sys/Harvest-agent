@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
       subscription: subscriptionId,
       price_data: {
         currency: 'usd',
-        unit_amount: 1500,
+        unit_amount: 1000,
         recurring: { interval: 'month' },
         product_data: {
           name: `Additional Church: ${churchName || churchId}`,
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
 
     await adminDb.collection('churches').doc(churchId).update({
       stripeSubscriptionItemId: subItem.id,
-      billingAmount: 1500,
+      billingAmount: 1000,
       billingAddedAt: new Date().toISOString(),
     });
 
