@@ -81,9 +81,8 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
   // Individual
   plus: {
     blog: true,
-    // AI RAG chat is free for all signed-in users; usage is capped server-side
-    // (see /api/gemini), so it is available on every plan.
-    aiChat: true,
+    // AI chat is available on Small Team (pro) and above; gated to match the pricing page.
+    aiChat: false,
     aiKnowledge: false,
     map: false,
     churchDirectory: false,
@@ -134,7 +133,7 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     smsAutomation: false,
     aiAssistant: 0,
     fundraising: true,
-    eventRegistration: true,
+    eventRegistration: false,
     docs: false,
     crm: false,
     accountingTools: false,
@@ -204,7 +203,7 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     newsletterAutomation: true,
     automatedNewsletter: true,
     smsAutomation: true,
-    aiAssistant: -1,
+    aiAssistant: 1,
     fundraising: true,
     eventRegistration: true,
     docs: true,
