@@ -13,9 +13,8 @@ describe('getPlanFeatures', () => {
   it('returns correct features for plus plan', () => {
     const f = getPlanFeatures('plus');
     expect(f.blog).toBe(true);
-    // AI RAG chat is free for all signed-in users (capped server-side), so it
-    // is now available on every plan, including Individual.
-    expect(f.aiChat).toBe(true);
+    // AI chat is available on Small Team (pro) and above; gated to match the pricing page.
+    expect(f.aiChat).toBe(false);
     expect(f.maxChurches).toBe(1);
     expect(f.maxCourses).toBe(2);
     expect(f.maxAdmins).toBe(1);
@@ -33,7 +32,7 @@ describe('getPlanFeatures', () => {
 
   it('returns correct features for ultra plan', () => {
     const f = getPlanFeatures('ultra');
-    expect(f.aiAssistant).toBe(-1);
+    expect(f.aiAssistant).toBe(1);
     expect(f.customDomain).toBe(true);
     expect(f.maxAdmins).toBe(-1);
     expect(f.maxChurches).toBe(-1);
@@ -65,8 +64,8 @@ describe('hasFeature', () => {
     expect(hasFeature('plus', 'blog')).toBe(true);
   });
 
-  it('AI chat is available on every plan (free for all signed-in users)', () => {
-    expect(hasFeature('plus', 'aiChat')).toBe(true);
+  it('AI chat is available on Small Team and above', () => {
+    expect(hasFeature('plus', 'aiChat')).toBe(false);
     expect(hasFeature('pro', 'aiChat')).toBe(true);
     expect(hasFeature('max', 'aiChat')).toBe(true);
     expect(hasFeature('ultra', 'aiChat')).toBe(true);
@@ -165,9 +164,9 @@ describe('hasFeature', () => {
     expect(hasFeature('ultra', 'pwaApp')).toBe(true);
   });
 
-  it('eventRegistration is available on Small Team (pro) and above', () => {
+  it('eventRegistration is available on Community (max) and above', () => {
     expect(hasFeature('plus', 'eventRegistration')).toBe(false);
-    expect(hasFeature('pro', 'eventRegistration')).toBe(true);
+    expect(hasFeature('pro', 'eventRegistration')).toBe(false);
     expect(hasFeature('max', 'eventRegistration')).toBe(true);
     expect(hasFeature('ultra', 'eventRegistration')).toBe(true);
   });
