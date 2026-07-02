@@ -25,7 +25,12 @@ interface AuthPageProps {
 }
 
 const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
-  const [isLogin, setIsLogin] = useState(true);
+  const [isLogin, setIsLogin] = useState(() => {
+    // Arriving via a signup link (?signup=<plan|church>) means the visitor has no
+    // account yet — default to the Create Account view, not Sign In.
+    try { return !new URLSearchParams(window.location.search).has('signup'); }
+    catch { return true; }
+  });
   const [showPassword, setShowPassword] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [forgotEmail, setForgotEmail] = useState('');
