@@ -17,7 +17,7 @@ import {
 
 const GOLD = "var(--brand-color, #C9963A)";
 const GOLD_LIGHT = "#FBF3E4";
-const GOLD_BTN = "linear-gradient(135deg, #C9963A, #D4A843)";
+const GOLD_BTN = "linear-gradient(135deg, var(--brand-color, #C9963A), color-mix(in srgb, var(--brand-color, #C9963A) 82%, #ffffff))";
 // Brand-adaptive accents for the redesigned Add/Edit Admin sheet (white-label:
 // every accent derives from the tenant's --brand-color).
 const GOLD_SOFT = "color-mix(in srgb, var(--brand-color, #C9963A) 12%, white)";
@@ -316,6 +316,7 @@ const DownloadMenu: React.FC<{ onContacts: () => void; onOnboarding: () => void;
   const pick = (fn: () => void) => { fn(); setOpen(false); };
   const BRAND = 'var(--brand-color, #C9963A)';
   const item: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left', padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, color: TEXT };
+  const iconSlot: React.CSSProperties = { display: 'inline-flex', width: 18, justifyContent: 'center', flexShrink: 0 };
   return (
     <div ref={ref} style={{ position: 'relative', ...style }}>
       <button onClick={() => setOpen(o => !o)}
@@ -324,8 +325,8 @@ const DownloadMenu: React.FC<{ onContacts: () => void; onOnboarding: () => void;
       </button>
       {open && (
         <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 4, background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 20, overflow: 'hidden', minWidth: 190 }}>
-          <button onClick={() => pick(onContacts)} style={item}>⬇ Contact details</button>
-          <button onClick={() => pick(onOnboarding)} style={{ ...item, borderTop: `1px solid ${BORDER}` }}>📋 Onboarding data</button>
+          <button onClick={() => pick(onContacts)} style={item}><span style={iconSlot}>⬇</span> Contact details</button>
+          <button onClick={() => pick(onOnboarding)} style={{ ...item, borderTop: `1px solid ${BORDER}` }}><span style={iconSlot}>📋</span> Onboarding data</button>
         </div>
       )}
     </div>
@@ -1038,7 +1039,7 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
 
                       <div style={{ display: "flex", gap: 10 }}>
                         <button onClick={handleReset} style={{ flex: 1, background: "transparent", border: `1.5px solid ${BORDER}`, color: TEXT2, padding: "11px", borderRadius: 10, cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 13 }}>Reset</button>
-                        <button onClick={handleSearch} style={{ flex: 2, background: GOLD_BTN, border: "none", color: "#fff", fontWeight: 800, padding: "11px", borderRadius: 10, cursor: "pointer", fontFamily: "inherit", fontSize: 14, boxShadow: "0 2px 8px rgba(201,150,58,0.3)" }}>
+                        <button onClick={handleSearch} style={{ flex: 2, background: GOLD_BTN, border: "none", color: "#fff", fontWeight: 800, padding: "11px", borderRadius: 10, cursor: "pointer", fontFamily: "inherit", fontSize: 14, boxShadow: "0 2px 8px color-mix(in srgb, var(--brand-color, #C9963A) 30%, transparent)" }}>
                           Search
                         </button>
                       </div>
@@ -1248,7 +1249,7 @@ const s: Record<string, CSSProperties> = {
   sectionHeading: { padding: "11px 16px", fontSize: 11, fontWeight: 700, color: TEXT2, letterSpacing: "0.1em", textTransform: "uppercase" as const, borderBottom: `1px solid ${BORDER}` },
   label: { fontSize: 12, fontWeight: 700, color: TEXT2, letterSpacing: "0.04em", textTransform: "uppercase" as const, display: "block" },
   input: { background: "#FAFAFA", border: `1.5px solid ${BORDER}`, borderRadius: 10, color: TEXT, padding: "10px 13px", fontSize: 14, width: "100%", fontFamily: "inherit" },
-  newBtn: { background: GOLD_BTN, border: "none", color: "#fff", fontWeight: 700, padding: "13px", borderRadius: 12, cursor: "pointer", fontSize: 14, width: "100%", fontFamily: "inherit", boxShadow: "0 2px 8px rgba(201,150,58,0.3)" },
+  newBtn: { background: GOLD_BTN, border: "none", color: "#fff", fontWeight: 700, padding: "13px", borderRadius: 12, cursor: "pointer", fontSize: 14, width: "100%", fontFamily: "inherit", boxShadow: "0 2px 8px color-mix(in srgb, var(--brand-color, #C9963A) 30%, transparent)" },
   backBtn: { background: "transparent", border: `1.5px solid ${BORDER}`, color: TEXT2, padding: "6px 12px", borderRadius: 8, cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 13 },
   th: { padding: "12px 16px", fontSize: 12, fontWeight: 700, color: TEXT2, textTransform: "uppercase", letterSpacing: "0.05em" },
   td: { padding: "12px 16px", fontSize: 14, color: TEXT },
