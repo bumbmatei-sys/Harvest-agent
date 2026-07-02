@@ -63,7 +63,7 @@ export async function GET() {
           monthlyUsd: AI_ASSISTANT_ADDON_PRICING.monthlyUsd,
           description: 'Connects to 900+ apps, automates tasks, manages schedules.',
           includedOn: PLAN_ORDER.filter(
-            (id) => getPlanFeatures(id).aiAssistant === -1
+            (id) => getPlanFeatures(id).aiAssistant !== 0
           ),
         },
       },
