@@ -477,7 +477,7 @@ export const addChurchBilling = functions.https.onCall(async (data, context) => 
     subscription: subscriptionId,
     price_data: {
       currency: 'usd',
-      unit_amount: 1500,
+      unit_amount: 1000,
       recurring: { interval: 'month' },
       product_data: {
         name: `Additional Church: ${churchName || churchId}`,
@@ -489,7 +489,7 @@ export const addChurchBilling = functions.https.onCall(async (data, context) => 
 
   await db.collection('churches').doc(churchId).update({
     stripeSubscriptionItemId: subItem.id,
-    billingAmount: 1500,
+    billingAmount: 1000,
     billingAddedAt: admin.firestore.FieldValue.serverTimestamp(),
   });
 

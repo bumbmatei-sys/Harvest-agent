@@ -31,7 +31,7 @@ const AdminChurches: React.FC = () => {
   const [billingLoading, setBillingLoading] = useState(false);
 
   const isMinistry = tenantPlan === 'ultra';
-  const ENTERPRISE_PRICE_PER_CHURCH = 15; // $15/church/mo
+  const ENTERPRISE_PRICE_PER_CHURCH = 10; // $10/church/mo
 
   const openFilterPopup = (type: 'city' | 'pastor' | 'country') => {
     setActiveFilterPopup(type);
@@ -101,7 +101,7 @@ const AdminChurches: React.FC = () => {
           return;
         }
       }
-      // Remove Stripe $15/mo billing for this church before deleting
+      // Remove Stripe $10/mo billing for this church before deleting
       if (isMinistry && resolvedTenantId) {
         await authFetch('/api/churches/remove-billing', {
           method: 'POST',
@@ -122,9 +122,9 @@ const AdminChurches: React.FC = () => {
 
     // Call addChurchBilling Cloud Function when a new church is created
     if (isMinistry && wasAdding && churchData?.id) {
-      setBillingNotice('Adding $15/mo to your subscription...');
+      setBillingNotice('Adding $10/mo to your subscription...');
       await addChurchBilling(churchData.id, churchData.name || '');
-      setBillingNotice(`$15/mo added to your bill for "${churchData.name || 'New Church'}"`);
+      setBillingNotice(`$10/mo added to your bill for "${churchData.name || 'New Church'}"`);
       setTimeout(() => setBillingNotice(null), 5000);
     }
   };
@@ -216,7 +216,7 @@ const AdminChurches: React.FC = () => {
             </div>
             <p className="text-gray-600 mb-6">
               Each additional church added to your organization will increase your monthly plan by{' '}
-              <span className="font-semibold text-gray-900">$15/mo</span>. This will be charged
+              <span className="font-semibold text-gray-900">$10/mo</span>. This will be charged
               automatically to your payment method on file.
             </p>
             <div className="flex justify-end gap-3">
@@ -231,7 +231,7 @@ const AdminChurches: React.FC = () => {
                 className="flex items-center gap-1.5 px-4 py-2 bg-gold text-white rounded-xl hover:bg-[#b58812] transition-colors font-medium"
               >
                 <DollarSign size={16} />
-                Confirm & Add Church ($15/mo)
+                Confirm & Add Church ($10/mo)
               </button>
             </div>
           </div>
@@ -347,7 +347,7 @@ const AdminChurches: React.FC = () => {
               Are you sure you want to delete this church? This action cannot be undone.
               {isMinistry && (
                 <span className="block text-sm text-green-700 mt-1">
-                  This will automatically remove the $15/mo charge from your subscription.
+                  This will automatically remove the $10/mo charge from your subscription.
                 </span>
               )}
             </p>

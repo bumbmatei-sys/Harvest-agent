@@ -6,7 +6,7 @@ import { requireAuth } from '@/lib/api-auth';
 
 export const dynamic = 'force-dynamic';
 
-const ENTERPRISE_PRICE_PER_CHURCH = 1500; // $15 in cents
+const ENTERPRISE_PRICE_PER_CHURCH = 1000; // $10 in cents
 
 export async function POST(request: NextRequest) {
   try {

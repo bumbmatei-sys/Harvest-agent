@@ -7,7 +7,7 @@ import { requireAuth } from '@/lib/api-auth';
 export const dynamic = 'force-dynamic';
 
 /**
- * Adds a $15/mo subscription item to the tenant's Stripe subscription
+ * Adds a $10/mo subscription item to the tenant's Stripe subscription
  * when an Organization plan admin creates a new church.
  */
 export async function POST(request: NextRequest) {
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
       subscription: subscriptionId,
       price_data: {
         currency: 'usd',
-        unit_amount: 1500, // $15.00/mo
+        unit_amount: 1000, // $10.00/mo
         recurring: { interval: 'month' },
         product_data: {
           name: `Additional Church: ${churchName || churchId}`,
@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
     // Store the subscription item ID on the church document
     await adminDb.collection('churches').doc(churchId).update({
       stripeSubscriptionItemId: subItem.id,
-      billingAmount: 1500,
+      billingAmount: 1000,
       billingAddedAt: new Date().toISOString(),
     });
 
