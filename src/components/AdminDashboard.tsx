@@ -688,6 +688,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
               currentPlan={tenantPlan ?? undefined}
               tenantId={tenantId ?? undefined}
               email={auth.currentUser?.email ?? undefined}
+              isOwner={isOwner}
               onCustomizeNav={() => setShowNavCustomizer(true)}
               onChangePlan={async (plan) => {
                 if (auth.currentUser) {

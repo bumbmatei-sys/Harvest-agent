@@ -121,6 +121,85 @@ async function processInitialAffiliateCommission(opts: {
 }
 
 /**
+ * The Ministry (ultra) plan includes ONE AI Assistant for the plan owner. It is
+ * not a separate subscription — the entitlement rides with the plan
+ * (`aiAssistantSource: 'plan'`, no `aiAssistantSubscriptionItemId`).
+ *
+ * If the owner had separately PURCHASED the add-on before upgrading, their
+ * purchased subscription is cancelled here so they aren't double-charged, and
+ * the entitlement is converted to plan-included. The doc is marked
+ * `aiAssistantSource: 'plan'` BEFORE the cancel so the resulting
+ * customer.subscription.deleted event sees a plan-included entitlement and
+ * doesn't revoke it; the subscription pointer is cleared only after the cancel
+ * succeeds so a failed cancel is retried on webhook redelivery.
+ * Never touches an existing Telegram link (aiAssistantConnected/telegramChatId).
+ */
+async function grantPlanIncludedAssistant(stripe: Stripe, ownerId: string | null | undefined): Promise<void> {
+  if (!ownerId) return;
+  const ownerRef = adminDb.collection('users').doc(ownerId);
+  const ownerSnap = await ownerRef.get();
+  const owner = ownerSnap.exists ? ownerSnap.data() : undefined;
+  const purchasedSubId = owner?.aiAssistantSubscriptionItemId;
+
+  if (owner?.hasAIAssistant && owner?.aiAssistantSource === 'plan' && !purchasedSubId) {
+    return; // already plan-included (webhook redelivery / repeated plan sync)
+  }
+
+  await ownerRef.set({
+    hasAIAssistant: true,
+    aiAssistantSource: 'plan',
+    updatedAt: new Date().toISOString(),
+  }, { merge: true });
+
+  if (purchasedSubId) {
+    try {
+      await stripe.subscriptions.cancel(purchasedSubId);
+      console.log(`🔄 Cancelled owner ${ownerId}'s purchased AI Assistant subscription ${purchasedSubId} (now included with ultra plan)`);
+    } catch (cancelErr: any) {
+      // Already cancelled / gone → fine, just clear the pointer below. Anything
+      // else (network, 5xx) must bubble so Stripe redelivers and we retry.
+      if (cancelErr?.type !== 'StripeInvalidRequestError' && cancelErr?.code !== 'resource_missing') {
+        throw cancelErr;
+      }
+      console.log(`↩︎ Purchased AI Assistant subscription ${purchasedSubId} already cancelled`);
+    }
+    await ownerRef.set({
+      aiAssistantSubscriptionItemId: null,
+      updatedAt: new Date().toISOString(),
+    }, { merge: true });
+  }
+  console.log(`✅ Plan-included AI Assistant granted to ultra owner ${ownerId}`);
+}
+
+/**
+ * Revoke a PLAN-INCLUDED assistant when the tenant's plan leaves ultra
+ * (downgrade or plan-subscription cancellation). A separately purchased
+ * assistant (`aiAssistantSubscriptionItemId` set) has its own subscription and
+ * is left untouched. Legacy ultra grants that predate `aiAssistantSource`
+ * (hasAIAssistant with no subscription id) are treated as plan-included.
+ */
+async function revokePlanIncludedAssistant(ownerId: string | null | undefined): Promise<void> {
+  if (!ownerId) return;
+  const ownerRef = adminDb.collection('users').doc(ownerId);
+  const ownerSnap = await ownerRef.get();
+  if (!ownerSnap.exists) return;
+  const owner = ownerSnap.data();
+  if (!owner?.hasAIAssistant) return;
+  const planIncluded = owner.aiAssistantSource === 'plan'
+    || (!owner.aiAssistantSource && !owner.aiAssistantSubscriptionItemId);
+  if (!planIncluded) return;
+  await ownerRef.update({
+    hasAIAssistant: false,
+    aiAssistantConnected: false,
+    telegramUsername: null,
+    telegramChatId: null,
+    aiAssistantSource: null,
+    updatedAt: new Date().toISOString(),
+  });
+  console.log(`❌ Plan-included AI Assistant revoked for owner ${ownerId} (plan left ultra)`);
+}
+
+/**
  * Build-on-payment: turn a ministry name into a unique, free tenant subdomain.
  * Lowercases, keeps [a-z0-9-], collapses whitespace to '-', then appends a short
  * random suffix until no tenant doc exists at that id (and avoids reserved labels).
@@ -345,6 +424,11 @@ export async function POST(request: NextRequest) {
           });
           await setCustomClaims(meta.userId);
 
+          // Ministry plan includes one AI Assistant for the plan owner.
+          if (meta.plan === 'ultra') {
+            await grantPlanIncludedAssistant(stripe, meta.userId);
+          }
+
           // Affiliate commission for this paid signup (owner = the paying user).
           if (meta.referrerId) {
             await processInitialAffiliateCommission({
@@ -370,11 +454,14 @@ export async function POST(request: NextRequest) {
               addOnAiAssistantCode: accessCode,
               updatedAt: new Date().toISOString(),
             });
-            // Update per-user hasAIAssistant flag
+            // Update per-user hasAIAssistant flag. The add-on bills the buyer's
+            // OWN Stripe customer (not the tenant's) — store it so the buyer's
+            // billing portal (/api/ai-assistant/portal) can open it later.
             if (userId) {
               await adminDb.collection('users').doc(userId).update({
                 hasAIAssistant: true,
                 aiAssistantSubscriptionItemId: subscriptionId,
+                ...(session.customer ? { aiAssistantCustomerId: session.customer as string } : {}),
                 updatedAt: new Date().toISOString(),
               });
             }
@@ -406,19 +493,6 @@ export async function POST(request: NextRequest) {
 
               if (plan === 'ultra' && !tenantDoc.data()?.addOnAiAssistantCode) {
                 updateData.addOnAiAssistantCode = generateAccessCode();
-                // Grant hasAIAssistant to the first admin
-                try {
-                  const firstAdminEmail = tenantDoc.data()?.adminEmails?.[0];
-                  if (firstAdminEmail) {
-                    const firstAdminUser = await adminAuth.getUserByEmail(firstAdminEmail);
-                    await adminDb.collection('users').doc(firstAdminUser.uid).update({
-                      hasAIAssistant: true,
-                      updatedAt: new Date().toISOString(),
-                    });
-                  }
-                } catch (ultraErr) {
-                  console.error('Failed to grant AI Assistant to ultra plan first admin:', ultraErr);
-                }
               }
 
               await adminDb.collection('tenants').doc(tenantId).update(updateData);
@@ -446,6 +520,16 @@ export async function POST(request: NextRequest) {
               });
               await batch.commit();
 
+              // Ministry plan includes one AI Assistant for the plan owner:
+              // grant it on arrival at ultra, revoke a plan-included one when
+              // the plan moves anywhere else (a purchased one survives).
+              const planOwnerId = tenantDoc.data()?.ownerId || tenantDoc.data()?.createdBy;
+              if (plan === 'ultra') {
+                await grantPlanIncludedAssistant(stripe, planOwnerId);
+              } else {
+                await revokePlanIncludedAssistant(planOwnerId);
+              }
+
               console.log(`✅ Tenant ${tenantId} upgraded to ${plan}`);
             }
           }
@@ -456,6 +540,15 @@ export async function POST(request: NextRequest) {
       case 'customer.subscription.updated': {
         const subscription = event.data.object as Stripe.Subscription;
         const tenantId = subscription.metadata?.tenantId;
+
+        // The per-admin AI Assistant add-on carries tenantId metadata too, but it
+        // must never drive tenant plan/status. Updates (e.g. cancel_at_period_end
+        // set in the buyer's portal) need no state change — entitlement is revoked
+        // by customer.subscription.deleted when the cancellation takes effect.
+        if (subscription.metadata?.addOn === 'ai-assistant') {
+          console.log(`📝 AI Assistant add-on subscription ${subscription.id} updated (status: ${subscription.status}) — no tenant change`);
+          break;
+        }
 
         if (tenantId) {
           // Ignore updates for a stale subscription (e.g. the old plan being cancelled
@@ -492,6 +585,14 @@ export async function POST(request: NextRequest) {
               batch.update(doc.ref, { plan });
             });
             await batch.commit();
+
+            // Keep the owner's plan-included AI Assistant in sync with the plan.
+            const updOwnerId = updTenantSnap.data()?.ownerId || updTenantSnap.data()?.createdBy;
+            if (plan === 'ultra') {
+              await grantPlanIncludedAssistant(stripe, updOwnerId);
+            } else {
+              await revokePlanIncludedAssistant(updOwnerId);
+            }
           }
 
           console.log(`📝 Subscription updated for tenant ${tenantId}`, plan ? `→ ${plan}` : '');
@@ -527,44 +628,65 @@ export async function POST(request: NextRequest) {
           break;
         }
 
-        // Handle AI Assistant add-on cancellation
+        // Handle AI Assistant add-on cancellation (fired when the buyer cancels
+        // in their Stripe portal, or when we cancel a purchased sub on upgrade
+        // to ultra). This must never fall through to the tenant-downgrade logic
+        // below — that path is only for the plan subscription.
         if (addOn === 'ai-assistant') {
+          const revokeFields = {
+            hasAIAssistant: false,
+            aiAssistantConnected: false,
+            telegramUsername: null,
+            telegramChatId: null,
+            aiAssistantSubscriptionItemId: null,
+            updatedAt: new Date().toISOString(),
+          };
           if (delUserId) {
-            await adminDb.collection('users').doc(delUserId).update({
-              hasAIAssistant: false,
-              aiAssistantConnected: false,
-              telegramChatId: null,
-              aiAssistantSubscriptionItemId: null,
-              updatedAt: new Date().toISOString(),
-            });
+            const buyerRef = adminDb.collection('users').doc(delUserId);
+            const buyerSnap = await buyerRef.get();
+            const buyer = buyerSnap.exists ? buyerSnap.data() : undefined;
+            // Skip if the entitlement no longer rides on this subscription: it
+            // became plan-included (owner upgraded to ultra — the purchased sub
+            // was cancelled deliberately), or the user re-purchased under a
+            // newer subscription id.
+            const planIncluded = buyer?.aiAssistantSource === 'plan';
+            const stale = buyer?.aiAssistantSubscriptionItemId
+              && buyer.aiAssistantSubscriptionItemId !== subscription.id;
+            if (planIncluded || stale) {
+              console.log(`↩︎ Skipping AI Assistant revocation for ${delUserId}: entitlement is ${planIncluded ? 'plan-included' : 'on a newer subscription'}`);
+              break;
+            }
+            await buyerRef.update(revokeFields);
           } else {
             const affectedSnap = await adminDb.collection('users')
               .where('aiAssistantSubscriptionItemId', '==', subscription.id)
               .limit(10).get();
             if (!affectedSnap.empty) {
               const b = adminDb.batch();
-              affectedSnap.docs.forEach(d => b.update(d.ref, {
-                hasAIAssistant: false, aiAssistantConnected: false,
-                telegramChatId: null, aiAssistantSubscriptionItemId: null,
-                updatedAt: new Date().toISOString(),
-              }));
+              affectedSnap.docs.forEach(d => b.update(d.ref, revokeFields));
               await b.commit();
             }
           }
 
+          // Legacy access-code flow: clear the tenant-level add-on state only if
+          // it belongs to THIS subscription — another admin's add-on (or an
+          // ultra plan's included code) must survive one buyer's cancellation.
           if (tenantId) {
-            const bindingsSnap = await adminDb.collection('ai_assistant_bindings')
-              .where('tenantId', '==', tenantId).get();
-            if (!bindingsSnap.empty) {
-              const b2 = adminDb.batch();
-              bindingsSnap.docs.forEach(d => b2.delete(d.ref));
-              await b2.commit();
+            const addOnTenantSnap = await adminDb.collection('tenants').doc(tenantId).get();
+            if (addOnTenantSnap.exists && addOnTenantSnap.data()?.addOnAiAssistant === subscription.id) {
+              const bindingsSnap = await adminDb.collection('ai_assistant_bindings')
+                .where('tenantId', '==', tenantId).get();
+              if (!bindingsSnap.empty) {
+                const b2 = adminDb.batch();
+                bindingsSnap.docs.forEach(d => b2.delete(d.ref));
+                await b2.commit();
+              }
+              await adminDb.collection('tenants').doc(tenantId).update({
+                addOnAiAssistant: null,
+                addOnAiAssistantCode: null,
+                updatedAt: new Date().toISOString(),
+              });
             }
-            await adminDb.collection('tenants').doc(tenantId).update({
-              addOnAiAssistant: null,
-              addOnAiAssistantCode: null,
-              updatedAt: new Date().toISOString(),
-            });
           }
           console.log(`❌ AI Assistant add-on cancelled (user: ${delUserId || 'unknown'}, tenant: ${tenantId || 'none'})`);
           break;
@@ -595,6 +717,12 @@ export async function POST(request: NextRequest) {
             batch.update(doc.ref, { plan: 'plus' });
           });
           await batch.commit();
+
+          // Cancelling the plan cancels the plan-included assistant with it
+          // (a separately purchased one keeps its own subscription).
+          await revokePlanIncludedAssistant(
+            delTenantSnap.data()?.ownerId || delTenantSnap.data()?.createdBy,
+          );
 
           console.log(`❌ Tenant ${tenantId} subscription cancelled, downgraded to plus`);
 

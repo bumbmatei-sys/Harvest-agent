@@ -8,20 +8,27 @@ interface UserData {
   aiAssistantConnected?: boolean;
   telegramUsername?: string | null;
   tenantId?: string;
+  /** 'plan' when the assistant is included with the Ministry (ultra) plan. */
+  aiAssistantSource?: string | null;
+  /** Subscription id of a separately purchased add-on. */
+  aiAssistantSubscriptionItemId?: string | null;
 }
 
 interface AiAssistantSectionProps {
   currentPlan?: string;
   email?: string;
+  /** True only for the plan owner (tenant.ownerId) — see AdminDashboard. */
+  isOwner?: boolean;
 }
 
 const BOT_USERNAME = 'theharvestapp_bot';
 
-const AiAssistantSection: React.FC<AiAssistantSectionProps> = ({ email }) => {
+const AiAssistantSection: React.FC<AiAssistantSectionProps> = ({ currentPlan, email, isOwner }) => {
   const [userData, setUserData] = useState<UserData | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [disconnectLoading, setDisconnectLoading] = useState(false);
+  const [portalLoading, setPortalLoading] = useState(false);
 
   useEffect(() => {
     const loadUserData = async () => {
@@ -39,6 +46,8 @@ const AiAssistantSection: React.FC<AiAssistantSectionProps> = ({ email }) => {
             aiAssistantConnected: data.aiAssistantConnected ?? false,
             telegramUsername: data.telegramUsername ?? null,
             tenantId: data.tenantId,
+            aiAssistantSource: data.aiAssistantSource ?? null,
+            aiAssistantSubscriptionItemId: data.aiAssistantSubscriptionItemId ?? null,
           });
         }
       } catch (e) {
@@ -76,6 +85,27 @@ const AiAssistantSection: React.FC<AiAssistantSectionProps> = ({ email }) => {
     }
   };
 
+  // Opens the buyer's OWN Stripe billing portal (invoices + cancel). The
+  // subscription cancellation itself happens on Stripe's side; the webhook
+  // revokes the entitlement when it lands.
+  const handleManageBilling = async () => {
+    setPortalLoading(true);
+    try {
+      const resp = await authFetch('/api/ai-assistant/portal', { method: 'POST' });
+      const data = await resp.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        alert(data.error || 'Failed to open billing portal');
+      }
+    } catch (e) {
+      console.error('AI Assistant portal error:', e);
+      alert('Failed to open billing portal. Please try again.');
+    } finally {
+      setPortalLoading(false);
+    }
+  };
+
   const handleDisconnect = async () => {
     if (!userData) return;
     setDisconnectLoading(true);
@@ -107,7 +137,13 @@ const AiAssistantSection: React.FC<AiAssistantSectionProps> = ({ email }) => {
     );
   }
 
-  const hasAssistant = userData?.hasAIAssistant ?? false;
+  // Ministry (ultra) plan includes 1 assistant for the plan owner — no separate
+  // subscription, no buy/cancel here (cancelling the plan cancels it).
+  const isPlanIncluded = currentPlan === 'ultra' && !!isOwner;
+  // Separately purchased add-on — managed (incl. cancel) in the buyer's own
+  // Stripe portal via Manage billing.
+  const hasPurchased = !!userData?.aiAssistantSubscriptionItemId && userData?.aiAssistantSource !== 'plan';
+  const hasAssistant = (userData?.hasAIAssistant ?? false) || isPlanIncluded;
   const isConnected = userData?.aiAssistantConnected ?? false;
   const telegramUsername = userData?.telegramUsername;
 
@@ -117,6 +153,29 @@ const AiAssistantSection: React.FC<AiAssistantSectionProps> = ({ email }) => {
       <p className="text-sm text-gray-600 mb-3">
         Your personal AI assistant on Telegram — available 24/7 for sermon prep, member care, and ministry guidance.
       </p>
+
+      {hasAssistant && (
+        // A still-active purchased subscription wins over the plan-included
+        // label: an owner who bought before upgrading keeps billing controls
+        // until the webhook cancels the purchase and converts the entitlement.
+        !hasPurchased && isPlanIncluded ? (
+          <div className="flex items-center gap-3 mb-3 p-3 bg-amber-50 rounded-xl border border-amber-100">
+            <div className="w-2 h-2 bg-amber-400 rounded-full flex-shrink-0" />
+            <p className="text-sm font-medium text-amber-800">Included with your Ministry plan.</p>
+          </div>
+        ) : hasPurchased ? (
+          <div className="flex items-center justify-between gap-3 mb-3 p-3 bg-gray-50 rounded-xl border border-gray-100">
+            <p className="text-sm text-gray-700">AI Assistant — active, <span className="font-semibold">$200/mo</span></p>
+            <button
+              onClick={handleManageBilling}
+              disabled={portalLoading}
+              className="px-3 py-1.5 border border-gray-200 bg-white text-gray-700 rounded-lg text-xs font-medium hover:bg-gray-100 transition-colors disabled:opacity-50 flex-shrink-0"
+            >
+              {portalLoading ? 'Opening...' : 'Manage billing'}
+            </button>
+          </div>
+        ) : null
+      )}
 
       {!hasAssistant ? (
         <div>

@@ -53,21 +53,25 @@ export async function POST(request: NextRequest) {
       if (!AI_ASSISTANT_MONTHLY) {
         return NextResponse.json({ error: 'AI Assistant price not configured — set STRIPE_PRICE_AI_MONTHLY ($200/mo)' }, { status: 500 });
       }
-      const tenantDoc = await adminDb.collection('tenants').doc(tenantId).get();
-      const tenantData = tenantDoc.data();
+      // The add-on is per-admin: it bills the buyer's OWN Stripe customer
+      // (users/{uid}.aiAssistantCustomerId), never the tenant's shared plan
+      // customer — so each admin can later view/cancel it in their own billing
+      // portal (/api/ai-assistant/portal) without reaching tenant billing.
+      const buyerRef = adminDb.collection('users').doc(userOrErr.uid);
+      const buyerSnap = await buyerRef.get();
       const customerId = await getValidCustomerId(
         stripe,
-        tenantData?.stripeCustomerId,
+        buyerSnap.data()?.aiAssistantCustomerId,
         {
-          email: email || undefined,
-          name: tenantName || tenantData?.name || tenantId,
-          metadata: { tenantId, app: 'harvest' },
+          email: email || userOrErr.email || undefined,
+          name: userOrErr.email || userOrErr.uid,
+          metadata: { userId: userOrErr.uid, tenantId, app: 'harvest' },
         },
         async (id) => {
-          await adminDb.collection('tenants').doc(tenantId).update({
-            stripeCustomerId: id,
+          await buyerRef.set({
+            aiAssistantCustomerId: id,
             updatedAt: new Date().toISOString(),
-          });
+          }, { merge: true });
         },
       );
 
