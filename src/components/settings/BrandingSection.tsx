@@ -8,12 +8,11 @@ interface BrandingSectionProps {
   currentFeatures?: PlanFeatures;
 }
 
-export const BrandingSection: React.FC<BrandingSectionProps> = ({ currentFeatures }) => {
+export const BrandingSection: React.FC<BrandingSectionProps> = () => {
   const { refreshBranding } = useTenant();
   const [ministryName, setMinistryName] = useState('');
   const [brandingLogo, setBrandingLogo] = useState('');
   const [brandingColor, setBrandingColor] = useState('#B8962E');
-  const [brandingBackgroundImage, setBrandingBackgroundImage] = useState('');
   const [brandingSaving, setBrandingSaving] = useState(false);
   const [brandingSaved, setBrandingSaved] = useState(false);
   const [brandingLoaded, setBrandingLoaded] = useState(false);
@@ -36,7 +35,6 @@ export const BrandingSection: React.FC<BrandingSectionProps> = ({ currentFeature
               const config = data.config || {};
               if (config.logo) setBrandingLogo(config.logo);
               if (config.primaryColor) setBrandingColor(config.primaryColor);
-              if (config.backgroundImage) setBrandingBackgroundImage(config.backgroundImage);
             }
           }
         }
@@ -74,7 +72,6 @@ export const BrandingSection: React.FC<BrandingSectionProps> = ({ currentFeature
             const updates: Record<string, unknown> = {
               'config.logo': brandingLogo || null,
               'config.primaryColor': brandingColor,
-              'config.backgroundImage': brandingBackgroundImage || null,
               updatedAt: new Date().toISOString(),
             };
             // Custom ministry name (white-label) — only persist when provided
@@ -178,19 +175,6 @@ export const BrandingSection: React.FC<BrandingSectionProps> = ({ currentFeature
           </div>
         </div>
       </div>
-
-      {/* Background Image (Ministry only) */}
-      {currentFeatures?.customBackground && (
-        <div className="bg-white rounded-xl border border-gray-100 p-4">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">Background Image</h3>
-          <p className="text-sm text-gray-600 mb-4">Set a custom background image for your auth/login page.</p>
-          <ImageUpload
-            value={brandingBackgroundImage}
-            onChange={setBrandingBackgroundImage}
-            placeholder="Or paste background image URL here"
-          />
-        </div>
-      )}
 
       {/* Save Button */}
       <div className="flex items-center gap-3">
