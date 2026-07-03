@@ -558,3 +558,66 @@ describe('donations lockdown', () => {
     await assertSucceeds(sa.doc('donations/d1').update({ amount: 100 }));
   });
 });
+
+/**
+ * rag_sources / rag_chunks READ isolation — the read moved off the unscoped
+ * isAdmin() (a cross-tenant knowledge-base leak) to tenant-scoped
+ * isTenantAdmin. Same-tenant admins + super admin keep read; a cross-tenant
+ * admin and a plain member are denied. (Members were already denied under the
+ * old isAdmin() rule, so no new lockout.)
+ */
+describe('RAG read isolation', () => {
+  for (const coll of ['rag_sources', 'rag_chunks']) {
+    it(`${coll}: same-tenant admin reads; cross-tenant admin + member denied; super admin reads`, async () => {
+      await seedDoc(`${coll}/${coll}-a`, { tenantId: T, text: 'tenant-a private knowledge' });
+
+      const own = (await asUid(holderUid('uploadRag'))).firestore();
+      await assertSucceeds(own.doc(`${coll}/${coll}-a`).get());
+
+      const cross = (await adminB()).firestore(); // full-access admin of tenant B
+      await assertFails(cross.doc(`${coll}/${coll}-a`).get());
+
+      const mem = (await member()).firestore();
+      await assertFails(mem.doc(`${coll}/${coll}-a`).get());
+
+      const sa = (await superAdmin()).firestore();
+      await assertSucceeds(sa.doc(`${coll}/${coll}-a`).get());
+
+      // The owner (no permissions map) still reads via ownerId → isTenantAdmin.
+      const own2 = (await owner()).firestore();
+      await assertSucceeds(own2.doc(`${coll}/${coll}-a`).get());
+    });
+  }
+});
+
+/**
+ * Top-level submissions (legacy inbox) — members may still file one, but the
+ * admin update/delete moved off coarse isTenantAdmin to the forms permission
+ * (the last admin-feature write still on the coarse check). Legacy
+ * seeFormsInbox counts as the forms permission.
+ */
+describe('legacy submissions write gate [manageForms]', () => {
+  it('a manageForms admin can update/delete; an admin without it cannot', async () => {
+    await seedDoc('submissions/s-upd', { tenantId: T, data: {}, status: 'new' });
+    const holder = (await asUid(holderUid('manageForms'))).firestore();
+    await assertSucceeds(holder.doc('submissions/s-upd').update({ status: 'reviewed' }));
+
+    await seedDoc('submissions/s-del', { tenantId: T, data: {} });
+    const non = (await asUid(nonHolderUid('manageForms'))).firestore();
+    await assertFails(non.doc('submissions/s-del').update({ status: 'x' }));
+    await assertFails(non.doc('submissions/s-del').delete());
+  });
+
+  it('a legacy seeFormsInbox admin can update; a plain member can create but not update', async () => {
+    const perms = permsOnly();
+    (perms as Record<string, unknown>).seeFormsInbox = true;
+    await seedAdmin('legacy-sub-admin', TENANT_A, perms);
+    await seedDoc('submissions/s-legacy', { tenantId: T, data: {}, status: 'new' });
+    const legacy = (await asUid('legacy-sub-admin')).firestore();
+    await assertSucceeds(legacy.doc('submissions/s-legacy').update({ status: 'reviewed' }));
+
+    const mem = (await member()).firestore();
+    await assertSucceeds(mem.doc('submissions/s-member').set({ tenantId: T, data: { a: 1 } }));
+    await assertFails(mem.doc('submissions/s-legacy').update({ status: 'hijack' }));
+  });
+});

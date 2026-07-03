@@ -177,11 +177,16 @@ service cloud.firestore {
 
     // ─── Submissions ─────────────────────────────────────────────────
 
+    // Legacy top-level form-submission inbox (the live pipeline is
+    // tenants/{t}/forms/{f}/submissions). Members may still file one (correct
+    // tenant); admin read/triage is gated on the forms permission so a limited
+    // admin without it can't edit/clear submissions by writing Firestore
+    // directly. hasFormsPermission honors the legacy seeFormsInbox flag.
     match /submissions/{subId} {
       allow read: if isAuthenticated() && isTenantAdmin(resource.data.get('tenantId', ''));
       allow create: if isAuthenticated() && requestHasCorrectTenant();
-      allow update: if isAuthenticated() && isTenantAdmin(resource.data.tenantId);
-      allow delete: if isAuthenticated() && isTenantAdmin(resource.data.tenantId);
+      allow update: if isAuthenticated() && hasFormsPermission(resource.data.get('tenantId', ''));
+      allow delete: if isAuthenticated() && hasFormsPermission(resource.data.get('tenantId', ''));
     }
 
     // ─── Platform Inbox ──────────────────────────────────────────────
@@ -299,8 +304,13 @@ service cloud.firestore {
 
     // ─── RAG Sources & Chunks ───────────────────────────────────────
 
+    // Read is tenant-scoped, not the unscoped isAdmin(): these docs hold a
+    // tenant's private knowledge-base text, and every client query already
+    // filters by tenantId (AdminRAG, AIChat). isAdmin() carries a GLOBAL admin
+    // claim, so it let any tenant's admin read another tenant's chunks via a
+    // direct SDK query — the same cross-tenant leak the donations block fixed.
     match /rag_sources/{sourceId} {
-      allow read: if isAuthenticated() && isAdmin();
+      allow read: if isAuthenticated() && isTenantAdmin(resource.data.get('tenantId', ''));
       allow create: if isAuthenticated() && requestHasCorrectTenant() &&
         hasPermission('uploadRag', request.resource.data.get('tenantId', ''));
       allow update: if isAuthenticated() && hasPermission('uploadRag', resource.data.tenantId);
@@ -308,7 +318,7 @@ service cloud.firestore {
     }
 
     match /rag_chunks/{chunkId} {
-      allow read: if isAuthenticated() && isAdmin();
+      allow read: if isAuthenticated() && isTenantAdmin(resource.data.get('tenantId', ''));
       allow create: if isAuthenticated() && requestHasCorrectTenant() &&
         hasPermission('uploadRag', request.resource.data.get('tenantId', ''));
       allow update: if isAuthenticated() && hasPermission('uploadRag', resource.data.tenantId);

@@ -63,6 +63,52 @@ mirroring the client's `normalizePermissions()`.
   the delete UI lives in the member-facing PrayerWall and is role-gated; no
   permission key exists for it.
 
+## Adversarial-review findings (4 confirmed; 2 fixed here, 2 flagged)
+
+A four-lens adversarial review (lockouts / holes / semantics / read-regressions,
+each finding independently verified against the code and the emulator suite)
+ran over this change. It found **no active lockout** of any legitimate live
+write flow and confirmed the write-side conversion is sound. Four issues
+surfaced — all **pre-existing**, none introduced by this change:
+
+**Fixed in this change (safe, no lockout):**
+- **`rag_sources` / `rag_chunks` cross-tenant read leak (HIGH).** The read was
+  the unscoped `isAdmin()`, which carries a **global** admin claim — so any
+  tenant's admin could read another tenant's private knowledge-base text via a
+  direct SDK query (`where('tenantId','==','OTHER')`). Same class as the
+  `donations` leak. Now `isTenantAdmin(resource.data.tenantId)`: same-tenant
+  admins, the owner, roster admins, and super admins keep read; cross-tenant
+  admins are blocked. Members were already denied by the old `isAdmin()`, so no
+  new lockout (verified — `AIChat` in the member app reads these client-side but
+  already couldn't under `isAdmin()`; the retrieval path is unchanged for it).
+- **Top-level `submissions` update/delete (LOW).** The last admin-feature write
+  still on coarse `isTenantAdmin`. Now `hasFormsPermission` (honors legacy
+  `seeFormsInbox`), matching the live `forms/{f}/submissions` pipeline. Members
+  may still file one; the reader component is orphaned so live impact was nil.
+
+**Flagged for Matei — not changed here (per review decision):**
+- **`users` create never validates `tenantId` (HIGH, pre-existing).** Part 1
+  locked `tenantId` on *update*, but the *create* rule (`firestore.rules`, the
+  `allow create` on `/users`) constrains only `role`. A self-registering user
+  can set `tenantId` to **any** church and then `belongsToTenant()` passes,
+  letting them read that tenant's `prayer_requests` / `community_posts` /
+  `forms` / `directMessages` and post into them; `setCustomClaims`
+  (`src/lib/set-custom-claims.ts:23,28-30`) even copies the self-written
+  `tenantId` into a real token claim with no membership check. Rules alone
+  can't distinguish a legitimate subdomain signup (`AuthPage.tsx` derives
+  `tenantId` from the hostname) from a spoofed value, so the durable fix is
+  **server-side**: have `setCustomClaims` / a signup route verify tenant
+  membership instead of trusting the client-written doc. Not touched here to
+  avoid breaking the signup funnel — needs a product call on whether open
+  cross-tenant self-registration is intended.
+- **Dead `onChangePlan` self-writes `users.plan` (LOW, latent).**
+  `AdminDashboard.tsx:696` defines an `onChangePlan` prop that does
+  `updateDoc(users/{uid}, { plan })` with no try/catch — now correctly rejected
+  by Part 1's self-edit lock. It is **dead** (the prop is never invoked; plan is
+  server-authority via the Stripe webhook), so there is no live lockout. Left
+  in place; a future re-wiring should route plan changes through a server route,
+  and the dead prop is a candidate for removal.
+
 ## Known residuals (out of scope here, flagged for follow-up)
 
 1. **API routes don't check the 23 permissions.** Server routes authorize by
