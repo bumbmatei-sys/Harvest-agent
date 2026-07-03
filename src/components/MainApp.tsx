@@ -17,7 +17,6 @@ import CourseExperience from '../components/CoursePage';
 import AIChat from './AIChat';
 import UserMessages from './UserMessages';
 import ErrorBoundary from './ErrorBoundary';
-import NotificationPrompt from './NotificationPrompt';
 import BiblePage from './BiblePage';
 import ReferralTracker from './ReferralTracker';
 import { getPlanFeatures } from '../utils/plan-features';
@@ -408,7 +407,6 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
         </div>
         </ErrorBoundary>
       </div>
-      <NotificationPrompt />
     </div>
   );
 };
