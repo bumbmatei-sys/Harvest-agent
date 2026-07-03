@@ -81,6 +81,39 @@ service cloud.firestore {
         (isSuperAdmin() || request.resource.data.tenantId == userTenantId());
     }
 
+    // ─── Per-admin permission flags ──────────────────────────────────
+    // users/{uid}.permissions is a MAP of booleans — one flag per admin
+    // section (the 23-key catalog in PERMISSION_CATEGORIES,
+    // src/components/AnalyticsAndRoles.tsx) plus a `fullAccess` master
+    // toggle written by the Roles editor.
+
+    function userPermissions() {
+      return userDocExists() ? userData().get('permissions', {}) : {};
+    }
+
+    // Admin-feature writes: the tenant owner, super admins, legacy
+    // adminEmails-roster admins, and fullAccess admins always pass; any
+    // other tenant admin must hold the specific permission flag.
+    // Non-admins never pass (isTenantAdmin stays the base check).
+    function hasPermission(perm, tenantId) {
+      return isAuthenticated() && (
+        isSuperAdmin()
+        || isTenantOwner(request.auth.uid, tenantId)
+        || inTenantAdminEmails(tenantId)
+        || (isTenantAdmin(tenantId) && (
+              userPermissions().get('fullAccess', false) == true ||
+              userPermissions().get(perm, false) == true))
+      );
+    }
+
+    // Forms went through a permission rename (legacy `seeFormsInbox` →
+    // `manageForms`); honor the old flag exactly like the client's
+    // normalizePermissions() does, so pre-rename admin docs keep working.
+    function hasFormsPermission(tenantId) {
+      return hasPermission('manageForms', tenantId)
+        || (isTenantAdmin(tenantId) && userPermissions().get('seeFormsInbox', false) == true);
+    }
+
     // ─── Users ───────────────────────────────────────────────────────
 
     match /users/{userId} {
@@ -108,6 +141,9 @@ service cloud.firestore {
         // 'user' or 'admin' (never 'super_admin'); tenantId/plan are immutable here
         // (an admin must not move a member between tenants — membership is set at
         // creation and otherwise server-only); affiliate fields stay server-only.
+        // Changing role/permissions additionally requires the manageAdmins
+        // permission (the Roles screen's gate) — otherwise ANY limited admin
+        // could escalate themselves or others to full access with one write.
         (isTenantAdmin(resource.data.tenantId) &&
           (!request.resource.data.keys().hasAny(['role']) ||
            request.resource.data.role in ['user', 'admin']) &&
@@ -115,7 +151,9 @@ service cloud.firestore {
             'tenantId', 'plan',
             'affiliateStripeAccountId', 'affiliateConnectStatus',
             'affiliateEarnings', 'affiliatePendingPayouts', 'affiliateCode'
-          ])) ||
+          ]) &&
+          (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'permissions']) ||
+           hasPermission('manageAdmins', resource.data.tenantId))) ||
         isSuperAdmin()
       ) && (
         // Owner protection: the tenant owner's role & permissions are immutable within
@@ -167,17 +205,19 @@ service cloud.firestore {
         request.resource.data.authorId == request.auth.uid &&
         requestHasCorrectTenant();
 
+      // Members may only touch likes/polls/RSVPs or their own posts; cross-
+      // author moderation (edit/delete/pin) is the Posts screen → createPosts.
       allow update: if isAuthenticated() && belongsToTenant(resource.data.tenantId) &&
         (
           request.resource.data.diff(resource.data).affectedKeys()
             .hasOnly(['likes', 'pollOptions', 'eventDetails']) ||
           resource.data.authorId == request.auth.uid ||
-          isTenantAdmin(resource.data.tenantId)
+          hasPermission('createPosts', resource.data.tenantId)
         );
 
       allow delete: if isAuthenticated() &&
         (resource.data.authorId == request.auth.uid ||
-         isTenantAdmin(resource.data.tenantId));
+         hasPermission('createPosts', resource.data.tenantId));
 
       match /comments/{commentId} {
         allow read: if isAuthenticated() &&
@@ -227,33 +267,33 @@ service cloud.firestore {
 
     match /blog_posts/{postId} {
       allow read: if isAuthenticated() && belongsToTenant(resource.data.get('tenantId', ''));
-      allow create: if isAuthenticated() && isTenantAdmin(request.resource.data.get('tenantId', ''));
-      allow update: if isAuthenticated() && isTenantAdmin(resource.data.tenantId);
-      allow delete: if isAuthenticated() && isTenantAdmin(resource.data.tenantId);
+      allow create: if isAuthenticated() && hasPermission('writeArticles', request.resource.data.get('tenantId', ''));
+      allow update: if isAuthenticated() && hasPermission('writeArticles', resource.data.tenantId);
+      allow delete: if isAuthenticated() && hasPermission('writeArticles', resource.data.tenantId);
     }
 
     // ─── Courses ────────────────────────────────────────────────────
 
     match /courses/{courseId} {
       allow read: if isAuthenticated() && belongsToTenant(resource.data.get('tenantId', ''));
-      allow create: if isAuthenticated() && isTenantAdmin(request.resource.data.get('tenantId', ''));
-      allow update: if isAuthenticated() && isTenantAdmin(resource.data.tenantId);
-      allow delete: if isAuthenticated() && isTenantAdmin(resource.data.tenantId);
+      allow create: if isAuthenticated() && hasPermission('createCourses', request.resource.data.get('tenantId', ''));
+      allow update: if isAuthenticated() && hasPermission('createCourses', resource.data.tenantId);
+      allow delete: if isAuthenticated() && hasPermission('createCourses', resource.data.tenantId);
     }
 
     // ─── Churches ───────────────────────────────────────────────────
 
     match /churches/{churchId} {
       allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && isTenantAdmin(request.resource.data.get('tenantId', ''));
-      allow update: if isAuthenticated() && isTenantAdmin(resource.data.tenantId);
-      allow delete: if isAuthenticated() && isTenantAdmin(resource.data.tenantId);
+      allow create: if isAuthenticated() && hasPermission('modifyChurches', request.resource.data.get('tenantId', ''));
+      allow update: if isAuthenticated() && hasPermission('modifyChurches', resource.data.tenantId);
+      allow delete: if isAuthenticated() && hasPermission('modifyChurches', resource.data.tenantId);
 
       match /announcements/{announcementId} {
         allow read: if isAuthenticated();
-        allow create: if isAuthenticated() && isTenantAdmin(request.resource.data.tenantId);
-        allow update: if isAuthenticated() && isTenantAdmin(resource.data.tenantId);
-        allow delete: if isAuthenticated() && isTenantAdmin(resource.data.tenantId);
+        allow create: if isAuthenticated() && hasPermission('modifyChurches', request.resource.data.tenantId);
+        allow update: if isAuthenticated() && hasPermission('modifyChurches', resource.data.tenantId);
+        allow delete: if isAuthenticated() && hasPermission('modifyChurches', resource.data.tenantId);
       }
     }
 
@@ -261,30 +301,34 @@ service cloud.firestore {
 
     match /rag_sources/{sourceId} {
       allow read: if isAuthenticated() && isAdmin();
-      allow create: if isAuthenticated() && isAdmin() && requestHasCorrectTenant();
-      allow update: if isAuthenticated() && isTenantAdmin(resource.data.tenantId);
-      allow delete: if isAuthenticated() && isTenantAdmin(resource.data.tenantId);
+      allow create: if isAuthenticated() && requestHasCorrectTenant() &&
+        hasPermission('uploadRag', request.resource.data.get('tenantId', ''));
+      allow update: if isAuthenticated() && hasPermission('uploadRag', resource.data.tenantId);
+      allow delete: if isAuthenticated() && hasPermission('uploadRag', resource.data.tenantId);
     }
 
     match /rag_chunks/{chunkId} {
       allow read: if isAuthenticated() && isAdmin();
-      allow create: if isAuthenticated() && isAdmin() && requestHasCorrectTenant();
-      allow update: if isAuthenticated() && isTenantAdmin(resource.data.tenantId);
-      allow delete: if isAuthenticated() && isTenantAdmin(resource.data.tenantId);
+      allow create: if isAuthenticated() && requestHasCorrectTenant() &&
+        hasPermission('uploadRag', request.resource.data.get('tenantId', ''));
+      allow update: if isAuthenticated() && hasPermission('uploadRag', resource.data.tenantId);
+      allow delete: if isAuthenticated() && hasPermission('uploadRag', resource.data.tenantId);
     }
 
     // ─── Authors & Categories ────────────────────────────────────────
 
+    // Global course-author/category library, written only by the course
+    // editor. Docs carry NO tenantId (the old belongsToTenant(...tenantId)
+    // checks could never pass for regular admins), so gate on the writer's
+    // own-tenant courses permission instead.
     match /authors/{authorId} {
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated() && isAdmin() &&
-        (isSuperAdmin() || belongsToTenant(request.resource.data.tenantId) || belongsToTenant(resource.data.tenantId));
+      allow write: if hasPermission('createCourses', userTenantId());
     }
 
     match /categories/{catId} {
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated() && isAdmin() &&
-        (isSuperAdmin() || belongsToTenant(request.resource.data.tenantId) || belongsToTenant(resource.data.tenantId));
+      allow write: if hasPermission('createCourses', userTenantId());
     }
 
     // ─── Tenants ────────────────────────────────────────────────────
@@ -304,11 +348,14 @@ service cloud.firestore {
       // authority (set once by the webhook; gates owner-only billing routes and the
       // users-rule owner protection) and adminEmails is the admin roster the rules
       // themselves trust — both are server/super-admin-only, or the owner lock could
-      // be dodged by rewriting them. Tenant admins may edit everything else; super
-      // admins (platform tenant mgmt) are unrestricted.
+      // be dodged by rewriting them. The remaining fields (name/config/branding/
+      // integrations pointers) are edited only by the Branding and Settings
+      // screens, so the update additionally requires one of those permissions
+      // (owner / fullAccess / adminEmails-roster admins pass via hasPermission).
+      // Super admins (platform tenant mgmt) are unrestricted.
       allow update: if isAuthenticated() && (
         isSuperAdmin() ||
-        (isTenantAdmin(tenantId) &&
+        ((hasPermission('manageBranding', tenantId) || hasPermission('manageSettings', tenantId)) &&
          !request.resource.data.diff(resource.data).affectedKeys().hasAny([
            'plan', 'status', 'ownerId', 'adminEmails',
            'stripeCustomerId', 'stripeSubscriptionId', 'stripePriceId',
@@ -318,52 +365,59 @@ service cloud.firestore {
 
       allow delete: if isSuperAdmin();
 
+      // Dormant subcollection (no code reads or writes it today — the Settings
+      // screen edits fields on the tenant DOC itself). Kept gated so it can't
+      // become an ungoverned write surface.
       match /settings/{settingId} {
         allow read: if belongsToTenant(tenantId);
-        allow write: if isTenantAdmin(tenantId);
+        allow write: if hasPermission('manageSettings', tenantId);
       }
 
-      match /members/{memberId} {
-        allow read: if belongsToTenant(tenantId);
-        allow create, delete: if isTenantAdmin(tenantId);
-        allow update: if belongsToTenant(tenantId) &&
-          (request.auth.uid == memberId || isTenantAdmin(tenantId));
-      }
+      // NOTE: a tenants/{t}/members subcollection block used to live here, but
+      // nothing in the app ever reads or writes it (chat "members" is an array
+      // field on channel docs; people records live in /users) — removed so the
+      // dead allow isn't a residual write surface. Default deny applies.
 
       match /events/{eventId} {
         allow read: if isAuthenticated();
-        allow write: if isTenantAdmin(tenantId);
+        allow write: if hasPermission('manageEvents', tenantId);
       }
 
       match /registrations/{regId} {
         allow read: if isAuthenticated() && (isTenantAdmin(tenantId) || resource.data.userId == request.auth.uid);
         allow create: if isAuthenticated() && belongsToTenant(tenantId) &&
           request.resource.data.get('userId', '') == request.auth.uid;
-        allow update: if isAuthenticated() && isTenantAdmin(tenantId);
-        allow delete: if isAuthenticated() && isTenantAdmin(tenantId);
+        allow update: if isAuthenticated() && hasPermission('manageEvents', tenantId);
+        allow delete: if isAuthenticated() && hasPermission('manageEvents', tenantId);
       }
 
-      match /campaigns/{campaignId} {
-        allow read: if isAuthenticated();
-        allow write: if isTenantAdmin(tenantId);
-      }
+      // NOTE: a tenants/{t}/campaigns block used to live here, but fundraising
+      // campaigns are the TOP-LEVEL /campaigns collection — no code references
+      // this subcollection, so the dead allow was removed. Default deny applies.
 
       match /contacts/{contactId} {
-        allow read, write: if isTenantAdmin(tenantId);
+        allow read: if isTenantAdmin(tenantId);
+        allow write: if hasPermission('manageCRM', tenantId);
       }
 
       match /contactActivities/{activityId} {
-        allow read, write: if isTenantAdmin(tenantId);
+        allow read: if isTenantAdmin(tenantId);
+        allow write: if hasPermission('manageCRM', tenantId);
       }
 
       // Automated SEO blog scheduling settings (single 'settings' doc).
+      // Managed from the Blog screen; all live traffic goes through the
+      // /api/blog/automate routes (Admin SDK), so this only gates any
+      // direct client access.
       match /blogAutomation/{doc} {
-        allow read, write: if isTenantAdmin(tenantId);
+        allow read: if isTenantAdmin(tenantId);
+        allow write: if hasPermission('writeArticles', tenantId);
       }
 
       match /channels/{channelId} {
         allow read: if belongsToTenant(tenantId);
-        allow write: if isTenantAdmin(tenantId);
+        // Channel management (create/roster/edit) is the Community screen.
+        allow write: if hasPermission('manageCommunity', tenantId);
         // Members may update only the last-message preview fields when they post.
         allow update: if belongsToTenant(tenantId) &&
           request.auth.uid in resource.data.get('members', []) &&
@@ -371,23 +425,27 @@ service cloud.firestore {
       }
 
       match /channelMessages/{msgId} {
-        // Tenant admins read/write everything; members read AND post only in
-        // channels they belong to.
+        // Community admins read/write everything; members read AND post only
+        // in channels they belong to (that branch must stay permission-free).
         allow read: if belongsToTenant(tenantId) && (
           isTenantAdmin(tenantId) ||
           request.auth.uid in get(/databases/$(database)/documents/tenants/$(tenantId)/channels/$(resource.data.channelId)).data.get('members', [])
         );
         allow create: if belongsToTenant(tenantId) && (
-          isTenantAdmin(tenantId) ||
+          hasPermission('manageCommunity', tenantId) ||
           request.auth.uid in get(/databases/$(database)/documents/tenants/$(tenantId)/channels/$(request.resource.data.channelId)).data.get('members', [])
         );
-        allow update, delete: if isTenantAdmin(tenantId);
+        allow update, delete: if hasPermission('manageCommunity', tenantId);
       }
 
       match /directMessages/{dmId} {
         allow read: if belongsToTenant(tenantId);
+        // Any member may open a thread and any participant reply updates the
+        // lastMessage preview (UserMessages) — keep create/update member-level.
         allow create: if belongsToTenant(tenantId);
-        allow update, delete: if belongsToTenant(tenantId);
+        allow update: if belongsToTenant(tenantId);
+        // No delete UI exists; don't leave thread deletion open to any member.
+        allow delete: if hasPermission('manageCommunity', tenantId);
       }
 
       match /dmMessages/{msgId} {
@@ -395,34 +453,36 @@ service cloud.firestore {
         allow create: if belongsToTenant(tenantId);
         // A recipient may mark a message they DIDN'T send as read (only the `read`
         // flag) — this is what lets a member's DM read-receipt write succeed.
-        // Edits / deletes remain admin-only.
-        allow update: if isTenantAdmin(tenantId) || (
+        // Edits / deletes remain admin-only (Community screen → manageCommunity).
+        allow update: if hasPermission('manageCommunity', tenantId) || (
           belongsToTenant(tenantId) &&
           resource.data.senderId != request.auth.uid &&
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read'])
         );
-        allow delete: if isTenantAdmin(tenantId);
+        allow delete: if hasPermission('manageCommunity', tenantId);
       }
 
       match /invoices/{invoiceId} {
-        allow read, write: if isTenantAdmin(tenantId);
+        allow read: if isTenantAdmin(tenantId);
+        allow write: if hasPermission('manageAccounting', tenantId);
       }
 
       match /newsletters/{newsletterId} {
         allow read: if isTenantAdmin(tenantId);
-        allow write: if isTenantAdmin(tenantId);
+        allow write: if hasPermission('manageNewsletter', tenantId);
       }
 
       match /givingStatements/{statementId} {
         allow read: if isTenantAdmin(tenantId);
-        allow write: if isTenantAdmin(tenantId);
+        allow write: if hasPermission('manageGivingStatements', tenantId);
       }
 
       // Pledge campaign commitments — admins manage; public pledge submissions
       // are written server-side via the admin SDK (/api/pledge/submit), so client
       // access stays admin-only here.
       match /pledges/{pledgeId} {
-        allow read, write: if isTenantAdmin(tenantId);
+        allow read: if isTenantAdmin(tenantId);
+        allow write: if hasPermission('manageFundraising', tenantId);
       }
 
       // Custom forms — admins manage (write) forms; any tenant member may read
@@ -431,21 +491,25 @@ service cloud.firestore {
       // Submissions remain admin-only (read server-side via the admin SDK).
       match /forms/{formId} {
         allow read: if belongsToTenant(tenantId);
-        allow write: if isTenantAdmin(tenantId);
+        allow write: if hasFormsPermission(tenantId);
 
         match /submissions/{submissionId} {
-          allow read, write: if isTenantAdmin(tenantId);
+          allow read: if isTenantAdmin(tenantId);
+          allow write: if hasFormsPermission(tenantId);
         }
       }
 
       // Check-in sessions — admins manage; public check-ins are written
       // server-side via the admin SDK (/api/checkin/submit), so client access
-      // stays admin-only here.
+      // stays admin-only here. (The QR sub-tab is a pure generator — it never
+      // writes sessions — so manageQR does not grant session writes.)
       match /checkinSessions/{sessionId} {
-        allow read, write: if isTenantAdmin(tenantId);
+        allow read: if isTenantAdmin(tenantId);
+        allow write: if hasPermission('manageCheckin', tenantId);
 
         match /attendees/{attendeeId} {
-          allow read, write: if isTenantAdmin(tenantId);
+          allow read: if isTenantAdmin(tenantId);
+          allow write: if hasPermission('manageCheckin', tenantId);
         }
       }
 
@@ -454,29 +518,39 @@ service cloud.firestore {
       // (/api/livestream/*), so client writes stay admin-only.
       match /livestream/{docId} {
         allow read: if isAuthenticated();
-        allow write: if isTenantAdmin(tenantId);
+        allow write: if hasPermission('manageLivestream', tenantId);
+        // Notes → "Share to Livestream" (AdminDocs) writes ONLY sermonNote and
+        // is gated by manageDocs, not manageLivestream — allow that single
+        // field for docs admins so the cross-screen flow keeps working.
+        allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['sermonNote'])
+          && hasPermission('manageDocs', tenantId);
       }
 
       match /livestreamSessions/{sessionId} {
-        allow read, write: if isTenantAdmin(tenantId);
+        allow read: if isTenantAdmin(tenantId);
+        allow write: if hasPermission('manageLivestream', tenantId);
 
         match /prayers/{prayerId} {
-          allow read, write: if isTenantAdmin(tenantId);
+          allow read: if isTenantAdmin(tenantId);
+          allow write: if hasPermission('manageLivestream', tenantId);
         }
       }
 
       // SMS broadcasts + logs — admin-only. Sends happen server-side via the
       // admin SDK (/api/sms/*); admins read history client-side.
       match /smsBroadcasts/{broadcastId} {
-        allow read, write: if isTenantAdmin(tenantId);
+        allow read: if isTenantAdmin(tenantId);
+        allow write: if hasPermission('manageSms', tenantId);
 
         match /logs/{logId} {
-          allow read, write: if isTenantAdmin(tenantId);
+          allow read: if isTenantAdmin(tenantId);
+          allow write: if hasPermission('manageSms', tenantId);
         }
       }
 
       match /smsLogs/{logId} {
-        allow read, write: if isTenantAdmin(tenantId);
+        allow read: if isTenantAdmin(tenantId);
+        allow write: if hasPermission('manageSms', tenantId);
       }
     }
 
@@ -487,48 +561,52 @@ service cloud.firestore {
         (isTenantAdmin(resource.data.get('tenantId', '')) ||
          resource.data.get('createdBy', '') == request.auth.uid ||
          request.auth.uid in resource.data.get('sharedWith', []));
-      allow create: if isAuthenticated() && isTenantAdmin(request.resource.data.get('tenantId', ''));
+      allow create: if isAuthenticated() && hasPermission('manageDocs', request.resource.data.get('tenantId', ''));
       allow update: if isAuthenticated() &&
-        (isTenantAdmin(resource.data.get('tenantId', '')) || resource.data.get('createdBy', '') == request.auth.uid);
-      allow delete: if isAuthenticated() && isTenantAdmin(resource.data.get('tenantId', ''));
+        (hasPermission('manageDocs', resource.data.get('tenantId', '')) || resource.data.get('createdBy', '') == request.auth.uid);
+      allow delete: if isAuthenticated() && hasPermission('manageDocs', resource.data.get('tenantId', ''));
     }
 
     match /docFolders/{folderId} {
       allow read: if isAuthenticated() && isTenantAdmin(resource.data.get('tenantId', ''));
-      allow create: if isAuthenticated() && isTenantAdmin(request.resource.data.get('tenantId', ''));
-      allow update, delete: if isAuthenticated() && isTenantAdmin(resource.data.get('tenantId', ''));
+      allow create: if isAuthenticated() && hasPermission('manageDocs', request.resource.data.get('tenantId', ''));
+      allow update, delete: if isAuthenticated() && hasPermission('manageDocs', resource.data.get('tenantId', ''));
     }
 
     // ─── Fundraising Campaigns ───────────────────────────────────────
 
     match /campaigns/{campaignId} {
       allow read: if isAuthenticated() && belongsToTenant(resource.data.get('tenantId', ''));
-      allow create: if isAuthenticated() && isTenantAdmin(request.resource.data.get('tenantId', ''));
-      allow update: if isAuthenticated() && isTenantAdmin(resource.data.get('tenantId', ''));
-      allow delete: if isAuthenticated() && isTenantAdmin(resource.data.get('tenantId', ''));
+      allow create: if isAuthenticated() && hasPermission('manageFundraising', request.resource.data.get('tenantId', ''));
+      allow update: if isAuthenticated() && hasPermission('manageFundraising', resource.data.get('tenantId', ''));
+      allow delete: if isAuthenticated() && hasPermission('manageFundraising', resource.data.get('tenantId', ''));
     }
 
     // ─── CRM Contacts & Activities ───────────────────────────────────
 
     match /contacts/{contactId} {
       allow read: if isAuthenticated() && isTenantAdmin(resource.data.get('tenantId', ''));
-      allow create: if isAuthenticated() && isTenantAdmin(request.resource.data.get('tenantId', ''));
-      allow update: if isAuthenticated() && isTenantAdmin(resource.data.get('tenantId', ''));
-      allow delete: if isAuthenticated() && isTenantAdmin(resource.data.get('tenantId', ''));
+      allow create: if isAuthenticated() && hasPermission('manageCRM', request.resource.data.get('tenantId', ''));
+      allow update: if isAuthenticated() && hasPermission('manageCRM', resource.data.get('tenantId', ''));
+      allow delete: if isAuthenticated() && hasPermission('manageCRM', resource.data.get('tenantId', ''));
     }
 
     match /contactActivities/{activityId} {
       allow read: if isAuthenticated() && isTenantAdmin(resource.data.get('tenantId', ''));
-      allow create: if isAuthenticated() && isTenantAdmin(request.resource.data.get('tenantId', ''));
-      allow update, delete: if isAuthenticated() && isTenantAdmin(resource.data.get('tenantId', ''));
+      allow create: if isAuthenticated() && hasPermission('manageCRM', request.resource.data.get('tenantId', ''));
+      allow update, delete: if isAuthenticated() && hasPermission('manageCRM', resource.data.get('tenantId', ''));
     }
 
     // ─── Donations ───────────────────────────────────────────────────
 
+    // Legacy/dead collection — nothing in the app reads or writes it (donation
+    // records live as tenants/{t}/invoices docs of type 'donation_receipt').
+    // The old update/delete rule used the UNSCOPED isAdmin(), letting any
+    // tenant's admin edit any donation doc cross-tenant; locked to super admin.
     match /donations/{donationId} {
       allow read: if isAuthenticated() && isTenantAdmin(resource.data.get('tenantId', ''));
       allow create: if false;
-      allow update, delete: if isAuthenticated() && isAdmin();
+      allow update, delete: if isSuperAdmin();
     }
 
     // ─── Email Log ───────────────────────────────────────────────────

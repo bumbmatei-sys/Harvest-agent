@@ -3,7 +3,7 @@ import { assertSucceeds, assertFails } from '@firebase/rules-unit-testing';
 import {
   seedBase, seedAdmin, teardownEnv,
   superAdmin, owner, fullAdmin, member, adminB, asUid,
-  permsOnly, permsFull,
+  permsOnly, permsAllBut, permsFull,
   TENANT_A, TENANT_B, MEMBER_UID, OWNER_UID, FULL_ADMIN_UID,
 } from './helpers';
 
@@ -51,6 +51,13 @@ describe('users: self-edit lock', () => {
     const db = (await member()).firestore();
     await assertSucceeds(db.doc(`users/${MEMBER_UID}`).update({ tenantId: TENANT_A, displayName: 'Echo' }));
   });
+
+  it('a limited ADMIN cannot self-escalate their own permissions (either branch)', async () => {
+    await seedAdmin('limited-self', TENANT_A, permsOnly('writeArticles'));
+    const db = (await asUid('limited-self')).firestore();
+    await assertFails(db.doc('users/limited-self').update({ permissions: permsFull() }));
+    await assertFails(db.doc('users/limited-self').update({ 'permissions.fullAccess': true }));
+  });
 });
 
 describe('users: tenant-admin branch', () => {
@@ -67,6 +74,19 @@ describe('users: tenant-admin branch', () => {
     await assertSucceeds(db.doc(`users/${MEMBER_UID}`).update({
       role: 'admin', permissions: permsOnly('manageForms'),
     }));
+  });
+
+  it('an admin WITHOUT manageAdmins cannot change a member role or permissions', async () => {
+    await seedAdmin('no-roles-admin', TENANT_A, permsAllBut('manageAdmins'));
+    const db = (await asUid('no-roles-admin')).firestore();
+    await assertFails(db.doc(`users/${MEMBER_UID}`).update({ role: 'admin' }));
+    await assertFails(db.doc(`users/${MEMBER_UID}`).update({ permissions: permsFull() }));
+  });
+
+  it('an admin WITHOUT manageAdmins can still edit non-privileged member fields', async () => {
+    await seedAdmin('no-roles-admin-2', TENANT_A, permsAllBut('manageAdmins'));
+    const db = (await asUid('no-roles-admin-2')).firestore();
+    await assertSucceeds(db.doc(`users/${MEMBER_UID}`).update({ notes: 'pastoral note' }));
   });
 
   it('an admin cannot move a member into another tenant (tenantId immutable)', async () => {

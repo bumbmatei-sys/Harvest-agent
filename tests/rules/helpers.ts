@@ -105,13 +105,21 @@ export async function seedBase(): Promise<void> {
       name: 'Tenant B', ownerId: 'owner-b-uid', adminEmails: ['owner-b@test.com'],
       plan: 'ministry', status: 'active',
     });
+    // Realistic owner shape: the Stripe webhook promotes the buyer with role
+    // 'admin' and NO permissions map — the owner must pass every gate purely
+    // via tenants/{t}.ownerId (+ adminEmails), never via permission flags.
     await db.doc(`users/${OWNER_UID}`).set({
-      email: OWNER_EMAIL, role: 'admin', tenantId: TENANT_A, permissions: permsFull(),
+      email: OWNER_EMAIL, role: 'admin', tenantId: TENANT_A,
     });
     await db.doc(`users/${FULL_ADMIN_UID}`).set({
       email: 'full-admin@test.com', role: 'admin', tenantId: TENANT_A, permissions: permsFull(),
     });
-    // ROSTER_ADMIN deliberately has NO users doc (legacy adminEmails-only admin).
+    // ROSTER_ADMIN models the legacy adminEmails-only admin: an ordinary users
+    // doc (role 'user', NO permissions map) whose admin-ness comes purely from
+    // the tenants/{t}.adminEmails roster — must always count as full access.
+    await db.doc(`users/${ROSTER_ADMIN_UID}`).set({
+      email: ROSTER_ADMIN_EMAIL, role: 'user', tenantId: TENANT_A,
+    });
     await db.doc(`users/${MEMBER_UID}`).set({
       email: 'member@test.com', role: 'user', tenantId: TENANT_A,
     });
