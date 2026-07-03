@@ -30,6 +30,11 @@ export const FULL_ADMIN_UID = 'full-admin-uid';
 export const ROSTER_ADMIN_UID = 'roster-admin-uid';
 export const ROSTER_ADMIN_EMAIL = 'roster-admin@test.com';
 export const MEMBER_UID = 'member-uid';
+// A SECOND plain member of tenant-a — same tenant as MEMBER_UID, but not
+// automatically a channel member / DM participant. Used to prove private
+// messaging isolation: belonging to the tenant is NOT enough to read a channel
+// or DM you weren't added to.
+export const MEMBER2_UID = 'member2-uid';
 export const ADMIN_B_UID = 'admin-b-uid';
 export const SUPER_ADMIN_UID = 'super-admin-uid';
 
@@ -123,6 +128,9 @@ export async function seedBase(): Promise<void> {
     await db.doc(`users/${MEMBER_UID}`).set({
       email: 'member@test.com', role: 'user', tenantId: TENANT_A,
     });
+    await db.doc(`users/${MEMBER2_UID}`).set({
+      email: 'member2@test.com', role: 'user', tenantId: TENANT_A,
+    });
     await db.doc(`users/${ADMIN_B_UID}`).set({
       email: 'admin-b@test.com', role: 'admin', tenantId: TENANT_B, permissions: permsFull(),
     });
@@ -174,6 +182,11 @@ export async function rosterAdmin(): Promise<RulesTestContext> {
 export async function member(): Promise<RulesTestContext> {
   const e = await getEnv();
   return e.authenticatedContext(MEMBER_UID, { email: 'member@test.com' });
+}
+
+export async function member2(): Promise<RulesTestContext> {
+  const e = await getEnv();
+  return e.authenticatedContext(MEMBER2_UID, { email: 'member2@test.com' });
 }
 
 export async function adminB(): Promise<RulesTestContext> {
