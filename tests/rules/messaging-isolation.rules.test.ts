@@ -4,7 +4,7 @@ import {
   seedBase, seedDoc, teardownEnv,
   superAdmin, owner, fullAdmin, rosterAdmin, member, member2, adminB, asUid,
   permsOnly,
-  TENANT_A, MEMBER_UID, MEMBER2_UID, FULL_ADMIN_UID,
+  TENANT_A, MEMBER_UID, MEMBER2_UID, FULL_ADMIN_UID, ADMIN_B_UID,
 } from './helpers';
 
 /**
@@ -98,9 +98,12 @@ describe('channel isolation: members + admins only', () => {
     await assertFails(db.collection(sub('channels')).get());
   });
 
-  it("member2's own scoped query is allowed but returns none of member's channels", async () => {
+  it("member2's own scoped query is allowed but actually returns none of member's channels", async () => {
     const db = (await member2()).firestore();
-    await assertSucceeds(db.collection(sub('channels')).where('members', 'array-contains', MEMBER2_UID).get());
+    // assertSucceeds resolves to the snapshot — assert it's genuinely empty, not
+    // just that the query was permitted (ch-a's members are [MEMBER_UID] only).
+    const snap = await assertSucceeds(db.collection(sub('channels')).where('members', 'array-contains', MEMBER2_UID).get());
+    expect((snap as { empty: boolean }).empty).toBe(true);
     await assertFails(db.collection(sub('channels')).get());
   });
 });
@@ -154,6 +157,12 @@ describe('DM isolation: participants only (fully private)', () => {
     await assertFails(adm.doc(sub('directMessages/dm-new-bad')).set({
       participants: [MEMBER_UID, DM_PARTNER], lastMessage: '',
     }));
+    // A cross-tenant actor is denied create even when correctly listing self as a
+    // participant (the belongsToTenant half of the gate, not just self-inclusion).
+    const b = (await adminB()).firestore();
+    await assertFails(b.doc(sub('directMessages/dm-crosstenant')).set({
+      participants: [ADMIN_B_UID, MEMBER_UID], lastMessage: '',
+    }));
   });
 
   it('a participant can update the preview and delete their own thread; a non-participant cannot', async () => {
@@ -196,9 +205,17 @@ describe('dmMessages isolation: scoped to the parent thread participants', () =>
     await assertSucceeds(db.doc(sub('dmMessages/dm-a-in')).update({ read: true }));
     // ...but cannot edit its content.
     await assertFails(db.doc(sub('dmMessages/dm-a-in')).update({ content: 'tampered' }));
+    // The read-flag fence is hasOnly(['read']): smuggling a content edit alongside
+    // the legitimate read flag must fail (this is what distinguishes hasOnly from a
+    // weaker hasAny(['read']) / 'read' in affectedKeys()).
+    await assertFails(db.doc(sub('dmMessages/dm-a-in')).update({ read: true, content: 'x' }));
+    // You cannot mark your OWN message read (the senderId != uid guard), even one
+    // that is still unread.
+    await seedDoc(sub('dmMessages/dm-a-own-unread'), { dmId: 'dm-a', senderId: MEMBER_UID, content: 'mine', read: false });
+    await assertFails(db.doc(sub('dmMessages/dm-a-own-unread')).update({ read: true }));
   });
 
-  it('a non-participant member is denied read, send, and delete', async () => {
+  it('a non-participant member is denied read, send, read-receipt, and delete', async () => {
     const db = (await member2()).firestore();
     await assertFails(db.collection(sub('dmMessages')).where('dmId', '==', 'dm-a').get());
     await assertFails(db.doc(sub('dmMessages/dm-a-out')).get());
@@ -206,6 +223,9 @@ describe('dmMessages isolation: scoped to the parent thread participants', () =>
     await assertFails(db.doc(sub('dmMessages/inject')).set({
       dmId: 'dm-a', senderId: MEMBER2_UID, content: 'sneak', read: false,
     }));
+    // Cannot write a read-receipt to a message in a thread they're not in (the
+    // participant guard on update, exercised in the deny direction).
+    await assertFails(db.doc(sub('dmMessages/dm-a-in')).update({ read: true }));
     await assertFails(db.doc(sub('dmMessages/dm-a-out')).delete());
   });
 
@@ -231,6 +251,21 @@ describe('dmMessages isolation: scoped to the parent thread participants', () =>
     await seedDoc(sub('dmMessages/dm-a-del2'), { dmId: 'dm-a', senderId: MEMBER_UID, content: 'bye', read: true });
     await assertSucceeds((await superAdmin()).firestore().doc(sub('dmMessages/dm-a-del2')).delete());
   });
+
+  it('an orphaned dmMessage (parent DM missing) fails closed: participants denied read/delete, super admin can clean up', async () => {
+    // A participant may delete their thread (directMessages delete), leaving its
+    // dmMessages as orphans — rules cannot cascade. The get() on the missing parent
+    // returns null and the rule denies, so even a former participant can no longer
+    // read or delete the leftovers; only the super admin (who short-circuits before
+    // the get) can clean them up. Pins that real production fail-safe.
+    await seedDoc(sub('dmMessages/orphan'), { dmId: 'no-such-dm', senderId: DM_PARTNER, content: 'ghost', read: false });
+    const mem = (await member()).firestore();
+    await assertFails(mem.doc(sub('dmMessages/orphan')).get());
+    await assertFails(mem.doc(sub('dmMessages/orphan')).update({ read: true }));
+    await assertFails(mem.doc(sub('dmMessages/orphan')).delete());
+    await assertFails((await member2()).firestore().doc(sub('dmMessages/orphan')).get());
+    await assertSucceeds((await superAdmin()).firestore().doc(sub('dmMessages/orphan')).delete());
+  });
 });
 
 // ─── Full member flows (no lockout) + channelMessages carve-out unchanged ────────
@@ -247,11 +282,15 @@ describe('member flows keep working end-to-end (no lockout)', () => {
     }));
   });
 
-  it('a channel member can bump the last-message preview (fields-limited update)', async () => {
+  it('a channel member can bump the last-message preview; a non-member cannot', async () => {
     const mem = (await member()).firestore();
     await assertSucceeds(mem.doc(sub('channels/ch-a')).update({ lastMessage: 'new', lastMessageAt: 3 }));
     // ...but not rename the channel.
     await assertFails(mem.doc(sub('channels/ch-a')).update({ name: 'hijacked' }));
+    // A same-tenant NON-member cannot bump the preview of a channel they're not in
+    // (the 'uid in members' conjunct on the channel update, deny direction).
+    const m2 = (await member2()).firestore();
+    await assertFails(m2.doc(sub('channels/ch-a')).update({ lastMessage: 'x', lastMessageAt: 9 }));
   });
 
   it('a channel member can read that channel\'s messages; a non-member cannot', async () => {

@@ -491,12 +491,17 @@ service cloud.firestore {
           request.auth.uid in get(/databases/$(database)/documents/tenants/$(tenantId)/directMessages/$(request.resource.data.dmId)).data.get('participants', []);
         // Read-receipt: a recipient may mark a message they DIDN'T send as read
         // (only the `read` flag) — this is what lets a member's DM read-receipt
-        // write succeed. Scoped to the thread's participants.
+        // write succeed. Scoped to the thread's participants. belongsToTenant is
+        // kept (as on read/create and the parent directMessages doc) so a foreign-
+        // tenant uid that somehow sits in a DM's participants can't delete/flag
+        // messages in a tenant it doesn't belong to — tenant parity across all ops.
         allow update: if isSuperAdmin() || (
+          belongsToTenant(tenantId) &&
           request.auth.uid in get(/databases/$(database)/documents/tenants/$(tenantId)/directMessages/$(resource.data.dmId)).data.get('participants', []) &&
           resource.data.senderId != request.auth.uid &&
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']));
         allow delete: if isSuperAdmin() || (
+          belongsToTenant(tenantId) &&
           request.auth.uid in get(/databases/$(database)/documents/tenants/$(tenantId)/directMessages/$(resource.data.dmId)).data.get('participants', []));
       }
 

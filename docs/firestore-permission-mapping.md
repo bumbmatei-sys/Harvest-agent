@@ -59,7 +59,7 @@ so belonging to the tenant is not enough:
 |---|---|---|---|---|
 | `tenants/{t}/channels` | tenant admin **or** `uid ∈ members` | `manageCommunity` | `manageCommunity`; member preview-only (`lastMessage`/`lastMessageAt`) | `manageCommunity` |
 | `tenants/{t}/directMessages` | super admin **or** `uid ∈ participants` | `uid ∈ participants` (must include self) | super admin; **or** participant, fenced to `lastMessage`/`lastMessageAt` (the `participants` roster stays immutable client-side) | super admin **or** participant |
-| `tenants/{t}/dmMessages` | super admin **or** `uid ∈ parent DM's participants` | participant **and** `senderId == uid` | super admin **or** (participant **and** not-sender **and** `read`-only) | super admin **or** participant |
+| `tenants/{t}/dmMessages` | super admin **or** `uid ∈ parent DM's participants` | participant **and** `senderId == uid` | super admin **or** (same-tenant participant **and** not-sender **and** `read`-only) | super admin **or** same-tenant participant |
 
 - **Channels** are private group chats: a 100-member tenant whose channel has
   10 members stays invisible to the other 90. Tenant admins read every channel
