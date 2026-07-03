@@ -58,7 +58,7 @@ so belonging to the tenant is not enough:
 | Collection | Read | Create | Update | Delete |
 |---|---|---|---|---|
 | `tenants/{t}/channels` | tenant admin **or** `uid ∈ members` | `manageCommunity` | `manageCommunity`; member preview-only (`lastMessage`/`lastMessageAt`) | `manageCommunity` |
-| `tenants/{t}/directMessages` | super admin **or** `uid ∈ participants` | `uid ∈ participants` (must include self) | super admin **or** participant | super admin **or** participant |
+| `tenants/{t}/directMessages` | super admin **or** `uid ∈ participants` | `uid ∈ participants` (must include self) | super admin; **or** participant, fenced to `lastMessage`/`lastMessageAt` (the `participants` roster stays immutable client-side) | super admin **or** participant |
 | `tenants/{t}/dmMessages` | super admin **or** `uid ∈ parent DM's participants` | participant **and** `senderId == uid` | super admin **or** (participant **and** not-sender **and** `read`-only) | super admin **or** participant |
 
 - **Channels** are private group chats: a 100-member tenant whose channel has
@@ -72,6 +72,11 @@ so belonging to the tenant is not enough:
   in the DM read/update/delete rules). `dmMessages` inherit the parent thread's
   participants via a single cached `get()` on `directMessages/{dmId}` (a message
   list is always filtered to one `dmId`, so it stays under the get/exists limit).
+  The participant update is **fenced to `lastMessage`/`lastMessageAt`** (like the
+  channels member-update): the `participants` roster is immutable client-side, so
+  a participant can't quietly add a third reader or remove the other party —
+  otherwise the parent-scoped `dmMessages` `get()` would leak the whole thread to
+  an added uid. Roster changes, if ever wanted, go through the super admin.
 - **No client change** was needed: the live queries already filter by
   `array-contains` (members / participants) and admins already query as admins.
   This narrows the blast radius of the pre-existing cross-tenant

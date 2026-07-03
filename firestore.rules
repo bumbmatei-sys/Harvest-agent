@@ -465,8 +465,16 @@ service cloud.firestore {
         allow read:   if belongsToTenant(tenantId) && (isSuperAdmin() || request.auth.uid in resource.data.get('participants', []));
         // Creator must include themselves — you can't open a thread you're not in.
         allow create: if belongsToTenant(tenantId) && request.auth.uid in request.resource.data.get('participants', []);
-        // A participant reply bumps the lastMessage preview (UserMessages).
-        allow update: if isSuperAdmin() || (belongsToTenant(tenantId) && request.auth.uid in resource.data.get('participants', []));
+        // A participant reply bumps the lastMessage preview (UserMessages) — and
+        // that is ALL a participant may change. Fencing to those two fields (as the
+        // channels member-update is fenced) keeps `participants` immutable client-
+        // side: without it a participant could add a third uid — instantly granting
+        // them the whole thread + every dmMessage via the parent get() — or remove
+        // the other party. Roster changes, if ever needed, go through the super admin.
+        allow update: if isSuperAdmin() || (
+          belongsToTenant(tenantId) &&
+          request.auth.uid in resource.data.get('participants', []) &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastMessage', 'lastMessageAt']));
         allow delete: if isSuperAdmin() || (belongsToTenant(tenantId) && request.auth.uid in resource.data.get('participants', []));
       }
 

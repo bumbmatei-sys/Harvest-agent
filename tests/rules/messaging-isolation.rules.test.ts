@@ -166,6 +166,19 @@ describe('DM isolation: participants only (fully private)', () => {
     await assertFails(m2.doc(sub('directMessages/dm-upd')).delete());
     await assertSucceeds(mem.doc(sub('directMessages/dm-upd')).delete());
   });
+
+  it('a participant CANNOT mutate the participant set (no adding an outsider, no removing the other party)', async () => {
+    // The preview update is fenced to lastMessage/lastMessageAt, so the roster
+    // stays closed: a participant can't quietly add a third reader (which the
+    // parent-scoped dmMessages get() would then expose the whole thread to) or
+    // lock the other party out. This is the invariant the isolation depends on.
+    await seedDoc(sub('directMessages/dm-roster'), { participants: [MEMBER_UID, DM_PARTNER], lastMessage: '' });
+    const mem = (await member()).firestore();
+    await assertFails(mem.doc(sub('directMessages/dm-roster')).update({ participants: [MEMBER_UID, DM_PARTNER, MEMBER2_UID] }));
+    await assertFails(mem.doc(sub('directMessages/dm-roster')).update({ participants: [MEMBER_UID] }));
+    // ...even bundled with a legitimate preview bump.
+    await assertFails(mem.doc(sub('directMessages/dm-roster')).update({ lastMessage: 'hi', participants: [MEMBER_UID, DM_PARTNER, MEMBER2_UID] }));
+  });
 });
 
 // ─── DM messages (inherit parent thread's participants) ──────────────────────────
