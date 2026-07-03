@@ -33,7 +33,7 @@ mirroring the client's `normalizePermissions()`.
 | `manageDocs` | `docs`; `docFolders`; plus a `sermonNote`-only update on `tenants/{t}/livestream/*` | the carve-out keeps Notes → "Share to Livestream" working for docs-only admins |
 | `modifyChurches` | `churches` (+ `announcements` subcollection) | reads stay open (member map/details) |
 | `manageCRM` | `contacts`, `contactActivities` (top-level; the `tenants/{t}/…` twins are dead but gated the same) | CRM upserts create docs, so create/update share the gate |
-| `manageCommunity` | `tenants/{t}/channels` (admin writes), `channelMessages` (admin branch + moderation), `dmMessages` (moderation), `directMessages` (delete) | member carve-outs unchanged: channel members post + bump `lastMessage`/`lastMessageAt`; DM create/reply/read-receipt |
+| `manageCommunity` | `tenants/{t}/channels` (admin writes), `channelMessages` (admin branch + moderation) | member carve-outs unchanged: channel members post + bump `lastMessage`/`lastMessageAt`. **DMs are no longer gated by `manageCommunity`** — they're fully private (participant-scoped); see "Private messaging isolation" below. |
 | `manageForms` | `tenants/{t}/forms` (+ `submissions` subcollection) | legacy `seeFormsInbox` honored |
 | `manageFundraising` | `campaigns` (top-level); `tenants/{t}/pledges` | public pledges go through `/api/pledge/submit` |
 | `manageAccounting` | `tenants/{t}/invoices` | client performs no writes today (webhook/QuickBooks routes do) |
@@ -48,6 +48,40 @@ mirroring the client's `normalizePermissions()`.
 | `manageBranding` | `tenants/{t}` doc update (shared gate with `manageSettings`) | Branding + Domain sections write tenant-doc config fields |
 | `manageAffiliate` | — no write surface | affiliate data is server-authority (`/api/affiliate/*`) |
 | `manageSettings` | `tenants/{t}` doc update (shared gate with `manageBranding`); `tenants/{t}/settings` (dormant) | Onboarding/GivingStatements/Integrations sections write tenant-doc fields; billing/owner/roster fields remain blocked for everyone but the super admin |
+
+## Private messaging isolation (reads scoped to members / participants)
+
+Tenant-shared content (prayer wall, posts, articles, courses, events) stays
+tenant-wide. **Messaging is the private layer** and its *reads* are now scoped
+so belonging to the tenant is not enough:
+
+| Collection | Read | Create | Update | Delete |
+|---|---|---|---|---|
+| `tenants/{t}/channels` | tenant admin **or** `uid ∈ members` | `manageCommunity` | `manageCommunity`; member preview-only (`lastMessage`/`lastMessageAt`) | `manageCommunity` |
+| `tenants/{t}/directMessages` | super admin **or** `uid ∈ participants` | `uid ∈ participants` (must include self) | super admin **or** participant | super admin **or** participant |
+| `tenants/{t}/dmMessages` | super admin **or** `uid ∈ parent DM's participants` | participant **and** `senderId == uid` | super admin **or** (participant **and** not-sender **and** `read`-only) | super admin **or** participant |
+
+- **Channels** are private group chats: a 100-member tenant whose channel has
+  10 members stays invisible to the other 90. Tenant admins read every channel
+  (AdminCommunity's unfiltered list passes via `isTenantAdmin`); members read
+  only channels they're in (UserMessages filters `members array-contains uid`).
+- **DMs are fully private** — only the two participants and the platform super
+  admin can read or write a thread. **Community admins get no special DM
+  access** (this was Matei's call; the alternative — admin moderation — would
+  swap `isSuperAdmin()` for `(isSuperAdmin() || hasPermission('manageCommunity', tenantId))`
+  in the DM read/update/delete rules). `dmMessages` inherit the parent thread's
+  participants via a single cached `get()` on `directMessages/{dmId}` (a message
+  list is always filtered to one `dmId`, so it stays under the get/exists limit).
+- **No client change** was needed: the live queries already filter by
+  `array-contains` (members / participants) and admins already query as admins.
+  This narrows the blast radius of the pre-existing cross-tenant
+  self-registration residual below — a spoofed `tenantId` no longer exposes
+  arbitrary DMs (you must be a named participant), though it still exposes
+  tenant-wide content, so the server-side membership fix is still the durable one.
+- Verified in `tests/rules/messaging-isolation.rules.test.ts` (channel
+  member/non-member/admin/cross-tenant reads; DM participant vs non-participant
+  vs admin vs super; dmMessages parent-scoping; unfiltered-list denial; and the
+  full member send/read-receipt/preview flows — no lockout).
 
 ## Additional hardening in the same change
 

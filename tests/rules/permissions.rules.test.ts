@@ -466,26 +466,37 @@ describe('community messaging [manageCommunity]', () => {
     await assertFails(db.doc(sub('channelMessages/m1')).delete());
   });
 
-  it('dmMessages: member send + recipient read-receipt keep working; moderation needs manageCommunity', async () => {
+  // DMs are now FULLY PRIVATE (participant-scoped) — manageCommunity no longer
+  // grants any DM access. The participant carve-outs (send + read-receipt +
+  // preview) keep working; full isolation coverage lives in
+  // messaging-isolation.rules.test.ts.
+  it('dmMessages: participant send + recipient read-receipt keep working; a manageCommunity admin gets NO DM access', async () => {
+    // Parent thread the member participates in (dmMessages inherit its participants).
+    await seedDoc(sub('directMessages/d1'), { participants: [MEMBER_UID, 'someone-else'], lastMessage: '' });
     const db = (await member()).firestore();
     await assertSucceeds(db.doc(sub('dmMessages/dm-m1')).set({ dmId: 'd1', senderId: MEMBER_UID, content: 'hey', read: false }));
     await seedDoc(sub('dmMessages/dm-in'), { dmId: 'd1', senderId: 'someone-else', content: 'yo', read: false });
     await assertSucceeds(db.doc(sub('dmMessages/dm-in')).update({ read: true }));
-    // A member cannot edit message CONTENT (even one they received)
+    // A participant cannot edit message CONTENT (even one they received)
     await assertFails(db.doc(sub('dmMessages/dm-in')).update({ content: 'tampered' }));
+    // manageCommunity no longer moderates DMs — a non-participant admin is denied
+    // read, content-edit, and delete alike.
     const holder = (await asUid(holderUid('manageCommunity'))).firestore();
-    await assertSucceeds(holder.doc(sub('dmMessages/dm-in')).update({ content: 'moderated' }));
-    const non = (await asUid(nonHolderUid('manageCommunity'))).firestore();
-    await assertFails(non.doc(sub('dmMessages/dm-in')).delete());
+    await assertFails(holder.doc(sub('dmMessages/dm-in')).get());
+    await assertFails(holder.doc(sub('dmMessages/dm-in')).update({ content: 'moderated' }));
+    await assertFails(holder.doc(sub('dmMessages/dm-in')).delete());
   });
 
-  it('directMessages: members open threads and update previews; deletion needs manageCommunity', async () => {
+  it('directMessages: a participant opens/updates/deletes their own thread; a manageCommunity admin gets no access', async () => {
     const db = (await member()).firestore();
     await assertSucceeds(db.doc(sub('directMessages/t1')).set({ participants: [MEMBER_UID, 'x'], lastMessage: '' }));
     await assertSucceeds(db.doc(sub('directMessages/t1')).update({ lastMessage: 'hi', lastMessageAt: 1 }));
-    await assertFails(db.doc(sub('directMessages/t1')).delete());
+    // A non-participant manageCommunity admin can neither read nor delete the thread.
     const holder = (await asUid(holderUid('manageCommunity'))).firestore();
-    await assertSucceeds(holder.doc(sub('directMessages/t1')).delete());
+    await assertFails(holder.doc(sub('directMessages/t1')).get());
+    await assertFails(holder.doc(sub('directMessages/t1')).delete());
+    // A participant may now delete their own thread.
+    await assertSucceeds(db.doc(sub('directMessages/t1')).delete());
   });
 });
 
