@@ -190,10 +190,11 @@ const NotificationsStep: React.FC<{ onDone: () => void }> = ({ onDone }) => {
             if (msg && user) {
               const token = await getToken(msg, { vapidKey: VAPID_KEY });
               if (token) {
-                const tenantId = await getTenantScope();
+                // fcmTokens only — users.tenantId is locked to self-edits by
+                // firestore.rules (server-authority; bundling it here used to
+                // make the whole write fail whenever the scope differed).
                 await updateDoc(doc(db, 'users', user.uid), {
                   fcmTokens: arrayUnion(token),
-                  tenantId: tenantId || null,
                 });
               }
             }

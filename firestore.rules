@@ -94,21 +94,25 @@ service cloud.firestore {
          request.resource.data.role == 'user');
 
       allow update: if isAuthenticated() && (
-        // Self-edit: not your own role, and not any affiliate payout/status field
-        // (affiliate fields are server-authority — /api/affiliate/* via Admin SDK).
-        // NOTE: tenantId + plan locks land in Batch 1C (need a server route first).
+        // Self-edit: not your own role, permissions, tenantId or plan (privilege /
+        // tenant-hopping surface — those change only via admin flows or server
+        // routes), and not any affiliate payout/status field (affiliate fields are
+        // server-authority — /api/affiliate/* via Admin SDK).
         (request.auth.uid == userId &&
           !request.resource.data.diff(resource.data).affectedKeys().hasAny([
-            'role',
+            'role', 'permissions', 'tenantId', 'plan',
             'affiliateStripeAccountId', 'affiliateConnectStatus',
             'affiliateEarnings', 'affiliatePendingPayouts', 'affiliateCode'
           ])) ||
         // Tenant admins manage their own tenant's members: role may only be set to
-        // 'user' or 'admin' (never 'super_admin'); affiliate fields stay server-only.
+        // 'user' or 'admin' (never 'super_admin'); tenantId/plan are immutable here
+        // (an admin must not move a member between tenants — membership is set at
+        // creation and otherwise server-only); affiliate fields stay server-only.
         (isTenantAdmin(resource.data.tenantId) &&
           (!request.resource.data.keys().hasAny(['role']) ||
            request.resource.data.role in ['user', 'admin']) &&
           !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+            'tenantId', 'plan',
             'affiliateStripeAccountId', 'affiliateConnectStatus',
             'affiliateEarnings', 'affiliatePendingPayouts', 'affiliateCode'
           ])) ||
