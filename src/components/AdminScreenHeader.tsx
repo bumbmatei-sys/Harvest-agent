@@ -61,10 +61,15 @@ export const HeaderActionButton: React.FC<{
   onClick: () => void;
   label: string;
   icon?: React.ReactNode;
-}> = ({ onClick, label, icon }) => (
+  disabled?: boolean;
+  /** Tooltip — useful for explaining why the button is disabled. */
+  title?: string;
+}> = ({ onClick, label, icon, disabled, title }) => (
   <button
     onClick={onClick}
-    className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-white whitespace-nowrap transition-opacity hover:opacity-90 active:opacity-80"
+    disabled={disabled}
+    title={title}
+    className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-white whitespace-nowrap transition-opacity hover:opacity-90 active:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:opacity-40"
     style={{ backgroundColor: HEADER_GOLD }}
   >
     {icon ?? <span className="text-sm leading-none">+</span>}

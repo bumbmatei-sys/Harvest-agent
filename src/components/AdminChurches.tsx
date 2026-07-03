@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { db, auth } from '../firebase';
 import { collection, query, where, onSnapshot, doc, deleteDoc, getDoc, addDoc, updateDoc, orderBy, limit } from 'firebase/firestore';
 import { Church, Search, Filter, Edit2, Trash2, Plus, CheckCircle, Clock, DollarSign, Megaphone, Save, X } from 'lucide-react';
@@ -8,8 +8,12 @@ import { authFetch } from '../utils/auth-fetch';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { getTenantScope } from '../utils/tenant-scope';
 import { sendPushNotification } from '../utils/send-notification';
+import { getPlanFeatures } from '../utils/plan-features';
 import { useTenant } from '@/contexts/TenantContext';
 import { useAdminHeader, HeaderActionButton } from './AdminScreenHeader';
+
+/** Every plan includes 1 church free (the tenant's own). */
+const INCLUDED_CHURCHES = 1;
 
 
 const AdminChurches: React.FC = () => {
@@ -29,9 +33,16 @@ const AdminChurches: React.FC = () => {
   const [billingNotice, setBillingNotice] = useState<string | null>(null);
   const [showBillingConfirm, setShowBillingConfirm] = useState(false);
   const [billingLoading, setBillingLoading] = useState(false);
+  // Whether the church being added right now is a paid one. Captured at add-time
+  // because `churches` can update via onSnapshot before handleChurchSaved runs.
+  const willBeBilledRef = useRef(false);
 
   const isMinistry = tenantPlan === 'ultra';
   const ENTERPRISE_PRICE_PER_CHURCH = 10; // $10/church/mo
+
+  // Unknown/loading plan falls back to 'plus' (maxChurches: 1) — fail closed on the cap.
+  const maxChurches = getPlanFeatures(tenantPlan ?? 'plus').maxChurches;
+  const atLimit = maxChurches !== -1 && churches.length >= maxChurches;
 
   const openFilterPopup = (type: 'city' | 'pastor' | 'country') => {
     setActiveFilterPopup(type);
@@ -117,11 +128,13 @@ const AdminChurches: React.FC = () => {
 
   const handleChurchSaved = async (churchData?: any) => {
     const wasAdding = isAdding;
+    const shouldBill = willBeBilledRef.current;
     setIsAdding(false);
     setEditingChurch(null);
+    willBeBilledRef.current = false;
 
-    // Call addChurchBilling Cloud Function when a new church is created
-    if (isMinistry && wasAdding && churchData?.id) {
+    // Bill only Ministry churches beyond the included free one (decided at add-time)
+    if (isMinistry && wasAdding && churchData?.id && shouldBill) {
       setBillingNotice('Adding $10/mo to your subscription...');
       await addChurchBilling(churchData.id, churchData.name || '');
       setBillingNotice(`$10/mo added to your bill for "${churchData.name || 'New Church'}"`);
@@ -130,7 +143,16 @@ const AdminChurches: React.FC = () => {
   };
 
   const handleAddChurchClick = () => {
-    if (isMinistry) {
+    if (loading) return; // church count not known yet — can't decide cap/billing
+    if (atLimit) {
+      setBillingNotice(`Your plan includes ${INCLUDED_CHURCHES} church. Upgrade to Ministry to add more.`);
+      setTimeout(() => setBillingNotice(null), 5000);
+      return;
+    }
+    // The first church is free on every plan; only Ministry's 2nd+ church is billed.
+    const willBeBilled = isMinistry && churches.length >= INCLUDED_CHURCHES;
+    willBeBilledRef.current = willBeBilled;
+    if (willBeBilled) {
       setShowBillingConfirm(true);
     } else {
       setIsAdding(true);
@@ -143,9 +165,19 @@ const AdminChurches: React.FC = () => {
   };
 
   useEffect(() => {
-    setHeaderAction(<HeaderActionButton label="Add Church" onClick={() => handleAddChurchClick()} />);
+    setHeaderAction(
+      <HeaderActionButton
+        label="Add Church"
+        onClick={() => handleAddChurchClick()}
+        disabled={atLimit}
+        title={atLimit ? `Your plan includes ${INCLUDED_CHURCHES} church. Upgrade to Ministry to add more.` : undefined}
+      />
+    );
     return () => setHeaderAction(null);
-  }, [setHeaderAction]);
+    // Re-register when the values handleAddChurchClick closes over change,
+    // so the button never acts on a stale church count or plan.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [setHeaderAction, atLimit, isMinistry, loading, churches.length]);
 
   const filteredChurches = churches.filter(church => {
     const matchesSearch = searchTerm === '' || 
@@ -192,7 +224,7 @@ const AdminChurches: React.FC = () => {
     <div className="space-y-6 lg:max-w-5xl lg:mx-auto w-full">
       {isMinistry && (
         <p className="text-xs text-gray-500">
-          {churches.length} church{churches.length !== 1 ? 'es' : ''} · ${churches.length * ENTERPRISE_PRICE_PER_CHURCH}/mo
+          {churches.length} church{churches.length !== 1 ? 'es' : ''} · ${Math.max(0, churches.length - INCLUDED_CHURCHES) * ENTERPRISE_PRICE_PER_CHURCH}/mo ({INCLUDED_CHURCHES} included free)
         </p>
       )}
 
@@ -345,7 +377,7 @@ const AdminChurches: React.FC = () => {
             <h3 className="text-xl font-bold text-gray-900 mb-2">Delete Church</h3>
             <p className="text-gray-600 mb-6">
               Are you sure you want to delete this church? This action cannot be undone.
-              {isMinistry && (
+              {isMinistry && churches.find(c => c.id === deleteConfirmId)?.stripeSubscriptionItemId && (
                 <span className="block text-sm text-green-700 mt-1">
                   This will automatically remove the $10/mo charge from your subscription.
                 </span>
