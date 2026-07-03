@@ -114,6 +114,17 @@ service cloud.firestore {
         || (isTenantAdmin(tenantId) && userPermissions().get('seeFormsInbox', false) == true);
     }
 
+    // DM moderation: community managers (manageCommunity) — plus super admins,
+    // the tenant owner, and adminEmails-roster admins, all folded into
+    // hasPermission — may READ and MODERATE (edit/delete) member DMs for
+    // safety/abuse. This is the admin-moderation variant Matei chose over
+    // fully-private DMs. Participants keep their own reply / read-receipt /
+    // preview carve-outs. A limited admin WITHOUT manageCommunity gets no DM
+    // access, and hasPermission is tenant-scoped so cross-tenant admins are out.
+    function canModerateDMs(tenantId) {
+      return hasPermission('manageCommunity', tenantId);
+    }
+
     // ─── Users ───────────────────────────────────────────────────────
 
     match /users/{userId} {
@@ -455,52 +466,53 @@ service cloud.firestore {
         allow update, delete: if hasPermission('manageCommunity', tenantId);
       }
 
-      // Direct messages are fully private: only the two participants (and the
-      // platform super admin) may read or write a thread. Community admins get NO
-      // special DM access — this matches "private between participants". The
-      // member-facing query (UserMessages) already filters
-      // `participants array-contains uid`. (If DM moderation is ever wanted,
-      // swap isSuperAdmin() for (isSuperAdmin() || hasPermission('manageCommunity', tenantId)).)
+      // Direct messages are private between their participants — readable/writable
+      // only by the two participants, PLUS community admins (manageCommunity) and
+      // the super admin, who may read + moderate for safety/abuse (admin-moderation
+      // variant). Other tenant members see nothing. The member-facing query
+      // (UserMessages) filters `participants array-contains uid`.
       match /directMessages/{dmId} {
-        allow read:   if belongsToTenant(tenantId) && (isSuperAdmin() || request.auth.uid in resource.data.get('participants', []));
+        allow read:   if belongsToTenant(tenantId) && (canModerateDMs(tenantId) || request.auth.uid in resource.data.get('participants', []));
         // Creator must include themselves — you can't open a thread you're not in.
         allow create: if belongsToTenant(tenantId) && request.auth.uid in request.resource.data.get('participants', []);
-        // A participant reply bumps the lastMessage preview (UserMessages) — and
-        // that is ALL a participant may change. Fencing to those two fields (as the
-        // channels member-update is fenced) keeps `participants` immutable client-
-        // side: without it a participant could add a third uid — instantly granting
-        // them the whole thread + every dmMessage via the parent get() — or remove
-        // the other party. Roster changes, if ever needed, go through the super admin.
-        allow update: if isSuperAdmin() || (
+        // A moderator (or super admin) may edit/delete freely; a participant reply
+        // may bump ONLY the lastMessage preview. Fencing the participant branch to
+        // those two fields (as the channels member-update is fenced) keeps
+        // `participants` immutable client-side: without it a participant could add a
+        // third uid — instantly granting them the whole thread + every dmMessage via
+        // the parent get() — or remove the other party. Roster changes go through a
+        // moderator / super admin.
+        allow update: if canModerateDMs(tenantId) || (
           belongsToTenant(tenantId) &&
           request.auth.uid in resource.data.get('participants', []) &&
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastMessage', 'lastMessageAt']));
-        allow delete: if isSuperAdmin() || (belongsToTenant(tenantId) && request.auth.uid in resource.data.get('participants', []));
+        allow delete: if canModerateDMs(tenantId) || (belongsToTenant(tenantId) && request.auth.uid in resource.data.get('participants', []));
       }
 
       // DM messages inherit the parent thread's privacy: read/write is scoped to
-      // the participants of the directMessages doc named by this message's `dmId`.
-      // The get() on the parent is safe — a dmMessages list is always filtered to
-      // one dmId (UserMessages/AdminCommunity query `where dmId ==`), so it
-      // resolves a single, cached parent doc and stays well under the get/exists
-      // limit. Fully private (super admin excepted); no admin moderation.
+      // the participants of the directMessages doc named by this message's `dmId`,
+      // PLUS community moderators / the super admin (canModerateDMs). The get() on
+      // the parent is safe — a dmMessages list is always filtered to one dmId
+      // (UserMessages/AdminCommunity query `where dmId ==`), so it resolves a
+      // single, cached parent doc and stays well under the get/exists limit.
       match /dmMessages/{msgId} {
-        allow read:   if belongsToTenant(tenantId) && (isSuperAdmin() ||
+        allow read:   if belongsToTenant(tenantId) && (canModerateDMs(tenantId) ||
           request.auth.uid in get(/databases/$(database)/documents/tenants/$(tenantId)/directMessages/$(resource.data.dmId)).data.get('participants', []));
         allow create: if belongsToTenant(tenantId) && request.resource.data.senderId == request.auth.uid &&
           request.auth.uid in get(/databases/$(database)/documents/tenants/$(tenantId)/directMessages/$(request.resource.data.dmId)).data.get('participants', []);
-        // Read-receipt: a recipient may mark a message they DIDN'T send as read
-        // (only the `read` flag) — this is what lets a member's DM read-receipt
-        // write succeed. Scoped to the thread's participants. belongsToTenant is
-        // kept (as on read/create and the parent directMessages doc) so a foreign-
-        // tenant uid that somehow sits in a DM's participants can't delete/flag
-        // messages in a tenant it doesn't belong to — tenant parity across all ops.
-        allow update: if isSuperAdmin() || (
+        // Moderators (canModerateDMs) may edit/delete for safety. Otherwise a
+        // recipient may mark a message they DIDN'T send as read (only the `read`
+        // flag) — this is what lets a member's DM read-receipt write succeed.
+        // belongsToTenant is kept on the participant branch (as on read/create and
+        // the parent directMessages doc) so a foreign-tenant uid that somehow sits
+        // in a DM's participants can't flag messages in a tenant it doesn't belong
+        // to — tenant parity across all ops.
+        allow update: if canModerateDMs(tenantId) || (
           belongsToTenant(tenantId) &&
           request.auth.uid in get(/databases/$(database)/documents/tenants/$(tenantId)/directMessages/$(resource.data.dmId)).data.get('participants', []) &&
           resource.data.senderId != request.auth.uid &&
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']));
-        allow delete: if isSuperAdmin() || (
+        allow delete: if canModerateDMs(tenantId) || (
           belongsToTenant(tenantId) &&
           request.auth.uid in get(/databases/$(database)/documents/tenants/$(tenantId)/directMessages/$(resource.data.dmId)).data.get('participants', []));
       }

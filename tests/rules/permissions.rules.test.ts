@@ -466,11 +466,11 @@ describe('community messaging [manageCommunity]', () => {
     await assertFails(db.doc(sub('channelMessages/m1')).delete());
   });
 
-  // DMs are now FULLY PRIVATE (participant-scoped) — manageCommunity no longer
-  // grants any DM access. The participant carve-outs (send + read-receipt +
-  // preview) keep working; full isolation coverage lives in
-  // messaging-isolation.rules.test.ts.
-  it('dmMessages: participant send + recipient read-receipt keep working; a manageCommunity admin gets NO DM access', async () => {
+  // DMs are participant-scoped, with community admins (manageCommunity) granted
+  // read + moderation (edit/delete) for safety/abuse. The participant carve-outs
+  // (send + read-receipt + preview) keep working; full isolation coverage lives
+  // in messaging-isolation.rules.test.ts.
+  it('dmMessages: participant send + recipient read-receipt keep working; a manageCommunity admin CAN moderate', async () => {
     // Parent thread the member participates in (dmMessages inherit its participants).
     await seedDoc(sub('directMessages/d1'), { participants: [MEMBER_UID, 'someone-else'], lastMessage: '' });
     const db = (await member()).firestore();
@@ -479,24 +479,32 @@ describe('community messaging [manageCommunity]', () => {
     await assertSucceeds(db.doc(sub('dmMessages/dm-in')).update({ read: true }));
     // A participant cannot edit message CONTENT (even one they received)
     await assertFails(db.doc(sub('dmMessages/dm-in')).update({ content: 'tampered' }));
-    // manageCommunity no longer moderates DMs — a non-participant admin is denied
-    // read, content-edit, and delete alike.
+    // manageCommunity now grants moderation: read, content-edit, and delete.
     const holder = (await asUid(holderUid('manageCommunity'))).firestore();
-    await assertFails(holder.doc(sub('dmMessages/dm-in')).get());
-    await assertFails(holder.doc(sub('dmMessages/dm-in')).update({ content: 'moderated' }));
-    await assertFails(holder.doc(sub('dmMessages/dm-in')).delete());
+    await assertSucceeds(holder.doc(sub('dmMessages/dm-in')).get());
+    await assertSucceeds(holder.doc(sub('dmMessages/dm-in')).update({ content: 'moderated' }));
+    await assertSucceeds(holder.doc(sub('dmMessages/dm-in')).delete());
+    // A limited admin WITHOUT manageCommunity (and not a participant) still gets nothing.
+    const non = (await asUid(nonHolderUid('manageCommunity'))).firestore();
+    await assertFails(non.doc(sub('dmMessages/dm-m1')).get());
   });
 
-  it('directMessages: a participant opens/updates/deletes their own thread; a manageCommunity admin gets no access', async () => {
+  it('directMessages: a participant opens/updates/deletes their own thread; a manageCommunity admin can moderate', async () => {
     const db = (await member()).firestore();
     await assertSucceeds(db.doc(sub('directMessages/t1')).set({ participants: [MEMBER_UID, 'x'], lastMessage: '' }));
     await assertSucceeds(db.doc(sub('directMessages/t1')).update({ lastMessage: 'hi', lastMessageAt: 1 }));
-    // A non-participant manageCommunity admin can neither read nor delete the thread.
+    // A manageCommunity admin can now read and delete a thread (moderation)...
     const holder = (await asUid(holderUid('manageCommunity'))).firestore();
-    await assertFails(holder.doc(sub('directMessages/t1')).get());
-    await assertFails(holder.doc(sub('directMessages/t1')).delete());
-    // A participant may now delete their own thread.
-    await assertSucceeds(db.doc(sub('directMessages/t1')).delete());
+    await assertSucceeds(holder.doc(sub('directMessages/t1')).get());
+    await assertSucceeds(holder.doc(sub('directMessages/t1')).delete());
+    // ...while a participant may also delete their own thread.
+    await seedDoc(sub('directMessages/t2'), { participants: [MEMBER_UID, 'x'], lastMessage: '' });
+    await assertSucceeds(db.doc(sub('directMessages/t2')).delete());
+    // A limited admin without manageCommunity is denied read/delete.
+    await seedDoc(sub('directMessages/t3'), { participants: [MEMBER_UID, 'x'], lastMessage: '' });
+    const non = (await asUid(nonHolderUid('manageCommunity'))).firestore();
+    await assertFails(non.doc(sub('directMessages/t3')).get());
+    await assertFails(non.doc(sub('directMessages/t3')).delete());
   });
 });
 

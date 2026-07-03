@@ -110,38 +110,43 @@ describe('channel isolation: members + admins only', () => {
 
 // ─── Direct messages (container doc) ────────────────────────────────────────────
 
-describe('DM isolation: participants only (fully private)', () => {
+describe('DM isolation: participants + community moderators (admin moderation)', () => {
   it('a PARTICIPANT can read the directMessages doc', async () => {
     const db = (await member()).firestore();
     await assertSucceeds(db.doc(sub('directMessages/dm-a')).get());
   });
 
-  it('a same-tenant NON-participant member is denied the directMessages doc', async () => {
+  it('a same-tenant NON-participant, NON-moderator member is denied the directMessages doc', async () => {
     const db = (await member2()).firestore();
     await assertFails(db.doc(sub('directMessages/dm-a')).get());
   });
 
-  it('community admins get NO blanket DM access (owner / full / roster / manageCommunity all denied)', async () => {
+  it('community moderators (manageCommunity + owner/full/roster/super) CAN read DMs; a limited admin without it cannot', async () => {
     const holder = await asUid('holder-manageCommunity');
-    for (const ctx of [await owner(), await fullAdmin(), await rosterAdmin(), holder]) {
-      await assertFails(ctx.firestore().doc(sub('directMessages/dm-a')).get());
+    for (const ctx of [await owner(), await fullAdmin(), await rosterAdmin(), holder, await superAdmin()]) {
+      await assertSucceeds(ctx.firestore().doc(sub('directMessages/dm-a')).get());
     }
+    // A tenant admin WITHOUT manageCommunity (here: only manageEvents) gets no DM
+    // access — moderation is manageCommunity-gated, not all-admins.
+    await seedDoc('users/holder-manageEvents', {
+      email: 'holder-manageEvents@test.com', role: 'admin', tenantId: T, permissions: permsOnly('manageEvents'),
+    });
+    await assertFails((await asUid('holder-manageEvents')).firestore().doc(sub('directMessages/dm-a')).get());
   });
 
-  it('a cross-tenant admin is denied; the super admin can read', async () => {
+  it('a cross-tenant admin is denied (manageCommunity is tenant-scoped); the super admin can read', async () => {
     await assertFails((await adminB()).firestore().doc(sub('directMessages/dm-a')).get());
     await assertSucceeds((await superAdmin()).firestore().doc(sub('directMessages/dm-a')).get());
   });
 
-  it("a member's array-contains DM LIST works; an unfiltered one is denied — even for an admin", async () => {
+  it("a member's array-contains DM LIST works; an unfiltered one is denied for a plain member but allowed for a moderator", async () => {
     const mem = (await member()).firestore();
     await assertSucceeds(mem.collection(sub('directMessages')).where('participants', 'array-contains', MEMBER_UID).get());
+    // A plain member cannot enumerate every DM in the tenant.
     await assertFails(mem.collection(sub('directMessages')).get());
-    // Admins have no DM blanket read either: their own array-contains query works,
-    // an unfiltered one does not.
-    const adm = (await fullAdmin()).firestore();
-    await assertFails(adm.collection(sub('directMessages')).get());
-    // The super admin may enumerate (platform moderation).
+    // A community moderator (manageCommunity/fullAccess) and the super admin may
+    // enumerate all DMs in the tenant (moderation oversight).
+    await assertSucceeds((await fullAdmin()).firestore().collection(sub('directMessages')).get());
     await assertSucceeds((await superAdmin()).firestore().collection(sub('directMessages')).get());
   });
 
@@ -236,12 +241,22 @@ describe('dmMessages isolation: scoped to the parent thread participants', () =>
     }));
   });
 
-  it('community admins get no dmMessages access; the super admin can read', async () => {
+  it('community moderators + super admin CAN read dmMessages; a cross-tenant admin cannot', async () => {
     const holder = await asUid('holder-manageCommunity');
-    for (const ctx of [await fullAdmin(), holder, await adminB()]) {
-      await assertFails(ctx.firestore().doc(sub('dmMessages/dm-a-out')).get());
+    for (const ctx of [await fullAdmin(), holder, await superAdmin()]) {
+      await assertSucceeds(ctx.firestore().doc(sub('dmMessages/dm-a-out')).get());
     }
-    await assertSucceeds((await superAdmin()).firestore().doc(sub('dmMessages/dm-a-out')).get());
+    // Cross-tenant admin is out (manageCommunity is tenant-scoped, belongsToTenant fails).
+    await assertFails((await adminB()).firestore().doc(sub('dmMessages/dm-a-out')).get());
+  });
+
+  it('a moderator can edit + delete a dmMessage (safety moderation)', async () => {
+    await seedDoc(sub('dmMessages/dm-a-mod'), { dmId: 'dm-a', senderId: DM_PARTNER, content: 'abuse', read: false });
+    const holder = (await asUid('holder-manageCommunity')).firestore();
+    // Moderators are not bound by the read-flag fence — they may redact content...
+    await assertSucceeds(holder.doc(sub('dmMessages/dm-a-mod')).update({ content: '[removed]' }));
+    // ...and delete outright.
+    await assertSucceeds(holder.doc(sub('dmMessages/dm-a-mod')).delete());
   });
 
   it('a participant may delete their own thread messages; the super admin may too', async () => {

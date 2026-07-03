@@ -33,7 +33,7 @@ mirroring the client's `normalizePermissions()`.
 | `manageDocs` | `docs`; `docFolders`; plus a `sermonNote`-only update on `tenants/{t}/livestream/*` | the carve-out keeps Notes → "Share to Livestream" working for docs-only admins |
 | `modifyChurches` | `churches` (+ `announcements` subcollection) | reads stay open (member map/details) |
 | `manageCRM` | `contacts`, `contactActivities` (top-level; the `tenants/{t}/…` twins are dead but gated the same) | CRM upserts create docs, so create/update share the gate |
-| `manageCommunity` | `tenants/{t}/channels` (admin writes), `channelMessages` (admin branch + moderation) | member carve-outs unchanged: channel members post + bump `lastMessage`/`lastMessageAt`. **DMs are no longer gated by `manageCommunity`** — they're fully private (participant-scoped); see "Private messaging isolation" below. |
+| `manageCommunity` | `tenants/{t}/channels` (admin writes), `channelMessages` (admin branch + moderation), `directMessages` + `dmMessages` (**read + moderate**: edit/delete) | member carve-outs unchanged: channel members post + bump `lastMessage`/`lastMessageAt`; DM participants send/reply/read-receipt. DMs are participant-scoped with `manageCommunity` moderation on top — see "Private messaging isolation" below. |
 | `manageForms` | `tenants/{t}/forms` (+ `submissions` subcollection) | legacy `seeFormsInbox` honored |
 | `manageFundraising` | `campaigns` (top-level); `tenants/{t}/pledges` | public pledges go through `/api/pledge/submit` |
 | `manageAccounting` | `tenants/{t}/invoices` | client performs no writes today (webhook/QuickBooks routes do) |
@@ -49,34 +49,38 @@ mirroring the client's `normalizePermissions()`.
 | `manageAffiliate` | — no write surface | affiliate data is server-authority (`/api/affiliate/*`) |
 | `manageSettings` | `tenants/{t}` doc update (shared gate with `manageBranding`); `tenants/{t}/settings` (dormant) | Onboarding/GivingStatements/Integrations sections write tenant-doc fields; billing/owner/roster fields remain blocked for everyone but the super admin |
 
-## Private messaging isolation (reads scoped to members / participants)
+## Private messaging isolation (scoped to members / participants + moderators)
 
 Tenant-shared content (prayer wall, posts, articles, courses, events) stays
-tenant-wide. **Messaging is the private layer** and its *reads* are now scoped
-so belonging to the tenant is not enough:
+tenant-wide. **Messaging is the private layer** and its reads/writes are now
+scoped so belonging to the tenant is not enough. `canModerateDMs(t)` =
+`hasPermission('manageCommunity', t)` (folds in super admin, owner, and the
+adminEmails roster):
 
 | Collection | Read | Create | Update | Delete |
 |---|---|---|---|---|
 | `tenants/{t}/channels` | tenant admin **or** `uid ∈ members` | `manageCommunity` | `manageCommunity`; member preview-only (`lastMessage`/`lastMessageAt`) | `manageCommunity` |
-| `tenants/{t}/directMessages` | super admin **or** `uid ∈ participants` | `uid ∈ participants` (must include self) | super admin; **or** participant, fenced to `lastMessage`/`lastMessageAt` (the `participants` roster stays immutable client-side) | super admin **or** participant |
-| `tenants/{t}/dmMessages` | super admin **or** `uid ∈ parent DM's participants` | participant **and** `senderId == uid` | super admin **or** (same-tenant participant **and** not-sender **and** `read`-only) | super admin **or** same-tenant participant |
+| `tenants/{t}/directMessages` | `canModerateDMs` **or** `uid ∈ participants` | `uid ∈ participants` (must include self) | `canModerateDMs`; **or** participant, fenced to `lastMessage`/`lastMessageAt` (the `participants` roster stays immutable to participants) | `canModerateDMs` **or** participant |
+| `tenants/{t}/dmMessages` | `canModerateDMs` **or** `uid ∈ parent DM's participants` | participant **and** `senderId == uid` | `canModerateDMs`; **or** (same-tenant participant **and** not-sender **and** `read`-only) | `canModerateDMs` **or** same-tenant participant |
 
 - **Channels** are private group chats: a 100-member tenant whose channel has
   10 members stays invisible to the other 90. Tenant admins read every channel
   (AdminCommunity's unfiltered list passes via `isTenantAdmin`); members read
   only channels they're in (UserMessages filters `members array-contains uid`).
-- **DMs are fully private** — only the two participants and the platform super
-  admin can read or write a thread. **Community admins get no special DM
-  access** (this was Matei's call; the alternative — admin moderation — would
-  swap `isSuperAdmin()` for `(isSuperAdmin() || hasPermission('manageCommunity', tenantId))`
-  in the DM read/update/delete rules). `dmMessages` inherit the parent thread's
+- **DMs are participant-scoped with admin moderation** (Matei's call). Only the
+  two participants can read/reply, PLUS community admins (`manageCommunity`) and
+  the super admin, who may read and moderate (edit/delete) member DMs for
+  safety/abuse. Every OTHER tenant member — and any admin *without*
+  `manageCommunity` — sees nothing; a cross-tenant admin is out because
+  `hasPermission` is tenant-scoped. `dmMessages` inherit the parent thread's
   participants via a single cached `get()` on `directMessages/{dmId}` (a message
   list is always filtered to one `dmId`, so it stays under the get/exists limit).
   The participant update is **fenced to `lastMessage`/`lastMessageAt`** (like the
-  channels member-update): the `participants` roster is immutable client-side, so
-  a participant can't quietly add a third reader or remove the other party —
-  otherwise the parent-scoped `dmMessages` `get()` would leak the whole thread to
-  an added uid. Roster changes, if ever wanted, go through the super admin.
+  channels member-update): a participant can't quietly add a third reader or
+  remove the other party — otherwise the parent-scoped `dmMessages` `get()` would
+  leak the whole thread to an added uid. Roster edits go through a moderator /
+  super admin. (Fully-private variant: swap `canModerateDMs(tenantId)` back to
+  `isSuperAdmin()` in the six DM read/update/delete rules.)
 - **No client change** was needed: the live queries already filter by
   `array-contains` (members / participants) and admins already query as admins.
   This narrows the blast radius of the pre-existing cross-tenant
@@ -85,8 +89,10 @@ so belonging to the tenant is not enough:
   tenant-wide content, so the server-side membership fix is still the durable one.
 - Verified in `tests/rules/messaging-isolation.rules.test.ts` (channel
   member/non-member/admin/cross-tenant reads; DM participant vs non-participant
-  vs admin vs super; dmMessages parent-scoping; unfiltered-list denial; and the
-  full member send/read-receipt/preview flows — no lockout).
+  vs `manageCommunity` moderator vs limited-admin-without-it vs cross-tenant vs
+  super; moderator edit/delete; dmMessages parent-scoping + orphan fail-safe;
+  unfiltered-list denial for members but allowed for moderators; and the full
+  member send/read-receipt/preview flows — no lockout).
 
 ## Additional hardening in the same change
 
