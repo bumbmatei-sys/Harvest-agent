@@ -16,6 +16,7 @@ import {
   Type, Strikethrough, Underline as UnderlineIcon,
   Upload, X, Loader2
 } from 'lucide-react';
+import { auth } from '../firebase';
 
 interface RichTextEditorProps {
   content: string;
@@ -40,8 +41,6 @@ const ImageUploadModal = ({
   onClose: () => void;
   onInsert: (url: string) => void;
 }) => {
-  const [tab, setTab] = useState<'upload' | 'url'>('upload');
-  const [url, setUrl] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -51,33 +50,48 @@ const ImageUploadModal = ({
     if (!file) return;
     setIsUploading(true);
     setError('');
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('upload_preset', 'Harvest');
     try {
-      const res = await fetch('https://api.cloudinary.com/v1_1/dvpohwjor/image/upload', {
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) {
+        setError('You must be signed in to upload images.');
+        return;
+      }
+
+      // 1. Ask our API for a short-lived presigned R2 PUT URL.
+      const presignRes = await fetch('/api/storage/presign', {
         method: 'POST',
-        body: formData,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          fileName: file.name,
+          contentType: file.type,
+          fileSize: file.size,
+        }),
       });
-      if (!res.ok) throw new Error('Upload failed');
-      const data = await res.json();
-      onInsert(data.secure_url);
-    } catch {
-      setError('Upload failed. Try again.');
+      if (!presignRes.ok) {
+        const data = await presignRes.json().catch(() => ({}));
+        throw new Error(data.error || 'Upload failed');
+      }
+      const { uploadUrl, publicUrl } = await presignRes.json();
+
+      // 2. Upload the file bytes directly to R2.
+      const putRes = await fetch(uploadUrl, {
+        method: 'PUT',
+        body: file,
+        headers: { 'Content-Type': file.type },
+      });
+      if (!putRes.ok) throw new Error('Upload failed');
+
+      // 3. Insert the public URL.
+      onInsert(publicUrl);
+    } catch (err: any) {
+      setError(err?.message || 'Upload failed. Try again.');
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
-  };
-
-  const handleUrlInsert = () => {
-    if (!url.trim()) return;
-    if (!isSafeUrl(url.trim())) { setError('Invalid URL'); return; }
-    let finalUrl = url.trim();
-    if (finalUrl.includes('github.com') && (finalUrl.includes('/blob/') || finalUrl.includes('/raw/'))) {
-      finalUrl = finalUrl.replace('github.com', 'raw.githubusercontent.com').replace('/blob/', '/').replace('/raw/', '/');
-    }
-    onInsert(finalUrl);
   };
 
   return (
@@ -93,69 +107,28 @@ const ImageUploadModal = ({
           </button>
         </div>
 
-        {/* Tab switcher */}
-        <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
-          <button
-            onClick={() => setTab('upload')}
-            className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-colors ${
-              tab === 'upload' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'
-            }`}
-          >
-            Upload
-          </button>
-          <button
-            onClick={() => setTab('url')}
-            className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-colors ${
-              tab === 'url' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'
-            }`}
-          >
-            URL
-          </button>
-        </div>
-
         {error && <div className="bg-red-50 text-red-600 p-2.5 rounded-lg text-sm">{error}</div>}
 
-        {tab === 'upload' ? (
-          <div>
-            <div
-              onClick={() => !isUploading && fileInputRef.current?.click()}
-              className="w-full h-40 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 flex flex-col items-center justify-center text-gray-500 hover:bg-gray-100 hover:border-gold transition-colors cursor-pointer"
-            >
-              {isUploading ? (
-                <>
-                  <Loader2 size={28} className="animate-spin mb-2 text-gold" />
-                  <span className="text-sm font-medium text-gray-600">Uploading...</span>
-                </>
-              ) : (
-                <>
-                  <Upload size={28} className="mb-2" />
-                  <span className="text-sm font-medium">Tap to upload</span>
-                  <span className="text-xs text-gray-400 mt-1">PNG, JPG, GIF up to 10MB</span>
-                </>
-              )}
-            </div>
-            <input ref={fileInputRef} type="file" accept="image/*" onChange={handleUpload} className="hidden" />
+        <div>
+          <div
+            onClick={() => !isUploading && fileInputRef.current?.click()}
+            className="w-full h-40 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 flex flex-col items-center justify-center text-gray-500 hover:bg-gray-100 hover:border-gold transition-colors cursor-pointer"
+          >
+            {isUploading ? (
+              <>
+                <Loader2 size={28} className="animate-spin mb-2 text-gold" />
+                <span className="text-sm font-medium text-gray-600">Uploading...</span>
+              </>
+            ) : (
+              <>
+                <Upload size={28} className="mb-2" />
+                <span className="text-sm font-medium">Tap to upload</span>
+                <span className="text-xs text-gray-400 mt-1">PNG, JPG, GIF up to 4MB</span>
+              </>
+            )}
           </div>
-        ) : (
-          <div className="space-y-3">
-            <input
-              type="url"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleUrlInsert()}
-              placeholder="https://example.com/image.jpg"
-              className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-gold focus:border-transparent outline-none"
-              autoFocus
-            />
-            <button
-              onClick={handleUrlInsert}
-              disabled={!url.trim()}
-              className="w-full py-2.5 bg-gold text-white rounded-xl text-sm font-medium hover:bg-[#b8860b] transition-colors disabled:opacity-50"
-            >
-              Insert Image
-            </button>
-          </div>
-        )}
+          <input ref={fileInputRef} type="file" accept="image/*" onChange={handleUpload} className="hidden" />
+        </div>
       </div>
     </div>
   );
@@ -249,7 +222,7 @@ const commands: CommandItem[] = [
   },
   {
     title: 'Image',
-    description: 'Upload or paste image URL',
+    description: 'Upload an image',
     icon: <ImageIcon size={18} />,
     action: (_editor: any, openModal?: () => void) => {
       openModal?.();

@@ -1,15 +1,18 @@
 import React, { useState, useRef } from 'react';
-import { Upload, X, Loader2 } from 'lucide-react';
+import { Image as ImageIcon, X, RefreshCw, Loader2 } from 'lucide-react';
 import Image from 'next/image';
+import { auth } from '../firebase';
 
 interface ImageUploadProps {
   value: string;
   onChange: (url: string) => void;
-  placeholder?: string;
+  placeholder?: string;      // kept for backward-compat; no longer renders a URL field
   className?: string;
+  rounded?: boolean;         // round thumbnail for avatars (default false)
+  label?: string;            // empty-state primary text, e.g. "Add thumbnail" (default "Add image")
 }
 
-export function ImageUpload({ value, onChange, placeholder, className = '' }: ImageUploadProps) {
+export function ImageUpload({ value, onChange, className = '', rounded = false, label }: ImageUploadProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -21,26 +24,50 @@ export function ImageUpload({ value, onChange, placeholder, className = '' }: Im
     setIsUploading(true);
     setError(null);
 
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('upload_preset', 'Harvest'); // The unsigned preset name provided by the user
-
     try {
-      // The cloud name provided by the user is 'dvpohwjor'
-      const response = await fetch('https://api.cloudinary.com/v1_1/dvpohwjor/image/upload', {
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) {
+        setError('You must be signed in to upload images.');
+        return;
+      }
+
+      // 1. Ask our API for a short-lived presigned R2 PUT URL.
+      const presignRes = await fetch('/api/storage/presign', {
         method: 'POST',
-        body: formData,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          fileName: file.name,
+          contentType: file.type,
+          fileSize: file.size,
+        }),
       });
 
-      if (!response.ok) {
+      if (!presignRes.ok) {
+        const data = await presignRes.json().catch(() => ({}));
+        throw new Error(data.error || 'Upload failed');
+      }
+
+      const { uploadUrl, publicUrl } = await presignRes.json();
+
+      // 2. Upload the file bytes directly to R2.
+      const putRes = await fetch(uploadUrl, {
+        method: 'PUT',
+        body: file,
+        headers: { 'Content-Type': file.type },
+      });
+
+      if (!putRes.ok) {
         throw new Error('Upload failed');
       }
 
-      const data = await response.json();
-      onChange(data.secure_url);
+      // 3. Save the public URL.
+      onChange(publicUrl);
     } catch (err: any) {
-      console.error('Error uploading image to Cloudinary:', err);
-      setError('Failed to upload image. Please try again.');
+      console.error('Error uploading image:', err);
+      setError(err?.message || 'Failed to upload image. Please try again.');
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) {
@@ -50,77 +77,79 @@ export function ImageUpload({ value, onChange, placeholder, className = '' }: Im
   };
 
   return (
-    <div className={`w-full space-y-4 ${className}`}>
+    <div className={`w-full space-y-3 ${className}`}>
       {error && (
         <div className="text-red-500 text-sm bg-red-50 p-2 rounded-md">
           {error}
         </div>
       )}
-      
-      <div className="w-full space-y-2">
-        {value ? (
-          <div className="relative w-full h-48 rounded-lg overflow-hidden border border-gray-200 bg-gray-50">
-              <Image 
-                src={value} 
-                alt="Preview" 
-                fill 
-                sizes="(max-width: 768px) 100vw, 400px" 
-                className="object-contain" 
-                referrerPolicy="no-referrer"
-              />
-              <button
-                type="button"
-                onClick={() => onChange('')}
-                className="absolute top-2 right-2 bg-white/90 p-1.5 rounded-full shadow-sm hover:bg-white text-gray-700 hover:text-red-600 transition-colors"
-                title="Remove image"
-              >
-                <X size={16} />
-              </button>
-            </div>
-          ) : (
-            <div 
-              onClick={() => fileInputRef.current?.click()}
-              className="w-full h-48 rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 flex flex-col items-center justify-center text-gray-500 hover:bg-gray-100 hover:border-gray-400 transition-colors cursor-pointer"
-            >
-              <Upload size={24} className="mb-2" />
-              <span className="text-sm font-medium">Click to upload image</span>
-              <span className="text-xs text-gray-400 mt-1">PNG, JPG, GIF up to 10MB</span>
-            </div>
-          )}
-          
-          <div className="flex gap-2 w-full">
-            <input
-              type="text"
-              value={value}
-              onChange={(e) => onChange(e.target.value)}
-              placeholder={placeholder || "Or paste image URL here"}
-              className="flex-1 min-w-0 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm"
-              disabled={isUploading}
-            />
+
+      {isUploading ? (
+        /* ── Uploading ── */
+        <div className="flex items-center gap-3 w-full px-3 py-2.5 border border-gray-200 rounded-xl bg-white">
+          <div className="w-10 h-10 rounded-lg bg-white border border-gray-200 flex items-center justify-center text-gold shrink-0">
+            <Loader2 size={20} className="animate-spin" />
+          </div>
+          <span className="text-sm font-medium text-gray-600">Uploading…</span>
+        </div>
+      ) : value ? (
+        /* ── Filled: compact thumbnail ── */
+        <div className="flex items-center gap-3 w-full p-2 border border-gray-200 rounded-xl bg-white">
+          <Image
+            src={value}
+            alt="Preview"
+            width={56}
+            height={56}
+            className={`w-14 h-14 object-cover shrink-0 ${rounded ? 'rounded-full' : 'rounded-lg'}`}
+            referrerPolicy="no-referrer"
+          />
+          <div className="flex-1 min-w-0">
+            <div className="text-sm font-medium text-gray-700 truncate">Image attached</div>
+            <div className="text-xs text-gray-400 truncate">Tap replace to change it</div>
+          </div>
+          <div className="flex items-center gap-1 shrink-0">
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              disabled={isUploading}
-              className="px-4 py-2 bg-amber-100 text-amber-800 rounded-lg hover:bg-amber-200 font-medium text-sm flex items-center justify-center min-w-[100px]"
+              className="w-[34px] h-[34px] flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 transition-colors"
+              title="Replace image"
             >
-              {isUploading ? (
-                <>
-                  <Loader2 size={16} className="animate-spin mr-2" />
-                  Uploading
-                </>
-              ) : (
-                'Upload'
-              )}
+              <RefreshCw size={16} />
             </button>
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleUpload}
-              accept="image/*"
-              className="hidden"
-            />
+            <button
+              type="button"
+              onClick={() => onChange('')}
+              className="w-[34px] h-[34px] flex items-center justify-center rounded-lg text-gray-500 hover:bg-red-50 hover:text-red-600 transition-colors"
+              title="Remove image"
+            >
+              <X size={16} />
+            </button>
           </div>
-      </div>
+        </div>
+      ) : (
+        /* ── Empty: compact attach control ── */
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          className="flex items-center gap-3 w-full px-3 py-2.5 border border-dashed border-gray-300 rounded-xl bg-gray-50 hover:border-gold hover:bg-white transition-colors text-left"
+        >
+          <div className="w-10 h-10 rounded-lg bg-white border border-gray-200 flex items-center justify-center text-gray-400 shrink-0">
+            <ImageIcon size={20} />
+          </div>
+          <div className="min-w-0">
+            <div className="text-sm font-medium text-gray-700">{label ?? 'Add image'}</div>
+            <div className="text-xs text-gray-400">PNG, JPG, GIF up to 4MB</div>
+          </div>
+        </button>
+      )}
+
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleUpload}
+        accept="image/*"
+        className="hidden"
+      />
     </div>
   );
 }
