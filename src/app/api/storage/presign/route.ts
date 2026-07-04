@@ -58,6 +58,16 @@ export async function POST(request: NextRequest) {
     const s3 = new S3Client({
       region: 'auto',
       endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+      // Path-style keeps the PUT on the same host as the configured endpoint
+      // (<account>.r2.cloudflarestorage.com/<bucket>/...) rather than the
+      // virtual-hosted subdomain form, which R2's CORS + signing expect.
+      forcePathStyle: true,
+      // AWS SDK >= 3.729 auto-adds CRC32 checksum headers to PutObjectCommand and
+      // folds them into the presigned signature. A browser fetch PUT never sends
+      // those headers, so R2 rejects the signed request (status 0 / Failed to fetch).
+      // WHEN_REQUIRED stops the SDK injecting the checksum so unsigned browser PUTs work.
+      requestChecksumCalculation: 'WHEN_REQUIRED',
+      responseChecksumValidation: 'WHEN_REQUIRED',
       credentials: {
         accessKeyId: process.env.R2_ACCESS_KEY_ID || '',
         secretAccessKey: process.env.R2_SECRET_ACCESS_KEY || '',
