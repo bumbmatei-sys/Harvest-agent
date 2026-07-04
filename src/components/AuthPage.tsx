@@ -6,6 +6,7 @@ import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { useTenant } from '../contexts/TenantContext';
 import { Eye, EyeOff } from 'lucide-react';
+import { Turnstile } from '@marsidev/react-turnstile';
 
 const HARVEST_GOLD = 'var(--brand-color, #B8962E)';
 const HARVEST_LOGO = 'https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png';
@@ -51,6 +52,10 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+  // Cloudflare Turnstile — bot gate on email/password sign-in AND sign-up.
+  // Bumping turnstileKey remounts the widget, forcing a fresh single-use token.
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileKey, setTurnstileKey] = useState(0);
 
   // Branding: logo + brand colour only gate on plan; the page is always white.
   const brandColor = hasCustomBranding && branding.primaryColor ? branding.primaryColor : HARVEST_GOLD;
@@ -160,6 +165,25 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
       setError('');
       setSuccess('');
 
+      // Pre-flight bot check — must pass before either Firebase Auth call fires.
+      try {
+        const verifyRes = await fetch('/api/auth/verify-turnstile', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: turnstileToken }),
+        });
+        const verifyData = await verifyRes.json();
+        if (!verifyData?.success) {
+          throw new Error('verification-failed');
+        }
+      } catch {
+        setError('Verification failed. Please try again.');
+        setLoading(false);
+        setTurnstileToken(null);
+        setTurnstileKey((k) => k + 1);
+        return;
+      }
+
       if (isLogin) {
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
 
@@ -244,6 +268,11 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
       }
     } finally {
       setLoading(false);
+      // Turnstile tokens are single-use — always remount for a fresh solve so a
+      // legitimate retry (e.g. after a mistyped password) doesn't reuse a spent
+      // token. Also covers the login/signup mode-toggle case for free.
+      setTurnstileToken(null);
+      setTurnstileKey((k) => k + 1);
     }
   };
 
@@ -448,9 +477,20 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
                 </div>
               )}
 
+              {/* Bot gate — renders for both Sign In and Sign Up. Submit stays
+                  disabled until solved; key remount forces a fresh single-use token. */}
+              <div className="flex justify-center pt-1">
+                <Turnstile
+                  key={turnstileKey}
+                  siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY as string}
+                  onSuccess={(token) => setTurnstileToken(token)}
+                  onExpire={() => setTurnstileToken(null)}
+                />
+              </div>
+
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || !turnstileToken}
                 className="w-full text-white font-semibold py-3 px-4 rounded-xl transition-all disabled:opacity-50 !mt-4"
                 style={{ backgroundColor: brandColor }}
               >
@@ -462,7 +502,16 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
             <p className="text-center text-sm mt-4" style={{ color: '#666666' }}>
               {isLogin ? "Don't have an account?" : 'Already have an account?'}{' '}
               <button
-                onClick={() => { setIsLogin(!isLogin); setError(''); setSuccess(''); }}
+                onClick={() => {
+                  setIsLogin(!isLogin);
+                  setError('');
+                  setSuccess('');
+                  // Reset the bot gate on mode switch so a token solved for one
+                  // view never carries over to the other (a submit's finally block
+                  // handles the post-attempt case; this handles a direct toggle).
+                  setTurnstileToken(null);
+                  setTurnstileKey((k) => k + 1);
+                }}
                 className="font-semibold hover:underline"
                 style={{ color: brandColor }}
               >
