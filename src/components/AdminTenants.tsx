@@ -15,6 +15,15 @@ const PLAN_LABELS: Record<TenantPlan, string> = {
   ultra: 'Ultra',
 };
 
+// Marketing labels with price, shown in the (read-only) edit view. Intentionally
+// different from PLAN_LABELS — these match what customers see in checkout.
+const PLAN_DISPLAY: Record<TenantPlan, string> = {
+  plus: 'Individual — $59/mo',
+  pro: 'Small Team — $119/mo',
+  max: 'Community — $239/mo',
+  ultra: 'Ministry — $479/mo',
+};
+
 const PLAN_COLORS: Record<TenantPlan, string> = {
   plus: 'bg-blue-100 text-blue-700',
   pro: 'bg-purple-100 text-purple-700',
@@ -56,6 +65,7 @@ const AdminTenants: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState('');
   const { setHeaderAction } = useAdminHeader();
 
@@ -113,9 +123,11 @@ const AdminTenants: React.FC = () => {
 
     try {
       if (editingId) {
+        // Plan is owned by Stripe (webhook is source of truth) — never write it
+        // from the super-admin view. Omit `plan` so the edit only touches
+        // name / config / adminEmails.
         await updateTenant(editingId, {
           name: form.name,
-          plan: form.plan,
           config: { description: form.description, ...(form.customDomain ? { customDomain: form.customDomain } : {}) },
           adminEmails: [form.adminEmail],
         });
@@ -151,6 +163,7 @@ const AdminTenants: React.FC = () => {
 
   const handleDelete = async (id: string) => {
     setDeleteError('');
+    setDeletingId(id);
     try {
       const token = await auth.currentUser?.getIdToken();
       if (!token) { setDeleteError('Not authenticated'); return; }
@@ -163,9 +176,14 @@ const AdminTenants: React.FC = () => {
         setDeleteError(data.error || 'Delete failed');
         return;
       }
+      // Optimistically remove the row so it disappears instantly regardless of
+      // snapshot lag; the onSnapshot listener will later confirm the same state.
+      setTenants(prev => prev.filter(t => t.id !== id));
       setDeleteConfirmId(null);
     } catch (err: any) {
       setDeleteError(err.message || 'Delete failed');
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -249,14 +267,20 @@ const AdminTenants: React.FC = () => {
                     <div className="flex items-center gap-1">
                       <button
                         onClick={() => handleDelete(tenant.id)}
-                        className="p-2 rounded-lg bg-red-50 hover:bg-red-100 transition-colors"
+                        disabled={deletingId === tenant.id}
+                        className="p-2 rounded-lg bg-red-50 hover:bg-red-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         title="Confirm delete"
                       >
-                        <Check size={16} className="text-red-600" />
+                        {deletingId === tenant.id ? (
+                          <div className="w-4 h-4 border-2 border-gold border-t-transparent rounded-full animate-spin"></div>
+                        ) : (
+                          <Check size={16} className="text-red-600" />
+                        )}
                       </button>
                       <button
                         onClick={() => { setDeleteConfirmId(null); setDeleteError(''); }}
-                        className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                        disabled={deletingId === tenant.id}
+                        className="p-2 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         title="Cancel"
                       >
                         <X size={16} className="text-gray-500" />
@@ -291,7 +315,7 @@ const AdminTenants: React.FC = () => {
       {/* Create/Edit Modal */}
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden">
             <div className="p-6 border-b border-gray-100 flex justify-between items-center">
               <h3 className="text-xl font-bold text-gray-900">
                 {editingId ? 'Edit Tenant' : 'New Tenant'}
@@ -301,7 +325,7 @@ const AdminTenants: React.FC = () => {
               </button>
             </div>
 
-            <div className="p-6 space-y-4">
+            <div className="p-6 space-y-4 flex-1 overflow-y-auto">
               {error && (
                 <div className="p-3 bg-red-50 border-l-4 border-red-500 text-red-700 text-sm rounded">
                   {error}
@@ -339,16 +363,25 @@ const AdminTenants: React.FC = () => {
 
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Plan</label>
-                <select
-                  value={form.plan}
-                  onChange={e => setForm({ ...form, plan: e.target.value as TenantPlan })}
-                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-gold focus:border-gold outline-none bg-white"
-                >
-                  <option value="plus">Individual — $59/mo</option>
-                  <option value="pro">Small Team — $119/mo</option>
-                  <option value="max">Community — $239/mo</option>
-                  <option value="ultra">Ministry — $479/mo</option>
-                </select>
+                {editingId ? (
+                  <>
+                    <div className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm bg-gray-50 text-gray-400">
+                      {PLAN_DISPLAY[form.plan]}
+                    </div>
+                    <p className="text-xs text-gray-400 mt-1">Plan changes are managed through the tenant&apos;s own billing.</p>
+                  </>
+                ) : (
+                  <select
+                    value={form.plan}
+                    onChange={e => setForm({ ...form, plan: e.target.value as TenantPlan })}
+                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-gold focus:border-gold outline-none bg-white"
+                  >
+                    <option value="plus">Individual — $59/mo</option>
+                    <option value="pro">Small Team — $119/mo</option>
+                    <option value="max">Community — $239/mo</option>
+                    <option value="ultra">Ministry — $479/mo</option>
+                  </select>
+                )}
               </div>
 
               {(form.plan === 'max' || form.plan === 'ultra') && (
