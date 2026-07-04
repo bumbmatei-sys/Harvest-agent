@@ -162,7 +162,17 @@ const AdminForms: React.FC<AdminFormsProps> = () => {
       const payload = {
         title: title.trim(),
         description: description.trim(),
-        fields: fields.map((f, i) => ({ ...f, label: f.label.trim() || `Field ${i + 1}`, order: i })),
+        fields: fields.map((f, i) => {
+          const cleaned: Record<string, unknown> = {
+            ...f,
+            label: f.label.trim() || `Field ${i + 1}`,
+            order: i,
+          };
+          // Firestore rejects undefined values — drop any key whose value is undefined
+          // (e.g. `options` on non-choice field types, `placeholder` if ever unset).
+          Object.keys(cleaned).forEach((k) => cleaned[k] === undefined && delete cleaned[k]);
+          return cleaned;
+        }),
         updatedAt: serverTimestamp(),
       };
       if (editingId) {
