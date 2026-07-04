@@ -265,7 +265,7 @@ function AuthorCard({ author, onChange, onRemove, selectable = false, selected =
  <div style={{ marginTop: 12 }}>
  <label style={s.label}>Profile Picture</label>
  <div style={{ marginTop: 8 }}>
- <ImageUpload value={author.picture} onChange={(v) => set("picture", v)} placeholder="Upload or paste image URL" />
+ <ImageUpload value={author.picture} onChange={(v) => set("picture", v)} placeholder="Upload or paste image URL" rounded label="Add photo" />
  </div>
  </div>
  <div>
@@ -809,7 +809,7 @@ export default function CourseBuilder({ course: initialCourse, onClose }: Course
  <div style={{ padding: "0 0 20px" }}>
  <label style={s.label}>Thumbnail Image</label>
  <div style={{ marginTop: 8 }}>
- <ImageUpload value={course.thumbnail} onChange={(v) => set("thumbnail", v)} placeholder="Upload or paste thumbnail URL" />
+ <ImageUpload value={course.thumbnail} onChange={(v) => set("thumbnail", v)} placeholder="Upload or paste thumbnail URL" label="Add thumbnail" />
  </div>
  </div>
  </div>
