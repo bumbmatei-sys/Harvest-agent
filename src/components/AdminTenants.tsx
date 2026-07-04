@@ -315,7 +315,7 @@ const AdminTenants: React.FC = () => {
       {/* Create/Edit Modal */}
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90dvh] flex flex-col overflow-hidden">
             <div className="p-6 border-b border-gray-100 flex justify-between items-center">
               <h3 className="text-xl font-bold text-gray-900">
                 {editingId ? 'Edit Tenant' : 'New Tenant'}
@@ -421,7 +421,10 @@ const AdminTenants: React.FC = () => {
               </div>
             </div>
 
-            <div className="p-6 border-t border-gray-100 flex justify-end gap-3">
+            <div
+              className="px-6 pt-6 border-t border-gray-100 flex justify-end gap-3"
+              style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}
+            >
               <button
                 onClick={() => setShowForm(false)}
                 className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
