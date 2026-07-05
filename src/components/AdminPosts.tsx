@@ -471,7 +471,7 @@ const AdminPosts: React.FC<AdminPostsProps> = ({ userRole, userPermissions }) =>
  <button
  onClick={handlePost}
  disabled={isSubmitting || !content.trim()}
- className="flex items-center gap-2 px-6 py-2 bg-[#e6b325] text-white rounded-lg font-medium text-sm hover:bg-gold transition-colors disabled:opacity-50"
+ className="flex items-center gap-2 px-6 py-2 bg-gold text-white rounded-lg font-medium text-sm hover:bg-[color-mix(in_srgb,var(--brand-color)_85%,black)] transition-colors disabled:opacity-50"
  >
  <Send size={16} />
  {editingPostId ? 'Update' : 'Post'}
@@ -504,7 +504,7 @@ const AdminPosts: React.FC<AdminPostsProps> = ({ userRole, userPermissions }) =>
  <div className="flex items-center gap-2">
  <h4 className="font-bold text-gray-900 text-sm">{post.authorName}</h4>
  {post.isPinned && (
- <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-gold bg-[#fcefc7] px-2 py-0.5 rounded-full">
+ <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-gold bg-[color-mix(in_srgb,var(--brand-color)_15%,white)] px-2 py-0.5 rounded-full">
  Pinned
                         </span>
                       )}
@@ -567,13 +567,13 @@ const AdminPosts: React.FC<AdminPostsProps> = ({ userRole, userPermissions }) =>
  disabled={hasVoted}
  className={`relative w-full h-10 border rounded-lg overflow-hidden flex items-center px-3 transition-colors ${
  userVotedThis 
- ? 'border-gold bg-[#fcefc7]/50 ' 
+ ? 'border-gold bg-[color-mix(in_srgb,var(--brand-color)_8%,white)] '
  : 'border-gray-200 bg-gray-50 hover:border-gold'
  }`}
  >
  {hasVoted && (
  <div 
- className="absolute left-0 top-0 bottom-0 bg-[#fcefc7] transition-all duration-500"
+ className="absolute left-0 top-0 bottom-0 bg-[color-mix(in_srgb,var(--brand-color)_15%,white)] transition-all duration-500"
  style={{ width: `${percentage}%` }}
  />
  )}
@@ -627,7 +627,7 @@ const AdminPosts: React.FC<AdminPostsProps> = ({ userRole, userPermissions }) =>
  className={`px-6 py-2 font-medium rounded-lg text-sm flex items-center gap-1.5 transition-colors ${
  post.eventDetails.attendees.includes(auth.currentUser.uid)
  ? 'bg-green-100 text-green-700 '
- : 'bg-[#e6b325] text-white hover:bg-gold'
+ : 'bg-gold text-white hover:bg-[color-mix(in_srgb,var(--brand-color)_85%,black)]'
  }`}
  >
  {post.eventDetails.attendees.includes(auth.currentUser.uid) ? (

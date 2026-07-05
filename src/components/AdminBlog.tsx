@@ -308,7 +308,7 @@ const AdminBlog: React.FC = () => {
  <p className="text-sm font-medium text-gray-900 line-clamp-1">{post.title}</p>
  {post.isAiGenerated && (
  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0"
- style={{ backgroundColor: '#FBF3E4', color: '#B8962E' }}>
+ style={{ backgroundColor: 'color-mix(in srgb, var(--brand-color, #B8962E) 12%, white)', color: GOLD }}>
  AI
  </span>
  )}
@@ -424,7 +424,7 @@ const AdminBlog: React.FC = () => {
  ? 'text-white border-transparent'
  : 'text-gray-600 border-gray-200 bg-white'
  }`}
- style={automation.frequency === f ? { backgroundColor: '#B8962E' } : {}}
+ style={automation.frequency === f ? { backgroundColor: GOLD } : {}}
  >
  {f === 'biweekly' ? 'Every 2 weeks' : f.charAt(0).toUpperCase() + f.slice(1)}
  </button>
@@ -447,7 +447,7 @@ const AdminBlog: React.FC = () => {
  ? 'text-white border-transparent'
  : 'text-gray-600 border-gray-200'
  }`}
- style={automation.dayOfWeek === i ? { backgroundColor: '#B8962E' } : {}}
+ style={automation.dayOfWeek === i ? { backgroundColor: GOLD } : {}}
  >
  {day}
  </button>
@@ -474,7 +474,7 @@ const AdminBlog: React.FC = () => {
 
  {/* Stats (if any posts generated) */}
  {automation.totalGenerated > 0 && (
- <div className="bg-[#FBF3E4] rounded-xl px-4 py-3 flex items-center justify-between">
+ <div className="bg-[color-mix(in_srgb,var(--brand-color)_12%,white)] rounded-xl px-4 py-3 flex items-center justify-between">
  <span className="text-sm font-semibold text-gold">
  {automation.totalGenerated} article{automation.totalGenerated !== 1 ? 's' : ''} generated
  </span>
@@ -499,7 +499,7 @@ const AdminBlog: React.FC = () => {
  onClick={handleSaveAutomation}
  disabled={savingAutomation}
  className="flex-1 py-3 rounded-xl text-sm font-bold text-white disabled:opacity-50"
- style={{ backgroundColor: '#B8962E' }}
+ style={{ backgroundColor: GOLD }}
  >
  {savingAutomation ? 'Saving…' : 'Save Settings'}
  </button>

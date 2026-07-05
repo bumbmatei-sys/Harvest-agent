@@ -110,7 +110,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ course, onBack }) => {
  </li>
  </ul>
 
- <button className="w-full mt-8 bg-gold hover:bg-[#b8860b] text-white font-bold py-3.5 rounded-xl transition-colors shadow-md flex items-center justify-center gap-2">
+ <button className="w-full mt-8 bg-gold hover:bg-[color-mix(in_srgb,var(--brand-color)_85%,black)] text-white font-bold py-3.5 rounded-xl transition-colors shadow-md flex items-center justify-center gap-2">
  <PlayCircle size={20} />
  Start Course
  </button>

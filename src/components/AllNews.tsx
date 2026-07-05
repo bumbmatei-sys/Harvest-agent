@@ -379,7 +379,7 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack }) => {
                   <div className="flex items-center gap-2">
                     <div className="font-bold text-gray-900 text-sm">{post.authorName}</div>
                     {post.isPinned && (
-                      <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-gold bg-[#fcefc7] px-2 py-0.5 rounded-full">
+                      <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-gold bg-[color-mix(in_srgb,var(--brand-color)_15%,white)] px-2 py-0.5 rounded-full">
                         Pinned
                       </span>
                     )}
@@ -413,13 +413,13 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack }) => {
                         disabled={!!hasVoted}
                         className={`w-full relative overflow-hidden rounded-xl border p-3 text-left transition-all ${
                           isMyVote 
-                            ? 'border-gold bg-[#fcefc7] ' 
+                            ? 'border-gold bg-[color-mix(in_srgb,var(--brand-color)_15%,white)] ' 
                             : 'border-gray-200 hover:border-gold :border-gold'
                         }`}
                       >
                         {hasVoted && (
                           <div 
-                            className="absolute left-0 top-0 bottom-0 bg-[#fcefc7] transition-all duration-500"
+                            className="absolute left-0 top-0 bottom-0 bg-[color-mix(in_srgb,var(--brand-color)_15%,white)] transition-all duration-500"
                             style={{ width: `${percentage}%` }}
                           />
                         )}
@@ -468,7 +468,7 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack }) => {
                       className={`px-6 py-2 font-medium rounded-lg text-sm flex items-center gap-1.5 transition-colors ${
                         post.eventDetails.attendees.includes(auth.currentUser.uid)
                           ? 'bg-green-100 text-green-700 '
-                          : 'bg-[#e6b325] text-white hover:bg-gold'
+                          : 'bg-gold text-white hover:bg-[color-mix(in_srgb,var(--brand-color)_85%,black)]'
                       }`}
                     >
                       {post.eventDetails.attendees.includes(auth.currentUser.uid) ? (
@@ -559,7 +559,7 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack }) => {
                       <button
                         onClick={() => handleComment(post.id)}
                         disabled={!(commentInputs[post.id] || '').trim()}
-                        className="p-1.5 text-gold hover:text-[#e6b325] disabled:opacity-30 transition-colors"
+                        className="p-1.5 text-gold hover:text-[color-mix(in_srgb,var(--brand-color)_85%,black)] disabled:opacity-30 transition-colors"
                       >
                         <Send size={16} />
                       </button>
@@ -618,7 +618,7 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack }) => {
               <button
                 onClick={submitAttend}
                 disabled={!attendeeName.trim() || !attendeeEmail.trim()}
-                className="flex-1 px-4 py-2 bg-gold text-white rounded-xl font-medium hover:bg-[#e6b325] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 px-4 py-2 bg-gold text-white rounded-xl font-medium hover:bg-[color-mix(in_srgb,var(--brand-color)_85%,black)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Confirm
               </button>

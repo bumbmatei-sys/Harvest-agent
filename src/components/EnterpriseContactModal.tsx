@@ -98,7 +98,7 @@ const EnterpriseContactModal: React.FC<EnterpriseContactModalProps> = ({ isOpen,
               </p>
               <button
                 onClick={handleClose}
-                className="w-full py-3 bg-gold text-white font-bold rounded-xl hover:bg-[#b58812] transition-colors"
+                className="w-full py-3 bg-gold text-white font-bold rounded-xl hover:bg-[color-mix(in_srgb,var(--brand-color)_85%,black)] transition-colors"
               >
                 Done
               </button>

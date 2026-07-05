@@ -48,7 +48,7 @@ const FocusScreen: React.FC<FocusScreenProps> = ({ onBack, onSidebarToggle, head
             aria-label="Go back"
             className="flex items-center justify-center p-1 transition-opacity hover:opacity-70 active:opacity-50"
           >
-            <ChevronLeft size={24} color="#B8962E" strokeWidth={2.5} />
+            <ChevronLeft size={24} color="var(--brand-color, #B8962E)" strokeWidth={2.5} />
           </button>
 
           {onSidebarToggle && (
@@ -57,7 +57,7 @@ const FocusScreen: React.FC<FocusScreenProps> = ({ onBack, onSidebarToggle, head
               aria-label="Toggle sidebar"
               className="flex items-center justify-center p-1 transition-opacity hover:opacity-70 active:opacity-50"
             >
-              <PanelLeft size={20} color="#B8962E" strokeWidth={2} />
+              <PanelLeft size={20} color="var(--brand-color, #B8962E)" strokeWidth={2} />
             </button>
           )}
 

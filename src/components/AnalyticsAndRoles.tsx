@@ -16,7 +16,7 @@ import {
 
 
 const GOLD = "var(--brand-color, #C9963A)";
-const GOLD_LIGHT = "#FBF3E4";
+const GOLD_LIGHT = "color-mix(in srgb, var(--brand-color, #C9963A) 12%, white)";
 const GOLD_BTN = "linear-gradient(135deg, var(--brand-color, #C9963A), color-mix(in srgb, var(--brand-color, #C9963A) 82%, #ffffff))";
 // Brand-adaptive accents for the redesigned Add/Edit Admin sheet (white-label:
 // every accent derives from the tenant's --brand-color).

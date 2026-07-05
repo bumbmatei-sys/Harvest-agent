@@ -628,11 +628,11 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
 
         {/* Stats strip */}
         <div className="flex gap-2 flex-wrap mb-5">
-          <span className="bg-[#FBF3E4] text-gold text-xs font-semibold px-3 py-1.5 rounded-full">{fmt(selected.totalDonated || 0)} total given</span>
-          <span className="bg-[#FBF3E4] text-gold text-xs font-semibold px-3 py-1.5 rounded-full">
+          <span className="bg-[color-mix(in_srgb,var(--brand-color)_12%,white)] text-gold text-xs font-semibold px-3 py-1.5 rounded-full">{fmt(selected.totalDonated || 0)} total given</span>
+          <span className="bg-[color-mix(in_srgb,var(--brand-color)_12%,white)] text-gold text-xs font-semibold px-3 py-1.5 rounded-full">
             {selected.lastDonationAt ? `Last gift ${fmtDate(selected.lastDonationAt)}` : 'No donations yet'}
           </span>
-          <span className="bg-[#FBF3E4] text-gold text-xs font-semibold px-3 py-1.5 rounded-full">{activities.length} {activities.length === 1 ? 'activity' : 'activities'}</span>
+          <span className="bg-[color-mix(in_srgb,var(--brand-color)_12%,white)] text-gold text-xs font-semibold px-3 py-1.5 rounded-full">{activities.length} {activities.length === 1 ? 'activity' : 'activities'}</span>
         </div>
 
         {/* Contact info card */}
@@ -922,7 +922,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
                 <div className="flex items-center gap-1.5 mt-1.5">
                   <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${TYPE_COLORS[c.type]}`}>{TYPE_LABELS[c.type]}</span>
                   {c.totalDonated > 0 && (
-                    <span className="bg-[#FBF3E4] text-gold text-[10px] font-semibold px-2 py-0.5 rounded-full">{fmt(c.totalDonated)} donated</span>
+                    <span className="bg-[color-mix(in_srgb,var(--brand-color)_12%,white)] text-gold text-[10px] font-semibold px-2 py-0.5 rounded-full">{fmt(c.totalDonated)} donated</span>
                   )}
                 </div>
               </div>

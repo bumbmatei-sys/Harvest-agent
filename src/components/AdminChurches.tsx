@@ -260,7 +260,7 @@ const AdminChurches: React.FC = () => {
               </button>
               <button
                 onClick={confirmBillingAndAdd}
-                className="flex items-center gap-1.5 px-4 py-2 bg-gold text-white rounded-xl hover:bg-[#b58812] transition-colors font-medium"
+                className="flex items-center gap-1.5 px-4 py-2 bg-gold text-white rounded-xl hover:bg-[color-mix(in_srgb,var(--brand-color)_85%,black)] transition-colors font-medium"
               >
                 <DollarSign size={16} />
                 Confirm & Add Church ($10/mo)
@@ -437,7 +437,7 @@ const AdminChurches: React.FC = () => {
               </button>
               <button
                 onClick={() => applyFilter(tempFilterValue)}
-                className="px-4 py-2 text-sm font-medium bg-gold text-white rounded-lg hover:bg-[#b58812]"
+                className="px-4 py-2 text-sm font-medium bg-gold text-white rounded-lg hover:bg-[color-mix(in_srgb,var(--brand-color)_85%,black)]"
               >
                 Apply
               </button>
@@ -546,7 +546,7 @@ const AnnouncementsSection: React.FC<{ churchId: string }> = ({ churchId }) => {
         <button
           onClick={handleCreate}
           disabled={saving || !newTitle.trim() || !newContent.trim()}
-          className="flex items-center gap-2 bg-gold text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#b58812] transition-colors disabled:opacity-50"
+          className="flex items-center gap-2 bg-gold text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[color-mix(in_srgb,var(--brand-color)_85%,black)] transition-colors disabled:opacity-50"
         >
           <Plus size={14} />
           {saving ? 'Adding...' : 'Add Announcement'}

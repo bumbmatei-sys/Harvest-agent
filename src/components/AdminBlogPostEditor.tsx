@@ -157,7 +157,7 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
           </button>
           <button
             onClick={handleNext}
-            className="flex items-center gap-1.5 px-4 py-2 bg-gold text-white rounded-lg text-sm font-medium hover:bg-[#b8860b] transition-colors shadow-sm"
+            className="flex items-center gap-1.5 px-4 py-2 bg-gold text-white rounded-lg text-sm font-medium hover:bg-[color-mix(in_srgb,var(--brand-color)_85%,black)] transition-colors shadow-sm"
           >
             <span>Next</span>
             <ArrowRight size={16} />
@@ -287,7 +287,7 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
                 <button
                   onClick={handleAddCategory}
                   disabled={!newCategory.trim()}
-                  className="px-3 py-2 bg-gold text-white rounded-lg hover:bg-[#b8860b] transition-colors disabled:opacity-50 text-sm font-medium"
+                  className="px-3 py-2 bg-gold text-white rounded-lg hover:bg-[color-mix(in_srgb,var(--brand-color)_85%,black)] transition-colors disabled:opacity-50 text-sm font-medium"
                 >
                   Add
                 </button>
@@ -369,7 +369,7 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
           <button
             onClick={() => handleSave('published')}
             disabled={isSaving}
-            className="flex-[1.5] py-2.5 px-3 bg-gold text-white rounded-lg text-sm font-medium hover:bg-[#b8860b] transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50 shadow-sm"
+            className="flex-[1.5] py-2.5 px-3 bg-gold text-white rounded-lg text-sm font-medium hover:bg-[color-mix(in_srgb,var(--brand-color)_85%,black)] transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50 shadow-sm"
           >
             <Send size={16} />
             <span>Publish Now</span>

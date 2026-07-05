@@ -155,7 +155,7 @@ function HistoryPanel({ history, activeId, onSelect, onNewChat, onClose, onDelet
  {/* New Chat Button */}
  <div style={{ padding: "12px 16px", borderBottom: `1px solid ${BORDER}` }}>
  <button onClick={onNewChat}
- style={{ width: "100%", background: GOLD_BTN, border: "none", color: "#fff", fontWeight: 700, padding: "11px", borderRadius: 12, cursor: "pointer", fontSize: 14, fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, boxShadow: "0 2px 8px rgba(201,150,58,0.35)" }}>
+ style={{ width: "100%", background: GOLD_BTN, border: "none", color: "#fff", fontWeight: 700, padding: "11px", borderRadius: 12, cursor: "pointer", fontSize: 14, fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, boxShadow: "0 2px 8px color-mix(in srgb, var(--brand-color, #C9963A) 35%, transparent)" }}>
  <span style={{ fontSize: 18 }}>✦</span> New Chat
  </button>
  </div>
@@ -427,8 +427,8 @@ Friendly neighbor, not a corporate chatbot. Short. Helpful. Human.`;
  --chat-text: #111111;
  --chat-text2: #6B7280;
  --chat-border: #E8E8E8;
- --chat-gold-light: #FBF3E4;
- --chat-gold-btn: linear-gradient(135deg, #C9963A, #D4A843);
+ --chat-gold-light: color-mix(in srgb, var(--brand-color, #C9963A) 12%, white);
+ --chat-gold-btn: linear-gradient(135deg, var(--brand-color, #C9963A), color-mix(in srgb, var(--brand-color, #C9963A) 82%, #ffffff));
  }
  * { box-sizing: border-box; margin: 0; padding: 0; }
  ::-webkit-scrollbar { width: 0; }
@@ -474,7 +474,7 @@ Friendly neighbor, not a corporate chatbot. Short. Helpful. Human.`;
  .ai-markdown-content h2 { font-size: 1.15em; }
  .ai-markdown-content h3 { font-size: 1.05em; }
  .ai-markdown-content a {
- color: #C9963A;
+ color: var(--brand-color, #C9963A);
  text-decoration: underline;
  }
  `}</style>
@@ -573,7 +573,7 @@ Friendly neighbor, not a corporate chatbot. Short. Helpful. Human.`;
  style={{ flex: 1, border: "none", background: "transparent", color: TEXT, fontSize: 14, fontFamily: "inherit", lineHeight: 1.5, maxHeight: 100, overflowY: "auto", padding: "10px 0", verticalAlign: "middle" }}
  />
  <button onClick={() => sendMessage(input)} disabled={!input.trim() || typing || resting}
- style={{ width: 34, height: 34, borderRadius: 99, background: input.trim() && !typing && !resting ? GOLD_BTN : BORDER, border: "none", cursor: input.trim() && !typing && !resting ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "background 0.2s", boxShadow: input.trim() && !typing && !resting ? "0 2px 8px rgba(201,150,58,0.35)" : "none" }}>
+ style={{ width: 34, height: 34, borderRadius: 99, background: input.trim() && !typing && !resting ? GOLD_BTN : BORDER, border: "none", cursor: input.trim() && !typing && !resting ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "background 0.2s", boxShadow: input.trim() && !typing && !resting ? "0 2px 8px color-mix(in srgb, var(--brand-color, #C9963A) 35%, transparent)" : "none" }}>
  <svg width="15" height="15" viewBox="0 0 24 24" fill="white">
  <path d="M2 21l21-9L2 3v7l15 2-15 2v7z" />
  </svg>

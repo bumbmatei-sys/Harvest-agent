@@ -58,7 +58,7 @@ const SubmitButton = ({ children, isSubmitting, disabled }: { children: React.Re
  <button
  type="submit"
  disabled={isSubmitting || disabled}
- className={`w-full bg-gold hover:bg-[#b8860b] text-white font-bold py-3.5 px-4 rounded-xl transition-colors shadow-sm mt-2 flex items-center justify-center gap-2 ${(isSubmitting || disabled) ? 'opacity-70 cursor-not-allowed' : ''}`}
+ className={`w-full bg-gold hover:bg-[color-mix(in_srgb,var(--brand-color)_85%,black)] text-white font-bold py-3.5 px-4 rounded-xl transition-colors shadow-sm mt-2 flex items-center justify-center gap-2 ${(isSubmitting || disabled) ? 'opacity-70 cursor-not-allowed' : ''}`}
  >
  {isSubmitting ? (
  <>

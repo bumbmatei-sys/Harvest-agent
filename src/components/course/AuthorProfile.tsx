@@ -20,7 +20,7 @@ export function AuthorProfile({ author, onBack, courses, onSelectCourse }: Autho
   return (
     <div className="max-w-[480px] mx-auto pb-24">
       {/* Hero */}
-      <div className="relative bg-gradient-to-br from-[#fdf7ec] to-[#f5ead0] px-5 pt-4 pb-8 text-center">
+      <div className="relative bg-gradient-to-br from-[color-mix(in_srgb,var(--brand-color)_10%,white)] to-[color-mix(in_srgb,var(--brand-color)_20%,white)] px-5 pt-4 pb-8 text-center">
         <button
           onClick={onBack}
           className="absolute top-4 left-4 w-9 h-9 rounded-full bg-black/5 border-none flex items-center justify-center cursor-pointer"

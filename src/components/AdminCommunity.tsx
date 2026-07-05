@@ -79,7 +79,7 @@ const senderPhotoCache = new Map<string, string | null>();
  * gold initials when there is no photo. The sender doc is fetched once per uid
  * and cached for the session.
  */
-const MessageAvatar: React.FC<{ senderId: string; senderName: string; bg?: string }> = ({ senderId, senderName, bg = '#B8962E' }) => {
+const MessageAvatar: React.FC<{ senderId: string; senderName: string; bg?: string }> = ({ senderId, senderName, bg = 'var(--brand-color, #B8962E)' }) => {
   const [photoURL, setPhotoURL] = useState<string | null>(() => senderPhotoCache.get(senderId) ?? null);
 
   useEffect(() => {
@@ -216,7 +216,7 @@ const RoleBadge: React.FC<{ role?: string }> = ({ role }) => {
   return (
     <span
       className="text-[9px] font-bold px-1.5 py-0.5 rounded-full leading-none"
-      style={isAdmin ? { backgroundColor: '#FBF3E4', color: '#B8962E' } : { backgroundColor: '#f3f4f6', color: '#6b7280' }}
+      style={isAdmin ? { backgroundColor: 'color-mix(in srgb, var(--brand-color, #B8962E) 12%, white)', color: 'var(--brand-color, #B8962E)' } : { backgroundColor: '#f3f4f6', color: '#6b7280' }}
     >
       {isAdmin ? 'Admin' : 'User'}
     </span>
@@ -686,7 +686,7 @@ const ChannelThread: React.FC<{
         {attachments.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-2">
             {attachments.map((a, i) => (
-              <div key={i} className="flex items-center gap-1.5 bg-[#FBF3E4] border border-[#F0D9A0] rounded-lg px-2.5 py-1 text-xs font-medium text-gold">
+              <div key={i} className="flex items-center gap-1.5 bg-[color-mix(in_srgb,var(--brand-color)_12%,white)] border border-[color-mix(in_srgb,var(--brand-color)_30%,white)] rounded-lg px-2.5 py-1 text-xs font-medium text-gold">
                 <span className="text-sm">{a.type === 'doc' ? '📄' : a.type === 'contact' ? '👤' : a.type === 'form' ? '📝' : '🎯'}</span>
                 <span className="max-w-[90px] truncate">{a.title}</span>
                 <button onClick={() => setAttachments(prev => prev.filter((_, idx) => idx !== i))}>
@@ -874,7 +874,7 @@ const DmThread: React.FC<{
         {attachments.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-2">
             {attachments.map((a, i) => (
-              <div key={i} className="flex items-center gap-1.5 bg-[#FBF3E4] border border-[#F0D9A0] rounded-lg px-2.5 py-1 text-xs font-medium text-gold">
+              <div key={i} className="flex items-center gap-1.5 bg-[color-mix(in_srgb,var(--brand-color)_12%,white)] border border-[color-mix(in_srgb,var(--brand-color)_30%,white)] rounded-lg px-2.5 py-1 text-xs font-medium text-gold">
                 <span className="text-sm">{a.type === 'doc' ? '📄' : a.type === 'contact' ? '👤' : a.type === 'form' ? '📝' : '🎯'}</span>
                 <span className="max-w-[90px] truncate">{a.title}</span>
                 <button onClick={() => setAttachments(prev => prev.filter((_, idx) => idx !== i))}>
@@ -984,7 +984,7 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
             className="p-1.5 rounded-lg hover:bg-gray-100"
             aria-label="Channel members"
           >
-            <Users size={22} style={{ color: '#B8962E' }} />
+            <Users size={22} style={{ color: 'var(--brand-color, #B8962E)' }} />
           </button>
         ),
       });
@@ -1127,7 +1127,7 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
   const membershipBadge = (uid: string) => {
     const chans = userChannels.get(uid);
     if (chans && chans.length > 0) {
-      return <p className="text-[10px] truncate" style={{ color: '#B8962E' }}>In: {chans.map(c => `#${c}`).join(', ')}</p>;
+      return <p className="text-[10px] truncate" style={{ color: 'var(--brand-color, #B8962E)' }}>In: {chans.map(c => `#${c}`).join(', ')}</p>;
     }
     return <p className="text-[10px] text-gray-400 italic">Not in any channel</p>;
   };

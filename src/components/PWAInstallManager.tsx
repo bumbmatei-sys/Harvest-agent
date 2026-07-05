@@ -180,7 +180,7 @@ export default function PWAInstallManager() {
                 <div className="mt-3 flex justify-end">
                   <button
                     onClick={dismissPrompt}
-                    className="text-sm font-semibold text-[#e6b325] hover:text-gold px-2 py-1"
+                    className="text-sm font-semibold text-gold hover:text-[color-mix(in_srgb,var(--brand-color)_85%,black)] px-2 py-1"
                   >
                     Got it
                   </button>
@@ -194,7 +194,7 @@ export default function PWAInstallManager() {
                     <p className="mb-3 leading-snug">Install for the best experience, faster load times, and offline access.</p>
                     <button
                       onClick={handleInstallClick}
-                      className="w-full bg-[#e6b325] text-white px-4 py-2.5 rounded-xl font-bold shadow-sm hover:bg-[#d4a219] active:scale-[0.98] transition-all"
+                      className="w-full bg-gold text-white px-4 py-2.5 rounded-xl font-bold shadow-sm hover:bg-[color-mix(in_srgb,var(--brand-color)_85%,black)] active:scale-[0.98] transition-all"
                     >
                       Install Now
                     </button>
@@ -216,7 +216,7 @@ export default function PWAInstallManager() {
                     <div className="mt-3 flex justify-end">
                       <button
                         onClick={dismissPrompt}
-                        className="text-sm font-semibold text-[#e6b325] hover:text-gold px-2 py-1"
+                        className="text-sm font-semibold text-gold hover:text-[color-mix(in_srgb,var(--brand-color)_85%,black)] px-2 py-1"
                       >
                         Got it
                       </button>

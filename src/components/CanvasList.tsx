@@ -97,7 +97,7 @@ const CanvasList: React.FC<CanvasListProps> = ({ onOpenCanvas }) => {
 
       {canvases.length === 0 ? (
         <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
-          <div className="w-16 h-16 mx-auto rounded-2xl bg-[#fefce8] flex items-center justify-center mb-4">
+          <div className="w-16 h-16 mx-auto rounded-2xl bg-[color-mix(in_srgb,var(--brand-color)_12%,white)] flex items-center justify-center mb-4">
             <FileText size={28} style={{ color: 'var(--brand-color, #d4a017)' }} />
           </div>
           <h3 className="text-lg font-bold text-gray-900 mb-2">No canvases yet</h3>
