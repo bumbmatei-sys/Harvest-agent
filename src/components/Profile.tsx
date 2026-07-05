@@ -20,7 +20,7 @@ import {
 import Image from 'next/image';
 import { auth, db } from '../firebase';
 import { signOut, updateProfile } from 'firebase/auth';
-import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
+import { doc, onSnapshot, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import PersonalInformationModal from './PersonalInformationModal';
 import { authFetch } from '../utils/auth-fetch';
 import ContactModal from './ContactModal';
@@ -29,7 +29,7 @@ import FAQModal from './FAQModal';
 import ChurchDetailsModal from './ChurchDetailsModal';
 import UserEvents from './UserEvents';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
-import { SUPER_ADMIN_EMAIL, isSuperAdmin as checkIsSuperAdmin } from '../utils/tenant-scope';
+import { SUPER_ADMIN_EMAIL, isSuperAdmin as checkIsSuperAdmin, getTenantScope } from '../utils/tenant-scope';
 import { isSuperAdminEmail } from '../utils/super-admins';
 import { getPlanFeatures } from '../utils/plan-features';
 import { useAppStore } from '../store/useAppStore';
@@ -51,6 +51,7 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap 
  const [isChurchDetailsOpen, setIsChurchDetailsOpen] = useState(false);
  const [isNoHomeChurchModalOpen, setIsNoHomeChurchModalOpen] = useState(false);
  const [homeChurchId, setHomeChurchId] = useState<string | null>(null);
+ const [hasChurches, setHasChurches] = useState(false);
 
  // Partnership state
  const [donationAmount, setDonationAmount] = useState<number | null>(null);
@@ -64,6 +65,28 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap 
  if (savedHomeChurch) {
    setHomeChurchId(savedHomeChurch);
  }
+ }, []);
+
+ // Hide "My Home Church" entirely when the tenant has no churches configured.
+ useEffect(() => {
+ const fetchChurchCount = async () => {
+ try {
+ const tenantId = await getTenantScope();
+ // Single-field filter only (status); tenant scoping applied client-side.
+ const q = query(collection(db, 'churches'), where('status', '==', 'active'));
+ const querySnapshot = await getDocs(q);
+ let count = 0;
+ querySnapshot.forEach((docSnap) => {
+ const data = docSnap.data();
+ if (tenantId && data.tenantId !== tenantId) return;
+ count += 1;
+ });
+ setHasChurches(count > 0);
+ } catch (error) {
+ try { handleFirestoreError(error, OperationType.GET, `churches`); } catch (e) { console.error(e); }
+ }
+ };
+ fetchChurchCount();
  }, []);
 
  const handleRemoveHomeChurch = () => {
@@ -290,11 +313,13 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap 
  label="Personal Information" 
  onClick={() => setIsPersonalInfoOpen(true)}
  />
+ {hasChurches && (
+ <>
  <div className="h-px bg-gray-50 mx-4"></div>
- <SettingItem 
- icon={<Church size={16} className="text-green-500" />} 
- iconBg="bg-green-50" 
- label="My Home Church" 
+ <SettingItem
+ icon={<Church size={16} className="text-green-500" />}
+ iconBg="bg-green-50"
+ label="My Home Church"
  onClick={() => {
  if (homeChurchId) {
  setIsChurchDetailsOpen(true);
@@ -303,9 +328,11 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap 
  }
  }}
  />
+ </>
+ )}
  <div className="h-px bg-gray-50 mx-4"></div>
- <SettingItem 
- icon={<HeartHandshake size={16} className="text-yellow-500" />} 
+ <SettingItem
+ icon={<HeartHandshake size={16} className="text-yellow-500" />}
  iconBg="bg-yellow-50" 
  label="Partner with Us"
  onClick={onGoToPartner}

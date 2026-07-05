@@ -4,7 +4,8 @@ import ReactMarkdown from 'react-markdown';
 import { db, auth } from '../firebase';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
-import { getTenantScope } from '../utils/tenant-scope';
+import { getTenantScope, PLATFORM_TENANT_ID } from '../utils/tenant-scope';
+import { useTenant } from '../contexts/TenantContext';
 
 // AI API calls are proxied through /api/gemini to keep API keys server-side
 // Embeddings: Gemini | Chat: Xiaomi MiMo
@@ -13,6 +14,8 @@ import { getTenantScope } from '../utils/tenant-scope';
 // HARVEST — AI Chat Interface (TypeScript)
 // Mobile-first, matches Harvest design system
 // ─────────────────────────────────────────────
+
+const DEFAULT_LOGO = 'https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png';
 
 const GOLD = "var(--brand-color, #C9963A)";
 const GOLD_LIGHT = "var(--chat-gold-light)";
@@ -198,6 +201,12 @@ function HistoryPanel({ history, activeId, onSelect, onNewChat, onClose, onDelet
 // MAIN AI CHAT
 // ═══════════════════════════════════════════════
 export default function AIChat({ onBack }: { onBack?: () => void }) {
+  // White-label tenants (any real tenant other than the platform) show their own
+  // name + logo; the platform / super-admin view keeps the "Harvest" brand.
+  const { tenantId, tenantName, branding } = useTenant();
+  const isWhiteLabel = !!tenantId && tenantId !== PLATFORM_TENANT_ID;
+  const displayName = isWhiteLabel && tenantName ? tenantName : 'Harvest';
+  const displayLogo = isWhiteLabel && branding?.logo ? branding.logo : DEFAULT_LOGO;
   const [history, setHistory] = useState<Chat[]>([]);
   const [activeChat, setActiveChat] = useState<Chat | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -492,7 +501,7 @@ Friendly neighbor, not a corporate chatbot. Short. Helpful. Human.`;
  {/* Center title */}
  <div style={{ textAlign: "center", flex: 1 }}>
  <div style={{ fontFamily: "'Nunito', sans-serif", fontWeight: 700, fontSize: 16, color: TEXT }}>
- Harvest AI
+ {displayName} AI
  </div>
  </div>
 
@@ -511,7 +520,8 @@ Friendly neighbor, not a corporate chatbot. Short. Helpful. Human.`;
  {isEmpty && (
  <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "32px 20px", animation: "fadeSlideUp 0.4s ease" }}>
  <div style={{ width: 72, height: 72, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32, marginBottom: 16 }}>
- <Image src="https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png" alt="Harvest Logo" width={60} height={60} className="object-contain drop-shadow-md" />
+ {/* Plain <img> (not next/image) so tenant logos on arbitrary domains render without remotePatterns config, matching MainApp/AuthPage. */}
+ <img src={displayLogo} alt={displayName} width={60} height={60} className="object-contain drop-shadow-md" />
  </div>
  <div style={{ fontFamily: "'Nunito', sans-serif", fontWeight: 700, fontSize: 22, color: TEXT, marginBottom: 6, textAlign: "center" }}>Ask me anything</div>
  <div style={{ fontSize: 13, color: TEXT2, textAlign: "center", lineHeight: 1.6, marginBottom: 28, maxWidth: 280 }}>

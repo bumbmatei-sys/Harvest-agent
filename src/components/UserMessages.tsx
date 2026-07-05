@@ -267,7 +267,8 @@ const DmThread: React.FC<{
   currentUser: { uid: string; name: string };
   otherName: string;
   onBack: () => void;
-}> = ({ dm, tenantId, currentUser, otherName, onBack }) => {
+  embedded?: boolean;
+}> = ({ dm, tenantId, currentUser, otherName, onBack, embedded = false }) => {
   const [messages, setMessages] = useState<DmMessage[]>([]);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
@@ -401,7 +402,11 @@ const DmThread: React.FC<{
         <div ref={bottomRef} />
       </div>
 
-      <div className="bg-white border-t border-[#EDEBE8] flex-shrink-0 px-4 pt-3" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 8px)' }}>
+      {/* When embedded in the app, the bottom nav's safe-area padding and the
+          content wrapper's bottom padding already clear the home indicator, so
+          the composer only needs a small pad — adding the safe-area inset again
+          here double-stacks and leaves a dead gap. Standalone still needs it. */}
+      <div className="bg-white border-t border-[#EDEBE8] flex-shrink-0 px-4 pt-3" style={{ paddingBottom: embedded ? '8px' : 'calc(env(safe-area-inset-bottom) + 8px)' }}>
         {attachments.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-2">
             {attachments.map((a, i) => (
@@ -460,7 +465,8 @@ const ChannelView: React.FC<{
   tenantId: string;
   currentUser: { uid: string; name: string };
   onBack: () => void;
-}> = ({ channel, tenantId, currentUser, onBack }) => {
+  embedded?: boolean;
+}> = ({ channel, tenantId, currentUser, onBack, embedded = false }) => {
   const [messages, setMessages] = useState<ChannelMessage[]>([]);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
@@ -562,7 +568,11 @@ const ChannelView: React.FC<{
         <div ref={bottomRef} />
       </div>
 
-      <div className="bg-white border-t border-[#EDEBE8] flex-shrink-0 px-4 pt-3" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 8px)' }}>
+      {/* When embedded in the app, the bottom nav's safe-area padding and the
+          content wrapper's bottom padding already clear the home indicator, so
+          the composer only needs a small pad — adding the safe-area inset again
+          here double-stacks and leaves a dead gap. Standalone still needs it. */}
+      <div className="bg-white border-t border-[#EDEBE8] flex-shrink-0 px-4 pt-3" style={{ paddingBottom: embedded ? '8px' : 'calc(env(safe-area-inset-bottom) + 8px)' }}>
         <div className="flex gap-2 items-center bg-[#F7F6F3] rounded-2xl px-3 py-2.5 border border-[#EDEBE8] focus-within:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] transition-colors">
           <input
             value={text}
@@ -769,7 +779,7 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false })
   if (openChannel && tenantId && currentUser) {
     return (
       <div className="flex flex-col h-full">
-        <ChannelView channel={openChannel} tenantId={tenantId} currentUser={currentUser} onBack={() => setOpenChannel(null)} />
+        <ChannelView channel={openChannel} tenantId={tenantId} currentUser={currentUser} onBack={() => setOpenChannel(null)} embedded={embedded} />
       </div>
     );
   }
@@ -783,6 +793,7 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false })
           currentUser={currentUser}
           otherName={getOtherName(openDm)}
           onBack={() => setOpenDm(null)}
+          embedded={embedded}
         />
       </div>
     );

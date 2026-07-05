@@ -262,7 +262,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
                 } ${
                   isActive ? '' : 'text-gray-400 hover:text-gray-600 lg:hover:bg-gray-50'
                 }`}
-                style={isActive ? { color: 'var(--brand-color, #e6b325)', backgroundColor: 'color-mix(in srgb, var(--brand-color, #e6b325) 12%, transparent)' } : undefined}
+                style={isActive ? { color: 'var(--brand-color, #e6b325)' } : undefined}
                 title={isSidebarCollapsed ? tab.label : undefined}
               >
                 <Icon 
