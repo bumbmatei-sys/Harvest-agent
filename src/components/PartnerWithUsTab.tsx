@@ -59,7 +59,7 @@ const PartnerWithUsTab: React.FC = () => {
     <div className="flex-1 px-4 pb-32 max-w-md mx-auto w-full">
       {/* Top Icon & Text */}
       <div className="flex flex-col items-center text-center mb-8 mt-4">
-        <div className="w-16 h-16 bg-[#fdf8ed] rounded-full flex items-center justify-center mb-4">
+        <div className="w-16 h-16 bg-[color-mix(in_srgb,var(--brand-color)_12%,white)] rounded-full flex items-center justify-center mb-4">
           <HeartHandshake size={32} className="text-gold" />
         </div>
         <h2 className="text-2xl font-bold text-[#0b1121] mb-1">Partner with Us</h2>
@@ -107,7 +107,7 @@ const PartnerWithUsTab: React.FC = () => {
               onClick={() => setAmount(preset)}
               className={`py-3 rounded-xl text-sm font-bold transition-colors border ${
                 amount === preset
-                  ? 'bg-[#fdf8ed] border-gold text-gold'
+                  ? 'bg-[color-mix(in_srgb,var(--brand-color)_12%,white)] border-gold text-gold'
                   : 'bg-white border-transparent text-[#0b1121] shadow-sm'
               }`}
             >
@@ -145,7 +145,7 @@ const PartnerWithUsTab: React.FC = () => {
       <button
         onClick={handleDonate}
         disabled={isLoading}
-        className="w-full bg-gold hover:bg-[#b88a14] disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold py-4 rounded-xl shadow-lg shadow-[color-mix(in_srgb,var(--brand-color)_20%,transparent)] transition-all flex items-center justify-center gap-2"
+        className="w-full bg-gold hover:bg-[color-mix(in_srgb,var(--brand-color)_85%,black)] disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold py-4 rounded-xl shadow-lg shadow-[color-mix(in_srgb,var(--brand-color)_20%,transparent)] transition-all flex items-center justify-center gap-2"
       >
         {isLoading ? (
           <>

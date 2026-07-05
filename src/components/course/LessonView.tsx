@@ -184,7 +184,7 @@ export function LessonView({ course, lesson, authors, onBack, onComplete, comple
                 onClick={() => onSelectLesson(nextLesson)}
                 className="flex-1 py-3 rounded-lg text-white text-[13px] font-semibold cursor-pointer flex items-center justify-center gap-1.5 transition-colors"
                 style={{ background: GOLD }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = "#b8860b")}
+                onMouseEnter={(e) => (e.currentTarget.style.background = "color-mix(in srgb, var(--brand-color, #C9963A) 85%, black)")}
                 onMouseLeave={(e) => (e.currentTarget.style.background = GOLD)}
               >
                 Next

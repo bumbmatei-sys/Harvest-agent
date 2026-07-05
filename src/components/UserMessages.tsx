@@ -73,7 +73,7 @@ const RoleBadge: React.FC<{ role?: string }> = ({ role }) => {
   return (
     <span
       className="text-[9px] font-bold px-1.5 py-0.5 rounded-full leading-none"
-      style={isAdmin ? { backgroundColor: '#FBF3E4', color: '#B8962E' } : { backgroundColor: '#f3f4f6', color: '#6b7280' }}
+      style={isAdmin ? { backgroundColor: 'color-mix(in srgb, var(--brand-color, #B8962E) 12%, white)', color: 'var(--brand-color, #B8962E)' } : { backgroundColor: '#f3f4f6', color: '#6b7280' }}
     >
       {isAdmin ? 'Admin' : 'User'}
     </span>
@@ -410,7 +410,7 @@ const DmThread: React.FC<{
         {attachments.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-2">
             {attachments.map((a, i) => (
-              <div key={i} className="flex items-center gap-1.5 bg-[#FBF3E4] border border-[#F0D9A0] rounded-lg px-2.5 py-1 text-xs font-medium text-gold">
+              <div key={i} className="flex items-center gap-1.5 bg-[color-mix(in_srgb,var(--brand-color)_12%,white)] border border-[color-mix(in_srgb,var(--brand-color)_30%,white)] rounded-lg px-2.5 py-1 text-xs font-medium text-gold">
                 <span className="text-sm">📝</span>
                 <span className="max-w-[90px] truncate">{a.title}</span>
                 <button onClick={() => setAttachments(prev => prev.filter((_, idx) => idx !== i))}>
@@ -917,7 +917,7 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false })
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={a.photoURL} alt={a.displayName} className="w-9 h-9 rounded-full object-cover flex-shrink-0" />
                   ) : (
-                    <div className="w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold text-white" style={{ backgroundColor: '#B8962E' }}>
+                    <div className="w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold text-white" style={{ backgroundColor: 'var(--brand-color, #B8962E)' }}>
                       {a.displayName.charAt(0).toUpperCase()}
                     </div>
                   )}
@@ -926,7 +926,7 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false })
                     <p className="text-xs text-gray-400 truncate">{a.role === 'super_admin' ? 'Super Admin' : a.role === 'church_admin' ? 'Church Admin' : 'Admin'}</p>
                   </div>
                   {creating === a.id && (
-                    <div className="w-4 h-4 border-2 border-t-transparent rounded-full animate-spin flex-shrink-0" style={{ borderColor: '#B8962E', borderTopColor: 'transparent' }} />
+                    <div className="w-4 h-4 border-2 border-t-transparent rounded-full animate-spin flex-shrink-0" style={{ borderColor: 'var(--brand-color, #B8962E)', borderTopColor: 'transparent' }} />
                   )}
                 </button>
               ))}

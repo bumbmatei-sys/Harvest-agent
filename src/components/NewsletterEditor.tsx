@@ -231,7 +231,7 @@ const NewsletterEditor: React.FC<NewsletterEditorProps> = ({
             <button
               onClick={() => handleSend()}
               disabled={!hasContent || sending || !mailchimpConnected}
-              className="flex items-center gap-1.5 px-4 py-2 bg-gold text-white rounded-xl text-sm font-semibold hover:bg-[#a07820] transition-colors disabled:opacity-50 cursor-pointer"
+              className="flex items-center gap-1.5 px-4 py-2 bg-gold text-white rounded-xl text-sm font-semibold hover:bg-[color-mix(in_srgb,var(--brand-color)_85%,black)] transition-colors disabled:opacity-50 cursor-pointer"
             >
               <Send size={15} />
               {sending ? 'Sending...' : 'Send to All Partners'}
@@ -310,7 +310,7 @@ const NewsletterEditor: React.FC<NewsletterEditorProps> = ({
               <button
                 onClick={handleGenerate}
                 disabled={generating}
-                className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-gold text-white rounded-xl text-sm font-bold hover:bg-[#a07820] transition-all disabled:opacity-50 cursor-pointer"
+                className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-gold text-white rounded-xl text-sm font-bold hover:bg-[color-mix(in_srgb,var(--brand-color)_85%,black)] transition-all disabled:opacity-50 cursor-pointer"
               >
                 {generating ? (
                   <><Loader2 size={18} className="animate-spin" /> Generating newsletter...</>

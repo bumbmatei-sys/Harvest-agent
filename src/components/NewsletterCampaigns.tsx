@@ -109,7 +109,7 @@ const NewsletterCampaigns: React.FC<NewsletterCampaignsProps> = ({ tenantId, onB
         <p className="text-sm text-gray-600 mb-4">{error}</p>
         <button
           onClick={onCreateNew}
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-gold text-white rounded-xl text-sm font-semibold cursor-pointer hover:bg-[#a07820] transition-colors"
+          className="inline-flex items-center gap-2 px-5 py-2.5 bg-gold text-white rounded-xl text-sm font-semibold cursor-pointer hover:bg-[color-mix(in_srgb,var(--brand-color)_85%,black)] transition-colors"
         >
           <Plus size={16} /> New Newsletter
         </button>
@@ -131,7 +131,7 @@ const NewsletterCampaigns: React.FC<NewsletterCampaignsProps> = ({ tenantId, onB
         </p>
         <button
           onClick={onCreateNew}
-          className="inline-flex items-center gap-2 px-6 py-2.5 bg-gold text-white rounded-xl text-sm font-semibold hover:bg-[#a07820] transition-colors cursor-pointer"
+          className="inline-flex items-center gap-2 px-6 py-2.5 bg-gold text-white rounded-xl text-sm font-semibold hover:bg-[color-mix(in_srgb,var(--brand-color)_85%,black)] transition-colors cursor-pointer"
         >
           <Plus size={16} />
           Create Your First Newsletter

@@ -52,7 +52,7 @@ const AboutUsModal: React.FC<AboutUsModalProps> = ({ isOpen, onClose, onOpenPart
  {/* The Vision */}
  <div>
  <div className="flex items-center gap-3 mb-4">
- <div className="w-10 h-10 rounded-full bg-[#fdf8e7] flex items-center justify-center">
+ <div className="w-10 h-10 rounded-full bg-[color-mix(in_srgb,var(--brand-color)_12%,white)] flex items-center justify-center">
  <Eye size={20} className="text-gold" />
  </div>
  <h3 className="text-xl font-bold text-gray-900 ">The Vision</h3>
@@ -74,7 +74,7 @@ const AboutUsModal: React.FC<AboutUsModalProps> = ({ isOpen, onClose, onOpenPart
  We believe that effective discipling is the fastest way to multiply the Church. To sustain this move of God, we must steward the soul as passionately as we seek it. The Harvest App was born from a burden to close the &quot;back door&quot; of the church and provide a digital bridge from the moment of conversion to a lifetime of community.
  </p>
  
- <div className="pl-4 border-l-4 border-[#fdf8e7] italic text-gray-700 mt-6">
+ <div className="pl-4 border-l-4 border-[color-mix(in_srgb,var(--brand-color)_20%,white)] italic text-gray-700 mt-6">
  Our mission is to provide the infrastructure for a Billion Soul Harvest and beyond. We are building a journey that takes the believer from a child in Christ to a mature disciple, ready to serve and lead. Through structured curriculum, theologically sound AI guidance, and direct connection to local church bodies, we are ensuring that no one has to walk their new life alone.
  </div>
  </div>
@@ -121,7 +121,7 @@ const AboutUsModal: React.FC<AboutUsModalProps> = ({ isOpen, onClose, onOpenPart
  </p>
  <button 
  onClick={onOpenPartner}
- className="w-full bg-gold hover:bg-[#b8860b] text-white font-bold py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-colors"
+ className="w-full bg-gold hover:bg-[color-mix(in_srgb,var(--brand-color)_85%,black)] text-white font-bold py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-colors"
  >
  <HeartHandshake size={20} />
  Partner Today

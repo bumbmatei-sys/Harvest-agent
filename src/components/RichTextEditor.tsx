@@ -548,7 +548,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
               />
               <button
                 onMouseDown={(e) => { e.preventDefault(); applyLink(); }}
-                className="px-2.5 py-1.5 bg-gold text-white text-sm font-medium rounded-lg hover:bg-[#b8860b]"
+                className="px-2.5 py-1.5 bg-gold text-white text-sm font-medium rounded-lg hover:bg-[color-mix(in_srgb,var(--brand-color)_85%,black)]"
               >
                 ✓
               </button>

@@ -510,7 +510,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle }) => {
             </div>
           )}
           <div className="p-4">
-            <span className="inline-flex items-center text-[10px] font-bold text-gold bg-[#fcefc7] px-2 py-0.5 rounded-full mb-2">Pinned Event</span>
+            <span className="inline-flex items-center text-[10px] font-bold text-gold bg-[color-mix(in_srgb,var(--brand-color)_15%,white)] px-2 py-0.5 rounded-full mb-2">Pinned Event</span>
             <h3 className="font-bold text-gray-900 text-base mb-1">{event.title}</h3>
             {event.description ? <p className="text-sm text-gray-500 line-clamp-2 mb-3">{event.description}</p> : null}
             <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 mb-3">
@@ -536,7 +536,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle }) => {
         {posts.length >= 3 && (
           <button 
             onClick={onOpenAllNews}
-            className="flex items-center gap-1 text-sm font-medium text-gold hover:text-[#e6b325] transition-colors"
+            className="flex items-center gap-1 text-sm font-medium text-gold hover:text-[color-mix(in_srgb,var(--brand-color)_85%,black)] transition-colors"
           >
             See more <ChevronRight size={16} />
           </button>
@@ -561,7 +561,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle }) => {
                   <div className="flex items-center gap-2">
                     <h4 className="font-bold text-gray-900 text-sm">{post.authorName}</h4>
                     {post.isPinned && (
-                      <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-gold bg-[#fcefc7] px-2 py-0.5 rounded-full">
+                      <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-gold bg-[color-mix(in_srgb,var(--brand-color)_15%,white)] px-2 py-0.5 rounded-full">
                         Pinned
                       </span>
                     )}
@@ -596,13 +596,13 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle }) => {
                       disabled={hasVoted}
                       className={`relative w-full h-10 border rounded-lg overflow-hidden flex items-center px-3 transition-colors ${
                         userVotedThis 
-                          ? 'border-gold bg-[#fcefc7]/50 ' 
+                          ? 'border-gold bg-[color-mix(in_srgb,var(--brand-color)_8%,white)] '
                           : 'border-gray-200 bg-gray-50 hover:border-gold'
                       }`}
                     >
                       {hasVoted && (
                         <div 
-                          className="absolute left-0 top-0 bottom-0 bg-[#fcefc7] transition-all duration-500"
+                          className="absolute left-0 top-0 bottom-0 bg-[color-mix(in_srgb,var(--brand-color)_15%,white)] transition-all duration-500"
                           style={{ width: `${percentage}%` }}
                         />
                       )}
@@ -648,7 +648,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle }) => {
                     className={`px-6 py-2 font-medium rounded-lg text-sm flex items-center gap-1.5 transition-colors ${
                       post.eventDetails.attendees.includes(auth.currentUser.uid)
                         ? 'bg-green-100 text-green-700 '
-                        : 'bg-[#e6b325] text-white hover:bg-gold'
+                        : 'bg-gold text-white hover:bg-[color-mix(in_srgb,var(--brand-color)_85%,black)]'
                     }`}
                   >
                     {post.eventDetails.attendees.includes(auth.currentUser.uid) ? (
@@ -739,7 +739,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle }) => {
                     <button
                       onClick={() => handleComment(post.id)}
                       disabled={!(commentInputs[post.id] || '').trim()}
-                      className="p-1.5 text-gold hover:text-[#e6b325] disabled:opacity-30 transition-colors"
+                      className="p-1.5 text-gold hover:text-[color-mix(in_srgb,var(--brand-color)_85%,black)] disabled:opacity-30 transition-colors"
                     >
                       <Send size={16} />
                     </button>
@@ -952,7 +952,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle }) => {
               <button
                 onClick={submitAttend}
                 disabled={!attendeeName.trim() || !attendeeEmail.trim()}
-                className="flex-1 px-4 py-2 bg-gold text-white rounded-xl font-medium hover:bg-[#e6b325] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 px-4 py-2 bg-gold text-white rounded-xl font-medium hover:bg-[color-mix(in_srgb,var(--brand-color)_85%,black)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Confirm
               </button>

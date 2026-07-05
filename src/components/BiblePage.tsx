@@ -8,7 +8,7 @@ import { useState, useEffect, useCallback } from "react";
 // ─────────────────────────────────────────────
 
 const GOLD = "var(--brand-color, #C9963A)";
-const GOLD_LIGHT = "#FBF3E4";
+const GOLD_LIGHT = "color-mix(in srgb, var(--brand-color, #C9963A) 12%, white)";
 
 // ── Types ──────────────────────────────────────
 type Tab = "read" | "search";

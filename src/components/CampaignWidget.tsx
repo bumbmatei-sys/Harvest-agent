@@ -192,7 +192,7 @@ const CampaignWidget: React.FC<CampaignWidgetProps> = ({ onDonate }) => {
           {/* Header */}
           <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 sticky top-0 bg-white z-10">
             <button onClick={() => setShowDetail(false)} className="p-1">
-              <ChevronLeft size={24} color="#B8962E" strokeWidth={2.5} />
+              <ChevronLeft size={24} color="var(--brand-color, #B8962E)" strokeWidth={2.5} />
             </button>
             <h2 className="text-base font-bold text-gray-900 flex-1 truncate">{campaign.title}</h2>
           </div>

@@ -237,7 +237,7 @@ export function CourseOverview({ course, authors, onBack, onStartLesson, complet
           onClick={() => nextLesson && onStartLesson(course, nextLesson)}
           className="w-full py-3.5 rounded-lg text-white text-[15px] font-bold cursor-pointer transition-colors"
           style={{ background: GOLD }}
-          onMouseEnter={(e) => (e.currentTarget.style.background = "#b8860b")}
+          onMouseEnter={(e) => (e.currentTarget.style.background = "color-mix(in srgb, var(--brand-color, #C9963A) 85%, black)")}
           onMouseLeave={(e) => (e.currentTarget.style.background = GOLD)}
         >
           {completedCount > 0 ? `Continue — ${nextLesson?.title || "Next Lesson"}` : `Start Course`}

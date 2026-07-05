@@ -282,7 +282,7 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap 
  <div className="flex flex-col items-center mt-auto mb-4">
  <h2 className="text-3xl font-bold text-white mb-2">{userName}</h2>
  <div className="bg-white/10 backdrop-blur-md px-4 py-1.5 rounded-full flex items-center gap-2 text-white text-[10px] font-bold tracking-wider border border-white/10">
- <BadgeCheck size={14} className="text-[#e6b325]" />
+ <BadgeCheck size={14} className="text-gold" />
  MEMBER SINCE 2026
  </div>
  </div>
@@ -497,7 +497,7 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap 
  setIsNoHomeChurchModalOpen(false);
  onGoToMap();
  }}
- className="w-full py-3 bg-[#e6b325] text-white font-bold rounded-xl hover:bg-[#d4a422] transition-colors"
+ className="w-full py-3 bg-gold text-white font-bold rounded-xl hover:bg-[color-mix(in_srgb,var(--brand-color)_85%,black)] transition-colors"
  >
  Add Church
  </button>

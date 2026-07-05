@@ -13,8 +13,8 @@ import { getTenantScope, getWriteTenantScope } from '../utils/tenant-scope';
 // ─────────────────────────────────────────────
 
 const GOLD = "var(--brand-color, #C9963A)";
-const GOLD_LIGHT = "#FBF3E4";
-const GOLD_BTN = "linear-gradient(135deg, #C9963A, #D4A843)";
+const GOLD_LIGHT = "color-mix(in srgb, var(--brand-color, #C9963A) 12%, white)";
+const GOLD_BTN = "linear-gradient(135deg, var(--brand-color, #C9963A), color-mix(in srgb, var(--brand-color, #C9963A) 82%, #ffffff))";
 const BG = "#F2F4F7";
 const CARD = "#FFFFFF";
 const TEXT = "#111111";

@@ -278,7 +278,7 @@ const PrayerWall: React.FC = () => {
  <button
  onClick={() => handlePray(p)}
  className={`flex items-center gap-1.5 text-xs font-semibold rounded-full px-3 py-1.5 transition-colors ${
- prayed ? 'bg-[#fcefc7]' : 'bg-gray-50 hover:bg-gray-100'
+ prayed ? 'bg-[color-mix(in_srgb,var(--brand-color)_15%,white)]' : 'bg-gray-50 hover:bg-gray-100'
  }`}
  style={prayed ? { color: 'var(--brand-color, #d4a017)' } : { color: '#6b7280' }}
  aria-pressed={prayed}
