@@ -11,12 +11,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
-  const connectedAccountId = searchParams.get('connection_id');
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://theharvest.app';
-
-  if (!connectedAccountId) {
-    return NextResponse.redirect(new URL('/?quickbooks_error=missing_connection_id', baseUrl));
-  }
 
   const stateParam = searchParams.get('state');
   if (!stateParam) {
@@ -33,9 +28,28 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL('/?quickbooks_error=invalid_state', baseUrl));
   }
 
+  const tenantRef = adminDb.collection('tenants').doc(tenantId);
+  const integrationRef = tenantRef.collection('integrations').doc(`${uid}_quickbooks`);
+
+  // Resolve the connected-account id. The value we persisted at connect time is
+  // authoritative and identity-bound (written under this uid), so we prefer it:
+  // a signed state is replayable for up to 15 min, and trusting the callback
+  // query param first would let an attacker replay a victim's state with their
+  // own `connectedAccountId` and overwrite the victim's stored account. The v3
+  // callback query param (`connectedAccountId`) is only a fallback for the
+  // unexpected case where nothing was persisted.
+  const pending = await integrationRef.get();
+  const connectedAccountId =
+    (pending.data()?.connectedAccountId as string | undefined) ??
+    searchParams.get('connectedAccountId') ??
+    null;
+  if (!connectedAccountId) {
+    return NextResponse.redirect(new URL('/?quickbooks_error=missing_connection_id', baseUrl));
+  }
+
   try {
     const connectionStatus = await getConnectionStatus(connectedAccountId);
-    if (connectionStatus.status !== 'ACTIVE') {
+    if (connectionStatus.status.toUpperCase() !== 'ACTIVE') {
       await updateIntegrationStatus(tenantId, uid, connectedAccountId, 'failed');
       return NextResponse.redirect(new URL('/?quickbooks_error=connection_not_active', baseUrl));
     }
@@ -44,14 +58,11 @@ export async function GET(request: NextRequest) {
     let realmId = '';
 
     try {
-      const info = await executeComposioAction('QUICKBOOKS_GET_COMPANY_INFO', {}, connectedAccountId);
+      const info = await executeComposioAction('QUICKBOOKS_GET_COMPANY_INFO', {}, connectedAccountId, tenantId, uid);
       const company = info?.data?.CompanyInfo || info?.data?.companyInfo || info?.data || info;
       companyName = company?.CompanyName || company?.companyName || '';
       realmId = company?.Id || company?.realmId || connectionStatus.metadata?.realmId || '';
     } catch (e) { console.warn('Could not fetch QuickBooks company info:', e); }
-
-    const tenantRef = adminDb.collection('tenants').doc(tenantId);
-    const integrationRef = tenantRef.collection('integrations').doc(`${uid}_quickbooks`);
 
     await integrationRef.set({
       connectedAccountId,

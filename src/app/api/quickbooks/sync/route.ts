@@ -34,13 +34,21 @@ interface InvoiceData {
   quickbooksSyncStatus?: string;
 }
 
-/** Find an active QuickBooks connection for the tenant — caller's own first, then the primary admin's. */
-async function findQuickBooksConnection(tenantId: string, uid: string): Promise<string | null> {
+/**
+ * Find an active QuickBooks connection for the tenant — caller's own first,
+ * then the primary admin's. Returns the connection AND its owner uid: a v3
+ * Composio connection is PRIVATE, so execution must use the owner's userId
+ * (which may be the primary admin, not the caller).
+ */
+async function findQuickBooksConnection(
+  tenantId: string,
+  uid: string
+): Promise<{ connectedAccountId: string; ownerUid: string } | null> {
   const integrationsRef = adminDb.collection('tenants').doc(tenantId).collection('integrations');
 
   const ownDoc = await integrationsRef.doc(`${uid}_quickbooks`).get();
   if (ownDoc.exists && ownDoc.data()?.status === 'active' && ownDoc.data()?.connectedAccountId) {
-    return ownDoc.data()!.connectedAccountId;
+    return { connectedAccountId: ownDoc.data()!.connectedAccountId, ownerUid: uid };
   }
 
   const tenantDoc = await adminDb.collection('tenants').doc(tenantId).get();
@@ -48,7 +56,7 @@ async function findQuickBooksConnection(tenantId: string, uid: string): Promise<
   if (primaryUid) {
     const primaryDoc = await integrationsRef.doc(`${primaryUid}_quickbooks`).get();
     if (primaryDoc.exists && primaryDoc.data()?.status === 'active' && primaryDoc.data()?.connectedAccountId) {
-      return primaryDoc.data()!.connectedAccountId;
+      return { connectedAccountId: primaryDoc.data()!.connectedAccountId, ownerUid: primaryUid };
     }
   }
   return null;
@@ -79,13 +87,14 @@ export async function POST(request: NextRequest) {
       body = await request.json();
     } catch { /* body is optional */ }
 
-    const connectedAccountId = await findQuickBooksConnection(resolvedTenantId, uid);
-    if (!connectedAccountId) {
+    const connection = await findQuickBooksConnection(resolvedTenantId, uid);
+    if (!connection) {
       return NextResponse.json(
         { error: 'QuickBooks is not connected. Connect it in the Accounting section first.' },
         { status: 400 }
       );
     }
+    const { connectedAccountId, ownerUid } = connection;
 
     const invoicesRef = adminDb.collection('tenants').doc(resolvedTenantId).collection('invoices');
 
@@ -118,7 +127,9 @@ export async function POST(request: NextRequest) {
         const result = await executeComposioAction(
           'QUICKBOOKS_CREATE_SALES_RECEIPT',
           buildSalesReceiptPayload(inv.data),
-          connectedAccountId
+          connectedAccountId,
+          resolvedTenantId,
+          ownerUid
         );
         const receiptId =
           result?.data?.SalesReceipt?.Id || result?.data?.Id || result?.id || null;

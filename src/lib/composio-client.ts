@@ -1,20 +1,52 @@
 /**
  * Composio API Client
- * Generic HTTP client for Composio REST API v2
- * Used to manage OAuth connections and execute actions for integrations
+ *
+ * Thin wrapper over the official Composio v3 SDK (`@composio/core`) used to
+ * manage OAuth connections and execute tools for the Instagram / Mailchimp /
+ * QuickBooks integrations.
+ *
+ * Migrated from the removed v2 REST API (`backend.composio.dev/api/v2`) which
+ * now returns 410 for every call. All usage here is *direct* tool execution
+ * (`composio.tools.execute`) — every call names a specific tool with explicit
+ * inputs, so we deliberately do NOT use the agentic "sessions" model.
  */
 
 import { createHmac } from 'crypto';
+import { Composio } from '@composio/core';
 
-const COMPOSIO_BASE_URL = 'https://backend.composio.dev/api/v2';
-const FETCH_TIMEOUT_MS = 10_000;
+// ── SDK singleton ───────────────────────────────────────────────────────────
 
-function getApiKey(): string {
+let composioSingleton: Composio | null = null;
+
+/**
+ * Lazily construct a single, module-scoped Composio client.
+ *
+ * The v3 SDK only needs the API key — it is project-scoped, so it resolves to
+ * the correct project automatically (no project id required).
+ */
+function getComposio(): Composio {
+  if (composioSingleton) return composioSingleton;
   const apiKey = process.env.COMPOSIO_API_KEY;
   if (!apiKey) {
     throw new Error('COMPOSIO_API_KEY environment variable is not set');
   }
-  return apiKey;
+  composioSingleton = new Composio({ apiKey });
+  return composioSingleton;
+}
+
+/**
+ * v3 requires a `userId` on connection + execution calls. We use a composite,
+ * tenant-scoped id so every admin's connections are isolated: a connection
+ * created under `tenantId:uid` is a PRIVATE connected account usable ONLY by
+ * that exact userId (the v3 backend denies any other caller by default).
+ *
+ * IMPORTANT: the same userId that created a connection must be used to execute
+ * against it. When a connection is shared across a tenant (e.g. the primary
+ * admin's Mailchimp/QuickBooks connection), execution must pass the *owner's*
+ * uid — not necessarily the requesting admin's.
+ */
+export function composioUserId(tenantId: string, uid: string): string {
+  return `${tenantId}:${uid}`;
 }
 
 function getStateSecret(): string {
@@ -82,130 +114,99 @@ export function verifySignedState(
   return parsed;
 }
 
-// ── Fix 4: Fetch timeout + Fix 9: Safe JSON parsing ─────────────────────────
+// ── Composio v3 SDK operations ──────────────────────────────────────────────
 
 /**
- * Generic HTTP client for Composio API with API key authentication
- */
-export async function composioRequest(
-  method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH',
-  endpoint: string,
-  body?: Record<string, any>
-): Promise<any> {
-  const url = `${COMPOSIO_BASE_URL}${endpoint}`;
-  const headers: Record<string, string> = {
-    'x-api-key': getApiKey(),
-    'Content-Type': 'application/json',
-  };
-
-  // Fix 4: AbortController with 10-second timeout
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-
-  const options: RequestInit = {
-    method,
-    headers,
-    signal: controller.signal,
-  };
-
-  if (body && method !== 'GET') {
-    options.body = JSON.stringify(body);
-  }
-
-  try {
-    const response = await fetch(url, options);
-
-    if (!response.ok) {
-      const errorBody = await response.text();
-      let errorMessage: string;
-      try {
-        const parsed = JSON.parse(errorBody);
-        errorMessage = parsed.message || parsed.error || errorBody;
-      } catch {
-        errorMessage = errorBody;
-      }
-      throw new Error(
-        `Composio API error [${method} ${endpoint}]: ${response.status} - ${errorMessage}`
-      );
-    }
-
-    // Some endpoints return 204 No Content
-    if (response.status === 204) {
-      return null;
-    }
-
-    // Fix 9: Safe JSON parsing for non-JSON responses
-    const text = await response.text();
-    try {
-      return JSON.parse(text);
-    } catch {
-      throw new Error(
-        `Composio API error [${method} ${endpoint}]: Response was not valid JSON`
-      );
-    }
-  } finally {
-    clearTimeout(timeout);
-  }
-}
-
-/**
- * Execute a Composio action/tool
- * @param action - The action slug (e.g., 'INSTAGRAM_GET_USER_INFO')
- * @param input - The input parameters for the action
- * @param connectedAccountId - The connected account ID to use
+ * Execute a Composio tool/action via direct (non-agentic) execution.
+ *
+ * @param action - The tool slug (e.g. 'MAILCHIMP_GET_LISTS')
+ * @param input - The tool arguments
+ * @param connectedAccountId - The connected account to run against
+ * @param tenantId - Tenant of the connection OWNER
+ * @param uid - uid of the connection OWNER (the admin who connected the account)
+ *
+ * Returns the raw v3 result `{ data, error, successful, logId }`; the tool's
+ * output payload is under `.data`. Throws (like the old v2 client did on a
+ * non-2xx) when the tool reports failure, so callers' existing try/catch
+ * blocks treat it as a failure instead of silently proceeding with empty data.
  */
 export async function executeComposioAction(
   action: string,
   input: Record<string, any>,
-  connectedAccountId: string
+  connectedAccountId: string,
+  tenantId: string,
+  uid: string
 ): Promise<any> {
-  return composioRequest('POST', '/actions/execute', {
-    action,
-    input,
+  const composio = getComposio();
+  const result = await composio.tools.execute(action, {
+    userId: composioUserId(tenantId, uid),
     connectedAccountId,
+    arguments: input,
+    // The SDK defaults the toolkit version to "latest", which makes execute()
+    // throw ComposioToolVersionRequiredError unless we pin a version or skip the
+    // check. These are direct calls to stable Mailchimp/QuickBooks/Instagram
+    // tools where we always want current behavior, so we skip the pin.
+    dangerouslySkipVersionCheck: true,
   });
+
+  // v3 returns { data, successful, error } — surface tool-level failures as
+  // thrown errors (e.g. a failed QuickBooks receipt would otherwise be treated
+  // as empty data and marked "synced"). `error` is a tool message, not a token.
+  if (result && result.successful === false) {
+    throw new Error(
+      `Composio action ${action} failed: ${result.error ?? 'unknown error'}`
+    );
+  }
+
+  return result;
 }
 
 /**
- * Initiate an OAuth connection flow for an app
- * Returns a redirect URL where the user should be sent to authorize
- * @param appName - The app name (e.g., 'instagram', 'mailchimp')
+ * Initiate an OAuth connection flow for an app using a managed-OAuth auth config.
+ *
+ * Uses `connectedAccounts.link()` — the correct v3 flow for Composio-managed
+ * OAuth (the legacy `.initiate()` create-path is deprecated/blocked for managed
+ * OAuth). Returns a redirect URL where the user should be sent to authorize.
+ *
+ * @param authConfigId - The Composio auth config id (`ac_...`)
  * @param callbackUrl - URL to redirect to after OAuth completes
- * @param metadata - Optional metadata to attach to the connection request
+ * @param tenantId - Tenant of the connecting admin
+ * @param uid - uid of the connecting admin (becomes the connection owner)
  */
 export async function initiateConnection(
-  appName: string,
+  authConfigId: string,
   callbackUrl: string,
-  metadata?: Record<string, string>
+  tenantId: string,
+  uid: string
 ): Promise<{ connectedAccountId: string; redirectUrl: string }> {
-  const body: Record<string, any> = {
-    appName,
-    callbackUrl,
-  };
-  if (metadata) {
-    body.metadata = metadata;
-  }
+  const composio = getComposio();
+  const req = await composio.connectedAccounts.link(
+    composioUserId(tenantId, uid),
+    authConfigId,
+    { callbackUrl }
+  );
 
-  const result = await composioRequest('POST', '/connectedAccounts', body);
+  const connectedAccountId = req.id;
+  const redirectUrl = req.redirectUrl;
 
-  // Fix 10: Standardize on connectedAccountId
-  const connectedAccountId = result.id || result.connectedAccountId || result.connectionId;
-  const redirectUrl = result.redirectUrl || result.url;
-
-  // Fix 5: Validate initiateConnection response
   if (!connectedAccountId) {
-    throw new Error('Composio API returned no connection ID');
+    throw new Error('Composio returned no connection id');
   }
   if (!redirectUrl) {
-    throw new Error('Composio API returned no redirect URL');
+    throw new Error('Composio returned no redirect url');
   }
 
   return { connectedAccountId, redirectUrl };
 }
 
 /**
- * Get the status and details of a connection
- * @param connectedAccountId - The connected account ID to check
+ * Get the status and details of a connection.
+ *
+ * @param connectedAccountId - The connected account id to check
+ *
+ * The return shape is kept stable for callers. Note that v3 has no
+ * non-sensitive `metadata` field on the account — `state`/`data`/`params` hold
+ * raw OAuth credentials, so we deliberately do NOT surface them.
  */
 export async function getConnectionStatus(
   connectedAccountId: string
@@ -215,19 +216,21 @@ export async function getConnectionStatus(
   appName: string;
   metadata?: Record<string, any>;
 }> {
-  const result = await composioRequest('GET', `/connectedAccounts/${connectedAccountId}`);
+  const composio = getComposio();
+  const acct = await composio.connectedAccounts.get(connectedAccountId);
   return {
-    id: result.id,
-    status: result.status,
-    appName: result.appName,
-    metadata: result.metadata,
+    id: acct.id,
+    status: acct.status, // v3 statuses are UPPERCASE: 'ACTIVE' | 'INITIATED' | 'FAILED' | ...
+    appName: acct.toolkit?.slug ?? '', // v3 nests the app under toolkit.slug
+    metadata: undefined,
   };
 }
 
 /**
- * Delete/disconnect a connected account
- * @param connectedAccountId - The connected account ID to delete
+ * Delete/disconnect a connected account.
+ * @param connectedAccountId - The connected account id to delete
  */
 export async function deleteConnection(connectedAccountId: string): Promise<void> {
-  await composioRequest('DELETE', `/connectedAccounts/${connectedAccountId}`);
+  const composio = getComposio();
+  await composio.connectedAccounts.delete(connectedAccountId);
 }

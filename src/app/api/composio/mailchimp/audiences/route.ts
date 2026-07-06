@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
   try {
     const userOrResponse = await requireAdmin(request);
     if (userOrResponse instanceof NextResponse) return userOrResponse;
-    const { tenantId } = userOrResponse;
+    const { tenantId, uid } = userOrResponse;
 
     if (!tenantId) {
       return NextResponse.json(
@@ -24,11 +24,14 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Read the caller's own per-admin integration doc (consistent with the
+    // status/disconnect routes). The connection is a PRIVATE Composio account,
+    // so it can only be executed against with its owner's userId (the caller).
     const integrationDoc = await adminDb
       .collection('tenants')
       .doc(tenantId)
       .collection('integrations')
-      .doc('mailchimp')
+      .doc(`${uid}_mailchimp`)
       .get();
 
     // Fix 7: Null guard on Firestore data()
@@ -63,7 +66,9 @@ export async function GET(request: NextRequest) {
       const audienceResult = await executeComposioAction(
         'MAILCHIMP_GET_LISTS',
         { count: 100 },
-        connectedAccountId
+        connectedAccountId,
+        tenantId,
+        uid
       );
       const lists = audienceResult?.data?.lists || audienceResult?.lists || [];
       audiences = lists.map((list: any) => ({
