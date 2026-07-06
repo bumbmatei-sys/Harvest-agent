@@ -574,7 +574,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
         />
 
         {/* Main Content Area */}
-        <div className={`flex-1 overflow-y-auto pb-24 lg:pb-8 p-0 lg:p-6 ${showMoreSheet ? 'overflow-hidden' : ''}`}>
+        <div className={`flex-1 ${activeTab === 'community' ? 'overflow-hidden lg:overflow-y-auto pb-[65px] lg:pb-8' : 'overflow-y-auto pb-24 lg:pb-8'} p-0 lg:p-6 ${showMoreSheet ? 'overflow-hidden' : ''}`}>
           {activeTab === 'dashboard' ? (
             <div className="p-4 lg:p-0">
               <AdminDashboardHome
@@ -659,7 +659,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
               : <PlanUpgradeScreen featureName="SMS" featureKey="smsAutomation" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
           ) : activeTab === 'community' ? (
             (platformOverride || !isTenantAdmin || (features && features.communityGroups))
-              ? <div className="p-4 lg:p-0 h-full"><AdminCommunity onOpenAttachment={(type, id) => {
+              ? <div className="p-4 pb-0 lg:p-0 h-full"><AdminCommunity onOpenAttachment={(type, id) => {
                   if (type === 'doc') navigate(`/admin/docs/${id}`);
                   else if (type === 'contact') navigate(`/admin/crm/${id}`);
                   else if (type === 'campaign') navigate(`/admin/fundraising/${id}`);

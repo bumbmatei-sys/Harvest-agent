@@ -682,7 +682,10 @@ const ChannelThread: React.FC<{
         <div ref={bottomRef} />
       </div>
 
-      <div className="bg-white border-t border-[#EDEBE8] flex-shrink-0 px-4 pt-3" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 8px)' }}>
+      {/* Always embedded in the admin dashboard, so the fixed bottom nav's
+          safe-area padding + the content wrapper's bottom inset already clear
+          the home indicator; an extra safe-area inset here would double-stack. */}
+      <div className="bg-white border-t border-[#EDEBE8] flex-shrink-0 px-4 pt-3" style={{ paddingBottom: '8px' }}>
         {attachments.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-2">
             {attachments.map((a, i) => (
@@ -870,7 +873,10 @@ const DmThread: React.FC<{
         <div ref={bottomRef} />
       </div>
 
-      <div className="bg-white border-t border-[#EDEBE8] flex-shrink-0 px-4 pt-3" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 8px)' }}>
+      {/* Always embedded in the admin dashboard, so the fixed bottom nav's
+          safe-area padding + the content wrapper's bottom inset already clear
+          the home indicator; an extra safe-area inset here would double-stack. */}
+      <div className="bg-white border-t border-[#EDEBE8] flex-shrink-0 px-4 pt-3" style={{ paddingBottom: '8px' }}>
         {attachments.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-2">
             {attachments.map((a, i) => (
