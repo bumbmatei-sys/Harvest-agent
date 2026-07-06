@@ -50,14 +50,21 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    const authConfigId = process.env.COMPOSIO_MAILCHIMP_AUTH_CONFIG_ID;
+    if (!authConfigId) {
+      console.error('COMPOSIO_MAILCHIMP_AUTH_CONFIG_ID is not set');
+      return NextResponse.json({ error: 'Mailchimp integration is not configured' }, { status: 500 });
+    }
+
     const state = createSignedState(tenantId, uid);
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://theharvest.app';
     const callbackUrl = `${baseUrl}/api/composio/mailchimp/callback`;
 
     const { connectedAccountId, redirectUrl } = await initiateConnection(
-      'mailchimp',
+      authConfigId,
       `${callbackUrl}?state=${encodeURIComponent(state)}`,
-      { tenantId, uid }
+      tenantId,
+      uid
     );
 
     await adminDb.runTransaction(async (tx) => {

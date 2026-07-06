@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
     if (data.connectedAccountId && data.status === 'active') {
       try {
         const composioStatus = await getConnectionStatus(data.connectedAccountId);
-        if (composioStatus.status !== 'ACTIVE') {
+        if (composioStatus.status.toUpperCase() !== 'ACTIVE') {
           await integrationDoc.ref.update({ status: 'disconnected', updatedAt: new Date().toISOString() });
           return NextResponse.json({
             connected: false, status: 'disconnected', username: data.username, isPrimary,

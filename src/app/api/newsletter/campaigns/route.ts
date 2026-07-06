@@ -11,28 +11,37 @@ export async function GET(request: NextRequest) {
   try {
     const userOrResponse = await requireAdmin(request);
     if (userOrResponse instanceof NextResponse) return userOrResponse;
-    const { tenantId } = userOrResponse;
+    const { tenantId, uid } = userOrResponse;
 
     const resolvedTenantId = tenantId || PLATFORM_TENANT_ID;
 
     const tenantDoc = await adminDb.collection('tenants').doc(resolvedTenantId).get();
     const tenantData = tenantDoc.exists ? tenantDoc.data() : null;
 
-    // Get Mailchimp integration — prefer primary admin's, fall back to legacy
+    // Get Mailchimp integration — prefer primary admin's, fall back to legacy.
+    // Track the connection OWNER's uid: a v3 Composio connection is PRIVATE, so
+    // execution must use the owner's userId (not necessarily the caller's).
     let mailchimpData: Record<string, any> | undefined;
+    let mailchimpOwnerUid: string | undefined;
     if (tenantData) {
       const primaryMailchimpAdmin = tenantData.primaryMailchimpAdmin as string | undefined;
       if (primaryMailchimpAdmin) {
         const adminMcDoc = await adminDb
           .collection('tenants').doc(resolvedTenantId)
           .collection('integrations').doc(`${primaryMailchimpAdmin}_mailchimp`).get();
-        if (adminMcDoc.exists) mailchimpData = adminMcDoc.data() ?? undefined;
+        if (adminMcDoc.exists) {
+          mailchimpData = adminMcDoc.data() ?? undefined;
+          mailchimpOwnerUid = primaryMailchimpAdmin;
+        }
       }
       if (!mailchimpData) {
         const legacyMcDoc = await adminDb
           .collection('tenants').doc(resolvedTenantId)
           .collection('integrations').doc('mailchimp').get();
-        if (legacyMcDoc.exists) mailchimpData = legacyMcDoc.data() ?? undefined;
+        if (legacyMcDoc.exists) {
+          mailchimpData = legacyMcDoc.data() ?? undefined;
+          mailchimpOwnerUid = mailchimpData?.connectedBy as string | undefined;
+        }
       }
     }
 
@@ -47,7 +56,9 @@ export async function GET(request: NextRequest) {
         const result = await executeComposioAction(
           'MAILCHIMP_LIST_CAMPAIGNS',
           { count: 50, sort_dir: 'DESC' },
-          mailchimpData.connectedAccountId
+          mailchimpData.connectedAccountId,
+          resolvedTenantId,
+          mailchimpOwnerUid || uid
         );
         const rawCampaigns = result?.data?.campaigns || result?.campaigns || [];
         if (Array.isArray(rawCampaigns)) {

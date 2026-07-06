@@ -120,22 +120,31 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Newsletter has no content' }, { status: 400 });
     }
 
-    // Get Mailchimp integration — prefer primary admin's, fall back to legacy
+    // Get Mailchimp integration — prefer primary admin's, fall back to legacy.
+    // Track the connection OWNER's uid: a v3 Composio connection is PRIVATE, so
+    // execution must use the owner's userId (not necessarily the caller's).
     const primaryMailchimpAdmin = tenantData.primaryMailchimpAdmin as string | undefined;
     let mailchimpData: Record<string, any> | undefined;
+    let mailchimpOwnerUid: string | undefined;
 
     if (primaryMailchimpAdmin) {
       const adminMcDoc = await adminDb
         .collection('tenants').doc(resolvedTenantId)
         .collection('integrations').doc(`${primaryMailchimpAdmin}_mailchimp`).get();
-      if (adminMcDoc.exists) mailchimpData = adminMcDoc.data() ?? undefined;
+      if (adminMcDoc.exists) {
+        mailchimpData = adminMcDoc.data() ?? undefined;
+        mailchimpOwnerUid = primaryMailchimpAdmin;
+      }
     }
 
     if (!mailchimpData) {
       const legacyMcDoc = await adminDb
         .collection('tenants').doc(resolvedTenantId)
         .collection('integrations').doc('mailchimp').get();
-      if (legacyMcDoc.exists) mailchimpData = legacyMcDoc.data() ?? undefined;
+      if (legacyMcDoc.exists) {
+        mailchimpData = legacyMcDoc.data() ?? undefined;
+        mailchimpOwnerUid = mailchimpData?.connectedBy as string | undefined;
+      }
     }
 
     if (!mailchimpData) {
@@ -154,6 +163,9 @@ export async function POST(request: NextRequest) {
 
     const connectedAccountId = mailchimpData.connectedAccountId as string;
     const audienceId = mailchimpData.selectedAudienceId as string;
+    // userId of the connection owner — required to execute against the PRIVATE
+    // Composio connected account.
+    const mcOwnerUid = mailchimpOwnerUid || uid;
 
     if (!connectedAccountId) {
       return NextResponse.json({ error: 'No Mailchimp connected account found' }, { status: 400 });
@@ -177,7 +189,9 @@ export async function POST(request: NextRequest) {
           'settings__from__name': tenantName,
           'recipients__list__id': audienceId,
         },
-        connectedAccountId
+        connectedAccountId,
+        resolvedTenantId,
+        mcOwnerUid
       );
       campaignId = campaignResult?.data?.id || campaignResult?.id;
       if (!campaignId) {
@@ -202,7 +216,9 @@ export async function POST(request: NextRequest) {
       await executeComposioAction(
         'MAILCHIMP_SET_CAMPAIGN_CONTENT',
         { campaign_id: campaignId, html: cleanHtml },
-        connectedAccountId
+        connectedAccountId,
+        resolvedTenantId,
+        mcOwnerUid
       );
     } catch (actionError) {
       console.error('Mailchimp set content error:', actionError);
@@ -214,7 +230,9 @@ export async function POST(request: NextRequest) {
       const checklist = await executeComposioAction(
         'MAILCHIMP_GET_CAMPAIGN_SEND_CHECKLIST',
         { campaign_id: campaignId },
-        connectedAccountId
+        connectedAccountId,
+        resolvedTenantId,
+        mcOwnerUid
       );
       const isReady = checklist?.data?.is_ready ?? checklist?.is_ready ?? true;
       if (!isReady) {
@@ -236,14 +254,18 @@ export async function POST(request: NextRequest) {
         await executeComposioAction(
           'MAILCHIMP_SCHEDULE_CAMPAIGN',
           { campaign_id: campaignId, schedule_time: schedule },
-          connectedAccountId
+          connectedAccountId,
+          resolvedTenantId,
+          mcOwnerUid
         );
         newStatus = 'scheduled';
       } else {
         await executeComposioAction(
           'MAILCHIMP_SEND_CAMPAIGN',
           { campaign_id: campaignId },
-          connectedAccountId
+          connectedAccountId,
+          resolvedTenantId,
+          mcOwnerUid
         );
         newStatus = 'sent';
       }

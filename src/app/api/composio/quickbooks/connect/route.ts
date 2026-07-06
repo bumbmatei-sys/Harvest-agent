@@ -50,14 +50,21 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    const authConfigId = process.env.COMPOSIO_QUICKBOOKS_AUTH_CONFIG_ID;
+    if (!authConfigId) {
+      console.error('COMPOSIO_QUICKBOOKS_AUTH_CONFIG_ID is not set');
+      return NextResponse.json({ error: 'QuickBooks integration is not configured' }, { status: 500 });
+    }
+
     const state = createSignedState(resolvedTenantId, uid);
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://theharvest.app';
     const callbackUrl = `${baseUrl}/api/composio/quickbooks/callback`;
 
     const { connectedAccountId, redirectUrl } = await initiateConnection(
-      'quickbooks',
+      authConfigId,
       `${callbackUrl}?state=${encodeURIComponent(state)}`,
-      { tenantId: resolvedTenantId, uid }
+      resolvedTenantId,
+      uid
     );
 
     await adminDb.runTransaction(async (tx) => {

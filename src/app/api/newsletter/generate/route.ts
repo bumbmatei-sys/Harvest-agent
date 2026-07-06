@@ -61,22 +61,32 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get Instagram integration — prefer primary admin's, fall back to legacy
+    // Get Instagram integration — prefer primary admin's, fall back to legacy.
+    // Track the connection OWNER's uid: a v3 Composio connection is PRIVATE, so
+    // execution must use the owner's userId (the admin who connected it), which
+    // is not necessarily the requesting admin.
     const primaryInstagramAdmin = tenantData.primaryInstagramAdmin as string | undefined;
     let instagramData: Record<string, any> | undefined;
+    let instagramOwnerUid: string | undefined;
 
     if (primaryInstagramAdmin) {
       const adminIgDoc = await adminDb
         .collection('tenants').doc(resolvedTenantId)
         .collection('integrations').doc(`${primaryInstagramAdmin}_instagram`).get();
-      if (adminIgDoc.exists) instagramData = adminIgDoc.data() ?? undefined;
+      if (adminIgDoc.exists) {
+        instagramData = adminIgDoc.data() ?? undefined;
+        instagramOwnerUid = primaryInstagramAdmin;
+      }
     }
 
     if (!instagramData) {
       const legacyIgDoc = await adminDb
         .collection('tenants').doc(resolvedTenantId)
         .collection('integrations').doc('instagram').get();
-      if (legacyIgDoc.exists) instagramData = legacyIgDoc.data() ?? undefined;
+      if (legacyIgDoc.exists) {
+        instagramData = legacyIgDoc.data() ?? undefined;
+        instagramOwnerUid = instagramData?.connectedBy as string | undefined;
+      }
     }
 
     if (!instagramData) {
@@ -116,7 +126,9 @@ export async function POST(request: NextRequest) {
           until: untilTs,
           fields: 'id,caption,media_type,permalink,timestamp,like_count,comments_count',
         },
-        connectedAccountId
+        connectedAccountId,
+        resolvedTenantId,
+        instagramOwnerUid || uid
       );
       posts = result?.data?.data || result?.data || [];
       if (!Array.isArray(posts)) posts = [];
