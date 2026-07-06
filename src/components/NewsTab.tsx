@@ -99,12 +99,6 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle }) => {
   const [attendeeEmail, setAttendeeEmail] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // AdminEvents registration modal
-  const [registeringEvent, setRegisteringEvent] = useState<AdminEvent | null>(null);
-  const [regName, setRegName] = useState('');
-  const [regEmail, setRegEmail] = useState('');
-  const [regLoading, setRegLoading] = useState(false);
-
   // Comments state
   const [commentsOpen, setCommentsOpen] = useState<Record<string, boolean>>({});
   const [commentInputs, setCommentInputs] = useState<Record<string, string>>({});
@@ -406,38 +400,6 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle }) => {
     return ts.toDate().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
-  const handleRegister = async () => {
-    if (!registeringEvent || !regName.trim() || !regEmail.trim()) return;
-    setRegLoading(true);
-    try {
-      const tenantId = await getTenantScope();
-      if (!tenantId) return;
-      const ticketCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-      await addDoc(collection(db, 'tenants', tenantId, 'registrations'), {
-        eventId: registeringEvent.id,
-        userId: auth.currentUser?.uid || null,
-        name: regName.trim(),
-        email: regEmail.trim(),
-        phone: null,
-        ticketCode,
-        status: 'confirmed',
-        amount: registeringEvent.price || 0,
-        registeredAt: serverTimestamp(),
-      });
-      setRegisteringEvent(null);
-      setRegName('');
-      setRegEmail('');
-      setErrorMessage('Registration confirmed! Ticket code: ' + ticketCode);
-      setTimeout(() => setErrorMessage(null), 5000);
-    } catch (e) {
-      console.error(e);
-      setErrorMessage('Registration failed. Please try again.');
-      setTimeout(() => setErrorMessage(null), 3000);
-    } finally {
-      setRegLoading(false);
-    }
-  };
-
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return new Intl.DateTimeFormat('en-US', {
@@ -521,7 +483,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle }) => {
               <span className="font-medium">{event.price > 0 ? `$${event.price}` : 'Free'}</span>
             </div>
             <button
-              onClick={() => setRegisteringEvent(event)}
+              onClick={() => { window.location.href = `/event/${event.id}`; }}
               className="w-full py-2 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
               style={{ backgroundColor: 'var(--brand-color, #e6b325)' }}
             >
@@ -774,7 +736,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle }) => {
                     <span className="font-medium">{event.price > 0 ? `$${event.price}` : 'Free'}</span>
                   </div>
                   <button
-                    onClick={() => setRegisteringEvent(event)}
+                    onClick={() => { window.location.href = `/event/${event.id}`; }}
                     className="w-full py-2 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
                     style={{ backgroundColor: 'var(--brand-color, #e6b325)' }}
                   >
@@ -849,59 +811,6 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle }) => {
                 </div>
               </article>
             ))}
-          </div>
-        </div>
-      )}
-
-      {/* AdminEvents Registration Modal */}
-      {registeringEvent && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl">
-            <h3 className="text-xl font-bold text-gray-900 mb-1">Register for Event</h3>
-            <p className="text-sm text-gray-500 mb-4">{registeringEvent.title}</p>
-            <div className="space-y-4 mb-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-                <input
-                  type="text"
-                  value={regName}
-                  onChange={e => setRegName(e.target.value)}
-                  className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:ring-2 focus:ring-gold outline-none"
-                  placeholder="Your full name"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
-                <input
-                  type="email"
-                  value={regEmail}
-                  onChange={e => setRegEmail(e.target.value)}
-                  className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:ring-2 focus:ring-gold outline-none"
-                  placeholder="your@email.com"
-                />
-              </div>
-              {registeringEvent.price > 0 && (
-                <p className="text-sm text-gray-500 bg-gray-50 rounded-xl p-3">
-                  Ticket price: <strong>${registeringEvent.price}</strong> — payment will be collected at the event.
-                </p>
-              )}
-            </div>
-            <div className="flex gap-3">
-              <button
-                onClick={() => { setRegisteringEvent(null); setRegName(''); setRegEmail(''); }}
-                className="flex-1 px-4 py-2 border border-gray-200 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleRegister}
-                disabled={regLoading || !regName.trim() || !regEmail.trim()}
-                className="flex-1 px-4 py-2 text-white rounded-xl font-medium transition-colors disabled:opacity-50"
-                style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}
-              >
-                {regLoading ? 'Registering…' : 'Confirm'}
-              </button>
-            </div>
           </div>
         </div>
       )}
