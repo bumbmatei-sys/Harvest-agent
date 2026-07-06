@@ -1,8 +1,10 @@
 import type { Metadata, Viewport } from 'next';
+import { headers } from 'next/headers';
 import Script from 'next/script';
 import { Nunito } from 'next/font/google';
 import './globals.css';
 import { cn } from "@/lib/utils";
+import { getTenantFromHost } from '@/lib/server-tenant';
 
 const nunito = Nunito({
   subsets: ['latin'],
@@ -11,6 +13,8 @@ const nunito = Nunito({
   display: 'swap',
 });
 
+const PLATFORM_TENANT_ID = process.env.NEXT_PUBLIC_PLATFORM_TENANT_ID || 'harvest';
+
 export const viewport: Viewport = {
   themeColor: '#D4AF37',
   viewportFit: 'cover',
@@ -18,16 +22,36 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-export const metadata: Metadata = {
-  title: 'Harvest',
-  description: 'Harvest App',
-  manifest: '/manifest.json',
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: 'default',
-    title: 'Harvest',
-  },
-};
+// Per-tenant metadata: white-label subdomains get THEIR name + logo on the
+// install prompt / home-screen icon (Android via the manifest; iOS via
+// apple-touch-icon, which ignores the manifest). Root/platform/unknown hosts
+// fall back to Harvest branding.
+export async function generateMetadata(): Promise<Metadata> {
+  const headersList = await headers();
+  const host = headersList.get('host') || '';
+  const tenant = await getTenantFromHost(host);
+
+  const isWhiteLabel = !!tenant && tenant.id !== PLATFORM_TENANT_ID;
+  const logo = tenant?.config?.logo;
+  const name = isWhiteLabel && tenant!.name ? tenant!.name : 'Harvest';
+
+  return {
+    title: name,
+    description: 'Harvest App',
+    manifest: '/manifest.webmanifest',
+    appleWebApp: {
+      capable: true,
+      statusBarStyle: 'default',
+      title: name,
+    },
+    icons: {
+      // Apple devices use apple-touch-icon (not the manifest) for
+      // "Add to Home Screen", so point it at the tenant logo when available.
+      icon: isWhiteLabel && logo ? logo : '/icons/icon-96x96.png',
+      apple: isWhiteLabel && logo ? logo : '/icons/icon-192x192.png',
+    },
+  };
+}
 
 export default function RootLayout({
   children,
@@ -37,8 +61,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={cn("scroll-smooth font-sans", nunito.variable)} suppressHydrationWarning>
       <head>
-        <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
-        <link rel="icon" href="/icons/icon-96x96.png" />
+        {/* apple-touch-icon / icon are emitted dynamically via generateMetadata() */}
         <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block" rel="stylesheet" />
         <script src="/sw-cache-buster.js" defer />
       </head>
