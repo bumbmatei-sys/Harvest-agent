@@ -144,7 +144,7 @@ const CampaignWidget: React.FC<CampaignWidgetProps> = ({ onDonate }) => {
 
   return (
     <>
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-4">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-4 lg:rounded-[var(--ds-radius-card)] lg:shadow-[var(--ds-sh-sm)]">
         {campaign.coverImage && (
           <div className="relative h-40 bg-gray-100">
             <Image src={campaign.coverImage} alt={campaign.title} fill sizes="(max-width: 768px) 100vw, 800px" className="object-cover" referrerPolicy="no-referrer" />
@@ -156,7 +156,7 @@ const CampaignWidget: React.FC<CampaignWidgetProps> = ({ onDonate }) => {
             )}
           </div>
         )}
-        <div className="p-4">
+        <div className="p-4 lg:p-5">
           {!campaign.coverImage && daysLeft !== null && (
             <div className="flex items-center gap-1 text-xs font-semibold mb-2" style={{ color: 'var(--brand-color, #d4a017)' }}>
               <Clock size={12} />

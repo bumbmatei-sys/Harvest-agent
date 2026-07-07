@@ -1,7 +1,6 @@
 "use client";
-import React, { useEffect, useState } from 'react';
-import { doc, onSnapshot } from 'firebase/firestore';
-import { db } from '../firebase';
+import React from 'react';
+import { useLiveNow } from '../hooks/useLiveNow';
 
 interface LiveNowBannerProps {
   tenantId: string | null;
@@ -10,22 +9,7 @@ interface LiveNowBannerProps {
 
 /** Gold pulsing "Live Now" banner shown at the top of Home when a stream is active. */
 const LiveNowBanner: React.FC<LiveNowBannerProps> = ({ tenantId, onOpen }) => {
-  const [active, setActive] = useState(false);
-  const [title, setTitle] = useState('');
-
-  useEffect(() => {
-    if (!tenantId) return;
-    const unsub = onSnapshot(
-      doc(db, 'tenants', tenantId, 'livestream', 'current'),
-      (snap) => {
-        const data = snap.data();
-        setActive(!!data?.active);
-        setTitle(data?.title || 'Live Now');
-      },
-      () => setActive(false),
-    );
-    return () => unsub();
-  }, [tenantId]);
+  const { active, title } = useLiveNow(tenantId);
 
   if (!active) return null;
 
