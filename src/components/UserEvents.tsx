@@ -96,7 +96,7 @@ const UserEvents: React.FC<UserEventsProps> = ({ onBack }) => {
         <button onClick={onBack} className="p-1.5 rounded-lg hover:bg-gray-100">
           <ArrowLeft size={18} className="text-gray-600" />
         </button>
-        <h2 className="text-lg font-bold text-gray-900">My Events</h2>
+        <h2 className="font-display text-lg font-bold text-gray-900">My Events</h2>
       </div>
 
       <div className="flex-1 p-4">

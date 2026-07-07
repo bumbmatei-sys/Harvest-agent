@@ -1,15 +1,31 @@
 import type { Metadata, Viewport } from 'next';
 import { headers } from 'next/headers';
 import Script from 'next/script';
-import { Nunito } from 'next/font/google';
+import { Inter, Fraunces, Newsreader } from 'next/font/google';
 import './globals.css';
 import { cn } from "@/lib/utils";
 import { getTenantFromHost } from '@/lib/server-tenant';
 
-const nunito = Nunito({
+const inter = Inter({
   subsets: ['latin'],
-  weight: ['400', '500', '600', '700', '800', '900'],
+  weight: ['400', '500', '600', '700', '800'],
   variable: '--font-sans',
+  display: 'swap',
+});
+
+// Serif display face for headings — matches the marketing site.
+const fraunces = Fraunces({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-display',
+  display: 'swap',
+});
+
+// Reading serif — loaded now for a later phase (Bible/reading screens); not yet applied.
+const newsreader = Newsreader({
+  subsets: ['latin'],
+  weight: ['400', '500', '600'],
+  variable: '--font-serif',
   display: 'swap',
 });
 
@@ -59,7 +75,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={cn("scroll-smooth font-sans", nunito.variable)} suppressHydrationWarning>
+    <html lang="en" className={cn("scroll-smooth font-sans", inter.variable, fraunces.variable, newsreader.variable)} suppressHydrationWarning>
       <head>
         {/* apple-touch-icon / icon are emitted dynamically via generateMetadata() */}
         <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block" rel="stylesheet" />

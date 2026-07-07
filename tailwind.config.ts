@@ -23,7 +23,9 @@ const config: Config = {
         "gold-gradient": "var(--background-image-gold-gradient)",
       },
       fontFamily: {
-        sans: ["var(--font-sans)"],
+        sans: ["var(--font-sans)", "system-ui", "sans-serif"],
+        display: ["var(--font-display)", "Georgia", "serif"],
+        serif: ["var(--font-serif)", "Georgia", "serif"],
       },
     },
   },
