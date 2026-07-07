@@ -458,6 +458,11 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
   // Desktop rail: compact companion to the "Upcoming Events" section below.
   const upcomingRailEvents = adminEvents.filter(e => !e.pinned).slice(0, 4);
 
+  // Desktop greeting hero: real logged-in user only, time-of-day from the client clock.
+  const greetingHour = new Date().getHours();
+  const timeOfDay = greetingHour < 12 ? 'morning' : greetingHour < 18 ? 'afternoon' : 'evening';
+  const firstName = auth.currentUser?.displayName?.trim().split(/\s+/)[0] || null;
+
   if (loading) {
     return (
       <div className="flex justify-center py-12">
@@ -467,7 +472,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
   }
 
   const mainColumn = (
-    <div className="space-y-4 w-full">
+    <div className="space-y-4 lg:space-y-3 w-full">
       {/* Fundraising campaign widget — pinned at the top, disappears when no campaign is active */}
       <CampaignWidget />
 
@@ -479,10 +484,10 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
               <Image src={event.coverImage} alt={event.title} fill sizes="(max-width:768px) 100vw, 800px" className="object-cover" referrerPolicy="no-referrer" />
             </div>
           )}
-          <div className="p-4 lg:p-5">
+          <div className="p-4">
             <span className="inline-flex items-center text-[10px] font-bold text-gold bg-[color-mix(in_srgb,var(--brand-color)_15%,white)] px-2 py-0.5 rounded-full mb-2">Pinned Event</span>
-            <h3 className="font-bold text-gray-900 text-base mb-1">{event.title}</h3>
-            {event.description ? <p className="text-sm text-gray-500 line-clamp-2 mb-3">{event.description}</p> : null}
+            <h3 className="font-bold text-gray-900 text-base lg:text-sm mb-1">{event.title}</h3>
+            {event.description ? <p className="text-sm lg:text-xs text-gray-500 line-clamp-2 mb-3">{event.description}</p> : null}
             <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 mb-3">
               {event.startDate && <span className="flex items-center gap-1"><CalendarIcon size={12} />{fmtEventDate(event.startDate)}</span>}
               {event.isOnline
@@ -492,7 +497,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
             </div>
             <button
               onClick={() => { window.location.href = `/event/${event.id}`; }}
-              className="w-full py-2 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
+              className="w-full py-2 lg:py-1.5 rounded-xl text-sm lg:text-xs font-semibold text-white transition-opacity hover:opacity-90"
               style={{ backgroundColor: 'var(--brand-color, #e6b325)' }}
             >
               Register
@@ -502,9 +507,9 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
       ))}
 
       <div className="flex items-center justify-between px-1 mb-2">
-        <h2 className="text-xl font-bold text-gray-900 font-display">News & Updates</h2>
+        <h2 className="text-xl lg:text-lg font-bold text-gray-900 font-display">News & Updates</h2>
         {posts.length >= 3 && (
-          <button 
+          <button
             onClick={onOpenAllNews}
             className="flex items-center gap-1 text-sm font-medium text-gold hover:text-[color-mix(in_srgb,var(--brand-color)_85%,black)] transition-colors"
           >
@@ -517,7 +522,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
         <div className="text-center py-12 text-gray-500">No news yet.</div>
       ) : (
         posts.map((post, index) => (
-          <div key={post.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 lg:p-5 lg:rounded-[var(--ds-radius-card)] lg:shadow-[var(--ds-sh-sm)]">
+          <div key={post.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 lg:rounded-[var(--ds-radius-card)] lg:shadow-[var(--ds-sh-sm)]">
             <div className="flex justify-between items-start mb-3">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden flex items-center justify-center font-bold text-gray-600 relative">
@@ -541,7 +546,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
               </div>
             </div>
 
-            <p className="text-gray-800 text-sm whitespace-pre-wrap mb-3">
+            <p className="text-gray-800 text-sm lg:text-[13px] whitespace-pre-wrap mb-3">
               {post.content}
             </p>
 
@@ -721,9 +726,9 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
         ))
       )}
 
-      {/* Upcoming Events (non-pinned) */}
+      {/* Upcoming Events (non-pinned) — mobile only; desktop shows the compact rail version instead */}
       {adminEvents.filter(e => !e.pinned).length > 0 && (
-        <div className="mt-4">
+        <div className="mt-4 lg:hidden">
           <h2 className="text-xl font-bold text-gray-900 px-1 mb-3 font-display">Upcoming Events</h2>
           <div className="space-y-3">
             {adminEvents.filter(e => !e.pinned).map(event => (
@@ -757,9 +762,9 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
         </div>
       )}
 
-      {/* Latest Articles Section */}
+      {/* Latest Articles Section — mobile only; desktop shows the compact rail version instead */}
       {articles.length > 0 && (
-        <div className="mt-8">
+        <div className="mt-8 lg:hidden">
           <div className="flex items-center justify-between px-1 mb-4">
             <h2 className="text-xl font-bold text-gray-900 font-display">Latest Articles</h2>
           </div>
@@ -826,7 +831,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
   );
 
   const rail = (
-    <div className="hidden lg:flex lg:flex-col lg:gap-4 lg:sticky lg:top-4">
+    <div className="hidden lg:flex lg:flex-col lg:gap-3 lg:sticky lg:top-4">
       {isLive && (
         <DesktopCard elevation="sm" className="p-4">
           <button onClick={onOpenLivestream} className="w-full flex items-center gap-3 text-left">
@@ -880,12 +885,41 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
         </DesktopCard>
       )}
 
-      <DesktopCard elevation="sm" className="p-5 text-center">
+      {articles.length > 0 && (
+        <DesktopCard elevation="sm" className="p-4">
+          <h3 className="font-bold text-gray-900 text-sm mb-3 font-display">Latest Articles</h3>
+          <div className="space-y-3">
+            {articles.slice(0, 4).map(post => (
+              <button
+                key={post.id}
+                onClick={() => onOpenArticle(post)}
+                className="w-full flex items-start gap-3 text-left group"
+              >
+                {post.featuredImage ? (
+                  <div className="w-11 h-11 rounded-lg overflow-hidden bg-gray-100 shrink-0 relative">
+                    <Image src={post.featuredImage} alt={post.title} fill sizes="44px" className="object-cover" referrerPolicy="no-referrer" />
+                  </div>
+                ) : (
+                  <div className="w-11 h-11 rounded-lg bg-gray-50 shrink-0 flex items-center justify-center">
+                    <FileText size={16} className="text-gray-300" />
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-gray-900 line-clamp-2 group-hover:text-gold transition-colors">{post.title}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">{formatArticleDate(post.publishedAt || post.createdAt)}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        </DesktopCard>
+      )}
+
+      <DesktopCard elevation="sm" className="p-4 text-center">
         <div className="w-11 h-11 mx-auto rounded-full flex items-center justify-center mb-3" style={{ backgroundColor: 'color-mix(in srgb, var(--brand-color) 12%, white)' }}>
           <HeartHandshake size={20} className="text-gold" />
         </div>
         <h3 className="font-bold text-gray-900 text-sm mb-1 font-display">Partner with Us</h3>
-        <p className="text-xs text-gray-500 mb-4 leading-relaxed">Your generosity keeps this ministry moving forward.</p>
+        <p className="text-xs text-gray-500 mb-3 leading-relaxed">Your generosity keeps this ministry moving forward.</p>
         <button
           onClick={onGoToPartner}
           className="w-full py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
@@ -899,6 +933,14 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
 
   return (
     <div className="w-full space-y-4 pb-8">
+      {/* Desktop greeting hero — Phase 1.6, lg:-only, real user data (no fake stats) */}
+      <div className="hidden lg:block">
+        <h1 className="font-display text-2xl font-bold text-gray-900">
+          {firstName ? `Good ${timeOfDay}, ${firstName}` : 'Welcome'}
+        </h1>
+        <p className="text-sm text-gray-500 mt-1">Here&apos;s what&apos;s happening this week.</p>
+      </div>
+
       {errorMessage && (
         <div className="bg-red-50 text-red-600 p-3 rounded-xl text-sm font-medium border border-red-100 mx-1">
           {errorMessage}
