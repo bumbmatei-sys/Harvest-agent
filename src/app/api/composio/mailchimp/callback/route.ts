@@ -28,6 +28,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL('/?mailchimp_error=invalid_state', baseUrl));
   }
 
+  // tenantId is known from here on, so route back to the tenant's own subdomain
+  // (e.g. bumb.theharvest.app) instead of the apex — otherwise the user loses
+  // tenant context after completing OAuth.
+  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'theharvest.app';
+  const tenantBaseUrl = `https://${tenantId}.${rootDomain}`;
+
   const tenantRef = adminDb.collection('tenants').doc(tenantId);
   const integrationRef = tenantRef.collection('integrations').doc(`${uid}_mailchimp`);
 
@@ -44,14 +50,14 @@ export async function GET(request: NextRequest) {
     searchParams.get('connectedAccountId') ??
     null;
   if (!connectedAccountId) {
-    return NextResponse.redirect(new URL('/?mailchimp_error=missing_connection_id', baseUrl));
+    return NextResponse.redirect(new URL('/admin/settings?mailchimp_error=missing_connection_id', tenantBaseUrl));
   }
 
   try {
     const connectionStatus = await getConnectionStatus(connectedAccountId);
     if (connectionStatus.status.toUpperCase() !== 'ACTIVE') {
       await updateIntegrationStatus(tenantId, uid, connectedAccountId, 'failed');
-      return NextResponse.redirect(new URL('/?mailchimp_error=connection_not_active', baseUrl));
+      return NextResponse.redirect(new URL('/admin/settings?mailchimp_error=connection_not_active', tenantBaseUrl));
     }
 
     let email = '';
@@ -88,10 +94,10 @@ export async function GET(request: NextRequest) {
       await tenantRef.update({ primaryMailchimpAdmin: uid });
     }
 
-    return NextResponse.redirect(new URL('/?mailchimp_connected=true', baseUrl));
+    return NextResponse.redirect(new URL('/admin/settings?mailchimp_connected=true', tenantBaseUrl));
   } catch (error) {
     console.error('Mailchimp callback error:', error);
-    return NextResponse.redirect(new URL('/?mailchimp_error=callback_failed', baseUrl));
+    return NextResponse.redirect(new URL('/admin/settings?mailchimp_error=callback_failed', tenantBaseUrl));
   }
 }
 
