@@ -194,7 +194,7 @@ const AdminChurches: React.FC = () => {
     return (
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="p-4 border-b border-gray-100 flex justify-between items-center">
-          <h2 className="text-xl font-bold text-gray-900">
+          <h2 className="text-xl font-bold text-gray-900 font-display">
             {isAdding ? 'Add Church' : 'Edit Church'}
           </h2>
           <button 
@@ -244,7 +244,7 @@ const AdminChurches: React.FC = () => {
               <div className="w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center">
                 <DollarSign size={20} className="text-yellow-600" />
               </div>
-              <h3 className="text-xl font-bold text-gray-900">Adding a New Church</h3>
+              <h3 className="text-xl font-bold text-gray-900 font-display">Adding a New Church</h3>
             </div>
             <p className="text-gray-600 mb-6">
               Each additional church added to your organization will increase your monthly plan by{' '}
@@ -330,7 +330,7 @@ const AdminChurches: React.FC = () => {
                 <tr>
                   <td colSpan={4} className="p-8 text-center text-gray-500">
                     <Church size={48} className="mx-auto mb-4 opacity-20" />
-                    <p>No churches found matching your filters.</p>
+                    <p className="font-display">No churches found matching your filters.</p>
                   </td>
                 </tr>
               ) : (
@@ -374,7 +374,7 @@ const AdminChurches: React.FC = () => {
       {deleteConfirmId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
           <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-xl">
-            <h3 className="text-xl font-bold text-gray-900 mb-2">Delete Church</h3>
+            <h3 className="text-xl font-bold text-gray-900 mb-2 font-display">Delete Church</h3>
             <p className="text-gray-600 mb-6">
               Are you sure you want to delete this church? This action cannot be undone.
               {isMinistry && churches.find(c => c.id === deleteConfirmId)?.stripeSubscriptionItemId && (
@@ -405,7 +405,7 @@ const AdminChurches: React.FC = () => {
       {activeFilterPopup && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-6">
-            <h3 className="text-lg font-bold text-gray-900 mb-4 capitalize">
+            <h3 className="text-lg font-bold text-gray-900 mb-4 capitalize font-display">
               Filter by {activeFilterPopup}
             </h3>
             <input
@@ -522,7 +522,7 @@ const AnnouncementsSection: React.FC<{ churchId: string }> = ({ churchId }) => {
 
   return (
     <div className="border-t border-gray-100 p-4">
-      <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+      <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2 font-display">
         <Megaphone size={18} className="text-gold" />
         Announcements
       </h3>
@@ -559,7 +559,7 @@ const AnnouncementsSection: React.FC<{ churchId: string }> = ({ churchId }) => {
           <div className="w-6 h-6 border-4 border-[color-mix(in_srgb,var(--brand-color)_30%,transparent)] border-t-gold rounded-full animate-spin"></div>
         </div>
       ) : announcements.length === 0 ? (
-        <p className="text-sm text-gray-500 text-center py-4">No announcements yet</p>
+        <p className="text-sm text-gray-500 text-center py-4 font-display">No announcements yet</p>
       ) : (
         <div className="space-y-3">
           {announcements.map((a) => (

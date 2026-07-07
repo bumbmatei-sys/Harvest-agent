@@ -479,7 +479,7 @@ const AdminEvents: React.FC = () => {
                   {/* Ticket Types */}
                   <div>
                     <div className="flex items-center justify-between mb-2">
-                      <h4 className="text-xs font-bold text-gray-700 flex items-center gap-1.5"><Ticket size={13} /> Ticket Types</h4>
+                      <h4 className="text-xs font-bold text-gray-700 flex items-center gap-1.5 font-display"><Ticket size={13} /> Ticket Types</h4>
                       {!showTicketForm && (
                         <button onClick={() => { setTicketDraft(emptyTicket); setShowTicketForm(true); }}
                           className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50">
@@ -545,7 +545,7 @@ const AdminEvents: React.FC = () => {
                   {/* Discount Codes */}
                   <div>
                     <div className="flex items-center justify-between mb-2">
-                      <h4 className="text-xs font-bold text-gray-700 flex items-center gap-1.5"><Tag size={13} /> Discount Codes</h4>
+                      <h4 className="text-xs font-bold text-gray-700 flex items-center gap-1.5 font-display"><Tag size={13} /> Discount Codes</h4>
                       {!showDiscountForm && (
                         <button onClick={() => { setDiscountDraft(emptyDiscount); setShowDiscountForm(true); }}
                           className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50">
@@ -646,7 +646,7 @@ const AdminEvents: React.FC = () => {
       <div className="max-w-3xl mx-auto">
         <div className="flex items-center justify-between mb-5">
           <div>
-            <h2 className="text-xl font-bold text-gray-900 truncate">{selected.title}</h2>
+            <h2 className="text-xl font-bold text-gray-900 truncate font-display">{selected.title}</h2>
             <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${STATUS_COLORS[selected.status]}`}>
               {selected.status}
             </span>
@@ -680,7 +680,7 @@ const AdminEvents: React.FC = () => {
         {/* Registration panel — only for registration-enabled events */}
         {selected.registrationEnabled && (
           <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm mb-5">
-            <h3 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-1.5"><Ticket size={14} /> Public Registration</h3>
+            <h3 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-1.5 font-display"><Ticket size={14} /> Public Registration</h3>
             <div className="grid sm:grid-cols-[auto_1fr] gap-4 items-start">
               <div className="text-center">
                 {qrDataUrl ? (
@@ -748,7 +748,7 @@ const AdminEvents: React.FC = () => {
         {filteredRegs.length === 0 ? (
           <div className="text-center py-12 text-gray-400">
             <Users size={32} className="mx-auto mb-2 opacity-30" />
-            <p className="text-sm">{regSearch ? 'No attendees match' : 'No registrations yet'}</p>
+            <p className="text-sm font-display">{regSearch ? 'No attendees match' : 'No registrations yet'}</p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -810,7 +810,7 @@ const AdminEvents: React.FC = () => {
       {events.length === 0 ? (
         <div className="text-center py-16 text-gray-400">
           <CalendarCheck size={40} className="mx-auto mb-3 opacity-30" />
-          <p className="font-medium">No events yet</p>
+          <p className="font-medium font-display">No events yet</p>
           <p className="text-sm mt-1">Create your first event to start accepting registrations</p>
         </div>
       ) : (
@@ -880,7 +880,7 @@ const AdminEvents: React.FC = () => {
       {deleteId && (
         <div className="fixed inset-0 z-[210] flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white rounded-2xl p-6 w-full max-w-sm text-center">
-            <p className="font-bold text-gray-900 mb-2">Delete this event?</p>
+            <p className="font-bold text-gray-900 mb-2 font-display">Delete this event?</p>
             <p className="text-sm text-gray-500 mb-5">Registrations will not be deleted automatically.</p>
             <div className="flex gap-3">
               <button onClick={() => setDeleteId(null)} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600">Cancel</button>
