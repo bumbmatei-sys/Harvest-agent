@@ -3,11 +3,13 @@ import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { collection, query, orderBy, onSnapshot, doc, updateDoc, arrayUnion, arrayRemove, limit, where, getDoc, addDoc, deleteDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { db, auth } from '../firebase';
-import { Calendar as CalendarIcon, ThumbsUp, Check, ChevronRight, FileText, Tag, Calendar, MessageSquare, Send, Trash2, MapPin, Globe } from 'lucide-react';
+import { Calendar as CalendarIcon, ThumbsUp, Check, ChevronRight, FileText, Tag, Calendar, MessageSquare, Send, Trash2, MapPin, Globe, HeartHandshake } from 'lucide-react';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { getTenantScope } from '../utils/tenant-scope';
 import CampaignWidget from './CampaignWidget';
 import { sortByTime } from '../utils/query-helpers';
+import { TwoColumnLayout, DesktopCard } from './layout/DesktopLayout';
+import { useLiveNow } from '../hooks/useLiveNow';
 
 interface Comment {
   id: string;
@@ -84,9 +86,15 @@ interface AdminEvent {
 interface NewsTabProps {
   onOpenAllNews: () => void;
   onOpenArticle: (post: BlogPost) => void;
+  /** Tenant scope for the desktop rail's "Live Now" card. Optional — the card is simply omitted without it. */
+  tenantId?: string | null;
+  /** Opens the full-screen livestream view; used by the desktop rail's "Live Now" card. */
+  onOpenLivestream?: () => void;
+  /** Navigates to the "Partner with Us" top-tab; used by the desktop rail's Give card. */
+  onGoToPartner?: () => void;
 }
 
-const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle }) => {
+const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantId = null, onOpenLivestream, onGoToPartner }) => {
   const [allPosts, setAllPosts] = useState<CommunityPost[]>([]);
   const [articles, setArticles] = useState<BlogPost[]>([]);
   const [adminEvents, setAdminEvents] = useState<AdminEvent[]>([]);
@@ -444,6 +452,12 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle }) => {
     return true;
   }).slice(0, 3);
 
+  // Desktop rail: same live state the top-of-feed LiveNowBanner uses.
+  const { active: isLive, title: liveTitle } = useLiveNow(tenantId);
+
+  // Desktop rail: compact companion to the "Upcoming Events" section below.
+  const upcomingRailEvents = adminEvents.filter(e => !e.pinned).slice(0, 4);
+
   if (loading) {
     return (
       <div className="flex justify-center py-12">
@@ -452,26 +466,20 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle }) => {
     );
   }
 
-  return (
-    <div className="space-y-4 pb-8 lg:max-w-5xl lg:mx-auto w-full">
-      {errorMessage && (
-        <div className="bg-red-50 text-red-600 p-3 rounded-xl text-sm font-medium border border-red-100 mx-1">
-          {errorMessage}
-        </div>
-      )}
-
+  const mainColumn = (
+    <div className="space-y-4 w-full">
       {/* Fundraising campaign widget — pinned at the top, disappears when no campaign is active */}
       <CampaignWidget />
 
       {/* Pinned events from AdminEvents system */}
       {adminEvents.filter(e => e.pinned).map(event => (
-        <div key={event.id} className="bg-white rounded-2xl shadow-sm border border-[color-mix(in_srgb,var(--brand-color)_30%,transparent)] overflow-hidden">
+        <div key={event.id} className="bg-white rounded-2xl shadow-sm border border-[color-mix(in_srgb,var(--brand-color)_30%,transparent)] overflow-hidden lg:rounded-[var(--ds-radius-card)] lg:shadow-[var(--ds-sh-sm)]">
           {event.coverImage && (
             <div className="relative h-36 bg-gray-100">
               <Image src={event.coverImage} alt={event.title} fill sizes="(max-width:768px) 100vw, 800px" className="object-cover" referrerPolicy="no-referrer" />
             </div>
           )}
-          <div className="p-4">
+          <div className="p-4 lg:p-5">
             <span className="inline-flex items-center text-[10px] font-bold text-gold bg-[color-mix(in_srgb,var(--brand-color)_15%,white)] px-2 py-0.5 rounded-full mb-2">Pinned Event</span>
             <h3 className="font-bold text-gray-900 text-base mb-1">{event.title}</h3>
             {event.description ? <p className="text-sm text-gray-500 line-clamp-2 mb-3">{event.description}</p> : null}
@@ -509,7 +517,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle }) => {
         <div className="text-center py-12 text-gray-500">No news yet.</div>
       ) : (
         posts.map((post, index) => (
-          <div key={post.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+          <div key={post.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 lg:p-5 lg:rounded-[var(--ds-radius-card)] lg:shadow-[var(--ds-sh-sm)]">
             <div className="flex justify-between items-start mb-3">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden flex items-center justify-center font-bold text-gray-600 relative">
@@ -719,13 +727,13 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle }) => {
           <h2 className="text-xl font-bold text-gray-900 px-1 mb-3 font-display">Upcoming Events</h2>
           <div className="space-y-3">
             {adminEvents.filter(e => !e.pinned).map(event => (
-              <div key={event.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+              <div key={event.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden lg:rounded-[var(--ds-radius-card)] lg:shadow-[var(--ds-sh-sm)]">
                 {event.coverImage && (
                   <div className="relative h-32 bg-gray-100">
                     <Image src={event.coverImage} alt={event.title} fill sizes="(max-width:768px) 100vw, 800px" className="object-cover" referrerPolicy="no-referrer" />
                   </div>
                 )}
-                <div className="p-4">
+                <div className="p-4 lg:p-5">
                   <h3 className="font-bold text-gray-900 text-base mb-1">{event.title}</h3>
                   {event.description ? <p className="text-sm text-gray-500 line-clamp-2 mb-3">{event.description}</p> : null}
                   <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 mb-3">
@@ -760,7 +768,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle }) => {
               <article 
                 key={post.id} 
                 onClick={() => onOpenArticle(post)}
-                className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-row items-center gap-3 p-2.5 sm:p-3 transition-transform hover:scale-[1.02] duration-300 cursor-pointer"
+                className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-row items-center gap-3 p-2.5 sm:p-3 transition-transform hover:scale-[1.02] duration-300 cursor-pointer lg:rounded-[var(--ds-radius-card)] lg:shadow-[var(--ds-sh-sm)]"
               >
                 {post.featuredImage ? (
                   <div className="w-16 h-16 sm:w-20 sm:h-20 flex-shrink-0 overflow-hidden rounded-lg bg-gray-100 relative">
@@ -814,6 +822,90 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle }) => {
           </div>
         </div>
       )}
+    </div>
+  );
+
+  const rail = (
+    <div className="hidden lg:flex lg:flex-col lg:gap-4 lg:sticky lg:top-4">
+      {isLive && (
+        <DesktopCard elevation="sm" className="p-4">
+          <button onClick={onOpenLivestream} className="w-full flex items-center gap-3 text-left">
+            <span className="relative flex h-3 w-3 shrink-0">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ backgroundColor: 'var(--brand-color, #e6b325)' }} />
+              <span className="relative inline-flex rounded-full h-3 w-3" style={{ backgroundColor: 'var(--brand-color, #e6b325)' }} />
+            </span>
+            <span className="flex-1 min-w-0">
+              <span className="block font-bold text-sm text-gray-900">Live Now</span>
+              <span className="block text-xs text-gray-500 truncate">{liveTitle}</span>
+            </span>
+            <span className="text-xs font-semibold text-white rounded-full px-2.5 py-1 shrink-0" style={{ backgroundColor: 'var(--brand-color, #e6b325)' }}>
+              Watch
+            </span>
+          </button>
+        </DesktopCard>
+      )}
+
+      {upcomingRailEvents.length > 0 && (
+        <DesktopCard elevation="sm" className="p-4">
+          <h3 className="font-bold text-gray-900 text-sm mb-3 font-display">Upcoming Events</h3>
+          <div className="space-y-3">
+            {upcomingRailEvents.map(event => (
+              <button
+                key={event.id}
+                onClick={() => { window.location.href = `/event/${event.id}`; }}
+                className="w-full flex items-start gap-3 text-left group"
+              >
+                <div className="bg-gray-50 border border-gray-100 rounded-lg px-2 py-1.5 text-center shrink-0 min-w-[44px]">
+                  {event.startDate ? (
+                    <>
+                      <div className="text-[9px] font-bold uppercase text-gold">{event.startDate.toDate().toLocaleString('default', { month: 'short' })}</div>
+                      <div className="text-sm font-bold text-gray-900 leading-none mt-0.5">{event.startDate.toDate().getDate()}</div>
+                    </>
+                  ) : (
+                    <CalendarIcon size={14} className="text-gray-300 mx-auto" />
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-gray-900 truncate group-hover:text-gold transition-colors">{event.title}</p>
+                  {(event.isOnline || event.location) && (
+                    <p className="text-xs text-gray-500 truncate flex items-center gap-1 mt-0.5">
+                      {event.isOnline ? <Globe size={10} className="shrink-0" /> : <MapPin size={10} className="shrink-0" />}
+                      {event.isOnline ? 'Online' : event.location}
+                    </p>
+                  )}
+                </div>
+              </button>
+            ))}
+          </div>
+        </DesktopCard>
+      )}
+
+      <DesktopCard elevation="sm" className="p-5 text-center">
+        <div className="w-11 h-11 mx-auto rounded-full flex items-center justify-center mb-3" style={{ backgroundColor: 'color-mix(in srgb, var(--brand-color) 12%, white)' }}>
+          <HeartHandshake size={20} className="text-gold" />
+        </div>
+        <h3 className="font-bold text-gray-900 text-sm mb-1 font-display">Partner with Us</h3>
+        <p className="text-xs text-gray-500 mb-4 leading-relaxed">Your generosity keeps this ministry moving forward.</p>
+        <button
+          onClick={onGoToPartner}
+          className="w-full py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
+          style={{ backgroundColor: 'var(--brand-color, #e6b325)' }}
+        >
+          Give Now
+        </button>
+      </DesktopCard>
+    </div>
+  );
+
+  return (
+    <div className="w-full space-y-4 pb-8">
+      {errorMessage && (
+        <div className="bg-red-50 text-red-600 p-3 rounded-xl text-sm font-medium border border-red-100 mx-1">
+          {errorMessage}
+        </div>
+      )}
+
+      <TwoColumnLayout main={mainColumn} rail={rail} />
 
       {/* Event Attendance Modal */}
       {attendingPostId && (

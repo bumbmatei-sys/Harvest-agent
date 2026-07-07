@@ -25,6 +25,7 @@ import { useAppStore } from '../store/useAppStore';
 import { useTenant } from '../contexts/TenantContext';
 import LiveNowBanner from './LiveNowBanner';
 import LivestreamView from './LivestreamView';
+import { DesktopContainer } from './layout/DesktopLayout';
 
 const PLATFORM_TENANT_ID = process.env.NEXT_PUBLIC_PLATFORM_TENANT_ID || 'harvest';
 const DEFAULT_LOGO = 'https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png';
@@ -297,7 +298,8 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
         {/* Top Navigation (only visible when Home is active) */}
         {activeBottomTab === 'home' && (
           <div className="bg-white pt-3 pb-0 px-4 shadow-sm z-10 flex-shrink-0 transition-colors duration-300">
-            <div ref={topTabsRef} className="flex overflow-x-auto gap-6 pb-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] snap-x scroll-smooth lg:max-w-5xl lg:mx-auto w-full">
+            <DesktopContainer>
+            <div ref={topTabsRef} className="flex overflow-x-auto gap-6 pb-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] snap-x scroll-smooth w-full">
               {topTabs.map((tab) => (
                 <button
                   key={tab.id}
@@ -315,6 +317,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
                 </button>
               ))}
             </div>
+            </DesktopContainer>
           </div>
         )}
 
@@ -322,7 +325,8 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
         <ErrorBoundary>
         <div className={`flex-1 overflow-x-hidden relative ${activeBottomTab === 'map' ? '' : (activeBottomTab === 'chat' || (activeBottomTab === 'home' && activeTopTab === 'messages')) ? 'overflow-hidden pb-[65px] lg:pb-0' : 'overflow-y-auto pb-24 lg:pb-0'}`} onScroll={handleScroll}>
           {activeBottomTab === 'home' ? (
-            <div className="relative w-full h-full lg:max-w-5xl lg:mx-auto">
+            <DesktopContainer className="h-full">
+            <div className="relative w-full h-full">
               <AnimatePresence initial={false} custom={direction} mode="popLayout">
                 <motion.div
                   key={activeTopTab}
@@ -346,8 +350,11 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
                     <>
                       <LiveNowBanner tenantId={tenantId} onOpen={() => setFullScreenView({ type: 'livestream' })} />
                       <NewsTab
+                        tenantId={tenantId}
                         onOpenAllNews={() => setFullScreenView({type: 'all-news'})}
                         onOpenArticle={(post) => setFullScreenView({type: 'article', data: post})}
+                        onOpenLivestream={() => setFullScreenView({ type: 'livestream' })}
+                        onGoToPartner={() => setActiveTopTab('partner')}
                       />
                     </>
                   )}
@@ -376,6 +383,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
                 </motion.div>
               </AnimatePresence>
             </div>
+            </DesktopContainer>
           ) : activeBottomTab === 'profile' ? (
             <div className="w-full lg:max-w-5xl lg:mx-auto">
               <Profile
