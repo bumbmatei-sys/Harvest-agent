@@ -327,7 +327,6 @@ export default function AdminRAG() {
  return (
  <div style={s.root}>
  <style>{`
- @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap');
  *{box-sizing:border-box;margin:0;padding:0;}
  textarea::placeholder,input::placeholder{color:#BBBBBB;}
  textarea,input,select{outline:none;}
@@ -598,7 +597,7 @@ export default function AdminRAG() {
 
 // ── Styles ─────────────────────────────────────
 const s: Record<string, React.CSSProperties> = {
- root: { fontFamily:"'Nunito',sans-serif", background:BG, minHeight:"100vh", color:TEXT },
+ root: { fontFamily:"var(--font-sans), system-ui, sans-serif", background:BG, minHeight:"100vh", color:TEXT },
  topBar: { display:"flex", justifyContent:"space-between", alignItems:"center", padding:"14px 20px", background:CARD, borderBottom:`1px solid ${BORDER}`, boxShadow:"0 1px 4px rgba(0,0,0,0.06)" },
  logoCircle: { width:36, height:36, borderRadius:"50%", background:GOLD_LIGHT, display:"flex", alignItems:"center", justifyContent:"center", fontSize:18, border:`1.5px solid ${GOLD}`, marginRight:10, flexShrink:0 },
  pageTitle: { fontSize:26, fontWeight:800, color:TEXT, letterSpacing:"-0.3px" },

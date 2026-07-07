@@ -43,7 +43,7 @@ export default async function PublicFormPage({
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#F7F6F3] p-6">
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 max-w-md text-center">
-          <h1 className="text-lg font-bold text-gray-900 mb-2">{tenant.name}</h1>
+          <h1 className="font-display text-lg font-bold text-gray-900 mb-2">{tenant.name}</h1>
           <p className="text-gray-600">This form is no longer accepting responses.</p>
         </div>
       </div>

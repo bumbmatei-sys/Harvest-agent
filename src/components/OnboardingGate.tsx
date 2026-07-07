@@ -20,7 +20,7 @@ const CenteredScreen: React.FC<{ title: string; subtitle?: string; spin?: boolea
     {/* eslint-disable-next-line @next/next/no-img-element */}
     <img src={HARVEST_LOGO} alt="Harvest" className="h-16 w-auto object-contain mb-6" />
     {spin && <Loader2 size={32} className="animate-spin mb-4" style={{ color: BRAND }} />}
-    <h1 className="text-xl font-semibold text-gray-900">{title}</h1>
+    <h1 className="text-xl font-semibold text-gray-900 font-display">{title}</h1>
     {subtitle && <p className="text-sm text-gray-500 mt-2 max-w-sm">{subtitle}</p>}
   </div>
 );
@@ -178,7 +178,7 @@ const OnboardingGate: React.FC<{ children: React.ReactNode }> = ({ children }) =
       <div className="w-14 h-14 rounded-full flex items-center justify-center mb-4" style={{ background: 'color-mix(in srgb, var(--brand-color, #B8962E) 12%, white)' }}>
         <CreditCard size={26} style={{ color: BRAND }} />
       </div>
-      <h1 className="text-xl font-semibold text-gray-900">Complete your payment</h1>
+      <h1 className="text-xl font-semibold text-gray-900 font-display">Complete your payment</h1>
       <p className="text-sm text-gray-500 mt-2 max-w-sm">
         Your ministry isn&apos;t active yet. Finish checkout to create your account and get started.
       </p>

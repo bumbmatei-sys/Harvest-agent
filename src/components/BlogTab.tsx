@@ -127,7 +127,7 @@ const BlogTab: React.FC<BlogTabProps> = ({ onOpenArticle, initialPost, onBack, i
  return (
  <div className="flex flex-col items-center justify-center h-64 text-gray-500 px-4 text-center">
  <FileText size={48} className="text-gray-300 mb-4" />
- <p className="text-lg font-medium text-gray-900 mb-2">No articles yet</p>
+ <p className="text-lg font-medium text-gray-900 mb-2 font-display">No articles yet</p>
  <p className="text-sm">Check back later for new content.</p>
  </div>
  );
@@ -185,7 +185,7 @@ const BlogTab: React.FC<BlogTabProps> = ({ onOpenArticle, initialPost, onBack, i
  </div>
  </div>
  
- <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-6 leading-tight">
+ <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-6 leading-tight font-display">
  {selectedPost.title}
  </h1>
  
@@ -212,7 +212,7 @@ const BlogTab: React.FC<BlogTabProps> = ({ onOpenArticle, initialPost, onBack, i
  {/* Continue Learning */}
  {posts.filter(p => p.category === selectedPost.category && p.id !== selectedPost.id).slice(0, 2).length > 0 && (
  <div className="mt-12 pt-8 border-t border-gray-100 ">
- <h3 className="text-lg font-bold text-gray-900 mb-4">Continue Learning</h3>
+ <h3 className="text-lg font-bold text-gray-900 mb-4 font-display">Continue Learning</h3>
  <div className="space-y-4">
  {posts.filter(p => p.category === selectedPost.category && p.id !== selectedPost.id).slice(0, 2).map(relatedPost => (
  <div 

@@ -201,7 +201,7 @@ const NewsletterEditor: React.FC<NewsletterEditorProps> = ({
             <ChevronLeft size={24} />
           </button>
           <div>
-            <h2 className="text-xl font-bold text-gray-900">
+            <h2 className="text-xl font-bold text-gray-900 font-display">
               {newsletterId ? 'Edit Newsletter' : 'New Newsletter'}
             </h2>
             <p className="text-xs text-gray-500">
@@ -282,7 +282,7 @@ const NewsletterEditor: React.FC<NewsletterEditorProps> = ({
                   <Wand2 size={22} className="text-gold" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-gray-900">Generate from Instagram</h3>
+                  <h3 className="text-base font-bold text-gray-900 font-display">Generate from Instagram</h3>
                   <p className="text-sm text-gray-500 mt-0.5">AI analyzes your Instagram posts and writes an engaging newsletter automatically.</p>
                 </div>
               </div>
@@ -327,7 +327,7 @@ const NewsletterEditor: React.FC<NewsletterEditorProps> = ({
                 <Mail size={22} className="text-gray-500" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-gray-900">Write Manually</h3>
+                <h3 className="text-base font-bold text-gray-900 font-display">Write Manually</h3>
                 <p className="text-sm text-gray-500 mt-0.5">Compose your newsletter from scratch using the rich-text editor.</p>
               </div>
             </div>

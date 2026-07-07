@@ -218,7 +218,7 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
           >
             <ArrowLeft size={20} />
           </button>
-          <h1 className="text-lg font-bold text-gray-900">
+          <h1 className="text-lg font-bold text-gray-900 font-display">
             Publish
           </h1>
         </div>

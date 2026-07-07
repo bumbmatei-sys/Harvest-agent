@@ -82,7 +82,7 @@ const EnterpriseContactModal: React.FC<EnterpriseContactModalProps> = ({ isOpen,
           <div className="w-14 h-14 bg-[color-mix(in_srgb,var(--brand-color)_20%,transparent)] rounded-2xl flex items-center justify-center mb-4">
             <Building2 size={28} className="text-gold" />
           </div>
-          <h2 className="text-2xl font-bold text-white">Organization Plan</h2>
+          <h2 className="text-2xl font-bold text-white font-display">Organization Plan</h2>
           <p className="text-gray-400 text-sm mt-1">Unlimited churches & AI assistants, custom pricing, dedicated support</p>
         </div>
 
@@ -92,7 +92,7 @@ const EnterpriseContactModal: React.FC<EnterpriseContactModalProps> = ({ isOpen,
               <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <CheckCircle size={32} className="text-green-600" />
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2">{"We'll be in touch!"}</h3>
+              <h3 className="text-xl font-bold text-gray-900 mb-2 font-display">{"We'll be in touch!"}</h3>
               <p className="text-gray-500 text-sm mb-6">
                 Our team will review your request and reach out within 24 hours to discuss your Organization plan.
               </p>

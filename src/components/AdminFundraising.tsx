@@ -288,7 +288,7 @@ const AdminFundraising: React.FC<AdminFundraisingProps> = ({ initialCampaignId, 
         {(!isPledge || tab === 'overview') ? (
           <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="font-bold text-gray-900">{c.title}</h2>
+              <h2 className="font-bold text-gray-900 font-display">{c.title}</h2>
               <button onClick={() => openEdit(c)} className="p-2 rounded-xl border border-gray-200 hover:bg-gray-50"><Edit2 size={15} className="text-gray-500" /></button>
             </div>
             <p className="text-sm text-gray-500 mb-4">{c.description}</p>
@@ -358,7 +358,7 @@ const AdminFundraising: React.FC<AdminFundraisingProps> = ({ initialCampaignId, 
             {pledges.length === 0 ? (
               <div className="text-center py-12 text-gray-400">
                 <Heart size={32} className="mx-auto mb-2 opacity-30" />
-                <p className="text-sm">No pledges yet</p>
+                <p className="text-sm font-display">No pledges yet</p>
               </div>
             ) : (
               <div className="bg-white rounded-2xl border border-gray-100 divide-y divide-gray-50">
@@ -403,7 +403,7 @@ const AdminFundraising: React.FC<AdminFundraisingProps> = ({ initialCampaignId, 
         {reminderConfirm && (
           <div className="fixed inset-0 z-[210] flex items-center justify-center bg-black/50 p-4">
             <div className="bg-white rounded-2xl p-6 w-full max-w-sm text-center">
-              <p className="font-bold text-gray-900 mb-2">Send pledge reminders?</p>
+              <p className="font-bold text-gray-900 mb-2 font-display">Send pledge reminders?</p>
               <p className="text-sm text-gray-500 mb-5">This sends an SMS reminder to all donors with a phone number on file.</p>
               <div className="flex gap-3">
                 <button onClick={() => setReminderConfirm(false)} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600">Cancel</button>
@@ -427,7 +427,7 @@ const AdminFundraising: React.FC<AdminFundraisingProps> = ({ initialCampaignId, 
         >
           <DollarSign size={18} className="text-gray-400 shrink-0" />
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-gray-900">Payment Setup</p>
+            <p className="text-sm font-semibold text-gray-900 font-display">Payment Setup</p>
             <p className="text-xs text-gray-400">Connect Stripe to receive donations</p>
           </div>
           <ChevronDown size={16} className={`text-gray-400 transition-transform ${showPayment ? 'rotate-180' : ''}`} />
@@ -442,7 +442,7 @@ const AdminFundraising: React.FC<AdminFundraisingProps> = ({ initialCampaignId, 
       {campaigns.length === 0 ? (
         <div className="text-center py-16 text-gray-400">
           <Heart size={40} className="mx-auto mb-3 opacity-30" />
-          <p className="font-medium">No campaigns yet</p>
+          <p className="font-medium font-display">No campaigns yet</p>
           <p className="text-sm mt-1">Create your first fundraising campaign</p>
         </div>
       ) : (
@@ -499,7 +499,7 @@ const AdminFundraising: React.FC<AdminFundraisingProps> = ({ initialCampaignId, 
         <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center bg-black/50 p-4">
           <div className="bg-white rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
             <div className="p-5 border-b border-gray-100">
-              <h3 className="text-base font-bold text-gray-900">{editing ? 'Edit Campaign' : 'New Campaign'}</h3>
+              <h3 className="text-base font-bold text-gray-900 font-display">{editing ? 'Edit Campaign' : 'New Campaign'}</h3>
             </div>
             <div className="p-5 space-y-4 pb-32">
               {canPledge && (
@@ -584,7 +584,7 @@ const AdminFundraising: React.FC<AdminFundraisingProps> = ({ initialCampaignId, 
       {deleteId && (
         <div className="fixed inset-0 z-[210] flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white rounded-2xl p-6 w-full max-w-sm text-center">
-            <p className="font-bold text-gray-900 mb-2">Delete campaign?</p>
+            <p className="font-bold text-gray-900 mb-2 font-display">Delete campaign?</p>
             <p className="text-sm text-gray-500 mb-5">This cannot be undone.</p>
             <div className="flex gap-3">
               <button onClick={() => setDeleteId(null)} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600">Cancel</button>

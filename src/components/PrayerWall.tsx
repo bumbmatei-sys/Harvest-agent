@@ -188,7 +188,7 @@ const PrayerWall: React.FC = () => {
 
  {/* Compose box */}
  <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
- <h2 className="text-base font-semibold text-gray-900 mb-3">Write a prayer request</h2>
+ <h2 className="text-base font-semibold text-gray-900 mb-3 font-display">Write a prayer request</h2>
  <input
  type="text"
  value={name}

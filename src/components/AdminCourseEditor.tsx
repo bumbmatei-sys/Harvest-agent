@@ -693,7 +693,6 @@ export default function CourseBuilder({ course: initialCourse, onClose }: Course
  return (
  <div style={s.root}>
  <style>{`
- @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap');
  *{box-sizing:border-box;margin:0;padding:0;}
  [contenteditable]:empty:before{content:attr(data-placeholder);color:#BBB;pointer-events:none;}
  textarea::placeholder,input::placeholder{color:#BBBBBB;}
@@ -892,7 +891,7 @@ export default function CourseBuilder({ course: initialCourse, onClose }: Course
 // STYLES
 // ═══════════════════════════════════════════════
 const s: Record<string, CSSProperties> = {
- root: { position: "fixed", inset: 0, zIndex: 50, fontFamily: "'Nunito',sans-serif", background: BG, minHeight: "100vh", color: TEXT, overflowY: "auto" },
+ root: { position: "fixed", inset: 0, zIndex: 50, fontFamily: "var(--font-sans), system-ui, sans-serif", background: BG, minHeight: "100vh", color: TEXT, overflowY: "auto" },
  topBar: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 20px", background: CARD, borderBottom: `1px solid ${BORDER}`, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" },
  backBtn: { width: 36, height: 36, borderRadius: "50%", background: "transparent", display: "flex", alignItems: "center", justifyContent: "center", border: "none", cursor: "pointer", marginRight: 10, transition: "background 0.2s" },
  row: { display: "flex", alignItems: "center" },

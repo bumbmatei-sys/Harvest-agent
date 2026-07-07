@@ -208,7 +208,7 @@ const OnboardingSection: React.FC = () => {
       {showQuestionModal && editingQuestion && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[200] p-4">
           <div className="bg-white rounded-xl p-4 max-w-md w-full space-y-4">
-            <h3 className="text-sm font-semibold text-gray-900">
+            <h3 className="font-display text-sm font-semibold text-gray-900">
               {onboardingQuestions.find(q => q.id === editingQuestion.id) ? 'Edit Question' : 'Add Question'}
             </h3>
 

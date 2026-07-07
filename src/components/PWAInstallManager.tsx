@@ -161,7 +161,7 @@ export default function PWAInstallManager() {
           </div>
           
           <div className="flex-1">
-            <h3 className="font-bold text-gray-900 text-base mb-1 tracking-tight">Install Harvest App</h3>
+            <h3 className="font-bold text-gray-900 text-base mb-1 tracking-tight font-display">Install Harvest App</h3>
             
             {platform === 'ios' ? (
               // iOS never fires beforeinstallprompt — always the Share-sheet flow.

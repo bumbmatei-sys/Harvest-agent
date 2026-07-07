@@ -131,7 +131,7 @@ const AiAssistantSection: React.FC<AiAssistantSectionProps> = ({ currentPlan, em
   if (!loaded) {
     return (
       <div className="mb-4">
-        <h4 className="text-sm font-semibold text-gray-900 mb-1">AI Assistant</h4>
+        <h4 className="font-display text-sm font-semibold text-gray-900 mb-1">AI Assistant</h4>
         <div className="h-8 bg-gray-100 rounded animate-pulse" />
       </div>
     );
@@ -149,7 +149,7 @@ const AiAssistantSection: React.FC<AiAssistantSectionProps> = ({ currentPlan, em
 
   return (
     <div className="mb-4">
-      <h4 className="text-sm font-semibold text-gray-900 mb-1">AI Assistant</h4>
+      <h4 className="font-display text-sm font-semibold text-gray-900 mb-1">AI Assistant</h4>
       <p className="text-sm text-gray-600 mb-3">
         Your personal AI assistant on Telegram — available 24/7 for sermon prep, member care, and ministry guidance.
       </p>

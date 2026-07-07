@@ -43,7 +43,7 @@ export function AuthorProfile({ author, onBack, courses, onSelectCourse }: Autho
           </div>
         )}
 
-        <div className="text-2xl font-extrabold tracking-tight mb-1">{author.name}</div>
+        <div className="text-2xl font-extrabold tracking-tight mb-1 font-display">{author.name}</div>
         <div className="text-sm text-gray-500 font-medium mb-4">{author.title || "Instructor"}</div>
 
         <div className="flex justify-center gap-8">
@@ -69,7 +69,7 @@ export function AuthorProfile({ author, onBack, courses, onSelectCourse }: Autho
         {/* Courses */}
         {authorCourses.length > 0 && (
           <div className="py-5">
-            <h3 className="text-base font-bold mb-3.5">Courses by {author.name.split(" ")[0]}</h3>
+            <h3 className="text-base font-bold mb-3.5 font-display">Courses by {author.name.split(" ")[0]}</h3>
             {authorCourses.map((course) => {
               const lessonCount = course.levels?.reduce(
                 (s, l) => s + l.sections?.reduce((s2, sec) => s2 + (sec.lessons?.length || 0), 0),

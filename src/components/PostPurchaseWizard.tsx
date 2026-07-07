@@ -173,7 +173,7 @@ const PostPurchaseWizard: React.FC<PostPurchaseWizardProps> = ({ tenantId, onCom
           <div className="w-16 h-16 mx-auto rounded-2xl bg-gray-50 flex items-center justify-center">
             {step.icon}
           </div>
-          <h2 className="text-2xl font-bold text-gray-900">{step.title}</h2>
+          <h2 className="text-2xl font-bold text-gray-900 font-display">{step.title}</h2>
           <p className="text-gray-500 text-sm leading-relaxed">{step.description}</p>
         </div>
 

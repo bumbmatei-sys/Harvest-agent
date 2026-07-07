@@ -45,7 +45,7 @@ export function LessonView({ course, lesson, authors, onBack, onComplete, comple
         </button>
         <div className="flex-1 min-w-0">
           <div className="text-[11px] text-gray-400 font-semibold uppercase tracking-wider">{course.title}</div>
-          <div className="text-[15px] font-bold truncate">{lesson.title}</div>
+          <div className="text-[15px] font-bold truncate font-display">{lesson.title}</div>
         </div>
       </div>
 
@@ -80,7 +80,7 @@ export function LessonView({ course, lesson, authors, onBack, onComplete, comple
         <div className="text-xs text-gray-400 font-semibold uppercase tracking-wider mt-5 mb-1">
           Lesson {lessonNumber} of {allLessons.length}
         </div>
-        <div className="text-[22px] font-extrabold tracking-tight mb-4">{lesson.title}</div>
+        <div className="text-[22px] font-extrabold tracking-tight mb-4 font-display">{lesson.title}</div>
 
         {/* Tabs */}
         <div className="flex border-b border-gray-100 -mx-5 px-5 mb-4">

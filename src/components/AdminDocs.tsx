@@ -118,7 +118,7 @@ const RenameModal: React.FC<{
   return (
     <div className="fixed inset-0 z-[310] flex items-center justify-center bg-black/50 p-4">
       <div className="bg-white rounded-2xl w-full max-w-sm p-5">
-        <h3 className="font-bold text-gray-900 mb-4">{title}</h3>
+        <h3 className="font-display font-bold text-gray-900 mb-4">{title}</h3>
         <input
           ref={inputRef}
           value={value}
@@ -656,7 +656,7 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
     <div className="fixed inset-0 z-[320] flex items-end sm:items-center justify-center bg-black/50" onClick={() => setShareDocId(null)}>
       <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-sm max-h-[65vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 sticky top-0 bg-white">
-          <h3 className="font-bold text-gray-900">Share with Admins</h3>
+          <h3 className="font-display font-bold text-gray-900">Share with Admins</h3>
           <button onClick={() => setShareDocId(null)} className="p-1 rounded-lg hover:bg-gray-100">
             <X size={18} className="text-gray-400" />
           </button>
@@ -700,7 +700,7 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
       {showNewFolder && (
         <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white rounded-2xl w-full max-w-sm p-5">
-            <h3 className="font-bold text-gray-900 mb-4">New Folder</h3>
+            <h3 className="font-display font-bold text-gray-900 mb-4">New Folder</h3>
             <input value={newFolderName} onChange={e => setNewFolderName(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && createFolder()}
               className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold mb-4"
@@ -717,7 +717,7 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
       {(deleteDocId || deleteFolderId) && (
         <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white rounded-2xl p-6 w-full max-w-sm text-center">
-            <p className="font-bold text-gray-900 mb-2">Delete {deleteDocId ? 'this document' : 'this folder'}?</p>
+            <p className="font-display font-bold text-gray-900 mb-2">Delete {deleteDocId ? 'this document' : 'this folder'}?</p>
             <p className="text-sm text-gray-500 mb-5">This cannot be undone.</p>
             <div className="flex gap-3">
               <button onClick={() => { setDeleteDocId(null); setDeleteFolderId(null); }} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600">Cancel</button>
@@ -745,7 +745,7 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
       {moveDocId && (
         <div className="fixed inset-0 z-[210] flex items-end sm:items-center justify-center bg-black/50" onClick={() => setMoveDocId(null)}>
           <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-sm p-5 max-h-[60vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <h3 className="font-bold text-gray-900 mb-4">Move to Folder</h3>
+            <h3 className="font-display font-bold text-gray-900 mb-4">Move to Folder</h3>
             <button
               onClick={() => moveDocToFolder(moveDocId, null)}
               className="flex items-center gap-2 w-full px-3 py-2.5 rounded-xl hover:bg-gray-100 transition-colors text-sm text-gray-700 mb-1"
@@ -985,7 +985,7 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
       {folderDocs.length === 0 && docs.length === 0 ? (
         <div className="text-center py-16 text-gray-400">
           <FileText size={40} className="mx-auto mb-3 opacity-30" />
-          <p className="font-medium">No documents yet</p>
+          <p className="font-display font-medium">No documents yet</p>
           <p className="text-sm mt-1">Create your first document</p>
         </div>
       ) : (

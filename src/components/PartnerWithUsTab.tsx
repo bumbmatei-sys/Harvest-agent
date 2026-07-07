@@ -62,7 +62,7 @@ const PartnerWithUsTab: React.FC = () => {
         <div className="w-16 h-16 bg-[color-mix(in_srgb,var(--brand-color)_12%,white)] rounded-full flex items-center justify-center mb-4">
           <HeartHandshake size={32} className="text-gold" />
         </div>
-        <h2 className="text-2xl font-bold text-[#0b1121] mb-1">Partner with Us</h2>
+        <h2 className="text-2xl font-bold text-[#0b1121] mb-1 font-display">Partner with Us</h2>
         {tenantName && (
           <p className="text-gold font-semibold text-sm mb-2">{tenantName}</p>
         )}

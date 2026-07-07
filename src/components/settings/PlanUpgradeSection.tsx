@@ -162,7 +162,7 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
     <div className="space-y-6">
       {!hideUpgrade ? (
       <>
-      <h2 className="text-2xl font-bold text-gray-900">Upgrade Your Plan</h2>
+      <h2 className="font-display text-2xl font-bold text-gray-900">Upgrade Your Plan</h2>
       <p className="text-gray-500">Choose the plan that best fits your ministry&apos;s needs.</p>
 
       {/* Billing Period Toggle */}
@@ -235,7 +235,7 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
                 <div className="w-12 h-12 mx-auto rounded-xl flex items-center justify-center mb-3" style={{ backgroundColor: `${meta.color}15` }}>
                   <meta.icon size={24} style={{ color: meta.color }} />
                 </div>
-                <h3 className="text-lg font-bold text-gray-900">{name}</h3>
+                <h3 className="font-display text-lg font-bold text-gray-900">{name}</h3>
                 {billingPeriod === 'yearly' && yearlyOriginalUsd && (
                   <p className="text-sm text-gray-400 line-through">{yearlyOriginalUsd}</p>
                 )}
@@ -330,7 +330,7 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
 
       {/* Full Feature Comparison Table */}
       <div className="bg-white rounded-2xl border border-gray-100 p-6 mt-6">
-        <h3 className="text-lg font-bold text-gray-900 mb-4">Full Feature Comparison</h3>
+        <h3 className="font-display text-lg font-bold text-gray-900 mb-4">Full Feature Comparison</h3>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -392,7 +392,7 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
       </>
       ) : (
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900">Billing</h2>
+          <h2 className="font-display text-2xl font-bold text-gray-900">Billing</h2>
           <p className="text-gray-500 mt-1">You&apos;re on the Ministry plan — the highest tier. Manage or cancel your subscription below.</p>
         </div>
       )}

@@ -147,12 +147,12 @@ const AdminInbox = () => {
  {submissions.length === 0 ? (
  <div className="flex flex-col items-center justify-center py-12 text-gray-400 bg-white rounded-2xl border border-gray-100 ">
  <Inbox size={48} className="mb-4 opacity-50" />
- <p className="text-lg font-medium">No submissions yet.</p>
+ <p className="font-display text-lg font-medium">No submissions yet.</p>
  </div>
  ) : filteredSubmissions.length === 0 ? (
  <div className="flex flex-col items-center justify-center py-12 text-gray-400 bg-white rounded-2xl border border-gray-100 ">
  <Inbox size={48} className="mb-4 opacity-50" />
- <p className="text-lg font-medium">No submissions found.</p>
+ <p className="font-display text-lg font-medium">No submissions found.</p>
  </div>
  ) : (
  filteredSubmissions.map((sub) => {

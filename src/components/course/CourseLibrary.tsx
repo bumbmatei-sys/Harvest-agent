@@ -41,7 +41,7 @@ export function CourseLibrary({ courses, authors, categories, onSelectCourse, co
   return (
     <div className="max-w-[480px] mx-auto px-4 pt-5 pb-24">
       {/* Header */}
-      <h1 className="text-[28px] font-extrabold tracking-tight mb-5">Courses</h1>
+      <h1 className="text-[28px] font-extrabold tracking-tight mb-5 font-display">Courses</h1>
 
       {/* Search */}
       <div className="relative mb-5">
@@ -106,7 +106,7 @@ export function CourseLibrary({ courses, authors, categories, onSelectCourse, co
       {/* Continue learning */}
       {continueLearning.length > 0 && (
         <div className="mb-7">
-          <h2 className="text-lg font-bold tracking-tight mb-4">Continue Learning</h2>
+          <h2 className="text-lg font-bold tracking-tight mb-4 font-display">Continue Learning</h2>
           {continueLearning.map((course) => (
             <CourseCard
               key={course.id}
@@ -120,7 +120,7 @@ export function CourseLibrary({ courses, authors, categories, onSelectCourse, co
       )}
 
       {/* All courses */}
-      <h2 className="text-lg font-bold tracking-tight mb-4">
+      <h2 className="text-lg font-bold tracking-tight mb-4 font-display">
         {continueLearning.length > 0 ? "All Courses" : "Courses"}
       </h2>
       {allCourses.length === 0 ? (

@@ -318,7 +318,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
         </div>
 
         {/* App name + tagline */}
-        <h1 className="text-center font-semibold" style={{ fontSize: 22, color: '#111111' }}>
+        <h1 className="text-center font-semibold font-display" style={{ fontSize: 22, color: '#111111' }}>
           {appName}
         </h1>
         <p className="text-center mt-1" style={{ fontSize: 13, color: '#888888' }}>
@@ -549,7 +549,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col overflow-hidden">
             <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-              <h3 className="text-2xl font-bold text-gray-900">
+              <h3 className="text-2xl font-bold text-gray-900 font-display">
                 {legalModalContent === 'terms' ? 'Terms of Use' : 'Privacy Policy'}
               </h3>
               <button onClick={() => setLegalModalContent(null)} className="text-gray-400 hover:text-gray-600 transition-colors">

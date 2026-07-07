@@ -196,7 +196,7 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
  
  {/* Section 1: Church Details */}
  <div className="space-y-6">
- <h3 className="text-lg font-bold text-background-dark border-b border-gray-100 pb-3 flex items-center gap-2">
+ <h3 className="text-lg font-bold text-background-dark border-b border-gray-100 pb-3 flex items-center gap-2 font-display">
  <Church className="text-primary" size={24} />
  Church Details
  </h3>
@@ -274,7 +274,7 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
 
  {/* Section 2: Location */}
  <div className="space-y-6">
- <h3 className="text-lg font-bold text-background-dark border-b border-gray-100 pb-3 flex items-center gap-2">
+ <h3 className="text-lg font-bold text-background-dark border-b border-gray-100 pb-3 flex items-center gap-2 font-display">
  <MapPin className="text-primary" size={24} />
  Location
  </h3>
@@ -385,7 +385,7 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
 
  {/* Section: Weekly Services */}
  <div className="space-y-6">
- <h3 className="text-lg font-bold text-background-dark border-b border-gray-100 pb-3 flex items-center gap-2">
+ <h3 className="text-lg font-bold text-background-dark border-b border-gray-100 pb-3 flex items-center gap-2 font-display">
  <Calendar className="text-primary" size={24} />
  Weekly Services
  </h3>
@@ -456,7 +456,7 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
 
  {/* Section 3: Contact Person */}
  <div className="space-y-6">
- <h3 className="text-lg font-bold text-background-dark border-b border-gray-100 pb-3 flex items-center gap-2">
+ <h3 className="text-lg font-bold text-background-dark border-b border-gray-100 pb-3 flex items-center gap-2 font-display">
  <User className="text-primary" size={24} />
  Contact Person
  </h3>
@@ -502,7 +502,7 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
 
  {/* Section 4: Social Links */}
  <div className="space-y-6">
- <h3 className="text-lg font-bold text-background-dark border-b border-gray-100 pb-3 flex items-center gap-2">
+ <h3 className="text-lg font-bold text-background-dark border-b border-gray-100 pb-3 flex items-center gap-2 font-display">
  <Globe className="text-primary" size={24} />
  Online Presence
  </h3>

@@ -153,7 +153,7 @@ const AdminCourses: React.FC = () => {
  <td colSpan={4} className="px-6 py-12 text-center text-gray-500 ">
  <div className="flex flex-col items-center justify-center gap-2">
  <BookOpen size={32} className="text-gray-300 mb-2" />
- <p className="text-base font-medium text-gray-900 ">No courses found</p>
+ <p className="font-display text-base font-medium text-gray-900 ">No courses found</p>
  <p className="text-sm">Get started by creating a new course.</p>
  </div>
  </td>
@@ -200,7 +200,7 @@ const AdminCourses: React.FC = () => {
  {deleteConfirmId && (
  <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
  <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 border border-gray-100 ">
- <h3 className="text-xl font-bold text-gray-900 mb-2">Delete Course</h3>
+ <h3 className="font-display text-xl font-bold text-gray-900 mb-2">Delete Course</h3>
  <p className="text-gray-500 mb-6">
  Are you sure you want to delete this course? This action cannot be undone.
  </p>

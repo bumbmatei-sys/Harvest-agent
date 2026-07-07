@@ -84,7 +84,7 @@ const CanvasList: React.FC<CanvasListProps> = ({ onOpenCanvas }) => {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-gray-900">Canvas</h2>
+        <h2 className="text-2xl font-bold text-gray-900 font-display">Canvas</h2>
         <button
           onClick={handleCreate}
           disabled={creating}
@@ -100,7 +100,7 @@ const CanvasList: React.FC<CanvasListProps> = ({ onOpenCanvas }) => {
           <div className="w-16 h-16 mx-auto rounded-2xl bg-[color-mix(in_srgb,var(--brand-color)_12%,white)] flex items-center justify-center mb-4">
             <FileText size={28} style={{ color: 'var(--brand-color, #d4a017)' }} />
           </div>
-          <h3 className="text-lg font-bold text-gray-900 mb-2">No canvases yet</h3>
+          <h3 className="text-lg font-bold text-gray-900 mb-2 font-display">No canvases yet</h3>
           <p className="text-sm text-gray-500 mb-6 max-w-md mx-auto">
             Create rich content pages for your ministry — announcements, devotionals, event pages, and more.
           </p>

@@ -275,7 +275,7 @@ const AdminForms: React.FC<AdminFormsProps> = () => {
 
         {preview ? (
           <div className="bg-white rounded-2xl border border-gray-100 p-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-1">{title || 'Untitled form'}</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-1 font-display">{title || 'Untitled form'}</h2>
             {description && <p className="text-sm text-gray-500 mb-5">{description}</p>}
             <div className="space-y-4">
               {fields.map(f => (
@@ -374,7 +374,7 @@ const AdminForms: React.FC<AdminFormsProps> = () => {
         {submissions.length === 0 ? (
           <div className="text-center py-16 text-gray-400">
             <FileText size={40} className="mx-auto mb-3 opacity-30" />
-            <p className="font-medium">No submissions yet</p>
+            <p className="font-medium font-display">No submissions yet</p>
           </div>
         ) : (
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-x-auto">
@@ -419,7 +419,7 @@ const AdminForms: React.FC<AdminFormsProps> = () => {
       {forms.length === 0 ? (
         <div className="text-center py-16 text-gray-400">
           <FileText size={40} className="mx-auto mb-3 opacity-30" />
-          <p className="font-medium">No forms yet</p>
+          <p className="font-medium font-display">No forms yet</p>
           <p className="text-sm mt-1">Create a form to collect visitor cards, applications, and connect cards.</p>
           <button onClick={() => openBuilder()} className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-white text-sm font-semibold" style={{ backgroundColor: GOLD }}>
             <Plus size={15} /> Create Form

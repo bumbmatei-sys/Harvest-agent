@@ -82,7 +82,7 @@ const PublicForm: React.FC<PublicFormProps> = ({
       <div className="min-h-screen flex items-center justify-center bg-[#F7F6F3] p-6">
         <div className="bg-white rounded-[14px] shadow-sm border border-gray-100 p-8 max-w-md text-center">
           <CheckCircle2 size={48} className="mx-auto mb-4" style={{ color: primaryColor }} />
-          <h1 className="text-xl font-bold text-gray-900 mb-2">{successMessage}</h1>
+          <h1 className="font-display text-xl font-bold text-gray-900 mb-2">{successMessage}</h1>
           <p className="text-sm text-gray-400 mt-4">{tenantName}</p>
         </div>
       </div>
@@ -97,12 +97,12 @@ const PublicForm: React.FC<PublicFormProps> = ({
             // eslint-disable-next-line @next/next/no-img-element
             <img src={logo} alt={tenantName} className="h-12 mx-auto mb-3 object-contain" />
           ) : (
-            <div className="text-lg font-extrabold mb-3" style={{ color: primaryColor }}>{tenantName}</div>
+            <div className="font-display text-lg font-extrabold mb-3" style={{ color: primaryColor }}>{tenantName}</div>
           )}
         </div>
 
         <form onSubmit={handleSubmit} className="bg-white rounded-[14px] shadow-sm border border-gray-100 p-6" style={{ paddingBottom: 120 }}>
-          <h1 className="text-2xl font-bold text-gray-900 mb-1">{title}</h1>
+          <h1 className="font-display text-2xl font-bold text-gray-900 mb-1">{title}</h1>
           {description && <p className="text-sm text-gray-500 mb-6">{description}</p>}
 
           <div className="space-y-5 mt-4">

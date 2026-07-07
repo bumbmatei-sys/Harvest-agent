@@ -112,7 +112,7 @@ export default function AffiliateSection() {
 
       {/* Header */}
       <div>
-        <h3 className="text-base font-black text-gray-900">Affiliate Program</h3>
+        <h3 className="text-base font-black text-gray-900 font-display">Affiliate Program</h3>
         <p className="text-xs text-gray-500 mt-0.5">
           Share your link and earn commission on every subscription you refer — for as long as they stay subscribed.
         </p>

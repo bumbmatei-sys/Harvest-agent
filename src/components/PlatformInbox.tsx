@@ -186,12 +186,12 @@ const PlatformInbox = () => {
  {reports.length === 0 ? (
  <div className="flex flex-col items-center justify-center py-12 text-gray-400 bg-white rounded-2xl border border-gray-100 ">
  <Inbox size={48} className="mb-4 opacity-50" />
- <p className="text-lg font-medium">No reports yet.</p>
+ <p className="text-lg font-medium font-display">No reports yet.</p>
  </div>
  ) : filteredReports.length === 0 ? (
  <div className="flex flex-col items-center justify-center py-12 text-gray-400 bg-white rounded-2xl border border-gray-100 ">
  <Inbox size={48} className="mb-4 opacity-50" />
- <p className="text-lg font-medium">No reports found.</p>
+ <p className="text-lg font-medium font-display">No reports found.</p>
  </div>
  ) : (
  filteredReports.map((r) => {

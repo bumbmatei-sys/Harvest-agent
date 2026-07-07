@@ -349,7 +349,7 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack }) => {
         >
           <ArrowLeft size={20} />
         </button>
-        <span className="font-medium text-gray-900 truncate">News & Updates</span>
+        <span className="font-medium text-gray-900 truncate font-display">News & Updates</span>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-24 lg:max-w-5xl lg:mx-auto w-full">
@@ -576,7 +576,7 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack }) => {
       {attendingPostId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
           <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl">
-            <h3 className="text-xl font-bold text-gray-900 mb-4">Join Event</h3>
+            <h3 className="text-xl font-bold text-gray-900 mb-4 font-display">Join Event</h3>
             <p className="text-sm text-gray-500 mb-4">
               Please provide your details to receive more information about this event.
             </p>

@@ -199,12 +199,12 @@ const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) => {
  <button onClick={onClose} className="p-2 -ml-2 text-gray-600 ">
  <ArrowLeft size={24} />
  </button>
- <h2 className="text-lg font-bold text-gray-900 flex-1 text-center pr-8">Contact</h2>
+ <h2 className="text-lg font-bold text-gray-900 flex-1 text-center pr-8 font-display">Contact</h2>
  </div>
 
  <div className="flex-1 overflow-y-auto p-4 pb-12">
  <div className="text-center mb-8 mt-4">
- <h2 className="text-2xl font-bold text-[#1a202c] mb-2">How can we help?</h2>
+ <h2 className="text-2xl font-bold text-[#1a202c] mb-2 font-display">How can we help?</h2>
  <p className="text-gray-500 text-sm">We are here to serve you.</p>
  </div>
 

@@ -126,7 +126,7 @@ function BookPicker({ currentBook, currentChapter, onSelect, onClose }: { curren
         <button onClick={onClose} className="text-amber-600 p-0 bg-transparent border-none cursor-pointer">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m15 18-6-6 6-6" /></svg>
         </button>
-        <span className="font-extrabold text-base flex-1">{selectedBook ? selectedBook.name : "Choose a Book"}</span>
+        <span className="font-extrabold text-base flex-1 font-display">{selectedBook ? selectedBook.name : "Choose a Book"}</span>
         {selectedBook && (
           <button onClick={() => setSelectedBook(null)} className="text-amber-600 text-xs font-bold bg-transparent border-none cursor-pointer">All Books</button>
         )}
@@ -308,7 +308,7 @@ export default function BiblePage() {
       <div className="bg-white border-b border-gray-200 px-4 py-3 flex-shrink-0 shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
         <div className="flex items-center justify-between mb-3">
           <button onClick={() => setShowPicker(true)} className="bg-transparent border-none cursor-pointer flex items-center gap-1">
-            <span className="font-extrabold text-[17px] text-gray-900">{book.name} {chapter}</span>
+            <span className="font-extrabold text-[17px] text-gray-900 font-display">{book.name} {chapter}</span>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2"><path d="m6 9 6 6 6-6" /></svg>
           </button>
           <div className="relative">
