@@ -47,7 +47,7 @@ interface MainAppProps {
 }
 
 const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
-  const { tenantPlan } = useAppStore();
+  const { tenantPlan, currentUser } = useAppStore();
   const { tenantId, tenantName, branding } = useTenant();
   // White-label tenants (any real tenant other than the platform) show their own
   // name + logo; the platform / super-admin view keeps the "Harvest" brand.
@@ -120,9 +120,70 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
     (isMainSite || features?.map === true) && { id: 'map', label: 'Map', icon: MapIcon },
     { id: 'profile', label: 'My Profile', icon: User },
   ].filter(Boolean) as { id: string; label: string; icon: any }[];
-  // 'home' is always the unconditional first entry above — safe to split off for
-  // the desktop sidebar, where it's replaced by the merged "News" item below.
-  const [homeTab, ...restBottomTabs] = bottomTabs;
+  // 'home' is always the unconditional first entry above — desktop's grouped
+  // sidebar replaces it with the "Home" alias of the News top-tab (see below),
+  // so only the rest are looked up by id for the desktop groups.
+  const [, ...restBottomTabs] = bottomTabs;
+
+  // Desktop sidebar groups (Phase 1.6) — FEED / COMMUNITY / SUPPORT US. Resolves
+  // items from `topTabs` (News/Blog/Courses/Messages/Prayer/Partner) and
+  // `restBottomTabs` (Bible/Chat/Map/Profile) by id, dropping any that are
+  // conditionally absent (e.g. Courses with 0 published, Chat/Map by plan).
+  // Mobile is unaffected — it renders `bottomTabs` flatly, unrelated to this.
+  interface DesktopNavItem { id: string; label: string; icon: any; isActive: boolean; onClick: () => void; }
+
+  const desktopTopTabItem = (id: string): DesktopNavItem | null => {
+    const tab = topTabs.find(t => t.id === id);
+    if (!tab) return null;
+    // The News top-tab is the desktop sidebar's "Home" entry point (mobile's
+    // "News" label inside the Home top-tabs is untouched).
+    const isHome = tab.id === 'news';
+    return {
+      id: `desktop-${tab.id}`,
+      label: isHome ? 'Home' : tab.label,
+      icon: isHome ? Home : TOP_TAB_ICONS[tab.id],
+      isActive: activeBottomTab === 'home' && activeTopTab === tab.id,
+      onClick: () => { setActiveBottomTab('home'); handleTopTabClick(tab.id); },
+    };
+  };
+
+  const desktopBottomTabItem = (id: string): DesktopNavItem | null => {
+    const tab = restBottomTabs.find(t => t.id === id);
+    if (!tab) return null;
+    return {
+      id: `desktop-${tab.id}`,
+      label: tab.label,
+      icon: tab.icon,
+      isActive: activeBottomTab === tab.id,
+      onClick: () => setActiveBottomTab(tab.id),
+    };
+  };
+
+  const isDesktopNavItem = (item: DesktopNavItem | null): item is DesktopNavItem => item !== null;
+
+  // "My Profile" is intentionally excluded here — on desktop it's reachable via
+  // the top-right avatar (see the top bar below) instead of the grouped list.
+  const desktopNavGroups: { label: string; items: DesktopNavItem[] }[] = [
+    {
+      label: 'FEED',
+      items: [desktopTopTabItem('news'), desktopTopTabItem('blog'), desktopTopTabItem('courses'), desktopBottomTabItem('bible')].filter(isDesktopNavItem),
+    },
+    {
+      label: 'COMMUNITY',
+      items: [desktopTopTabItem('messages'), desktopTopTabItem('prayer'), desktopBottomTabItem('map')].filter(isDesktopNavItem),
+    },
+    {
+      label: 'SUPPORT US',
+      items: [desktopTopTabItem('partner'), desktopBottomTabItem('chat')].filter(isDesktopNavItem),
+    },
+  ];
+
+  // Desktop top bar (Phase 1.6): page title + date for Home; view name elsewhere.
+  const desktopTitle = activeBottomTab === 'home'
+    ? (activeTopTab === 'news' ? 'Home' : (topTabs.find(t => t.id === activeTopTab)?.label ?? 'Home'))
+    : (bottomTabs.find(t => t.id === activeBottomTab)?.label ?? '');
+  const showDesktopDate = activeBottomTab === 'home' && activeTopTab === 'news';
+  const desktopDate = new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric' }).format(new Date());
 
   useEffect(() => {
     setIsNavVisible(true);
@@ -207,11 +268,11 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
     lastScrollYRef.current = currentScrollY;
   }, [fullScreenView]);
 
-  // Shared nav-button markup for the mobile bottom bar / desktop sidebar (Phase 1.5).
+  // Shared nav-button markup for the mobile bottom bar / desktop sidebar (Phase 1.5/1.6).
   // `visibility` controls which breakpoint(s) the button renders at:
-  //   - 'both'   Bible/Chat/Map/Profile — unchanged, shown on mobile bottom bar AND desktop sidebar
-  //   - 'mobile' Home — mobile bottom bar only (desktop uses the merged News item instead)
-  //   - 'desktop' News/Blog/Courses/Messages/Prayer/Partner — desktop sidebar only
+  //   - 'both'    default; renders at every breakpoint (unused by current call sites)
+  //   - 'mobile'  bottom bar only — every item in `bottomTabs` (Home/Bible/Chat/Map/Profile)
+  //   - 'desktop' grouped sidebar only — items resolved into `desktopNavGroups` below
   const renderNavButton = (
     id: string,
     label: string,
@@ -306,39 +367,35 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
             {!isSidebarCollapsed && <span className="font-display text-xl font-extrabold truncate" style={{ color: 'var(--brand-color, #D4AF37)' }}>{displayName}</span>}
           </div>
 
-          {/* Home — mobile bottom bar only; desktop's equivalent entry point is "News" below */}
-          {renderNavButton(
-            homeTab.id,
-            homeTab.label,
-            homeTab.icon,
-            activeBottomTab === 'home',
-            () => setActiveBottomTab('home'),
-            'mobile'
-          )}
-
-          {/* Desktop-only: former top-tabs (News/Blog/Courses/Messages/Prayer/Partner), now full sidebar items */}
-          {topTabs.map((tab) =>
-            renderNavButton(
-              `desktop-${tab.id}`,
-              tab.label,
-              TOP_TAB_ICONS[tab.id],
-              activeBottomTab === 'home' && activeTopTab === tab.id,
-              () => { setActiveBottomTab('home'); handleTopTabClick(tab.id); },
-              'desktop'
-            )
-          )}
-
-          {/* Bible / Chat / Map / Profile — unchanged, shown on mobile bottom bar AND desktop sidebar */}
-          {restBottomTabs.map((tab) =>
+          {/* Mobile bottom bar — flat, ungrouped: Home, Bible, Chat, Map, Profile (unchanged) */}
+          {bottomTabs.map((tab) =>
             renderNavButton(
               tab.id,
               tab.label,
               tab.icon,
               activeBottomTab === tab.id,
               () => setActiveBottomTab(tab.id),
-              'both'
+              'mobile'
             )
           )}
+
+          {/* Desktop sidebar — grouped under FEED / COMMUNITY / SUPPORT US (Phase 1.6) */}
+          {desktopNavGroups.map((group, groupIndex) => (
+            <div key={group.label} className={`hidden lg:flex lg:flex-col lg:w-full ${groupIndex > 0 ? 'lg:mt-6' : ''}`}>
+              {isSidebarCollapsed ? (
+                groupIndex > 0 && <div className="lg:mx-3 lg:mb-2 lg:border-t lg:border-gray-100" />
+              ) : (
+                <div className="lg:px-4 lg:mb-2 lg:text-[10px] lg:font-bold lg:tracking-wider lg:text-gray-400 lg:uppercase">
+                  {group.label}
+                </div>
+              )}
+              <div className="lg:flex lg:flex-col lg:gap-1 lg:w-full lg:items-stretch">
+                {group.items.map((item) =>
+                  renderNavButton(item.id, item.label, item.icon, item.isActive, item.onClick, 'desktop')
+                )}
+              </div>
+            </div>
+          ))}
 
           {/* Collapse Button (Bottom) */}
           <div className="hidden lg:flex flex-1 items-end pb-6 mt-auto">
@@ -356,6 +413,29 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
 
       {/* Main Container */}
       <div className="flex-1 flex flex-col h-screen relative bg-[#f8f9fa] overflow-hidden min-w-0">
+        {/* Desktop top bar: page title + date (left), profile avatar (right) — Phase 1.6, lg:-only */}
+        <div className="hidden lg:block bg-white border-b border-gray-100 flex-shrink-0">
+          <DesktopContainer>
+            <div className="flex items-center justify-between py-4">
+              <div>
+                <h1 className="font-display text-xl font-bold text-gray-900">{desktopTitle}</h1>
+                {showDesktopDate && <p className="text-xs text-gray-500 mt-0.5">{desktopDate}</p>}
+              </div>
+              <button
+                onClick={() => setActiveBottomTab('profile')}
+                className="flex items-center justify-center w-10 h-10 rounded-full overflow-hidden bg-gray-100 text-sm font-bold text-gray-600 shrink-0 hover:opacity-90 transition-opacity"
+                title="My Profile"
+              >
+                {currentUser?.photoURL ? (
+                  <img src={currentUser.photoURL} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                ) : (
+                  <span>{(currentUser?.displayName?.trim()?.[0] || 'U').toUpperCase()}</span>
+                )}
+              </button>
+            </div>
+          </DesktopContainer>
+        </div>
+
         {/* Top Navigation (only visible when Home is active; mobile only — desktop nav lives in the sidebar) */}
         {activeBottomTab === 'home' && (
           <div className="bg-white pt-3 pb-0 px-4 shadow-sm z-10 flex-shrink-0 transition-colors duration-300 lg:hidden">
@@ -404,7 +484,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
                   dragConstraints={{ left: 0, right: 0 }}
                   dragElastic={{ left: activeTopTab === topTabs[topTabs.length - 1].id ? 0 : 1, right: activeTopTab === topTabs[0].id ? 0 : 1 }}
                   onDragEnd={handleDragEnd}
-                  className="absolute w-full h-full p-4 space-y-6"
+                  className="absolute w-full h-full p-4 space-y-6 lg:space-y-4"
                 >
                   {/* Content based on activeTopTab */}
                   {activeTopTab === 'news' && (
