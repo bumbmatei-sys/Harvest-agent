@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Home, BookOpen, MessageCircle, Map as MapIcon, User, Play, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Home, BookOpen, MessageCircle, Map as MapIcon, User, Play, ChevronLeft, ChevronRight, Newspaper, FileText, GraduationCap, MessageSquare, HandHeart, HeartHandshake } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import dynamic from 'next/dynamic';
 import { collection, query, where, getDocs, limit } from 'firebase/firestore';
@@ -29,6 +29,16 @@ import { DesktopContainer } from './layout/DesktopLayout';
 
 const PLATFORM_TENANT_ID = process.env.NEXT_PUBLIC_PLATFORM_TENANT_ID || 'harvest';
 const DEFAULT_LOGO = 'https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png';
+
+// Icons for the former top-tabs, now also surfaced as desktop-only sidebar items (Phase 1.5).
+const TOP_TAB_ICONS: Record<string, any> = {
+  news: Newspaper,
+  blog: FileText,
+  courses: GraduationCap,
+  messages: MessageSquare,
+  prayer: HandHeart,
+  partner: HeartHandshake,
+};
 
 const ChurchMap = dynamic(() => import('./ChurchMap'), { ssr: false });
 
@@ -110,6 +120,9 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
     (isMainSite || features?.map === true) && { id: 'map', label: 'Map', icon: MapIcon },
     { id: 'profile', label: 'My Profile', icon: User },
   ].filter(Boolean) as { id: string; label: string; icon: any }[];
+  // 'home' is always the unconditional first entry above — safe to split off for
+  // the desktop sidebar, where it's replaced by the merged "News" item below.
+  const [homeTab, ...restBottomTabs] = bottomTabs;
 
   useEffect(() => {
     setIsNavVisible(true);
@@ -194,6 +207,50 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
     lastScrollYRef.current = currentScrollY;
   }, [fullScreenView]);
 
+  // Shared nav-button markup for the mobile bottom bar / desktop sidebar (Phase 1.5).
+  // `visibility` controls which breakpoint(s) the button renders at:
+  //   - 'both'   Bible/Chat/Map/Profile — unchanged, shown on mobile bottom bar AND desktop sidebar
+  //   - 'mobile' Home — mobile bottom bar only (desktop uses the merged News item instead)
+  //   - 'desktop' News/Blog/Courses/Messages/Prayer/Partner — desktop sidebar only
+  const renderNavButton = (
+    id: string,
+    label: string,
+    Icon: any,
+    isActive: boolean,
+    onClick: () => void,
+    visibility: 'both' | 'mobile' | 'desktop' = 'both'
+  ) => {
+    const visibilityClassName =
+      visibility === 'mobile' ? 'flex flex-col lg:hidden' :
+      visibility === 'desktop' ? 'hidden lg:flex' :
+      'flex flex-col';
+    return (
+      <button
+        key={id}
+        onClick={onClick}
+        className={`${visibilityClassName} items-center justify-center gap-1 rounded-xl transition-all shrink-0 ${
+          isSidebarCollapsed
+            ? 'lg:w-14 lg:h-14 lg:p-0 w-16 h-12'
+            : 'lg:flex-row lg:justify-start lg:gap-4 lg:w-full lg:h-14 lg:px-4 w-16 h-12'
+        } ${
+          isActive ? '' : 'text-gray-400 hover:text-gray-600 lg:hover:bg-gray-50'
+        }`}
+        style={isActive ? { color: 'var(--brand-color, #e6b325)' } : undefined}
+        title={isSidebarCollapsed ? label : undefined}
+      >
+        <Icon
+          size={24}
+          strokeWidth={isActive ? 2.5 : 2}
+          className="shrink-0"
+          style={isActive ? { color: 'var(--brand-color, #e6b325)' } : undefined}
+        />
+        <span className={`text-[10px] lg:text-sm lg:font-medium lg:truncate ${isSidebarCollapsed ? 'lg:hidden block' : 'lg:block block'}`}>
+          {label}
+        </span>
+      </button>
+    );
+  };
+
   const renderLoading = () => (
     <div className="flex items-center justify-center h-full w-full min-h-[50vh]">
       <div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--brand-color, #e6b325)', borderTopColor: 'transparent' }}></div>
@@ -249,36 +306,40 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
             {!isSidebarCollapsed && <span className="font-display text-xl font-extrabold truncate" style={{ color: 'var(--brand-color, #D4AF37)' }}>{displayName}</span>}
           </div>
 
-          {bottomTabs.map((tab) => {
-            const Icon = tab.icon;
-            const isActive = activeBottomTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveBottomTab(tab.id)}
-                className={`flex flex-col items-center justify-center gap-1 rounded-xl transition-all shrink-0 ${
-                  isSidebarCollapsed 
-                    ? 'lg:w-14 lg:h-14 lg:p-0 w-16 h-12' 
-                    : 'lg:flex-row lg:justify-start lg:gap-4 lg:w-full lg:h-14 lg:px-4 w-16 h-12'
-                } ${
-                  isActive ? '' : 'text-gray-400 hover:text-gray-600 lg:hover:bg-gray-50'
-                }`}
-                style={isActive ? { color: 'var(--brand-color, #e6b325)' } : undefined}
-                title={isSidebarCollapsed ? tab.label : undefined}
-              >
-                <Icon 
-                  size={24} 
-                  strokeWidth={isActive ? 2.5 : 2} 
-                  className={isActive ? 'shrink-0' : 'shrink-0'} 
-                  style={isActive ? { color: 'var(--brand-color, #e6b325)' } : undefined}
-                />
-                <span className={`text-[10px] lg:text-sm lg:font-medium lg:truncate ${isSidebarCollapsed ? 'lg:hidden block' : 'lg:block block'}`}>
-                  {tab.label}
-                </span>
-              </button>
-            );
-          })}
-          
+          {/* Home — mobile bottom bar only; desktop's equivalent entry point is "News" below */}
+          {renderNavButton(
+            homeTab.id,
+            homeTab.label,
+            homeTab.icon,
+            activeBottomTab === 'home',
+            () => setActiveBottomTab('home'),
+            'mobile'
+          )}
+
+          {/* Desktop-only: former top-tabs (News/Blog/Courses/Messages/Prayer/Partner), now full sidebar items */}
+          {topTabs.map((tab) =>
+            renderNavButton(
+              `desktop-${tab.id}`,
+              tab.label,
+              TOP_TAB_ICONS[tab.id],
+              activeBottomTab === 'home' && activeTopTab === tab.id,
+              () => { setActiveBottomTab('home'); handleTopTabClick(tab.id); },
+              'desktop'
+            )
+          )}
+
+          {/* Bible / Chat / Map / Profile — unchanged, shown on mobile bottom bar AND desktop sidebar */}
+          {restBottomTabs.map((tab) =>
+            renderNavButton(
+              tab.id,
+              tab.label,
+              tab.icon,
+              activeBottomTab === tab.id,
+              () => setActiveBottomTab(tab.id),
+              'both'
+            )
+          )}
+
           {/* Collapse Button (Bottom) */}
           <div className="hidden lg:flex flex-1 items-end pb-6 mt-auto">
             <button
@@ -295,9 +356,9 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
 
       {/* Main Container */}
       <div className="flex-1 flex flex-col h-screen relative bg-[#f8f9fa] overflow-hidden min-w-0">
-        {/* Top Navigation (only visible when Home is active) */}
+        {/* Top Navigation (only visible when Home is active; mobile only — desktop nav lives in the sidebar) */}
         {activeBottomTab === 'home' && (
-          <div className="bg-white pt-3 pb-0 px-4 shadow-sm z-10 flex-shrink-0 transition-colors duration-300">
+          <div className="bg-white pt-3 pb-0 px-4 shadow-sm z-10 flex-shrink-0 transition-colors duration-300 lg:hidden">
             <DesktopContainer>
             <div ref={topTabsRef} className="flex overflow-x-auto gap-6 pb-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] snap-x scroll-smooth w-full">
               {topTabs.map((tab) => (
