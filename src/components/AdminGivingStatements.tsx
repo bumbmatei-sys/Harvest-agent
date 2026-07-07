@@ -134,7 +134,7 @@ const AdminGivingStatements: React.FC = () => {
       {/* Section A — Configuration */}
       {showConfig && (
         <div className="bg-white rounded-2xl border border-gray-100 p-5 mb-4 space-y-3">
-          <h3 className="text-sm font-bold text-gray-800">Statement Settings</h3>
+          <h3 className="font-display text-sm font-bold text-gray-800">Statement Settings</h3>
           <div>
             <label className="block text-xs font-semibold text-gray-700 mb-1">EIN / Registration Number</label>
             <input value={config.ein} onChange={e => setConfig({ ...config, ein: e.target.value })}
@@ -174,7 +174,7 @@ const AdminGivingStatements: React.FC = () => {
 
       {/* Section B — Generate */}
       <div className="bg-white rounded-2xl border border-gray-100 p-5 mb-4 space-y-3">
-        <h3 className="text-sm font-bold text-gray-800 flex items-center gap-1.5"><Receipt size={15} /> Generate Statements</h3>
+        <h3 className="font-display text-sm font-bold text-gray-800 flex items-center gap-1.5"><Receipt size={15} /> Generate Statements</h3>
         <div>
           <label className="block text-xs font-semibold text-gray-700 mb-1">Tax Year</label>
           <select value={year} onChange={e => setYear(Number(e.target.value))}
@@ -209,7 +209,7 @@ const AdminGivingStatements: React.FC = () => {
 
       {/* Section C — History */}
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-bold text-gray-700">Statement History — {year}</h3>
+        <h3 className="font-display text-sm font-bold text-gray-700">Statement History — {year}</h3>
         <button onClick={loadStatuses} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50">
           <RefreshCw size={13} className={loadingStatuses ? 'animate-spin' : ''} /> Refresh
         </button>

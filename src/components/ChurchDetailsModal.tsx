@@ -193,7 +193,7 @@ const ChurchDetailsModal: React.FC<ChurchDetailsModalProps> = ({
  <div className="absolute inset-0 bg-gradient-to-t from-[#111827] via-[#111827]/60 to-transparent" />
  
  <div className="absolute bottom-12 left-0 w-full p-6 text-white">
- <h2 className="text-5xl font-bold mb-2 italic">{church.name}</h2>
+ <h2 className="text-5xl font-bold mb-2 italic font-display">{church.name}</h2>
  <div className="flex items-center gap-2 text-sm text-gray-200">
  <MapPin size={16} />
  <span>

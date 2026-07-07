@@ -236,7 +236,7 @@ const AdminNavCustomizer: React.FC<AdminNavCustomizerProps> = ({
           <X size={20} className="text-gray-600" />
         </button>
 
-        <h2 className="text-base font-bold text-gray-900">Customize Navigation</h2>
+        <h2 className="font-display text-base font-bold text-gray-900">Customize Navigation</h2>
 
         <button
           onClick={handleSave}

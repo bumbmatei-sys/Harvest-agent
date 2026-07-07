@@ -244,7 +244,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
               <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center">
                 <AlertTriangle size={20} className="text-red-500" />
               </div>
-              <h3 className="text-lg font-bold text-gray-900">Cancel Subscription?</h3>
+              <h3 className="text-lg font-bold text-gray-900 font-display">Cancel Subscription?</h3>
             </div>
             <p className="text-gray-600 text-sm mb-6">
               Your ministry will remain active until the end of the current billing period. After that, all data will be preserved but your ministry will be suspended.

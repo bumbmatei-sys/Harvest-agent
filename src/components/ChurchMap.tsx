@@ -255,7 +255,7 @@ const ChurchMap: React.FC<ChurchMapProps> = ({ onBack, onMapInteraction }) => {
  </button>
 
  {viewMode === 'list' && (
- <h2 className="text-xl font-bold text-gray-900 pointer-events-auto">
+ <h2 className="text-xl font-bold text-gray-900 pointer-events-auto font-display">
  Churches near you
  </h2>
  )}

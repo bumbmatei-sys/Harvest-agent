@@ -300,7 +300,7 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
  <button onClick={() => resetPasswordFlow()} className="mr-2 text-gray-500">
  <ArrowLeft size={20} />
  </button>
- <h3 className="text-lg font-bold text-gray-900">Verify Password</h3>
+ <h3 className="text-lg font-bold text-gray-900 font-display">Verify Password</h3>
  </div>
  <p className="text-sm text-gray-600 mb-4">Please enter your current password to continue.</p>
  <input
@@ -340,7 +340,7 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
  <button onClick={() => setPasswordFlowState('current')} className="mr-2 text-gray-500">
  <ArrowLeft size={20} />
  </button>
- <h3 className="text-lg font-bold text-gray-900">New Password</h3>
+ <h3 className="text-lg font-bold text-gray-900 font-display">New Password</h3>
  </div>
  <input
  type="password"
@@ -377,7 +377,7 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
  <button onClick={() => setPasswordFlowState('current')} className="mr-2 text-gray-500">
  <ArrowLeft size={20} />
  </button>
- <h3 className="text-lg font-bold text-gray-900">Reset Password</h3>
+ <h3 className="text-lg font-bold text-gray-900 font-display">Reset Password</h3>
  </div>
  <p className="text-sm text-gray-600 mb-4">We will send a password reset link to your email address.</p>
  <input
@@ -412,7 +412,7 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
  <button onClick={onClose} className="p-2 -ml-2 text-gray-600">
  <X size={24} />
  </button>
- <h2 className="text-lg font-bold text-gray-900">Profile</h2>
+ <h2 className="text-lg font-bold text-gray-900 font-display">Profile</h2>
  <button 
  onClick={handleSave} 
  disabled={isSaving}

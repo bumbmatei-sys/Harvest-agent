@@ -125,7 +125,7 @@ const NewsletterCampaigns: React.FC<NewsletterCampaignsProps> = ({ tenantId, onB
         <div className="w-16 h-16 mx-auto rounded-2xl bg-[color-mix(in_srgb,var(--brand-color)_10%,transparent)] flex items-center justify-center mb-4">
           <Mail size={28} className="text-gold" />
         </div>
-        <h3 className="text-lg font-bold text-gray-900 mb-2">No newsletters yet</h3>
+        <h3 className="text-lg font-bold text-gray-900 mb-2 font-display">No newsletters yet</h3>
         <p className="text-sm text-gray-500 mb-6 max-w-md mx-auto">
           Create and send newsletters to keep your community engaged.
         </p>

@@ -37,7 +37,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ course, onBack }) => {
  <span className="inline-block bg-gold text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider mb-3">
  {course.category}
  </span>
- <h1 className="text-3xl sm:text-4xl font-bold mb-2 leading-tight">{course.title}</h1>
+ <h1 className="text-3xl sm:text-4xl font-bold mb-2 leading-tight font-display">{course.title}</h1>
  <div className="flex items-center gap-4 text-sm text-gray-300">
  <div className="flex items-center gap-1.5">
  <User size={16} />
@@ -55,7 +55,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ course, onBack }) => {
  <div className="lg:col-span-2 space-y-8">
  {/* About this course */}
  <section>
- <h2 className="text-xl font-bold text-gray-900 mb-4">About this course</h2>
+ <h2 className="text-xl font-bold text-gray-900 mb-4 font-display">About this course</h2>
  <div className="prose max-w-none text-gray-600 ">
  <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(course.description) }} />
  </div>
@@ -63,7 +63,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ course, onBack }) => {
 
  {/* Curriculum Placeholder */}
  <section>
- <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+ <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2 font-display">
  <BookOpen size={20} className="text-gold" />
  Curriculum
  </h2>
@@ -94,7 +94,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ course, onBack }) => {
  {/* Sidebar */}
  <div className="lg:col-span-1">
  <div className="bg-white rounded-2xl p-6 border border-gray-100 sticky top-6">
- <h3 className="font-bold text-gray-900 mb-4">Course Features</h3>
+ <h3 className="font-bold text-gray-900 mb-4 font-display">Course Features</h3>
  <ul className="space-y-4">
  <li className="flex items-start gap-3 text-sm text-gray-600 ">
  <CheckCircle2 size={18} className="text-gold flex-shrink-0 mt-0.5" />

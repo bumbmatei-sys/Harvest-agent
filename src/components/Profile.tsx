@@ -280,7 +280,7 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap 
 
  {/* Profile Info */}
  <div className="flex flex-col items-center mt-auto mb-4">
- <h2 className="text-3xl font-bold text-white mb-2">{userName}</h2>
+ <h2 className="text-3xl font-bold text-white mb-2 font-display">{userName}</h2>
  <div className="bg-white/10 backdrop-blur-md px-4 py-1.5 rounded-full flex items-center gap-2 text-white text-[10px] font-bold tracking-wider border border-white/10">
  <BadgeCheck size={14} className="text-gold" />
  MEMBER SINCE 2026
@@ -487,7 +487,7 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap 
  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
  <Church size={32} className="text-gray-400" />
  </div>
- <h3 className="text-xl font-bold text-gray-900 mb-2">No Home Church</h3>
+ <h3 className="text-xl font-bold text-gray-900 mb-2 font-display">No Home Church</h3>
  <p className="text-gray-500 mb-6 text-sm">
  You have no churches selected. Add a church to stay connected with your local community.
  </p>

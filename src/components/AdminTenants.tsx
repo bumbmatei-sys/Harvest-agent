@@ -213,7 +213,7 @@ const AdminTenants: React.FC = () => {
       {filtered.length === 0 ? (
         <div className="text-center py-16 bg-white rounded-2xl border border-gray-100">
           <Building2 size={48} className="mx-auto text-gray-300 mb-4" />
-          <p className="text-gray-500 font-medium">No tenants yet</p>
+          <p className="text-gray-500 font-medium font-display">No tenants yet</p>
           <p className="text-gray-400 text-sm mt-1">Create your first church tenant to get started.</p>
         </div>
       ) : (
@@ -317,7 +317,7 @@ const AdminTenants: React.FC = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90dvh] flex flex-col overflow-hidden">
             <div className="p-6 border-b border-gray-100 flex justify-between items-center">
-              <h3 className="text-xl font-bold text-gray-900">
+              <h3 className="text-xl font-bold text-gray-900 font-display">
                 {editingId ? 'Edit Tenant' : 'New Tenant'}
               </h3>
               <button onClick={() => setShowForm(false)} className="text-gray-400 hover:text-gray-600">

@@ -430,7 +430,7 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
       {/* QuickBooks Section */}
       {isQbEnabled && (
         <div className="mb-6">
-          <h3 className="text-sm font-bold text-gray-700 mb-3">QuickBooks</h3>
+          <h3 className="text-sm font-bold text-gray-700 mb-3 font-display">QuickBooks</h3>
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
             {qbLoading ? (
               <div className="flex items-center gap-2 text-sm text-gray-400"><Loader2 size={15} className="animate-spin" /> Checking connection…</div>
@@ -495,7 +495,7 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
       {/* Tax Receipts Section */}
       <div className="mb-6">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-bold text-gray-700">Tax Receipts</h3>
+          <h3 className="text-sm font-bold text-gray-700 font-display">Tax Receipts</h3>
           {!isTaxReceiptsEnabled && (
             <span className="text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full font-semibold flex items-center gap-1">
               <Lock size={10} /> Ministry plan required
@@ -552,7 +552,7 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
       {/* Giving Statements Section */}
       {isTaxReceiptsEnabled && (
         <div className="mb-6">
-          <h3 className="text-sm font-bold text-gray-700 mb-3">Giving Statements</h3>
+          <h3 className="text-sm font-bold text-gray-700 mb-3 font-display">Giving Statements</h3>
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
             <p className="text-sm text-gray-600 mb-4">
               Generate annual giving statements (charitable contribution receipts) for each donor, then email them as PDFs.
@@ -647,7 +647,7 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
 
       {/* Invoices List */}
       <div>
-        <h3 className="text-sm font-bold text-gray-700 mb-3">Invoice History</h3>
+        <h3 className="text-sm font-bold text-gray-700 mb-3 font-display">Invoice History</h3>
         <div className="flex gap-2 mb-4">
           <div className="relative flex-1">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -667,7 +667,7 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
         {filtered.length === 0 ? (
           <div className="text-center py-16 text-gray-400">
             <Receipt size={40} className="mx-auto mb-3 opacity-30" />
-            <p className="font-medium">{search || typeFilter !== 'all' ? 'No invoices match' : 'No invoices yet'}</p>
+            <p className="font-medium font-display">{search || typeFilter !== 'all' ? 'No invoices match' : 'No invoices yet'}</p>
             <p className="text-sm mt-1">Invoices are created automatically when donations and event registrations are processed</p>
           </div>
         ) : (

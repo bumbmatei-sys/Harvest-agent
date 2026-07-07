@@ -19,7 +19,7 @@ const PrivacyTermsModal: React.FC<PrivacyTermsModalProps> = ({ isOpen, onClose }
  <button onClick={onClose} className="p-2 -ml-2 text-gray-600 ">
  <ArrowLeft size={24} />
  </button>
- <h2 className="text-lg font-bold text-gray-900 flex-1 text-center pr-8">Privacy & Terms</h2>
+ <h2 className="text-lg font-bold text-gray-900 flex-1 text-center pr-8 font-display">Privacy & Terms</h2>
  </div>
 
  <div className="flex-1 overflow-y-auto p-4 pb-12">

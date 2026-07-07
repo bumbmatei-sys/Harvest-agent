@@ -383,9 +383,9 @@ const AdminCheckin: React.FC<AdminCheckinProps> = ({ canCheckin = true, canQR = 
 
         {/* Live list */}
         <div className="bg-white rounded-2xl border border-gray-100 mt-4 overflow-hidden">
-          <div className="px-4 py-3 border-b border-gray-50"><h3 className="text-sm font-bold text-gray-700">Checked In</h3></div>
+          <div className="px-4 py-3 border-b border-gray-50"><h3 className="text-sm font-bold text-gray-700 font-display">Checked In</h3></div>
           {attendees.length === 0 ? (
-            <p className="text-center py-10 text-gray-400 text-sm">No one checked in yet.</p>
+            <p className="text-center py-10 text-gray-400 text-sm font-display">No one checked in yet.</p>
           ) : (
             <div className="divide-y divide-gray-50">
               {attendees.map(a => (
@@ -427,7 +427,7 @@ const AdminCheckin: React.FC<AdminCheckinProps> = ({ canCheckin = true, canQR = 
       {sessions.length === 0 ? (
         <div className="text-center py-16 text-gray-400">
           <QrCode size={40} className="mx-auto mb-3 opacity-30" />
-          <p className="font-medium">No check-in sessions yet</p>
+          <p className="font-medium font-display">No check-in sessions yet</p>
           <p className="text-sm mt-1">Create a session and share its QR code for attendees to scan.</p>
         </div>
       ) : (

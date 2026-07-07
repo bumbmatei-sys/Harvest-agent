@@ -128,7 +128,7 @@ const PwaInstallStep: React.FC<{
       >
         {isIOS ? <Share size={28} style={{ color: GOLD }} /> : <Download size={28} style={{ color: GOLD }} />}
       </div>
-      <h1 className="text-[22px] font-semibold text-[#111111] text-center mb-1.5">Install the App</h1>
+      <h1 className="text-[22px] font-semibold text-[#111111] text-center mb-1.5 font-display">Install the App</h1>
       <p className="text-sm text-[#888888] text-center mb-6">
         {showNativeInstall
           ? 'Get the full experience on your home screen'
@@ -219,7 +219,7 @@ const NotificationsStep: React.FC<{ onDone: () => void }> = ({ onDone }) => {
       >
         <Bell size={28} style={{ color: GOLD }} />
       </div>
-      <h1 className="text-[22px] font-semibold text-[#111111] text-center mb-1.5">Stay Connected</h1>
+      <h1 className="text-[22px] font-semibold text-[#111111] text-center mb-1.5 font-display">Stay Connected</h1>
       <p className="text-sm text-[#888888] text-center mb-6">
         Enable notifications to receive messages, prayer updates, and announcements from your
         ministry.
@@ -673,7 +673,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                   >
                     <CheckCircle2 size={40} className="text-green-500" />
                   </motion.div>
-                  <h1 className="text-[22px] font-semibold text-[#111111] mb-2">
+                  <h1 className="text-[22px] font-semibold text-[#111111] mb-2 font-display">
                     You&apos;re all set{name ? `, ${name.split(' ')[0]}` : ''}!
                   </h1>
                   <p className="text-sm text-[#888888] mb-8">
@@ -692,7 +692,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
               ) : (
                 <>
                   <div className="mb-6">
-                    <h1 className="text-[22px] font-semibold text-[#111111] mb-1">{heading.title}</h1>
+                    <h1 className="text-[22px] font-semibold text-[#111111] mb-1 font-display">{heading.title}</h1>
                     {heading.sub && <p className="text-sm text-[#888888]">{heading.sub}</p>}
                   </div>
                   {error && (

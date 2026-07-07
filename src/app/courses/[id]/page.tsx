@@ -107,7 +107,7 @@ export default async function CoursePublicPage({
           </span>
         )}
 
-        <h1 className="text-3xl font-black text-[#0b1121] mb-3 leading-tight">
+        <h1 className="font-display text-3xl font-black text-[#0b1121] mb-3 leading-tight">
           {course.title}
         </h1>
 

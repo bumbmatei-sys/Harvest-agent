@@ -167,7 +167,7 @@ const AdminDashboardHome: React.FC<AdminDashboardHomeProps> = ({ tenantId, isSup
   return (
     <div className="max-w-4xl mx-auto space-y-6 p-4">
       {/* Greeting */}
-      <h2 className="text-base font-semibold text-gray-900">
+      <h2 className="font-display text-base font-semibold text-gray-900">
         {greeting()}, {adminName} 👋
       </h2>
 

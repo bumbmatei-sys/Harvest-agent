@@ -56,7 +56,7 @@ const PublicCheckin: React.FC<PublicCheckinProps> = ({
             // eslint-disable-next-line @next/next/no-img-element
             <img src={logo} alt={tenantName} className="h-12 mx-auto mb-2 object-contain" />
           ) : (
-            <div className="text-lg font-extrabold" style={{ color: primaryColor }}>{tenantName}</div>
+            <div className="font-display text-lg font-extrabold" style={{ color: primaryColor }}>{tenantName}</div>
           )}
         </div>
         {children}
@@ -73,7 +73,7 @@ const PublicCheckin: React.FC<PublicCheckinProps> = ({
       <Shell>
         <div className="bg-white rounded-[14px] shadow-sm border border-gray-100 p-8 text-center">
           <CheckCircle2 size={48} className="mx-auto mb-4" style={{ color: primaryColor }} />
-          <h1 className="text-xl font-bold text-gray-900 mb-1">You&apos;re checked in!</h1>
+          <h1 className="font-display text-xl font-bold text-gray-900 mb-1">You&apos;re checked in!</h1>
           <p className="text-gray-500 text-sm">Welcome, {firstName}. 🙌</p>
         </div>
       </Shell>
@@ -83,7 +83,7 @@ const PublicCheckin: React.FC<PublicCheckinProps> = ({
   return (
     <Shell>
       <form onSubmit={handleSubmit} className="bg-white rounded-[14px] shadow-sm border border-gray-100 p-6" style={{ paddingBottom: 120 }}>
-        <h1 className="text-xl font-bold text-gray-900 mb-1">Check In</h1>
+        <h1 className="font-display text-xl font-bold text-gray-900 mb-1">Check In</h1>
         <p className="text-sm text-gray-500 mb-5">{sessionName}</p>
         <div className="space-y-4">
           <div>

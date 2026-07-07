@@ -51,7 +51,7 @@ export const AdminScreenHeader: React.FC<AdminScreenHeaderProps> = ({ title, onB
 
     <div className="flex-1 min-w-0 flex items-center gap-1.5 justify-center">
       {titleIcon}
-      <h1 className="text-[17px] font-bold text-gray-900 truncate">{title}</h1>
+      <h1 className="font-display text-[17px] font-bold text-gray-900 truncate">{title}</h1>
     </div>
 
     <div className="flex items-center gap-2 flex-shrink-0 z-10 justify-end">

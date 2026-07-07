@@ -494,7 +494,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle }) => {
       ))}
 
       <div className="flex items-center justify-between px-1 mb-2">
-        <h2 className="text-xl font-bold text-gray-900 ">News & Updates</h2>
+        <h2 className="text-xl font-bold text-gray-900 font-display">News & Updates</h2>
         {posts.length >= 3 && (
           <button 
             onClick={onOpenAllNews}
@@ -716,7 +716,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle }) => {
       {/* Upcoming Events (non-pinned) */}
       {adminEvents.filter(e => !e.pinned).length > 0 && (
         <div className="mt-4">
-          <h2 className="text-xl font-bold text-gray-900 px-1 mb-3">Upcoming Events</h2>
+          <h2 className="text-xl font-bold text-gray-900 px-1 mb-3 font-display">Upcoming Events</h2>
           <div className="space-y-3">
             {adminEvents.filter(e => !e.pinned).map(event => (
               <div key={event.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
@@ -753,7 +753,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle }) => {
       {articles.length > 0 && (
         <div className="mt-8">
           <div className="flex items-center justify-between px-1 mb-4">
-            <h2 className="text-xl font-bold text-gray-900 ">Latest Articles</h2>
+            <h2 className="text-xl font-bold text-gray-900 font-display">Latest Articles</h2>
           </div>
           <div className="flex flex-col gap-3">
             {articles.map((post, index) => (
@@ -819,7 +819,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle }) => {
       {attendingPostId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
           <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl">
-            <h3 className="text-xl font-bold text-gray-900 mb-4">Join Event</h3>
+            <h3 className="text-xl font-bold text-gray-900 mb-4 font-display">Join Event</h3>
             <p className="text-sm text-gray-500 mb-4">
               Please provide your details to receive more information about this event.
             </p>

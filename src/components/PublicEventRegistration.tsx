@@ -31,7 +31,7 @@ const Shell: React.FC<{ logo: string | null; tenantName: string; primaryColor: s
           // eslint-disable-next-line @next/next/no-img-element
           <img src={logo} alt={tenantName} className="h-12 mx-auto mb-2 object-contain" />
         ) : (
-          <div className="text-lg font-extrabold" style={{ color: primaryColor }}>{tenantName}</div>
+          <div className="font-display text-lg font-extrabold" style={{ color: primaryColor }}>{tenantName}</div>
         )}
       </div>
       {children}
@@ -163,7 +163,7 @@ const PublicEventRegistration: React.FC<PublicEventRegistrationProps> = ({
         <img src={event.coverImage} alt={event.title} className="w-full h-44 object-cover" />
       )}
       <div className="p-6">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">{event.title}</h1>
+        <h1 className="font-display text-2xl font-bold text-gray-900 mb-2">{event.title}</h1>
         <div className="space-y-1.5 mb-3">
           {startLabel && (
             <p className="flex items-center gap-2 text-sm text-gray-600"><Calendar size={15} style={{ color: primaryColor }} /> {startLabel}</p>
@@ -186,7 +186,7 @@ const PublicEventRegistration: React.FC<PublicEventRegistrationProps> = ({
         {EventHeader}
         <div className="bg-white rounded-[14px] shadow-sm border border-gray-100 p-8 text-center">
           <CheckCircle2 size={48} className="mx-auto mb-4" style={{ color: primaryColor }} />
-          <h2 className="text-xl font-bold text-gray-900 mb-1">
+          <h2 className="font-display text-xl font-bold text-gray-900 mb-1">
             {done.waitlisted ? "You're on the waitlist!" : "You're registered!"}
           </h2>
           <p className="text-sm text-gray-500 mb-4">

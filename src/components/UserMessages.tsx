@@ -202,7 +202,7 @@ const FormPicker: React.FC<{
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
       <div className="relative w-full bg-white rounded-t-2xl max-h-[70vh] flex flex-col">
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 flex-shrink-0">
-          <h3 className="font-bold text-gray-900 text-sm">Attach a Form</h3>
+          <h3 className="font-bold text-gray-900 text-sm font-display">Attach a Form</h3>
           <button onClick={onClose}><X size={18} className="text-gray-400" /></button>
         </div>
         <div className="relative mx-4 mt-3 mb-2 flex-shrink-0">
@@ -766,7 +766,7 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false })
               <ArrowLeft size={22} style={{ color: 'var(--brand-color, #B8962E)' }} />
             </button>
           )}
-          <h2 className="text-lg font-black text-gray-900">Messages</h2>
+          <h2 className="text-lg font-black text-gray-900 font-display">Messages</h2>
         </div>
         <div className="flex items-center justify-center h-40">
           <div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin"
@@ -807,7 +807,7 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false })
             <ArrowLeft size={22} style={{ color: 'var(--brand-color, #B8962E)' }} />
           </button>
         )}
-        <h2 className="text-lg font-black text-gray-900">Messages</h2>
+        <h2 className="text-lg font-black text-gray-900 font-display">Messages</h2>
         {canStartDm && (
           <button
             onClick={openNewMessage}
@@ -887,7 +887,7 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false })
           <div className="absolute inset-0 bg-black/50" onClick={() => setShowNewMessage(false)} />
           <div className="relative w-full bg-white rounded-t-2xl max-h-[70vh] flex flex-col">
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 flex-shrink-0">
-              <h3 className="font-bold text-gray-900 text-sm">New Message</h3>
+              <h3 className="font-bold text-gray-900 text-sm font-display">New Message</h3>
               <button onClick={() => setShowNewMessage(false)}><X size={18} className="text-gray-400" /></button>
             </div>
             <div className="relative mx-4 mt-3 mb-2 flex-shrink-0">

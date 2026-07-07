@@ -178,7 +178,7 @@ const AdminSms: React.FC = () => {
             {sendMsg && <div className={`p-3 rounded-xl text-sm ${sendMsg.ok ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'}`}>{sendMsg.text}</div>}
           </div>
 
-          <h3 className="text-sm font-bold text-gray-700 mt-6 mb-3">Sent History</h3>
+          <h3 className="font-display text-sm font-bold text-gray-700 mt-6 mb-3">Sent History</h3>
           {history.length === 0 ? (
             <div className="text-center py-10 text-gray-400"><MessageSquare size={36} className="mx-auto mb-2 opacity-30" /><p className="text-sm">No broadcasts yet</p></div>
           ) : (
@@ -231,7 +231,7 @@ const AdminSms: React.FC = () => {
           {/* ── Text-to-Give ── */}
           <div className="bg-white rounded-2xl border border-gray-100 p-4 mt-6">
             <div className="flex items-center justify-between mb-1">
-              <span className="text-sm font-bold text-gray-800 flex items-center gap-1.5"><Gift size={15} style={{ color: GOLD }} /> Text-to-Give</span>
+              <span className="font-display text-sm font-bold text-gray-800 flex items-center gap-1.5"><Gift size={15} style={{ color: GOLD }} /> Text-to-Give</span>
               <label className="relative inline-flex items-center cursor-pointer">
                 <input type="checkbox" className="sr-only peer" checked={t2g.enabled} onChange={e => setT2g({ ...t2g, enabled: e.target.checked })} />
                 <div className="w-10 h-6 bg-gray-200 peer-checked:bg-gold rounded-full peer transition-colors after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-4" />

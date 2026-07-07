@@ -245,7 +245,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
               alt={displayName}
               className="w-10 h-10 object-contain shrink-0"
             />
-            {!isSidebarCollapsed && <span className="text-xl font-extrabold truncate" style={{ color: 'var(--brand-color, #D4AF37)' }}>{displayName}</span>}
+            {!isSidebarCollapsed && <span className="font-display text-xl font-extrabold truncate" style={{ color: 'var(--brand-color, #D4AF37)' }}>{displayName}</span>}
           </div>
 
           {bottomTabs.map((tab) => {

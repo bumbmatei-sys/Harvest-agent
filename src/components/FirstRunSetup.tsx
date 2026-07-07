@@ -111,7 +111,7 @@ const FirstRunSetup: React.FC<FirstRunSetupProps> = ({ tenantId, onFinished }) =
           }}>
             <Sparkles size={14} /> Payment received
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">Finish setting up your ministry</h1>
+          <h1 className="text-2xl font-bold text-gray-900 font-display">Finish setting up your ministry</h1>
           <p className="text-sm text-gray-500 mt-2">
             {features?.customBranding || features?.customDomain
               ? 'Claim your web address and brand your app. You can change all of this later in Settings.'

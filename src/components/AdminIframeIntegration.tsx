@@ -95,7 +95,7 @@ const AdminIframeIntegration: React.FC<AdminIframeIntegrationProps> = ({
                 {icon}
               </div>
               <div>
-                <h2 className="text-lg font-bold text-gray-900">{displayName}</h2>
+                <h2 className="font-display text-lg font-bold text-gray-900">{displayName}</h2>
                 <p className="text-sm text-gray-500 mt-0.5">{description}</p>
               </div>
             </div>

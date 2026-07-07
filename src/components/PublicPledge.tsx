@@ -23,7 +23,7 @@ const Shell: React.FC<{ logo: string | null; tenantName: string; primaryColor: s
           // eslint-disable-next-line @next/next/no-img-element
           <img src={logo} alt={tenantName} className="h-12 mx-auto mb-2 object-contain" />
         ) : (
-          <div className="text-lg font-extrabold" style={{ color: primaryColor }}>{tenantName}</div>
+          <div className="font-display text-lg font-extrabold" style={{ color: primaryColor }}>{tenantName}</div>
         )}
       </div>
       {children}
@@ -83,7 +83,7 @@ const PublicPledge: React.FC<PublicPledgeProps> = ({ tenantId, tenantName, logo,
       <Shell logo={logo} tenantName={tenantName} primaryColor={primaryColor}>
         <div className="bg-white rounded-[14px] shadow-sm border border-gray-100 p-8 text-center">
           <CheckCircle2 size={48} className="mx-auto mb-4" style={{ color: primaryColor }} />
-          <h1 className="text-xl font-bold text-gray-900 mb-2">Thank you, {name}!</h1>
+          <h1 className="font-display text-xl font-bold text-gray-900 mb-2">Thank you, {name}!</h1>
           <p className="text-sm text-gray-500">Your pledge of {fmt(Number(amount))} has been recorded. We&apos;ll be in touch.</p>
         </div>
       </Shell>
@@ -93,7 +93,7 @@ const PublicPledge: React.FC<PublicPledgeProps> = ({ tenantId, tenantName, logo,
   return (
     <Shell logo={logo} tenantName={tenantName} primaryColor={primaryColor}>
       <div className="bg-white rounded-[14px] shadow-sm border border-gray-100 p-6" style={{ paddingBottom: 24 }}>
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">{campaign.title}</h1>
+        <h1 className="font-display text-2xl font-bold text-gray-900 mb-2">{campaign.title}</h1>
         {campaign.description && <p className="text-sm text-gray-500 mb-4 whitespace-pre-line">{campaign.description}</p>}
 
         {campaign.goal > 0 && (

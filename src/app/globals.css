@@ -4,7 +4,7 @@
 
 @layer base {
  :root {
- --font-sans: 'Nunito', sans-serif;
+ --font-sans: 'Inter', system-ui, sans-serif;
  --color-primary: #D4AF37;
  --color-secondary: #e6b325;
  --brand-color: #D4AF37;

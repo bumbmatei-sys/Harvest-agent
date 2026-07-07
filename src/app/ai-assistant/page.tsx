@@ -142,7 +142,7 @@ export default function AiAssistantPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
             </svg>
           </div>
-          <h1 className="text-xl font-bold text-gray-900">Harvest AI Assistant</h1>
+          <h1 className="font-display text-xl font-bold text-gray-900">Harvest AI Assistant</h1>
           <p className="text-sm text-gray-500 mt-1">Your personal ministry assistant on Telegram</p>
         </div>
 
@@ -160,7 +160,7 @@ export default function AiAssistantPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
             </div>
-            <h3 className="font-semibold text-gray-900 mb-2">Payment successful!</h3>
+            <h3 className="font-display font-semibold text-gray-900 mb-2">Payment successful!</h3>
             <p className="text-sm text-gray-500">Check your email for a link to activate your AI assistant. The email may take a minute to arrive.</p>
           </div>
         )}

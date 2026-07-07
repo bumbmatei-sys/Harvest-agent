@@ -45,7 +45,7 @@ const AboutUsModal: React.FC<AboutUsModalProps> = ({ isOpen, onClose, onOpenPart
  <button onClick={onClose} className="p-2 -ml-2 text-gray-600 ">
  <ArrowLeft size={24} />
  </button>
- <h2 className="text-lg font-bold text-gray-900 flex-1 text-center pr-8">About Us</h2>
+ <h2 className="text-lg font-bold text-gray-900 flex-1 text-center pr-8 font-display">About Us</h2>
  </div>
 
  <div className="flex-1 overflow-y-auto p-4 space-y-8 pb-12">
@@ -55,11 +55,11 @@ const AboutUsModal: React.FC<AboutUsModalProps> = ({ isOpen, onClose, onOpenPart
  <div className="w-10 h-10 rounded-full bg-[color-mix(in_srgb,var(--brand-color)_12%,white)] flex items-center justify-center">
  <Eye size={20} className="text-gold" />
  </div>
- <h3 className="text-xl font-bold text-gray-900 ">The Vision</h3>
+ <h3 className="text-xl font-bold text-gray-900 font-display">The Vision</h3>
  </div>
  
  <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 ">
- <h4 className="text-lg font-bold text-gray-900 mb-4">
+ <h4 className="text-lg font-bold text-gray-900 mb-4 font-display">
  The Digital Foundation for the Great Commission
  </h4>
  
@@ -87,7 +87,7 @@ const AboutUsModal: React.FC<AboutUsModalProps> = ({ isOpen, onClose, onOpenPart
  <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center">
  <Users size={20} className="text-blue-600 " />
  </div>
- <h3 className="text-xl font-bold text-gray-900 ">About Us</h3>
+ <h3 className="text-xl font-bold text-gray-900 font-display">About Us</h3>
  </div>
  
  <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 ">
@@ -115,7 +115,7 @@ const AboutUsModal: React.FC<AboutUsModalProps> = ({ isOpen, onClose, onOpenPart
 
  {/* Partner with Us */}
  <div className="bg-[#1e2330] rounded-3xl p-6 text-center shadow-sm">
- <h3 className="text-xl font-bold text-white mb-3">Partner with Us</h3>
+ <h3 className="text-xl font-bold text-white mb-3 font-display">Partner with Us</h3>
  <p className="text-sm text-gray-300 mb-6 leading-relaxed">
  Join our mission to keep spiritual growth tools accessible to everyone, everywhere. Your partnership makes this possible.
  </p>

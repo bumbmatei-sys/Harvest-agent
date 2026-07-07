@@ -46,7 +46,7 @@ const PlanUpgradeScreen: React.FC<PlanUpgradeScreenProps> = ({
         <Lock size={28} style={{ color: '#d4a017' }} />
       </div>
 
-      <h2 className="text-xl font-bold text-gray-900 mb-2">{featureName}</h2>
+      <h2 className="text-xl font-bold text-gray-900 mb-2 font-display">{featureName}</h2>
       <p className="text-sm text-gray-500 mb-6 max-w-xs leading-relaxed">
         This feature requires the <strong>{minPlanName}</strong> plan or higher.
         Upgrade to unlock access.

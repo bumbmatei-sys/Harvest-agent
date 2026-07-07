@@ -487,7 +487,7 @@ const AdminPosts: React.FC<AdminPostsProps> = ({ userRole, userPermissions }) =>
  <div className="w-8 h-8 border-4 border-gold border-t-transparent rounded-full animate-spin"></div>
  </div>
  ) : posts.length === 0 ? (
- <div className="text-center py-8 text-gray-500">No posts yet.</div>
+ <div className="text-center py-8 text-gray-500 font-display">No posts yet.</div>
  ) : (
  posts.map(post => (
  <div key={post.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
@@ -661,7 +661,7 @@ const AdminPosts: React.FC<AdminPostsProps> = ({ userRole, userPermissions }) =>
  {deleteConfirmId && (
  <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
  <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 border border-gray-100 ">
- <h3 className="text-xl font-bold text-gray-900 mb-2">Delete Post</h3>
+ <h3 className="text-xl font-bold text-gray-900 mb-2 font-display">Delete Post</h3>
  <p className="text-gray-500 mb-6">
  Are you sure you want to delete this post? This action cannot be undone.
  </p>

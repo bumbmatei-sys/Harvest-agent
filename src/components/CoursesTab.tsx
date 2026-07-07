@@ -59,7 +59,7 @@ const CoursesTab: React.FC<CoursesTabProps> = ({ onOpenCourse }) => {
  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
  <BookOpen size={32} className="text-gray-400 " />
  </div>
- <h3 className="text-lg font-bold text-gray-900 mb-2">No Courses Available</h3>
+ <h3 className="text-lg font-bold text-gray-900 mb-2 font-display">No Courses Available</h3>
  <p className="text-gray-500 text-sm max-w-xs">
  Check back later for new educational content and courses.
  </p>
@@ -71,7 +71,7 @@ const CoursesTab: React.FC<CoursesTabProps> = ({ onOpenCourse }) => {
  <div className="space-y-6 pb-24 lg:max-w-5xl lg:mx-auto w-full">
  <div className="flex justify-between items-end mb-2">
  <div>
- <h2 className="text-2xl font-bold text-gray-900 ">Available Courses</h2>
+ <h2 className="text-2xl font-bold text-gray-900 font-display">Available Courses</h2>
  <p className="text-sm text-gray-500 mt-1">Expand your knowledge and faith.</p>
  </div>
  </div>

@@ -69,7 +69,7 @@ export function CourseOverview({ course, authors, onBack, onStartLesson, complet
           <div className="text-[11px] font-bold uppercase tracking-widest mb-2" style={{ color: GOLD }}>
             {course.category || "Course"}
           </div>
-          <div className="text-2xl font-extrabold text-white tracking-tight leading-tight mb-2">
+          <div className="text-2xl font-extrabold text-white tracking-tight leading-tight mb-2 font-display">
             {course.title}
           </div>
           <div className="text-sm font-medium text-white/60">
@@ -134,7 +134,7 @@ export function CourseOverview({ course, authors, onBack, onStartLesson, complet
         {/* About tab */}
         {activeTab === "about" && (
           <div className="py-5">
-            <h3 className="text-base font-bold mb-2.5">About This Course</h3>
+            <h3 className="text-base font-bold mb-2.5 font-display">About This Course</h3>
             <p className="text-sm leading-7 text-gray-500 whitespace-pre-wrap">
               {course.description || "No description available."}
             </p>

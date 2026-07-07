@@ -712,7 +712,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
         {activities.length === 0 ? (
           <div className="bg-white rounded-2xl border border-[#EDEBE8] shadow-sm p-8 text-center text-gray-400">
             <Clock size={28} className="mx-auto mb-2 opacity-30" />
-            <p className="text-sm">No activities recorded yet — add the first one</p>
+            <p className="text-sm font-display">No activities recorded yet — add the first one</p>
           </div>
         ) : (
           <div className="relative pl-6 ml-1 border-l-2 border-[#EDEBE8] space-y-5">
@@ -747,7 +747,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
               <div className="w-6 h-6 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--brand-color, #B8962E)', borderTopColor: 'transparent' }} />
             </div>
           ) : !onboardingAnswers || Object.keys(onboardingAnswers).length === 0 ? (
-            <div className="bg-white rounded-2xl border border-[#EDEBE8] shadow-sm p-6 text-center text-gray-400 text-sm">
+            <div className="bg-white rounded-2xl border border-[#EDEBE8] shadow-sm p-6 text-center text-gray-400 text-sm font-display">
               No onboarding responses yet.
             </div>
           ) : (
@@ -768,7 +768,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
         {showAddActivity && (
           <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center bg-black/50 p-4">
             <div className="bg-white rounded-3xl w-full max-w-md">
-              <div className="p-5 border-b border-[#EDEBE8]"><h3 className="font-bold text-gray-900">Add Activity</h3></div>
+              <div className="p-5 border-b border-[#EDEBE8]"><h3 className="font-bold text-gray-900 font-display">Add Activity</h3></div>
               <div className="p-5 space-y-4">
                 <div>
                   <label className="text-xs font-semibold text-gray-500 mb-2 block">Type</label>
@@ -816,7 +816,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
         {deleteId && (
           <div className="fixed inset-0 z-[210] flex items-center justify-center bg-black/50 p-4">
             <div className="bg-white rounded-3xl p-6 w-full max-w-sm text-center">
-              <p className="font-bold text-gray-900 mb-2">Delete contact?</p>
+              <p className="font-bold text-gray-900 mb-2 font-display">Delete contact?</p>
               <p className="text-sm text-gray-500 mb-5">This cannot be undone.</p>
               <div className="flex gap-3">
                 <button onClick={() => setDeleteId(null)} className="flex-1 py-2.5 rounded-xl border border-[#EDEBE8] text-sm font-semibold text-gray-600">Cancel</button>
@@ -899,7 +899,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
       ) : filtered.length === 0 ? (
         <div className="text-center py-16 text-gray-400">
           <Users size={40} className="mx-auto mb-3 opacity-30" />
-          <p className="font-medium">{search || filter !== 'all' ? 'No contacts match' : 'No contacts yet'}</p>
+          <p className="font-medium font-display">{search || filter !== 'all' ? 'No contacts match' : 'No contacts yet'}</p>
           {!search && filter === 'all' && <p className="text-sm mt-1">Add your first donor or member</p>}
         </div>
       ) : (
@@ -935,7 +935,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
       {deleteId && (
         <div className="fixed inset-0 z-[210] flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white rounded-3xl p-6 w-full max-w-sm text-center">
-            <p className="font-bold text-gray-900 mb-2">Delete contact?</p>
+            <p className="font-bold text-gray-900 mb-2 font-display">Delete contact?</p>
             <p className="text-sm text-gray-500 mb-5">This cannot be undone.</p>
             <div className="flex gap-3">
               <button onClick={() => setDeleteId(null)} className="flex-1 py-2.5 rounded-xl border border-[#EDEBE8] text-sm font-semibold text-gray-600">Cancel</button>

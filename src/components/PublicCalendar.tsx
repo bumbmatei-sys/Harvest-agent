@@ -46,12 +46,12 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({ tenantId, tenantName, l
             // eslint-disable-next-line @next/next/no-img-element
             <img src={logo} alt={tenantName} className="h-12 mx-auto mb-2 object-contain" />
           ) : (
-            <div className="text-lg font-extrabold" style={{ color: primaryColor }}>{tenantName}</div>
+            <div className="font-display text-lg font-extrabold" style={{ color: primaryColor }}>{tenantName}</div>
           )}
         </div>
 
         <div className="flex items-center justify-between mb-5">
-          <h1 className="text-2xl font-bold text-gray-900">{tenantName} Events</h1>
+          <h1 className="font-display text-2xl font-bold text-gray-900">{tenantName} Events</h1>
           <a href="/calendar/ical" target="_blank" rel="noreferrer"
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 shrink-0">
             <CalendarPlus size={14} /> Subscribe

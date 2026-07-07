@@ -85,7 +85,7 @@ const LivestreamView: React.FC<LivestreamViewProps> = ({ tenantId, onBack, onDon
         <button onClick={onBack} aria-label="Back" className="p-1 hover:opacity-70">
           <ChevronLeft size={26} strokeWidth={2.5} className="text-gold" />
         </button>
-        <span className="font-bold truncate flex-1">{title || 'Livestream'}</span>
+        <span className="font-bold truncate flex-1 font-display">{title || 'Livestream'}</span>
         {active && (
           <span className="flex items-center gap-1 text-xs bg-white/10 rounded-full px-2 py-1">
             <Eye size={13} /> {viewerCount}
@@ -128,7 +128,7 @@ const LivestreamView: React.FC<LivestreamViewProps> = ({ tenantId, onBack, onDon
               {notesOpen && (
                 <div className="px-4 pb-4 text-white/80 text-sm leading-relaxed">
                   {sermonNote.title && (
-                    <h3 className="text-white font-semibold text-base mb-2">{sermonNote.title}</h3>
+                    <h3 className="text-white font-semibold text-base mb-2 font-display">{sermonNote.title}</h3>
                   )}
                   <TipTapReadOnly contentHtml={sermonNote.contentHtml} />
                 </div>
@@ -162,12 +162,12 @@ const LivestreamView: React.FC<LivestreamViewProps> = ({ tenantId, onBack, onDon
           <div className="w-full max-w-lg bg-white rounded-t-2xl p-5" style={{ paddingBottom: 32 }} onClick={(e) => e.stopPropagation()}>
             {prayerDone ? (
               <div className="text-center py-6">
-                <p className="text-lg font-bold text-gray-900">🙏 Prayer received</p>
+                <p className="text-lg font-bold text-gray-900 font-display">🙏 Prayer received</p>
                 <p className="text-sm text-gray-500 mt-1">Our team will be praying for you.</p>
               </div>
             ) : (
               <>
-                <h3 className="text-lg font-bold text-gray-900 mb-3">Submit Prayer Request</h3>
+                <h3 className="text-lg font-bold text-gray-900 mb-3 font-display">Submit Prayer Request</h3>
                 <input
                   value={prayerName}
                   onChange={(e) => setPrayerName(e.target.value)}

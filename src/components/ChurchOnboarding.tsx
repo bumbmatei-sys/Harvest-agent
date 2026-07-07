@@ -149,7 +149,7 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ signupPlan }) => {
             <div className="animate-fade-in-up">
               <div style={{ textAlign: 'center', marginBottom: '28px' }}>
                 <Church style={{ margin: '0 auto 12px', color: BRAND }} size={32} />
-                <h1 style={{ fontSize: '22px', fontWeight: 600, color: '#111111', marginBottom: '4px' }}>Name your ministry</h1>
+                <h1 className="font-display" style={{ fontSize: '22px', fontWeight: 600, color: '#111111', marginBottom: '4px' }}>Name your ministry</h1>
                 <p style={{ fontSize: '14px', color: '#888888', marginTop: '8px' }}>
                   You&apos;ll customise your subdomain, logo and colours right after payment.
                 </p>

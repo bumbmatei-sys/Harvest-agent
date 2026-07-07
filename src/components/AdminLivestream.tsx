@@ -194,7 +194,7 @@ const AdminLivestream: React.FC = () => {
           {/* Live prayer panel */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
             <div className="px-4 py-3 border-b border-gray-50 flex items-center justify-between">
-              <h3 className="text-sm font-bold text-gray-700">Prayer Requests</h3>
+              <h3 className="text-sm font-bold text-gray-700 font-display">Prayer Requests</h3>
               <span className="text-xs text-gray-400">{activePrayers.length} active</span>
             </div>
             {activePrayers.length === 0 ? (
@@ -222,7 +222,7 @@ const AdminLivestream: React.FC = () => {
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-4">
           <div className="flex items-center gap-2 mb-4">
             <Radio size={18} style={{ color: GOLD }} />
-            <h3 className="text-sm font-bold text-gray-700">Go Live</h3>
+            <h3 className="text-sm font-bold text-gray-700 font-display">Go Live</h3>
           </div>
           <div className="space-y-3">
             <div>
@@ -243,7 +243,7 @@ const AdminLivestream: React.FC = () => {
       {/* Past streams */}
       {pastSessions.filter(s => s.endedAt).length > 0 && (
         <div className="mt-6">
-          <h3 className="text-sm font-bold text-gray-700 mb-3">Past Streams</h3>
+          <h3 className="text-sm font-bold text-gray-700 mb-3 font-display">Past Streams</h3>
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm divide-y divide-gray-50">
             {pastSessions.filter(s => s.endedAt).map(s => (
               <div key={s.id} className="flex items-center gap-3 px-4 py-3">

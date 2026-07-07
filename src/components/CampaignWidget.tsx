@@ -194,7 +194,7 @@ const CampaignWidget: React.FC<CampaignWidgetProps> = ({ onDonate }) => {
             <button onClick={() => setShowDetail(false)} className="p-1">
               <ChevronLeft size={24} color="var(--brand-color, #B8962E)" strokeWidth={2.5} />
             </button>
-            <h2 className="text-base font-bold text-gray-900 flex-1 truncate">{campaign.title}</h2>
+            <h2 className="text-base font-bold text-gray-900 flex-1 truncate font-display">{campaign.title}</h2>
           </div>
 
           {/* Cover Image */}

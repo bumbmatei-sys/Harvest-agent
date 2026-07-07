@@ -190,7 +190,7 @@ const BillingAndPayments: React.FC<BillingAndPaymentsProps> = ({ currentPlan, te
 
       {/* 4: Payment history — links to Stripe's own hosted invoice PDFs */}
       <div>
-        <h3 className="text-sm font-bold text-gray-700 mb-3">Payment History</h3>
+        <h3 className="text-sm font-bold text-gray-700 mb-3 font-display">Payment History</h3>
         {invoices.length === 0 ? (
           <div className="text-center py-12 text-gray-400 bg-white rounded-2xl border border-gray-100">
             <FileText size={36} className="mx-auto mb-2 opacity-30" />
@@ -244,7 +244,7 @@ const BillingAndPayments: React.FC<BillingAndPaymentsProps> = ({ currentPlan, te
 
       {/* 5: Generate consolidated billing-summary PDF (pdf-lib, admin-facing) */}
       <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
-        <h3 className="text-sm font-bold text-gray-700 mb-1">Billing Statement</h3>
+        <h3 className="text-sm font-bold text-gray-700 mb-1 font-display">Billing Statement</h3>
         <p className="text-sm text-gray-500 mb-4">
           Download a consolidated PDF summary of your plan and all subscription payments.
         </p>

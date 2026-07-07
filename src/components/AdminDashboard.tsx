@@ -446,7 +446,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
               alt={isWhiteLabel ? tenantName : 'Admin'}
               className="w-10 h-10 object-contain shrink-0"
             />
-            {!isSidebarCollapsed && <span className="text-xl font-bold text-gray-900 truncate">Admin</span>}
+            {!isSidebarCollapsed && <span className="font-display text-xl font-bold text-gray-900 truncate">Admin</span>}
           </button>
 
           {/* Mobile: primary tabs + More button */}
@@ -725,7 +725,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
             >
               <div className="w-9 h-1 bg-gray-300 rounded-full mx-auto mt-3 mb-1" />
               <div className="pb-4">
-                <h3 className="text-sm font-bold text-gray-900 px-4 pt-1">More Tools</h3>
+                <h3 className="font-display text-sm font-bold text-gray-900 px-4 pt-1">More Tools</h3>
 
                 {/* Grouped, Vercel-style list. Groups with no permitted tabs are omitted. */}
                 {MORE_GROUPS.map((group) => {

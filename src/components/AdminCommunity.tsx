@@ -362,7 +362,7 @@ const AttachPicker: React.FC<{
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
       <div className="relative w-full bg-white rounded-t-2xl max-h-[70vh] flex flex-col">
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 flex-shrink-0">
-          <h3 className="font-bold text-gray-900 text-sm">Attach Record</h3>
+          <h3 className="font-display font-bold text-gray-900 text-sm">Attach Record</h3>
           <button onClick={onClose}><X size={18} className="text-gray-400" /></button>
         </div>
         <div className="flex gap-1 bg-gray-100 rounded-xl p-1 mx-4 mt-3 mb-2 flex-shrink-0">
@@ -491,7 +491,7 @@ const ChannelMembersSheet: React.FC<{
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
       <div className="relative w-full bg-white rounded-t-3xl max-h-[75vh] flex flex-col">
         <div className="flex items-center justify-between px-5 py-4 border-b border-[#EDEBE8] flex-shrink-0">
-          <h3 className="font-bold text-gray-900 text-sm">Channel Members</h3>
+          <h3 className="font-display font-bold text-gray-900 text-sm">Channel Members</h3>
           <button onClick={onClose}><X size={18} className="text-gray-400" /></button>
         </div>
 
@@ -1415,7 +1415,7 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
         <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center bg-black/50 p-4">
           <div className="bg-white rounded-3xl w-full max-w-md">
             <div className="p-5 border-b border-[#EDEBE8] flex items-center justify-between">
-              <h3 className="font-bold text-gray-900">New Channel</h3>
+              <h3 className="font-display font-bold text-gray-900">New Channel</h3>
               <button onClick={() => setShowNewChannel(false)}><X size={18} className="text-gray-400" /></button>
             </div>
             <div className="p-5 space-y-4 max-h-[55vh] overflow-y-auto">
@@ -1509,7 +1509,7 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
         <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center bg-black/50 p-4">
           <div className="bg-white rounded-2xl w-full max-w-md max-h-[70vh] flex flex-col">
             <div className="p-5 border-b border-gray-100 flex items-center justify-between flex-shrink-0">
-              <h3 className="font-bold text-gray-900">Start Admin DM</h3>
+              <h3 className="font-display font-bold text-gray-900">Start Admin DM</h3>
               <button onClick={() => setShowAdminPicker(false)}><X size={18} className="text-gray-400" /></button>
             </div>
             <div className="overflow-y-auto flex-1">
@@ -1545,7 +1545,7 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
           <div className="bg-white rounded-2xl w-full max-w-md max-h-[70vh] flex flex-col">
             <div className="p-5 border-b border-gray-100 flex-shrink-0">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="font-bold text-gray-900">Message a Member</h3>
+                <h3 className="font-display font-bold text-gray-900">Message a Member</h3>
                 <button onClick={() => setShowMemberPicker(false)}><X size={18} className="text-gray-400" /></button>
               </div>
               <div className="relative">

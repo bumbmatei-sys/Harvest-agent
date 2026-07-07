@@ -680,7 +680,7 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
       <div style={{ display: "flex", flexDirection: "column", gap: 16, animation: "fadeUp 0.3s ease" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <button onClick={() => setSubView("main")} style={s.backBtn}>← Back</button>
-          <h2 style={{ fontSize: 20, fontWeight: 800, color: TEXT }}>All Users ({filtered.length})</h2>
+          <h2 style={{ fontSize: 20, fontWeight: 800, color: TEXT, fontFamily: "var(--font-display), Georgia, serif" }}>All Users ({filtered.length})</h2>
           <div style={{ flex: 1 }} />
           <DownloadMenu onContacts={() => downloadUsersCSV(filtered, "all_users.csv")} onOnboarding={() => downloadOnboardingCSV(filtered, "all_users_onboarding.csv")} />
         </div>
@@ -750,7 +750,7 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
       <div style={{ display: "flex", flexDirection: "column", gap: 16, animation: "fadeUp 0.3s ease" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <button onClick={() => setSubView("main")} style={s.backBtn}>← Back</button>
-          <h2 style={{ fontSize: 20, fontWeight: 800, color: TEXT }}>Countries ({filtered.length})</h2>
+          <h2 style={{ fontSize: 20, fontWeight: 800, color: TEXT, fontFamily: "var(--font-display), Georgia, serif" }}>Countries ({filtered.length})</h2>
         </div>
         
         <input 
@@ -802,7 +802,7 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
       <div style={{ display: "flex", flexDirection: "column", gap: 16, animation: "fadeUp 0.3s ease" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <button onClick={() => setSubView("countries")} style={s.backBtn}>← Back</button>
-          <h2 style={{ fontSize: 20, fontWeight: 800, color: TEXT }}>Users in {selectedCountry} ({filtered.length})</h2>
+          <h2 style={{ fontSize: 20, fontWeight: 800, color: TEXT, fontFamily: "var(--font-display), Georgia, serif" }}>Users in {selectedCountry} ({filtered.length})</h2>
           <div style={{ flex: 1 }} />
           <DownloadMenu onContacts={() => downloadUsersCSV(filtered, `users_${selectedCountry}.csv`)} onOnboarding={() => downloadOnboardingCSV(filtered, `onboarding_${selectedCountry}.csv`)} />
         </div>
@@ -950,7 +950,6 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
   return (
     <div style={pageStyle}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap');
         * { box-sizing: border-box; margin: 0; padding: 0; }
         input::placeholder { color: #BBB; }
         input, select { outline: none; }
@@ -974,7 +973,7 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 99, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
           <div style={{ background: CARD, borderRadius: 20, width: "100%", maxWidth: 360, padding: 28, boxShadow: "0 20px 60px rgba(0,0,0,0.2)", textAlign: "center" }}>
             <div style={{ fontSize: 36, marginBottom: 12 }}>⚠️</div>
-            <div style={{ fontWeight: 800, fontSize: 17, color: TEXT, marginBottom: 8 }}>Remove Admin?</div>
+            <div style={{ fontWeight: 800, fontSize: 17, color: TEXT, marginBottom: 8, fontFamily: "var(--font-display), Georgia, serif" }}>Remove Admin?</div>
             <div style={{ fontSize: 14, color: TEXT2, lineHeight: 1.6, marginBottom: 24 }}>
               This will revoke all their permissions. They will no longer have admin access.
             </div>
@@ -1215,7 +1214,7 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
               <div style={{ width: 48, height: 48, borderRadius: "50%", background: "#FEF2F2", color: "#DC2626", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, margin: "0 auto 16px" }}>
                 ⚠️
               </div>
-              <h3 style={{ margin: "0 0 8px", fontSize: 18, fontWeight: 800, color: TEXT }}>Delete User?</h3>
+              <h3 style={{ margin: "0 0 8px", fontSize: 18, fontWeight: 800, color: TEXT, fontFamily: "var(--font-display), Georgia, serif" }}>Delete User?</h3>
               <p style={{ margin: 0, fontSize: 14, color: TEXT2, lineHeight: 1.5 }}>
                 Are you sure you want to delete this user from the database? This action cannot be undone.
               </p>
@@ -1232,7 +1231,7 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
 }
 
 const pageStyle: CSSProperties = {
-  fontFamily: "'Nunito', sans-serif",
+  fontFamily: "var(--font-sans), system-ui, sans-serif",
   background: BG,
   height: "100%",
   display: "flex",

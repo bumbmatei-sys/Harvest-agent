@@ -146,7 +146,7 @@ function HistoryPanel({ history, activeId, onSelect, onNewChat, onClose, onDelet
  {/* Header */}
  <div style={{ padding: "20px 16px 14px", borderBottom: `1px solid ${BORDER}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
  <div>
- <div style={{ fontFamily: "'Nunito', sans-serif", fontWeight: 700, fontSize: 17, color: TEXT }}>Chat History</div>
+ <div style={{ fontFamily: "var(--font-display), Georgia, serif", fontWeight: 700, fontSize: 17, color: TEXT }}>Chat History</div>
  <div style={{ fontSize: 11, color: TEXT2, marginTop: 2 }}>{history.length} conversation{history.length !== 1 ? "s" : ""}</div>
  </div>
  <button onClick={onClose} style={{ background: BG, border: "none", borderRadius: "50%", width: 32, height: 32, cursor: "pointer", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
@@ -418,9 +418,8 @@ Friendly neighbor, not a corporate chatbot. Short. Helpful. Human.`;
  const isEmpty = messages.length === 0;
 
  return (
- <div style={{ fontFamily: "'Nunito', sans-serif", background: BG, height: "100%", width: "100%", maxWidth: 1024, margin: "0 auto", display: "flex", flexDirection: "column", position: "relative", overflow: "hidden" }}>
+ <div style={{ fontFamily: "var(--font-sans), system-ui, sans-serif", background: BG, height: "100%", width: "100%", maxWidth: 1024, margin: "0 auto", display: "flex", flexDirection: "column", position: "relative", overflow: "hidden" }}>
  <style>{`
- @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap');
  :root {
  --chat-bg: #F2F4F7;
  --chat-card: #FFFFFF;
@@ -500,7 +499,7 @@ Friendly neighbor, not a corporate chatbot. Short. Helpful. Human.`;
 
  {/* Center title */}
  <div style={{ textAlign: "center", flex: 1 }}>
- <div style={{ fontFamily: "'Nunito', sans-serif", fontWeight: 700, fontSize: 16, color: TEXT }}>
+ <div style={{ fontFamily: "var(--font-display), Georgia, serif", fontWeight: 700, fontSize: 16, color: TEXT }}>
  {displayName} AI
  </div>
  </div>
@@ -523,7 +522,7 @@ Friendly neighbor, not a corporate chatbot. Short. Helpful. Human.`;
  {/* Plain <img> (not next/image) so tenant logos on arbitrary domains render without remotePatterns config, matching MainApp/AuthPage. */}
  <img src={displayLogo} alt={displayName} width={96} height={96} className="object-contain drop-shadow-md" />
  </div>
- <div style={{ fontFamily: "'Nunito', sans-serif", fontWeight: 700, fontSize: 22, color: TEXT, marginBottom: 6, textAlign: "center" }}>Ask me anything</div>
+ <div style={{ fontFamily: "var(--font-display), Georgia, serif", fontWeight: 700, fontSize: 22, color: TEXT, marginBottom: 6, textAlign: "center" }}>Ask me anything</div>
  <div style={{ fontSize: 13, color: TEXT2, textAlign: "center", lineHeight: 1.6, marginBottom: 28, maxWidth: 280 }}>
  I&apos;m trained on Scripture, theology, and your course content. Ask me anything about faith.
  </div>
