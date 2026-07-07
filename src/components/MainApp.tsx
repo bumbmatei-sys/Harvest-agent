@@ -351,7 +351,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
   }
 
   return (
-    <div className="flex flex-col lg:flex-row h-screen bg-[#f8f9fa] font-sans overflow-hidden transition-colors duration-300">
+    <div className="flex flex-col lg:flex-row h-screen bg-[#f8f9fa] lg:bg-[var(--ds-page-bg)] font-sans overflow-hidden transition-colors duration-300">
       <ReferralTracker />
       
       {/* Side/Bottom Navigation */}
@@ -412,28 +412,28 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
       </div>
 
       {/* Main Container */}
-      <div className="flex-1 flex flex-col h-screen relative bg-[#f8f9fa] overflow-hidden min-w-0">
-        {/* Desktop top bar: page title + date (left), profile avatar (right) — Phase 1.6, lg:-only */}
-        <div className="hidden lg:block bg-white border-b border-gray-100 flex-shrink-0">
-          <DesktopContainer>
-            <div className="flex items-center justify-between py-4">
-              <div>
-                <h1 className="font-display text-xl font-bold text-gray-900">{desktopTitle}</h1>
-                {showDesktopDate && <p className="text-xs text-gray-500 mt-0.5">{desktopDate}</p>}
-              </div>
-              <button
-                onClick={() => setActiveBottomTab('profile')}
-                className="flex items-center justify-center w-10 h-10 rounded-full overflow-hidden bg-gray-100 text-sm font-bold text-gray-600 shrink-0 hover:opacity-90 transition-opacity"
-                title="My Profile"
-              >
-                {currentUser?.photoURL ? (
-                  <img src={currentUser.photoURL} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                ) : (
-                  <span>{(currentUser?.displayName?.trim()?.[0] || 'U').toUpperCase()}</span>
-                )}
-              </button>
+      <div className="flex-1 flex flex-col h-screen relative bg-[#f8f9fa] lg:bg-[var(--ds-page-bg)] overflow-hidden min-w-0">
+        {/* Desktop top bar: page title + date (hard-left), profile avatar (hard-right) — Phase 1.6/1.7, lg:-only.
+            Full-bleed padded row (not the centered content container) so the title hugs the content area's
+            left edge and the avatar sits in the far top-right corner, per #104 feedback. */}
+        <div className="hidden lg:block bg-white border-b border-gray-200 flex-shrink-0">
+          <div className="flex items-center justify-between py-4 px-8 xl:px-12">
+            <div>
+              <h1 className="font-display text-xl font-bold text-gray-900">{desktopTitle}</h1>
+              {showDesktopDate && <p className="text-xs text-gray-500 mt-0.5">{desktopDate}</p>}
             </div>
-          </DesktopContainer>
+            <button
+              onClick={() => setActiveBottomTab('profile')}
+              className="flex items-center justify-center w-10 h-10 rounded-full overflow-hidden bg-gray-100 text-sm font-bold text-gray-600 shrink-0 hover:opacity-90 transition-opacity"
+              title="My Profile"
+            >
+              {currentUser?.photoURL ? (
+                <img src={currentUser.photoURL} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+              ) : (
+                <span>{(currentUser?.displayName?.trim()?.[0] || 'U').toUpperCase()}</span>
+              )}
+            </button>
+          </div>
         </div>
 
         {/* Top Navigation (only visible when Home is active; mobile only — desktop nav lives in the sidebar) */}

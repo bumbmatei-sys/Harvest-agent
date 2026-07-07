@@ -507,7 +507,10 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
       ))}
 
       <div className="flex items-center justify-between px-1 mb-2">
-        <h2 className="text-xl lg:text-lg font-bold text-gray-900 font-display">News & Updates</h2>
+        <h2 className="lg:flex lg:items-center text-xl lg:text-lg font-bold text-gray-900 font-display">
+          <span className="hidden lg:block w-1 h-5 rounded-full bg-gold mr-2.5 shrink-0" aria-hidden="true" />
+          News &amp; Updates
+        </h2>
         {posts.length >= 3 && (
           <button
             onClick={onOpenAllNews}
@@ -522,7 +525,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
         <div className="text-center py-12 text-gray-500">No news yet.</div>
       ) : (
         posts.map((post, index) => (
-          <div key={post.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 lg:rounded-[var(--ds-radius-card)] lg:shadow-[var(--ds-sh-sm)]">
+          <div key={post.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 lg:rounded-[var(--ds-radius-card)] lg:border-[color:var(--ds-border)] lg:shadow-[var(--ds-sh-sm)]">
             <div className="flex justify-between items-start mb-3">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden flex items-center justify-center font-bold text-gray-600 relative">
@@ -852,7 +855,10 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
 
       {upcomingRailEvents.length > 0 && (
         <DesktopCard elevation="sm" className="p-4">
-          <h3 className="font-bold text-gray-900 text-sm mb-3 font-display">Upcoming Events</h3>
+          <h3 className="flex items-center gap-2 font-bold text-gray-900 text-sm mb-3 font-display">
+            <span className="w-0.5 h-3.5 rounded-full bg-gold shrink-0" aria-hidden="true" />
+            Upcoming Events
+          </h3>
           <div className="space-y-3">
             {upcomingRailEvents.map(event => (
               <button
@@ -887,7 +893,10 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
 
       {articles.length > 0 && (
         <DesktopCard elevation="sm" className="p-4">
-          <h3 className="font-bold text-gray-900 text-sm mb-3 font-display">Latest Articles</h3>
+          <h3 className="flex items-center gap-2 font-bold text-gray-900 text-sm mb-3 font-display">
+            <span className="w-0.5 h-3.5 rounded-full bg-gold shrink-0" aria-hidden="true" />
+            Latest Articles
+          </h3>
           <div className="space-y-3">
             {articles.slice(0, 4).map(post => (
               <button
