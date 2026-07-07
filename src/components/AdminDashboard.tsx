@@ -483,8 +483,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
             </button>
           </div>
 
-          {/* Desktop: all tabs in sidebar */}
-          <div className="hidden lg:flex lg:flex-col lg:items-stretch lg:gap-2 lg:w-full">
+          {/* Desktop: all tabs in sidebar. A tenant with many permitted features
+              (or a super admin) can have more tabs than fit in the viewport —
+              this list scrolls internally so every tab stays reachable, while
+              the logo above and Collapse button below stay pinned. */}
+          <div className="hidden lg:flex lg:flex-col lg:items-stretch lg:gap-2 lg:w-full lg:flex-1 lg:min-h-0 lg:overflow-y-auto">
             {allTabs.map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
