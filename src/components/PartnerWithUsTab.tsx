@@ -57,7 +57,7 @@ const PartnerWithUsTab: React.FC = () => {
   };
 
   return (
-    <div className="flex-1 px-4 lg:px-0 pb-32 max-w-md mx-auto w-full">
+    <div className="flex-1 px-4 lg:px-0 pb-32 max-w-md mx-auto w-full lg:max-w-[960px] lg:grid lg:grid-cols-[1fr_340px] lg:gap-6 lg:items-start">
       {/* Desktop (lg:+) only: lift the whole donation form onto an elevated,
           padded card that reads as an intentional single surface on the page
           field. All classes are lg:-gated (DesktopCard's bg/border/shadow/radius
@@ -68,7 +68,7 @@ const PartnerWithUsTab: React.FC = () => {
         <div className="w-16 h-16 bg-[color-mix(in_srgb,var(--brand-color)_12%,white)] rounded-full flex items-center justify-center mb-4">
           <HeartHandshake size={32} className="text-gold" />
         </div>
-        <h2 className="text-2xl font-bold text-[#0b1121] mb-1 font-display">Partner with Us</h2>
+        <h2 className="text-2xl font-bold text-[#0b1121] mb-1 font-display">Give</h2>
         {tenantName && (
           <p className="text-gold font-semibold text-sm mb-2">{tenantName}</p>
         )}
@@ -161,11 +161,41 @@ const PartnerWithUsTab: React.FC = () => {
         ) : (
           <>
             <Heart size={18} className="fill-white" />
-            Donate ${amount || '0'}{donationType === 'monthly' ? ' Monthly' : ''}
+            Give ${amount || '0'}{donationType === 'monthly' ? ' Monthly' : ''}
           </>
         )}
       </button>
       </DesktopCard>
+
+      {/* Desktop-only "Your gift" summary rail. Real values only — no impact,
+          year-to-date, tax-statement, fund, or processing-fee lines (the app
+          has no data/feature for those yet). hidden on mobile, so mobile is
+          byte-identical. */}
+      <div className="hidden lg:block">
+        <DesktopCard elevation="sm" className="lg:p-6 lg:sticky lg:top-4">
+          <div className="text-[11px] font-bold text-[#94a3b8] tracking-wider uppercase mb-2">Your gift</div>
+          <div className="text-[40px] leading-none font-bold text-[#0b1121] font-display">
+            ${amount || '0'}
+            {donationType === 'monthly' && <span className="text-base font-semibold text-[#64748b]"> /mo</span>}
+          </div>
+          <div className="mt-5 border-t border-b border-gray-100">
+            <div className="flex items-center justify-between py-2.5 text-sm">
+              <span className="text-[#64748b]">Frequency</span>
+              <b className="text-[#0b1121] font-semibold">{donationType === 'monthly' ? 'Monthly' : 'One-time'}</b>
+            </div>
+            <div className="flex items-center justify-between py-2.5 text-sm">
+              <span className="text-[#64748b]">Total charge</span>
+              <b className="text-[#0b1121] font-semibold">${amount || '0'}{donationType === 'monthly' ? '/mo' : ''}</b>
+            </div>
+          </div>
+          <div className="flex items-start gap-2.5 mt-5 p-3.5 rounded-xl bg-[color-mix(in_srgb,var(--brand-color)_10%,white)]">
+            <Heart size={16} className="text-gold shrink-0 mt-0.5" />
+            <p className="text-[13px] text-[#334155] leading-snug m-0">
+              Thank you for partnering with {tenantName || 'us'}. Your generosity fuels the mission.
+            </p>
+          </div>
+        </DesktopCard>
+      </div>
     </div>
   );
 };

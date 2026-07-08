@@ -246,9 +246,9 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap 
  };
 
  return (
- <div className="flex flex-col min-h-full bg-[#f8f9fa] transition-colors duration-300">
+ <div className="flex flex-col min-h-full bg-[#f8f9fa] lg:bg-transparent transition-colors duration-300">
  {/* Top Background Section */}
- <div className="pt-12 pb-24 px-4 rounded-b-[40px] relative overflow-hidden bg-gray-800">
+ <div className="pt-12 pb-24 px-4 rounded-b-[40px] relative overflow-hidden bg-gray-800 lg:hidden">
  {/* Background Image & Overlay */}
  {profilePic ? (
  <div 
@@ -290,8 +290,30 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap 
  </div>
 
  {/* Content Section */}
- <div className="px-4 mt-6 relative z-10 space-y-6">
- 
+ <div className="px-4 mt-6 relative z-10 space-y-6 lg:mt-0 lg:px-8 lg:pt-6 lg:grid lg:grid-cols-[300px_1fr] lg:gap-6 lg:items-start lg:space-y-0">
+ {/* Desktop profile card — left column */}
+ <div className="hidden lg:block">
+ <div className="bg-white rounded-3xl border p-6 text-center lg:sticky lg:top-4" style={{ borderColor: 'var(--ds-border)' }}>
+ <label htmlFor="profile-pic-upload" className="cursor-pointer group block">
+ <div className="w-24 h-24 rounded-full mx-auto mb-3 bg-gray-100 overflow-hidden flex items-center justify-center">
+ {profilePic ? (
+ <img src={profilePic} alt={userName} className="w-full h-full object-cover" />
+ ) : (
+ <span className="text-3xl font-bold text-gray-400">{(userName || 'U').charAt(0).toUpperCase()}</span>
+ )}
+ </div>
+ <span className="text-[12px] font-semibold group-hover:underline" style={{ color: 'var(--brand-color, #C9963A)' }}>Change photo</span>
+ </label>
+ <h2 className="text-xl font-bold text-gray-900 font-display mt-3">{userName}</h2>
+ <div className="inline-flex items-center gap-1.5 mt-2 px-3 py-1 rounded-full text-[11px] font-bold" style={{ background: 'color-mix(in srgb, var(--brand-color, #C9963A) 12%, white)', color: 'var(--brand-color, #C9963A)' }}>
+ <BadgeCheck size={13} /> Member since 2026
+ </div>
+ </div>
+ </div>
+
+ {/* Settings — right column */}
+ <div className="space-y-6">
+
  {/* Account Settings */}
  <div>
  <h4 className="text-[10px] font-bold text-gray-400 tracking-wider uppercase mb-3 ml-2">Account Settings</h4>
@@ -453,6 +475,7 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap 
  Log Out
  </button>
 
+ </div>
  </div>
 
  <PersonalInformationModal

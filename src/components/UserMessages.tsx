@@ -776,32 +776,21 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false })
     );
   }
 
-  if (openChannel && tenantId && currentUser) {
-    return (
-      <div className="flex flex-col h-full">
-        <ChannelView channel={openChannel} tenantId={tenantId} currentUser={currentUser} onBack={() => setOpenChannel(null)} embedded={embedded} />
-      </div>
-    );
-  }
-
-  if (openDm && tenantId && currentUser) {
-    return (
-      <div className="flex flex-col h-full">
-        <DmThread
-          dm={openDm}
-          tenantId={tenantId}
-          currentUser={currentUser}
-          otherName={getOtherName(openDm)}
-          onBack={() => setOpenDm(null)}
-          embedded={embedded}
-        />
-      </div>
-    );
-  }
+  // The open channel/DM thread (or null). On mobile this replaces the list
+  // full-screen; on desktop it sits in the right column beside the list.
+  const selectedThread = openChannel && tenantId && currentUser ? (
+    <ChannelView channel={openChannel} tenantId={tenantId} currentUser={currentUser} onBack={() => setOpenChannel(null)} embedded={embedded} />
+  ) : openDm && tenantId && currentUser ? (
+    <DmThread dm={openDm} tenantId={tenantId} currentUser={currentUser} otherName={getOtherName(openDm)} onBack={() => setOpenDm(null)} embedded={embedded} />
+  ) : null;
+  const hasOpen = !!selectedThread;
 
   return (
-    <div className="flex flex-col min-h-full bg-[#F7F6F3]">
-      <div className="flex items-center gap-3 px-4 py-4 bg-white border-b border-[#EDEBE8]">
+    <div className="flex flex-col lg:flex-row h-full bg-[#F7F6F3]">
+      {/* LEFT: conversation list — the whole view on mobile (hidden while a thread
+          is open); a fixed 320px rail on desktop, always visible. */}
+      <div className={`${hasOpen ? 'hidden lg:flex' : 'flex'} flex-col min-h-full lg:min-h-0 lg:h-full lg:w-[360px] lg:flex-shrink-0 lg:border-r lg:border-[#EDEBE8]`}>
+      <div className="flex items-center gap-3 px-4 py-4 bg-white border-b border-[#EDEBE8] lg:hidden">
         {!embedded && (
           <button onClick={onBack} className="p-1 -ml-1" aria-label="Back">
             <ArrowLeft size={22} style={{ color: 'var(--brand-color, #B8962E)' }} />
@@ -819,7 +808,16 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false })
         )}
       </div>
 
-      <div className="flex-1 p-4">
+      {/* Desktop-only New Message (the mobile header above is hidden on lg). */}
+      {canStartDm && (
+        <div className="hidden lg:flex px-3 pt-3 pb-1 lg:flex-shrink-0">
+          <button onClick={openNewMessage} className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold text-white" style={{ backgroundColor: 'var(--brand-color, #B8962E)' }}>
+            <PenSquare size={15} /> New Message
+          </button>
+        </div>
+      )}
+
+      <div className="flex-1 p-4 lg:overflow-y-auto lg:min-h-0">
         {dms.length === 0 && channels.length === 0 ? (
           <div className="text-center py-16 text-gray-400">
             <MessageSquare size={40} className="mx-auto mb-3 opacity-30" />
@@ -879,6 +877,20 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false })
             ))}
             </div>
           </>
+        )}
+      </div>
+      </div>{/* /left rail */}
+
+      {/* RIGHT: the open thread, or a desktop-only "select a conversation" state. */}
+      <div className={`${hasOpen ? 'flex' : 'hidden lg:flex'} flex-col h-full lg:flex-1 min-w-0`}>
+        {selectedThread || (
+          <div className="hidden lg:flex flex-1 items-center justify-center text-gray-400">
+            <div className="text-center px-6">
+              <MessageSquare size={40} className="mx-auto mb-3 opacity-30" />
+              <p className="font-medium">Select a conversation</p>
+              <p className="text-sm mt-1">Choose a channel or message from the list.</p>
+            </div>
+          </div>
         )}
       </div>
 

@@ -39,7 +39,7 @@ export function CourseLibrary({ courses, authors, categories, onSelectCourse, co
     : null;
 
   return (
-    <div className="max-w-[480px] mx-auto px-4 pt-5 pb-24">
+    <div className="max-w-[480px] mx-auto px-4 pt-5 pb-24 lg:max-w-none lg:px-8 lg:pt-6">
       {/* Header */}
       <h1 className="text-[28px] font-extrabold tracking-tight mb-5 font-display">Courses</h1>
 
@@ -77,7 +77,7 @@ export function CourseLibrary({ courses, authors, categories, onSelectCourse, co
       {/* Featured course hero */}
       {featured && activeCategory === "All" && !search && (
         <div
-          className="relative rounded-2xl overflow-hidden mb-7 cursor-pointer"
+          className="relative rounded-2xl overflow-hidden mb-7 cursor-pointer lg:max-w-[760px]"
           style={{ aspectRatio: "16/9" }}
           onClick={() => onSelectCourse(featured)}
         >
@@ -107,6 +107,7 @@ export function CourseLibrary({ courses, authors, categories, onSelectCourse, co
       {continueLearning.length > 0 && (
         <div className="mb-7">
           <h2 className="text-lg font-bold tracking-tight mb-4 font-display">Continue Learning</h2>
+          <div className="lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-5">
           {continueLearning.map((course) => (
             <CourseCard
               key={course.id}
@@ -116,6 +117,7 @@ export function CourseLibrary({ courses, authors, categories, onSelectCourse, co
               completed={completed}
             />
           ))}
+          </div>
         </div>
       )}
 
@@ -131,7 +133,8 @@ export function CourseLibrary({ courses, authors, categories, onSelectCourse, co
           <p className="text-sm font-medium">No courses found</p>
         </div>
       ) : (
-        allCourses.map((course) => (
+        <div className="lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-5">
+        {allCourses.map((course) => (
           <CourseCard
             key={course.id}
             course={course}
@@ -139,7 +142,8 @@ export function CourseLibrary({ courses, authors, categories, onSelectCourse, co
             onClick={() => onSelectCourse(course)}
             completed={completed}
           />
-        ))
+        ))}
+        </div>
       )}
     </div>
   );
