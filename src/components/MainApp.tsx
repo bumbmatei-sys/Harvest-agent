@@ -532,7 +532,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
                     <CourseExperience onOpenCourse={(courseId, lessonId) => setFullScreenView({type: 'course', data: {courseId, lessonId}})} />
                   )}
                   {activeTopTab === 'messages' && (
-                    <div className="-m-4 h-full">
+                    <div className="-m-4 lg:-mx-10 xl:-mx-12 h-full">
                       <UserMessages embedded onBack={() => {}} />
                     </div>
                   )}

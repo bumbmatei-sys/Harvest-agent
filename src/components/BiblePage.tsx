@@ -272,6 +272,7 @@ export default function BiblePage() {
   const [toast, setToast] = useState<string | null>(null);
   const [fontSize, setFontSize] = useState(18);
   const [deskSearch, setDeskSearch] = useState(""); // desktop sidebar book filter (lg+ only)
+  const [expandedBook, setExpandedBook] = useState<string | null>(book.id); // desktop sidebar accordion
 
   useEffect(() => { setHighlighted(loadHighlights()); }, []);
   useEffect(() => { saveHighlights(highlighted); }, [highlighted]);
@@ -322,13 +323,30 @@ export default function BiblePage() {
                 <div className="px-3 pt-3 pb-1 text-[10px] font-bold text-gray-400 tracking-widest uppercase">{label}</div>
                 {list.map((b) => {
                   const active = b.id === book.id;
+                  const isExpanded = expandedBook === b.id;
                   return (
-                    <button key={b.id} onClick={() => { setBook(b); setChapter(1); setTab("read"); }}
-                      className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-left transition-colors ${active ? "" : "hover:bg-gray-50"}`}
-                      style={active ? { background: GOLD_LIGHT } : undefined}>
-                      <span className="text-[13.5px]" style={active ? { color: GOLD, fontWeight: 600 } : { color: "#374151" }}>{b.name}</span>
-                      <span className="text-[11px] text-gray-400">{b.chapters} ch</span>
-                    </button>
+                    <div key={b.id}>
+                      <button onClick={() => setExpandedBook(isExpanded ? null : b.id)}
+                        className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-left transition-colors ${active ? "" : "hover:bg-gray-50"}`}
+                        style={active ? { background: GOLD_LIGHT } : undefined}>
+                        <span className="text-[13.5px]" style={active ? { color: GOLD, fontWeight: 600 } : { color: "#374151" }}>{b.name}</span>
+                        <span className="text-[11px] text-gray-400">{b.chapters} ch</span>
+                      </button>
+                      {isExpanded && (
+                        <div className="grid grid-cols-5 gap-1.5 px-2 py-2">
+                          {Array.from({ length: b.chapters }, (_, i) => i + 1).map((ch) => {
+                            const chActive = active && ch === chapter;
+                            return (
+                              <button key={ch} onClick={() => { setBook(b); setChapter(ch); setTab("read"); }}
+                                className={`aspect-square rounded-md text-[12px] font-semibold transition-colors ${chActive ? "text-white" : "text-gray-600 hover:bg-gray-100"}`}
+                                style={chActive ? { background: GOLD } : undefined}>
+                                {ch}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
                   );
                 })}
               </div>
@@ -341,12 +359,17 @@ export default function BiblePage() {
       <div className="contents lg:flex lg:flex-1 lg:flex-col lg:min-h-0">
 
       {/* ── TOP BAR ── */}
-      <div className="bg-white border-b border-gray-200 px-4 py-3 flex-shrink-0 shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
-        <div className="flex items-center justify-between mb-3">
-          <button onClick={() => setShowPicker(true)} className="bg-transparent border-none cursor-pointer flex items-center gap-1">
+      <div className="bg-white border-b border-gray-200 px-4 py-3 lg:py-2 flex-shrink-0 shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
+        <div className="flex items-center justify-between mb-3 lg:mb-0">
+          <button onClick={() => setShowPicker(true)} className="bg-transparent border-none cursor-pointer flex items-center gap-1 lg:hidden">
             <span className="font-extrabold text-[17px] text-gray-900 font-display">{book.name} {chapter}</span>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2"><path d="m6 9 6 6 6-6" /></svg>
           </button>
+          {/* Desktop-only reader font-size, next to the translation */}
+          <div className="hidden lg:flex items-center gap-1.5">
+            <button onClick={() => setFontSize((s) => Math.max(13, s - 2))} className="w-7 h-7 rounded-md bg-gray-50 border border-gray-200 text-xs font-bold text-gray-500 flex items-center justify-center hover:bg-gray-100">A-</button>
+            <button onClick={() => setFontSize((s) => Math.min(26, s + 2))} className="w-7 h-7 rounded-md bg-gray-50 border border-gray-200 text-sm font-bold text-gray-500 flex items-center justify-center hover:bg-gray-100">A+</button>
+          </div>
           <div className="relative">
             <button onClick={() => setShowTranslations((v) => !v)} className="px-2.5 py-1.5 bg-amber-50 border border-amber-200 rounded-lg text-xs font-bold text-amber-600 cursor-pointer">
               {getTranslationName(translation)} ▾
@@ -371,7 +394,7 @@ export default function BiblePage() {
             )}
           </div>
         </div>
-        <div className="flex border-b border-gray-200 -mx-4 px-4">
+        <div className="flex border-b border-gray-200 -mx-4 px-4 lg:hidden">
           {(["read", "search"] as Tab[]).map((t) => (
             <button key={t} onClick={() => setTab(t)}
               className={`flex-1 bg-transparent border-none border-b-[2.5px] font-semibold text-[13px] py-2.5 cursor-pointer flex items-center justify-center gap-1.5 transition-colors ${tab === t ? "text-amber-600 border-amber-600" : "text-gray-400 border-transparent hover:text-gray-600"}`}>
@@ -388,7 +411,7 @@ export default function BiblePage() {
       {/* ── READ TAB ── */}
       {tab === "read" && (
         <div className="flex-1 overflow-y-auto flex flex-col">
-          <div className="flex justify-between items-center px-4 pt-3 lg:max-w-[760px] lg:mx-auto lg:w-full lg:px-10">
+          <div className="flex justify-between items-center px-4 pt-3 lg:hidden">
             <div className="flex gap-1.5">
               <button onClick={() => setFontSize((s) => Math.max(13, s - 2))} className="w-[30px] h-[30px] rounded-lg bg-white border border-gray-200 cursor-pointer text-xs font-bold text-gray-500 flex items-center justify-center">A-</button>
               <button onClick={() => setFontSize((s) => Math.min(26, s + 2))} className="w-[30px] h-[30px] rounded-lg bg-white border border-gray-200 cursor-pointer text-base font-bold text-gray-500 flex items-center justify-center">A+</button>
