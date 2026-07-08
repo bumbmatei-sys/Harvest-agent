@@ -1,11 +1,19 @@
 "use client";
 import React, { useState, useEffect } from 'react';
+import { redirect } from 'next/navigation';
+import { AI_TELEGRAM_ASSISTANT_ENABLED } from '../../utils/plan-features';
 
 type PageState = 'loading' | 'signing-in' | 'connected' | 'not-connected' | 'check-email' | 'expired' | 'error';
 
 const BOT_USERNAME = 'theharvestapp_bot';
 
 export default function AiAssistantPage() {
+  // Master switch: while the AI Telegram Assistant is hidden, this standalone
+  // page is unreachable. Flip AI_TELEGRAM_ASSISTANT_ENABLED to bring it back.
+  if (!AI_TELEGRAM_ASSISTANT_ENABLED) {
+    redirect('/');
+  }
+
   const [state, setState] = useState<PageState>('loading');
   const [uid, setUid] = useState<string | null>(null);
   const [telegramUsername, setTelegramUsername] = useState<string | null>(null);

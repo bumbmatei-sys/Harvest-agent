@@ -8,6 +8,7 @@ import {
   PLAN_DISPLAY_NAMES,
   PLAN_PRICING,
   AI_ASSISTANT_ADDON_PRICING,
+  AI_TELEGRAM_ASSISTANT_ENABLED,
   formatPlanPrice,
   PlanFeatures,
 } from '../../utils/plan-features';
@@ -70,6 +71,12 @@ const FEATURE_COMPARISON: { key: keyof PlanFeatures; label: string; format?: (v:
   { key: 'communityGroups', label: 'Community Groups' },
   { key: 'donationRetention', label: 'Donation Retention', format: (v) => `${v}%` },
 ];
+
+// While the AI Telegram Assistant is hidden, drop its comparison row everywhere.
+// Flip AI_TELEGRAM_ASSISTANT_ENABLED to bring the row (and footnote below) back.
+const VISIBLE_FEATURES = AI_TELEGRAM_ASSISTANT_ENABLED
+  ? FEATURE_COMPARISON
+  : FEATURE_COMPARISON.filter((r) => r.key !== 'aiAssistant');
 
 // No features are "coming soon" right now — Automated Blog Articles shipped on
 // Community + Ministry. Add entries here to re-enable the table's Coming Soon row.
@@ -248,7 +255,7 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
               </div>
 
               <div className="space-y-2 mb-5">
-                {FEATURE_COMPARISON.map(({ key, label, format }) => {
+                {VISIBLE_FEATURES.map(({ key, label, format }) => {
                   const value = features[key];
                   const isPositive = key === 'maxChurches'
                     ? (value as number) !== 1
@@ -344,7 +351,7 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
               </tr>
             </thead>
             <tbody>
-              {FEATURE_COMPARISON.map(({ key, label, format }) => (
+              {VISIBLE_FEATURES.map(({ key, label, format }) => (
                 <tr key={key} className="border-b border-gray-50">
                   <td className="py-3 px-3 text-gray-900 font-medium">{label}</td>
                   {PLAN_ORDER.map(planId => {
@@ -385,9 +392,11 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
             </tbody>
           </table>
         </div>
-        <p className="text-xs text-gray-400 mt-3">
-          * AI Assistant: ${AI_ASSISTANT_ADDON_PRICING.setupFeeUsd} one-time setup + ${AI_ASSISTANT_ADDON_PRICING.monthlyUsd}/mo on all plans. Included at no extra cost on Ministry.
-        </p>
+        {AI_TELEGRAM_ASSISTANT_ENABLED && (
+          <p className="text-xs text-gray-400 mt-3">
+            * AI Assistant: ${AI_ASSISTANT_ADDON_PRICING.monthlyUsd}/mo on all plans. Included at no extra cost on Ministry.
+          </p>
+        )}
       </div>
       </>
       ) : (

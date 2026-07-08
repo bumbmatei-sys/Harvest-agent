@@ -5,6 +5,7 @@ import {
   PLAN_PRICING,
   PLAN_DONATION_RETENTION,
   AI_ASSISTANT_ADDON_PRICING,
+  AI_TELEGRAM_ASSISTANT_ENABLED,
 } from '@/utils/plan-features';
 import { TenantPlan } from '@/types/tenant.types';
 
@@ -59,7 +60,7 @@ export async function GET() {
       plans,
       addons: {
         aiAssistant: {
-          setupFeeUsd: AI_ASSISTANT_ADDON_PRICING.setupFeeUsd,
+          available: AI_TELEGRAM_ASSISTANT_ENABLED,   // false while hidden
           monthlyUsd: AI_ASSISTANT_ADDON_PRICING.monthlyUsd,
           description: 'Connects to 900+ apps, automates tasks, manages schedules.',
           includedOn: PLAN_ORDER.filter(

@@ -193,6 +193,13 @@ describe('hasFeature', () => {
   });
 });
 
+describe('AI_ASSISTANT_ADDON_PRICING', () => {
+  it('AI Assistant add-on is $200/mo flat with no setup fee', () => {
+    expect(AI_ASSISTANT_ADDON_PRICING.monthlyUsd).toBe(200);
+    expect('setupFeeUsd' in AI_ASSISTANT_ADDON_PRICING).toBe(false);
+  });
+});
+
 describe('PLAN_DONATION_RETENTION', () => {
   // Source of truth: theharvest.site pricing "Donation Retention" row.
   it('matches the marketing site retention tiers (90/95/100/100)', () => {

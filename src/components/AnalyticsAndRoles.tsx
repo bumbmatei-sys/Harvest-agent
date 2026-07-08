@@ -140,7 +140,7 @@ export const PERMISSION_CATEGORIES: PermissionCategory[] = [
       { key: "manageAdmins", label: "Manage Admins", desc: "Create admins and edit their permissions", icon: Shield },
       { key: "manageBranding", label: "Branding", desc: "Change logo, colors, background and domain", icon: Palette },
       { key: "manageAffiliate", label: "Affiliate Program", desc: "View commission rates and referral payouts", icon: Link2 },
-      { key: "manageSettings", label: "Settings & Integrations", desc: "Configure SMS, AI Assistant and third-party integrations", icon: Plug },
+      { key: "manageSettings", label: "Settings & Integrations", desc: "Configure SMS and third-party integrations", icon: Plug },
     ],
   },
 ];

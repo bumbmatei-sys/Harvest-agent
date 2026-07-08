@@ -249,9 +249,17 @@ export const PLAN_DONATION_RETENTION: Record<TenantPlan, number> = {
 
 /** AI Assistant add-on pricing (available on all plans; included on Ministry). */
 export const AI_ASSISTANT_ADDON_PRICING = {
-  setupFeeUsd: 150,
-  monthlyUsd:  100,
+  monthlyUsd: 200,
 } as const;
+
+/**
+ * Master switch for the AI (Telegram) Assistant feature across the whole app.
+ * Set to `false` to hide every user-facing surface (settings tab, standalone
+ * page, plan-comparison row, /api/plans availability). Backend routes, Stripe
+ * wiring and the `aiAssistant` plan flag are intentionally left intact so the
+ * feature can be re-enabled by flipping this one boolean back to `true`.
+ */
+export const AI_TELEGRAM_ASSISTANT_ENABLED = false;
 
 // ─── Accessors ────────────────────────────────────────────────────────────────
 
