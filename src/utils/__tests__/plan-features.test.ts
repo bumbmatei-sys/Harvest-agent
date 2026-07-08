@@ -108,31 +108,31 @@ describe('hasFeature', () => {
     expect(hasFeature('ultra', 'customDomain')).toBe(true);
   });
 
-  it('customForms is available on Ministry (ultra) only', () => {
+  it('customForms is available on Community (max) and Ministry (ultra)', () => {
     expect(hasFeature('plus', 'customForms')).toBe(false);
     expect(hasFeature('pro', 'customForms')).toBe(false);
-    expect(hasFeature('max', 'customForms')).toBe(false);
+    expect(hasFeature('max', 'customForms')).toBe(true);
     expect(hasFeature('ultra', 'customForms')).toBe(true);
   });
 
-  it('checkInSystem is available on Ministry (ultra) only', () => {
+  it('checkInSystem is available on Community (max) and Ministry (ultra)', () => {
     expect(hasFeature('plus', 'checkInSystem')).toBe(false);
     expect(hasFeature('pro', 'checkInSystem')).toBe(false);
-    expect(hasFeature('max', 'checkInSystem')).toBe(false);
+    expect(hasFeature('max', 'checkInSystem')).toBe(true);
     expect(hasFeature('ultra', 'checkInSystem')).toBe(true);
   });
 
-  it('livestream is available on Ministry (ultra) only', () => {
+  it('livestream is available on Community (max) and Ministry (ultra)', () => {
     expect(hasFeature('plus', 'livestream')).toBe(false);
     expect(hasFeature('pro', 'livestream')).toBe(false);
-    expect(hasFeature('max', 'livestream')).toBe(false);
+    expect(hasFeature('max', 'livestream')).toBe(true);
     expect(hasFeature('ultra', 'livestream')).toBe(true);
   });
 
-  it('sermonNotes is available on Ministry (ultra) only', () => {
+  it('sermonNotes is available on Community (max) and Ministry (ultra)', () => {
     expect(hasFeature('plus', 'sermonNotes')).toBe(false);
     expect(hasFeature('pro', 'sermonNotes')).toBe(false);
-    expect(hasFeature('max', 'sermonNotes')).toBe(false);
+    expect(hasFeature('max', 'sermonNotes')).toBe(true);
     expect(hasFeature('ultra', 'sermonNotes')).toBe(true);
   });
 
@@ -150,10 +150,10 @@ describe('hasFeature', () => {
     expect(hasFeature('ultra', 'automatedBlog')).toBe(true);
   });
 
-  it('givingStatements is available on Ministry (ultra) only', () => {
+  it('givingStatements is available on Community (max) and Ministry (ultra)', () => {
     expect(hasFeature('plus', 'givingStatements')).toBe(false);
     expect(hasFeature('pro', 'givingStatements')).toBe(false);
-    expect(hasFeature('max', 'givingStatements')).toBe(false);
+    expect(hasFeature('max', 'givingStatements')).toBe(true);
     expect(hasFeature('ultra', 'givingStatements')).toBe(true);
   });
 
