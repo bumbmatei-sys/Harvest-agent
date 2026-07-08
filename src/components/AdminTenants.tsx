@@ -20,7 +20,7 @@ const PLAN_LABELS: Record<TenantPlan, string> = {
 const PLAN_DISPLAY: Record<TenantPlan, string> = {
   plus: 'Individual — $59/mo',
   pro: 'Small Team — $119/mo',
-  max: 'Community — $239/mo',
+  max: 'Community — $299/mo',
   ultra: 'Ministry — $479/mo',
 };
 
@@ -378,7 +378,7 @@ const AdminTenants: React.FC = () => {
                   >
                     <option value="plus">Individual — $59/mo</option>
                     <option value="pro">Small Team — $119/mo</option>
-                    <option value="max">Community — $239/mo</option>
+                    <option value="max">Community — $299/mo</option>
                     <option value="ultra">Ministry — $479/mo</option>
                   </select>
                 )}

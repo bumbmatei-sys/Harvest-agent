@@ -5,7 +5,7 @@ import { Lock } from 'lucide-react';
 const PLANS = [
   { key: 'plus',  name: 'Individual', price: '$59/mo'  },
   { key: 'pro',   name: 'Small Team', price: '$119/mo' },
-  { key: 'max',   name: 'Community',  price: '$239/mo' },
+  { key: 'max',   name: 'Community',  price: '$299/mo' },
   { key: 'ultra', name: 'Ministry',   price: '$479/mo' },
 ];
 
