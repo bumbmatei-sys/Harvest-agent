@@ -260,7 +260,7 @@ const ChurchMap: React.FC<ChurchMapProps> = ({ onBack, onMapInteraction }) => {
  </h2>
  )}
 
- <div className="flex flex-col gap-2 pointer-events-auto">
+ <div className="flex flex-col gap-2 pointer-events-auto lg:hidden">
  <button 
  onClick={() => setViewMode(viewMode === 'map' ? 'list' : 'map')}
  className="bg-white p-3 rounded-full shadow-md text-gray-700 hover:text-gold transition-colors flex items-center justify-center"
@@ -270,9 +270,9 @@ const ChurchMap: React.FC<ChurchMapProps> = ({ onBack, onMapInteraction }) => {
  </div>
  </div>
 
- {viewMode === 'map' ? (
- <MapContainer 
- center={[20, 0]} 
+ {/* Map is always mounted (never display:none) so leaflet keeps its size */}
+ <MapContainer
+ center={[20, 0]}
  zoom={2} 
  style={{ height: '100%', width: '100%', zIndex: 0 }}
  zoomControl={false}
@@ -304,9 +304,10 @@ const ChurchMap: React.FC<ChurchMapProps> = ({ onBack, onMapInteraction }) => {
  </Marker>
  ))}
  </MapContainer>
- ) : (
- <div className="flex-1 overflow-y-auto bg-white pt-24 px-4 pb-6">
- <div className="lg:max-w-5xl lg:mx-auto w-full max-w-2xl mx-auto">
+
+ {/* Church list — full-screen overlay on mobile (list mode); fixed left panel on desktop */}
+ <div className={`${viewMode === 'list' ? 'block' : 'hidden'} lg:block absolute inset-0 lg:inset-y-0 lg:left-0 lg:right-auto lg:w-[380px] bg-white overflow-y-auto pt-24 lg:pt-20 px-4 pb-6 z-[500] lg:shadow-[4px_0_16px_rgba(0,0,0,0.06)]`}>
+ <div className="w-full max-w-2xl mx-auto lg:max-w-none lg:mx-0">
  <div className="space-y-4">
  {sortedChurches.map((church) => {
  let distanceStr = "? km";
@@ -405,7 +406,6 @@ const ChurchMap: React.FC<ChurchMapProps> = ({ onBack, onMapInteraction }) => {
  </div>
  </div>
  </div>
- )}
 
  <ChurchDetailsModal
  isOpen={isChurchDetailsOpen}
