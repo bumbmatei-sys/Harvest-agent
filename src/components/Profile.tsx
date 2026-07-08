@@ -246,7 +246,7 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap 
  };
 
  return (
- <div className="flex flex-col min-h-full bg-[#f8f9fa] transition-colors duration-300">
+ <div className="flex flex-col min-h-full bg-[#f8f9fa] lg:bg-transparent transition-colors duration-300">
  {/* Top Background Section */}
  <div className="pt-12 pb-24 px-4 rounded-b-[40px] relative overflow-hidden bg-gray-800 lg:hidden">
  {/* Background Image & Overlay */}
