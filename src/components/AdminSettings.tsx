@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Crown, Settings2, Bot, Plug, AlertTriangle, Check, FileText, MessageSquare, SlidersHorizontal, ChevronRight } from 'lucide-react';
 import { TenantPlan } from '../types/tenant.types';
-import { getPlanFeatures } from '../utils/plan-features';
+import { getPlanFeatures, AI_TELEGRAM_ASSISTANT_ENABLED } from '../utils/plan-features';
 import { hasPlatformOverride } from '../utils/tenant-scope';
 import SettingsAccordion from './settings/SettingsAccordion';
 import OnboardingSection from './settings/OnboardingSection';
@@ -55,7 +55,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
     const addon = params.get('addon');
     if (stripe === 'success') {
       setStripeStatus('success');
-      if (addon === 'ai-assistant') {
+      if (addon === 'ai-assistant' && AI_TELEGRAM_ASSISTANT_ENABLED) {
         setStripeAddon('ai-assistant');
         setForceOpen('ai-assistant');
       }
@@ -127,6 +127,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
       label: 'AI Assistant',
       icon: <Bot size={18} />,
       content: <AiAssistantSection currentPlan={currentPlan} email={email} isOwner={isOwner} />,
+      hidden: !AI_TELEGRAM_ASSISTANT_ENABLED,
     },
     {
       id: 'integrations',
@@ -157,7 +158,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
   return (
     <div className="p-4 lg:p-6 max-w-6xl mx-auto">
       {/* Stripe status banners */}
-      {stripeStatus === 'success' && stripeAddon === 'ai-assistant' && (
+      {AI_TELEGRAM_ASSISTANT_ENABLED && stripeStatus === 'success' && stripeAddon === 'ai-assistant' && (
         <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-4">
           <div className="flex items-center gap-3 mb-3">
             <Check size={20} className="text-green-600" />

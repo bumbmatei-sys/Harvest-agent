@@ -83,7 +83,7 @@ const EnterpriseContactModal: React.FC<EnterpriseContactModalProps> = ({ isOpen,
             <Building2 size={28} className="text-gold" />
           </div>
           <h2 className="text-2xl font-bold text-white font-display">Organization Plan</h2>
-          <p className="text-gray-400 text-sm mt-1">Unlimited churches & AI assistants, custom pricing, dedicated support</p>
+          <p className="text-gray-400 text-sm mt-1">Unlimited churches, custom pricing, dedicated support</p>
         </div>
 
         <div className="px-6 py-6">
