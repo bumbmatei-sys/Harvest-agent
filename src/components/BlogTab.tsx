@@ -299,7 +299,7 @@ const BlogTab: React.FC<BlogTabProps> = ({ onOpenArticle, initialPost, onBack, i
  )}
 
  {/* Blog Posts List */}
- <div className="flex flex-col gap-3">
+ <div className="flex flex-col gap-3 lg:grid lg:grid-cols-2 lg:gap-4">
  {filteredPosts.map((post, index) => (
  <article 
  key={post.id} 
