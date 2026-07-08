@@ -273,6 +273,7 @@ export default function BiblePage() {
   const [fontSize, setFontSize] = useState(18);
   const [deskSearch, setDeskSearch] = useState(""); // desktop sidebar book filter (lg+ only)
   const [expandedBook, setExpandedBook] = useState<string | null>(book.id); // desktop sidebar accordion
+  const [bookNavCollapsed, setBookNavCollapsed] = useState(false); // desktop book sidebar collapse
 
   useEffect(() => { setHighlighted(loadHighlights()); }, []);
   useEffect(() => { saveHighlights(highlighted); }, [highlighted]);
@@ -307,12 +308,15 @@ export default function BiblePage() {
       {toast && <div className="fixed bottom-[100px] left-1/2 -translate-x-1/2 bg-gray-900 text-white rounded-full px-4 py-2 text-[13px] font-semibold z-[99] whitespace-nowrap animate-[fadeIn_0.25s_ease]">{toast}</div>}
 
       {/* ── DESKTOP BOOK SIDEBAR (lg+ only; hidden on mobile so mobile is unchanged) ── */}
-      <aside className="hidden lg:flex lg:flex-col lg:w-[264px] lg:flex-shrink-0 lg:border-r lg:border-gray-200 lg:bg-white lg:min-h-0">
-        <div className="p-4 border-b border-gray-100">
-          <div className="flex items-center gap-2 bg-gray-50 rounded-lg border border-gray-200 px-3 py-2">
+      <aside className={`hidden lg:flex-col lg:w-[264px] lg:flex-shrink-0 lg:border-r lg:border-gray-200 lg:bg-white lg:min-h-0 ${bookNavCollapsed ? 'lg:hidden' : 'lg:flex'}`}>
+        <div className="p-4 border-b border-gray-100 flex items-center gap-2">
+          <div className="flex-1 flex items-center gap-2 bg-gray-50 rounded-lg border border-gray-200 px-3 py-2">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2.5"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
             <input value={deskSearch} onChange={(e) => setDeskSearch(e.target.value)} placeholder="Search books…" className="flex-1 border-none bg-transparent text-[13px] outline-none text-gray-900" />
           </div>
+          <button onClick={() => setBookNavCollapsed(true)} title="Collapse books" className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-100 shrink-0">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
+          </button>
         </div>
         <div className="flex-1 overflow-y-auto px-2 py-2">
           {([["Old Testament", "OT"], ["New Testament", "NT"]] as [string, "OT" | "NT"][]).map(([label, testament]) => {
@@ -361,14 +365,22 @@ export default function BiblePage() {
       {/* ── TOP BAR ── */}
       <div className="bg-white border-b border-gray-200 px-4 py-3 lg:py-2 flex-shrink-0 shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
         <div className="flex items-center justify-between mb-3 lg:mb-0">
+          <div className="flex items-center gap-2">
           <button onClick={() => setShowPicker(true)} className="bg-transparent border-none cursor-pointer flex items-center gap-1 lg:hidden">
             <span className="font-extrabold text-[17px] text-gray-900 font-display">{book.name} {chapter}</span>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2"><path d="m6 9 6 6 6-6" /></svg>
           </button>
+          {/* Desktop: re-open the book sidebar after collapsing it */}
+          {bookNavCollapsed && (
+            <button onClick={() => setBookNavCollapsed(false)} title="Show books" className="hidden lg:flex w-7 h-7 rounded-md items-center justify-center text-gray-500 border border-gray-200 hover:bg-gray-50">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M3 12h18M3 18h18" /></svg>
+            </button>
+          )}
           {/* Desktop-only reader font-size, next to the translation */}
           <div className="hidden lg:flex items-center gap-1.5">
             <button onClick={() => setFontSize((s) => Math.max(13, s - 2))} className="w-7 h-7 rounded-md bg-gray-50 border border-gray-200 text-xs font-bold text-gray-500 flex items-center justify-center hover:bg-gray-100">A-</button>
             <button onClick={() => setFontSize((s) => Math.min(26, s + 2))} className="w-7 h-7 rounded-md bg-gray-50 border border-gray-200 text-sm font-bold text-gray-500 flex items-center justify-center hover:bg-gray-100">A+</button>
+          </div>
           </div>
           <div className="relative">
             <button onClick={() => setShowTranslations((v) => !v)} className="px-2.5 py-1.5 bg-amber-50 border border-amber-200 rounded-lg text-xs font-bold text-amber-600 cursor-pointer">
