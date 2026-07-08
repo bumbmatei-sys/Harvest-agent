@@ -231,7 +231,7 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
 export const PLAN_PRICING: Record<TenantPlan, { monthlyUsd: number; yearlyUsd: number }> = {
   plus:  { monthlyUsd: 59,   yearlyUsd: 590  },
   pro:   { monthlyUsd: 119,  yearlyUsd: 1190 },
-  max:   { monthlyUsd: 239,  yearlyUsd: 2390 },
+  max:   { monthlyUsd: 299,  yearlyUsd: 2990 },
   ultra: { monthlyUsd: 479,  yearlyUsd: 4790 },
 };
 

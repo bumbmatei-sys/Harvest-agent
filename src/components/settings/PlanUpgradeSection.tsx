@@ -32,7 +32,7 @@ const PLAN_ORDER: TenantPlan[] = ['plus', 'pro', 'max', 'ultra'];
 const PLANS: { id: TenantPlan; name: string; monthlyPrice: string; yearlyPrice: string; yearlyPromo: string; yearlyOriginal: string; icon: any; color: string; popular?: boolean; comingSoon: string[] }[] = [
   { id: 'plus', name: 'Individual', monthlyPrice: '$59/mo', yearlyPrice: '$590/yr', yearlyPromo: '$590', yearlyOriginal: '$708', icon: Zap, color: '#6366f1', comingSoon: [] },
   { id: 'pro', name: 'Small Team', monthlyPrice: '$119/mo', yearlyPrice: '$1,190/yr', yearlyPromo: '$1,190', yearlyOriginal: '$1,428', icon: Crown, color: '#d4a017', comingSoon: [] },
-  { id: 'max', name: 'Community', monthlyPrice: '$239/mo', yearlyPrice: '$2,390/yr', yearlyPromo: '$2,390', yearlyOriginal: '$2,868', icon: Star, color: '#8b5cf6', popular: true, comingSoon: [] },
+  { id: 'max', name: 'Community', monthlyPrice: '$299/mo', yearlyPrice: '$2,990/yr', yearlyPromo: '$2,990', yearlyOriginal: '$3,588', icon: Star, color: '#8b5cf6', popular: true, comingSoon: [] },
   { id: 'ultra', name: 'Ministry', monthlyPrice: '$479/mo', yearlyPrice: '$4,790/yr', yearlyPromo: '$4,790', yearlyOriginal: '$5,748', icon: Building2, color: '#b45309', comingSoon: [] },
 ];
 
