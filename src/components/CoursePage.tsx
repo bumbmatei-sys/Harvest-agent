@@ -192,7 +192,7 @@ export default function CoursePage({
   }
 
   return (
-    <div className={`max-w-4xl lg:max-w-5xl lg:mx-auto w-full mx-auto ${onBack ? "bg-[#f8f9fa] min-h-screen" : ""}`}
+    <div className={`max-w-4xl lg:max-w-none w-full mx-auto ${onBack ? "bg-[#f8f9fa] min-h-screen" : ""}`}
       style={onBack ? {} : { minHeight: "calc(100vh - 120px)" }}
     >
       {screen === "library" && (
