@@ -125,6 +125,54 @@ function MessageBubble({ message }: MessageBubbleProps) {
 }
 
 // ═══════════════════════════════════════════════
+// CHAT LIST — the scrollable conversation list, shared by the mobile
+// history drawer and the desktop persistent rail so both render from the
+// same real `history` array with identical item markup / delete behavior.
+// ═══════════════════════════════════════════════
+interface ChatListProps {
+ history: Chat[];
+ activeId: string | null;
+ onSelect: (chat: Chat) => void;
+ onDelete: (id: string) => void;
+}
+
+function ChatList({ history, activeId, onSelect, onDelete }: ChatListProps) {
+ return (
+ <div style={{ overflowY: "auto", flex: 1 }}>
+ {history.length === 0 && (
+ <div style={{ padding: "32px 16px", textAlign: "center", color: TEXT2, fontSize: 13 }}>No conversations yet.</div>
+ )}
+ {history.map((chat) => {
+ const active = chat.id === activeId;
+ return (
+ <div key={chat.id}
+ style={{ padding: "13px 16px", borderBottom: `1px solid ${BORDER}`, background: active ? GOLD_LIGHT : "transparent", borderLeft: `3px solid ${active ? GOLD : "transparent"}`, transition: "background 0.15s", display: "flex", alignItems: "center", gap: 8 }}
+ onMouseEnter={(e) => { if (!active) (e.currentTarget as HTMLDivElement).style.background = BG; }}
+ onMouseLeave={(e) => { if (!active) (e.currentTarget as HTMLDivElement).style.background = active ? GOLD_LIGHT : "transparent"; }}>
+ {/* Chat info — tappable */}
+ <div onClick={() => onSelect(chat)} style={{ flex: 1, cursor: "pointer", minWidth: 0 }}>
+ <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
+ <div style={{ fontWeight: 700, fontSize: 13, color: active ? GOLD : TEXT, lineHeight: 1.3, flex: 1, paddingRight: 6 }}>{chat.title}</div>
+ <span style={{ fontSize: 10, color: TEXT2, flexShrink: 0, marginTop: 1 }}>{formatDate(chat.date)}</span>
+ </div>
+ <div style={{ fontSize: 12, color: TEXT2, lineHeight: 1.4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{chat.preview}</div>
+ </div>
+ {/* Delete button */}
+ <button
+ onClick={(e) => { e.stopPropagation(); onDelete(chat.id); }}
+ style={{ background: "none", border: "none", cursor: "pointer", color: "#CCC", fontSize: 15, padding: "4px", lineHeight: 1, flexShrink: 0, borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center" }}
+ onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "#E74C3C"; (e.currentTarget as HTMLButtonElement).style.background = "#FDECEA"; }}
+ onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "#CCC"; (e.currentTarget as HTMLButtonElement).style.background = "none"; }}>
+ 🗑
+ </button>
+ </div>
+ );
+ })}
+ </div>
+ );
+}
+
+// ═══════════════════════════════════════════════
 // HISTORY PANEL
 // ═══════════════════════════════════════════════
 interface HistoryPanelProps {
@@ -160,38 +208,14 @@ function HistoryPanel({ history, activeId, onSelect, onNewChat, onClose, onDelet
  </button>
  </div>
 
- {/* List */}
- <div style={{ overflowY: "auto", flex: 1 }}>
- {history.length === 0 && (
- <div style={{ padding: "32px 16px", textAlign: "center", color: TEXT2, fontSize: 13 }}>No conversations yet.</div>
- )}
- {history.map((chat) => {
- const active = chat.id === activeId;
- return (
- <div key={chat.id}
- style={{ padding: "13px 16px", borderBottom: `1px solid ${BORDER}`, background: active ? GOLD_LIGHT : "transparent", borderLeft: `3px solid ${active ? GOLD : "transparent"}`, transition: "background 0.15s", display: "flex", alignItems: "center", gap: 8 }}
- onMouseEnter={(e) => { if (!active) (e.currentTarget as HTMLDivElement).style.background = BG; }}
- onMouseLeave={(e) => { if (!active) (e.currentTarget as HTMLDivElement).style.background = active ? GOLD_LIGHT : "transparent"; }}>
- {/* Chat info — tappable */}
- <div onClick={() => { onSelect(chat); onClose(); }} style={{ flex: 1, cursor: "pointer", minWidth: 0 }}>
- <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
- <div style={{ fontWeight: 700, fontSize: 13, color: active ? GOLD : TEXT, lineHeight: 1.3, flex: 1, paddingRight: 6 }}>{chat.title}</div>
- <span style={{ fontSize: 10, color: TEXT2, flexShrink: 0, marginTop: 1 }}>{formatDate(chat.date)}</span>
- </div>
- <div style={{ fontSize: 12, color: TEXT2, lineHeight: 1.4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{chat.preview}</div>
- </div>
- {/* Delete button */}
- <button
- onClick={(e) => { e.stopPropagation(); onDelete(chat.id); }}
- style={{ background: "none", border: "none", cursor: "pointer", color: "#CCC", fontSize: 15, padding: "4px", lineHeight: 1, flexShrink: 0, borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center" }}
- onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "#E74C3C"; (e.currentTarget as HTMLButtonElement).style.background = "#FDECEA"; }}
- onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "#CCC"; (e.currentTarget as HTMLButtonElement).style.background = "none"; }}>
- 🗑
- </button>
- </div>
- );
- })}
- </div>
+ {/* List — shared with the desktop rail via <ChatList>. The drawer wraps
+ onSelect to also close itself after picking a conversation. */}
+ <ChatList
+ history={history}
+ activeId={activeId}
+ onSelect={(chat) => { onSelect(chat); onClose(); }}
+ onDelete={onDelete}
+ />
  </div>
  </>
  );
@@ -418,7 +442,12 @@ Friendly neighbor, not a corporate chatbot. Short. Helpful. Human.`;
  const isEmpty = messages.length === 0;
 
  return (
- <div style={{ fontFamily: "var(--font-sans), system-ui, sans-serif", background: BG, height: "100%", width: "100%", maxWidth: 1024, margin: "0 auto", display: "flex", flexDirection: "column", position: "relative", overflow: "hidden" }}>
+ // Root is a flex ROW so the desktop history rail can sit to the left of the
+ // chat column. On mobile the rail is `hidden`, leaving a single full-width
+ // child (the chat column) — visually identical to the previous single-column
+ // layout. The old maxWidth:1024 / margin:auto only had any effect at >=1024px
+ // (i.e. lg), where we now redesign, so dropping them leaves mobile untouched.
+ <div style={{ fontFamily: "var(--font-sans), system-ui, sans-serif", background: BG, height: "100%", width: "100%", display: "flex", position: "relative", overflow: "hidden" }}>
  <style>{`
  :root {
  --chat-bg: #F2F4F7;
@@ -478,7 +507,7 @@ Friendly neighbor, not a corporate chatbot. Short. Helpful. Human.`;
  }
  `}</style>
 
- {/* History Panel */}
+ {/* History Panel — mobile (< lg) slide-in drawer, opened by the top-bar icon. */}
  {showHistory && (
  <HistoryPanel
  history={history}
@@ -490,6 +519,25 @@ Friendly neighbor, not a corporate chatbot. Short. Helpful. Human.`;
  />
  )}
 
+ {/* Desktop (lg:+) persistent history rail — always visible, so the top-bar
+ history icon is hidden at lg. Same real `history` + handlers as the drawer. */}
+ <aside className="hidden lg:flex lg:flex-col lg:shrink-0" style={{ width: 280, background: CARD, borderRight: `1px solid ${BORDER}`, height: "100%" }}>
+ <div style={{ padding: "20px 16px 14px", borderBottom: `1px solid ${BORDER}` }}>
+ <div style={{ fontFamily: "var(--font-display), Georgia, serif", fontWeight: 700, fontSize: 17, color: TEXT }}>Chat History</div>
+ <div style={{ fontSize: 11, color: TEXT2, marginTop: 2 }}>{history.length} conversation{history.length !== 1 ? "s" : ""}</div>
+ </div>
+ <div style={{ padding: "12px 16px", borderBottom: `1px solid ${BORDER}` }}>
+ <button onClick={startNewChat}
+ style={{ width: "100%", background: GOLD_BTN, border: "none", color: "#fff", fontWeight: 700, padding: "11px", borderRadius: 12, cursor: "pointer", fontSize: 14, fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, boxShadow: "0 2px 8px color-mix(in srgb, var(--brand-color, #C9963A) 35%, transparent)" }}>
+ <span style={{ fontSize: 18 }}>✦</span> New Chat
+ </button>
+ </div>
+ <ChatList history={history} activeId={activeChat?.id ?? null} onSelect={loadChat} onDelete={deleteChat} />
+ </aside>
+
+ {/* Chat column — top bar + messages + input. `flex:1` fills the space beside
+ the rail on desktop and the whole width on mobile (rail hidden). */}
+ <div style={{ flex: 1, minWidth: 0, height: "100%", display: "flex", flexDirection: "column", position: "relative", overflow: "hidden" }}>
  {/* ── TOP BAR ── */}
  <div style={{ background: CARD, borderBottom: `1px solid ${BORDER}`, padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", boxShadow: "0 1px 4px rgba(0,0,0,0.06)", flexShrink: 0, zIndex: 10 }}>
  {/* Back */}
@@ -504,8 +552,8 @@ Friendly neighbor, not a corporate chatbot. Short. Helpful. Human.`;
  </div>
  </div>
 
- {/* History icon button */}
- <button onClick={() => setShowHistory(true)}
+ {/* History icon button — mobile only; the desktop rail is always visible. */}
+ <button onClick={() => setShowHistory(true)} className="lg:hidden"
  style={{ background: "none", border: "none", cursor: "pointer", padding: 6, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 8 }}>
  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-gold" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
  <path d="M12 8v4l3 3" /><circle cx="12" cy="12" r="9" />
@@ -542,7 +590,7 @@ Friendly neighbor, not a corporate chatbot. Short. Helpful. Human.`;
 
  {/* Messages */}
  {!isEmpty && (
- <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+ <div className="lg:w-full lg:max-w-3xl lg:self-center" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
  {messages.map((msg) => (
  <div key={msg.id} style={{ animation: "fadeSlideUp 0.3s ease" }}>
  <MessageBubble message={msg} />
@@ -561,7 +609,7 @@ Friendly neighbor, not a corporate chatbot. Short. Helpful. Human.`;
  Resting for a little while — spend some time with God directly. The chat will be ready again soon.
  </div>
  )}
- <div style={{ display: "flex", alignItems: "center", gap: 8, background: BG, borderRadius: 99, border: `1.5px solid ${BORDER}`, padding: "0 6px 0 16px", minHeight: 44 }}>
+ <div className="lg:max-w-3xl lg:mx-auto lg:w-full" style={{ display: "flex", alignItems: "center", gap: 8, background: BG, borderRadius: 99, border: `1.5px solid ${BORDER}`, padding: "0 6px 0 16px", minHeight: 44 }}>
  <textarea
  ref={inputRef}
  value={input}
@@ -577,6 +625,7 @@ Friendly neighbor, not a corporate chatbot. Short. Helpful. Human.`;
  <path d="M2 21l21-9L2 3v7l15 2-15 2v7z" />
  </svg>
  </button>
+ </div>
  </div>
  </div>
  </div>

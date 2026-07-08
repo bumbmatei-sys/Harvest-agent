@@ -534,7 +534,9 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
               />
             </div>
           ) : activeBottomTab === 'chat' ? (
-             <div className="w-full lg:max-w-5xl lg:mx-auto h-full">
+             // Wider than the other bottom-tab views so the desktop chat can fit
+             // its 280px history rail alongside a readable ~800px message column.
+             <div className="w-full lg:max-w-6xl lg:mx-auto h-full">
               <AIChat onBack={() => setActiveBottomTab('home')} />
              </div>
           ) : activeBottomTab === 'map' ? (

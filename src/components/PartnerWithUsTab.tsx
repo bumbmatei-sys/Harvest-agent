@@ -4,6 +4,7 @@ import { HeartHandshake, Heart, Lock, ShieldCheck, Loader2 } from 'lucide-react'
 import { useTenant } from '@/contexts/TenantContext';
 import { authFetch } from '../utils/auth-fetch';
 import { PLATFORM_TENANT_ID } from '../utils/tenant-scope';
+import { DesktopCard } from './layout/DesktopLayout';
 
 type DonationType = 'one-time' | 'monthly';
 
@@ -56,7 +57,12 @@ const PartnerWithUsTab: React.FC = () => {
   };
 
   return (
-    <div className="flex-1 px-4 pb-32 max-w-md mx-auto w-full">
+    <div className="flex-1 px-4 lg:px-0 pb-32 max-w-md mx-auto w-full">
+      {/* Desktop (lg:+) only: lift the whole donation form onto an elevated,
+          padded card that reads as an intentional single surface on the page
+          field. All classes are lg:-gated (DesktopCard's bg/border/shadow/radius
+          are lg: by construction), so mobile stays byte-identical. */}
+      <DesktopCard elevation="md" className="lg:p-8">
       {/* Top Icon & Text */}
       <div className="flex flex-col items-center text-center mb-8 mt-4">
         <div className="w-16 h-16 bg-[color-mix(in_srgb,var(--brand-color)_12%,white)] rounded-full flex items-center justify-center mb-4">
@@ -159,6 +165,7 @@ const PartnerWithUsTab: React.FC = () => {
           </>
         )}
       </button>
+      </DesktopCard>
     </div>
   );
 };

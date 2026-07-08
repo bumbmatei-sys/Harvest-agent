@@ -99,8 +99,15 @@ const LivestreamView: React.FC<LivestreamViewProps> = ({ tenantId, onBack, onDon
         </div>
       ) : active === true && videoId ? (
         <div className="flex-1 overflow-y-auto">
+          {/* Desktop (lg:+) only: a centered two-column stage — video + title +
+              actions in the main column, the sermon-notes card in a right rail.
+              With no sermon note there's nothing for the rail, so the wrapper
+              stays a single centered column. Every grid/placement class is
+              lg:-gated and the DOM order (video → notes → actions) is the current
+              mobile order, so mobile renders byte-identically. */}
+          <div className={`lg:mx-auto lg:px-6 lg:py-6 ${sermonNote ? 'lg:max-w-[1280px] lg:grid lg:grid-cols-[1fr_360px] lg:gap-x-6 lg:items-start' : 'lg:max-w-3xl'}`}>
           {/* 16:9 responsive embed */}
-          <div className="w-full bg-black" style={{ aspectRatio: '16 / 9' }}>
+          <div className="w-full bg-black lg:col-start-1 lg:row-start-1 lg:rounded-[var(--ds-radius-card)] lg:overflow-hidden" style={{ aspectRatio: '16 / 9' }}>
             <iframe
               className="w-full h-full"
               src={`https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0`}
@@ -110,46 +117,58 @@ const LivestreamView: React.FC<LivestreamViewProps> = ({ tenantId, onBack, onDon
             />
           </div>
 
+          {/* Desktop-only title + meta below the video. Real data only: the
+              stream title and the live viewer count — no fabricated speaker/date. */}
+          <div className="hidden lg:block lg:col-start-1 lg:row-start-2 lg:mt-4">
+            {title && <h1 className="font-display text-xl font-bold text-white">{title}</h1>}
+            {active && (
+              <div className="flex items-center gap-1.5 text-sm text-white/60 mt-1">
+                <Eye size={14} /> <span>{viewerCount} watching</span>
+              </div>
+            )}
+          </div>
+
           {sermonNote && (
-            <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden mx-4 mt-3 max-w-2xl md:mx-auto">
+            <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden mx-4 mt-3 max-w-2xl md:mx-auto lg:col-start-2 lg:row-start-1 lg:row-span-3 lg:mx-0 lg:mt-0 lg:max-w-none lg:w-full lg:rounded-[var(--ds-radius-card)]">
               <button
                 onClick={() => setNotesOpen(p => !p)}
-                className="flex items-center justify-between w-full px-4 py-3 text-white"
+                className="flex items-center justify-between w-full px-4 py-3 text-white lg:cursor-default"
               >
                 <span className="flex items-center gap-2 text-sm font-semibold">
                   <BookOpen size={15} className="text-gold" /> Sermon Notes
                 </span>
                 <ChevronDown
                   size={16}
-                  className="transition-transform"
+                  className="transition-transform lg:hidden"
                   style={{ transform: notesOpen ? 'rotate(180deg)' : 'rotate(0deg)', color: GOLD }}
                 />
               </button>
-              {notesOpen && (
-                <div className="px-4 pb-4 text-white/80 text-sm leading-relaxed">
-                  {sermonNote.title && (
-                    <h3 className="text-white font-semibold text-base mb-2 font-display">{sermonNote.title}</h3>
-                  )}
-                  <TipTapReadOnly contentHtml={sermonNote.contentHtml} />
-                </div>
-              )}
+              {/* Body: collapsible on mobile (hidden until notesOpen), always
+                  expanded on desktop (lg:block) — a rail card needs no toggle. */}
+              <div className={`px-4 pb-4 text-white/80 text-sm leading-relaxed ${notesOpen ? '' : 'hidden'} lg:block`}>
+                {sermonNote.title && (
+                  <h3 className="text-white font-semibold text-base mb-2 font-display">{sermonNote.title}</h3>
+                )}
+                <TipTapReadOnly contentHtml={sermonNote.contentHtml} />
+              </div>
             </div>
           )}
 
-          <div className="p-4 space-y-3 max-w-2xl mx-auto">
+          <div className="p-4 space-y-3 max-w-2xl mx-auto lg:col-start-1 lg:row-start-3 lg:flex lg:gap-3 lg:space-y-0 lg:max-w-none lg:mx-0 lg:p-0 lg:mt-4">
             <button
               onClick={onDonate}
-              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-white"
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-white lg:flex-1"
               style={{ backgroundColor: GOLD }}
             >
               <Heart size={18} /> Support This Message
             </button>
             <button
               onClick={() => setShowPrayer(true)}
-              className="w-full py-3 rounded-xl font-semibold text-white bg-white/10 hover:bg-white/15"
+              className="w-full py-3 rounded-xl font-semibold text-white bg-white/10 hover:bg-white/15 lg:flex-1"
             >
               🙏 Submit Prayer Request
             </button>
+          </div>
           </div>
         </div>
       ) : (
