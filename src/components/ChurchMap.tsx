@@ -5,7 +5,7 @@ import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { getPlaceholderImage } from '@/utils/placeholder';
 import L from 'leaflet';
-import { ArrowLeft, LocateFixed, Map as MapIcon, List, Navigation, Home, CheckCircle } from 'lucide-react';
+import { ArrowLeft, LocateFixed, Map as MapIcon, List, Navigation, Home, CheckCircle, ChevronLeft } from 'lucide-react';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import ChurchDetailsModal from './ChurchDetailsModal';
@@ -87,9 +87,7 @@ interface ChurchMapProps {
  onMapInteraction: (interacting: boolean) => void;
 }
 
-const LocationButton = ({ setUserLocation }: { setUserLocation: (loc: {lat: number, lng: number}) => void }) => {
- const map = useMap();
-
+const LocationButton = ({ map, setUserLocation }: { map: L.Map; setUserLocation: (loc: {lat: number, lng: number}) => void }) => {
  const locateUser = () => {
  if ('geolocation' in navigator) {
  navigator.geolocation.getCurrentPosition(
@@ -162,6 +160,16 @@ const MapEvents = ({ onInteraction }: { onInteraction: (interacting: boolean) =>
  return null;
 };
 
+// Lift the Leaflet map instance up to the parent so controls can live outside
+// the MapContainer (stable positioning, no react-leaflet child-render quirks).
+const MapReady = ({ onReady }: { onReady: (map: L.Map) => void }) => {
+ const map = useMap();
+ useEffect(() => {
+ onReady(map);
+ }, [map, onReady]);
+ return null;
+};
+
 const ChurchMap: React.FC<ChurchMapProps> = ({ onBack, onMapInteraction }) => {
  const [churches, setChurches] = useState<Church[]>([]);
  const [viewMode, setViewMode] = useState<'map' | 'list'>('map');
@@ -170,6 +178,8 @@ const ChurchMap: React.FC<ChurchMapProps> = ({ onBack, onMapInteraction }) => {
  const [highlightedChurchId, setHighlightedChurchId] = useState<string | null>(null);
  const [isChurchDetailsOpen, setIsChurchDetailsOpen] = useState(false);
  const [selectedChurchId, setSelectedChurchId] = useState<string | null>(null);
+ const [listCollapsed, setListCollapsed] = useState(false);
+ const [mapRef, setMapRef] = useState<L.Map | null>(null);
 
  useEffect(() => {
  const fetchChurches = async () => {
@@ -246,7 +256,7 @@ const ChurchMap: React.FC<ChurchMapProps> = ({ onBack, onMapInteraction }) => {
  return (
  <div className="relative w-full h-full bg-[#f8f9fa] flex flex-col">
  {/* Top Controls */}
- <div className="absolute top-4 left-4 right-4 z-[1000] flex justify-between items-center pointer-events-none">
+ <div className="lg:hidden absolute top-4 left-4 right-4 z-[1000] flex justify-between items-center pointer-events-none">
  <button 
  onClick={onBack}
  className="pointer-events-auto bg-white p-3 rounded-full shadow-md text-gray-700 hover:text-gold transition-colors"
@@ -281,9 +291,7 @@ const ChurchMap: React.FC<ChurchMapProps> = ({ onBack, onMapInteraction }) => {
  <TileLayer
  url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
  />
- <div className="absolute top-20 right-4 z-[1000]">
- <LocationButton setUserLocation={setUserLocation} />
- </div>
+ <MapReady onReady={setMapRef} />
  <MapEvents onInteraction={onMapInteraction} />
  
  {userLocation && (
@@ -305,9 +313,40 @@ const ChurchMap: React.FC<ChurchMapProps> = ({ onBack, onMapInteraction }) => {
  ))}
  </MapContainer>
 
+ {/* Locate button — stable overlay anchored to the map wrapper (hidden on mobile list view) */}
+ {mapRef && (
+ <div className={`absolute right-4 top-20 lg:top-6 lg:right-6 z-[1000] ${viewMode === 'list' ? 'hidden lg:block' : 'block'}`}>
+ <LocationButton map={mapRef} setUserLocation={setUserLocation} />
+ </div>
+ )}
+
+ {/* Re-open the church list (desktop only, shown when collapsed) */}
+ {listCollapsed && (
+ <button
+ onClick={() => setListCollapsed(false)}
+ className="hidden lg:flex absolute top-6 left-6 z-[1000] items-center gap-2 bg-white pl-3 pr-4 py-2.5 rounded-full shadow-md text-gray-700 hover:text-gold transition-colors"
+ title="Show church list"
+ aria-label="Show church list"
+ >
+ <List size={20} />
+ <span className="text-sm font-semibold">Churches</span>
+ </button>
+ )}
+
  {/* Church list — full-screen overlay on mobile (list mode); fixed left panel on desktop */}
- <div className={`${viewMode === 'list' ? 'block' : 'hidden'} lg:block absolute inset-0 lg:inset-y-0 lg:left-0 lg:right-auto lg:w-[380px] bg-white overflow-y-auto pt-24 lg:pt-20 px-4 pb-6 z-[500] lg:shadow-[4px_0_16px_rgba(0,0,0,0.06)]`}>
+ <div className={`${viewMode === 'list' ? 'block' : 'hidden'} ${listCollapsed ? 'lg:hidden' : 'lg:block'} absolute inset-0 lg:inset-y-0 lg:left-0 lg:right-auto lg:w-[380px] bg-white overflow-y-auto pt-24 lg:pt-6 px-4 pb-6 z-[500] lg:shadow-[4px_0_16px_rgba(0,0,0,0.06)]`}>
  <div className="w-full max-w-2xl mx-auto lg:max-w-none lg:mx-0">
+ <div className="hidden lg:flex items-center justify-between sticky top-0 bg-white pb-3 mb-1 z-10">
+ <h2 className="text-lg font-bold text-gray-900 font-display">Churches near you</h2>
+ <button
+ onClick={() => setListCollapsed(true)}
+ className="w-8 h-8 -mr-1 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+ title="Collapse list"
+ aria-label="Collapse church list"
+ >
+ <ChevronLeft size={20} />
+ </button>
+ </div>
  <div className="space-y-4">
  {sortedChurches.map((church) => {
  let distanceStr = "? km";
