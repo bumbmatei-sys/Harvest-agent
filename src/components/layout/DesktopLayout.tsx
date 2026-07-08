@@ -18,7 +18,7 @@ interface DesktopContainerProps {
 
 /** Centered max-width content column with responsive horizontal padding. */
 export const DesktopContainer: React.FC<DesktopContainerProps> = ({ children, className = '' }) => (
-  <div className={`lg:max-w-[1200px] lg:mx-auto lg:px-8 xl:px-12 ${className}`}>
+  <div className={`lg:w-full lg:px-6 xl:px-8 ${className}`}>
     {children}
   </div>
 );

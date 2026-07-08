@@ -35,6 +35,13 @@
  }
 }
 
+/* Desktop density: the app is mobile-first at a 16px root. On desktop the
+   chrome/typography read a little large, so trim the rem base ~9% for lg+ only.
+   Mobile (<1024px) keeps 16px, so the mobile view is unchanged. */
+@media (min-width: 1024px) {
+  :root { font-size: 14.5px; }
+}
+
 @layer utilities {
  .isometric-phone {
  transform: rotateX(15deg) rotateY(0deg) rotateZ(-15deg) scale(0.9);

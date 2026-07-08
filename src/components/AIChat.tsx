@@ -360,6 +360,23 @@ const startNewChat = (): void => {
  setInput("");
  setTyping(true);
 
+ // Persist the conversation immediately (create on the first message, else
+ // update) so it survives an API error or a "New Chat" click before the reply
+ // arrives. Previously the save happened only after a successful response, so a
+ // failed request left nothing in history.
+ const title = text.length > 40 ? text.slice(0, 40) + "…" : text;
+ let chatId: string | null = activeChat?.id ?? null;
+ if (activeChat) {
+ const updatedChat = { ...activeChat, messages: newMessages, preview: text };
+ setActiveChat(updatedChat);
+ setHistory((h) => h.map((c) => (c.id === updatedChat.id ? updatedChat : c)));
+ } else {
+ const createdChat: Chat = { id: uid(), title, preview: text, date: new Date().toISOString(), messages: newMessages };
+ chatId = createdChat.id;
+ setActiveChat(createdChat);
+ setHistory((h) => [createdChat, ...h]);
+ }
+
  try {
  // 1. Search knowledge base
  const relevantChunks = await searchVectorDB(text);
@@ -419,21 +436,23 @@ Friendly neighbor, not a corporate chatbot. Short. Helpful. Human.`;
  const finalMessages = [...newMessages, aiMsg];
  setMessages(finalMessages);
 
- // Save / update chat history
- const title = text.length > 40 ? text.slice(0, 40) + "…" : text;
- if (activeChat) {
- const updated = { ...activeChat, messages: finalMessages, preview: text };
- setActiveChat(updated);
- setHistory((h) => h.map((c) => c.id === updated.id ? updated : c));
- } else {
- const newChat: Chat = { id: uid(), title, preview: text, date: new Date().toISOString(), messages: finalMessages };
- setActiveChat(newChat);
- setHistory((h) => [newChat, ...h]);
+ // Update the already-persisted conversation with the assistant's reply.
+ if (chatId) {
+ const cid = chatId;
+ setActiveChat((c) => (c && c.id === cid ? { ...c, messages: finalMessages, preview: text } : c));
+ setHistory((h) => h.map((c) => (c.id === cid ? { ...c, messages: finalMessages, preview: text } : c)));
  }
  } catch (error) {
  console.error("Error generating response:", error);
  const errorMsg: Message = { id: uid(), role: "ai", text: "I'm sorry, I encountered an error while trying to answer your question. Please try again later.", time: now() };
- setMessages([...newMessages, errorMsg]);
+ const finalMessages = [...newMessages, errorMsg];
+ setMessages(finalMessages);
+ // Keep the persisted conversation in sync even when the AI errors.
+ if (chatId) {
+ const cid = chatId;
+ setActiveChat((c) => (c && c.id === cid ? { ...c, messages: finalMessages } : c));
+ setHistory((h) => h.map((c) => (c.id === cid ? { ...c, messages: finalMessages } : c)));
+ }
  } finally {
  setTyping(false);
  }

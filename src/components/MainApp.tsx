@@ -69,6 +69,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
   const [activeTopTab, setActiveTopTab] = useState('news');
   const [isNavVisible, setIsNavVisible] = useState(true);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [enableSwipe, setEnableSwipe] = useState(false); // tab-swipe gesture: mobile/touch only
   const lastScrollYRef = useRef(0);
   const [direction, setDirection] = useState(0);
   const [fullScreenView, setFullScreenView] = useState<{type: 'none' | 'all-news' | 'article' | 'course' | 'livestream', id?: string, data?: any}>({type: 'none'});
@@ -201,6 +202,17 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
     setIsNavVisible(true);
   }, [activeBottomTab]);
 
+  // Enable the horizontal tab-swipe gesture on mobile/touch layouts only; on
+  // desktop (>=lg) a drag must never switch tabs.
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+    const mq = window.matchMedia('(max-width: 1023px)');
+    const update = () => setEnableSwipe(mq.matches);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
+
   // Deep-link from a QR / Text-to-Give link (`/?giving=1`): jump straight to the
   // giving ("Partner with Us") flow, then strip the param so a refresh is clean.
   useEffect(() => {
@@ -303,8 +315,8 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
         onClick={onClick}
         className={`${visibilityClassName} items-center justify-center gap-1 rounded-xl transition-all shrink-0 ${
           isSidebarCollapsed
-            ? 'lg:w-14 lg:h-14 lg:p-0 w-16 h-12'
-            : 'lg:flex-row lg:justify-start lg:gap-4 lg:w-full lg:h-14 lg:px-4 w-16 h-12'
+            ? 'lg:w-11 lg:h-11 lg:p-0 w-16 h-12'
+            : 'lg:flex-row lg:justify-start lg:gap-3 lg:w-full lg:h-11 lg:px-3 w-16 h-12'
         } ${
           isActive ? '' : 'text-gray-400 hover:text-gray-600 lg:hover:bg-gray-50'
         }`}
@@ -312,12 +324,11 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
         title={isSidebarCollapsed ? label : undefined}
       >
         <Icon
-          size={24}
           strokeWidth={isActive ? 2.5 : 2}
-          className="shrink-0"
+          className="w-6 h-6 lg:w-5 lg:h-5 shrink-0"
           style={isActive ? { color: 'var(--brand-color, #e6b325)' } : undefined}
         />
-        <span className={`text-[10px] lg:text-sm lg:font-medium lg:truncate ${isSidebarCollapsed ? 'lg:hidden block' : 'lg:block block'}`}>
+        <span className={`text-[10px] lg:text-[13px] lg:font-medium lg:truncate ${isSidebarCollapsed ? 'lg:hidden block' : 'lg:block block'}`}>
           {label}
         </span>
       </button>
@@ -367,16 +378,16 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
       <ReferralTracker />
       
       {/* Side/Bottom Navigation */}
-      <div className={`bg-white border-t lg:border-t-0 lg:border-r border-gray-100 flex justify-center lg:justify-start py-2 lg:py-6 px-2 lg:px-4 pb-safe lg:pb-0 fixed lg:relative bottom-0 lg:bottom-auto w-full ${isSidebarCollapsed ? 'lg:w-[88px]' : 'lg:w-64'} lg:h-screen z-[100] shadow-[0_-4px_20px_rgba(0,0,0,0.05)] lg:shadow-[2px_0_10px_rgba(0,0,0,0.02)] transition-all duration-300 ${!isNavVisible || activeBottomTab === 'map' ? 'max-lg:translate-y-full' : 'max-lg:translate-y-0'}`}>
+      <div className={`bg-white border-t lg:border-t-0 lg:border-r border-gray-100 flex justify-center lg:justify-start py-2 lg:py-5 px-2 lg:px-3 pb-safe lg:pb-0 fixed lg:relative bottom-0 lg:bottom-auto w-full ${isSidebarCollapsed ? 'lg:w-[72px]' : 'lg:w-[224px]'} lg:h-screen z-[100] shadow-[0_-4px_20px_rgba(0,0,0,0.05)] lg:shadow-[2px_0_10px_rgba(0,0,0,0.02)] transition-all duration-300 ${!isNavVisible || activeBottomTab === 'map' ? 'max-lg:translate-y-full' : 'max-lg:translate-y-0'}`}>
         <div className={`flex lg:flex-col justify-around lg:justify-start items-center lg:items-stretch w-full lg:max-w-none lg:gap-2 ${isSidebarCollapsed ? 'lg:items-center' : ''}`}>
           {/* Desktop Logo */}
-          <div className={`hidden lg:flex items-center mb-8 shrink-0 ${isSidebarCollapsed ? 'justify-center px-0 w-full' : 'gap-3 px-4'}`}>
+          <div className={`hidden lg:flex items-center mb-6 shrink-0 ${isSidebarCollapsed ? 'justify-center px-0 w-full' : 'gap-2.5 px-3'}`}>
             <img
               src={displayLogo}
               alt={displayName}
-              className="w-10 h-10 object-contain shrink-0"
+              className="w-9 h-9 object-contain shrink-0"
             />
-            {!isSidebarCollapsed && <span className="font-display text-xl font-extrabold truncate" style={{ color: 'var(--brand-color, #D4AF37)' }}>{displayName}</span>}
+            {!isSidebarCollapsed && <span className="font-display text-lg font-extrabold truncate" style={{ color: 'var(--brand-color, #C9963A)' }}>{displayName}</span>}
           </div>
 
           {/* Mobile bottom bar — flat, ungrouped: Home, Bible, Chat, Map, Profile (unchanged) */}
@@ -393,14 +404,14 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
 
           {/* Desktop sidebar — grouped under FEED / COMMUNITY / SUPPORT US (Phase 1.6) */}
           {desktopNavGroups.map((group, groupIndex) => (
-            <div key={group.label} className={`hidden lg:flex lg:flex-col lg:w-full ${groupIndex > 0 ? 'lg:mt-6' : ''}`}>
+            <div key={group.label} className={`hidden lg:flex lg:flex-col lg:w-full ${groupIndex > 0 ? 'lg:mt-5' : ''}`}>
               {isSidebarCollapsed ? (
                 groupIndex > 0 && <div className="lg:mx-3 lg:mb-2 lg:border-t lg:border-gray-100" />
               ) : (
                 <div className="lg:px-4 lg:mb-2 lg:text-[10px] lg:font-bold lg:tracking-wider lg:text-gray-400 lg:uppercase">
                   {group.label}
                 </div>
-              )}
+              )}{/* group */}
               <div className="lg:flex lg:flex-col lg:gap-1 lg:w-full lg:items-stretch">
                 {group.items.map((item) =>
                   renderNavButton(item.id, item.label, item.icon, item.isActive, item.onClick, 'desktop')
@@ -410,14 +421,14 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
           ))}
 
           {/* Collapse Button (Bottom) */}
-          <div className="hidden lg:flex flex-1 items-end pb-6 mt-auto">
+          <div className="hidden lg:flex flex-1 items-end pb-5 mt-auto">
             <button
                onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-               className={`flex items-center gap-4 w-full h-14 rounded-xl transition-all px-4 shrink-0 text-gray-400 hover:text-gray-600 hover:bg-gray-50 ${isSidebarCollapsed ? 'justify-center' : 'justify-start'}`}
+               className={`flex items-center gap-3 w-full h-11 rounded-xl transition-all px-3 shrink-0 text-gray-400 hover:text-gray-600 hover:bg-gray-50 ${isSidebarCollapsed ? 'justify-center' : 'justify-start'}`}
                title={isSidebarCollapsed ? "Expand" : "Collapse"}
             >
-               {isSidebarCollapsed ? <ChevronRight size={24} strokeWidth={2} /> : <ChevronLeft size={24} strokeWidth={2} />}
-               {!isSidebarCollapsed && <span className="text-sm font-medium">Collapse</span>}
+               {isSidebarCollapsed ? <ChevronRight size={20} strokeWidth={2} /> : <ChevronLeft size={20} strokeWidth={2} />}
+               {!isSidebarCollapsed && <span className="text-[13px] font-medium">Collapse</span>}
             </button>
           </div>
         </div>
@@ -429,14 +440,14 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
             Full-bleed padded row (not the centered content container) so the title hugs the content area's
             left edge and the avatar sits in the far top-right corner, per #104 feedback. */}
         <div className="hidden lg:block bg-white border-b border-gray-200 flex-shrink-0">
-          <div className="flex items-center justify-between py-4 px-8 xl:px-12">
+          <div className="flex items-center justify-between py-3 px-6 xl:px-8">
             <div>
-              <h1 className="font-display text-xl font-bold text-gray-900">{desktopTitle}</h1>
+              <h1 className="font-display text-lg font-bold text-gray-900">{desktopTitle}</h1>
               {showDesktopDate && <p className="text-xs text-gray-500 mt-0.5">{desktopDate}</p>}
             </div>
             <button
               onClick={() => setActiveBottomTab('profile')}
-              className="flex items-center justify-center w-10 h-10 rounded-full overflow-hidden bg-gray-100 text-sm font-bold text-gray-600 shrink-0 hover:opacity-90 transition-opacity"
+              className="flex items-center justify-center w-9 h-9 rounded-full overflow-hidden bg-gray-100 text-sm font-bold text-gray-600 shrink-0 hover:opacity-90 transition-opacity"
               title="My Profile"
             >
               {currentUser?.photoURL ? (
@@ -492,7 +503,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
                     x: { type: "spring", stiffness: 300, damping: 30 },
                     opacity: { duration: 0.2 }
                   }}
-                  drag="x"
+                  drag={enableSwipe ? "x" : false}
                   dragConstraints={{ left: 0, right: 0 }}
                   dragElastic={{ left: activeTopTab === topTabs[topTabs.length - 1].id ? 0 : 1, right: activeTopTab === topTabs[0].id ? 0 : 1 }}
                   onDragEnd={handleDragEnd}
@@ -538,7 +549,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
             </div>
             </DesktopContainer>
           ) : activeBottomTab === 'profile' ? (
-            <div className="w-full lg:max-w-5xl lg:mx-auto">
+            <div className="w-full">
               <Profile
                 onNavigate={onNavigate}
                 onGoToPartner={() => { setActiveBottomTab('home'); setActiveTopTab('partner'); }}
@@ -548,22 +559,22 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
           ) : activeBottomTab === 'chat' ? (
              // Wider than the other bottom-tab views so the desktop chat can fit
              // its 280px history rail alongside a readable ~800px message column.
-             <div className="w-full lg:max-w-6xl lg:mx-auto h-full">
+             <div className="w-full h-full">
               <AIChat onBack={() => setActiveBottomTab('home')} />
              </div>
           ) : activeBottomTab === 'map' ? (
-             <div className="w-full lg:max-w-5xl lg:mx-auto h-full">
+             <div className="w-full h-full">
               <ChurchMap 
                 onBack={() => setActiveBottomTab('home')} 
                 onMapInteraction={(interacting) => setIsNavVisible(!interacting)} 
               />
              </div>
           ) : activeBottomTab === 'bible' ? (
-             <div className="w-full lg:max-w-5xl lg:mx-auto h-full">
+             <div className="w-full h-full">
               <BiblePage />
              </div>
           ) : (
-            <div className="flex flex-col items-center justify-center h-full text-gray-400 lg:max-w-5xl lg:mx-auto">
+            <div className="flex flex-col items-center justify-center h-full text-gray-400">
               <p>{bottomTabs.find(t => t.id === activeBottomTab)?.label} section coming soon.</p>
             </div>
           )}
