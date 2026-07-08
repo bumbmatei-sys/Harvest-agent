@@ -5,14 +5,14 @@
 @layer base {
  :root {
  --font-sans: 'Inter', system-ui, sans-serif;
- --color-primary: #D4AF37;
+ --color-primary: #C9963A;
  --color-secondary: #e6b325;
- --brand-color: #D4AF37;
+ --brand-color: #C9963A;
  --color-navy: #0b1121;
  --color-background-dark: #0b1121;
  --color-background-light: #FFFFFF;
  --color-background-alt: #F5F5F7;
- --background-image-gold-gradient: linear-gradient(135deg, #D4AF37 0%, #e6b325 100%);
+ --background-image-gold-gradient: linear-gradient(135deg, #D3A24A 0%, #C9963A 100%);
 
  /* Desktop (lg:+) structural tokens — Phase 0b/1.7. Structure/elevation only:
     the app keeps its existing light background and tenant --brand-color; these

@@ -32,7 +32,7 @@ const newsreader = Newsreader({
 const PLATFORM_TENANT_ID = process.env.NEXT_PUBLIC_PLATFORM_TENANT_ID || 'harvest';
 
 export const viewport: Viewport = {
-  themeColor: '#D4AF37',
+  themeColor: '#C9963A',
   viewportFit: 'cover',
   width: 'device-width',
   initialScale: 1,

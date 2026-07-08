@@ -54,6 +54,17 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
   const isWhiteLabel = !!tenantId && tenantId !== PLATFORM_TENANT_ID;
   const displayName = isWhiteLabel && tenantName ? tenantName : 'Harvest';
   const displayLogo = isWhiteLabel && branding?.logo ? branding.logo : DEFAULT_LOGO;
+  // "Ask {ministry}" — the AI assistant is branded with the ministry's short name
+  // on the desktop sidebar, the desktop top-bar title, and the AI page hero.
+  // Mobile's bottom-tab keeps the short "Chat" label to avoid crowding the 64px
+  // tab. Strips a leading "The"; falls back to "Ask Harvest".
+  const askBrandName = (() => {
+    const base = (isWhiteLabel && tenantName ? tenantName : 'Harvest').trim();
+    const words = base.split(/\s+/).filter(Boolean);
+    if (words.length > 1 && words[0].toLowerCase() === 'the') return words[1];
+    return words[0] || 'Harvest';
+  })();
+  const askLabel = `Ask ${askBrandName}`;
   const [activeBottomTab, setActiveBottomTab] = useState('home');
   const [activeTopTab, setActiveTopTab] = useState('news');
   const [isNavVisible, setIsNavVisible] = useState(true);
@@ -110,7 +121,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
     coursesStatus === 'present' && { id: 'courses', label: 'Courses' },
     { id: 'messages', label: 'Messages' },
     { id: 'prayer', label: 'Prayer' },        // all plans, all users
-    { id: 'partner', label: 'Partner with Us' },
+    { id: 'partner', label: 'Give' },
   ].filter(Boolean) as { id: string; label: string }[];
 
   const bottomTabs = [
@@ -152,7 +163,8 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
     if (!tab) return null;
     return {
       id: `desktop-${tab.id}`,
-      label: tab.label,
+      // Chat is branded "Ask {ministry}" on desktop; mobile keeps "Chat".
+      label: tab.id === 'chat' ? askLabel : tab.label,
       icon: tab.icon,
       isActive: activeBottomTab === tab.id,
       onClick: () => setActiveBottomTab(tab.id),
@@ -181,7 +193,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
   // Desktop top bar (Phase 1.6): page title + date for Home; view name elsewhere.
   const desktopTitle = activeBottomTab === 'home'
     ? (activeTopTab === 'news' ? 'Home' : (topTabs.find(t => t.id === activeTopTab)?.label ?? 'Home'))
-    : (bottomTabs.find(t => t.id === activeBottomTab)?.label ?? '');
+    : (activeBottomTab === 'chat' ? askLabel : (bottomTabs.find(t => t.id === activeBottomTab)?.label ?? ''));
   const showDesktopDate = activeBottomTab === 'home' && activeTopTab === 'news';
   const desktopDate = new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric' }).format(new Date());
 

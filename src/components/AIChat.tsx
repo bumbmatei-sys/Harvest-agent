@@ -231,6 +231,13 @@ export default function AIChat({ onBack }: { onBack?: () => void }) {
   const isWhiteLabel = !!tenantId && tenantId !== PLATFORM_TENANT_ID;
   const displayName = isWhiteLabel && tenantName ? tenantName : 'Harvest';
   const displayLogo = isWhiteLabel && branding?.logo ? branding.logo : DEFAULT_LOGO;
+  // "Ask {ministry}" hero title — the assistant is branded with the ministry's
+  // short name (strips a leading "The"); falls back to "Ask Harvest".
+  const askBrandName = (() => {
+    const words = displayName.trim().split(/\s+/).filter(Boolean);
+    if (words.length > 1 && words[0].toLowerCase() === 'the') return words[1];
+    return words[0] || 'Harvest';
+  })();
   const [history, setHistory] = useState<Chat[]>([]);
   const [activeChat, setActiveChat] = useState<Chat | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -570,7 +577,7 @@ Friendly neighbor, not a corporate chatbot. Short. Helpful. Human.`;
  {/* Plain <img> (not next/image) so tenant logos on arbitrary domains render without remotePatterns config, matching MainApp/AuthPage. */}
  <img src={displayLogo} alt={displayName} width={96} height={96} className="object-contain drop-shadow-md" />
  </div>
- <div style={{ fontFamily: "var(--font-display), Georgia, serif", fontWeight: 700, fontSize: 22, color: TEXT, marginBottom: 6, textAlign: "center" }}>Ask me anything</div>
+ <div style={{ fontFamily: "var(--font-display), Georgia, serif", fontWeight: 700, fontSize: 22, color: TEXT, marginBottom: 6, textAlign: "center" }}>{`Ask ${askBrandName}`}</div>
  <div style={{ fontSize: 13, color: TEXT2, textAlign: "center", lineHeight: 1.6, marginBottom: 28, maxWidth: 280 }}>
  I&apos;m trained on Scripture, theology, and your course content. Ask me anything about faith.
  </div>
