@@ -98,6 +98,15 @@
  margin-bottom: 0.5em !important;
  line-height: 1.3333333 !important;
 }
+/* Notes & Docs editor — Fraunces (brand display) headings */
+.docs-editor .ProseMirror h1, .docs-editor .prose h1,
+.docs-editor .ProseMirror h2, .docs-editor .prose h2,
+.docs-editor .ProseMirror h3, .docs-editor .prose h3 {
+ font-family: var(--font-display), Georgia, serif !important;
+ font-weight: 400 !important;
+ letter-spacing: -0.01em;
+ color: var(--earth, #2D2519);
+}
 .ProseMirror p, .prose p {
  margin-top: 1.25em !important;
  margin-bottom: 1.25em !important;

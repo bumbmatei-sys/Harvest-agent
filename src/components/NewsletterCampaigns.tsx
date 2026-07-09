@@ -79,16 +79,23 @@ const NewsletterCampaigns: React.FC<NewsletterCampaignsProps> = ({ tenantId, onC
   }
 
   if (error) {
+    // The campaigns feed (Mailchimp / admin SDK) can be unavailable without
+    // blocking the page — keep the header + New newsletter action, and surface
+    // the issue as a soft, non-blocking notice rather than a full-page failure.
     return (
-      <div className="bg-white rounded-2xl border border-stone-200 p-8 text-center">
-        <AlertCircle size={32} className="mx-auto mb-3 text-red-400" />
-        <p className="text-sm text-warm-brown mb-4">{error}</p>
-        <button
-          onClick={onCreateNew}
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-gold text-white rounded-xl text-sm font-semibold cursor-pointer hover:bg-[color-mix(in_srgb,var(--brand-color)_85%,black)] transition-colors"
-        >
-          <Plus size={16} /> New Newsletter
-        </button>
+      <div className="max-w-3xl mx-auto space-y-6">
+        <AdminPageHeader
+          eyebrow="Newsletters"
+          title="Keep your community engaged"
+          action={<AdminPrimaryButton onClick={onCreateNew} icon={<Plus size={16} />}>New newsletter</AdminPrimaryButton>}
+        />
+        <div className="bg-[color-mix(in_srgb,var(--brand-color)_7%,white)] border border-[color-mix(in_srgb,var(--brand-color)_22%,transparent)] rounded-brand-lg p-5 flex items-start gap-3">
+          <AlertCircle size={18} className="text-gold shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-semibold text-earth">Couldn&apos;t load your campaign history right now</p>
+            <p className="text-xs text-warm-brown mt-0.5">Your newsletters are safe — the campaign feed just isn&apos;t reachable at the moment. You can still create and send a newsletter.</p>
+          </div>
+        </div>
       </div>
     );
   }

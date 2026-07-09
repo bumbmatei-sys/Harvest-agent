@@ -179,7 +179,7 @@ export const DomainSection: React.FC<DomainSectionProps> = ({ hasCustomDomain, o
   };
 
   return (
-    <div className="space-y-6" style={{ paddingBottom: 120 }}>
+    <div>
       {/* Web Address */}
       <div className="bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] p-5">
         <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gold mb-2">Web Address</h3>

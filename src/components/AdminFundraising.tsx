@@ -503,84 +503,87 @@ const AdminFundraising: React.FC<AdminFundraisingProps> = ({ initialCampaignId, 
       {/* Campaign form modal */}
       {showForm && (
         <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <div className="p-5 border-b border-stone-200">
-              <h3 className="text-base font-bold text-earth font-display">{editing ? 'Edit Campaign' : 'New Campaign'}</h3>
+          <div className="bg-white rounded-brand-lg w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-[var(--ds-sh-lg)]">
+            <div className="p-6 flex items-center justify-between">
+              <h3 className="font-display text-2xl font-normal text-earth">{editing ? 'Edit campaign' : 'New campaign'}</h3>
+              <button onClick={() => setShowForm(false)} className="p-1.5 rounded-lg hover:bg-stone-100 transition-colors">
+                <X size={18} className="text-[color:var(--text-faint)]" />
+              </button>
             </div>
-            <div className="p-5 space-y-4 pb-32">
+            <div className="px-6 pb-6 space-y-5">
               {canPledge && (
                 <div>
-                  <label className="text-xs font-semibold text-[color:var(--text-body)] mb-1 block">Campaign Type</label>
-                  <div className="grid grid-cols-2 gap-2">
+                  <label className="text-xs font-semibold text-earth mb-2 block">Campaign type</label>
+                  <div className="grid grid-cols-2 gap-3">
                     <button onClick={() => setForm({ ...form, campaignType: 'fundraising' })}
-                      className={`text-left p-3 rounded-xl border transition-colors ${form.campaignType !== 'pledge' ? 'border-transparent ring-2' : 'border-stone-200'}`}
-                      style={form.campaignType !== 'pledge' ? ({ '--tw-ring-color': 'var(--brand-color, #d4a017)' } as React.CSSProperties) : undefined}>
-                      <p className="font-semibold text-sm text-earth">Fundraising</p>
-                      <p className="text-[11px] text-[color:var(--text-faint)] mt-0.5">Accept one-time and recurring donations toward a goal</p>
+                      className={`text-left p-4 rounded-brand border transition-colors ${form.campaignType !== 'pledge' ? 'border-[color-mix(in_srgb,var(--brand-color)_55%,transparent)] bg-[color-mix(in_srgb,var(--brand-color)_8%,white)]' : 'border-stone-200 hover:border-stone-300'}`}>
+                      <p className={`font-semibold text-sm ${form.campaignType !== 'pledge' ? 'text-gold' : 'text-earth'}`}>Fundraising</p>
+                      <p className="text-[11px] text-warm-brown mt-1 leading-relaxed">One-time &amp; recurring gifts toward a goal</p>
                     </button>
                     <button onClick={() => setForm({ ...form, campaignType: 'pledge' })}
-                      className={`text-left p-3 rounded-xl border transition-colors ${form.campaignType === 'pledge' ? 'border-transparent ring-2' : 'border-stone-200'}`}
-                      style={form.campaignType === 'pledge' ? ({ '--tw-ring-color': 'var(--brand-color, #d4a017)' } as React.CSSProperties) : undefined}>
-                      <p className="font-semibold text-sm text-earth">Pledge Campaign</p>
-                      <p className="text-[11px] text-[color:var(--text-faint)] mt-0.5">Donors commit to give a set amount, tracked over time</p>
+                      className={`text-left p-4 rounded-brand border transition-colors ${form.campaignType === 'pledge' ? 'border-[color-mix(in_srgb,var(--brand-color)_55%,transparent)] bg-[color-mix(in_srgb,var(--brand-color)_8%,white)]' : 'border-stone-200 hover:border-stone-300'}`}>
+                      <p className={`font-semibold text-sm ${form.campaignType === 'pledge' ? 'text-gold' : 'text-earth'}`}>Pledge campaign</p>
+                      <p className="text-[11px] text-warm-brown mt-1 leading-relaxed">Donors commit an amount, tracked over time</p>
                     </button>
                   </div>
                 </div>
               )}
               <div>
-                <label className="text-xs font-semibold text-[color:var(--text-body)] mb-1 block">Title *</label>
+                <label className="text-xs font-semibold text-earth mb-1.5 block">Title *</label>
                 <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
-                  className="w-full border border-stone-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold"
+                  className="w-full border border-stone-200 rounded-brand px-3.5 py-2.5 text-sm text-earth focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent"
                   placeholder="Campaign title" />
               </div>
               <div>
-                <label className="text-xs font-semibold text-[color:var(--text-body)] mb-1 block">Description</label>
+                <label className="text-xs font-semibold text-earth mb-1.5 block">Description</label>
                 <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })}
-                  className="w-full border border-stone-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold resize-none"
+                  className="w-full border border-stone-200 rounded-brand px-3.5 py-2.5 text-sm text-earth focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent resize-none"
                   rows={3} placeholder="What is this campaign for?" />
               </div>
-              <div>
-                <label className="text-xs font-semibold text-[color:var(--text-body)] mb-1 block">Goal ($)</label>
-                <input type="number" min={0} value={form.goal} onChange={(e) => setForm({ ...form, goal: Number(e.target.value) })}
-                  className="w-full border border-stone-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold" />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-semibold text-earth mb-1.5 block">Goal ($)</label>
+                  <input type="number" min={0} value={form.goal} onChange={(e) => setForm({ ...form, goal: Number(e.target.value) })}
+                    className="w-full border border-stone-200 rounded-brand px-3.5 py-2.5 text-sm text-earth focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent" />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-earth mb-1.5 block">End date</label>
+                  <input type="date" value={form.endDate || ''} onChange={(e) => setForm({ ...form, endDate: e.target.value })}
+                    className="w-full border border-stone-200 rounded-brand px-3.5 py-2.5 text-sm text-earth focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent" />
+                </div>
               </div>
               {form.campaignType === 'pledge' && (
                 <div>
-                  <label className="text-xs font-semibold text-[color:var(--text-body)] mb-1 block">Pledge Deadline</label>
+                  <label className="text-xs font-semibold text-earth mb-1.5 block">Pledge deadline</label>
                   <input type="date" value={form.pledgeDeadline || ''} onChange={(e) => setForm({ ...form, pledgeDeadline: e.target.value })}
-                    className="w-full border border-stone-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold" />
+                    className="w-full border border-stone-200 rounded-brand px-3.5 py-2.5 text-sm text-earth focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent" />
                   <p className="text-[11px] text-[color:var(--text-faint)] mt-1">Date by which pledges should be fulfilled</p>
                 </div>
               )}
               <div>
-                <label className="text-xs font-semibold text-[color:var(--text-body)] mb-1 block">End Date</label>
-                <input type="date" value={form.endDate || ''} onChange={(e) => setForm({ ...form, endDate: e.target.value })}
-                  className="w-full border border-stone-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold" />
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-[color:var(--text-body)] mb-1 block">Cover Image URL</label>
+                <label className="text-xs font-semibold text-earth mb-1.5 block">Cover image URL</label>
                 <input value={form.coverImage || ''} onChange={(e) => setForm({ ...form, coverImage: e.target.value })}
-                  className="w-full border border-stone-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold"
-                  placeholder="https://..." />
+                  className="w-full border border-stone-200 rounded-brand px-3.5 py-2.5 text-sm text-earth focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent"
+                  placeholder="https://…" />
               </div>
-              <div className="flex items-center justify-between py-2">
-                <span className="text-sm font-medium text-[color:var(--text-body)]">Set as active campaign</span>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-earth">Set as active campaign</span>
                 <button onClick={() => setForm({ ...form, isActive: !form.isActive })} className="transition-colors">
                   {form.isActive
                     ? <ToggleRight size={28} style={{ color: 'var(--brand-color, #d4a017)' }} />
                     : <ToggleLeft size={28} className="text-stone-300" />}
                 </button>
               </div>
-            </div>
-            <div className="p-5 border-t border-stone-200 flex gap-3">
-              <button onClick={() => setShowForm(false)} className="flex-1 py-2.5 rounded-xl border border-stone-200 text-sm font-semibold text-warm-brown hover:bg-stone-100">
-                Cancel
-              </button>
-              <button onClick={handleSave} disabled={saving || !form.title.trim()}
-                className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
-                style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}>
-                {saving ? 'Saving...' : 'Save'}
-              </button>
+              <div className="flex gap-3 pt-2">
+                <button onClick={() => setShowForm(false)} className="flex-1 py-3 rounded-brand border border-stone-200 text-sm font-semibold text-warm-brown hover:bg-stone-100">
+                  Cancel
+                </button>
+                <button onClick={handleSave} disabled={saving || !form.title.trim()}
+                  className="flex-1 py-3 rounded-brand text-sm font-semibold text-white disabled:opacity-50"
+                  style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}>
+                  {saving ? 'Saving…' : editing ? 'Save changes' : 'Create campaign'}
+                </button>
+              </div>
             </div>
           </div>
         </div>

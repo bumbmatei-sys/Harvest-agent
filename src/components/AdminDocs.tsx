@@ -382,6 +382,9 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
   const [activeFolderId, setActiveFolderId] = useState<string | null>(null);
   const [showNewFolder, setShowNewFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
+  // Inline "create folder while moving a doc" (used in the Move-to-Folder modal).
+  const [moveCreating, setMoveCreating] = useState(false);
+  const [moveFolderName, setMoveFolderName] = useState('');
   const [focusMode, setFocusMode] = useState(false);
   const saveTimer = useRef<NodeJS.Timeout | null>(null);
   const titleRef = useRef<HTMLInputElement>(null);
@@ -534,6 +537,27 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
       setMoveDocId(null);
       await queryClient.invalidateQueries({ queryKey: ['docs', tenantId] });
     } catch (e) { notifyError('Failed to move document', e); }
+  };
+
+  // Create a new folder and move the doc straight into it (from the Move modal).
+  const createFolderAndMove = async (docId: string, name: string) => {
+    if (!name.trim()) return;
+    try {
+      const ref = await addDoc(collection(db, 'docFolders'), {
+        name: name.trim(),
+        parentId: null,
+        tenantId: tenantId || null,
+        createdAt: serverTimestamp(),
+        createdBy: auth.currentUser?.uid || '',
+        order: folders.length,
+      });
+      await updateDoc(doc(db, 'docs', docId), { folderId: ref.id, updatedAt: serverTimestamp() });
+      setMoveDocId(null);
+      setMoveCreating(false);
+      setMoveFolderName('');
+      await queryClient.invalidateQueries({ queryKey: ['docFolders', tenantId] });
+      await queryClient.invalidateQueries({ queryKey: ['docs', tenantId] });
+    } catch (e) { notifyError('Failed to create folder', e); }
   };
 
   const togglePinDoc = async (docId: string, currentPinned: boolean) => {
@@ -744,8 +768,8 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
         />
       )}
       {moveDocId && (
-        <div className="fixed inset-0 z-[210] flex items-end sm:items-center justify-center bg-black/50" onClick={() => setMoveDocId(null)}>
-          <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-sm p-5 max-h-[60vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-[210] flex items-end sm:items-center justify-center bg-black/50" onClick={() => { setMoveDocId(null); setMoveCreating(false); setMoveFolderName(''); }}>
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-sm p-5 max-h-[65vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <h3 className="font-display font-bold text-earth mb-4">Move to Folder</h3>
             <button
               onClick={() => moveDocToFolder(moveDocId, null)}
@@ -762,8 +786,36 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
                 <Folder size={14} style={{ color: 'var(--brand-color, #d4a017)' }} /> {f.name}
               </button>
             ))}
+
+            {/* Create a new folder inline (works even when there are no folders yet) */}
+            {moveCreating ? (
+              <div className="mt-2 pt-3 border-t border-stone-200">
+                <input
+                  value={moveFolderName}
+                  onChange={e => setMoveFolderName(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && createFolderAndMove(moveDocId, moveFolderName)}
+                  placeholder="New folder name"
+                  autoFocus
+                  className="w-full border border-stone-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold mb-2"
+                />
+                <div className="flex gap-2">
+                  <button onClick={() => { setMoveCreating(false); setMoveFolderName(''); }} className="flex-1 py-2 rounded-xl border border-stone-200 text-sm font-semibold text-warm-brown">Back</button>
+                  <button onClick={() => createFolderAndMove(moveDocId, moveFolderName)} disabled={!moveFolderName.trim()}
+                    className="flex-1 py-2 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
+                    style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}>Create &amp; move</button>
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => setMoveCreating(true)}
+                className="flex items-center gap-2 w-full px-3 py-2.5 rounded-xl hover:bg-[color-mix(in_srgb,var(--brand-color)_10%,white)] transition-colors text-sm font-semibold text-gold mb-1 mt-1"
+              >
+                <Plus size={14} /> New folder…
+              </button>
+            )}
+
             <button
-              onClick={() => setMoveDocId(null)}
+              onClick={() => { setMoveDocId(null); setMoveCreating(false); setMoveFolderName(''); }}
               className="w-full py-2.5 rounded-xl border border-stone-200 text-sm font-semibold text-warm-brown mt-3"
             >Cancel</button>
           </div>
@@ -877,13 +929,13 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
 
           {/* Editor area */}
           <div className="flex-1 flex flex-col overflow-hidden">
-            <div className="flex-1 overflow-y-auto px-4 lg:px-16 pb-12">
+            <div className="flex-1 overflow-y-auto px-4 lg:px-16 pb-12 docs-editor">
               <input
                 ref={titleRef}
                 value={editTitle}
                 onChange={e => setEditTitle(e.target.value)}
                 onBlur={handleTitleBlur}
-                className="w-full text-3xl font-bold text-earth bg-transparent border-none outline-none placeholder-gray-300 mb-6 mt-6"
+                className="w-full font-display text-4xl font-normal tracking-[-0.01em] text-earth bg-transparent border-none outline-none placeholder-stone-300 mb-6 mt-6"
                 placeholder="Untitled"
               />
               <RichTextEditor

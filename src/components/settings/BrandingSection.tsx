@@ -6,9 +6,11 @@ import { useTenant } from '../../contexts/TenantContext';
 
 interface BrandingSectionProps {
   currentFeatures?: PlanFeatures;
+  /** Rendered between the Ministry Name and Logo cards (e.g. the Web Address section). */
+  afterName?: React.ReactNode;
 }
 
-export const BrandingSection: React.FC<BrandingSectionProps> = () => {
+export const BrandingSection: React.FC<BrandingSectionProps> = ({ afterName }) => {
   const { refreshBranding } = useTenant();
   const [ministryName, setMinistryName] = useState('');
   const [brandingLogo, setBrandingLogo] = useState('');
@@ -110,6 +112,8 @@ export const BrandingSection: React.FC<BrandingSectionProps> = () => {
         />
         <p className="text-xs text-[color:var(--text-faint)] mt-1.5">Shown in your app header, login page, and emails for your white-label site.</p>
       </div>
+
+      {afterName}
 
       {/* Logo Upload */}
       <div className="bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] p-5">
