@@ -1226,36 +1226,11 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
     return <div className="text-center py-16 text-[color:var(--text-faint)]">Community chat is only available for tenant admins.</div>;
   }
 
-  // ── Thread views ── (header is rendered by the shared AdminScreenHeader override)
-  if (openChannel && currentUser) {
-    return (
-      <div className="h-full flex flex-col min-h-0" style={{ minHeight: 'calc(100dvh - 200px)' }}>
-        <ChannelThread channel={openChannel} tenantId={tenantId} includeNull={includeNullTenant} currentUser={currentUser} onOpenAttachment={onOpenAttachment} />
-        {showChannelMembers && (
-          <ChannelMembersSheet
-            tenantId={tenantId}
-            includeNull={includeNullTenant}
-            channelId={openChannel.id}
-            onClose={() => setShowChannelMembers(false)}
-          />
-        )}
-      </div>
-    );
-  }
-  if (openAdminDm && currentUser) {
-    return (
-      <div className="h-full flex flex-col min-h-0" style={{ minHeight: 'calc(100dvh - 200px)' }}>
-        <DmThread dm={openAdminDm} tenantId={tenantId} includeNull={includeNullTenant} currentUser={currentUser} otherName={getOtherName(openAdminDm)} onOpenAttachment={onOpenAttachment} />
-      </div>
-    );
-  }
-  if (openMemberDm && currentUser) {
-    return (
-      <div className="h-full flex flex-col min-h-0" style={{ minHeight: 'calc(100dvh - 200px)' }}>
-        <DmThread dm={openMemberDm} tenantId={tenantId} includeNull={includeNullTenant} currentUser={currentUser} otherName={getOtherName(openMemberDm)} onOpenAttachment={onOpenAttachment} />
-      </div>
-    );
-  }
+  // A channel or DM is open. On desktop this fills the right pane of the
+  // two-pane layout below; on mobile it takes over full-width (the shared
+  // AdminScreenHeader override supplies the back button + Members action).
+  const anyThreadOpen = !!(openChannel || openAdminDm || openMemberDm);
+  const openDm = openAdminDm || openMemberDm;
 
   const filteredMembers = members.filter(m =>
     !memberSearch ||
@@ -1264,9 +1239,13 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
   );
 
   return (
-    <div className="max-w-3xl mx-auto">
+    <div className="max-w-6xl mx-auto lg:h-[calc(100dvh-140px)]">
+      <div className="lg:flex lg:gap-5 lg:h-full">
+
+      {/* ── Left rail: tabs + conversation list ── */}
+      <div className={`${anyThreadOpen ? 'hidden lg:flex' : 'flex'} flex-col lg:w-[340px] lg:shrink-0 lg:min-h-0 lg:bg-white lg:rounded-brand-lg lg:border lg:border-stone-200 lg:shadow-[var(--ds-sh-sm)] lg:overflow-hidden`}>
       {/* Tabs */}
-      <div className="flex gap-1 bg-stone-100 rounded-xl p-1 mb-5">
+      <div className="flex gap-1 bg-stone-100 rounded-xl p-1 mb-5 lg:m-4 lg:mb-3">
         {([['channels', 'Channels'], ['admin-dms', 'Admin DMs'], ['member-dms', 'Member DMs']] as [MainTab, string][]).map(([id, label]) => (
           <button
             key={id}
@@ -1277,6 +1256,8 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
           </button>
         ))}
       </div>
+
+      <div className="lg:flex-1 lg:min-h-0 lg:overflow-y-auto lg:px-4 lg:pb-4">
 
       {/* ── CHANNELS TAB ── */}
       {tab === 'channels' && (
@@ -1299,11 +1280,13 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
             </div>
           ) : (
             <div className="space-y-2">
-              {channels.map(ch => (
+              {channels.map(ch => {
+                const active = openChannel?.id === ch.id;
+                return (
                 <button
                   key={ch.id}
                   onClick={() => setOpenChannel(ch)}
-                  className="w-full bg-white rounded-2xl px-4 py-3.5 border border-[#E8E2D9] flex items-center gap-3 hover:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] hover:shadow-sm transition-all text-left"
+                  className={`w-full rounded-2xl lg:rounded-brand px-4 py-3 border flex items-center gap-3 transition-all text-left ${active ? 'bg-[color-mix(in_srgb,var(--brand-color)_9%,white)] border-[color-mix(in_srgb,var(--brand-color)_45%,transparent)]' : 'bg-white border-[#E8E2D9] hover:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] hover:shadow-sm'}`}
                 >
                   <div className="relative flex-shrink-0">
                     <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'var(--brand-color, #B8962E)1A' }}>
@@ -1312,15 +1295,16 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
                     {((ch as any).unreadCount || 0) > 0 && <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-gold" />}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-earth truncate">#{ch.name}</p>
+                    <p className={`text-sm font-bold truncate ${active ? 'text-gold' : 'text-earth'}`}>#{ch.name}</p>
                     {ch.description && <p className="text-xs text-[color:var(--text-faint)] truncate">{ch.description}</p>}
                     <p className="text-[10px] text-[color:var(--text-faint)] mt-0.5">
                       {(ch.members?.length || 0)} {(ch.members?.length || 0) === 1 ? 'member' : 'members'}{ch.lastMessageAt ? ` · ${fmtTime(ch.lastMessageAt)}` : ''}
                     </p>
                   </div>
-                  <ChevronRight size={16} className="text-stone-300 flex-shrink-0" />
+                  <ChevronRight size={16} className={`flex-shrink-0 ${active ? 'text-gold' : 'text-stone-300'}`} />
                 </button>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -1409,6 +1393,53 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
           )}
         </div>
       )}
+      </div>{/* /list scroll */}
+      </div>{/* /left rail */}
+
+      {/* ── Right pane: active channel / DM thread (persistent on desktop, full-width takeover on mobile) ── */}
+      <div className={`${anyThreadOpen ? 'flex' : 'hidden lg:flex'} flex-1 min-w-0 flex-col min-h-[calc(100dvh-200px)] lg:min-h-0 lg:bg-white lg:rounded-brand-lg lg:border lg:border-stone-200 lg:shadow-[var(--ds-sh-sm)] lg:overflow-hidden`}>
+        {openChannel && currentUser ? (
+          <>
+            {/* Channel header — desktop only; on mobile the shell header override supplies back + Members */}
+            <div className="hidden lg:flex items-center justify-between px-5 py-4 border-b border-stone-200 shrink-0">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <span className="w-8 h-8 rounded-brand bg-[color-mix(in_srgb,var(--brand-color)_12%,white)] flex items-center justify-center shrink-0"><Hash size={16} className="text-gold" /></span>
+                <div className="min-w-0">
+                  <p className="font-display text-base font-semibold text-earth truncate">{openChannel.name}</p>
+                  <p className="text-xs text-[color:var(--text-faint)]">{(openChannel.members?.length || 0).toLocaleString()} {(openChannel.members?.length || 0) === 1 ? 'member' : 'members'}</p>
+                </div>
+              </div>
+              <button onClick={() => setShowChannelMembers(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-brand border border-stone-200 text-xs font-semibold text-earth hover:bg-stone-100 transition-colors">
+                <Users size={14} /> Members
+              </button>
+            </div>
+            <div className="flex-1 min-h-0">
+              <ChannelThread channel={openChannel} tenantId={tenantId} includeNull={includeNullTenant} currentUser={currentUser} onOpenAttachment={onOpenAttachment} />
+            </div>
+            {showChannelMembers && (
+              <ChannelMembersSheet tenantId={tenantId} includeNull={includeNullTenant} channelId={openChannel.id} onClose={() => setShowChannelMembers(false)} />
+            )}
+          </>
+        ) : openDm && currentUser ? (
+          <>
+            <div className="hidden lg:flex items-center gap-2.5 px-5 py-4 border-b border-stone-200 shrink-0">
+              <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0" style={{ backgroundColor: 'var(--brand-color, #B8962E)' }}>{getOtherName(openDm).charAt(0).toUpperCase()}</div>
+              <p className="font-display text-base font-semibold text-earth truncate">{getOtherName(openDm)}</p>
+            </div>
+            <div className="flex-1 min-h-0">
+              <DmThread dm={openDm} tenantId={tenantId} includeNull={includeNullTenant} currentUser={currentUser} otherName={getOtherName(openDm)} onOpenAttachment={onOpenAttachment} />
+            </div>
+          </>
+        ) : (
+          <div className="hidden lg:flex flex-1 flex-col items-center justify-center text-center px-6">
+            <span className="w-14 h-14 rounded-brand-lg bg-[color-mix(in_srgb,var(--brand-color)_10%,white)] flex items-center justify-center mb-4"><MessageSquare size={26} className="text-gold" /></span>
+            <p className="font-display text-lg text-earth">Select a conversation</p>
+            <p className="text-sm text-warm-brown mt-1">Pick a channel or DM from the list to start messaging.</p>
+          </div>
+        )}
+      </div>
+
+      </div>{/* /two-pane */}
 
       {/* New Channel Modal */}
       {showNewChannel && (
