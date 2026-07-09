@@ -175,7 +175,7 @@ const CanvasEditor: React.FC<CanvasEditorProps> = ({ canvasId, canvasName: initi
       <div className="fixed inset-0 z-[9999] bg-white flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="w-8 h-8 animate-spin text-gold" />
-          <span className="text-sm text-gray-500">Loading canvas...</span>
+          <span className="text-sm text-warm-brown">Loading canvas...</span>
         </div>
       </div>
     );
@@ -187,7 +187,7 @@ const CanvasEditor: React.FC<CanvasEditorProps> = ({ canvasId, canvasName: initi
       <div className="fixed inset-0 z-[9999] bg-white flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <AlertCircle className="w-10 h-10 text-red-400" />
-          <span className="text-sm text-gray-600">{error}</span>
+          <span className="text-sm text-warm-brown">{error}</span>
           <button onClick={handleBack} className="text-sm text-gold hover:underline">Go back</button>
         </div>
       </div>
@@ -202,12 +202,12 @@ const CanvasEditor: React.FC<CanvasEditorProps> = ({ canvasId, canvasName: initi
         <div className="flex items-center gap-2">
           <button
             onClick={handleBack}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-white/90 backdrop-blur-sm rounded-lg shadow-sm border border-gray-200 hover:bg-gray-50 transition-colors text-xs font-medium text-gray-700 cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-white/90 backdrop-blur-sm rounded-lg shadow-sm border border-stone-200 hover:bg-stone-100 transition-colors text-xs font-medium text-[color:var(--text-body)] cursor-pointer"
           >
             <ArrowLeft size={16} />
             <span>Back</span>
           </button>
-          <span className="text-xs font-semibold text-gray-900 truncate max-w-[160px]">
+          <span className="text-xs font-semibold text-earth truncate max-w-[160px]">
             {initialName}
           </span>
         </div>
@@ -215,7 +215,7 @@ const CanvasEditor: React.FC<CanvasEditorProps> = ({ canvasId, canvasName: initi
           saveStatus === 'saved' ? 'text-green-600' :
           saveStatus === 'saving' ? 'text-blue-500' :
           saveStatus === 'error' ? 'text-red-500' :
-          'text-gray-400'
+          'text-[color:var(--text-faint)]'
         }`}>
           {saveStatus === 'saving' && <Loader2 size={10} className="animate-spin" />}
           {saveStatus === 'saved' && <Check size={10} />}

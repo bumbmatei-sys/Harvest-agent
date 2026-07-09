@@ -141,35 +141,35 @@ const AdminSms: React.FC = () => {
   return (
     <div className="max-w-2xl mx-auto" style={{ paddingBottom: 120 }}>
       <div className="flex gap-2 mb-4">
-        <button onClick={() => setTab('broadcast')} className={`px-4 py-2 rounded-xl text-sm font-semibold ${tab === 'broadcast' ? 'text-white' : 'text-gray-600 bg-gray-100'}`} style={tab === 'broadcast' ? { backgroundColor: GOLD } : undefined}>Broadcasts</button>
-        <button onClick={() => setTab('automated')} className={`px-4 py-2 rounded-xl text-sm font-semibold ${tab === 'automated' ? 'text-white' : 'text-gray-600 bg-gray-100'}`} style={tab === 'automated' ? { backgroundColor: GOLD } : undefined}>Automated</button>
+        <button onClick={() => setTab('broadcast')} className={`px-4 py-2 rounded-xl text-sm font-semibold ${tab === 'broadcast' ? 'text-white' : 'text-warm-brown bg-stone-100'}`} style={tab === 'broadcast' ? { backgroundColor: GOLD } : undefined}>Broadcasts</button>
+        <button onClick={() => setTab('automated')} className={`px-4 py-2 rounded-xl text-sm font-semibold ${tab === 'automated' ? 'text-white' : 'text-warm-brown bg-stone-100'}`} style={tab === 'automated' ? { backgroundColor: GOLD } : undefined}>Automated</button>
       </div>
 
       {tab === 'broadcast' ? (
         <>
-          <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-3">
+          <div className="bg-white rounded-2xl border border-stone-200 p-5 space-y-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Recipients</label>
-              <select value={group} onChange={e => setGroup(e.target.value as Group)} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:border-gold">
+              <label className="block text-sm font-medium text-[color:var(--text-body)] mb-1.5">Recipients</label>
+              <select value={group} onChange={e => setGroup(e.target.value as Group)} className="w-full px-4 py-2.5 border border-stone-200 rounded-xl text-sm bg-white focus:outline-none focus:border-gold">
                 <option value="all_members">All Members</option>
                 <option value="all_donors">All Donors</option>
                 <option value="tag">Custom Tag</option>
               </select>
             </div>
             {group === 'tag' && (
-              <input value={tag} onChange={e => setTag(e.target.value)} placeholder="Tag name" className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-gold" />
+              <input value={tag} onChange={e => setTag(e.target.value)} placeholder="Tag name" className="w-full px-4 py-2.5 border border-stone-200 rounded-xl text-sm focus:outline-none focus:border-gold" />
             )}
-            <p className="text-xs text-gray-500">Will send to <strong>{recipientCount ?? '…'}</strong> contact(s) with a phone number.</p>
+            <p className="text-xs text-warm-brown">Will send to <strong>{recipientCount ?? '…'}</strong> contact(s) with a phone number.</p>
             <div>
-              <textarea value={message} onChange={e => setMessage(e.target.value)} placeholder="Your message…" rows={4} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-gold" />
-              <div className="flex justify-between text-xs text-gray-400 mt-1">
+              <textarea value={message} onChange={e => setMessage(e.target.value)} placeholder="Your message…" rows={4} className="w-full px-4 py-2.5 border border-stone-200 rounded-xl text-sm focus:outline-none focus:border-gold" />
+              <div className="flex justify-between text-xs text-[color:var(--text-faint)] mt-1">
                 <span>{message.length} chars</span>
                 <span>{segments} SMS segment{segments > 1 ? 's' : ''}</span>
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Schedule <span className="text-gray-400 font-normal">(optional)</span></label>
-              <input type="datetime-local" value={scheduledAt} onChange={e => setScheduledAt(e.target.value)} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-gold" />
+              <label className="block text-sm font-medium text-[color:var(--text-body)] mb-1.5">Schedule <span className="text-[color:var(--text-faint)] font-normal">(optional)</span></label>
+              <input type="datetime-local" value={scheduledAt} onChange={e => setScheduledAt(e.target.value)} className="w-full px-4 py-2.5 border border-stone-200 rounded-xl text-sm focus:outline-none focus:border-gold" />
             </div>
             <button onClick={send} disabled={sending} className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-white text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: GOLD }}>
               {sending ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
@@ -178,18 +178,18 @@ const AdminSms: React.FC = () => {
             {sendMsg && <div className={`p-3 rounded-xl text-sm ${sendMsg.ok ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'}`}>{sendMsg.text}</div>}
           </div>
 
-          <h3 className="font-display text-sm font-bold text-gray-700 mt-6 mb-3">Sent History</h3>
+          <h3 className="font-display text-sm font-bold text-[color:var(--text-body)] mt-6 mb-3">Sent History</h3>
           {history.length === 0 ? (
-            <div className="text-center py-10 text-gray-400"><MessageSquare size={36} className="mx-auto mb-2 opacity-30" /><p className="text-sm">No broadcasts yet</p></div>
+            <div className="text-center py-10 text-[color:var(--text-faint)]"><MessageSquare size={36} className="mx-auto mb-2 opacity-30" /><p className="text-sm">No broadcasts yet</p></div>
           ) : (
-            <div className="bg-white rounded-2xl border border-gray-100 divide-y divide-gray-50">
+            <div className="bg-white rounded-2xl border border-stone-200 divide-y divide-gray-50">
               {history.map(b => (
                 <div key={b.id} className="px-4 py-3">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-sm text-gray-900 truncate flex-1">{b.message}</span>
+                    <span className="text-sm text-earth truncate flex-1">{b.message}</span>
                     <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${b.status === 'sent' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>{b.status}</span>
                   </div>
-                  <div className="text-xs text-gray-400 mt-1">
+                  <div className="text-xs text-[color:var(--text-faint)] mt-1">
                     {fmtDate(b.createdAt)} · {b.recipientCount} recipients
                     {b.status === 'sent' && ` · ${b.delivered || 0} delivered, ${b.failed || 0} failed`}
                     {b.status === 'scheduled' && ` · for ${fmtDate(b.scheduledAt || undefined)}`}
@@ -201,16 +201,16 @@ const AdminSms: React.FC = () => {
         </>
       ) : (
         <div className="space-y-3">
-          <p className="text-sm text-gray-500">Toggle automated SMS and edit each message. Use placeholders like <code className="bg-gray-100 px-1 rounded">{'{name}'}</code>.</p>
+          <p className="text-sm text-warm-brown">Toggle automated SMS and edit each message. Use placeholders like <code className="bg-stone-100 px-1 rounded">{'{name}'}</code>.</p>
           {TRIGGERS.map(t => {
             const tpl = templates[t.key] || { enabled: false, text: '' };
             return (
-              <div key={t.key} className="bg-white rounded-2xl border border-gray-100 p-4">
+              <div key={t.key} className="bg-white rounded-2xl border border-stone-200 p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-semibold text-gray-800">{t.label}</span>
+                  <span className="text-sm font-semibold text-[color:var(--text-body)]">{t.label}</span>
                   <label className="relative inline-flex items-center cursor-pointer">
                     <input type="checkbox" className="sr-only peer" checked={!!tpl.enabled} onChange={e => setTpl(t.key, { enabled: e.target.checked })} />
-                    <div className="w-10 h-6 bg-gray-200 peer-checked:bg-gold rounded-full peer transition-colors after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-4" />
+                    <div className="w-10 h-6 bg-stone-200 peer-checked:bg-gold rounded-full peer transition-colors after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-4" />
                   </label>
                 </div>
                 <textarea
@@ -218,7 +218,7 @@ const AdminSms: React.FC = () => {
                   onChange={e => setTpl(t.key, { text: e.target.value })}
                   placeholder={t.placeholder}
                   rows={2}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gold"
+                  className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:border-gold"
                 />
               </div>
             );
@@ -229,36 +229,36 @@ const AdminSms: React.FC = () => {
           {tplSaved && <span className="text-sm text-green-600 font-medium ml-2">✓ Saved</span>}
 
           {/* ── Text-to-Give ── */}
-          <div className="bg-white rounded-2xl border border-gray-100 p-4 mt-6">
+          <div className="bg-white rounded-2xl border border-stone-200 p-4 mt-6">
             <div className="flex items-center justify-between mb-1">
-              <span className="font-display text-sm font-bold text-gray-800 flex items-center gap-1.5"><Gift size={15} style={{ color: GOLD }} /> Text-to-Give</span>
+              <span className="font-display text-sm font-bold text-[color:var(--text-body)] flex items-center gap-1.5"><Gift size={15} style={{ color: GOLD }} /> Text-to-Give</span>
               <label className="relative inline-flex items-center cursor-pointer">
                 <input type="checkbox" className="sr-only peer" checked={t2g.enabled} onChange={e => setT2g({ ...t2g, enabled: e.target.checked })} />
-                <div className="w-10 h-6 bg-gray-200 peer-checked:bg-gold rounded-full peer transition-colors after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-4" />
+                <div className="w-10 h-6 bg-stone-200 peer-checked:bg-gold rounded-full peer transition-colors after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-4" />
               </label>
             </div>
-            <p className="text-xs text-gray-400 mb-3">People text a keyword to your Twilio number and instantly receive a link to your giving page.</p>
+            <p className="text-xs text-[color:var(--text-faint)] mb-3">People text a keyword to your Twilio number and instantly receive a link to your giving page.</p>
 
             {t2g.enabled && (
               <div className="space-y-3">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Keyword</label>
+                  <label className="block text-xs font-semibold text-[color:var(--text-body)] mb-1">Keyword</label>
                   <input value={t2g.keyword} onChange={e => setT2g({ ...t2g, keyword: e.target.value.toUpperCase() })}
-                    placeholder="GIVE" className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm font-mono focus:outline-none focus:border-gold" />
-                  <p className="text-[11px] text-gray-400 mt-1">People text this word to receive a giving link.</p>
+                    placeholder="GIVE" className="w-full px-3 py-2 border border-stone-200 rounded-xl text-sm font-mono focus:outline-none focus:border-gold" />
+                  <p className="text-[11px] text-[color:var(--text-faint)] mt-1">People text this word to receive a giving link.</p>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Reply Message</label>
+                  <label className="block text-xs font-semibold text-[color:var(--text-body)] mb-1">Reply Message</label>
                   <textarea value={t2g.responseTemplate} onChange={e => setT2g({ ...t2g, responseTemplate: e.target.value })}
                     rows={2} placeholder="Thank you! Give here: {link}"
-                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-gold resize-none" />
-                  <p className="text-[11px] text-gray-400 mt-1"><code className="bg-gray-100 px-1 rounded">{'{link}'}</code> will be replaced with your giving page URL.</p>
-                  <p className="text-[11px] text-gray-400 mt-1">Preview link: <span className="font-mono">https://{tenantId || 'your-ministry'}.theharvest.app/?giving=1</span></p>
+                    className="w-full px-3 py-2 border border-stone-200 rounded-xl text-sm focus:outline-none focus:border-gold resize-none" />
+                  <p className="text-[11px] text-[color:var(--text-faint)] mt-1"><code className="bg-stone-100 px-1 rounded">{'{link}'}</code> will be replaced with your giving page URL.</p>
+                  <p className="text-[11px] text-[color:var(--text-faint)] mt-1">Preview link: <span className="font-mono">https://{tenantId || 'your-ministry'}.theharvest.app/?giving=1</span></p>
                 </div>
-                <div className="bg-gray-50 border border-gray-100 rounded-xl p-3">
-                  <p className="text-[11px] text-gray-500 mb-1">Add this URL to your Twilio phone number as the inbound SMS webhook:</p>
-                  <p className="text-xs font-mono text-gray-800 break-all">https://theharvest.app/api/sms/incoming</p>
-                  <p className="text-[11px] text-gray-400 mt-1">(Method: HTTP POST)</p>
+                <div className="bg-stone-100 border border-stone-200 rounded-xl p-3">
+                  <p className="text-[11px] text-warm-brown mb-1">Add this URL to your Twilio phone number as the inbound SMS webhook:</p>
+                  <p className="text-xs font-mono text-[color:var(--text-body)] break-all">https://theharvest.app/api/sms/incoming</p>
+                  <p className="text-[11px] text-[color:var(--text-faint)] mt-1">(Method: HTTP POST)</p>
                 </div>
                 <div className="flex items-center gap-3">
                   <button onClick={saveT2g} disabled={savingT2g} className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-white text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: GOLD }}>
@@ -269,7 +269,7 @@ const AdminSms: React.FC = () => {
               </div>
             )}
             {!t2g.enabled && (
-              <button onClick={saveT2g} disabled={savingT2g} className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border border-gray-200 text-gray-600 disabled:opacity-50">
+              <button onClick={saveT2g} disabled={savingT2g} className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border border-stone-200 text-warm-brown disabled:opacity-50">
                 <Save size={14} /> {savingT2g ? 'Saving…' : 'Save'}
               </button>
             )}

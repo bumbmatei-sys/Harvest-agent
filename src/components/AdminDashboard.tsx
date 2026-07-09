@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { LayoutDashboard, Church, FileText, Rss, BrainCircuit, Inbox, GraduationCap, ChevronLeft, ChevronRight, Building2, Settings, MoreHorizontal, Mail, Heart, Users, MessageSquare, Receipt, CalendarCheck, LogOut, ClipboardList, QrCode, Radio, ExternalLink, Link2, Crown, Palette, X } from 'lucide-react';
+import { LayoutDashboard, Church, FileText, Rss, BrainCircuit, Inbox, GraduationCap, ChevronLeft, ChevronRight, ChevronDown, Building2, Settings, MoreHorizontal, Mail, Heart, Users, MessageSquare, Receipt, CalendarCheck, LogOut, ClipboardList, QrCode, Radio, ExternalLink, Link2, Crown, Palette, Search, Bell, X } from 'lucide-react';
 import AdminBlog from './AdminBlog';
 import AdminPosts from './AdminPosts';
 import PlatformInbox from './PlatformInbox';
@@ -73,6 +73,16 @@ const MORE_GROUPS: { label: string; ids: string[] }[] = [
 ];
 const GROUPED_MORE_IDS = new Set(MORE_GROUPS.flatMap((g) => g.ids));
 
+// Desktop sidebar groups (branded — matches the admin mockup). Dashboard sits
+// above the groups; Settings sits below them. Any id the admin isn't permitted
+// for is dropped, and a group with no permitted tabs is omitted entirely.
+const DESKTOP_NAV_GROUPS: { label: string; ids: string[] }[] = [
+  { label: 'CONTENT', ids: ['posts', 'blog', 'courses', 'newsletter', 'ai', 'docs'] },
+  { label: 'MINISTRY', ids: ['crm', 'churches', 'community', 'fundraising', 'forms', 'accounting'] },
+  { label: 'BROADCASTING', ids: ['events', 'checkin', 'sms', 'livestream'] },
+  { label: 'GROW', ids: ['affiliate', 'branding', 'tenants', 'inbox'] },
+];
+
 interface AdminDashboardProps {
   onNavigate: (page: string) => void;
 }
@@ -100,6 +110,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
   const userPermissions: Permission | null = userData?.permissions ? normalizePermissions(userData.permissions) : null;
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  // Desktop sidebar: collapsed (hidden) group sections, keyed by group label.
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const toggleGroup = useCallback((label: string) => {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev);
+      next.has(label) ? next.delete(label) : next.add(label);
+      return next;
+    });
+  }, []);
   const [unreadCount, setUnreadCount] = useState(0);
   const [pendingChurchesCount, setPendingChurchesCount] = useState(0);
   const [showMoreSheet, setShowMoreSheet] = useState(false);
@@ -364,6 +383,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
     ...(canSettings ? [{ id: 'settings', label: 'Settings', icon: Settings }] : []),
   ];
 
+  // Desktop grouped sidebar: look up permitted tabs by id (incl. inbox/settings,
+  // which live outside allTabs) so DESKTOP_NAV_GROUPS can render branded sections.
+  const desktopNavById = new Map<string, { id: string; label: string; icon: any }>();
+  [
+    ...allTabs,
+    ...(showInbox ? [{ id: 'inbox', label: 'Inbox', icon: Inbox }] : []),
+    ...(canSettings ? [{ id: 'settings', label: 'Settings', icon: Settings }] : []),
+  ].forEach((t) => desktopNavById.set(t.id, t));
+
   // If the active tab is not in the allowed tabs, switch to the first allowed tab
   const allTabIds = allTabs.map(t => t.id).join(',');
   useEffect(() => {
@@ -403,14 +431,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
         key={tab.id}
         onClick={() => go(tab.id)}
         className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors text-left ${
-          isActive ? '' : 'hover:bg-gray-50 active:bg-gray-100'
+          isActive ? '' : 'hover:bg-stone-100 active:bg-stone-200'
         }`}
-        style={{ backgroundColor: isActive ? 'color-mix(in srgb, var(--brand-color, #d4a017) 12%, transparent)' : undefined }}
+        style={{ backgroundColor: isActive ? 'color-mix(in srgb, var(--brand-color, #C9963A) 12%, transparent)' : undefined }}
       >
-        <Icon size={16} style={{ color: isActive ? 'var(--brand-color, #d4a017)' : '#6b7280' }} />
+        <Icon size={16} style={{ color: isActive ? 'var(--brand-color, #C9963A)' : '#8B7355' }} />
         <span
           className="text-sm font-medium flex-1"
-          style={{ color: isActive ? 'var(--brand-color, #d4a017)' : '#1a1a1a' }}
+          style={{ color: isActive ? 'var(--brand-color, #C9963A)' : '#2D2519' }}
         >
           {tab.label}
         </span>
@@ -423,30 +451,74 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
     );
   };
 
+  /** A single branded desktop sidebar row (used for Dashboard, each group item,
+   *  and Settings). Active = gold-tint pill + gold icon/label; inactive = warm. */
+  const renderDesktopTab = (tab: { id: string; label: string; icon: any }) => {
+    const Icon = tab.icon;
+    const isActive = activeTab === tab.id;
+    const showDot =
+      (tab.id === 'churches' && pendingChurchesCount > 0) ||
+      (tab.id === 'inbox' && unreadCount > 0);
+    return (
+      <button
+        key={tab.id}
+        onClick={() => go(tab.id)}
+        className={`flex items-center rounded-xl transition-all relative shrink-0 ${
+          isSidebarCollapsed
+            ? 'lg:w-11 lg:h-11 lg:p-0 lg:justify-center'
+            : 'lg:justify-start lg:gap-3 lg:w-full lg:h-11 lg:px-3'
+        } ${
+          isActive
+            ? 'lg:bg-[color-mix(in_srgb,var(--brand-color)_16%,white)]'
+            : 'text-warm-brown hover:text-earth lg:hover:bg-stone-100'
+        }`}
+        style={isActive ? { color: 'var(--brand-color, #C9963A)' } : undefined}
+        title={isSidebarCollapsed ? tab.label : undefined}
+      >
+        <Icon
+          size={20}
+          strokeWidth={isActive ? 2.4 : 2}
+          className="shrink-0"
+          style={isActive ? { color: 'var(--brand-color, #C9963A)' } : undefined}
+        />
+        {!isSidebarCollapsed && <span className="text-[13px] font-medium truncate">{tab.label}</span>}
+        {showDot && (
+          <span className={`absolute bg-red-500 rounded-full border-2 border-white ${isSidebarCollapsed ? 'top-1 right-1' : 'top-1/2 -translate-y-1/2 right-3'} w-2.5 h-2.5`}></span>
+        )}
+      </button>
+    );
+  };
+
   if (isLoading) {
-    return <div className="flex items-center justify-center h-screen bg-[#f8f9fa]"><div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--brand-color, #d4a017)', borderTopColor: 'transparent' }}></div></div>;
+    return <div className="flex items-center justify-center h-screen bg-cream"><div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--brand-color, #C9963A)', borderTopColor: 'transparent' }}></div></div>;
   }
 
   return (
     <AdminHeaderContext.Provider value={headerApi}>
-    <div className="flex flex-col lg:flex-row h-[100dvh] bg-[#f8f9fa] font-sans overflow-hidden transition-colors duration-300">
+    <div className="flex flex-col lg:flex-row h-[100dvh] bg-[#f8f9fa] lg:bg-cream font-sans overflow-hidden transition-colors duration-300">
 
       {/* Side/Bottom Navigation */}
-      <div className={`bg-white border-t lg:border-t-0 lg:border-r border-gray-100 flex justify-center lg:justify-start py-2 lg:py-6 px-2 lg:px-4 pb-safe lg:pb-0 fixed lg:relative bottom-0 lg:bottom-auto w-full ${isSidebarCollapsed ? 'lg:w-[88px]' : 'lg:w-64'} lg:h-screen z-[100] shadow-[0_-4px_20px_rgba(0,0,0,0.05)] lg:shadow-[2px_0_10px_rgba(0,0,0,0.02)] transition-all duration-300`}>
+      <div className={`bg-white border-t lg:border-t-0 lg:border-r border-gray-100 lg:border-stone-200 flex justify-center lg:justify-start py-2 lg:py-6 px-2 lg:px-4 pb-safe lg:pb-0 fixed lg:relative bottom-0 lg:bottom-auto w-full ${isSidebarCollapsed ? 'lg:w-[88px]' : 'lg:w-64'} lg:h-screen z-[100] shadow-[0_-4px_20px_rgba(0,0,0,0.05)] lg:shadow-[2px_0_10px_rgba(0,0,0,0.02)] transition-all duration-300`}>
         <div className={`flex lg:flex-col justify-around lg:justify-start items-center lg:items-stretch w-full lg:max-w-none lg:gap-2 ${isSidebarCollapsed ? 'lg:items-center' : ''}`}>
           {/* Desktop Logo — the member-app entry point on desktop (the More-drawer
               "Go to User App" row is mobile-only). Routes through handleViewApp so
               the one-shot intent flag keeps us on "/" instead of bouncing to /admin. */}
           <button
-            onClick={handleViewApp}
-            className={`hidden lg:flex items-center mb-6 shrink-0 text-left hover:opacity-80 transition-opacity ${isSidebarCollapsed ? 'justify-center px-0 w-full' : 'gap-3 px-4'}`}
+            onClick={() => go('dashboard')}
+            className={`hidden lg:flex items-center mb-6 shrink-0 text-left hover:opacity-80 transition-opacity ${isSidebarCollapsed ? 'justify-center px-0 w-full' : 'gap-2.5 px-4'}`}
           >
             <img
               src={displayLogo}
-              alt={isWhiteLabel ? tenantName : 'Admin'}
-              className="w-10 h-10 object-contain shrink-0"
+              alt={isWhiteLabel ? tenantName : 'Harvest'}
+              className="w-9 h-9 object-contain shrink-0"
             />
-            {!isSidebarCollapsed && <span className="font-display text-xl font-bold text-gray-900 truncate">Admin</span>}
+            {!isSidebarCollapsed && (
+              <span className="font-display text-[19px] font-semibold tracking-[-0.01em] text-earth truncate">
+                {isWhiteLabel ? tenantName : 'Harvest'}
+                {/* Signature gold period belongs to the Harvest lockup only. */}
+                {!isWhiteLabel && <span style={{ color: 'var(--brand-color, #C9963A)' }}>.</span>}
+              </span>
+            )}
           </button>
 
           {/* Mobile: primary tabs + More button */}
@@ -461,7 +533,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
                   className={`flex flex-col items-center justify-center gap-1 w-16 h-12 rounded-xl transition-all relative ${
                     isActive ? '' : 'text-gray-400'
                   }`}
-                  style={isActive ? { color: 'var(--brand-color, #d4a017)' } : undefined}
+                  style={isActive ? { color: 'var(--brand-color, #C9963A)' } : undefined}
                 >
                   <Icon size={22} strokeWidth={isActive ? 2.5 : 2} />
                   <span className="text-[10px] font-medium">{tab.label}</span>
@@ -476,105 +548,139 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
               className={`flex flex-col items-center justify-center gap-1 w-16 h-12 rounded-xl transition-all ${
                 showMoreSheet ? '' : 'text-gray-400'
               }`}
-              style={showMoreSheet ? { color: 'var(--brand-color, #d4a017)' } : undefined}
+              style={showMoreSheet ? { color: 'var(--brand-color, #C9963A)' } : undefined}
             >
               <MoreHorizontal size={22} strokeWidth={2} />
               <span className="text-[10px] font-medium">More</span>
             </button>
           </div>
 
-          {/* Desktop: all tabs in sidebar. A tenant with many permitted features
-              (or a super admin) can have more tabs than fit in the viewport —
-              this list scrolls internally so every tab stays reachable, while
-              the logo above and Collapse button below stay pinned. */}
-          <div className="hidden lg:flex lg:flex-col lg:items-stretch lg:gap-2 lg:w-full lg:flex-1 lg:min-h-0 lg:overflow-y-auto">
-            {allTabs.map((tab) => {
-              const Icon = tab.icon;
-              const isActive = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => go(tab.id)}
-                  className={`flex flex-col items-center justify-center gap-1 rounded-xl transition-all relative shrink-0 ${
-                    isSidebarCollapsed
-                      ? 'lg:w-14 lg:h-14 lg:p-0'
-                      : 'lg:flex-row lg:justify-start lg:gap-4 lg:w-full lg:h-14 lg:px-4'
-                  } ${
-                    isActive ? '' : 'text-gray-400 hover:text-gray-600 lg:hover:bg-gray-50'
-                  }`}
-                  style={isActive ? { color: 'var(--brand-color, #d4a017)', backgroundColor: 'color-mix(in srgb, var(--brand-color, #d4a017) 12%, transparent)' } : undefined}
-                  title={isSidebarCollapsed ? tab.label : undefined}
-                >
-                  <Icon
-                    size={24}
-                    strokeWidth={isActive ? 2.5 : 2}
-                    className="shrink-0"
-                    style={isActive ? { color: 'var(--brand-color, #d4a017)' } : undefined}
-                  />
-                  <span className={`text-[10px] lg:text-sm lg:font-medium lg:truncate ${isSidebarCollapsed ? 'lg:hidden' : 'lg:block'}`}>
-                    {tab.label}
-                  </span>
+          {/* Desktop: grouped, branded sidebar (Dashboard · CONTENT / MINISTRY /
+              BROADCASTING / GROW · Settings). Scrolls internally; the logo above
+              and Collapse below stay pinned. Empty groups are omitted. */}
+          <div className="hidden lg:flex lg:flex-col lg:items-stretch lg:gap-0.5 lg:w-full lg:flex-1 lg:min-h-0 lg:overflow-y-auto lg:pr-1">
+            {desktopNavById.has('dashboard') && renderDesktopTab(desktopNavById.get('dashboard')!)}
 
-                  {tab.id === 'churches' && pendingChurchesCount > 0 && (
-                    <span className={`absolute bg-red-500 rounded-full border-2 border-white ${isSidebarCollapsed ? 'top-1 lg:right-2' : 'top-1 right-2 lg:top-1/2 lg:-translate-y-1/2 lg:right-4'} w-3 h-3`}></span>
+            {DESKTOP_NAV_GROUPS.map((group) => {
+              const items = group.ids
+                .map((id) => desktopNavById.get(id))
+                .filter(Boolean) as { id: string; label: string; icon: any }[];
+              if (items.length === 0) return null;
+              const collapsed = collapsedGroups.has(group.label);
+              return (
+                <div key={group.label} className="lg:mt-4">
+                  {isSidebarCollapsed ? (
+                    <div className="mx-2 mb-1 border-t border-stone-200" />
+                  ) : (
+                    <button
+                      onClick={() => toggleGroup(group.label)}
+                      className="w-full flex items-center justify-between px-3 mb-1 hover:opacity-80 transition-opacity"
+                    >
+                      <span className="text-[10px] font-bold tracking-[0.14em] text-[color:var(--text-faint)] uppercase">{group.label}</span>
+                      <ChevronDown size={13} className={`text-[color:var(--text-faint)] transition-transform ${collapsed ? '' : 'rotate-180'}`} />
+                    </button>
                   )}
-                </button>
+                  {!collapsed && <div className="flex flex-col gap-0.5">{items.map(renderDesktopTab)}</div>}
+                </div>
               );
             })}
+
+            {desktopNavById.has('settings') && (
+              <div className="lg:mt-4">{renderDesktopTab(desktopNavById.get('settings')!)}</div>
+            )}
           </div>
 
           {/* Collapse Button (Bottom) */}
-          <div className="hidden lg:flex flex-1 items-end pb-6 mt-auto">
+          <div className="hidden lg:flex items-end pb-1 pt-3 mt-auto border-t border-stone-200 shrink-0">
             <button
                onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-               className={`flex items-center gap-4 w-full h-14 rounded-xl transition-all px-4 shrink-0 text-gray-400 hover:text-gray-600 hover:bg-gray-50 ${isSidebarCollapsed ? 'justify-center' : 'justify-start'}`}
+               className={`flex items-center gap-3 w-full h-11 rounded-xl transition-all px-3 shrink-0 text-warm-brown hover:text-earth hover:bg-stone-100 ${isSidebarCollapsed ? 'justify-center' : 'justify-start'}`}
                title={isSidebarCollapsed ? "Expand" : "Collapse"}
             >
-               {isSidebarCollapsed ? <ChevronRight size={24} strokeWidth={2} /> : <ChevronLeft size={24} strokeWidth={2} />}
-               {!isSidebarCollapsed && <span className="text-sm font-medium">Collapse</span>}
+               {isSidebarCollapsed ? <ChevronRight size={20} strokeWidth={2} /> : <ChevronLeft size={20} strokeWidth={2} />}
+               {!isSidebarCollapsed && <span className="text-[13px] font-medium">Collapse</span>}
             </button>
           </div>
         </div>
       </div>
 
       {/* Main Container */}
-      <div className="flex-1 flex flex-col h-[100dvh] relative bg-[#f8f9fa] overflow-hidden min-w-0">
-        {/* Desktop utility header — quick access to Settings & Inbox (no logo/title) */}
-        <div className="hidden lg:flex bg-white px-8 py-2 items-center justify-end gap-3 border-b border-gray-100 z-10 w-full">
-          <button
-            onClick={() => go('settings')}
-            className="text-gray-500 hover:text-gray-900 transition-colors"
-            style={activeTab === 'settings' ? { color: 'var(--brand-color, #d4a017)' } : undefined}
-          >
-            <Settings size={22} />
-          </button>
-          {showInbox && (
+      <div className="flex-1 flex flex-col h-[100dvh] relative bg-[#f8f9fa] lg:bg-cream overflow-hidden min-w-0">
+        {/* Desktop branded top bar — Open member app · centered page title ·
+            search / notifications / account. Matches the admin mockup. */}
+        <div className="hidden lg:flex bg-white border-b border-stone-200 h-14 items-center px-6 xl:px-8 z-10 w-full shrink-0">
+          {/* Left: back (when a sub-view overrides the header, e.g. an open chat
+              thread) — otherwise the "Open member app" shortcut. */}
+          {headerOverride?.onBack ? (
             <button
-              onClick={() => go('inbox')}
-              className="text-gray-500 hover:text-gray-900 transition-colors relative"
-              style={activeTab === 'inbox' ? { color: 'var(--brand-color, #d4a017)' } : undefined}
+              onClick={headerOverride.onBack}
+              className="flex items-center gap-1.5 text-[13px] font-semibold text-earth hover:opacity-70 transition-opacity shrink-0"
+              aria-label="Back"
             >
-              <Inbox size={24} />
-              {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white text-[8px] font-bold text-white flex items-center justify-center">
-                  {unreadCount > 9 ? '9+' : unreadCount}
-                </span>
-              )}
+              <ChevronLeft size={20} strokeWidth={2.5} className="text-gold" />
+              Back
+            </button>
+          ) : (
+            <button
+              onClick={handleViewApp}
+              className="flex items-center gap-2 rounded-full border border-stone-200 bg-white pl-1.5 pr-3 py-1.5 text-[13px] font-semibold text-earth hover:bg-stone-100 transition-colors shrink-0"
+            >
+              <span className="w-6 h-6 rounded-md bg-[color-mix(in_srgb,var(--brand-color)_14%,white)] flex items-center justify-center shrink-0">
+                <img src={DEFAULT_LOGO} alt="" className="w-4 h-4 object-contain" />
+              </span>
+              Open member app
+              <ExternalLink size={13} className="text-warm-brown" />
             </button>
           )}
-          {/* My Account menu (desktop) — avatar → Profile / Billing / Log out */}
-          <MyAccountMenu {...accountMenuProps} />
+
+          {/* Center: active screen title */}
+          <h1 className="flex-1 text-center font-display text-lg font-bold tracking-[-0.01em] text-earth truncate px-4">
+            {headerOverride?.title ?? headerTitle}
+          </h1>
+
+          {/* Right: screen action · search · notifications · account */}
+          <div className="flex items-center gap-1 shrink-0">
+            {(headerOverride ? headerOverride.action : headerAction) && (
+              <div className="mr-1 flex items-center">{headerOverride ? headerOverride.action : headerAction}</div>
+            )}
+            <button
+              className="w-9 h-9 rounded-full flex items-center justify-center text-warm-brown hover:text-earth hover:bg-stone-100 transition-colors"
+              title="Search"
+              aria-label="Search"
+            >
+              <Search size={18} />
+            </button>
+            {showInbox && (
+              <button
+                onClick={() => go('inbox')}
+                className="w-9 h-9 rounded-full flex items-center justify-center text-warm-brown hover:text-earth hover:bg-stone-100 transition-colors relative"
+                style={activeTab === 'inbox' ? { color: 'var(--brand-color, #C9963A)' } : undefined}
+                title="Platform Inbox"
+                aria-label="Platform Inbox"
+              >
+                <Bell size={18} />
+                {unreadCount > 0 && (
+                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-white" />
+                )}
+              </button>
+            )}
+            {/* My Account menu (desktop) — avatar → Profile / Billing / Log out */}
+            <div className="pl-1"><MyAccountMenu {...accountMenuProps} /></div>
+          </div>
         </div>
 
-        {/* Unified screen header — back + title + screen action. No back on Dashboard.
-            A sub-view (e.g. an open chat thread) can fully override it. */}
-        <AdminScreenHeader
-          title={headerOverride?.title ?? headerTitle}
-          titleIcon={headerOverride?.titleIcon}
-          onBack={headerOverride ? headerOverride.onBack : (activeTab === 'dashboard' ? undefined : smartBack)}
-          action={headerOverride ? headerOverride.action : headerAction}
-          rightAccessory={<div className="lg:hidden"><MyAccountMenu {...accountMenuProps} /></div>}
-        />
+        {/* Mobile screen header — back + title + screen action + account. On
+            desktop the branded top bar above carries title/action/back, so this
+            is hidden (lg:hidden) to avoid a duplicate header. */}
+        <div className="lg:hidden">
+          <AdminScreenHeader
+            title={headerOverride?.title ?? headerTitle}
+            titleIcon={headerOverride?.titleIcon}
+            onBack={headerOverride ? headerOverride.onBack : (activeTab === 'dashboard' ? undefined : smartBack)}
+            action={headerOverride ? headerOverride.action : headerAction}
+            rightAccessory={<MyAccountMenu {...accountMenuProps} />}
+          />
+        </div>
 
         {/* Main Content Area */}
         <div className={`flex-1 ${activeTab === 'community' ? 'overflow-hidden lg:overflow-y-auto pb-[65px] lg:pb-8' : 'overflow-y-auto pb-24 lg:pb-8'} p-0 lg:p-6 ${showMoreSheet ? 'overflow-hidden' : ''}`}>
@@ -582,6 +688,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
             <div className="p-4 lg:p-0">
               <AdminDashboardHome
                 tenantId={tenantId ?? null}
+                tenantName={isWhiteLabel ? tenantName : 'Harvest'}
                 isSuperAdmin={isSuperAdmin}
                 unreadCount={unreadCount}
                 onNavigate={go}
@@ -772,8 +879,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
                   onClick={() => go('upgrade')}
                   className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors hover:bg-amber-50 text-left mb-2"
                 >
-                  <Crown size={16} style={{ color: 'var(--brand-color, #d4a017)' }} />
-                  <span className="text-sm font-semibold" style={{ color: 'var(--brand-color, #d4a017)' }}>
+                  <Crown size={16} style={{ color: 'var(--brand-color, #C9963A)' }} />
+                  <span className="text-sm font-semibold" style={{ color: 'var(--brand-color, #C9963A)' }}>
                     Upgrade Plan
                   </span>
                   <ChevronRight size={14} className="ml-auto text-amber-400" />
@@ -798,8 +905,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
                   onClick={handleViewApp}
                   className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors hover:bg-gray-50 text-left"
                 >
-                  <ExternalLink size={16} style={{ color: 'var(--brand-color, #d4a017)' }} />
-                  <span className="text-sm font-semibold" style={{ color: 'var(--brand-color, #d4a017)' }}>
+                  <ExternalLink size={16} style={{ color: 'var(--brand-color, #C9963A)' }} />
+                  <span className="text-sm font-semibold" style={{ color: 'var(--brand-color, #C9963A)' }}>
                     Go to User App
                   </span>
                 </button>

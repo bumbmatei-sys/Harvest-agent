@@ -24,22 +24,22 @@ const EditorToolbar: React.FC<{ editor: ReturnType<typeof useEditor> }> = ({ edi
       type="button"
       onClick={onClick}
       className={`px-2.5 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
-        active ? 'bg-[color-mix(in_srgb,var(--brand-color)_10%,transparent)] text-gold' : 'text-gray-500 hover:bg-gray-100'
+        active ? 'bg-[color-mix(in_srgb,var(--brand-color)_10%,transparent)] text-gold' : 'text-warm-brown hover:bg-stone-100'
       }`}
     >
       {label}
     </button>
   );
   return (
-    <div className="flex items-center gap-0.5 px-4 py-2 border-b border-gray-100 bg-gray-50/60 flex-wrap">
+    <div className="flex items-center gap-0.5 px-4 py-2 border-b border-stone-200 bg-stone-100/60 flex-wrap">
       {btn(editor.isActive('bold'), () => editor.chain().focus().toggleBold().run(), 'B')}
       {btn(editor.isActive('italic'), () => editor.chain().focus().toggleItalic().run(), 'I')}
       {btn(editor.isActive('underline'), () => editor.chain().focus().toggleUnderline().run(), 'U')}
-      <div className="w-px h-5 bg-gray-200 mx-1" />
+      <div className="w-px h-5 bg-stone-200 mx-1" />
       {btn(editor.isActive('heading', { level: 1 }), () => editor.chain().focus().toggleHeading({ level: 1 }).run(), 'H1')}
       {btn(editor.isActive('heading', { level: 2 }), () => editor.chain().focus().toggleHeading({ level: 2 }).run(), 'H2')}
       {btn(editor.isActive('heading', { level: 3 }), () => editor.chain().focus().toggleHeading({ level: 3 }).run(), 'H3')}
-      <div className="w-px h-5 bg-gray-200 mx-1" />
+      <div className="w-px h-5 bg-stone-200 mx-1" />
       {btn(editor.isActive('bulletList'), () => editor.chain().focus().toggleBulletList().run(), '• List')}
       {btn(editor.isActive('orderedList'), () => editor.chain().focus().toggleOrderedList().run(), '1. List')}
       {btn(editor.isActive('blockquote'), () => editor.chain().focus().toggleBlockquote().run(), 'Quote')}
@@ -85,7 +85,7 @@ const NewsletterEditor: React.FC<NewsletterEditorProps> = ({
     content: '',
     editorProps: {
       attributes: {
-        class: 'prose prose-sm max-w-none focus:outline-none min-h-[400px] px-5 py-4 text-gray-800',
+        class: 'prose prose-sm max-w-none focus:outline-none min-h-[400px] px-5 py-4 text-[color:var(--text-body)]',
       },
     },
   });
@@ -201,10 +201,10 @@ const NewsletterEditor: React.FC<NewsletterEditorProps> = ({
             <ChevronLeft size={24} />
           </button>
           <div>
-            <h2 className="text-xl font-bold text-gray-900 font-display">
+            <h2 className="text-xl font-bold text-earth font-display">
               {newsletterId ? 'Edit Newsletter' : 'New Newsletter'}
             </h2>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-warm-brown">
               {canAutoGenerate ? 'AI-generated from Instagram · sent via Mailchimp' : 'Write manually · sent via Mailchimp'}
             </p>
           </div>
@@ -214,7 +214,7 @@ const NewsletterEditor: React.FC<NewsletterEditorProps> = ({
             <button
               onClick={() => setShowPreview(!showPreview)}
               className={`flex items-center gap-1.5 px-3 py-2 border rounded-xl text-sm font-medium transition-colors cursor-pointer ${
-                showPreview ? 'border-gold text-gold bg-[color-mix(in_srgb,var(--brand-color)_5%,transparent)]' : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                showPreview ? 'border-gold text-gold bg-[color-mix(in_srgb,var(--brand-color)_5%,transparent)]' : 'border-stone-200 text-warm-brown hover:bg-stone-100'
               }`}
             >
               <Eye size={15} />
@@ -223,7 +223,7 @@ const NewsletterEditor: React.FC<NewsletterEditorProps> = ({
             <button
               onClick={handleSaveDraft}
               disabled={saving}
-              className="flex items-center gap-1.5 px-3 py-2 border border-gray-200 text-gray-600 rounded-xl text-sm font-medium hover:bg-gray-50 disabled:opacity-50 transition-colors cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-2 border border-stone-200 text-warm-brown rounded-xl text-sm font-medium hover:bg-stone-100 disabled:opacity-50 transition-colors cursor-pointer"
             >
               <Save size={15} />
               {saving ? 'Saving...' : 'Save Draft'}
@@ -276,34 +276,34 @@ const NewsletterEditor: React.FC<NewsletterEditorProps> = ({
       {!newsletterId && (
         <div className="space-y-4">
           {canAutoGenerate && (
-            <div className="bg-white border border-gray-100 rounded-2xl p-6">
+            <div className="bg-white border border-stone-200 rounded-2xl p-6">
               <div className="flex items-start gap-4 mb-5">
                 <div className="w-12 h-12 rounded-2xl bg-[color-mix(in_srgb,var(--brand-color)_10%,transparent)] flex items-center justify-center flex-shrink-0">
                   <Wand2 size={22} className="text-gold" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-gray-900 font-display">Generate from Instagram</h3>
-                  <p className="text-sm text-gray-500 mt-0.5">AI analyzes your Instagram posts and writes an engaging newsletter automatically.</p>
+                  <h3 className="text-base font-bold text-earth font-display">Generate from Instagram</h3>
+                  <p className="text-sm text-warm-brown mt-0.5">AI analyzes your Instagram posts and writes an engaging newsletter automatically.</p>
                 </div>
               </div>
               <div className="flex items-center gap-3 mb-5">
                 <div className="flex-1">
-                  <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">From</label>
+                  <label className="block text-xs font-semibold text-[color:var(--text-faint)] uppercase tracking-wider mb-1.5">From</label>
                   <input
                     type="date"
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_30%,transparent)] focus:border-gold"
+                    className="w-full px-3 py-2 border border-stone-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_30%,transparent)] focus:border-gold"
                   />
                 </div>
                 <div className="flex-1">
-                  <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">To</label>
+                  <label className="block text-xs font-semibold text-[color:var(--text-faint)] uppercase tracking-wider mb-1.5">To</label>
                   <input
                     type="date"
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
                     max={new Date().toISOString().split('T')[0]}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_30%,transparent)] focus:border-gold"
+                    className="w-full px-3 py-2 border border-stone-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_30%,transparent)] focus:border-gold"
                   />
                 </div>
               </div>
@@ -321,14 +321,14 @@ const NewsletterEditor: React.FC<NewsletterEditorProps> = ({
             </div>
           )}
 
-          <div className="bg-white border border-gray-100 rounded-2xl p-6">
+          <div className="bg-white border border-stone-200 rounded-2xl p-6">
             <div className="flex items-start gap-4 mb-5">
-              <div className="w-12 h-12 rounded-2xl bg-gray-100 flex items-center justify-center flex-shrink-0">
-                <Mail size={22} className="text-gray-500" />
+              <div className="w-12 h-12 rounded-2xl bg-stone-100 flex items-center justify-center flex-shrink-0">
+                <Mail size={22} className="text-warm-brown" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-gray-900 font-display">Write Manually</h3>
-                <p className="text-sm text-gray-500 mt-0.5">Compose your newsletter from scratch using the rich-text editor.</p>
+                <h3 className="text-base font-bold text-earth font-display">Write Manually</h3>
+                <p className="text-sm text-warm-brown mt-0.5">Compose your newsletter from scratch using the rich-text editor.</p>
               </div>
             </div>
             <button
@@ -337,7 +337,7 @@ const NewsletterEditor: React.FC<NewsletterEditorProps> = ({
                 setSubject('');
                 editor?.commands.clearContent();
               }}
-              className="w-full flex items-center justify-center gap-2 px-6 py-3 border border-gray-200 text-gray-700 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors cursor-pointer"
+              className="w-full flex items-center justify-center gap-2 px-6 py-3 border border-stone-200 text-[color:var(--text-body)] rounded-xl text-sm font-semibold hover:bg-stone-100 transition-colors cursor-pointer"
             >
               Start Writing
             </button>
@@ -350,22 +350,22 @@ const NewsletterEditor: React.FC<NewsletterEditorProps> = ({
         <div className={`grid gap-6 ${showPreview ? 'lg:grid-cols-[55%_45%]' : 'grid-cols-1'}`}>
           <div className="space-y-4">
             {/* Subject */}
-            <div className="bg-white rounded-2xl border border-gray-100 p-5">
-              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Subject Line</label>
+            <div className="bg-white rounded-2xl border border-stone-200 p-5">
+              <label className="block text-xs font-bold text-[color:var(--text-faint)] uppercase tracking-wider mb-2">Subject Line</label>
               <input
                 type="text"
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
                 placeholder="Enter your newsletter subject..."
-                className="w-full text-lg font-semibold text-gray-900 placeholder-gray-300 border-0 focus:outline-none focus:ring-0 bg-transparent"
+                className="w-full text-lg font-semibold text-earth placeholder-gray-300 border-0 focus:outline-none focus:ring-0 bg-transparent"
               />
-              <div className="text-xs text-gray-400 text-right mt-1">{subject.length}/150</div>
+              <div className="text-xs text-[color:var(--text-faint)] text-right mt-1">{subject.length}/150</div>
             </div>
 
             {/* TipTap editor */}
-            <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+            <div className="bg-white rounded-2xl border border-stone-200 overflow-hidden">
               <div className="flex items-center justify-between px-5 py-3 border-b border-gray-50">
-                <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Newsletter Content</span>
+                <span className="text-xs font-bold text-[color:var(--text-faint)] uppercase tracking-wider">Newsletter Content</span>
                 {canAutoGenerate && (
                   <button
                     onClick={handleGenerate}
@@ -382,10 +382,10 @@ const NewsletterEditor: React.FC<NewsletterEditorProps> = ({
             </div>
 
             {/* Schedule */}
-            <div className="bg-white rounded-2xl border border-gray-100 p-5">
+            <div className="bg-white rounded-2xl border border-stone-200 p-5">
               <button
                 onClick={() => setShowSchedule(!showSchedule)}
-                className="flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-800 transition-colors cursor-pointer"
+                className="flex items-center gap-2 text-sm font-medium text-warm-brown hover:text-[color:var(--text-body)] transition-colors cursor-pointer"
               >
                 <Clock size={16} />
                 Schedule for later
@@ -398,7 +398,7 @@ const NewsletterEditor: React.FC<NewsletterEditorProps> = ({
                     value={scheduleDate}
                     onChange={(e) => setScheduleDate(e.target.value)}
                     min={new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16)}
-                    className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_30%,transparent)] focus:border-gold"
+                    className="flex-1 px-4 py-2.5 border border-stone-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_30%,transparent)] focus:border-gold"
                   />
                   <button
                     onClick={() => handleSend(scheduleDate)}
@@ -412,7 +412,7 @@ const NewsletterEditor: React.FC<NewsletterEditorProps> = ({
               )}
             </div>
 
-            <p className="text-xs text-gray-400 text-center py-2">
+            <p className="text-xs text-[color:var(--text-faint)] text-center py-2">
               Sending to all partners of {tenantName} via Mailchimp
             </p>
           </div>
@@ -420,19 +420,19 @@ const NewsletterEditor: React.FC<NewsletterEditorProps> = ({
           {/* Preview */}
           {showPreview && (
             <div className="lg:sticky lg:top-6">
-              <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+              <div className="bg-white rounded-2xl border border-stone-200 overflow-hidden">
                 <div className="px-5 py-3 border-b border-gray-50 flex items-center gap-2">
-                  <Eye size={14} className="text-gray-400" />
-                  <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Email Preview</span>
+                  <Eye size={14} className="text-[color:var(--text-faint)]" />
+                  <span className="text-xs font-bold text-[color:var(--text-faint)] uppercase tracking-wider">Email Preview</span>
                 </div>
                 <div className="p-6 max-h-[600px] overflow-y-auto">
-                  <div className="text-center mb-6 pb-4 border-b border-gray-100">
-                    <div className="text-base font-bold text-gray-900 mb-1">{subject || 'Newsletter Subject'}</div>
-                    <div className="text-xs text-gray-400">From {tenantName}</div>
+                  <div className="text-center mb-6 pb-4 border-b border-stone-200">
+                    <div className="text-base font-bold text-earth mb-1">{subject || 'Newsletter Subject'}</div>
+                    <div className="text-xs text-[color:var(--text-faint)]">From {tenantName}</div>
                   </div>
                   <div
                     className="prose prose-sm max-w-none"
-                    dangerouslySetInnerHTML={{ __html: editor?.getHTML() || '<p class="text-gray-400">Content will appear here...</p>' }}
+                    dangerouslySetInnerHTML={{ __html: editor?.getHTML() || '<p class="text-[color:var(--text-faint)]">Content will appear here...</p>' }}
                   />
                 </div>
               </div>

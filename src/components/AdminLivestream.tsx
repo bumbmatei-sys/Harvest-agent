@@ -170,43 +170,43 @@ const AdminLivestream: React.FC = () => {
       {current?.active ? (
         <>
           {/* Active stream card */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-4">
+          <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-5 mb-4">
             <div className="flex items-center justify-between gap-3 flex-wrap">
               <div className="flex items-center gap-2">
                 <span className="relative flex h-3 w-3">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
                   <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500" />
                 </span>
-                <span className="font-bold text-gray-900">{current.title}</span>
+                <span className="font-bold text-earth">{current.title}</span>
               </div>
               <button onClick={endStream} className="px-4 py-2 rounded-xl text-sm font-semibold text-red-600 bg-red-50 hover:bg-red-100">
                 End Stream
               </button>
             </div>
-            <div className="flex items-center gap-5 mt-3 text-sm text-gray-600">
+            <div className="flex items-center gap-5 mt-3 text-sm text-warm-brown">
               <span className="flex items-center gap-1.5"><Eye size={15} /> {Math.max(0, current.viewerCount || 0)} watching</span>
               <span className="flex items-center gap-1.5"><HandHeart size={15} /> {current.prayerCount || 0} prayers</span>
-              <span className="text-gray-400">Live since {fmtDate(current.startedAt || null)}</span>
+              <span className="text-[color:var(--text-faint)]">Live since {fmtDate(current.startedAt || null)}</span>
             </div>
-            <p className="text-xs text-gray-400 mt-2">Video ID: {current.youtubeVideoId}</p>
+            <p className="text-xs text-[color:var(--text-faint)] mt-2">Video ID: {current.youtubeVideoId}</p>
           </div>
 
           {/* Live prayer panel */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="bg-white rounded-2xl border border-stone-200 shadow-sm overflow-hidden">
             <div className="px-4 py-3 border-b border-gray-50 flex items-center justify-between">
-              <h3 className="text-sm font-bold text-gray-700 font-display">Prayer Requests</h3>
-              <span className="text-xs text-gray-400">{activePrayers.length} active</span>
+              <h3 className="text-sm font-bold text-[color:var(--text-body)] font-display">Prayer Requests</h3>
+              <span className="text-xs text-[color:var(--text-faint)]">{activePrayers.length} active</span>
             </div>
             {activePrayers.length === 0 ? (
-              <p className="text-center py-10 text-gray-400 text-sm">No active prayer requests.</p>
+              <p className="text-center py-10 text-[color:var(--text-faint)] text-sm">No active prayer requests.</p>
             ) : (
               <div className="divide-y divide-gray-50">
                 {activePrayers.map(p => (
                   <div key={p.id} className="flex items-start gap-3 px-4 py-3">
                     <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium text-gray-900">{p.name}</div>
-                      <div className="text-sm text-gray-600">{p.prayerText}</div>
-                      <div className="text-xs text-gray-300 mt-0.5">{fmtDate(p.submittedAt)}</div>
+                      <div className="text-sm font-medium text-earth">{p.name}</div>
+                      <div className="text-sm text-warm-brown">{p.prayerText}</div>
+                      <div className="text-xs text-stone-300 mt-0.5">{fmtDate(p.submittedAt)}</div>
                     </div>
                     <button onClick={() => markPrayed(p.id)} className="flex items-center gap-1 text-xs font-semibold text-green-600 hover:bg-green-50 rounded-lg px-2 py-1 shrink-0">
                       <Check size={14} /> Prayed
@@ -219,19 +219,19 @@ const AdminLivestream: React.FC = () => {
         </>
       ) : (
         /* Go Live form */
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-4">
+        <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-5 mb-4">
           <div className="flex items-center gap-2 mb-4">
             <Radio size={18} style={{ color: GOLD }} />
-            <h3 className="text-sm font-bold text-gray-700 font-display">Go Live</h3>
+            <h3 className="text-sm font-bold text-[color:var(--text-body)] font-display">Go Live</h3>
           </div>
           <div className="space-y-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">YouTube Live URL or Video ID</label>
-              <input value={urlInput} onChange={e => setUrlInput(e.target.value)} placeholder="https://youtube.com/watch?v=… or dQw4w9WgXcQ" className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-gold" />
+              <label className="block text-sm font-medium text-[color:var(--text-body)] mb-1.5">YouTube Live URL or Video ID</label>
+              <input value={urlInput} onChange={e => setUrlInput(e.target.value)} placeholder="https://youtube.com/watch?v=… or dQw4w9WgXcQ" className="w-full px-4 py-2.5 border border-stone-200 rounded-xl text-sm focus:outline-none focus:border-gold" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Title</label>
-              <input value={titleInput} onChange={e => setTitleInput(e.target.value)} placeholder="Sunday Service — June 29" className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-gold" />
+              <label className="block text-sm font-medium text-[color:var(--text-body)] mb-1.5">Title</label>
+              <input value={titleInput} onChange={e => setTitleInput(e.target.value)} placeholder="Sunday Service — June 29" className="w-full px-4 py-2.5 border border-stone-200 rounded-xl text-sm focus:outline-none focus:border-gold" />
             </div>
             <button onClick={startStream} disabled={starting} className="w-full py-2.5 rounded-xl text-white text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: GOLD }}>
               {starting ? 'Starting…' : 'Start Stream'}
@@ -243,16 +243,16 @@ const AdminLivestream: React.FC = () => {
       {/* Past streams */}
       {pastSessions.filter(s => s.endedAt).length > 0 && (
         <div className="mt-6">
-          <h3 className="text-sm font-bold text-gray-700 mb-3 font-display">Past Streams</h3>
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm divide-y divide-gray-50">
+          <h3 className="text-sm font-bold text-[color:var(--text-body)] mb-3 font-display">Past Streams</h3>
+          <div className="bg-white rounded-2xl border border-stone-200 shadow-sm divide-y divide-gray-50">
             {pastSessions.filter(s => s.endedAt).map(s => (
               <div key={s.id} className="flex items-center gap-3 px-4 py-3">
-                <Video size={16} className="text-gray-300 shrink-0" />
+                <Video size={16} className="text-stone-300 shrink-0" />
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-gray-900 truncate">{s.title}</div>
-                  <div className="text-xs text-gray-400">{fmtDate(s.startedAt)}</div>
+                  <div className="text-sm font-medium text-earth truncate">{s.title}</div>
+                  <div className="text-xs text-[color:var(--text-faint)]">{fmtDate(s.startedAt)}</div>
                 </div>
-                <div className="text-xs text-gray-500 text-right shrink-0">
+                <div className="text-xs text-warm-brown text-right shrink-0">
                   <div className="flex items-center gap-1 justify-end"><Eye size={12} /> {s.peakViewers || 0}</div>
                   <div className="flex items-center gap-1 justify-end"><HandHeart size={12} /> {s.prayerCount || 0}</div>
                 </div>

@@ -62,13 +62,13 @@ const SortableNavItem: React.FC<SortableNavItemProps> = ({ item, isBeingDragged 
         transition,
         opacity: isBeingDragged ? 0.35 : 1,
       }}
-      className="flex items-center gap-3 bg-white rounded-[14px] p-3 border border-gray-100 shadow-sm select-none"
+      className="flex items-center gap-3 bg-white rounded-[14px] p-3 border border-stone-200 shadow-sm select-none"
     >
       {/* Drag handle */}
       <div
         {...attributes}
         {...listeners}
-        className="cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-400 touch-none"
+        className="cursor-grab active:cursor-grabbing text-stone-300 hover:text-[color:var(--text-faint)] touch-none"
         aria-label="Drag to reorder"
       >
         <GripVertical size={20} />
@@ -78,7 +78,7 @@ const SortableNavItem: React.FC<SortableNavItemProps> = ({ item, isBeingDragged 
         <Icon size={18} style={{ color: 'var(--brand-color, #d4a017)' }} />
       </div>
 
-      <span className="text-sm font-semibold text-gray-800 truncate">{item.label}</span>
+      <span className="text-sm font-semibold text-[color:var(--text-body)] truncate">{item.label}</span>
     </div>
   );
 };
@@ -227,16 +227,16 @@ const AdminNavCustomizer: React.FC<AdminNavCustomizerProps> = ({
   return (
     <div className="fixed inset-0 z-[300] bg-[#F7F6F3] flex flex-col">
       {/* ─── Header ─────────────────────────────────────────────────── */}
-      <div className="bg-white px-4 py-3 flex items-center justify-between shadow-sm border-b border-gray-100 flex-shrink-0">
+      <div className="bg-white px-4 py-3 flex items-center justify-between shadow-sm border-b border-stone-200 flex-shrink-0">
         <button
           onClick={onCancel}
-          className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
+          className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-stone-100 transition-colors"
           aria-label="Cancel"
         >
-          <X size={20} className="text-gray-600" />
+          <X size={20} className="text-warm-brown" />
         </button>
 
-        <h2 className="font-display text-base font-bold text-gray-900">Customize Navigation</h2>
+        <h2 className="font-display text-base font-bold text-earth">Customize Navigation</h2>
 
         <button
           onClick={handleSave}
@@ -265,18 +265,18 @@ const AdminNavCustomizer: React.FC<AdminNavCustomizerProps> = ({
           {/* Bottom Bar section */}
           <section className="mb-6">
             <div className="flex items-center justify-between mb-1.5">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500">Bottom Bar</h3>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-warm-brown">Bottom Bar</h3>
               <span
                 className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
                   barItems.length >= MAX_BAR_ITEMS
                     ? 'bg-amber-100 text-amber-700'
-                    : 'bg-gray-100 text-gray-500'
+                    : 'bg-stone-100 text-warm-brown'
                 }`}
               >
                 {barItems.length}/{MAX_BAR_ITEMS}
               </span>
             </div>
-            <p className="text-xs text-gray-400 mb-3">Up to 4 items appear in the bottom navigation bar.</p>
+            <p className="text-xs text-[color:var(--text-faint)] mb-3">Up to 4 items appear in the bottom navigation bar.</p>
 
             <SortableContext items={barItems.map((i) => i.id)} strategy={verticalListSortingStrategy}>
               <div id="bar-droppable" className="space-y-2 min-h-[60px]">
@@ -284,7 +284,7 @@ const AdminNavCustomizer: React.FC<AdminNavCustomizerProps> = ({
                   <SortableNavItem key={item.id} item={item} isBeingDragged={activeId === item.id} />
                 ))}
                 {barItems.length === 0 && (
-                  <div className="h-14 rounded-[14px] border-2 border-dashed border-gray-200 flex items-center justify-center text-xs text-gray-400">
+                  <div className="h-14 rounded-[14px] border-2 border-dashed border-stone-200 flex items-center justify-center text-xs text-[color:var(--text-faint)]">
                     Drag items here
                   </div>
                 )}
@@ -294,8 +294,8 @@ const AdminNavCustomizer: React.FC<AdminNavCustomizerProps> = ({
 
           {/* More Drawer section */}
           <section className="mb-6">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5">More Drawer</h3>
-            <p className="text-xs text-gray-400 mb-3">These items appear in the More sheet.</p>
+            <h3 className="text-xs font-bold uppercase tracking-wider text-warm-brown mb-1.5">More Drawer</h3>
+            <p className="text-xs text-[color:var(--text-faint)] mb-3">These items appear in the More sheet.</p>
 
             <SortableContext items={drawerItems.map((i) => i.id)} strategy={verticalListSortingStrategy}>
               <div id="drawer-droppable" className="space-y-2 min-h-[60px]">
@@ -303,7 +303,7 @@ const AdminNavCustomizer: React.FC<AdminNavCustomizerProps> = ({
                   <SortableNavItem key={item.id} item={item} isBeingDragged={activeId === item.id} />
                 ))}
                 {drawerItems.length === 0 && (
-                  <div className="h-14 rounded-[14px] border-2 border-dashed border-gray-200 flex items-center justify-center text-xs text-gray-400">
+                  <div className="h-14 rounded-[14px] border-2 border-dashed border-stone-200 flex items-center justify-center text-xs text-[color:var(--text-faint)]">
                     No items here
                   </div>
                 )}
@@ -314,20 +314,20 @@ const AdminNavCustomizer: React.FC<AdminNavCustomizerProps> = ({
           {/* Drag overlay — follows the pointer and shows a lifted card */}
           <DragOverlay dropAnimation={null}>
             {activeItem && (
-              <div className="flex items-center gap-3 bg-white rounded-[14px] p-3 border border-gray-200 shadow-2xl opacity-95 select-none">
-                <GripVertical size={20} className="text-gray-300" />
+              <div className="flex items-center gap-3 bg-white rounded-[14px] p-3 border border-stone-200 shadow-2xl opacity-95 select-none">
+                <GripVertical size={20} className="text-stone-300" />
                 <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-[#F7F6F3] flex-shrink-0">
                   <activeItem.icon size={18} style={{ color: 'var(--brand-color, #d4a017)' }} />
                 </div>
-                <span className="text-sm font-semibold text-gray-800">{activeItem.label}</span>
+                <span className="text-sm font-semibold text-[color:var(--text-body)]">{activeItem.label}</span>
               </div>
             )}
           </DragOverlay>
         </DndContext>
 
         {/* Footnote */}
-        <div className="bg-white rounded-[14px] p-3 border border-gray-100 text-xs text-gray-400">
-          <span className="font-semibold text-gray-500">Note: </span>
+        <div className="bg-white rounded-[14px] p-3 border border-stone-200 text-xs text-[color:var(--text-faint)]">
+          <span className="font-semibold text-warm-brown">Note: </span>
           Inbox, Settings, and the More button are always available and cannot be rearranged.
         </div>
       </div>

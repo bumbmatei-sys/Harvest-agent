@@ -274,40 +274,40 @@ const AdminForms: React.FC<AdminFormsProps> = () => {
         </div>
 
         {preview ? (
-          <div className="bg-white rounded-2xl border border-gray-100 p-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-1 font-display">{title || 'Untitled form'}</h2>
-            {description && <p className="text-sm text-gray-500 mb-5">{description}</p>}
+          <div className="bg-white rounded-2xl border border-stone-200 p-6">
+            <h2 className="text-2xl font-bold text-earth mb-1 font-display">{title || 'Untitled form'}</h2>
+            {description && <p className="text-sm text-warm-brown mb-5">{description}</p>}
             <div className="space-y-4">
               {fields.map(f => (
                 <div key={f.id}>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">{f.label || 'Untitled field'}{f.required && <span className="text-red-500 ml-0.5">*</span>}</label>
-                  {f.type === 'long_text' ? <textarea disabled rows={3} placeholder={f.placeholder} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm bg-gray-50" />
-                    : f.type === 'dropdown' ? <select disabled className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm bg-gray-50"><option>Select…</option>{(f.options || []).map(o => <option key={o}>{o}</option>)}</select>
-                    : (f.type === 'radio' || f.type === 'checkbox') ? <div className="space-y-1.5">{(f.options || []).map(o => <label key={o} className="flex items-center gap-2 text-sm text-gray-600"><input type={f.type === 'radio' ? 'radio' : 'checkbox'} disabled />{o}</label>)}</div>
-                    : <input disabled type={f.type === 'date' ? 'date' : f.type === 'number' ? 'number' : 'text'} placeholder={f.placeholder} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm bg-gray-50" />}
+                  <label className="block text-sm font-medium text-[color:var(--text-body)] mb-1.5">{f.label || 'Untitled field'}{f.required && <span className="text-red-500 ml-0.5">*</span>}</label>
+                  {f.type === 'long_text' ? <textarea disabled rows={3} placeholder={f.placeholder} className="w-full px-4 py-2.5 border border-stone-200 rounded-xl text-sm bg-stone-100" />
+                    : f.type === 'dropdown' ? <select disabled className="w-full px-4 py-2.5 border border-stone-200 rounded-xl text-sm bg-stone-100"><option>Select…</option>{(f.options || []).map(o => <option key={o}>{o}</option>)}</select>
+                    : (f.type === 'radio' || f.type === 'checkbox') ? <div className="space-y-1.5">{(f.options || []).map(o => <label key={o} className="flex items-center gap-2 text-sm text-warm-brown"><input type={f.type === 'radio' ? 'radio' : 'checkbox'} disabled />{o}</label>)}</div>
+                    : <input disabled type={f.type === 'date' ? 'date' : f.type === 'number' ? 'number' : 'text'} placeholder={f.placeholder} className="w-full px-4 py-2.5 border border-stone-200 rounded-xl text-sm bg-stone-100" />}
                 </div>
               ))}
-              {fields.length === 0 && <p className="text-sm text-gray-400">No fields yet.</p>}
+              {fields.length === 0 && <p className="text-sm text-[color:var(--text-faint)]">No fields yet.</p>}
             </div>
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-3">
-              <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Form title" className="w-full text-lg font-bold px-0 py-1 border-0 border-b border-gray-100 focus:outline-none focus:border-gold" />
-              <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Description (optional)" rows={2} className="w-full text-sm px-0 py-1 border-0 focus:outline-none resize-none text-gray-600" />
+            <div className="bg-white rounded-2xl border border-stone-200 p-5 space-y-3">
+              <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Form title" className="w-full text-lg font-bold px-0 py-1 border-0 border-b border-stone-200 focus:outline-none focus:border-gold" />
+              <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Description (optional)" rows={2} className="w-full text-sm px-0 py-1 border-0 focus:outline-none resize-none text-warm-brown" />
             </div>
 
             {fields.map((f, i) => (
-              <div key={f.id} className="bg-white rounded-2xl border border-gray-100 p-4">
+              <div key={f.id} className="bg-white rounded-2xl border border-stone-200 p-4">
                 <div className="flex items-start gap-2">
-                  <GripVertical size={16} className="text-gray-300 mt-2.5 shrink-0" />
+                  <GripVertical size={16} className="text-stone-300 mt-2.5 shrink-0" />
                   <div className="flex-1 min-w-0 space-y-2">
                     <div className="flex items-center gap-2">
-                      <input value={f.label} onChange={e => updateField(f.id, { label: e.target.value })} placeholder="Field label" className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gold" />
-                      <span className="text-[10px] font-semibold px-2 py-1 rounded-full bg-gray-100 text-gray-500 whitespace-nowrap">{FIELD_TYPES.find(t => t.type === f.type)?.label}</span>
+                      <input value={f.label} onChange={e => updateField(f.id, { label: e.target.value })} placeholder="Field label" className="flex-1 px-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:border-gold" />
+                      <span className="text-[10px] font-semibold px-2 py-1 rounded-full bg-stone-100 text-warm-brown whitespace-nowrap">{FIELD_TYPES.find(t => t.type === f.type)?.label}</span>
                     </div>
                     {(f.type !== 'dropdown' && f.type !== 'radio' && f.type !== 'checkbox') && (
-                      <input value={f.placeholder || ''} onChange={e => updateField(f.id, { placeholder: e.target.value })} placeholder="Placeholder (optional)" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gold" />
+                      <input value={f.placeholder || ''} onChange={e => updateField(f.id, { placeholder: e.target.value })} placeholder="Placeholder (optional)" className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:border-gold" />
                     )}
                     {(f.type === 'dropdown' || f.type === 'radio' || f.type === 'checkbox') && (
                       <textarea
@@ -315,27 +315,27 @@ const AdminForms: React.FC<AdminFormsProps> = () => {
                         onChange={e => updateField(f.id, { options: e.target.value.split('\n').filter(Boolean) })}
                         placeholder="One option per line"
                         rows={3}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gold"
+                        className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:border-gold"
                       />
                     )}
-                    <label className="flex items-center gap-2 text-xs text-gray-600">
+                    <label className="flex items-center gap-2 text-xs text-warm-brown">
                       <input type="checkbox" checked={!!f.required} onChange={e => updateField(f.id, { required: e.target.checked })} /> Required
                     </label>
                   </div>
                   <div className="flex flex-col gap-1 shrink-0">
-                    <button onClick={() => moveField(f.id, -1)} disabled={i === 0} className="p-1 text-gray-400 hover:text-gray-700 disabled:opacity-30"><ChevronUp size={16} /></button>
-                    <button onClick={() => moveField(f.id, 1)} disabled={i === fields.length - 1} className="p-1 text-gray-400 hover:text-gray-700 disabled:opacity-30"><ChevronDown size={16} /></button>
-                    <button onClick={() => deleteField(f.id)} className="p-1 text-gray-400 hover:text-red-600"><Trash2 size={15} /></button>
+                    <button onClick={() => moveField(f.id, -1)} disabled={i === 0} className="p-1 text-[color:var(--text-faint)] hover:text-[color:var(--text-body)] disabled:opacity-30"><ChevronUp size={16} /></button>
+                    <button onClick={() => moveField(f.id, 1)} disabled={i === fields.length - 1} className="p-1 text-[color:var(--text-faint)] hover:text-[color:var(--text-body)] disabled:opacity-30"><ChevronDown size={16} /></button>
+                    <button onClick={() => deleteField(f.id)} className="p-1 text-[color:var(--text-faint)] hover:text-red-600"><Trash2 size={15} /></button>
                   </div>
                 </div>
               </div>
             ))}
 
-            <div className="bg-white rounded-2xl border border-dashed border-gray-200 p-4">
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Add Field</p>
+            <div className="bg-white rounded-2xl border border-dashed border-stone-200 p-4">
+              <p className="text-xs font-semibold text-warm-brown uppercase tracking-wide mb-2">Add Field</p>
               <div className="flex flex-wrap gap-2">
                 {FIELD_TYPES.map(t => (
-                  <button key={t.type} onClick={() => addField(t.type)} className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium border border-gray-200 text-gray-700 hover:bg-gray-50">
+                  <button key={t.type} onClick={() => addField(t.type)} className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium border border-stone-200 text-[color:var(--text-body)] hover:bg-stone-100">
                     <Plus size={12} /> {t.label}
                   </button>
                 ))}
@@ -343,13 +343,13 @@ const AdminForms: React.FC<AdminFormsProps> = () => {
             </div>
 
             {editingId && (
-              <div className="bg-white rounded-2xl border border-gray-100 p-4 space-y-2">
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Share</p>
+              <div className="bg-white rounded-2xl border border-stone-200 p-4 space-y-2">
+                <p className="text-xs font-semibold text-warm-brown uppercase tracking-wide">Share</p>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <button onClick={() => copy(formUrl(editingId), 'link')} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium border border-gray-200 text-gray-700 hover:bg-gray-50">
+                  <button onClick={() => copy(formUrl(editingId), 'link')} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium border border-stone-200 text-[color:var(--text-body)] hover:bg-stone-100">
                     <Link2 size={14} /> {copied === 'link' ? 'Copied!' : 'Copy Link'}
                   </button>
-                  <button onClick={() => copy(`<iframe src="${formUrl(editingId)}" width="100%" height="700" frameborder="0"></iframe>`, 'embed')} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium border border-gray-200 text-gray-700 hover:bg-gray-50">
+                  <button onClick={() => copy(`<iframe src="${formUrl(editingId)}" width="100%" height="700" frameborder="0"></iframe>`, 'embed')} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium border border-stone-200 text-[color:var(--text-body)] hover:bg-stone-100">
                     <Code size={14} /> {copied === 'embed' ? 'Copied!' : 'Embed Code'}
                   </button>
                 </div>
@@ -366,38 +366,38 @@ const AdminForms: React.FC<AdminFormsProps> = () => {
     return (
       <div className="max-w-4xl mx-auto" style={{ paddingBottom: 120 }}>
         <div className="flex items-center justify-between mb-4">
-          <p className="text-sm text-gray-500">{submissions.length} submission{submissions.length === 1 ? '' : 's'}</p>
-          <button onClick={exportCsv} disabled={submissions.length === 0} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold border border-gray-200 text-gray-700 hover:bg-gray-50 disabled:opacity-50">
+          <p className="text-sm text-warm-brown">{submissions.length} submission{submissions.length === 1 ? '' : 's'}</p>
+          <button onClick={exportCsv} disabled={submissions.length === 0} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold border border-stone-200 text-[color:var(--text-body)] hover:bg-stone-100 disabled:opacity-50">
             <Download size={14} /> Export CSV
           </button>
         </div>
         {submissions.length === 0 ? (
-          <div className="text-center py-16 text-gray-400">
+          <div className="text-center py-16 text-[color:var(--text-faint)]">
             <FileText size={40} className="mx-auto mb-3 opacity-30" />
             <p className="font-medium font-display">No submissions yet</p>
           </div>
         ) : (
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-x-auto">
+          <div className="bg-white rounded-2xl border border-stone-200 shadow-sm overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-100">
-                  <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase whitespace-nowrap">Submitted</th>
-                  {cols.map(c => <th key={c.id} className="px-3 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase whitespace-nowrap">{c.label}</th>)}
-                  <th className="px-3 py-2.5 text-right text-xs font-semibold text-gray-500 uppercase">CRM</th>
+                <tr className="border-b border-stone-200">
+                  <th className="px-3 py-2.5 text-left text-xs font-semibold text-warm-brown uppercase whitespace-nowrap">Submitted</th>
+                  {cols.map(c => <th key={c.id} className="px-3 py-2.5 text-left text-xs font-semibold text-warm-brown uppercase whitespace-nowrap">{c.label}</th>)}
+                  <th className="px-3 py-2.5 text-right text-xs font-semibold text-warm-brown uppercase">CRM</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {submissions.map(s => (
-                  <tr key={s.id} className="hover:bg-gray-50">
-                    <td className="px-3 py-2.5 text-xs text-gray-500 whitespace-nowrap">{fmtDate(s.submittedAt)}</td>
+                  <tr key={s.id} className="hover:bg-stone-100">
+                    <td className="px-3 py-2.5 text-xs text-warm-brown whitespace-nowrap">{fmtDate(s.submittedAt)}</td>
                     {cols.map(c => {
                       const v = s.answers?.[c.id];
-                      return <td key={c.id} className="px-3 py-2.5 text-gray-700">{Array.isArray(v) ? v.join(', ') : (v ?? '—')}</td>;
+                      return <td key={c.id} className="px-3 py-2.5 text-[color:var(--text-body)]">{Array.isArray(v) ? v.join(', ') : (v ?? '—')}</td>;
                     })}
                     <td className="px-3 py-2.5 text-right">
                       {s.crmContactId
                         ? <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700">In CRM</span>
-                        : <span className="text-gray-300 text-xs">—</span>}
+                        : <span className="text-stone-300 text-xs">—</span>}
                     </td>
                   </tr>
                 ))}
@@ -417,7 +417,7 @@ const AdminForms: React.FC<AdminFormsProps> = () => {
   return (
     <div className="max-w-3xl mx-auto" style={{ paddingBottom: 120 }}>
       {forms.length === 0 ? (
-        <div className="text-center py-16 text-gray-400">
+        <div className="text-center py-16 text-[color:var(--text-faint)]">
           <FileText size={40} className="mx-auto mb-3 opacity-30" />
           <p className="font-medium font-display">No forms yet</p>
           <p className="text-sm mt-1">Create a form to collect visitor cards, applications, and connect cards.</p>
@@ -428,28 +428,28 @@ const AdminForms: React.FC<AdminFormsProps> = () => {
       ) : (
         <div className="space-y-3">
           {forms.map(form => (
-            <div key={form.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+            <div key={form.id} className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4">
               <div className="flex items-start justify-between gap-3">
                 <button onClick={() => openSubmissions(form)} className="flex-1 min-w-0 text-left">
-                  <div className="font-semibold text-gray-900 truncate">{form.title}</div>
-                  <div className="text-xs text-gray-400 mt-0.5">
+                  <div className="font-semibold text-earth truncate">{form.title}</div>
+                  <div className="text-xs text-[color:var(--text-faint)] mt-0.5">
                     {form.submissionCount || 0} submission{(form.submissionCount || 0) === 1 ? '' : 's'}
                     {form.createdAt?.toDate && ` · ${form.createdAt.toDate().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`}
                   </div>
                 </button>
                 <div className="flex items-center gap-1 shrink-0">
                   <button onClick={() => toggleActive(form)} title={form.active ? 'Active' : 'Inactive'}
-                    className={`text-[10px] font-semibold px-2 py-1 rounded-full ${form.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-400'}`}>
+                    className={`text-[10px] font-semibold px-2 py-1 rounded-full ${form.active ? 'bg-green-100 text-green-700' : 'bg-stone-100 text-[color:var(--text-faint)]'}`}>
                     {form.active ? 'Active' : 'Inactive'}
                   </button>
                 </div>
               </div>
               <div className="flex items-center gap-1 mt-3 pt-3 border-t border-gray-50 flex-wrap">
-                <button onClick={() => openBuilder(form)} className="text-xs font-medium text-gray-600 hover:text-gray-900 px-2 py-1">Edit</button>
-                <button onClick={() => copy(formUrl(form.id), `link_${form.id}`)} className="flex items-center gap-1 text-xs font-medium text-gray-600 hover:text-gray-900 px-2 py-1">
+                <button onClick={() => openBuilder(form)} className="text-xs font-medium text-warm-brown hover:text-earth px-2 py-1">Edit</button>
+                <button onClick={() => copy(formUrl(form.id), `link_${form.id}`)} className="flex items-center gap-1 text-xs font-medium text-warm-brown hover:text-earth px-2 py-1">
                   <Link2 size={12} /> {copied === `link_${form.id}` ? 'Copied!' : 'Copy Link'}
                 </button>
-                <a href={formUrl(form.id)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs font-medium text-gray-600 hover:text-gray-900 px-2 py-1">
+                <a href={formUrl(form.id)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs font-medium text-warm-brown hover:text-earth px-2 py-1">
                   <ExternalLink size={12} /> Open
                 </a>
                 <button onClick={() => handleDelete(form)} className="flex items-center gap-1 text-xs font-medium text-red-600 hover:text-red-700 px-2 py-1 ml-auto">

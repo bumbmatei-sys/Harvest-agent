@@ -58,7 +58,7 @@ const TYPE_COLORS: Record<Invoice['type'], string> = {
 };
 
 const STATUS_COLORS: Record<Invoice['status'], string> = {
-  pending: 'bg-gray-100 text-gray-500',
+  pending: 'bg-stone-100 text-warm-brown',
   generated: 'bg-green-100 text-green-700',
   sent: 'bg-blue-100 text-blue-700',
 };
@@ -360,11 +360,11 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
 
   // Native pill segmented control (matches the CRM Contacts/Analytics toggle).
   const subTabBar = showBothSubTabs ? (
-    <div className="flex gap-1 bg-gray-100 rounded-xl p-1 mb-5 w-fit">
+    <div className="flex gap-1 bg-stone-100 rounded-xl p-1 mb-5 w-fit">
       <button
         onClick={() => setSubTab('accounting')}
         className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
-          activeSubTab === 'accounting' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-400'
+          activeSubTab === 'accounting' ? 'bg-white shadow-sm text-earth' : 'text-[color:var(--text-faint)]'
         }`}
       >
         Accounting
@@ -372,7 +372,7 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
       <button
         onClick={() => setSubTab('statements')}
         className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
-          activeSubTab === 'statements' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-400'
+          activeSubTab === 'statements' ? 'bg-white shadow-sm text-earth' : 'text-[color:var(--text-faint)]'
         }`}
       >
         Statements
@@ -404,49 +404,49 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
       {subTabBar}
       {/* Summary Cards */}
       <div className="grid grid-cols-3 gap-3 mb-6">
-        <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+        <div className="bg-white rounded-2xl p-4 border border-stone-200 shadow-sm">
           <div className="flex items-center gap-2 mb-2">
             <TrendingUp size={16} style={{ color: 'var(--brand-color, #d4a017)' }} />
-            <span className="text-xs text-gray-500 font-medium">This Month</span>
+            <span className="text-xs text-warm-brown font-medium">This Month</span>
           </div>
-          <div className="text-2xl font-bold text-gray-900">{fmt(totalThisMonth)}</div>
+          <div className="text-2xl font-bold text-earth">{fmt(totalThisMonth)}</div>
         </div>
-        <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+        <div className="bg-white rounded-2xl p-4 border border-stone-200 shadow-sm">
           <div className="flex items-center gap-2 mb-2">
             <ArrowUpRight size={16} className="text-green-500" />
-            <span className="text-xs text-gray-500 font-medium">This Year</span>
+            <span className="text-xs text-warm-brown font-medium">This Year</span>
           </div>
-          <div className="text-2xl font-bold text-gray-900">{fmt(totalThisYear)}</div>
+          <div className="text-2xl font-bold text-earth">{fmt(totalThisYear)}</div>
         </div>
-        <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+        <div className="bg-white rounded-2xl p-4 border border-stone-200 shadow-sm">
           <div className="flex items-center gap-2 mb-2">
             <FileText size={16} className="text-blue-500" />
-            <span className="text-xs text-gray-500 font-medium">Receipts Sent</span>
+            <span className="text-xs text-warm-brown font-medium">Receipts Sent</span>
           </div>
-          <div className="text-2xl font-bold text-gray-900">{sentCount}</div>
+          <div className="text-2xl font-bold text-earth">{sentCount}</div>
         </div>
       </div>
 
       {/* QuickBooks Section */}
       {isQbEnabled && (
         <div className="mb-6">
-          <h3 className="text-sm font-bold text-gray-700 mb-3 font-display">QuickBooks</h3>
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+          <h3 className="text-sm font-bold text-[color:var(--text-body)] mb-3 font-display">QuickBooks</h3>
+          <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4">
             {qbLoading ? (
-              <div className="flex items-center gap-2 text-sm text-gray-400"><Loader2 size={15} className="animate-spin" /> Checking connection…</div>
+              <div className="flex items-center gap-2 text-sm text-[color:var(--text-faint)]"><Loader2 size={15} className="animate-spin" /> Checking connection…</div>
             ) : qbConnected ? (
               <div>
                 <div className="flex items-center justify-between flex-wrap gap-3">
                   <div className="flex items-center gap-2">
                     <CheckCircle size={16} className="text-green-600" />
-                    <span className="text-sm font-medium text-gray-900">Connected{qbCompany ? ` — ${qbCompany}` : ''}</span>
+                    <span className="text-sm font-medium text-earth">Connected{qbCompany ? ` — ${qbCompany}` : ''}</span>
                   </div>
                   <div className="flex items-center gap-2 flex-wrap">
                     <a
                       href="https://qbo.intuit.com"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold border border-gray-200 text-gray-700 hover:bg-gray-50"
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold border border-stone-200 text-[color:var(--text-body)] hover:bg-stone-100"
                     >
                       <ExternalLink size={14} /> Open QB
                     </a>
@@ -464,7 +464,7 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
                   </div>
                 </div>
                 {qbLastSyncedAt && (
-                  <p className="text-xs text-gray-400 mt-2">Last synced {new Date(qbLastSyncedAt).toLocaleString()}</p>
+                  <p className="text-xs text-[color:var(--text-faint)] mt-2">Last synced {new Date(qbLastSyncedAt).toLocaleString()}</p>
                 )}
                 {qbSyncMsg && (
                   <div className={`mt-3 p-3 rounded-xl text-sm flex items-center gap-2 ${
@@ -477,7 +477,7 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
               </div>
             ) : (
               <div className="flex items-center justify-between flex-wrap gap-3">
-                <p className="text-sm text-gray-600">Connect QuickBooks to automatically sync donations and event payments as Sales Receipts.</p>
+                <p className="text-sm text-warm-brown">Connect QuickBooks to automatically sync donations and event payments as Sales Receipts.</p>
                 <button
                   onClick={handleConnectQb}
                   disabled={qbConnecting}
@@ -495,7 +495,7 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
       {/* Tax Receipts Section */}
       <div className="mb-6">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-bold text-gray-700 font-display">Tax Receipts</h3>
+          <h3 className="text-sm font-bold text-[color:var(--text-body)] font-display">Tax Receipts</h3>
           {!isTaxReceiptsEnabled && (
             <span className="text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full font-semibold flex items-center gap-1">
               <Lock size={10} /> Ministry plan required
@@ -503,15 +503,15 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
           )}
         </div>
         {isTaxReceiptsEnabled ? (
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
-            <p className="text-sm text-gray-600 mb-4">
+          <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4">
+            <p className="text-sm text-warm-brown mb-4">
               Generate year-end consolidated tax receipts for all donors. Each donor receives one PDF summarizing their total donations for the year.
             </p>
             <div className="flex gap-3">
               <select
                 value={yearFilter}
                 onChange={e => setYearFilter(e.target.value)}
-                className="border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-gold bg-white"
+                className="border border-stone-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-gold bg-white"
               >
                 <option value="all">All Years</option>
                 {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
@@ -552,16 +552,16 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
       {/* Giving Statements Section */}
       {isTaxReceiptsEnabled && (
         <div className="mb-6">
-          <h3 className="text-sm font-bold text-gray-700 mb-3 font-display">Giving Statements</h3>
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
-            <p className="text-sm text-gray-600 mb-4">
+          <h3 className="text-sm font-bold text-[color:var(--text-body)] mb-3 font-display">Giving Statements</h3>
+          <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4">
+            <p className="text-sm text-warm-brown mb-4">
               Generate annual giving statements (charitable contribution receipts) for each donor, then email them as PDFs.
             </p>
             <div className="flex gap-3 flex-wrap items-center">
               <select
                 value={statementYear}
                 onChange={e => setStatementYear(Number(e.target.value))}
-                className="border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-gold bg-white"
+                className="border border-stone-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-gold bg-white"
               >
                 {[...new Set([new Date().getFullYear(), ...availableYears.map(Number)])]
                   .sort((a, b) => b - a)
@@ -576,7 +576,7 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
                 {genStatements ? <><Loader2 size={15} className="animate-spin" /> Generating…</> : <><FileText size={15} /> Generate Statements</>}
               </button>
               <button
-                className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border border-gray-200 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border border-stone-200 text-[color:var(--text-body)] hover:bg-stone-100 disabled:opacity-50"
                 onClick={handleSendAll}
                 disabled={genStatements || sendingAll}
               >
@@ -596,30 +596,30 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
               <div className="mt-4 overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-gray-100">
-                      <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Donor</th>
-                      <th className="px-3 py-2 text-right text-xs font-semibold text-gray-500 uppercase">Total</th>
-                      <th className="px-3 py-2 text-center text-xs font-semibold text-gray-500 uppercase"># Gifts</th>
-                      <th className="px-3 py-2 text-center text-xs font-semibold text-gray-500 uppercase">Statement</th>
-                      <th className="px-3 py-2 text-center text-xs font-semibold text-gray-500 uppercase">Status</th>
-                      <th className="px-3 py-2 text-right text-xs font-semibold text-gray-500 uppercase">Actions</th>
+                    <tr className="border-b border-stone-200">
+                      <th className="px-3 py-2 text-left text-xs font-semibold text-warm-brown uppercase">Donor</th>
+                      <th className="px-3 py-2 text-right text-xs font-semibold text-warm-brown uppercase">Total</th>
+                      <th className="px-3 py-2 text-center text-xs font-semibold text-warm-brown uppercase"># Gifts</th>
+                      <th className="px-3 py-2 text-center text-xs font-semibold text-warm-brown uppercase">Statement</th>
+                      <th className="px-3 py-2 text-center text-xs font-semibold text-warm-brown uppercase">Status</th>
+                      <th className="px-3 py-2 text-right text-xs font-semibold text-warm-brown uppercase">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
                     {yearStatements.map(s => (
-                      <tr key={s.id} className="hover:bg-gray-50">
+                      <tr key={s.id} className="hover:bg-stone-100">
                         <td className="px-3 py-2">
-                          <div className="font-medium text-gray-900">{s.donorName}</div>
-                          <div className="text-xs text-gray-400">{s.donorEmail}</div>
+                          <div className="font-medium text-earth">{s.donorName}</div>
+                          <div className="text-xs text-[color:var(--text-faint)]">{s.donorEmail}</div>
                         </td>
-                        <td className="px-3 py-2 text-right font-semibold text-gray-900">{fmt(s.totalAmount / 100)}</td>
-                        <td className="px-3 py-2 text-center text-gray-600">{s.donationCount}</td>
+                        <td className="px-3 py-2 text-right font-semibold text-earth">{fmt(s.totalAmount / 100)}</td>
+                        <td className="px-3 py-2 text-center text-warm-brown">{s.donationCount}</td>
                         <td className="px-3 py-2 text-center">
                           {s.pdfPath ? (
                             <button onClick={() => openStatementPdf(s.pdfPath)} className="inline-flex items-center gap-1 text-gold hover:underline text-xs font-medium">
                               <Download size={12} /> Preview
                             </button>
-                          ) : <span className="text-gray-300">—</span>}
+                          ) : <span className="text-stone-300">—</span>}
                         </td>
                         <td className="px-3 py-2 text-center">
                           <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
@@ -630,7 +630,7 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
                           <button
                             onClick={() => handleResendStatement(s.donorEmail)}
                             disabled={resendingDonor === s.donorEmail}
-                            className="text-xs font-medium text-gray-600 hover:text-gray-900 disabled:opacity-50"
+                            className="text-xs font-medium text-warm-brown hover:text-earth disabled:opacity-50"
                           >
                             {resendingDonor === s.donorEmail ? 'Sending…' : 'Resend Email'}
                           </button>
@@ -647,16 +647,16 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
 
       {/* Invoices List */}
       <div>
-        <h3 className="text-sm font-bold text-gray-700 mb-3 font-display">Invoice History</h3>
+        <h3 className="text-sm font-bold text-[color:var(--text-body)] mb-3 font-display">Invoice History</h3>
         <div className="flex gap-2 mb-4">
           <div className="relative flex-1">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[color:var(--text-faint)]" />
             <input value={search} onChange={e => setSearch(e.target.value)}
               placeholder="Search by name, email or receipt #..."
-              className="w-full pl-9 pr-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-gold" />
+              className="w-full pl-9 pr-3 py-2.5 text-sm border border-stone-200 rounded-xl focus:outline-none focus:border-gold" />
           </div>
           <select value={typeFilter} onChange={e => setTypeFilter(e.target.value as any)}
-            className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold bg-white">
+            className="border border-stone-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold bg-white">
             <option value="all">All Types</option>
             <option value="donation_receipt">Donation Receipts</option>
             <option value="event_ticket">Event Tickets</option>
@@ -665,40 +665,40 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
         </div>
 
         {filtered.length === 0 ? (
-          <div className="text-center py-16 text-gray-400">
+          <div className="text-center py-16 text-[color:var(--text-faint)]">
             <Receipt size={40} className="mx-auto mb-3 opacity-30" />
             <p className="font-medium font-display">{search || typeFilter !== 'all' ? 'No invoices match' : 'No invoices yet'}</p>
             <p className="text-sm mt-1">Invoices are created automatically when donations and event registrations are processed</p>
           </div>
         ) : (
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="bg-white rounded-2xl border border-stone-200 shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-gray-100">
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Date</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Recipient</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Type</th>
-                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Amount</th>
-                    <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
-                    {isQbEnabled && <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">QuickBooks</th>}
-                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
+                  <tr className="border-b border-stone-200">
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-warm-brown uppercase tracking-wider">Date</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-warm-brown uppercase tracking-wider">Recipient</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-warm-brown uppercase tracking-wider">Type</th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-warm-brown uppercase tracking-wider">Amount</th>
+                    <th className="px-4 py-3 text-center text-xs font-semibold text-warm-brown uppercase tracking-wider">Status</th>
+                    {isQbEnabled && <th className="px-4 py-3 text-center text-xs font-semibold text-warm-brown uppercase tracking-wider">QuickBooks</th>}
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-warm-brown uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
                   {filtered.map(inv => (
-                    <tr key={inv.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">{fmtDate(inv.issuedAt)}</td>
+                    <tr key={inv.id} className="hover:bg-stone-100 transition-colors">
+                      <td className="px-4 py-3 text-xs text-warm-brown whitespace-nowrap">{fmtDate(inv.issuedAt)}</td>
                       <td className="px-4 py-3">
-                        <div className="font-medium text-gray-900 text-sm">{inv.recipientName}</div>
-                        <div className="text-xs text-gray-400">{inv.recipientEmail}</div>
+                        <div className="font-medium text-earth text-sm">{inv.recipientName}</div>
+                        <div className="text-xs text-[color:var(--text-faint)]">{inv.recipientEmail}</div>
                       </td>
                       <td className="px-4 py-3">
                         <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${TYPE_COLORS[inv.type]}`}>
                           {TYPE_LABELS[inv.type]}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-right font-semibold text-gray-900">{fmt(inv.amount, inv.currency)}</td>
+                      <td className="px-4 py-3 text-right font-semibold text-earth">{fmt(inv.amount, inv.currency)}</td>
                       <td className="px-4 py-3 text-center">
                         <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${STATUS_COLORS[inv.status]}`}>
                           {inv.status}
@@ -718,9 +718,9 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
                               {retryingId === inv.id ? <Loader2 size={10} className="animate-spin" /> : <RefreshCw size={10} />} retry
                             </button>
                           ) : (inv.type === 'donation_receipt' || inv.type === 'event_ticket') ? (
-                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-400">not synced</span>
+                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-stone-100 text-[color:var(--text-faint)]">not synced</span>
                           ) : (
-                            <span className="text-gray-300">—</span>
+                            <span className="text-stone-300">—</span>
                           )}
                         </td>
                       )}
@@ -728,7 +728,7 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
                         <div className="flex items-center justify-end gap-1">
                           {inv.pdfPath && (
                             <button onClick={() => openStatementPdf(inv.pdfPath)}
-                              className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors text-gray-500" title="Download PDF">
+                              className="p-1.5 rounded-lg hover:bg-stone-100 transition-colors text-warm-brown" title="Download PDF">
                               <Download size={13} />
                             </button>
                           )}

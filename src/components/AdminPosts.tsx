@@ -379,18 +379,18 @@ const AdminPosts: React.FC<AdminPostsProps> = ({ userRole, userPermissions }) =>
  {errorMessage}
  </div>
  )}
- <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
- <div className="flex items-center gap-6 border-b border-gray-100 pb-3 mb-4">
+ <div className="bg-white rounded-2xl shadow-sm border border-stone-200 p-4">
+ <div className="flex items-center gap-6 border-b border-stone-200 pb-3 mb-4">
  <button 
  onClick={() => setActiveTab('post')}
- className={`flex items-center gap-2 text-sm font-medium transition-colors ${activeTab === 'post' ? 'text-gold border-b-2 border-gold pb-3 -mb-[13px]' : 'text-gray-500 hover:text-gray-700 :text-gray-200'}`}
+ className={`flex items-center gap-2 text-sm font-medium transition-colors ${activeTab === 'post' ? 'text-gold border-b-2 border-gold pb-3 -mb-[13px]' : 'text-warm-brown hover:text-[color:var(--text-body)] :text-gray-200'}`}
  >
  <MessageSquare size={16} />
  Post
  </button>
  <button
  onClick={() => setActiveTab('poll')}
- className={`flex items-center gap-2 text-sm font-medium transition-colors ${activeTab === 'poll' ? 'text-gold border-b-2 border-gold pb-3 -mb-[13px]' : 'text-gray-500 hover:text-gray-700 :text-gray-200'}`}
+ className={`flex items-center gap-2 text-sm font-medium transition-colors ${activeTab === 'poll' ? 'text-gold border-b-2 border-gold pb-3 -mb-[13px]' : 'text-warm-brown hover:text-[color:var(--text-body)] :text-gray-200'}`}
  >
  <BarChart2 size={16} />
  Poll
@@ -403,7 +403,7 @@ const AdminPosts: React.FC<AdminPostsProps> = ({ userRole, userPermissions }) =>
  value={content}
  onChange={(e) => setContent(e.target.value)}
  placeholder={activeTab === 'poll' ? "Ask a question..." : "Share an update with the community..."}
- className="w-full bg-transparent border-none focus:ring-0 resize-none text-gray-900 placeholder-gray-400 text-sm min-h-[60px] p-0"
+ className="w-full bg-transparent border-none focus:ring-0 resize-none text-earth placeholder-gray-400 text-sm min-h-[60px] p-0"
  />
 
  {activeTab === 'poll' && (
@@ -419,12 +419,12 @@ const AdminPosts: React.FC<AdminPostsProps> = ({ userRole, userPermissions }) =>
  setPollOptions(newOptions);
  }}
  placeholder={`Option ${index + 1}`}
- className="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-1 focus:ring-gold outline-none"
+ className="flex-1 px-3 py-2 bg-stone-100 border border-stone-200 rounded-lg text-sm text-earth focus:ring-1 focus:ring-gold outline-none"
  />
  {pollOptions.length > 2 && (
  <button 
  onClick={() => setPollOptions(pollOptions.filter(o => o.id !== option.id))}
- className="p-2 text-gray-400 hover:text-red-500"
+ className="p-2 text-[color:var(--text-faint)] hover:text-red-500"
  >
  <X size={16} />
  </button>
@@ -444,8 +444,8 @@ const AdminPosts: React.FC<AdminPostsProps> = ({ userRole, userPermissions }) =>
 
  {activeTab === 'post' && (
  <div className="flex flex-col gap-2">
- <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
- <ImageIcon size={18} className="text-gray-400" />
+ <label className="text-sm font-medium text-[color:var(--text-body)] flex items-center gap-2">
+ <ImageIcon size={18} className="text-[color:var(--text-faint)]" />
  Attached Image
  </label>
  <ImageUpload value={imageUrl} onChange={setImageUrl} placeholder="Upload or paste image URL here (optional)" />
@@ -454,7 +454,7 @@ const AdminPosts: React.FC<AdminPostsProps> = ({ userRole, userPermissions }) =>
 
 
 
-        <div className="flex justify-end pt-2 border-t border-gray-100 gap-2">
+        <div className="flex justify-end pt-2 border-t border-stone-200 gap-2">
  {editingPostId && (
  <button
  onClick={() => {
@@ -463,7 +463,7 @@ const AdminPosts: React.FC<AdminPostsProps> = ({ userRole, userPermissions }) =>
  setImageUrl('');
  setPollOptions([{ id: '1', text: '' }, { id: '2', text: '' }]);
  }}
-                className="px-4 py-2 text-gray-500 hover:bg-gray-100 :bg-gray-800 rounded-lg font-medium text-sm transition-colors"
+                className="px-4 py-2 text-warm-brown hover:bg-stone-100 :bg-gray-800 rounded-lg font-medium text-sm transition-colors"
  >
  Cancel
  </button>
@@ -487,13 +487,13 @@ const AdminPosts: React.FC<AdminPostsProps> = ({ userRole, userPermissions }) =>
  <div className="w-8 h-8 border-4 border-gold border-t-transparent rounded-full animate-spin"></div>
  </div>
  ) : posts.length === 0 ? (
- <div className="text-center py-8 text-gray-500 font-display">No posts yet.</div>
+ <div className="text-center py-8 text-warm-brown font-display">No posts yet.</div>
  ) : (
  posts.map(post => (
- <div key={post.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+ <div key={post.id} className="bg-white rounded-2xl shadow-sm border border-stone-200 p-4">
  <div className="flex justify-between items-start mb-3">
  <div className="flex items-center gap-3">
- <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden flex items-center justify-center font-bold text-gray-600 relative">
+ <div className="w-10 h-10 rounded-full bg-stone-200 overflow-hidden flex items-center justify-center font-bold text-warm-brown relative">
  {post.authorPhoto ? (
  <Image src={post.authorPhoto} alt={post.authorName} fill sizes="40px" className="object-cover" referrerPolicy="no-referrer" />
  ) : (
@@ -502,7 +502,7 @@ const AdminPosts: React.FC<AdminPostsProps> = ({ userRole, userPermissions }) =>
  </div>
  <div>
  <div className="flex items-center gap-2">
- <h4 className="font-bold text-gray-900 text-sm">{post.authorName}</h4>
+ <h4 className="font-bold text-earth text-sm">{post.authorName}</h4>
  {post.isPinned && (
  <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-gold bg-[color-mix(in_srgb,var(--brand-color)_15%,white)] px-2 py-0.5 rounded-full">
  Pinned
@@ -510,24 +510,24 @@ const AdminPosts: React.FC<AdminPostsProps> = ({ userRole, userPermissions }) =>
                       )}
 
  </div>
- <p className="text-xs text-gray-500">{formatDate(post.createdAt)}</p>
+ <p className="text-xs text-warm-brown">{formatDate(post.createdAt)}</p>
  </div>
  </div>
  <div className="relative group">
- <button className="p-1 text-gray-400 hover:text-gray-600 :text-gray-300 rounded-full hover:bg-gray-100 :bg-gray-800">
+ <button className="p-1 text-[color:var(--text-faint)] hover:text-warm-brown :text-stone-300 rounded-full hover:bg-stone-100 :bg-gray-800">
  <MoreVertical size={16} />
  </button>
- <div className="absolute right-0 mt-1 w-32 bg-white rounded-lg shadow-lg border border-gray-100 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
+ <div className="absolute right-0 mt-1 w-32 bg-white rounded-lg shadow-lg border border-stone-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
  <button 
  onClick={() => handlePin(post.id, post.isPinned)}
- className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 :bg-gray-800 rounded-t-lg"
+ className="w-full text-left px-4 py-2 text-sm text-[color:var(--text-body)] hover:bg-stone-100 :bg-gray-800 rounded-t-lg"
  >
  {post.isPinned ? 'Unpin Post' : 'Pin Post'}
  </button>
  {post.type !== 'event' && (
  <button
  onClick={() => handleEdit(post)}
- className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 :bg-gray-800"
+ className="w-full text-left px-4 py-2 text-sm text-[color:var(--text-body)] hover:bg-stone-100 :bg-gray-800"
  >
  Edit
  </button>
@@ -542,12 +542,12 @@ const AdminPosts: React.FC<AdminPostsProps> = ({ userRole, userPermissions }) =>
  </div>
  </div>
 
- <p className="text-gray-800 text-sm whitespace-pre-wrap mb-3">
+ <p className="text-[color:var(--text-body)] text-sm whitespace-pre-wrap mb-3">
  {post.content}
  </p>
 
  {post.imageUrl && (
- <div className="rounded-xl overflow-hidden mb-3 max-h-80 bg-gray-100 relative min-h-[200px]">
+ <div className="rounded-xl overflow-hidden mb-3 max-h-80 bg-stone-100 relative min-h-[200px]">
  <Image src={post.imageUrl} alt="Post attachment" fill sizes="100vw" className="object-cover" referrerPolicy="no-referrer" />
  </div>
  )}
@@ -568,7 +568,7 @@ const AdminPosts: React.FC<AdminPostsProps> = ({ userRole, userPermissions }) =>
  className={`relative w-full h-10 border rounded-lg overflow-hidden flex items-center px-3 transition-colors ${
  userVotedThis 
  ? 'border-gold bg-[color-mix(in_srgb,var(--brand-color)_8%,white)] '
- : 'border-gray-200 bg-gray-50 hover:border-gold'
+ : 'border-stone-200 bg-stone-100 hover:border-gold'
  }`}
  >
  {hasVoted && (
@@ -577,30 +577,30 @@ const AdminPosts: React.FC<AdminPostsProps> = ({ userRole, userPermissions }) =>
  style={{ width: `${percentage}%` }}
  />
  )}
- <div className="relative z-10 flex justify-between w-full text-sm font-medium text-gray-800 ">
+ <div className="relative z-10 flex justify-between w-full text-sm font-medium text-[color:var(--text-body)] ">
  <span className="flex items-center gap-2">
  {option.text}
  {userVotedThis && <Check size={14} className="text-gold" />}
  </span>
- {hasVoted && <span className="text-gray-500">{percentage}%</span>}
+ {hasVoted && <span className="text-warm-brown">{percentage}%</span>}
  </div>
  </button>
  );
  })}
- <div className="text-right text-xs text-gray-500">
+ <div className="text-right text-xs text-warm-brown">
  {post.pollOptions.reduce((acc, o) => acc + o.votes.length, 0)} votes total
  </div>
  </div>
  )}
 
  {post.type === 'event' && post.eventDetails && (
- <div className="bg-gray-50 rounded-xl p-4 mb-3 border border-gray-100 flex flex-col items-center text-center">
- <div className="bg-white border border-gray-200 rounded-lg p-2 mb-3 min-w-[80px]">
+ <div className="bg-stone-100 rounded-xl p-4 mb-3 border border-stone-200 flex flex-col items-center text-center">
+ <div className="bg-white border border-stone-200 rounded-lg p-2 mb-3 min-w-[80px]">
  <div className="text-red-500 text-xs font-bold uppercase">{new Date(post.eventDetails.date).toLocaleString('default', { month: 'short' })}</div>
- <div className="text-xl font-bold text-gray-900 ">{new Date(post.eventDetails.date).getDate()}</div>
+ <div className="text-xl font-bold text-earth ">{new Date(post.eventDetails.date).getDate()}</div>
  </div>
- <h4 className="font-bold text-gray-900 text-lg mb-2">{post.eventDetails.title}</h4>
- <div className="flex flex-col gap-1 text-sm text-gray-500 mb-4">
+ <h4 className="font-bold text-earth text-lg mb-2">{post.eventDetails.title}</h4>
+ <div className="flex flex-col gap-1 text-sm text-warm-brown mb-4">
  <div className="flex items-center justify-center gap-1.5">
  <CalendarIcon size={14} />
  <span>{post.eventDetails.time}</span>
@@ -610,7 +610,7 @@ const AdminPosts: React.FC<AdminPostsProps> = ({ userRole, userPermissions }) =>
  <span>{post.eventDetails.location}</span>
  </div>
  </div>
- <div className="flex items-center gap-2 mb-4 text-xs text-gray-500">
+ <div className="flex items-center gap-2 mb-4 text-xs text-warm-brown">
  <span>{post.eventDetails.attendees.length} Participating</span>
  {post.eventDetails.attendeeDetails && post.eventDetails.attendeeDetails.length > 0 && (
  <button 
@@ -640,7 +640,7 @@ const AdminPosts: React.FC<AdminPostsProps> = ({ userRole, userPermissions }) =>
  </div>
  )}
 
- <div className="flex items-center gap-4 pt-3 border-t border-gray-100 text-gray-500">
+ <div className="flex items-center gap-4 pt-3 border-t border-stone-200 text-warm-brown">
  <button 
  onClick={() => handleLike(post.id, post.likes)}
  className={`flex items-center gap-1.5 text-sm transition-colors ${
@@ -660,15 +660,15 @@ const AdminPosts: React.FC<AdminPostsProps> = ({ userRole, userPermissions }) =>
  {/* Delete Confirmation Modal */}
  {deleteConfirmId && (
  <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
- <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 border border-gray-100 ">
- <h3 className="text-xl font-bold text-gray-900 mb-2 font-display">Delete Post</h3>
- <p className="text-gray-500 mb-6">
+ <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 border border-stone-200 ">
+ <h3 className="text-xl font-bold text-earth mb-2 font-display">Delete Post</h3>
+ <p className="text-warm-brown mb-6">
  Are you sure you want to delete this post? This action cannot be undone.
  </p>
  <div className="flex justify-end gap-3">
  <button
  onClick={() => setDeleteConfirmId(null)}
- className="px-4 py-2 text-gray-600 hover:bg-gray-100 :bg-gray-800 rounded-xl font-medium transition-colors"
+ className="px-4 py-2 text-warm-brown hover:bg-stone-100 :bg-gray-800 rounded-xl font-medium transition-colors"
  >
  Cancel
  </button>

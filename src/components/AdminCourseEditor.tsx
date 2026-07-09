@@ -31,11 +31,11 @@ import { getTenantScope, getWriteTenantScope } from '../utils/tenant-scope';
 const GOLD = "var(--brand-color, #C9963A)";
 const GOLD_LIGHT = "color-mix(in srgb, var(--brand-color, #C9963A) 12%, white)";
 const GOLD_BTN = "linear-gradient(135deg, var(--brand-color, #C9963A), color-mix(in srgb, var(--brand-color, #C9963A) 82%, #ffffff))";
-const BG = "#F2F4F7";
+const BG = "#FAF8F5";
 const CARD = "#FFFFFF";
 const TEXT = "#111111";
 const TEXT2 = "#888888";
-const BORDER = "#E8E8E8";
+const BORDER = "#E8E2D9";
 const GREEN = "#27AE60";
 const GREEN_BG = "#EAFAF1";
 const RED = "#E74C3C";
@@ -167,7 +167,7 @@ function OutlineEditor({ items, onChange }: OutlineEditorProps) {
  return (
  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
  {items.map((item, i) => (
- <div key={item.id} style={{ background: "#FAFAFA", border: `1.5px solid ${BORDER}`, borderRadius: 12, overflow: "hidden" }}>
+ <div key={item.id} style={{ background: "#FAF8F5", border: `1.5px solid ${BORDER}`, borderRadius: 12, overflow: "hidden" }}>
  <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", borderBottom: `1px solid ${BORDER}` }}>
  <div style={{ width: 22, height: 22, borderRadius: "50%", background: GOLD_LIGHT, border: `1.5px solid ${GOLD}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: GOLD, flexShrink: 0 }}>{i + 1}</div>
  <input style={{ flex: 1, border: "none", outline: "none", fontWeight: 700, fontSize: 14, color: TEXT, background: "transparent", fontFamily: "inherit" }}
@@ -294,7 +294,7 @@ function LessonCard({ lesson, onChange, onRemove, authorsLibrary = [] }: LessonC
  const set = <K extends keyof Lesson>(k: K, v: Lesson[K]): void => onChange({ ...lesson, [k]: v });
  const lessonAuthor = authorsLibrary.find((a) => a.id === lesson.authorId);
  return (
- <div style={{ background: "#FAFAFA", border: `1.5px solid ${BORDER}`, borderRadius: 12, marginBottom: 8, overflow: "hidden" }}>
+ <div style={{ background: "#FAF8F5", border: `1.5px solid ${BORDER}`, borderRadius: 12, marginBottom: 8, overflow: "hidden" }}>
  <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 14px", cursor: "pointer" }} onClick={() => setOpen((o) => !o)}>
  <span style={{ color: "#CCC", fontSize: 18, cursor: "grab", userSelect: "none" }}>⠿</span>
  <div style={{ flex: 1 }}>
@@ -907,9 +907,9 @@ const s: Record<string, CSSProperties> = {
  cardBody: { padding: "16px", display: "flex", flexDirection: "column", gap: 14 },
  sectionHeading: { padding: "12px 16px", fontSize: 11, fontWeight: 700, color: TEXT2, letterSpacing: "0.1em", textTransform: "uppercase", borderBottom: `1px solid ${BORDER}` },
  label: { fontSize: 12, fontWeight: 700, color: TEXT2, letterSpacing: "0.04em", textTransform: "uppercase", display: "block", marginBottom: 6 },
- input: { background: "#FAFAFA", border: `1.5px solid ${BORDER}`, borderRadius: 10, color: TEXT, padding: "10px 13px", fontSize: 14, width: "100%", fontFamily: "inherit" },
- textarea: { background: "#FAFAFA", border: `1.5px solid ${BORDER}`, borderRadius: 10, color: TEXT, padding: "10px 13px", fontSize: 14, width: "100%", resize: "vertical", fontFamily: "inherit", lineHeight: 1.6 },
- select: { background: "#FAFAFA", border: `1.5px solid ${BORDER}`, borderRadius: 10, color: TEXT, padding: "10px 13px", fontSize: 14, width: "100%", cursor: "pointer", fontFamily: "inherit" },
+ input: { background: "#FAF8F5", border: `1.5px solid ${BORDER}`, borderRadius: 10, color: TEXT, padding: "10px 13px", fontSize: 14, width: "100%", fontFamily: "inherit" },
+ textarea: { background: "#FAF8F5", border: `1.5px solid ${BORDER}`, borderRadius: 10, color: TEXT, padding: "10px 13px", fontSize: 14, width: "100%", resize: "vertical", fontFamily: "inherit", lineHeight: 1.6 },
+ select: { background: "#FAF8F5", border: `1.5px solid ${BORDER}`, borderRadius: 10, color: TEXT, padding: "10px 13px", fontSize: 14, width: "100%", cursor: "pointer", fontFamily: "inherit" },
  row2: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 },
  avatar: { width: 40, height: 40, borderRadius: "50%", objectFit: "cover", border: `2px solid ${BORDER}`, flexShrink: 0 },
  avatarEmpty: { width: 40, height: 40, borderRadius: "50%", background: GOLD_LIGHT, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 },

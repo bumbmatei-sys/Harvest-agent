@@ -1,11 +1,12 @@
 "use client";
 import React, { useState, useEffect } from 'react';
-import { Users, Rss, GraduationCap, Inbox, Building2 } from 'lucide-react';
+import { Users, Rss, GraduationCap, Inbox, Building2, ArrowRight } from 'lucide-react';
 import { collection, query, where, getDocs, limit } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 
 interface AdminDashboardHomeProps {
   tenantId: string | null;
+  tenantName?: string;
   isSuperAdmin: boolean;
   unreadCount: number;
   onNavigate: (tabId: string) => void;
@@ -13,6 +14,8 @@ interface AdminDashboardHomeProps {
 
 interface MemberRow { id: string; name: string; createdAt: number | null }
 interface PostRow { id: string; title: string; createdAt: number | null }
+
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
 /** Best-effort parse of the various createdAt shapes used across the app. */
 const toMillis = (v: any): number | null => {
@@ -28,8 +31,8 @@ const initials = (name: string) =>
   name.trim().split(/\s+/).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? '').join('') || '?';
 
 const joinedLabel = (ms: number | null) => {
-  if (!ms) return 'Joined recently';
-  return `Joined ${new Date(ms).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}`;
+  if (!ms) return '—';
+  return new Date(ms).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 };
 
 const relativeLabel = (ms: number | null) => {
@@ -41,7 +44,8 @@ const relativeLabel = (ms: number | null) => {
   const hours = Math.round(mins / 60);
   if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} ago`;
   const days = Math.round(hours / 24);
-  if (days < 30) return `${days} day${days === 1 ? '' : 's'} ago`;
+  if (days === 1) return 'yesterday';
+  if (days < 30) return `${days} days ago`;
   return new Date(ms).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 };
 
@@ -52,9 +56,10 @@ const greeting = () => {
   return 'Good evening';
 };
 
-const AdminDashboardHome: React.FC<AdminDashboardHomeProps> = ({ tenantId, isSuperAdmin, unreadCount, onNavigate }) => {
+const AdminDashboardHome: React.FC<AdminDashboardHomeProps> = ({ tenantId, tenantName, isSuperAdmin, unreadCount, onNavigate }) => {
   const [state, setState] = useState<'loading' | 'loaded'>('loading');
   const [memberCount, setMemberCount] = useState(0);
+  const [newThisWeek, setNewThisWeek] = useState(0);
   const [postCount, setPostCount] = useState(0);
   const [courseCount, setCourseCount] = useState(0);
   const [tenantCount, setTenantCount] = useState(0);
@@ -62,6 +67,8 @@ const AdminDashboardHome: React.FC<AdminDashboardHomeProps> = ({ tenantId, isSup
   const [recentPosts, setRecentPosts] = useState<PostRow[]>([]);
 
   const adminName = (auth.currentUser?.displayName || '').split(' ')[0] || 'there';
+  const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  const ministryLabel = (tenantName || 'Harvest').trim();
 
   useEffect(() => {
     let cancelled = false;
@@ -92,17 +99,20 @@ const AdminDashboardHome: React.FC<AdminDashboardHomeProps> = ({ tenantId, isSup
         members.sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
         setMemberCount(members.length);
         setRecentMembers(members.slice(0, 5));
+        // Real, derived signal: members whose createdAt is within the last 7 days.
+        const cutoff = Date.now() - WEEK_MS;
+        setNewThisWeek(members.filter((m) => m.createdAt != null && m.createdAt >= cutoff).length);
 
         // Posts — community_posts store `content` (and `eventDetails.title` for
         // event posts); there is no top-level `title`. Derive a short label.
         const posts: PostRow[] = postsSnap.docs.map((d) => {
           const data = d.data();
           const raw = data.eventDetails?.title || (typeof data.content === 'string' ? data.content : '') || '';
-          return { id: d.id, title: raw.trim().slice(0, 60) || 'Untitled post', createdAt: toMillis(data.createdAt) };
+          return { id: d.id, title: raw.trim().slice(0, 70) || 'Untitled post', createdAt: toMillis(data.createdAt) };
         });
         posts.sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
         setPostCount(posts.length);
-        setRecentPosts(posts.slice(0, 3));
+        setRecentPosts(posts.slice(0, 4));
 
         // Published courses
         setCourseCount(coursesSnap.docs.filter((d) => d.data().status === 'published').length);
@@ -137,110 +147,140 @@ const AdminDashboardHome: React.FC<AdminDashboardHomeProps> = ({ tenantId, isSup
         { label: 'Posts', value: postCount, icon: Rss, tab: 'posts' },
         { label: 'Courses', value: courseCount, icon: GraduationCap, tab: 'courses' },
       ];
+  const statColsClass = stats.length === 4 ? 'lg:grid-cols-4' : 'lg:grid-cols-3';
 
   const quickActions = [
-    { label: '+ New Post', tab: 'posts' },
-    { label: '+ New Course', tab: 'courses' },
-    // Inbox is platform-only now — only surface it for the platform owner.
+    { label: 'New Post', tab: 'posts' },
+    { label: 'New Course', tab: 'courses' },
     ...(isPlatform ? [{ label: 'View Inbox', tab: 'inbox' }] : []),
-    { label: 'View Members (CRM)', tab: 'crm' },
+    { label: 'View Members', tab: 'crm' },
   ];
+
+  const cutoff = Date.now() - WEEK_MS;
 
   if (state === 'loading') {
     return (
-      <div className="max-w-4xl mx-auto space-y-6 p-4">
-        <div className="h-6 w-48 bg-gray-100 rounded animate-pulse" />
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="w-full max-w-6xl mx-auto space-y-6 p-4 lg:p-0">
+        <div className="h-9 w-72 bg-stone-100 rounded animate-pulse" />
+        <div className={`grid grid-cols-2 ${statColsClass} gap-4`}>
           {[0, 1, 2, 3].map((i) => (
-            <div key={i} className="h-20 bg-gray-100 rounded-xl animate-pulse" />
+            <div key={i} className="h-28 bg-stone-100 rounded-brand-lg animate-pulse" />
           ))}
         </div>
-        <div className="space-y-2">
-          {[0, 1, 2].map((i) => (
-            <div key={i} className="h-4 bg-gray-100 rounded animate-pulse" style={{ width: `${80 - i * 12}%` }} />
-          ))}
-        </div>
+        <div className="h-64 bg-stone-100 rounded-brand-lg animate-pulse" />
       </div>
     );
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 p-4">
-      {/* Greeting */}
-      <h2 className="font-display text-base font-semibold text-gray-900">
-        {greeting()}, {adminName} 👋
-      </h2>
+    <div className="w-full max-w-6xl mx-auto space-y-6 p-4 lg:p-0">
+      {/* Greeting hero */}
+      <div>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-gold mb-2">
+          {ministryLabel} <span className="text-[color:var(--text-faint)]">·</span> {today}
+        </p>
+        <h1 className="font-display text-[2rem] lg:text-[2.4rem] leading-[1.1] font-light tracking-[-0.02em] text-earth">
+          {greeting()}, {adminName}.
+        </h1>
+        <p className="text-[15px] text-warm-brown mt-2">
+          {newThisWeek > 0
+            ? <>Your ministry gained <span className="font-semibold text-earth">{newThisWeek} new member{newThisWeek === 1 ? '' : 's'}</span> this week.</>
+            : <>Here&apos;s your ministry at a glance.</>}
+        </p>
+      </div>
 
-      {/* Stat cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      {/* Stat cards — real counts only */}
+      <div className={`grid grid-cols-2 ${statColsClass} gap-4`}>
         {stats.map((s) => {
           const Icon = s.icon;
           return (
             <button
               key={s.label}
               onClick={() => onNavigate(s.tab)}
-              className="bg-white rounded-xl border border-gray-100 p-4 text-left hover:border-gray-200 transition-colors"
+              className="bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] p-5 text-left hover:border-[color-mix(in_srgb,var(--brand-color)_40%,var(--stone-200,#E8E2D9))] transition-colors group"
             >
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-2xl font-bold text-gray-900">{s.value}</span>
-                <Icon size={16} className="text-gray-300" />
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gold">{s.label}</span>
+                <Icon size={16} className="text-[color:var(--text-faint)] group-hover:text-gold transition-colors" />
               </div>
-              <p className="text-xs text-gray-500 uppercase tracking-wide">{s.label}</p>
+              <span className="font-display text-[2.1rem] leading-none font-light text-earth">
+                {s.value.toLocaleString()}
+              </span>
             </button>
           );
         })}
       </div>
 
-      {/* Recent Members */}
-      <div>
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">Recent Members</h3>
-        <div className="bg-white rounded-xl border border-gray-100 px-4">
-          {recentMembers.length === 0 ? (
-            <p className="text-sm text-gray-400 py-4">No members yet.</p>
-          ) : (
-            recentMembers.map((m) => (
-              <div key={m.id} className="flex items-center gap-3 py-2.5 border-b border-gray-50 last:border-0">
-                <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-xs font-semibold text-gray-500 shrink-0">
-                  {initials(m.name)}
-                </div>
-                <span className="text-sm font-medium text-gray-800 flex-1 truncate">{m.name}</span>
-                <span className="text-xs text-gray-400 shrink-0">{joinedLabel(m.createdAt)}</span>
-              </div>
-            ))
-          )}
+      {/* Two-column: Recent Members (wide) · Recent Posts (in place of the removed
+          Donation Retention card). Stacks on < lg. */}
+      <div className="lg:grid lg:grid-cols-[3fr_2fr] lg:gap-6 space-y-6 lg:space-y-0 items-start">
+        {/* Recent Members */}
+        <div className="bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-stone-200">
+            <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gold">Recent Members</h3>
+            <button
+              onClick={() => onNavigate('crm')}
+              className="flex items-center gap-1 text-xs font-semibold text-gold hover:opacity-80 transition-opacity"
+            >
+              View all <ArrowRight size={13} />
+            </button>
+          </div>
+          <div className="px-5">
+            {recentMembers.length === 0 ? (
+              <p className="text-sm text-warm-brown py-6">No members yet.</p>
+            ) : (
+              recentMembers.map((m) => {
+                const isNew = m.createdAt != null && m.createdAt >= cutoff;
+                return (
+                  <div key={m.id} className="flex items-center gap-3 py-3 border-b border-stone-200 last:border-0">
+                    <div className="w-9 h-9 rounded-full bg-stone-100 flex items-center justify-center text-xs font-bold text-warm-brown shrink-0">
+                      {initials(m.name)}
+                    </div>
+                    <span className="text-sm font-semibold text-earth flex-1 truncate">{m.name}</span>
+                    {isNew && (
+                      <span className="text-[10px] font-bold uppercase tracking-wide text-sky-700 bg-sky-100 rounded-full px-2 py-0.5 shrink-0">New</span>
+                    )}
+                    <span className="text-xs text-[color:var(--text-faint)] shrink-0 w-14 text-right">{joinedLabel(m.createdAt)}</span>
+                  </div>
+                );
+              })
+            )}
+          </div>
         </div>
-      </div>
 
-      {/* Recent Posts */}
-      <div>
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">Recent Posts</h3>
-        <div className="bg-white rounded-xl border border-gray-100 px-4">
-          {recentPosts.length === 0 ? (
-            <p className="text-sm text-gray-400 py-4">No posts yet.</p>
-          ) : (
-            recentPosts.map((p) => (
-              <button
-                key={p.id}
-                onClick={() => onNavigate('posts')}
-                className="w-full flex items-center gap-3 py-2.5 border-b border-gray-50 last:border-0 text-left hover:bg-gray-50 transition-colors -mx-4 px-4"
-              >
-                <span className="text-sm font-medium text-gray-800 flex-1 truncate">{p.title}</span>
-                <span className="text-xs text-gray-400 shrink-0">{relativeLabel(p.createdAt)}</span>
-              </button>
-            ))
-          )}
+        {/* Recent Posts */}
+        <div className="bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] overflow-hidden">
+          <div className="px-5 py-4 border-b border-stone-200">
+            <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gold">Recent Posts</h3>
+          </div>
+          <div className="px-5">
+            {recentPosts.length === 0 ? (
+              <p className="text-sm text-warm-brown py-6">No posts yet.</p>
+            ) : (
+              recentPosts.map((p) => (
+                <button
+                  key={p.id}
+                  onClick={() => onNavigate('posts')}
+                  className="w-full flex flex-col items-start gap-0.5 py-3 border-b border-stone-200 last:border-0 text-left hover:opacity-80 transition-opacity"
+                >
+                  <span className="text-sm font-semibold text-earth line-clamp-1 w-full">{p.title}</span>
+                  <span className="text-xs text-[color:var(--text-faint)]">{relativeLabel(p.createdAt)}</span>
+                </button>
+              ))
+            )}
+          </div>
         </div>
       </div>
 
       {/* Quick Actions */}
       <div>
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">Quick Actions</h3>
-        <div className="flex flex-wrap gap-2">
+        <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gold mb-3">Quick Actions</h3>
+        <div className="flex flex-wrap gap-2.5">
           {quickActions.map((a) => (
             <button
               key={a.label}
               onClick={() => onNavigate(a.tab)}
-              className="px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+              className="px-4 py-2 rounded-brand border border-stone-200 bg-white text-[13px] font-semibold text-earth hover:bg-stone-100 hover:border-[color-mix(in_srgb,var(--brand-color)_40%,var(--stone-200,#E8E2D9))] transition-colors"
             >
               {a.label}
             </button>

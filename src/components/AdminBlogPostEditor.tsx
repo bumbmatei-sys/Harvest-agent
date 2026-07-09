@@ -151,7 +151,7 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
         <div className="px-4 py-3 flex items-center justify-between z-10">
           <button
             onClick={onClose}
-            className="p-2 -ml-2 text-gray-400 hover:text-gray-700 transition-colors rounded-full hover:bg-gray-100"
+            className="p-2 -ml-2 text-[color:var(--text-faint)] hover:text-[color:var(--text-body)] transition-colors rounded-full hover:bg-stone-100"
           >
             <ArrowLeft size={20} />
           </button>
@@ -179,12 +179,12 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
               value={title}
               onChange={(e) => { setTitle(e.target.value); setError(''); }}
               placeholder="Untitled"
-              className="w-full text-3xl sm:text-4xl font-bold text-gray-900 placeholder-gray-300 border-none outline-none bg-transparent py-4 leading-tight"
+              className="w-full text-3xl sm:text-4xl font-bold text-earth placeholder-gray-300 border-none outline-none bg-transparent py-4 leading-tight"
               autoFocus
             />
 
             {/* Divider */}
-            <div className="h-px bg-gray-100 mb-4" />
+            <div className="h-px bg-stone-100 mb-4" />
 
             {/* Content editor — no toolbar, use "/" for commands */}
             <RichTextEditor
@@ -197,9 +197,9 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
         </div>
 
         {/* Hint bar — above admin nav bar */}
-        <div className="fixed bottom-0 left-0 right-0 bg-gray-50 border-t border-gray-100 px-4 pt-2.5 pb-20 text-center z-20">
-          <span className="text-xs text-gray-400">
-            Type <kbd className="px-1.5 py-0.5 bg-gray-200 rounded text-gray-500 font-mono">/</kbd> for formatting commands
+        <div className="fixed bottom-0 left-0 right-0 bg-stone-100 border-t border-stone-200 px-4 pt-2.5 pb-20 text-center z-20">
+          <span className="text-xs text-[color:var(--text-faint)]">
+            Type <kbd className="px-1.5 py-0.5 bg-stone-200 rounded text-warm-brown font-mono">/</kbd> for formatting commands
           </span>
         </div>
       </div>
@@ -208,17 +208,17 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
 
   // ─── Step 2: Publish ───────────────────────────────────────────
   return (
-    <div className="fixed inset-0 z-[200] flex flex-col bg-[#f8f9fa]">
+    <div className="fixed inset-0 z-[200] flex flex-col bg-[#FAF8F5]">
       {/* Header */}
       <div className="bg-white px-4 py-3 flex items-center justify-between shadow-sm z-10">
         <div className="flex items-center gap-3">
           <button
             onClick={() => setStep('write')}
-            className="p-2 -ml-2 text-gray-500 hover:text-gray-900 transition-colors rounded-full hover:bg-gray-100"
+            className="p-2 -ml-2 text-warm-brown hover:text-earth transition-colors rounded-full hover:bg-stone-100"
           >
             <ArrowLeft size={20} />
           </button>
-          <h1 className="text-lg font-bold text-gray-900 font-display">
+          <h1 className="text-lg font-bold text-earth font-display">
             Publish
           </h1>
         </div>
@@ -234,23 +234,23 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
           )}
 
           {/* Preview card */}
-          <div className="bg-white rounded-xl border border-gray-200 p-4">
-            <p className="text-xs text-gray-400 uppercase tracking-wide mb-2">Preview</p>
-            <h3 className="text-lg font-bold text-gray-900 mb-1">{title || 'Untitled'}</h3>
-            <p className="text-sm text-gray-500 line-clamp-2">
+          <div className="bg-white rounded-xl border border-stone-200 p-4">
+            <p className="text-xs text-[color:var(--text-faint)] uppercase tracking-wide mb-2">Preview</p>
+            <h3 className="text-lg font-bold text-earth mb-1">{title || 'Untitled'}</h3>
+            <p className="text-sm text-warm-brown line-clamp-2">
               {content.replace(/<[^>]*>/g, '').slice(0, 150) || 'No content'}
             </p>
           </div>
 
           {/* Category */}
-          <div className="bg-white p-4 rounded-xl border border-gray-200 space-y-2">
-            <label className="block text-sm font-medium text-gray-700">Category</label>
+          <div className="bg-white p-4 rounded-xl border border-stone-200 space-y-2">
+            <label className="block text-sm font-medium text-[color:var(--text-body)]">Category</label>
             {!isAddingCategory ? (
               <div className="flex gap-2">
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
-                  className="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 focus:ring-2 focus:ring-gold focus:border-transparent outline-none text-sm"
+                  className="flex-1 px-3 py-2 bg-stone-100 border border-stone-200 rounded-lg text-earth focus:ring-2 focus:ring-gold focus:border-transparent outline-none text-sm"
                 >
                   <option value="" disabled>Select a category</option>
                   {availableCategories.map(cat => (
@@ -268,7 +268,7 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
                 )}
                 <button
                   onClick={() => setIsAddingCategory(true)}
-                  className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-1.5 text-sm"
+                  className="px-3 py-2 bg-stone-100 text-[color:var(--text-body)] rounded-lg hover:bg-stone-200 transition-colors flex items-center gap-1.5 text-sm"
                 >
                   <Plus size={16} />
                   <span className="hidden sm:inline">New</span>
@@ -281,7 +281,7 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
                   value={newCategory}
                   onChange={(e) => setNewCategory(e.target.value)}
                   placeholder="Category name"
-                  className="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 focus:ring-2 focus:ring-gold focus:border-transparent outline-none text-sm"
+                  className="flex-1 px-3 py-2 bg-stone-100 border border-stone-200 rounded-lg text-earth focus:ring-2 focus:ring-gold focus:border-transparent outline-none text-sm"
                   autoFocus
                 />
                 <button
@@ -293,7 +293,7 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
                 </button>
                 <button
                   onClick={() => { setIsAddingCategory(false); setNewCategory(''); }}
-                  className="p-2 text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
+                  className="p-2 text-warm-brown hover:text-[color:var(--text-body)] rounded-lg hover:bg-stone-100 transition-colors"
                 >
                   <X size={16} />
                 </button>
@@ -302,17 +302,17 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
           </div>
 
           {/* Featured Image */}
-          <div className="bg-white p-4 rounded-xl border border-gray-200 space-y-2">
-            <label className="block text-sm font-medium text-gray-700">Featured Image</label>
+          <div className="bg-white p-4 rounded-xl border border-stone-200 space-y-2">
+            <label className="block text-sm font-medium text-[color:var(--text-body)]">Featured Image</label>
             <ImageUpload value={featuredImage} onChange={setFeaturedImage} placeholder="Upload or paste image URL" />
           </div>
 
           {/* Tags */}
-          <div className="bg-white p-4 rounded-xl border border-gray-200 space-y-2">
-            <label className="block text-sm font-medium text-gray-700">Tags</label>
+          <div className="bg-white p-4 rounded-xl border border-stone-200 space-y-2">
+            <label className="block text-sm font-medium text-[color:var(--text-body)]">Tags</label>
             <div className="flex flex-wrap gap-1.5 mb-2">
               {tags.map(tag => (
-                <span key={tag} className="inline-flex items-center gap-1 px-2.5 py-1 bg-gray-100 text-gray-700 rounded-full text-xs">
+                <span key={tag} className="inline-flex items-center gap-1 px-2.5 py-1 bg-stone-100 text-[color:var(--text-body)] rounded-full text-xs">
                   {tag}
                   <button onClick={() => removeTag(tag)} className="hover:text-red-500 transition-colors">
                     <X size={12} />
@@ -326,30 +326,30 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
               onChange={(e) => setNewTag(e.target.value)}
               onKeyDown={handleAddTag}
               placeholder="Type a tag and press Enter"
-              className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 focus:ring-2 focus:ring-gold focus:border-transparent outline-none text-sm"
+              className="w-full px-3 py-2 bg-stone-100 border border-stone-200 rounded-lg text-earth focus:ring-2 focus:ring-gold focus:border-transparent outline-none text-sm"
             />
           </div>
 
           {/* Schedule */}
-          <div className="bg-white p-4 rounded-xl border border-gray-200 space-y-2">
-            <label className="block text-sm font-medium text-gray-700">Schedule</label>
+          <div className="bg-white p-4 rounded-xl border border-stone-200 space-y-2">
+            <label className="block text-sm font-medium text-[color:var(--text-body)]">Schedule</label>
             <input
               type="datetime-local"
               value={scheduledDate}
               onChange={(e) => setScheduledDate(e.target.value)}
-              className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 focus:ring-2 focus:ring-gold focus:border-transparent outline-none text-sm"
+              className="w-full px-3 py-2 bg-stone-100 border border-stone-200 rounded-lg text-earth focus:ring-2 focus:ring-gold focus:border-transparent outline-none text-sm"
             />
           </div>
         </div>
       </div>
 
       {/* Bottom action bar — fixed above admin nav bar */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 w-full z-20 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] px-3 pt-3 pb-20">
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-stone-200 w-full z-20 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] px-3 pt-3 pb-20">
         <div className="max-w-2xl mx-auto flex flex-col sm:flex-row gap-2">
           <button
             onClick={() => handleSave('draft')}
             disabled={isSaving}
-            className="flex-1 py-2.5 px-3 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50"
+            className="flex-1 py-2.5 px-3 bg-stone-100 text-[color:var(--text-body)] rounded-lg text-sm font-medium hover:bg-stone-200 transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50"
           >
             <Save size={16} />
             <span>Save Draft</span>

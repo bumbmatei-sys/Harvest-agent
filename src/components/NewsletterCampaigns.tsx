@@ -51,7 +51,7 @@ function statusBadge(status: string) {
     );
   }
   return (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-stone-100 text-warm-brown">
       <FileText size={10} /> Draft
     </span>
   );
@@ -104,9 +104,9 @@ const NewsletterCampaigns: React.FC<NewsletterCampaignsProps> = ({ tenantId, onB
 
   if (error) {
     return (
-      <div className="bg-white rounded-2xl border border-gray-100 p-8 text-center">
+      <div className="bg-white rounded-2xl border border-stone-200 p-8 text-center">
         <AlertCircle size={32} className="mx-auto mb-3 text-red-400" />
-        <p className="text-sm text-gray-600 mb-4">{error}</p>
+        <p className="text-sm text-warm-brown mb-4">{error}</p>
         <button
           onClick={onCreateNew}
           className="inline-flex items-center gap-2 px-5 py-2.5 bg-gold text-white rounded-xl text-sm font-semibold cursor-pointer hover:bg-[color-mix(in_srgb,var(--brand-color)_85%,black)] transition-colors"
@@ -121,12 +121,12 @@ const NewsletterCampaigns: React.FC<NewsletterCampaignsProps> = ({ tenantId, onB
 
   if (!hasAny) {
     return (
-      <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
+      <div className="bg-white rounded-2xl border border-stone-200 p-12 text-center">
         <div className="w-16 h-16 mx-auto rounded-2xl bg-[color-mix(in_srgb,var(--brand-color)_10%,transparent)] flex items-center justify-center mb-4">
           <Mail size={28} className="text-gold" />
         </div>
-        <h3 className="text-lg font-bold text-gray-900 mb-2 font-display">No newsletters yet</h3>
-        <p className="text-sm text-gray-500 mb-6 max-w-md mx-auto">
+        <h3 className="text-lg font-bold text-earth mb-2 font-display">No newsletters yet</h3>
+        <p className="text-sm text-warm-brown mb-6 max-w-md mx-auto">
           Create and send newsletters to keep your community engaged.
         </p>
         <button
@@ -144,28 +144,28 @@ const NewsletterCampaigns: React.FC<NewsletterCampaignsProps> = ({ tenantId, onB
     <div className="space-y-6">
       {localNewsletters.length > 0 && (
         <div>
-          <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Newsletters</h3>
+          <h3 className="text-xs font-bold text-[color:var(--text-faint)] uppercase tracking-wider mb-3">Newsletters</h3>
           <div className="space-y-3">
             {localNewsletters.map((nl) => (
-              <div key={nl.newsletterId} className="bg-white rounded-2xl border border-gray-100 p-5 flex items-center gap-4">
+              <div key={nl.newsletterId} className="bg-white rounded-2xl border border-stone-200 p-5 flex items-center gap-4">
                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
                   nl.status === 'sent' ? 'bg-green-50' :
-                  nl.status === 'scheduled' ? 'bg-blue-50' : 'bg-gray-50'
+                  nl.status === 'scheduled' ? 'bg-blue-50' : 'bg-stone-100'
                 }`}>
                   <Mail size={18} className={
                     nl.status === 'sent' ? 'text-green-600' :
-                    nl.status === 'scheduled' ? 'text-blue-600' : 'text-gray-400'
+                    nl.status === 'scheduled' ? 'text-blue-600' : 'text-[color:var(--text-faint)]'
                   } />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-gray-900 truncate">{nl.subject || 'Untitled'}</p>
+                  <p className="text-sm font-bold text-earth truncate">{nl.subject || 'Untitled'}</p>
                   <div className="flex items-center gap-3 mt-1 flex-wrap">
                     {statusBadge(nl.status)}
-                    <span className="text-xs text-gray-400">
+                    <span className="text-xs text-[color:var(--text-faint)]">
                       {nl.status === 'sent' ? formatDate(nl.send_time) : formatDate(nl.created_at)}
                     </span>
                     {nl.posts_used > 0 && (
-                      <span className="flex items-center gap-1 text-xs text-gray-400">
+                      <span className="flex items-center gap-1 text-xs text-[color:var(--text-faint)]">
                         <Users size={12} /> {nl.posts_used} posts
                       </span>
                     )}
@@ -179,25 +179,25 @@ const NewsletterCampaigns: React.FC<NewsletterCampaignsProps> = ({ tenantId, onB
 
       {mailchimpCampaigns.length > 0 && (
         <div>
-          <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Mailchimp Campaigns</h3>
+          <h3 className="text-xs font-bold text-[color:var(--text-faint)] uppercase tracking-wider mb-3">Mailchimp Campaigns</h3>
           <div className="space-y-3">
             {mailchimpCampaigns.map((c) => (
-              <div key={c.id} className="bg-white rounded-2xl border border-gray-100 p-5 flex items-center gap-4">
+              <div key={c.id} className="bg-white rounded-2xl border border-stone-200 p-5 flex items-center gap-4">
                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                  c.status === 'sent' ? 'bg-green-50' : 'bg-gray-50'
+                  c.status === 'sent' ? 'bg-green-50' : 'bg-stone-100'
                 }`}>
-                  <Mail size={18} className={c.status === 'sent' ? 'text-green-600' : 'text-gray-400'} />
+                  <Mail size={18} className={c.status === 'sent' ? 'text-green-600' : 'text-[color:var(--text-faint)]'} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-gray-900 truncate">{c.subject}</p>
+                  <p className="text-sm font-bold text-earth truncate">{c.subject}</p>
                   <div className="flex items-center gap-3 mt-1 flex-wrap">
                     {statusBadge(c.status)}
-                    <span className="text-xs text-gray-400">{formatDate(c.send_time || c.created_at)}</span>
+                    <span className="text-xs text-[color:var(--text-faint)]">{formatDate(c.send_time || c.created_at)}</span>
                     {c.open_rate != null && (
-                      <span className="text-xs text-gray-400">{Math.round(c.open_rate * 100)}% opens</span>
+                      <span className="text-xs text-[color:var(--text-faint)]">{Math.round(c.open_rate * 100)}% opens</span>
                     )}
                     {c.emails_sent > 0 && (
-                      <span className="flex items-center gap-1 text-xs text-gray-400">
+                      <span className="flex items-center gap-1 text-xs text-[color:var(--text-faint)]">
                         <Users size={12} /> {c.emails_sent}
                       </span>
                     )}

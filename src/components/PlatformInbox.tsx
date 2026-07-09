@@ -63,7 +63,7 @@ const PlatformInbox = () => {
  case 'contact': return <Mail size={20} className="text-blue-500" />;
  case 'feature': return <Lightbulb size={20} className="text-purple-500" />;
  case 'bug': return <Bug size={20} className="text-red-500" />;
- default: return <Mail size={20} className="text-gray-500" />;
+ default: return <Mail size={20} className="text-warm-brown" />;
  }
  };
 
@@ -96,8 +96,8 @@ const PlatformInbox = () => {
  if (value === undefined || value === null || value === '') return null;
  return (
  <div>
- <span className="text-[10px] font-bold text-gray-400 tracking-wider uppercase block mb-1">{label}</span>
- <p className="text-sm text-gray-900 whitespace-pre-wrap break-words">{String(value)}</p>
+ <span className="text-[10px] font-bold text-[color:var(--text-faint)] tracking-wider uppercase block mb-1">{label}</span>
+ <p className="text-sm text-earth whitespace-pre-wrap break-words">{String(value)}</p>
  </div>
  );
  };
@@ -174,7 +174,7 @@ const PlatformInbox = () => {
  className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
  filterType === type
  ? 'bg-gold text-white'
- : 'bg-white text-gray-600 border border-gray-200 hover:border-gold :border-gold'
+ : 'bg-white text-warm-brown border border-stone-200 hover:border-gold :border-gold'
  }`}
  >
  {type.charAt(0).toUpperCase() + type.slice(1)}
@@ -184,12 +184,12 @@ const PlatformInbox = () => {
  </div>
 
  {reports.length === 0 ? (
- <div className="flex flex-col items-center justify-center py-12 text-gray-400 bg-white rounded-2xl border border-gray-100 ">
+ <div className="flex flex-col items-center justify-center py-12 text-[color:var(--text-faint)] bg-white rounded-2xl border border-stone-200 ">
  <Inbox size={48} className="mb-4 opacity-50" />
  <p className="text-lg font-medium font-display">No reports yet.</p>
  </div>
  ) : filteredReports.length === 0 ? (
- <div className="flex flex-col items-center justify-center py-12 text-gray-400 bg-white rounded-2xl border border-gray-100 ">
+ <div className="flex flex-col items-center justify-center py-12 text-[color:var(--text-faint)] bg-white rounded-2xl border border-stone-200 ">
  <Inbox size={48} className="mb-4 opacity-50" />
  <p className="text-lg font-medium font-display">No reports found.</p>
  </div>
@@ -199,28 +199,28 @@ const PlatformInbox = () => {
  const isPending = r.status === 'pending';
 
  return (
- <div key={r.id} className={`bg-white rounded-2xl shadow-sm border ${isPending ? 'border-[color-mix(in_srgb,var(--brand-color)_30%,transparent)] ' : 'border-gray-100 '} overflow-hidden transition-all duration-300`}>
+ <div key={r.id} className={`bg-white rounded-2xl shadow-sm border ${isPending ? 'border-[color-mix(in_srgb,var(--brand-color)_30%,transparent)] ' : 'border-stone-200 '} overflow-hidden transition-all duration-300`}>
  <div
  onClick={() => toggleExpand(r.id)}
- className="p-4 flex items-start gap-4 cursor-pointer hover:bg-gray-50 :bg-gray-800/50 transition-colors"
+ className="p-4 flex items-start gap-4 cursor-pointer hover:bg-stone-100 :bg-gray-800/50 transition-colors"
  >
  <div className="mt-1">
  {getIconForType(r.type)}
  </div>
  <div className="flex-1 min-w-0">
  <div className="flex items-center justify-between gap-2 mb-1">
- <h3 className={`text-sm font-bold truncate ${isPending ? 'text-gray-900 ' : 'text-gray-600 '}`}>
+ <h3 className={`text-sm font-bold truncate ${isPending ? 'text-earth ' : 'text-warm-brown '}`}>
  {getTitleForType(r.type)}
  </h3>
- <span className="text-xs text-gray-400 whitespace-nowrap flex items-center gap-1">
+ <span className="text-xs text-[color:var(--text-faint)] whitespace-nowrap flex items-center gap-1">
  <Clock size={12} />
  {formatDate(r.createdAt)}
  </span>
  </div>
 
- <p className="text-sm text-gray-500 truncate">{getSubject(r)}</p>
+ <p className="text-sm text-warm-brown truncate">{getSubject(r)}</p>
 
- <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 text-[11px] text-gray-400">
+ <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 text-[11px] text-[color:var(--text-faint)]">
  {(r.userEmail || r.data?.email) && (
  <span className="flex items-center gap-1 min-w-0">
  <User size={11} className="shrink-0" />
@@ -240,23 +240,23 @@ const PlatformInbox = () => {
  {isPending && (
  <span className="w-2 h-2 rounded-full bg-gold"></span>
  )}
- {isExpanded ? <ChevronUp size={20} className="text-gray-400" /> : <ChevronDown size={20} className="text-gray-400" />}
+ {isExpanded ? <ChevronUp size={20} className="text-[color:var(--text-faint)]" /> : <ChevronDown size={20} className="text-[color:var(--text-faint)]" />}
  </div>
  </div>
 
  {isExpanded && (
- <div className="p-4 border-t border-gray-50 bg-gray-50/50 animate-in slide-in-from-top-2 duration-200">
+ <div className="p-4 border-t border-gray-50 bg-stone-100/50 animate-in slide-in-from-top-2 duration-200">
  <div className="mb-6">
  {renderBody(r)}
  </div>
 
- <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100 ">
+ <div className="flex items-center justify-end gap-3 pt-4 border-t border-stone-200 ">
  {deleteConfirmId === r.id ? (
  <div className="flex items-center gap-2">
- <span className="text-sm text-gray-500 ">Are you sure?</span>
+ <span className="text-sm text-warm-brown ">Are you sure?</span>
  <button
  onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(null); }}
- className="px-3 py-1.5 text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 :bg-gray-700 rounded-lg transition-colors"
+ className="px-3 py-1.5 text-sm font-medium text-warm-brown bg-stone-100 hover:bg-stone-200 :bg-gray-700 rounded-lg transition-colors"
  >
  Cancel
  </button>
@@ -288,7 +288,7 @@ const PlatformInbox = () => {
  ) : (
  <button
  onClick={(e) => { e.stopPropagation(); handleStatusChange(r.id, 'pending'); }}
- className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 :bg-gray-700 rounded-lg transition-colors"
+ className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-warm-brown bg-stone-100 hover:bg-stone-200 :bg-gray-700 rounded-lg transition-colors"
  >
  <Clock size={16} />
  Mark Unread

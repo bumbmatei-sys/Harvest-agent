@@ -120,9 +120,9 @@ const AdminBlog: React.FC = () => {
  const getStatusColor = (status: string) => {
  switch (status) {
  case 'published': return 'bg-green-100 text-green-800 ';
- case 'draft': return 'bg-gray-100 text-gray-800 ';
+ case 'draft': return 'bg-stone-100 text-[color:var(--text-body)] ';
  case 'scheduled': return 'bg-blue-100 text-blue-800 ';
- default: return 'bg-gray-100 text-gray-800 ';
+ default: return 'bg-stone-100 text-[color:var(--text-body)] ';
  }
  };
 
@@ -151,7 +151,7 @@ const AdminBlog: React.FC = () => {
        {canAutomate && (
          <button
            onClick={() => setShowAutomation(true)}
-           className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold border border-gray-200 text-gray-700 hover:bg-gray-50"
+           className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold border border-stone-200 text-[color:var(--text-body)] hover:bg-stone-100"
          >
            <Sparkles size={14} style={{ color: GOLD }} /> Automate
          </button>
@@ -241,25 +241,25 @@ const AdminBlog: React.FC = () => {
  />
  )}
 
- <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+ <div className="bg-white rounded-2xl shadow-sm border border-stone-200 overflow-hidden">
  {/* Filters Bar */}
- <div className="p-4 border-b border-gray-100 flex flex-col sm:flex-row gap-4">
+ <div className="p-4 border-b border-stone-200 flex flex-col sm:flex-row gap-4">
  <div className="relative flex-1">
- <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+ <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[color:var(--text-faint)]" size={18} />
  <input 
  type="text" 
  placeholder="Search posts..." 
  value={searchQuery}
  onChange={(e) => setSearchQuery(e.target.value)}
- className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-gold focus:border-transparent outline-none text-gray-900 transition-all"
+ className="w-full pl-10 pr-4 py-2 bg-stone-100 border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-gold focus:border-transparent outline-none text-earth transition-all"
  />
  </div>
  <div className="relative min-w-[160px]">
- <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+ <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-[color:var(--text-faint)]" size={18} />
  <select 
  value={selectedCategory}
  onChange={(e) => setSelectedCategory(e.target.value)}
- className="w-full pl-10 pr-8 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-gold focus:border-transparent outline-none text-gray-900 appearance-none transition-all"
+ className="w-full pl-10 pr-8 py-2 bg-stone-100 border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-gold focus:border-transparent outline-none text-earth appearance-none transition-all"
  >
  {filterCategories.map(category => (
  <option key={category} value={category}>{category}</option>
@@ -272,18 +272,18 @@ const AdminBlog: React.FC = () => {
  <div className="overflow-x-auto">
  <table className="w-full text-left border-collapse">
  <thead>
- <tr className="bg-gray-50/50 border-b border-gray-100 ">
- <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Title</th>
- <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Category</th>
- <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
- <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Date</th>
- <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Actions</th>
+ <tr className="bg-stone-100/50 border-b border-stone-200 ">
+ <th className="px-6 py-4 text-xs font-semibold text-warm-brown uppercase tracking-wider">Title</th>
+ <th className="px-6 py-4 text-xs font-semibold text-warm-brown uppercase tracking-wider">Category</th>
+ <th className="px-6 py-4 text-xs font-semibold text-warm-brown uppercase tracking-wider">Status</th>
+ <th className="px-6 py-4 text-xs font-semibold text-warm-brown uppercase tracking-wider">Date</th>
+ <th className="px-6 py-4 text-xs font-semibold text-warm-brown uppercase tracking-wider text-right">Actions</th>
  </tr>
  </thead>
  <tbody className="divide-y divide-gray-100 ">
  {loading ? (
  <tr>
- <td colSpan={5} className="px-6 py-8 text-center text-gray-500 ">
+ <td colSpan={5} className="px-6 py-8 text-center text-warm-brown ">
  <div className="flex items-center justify-center gap-2">
  <div className="w-4 h-4 border-2 border-gold border-t-transparent rounded-full animate-spin"></div>
  <span>Loading posts...</span>
@@ -292,20 +292,20 @@ const AdminBlog: React.FC = () => {
  </tr>
  ) : filteredPosts.length === 0 ? (
  <tr>
- <td colSpan={5} className="px-6 py-12 text-center text-gray-500 ">
+ <td colSpan={5} className="px-6 py-12 text-center text-warm-brown ">
  <div className="flex flex-col items-center justify-center gap-2">
- <FileText size={32} className="text-gray-300 mb-2" />
- <p className="text-base font-medium text-gray-900 font-display">No posts found</p>
+ <FileText size={32} className="text-stone-300 mb-2" />
+ <p className="text-base font-medium text-earth font-display">No posts found</p>
  <p className="text-sm">Get started by creating a new blog post.</p>
  </div>
  </td>
  </tr>
  ) : (
  filteredPosts.map((post) => (
- <tr key={post.id} className="hover:bg-gray-50 :bg-[#1a1d27] transition-colors group">
+ <tr key={post.id} className="hover:bg-stone-100 :bg-[#1a1d27] transition-colors group">
  <td className="px-6 py-4">
  <div className="flex items-center gap-2">
- <p className="text-sm font-medium text-gray-900 line-clamp-1">{post.title}</p>
+ <p className="text-sm font-medium text-earth line-clamp-1">{post.title}</p>
  {post.isAiGenerated && (
  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0"
  style={{ backgroundColor: 'color-mix(in srgb, var(--brand-color, #B8962E) 12%, white)', color: GOLD }}>
@@ -315,7 +315,7 @@ const AdminBlog: React.FC = () => {
  </div>
  </td>
  <td className="px-6 py-4">
- <span className="text-sm text-gray-600 ">{post.category}</span>
+ <span className="text-sm text-warm-brown ">{post.category}</span>
  </td>
  <td className="px-6 py-4">
  <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium capitalize ${getStatusColor(post.status)}`}>
@@ -323,7 +323,7 @@ const AdminBlog: React.FC = () => {
  </span>
  </td>
  <td className="px-6 py-4">
- <span className="text-sm text-gray-500 whitespace-nowrap">
+ <span className="text-sm text-warm-brown whitespace-nowrap">
  {formatDate(post.createdAt)}
  </span>
  </td>
@@ -331,13 +331,13 @@ const AdminBlog: React.FC = () => {
  <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
  <button 
  onClick={() => handleEditPost(post)}
- className="p-2 text-gray-400 hover:text-blue-500 hover:bg-blue-50 :bg-blue-900/30 rounded-lg transition-colors"
+ className="p-2 text-[color:var(--text-faint)] hover:text-blue-500 hover:bg-blue-50 :bg-blue-900/30 rounded-lg transition-colors"
  >
  <Edit2 size={16} />
  </button>
  <button 
  onClick={() => setDeleteConfirmId(post.id)}
- className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 :bg-red-900/30 rounded-lg transition-colors"
+ className="p-2 text-[color:var(--text-faint)] hover:text-red-500 hover:bg-red-50 :bg-red-900/30 rounded-lg transition-colors"
  >
  <Trash2 size={16} />
  </button>
@@ -354,15 +354,15 @@ const AdminBlog: React.FC = () => {
  {/* Delete Confirmation Modal */}
  {deleteConfirmId && (
  <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
- <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 border border-gray-100 ">
- <h3 className="text-xl font-bold text-gray-900 mb-2 font-display">Delete Post</h3>
- <p className="text-gray-500 mb-6">
+ <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 border border-stone-200 ">
+ <h3 className="text-xl font-bold text-earth mb-2 font-display">Delete Post</h3>
+ <p className="text-warm-brown mb-6">
  Are you sure you want to delete this blog post? This action cannot be undone.
  </p>
  <div className="flex justify-end gap-3">
  <button
  onClick={() => setDeleteConfirmId(null)}
- className="px-4 py-2 text-gray-600 hover:bg-gray-100 :bg-gray-800 rounded-xl font-medium transition-colors"
+ className="px-4 py-2 text-warm-brown hover:bg-stone-100 :bg-gray-800 rounded-xl font-medium transition-colors"
  >
  Cancel
  </button>
@@ -386,25 +386,25 @@ const AdminBlog: React.FC = () => {
  {/* Header */}
  <div className="flex items-center justify-between">
  <div>
- <h3 className="font-black text-gray-900 font-display">Automated Blog</h3>
- <p className="text-xs text-gray-400 mt-0.5">
+ <h3 className="font-black text-earth font-display">Automated Blog</h3>
+ <p className="text-xs text-[color:var(--text-faint)] mt-0.5">
  AI generates SEO articles from your Knowledge Base
  </p>
  </div>
  <button onClick={() => setShowAutomation(false)}>
- <X size={20} className="text-gray-400" />
+ <X size={20} className="text-[color:var(--text-faint)]" />
  </button>
  </div>
 
  {/* Enable toggle */}
- <div className="flex items-center justify-between py-3 border-b border-gray-100">
+ <div className="flex items-center justify-between py-3 border-b border-stone-200">
  <div>
- <p className="text-sm font-semibold text-gray-800">Auto-publish articles</p>
- <p className="text-xs text-gray-400">Posts directly to your blog</p>
+ <p className="text-sm font-semibold text-[color:var(--text-body)]">Auto-publish articles</p>
+ <p className="text-xs text-[color:var(--text-faint)]">Posts directly to your blog</p>
  </div>
  <button
  onClick={() => setAutomation(a => ({ ...a, enabled: !a.enabled }))}
- className={`w-12 h-6 rounded-full transition-colors relative ${automation.enabled ? 'bg-gold' : 'bg-gray-200'}`}
+ className={`w-12 h-6 rounded-full transition-colors relative ${automation.enabled ? 'bg-gold' : 'bg-stone-200'}`}
  >
  <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all ${automation.enabled ? 'left-7' : 'left-1'}`} />
  </button>
@@ -412,7 +412,7 @@ const AdminBlog: React.FC = () => {
 
  {/* Frequency */}
  <div>
- <label className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 block">
+ <label className="text-xs font-bold text-[color:var(--text-faint)] uppercase tracking-wider mb-2 block">
  Frequency
  </label>
  <div className="grid grid-cols-2 gap-2">
@@ -422,7 +422,7 @@ const AdminBlog: React.FC = () => {
  className={`py-2.5 rounded-xl text-sm font-semibold capitalize border transition-colors ${
  automation.frequency === f
  ? 'text-white border-transparent'
- : 'text-gray-600 border-gray-200 bg-white'
+ : 'text-warm-brown border-stone-200 bg-white'
  }`}
  style={automation.frequency === f ? { backgroundColor: GOLD } : {}}
  >
@@ -435,7 +435,7 @@ const AdminBlog: React.FC = () => {
  {/* Day of week (shown for weekly/biweekly) */}
  {(automation.frequency === 'weekly' || automation.frequency === 'biweekly') && (
  <div>
- <label className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 block">
+ <label className="text-xs font-bold text-[color:var(--text-faint)] uppercase tracking-wider mb-2 block">
  Day to post
  </label>
  <div className="flex gap-1.5 flex-wrap">
@@ -445,7 +445,7 @@ const AdminBlog: React.FC = () => {
  className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
  automation.dayOfWeek === i
  ? 'text-white border-transparent'
- : 'text-gray-600 border-gray-200'
+ : 'text-warm-brown border-stone-200'
  }`}
  style={automation.dayOfWeek === i ? { backgroundColor: GOLD } : {}}
  >
@@ -458,16 +458,16 @@ const AdminBlog: React.FC = () => {
 
  {/* Topic hint */}
  <div>
- <label className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 block">
+ <label className="text-xs font-bold text-[color:var(--text-faint)] uppercase tracking-wider mb-2 block">
  Topic focus <span className="font-normal normal-case">(optional)</span>
  </label>
  <input
  value={automation.topicHint}
  onChange={e => setAutomation(a => ({ ...a, topicHint: e.target.value }))}
  placeholder="e.g. discipleship, faith, church growth"
- className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold"
+ className="w-full border border-stone-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold"
  />
- <p className="text-xs text-gray-400 mt-1">
+ <p className="text-xs text-[color:var(--text-faint)] mt-1">
  Guides the AI when choosing what to write about from your Knowledge Base.
  </p>
  </div>
@@ -479,7 +479,7 @@ const AdminBlog: React.FC = () => {
  {automation.totalGenerated} article{automation.totalGenerated !== 1 ? 's' : ''} generated
  </span>
  {automation.nextScheduledAt && !isNaN(new Date(automation.nextScheduledAt as any).getTime()) && (
- <span className="text-xs text-gray-500">
+ <span className="text-xs text-warm-brown">
  Next: {new Date(automation.nextScheduledAt as any).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
  </span>
  )}
@@ -491,7 +491,7 @@ const AdminBlog: React.FC = () => {
  <button
  onClick={handleGenerateNow}
  disabled={generatingNow}
- className="flex-1 py-3 rounded-xl text-sm font-semibold border border-gray-200 text-gray-700 disabled:opacity-50"
+ className="flex-1 py-3 rounded-xl text-sm font-semibold border border-stone-200 text-[color:var(--text-body)] disabled:opacity-50"
  >
  {generatingNow ? 'Generating…' : '⚡ Generate Now'}
  </button>

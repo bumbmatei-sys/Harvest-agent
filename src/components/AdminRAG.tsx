@@ -15,11 +15,11 @@ import { getTenantScope, getWriteTenantScope } from '../utils/tenant-scope';
 const GOLD = "var(--brand-color, #C9963A)";
 const GOLD_LIGHT = "color-mix(in srgb, var(--brand-color, #C9963A) 12%, white)";
 const GOLD_BTN = "linear-gradient(135deg, var(--brand-color, #C9963A), color-mix(in srgb, var(--brand-color, #C9963A) 82%, #ffffff))";
-const BG = "#F2F4F7";
+const BG = "#FAF8F5";
 const CARD = "#FFFFFF";
 const TEXT = "#111111";
 const TEXT2 = "#888888";
-const BORDER = "#E8E8E8";
+const BORDER = "#E8E2D9";
 const GREEN = "#27AE60";
 const GREEN_BG = "#EAFAF1";
 const RED = "#E74C3C";
@@ -421,7 +421,7 @@ export default function AdminRAG() {
  border:`2px dashed ${dragOver?GOLD:BORDER}`,
  borderRadius:16, padding:"40px 20px",
  textAlign:"center", cursor:"pointer",
- background:dragOver?GOLD_LIGHT:"#FAFAFA",
+ background:dragOver?GOLD_LIGHT:"#FAF8F5",
  transition:"all 0.2s",
  }}>
  <div style={{ fontSize:40, marginBottom:10 }}>📂</div>
@@ -493,7 +493,7 @@ export default function AdminRAG() {
  <div style={{ ...s.card, overflowX:"auto" }}>
  <div style={{ minWidth: 650 }}>
  {/* Header */}
- <div style={{ display:"grid", gridTemplateColumns:"1.5fr 100px 100px 100px 120px 80px", gap:10, padding:"11px 18px", borderBottom:`1px solid ${BORDER}`, background:"#FAFAFA" }}>
+ <div style={{ display:"grid", gridTemplateColumns:"1.5fr 100px 100px 100px 120px 80px", gap:10, padding:"11px 18px", borderBottom:`1px solid ${BORDER}`, background:"#FAF8F5" }}>
  {["TITLE","TYPE","CHUNKS","DATE","STATUS",""].map((h,i)=>(
  <div key={i} style={{ fontSize:11, fontWeight:700, color:TEXT2, letterSpacing:"0.08em" }}>{h}</div>
  ))}
@@ -515,7 +515,7 @@ export default function AdminRAG() {
  {filtered.map((source, i) => (
  <div key={source.id}
  style={{ display:"grid", gridTemplateColumns:"1.5fr 100px 100px 100px 120px 80px", gap:10, padding:"14px 18px", borderBottom: i<filtered.length-1?`1px solid ${BORDER}`:"none", alignItems:"center", transition:"background 0.15s" }}
- onMouseEnter={e=>e.currentTarget.style.background="#FAFAFA"}
+ onMouseEnter={e=>e.currentTarget.style.background="#FAF8F5"}
  onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
 
  {/* Title */}
@@ -610,10 +610,10 @@ const s: Record<string, React.CSSProperties> = {
  cardBody: { padding:"16px", display:"flex", flexDirection:"column", gap:14 },
  sectionHeading: { padding:"12px 16px", fontSize:11, fontWeight:700, color:TEXT2, letterSpacing:"0.1em", textTransform:"uppercase", borderBottom:`1px solid ${BORDER}` },
  label: { fontSize:12, fontWeight:700, color:TEXT2, letterSpacing:"0.04em", textTransform:"uppercase" },
- input: { background:"#FAFAFA", border:`1.5px solid ${BORDER}`, borderRadius:10, color:TEXT, padding:"10px 13px", fontSize:14, width:"100%", fontFamily:"inherit" },
- textarea: { background:"#FAFAFA", border:`1.5px solid ${BORDER}`, borderRadius:10, color:TEXT, padding:"10px 13px", fontSize:14, width:"100%", resize:"vertical", fontFamily:"inherit", lineHeight:1.6 },
- select: { background:"#FAFAFA", border:`1.5px solid ${BORDER}`, borderRadius:10, color:TEXT, padding:"10px 13px", fontSize:14, cursor:"pointer", fontFamily:"inherit" },
+ input: { background:"#FAF8F5", border:`1.5px solid ${BORDER}`, borderRadius:10, color:TEXT, padding:"10px 13px", fontSize:14, width:"100%", fontFamily:"inherit" },
+ textarea: { background:"#FAF8F5", border:`1.5px solid ${BORDER}`, borderRadius:10, color:TEXT, padding:"10px 13px", fontSize:14, width:"100%", resize:"vertical", fontFamily:"inherit", lineHeight:1.6 },
+ select: { background:"#FAF8F5", border:`1.5px solid ${BORDER}`, borderRadius:10, color:TEXT, padding:"10px 13px", fontSize:14, cursor:"pointer", fontFamily:"inherit" },
  draftBtn: { background:"transparent", border:`1.5px solid ${BORDER}`, color:TEXT2, padding:"10px 20px", borderRadius:10, cursor:"pointer", fontSize:13, fontFamily:"inherit", fontWeight:600, flex:1 },
  publishBtn: { background:GOLD_BTN, border:"none", color:"#fff", fontWeight:700, padding:"7px 20px", borderRadius:10, cursor:"pointer", fontSize:13, fontFamily:"inherit", boxShadow:"0 2px 8px rgba(201,150,58,0.35)", width:"100%" },
- uploadTypeBtn: { background:"#FAFAFA", border:`1.5px solid ${BORDER}`, color:TEXT, padding:"11px 8px", borderRadius:12, cursor:"pointer", fontSize:13, fontFamily:"inherit", fontWeight:600, textAlign:"center" },
+ uploadTypeBtn: { background:"#FAF8F5", border:`1.5px solid ${BORDER}`, color:TEXT, padding:"11px 8px", borderRadius:12, cursor:"pointer", fontSize:13, fontFamily:"inherit", fontWeight:600, textAlign:"center" },
 };

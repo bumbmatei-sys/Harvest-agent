@@ -101,7 +101,7 @@ export default function AffiliateSection() {
     return (
       <div className="space-y-3">
         {[1,2,3].map(i => (
-          <div key={i} className="h-12 bg-gray-100 rounded-xl animate-pulse" />
+          <div key={i} className="h-12 bg-stone-100 rounded-xl animate-pulse" />
         ))}
       </div>
     );
@@ -112,8 +112,8 @@ export default function AffiliateSection() {
 
       {/* Header */}
       <div>
-        <h3 className="text-base font-black text-gray-900 font-display">Affiliate Program</h3>
-        <p className="text-xs text-gray-500 mt-0.5">
+        <h3 className="text-base font-black text-earth font-display">Affiliate Program</h3>
+        <p className="text-xs text-warm-brown mt-0.5">
           Share your link and earn commission on every subscription you refer — for as long as they stay subscribed.
         </p>
       </div>
@@ -122,7 +122,7 @@ export default function AffiliateSection() {
       <div className="rounded-2xl p-4 flex items-center justify-between"
         style={{ backgroundColor: GOLD_LIGHT }}>
         <div>
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">This Month</p>
+          <p className="text-xs font-semibold text-warm-brown uppercase tracking-wider">This Month</p>
           <p className="text-3xl font-black mt-0.5" style={{ color: GOLD }}>
             {fmt(status?.thisMonthEarnings || 0)}
           </p>
@@ -132,26 +132,26 @@ export default function AffiliateSection() {
 
       {/* Stats row */}
       <div className="grid grid-cols-3 gap-2">
-        <div className="bg-white rounded-xl border border-gray-100 p-3 text-center">
-          <p className="text-lg font-black text-gray-900">{status?.affiliateClicks || 0}</p>
-          <p className="text-[10px] text-gray-400 mt-0.5">Clicks</p>
+        <div className="bg-white rounded-xl border border-stone-200 p-3 text-center">
+          <p className="text-lg font-black text-earth">{status?.affiliateClicks || 0}</p>
+          <p className="text-[10px] text-[color:var(--text-faint)] mt-0.5">Clicks</p>
         </div>
-        <div className="bg-white rounded-xl border border-gray-100 p-3 text-center">
-          <p className="text-lg font-black text-gray-900">{status?.referralCount || 0}</p>
-          <p className="text-[10px] text-gray-400 mt-0.5">Referrals</p>
+        <div className="bg-white rounded-xl border border-stone-200 p-3 text-center">
+          <p className="text-lg font-black text-earth">{status?.referralCount || 0}</p>
+          <p className="text-[10px] text-[color:var(--text-faint)] mt-0.5">Referrals</p>
         </div>
-        <div className="bg-white rounded-xl border border-gray-100 p-3 text-center">
-          <p className="text-base font-black text-gray-900">{fmt(status?.totalEarnings || 0)}</p>
-          <p className="text-[10px] text-gray-400 mt-0.5">Lifetime</p>
+        <div className="bg-white rounded-xl border border-stone-200 p-3 text-center">
+          <p className="text-base font-black text-earth">{fmt(status?.totalEarnings || 0)}</p>
+          <p className="text-[10px] text-[color:var(--text-faint)] mt-0.5">Lifetime</p>
         </div>
       </div>
 
       {/* Referral Link */}
       <div>
-        <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Your Referral Link</p>
-        <div className="bg-white rounded-2xl border border-gray-100 px-4 py-3 flex items-center gap-3">
+        <p className="text-xs font-bold text-warm-brown uppercase tracking-wider mb-2">Your Referral Link</p>
+        <div className="bg-white rounded-2xl border border-stone-200 px-4 py-3 flex items-center gap-3">
           <Share2 size={16} style={{ color: GOLD }} className="flex-shrink-0" />
-          <span className="flex-1 text-sm text-gray-700 truncate font-mono">
+          <span className="flex-1 text-sm text-[color:var(--text-body)] truncate font-mono">
             {status?.affiliateCode
               ? `theharvest.site/pricing?ref=${status.affiliateCode}`
               : 'Generating your link…'}
@@ -187,7 +187,7 @@ export default function AffiliateSection() {
           <button
             onClick={handleSetupPayouts}
             disabled={onboarding}
-            className="text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1"
+            className="text-xs text-[color:var(--text-faint)] hover:text-warm-brown flex items-center gap-1"
           >
             <ExternalLink size={12} /> Manage
           </button>
@@ -195,8 +195,8 @@ export default function AffiliateSection() {
       )}
 
       {/* Commission info */}
-      <div className="bg-white rounded-2xl border border-gray-100 p-4 space-y-2">
-        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Commission Rates</p>
+      <div className="bg-white rounded-2xl border border-stone-200 p-4 space-y-2">
+        <p className="text-xs font-bold text-[color:var(--text-faint)] uppercase tracking-wider">Commission Rates</p>
         {[
           { plan: 'Individual', rate: '10%', key: 'plus' },
           { plan: 'Small Team', rate: '10%', key: 'pro' },
@@ -204,11 +204,11 @@ export default function AffiliateSection() {
           { plan: 'Ministry', rate: '20%', key: 'ultra' },
         ].map(row => (
           <div key={row.key} className="flex items-center justify-between">
-            <span className="text-sm text-gray-600">{row.plan}</span>
+            <span className="text-sm text-warm-brown">{row.plan}</span>
             <span className="text-sm font-bold" style={{ color: GOLD }}>{row.rate} recurring</span>
           </div>
         ))}
-        <p className="text-[10px] text-gray-400 pt-1 border-t border-gray-100">
+        <p className="text-[10px] text-[color:var(--text-faint)] pt-1 border-t border-stone-200">
           You earn commission every month for as long as your referral stays subscribed.
           If they cancel, commission stops.
         </p>

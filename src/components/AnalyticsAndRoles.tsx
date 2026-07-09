@@ -22,11 +22,11 @@ const GOLD_BTN = "linear-gradient(135deg, var(--brand-color, #C9963A), color-mix
 // every accent derives from the tenant's --brand-color).
 const GOLD_SOFT = "color-mix(in srgb, var(--brand-color, #C9963A) 12%, white)";
 const GOLD_GLOW = "0 4px 14px color-mix(in srgb, var(--brand-color, #C9963A) 35%, transparent)";
-const BG = "#F2F4F7";
+const BG = "#FAF8F5";
 const CARD = "#FFFFFF";
 const TEXT = "#111111";
 const TEXT2 = "#888888";
-const BORDER = "#E8E8E8";
+const BORDER = "#E8E2D9";
 const GREEN = "#16A34A";
 const GREEN_BG = "#F0FDF4";
 const RED = "#E74C3C";
@@ -441,7 +441,7 @@ function PermissionEditor({ admin, isNew, onSave, onClose, allUsers }: Permissio
           )}
 
           {form.id && (
-            <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", background: "#FAFAFA", border: `1.5px solid ${BORDER}`, borderRadius: 14, flexShrink: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", background: "#FAF8F5", border: `1.5px solid ${BORDER}`, borderRadius: 14, flexShrink: 0 }}>
               <div style={s.avatarInitial}>{initial}</div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontWeight: 700, fontSize: 15, color: TEXT }}>{form.name}</div>
@@ -695,7 +695,7 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
         <div style={{ ...s.card, overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
             <thead>
-              <tr style={{ borderBottom: `1px solid ${BORDER}`, background: "#FAFAFA" }}>
+              <tr style={{ borderBottom: `1px solid ${BORDER}`, background: "#FAF8F5" }}>
                 <th style={s.th}>Name</th>
                 <th style={s.th}>Phone Number</th>
                 <th style={s.th}>Email</th>
@@ -763,7 +763,7 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
         <div style={{ ...s.card, overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
             <thead>
-              <tr style={{ borderBottom: `1px solid ${BORDER}`, background: "#FAFAFA" }}>
+              <tr style={{ borderBottom: `1px solid ${BORDER}`, background: "#FAF8F5" }}>
                 <th style={s.th}>Country</th>
                 <th style={s.th}>Users</th>
               </tr>
@@ -774,7 +774,7 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
                   key={c.country} 
                   onClick={() => { setSelectedCountry(c.country); setSubView("country_users"); }}
                   style={{ borderBottom: `1px solid ${BORDER}`, cursor: "pointer", transition: "background 0.2s" }}
-                  onMouseEnter={e => e.currentTarget.style.background = "#FAFAFA"}
+                  onMouseEnter={e => e.currentTarget.style.background = "#FAF8F5"}
                   onMouseLeave={e => e.currentTarget.style.background = "transparent"}
                 >
                   <td style={s.td}>{c.country}</td>
@@ -817,7 +817,7 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
         <div style={{ ...s.card, overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
             <thead>
-              <tr style={{ borderBottom: `1px solid ${BORDER}`, background: "#FAFAFA" }}>
+              <tr style={{ borderBottom: `1px solid ${BORDER}`, background: "#FAF8F5" }}>
                 <th style={s.th}>Name</th>
                 <th style={s.th}>Phone Number</th>
                 <th style={s.th}>Email</th>
@@ -1026,7 +1026,7 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
 
                       <div>
                         <label style={s.label}>Location Filter</label>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#FAFAFA", borderRadius: 10, border: `1.5px solid ${BORDER}`, padding: "0 12px", marginTop: 6 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#FAF8F5", borderRadius: 10, border: `1.5px solid ${BORDER}`, padding: "0 12px", marginTop: 6 }}>
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={TEXT2} strokeWidth="2.5"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
                           <input value={locationQuery} onChange={(e) => setLocationQuery(e.target.value)}
                             onKeyDown={(e) => e.key === "Enter" && handleSearch()}
@@ -1247,11 +1247,11 @@ const s: Record<string, CSSProperties> = {
   cardBody: { padding: "16px", display: "flex", flexDirection: "column", gap: 14 },
   sectionHeading: { padding: "11px 16px", fontSize: 11, fontWeight: 700, color: TEXT2, letterSpacing: "0.1em", textTransform: "uppercase" as const, borderBottom: `1px solid ${BORDER}` },
   label: { fontSize: 12, fontWeight: 700, color: TEXT2, letterSpacing: "0.04em", textTransform: "uppercase" as const, display: "block" },
-  input: { background: "#FAFAFA", border: `1.5px solid ${BORDER}`, borderRadius: 10, color: TEXT, padding: "10px 13px", fontSize: 14, width: "100%", fontFamily: "inherit" },
+  input: { background: "#FAF8F5", border: `1.5px solid ${BORDER}`, borderRadius: 10, color: TEXT, padding: "10px 13px", fontSize: 14, width: "100%", fontFamily: "inherit" },
   newBtn: { background: GOLD_BTN, border: "none", color: "#fff", fontWeight: 700, padding: "13px", borderRadius: 12, cursor: "pointer", fontSize: 14, width: "100%", fontFamily: "inherit", boxShadow: "0 2px 8px color-mix(in srgb, var(--brand-color, #C9963A) 30%, transparent)" },
   backBtn: { background: "transparent", border: `1.5px solid ${BORDER}`, color: TEXT2, padding: "6px 12px", borderRadius: 8, cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 13 },
   th: { padding: "12px 16px", fontSize: 12, fontWeight: 700, color: TEXT2, textTransform: "uppercase", letterSpacing: "0.05em" },
   td: { padding: "12px 16px", fontSize: 14, color: TEXT },
-  closeBtn: { width: 30, height: 30, borderRadius: "50%", background: "#F2F4F7", border: "none", color: TEXT2, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 },
+  closeBtn: { width: 30, height: 30, borderRadius: "50%", background: "#FAF8F5", border: "none", color: TEXT2, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 },
   avatarInitial: { width: 34, height: 34, borderRadius: "50%", background: GOLD_SOFT, color: GOLD, fontWeight: 800, fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 },
 };

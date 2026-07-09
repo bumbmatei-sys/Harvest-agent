@@ -103,7 +103,7 @@ const AdminQR: React.FC = () => {
     if (!url) return;
     setGenerating(true);
     try {
-      const data = await QRCode.toDataURL(url, { width: 400, margin: 2, color: { dark: '#1a1a1a', light: '#ffffff' } });
+      const data = await QRCode.toDataURL(url, { width: 400, margin: 2, color: { dark: '#2D2519', light: '#ffffff' } });
       setQrDataUrl(data);
     } catch {
       setQrDataUrl('');
@@ -125,7 +125,7 @@ const AdminQR: React.FC = () => {
 
   return (
     <div className="max-w-2xl mx-auto" style={{ paddingBottom: 120 }}>
-      <p className="text-sm text-gray-500 mb-4 leading-relaxed">
+      <p className="text-sm text-warm-brown mb-4 leading-relaxed">
         Generate a branded QR code for any of your public pages — print it, project it, or add it to a flyer.
       </p>
 
@@ -136,7 +136,7 @@ const AdminQR: React.FC = () => {
           const active = qrType === opt.key;
           return (
             <button key={opt.key} onClick={() => changeType(opt.key)}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-semibold transition-colors ${active ? 'text-white' : 'text-gray-600 bg-gray-100 hover:bg-gray-200'}`}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-semibold transition-colors ${active ? 'text-white' : 'text-warm-brown bg-stone-100 hover:bg-stone-200'}`}
               style={active ? { backgroundColor: GOLD } : undefined}>
               <Icon size={13} /> {opt.label}
             </button>
@@ -144,42 +144,42 @@ const AdminQR: React.FC = () => {
         })}
       </div>
 
-      <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-4">
+      <div className="bg-white rounded-2xl border border-stone-200 p-5 space-y-4">
         {/* Context selector */}
         {needsContext && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+            <label className="block text-sm font-medium text-[color:var(--text-body)] mb-1.5">
               {qrType === 'event' ? 'Event' : qrType === 'checkin' ? 'Check-In Session' : 'Form'}
             </label>
             <select value={selectedId} onChange={e => changeSelected(e.target.value)}
-              className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:border-gold">
+              className="w-full px-4 py-2.5 border border-stone-200 rounded-xl text-sm bg-white focus:outline-none focus:border-gold">
               <option value="">Select…</option>
               {contextList.map(i => <option key={i.id} value={i.id}>{i.label}</option>)}
             </select>
             {contextList.length === 0 && (
-              <p className="text-xs text-gray-400 mt-1.5">No {qrType === 'event' ? 'published events' : qrType === 'checkin' ? 'active sessions' : 'active forms'} yet.</p>
+              <p className="text-xs text-[color:var(--text-faint)] mt-1.5">No {qrType === 'event' ? 'published events' : qrType === 'checkin' ? 'active sessions' : 'active forms'} yet.</p>
             )}
           </div>
         )}
 
         {qrType === 'custom' && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Custom URL</label>
+            <label className="block text-sm font-medium text-[color:var(--text-body)] mb-1.5">Custom URL</label>
             <input value={customUrl} onChange={e => { setCustomUrl(e.target.value); setQrDataUrl(''); }}
               placeholder="https://example.com/page"
-              className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-gold" />
+              className="w-full px-4 py-2.5 border border-stone-200 rounded-xl text-sm focus:outline-none focus:border-gold" />
           </div>
         )}
 
         {qrType === 'giving' && (
-          <p className="text-sm text-gray-500">This QR opens your giving page so people can donate from their phone.</p>
+          <p className="text-sm text-warm-brown">This QR opens your giving page so people can donate from their phone.</p>
         )}
 
         {/* Label */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Label <span className="text-gray-400 font-normal">(used for the filename)</span></label>
+          <label className="block text-sm font-medium text-[color:var(--text-body)] mb-1.5">Label <span className="text-[color:var(--text-faint)] font-normal">(used for the filename)</span></label>
           <input value={label} onChange={e => setLabel(e.target.value)} placeholder="e.g. Sunday Service"
-            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-gold" />
+            className="w-full px-4 py-2.5 border border-stone-200 rounded-xl text-sm focus:outline-none focus:border-gold" />
         </div>
 
         <button onClick={generate} disabled={!canGenerate || generating}
@@ -190,17 +190,17 @@ const AdminQR: React.FC = () => {
 
       {/* QR display */}
       {qrDataUrl ? (
-        <div className="bg-white rounded-2xl border border-gray-100 p-6 mt-4 text-center">
+        <div className="bg-white rounded-2xl border border-stone-200 p-6 mt-4 text-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={qrDataUrl} alt={`${label} QR code`} className="w-[300px] h-[300px] mx-auto" />
-          {label && <p className="text-sm font-mono text-gray-700 mt-3">{label}</p>}
-          <p className="text-[11px] text-gray-400 mt-1 break-all">{truncated}</p>
-          <button onClick={download} className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold border border-gray-200 text-gray-700 hover:bg-gray-50">
+          {label && <p className="text-sm font-mono text-[color:var(--text-body)] mt-3">{label}</p>}
+          <p className="text-[11px] text-[color:var(--text-faint)] mt-1 break-all">{truncated}</p>
+          <button onClick={download} className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold border border-stone-200 text-[color:var(--text-body)] hover:bg-stone-100">
             <Download size={14} /> Download PNG
           </button>
         </div>
       ) : (
-        <div className="text-center py-12 text-gray-400 mt-4">
+        <div className="text-center py-12 text-[color:var(--text-faint)] mt-4">
           <QrCode size={40} className="mx-auto mb-3 opacity-30" />
           <p className="text-sm">Select a type above and click Generate to create a QR code.</p>
         </div>

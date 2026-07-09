@@ -126,29 +126,29 @@ const AdminGivingStatements: React.FC = () => {
     if (s === 'sent') return <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700">Sent</span>;
     if (s === 'generated') return <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">Generated (not sent)</span>;
     if (s === 'failed') return <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-100 text-red-600">Failed</span>;
-    return <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">{s}</span>;
+    return <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-stone-100 text-warm-brown">{s}</span>;
   };
 
   return (
     <div className="max-w-2xl mx-auto" style={{ paddingBottom: 120 }}>
       {/* Section A — Configuration */}
       {showConfig && (
-        <div className="bg-white rounded-2xl border border-gray-100 p-5 mb-4 space-y-3">
-          <h3 className="font-display text-sm font-bold text-gray-800">Statement Settings</h3>
+        <div className="bg-white rounded-2xl border border-stone-200 p-5 mb-4 space-y-3">
+          <h3 className="font-display text-sm font-bold text-[color:var(--text-body)]">Statement Settings</h3>
           <div>
-            <label className="block text-xs font-semibold text-gray-700 mb-1">EIN / Registration Number</label>
+            <label className="block text-xs font-semibold text-[color:var(--text-body)] mb-1">EIN / Registration Number</label>
             <input value={config.ein} onChange={e => setConfig({ ...config, ein: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-gold" />
+              className="w-full px-3 py-2 border border-stone-200 rounded-xl text-sm focus:outline-none focus:border-gold" />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-gray-700 mb-1">Organization Address</label>
+            <label className="block text-xs font-semibold text-[color:var(--text-body)] mb-1">Organization Address</label>
             <textarea value={config.address} onChange={e => setConfig({ ...config, address: e.target.value })} rows={2}
-              className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-gold resize-none" />
+              className="w-full px-3 py-2 border border-stone-200 rounded-xl text-sm focus:outline-none focus:border-gold resize-none" />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-gray-700 mb-1">Country</label>
+            <label className="block text-xs font-semibold text-[color:var(--text-body)] mb-1">Country</label>
             <select value={config.country} onChange={e => setConfig({ ...config, country: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:border-gold">
+              className="w-full px-3 py-2 border border-stone-200 rounded-xl text-sm bg-white focus:outline-none focus:border-gold">
               <option value="US">United States</option>
               <option value="CA">Canada</option>
               <option value="AU">Australia</option>
@@ -157,10 +157,10 @@ const AdminGivingStatements: React.FC = () => {
             </select>
           </div>
           <div>
-            <label className="block text-xs font-semibold text-gray-700 mb-1">Custom Footer</label>
+            <label className="block text-xs font-semibold text-[color:var(--text-body)] mb-1">Custom Footer</label>
             <textarea value={config.footer} onChange={e => setConfig({ ...config, footer: e.target.value })} rows={2}
               placeholder="No goods or services were provided..."
-              className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-gold resize-none" />
+              className="w-full px-3 py-2 border border-stone-200 rounded-xl text-sm focus:outline-none focus:border-gold resize-none" />
           </div>
           <div className="flex items-center gap-3">
             <button onClick={saveConfig} disabled={savingConfig}
@@ -173,25 +173,25 @@ const AdminGivingStatements: React.FC = () => {
       )}
 
       {/* Section B — Generate */}
-      <div className="bg-white rounded-2xl border border-gray-100 p-5 mb-4 space-y-3">
-        <h3 className="font-display text-sm font-bold text-gray-800 flex items-center gap-1.5"><Receipt size={15} /> Generate Statements</h3>
+      <div className="bg-white rounded-2xl border border-stone-200 p-5 mb-4 space-y-3">
+        <h3 className="font-display text-sm font-bold text-[color:var(--text-body)] flex items-center gap-1.5"><Receipt size={15} /> Generate Statements</h3>
         <div>
-          <label className="block text-xs font-semibold text-gray-700 mb-1">Tax Year</label>
+          <label className="block text-xs font-semibold text-[color:var(--text-body)] mb-1">Tax Year</label>
           <select value={year} onChange={e => setYear(Number(e.target.value))}
-            className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:border-gold">
+            className="w-full px-3 py-2 border border-stone-200 rounded-xl text-sm bg-white focus:outline-none focus:border-gold">
             {years.map(y => <option key={y} value={y}>{y}</option>)}
           </select>
         </div>
         <div className="flex items-center justify-between">
-          <span className="text-sm text-gray-700">Single donor only</span>
+          <span className="text-sm text-[color:var(--text-body)]">Single donor only</span>
           <label className="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" className="sr-only peer" checked={singleDonor} onChange={e => setSingleDonor(e.target.checked)} />
-            <div className="w-10 h-6 bg-gray-200 peer-checked:bg-gold rounded-full peer transition-colors after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-4" />
+            <div className="w-10 h-6 bg-stone-200 peer-checked:bg-gold rounded-full peer transition-colors after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-4" />
           </label>
         </div>
         {singleDonor && (
           <input value={donorEmail} onChange={e => setDonorEmail(e.target.value)} placeholder="donor@email.com" type="email"
-            className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-gold" />
+            className="w-full px-3 py-2 border border-stone-200 rounded-xl text-sm focus:outline-none focus:border-gold" />
         )}
         <button onClick={generate} disabled={generating || (singleDonor && !donorEmail.trim())}
           className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-white text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: GOLD }}>
@@ -209,30 +209,30 @@ const AdminGivingStatements: React.FC = () => {
 
       {/* Section C — History */}
       <div className="flex items-center justify-between mb-3">
-        <h3 className="font-display text-sm font-bold text-gray-700">Statement History — {year}</h3>
-        <button onClick={loadStatuses} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50">
+        <h3 className="font-display text-sm font-bold text-[color:var(--text-body)]">Statement History — {year}</h3>
+        <button onClick={loadStatuses} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border border-stone-200 text-warm-brown hover:bg-stone-100">
           <RefreshCw size={13} className={loadingStatuses ? 'animate-spin' : ''} /> Refresh
         </button>
       </div>
 
       {statuses.length === 0 ? (
-        <div className="text-center py-12 text-gray-400">
+        <div className="text-center py-12 text-[color:var(--text-faint)]">
           <Receipt size={36} className="mx-auto mb-2 opacity-30" />
           <p className="text-sm">{loadingStatuses ? 'Loading…' : `No statements generated for ${year} yet.`}</p>
         </div>
       ) : (
-        <div className="bg-white rounded-2xl border border-gray-100 divide-y divide-gray-50">
+        <div className="bg-white rounded-2xl border border-stone-200 divide-y divide-gray-50">
           {statuses.map(s => (
             <div key={s.id} className="px-4 py-3 flex items-center gap-3">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <p className="text-sm font-semibold text-gray-900 truncate">{s.donorName || s.donorEmail}</p>
+                  <p className="text-sm font-semibold text-earth truncate">{s.donorName || s.donorEmail}</p>
                   {statusBadge(s.status)}
                 </div>
-                <p className="text-xs text-gray-400 truncate">{s.donorEmail} · {fmtMoney(s.totalAmount)}</p>
+                <p className="text-xs text-[color:var(--text-faint)] truncate">{s.donorEmail} · {fmtMoney(s.totalAmount)}</p>
               </div>
               {s.pdfPath && (
-                <button onClick={() => openStatementPdf(s.pdfPath)} className="flex items-center gap-1 text-xs font-semibold text-gray-600 hover:text-gray-900 shrink-0">
+                <button onClick={() => openStatementPdf(s.pdfPath)} className="flex items-center gap-1 text-xs font-semibold text-warm-brown hover:text-earth shrink-0">
                   <FileText size={13} /> PDF
                 </button>
               )}
