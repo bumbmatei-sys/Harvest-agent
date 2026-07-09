@@ -68,7 +68,7 @@ const EnterpriseContactModal: React.FC<EnterpriseContactModalProps> = ({ isOpen,
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm" onClick={handleClose} onKeyDown={handleKeyDown}>
-      <div className="bg-[#f8f9fa] w-full sm:w-[500px] max-h-[90vh] rounded-t-3xl sm:rounded-3xl overflow-y-auto flex flex-col relative animate-slide-up sm:animate-fade-in" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-cream w-full sm:w-[500px] max-h-[90vh] rounded-t-3xl sm:rounded-3xl overflow-y-auto flex flex-col relative animate-slide-up sm:animate-fade-in" onClick={(e) => e.stopPropagation()}>
         {/* Close */}
         <button
           onClick={handleClose}
@@ -83,7 +83,7 @@ const EnterpriseContactModal: React.FC<EnterpriseContactModalProps> = ({ isOpen,
             <Building2 size={28} className="text-gold" />
           </div>
           <h2 className="text-2xl font-bold text-white font-display">Organization Plan</h2>
-          <p className="text-gray-400 text-sm mt-1">Unlimited churches, custom pricing, dedicated support</p>
+          <p className="text-[color:var(--text-faint)] text-sm mt-1">Unlimited churches, custom pricing, dedicated support</p>
         </div>
 
         <div className="px-6 py-6">
@@ -92,8 +92,8 @@ const EnterpriseContactModal: React.FC<EnterpriseContactModalProps> = ({ isOpen,
               <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <CheckCircle size={32} className="text-green-600" />
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2 font-display">{"We'll be in touch!"}</h3>
-              <p className="text-gray-500 text-sm mb-6">
+              <h3 className="text-xl font-bold text-earth mb-2 font-display">{"We'll be in touch!"}</h3>
+              <p className="text-warm-brown text-sm mb-6">
                 Our team will review your request and reach out within 24 hours to discuss your Organization plan.
               </p>
               <button
@@ -106,7 +106,7 @@ const EnterpriseContactModal: React.FC<EnterpriseContactModalProps> = ({ isOpen,
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="text-sm font-medium text-gray-700 mb-1 block">Your Name *</label>
+                <label className="text-sm font-medium text-[color:var(--text-body)] mb-1 block">Your Name *</label>
                 <input
                   type="text"
                   value={name}
@@ -114,12 +114,12 @@ const EnterpriseContactModal: React.FC<EnterpriseContactModalProps> = ({ isOpen,
                   required
                   placeholder="Pastor John"
                   maxLength={100}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-gold text-gray-900"
+                  className="w-full px-4 py-3 rounded-xl border border-stone-200 bg-white text-sm focus:outline-none focus:border-gold text-earth"
                 />
               </div>
 
               <div>
-                <label className="text-sm font-medium text-gray-700 mb-1 block">Email *</label>
+                <label className="text-sm font-medium text-[color:var(--text-body)] mb-1 block">Email *</label>
                 <input
                   type="email"
                   value={email}
@@ -127,12 +127,12 @@ const EnterpriseContactModal: React.FC<EnterpriseContactModalProps> = ({ isOpen,
                   required
                   placeholder="john@church.org"
                   maxLength={200}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-gold text-gray-900"
+                  className="w-full px-4 py-3 rounded-xl border border-stone-200 bg-white text-sm focus:outline-none focus:border-gold text-earth"
                 />
               </div>
 
               <div>
-                <label className="text-sm font-medium text-gray-700 mb-1 block">Church / Organization Name *</label>
+                <label className="text-sm font-medium text-[color:var(--text-body)] mb-1 block">Church / Organization Name *</label>
                 <input
                   type="text"
                   value={churchName}
@@ -140,12 +140,12 @@ const EnterpriseContactModal: React.FC<EnterpriseContactModalProps> = ({ isOpen,
                   required
                   placeholder="Grace Community Church"
                   maxLength={200}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-gold text-gray-900"
+                  className="w-full px-4 py-3 rounded-xl border border-stone-200 bg-white text-sm focus:outline-none focus:border-gold text-earth"
                 />
               </div>
 
               <div>
-                <label className="text-sm font-medium text-gray-700 mb-1 block">Number of Churches</label>
+                <label className="text-sm font-medium text-[color:var(--text-body)] mb-1 block">Number of Churches</label>
                 <input
                   type="number"
                   value={churchCount}
@@ -153,19 +153,19 @@ const EnterpriseContactModal: React.FC<EnterpriseContactModalProps> = ({ isOpen,
                   min="1"
                   max="10000"
                   placeholder="e.g. 5"
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-gold text-gray-900"
+                  className="w-full px-4 py-3 rounded-xl border border-stone-200 bg-white text-sm focus:outline-none focus:border-gold text-earth"
                 />
               </div>
 
               <div>
-                <label className="text-sm font-medium text-gray-700 mb-1 block">Message</label>
+                <label className="text-sm font-medium text-[color:var(--text-body)] mb-1 block">Message</label>
                 <textarea
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   rows={3}
                   placeholder="Tell us about your needs..."
                   maxLength={2000}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-gold text-gray-900 resize-none"
+                  className="w-full px-4 py-3 rounded-xl border border-stone-200 bg-white text-sm focus:outline-none focus:border-gold text-earth resize-none"
                 />
               </div>
 

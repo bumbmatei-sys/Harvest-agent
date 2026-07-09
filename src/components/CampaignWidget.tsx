@@ -144,9 +144,9 @@ const CampaignWidget: React.FC<CampaignWidgetProps> = ({ onDonate }) => {
 
   return (
     <>
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-4 lg:rounded-[var(--ds-radius-card)] lg:border-[color:var(--ds-border)] lg:shadow-[var(--ds-sh-sm)]">
+      <div className="bg-white rounded-2xl shadow-sm border border-stone-200 overflow-hidden mb-4 lg:rounded-[var(--ds-radius-card)] lg:border-[color:var(--ds-border)] lg:shadow-[var(--ds-sh-sm)]">
         {campaign.coverImage && (
-          <div className="relative h-40 bg-gray-100">
+          <div className="relative h-40 bg-stone-100">
             <Image src={campaign.coverImage} alt={campaign.title} fill sizes="(max-width: 768px) 100vw, 800px" className="object-cover" referrerPolicy="no-referrer" />
             {daysLeft !== null && (
               <div className="absolute top-3 right-3 flex items-center gap-1.5 bg-black/60 text-white text-xs font-semibold px-2.5 py-1 rounded-full backdrop-blur-sm">
@@ -163,14 +163,14 @@ const CampaignWidget: React.FC<CampaignWidgetProps> = ({ onDonate }) => {
               {daysLeft === 0 ? 'Last day!' : `${daysLeft} days left`}
             </div>
           )}
-          <h3 className="text-base font-bold text-gray-900 mb-1 leading-snug">{campaign.title}</h3>
-          <p className="text-sm text-gray-500 line-clamp-2 mb-3 leading-snug">{campaign.description}</p>
+          <h3 className="text-base font-bold text-earth mb-1 leading-snug">{campaign.title}</h3>
+          <p className="text-sm text-warm-brown line-clamp-2 mb-3 leading-snug">{campaign.description}</p>
           <div className="mb-3">
-            <div className="flex justify-between items-baseline mb-1.5 text-xs text-gray-500">
-              <span className="font-semibold text-gray-700">{fmt(campaign.raised)} raised</span>
+            <div className="flex justify-between items-baseline mb-1.5 text-xs text-warm-brown">
+              <span className="font-semibold text-[color:var(--text-body)]">{fmt(campaign.raised)} raised</span>
               <span>of {fmt(campaign.goal)}</span>
             </div>
-            <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
+            <div className="h-2.5 bg-stone-100 rounded-full overflow-hidden">
               <div className="h-full rounded-full transition-[width] duration-700" style={{ width: `${percentage}%`, backgroundColor: 'var(--brand-color, #e6b325)' }} />
             </div>
             <div className="text-right text-[11px] font-bold mt-1" style={{ color: 'var(--brand-color, #e6b325)' }}>{percentage}%</div>
@@ -190,16 +190,16 @@ const CampaignWidget: React.FC<CampaignWidgetProps> = ({ onDonate }) => {
       {showDetail && (
         <div className="fixed inset-0 z-[300] flex flex-col bg-white overflow-y-auto">
           {/* Header */}
-          <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 sticky top-0 bg-white z-10">
+          <div className="flex items-center gap-3 px-4 py-3 border-b border-stone-200 sticky top-0 bg-white z-10">
             <button onClick={() => setShowDetail(false)} className="p-1">
               <ChevronLeft size={24} color="var(--brand-color, #B8962E)" strokeWidth={2.5} />
             </button>
-            <h2 className="text-base font-bold text-gray-900 flex-1 truncate font-display">{campaign.title}</h2>
+            <h2 className="text-base font-bold text-earth flex-1 truncate font-display">{campaign.title}</h2>
           </div>
 
           {/* Cover Image */}
           {campaign.coverImage && (
-            <div className="relative h-52 bg-gray-100 flex-shrink-0">
+            <div className="relative h-52 bg-stone-100 flex-shrink-0">
               <Image src={campaign.coverImage} alt={campaign.title} fill sizes="100vw" className="object-cover" referrerPolicy="no-referrer" />
               {daysLeft !== null && (
                 <div className="absolute top-3 right-3 flex items-center gap-1.5 bg-black/60 text-white text-xs font-semibold px-2.5 py-1 rounded-full backdrop-blur-sm">
@@ -212,30 +212,30 @@ const CampaignWidget: React.FC<CampaignWidgetProps> = ({ onDonate }) => {
 
           <div className="p-4 space-y-5 pb-10">
             {/* Progress */}
-            <div className="bg-gray-50 rounded-2xl p-4">
+            <div className="bg-stone-100 rounded-2xl p-4">
               <div className="flex justify-between items-baseline mb-2 text-sm">
-                <span className="font-bold text-gray-900">{fmt(campaign.raised)} raised</span>
-                <span className="text-gray-500">of {fmt(campaign.goal)}</span>
+                <span className="font-bold text-earth">{fmt(campaign.raised)} raised</span>
+                <span className="text-warm-brown">of {fmt(campaign.goal)}</span>
               </div>
-              <div className="h-3 bg-gray-200 rounded-full overflow-hidden mb-1">
+              <div className="h-3 bg-stone-200 rounded-full overflow-hidden mb-1">
                 <div className="h-full rounded-full" style={{ width: `${percentage}%`, backgroundColor: 'var(--brand-color, #e6b325)' }} />
               </div>
               <div className="text-right text-xs font-bold" style={{ color: 'var(--brand-color, #e6b325)' }}>{percentage}%</div>
             </div>
 
             {/* Description */}
-            <p className="text-sm text-gray-600 leading-relaxed">{campaign.description}</p>
+            <p className="text-sm text-warm-brown leading-relaxed">{campaign.description}</p>
 
             {/* Amount Selection */}
             <div>
-              <p className="text-sm font-bold text-gray-900 mb-3">Select Amount</p>
+              <p className="text-sm font-bold text-earth mb-3">Select Amount</p>
               <div className="grid grid-cols-4 gap-2 mb-3">
                 {AMOUNT_PRESETS.map(amt => (
                   <button
                     key={amt}
                     onClick={() => { setSelectedAmount(amt); setCustomAmount(''); }}
                     className={`py-2.5 rounded-xl text-sm font-bold border-2 transition-all ${
-                      selectedAmount === amt ? 'text-white border-transparent' : 'text-gray-700 border-gray-200 bg-white'
+                      selectedAmount === amt ? 'text-white border-transparent' : 'text-[color:var(--text-body)] border-stone-200 bg-white'
                     }`}
                     style={selectedAmount === amt ? { backgroundColor: 'var(--brand-color, #e6b325)', borderColor: 'var(--brand-color, #e6b325)' } : {}}
                   >
@@ -249,25 +249,25 @@ const CampaignWidget: React.FC<CampaignWidgetProps> = ({ onDonate }) => {
                 value={customAmount}
                 onChange={e => { setCustomAmount(e.target.value); setSelectedAmount(null); }}
                 placeholder="Custom amount ($)"
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold"
+                className="w-full border border-stone-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold"
               />
             </div>
 
             {/* Donor Info */}
             <div className="space-y-3">
-              <p className="text-sm font-bold text-gray-900">Your Information</p>
+              <p className="text-sm font-bold text-earth">Your Information</p>
               <input
                 value={donorName}
                 onChange={e => setDonorName(e.target.value)}
                 placeholder="Your name"
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold"
+                className="w-full border border-stone-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold"
               />
               <input
                 type="email"
                 value={donorEmail}
                 onChange={e => setDonorEmail(e.target.value)}
                 placeholder="Your email *"
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold"
+                className="w-full border border-stone-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold"
               />
             </div>
 

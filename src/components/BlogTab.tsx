@@ -116,7 +116,7 @@ const BlogTab: React.FC<BlogTabProps> = ({ onOpenArticle, initialPost, onBack, i
 
  if (loading) {
  return (
- <div className="flex flex-col items-center justify-center h-64 text-gray-500 ">
+ <div className="flex flex-col items-center justify-center h-64 text-warm-brown ">
  <div className="w-8 h-8 border-4 border-gold border-t-transparent rounded-full animate-spin mb-4"></div>
  <p>Loading articles...</p>
  </div>
@@ -125,9 +125,9 @@ const BlogTab: React.FC<BlogTabProps> = ({ onOpenArticle, initialPost, onBack, i
 
  if (posts.length === 0) {
  return (
- <div className="flex flex-col items-center justify-center h-64 text-gray-500 px-4 text-center">
- <FileText size={48} className="text-gray-300 mb-4" />
- <p className="text-lg font-medium text-gray-900 mb-2 font-display">No articles yet</p>
+ <div className="flex flex-col items-center justify-center h-64 text-warm-brown px-4 text-center">
+ <FileText size={48} className="text-stone-300 mb-4" />
+ <p className="text-lg font-medium text-earth mb-2 font-display">No articles yet</p>
  <p className="text-sm">Check back later for new content.</p>
  </div>
  );
@@ -141,7 +141,7 @@ const BlogTab: React.FC<BlogTabProps> = ({ onOpenArticle, initialPost, onBack, i
  {errorMessage}
  </div>
  )}
- <div className="sticky top-0 z-10 bg-white/80 backdrop-blur-md border-b border-gray-100 px-4 py-3 flex items-center justify-between">
+ <div className="sticky top-0 z-10 bg-white/80 backdrop-blur-md border-b border-stone-200 px-4 py-3 flex items-center justify-between">
  <div className="flex items-center">
  <button 
  onClick={() => {
@@ -151,11 +151,11 @@ const BlogTab: React.FC<BlogTabProps> = ({ onOpenArticle, initialPost, onBack, i
  setSelectedPost(null);
  }
  }}
- className="p-2 -ml-2 mr-2 text-gray-500 hover:text-gray-900 :text-white transition-colors rounded-full hover:bg-gray-100 :bg-gray-800"
+ className="p-2 -ml-2 mr-2 text-warm-brown hover:text-earth :text-white transition-colors rounded-full hover:bg-stone-100 :bg-gray-800"
  >
  <ArrowLeft size={20} />
  </button>
- <span className="font-medium text-gray-900 truncate">Back to Blog</span>
+ <span className="font-medium text-earth truncate">Back to Blog</span>
  </div>
  </div>
  
@@ -176,16 +176,16 @@ const BlogTab: React.FC<BlogTabProps> = ({ onOpenArticle, initialPost, onBack, i
  
  <div className="max-w-3xl mx-auto px-4 py-6">
  <div className="flex items-center gap-2 mb-4">
- <span className="px-2 py-0.5 bg-gray-100 text-gray-700 text-xs font-medium rounded uppercase tracking-wider">
+ <span className="px-2 py-0.5 bg-stone-100 text-[color:var(--text-body)] text-xs font-medium rounded uppercase tracking-wider">
  {selectedPost.category}
  </span>
- <div className="flex items-center text-gray-500 text-xs gap-1">
+ <div className="flex items-center text-warm-brown text-xs gap-1">
  <Calendar size={12} />
  <span>{formatDate(selectedPost.publishedAt || selectedPost.createdAt)}</span>
  </div>
  </div>
  
- <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-6 leading-tight font-display">
+ <h1 className="text-2xl sm:text-3xl font-bold text-earth mb-6 leading-tight font-display">
  {selectedPost.title}
  </h1>
  
@@ -196,11 +196,11 @@ const BlogTab: React.FC<BlogTabProps> = ({ onOpenArticle, initialPost, onBack, i
  />
  
  {selectedPost.tags && selectedPost.tags.length > 0 && (
- <div className="pt-6 border-t border-gray-100 ">
- <h3 className="text-xs font-medium text-gray-900 mb-3 uppercase tracking-wider">Tags</h3>
+ <div className="pt-6 border-t border-stone-200 ">
+ <h3 className="text-xs font-medium text-earth mb-3 uppercase tracking-wider">Tags</h3>
  <div className="flex flex-wrap gap-1.5">
  {selectedPost.tags.map(tag => (
- <span key={tag} className="flex items-center gap-1 text-xs text-gray-600 bg-gray-50 px-2 py-1 rounded border border-gray-100 ">
+ <span key={tag} className="flex items-center gap-1 text-xs text-warm-brown bg-stone-100 px-2 py-1 rounded border border-stone-200 ">
  <Tag size={12} />
  {tag}
  </span>
@@ -211,8 +211,8 @@ const BlogTab: React.FC<BlogTabProps> = ({ onOpenArticle, initialPost, onBack, i
 
  {/* Continue Learning */}
  {posts.filter(p => p.category === selectedPost.category && p.id !== selectedPost.id).slice(0, 2).length > 0 && (
- <div className="mt-12 pt-8 border-t border-gray-100 ">
- <h3 className="text-lg font-bold text-gray-900 mb-4 font-display">Continue Learning</h3>
+ <div className="mt-12 pt-8 border-t border-stone-200 ">
+ <h3 className="text-lg font-bold text-earth mb-4 font-display">Continue Learning</h3>
  <div className="space-y-4">
  {posts.filter(p => p.category === selectedPost.category && p.id !== selectedPost.id).slice(0, 2).map(relatedPost => (
  <div 
@@ -225,10 +225,10 @@ const BlogTab: React.FC<BlogTabProps> = ({ onOpenArticle, initialPost, onBack, i
  }
  window.scrollTo(0, 0);
  }}
- className="flex gap-3 bg-white rounded-xl p-3 shadow-sm border border-gray-100 cursor-pointer hover:border-gold transition-colors"
+ className="flex gap-3 bg-white rounded-xl p-3 shadow-sm border border-stone-200 cursor-pointer hover:border-gold transition-colors"
  >
  {relatedPost.featuredImage && (
- <div className="w-20 h-20 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100 relative">
+ <div className="w-20 h-20 flex-shrink-0 rounded-lg overflow-hidden bg-stone-100 relative">
  <Image 
  src={relatedPost.featuredImage} 
  alt={relatedPost.title} 
@@ -240,8 +240,8 @@ const BlogTab: React.FC<BlogTabProps> = ({ onOpenArticle, initialPost, onBack, i
  </div>
  )}
  <div className="flex-1 min-w-0 flex flex-col justify-center">
- <h4 className="font-bold text-gray-900 text-sm line-clamp-2 mb-1">{relatedPost.title}</h4>
- <div className="flex items-center gap-2 text-xs text-gray-500">
+ <h4 className="font-bold text-earth text-sm line-clamp-2 mb-1">{relatedPost.title}</h4>
+ <div className="flex items-center gap-2 text-xs text-warm-brown">
  <span className="uppercase tracking-wider font-medium text-gold">{relatedPost.category}</span>
  <span>•</span>
  <span>{formatDate(relatedPost.publishedAt || relatedPost.createdAt)}</span>
@@ -268,14 +268,14 @@ const BlogTab: React.FC<BlogTabProps> = ({ onOpenArticle, initialPost, onBack, i
  {/* Search Bar */}
  <div className="relative">
  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
- <Search size={16} className="text-gray-400" />
+ <Search size={16} className="text-[color:var(--text-faint)]" />
  </div>
  <input
  type="text"
  value={searchQuery}
  onChange={(e) => setSearchQuery(e.target.value)}
  placeholder="Search articles by title, content, or tags..."
- className="w-full pl-9 pr-3 py-1.5 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-gold focus:border-transparent outline-none transition-all"
+ className="w-full pl-9 pr-3 py-1.5 bg-white border border-stone-200 rounded-lg text-sm text-earth focus:ring-2 focus:ring-gold focus:border-transparent outline-none transition-all"
  />
  </div>
 
@@ -289,7 +289,7 @@ const BlogTab: React.FC<BlogTabProps> = ({ onOpenArticle, initialPost, onBack, i
  className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
  selectedCategory === category
  ? 'bg-gold text-white'
- : 'bg-white text-gray-600 border border-gray-200 hover:border-gold :border-gold'
+ : 'bg-white text-warm-brown border border-stone-200 hover:border-gold :border-gold'
  }`}
  >
  {category}
@@ -310,10 +310,10 @@ const BlogTab: React.FC<BlogTabProps> = ({ onOpenArticle, initialPost, onBack, i
  setSelectedPost(post);
  }
  }}
- className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-row items-center gap-3 p-2.5 sm:p-3 transition-transform hover:scale-[1.02] duration-300 cursor-pointer"
+ className="bg-white rounded-xl shadow-sm border border-stone-200 overflow-hidden flex flex-row items-center gap-3 p-2.5 sm:p-3 transition-transform hover:scale-[1.02] duration-300 cursor-pointer"
  >
  {post.featuredImage ? (
- <div className="w-16 h-16 sm:w-20 sm:h-20 flex-shrink-0 overflow-hidden rounded-lg bg-gray-100 relative">
+ <div className="w-16 h-16 sm:w-20 sm:h-20 flex-shrink-0 overflow-hidden rounded-lg bg-stone-100 relative">
  <Image 
  src={post.featuredImage} 
  alt={post.title} 
@@ -325,18 +325,18 @@ const BlogTab: React.FC<BlogTabProps> = ({ onOpenArticle, initialPost, onBack, i
  />
  </div>
  ) : (
- <div className="w-16 h-16 sm:w-20 sm:h-20 flex-shrink-0 bg-gray-100 flex items-center justify-center rounded-lg">
- <FileText size={20} className="text-gray-300 " />
+ <div className="w-16 h-16 sm:w-20 sm:h-20 flex-shrink-0 bg-stone-100 flex items-center justify-center rounded-lg">
+ <FileText size={20} className="text-stone-300 " />
  </div>
  )}
  
  <div className="flex flex-col flex-1 min-w-0 py-1">
- <h3 className="text-base sm:text-lg font-bold text-gray-900 mb-1.5 line-clamp-2 leading-tight">
+ <h3 className="text-base sm:text-lg font-bold text-earth mb-1.5 line-clamp-2 leading-tight">
  {post.title}
  </h3>
  
- <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-gray-500 mb-2">
- <span className="px-2 py-0.5 bg-gray-100 text-gray-600 font-medium rounded uppercase tracking-wider">
+ <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-warm-brown mb-2">
+ <span className="px-2 py-0.5 bg-stone-100 text-warm-brown font-medium rounded uppercase tracking-wider">
  {post.category}
  </span>
  <div className="flex items-center gap-1">
@@ -348,13 +348,13 @@ const BlogTab: React.FC<BlogTabProps> = ({ onOpenArticle, initialPost, onBack, i
  {post.tags && post.tags.length > 0 && (
  <div className="flex flex-wrap gap-1.5 mt-auto">
  {post.tags.slice(0, 3).map(tag => (
- <span key={tag} className="flex items-center gap-1 text-[10px] sm:text-xs text-gray-500 bg-gray-50 px-1.5 py-0.5 rounded">
+ <span key={tag} className="flex items-center gap-1 text-[10px] sm:text-xs text-warm-brown bg-stone-100 px-1.5 py-0.5 rounded">
  <Tag size={10} />
  {tag}
  </span>
  ))}
  {post.tags.length > 3 && (
- <span className="text-[10px] sm:text-xs text-gray-400">+{post.tags.length - 3}</span>
+ <span className="text-[10px] sm:text-xs text-[color:var(--text-faint)]">+{post.tags.length - 3}</span>
  )}
  </div>
  )}

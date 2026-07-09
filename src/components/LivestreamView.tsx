@@ -181,24 +181,24 @@ const LivestreamView: React.FC<LivestreamViewProps> = ({ tenantId, onBack, onDon
           <div className="w-full max-w-lg bg-white rounded-t-2xl p-5" style={{ paddingBottom: 32 }} onClick={(e) => e.stopPropagation()}>
             {prayerDone ? (
               <div className="text-center py-6">
-                <p className="text-lg font-bold text-gray-900 font-display">🙏 Prayer received</p>
-                <p className="text-sm text-gray-500 mt-1">Our team will be praying for you.</p>
+                <p className="text-lg font-bold text-earth font-display">🙏 Prayer received</p>
+                <p className="text-sm text-warm-brown mt-1">Our team will be praying for you.</p>
               </div>
             ) : (
               <>
-                <h3 className="text-lg font-bold text-gray-900 mb-3 font-display">Submit Prayer Request</h3>
+                <h3 className="text-lg font-bold text-earth mb-3 font-display">Submit Prayer Request</h3>
                 <input
                   value={prayerName}
                   onChange={(e) => setPrayerName(e.target.value)}
                   placeholder="Your name"
-                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-gold"
+                  className="w-full px-4 py-2.5 border border-stone-200 rounded-xl text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-gold"
                 />
                 <textarea
                   value={prayerText}
                   onChange={(e) => setPrayerText(e.target.value)}
                   placeholder="How can we pray for you?"
                   rows={3}
-                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-gold"
+                  className="w-full px-4 py-2.5 border border-stone-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-gold"
                 />
                 <button
                   onClick={submitPrayer}

@@ -82,11 +82,15 @@ Map note: All plans show their own church location(s) on the map. The global mul
 - Community (max): 100% to ministry
 - Ministry (ultra): 100% to ministry
 
-## Design System
-- **Background**: White
-- **Font**: Nunito
-- **Accent**: Gold `#D4AF37`
-- **Dark**: Navy `#0b1121`
+## Design System — Harvest Brand & Design System v1.0
+Tokens live in `src/app/globals.css` (`:root`) and `tailwind.config.ts`.
+- **Type**: Fraunces (serif) for display/headings — `font-display`; hero/editorial at **300 (light)**, section/card titles at 600–700. Inter for all UI/body — `font-sans`.
+- **Grounds**: page = **cream `#FAF8F5`** (desktop `--ds-page-bg`); cards/sidebar/top-bar = **white**.
+- **Action gold**: Wheat Gold 500 `#C9963A` via **`--brand-color`** (tenant-overridable — every gold accent uses this var, never a hard hex). Reference scale = `wheat-{50..700}`.
+- **Text (warm neutrals)**: heading = earth `#2D2519` (`text-earth`), body `--text-body` `#4A4038`, secondary = warm brown `#8B7355` (`text-warm-brown`), faint/eyebrow `--text-faint` `#A89A87`.
+- **Borders/elevation**: stone `#E8E2D9` (`border-stone-200`, `--ds-border`); warm-tinted shadows `--ds-sh-{sm,md,lg}`.
+- **Palette also available**: `navy-{500..950}` (dark surfaces), `sky-*`, `field-*` (green), `stone-{100..300}`. Radii `rounded-brand{,-lg,-xl}` (12/16/24).
+- **Desktop shell** (`MainApp.tsx`): grouped sidebar (FEED/COMMUNITY/SUPPORT US) with taupe eyebrow labels + gold-tint active pill; "Harvest." wordmark carries the gold period (platform only — white-label tenants show their own name).
 - **Terminology**: "Ministries" NOT "churches" in user-facing copy
 - **"AI Assistant"** = admin-only Telegram bot tool
 - Plus/Pro plans have **NO custom branding**

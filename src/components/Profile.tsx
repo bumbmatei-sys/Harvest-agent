@@ -246,7 +246,7 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap 
  };
 
  return (
- <div className="flex flex-col min-h-full bg-[#f8f9fa] lg:bg-transparent transition-colors duration-300">
+ <div className="flex flex-col min-h-full bg-cream lg:bg-transparent transition-colors duration-300">
  {/* Top Background Section */}
  <div className="pt-12 pb-24 px-4 rounded-b-[40px] relative overflow-hidden bg-gray-800 lg:hidden">
  {/* Background Image & Overlay */}
@@ -295,16 +295,16 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap 
  <div className="hidden lg:block">
  <div className="bg-white rounded-3xl border p-6 text-center lg:sticky lg:top-4" style={{ borderColor: 'var(--ds-border)' }}>
  <label htmlFor="profile-pic-upload" className="cursor-pointer group block">
- <div className="w-24 h-24 rounded-full mx-auto mb-3 bg-gray-100 overflow-hidden flex items-center justify-center">
+ <div className="w-24 h-24 rounded-full mx-auto mb-3 bg-stone-100 overflow-hidden flex items-center justify-center">
  {profilePic ? (
  <img src={profilePic} alt={userName} className="w-full h-full object-cover" />
  ) : (
- <span className="text-3xl font-bold text-gray-400">{(userName || 'U').charAt(0).toUpperCase()}</span>
+ <span className="text-3xl font-bold text-[color:var(--text-faint)]">{(userName || 'U').charAt(0).toUpperCase()}</span>
  )}
  </div>
  <span className="text-[12px] font-semibold group-hover:underline" style={{ color: 'var(--brand-color, #C9963A)' }}>Change photo</span>
  </label>
- <h2 className="text-xl font-bold text-gray-900 font-display mt-3">{userName}</h2>
+ <h2 className="text-xl font-bold text-earth font-display mt-3">{userName}</h2>
  <div className="inline-flex items-center gap-1.5 mt-2 px-3 py-1 rounded-full text-[11px] font-bold" style={{ background: 'color-mix(in srgb, var(--brand-color, #C9963A) 12%, white)', color: 'var(--brand-color, #C9963A)' }}>
  <BadgeCheck size={13} /> Member since 2026
  </div>
@@ -316,8 +316,8 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap 
 
  {/* Account Settings */}
  <div>
- <h4 className="text-[10px] font-bold text-gray-400 tracking-wider uppercase mb-3 ml-2">Account Settings</h4>
- <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden transition-colors duration-300">
+ <h4 className="text-[10px] font-bold text-[color:var(--text-faint)] tracking-wider uppercase mb-3 ml-2">Account Settings</h4>
+ <div className="bg-white rounded-3xl shadow-sm border border-stone-200 overflow-hidden transition-colors duration-300">
  {isAdmin && (
  <>
  <SettingItem 
@@ -326,7 +326,7 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap 
  label="Admin Dashboard" 
  onClick={() => onNavigate('admin')}
  />
- <div className="h-px bg-gray-50 mx-4"></div>
+ <div className="h-px bg-stone-100 mx-4"></div>
  </>
  )}
  <SettingItem 
@@ -337,7 +337,7 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap 
  />
  {hasChurches && (
  <>
- <div className="h-px bg-gray-50 mx-4"></div>
+ <div className="h-px bg-stone-100 mx-4"></div>
  <SettingItem
  icon={<Church size={16} className="text-green-500" />}
  iconBg="bg-green-50"
@@ -352,7 +352,7 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap 
  />
  </>
  )}
- <div className="h-px bg-gray-50 mx-4"></div>
+ <div className="h-px bg-stone-100 mx-4"></div>
  <SettingItem
  icon={<HeartHandshake size={16} className="text-yellow-500" />}
  iconBg="bg-yellow-50" 
@@ -363,7 +363,7 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap 
  {/* My Events row */}
  {!isAdmin && tenantPlan && (
  <>
- <div className="h-px bg-gray-50 mx-4"></div>
+ <div className="h-px bg-stone-100 mx-4"></div>
  <SettingItem
  icon={<CalendarCheck size={16} className="text-orange-500" />}
  iconBg="bg-orange-50"
@@ -377,8 +377,8 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap 
 
  {/* Partnership */}
  <div>
- <h4 className="text-[10px] font-bold text-gray-400 tracking-wider uppercase mb-3 ml-2">Partnership</h4>
- <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden p-4">
+ <h4 className="text-[10px] font-bold text-[color:var(--text-faint)] tracking-wider uppercase mb-3 ml-2">Partnership</h4>
+ <div className="bg-white rounded-3xl shadow-sm border border-stone-200 overflow-hidden p-4">
  {donationSubscriptionId ? (
  <div>
  <div className="flex items-center gap-3 mb-3">
@@ -386,11 +386,11 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap 
  <HeartHandshake size={16} className="text-yellow-500" />
  </div>
  <div>
- <p className="text-sm font-bold text-gray-900">
+ <p className="text-sm font-bold text-earth">
  ${donationAmount ? (donationAmount / 100).toFixed(0) : '—'} / month
  </p>
  {donationChurchName && (
- <p className="text-xs text-gray-500">{donationChurchName}</p>
+ <p className="text-xs text-warm-brown">{donationChurchName}</p>
  )}
  </div>
  </div>
@@ -402,7 +402,7 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap 
  <div className="flex gap-2">
  <button
  onClick={() => setShowCancelConfirm(false)}
- className="flex-1 py-2 bg-white text-gray-700 rounded-xl font-medium text-sm border border-gray-200"
+ className="flex-1 py-2 bg-white text-[color:var(--text-body)] rounded-xl font-medium text-sm border border-stone-200"
  >
  Keep
  </button>
@@ -427,7 +427,7 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap 
  </div>
  ) : (
  <div className="text-center py-2">
- <p className="text-sm text-gray-500">You don&apos;t have an active partnership</p>
+ <p className="text-sm text-warm-brown">You don&apos;t have an active partnership</p>
  <button
  onClick={onGoToPartner}
  className="mt-2 text-sm font-bold text-gold"
@@ -441,22 +441,22 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap 
 
  {/* Support & Info */}
  <div>
- <h4 className="text-[10px] font-bold text-gray-400 tracking-wider uppercase mb-3 ml-2">Support & Info</h4>
- <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden transition-colors duration-300">
+ <h4 className="text-[10px] font-bold text-[color:var(--text-faint)] tracking-wider uppercase mb-3 ml-2">Support & Info</h4>
+ <div className="bg-white rounded-3xl shadow-sm border border-stone-200 overflow-hidden transition-colors duration-300">
  <SettingItem 
  icon={<HelpCircle size={16} className="text-yellow-500" />} 
  iconBg="bg-yellow-50" 
  label="Contact Us"
  onClick={() => setIsContactOpen(true)}
  />
- <div className="h-px bg-gray-50 mx-4"></div>
+ <div className="h-px bg-stone-100 mx-4"></div>
  <SettingItem
  icon={<FileQuestion size={16} className="text-green-500" />}
  iconBg="bg-green-50" 
  label="FAQ" 
  onClick={() => setIsFAQOpen(true)}
  />
- <div className="h-px bg-gray-50 mx-4"></div>
+ <div className="h-px bg-stone-100 mx-4"></div>
  <SettingItem 
  icon={<ShieldCheck size={16} className="text-teal-500" />} 
  iconBg="bg-teal-50" 
@@ -507,11 +507,11 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap 
  <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
  <div className="bg-white rounded-2xl w-full max-w-sm overflow-hidden shadow-xl animate-fadeUp">
  <div className="p-6 text-center">
- <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
- <Church size={32} className="text-gray-400" />
+ <div className="w-16 h-16 bg-stone-100 rounded-full flex items-center justify-center mx-auto mb-4">
+ <Church size={32} className="text-[color:var(--text-faint)]" />
  </div>
- <h3 className="text-xl font-bold text-gray-900 mb-2 font-display">No Home Church</h3>
- <p className="text-gray-500 mb-6 text-sm">
+ <h3 className="text-xl font-bold text-earth mb-2 font-display">No Home Church</h3>
+ <p className="text-warm-brown mb-6 text-sm">
  You have no churches selected. Add a church to stay connected with your local community.
  </p>
  <div className="flex flex-col gap-3">
@@ -526,7 +526,7 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap 
  </button>
  <button
  onClick={() => setIsNoHomeChurchModalOpen(false)}
- className="w-full py-3 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-colors"
+ className="w-full py-3 bg-stone-100 text-[color:var(--text-body)] font-bold rounded-xl hover:bg-stone-200 transition-colors"
  >
  Cancel
  </button>
@@ -546,12 +546,12 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap 
 };
 
 const SettingItem = ({ icon, iconBg, label, onClick, badge }: { icon: React.ReactNode, iconBg: string, label: string, onClick?: () => void, badge?: number }) => (
- <button onClick={onClick} className="w-full flex items-center justify-between p-3.5 hover:bg-gray-50 transition-colors">
+ <button onClick={onClick} className="w-full flex items-center justify-between p-3.5 hover:bg-stone-100 transition-colors">
  <div className="flex items-center gap-3">
  <div className={`w-7 h-7 rounded-full flex items-center justify-center ${iconBg}`}>
  {icon}
  </div>
- <span className="text-[13px] font-medium text-gray-700">{label}</span>
+ <span className="text-[13px] font-medium text-[color:var(--text-body)]">{label}</span>
  </div>
  <div className="flex items-center gap-2">
  {badge !== undefined && badge > 0 && (
@@ -559,7 +559,7 @@ const SettingItem = ({ icon, iconBg, label, onClick, badge }: { icon: React.Reac
  {badge > 99 ? '99+' : badge}
  </span>
  )}
- <ChevronRight size={16} className="text-gray-400" />
+ <ChevronRight size={16} className="text-[color:var(--text-faint)]" />
  </div>
  </button>
 );
