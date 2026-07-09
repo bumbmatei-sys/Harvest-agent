@@ -143,9 +143,13 @@ const AdminLivestream: React.FC = () => {
     if (!tenantId || !current?.sessionId) return;
     if (!confirm('End the stream? The live banner will disappear for all viewers.')) return;
     try {
+      // Stamp the session's endedAt FIRST, then flip the stream inactive.
+      // The Past Streams list refetches when `current.active` changes, so the
+      // ended session must already carry endedAt or it gets filtered out and
+      // never reappears (it only shows once it has an endedAt).
+      await updateDoc(doc(db, 'tenants', tenantId, 'livestreamSessions', current.sessionId), { endedAt: serverTimestamp() });
       // Clear any shared sermon note so it doesn't linger past the stream.
       await updateDoc(doc(db, 'tenants', tenantId, 'livestream', 'current'), { active: false, sermonNote: null });
-      await updateDoc(doc(db, 'tenants', tenantId, 'livestreamSessions', current.sessionId), { endedAt: serverTimestamp() });
     } catch (e) {
       console.error('Failed to end stream:', e);
     }
