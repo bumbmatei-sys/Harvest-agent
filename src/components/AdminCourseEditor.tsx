@@ -711,14 +711,20 @@ export default function CourseBuilder({ course: initialCourse, onClose }: Course
  />
  )}
 
- {/* Top bar */}
- <div style={s.topBar}>
- <div style={s.row}>
+ {/* Top bar: back + title on one line (left) · status + actions (right) */}
+ <div style={{ ...s.topBar, alignItems: "center", padding: "10px 20px", gap: 12 }}>
+ <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
  <button style={s.backBtn} onClick={onClose}>
  <ArrowLeft size={20} color={TEXT} />
  </button>
+ <div style={{ minWidth: 0 }}>
+ <h1 style={s.pageTitle}>{course.title || "New Course"}</h1>
+ <p style={{ fontSize: 12, color: TEXT2, marginTop: 1 }}>
+ {course.levels.length} level{course.levels.length !== 1 ? "s" : ""} · {totalSections} section{totalSections !== 1 ? "s" : ""} · {totalLessons} lesson{totalLessons !== 1 ? "s" : ""}
+ </p>
  </div>
- <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+ </div>
+ <div style={{ display: "flex", gap: 10, alignItems: "center", flexShrink: 0 }}>
  <div style={{ fontSize: 11, padding: "4px 10px", borderRadius: 99, fontWeight: 600, background: course.status === "published" ? GREEN_BG : GOLD_LIGHT, color: course.status === "published" ? GREEN : GOLD }}>
  {course.status === "published" ? "● Published" : "○ Draft"}
  </div>
@@ -727,21 +733,6 @@ export default function CourseBuilder({ course: initialCourse, onClose }: Course
  {saved ? "✓ Saved!" : saving ? "Saving..." : "Publish"}
  </button>
  </div>
- </div>
-
- {/* Page title */}
- <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: "20px 20px 0" }}>
- <div>
- <h1 style={s.pageTitle}>{course.title || "New Course"}</h1>
- <p style={{ fontSize: 13, color: TEXT2, marginTop: 4 }}>
- {course.levels.length} level{course.levels.length !== 1 ? "s" : ""} · {totalSections} section{totalSections !== 1 ? "s" : ""} · {totalLessons} lesson{totalLessons !== 1 ? "s" : ""}
- </p>
- </div>
- {course.thumbnail && (
- <div style={{ position: 'relative', width: 58, height: 58, borderRadius: 10, overflow: 'hidden', border: `1.5px solid ${BORDER}` }}>
- <Image src={course.thumbnail} alt="" fill sizes="58px" style={{ objectFit: 'cover' }} onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
- </div>
- )}
  </div>
 
  {/* Tabs */}
@@ -897,7 +888,7 @@ const s: Record<string, CSSProperties> = {
  row: { display: "flex", alignItems: "center" },
  draftBtn: { background: "transparent", border: `1.5px solid ${BORDER}`, color: TEXT2, padding: "7px 16px", borderRadius: 10, cursor: "pointer", fontSize: 13, fontFamily: "inherit", fontWeight: 600 },
  publishBtn: { background: GOLD_BTN, border: "none", color: "#fff", fontWeight: 700, padding: "7px 20px", borderRadius: 10, cursor: "pointer", fontSize: 13, fontFamily: "inherit", boxShadow: "0 2px 8px rgba(201,150,58,0.35)" },
- pageTitle: { fontFamily: "var(--font-display), Georgia, serif", fontSize: 30, fontWeight: 300, color: TEXT, letterSpacing: "-0.02em" },
+ pageTitle: { fontFamily: "var(--font-display), Georgia, serif", fontSize: 23, fontWeight: 400, color: TEXT, letterSpacing: "-0.01em", lineHeight: 1.15 },
  tabBar: { display: "flex", padding: "16px 20px 0", borderBottom: `1px solid ${BORDER}` },
  tab: { background: "none", border: "none", color: TEXT2, cursor: "pointer", padding: "10px 16px 12px", fontSize: 14, fontWeight: 600, fontFamily: "inherit", borderBottom: "2.5px solid transparent" },
  tabActive: { color: GOLD, borderBottom: `2.5px solid ${GOLD}` },
