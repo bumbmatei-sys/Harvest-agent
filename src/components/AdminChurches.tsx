@@ -10,7 +10,7 @@ import { getTenantScope } from '../utils/tenant-scope';
 import { sendPushNotification } from '../utils/send-notification';
 import { getPlanFeatures } from '../utils/plan-features';
 import { useTenant } from '@/contexts/TenantContext';
-import { useAdminHeader, HeaderActionButton } from './AdminScreenHeader';
+import { AdminPageHeader, AdminPrimaryButton } from './admin/AdminUI';
 
 /** Every plan includes 1 church free (the tenant's own). */
 const INCLUDED_CHURCHES = 1;
@@ -18,7 +18,6 @@ const INCLUDED_CHURCHES = 1;
 
 const AdminChurches: React.FC = () => {
   const { tenantId, tenantPlan } = useTenant();
-  const { setHeaderAction } = useAdminHeader();
   const [churches, setChurches] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -164,20 +163,7 @@ const AdminChurches: React.FC = () => {
     setIsAdding(true);
   };
 
-  useEffect(() => {
-    setHeaderAction(
-      <HeaderActionButton
-        label="Add Church"
-        onClick={() => handleAddChurchClick()}
-        disabled={atLimit}
-        title={atLimit ? `Your plan includes ${INCLUDED_CHURCHES} church. Upgrade to Ministry to add more.` : undefined}
-      />
-    );
-    return () => setHeaderAction(null);
-    // Re-register when the values handleAddChurchClick closes over change,
-    // so the button never acts on a stale church count or plan.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [setHeaderAction, atLimit, isMinistry, loading, churches.length]);
+  // "Add church" renders in the in-content page header (per the mockup).
 
   const filteredChurches = churches.filter(church => {
     const matchesSearch = searchTerm === '' || 
@@ -221,12 +207,13 @@ const AdminChurches: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6 lg:max-w-5xl lg:mx-auto w-full">
-      {isMinistry && (
-        <p className="text-xs text-warm-brown">
-          {churches.length} church{churches.length !== 1 ? 'es' : ''} · ${Math.max(0, churches.length - INCLUDED_CHURCHES) * ENTERPRISE_PRICE_PER_CHURCH}/mo ({INCLUDED_CHURCHES} included free)
-        </p>
-      )}
+    <div className="w-full max-w-6xl mx-auto space-y-6">
+      <AdminPageHeader
+        eyebrow="Platform"
+        title="Churches"
+        subtitle={isMinistry ? `${churches.length} church${churches.length !== 1 ? 'es' : ''} · $${Math.max(0, churches.length - INCLUDED_CHURCHES) * ENTERPRISE_PRICE_PER_CHURCH}/mo (${INCLUDED_CHURCHES} included free)` : undefined}
+        action={<AdminPrimaryButton onClick={() => handleAddChurchClick()} disabled={atLimit} title={atLimit ? `Your plan includes ${INCLUDED_CHURCHES} church. Upgrade to Ministry to add more.` : undefined} icon={<span className="text-[15px] leading-none">+</span>}>Add church</AdminPrimaryButton>}
+      />
 
       {/* Billing Notice */}
       {billingNotice && (
@@ -271,35 +258,35 @@ const AdminChurches: React.FC = () => {
       )}
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-2 mb-4">
-        <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gold" size={14} strokeWidth={2.5} />
+      <div className="flex flex-wrap items-center gap-2.5">
+        <div className="relative flex-1 min-w-[240px]">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[color:var(--text-faint)]" size={18} />
           <input
             type="text"
-            placeholder="Search"
+            placeholder="Search churches…"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-8 pr-3 py-1.5 text-sm bg-white border border-gold rounded-full focus:outline-none text-earth font-medium placeholder:text-warm-brown w-32 focus:w-48 transition-all duration-300"
+            className="w-full pl-11 pr-4 py-3 bg-white border border-stone-200 rounded-brand-lg text-sm text-earth placeholder:text-[color:var(--text-faint)] focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent outline-none transition-all"
           />
         </div>
         
         <button
           onClick={() => openFilterPopup('city')}
-          className={`px-3 py-1.5 text-sm rounded-full border transition-colors ${cityFilter ? 'bg-gold text-white border-gold' : 'bg-white text-[color:var(--text-body)] border-gray-300 hover:border-gold'}`}
+          className={`px-3 py-1.5 text-sm rounded-full border transition-colors ${cityFilter ? 'bg-gold text-white border-gold' : 'bg-white text-[color:var(--text-body)] border-stone-200 hover:border-gold'}`}
         >
           {cityFilter ? `City: ${cityFilter}` : 'City'}
         </button>
 
         <button
           onClick={() => openFilterPopup('pastor')}
-          className={`px-3 py-1.5 text-sm rounded-full border transition-colors ${pastorFilter ? 'bg-gold text-white border-gold' : 'bg-white text-[color:var(--text-body)] border-gray-300 hover:border-gold'}`}
+          className={`px-3 py-1.5 text-sm rounded-full border transition-colors ${pastorFilter ? 'bg-gold text-white border-gold' : 'bg-white text-[color:var(--text-body)] border-stone-200 hover:border-gold'}`}
         >
           {pastorFilter ? `Pastor: ${pastorFilter}` : 'Pastor'}
         </button>
 
         <button
           onClick={() => openFilterPopup('country')}
-          className={`px-3 py-1.5 text-sm rounded-full border transition-colors ${countryFilter ? 'bg-gold text-white border-gold' : 'bg-white text-[color:var(--text-body)] border-gray-300 hover:border-gold'}`}
+          className={`px-3 py-1.5 text-sm rounded-full border transition-colors ${countryFilter ? 'bg-gold text-white border-gold' : 'bg-white text-[color:var(--text-body)] border-stone-200 hover:border-gold'}`}
         >
           {countryFilter ? `Country: ${countryFilter}` : 'Country'}
         </button>
@@ -310,11 +297,11 @@ const AdminChurches: React.FC = () => {
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-stone-100 border-b border-stone-200">
-                <th className="p-4 text-sm font-semibold text-warm-brown">Name</th>
-                <th className="p-4 text-sm font-semibold text-warm-brown">City</th>
-                <th className="p-4 text-sm font-semibold text-warm-brown">Pastor</th>
-                <th className="p-4 text-sm font-semibold text-warm-brown text-right">Actions</th>
+              <tr className="border-b border-stone-200">
+                <th className="px-4 py-3.5 text-[11px] font-semibold text-gold uppercase tracking-[0.12em]">Name</th>
+                <th className="px-4 py-3.5 text-[11px] font-semibold text-gold uppercase tracking-[0.12em]">City</th>
+                <th className="px-4 py-3.5 text-[11px] font-semibold text-gold uppercase tracking-[0.12em]">Pastor</th>
+                <th className="px-4 py-3.5 text-[11px] font-semibold text-gold uppercase tracking-[0.12em] text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -335,9 +322,9 @@ const AdminChurches: React.FC = () => {
                 </tr>
               ) : (
                 filteredChurches.map((church) => (
-                  <tr key={church.id} className="border-b border-gray-50 hover:bg-stone-100 transition-colors">
+                  <tr key={church.id} className="border-b border-stone-200 hover:bg-stone-100/60 transition-colors">
                     <td className="p-4">
-                      <div className="font-medium text-earth">{church.name}</div>
+                      <div className="font-semibold text-earth">{church.name}</div>
                       <div className="text-xs text-warm-brown">{church.denomination}</div>
                     </td>
                     <td className="p-4 text-[color:var(--text-body)]">
@@ -417,7 +404,7 @@ const AdminChurches: React.FC = () => {
               onKeyDown={(e) => {
                 if (e.key === 'Enter') applyFilter();
               }}
-              className="w-full px-4 py-2 rounded-lg border border-gray-300 bg-stone-100 text-earth focus:outline-none focus:border-gold mb-6"
+              className="w-full px-4 py-2 rounded-lg border border-stone-200 bg-stone-100 text-earth focus:outline-none focus:border-gold mb-6"
             />
             <div className="flex justify-end gap-3">
               <button
