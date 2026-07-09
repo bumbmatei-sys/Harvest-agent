@@ -151,7 +151,7 @@ export function LessonView({ course, lesson, authors, onBack, onComplete, comple
               <div className="text-sm font-bold">{author.name}</div>
               <div className="text-xs text-[color:var(--text-faint)]">{author.title || "Instructor"}</div>
             </div>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2"><path d="m9 18 6-6-6-6" /></svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A89A87" strokeWidth="2"><path d="m9 18 6-6-6-6" /></svg>
           </div>
         )}
 

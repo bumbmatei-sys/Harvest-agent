@@ -294,7 +294,7 @@ const PrayerWall: React.FC = () => {
  className={`flex items-center gap-1.5 text-xs font-semibold rounded-full px-3 py-1.5 transition-colors ${
  prayed ? 'bg-[color-mix(in_srgb,var(--brand-color)_15%,white)]' : 'bg-stone-100 hover:bg-stone-100'
  }`}
- style={prayed ? { color: 'var(--brand-color, #d4a017)' } : { color: '#6b7280' }}
+ style={prayed ? { color: 'var(--brand-color, #d4a017)' } : { color: '#8B7355' }}
  aria-pressed={prayed}
  >
  <span className="text-base leading-none">🙏</span>

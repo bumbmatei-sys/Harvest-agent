@@ -96,7 +96,7 @@ export function CourseOverview({ course, authors, onBack, onStartLesson, complet
               <div className="text-sm font-bold">{primaryAuthor.name}</div>
               <div className="text-xs text-[color:var(--text-faint)]">{primaryAuthor.title || "Instructor"}</div>
             </div>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round"><path d="m9 18 6-6-6-6" /></svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A89A87" strokeWidth="2" strokeLinecap="round"><path d="m9 18 6-6-6-6" /></svg>
           </div>
         )}
 
@@ -165,7 +165,7 @@ export function CourseOverview({ course, authors, onBack, onStartLesson, complet
                     <div className="flex items-center gap-2">
                       <span className="text-[13px] text-[color:var(--text-faint)] font-medium">{levelLessons.length} lessons</span>
                       <svg
-                        width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round"
+                        width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#A89A87" strokeWidth="2" strokeLinecap="round"
                         style={{ transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s" }}
                       >
                         <path d="m6 9 6 6 6-6" />

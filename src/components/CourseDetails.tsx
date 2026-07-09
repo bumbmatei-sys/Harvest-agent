@@ -13,7 +13,7 @@ interface CourseDetailsProps {
 
 const CourseDetails: React.FC<CourseDetailsProps> = ({ course, onBack }) => {
  return (
- <div className="fixed inset-0 z-50 bg-[#f8f9fa] overflow-y-auto flex flex-col animate-fade-in">
+ <div className="fixed inset-0 z-50 bg-cream overflow-y-auto flex flex-col animate-fade-in">
  {/* Header Image */}
  <div className="relative h-64 sm:h-80 w-full flex-shrink-0">
  <Image 
@@ -38,7 +38,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ course, onBack }) => {
  {course.category}
  </span>
  <h1 className="text-3xl sm:text-4xl font-bold mb-2 leading-tight font-display">{course.title}</h1>
- <div className="flex items-center gap-4 text-sm text-gray-300">
+ <div className="flex items-center gap-4 text-sm text-stone-300">
  <div className="flex items-center gap-1.5">
  <User size={16} />
  <span>{course.author}</span>
@@ -55,34 +55,34 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ course, onBack }) => {
  <div className="lg:col-span-2 space-y-8">
  {/* About this course */}
  <section>
- <h2 className="text-xl font-bold text-gray-900 mb-4 font-display">About this course</h2>
- <div className="prose max-w-none text-gray-600 ">
+ <h2 className="text-xl font-bold text-earth mb-4 font-display">About this course</h2>
+ <div className="prose max-w-none text-warm-brown ">
  <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(course.description) }} />
  </div>
  </section>
 
  {/* Curriculum Placeholder */}
  <section>
- <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2 font-display">
+ <h2 className="text-xl font-bold text-earth mb-4 flex items-center gap-2 font-display">
  <BookOpen size={20} className="text-gold" />
  Curriculum
  </h2>
- <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
- <div className="p-4 border-b border-gray-100 flex items-center justify-between">
+ <div className="bg-white rounded-2xl border border-stone-200 overflow-hidden">
+ <div className="p-4 border-b border-stone-200 flex items-center justify-between">
  <div>
- <h3 className="font-bold text-gray-900 ">Module 1: Introduction</h3>
- <p className="text-sm text-gray-500 ">Getting started with the basics</p>
+ <h3 className="font-bold text-earth ">Module 1: Introduction</h3>
+ <p className="text-sm text-warm-brown ">Getting started with the basics</p>
  </div>
  </div>
  <div className="divide-y divide-gray-50 ">
  {[1, 2, 3].map((lesson) => (
- <div key={lesson} className="p-4 flex items-center gap-4 hover:bg-gray-50 :bg-gray-800/50 transition-colors cursor-pointer group">
- <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 group-hover:bg-gold group-hover:text-white transition-colors">
+ <div key={lesson} className="p-4 flex items-center gap-4 hover:bg-stone-100 :bg-gray-800/50 transition-colors cursor-pointer group">
+ <div className="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center text-warm-brown group-hover:bg-gold group-hover:text-white transition-colors">
  <PlayCircle size={16} />
  </div>
  <div className="flex-1">
- <h4 className="text-sm font-medium text-gray-900 ">Lesson {lesson}: Foundation</h4>
- <p className="text-xs text-gray-500 ">10:00 mins</p>
+ <h4 className="text-sm font-medium text-earth ">Lesson {lesson}: Foundation</h4>
+ <p className="text-xs text-warm-brown ">10:00 mins</p>
  </div>
  </div>
  ))}
@@ -93,18 +93,18 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ course, onBack }) => {
 
  {/* Sidebar */}
  <div className="lg:col-span-1">
- <div className="bg-white rounded-2xl p-6 border border-gray-100 sticky top-6">
- <h3 className="font-bold text-gray-900 mb-4 font-display">Course Features</h3>
+ <div className="bg-white rounded-2xl p-6 border border-stone-200 sticky top-6">
+ <h3 className="font-bold text-earth mb-4 font-display">Course Features</h3>
  <ul className="space-y-4">
- <li className="flex items-start gap-3 text-sm text-gray-600 ">
+ <li className="flex items-start gap-3 text-sm text-warm-brown ">
  <CheckCircle2 size={18} className="text-gold flex-shrink-0 mt-0.5" />
  <span>Self-paced learning</span>
  </li>
- <li className="flex items-start gap-3 text-sm text-gray-600 ">
+ <li className="flex items-start gap-3 text-sm text-warm-brown ">
  <CheckCircle2 size={18} className="text-gold flex-shrink-0 mt-0.5" />
  <span>Access on mobile and desktop</span>
  </li>
- <li className="flex items-start gap-3 text-sm text-gray-600 ">
+ <li className="flex items-start gap-3 text-sm text-warm-brown ">
  <CheckCircle2 size={18} className="text-gold flex-shrink-0 mt-0.5" />
  <span>Certificate of completion</span>
  </li>

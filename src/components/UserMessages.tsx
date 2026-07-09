@@ -73,7 +73,7 @@ const RoleBadge: React.FC<{ role?: string }> = ({ role }) => {
   return (
     <span
       className="text-[9px] font-bold px-1.5 py-0.5 rounded-full leading-none"
-      style={isAdmin ? { backgroundColor: 'color-mix(in srgb, var(--brand-color, #B8962E) 12%, white)', color: 'var(--brand-color, #B8962E)' } : { backgroundColor: '#f3f4f6', color: '#6b7280' }}
+      style={isAdmin ? { backgroundColor: 'color-mix(in srgb, var(--brand-color, #B8962E) 12%, white)', color: 'var(--brand-color, #B8962E)' } : { backgroundColor: '#F3EEE7', color: '#8B7355' }}
     >
       {isAdmin ? 'Admin' : 'User'}
     </span>
@@ -379,7 +379,7 @@ const DmThread: React.FC<{
                   <div key={m.id} className="flex gap-2.5 items-end">
                     {isFirst ? (
                       <div className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold text-white"
-                        style={{ backgroundColor: isAdminSender ? 'var(--brand-color, #B8962E)' : '#9ca3af' }}>
+                        style={{ backgroundColor: isAdminSender ? 'var(--brand-color, #B8962E)' : '#A89A87' }}>
                         {(group.senderName || 'A').charAt(0).toUpperCase()}
                       </div>
                     ) : (
@@ -537,7 +537,7 @@ const ChannelView: React.FC<{
           return (
             <div key={group.messages[0].id} className="flex gap-3">
               <div className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold text-white"
-                style={{ backgroundColor: isAdmin ? 'var(--brand-color, #B8962E)' : '#6b7280' }}>
+                style={{ backgroundColor: isAdmin ? 'var(--brand-color, #B8962E)' : '#8B7355' }}>
                 {(group.senderName || 'A').charAt(0).toUpperCase()}
               </div>
               <div className="flex-1 min-w-0">

@@ -39,13 +39,13 @@ const AboutUsModal: React.FC<AboutUsModalProps> = ({ isOpen, onClose, onOpenPart
  if (!isOpen) return null;
 
  return (
- <div className="fixed inset-0 z-50 flex flex-col bg-[#f8f9fa] animate-in slide-in-from-bottom-full duration-300 overflow-hidden">
+ <div className="fixed inset-0 z-50 flex flex-col bg-cream animate-in slide-in-from-bottom-full duration-300 overflow-hidden">
  {/* Header */}
- <div className="flex items-center px-4 py-4 bg-white border-b border-gray-100 sticky top-0 z-10">
- <button onClick={onClose} className="p-2 -ml-2 text-gray-600 ">
+ <div className="flex items-center px-4 py-4 bg-white border-b border-stone-200 sticky top-0 z-10">
+ <button onClick={onClose} className="p-2 -ml-2 text-warm-brown ">
  <ArrowLeft size={24} />
  </button>
- <h2 className="text-lg font-bold text-gray-900 flex-1 text-center pr-8 font-display">About Us</h2>
+ <h2 className="text-lg font-bold text-earth flex-1 text-center pr-8 font-display">About Us</h2>
  </div>
 
  <div className="flex-1 overflow-y-auto p-4 space-y-8 pb-12">
@@ -55,17 +55,17 @@ const AboutUsModal: React.FC<AboutUsModalProps> = ({ isOpen, onClose, onOpenPart
  <div className="w-10 h-10 rounded-full bg-[color-mix(in_srgb,var(--brand-color)_12%,white)] flex items-center justify-center">
  <Eye size={20} className="text-gold" />
  </div>
- <h3 className="text-xl font-bold text-gray-900 font-display">The Vision</h3>
+ <h3 className="text-xl font-bold text-earth font-display">The Vision</h3>
  </div>
  
- <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 ">
- <h4 className="text-lg font-bold text-gray-900 mb-4 font-display">
+ <div className="bg-white rounded-3xl p-6 shadow-sm border border-stone-200 ">
+ <h4 className="text-lg font-bold text-earth mb-4 font-display">
  The Digital Foundation for the Great Commission
  </h4>
  
- <div className="space-y-4 text-sm text-gray-600 leading-relaxed">
+ <div className="space-y-4 text-sm text-warm-brown leading-relaxed">
  <p>
- Every week, hundreds of thousands of people across the globe raise their hands to accept Jesus as their Savior. This unprecedented momentum is a glorious sign of our times. However, our hearts are focused on a vital question: <strong className="text-gray-900 ">&quot;What is the retention percentage?&quot;</strong>
+ Every week, hundreds of thousands of people across the globe raise their hands to accept Jesus as their Savior. This unprecedented momentum is a glorious sign of our times. However, our hearts are focused on a vital question: <strong className="text-earth ">&quot;What is the retention percentage?&quot;</strong>
  </p>
  <p>
  How many of these precious souls remain in Christ? How many grow to full maturity and go on to fulfill the Great Commandment?
@@ -74,7 +74,7 @@ const AboutUsModal: React.FC<AboutUsModalProps> = ({ isOpen, onClose, onOpenPart
  We believe that effective discipling is the fastest way to multiply the Church. To sustain this move of God, we must steward the soul as passionately as we seek it. The Harvest App was born from a burden to close the &quot;back door&quot; of the church and provide a digital bridge from the moment of conversion to a lifetime of community.
  </p>
  
- <div className="pl-4 border-l-4 border-[color-mix(in_srgb,var(--brand-color)_20%,white)] italic text-gray-700 mt-6">
+ <div className="pl-4 border-l-4 border-[color-mix(in_srgb,var(--brand-color)_20%,white)] italic text-[color:var(--text-body)] mt-6">
  Our mission is to provide the infrastructure for a Billion Soul Harvest and beyond. We are building a journey that takes the believer from a child in Christ to a mature disciple, ready to serve and lead. Through structured curriculum, theologically sound AI guidance, and direct connection to local church bodies, we are ensuring that no one has to walk their new life alone.
  </div>
  </div>
@@ -87,26 +87,26 @@ const AboutUsModal: React.FC<AboutUsModalProps> = ({ isOpen, onClose, onOpenPart
  <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center">
  <Users size={20} className="text-blue-600 " />
  </div>
- <h3 className="text-xl font-bold text-gray-900 font-display">About Us</h3>
+ <h3 className="text-xl font-bold text-earth font-display">About Us</h3>
  </div>
  
- <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 ">
- <p className="text-sm text-gray-600 leading-relaxed mb-6">
+ <div className="bg-white rounded-3xl p-6 shadow-sm border border-stone-200 ">
+ <p className="text-sm text-warm-brown leading-relaxed mb-6">
  The team behind Harvest is a collection of passionate believers, creators, and engineers dedicated to bridging the gap between technology and faith.
  </p>
  
- <div className="bg-[#f8f9fa] rounded-2xl p-4 flex items-center gap-4">
- <div className="w-14 h-14 rounded-full overflow-hidden bg-gray-200 flex-shrink-0 relative">
+ <div className="bg-cream rounded-2xl p-4 flex items-center gap-4">
+ <div className="w-14 h-14 rounded-full overflow-hidden bg-stone-200 flex-shrink-0 relative">
  {mateiPic ? (
  <Image src={mateiPic} alt="Matei Bumb" fill className="object-cover" sizes="56px" />
  ) : (
- <div className="w-full h-full flex items-center justify-center text-gray-400 font-bold text-xl">
+ <div className="w-full h-full flex items-center justify-center text-[color:var(--text-faint)] font-bold text-xl">
  MB
  </div>
  )}
  </div>
  <div>
- <h5 className="font-bold text-gray-900 ">Matei Bumb</h5>
+ <h5 className="font-bold text-earth ">Matei Bumb</h5>
  <p className="text-[10px] font-bold text-gold tracking-wider uppercase mt-0.5">President of Harvest</p>
  </div>
  </div>
@@ -116,7 +116,7 @@ const AboutUsModal: React.FC<AboutUsModalProps> = ({ isOpen, onClose, onOpenPart
  {/* Partner with Us */}
  <div className="bg-[#1e2330] rounded-3xl p-6 text-center shadow-sm">
  <h3 className="text-xl font-bold text-white mb-3 font-display">Partner with Us</h3>
- <p className="text-sm text-gray-300 mb-6 leading-relaxed">
+ <p className="text-sm text-stone-300 mb-6 leading-relaxed">
  Join our mission to keep spiritual growth tools accessible to everyone, everywhere. Your partnership makes this possible.
  </p>
  <button 

@@ -341,7 +341,7 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack }) => {
   });
 
   return (
-    <div className="flex flex-col h-screen bg-[#f8f9fa] ">
+    <div className="flex flex-col h-screen bg-cream ">
       <div className="sticky top-0 z-20 bg-white/80 backdrop-blur-md border-b border-stone-200 px-4 py-3 flex items-center gap-3 lg:max-w-2xl lg:mx-auto w-full">
         <button 
           onClick={onBack}

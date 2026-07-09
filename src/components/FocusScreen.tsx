@@ -41,8 +41,8 @@ const FocusScreen: React.FC<FocusScreenProps> = ({ onBack, onSidebarToggle, head
 
   return (
     <FocusScreenBackContext.Provider value={contextValue}>
-      <div className="fixed inset-0 z-[200] bg-[#f8f9fa] flex flex-col">
-        <div className="flex items-center gap-2 px-3 py-3 flex-shrink-0 bg-white border-b border-gray-100">
+      <div className="fixed inset-0 z-[200] bg-cream flex flex-col">
+        <div className="flex items-center gap-2 px-3 py-3 flex-shrink-0 bg-white border-b border-stone-200">
           <button
             onClick={handleBack}
             aria-label="Go back"

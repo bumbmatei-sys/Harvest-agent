@@ -477,11 +477,11 @@ Friendly neighbor, not a corporate chatbot. Short. Helpful. Human.`;
  <div style={{ fontFamily: "var(--font-sans), system-ui, sans-serif", background: BG, height: "100%", width: "100%", display: "flex", position: "relative", overflow: "hidden" }}>
  <style>{`
  :root {
- --chat-bg: #F2F4F7;
+ --chat-bg: #FAF8F5;
  --chat-card: #FFFFFF;
- --chat-text: #111111;
- --chat-text2: #6B7280;
- --chat-border: #E8E8E8;
+ --chat-text: #2D2519;
+ --chat-text2: #8B7355;
+ --chat-border: #E8E2D9;
  --chat-gold-light: color-mix(in srgb, var(--brand-color, #C9963A) 12%, white);
  --chat-gold-btn: linear-gradient(135deg, var(--brand-color, #C9963A), color-mix(in srgb, var(--brand-color, #C9963A) 82%, #ffffff));
  }

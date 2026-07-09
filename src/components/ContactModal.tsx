@@ -25,7 +25,7 @@ const USER_AREAS = [
 ];
 
 const InputLabel = ({ children }: { children: React.ReactNode }) => (
- <label className="text-[10px] font-bold text-gray-400 tracking-wider uppercase mb-2 block">
+ <label className="text-[10px] font-bold text-[color:var(--text-faint)] tracking-wider uppercase mb-2 block">
  {children}
  </label>
 );
@@ -38,7 +38,7 @@ const InputField = ({ placeholder, type = "text", name, value, onChange, require
  onChange={onChange}
  required={required}
  placeholder={placeholder}
- className="w-full bg-[#f8f9fa] rounded-xl px-4 py-3 text-sm text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_20%,transparent)] mb-4 placeholder-gray-400 border border-transparent "
+ className="w-full bg-stone-100 rounded-xl px-4 py-3 text-sm text-earth font-medium focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_20%,transparent)] mb-4 placeholder-gray-400 border border-transparent "
  />
 );
 
@@ -50,7 +50,7 @@ const TextAreaField = ({ placeholder, name, value, onChange, required }: any) =>
  onChange={onChange}
  required={required}
  rows={4}
- className="w-full bg-[#f8f9fa] rounded-xl px-4 py-3 text-sm text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_20%,transparent)] mb-4 placeholder-gray-400 resize-none border border-transparent "
+ className="w-full bg-stone-100 rounded-xl px-4 py-3 text-sm text-earth font-medium focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_20%,transparent)] mb-4 placeholder-gray-400 resize-none border border-transparent "
  />
 );
 
@@ -80,24 +80,24 @@ const AccordionItem = ({
  children
 }: any) => {
  return (
- <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-4 transition-all duration-300">
+ <div className="bg-white rounded-2xl shadow-sm border border-stone-200 overflow-hidden mb-4 transition-all duration-300">
  <button
  onClick={() => onToggle(id)}
- className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-50 :bg-gray-800/50 transition-colors"
+ className="w-full flex items-center justify-between p-4 text-left hover:bg-stone-100 :bg-gray-800/50 transition-colors"
  >
  <div className="flex items-center gap-4">
  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${iconBg}`}>
  {icon}
  </div>
  <div>
- <h4 className="text-sm font-bold text-gray-900 ">{title}</h4>
- <p className="text-xs text-gray-500 mt-0.5">{subtitle}</p>
+ <h4 className="text-sm font-bold text-earth ">{title}</h4>
+ <p className="text-xs text-warm-brown mt-0.5">{subtitle}</p>
  </div>
  </div>
  {isOpen ? (
- <ChevronUp size={20} className="text-gray-400" />
+ <ChevronUp size={20} className="text-[color:var(--text-faint)]" />
  ) : (
- <ChevronDown size={20} className="text-gray-400" />
+ <ChevronDown size={20} className="text-[color:var(--text-faint)]" />
  )}
  </button>
 
@@ -193,19 +193,19 @@ const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) => {
  );
 
  return (
- <div className="fixed inset-0 z-50 flex flex-col bg-[#f8f9fa] animate-in slide-in-from-bottom-full duration-300 overflow-hidden">
+ <div className="fixed inset-0 z-50 flex flex-col bg-cream animate-in slide-in-from-bottom-full duration-300 overflow-hidden">
  {/* Header */}
- <div className="flex items-center px-4 py-4 bg-white border-b border-gray-100 sticky top-0 z-10">
- <button onClick={onClose} className="p-2 -ml-2 text-gray-600 ">
+ <div className="flex items-center px-4 py-4 bg-white border-b border-stone-200 sticky top-0 z-10">
+ <button onClick={onClose} className="p-2 -ml-2 text-warm-brown ">
  <ArrowLeft size={24} />
  </button>
- <h2 className="text-lg font-bold text-gray-900 flex-1 text-center pr-8 font-display">Contact</h2>
+ <h2 className="text-lg font-bold text-earth flex-1 text-center pr-8 font-display">Contact</h2>
  </div>
 
  <div className="flex-1 overflow-y-auto p-4 pb-12">
  <div className="text-center mb-8 mt-4">
  <h2 className="text-2xl font-bold text-[#1a202c] mb-2 font-display">How can we help?</h2>
- <p className="text-gray-500 text-sm">We are here to serve you.</p>
+ <p className="text-warm-brown text-sm">We are here to serve you.</p>
  </div>
 
  {successMessage && (
@@ -294,7 +294,7 @@ const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) => {
  className={`flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold border transition-colors ${
  bugForm.role === opt.v
  ? 'bg-gold text-white border-gold'
- : 'bg-white text-gray-600 border-gray-200 hover:border-gold'
+ : 'bg-white text-warm-brown border-stone-200 hover:border-gold'
  }`}
  >
  {opt.l}
@@ -311,7 +311,7 @@ const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) => {
  value={bugForm.area}
  onChange={(e) => setBugForm({ ...bugForm, area: e.target.value, areaOther: e.target.value === 'Other' ? bugForm.areaOther : '' })}
  required
- className="w-full bg-[#f8f9fa] rounded-xl px-4 py-3 text-sm text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_20%,transparent)] mb-4 border border-transparent"
+ className="w-full bg-stone-100 rounded-xl px-4 py-3 text-sm text-earth font-medium focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_20%,transparent)] mb-4 border border-transparent"
  >
  <option value="" disabled>Select an area…</option>
  {(bugForm.role === 'admin' ? ADMIN_AREAS : USER_AREAS).map((a) => (

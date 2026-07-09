@@ -135,7 +135,7 @@ function BookPicker({ currentBook, currentChapter, onSelect, onClose }: { curren
       {!selectedBook && (
         <div className="px-4 py-2.5 border-b border-stone-200 flex-shrink-0">
           <div className="flex items-center gap-2 bg-stone-100 rounded-full border-[1.5px] border-stone-200 px-3.5 py-2">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2.5"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8B7355" strokeWidth="2.5"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search books..." className="flex-1 border-none bg-transparent text-sm outline-none text-earth" />
           </div>
         </div>
@@ -238,11 +238,11 @@ function VerseActionSheet({ verseAction, highlighted, onHighlight, onRemoveHighl
 
         <div className="grid grid-cols-2 gap-2.5 px-4 py-3.5 pb-8">
           <button onClick={() => { onCopy(verse.text, ref); onClose(); }} className="bg-stone-100 border-[1.5px] border-stone-200 rounded-xl py-3 cursor-pointer flex flex-col items-center gap-1.5 hover:border-amber-600 hover:bg-amber-50 transition-colors">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8B7355" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
             <span className="text-[11px] font-bold text-warm-brown">Copy</span>
           </button>
           <button onClick={() => { onShare(verse.text, ref); onClose(); }} className="bg-stone-100 border-[1.5px] border-stone-200 rounded-xl py-3 cursor-pointer flex flex-col items-center gap-1.5 hover:border-amber-600 hover:bg-amber-50 transition-colors">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" /><polyline points="16 6 12 2 8 6" /><line x1="12" y1="2" x2="12" y2="15" /></svg>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8B7355" strokeWidth="2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" /><polyline points="16 6 12 2 8 6" /><line x1="12" y1="2" x2="12" y2="15" /></svg>
             <span className="text-[11px] font-bold text-warm-brown">Share</span>
           </button>
         </div>
@@ -300,7 +300,7 @@ export default function BiblePage() {
   const goToChapter = (delta: number) => { const next = chapter + delta; if (next < 1 || next > book.chapters) return; setChapter(next); window.scrollTo(0, 0); };
 
   return (
-    <div className="bg-[#F2F4F7] h-screen w-full max-w-[480px] mx-auto flex flex-col overflow-hidden relative lg:max-w-none lg:mx-0 lg:h-full lg:flex-row">
+    <div className="bg-[#FAF8F5] h-screen w-full max-w-[480px] mx-auto flex flex-col overflow-hidden relative lg:max-w-none lg:mx-0 lg:h-full lg:flex-row">
       <style>{`@import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,400;0,600;1,400&display=swap');`}</style>
 
       {showPicker && <BookPicker currentBook={book} currentChapter={chapter} onSelect={(b, ch) => { setBook(b); setChapter(ch); }} onClose={() => setShowPicker(false)} />}
@@ -311,7 +311,7 @@ export default function BiblePage() {
       <aside className={`hidden lg:flex-col lg:w-[264px] lg:flex-shrink-0 lg:border-r lg:border-stone-200 lg:bg-white lg:min-h-0 ${bookNavCollapsed ? 'lg:hidden' : 'lg:flex'}`}>
         <div className="p-4 border-b border-stone-200 flex items-center gap-2">
           <div className="flex-1 flex items-center gap-2 bg-stone-100 rounded-lg border border-stone-200 px-3 py-2">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2.5"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#A89A87" strokeWidth="2.5"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
             <input value={deskSearch} onChange={(e) => setDeskSearch(e.target.value)} placeholder="Search books…" className="flex-1 border-none bg-transparent text-[13px] outline-none text-earth" />
           </div>
           <button onClick={() => setBookNavCollapsed(true)} title="Collapse books" className="w-8 h-8 rounded-lg flex items-center justify-center text-[color:var(--text-faint)] hover:bg-stone-100 shrink-0">
@@ -333,7 +333,7 @@ export default function BiblePage() {
                       <button onClick={() => setExpandedBook(isExpanded ? null : b.id)}
                         className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-left transition-colors ${active ? "" : "hover:bg-stone-100"}`}
                         style={active ? { background: GOLD_LIGHT } : undefined}>
-                        <span className="text-[13.5px]" style={active ? { color: GOLD, fontWeight: 600 } : { color: "#374151" }}>{b.name}</span>
+                        <span className="text-[13.5px]" style={active ? { color: GOLD, fontWeight: 600 } : { color: "#4A4038" }}>{b.name}</span>
                         <span className="text-[11px] text-[color:var(--text-faint)]">{b.chapters} ch</span>
                       </button>
                       {isExpanded && (
@@ -368,7 +368,7 @@ export default function BiblePage() {
           <div className="flex items-center gap-2">
           <button onClick={() => setShowPicker(true)} className="bg-transparent border-none cursor-pointer flex items-center gap-1 lg:hidden">
             <span className="font-extrabold text-[17px] text-earth font-display">{book.name} {chapter}</span>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2"><path d="m6 9 6 6 6-6" /></svg>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#A89A87" strokeWidth="2"><path d="m6 9 6 6 6-6" /></svg>
           </button>
           {/* Desktop: re-open the book sidebar after collapsing it */}
           {bookNavCollapsed && (
@@ -489,7 +489,7 @@ export default function BiblePage() {
         <div className="flex-1 overflow-y-auto flex flex-col">
           <div className="px-4 py-3 flex-shrink-0">
             <div className="flex items-center gap-2 bg-white rounded-full border-[1.5px] border-stone-200 px-4 py-3">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2.5"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#A89A87" strokeWidth="2.5"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
               <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder='Try "John 3:16" or "love"...' autoFocus className="flex-1 border-none bg-transparent text-sm outline-none text-earth" />
               {searchQuery && <button onClick={() => { setSearchQuery(""); setSearchResults([]); }} className="bg-transparent border-none text-[color:var(--text-faint)] cursor-pointer text-sm">✕</button>}
             </div>
