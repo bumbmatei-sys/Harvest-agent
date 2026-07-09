@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
+import { Upload, Search, Trash2, Sparkles, Database } from 'lucide-react';
 import { db, auth } from '../firebase';
 import { collection, addDoc, serverTimestamp, query, where, getDocs, getDoc, deleteDoc, onSnapshot, updateDoc, doc } from 'firebase/firestore';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
@@ -27,11 +28,13 @@ const RED_BG = "#FDECEA";
 
 const uid = () => Math.random().toString(36).slice(2, 9);
 
+// Debranded, muted warm badge palette — labels differentiate types (no emoji/bright colors)
+const STONE_100 = "#F3EEE7";
 const TYPE_META: Record<string, any> = {
- text: { label:"Text", icon:"📝", color:"#6366F1", bg:"#EEF2FF" },
- txt: { label:"TXT File", icon:"📄", color:"#0891B2", bg:"#ECFEFF" },
- pdf: { label:"PDF", icon:"📕", color:"#DC2626", bg:"#FEF2F2" },
- sheet: { label:"Spreadsheet", icon:"📊", color:"#16A34A", bg:"#F0FDF4" },
+ text: { label:"Text" },
+ txt: { label:"TXT" },
+ pdf: { label:"PDF" },
+ sheet: { label:"Sheet" },
 };
 
 // ── Chunk text into ~500 char pieces ──────────
@@ -104,8 +107,8 @@ function readFileAsText(file: File): Promise<string> {
 function TypeBadge({ type }: { type: string }) {
  const meta = TYPE_META[type] || TYPE_META.text;
  return (
- <span style={{ display:"inline-flex", alignItems:"center", gap:5, background:meta.bg, color:meta.color, border:`1px solid ${meta.color}22`, borderRadius:99, padding:"3px 10px", fontSize:12, fontWeight:700 }}>
- {meta.icon} {meta.label}
+ <span style={{ display:"inline-flex", alignItems:"center", background:STONE_100, color:TEXT2, border:`1px solid ${BORDER}`, borderRadius:99, padding:"3px 11px", fontSize:12, fontWeight:600, letterSpacing:"0.01em" }}>
+ {meta.label}
  </span>
  );
 }
@@ -117,8 +120,10 @@ function DeleteModal({ source, onConfirm, onClose }: { source: any, onConfirm: (
  return (
  <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.4)", zIndex:999, display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}>
  <div style={{ background:CARD, borderRadius:20, width:"100%", maxWidth:400, padding:28, boxShadow:"0 20px 60px rgba(0,0,0,0.2)" }}>
- <div style={{ fontSize:32, textAlign:"center", marginBottom:12 }}>🗑️</div>
- <div style={{ fontWeight:800, fontSize:18, textAlign:"center", marginBottom:8 }}>Delete Source?</div>
+ <div style={{ width:52, height:52, borderRadius:"50%", background:RED_BG, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 14px" }}>
+ <Trash2 size={22} color={RED} strokeWidth={1.75} />
+ </div>
+ <div style={{ fontFamily:"var(--font-display), Georgia, serif", fontWeight:400, fontSize:20, textAlign:"center", marginBottom:8, color:TEXT }}>Delete Source?</div>
  <div style={{ color:TEXT2, fontSize:14, textAlign:"center", marginBottom:24, lineHeight:1.6 }}>
  &quot;<strong>{source.title}</strong>&quot; and all its embedded chunks will be permanently removed from the AI knowledge base.
  </div>
@@ -362,11 +367,13 @@ export default function AdminRAG() {
  </div>
 
  {/* Tabs */}
+ <div style={{ maxWidth:1160, margin:"0 auto", width:"100%", padding:"0 20px" }}>
  <div style={s.tabBar}>
  <button style={{ ...s.tab, ...(tab==="add"?s.tabActive:{}) }} onClick={()=>setTab("add")}>+ Add Knowledge</button>
  <button style={{ ...s.tab, ...(tab==="sources"?s.tabActive:{}) }} onClick={()=>setTab("sources")}>
  Sources ({sources.length})
  </button>
+ </div>
  </div>
 
  <div style={s.content}>
@@ -375,40 +382,36 @@ export default function AdminRAG() {
  {tab === "add" && (
  <div style={s.panel}>
 
+ {/* Two columns: Paste Text · Upload Files */}
+ <div style={s.addGrid}>
+
  {/* Paste text */}
- <div style={s.card}>
+ <div style={{ ...s.card, display:"flex", flexDirection:"column" }}>
  <div style={s.sectionHeading}>Paste Text</div>
- <div style={s.cardBody}>
- <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
- <label style={s.label}>Source Title (optional)</label>
+ <div style={{ ...s.cardBody, flex:1 }}>
  <input style={s.input} value={pasteTitle} onChange={e=>setPasteTitle(e.target.value)}
- placeholder="e.g. Romans Commentary, Sermon Notes..." />
- </div>
- <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
- <label style={s.label}>Content</label>
+ placeholder="Source title (optional) — e.g. Romans Commentary" />
  <textarea
- style={{ ...s.textarea, minHeight:200, fontSize:14, lineHeight:1.7 }}
+ style={{ ...s.textarea, flex:1, minHeight:220, fontSize:14, lineHeight:1.7 }}
  value={pasteText}
  onChange={e=>setPasteText(e.target.value)}
- placeholder="Paste your text here — sermons, Bible commentary, theology articles, study notes, anything you want the AI to know..." />
- </div>
+ placeholder="Paste sermons, Bible commentary, theology articles, study notes — anything you want the AI to know..." />
  {pasteText.trim() && (
  <div style={{ fontSize:12, color:TEXT2 }}>
  ~{pasteText.trim().split(/\s+/).length} words · ~{chunkText(pasteText).length} chunks will be created
  </div>
  )}
- <button style={{ ...s.publishBtn, padding:"13px", fontSize:14, borderRadius:12 }}
+ <button style={{ ...s.publishBtn, padding:"13px", fontSize:14, borderRadius:12, display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}
  onClick={handlePasteSubmit} disabled={!pasteText.trim() || pasteLoading}>
- {pasteLoading ? "Processing…" : "Chunk & Embed"}
+ <Sparkles size={16} /> {pasteLoading ? "Processing…" : "Chunk & Embed"}
  </button>
  </div>
  </div>
 
  {/* File upload */}
- <div style={s.card}>
+ <div style={{ ...s.card, display:"flex", flexDirection:"column" }}>
  <div style={s.sectionHeading}>Upload Files</div>
- <div style={s.cardBody}>
- <p style={{ fontSize:13, color:TEXT2, marginTop:-6 }}>Supports TXT, PDF, CSV, and Excel files.</p>
+ <div style={{ ...s.cardBody, flex:1 }}>
 
  {/* Drop zone */}
  <div
@@ -417,36 +420,22 @@ export default function AdminRAG() {
  onDrop={handleDrop}
  onClick={()=>fileInputRef.current?.click()}
  style={{
+ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
  border:`2px dashed ${dragOver?GOLD:BORDER}`,
- borderRadius:16, padding:"40px 20px",
+ borderRadius:16, padding:"40px 20px", minHeight:260,
  textAlign:"center", cursor:"pointer",
- background:dragOver?GOLD_LIGHT:"#FAF8F5",
+ background:dragOver?GOLD_LIGHT:STONE_100,
  transition:"all 0.2s",
  }}>
- <div style={{ fontSize:40, marginBottom:10 }}>📂</div>
+ <Upload size={30} color={dragOver?GOLD:TEXT2} strokeWidth={1.5} style={{ marginBottom:14 }} />
  <div style={{ fontWeight:700, fontSize:15, color:TEXT, marginBottom:6 }}>
  Drop files here or click to browse
  </div>
- <div style={{ fontSize:12, color:TEXT2 }}>TXT · PDF · CSV · XLSX</div>
+ <div style={{ fontSize:12, color:TEXT2, letterSpacing:"0.02em" }}>TXT · PDF · CSV · XLSX</div>
  <input ref={fileInputRef} type="file" multiple
  accept=".txt,.pdf,.csv,.xlsx,.xls"
  style={{ display:"none" }} onChange={handleFileInput} />
  </div>
-
- {/* Quick upload buttons */}
- <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10 }}>
- {[
- { label:"📄 TXT File", accept:".txt" },
- { label:"📕 PDF", accept:".pdf" },
- { label:"📊 Spreadsheet", accept:".csv,.xlsx,.xls" },
- ].map(btn => (
- <button key={btn.accept} style={s.uploadTypeBtn} onClick={()=>{
- const inp = document.createElement("input");
- inp.type="file"; inp.accept=btn.accept; inp.multiple=true;
- inp.onchange=(e: any)=>handleFiles(Array.from(e.target.files));
- inp.click();
- }}>{btn.label}</button>
- ))}
  </div>
  </div>
  </div>
@@ -476,14 +465,14 @@ export default function AdminRAG() {
 
  {/* Search + filter */}
  <div style={{ display:"flex", gap:10 }}>
- <div style={{ flex:1, position:"relative" }}>
- <span style={{ position:"absolute", left:12, top:"50%", transform:"translateY(-50%)", color:TEXT2, fontSize:16 }}>🔍</span>
+ <div style={{ flex:1, position:"relative", display:"flex", alignItems:"center" }}>
+ <Search size={16} color={TEXT2} style={{ position:"absolute", left:13, top:"50%", transform:"translateY(-50%)" }} />
  <input style={{ ...s.input, paddingLeft:38 }} value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search sources..." />
  </div>
  <select style={{ ...s.select, width:160 }} value={filterType} onChange={e=>setFilterType(e.target.value)}>
- <option value="all">All Types</option>
+ <option value="all">All types</option>
  {Object.entries(TYPE_META).map(([k,v])=>(
- <option key={k} value={k}>{v.icon} {v.label}</option>
+ <option key={k} value={k}>{v.label}</option>
  ))}
  </select>
  </div>
@@ -492,16 +481,18 @@ export default function AdminRAG() {
  <div style={{ ...s.card, overflowX:"auto" }}>
  <div style={{ minWidth: 650 }}>
  {/* Header */}
- <div style={{ display:"grid", gridTemplateColumns:"1.5fr 100px 100px 100px 120px 80px", gap:10, padding:"11px 18px", borderBottom:`1px solid ${BORDER}`, background:"#FAF8F5" }}>
+ <div style={{ display:"grid", gridTemplateColumns:"1.5fr 100px 100px 100px 120px 80px", gap:10, padding:"12px 18px", borderBottom:`1px solid ${BORDER}`, background:STONE_100 }}>
  {["TITLE","TYPE","CHUNKS","DATE","STATUS",""].map((h,i)=>(
- <div key={i} style={{ fontSize:11, fontWeight:700, color:TEXT2, letterSpacing:"0.08em" }}>{h}</div>
+ <div key={i} style={{ fontSize:11, fontWeight:700, color:GOLD, letterSpacing:"0.1em" }}>{h}</div>
  ))}
  </div>
 
  {/* Rows */}
  {filtered.length === 0 && (
- <div style={{ padding:"48px 20px", textAlign:"center" }}>
- <div style={{ fontSize:36, marginBottom:10 }}>🧠</div>
+ <div style={{ padding:"56px 20px", textAlign:"center" }}>
+ <div style={{ width:52, height:52, borderRadius:"50%", background:GOLD_LIGHT, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 14px" }}>
+ <Database size={22} color={GOLD} strokeWidth={1.5} />
+ </div>
  <div style={{ fontWeight:700, color:TEXT, marginBottom:6 }}>
  {sources.length === 0 ? "No knowledge added yet" : "No sources match your search"}
  </div>
@@ -518,8 +509,8 @@ export default function AdminRAG() {
  onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
 
  {/* Title */}
- <div style={{ fontWeight:600, fontSize:14, color:TEXT }} title={source.title || "Untitled"}>
- {(source.title || "Untitled").length > 15 ? (source.title || "Untitled").substring(0, 15) + "..." : (source.title || "Untitled")}
+ <div style={{ fontWeight:600, fontSize:14, color:TEXT, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }} title={source.title || "Untitled"}>
+ {source.title || "Untitled"}
  </div>
 
  {/* Type */}
@@ -546,7 +537,7 @@ export default function AdminRAG() {
  {source.status === "processed" && (
  <div style={{ display:"flex", alignItems:"center", gap:6 }}>
  <div style={{ width:8, height:8, borderRadius:"50%", background:GREEN }} />
- <span style={{ fontSize:12, color:GREEN, fontWeight:600 }}>Embedded ✓</span>
+ <span style={{ fontSize:12, color:GREEN, fontWeight:600 }}>Embedded</span>
  </div>
  )}
  {source.status === "error" && (
@@ -561,8 +552,11 @@ export default function AdminRAG() {
  <div style={{ display:"flex", justifyContent:"flex-end" }}>
  <button
  onClick={()=>setDeleteTarget(source)}
- style={{ background:RED_BG, border:`1px solid ${RED}22`, color:RED, borderRadius:8, padding:"5px 11px", cursor:"pointer", fontSize:12, fontFamily:"inherit", fontWeight:600 }}>
- Delete
+ title="Delete source"
+ style={{ display:"flex", alignItems:"center", justifyContent:"center", width:32, height:32, background:"transparent", border:`1px solid ${BORDER}`, color:TEXT2, borderRadius:8, cursor:"pointer" }}
+ onMouseEnter={e=>{ e.currentTarget.style.background=RED_BG; e.currentTarget.style.borderColor=`${RED}44`; e.currentTarget.style.color=RED; }}
+ onMouseLeave={e=>{ e.currentTarget.style.background="transparent"; e.currentTarget.style.borderColor=BORDER; e.currentTarget.style.color=TEXT2; }}>
+ <Trash2 size={15} strokeWidth={1.75} />
  </button>
  </div>
  </div>
@@ -572,13 +566,13 @@ export default function AdminRAG() {
 
  {/* Summary footer */}
  {sources.length > 0 && (
- <div style={{ display:"flex", gap:12, flexWrap:"wrap" }}>
+ <div style={{ display:"flex", gap:10, flexWrap:"wrap" }}>
  {Object.entries(TYPE_META).map(([type, meta]) => {
  const count = sources.filter(s=>s.type===type).length;
  if (!count) return null;
  return (
- <div key={type} style={{ background:meta.bg, border:`1px solid ${meta.color}33`, borderRadius:99, padding:"5px 14px", fontSize:12, fontWeight:700, color:meta.color }}>
- {meta.icon} {count} {meta.label}{count!==1?"s":""}
+ <div key={type} style={{ background:STONE_100, border:`1px solid ${BORDER}`, borderRadius:99, padding:"5px 14px", fontSize:12, fontWeight:600, color:TEXT2 }}>
+ {count} {meta.label}{count!==1?"s":""}
  </div>
  );
  })}
@@ -600,11 +594,12 @@ const s: Record<string, React.CSSProperties> = {
  topBar: { display:"flex", justifyContent:"space-between", alignItems:"center", padding:"14px 20px", background:CARD, borderBottom:`1px solid ${BORDER}`, boxShadow:"0 1px 4px rgba(0,0,0,0.06)" },
  logoCircle: { width:36, height:36, borderRadius:"50%", background:GOLD_LIGHT, display:"flex", alignItems:"center", justifyContent:"center", fontSize:18, border:`1.5px solid ${GOLD}`, marginRight:10, flexShrink:0 },
  pageTitle: { fontSize:26, fontWeight:800, color:TEXT, letterSpacing:"-0.3px" },
- tabBar: { display:"flex", padding:"16px 20px 0", borderBottom:`1px solid ${BORDER}` },
- tab: { background:"none", border:"none", color:TEXT2, cursor:"pointer", padding:"10px 16px 12px", fontSize:14, fontWeight:600, fontFamily:"inherit", borderBottom:"2.5px solid transparent" },
+ tabBar: { display:"flex", paddingTop:16, borderBottom:`1px solid ${BORDER}` },
+ tab: { background:"none", border:"none", color:TEXT2, cursor:"pointer", padding:"10px 4px 12px", marginRight:24, fontSize:14, fontWeight:600, fontFamily:"inherit", borderBottom:"2.5px solid transparent" },
  tabActive: { color:GOLD, borderBottom:`2.5px solid ${GOLD}` },
- content: { padding:"20px", maxWidth:820, margin:"0 auto" },
+ content: { padding:"20px", maxWidth:1160, margin:"0 auto", width:"100%" },
  panel: { display:"flex", flexDirection:"column", gap:14 },
+ addGrid: { display:"grid", gridTemplateColumns:"1fr 1fr", gap:16, alignItems:"stretch" },
  card: { background:CARD, borderRadius:16, boxShadow:"0 1px 6px rgba(0,0,0,0.07)", overflow:"hidden" },
  cardBody: { padding:"16px", display:"flex", flexDirection:"column", gap:14 },
  sectionHeading: { padding:"14px 16px", fontSize:11, fontWeight:700, color:GOLD, letterSpacing:"0.14em", textTransform:"uppercase", borderBottom:`1px solid ${BORDER}` },
