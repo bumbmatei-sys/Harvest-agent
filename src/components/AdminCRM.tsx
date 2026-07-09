@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   Plus, Search, Edit2, Trash2, Users, Mail, Phone,
   MessageSquare, DollarSign, PhoneCall, Calendar, Clock, ChevronRight, MapPin,
-  List, LayoutGrid
+  List, LayoutGrid, Heart, Award
 } from 'lucide-react';
 import {
   collection, addDoc, deleteDoc, setDoc,
@@ -30,11 +30,11 @@ const TYPE_LABELS: Record<Contact['type'], string> = {
   both: 'Donor & Member',
 };
 
-// Soft pastel tag styles used on the list/detail badges (Atomic CRM style).
+// Warm brand tag styles used on the list/detail badges (gold / sky / field-green).
 const TYPE_COLORS: Record<Contact['type'], string> = {
-  donor: 'bg-amber-50 text-amber-600',
-  member: 'bg-blue-50 text-blue-600',
-  both: 'bg-purple-50 text-purple-600',
+  donor: 'bg-[color-mix(in_srgb,var(--brand-color)_14%,white)] text-[color-mix(in_srgb,var(--brand-color)_80%,black)]',
+  member: 'bg-sky-100 text-sky-700',
+  both: 'bg-[color-mix(in_srgb,#6E8E52_16%,white)] text-[#40562F]',
 };
 
 const ACTIVITY_ICONS: Record<ContactActivity['type'], React.ReactNode> = {
@@ -832,61 +832,70 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
   const totalGiven = contacts.reduce((s, c) => s + (c.totalDonated || 0), 0);
   const memberCount = contacts.filter(c => c.type === 'member' || c.type === 'both').length;
   const donorCount = contacts.filter(c => c.type === 'donor' || c.type === 'both').length;
+  const championCount = contacts.filter(c => (c.stage || 'new') === 'champion').length;
+
+  const stats: { label: string; value: React.ReactNode; icon: React.ReactNode }[] = [
+    { label: 'Members', value: memberCount, icon: <Users size={15} /> },
+    { label: 'Donors', value: donorCount, icon: <Heart size={15} /> },
+    { label: 'Total Given', value: fmt(totalGiven), icon: <DollarSign size={15} /> },
+    { label: 'Champions', value: championCount, icon: <Award size={15} /> },
+  ];
 
   return (
-    <div ref={scrollRef} className="max-w-3xl mx-auto">
+    <div ref={scrollRef} className="max-w-6xl mx-auto">
       {subTabBar}
 
-      {/* Summary header pill-row */}
-      <div className="flex items-center gap-2 text-sm font-semibold text-[color:var(--text-body)] mb-5 flex-wrap">
-        <span>👥 {memberCount} Members</span>
-        <span className="text-stone-300">·</span>
-        <span>💛 {donorCount} Donors</span>
-        <span className="text-stone-300">·</span>
-        <span>{fmt(totalGiven)} Total</span>
+      {/* Stat cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        {stats.map(s => (
+          <div key={s.label} className="bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] p-5">
+            <div className="flex items-start justify-between">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--text-faint)]">{s.label}</p>
+              <span className="text-stone-300">{s.icon}</span>
+            </div>
+            <p className="font-display text-[2rem] font-light text-earth mt-2 leading-none">{s.value}</p>
+          </div>
+        ))}
       </div>
 
-      {/* Search + pill filters */}
-      <div className="flex flex-col gap-3 mb-5">
-        <div className="flex items-center gap-2">
-          <div className="relative flex-1">
-            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[color:var(--text-faint)]" />
-            <input value={search} onChange={e => setSearch(e.target.value)}
-              placeholder="Search by name or email..."
-              className="w-full bg-white pl-9 pr-3 py-2.5 text-sm border border-[#EDEBE8] rounded-2xl focus:outline-none focus:border-gold" />
-          </div>
-          {/* List / Kanban view toggle */}
-          {crmSubView === 'contacts' && view === 'list' && (
-            <div className="flex gap-0.5 bg-stone-100 rounded-lg p-0.5 ml-auto flex-shrink-0">
-              <button
-                onClick={() => setListMode('list')}
-                className={`p-1.5 rounded-md transition-colors ${listMode === 'list' ? 'bg-white shadow-sm' : ''}`}
-                title="List view"
-              >
-                <List size={14} className={listMode === 'list' ? 'text-earth' : 'text-[color:var(--text-faint)]'} />
-              </button>
-              <button
-                onClick={() => setListMode('kanban')}
-                className={`p-1.5 rounded-md transition-colors ${listMode === 'kanban' ? 'bg-white shadow-sm' : ''}`}
-                title="Kanban view"
-              >
-                <LayoutGrid size={14} className={listMode === 'kanban' ? 'text-earth' : 'text-[color:var(--text-faint)]'} />
-              </button>
-            </div>
-          )}
+      {/* Search + filters + view toggle + add */}
+      <div className="flex items-center gap-3 mb-6 flex-wrap">
+        <div className="relative flex-1 min-w-[220px]">
+          <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-[color:var(--text-faint)]" />
+          <input value={search} onChange={e => setSearch(e.target.value)}
+            placeholder="Search by name or email…"
+            className="w-full bg-white pl-11 pr-4 py-3 text-sm border border-stone-200 rounded-brand-lg text-earth placeholder:text-[color:var(--text-faint)] focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent" />
         </div>
-        <div className="flex gap-2">
+        {/* Type filter segmented */}
+        <div className="flex gap-0.5 bg-stone-100 rounded-lg p-1 shrink-0">
           {([['all', 'All'], ['member', 'Members'], ['donor', 'Donors']] as ['all' | Contact['type'], string][]).map(([val, label]) => (
             <button
               key={val}
               onClick={() => setFilter(val)}
-              className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-colors ${filter === val ? 'text-white' : 'border border-[#EDEBE8] text-warm-brown'}`}
-              style={filter === val ? { backgroundColor: 'var(--brand-color, #B8962E)' } : undefined}
+              className={`px-3.5 py-1.5 rounded-md text-xs font-semibold transition-colors ${filter === val ? 'bg-white shadow-sm text-earth' : 'text-[color:var(--text-faint)]'}`}
             >
               {label}
             </button>
           ))}
         </div>
+        {/* List / Pipeline view toggle */}
+        <div className="flex gap-0.5 bg-stone-100 rounded-lg p-1 shrink-0">
+          <button onClick={() => setListMode('list')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${listMode === 'list' ? 'bg-white shadow-sm text-earth' : 'text-[color:var(--text-faint)]'}`}>
+            <List size={13} /> List
+          </button>
+          <button onClick={() => setListMode('kanban')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${listMode === 'kanban' ? 'bg-white shadow-sm text-earth' : 'text-[color:var(--text-faint)]'}`}>
+            <LayoutGrid size={13} /> Pipeline
+          </button>
+        </div>
+        <button
+          onClick={() => { setIsEditing(false); setForm(emptyContact); setView('form'); }}
+          className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2.5 rounded-brand text-[13px] font-semibold text-white transition-opacity hover:opacity-90"
+          style={{ backgroundColor: 'var(--brand-color, #C9963A)' }}
+        >
+          <Plus size={16} /> Add contact
+        </button>
       </div>
 
       {listMode === 'kanban' ? (
@@ -903,32 +912,55 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
           {!search && filter === 'all' && <p className="text-sm mt-1">Add your first donor or member</p>}
         </div>
       ) : (
-        <div className="space-y-2">
-          {filtered.map(c => (
-            <div
-              key={c.id}
-              onClick={() => openDetail(c)}
-              className="bg-white rounded-2xl border border-[#EDEBE8] px-4 py-3.5 flex items-center gap-3 cursor-pointer hover:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] hover:shadow-sm transition-all"
-            >
-              <div className="w-11 h-11 rounded-full flex items-center justify-center text-sm font-bold text-white flex-shrink-0"
-                style={{ backgroundColor: 'var(--brand-color, #B8962E)' }}>
-                {c.firstName?.charAt(0)?.toUpperCase() || '?'}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-earth truncate">{c.firstName} {c.lastName}</p>
-                {(c.email || c.phone) && (
-                  <p className="text-xs text-[color:var(--text-faint)] truncate">{[c.email, c.phone].filter(Boolean).join(' · ')}</p>
-                )}
-                <div className="flex items-center gap-1.5 mt-1.5">
-                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${TYPE_COLORS[c.type]}`}>{TYPE_LABELS[c.type]}</span>
-                  {c.totalDonated > 0 && (
-                    <span className="bg-[color-mix(in_srgb,var(--brand-color)_12%,white)] text-gold text-[10px] font-semibold px-2 py-0.5 rounded-full">{fmt(c.totalDonated)} donated</span>
-                  )}
-                </div>
-              </div>
-              <ChevronRight size={14} className="text-stone-300 flex-shrink-0" />
-            </div>
-          ))}
+        <div className="bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse min-w-[720px]">
+              <thead>
+                <tr className="border-b border-stone-200">
+                  <th className="px-6 py-4 text-[11px] font-semibold text-gold uppercase tracking-[0.12em]">Contact</th>
+                  <th className="px-6 py-4 text-[11px] font-semibold text-gold uppercase tracking-[0.12em]">Type</th>
+                  <th className="px-6 py-4 text-[11px] font-semibold text-gold uppercase tracking-[0.12em]">Stage</th>
+                  <th className="px-6 py-4 text-[11px] font-semibold text-gold uppercase tracking-[0.12em] text-right">Given</th>
+                  <th className="px-6 py-4 text-[11px] font-semibold text-gold uppercase tracking-[0.12em] text-right">Last Gift</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-stone-200">
+                {filtered.map(c => {
+                  const stage = STAGES.find(s => s.id === (c.stage || 'new')) || STAGES[0];
+                  return (
+                    <tr key={c.id} onClick={() => openDetail(c)} className="hover:bg-stone-100/60 transition-colors cursor-pointer">
+                      <td className="px-6 py-3.5">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0" style={{ backgroundColor: 'var(--brand-color, #C9963A)' }}>
+                            {c.firstName?.charAt(0)?.toUpperCase() || '?'}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-earth truncate">{c.firstName} {c.lastName}</p>
+                            {c.email && <p className="text-xs text-[color:var(--text-faint)] truncate">{c.email}</p>}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-3.5">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${TYPE_COLORS[c.type]}`}>{TYPE_LABELS[c.type]}</span>
+                      </td>
+                      <td className="px-6 py-3.5">
+                        <span className="inline-flex items-center gap-1.5 text-sm text-warm-brown">
+                          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: stage.color }} />
+                          {stage.label}
+                        </span>
+                      </td>
+                      <td className="px-6 py-3.5 text-right">
+                        <span className={`text-sm font-semibold ${c.totalDonated > 0 ? 'text-earth' : 'text-stone-300'}`}>{c.totalDonated > 0 ? fmt(c.totalDonated) : '—'}</span>
+                      </td>
+                      <td className="px-6 py-3.5 text-right">
+                        <span className="text-sm text-[color:var(--text-faint)]">{c.lastDonationAt ? fmtDate(c.lastDonationAt) : '—'}</span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
