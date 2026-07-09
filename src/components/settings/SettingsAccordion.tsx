@@ -8,6 +8,8 @@ interface SettingsSection {
   icon: ReactNode;
   content: ReactNode;
   hidden?: boolean;
+  /** Render the row in the danger tone (e.g. Cancel Subscription). */
+  danger?: boolean;
 }
 
 interface SettingsAccordionProps {
@@ -30,22 +32,22 @@ const SettingsAccordion: React.FC<SettingsAccordionProps> = ({ sections, default
   }, []);
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+    <div className="space-y-2.5">
       {sections.filter(s => !s.hidden).map(section => (
-        <div key={section.id} className="border-b border-gray-100 last:border-0">
+        <div key={section.id} className="bg-white rounded-brand border border-stone-200 shadow-[var(--ds-sh-sm)] overflow-hidden">
           <button
             onClick={() => toggle(section.id)}
-            className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-gray-50 transition-colors text-left"
+            className="w-full flex items-center gap-3 px-5 py-4 hover:bg-stone-100/60 transition-colors text-left"
           >
-            <span className="text-gray-400 flex items-center">{section.icon}</span>
-            <span className="flex-1 text-sm font-medium text-gray-800">{section.label}</span>
+            <span className={`flex items-center shrink-0 ${section.danger ? 'text-[#C4553B]' : 'text-gold'}`}>{section.icon}</span>
+            <span className={`flex-1 text-sm font-semibold ${section.danger ? 'text-[#C4553B]' : 'text-earth'}`}>{section.label}</span>
             <ChevronDown
               size={16}
-              className={`text-gray-400 transition-transform ${expanded === section.id ? 'rotate-180' : ''}`}
+              className={`text-[color:var(--text-faint)] transition-transform ${expanded === section.id ? 'rotate-180' : ''}`}
             />
           </button>
           {expanded === section.id && (
-            <div className="px-4 py-4 border-t border-gray-100 bg-white">
+            <div className="px-5 py-4 border-t border-stone-200">
               {section.content}
             </div>
           )}

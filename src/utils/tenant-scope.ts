@@ -27,7 +27,13 @@ export function getTenantIdFromHost(): string | null {
   if (typeof window === 'undefined') return null;
   const hostname = window.location.hostname;
   const parts = hostname.split('.');
-  if (parts.length >= 3 && (hostname.endsWith('.theharvest.app') || hostname.endsWith('.vercel.app'))) {
+  // Only real `*.theharvest.app` subdomains are tenant slugs — mirror
+  // resolveTenantIdFromHostname() in TenantContext. Preview/staging URLs
+  // (`*.vercel.app`) are NOT tenants: their single label (e.g.
+  // `harvest-agent-git-…`) would otherwise be read as a bogus tenant here while
+  // the admin/write path resolves the real tenant, so tenant-scoped reads
+  // (events, livestream) silently miss data that admins created.
+  if (parts.length >= 3 && hostname.endsWith('.theharvest.app')) {
     const sub = parts[0];
     if (sub && !NON_TENANT_SUBDOMAINS.has(sub)) return sub;
   }

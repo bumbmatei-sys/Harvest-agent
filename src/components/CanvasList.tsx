@@ -84,7 +84,7 @@ const CanvasList: React.FC<CanvasListProps> = ({ onOpenCanvas }) => {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-gray-900 font-display">Canvas</h2>
+        <h2 className="text-2xl font-bold text-earth font-display">Canvas</h2>
         <button
           onClick={handleCreate}
           disabled={creating}
@@ -96,12 +96,12 @@ const CanvasList: React.FC<CanvasListProps> = ({ onOpenCanvas }) => {
       </div>
 
       {canvases.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
+        <div className="bg-white rounded-2xl border border-stone-200 p-12 text-center">
           <div className="w-16 h-16 mx-auto rounded-2xl bg-[color-mix(in_srgb,var(--brand-color)_12%,white)] flex items-center justify-center mb-4">
             <FileText size={28} style={{ color: 'var(--brand-color, #d4a017)' }} />
           </div>
-          <h3 className="text-lg font-bold text-gray-900 mb-2 font-display">No canvases yet</h3>
-          <p className="text-sm text-gray-500 mb-6 max-w-md mx-auto">
+          <h3 className="text-lg font-bold text-earth mb-2 font-display">No canvases yet</h3>
+          <p className="text-sm text-warm-brown mb-6 max-w-md mx-auto">
             Create rich content pages for your ministry — announcements, devotionals, event pages, and more.
           </p>
           <button
@@ -119,7 +119,7 @@ const CanvasList: React.FC<CanvasListProps> = ({ onOpenCanvas }) => {
             <div
               key={canvas.id}
               onClick={() => onOpenCanvas(canvas.id, canvas.name)}
-              className="bg-white rounded-2xl border border-gray-100 p-5 cursor-pointer hover:shadow-md hover:border-gray-200 transition-all group"
+              className="bg-white rounded-2xl border border-stone-200 p-5 cursor-pointer hover:shadow-md hover:border-stone-200 transition-all group"
             >
               <div className="flex items-start justify-between mb-3">
                 <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
@@ -127,13 +127,13 @@ const CanvasList: React.FC<CanvasListProps> = ({ onOpenCanvas }) => {
                 </div>
                 <button
                   onClick={(e) => handleDelete(canvas.id, e)}
-                  className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition-all p-1"
+                  className="opacity-0 group-hover:opacity-100 text-[color:var(--text-faint)] hover:text-red-500 transition-all p-1"
                 >
                   <Trash2 size={16} />
                 </button>
               </div>
-              <h3 className="text-sm font-bold text-gray-900 mb-1 truncate">{canvas.name}</h3>
-              <div className="flex items-center gap-1 text-xs text-gray-400">
+              <h3 className="text-sm font-bold text-earth mb-1 truncate">{canvas.name}</h3>
+              <div className="flex items-center gap-1 text-xs text-[color:var(--text-faint)]">
                 <Calendar size={12} />
                 {formatDate(canvas.updatedAt || canvas.createdAt)}
               </div>

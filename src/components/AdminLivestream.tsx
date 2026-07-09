@@ -143,9 +143,13 @@ const AdminLivestream: React.FC = () => {
     if (!tenantId || !current?.sessionId) return;
     if (!confirm('End the stream? The live banner will disappear for all viewers.')) return;
     try {
+      // Stamp the session's endedAt FIRST, then flip the stream inactive.
+      // The Past Streams list refetches when `current.active` changes, so the
+      // ended session must already carry endedAt or it gets filtered out and
+      // never reappears (it only shows once it has an endedAt).
+      await updateDoc(doc(db, 'tenants', tenantId, 'livestreamSessions', current.sessionId), { endedAt: serverTimestamp() });
       // Clear any shared sermon note so it doesn't linger past the stream.
       await updateDoc(doc(db, 'tenants', tenantId, 'livestream', 'current'), { active: false, sermonNote: null });
-      await updateDoc(doc(db, 'tenants', tenantId, 'livestreamSessions', current.sessionId), { endedAt: serverTimestamp() });
     } catch (e) {
       console.error('Failed to end stream:', e);
     }
@@ -165,100 +169,125 @@ const AdminLivestream: React.FC = () => {
     return <div className="flex items-center justify-center h-40"><Loader2 size={28} className="animate-spin" style={{ color: GOLD }} /></div>;
   }
 
-  return (
-    <div className="max-w-3xl mx-auto" style={{ paddingBottom: 120 }}>
-      {current?.active ? (
-        <>
-          {/* Active stream card */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-4">
-            <div className="flex items-center justify-between gap-3 flex-wrap">
-              <div className="flex items-center gap-2">
-                <span className="relative flex h-3 w-3">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500" />
-                </span>
-                <span className="font-bold text-gray-900">{current.title}</span>
+  const liveBadge = (
+    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-earth text-white text-[10px] font-bold uppercase tracking-[0.1em]">
+      <span className="relative flex h-2 w-2">
+        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+        <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
+      </span>
+      Live
+    </span>
+  );
+
+  const pastStreamsBlock = pastSessions.filter(s => s.endedAt).length > 0 && (
+    <div>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gold mb-3">Past Streams</p>
+      <div className="bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] divide-y divide-stone-200">
+        {pastSessions.filter(s => s.endedAt).map(s => (
+          <div key={s.id} className="flex items-center gap-3 px-5 py-3.5">
+            <span className="w-8 h-8 rounded-brand bg-[color-mix(in_srgb,var(--brand-color)_10%,white)] flex items-center justify-center shrink-0">
+              <Video size={15} className="text-gold" />
+            </span>
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-semibold text-earth truncate">{s.title}</div>
+              <div className="text-xs text-[color:var(--text-faint)]">{fmtDate(s.startedAt)}</div>
+            </div>
+            <div className="text-xs text-warm-brown text-right shrink-0 space-y-0.5">
+              <div className="flex items-center gap-1 justify-end"><Eye size={12} /> {s.peakViewers || 0}</div>
+              <div className="flex items-center gap-1 justify-end"><HandHeart size={12} /> {s.prayerCount || 0}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  const prayerCard = (
+    <div className="bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] overflow-hidden">
+      <div className="px-5 py-4 border-b border-stone-200 flex items-center justify-between">
+        <h3 className="font-display text-base font-semibold text-earth">Prayer requests</h3>
+        <span className="text-xs text-[color:var(--text-faint)]">{activePrayers.length} active</span>
+      </div>
+      {activePrayers.length === 0 ? (
+        <p className="text-center py-12 text-[color:var(--text-faint)] text-sm">No active prayer requests.</p>
+      ) : (
+        <div className="divide-y divide-stone-200">
+          {activePrayers.map(p => (
+            <div key={p.id} className="flex items-start gap-3 px-5 py-4">
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-semibold text-earth">{p.name}</div>
+                <div className="text-sm text-warm-brown mt-0.5">{p.prayerText}</div>
+                <div className="text-xs text-[color:var(--text-faint)] mt-1">{fmtDate(p.submittedAt)}</div>
               </div>
-              <button onClick={endStream} className="px-4 py-2 rounded-xl text-sm font-semibold text-red-600 bg-red-50 hover:bg-red-100">
-                End Stream
+              <button onClick={() => markPrayed(p.id)} className="flex items-center gap-1 text-xs font-semibold text-[#40562F] hover:bg-[color-mix(in_srgb,#6E8E52_14%,white)] rounded-lg px-2 py-1 shrink-0 transition-colors">
+                <Check size={14} /> Prayed
               </button>
             </div>
-            <div className="flex items-center gap-5 mt-3 text-sm text-gray-600">
-              <span className="flex items-center gap-1.5"><Eye size={15} /> {Math.max(0, current.viewerCount || 0)} watching</span>
-              <span className="flex items-center gap-1.5"><HandHeart size={15} /> {current.prayerCount || 0} prayers</span>
-              <span className="text-gray-400">Live since {fmtDate(current.startedAt || null)}</span>
-            </div>
-            <p className="text-xs text-gray-400 mt-2">Video ID: {current.youtubeVideoId}</p>
-          </div>
-
-          {/* Live prayer panel */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-            <div className="px-4 py-3 border-b border-gray-50 flex items-center justify-between">
-              <h3 className="text-sm font-bold text-gray-700 font-display">Prayer Requests</h3>
-              <span className="text-xs text-gray-400">{activePrayers.length} active</span>
-            </div>
-            {activePrayers.length === 0 ? (
-              <p className="text-center py-10 text-gray-400 text-sm">No active prayer requests.</p>
-            ) : (
-              <div className="divide-y divide-gray-50">
-                {activePrayers.map(p => (
-                  <div key={p.id} className="flex items-start gap-3 px-4 py-3">
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium text-gray-900">{p.name}</div>
-                      <div className="text-sm text-gray-600">{p.prayerText}</div>
-                      <div className="text-xs text-gray-300 mt-0.5">{fmtDate(p.submittedAt)}</div>
-                    </div>
-                    <button onClick={() => markPrayed(p.id)} className="flex items-center gap-1 text-xs font-semibold text-green-600 hover:bg-green-50 rounded-lg px-2 py-1 shrink-0">
-                      <Check size={14} /> Prayed
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </>
-      ) : (
-        /* Go Live form */
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-4">
-          <div className="flex items-center gap-2 mb-4">
-            <Radio size={18} style={{ color: GOLD }} />
-            <h3 className="text-sm font-bold text-gray-700 font-display">Go Live</h3>
-          </div>
-          <div className="space-y-3">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">YouTube Live URL or Video ID</label>
-              <input value={urlInput} onChange={e => setUrlInput(e.target.value)} placeholder="https://youtube.com/watch?v=… or dQw4w9WgXcQ" className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-gold" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Title</label>
-              <input value={titleInput} onChange={e => setTitleInput(e.target.value)} placeholder="Sunday Service — June 29" className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-gold" />
-            </div>
-            <button onClick={startStream} disabled={starting} className="w-full py-2.5 rounded-xl text-white text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: GOLD }}>
-              {starting ? 'Starting…' : 'Start Stream'}
-            </button>
-          </div>
+          ))}
         </div>
       )}
+    </div>
+  );
 
-      {/* Past streams */}
-      {pastSessions.filter(s => s.endedAt).length > 0 && (
-        <div className="mt-6">
-          <h3 className="text-sm font-bold text-gray-700 mb-3 font-display">Past Streams</h3>
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm divide-y divide-gray-50">
-            {pastSessions.filter(s => s.endedAt).map(s => (
-              <div key={s.id} className="flex items-center gap-3 px-4 py-3">
-                <Video size={16} className="text-gray-300 shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-gray-900 truncate">{s.title}</div>
-                  <div className="text-xs text-gray-400">{fmtDate(s.startedAt)}</div>
+  return (
+    <div className="max-w-5xl mx-auto" style={{ paddingBottom: 120 }}>
+      {current?.active ? (
+        <div className="grid lg:grid-cols-[1fr_360px] gap-6 items-start">
+          {/* Left: stream info + past streams */}
+          <div className="space-y-6">
+            <div className="bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] p-6">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="mb-2">{liveBadge}</div>
+                  <h2 className="font-display text-2xl font-light text-earth tracking-[-0.01em] truncate">{current.title}</h2>
+                  <p className="text-xs text-[color:var(--text-faint)] mt-1.5">
+                    Live since {fmtDate(current.startedAt || null)} · Video ID: {current.youtubeVideoId}
+                  </p>
                 </div>
-                <div className="text-xs text-gray-500 text-right shrink-0">
-                  <div className="flex items-center gap-1 justify-end"><Eye size={12} /> {s.peakViewers || 0}</div>
-                  <div className="flex items-center gap-1 justify-end"><HandHeart size={12} /> {s.prayerCount || 0}</div>
+                <button onClick={endStream} className="shrink-0 px-4 py-2 rounded-brand text-sm font-semibold text-[#C4553B] bg-[#F7E7E2] hover:opacity-90 transition-opacity">
+                  End stream
+                </button>
+              </div>
+              <div className="grid grid-cols-2 gap-4 mt-5">
+                <div className="rounded-brand border border-stone-200 p-4">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[color:var(--text-faint)] flex items-center gap-1.5"><Eye size={13} /> Watching now</p>
+                  <p className="font-display text-4xl font-light text-earth mt-1.5 leading-none">{Math.max(0, current.viewerCount || 0)}</p>
+                </div>
+                <div className="rounded-brand border border-stone-200 p-4">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[color:var(--text-faint)] flex items-center gap-1.5"><HandHeart size={13} /> Prayers</p>
+                  <p className="font-display text-4xl font-light text-earth mt-1.5 leading-none">{current.prayerCount || 0}</p>
                 </div>
               </div>
-            ))}
+            </div>
+            {pastStreamsBlock}
           </div>
+
+          {/* Right: prayer requests */}
+          {prayerCard}
+        </div>
+      ) : (
+        <div className="max-w-2xl mx-auto space-y-6">
+          {/* Go Live form */}
+          <div className="bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Radio size={18} style={{ color: GOLD }} />
+              <h3 className="font-display text-lg font-semibold text-earth">Go Live</h3>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-earth mb-1.5">YouTube Live URL or Video ID</label>
+                <input value={urlInput} onChange={e => setUrlInput(e.target.value)} placeholder="https://youtube.com/watch?v=… or dQw4w9WgXcQ" className="w-full px-4 py-2.5 border border-stone-200 rounded-brand text-sm text-earth focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-earth mb-1.5">Title</label>
+                <input value={titleInput} onChange={e => setTitleInput(e.target.value)} placeholder="Sunday Service — June 29" className="w-full px-4 py-2.5 border border-stone-200 rounded-brand text-sm text-earth focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent" />
+              </div>
+              <button onClick={startStream} disabled={starting} className="w-full py-2.5 rounded-brand text-white text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: GOLD }}>
+                {starting ? 'Starting…' : 'Start Stream'}
+              </button>
+            </div>
+          </div>
+          {pastStreamsBlock}
         </div>
       )}
     </div>

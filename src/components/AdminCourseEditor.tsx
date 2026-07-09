@@ -31,11 +31,11 @@ import { getTenantScope, getWriteTenantScope } from '../utils/tenant-scope';
 const GOLD = "var(--brand-color, #C9963A)";
 const GOLD_LIGHT = "color-mix(in srgb, var(--brand-color, #C9963A) 12%, white)";
 const GOLD_BTN = "linear-gradient(135deg, var(--brand-color, #C9963A), color-mix(in srgb, var(--brand-color, #C9963A) 82%, #ffffff))";
-const BG = "#F2F4F7";
+const BG = "#FAF8F5";
 const CARD = "#FFFFFF";
-const TEXT = "#111111";
-const TEXT2 = "#888888";
-const BORDER = "#E8E8E8";
+const TEXT = "#2D2519";
+const TEXT2 = "#8B7355";
+const BORDER = "#E8E2D9";
 const GREEN = "#27AE60";
 const GREEN_BG = "#EAFAF1";
 const RED = "#E74C3C";
@@ -167,7 +167,7 @@ function OutlineEditor({ items, onChange }: OutlineEditorProps) {
  return (
  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
  {items.map((item, i) => (
- <div key={item.id} style={{ background: "#FAFAFA", border: `1.5px solid ${BORDER}`, borderRadius: 12, overflow: "hidden" }}>
+ <div key={item.id} style={{ background: "#FAF8F5", border: `1.5px solid ${BORDER}`, borderRadius: 12, overflow: "hidden" }}>
  <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", borderBottom: `1px solid ${BORDER}` }}>
  <div style={{ width: 22, height: 22, borderRadius: "50%", background: GOLD_LIGHT, border: `1.5px solid ${GOLD}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: GOLD, flexShrink: 0 }}>{i + 1}</div>
  <input style={{ flex: 1, border: "none", outline: "none", fontWeight: 700, fontSize: 14, color: TEXT, background: "transparent", fontFamily: "inherit" }}
@@ -294,7 +294,7 @@ function LessonCard({ lesson, onChange, onRemove, authorsLibrary = [] }: LessonC
  const set = <K extends keyof Lesson>(k: K, v: Lesson[K]): void => onChange({ ...lesson, [k]: v });
  const lessonAuthor = authorsLibrary.find((a) => a.id === lesson.authorId);
  return (
- <div style={{ background: "#FAFAFA", border: `1.5px solid ${BORDER}`, borderRadius: 12, marginBottom: 8, overflow: "hidden" }}>
+ <div style={{ background: "#FAF8F5", border: `1.5px solid ${BORDER}`, borderRadius: 12, marginBottom: 8, overflow: "hidden" }}>
  <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 14px", cursor: "pointer" }} onClick={() => setOpen((o) => !o)}>
  <span style={{ color: "#CCC", fontSize: 18, cursor: "grab", userSelect: "none" }}>⠿</span>
  <div style={{ flex: 1 }}>
@@ -711,14 +711,20 @@ export default function CourseBuilder({ course: initialCourse, onClose }: Course
  />
  )}
 
- {/* Top bar */}
- <div style={s.topBar}>
- <div style={s.row}>
+ {/* Top bar: back + title on one line (left) · status + actions (right) */}
+ <div style={{ ...s.topBar, alignItems: "center", padding: "10px 20px", gap: 12 }}>
+ <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
  <button style={s.backBtn} onClick={onClose}>
  <ArrowLeft size={20} color={TEXT} />
  </button>
+ <div style={{ minWidth: 0 }}>
+ <h1 style={s.pageTitle}>{course.title || "New Course"}</h1>
+ <p style={{ fontSize: 12, color: TEXT2, marginTop: 1 }}>
+ {course.levels.length} level{course.levels.length !== 1 ? "s" : ""} · {totalSections} section{totalSections !== 1 ? "s" : ""} · {totalLessons} lesson{totalLessons !== 1 ? "s" : ""}
+ </p>
  </div>
- <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+ </div>
+ <div style={{ display: "flex", gap: 10, alignItems: "center", flexShrink: 0 }}>
  <div style={{ fontSize: 11, padding: "4px 10px", borderRadius: 99, fontWeight: 600, background: course.status === "published" ? GREEN_BG : GOLD_LIGHT, color: course.status === "published" ? GREEN : GOLD }}>
  {course.status === "published" ? "● Published" : "○ Draft"}
  </div>
@@ -727,21 +733,6 @@ export default function CourseBuilder({ course: initialCourse, onClose }: Course
  {saved ? "✓ Saved!" : saving ? "Saving..." : "Publish"}
  </button>
  </div>
- </div>
-
- {/* Page title */}
- <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: "20px 20px 0" }}>
- <div>
- <h1 style={s.pageTitle}>{course.title || "New Course"}</h1>
- <p style={{ fontSize: 13, color: TEXT2, marginTop: 4 }}>
- {course.levels.length} level{course.levels.length !== 1 ? "s" : ""} · {totalSections} section{totalSections !== 1 ? "s" : ""} · {totalLessons} lesson{totalLessons !== 1 ? "s" : ""}
- </p>
- </div>
- {course.thumbnail && (
- <div style={{ position: 'relative', width: 58, height: 58, borderRadius: 10, overflow: 'hidden', border: `1.5px solid ${BORDER}` }}>
- <Image src={course.thumbnail} alt="" fill sizes="58px" style={{ objectFit: 'cover' }} onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
- </div>
- )}
  </div>
 
  {/* Tabs */}
@@ -891,25 +882,25 @@ export default function CourseBuilder({ course: initialCourse, onClose }: Course
 // STYLES
 // ═══════════════════════════════════════════════
 const s: Record<string, CSSProperties> = {
- root: { position: "fixed", inset: 0, zIndex: 50, fontFamily: "var(--font-sans), system-ui, sans-serif", background: BG, minHeight: "100vh", color: TEXT, overflowY: "auto" },
- topBar: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 20px", background: CARD, borderBottom: `1px solid ${BORDER}`, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" },
+ root: { fontFamily: "var(--font-sans), system-ui, sans-serif", background: "transparent", color: TEXT, width: "100%" },
+ topBar: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "2px 20px 0", background: "transparent" },
  backBtn: { width: 36, height: 36, borderRadius: "50%", background: "transparent", display: "flex", alignItems: "center", justifyContent: "center", border: "none", cursor: "pointer", marginRight: 10, transition: "background 0.2s" },
  row: { display: "flex", alignItems: "center" },
  draftBtn: { background: "transparent", border: `1.5px solid ${BORDER}`, color: TEXT2, padding: "7px 16px", borderRadius: 10, cursor: "pointer", fontSize: 13, fontFamily: "inherit", fontWeight: 600 },
  publishBtn: { background: GOLD_BTN, border: "none", color: "#fff", fontWeight: 700, padding: "7px 20px", borderRadius: 10, cursor: "pointer", fontSize: 13, fontFamily: "inherit", boxShadow: "0 2px 8px rgba(201,150,58,0.35)" },
- pageTitle: { fontSize: 26, fontWeight: 800, color: TEXT, letterSpacing: "-0.3px" },
+ pageTitle: { fontFamily: "var(--font-display), Georgia, serif", fontSize: 23, fontWeight: 400, color: TEXT, letterSpacing: "-0.01em", lineHeight: 1.15 },
  tabBar: { display: "flex", padding: "16px 20px 0", borderBottom: `1px solid ${BORDER}` },
  tab: { background: "none", border: "none", color: TEXT2, cursor: "pointer", padding: "10px 16px 12px", fontSize: 14, fontWeight: 600, fontFamily: "inherit", borderBottom: "2.5px solid transparent" },
  tabActive: { color: GOLD, borderBottom: `2.5px solid ${GOLD}` },
- content: { overflowY: "auto", padding: "20px", paddingBottom: 120, maxWidth: 820, margin: "0 auto" },
- panel: { display: "flex", flexDirection: "column", gap: 14 },
- card: { background: CARD, borderRadius: 16, boxShadow: "0 1px 6px rgba(0,0,0,0.07)", overflow: "hidden" },
+ content: { padding: "18px 20px 48px", maxWidth: 900, margin: "0 auto" },
+ panel: { display: "flex", flexDirection: "column", gap: 16 },
+ card: { background: CARD, borderRadius: 16, border: `1px solid ${BORDER}`, boxShadow: "0 1px 2px rgba(45,37,25,0.05), 0 2px 8px rgba(45,37,25,0.06)", overflow: "hidden" },
  cardBody: { padding: "16px", display: "flex", flexDirection: "column", gap: 14 },
- sectionHeading: { padding: "12px 16px", fontSize: 11, fontWeight: 700, color: TEXT2, letterSpacing: "0.1em", textTransform: "uppercase", borderBottom: `1px solid ${BORDER}` },
+ sectionHeading: { padding: "14px 16px", fontSize: 11, fontWeight: 700, color: GOLD, letterSpacing: "0.14em", textTransform: "uppercase", borderBottom: `1px solid ${BORDER}` },
  label: { fontSize: 12, fontWeight: 700, color: TEXT2, letterSpacing: "0.04em", textTransform: "uppercase", display: "block", marginBottom: 6 },
- input: { background: "#FAFAFA", border: `1.5px solid ${BORDER}`, borderRadius: 10, color: TEXT, padding: "10px 13px", fontSize: 14, width: "100%", fontFamily: "inherit" },
- textarea: { background: "#FAFAFA", border: `1.5px solid ${BORDER}`, borderRadius: 10, color: TEXT, padding: "10px 13px", fontSize: 14, width: "100%", resize: "vertical", fontFamily: "inherit", lineHeight: 1.6 },
- select: { background: "#FAFAFA", border: `1.5px solid ${BORDER}`, borderRadius: 10, color: TEXT, padding: "10px 13px", fontSize: 14, width: "100%", cursor: "pointer", fontFamily: "inherit" },
+ input: { background: "#FAF8F5", border: `1.5px solid ${BORDER}`, borderRadius: 10, color: TEXT, padding: "10px 13px", fontSize: 14, width: "100%", fontFamily: "inherit" },
+ textarea: { background: "#FAF8F5", border: `1.5px solid ${BORDER}`, borderRadius: 10, color: TEXT, padding: "10px 13px", fontSize: 14, width: "100%", resize: "vertical", fontFamily: "inherit", lineHeight: 1.6 },
+ select: { background: "#FAF8F5", border: `1.5px solid ${BORDER}`, borderRadius: 10, color: TEXT, padding: "10px 13px", fontSize: 14, width: "100%", cursor: "pointer", fontFamily: "inherit" },
  row2: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 },
  avatar: { width: 40, height: 40, borderRadius: "50%", objectFit: "cover", border: `2px solid ${BORDER}`, flexShrink: 0 },
  avatarEmpty: { width: 40, height: 40, borderRadius: "50%", background: GOLD_LIGHT, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 },

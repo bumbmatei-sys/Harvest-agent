@@ -6,13 +6,15 @@ import {
 } from 'firebase/firestore';
 import QRCode from 'qrcode';
 import {
-  Trash2, Download, Users, QrCode, Link2, X, CheckCircle2, Loader2,
+  Trash2, Download, Users, QrCode, Link2, X, CheckCircle2, Loader2, Plus,
 } from 'lucide-react';
 import { db, auth } from '../firebase';
 import { useAppStore } from '../store/useAppStore';
 import { PLATFORM_TENANT_ID } from '../utils/tenant-scope';
 import { useTenantOptional } from '../contexts/TenantContext';
-import { useAdminHeader, HeaderActionButton } from './AdminScreenHeader';
+import {
+  AdminPrimaryButton, AdminSecondaryButton, AdminEditorHeader, AdminCard, AdminBadge,
+} from './admin/AdminUI';
 import AdminQR from './AdminQR';
 
 const GOLD = 'var(--brand-color, #B8962E)';
@@ -53,7 +55,6 @@ const AdminCheckin: React.FC<AdminCheckinProps> = ({ canCheckin = true, canQR = 
   // tenant subdomain currentTenantId is set and takes precedence.
   const { currentTenantId, isAuthReady, isSuperAdmin } = useAppStore();
   const tenantId = currentTenantId || (isSuperAdmin ? PLATFORM_TENANT_ID : null);
-  const { setHeaderAction, setHeaderOverride } = useAdminHeader();
 
   // QR Codes is now nested here as a sub-tab. Each sub-tab combines its gate with
   // the admin's permission: Check-In behind checkInSystem + manageCheckin, QR
@@ -115,26 +116,7 @@ const AdminCheckin: React.FC<AdminCheckinProps> = ({ canCheckin = true, canQR = 
       .catch(() => setEvents([]));
   }, [tenantId]);
 
-  // ── Header wiring ────────────────────────────────────────────────
-  useEffect(() => {
-    // The QR sub-tab (AdminQR) publishes no header action of its own — clear ours.
-    if (activeSubTab !== 'checkin') {
-      setHeaderOverride(null);
-      setHeaderAction(null);
-      return () => { setHeaderAction(null); };
-    }
-    if (view === 'list') {
-      setHeaderOverride(null);
-      setHeaderAction(<HeaderActionButton label="New Session" onClick={() => { setName(''); setDate(''); setLocation(''); setLinkedEventId(''); setView('create'); }} />);
-    } else if (view === 'create') {
-      setHeaderOverride({ title: 'New Session', onBack: () => setView('list') });
-      setHeaderAction(null);
-    } else if (view === 'detail') {
-      setHeaderOverride({ title: selected?.name || 'Session', onBack: () => setView('list') });
-      setHeaderAction(null);
-    }
-    return () => { setHeaderAction(null); };
-  }, [activeSubTab, view, selected, setHeaderAction, setHeaderOverride]);
+  const startCreate = () => { setName(''); setDate(''); setLocation(''); setLinkedEventId(''); setView('create'); };
 
   // ── Live attendees + QR when a session is open ───────────────────
   useEffect(() => {
@@ -246,11 +228,11 @@ const AdminCheckin: React.FC<AdminCheckinProps> = ({ canCheckin = true, canQR = 
   // Native pill segmented control (matches the CRM Contacts/Analytics toggle).
   // Only shown when the admin can reach BOTH sub-tabs.
   const subTabBar = showBothSubTabs ? (
-    <div className="flex gap-1 bg-gray-100 rounded-xl p-1 mb-5 w-fit">
+    <div className="flex gap-1 bg-stone-100 rounded-xl p-1 mb-6 w-fit mx-auto">
       <button
         onClick={() => setTab('checkin')}
         className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
-          activeSubTab === 'checkin' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-400'
+          activeSubTab === 'checkin' ? 'bg-white shadow-sm text-earth' : 'text-[color:var(--text-faint)]'
         }`}
       >
         Check-In
@@ -258,7 +240,7 @@ const AdminCheckin: React.FC<AdminCheckinProps> = ({ canCheckin = true, canQR = 
       <button
         onClick={() => setTab('qr')}
         className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
-          activeSubTab === 'qr' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-400'
+          activeSubTab === 'qr' ? 'bg-white shadow-sm text-earth' : 'text-[color:var(--text-faint)]'
         }`}
       >
         QR Codes
@@ -271,7 +253,7 @@ const AdminCheckin: React.FC<AdminCheckinProps> = ({ canCheckin = true, canQR = 
   // rather than dropping them into a generator they aren't permitted to use.
   if (activeSubTab === 'none') {
     return (
-      <div className="max-w-2xl mx-auto text-center py-16 text-gray-400">
+      <div className="max-w-2xl mx-auto text-center py-16 text-[color:var(--text-faint)]">
         <p className="text-sm">You don&apos;t have access to Check-In or QR Codes.</p>
       </div>
     );
@@ -291,22 +273,28 @@ const AdminCheckin: React.FC<AdminCheckinProps> = ({ canCheckin = true, canQR = 
   if (view === 'create') {
     return (
       <div className="max-w-xl mx-auto" style={{ paddingBottom: 120 }}>
-        <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-4">
+        <AdminEditorHeader
+          onBack={() => setView('list')}
+          backLabel="All sessions"
+          title="New session"
+          subtitle="Generate a QR code attendees can scan to check in."
+        />
+        <div className="bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] p-5 space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Session Name</label>
-            <input value={name} onChange={e => setName(e.target.value)} placeholder="Sunday Service — June 29" className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-gold" />
+            <label className="block text-sm font-medium text-[color:var(--text-body)] mb-1.5">Session Name</label>
+            <input value={name} onChange={e => setName(e.target.value)} placeholder="Sunday Service — June 29" className="w-full px-4 py-2.5 border border-stone-200 rounded-xl text-sm focus:outline-none focus:border-gold" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Date &amp; Time</label>
-            <input type="datetime-local" value={date} onChange={e => setDate(e.target.value)} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-gold" />
+            <label className="block text-sm font-medium text-[color:var(--text-body)] mb-1.5">Date &amp; Time</label>
+            <input type="datetime-local" value={date} onChange={e => setDate(e.target.value)} className="w-full px-4 py-2.5 border border-stone-200 rounded-xl text-sm focus:outline-none focus:border-gold" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Location <span className="text-gray-400 font-normal">(optional)</span></label>
-            <input value={location} onChange={e => setLocation(e.target.value)} placeholder="Main Auditorium" className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-gold" />
+            <label className="block text-sm font-medium text-[color:var(--text-body)] mb-1.5">Location <span className="text-[color:var(--text-faint)] font-normal">(optional)</span></label>
+            <input value={location} onChange={e => setLocation(e.target.value)} placeholder="Main Auditorium" className="w-full px-4 py-2.5 border border-stone-200 rounded-xl text-sm focus:outline-none focus:border-gold" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Linked Event <span className="text-gray-400 font-normal">(optional)</span></label>
-            <select value={linkedEventId} onChange={e => setLinkedEventId(e.target.value)} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-gold bg-white">
+            <label className="block text-sm font-medium text-[color:var(--text-body)] mb-1.5">Linked Event <span className="text-[color:var(--text-faint)] font-normal">(optional)</span></label>
+            <select value={linkedEventId} onChange={e => setLinkedEventId(e.target.value)} className="w-full px-4 py-2.5 border border-stone-200 rounded-xl text-sm focus:outline-none focus:border-gold bg-white">
               <option value="">No linked event</option>
               {events.map(ev => <option key={ev.id} value={ev.id}>{ev.title}</option>)}
             </select>
@@ -323,22 +311,32 @@ const AdminCheckin: React.FC<AdminCheckinProps> = ({ canCheckin = true, canQR = 
     const status = sessionStatus(selected);
     return (
       <div className="max-w-3xl mx-auto" style={{ paddingBottom: 120 }}>
+        <AdminEditorHeader
+          onBack={() => setView('list')}
+          backLabel="All sessions"
+          title={selected.name}
+          subtitle={<>
+            {selected.date && new Date(selected.date).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+            {selected.location && ` · ${selected.location}`}
+          </>}
+          actions={<AdminBadge tone={status === 'Closed' ? 'stone' : status === 'Upcoming' ? 'sky' : 'green'}>{status}</AdminBadge>}
+        />
         <div className="grid md:grid-cols-2 gap-4">
           {/* QR + actions */}
-          <div className="bg-white rounded-2xl border border-gray-100 p-5 text-center">
+          <div className="bg-white rounded-2xl border border-stone-200 p-5 text-center">
             {qrDataUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={qrDataUrl} alt="Check-in QR code" className="w-56 h-56 mx-auto" />
             ) : (
-              <div className="w-56 h-56 mx-auto flex items-center justify-center text-gray-300"><QrCode size={48} /></div>
+              <div className="w-56 h-56 mx-auto flex items-center justify-center text-stone-300"><QrCode size={48} /></div>
             )}
-            <p className="text-xs text-gray-400 mt-2 break-all">{checkinUrl(selected.id)}</p>
+            <p className="text-xs text-[color:var(--text-faint)] mt-2 break-all">{checkinUrl(selected.id)}</p>
             <div className="flex items-center justify-center gap-2 mt-3 flex-wrap">
-              <button onClick={() => copyLink(selected.id)} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium border border-gray-200 text-gray-700 hover:bg-gray-50">
+              <button onClick={() => copyLink(selected.id)} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium border border-stone-200 text-[color:var(--text-body)] hover:bg-stone-100">
                 <Link2 size={14} /> {copied ? 'Copied!' : 'Copy Link'}
               </button>
               {qrDataUrl && (
-                <a href={qrDataUrl} download={`${selected.name.replace(/[^a-z0-9]/gi, '_')}_qr.png`} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium border border-gray-200 text-gray-700 hover:bg-gray-50">
+                <a href={qrDataUrl} download={`${selected.name.replace(/[^a-z0-9]/gi, '_')}_qr.png`} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium border border-stone-200 text-[color:var(--text-body)] hover:bg-stone-100">
                   <Download size={14} /> QR
                 </a>
               )}
@@ -346,22 +344,22 @@ const AdminCheckin: React.FC<AdminCheckinProps> = ({ canCheckin = true, canQR = 
           </div>
 
           {/* Counter + manual + close */}
-          <div className="bg-white rounded-2xl border border-gray-100 p-5">
+          <div className="bg-white rounded-2xl border border-stone-200 p-5">
             <div className="flex items-center gap-2 mb-1">
               <Users size={18} style={{ color: GOLD }} />
-              <span className="text-3xl font-bold text-gray-900">{attendees.length}</span>
-              <span className="text-sm text-gray-500">checked in</span>
+              <span className="font-display text-4xl font-light text-earth">{attendees.length}</span>
+              <span className="text-sm text-warm-brown">checked in</span>
             </div>
-            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${status === 'Closed' ? 'bg-gray-100 text-gray-500' : status === 'Upcoming' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>{status}</span>
+            <AdminBadge tone={status === 'Closed' ? 'stone' : status === 'Upcoming' ? 'sky' : 'green'}>{status}</AdminBadge>
 
             {status !== 'Closed' && (
               <div className="mt-4 space-y-2">
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Manual Check-In</p>
+                <p className="text-xs font-semibold text-warm-brown uppercase tracking-wide">Manual Check-In</p>
                 <div className="flex gap-2">
-                  <input value={mFirst} onChange={e => setMFirst(e.target.value)} placeholder="First" className="flex-1 min-w-0 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gold" />
-                  <input value={mLast} onChange={e => setMLast(e.target.value)} placeholder="Last" className="flex-1 min-w-0 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gold" />
+                  <input value={mFirst} onChange={e => setMFirst(e.target.value)} placeholder="First" className="flex-1 min-w-0 px-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:border-gold" />
+                  <input value={mLast} onChange={e => setMLast(e.target.value)} placeholder="Last" className="flex-1 min-w-0 px-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:border-gold" />
                 </div>
-                <input value={mEmail} onChange={e => setMEmail(e.target.value)} placeholder="Email (optional)" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gold" />
+                <input value={mEmail} onChange={e => setMEmail(e.target.value)} placeholder="Email (optional)" className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:border-gold" />
                 <button onClick={manualCheckIn} disabled={mAdding || !mFirst.trim()} className="w-full py-2 rounded-lg text-white text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: GOLD }}>
                   {mAdding ? 'Adding…' : 'Check In'}
                 </button>
@@ -369,7 +367,7 @@ const AdminCheckin: React.FC<AdminCheckinProps> = ({ canCheckin = true, canQR = 
             )}
 
             <div className="flex items-center gap-2 mt-4 flex-wrap">
-              <button onClick={exportCsv} disabled={attendees.length === 0} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium border border-gray-200 text-gray-700 hover:bg-gray-50 disabled:opacity-50">
+              <button onClick={exportCsv} disabled={attendees.length === 0} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium border border-stone-200 text-[color:var(--text-body)] hover:bg-stone-100 disabled:opacity-50">
                 <Download size={14} /> Export CSV
               </button>
               {status !== 'Closed' && (
@@ -382,10 +380,10 @@ const AdminCheckin: React.FC<AdminCheckinProps> = ({ canCheckin = true, canQR = 
         </div>
 
         {/* Live list */}
-        <div className="bg-white rounded-2xl border border-gray-100 mt-4 overflow-hidden">
-          <div className="px-4 py-3 border-b border-gray-50"><h3 className="text-sm font-bold text-gray-700 font-display">Checked In</h3></div>
+        <div className="bg-white rounded-2xl border border-stone-200 mt-4 overflow-hidden">
+          <div className="px-4 py-3 border-b border-gray-50"><h3 className="text-sm font-bold text-[color:var(--text-body)] font-display">Checked In</h3></div>
           {attendees.length === 0 ? (
-            <p className="text-center py-10 text-gray-400 text-sm font-display">No one checked in yet.</p>
+            <p className="text-center py-10 text-[color:var(--text-faint)] text-sm font-display">No one checked in yet.</p>
           ) : (
             <div className="divide-y divide-gray-50">
               {attendees.map(a => (
@@ -394,11 +392,11 @@ const AdminCheckin: React.FC<AdminCheckinProps> = ({ canCheckin = true, canQR = 
                     {(a.firstName?.[0] || '?').toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-gray-900 truncate">{a.firstName} {a.lastName}</div>
-                    {a.email && <div className="text-xs text-gray-400 truncate">{a.email}</div>}
+                    <div className="text-sm font-medium text-earth truncate">{a.firstName} {a.lastName}</div>
+                    {a.email && <div className="text-xs text-[color:var(--text-faint)] truncate">{a.email}</div>}
                   </div>
                   {a.crmContactId && <CheckCircle2 size={14} className="text-green-500 shrink-0" />}
-                  <span className="text-xs text-gray-400 shrink-0">{fmtTime(a.checkedInAt)}</span>
+                  <span className="text-xs text-[color:var(--text-faint)] shrink-0">{fmtTime(a.checkedInAt)}</span>
                 </div>
               ))}
             </div>
@@ -421,40 +419,44 @@ const AdminCheckin: React.FC<AdminCheckinProps> = ({ canCheckin = true, canQR = 
   return (
     <div className="max-w-3xl mx-auto" style={{ paddingBottom: 120 }}>
       {subTabBar}
-      <p className="text-sm text-gray-500 mb-4 leading-relaxed">
-        Create a session, then show its QR code (project or print). People scan it to check in on their phones, and you&apos;ll see them appear live below — export the list to CSV anytime.
-      </p>
+      <div className="flex items-start justify-between gap-4 mb-6">
+        <p className="text-sm text-warm-brown leading-relaxed max-w-lg">
+          Create a session, then show its QR code. People scan it to check in — you&apos;ll see them appear live, and can export to CSV anytime.
+        </p>
+        <AdminPrimaryButton onClick={startCreate} icon={<Plus size={16} />} className="shrink-0">New session</AdminPrimaryButton>
+      </div>
       {sessions.length === 0 ? (
-        <div className="text-center py-16 text-gray-400">
-          <QrCode size={40} className="mx-auto mb-3 opacity-30" />
-          <p className="font-medium font-display">No check-in sessions yet</p>
-          <p className="text-sm mt-1">Create a session and share its QR code for attendees to scan.</p>
-        </div>
+        <AdminCard className="text-center py-16 px-6">
+          <QrCode size={38} className="mx-auto mb-3 text-stone-300" />
+          <p className="font-display text-lg text-earth">No check-in sessions yet</p>
+          <p className="text-sm text-warm-brown mt-1">Create a session and share its QR code for attendees to scan.</p>
+          <div className="mt-5"><AdminPrimaryButton onClick={startCreate} icon={<Plus size={16} />}>New session</AdminPrimaryButton></div>
+        </AdminCard>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {sessions.map(s => {
             const status = sessionStatus(s);
             return (
-              <div key={s.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+              <AdminCard key={s.id} className="p-5">
                 <div className="flex items-start justify-between gap-3">
-                  <button onClick={() => { setSelected(s); setView('detail'); }} className="flex-1 min-w-0 text-left">
-                    <div className="font-semibold text-gray-900 truncate">{s.name}</div>
-                    <div className="text-xs text-gray-400 mt-0.5">
+                  <button onClick={() => { setSelected(s); setView('detail'); }} className="flex-1 min-w-0 text-left group">
+                    <div className="font-semibold text-earth truncate group-hover:text-gold transition-colors">{s.name}</div>
+                    <div className="text-xs text-[color:var(--text-faint)] mt-1">
                       {s.date && new Date(s.date).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
                       {s.location && ` · ${s.location}`}
                     </div>
                   </button>
-                  <div className="flex flex-col items-end gap-1 shrink-0">
-                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${status === 'Closed' ? 'bg-gray-100 text-gray-500' : status === 'Upcoming' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>{status}</span>
-                    <span className="text-xs text-gray-500 flex items-center gap-1"><Users size={12} /> {s.attendeeCount || 0}</span>
+                  <div className="flex flex-col items-end gap-1.5 shrink-0">
+                    <AdminBadge tone={status === 'Closed' ? 'stone' : status === 'Upcoming' ? 'sky' : 'green'}>{status}</AdminBadge>
+                    <span className="font-display text-lg font-light text-earth leading-none">{s.attendeeCount || 0}</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-1 mt-3 pt-3 border-t border-gray-50">
-                  <button onClick={() => { setSelected(s); setView('detail'); }} className="text-xs font-medium text-gray-600 hover:text-gray-900 px-2 py-1">Open</button>
-                  <button onClick={() => copyLink(s.id)} className="flex items-center gap-1 text-xs font-medium text-gray-600 hover:text-gray-900 px-2 py-1"><Link2 size={12} /> Copy Link</button>
-                  <button onClick={() => deleteSession(s)} className="flex items-center gap-1 text-xs font-medium text-red-600 hover:text-red-700 px-2 py-1 ml-auto"><Trash2 size={12} /> Delete</button>
+                <div className="flex items-center gap-4 mt-4 pt-4 border-t border-stone-200">
+                  <button onClick={() => { setSelected(s); setView('detail'); }} className="flex items-center gap-1.5 text-xs font-semibold text-warm-brown hover:text-gold transition-colors"><QrCode size={13} /> Open</button>
+                  <button onClick={() => copyLink(s.id)} className="flex items-center gap-1.5 text-xs font-semibold text-warm-brown hover:text-gold transition-colors"><Link2 size={13} /> Copy link</button>
+                  <button onClick={() => deleteSession(s)} className="flex items-center gap-1.5 text-xs font-semibold text-[#C4553B] hover:opacity-80 transition-opacity ml-auto"><Trash2 size={13} /> Delete</button>
                 </div>
-              </div>
+              </AdminCard>
             );
           })}
         </div>

@@ -30,7 +30,7 @@ interface AdminScreenHeaderProps {
  * Rendered once per screen — screens must NOT repeat their own title below it.
  */
 export const AdminScreenHeader: React.FC<AdminScreenHeaderProps> = ({ title, onBack, action, titleIcon, leftAccessory, rightAccessory }) => (
-  <div className="relative bg-white px-3 flex items-center gap-2 border-b border-gray-100 shadow-sm min-h-[52px] flex-shrink-0 z-20">
+  <div className="relative bg-white px-3 flex items-center gap-2 border-b border-stone-200 shadow-sm min-h-[52px] flex-shrink-0 z-20">
     {/* Left / center / right laid out in normal flow. The side columns are sized
         to their content (never compressed), and the title takes the space that's
         left and truncates — so a wide action (e.g. "Automate" + "New Post") can
@@ -51,7 +51,7 @@ export const AdminScreenHeader: React.FC<AdminScreenHeaderProps> = ({ title, onB
 
     <div className="flex-1 min-w-0 flex items-center gap-1.5 justify-center">
       {titleIcon}
-      <h1 className="font-display text-[17px] font-bold text-gray-900 truncate">{title}</h1>
+      <h1 className="font-display text-[17px] font-bold text-earth truncate">{title}</h1>
     </div>
 
     <div className="flex items-center gap-2 flex-shrink-0 z-10 justify-end">

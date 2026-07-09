@@ -97,7 +97,7 @@ const FirstRunSetup: React.FC<FirstRunSetupProps> = ({ tenantId, onFinished }) =
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-10 px-4">
+    <div className="min-h-screen bg-stone-100 py-10 px-4">
       <div className="max-w-2xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
@@ -111,8 +111,8 @@ const FirstRunSetup: React.FC<FirstRunSetupProps> = ({ tenantId, onFinished }) =
           }}>
             <Sparkles size={14} /> Payment received
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 font-display">Finish setting up your ministry</h1>
-          <p className="text-sm text-gray-500 mt-2">
+          <h1 className="text-2xl font-bold text-earth font-display">Finish setting up your ministry</h1>
+          <p className="text-sm text-warm-brown mt-2">
             {features?.customBranding || features?.customDomain
               ? 'Claim your web address and brand your app. You can change all of this later in Settings.'
               : 'Claim your web address. You can change it later in Settings.'}
@@ -127,24 +127,24 @@ const FirstRunSetup: React.FC<FirstRunSetupProps> = ({ tenantId, onFinished }) =
         )}
 
         {/* Subdomain claim */}
-        <div className="bg-white rounded-2xl border border-gray-100 p-5 mb-6">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">Your Web Address</h3>
+        <div className="bg-white rounded-2xl border border-stone-200 p-5 mb-6">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-warm-brown mb-3">Your Web Address</h3>
           <div className="flex items-center">
             <input
               type="text"
               value={subdomain}
               onChange={(e) => { setSubdomain(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '')); }}
               className="flex-1 px-4 py-2.5 border rounded-l-lg text-sm font-mono outline-none transition-colors focus:ring-2 focus:ring-gold"
-              style={{ borderColor: status === 'taken' ? '#EF4444' : status === 'available' ? '#22C55E' : '#E5E7EB' }}
+              style={{ borderColor: status === 'taken' ? '#EF4444' : status === 'available' ? '#22C55E' : '#E8E2D9' }}
               placeholder="gracechurch"
             />
-            <span className="px-4 py-2.5 border border-l-0 border-gray-200 rounded-r-lg text-sm text-gray-500 bg-gray-50">
+            <span className="px-4 py-2.5 border border-l-0 border-stone-200 rounded-r-lg text-sm text-warm-brown bg-stone-100">
               .theharvest.app
             </span>
           </div>
           <div className="mt-2 h-5 text-xs">
             {status === 'checking' && (
-              <span className="text-gray-500 inline-flex items-center gap-1"><Loader2 size={12} className="animate-spin" /> Checking availability…</span>
+              <span className="text-warm-brown inline-flex items-center gap-1"><Loader2 size={12} className="animate-spin" /> Checking availability…</span>
             )}
             {status === 'available' && (
               <span className="text-green-600 inline-flex items-center gap-1"><CheckCircle2 size={12} /> {subdomain}.theharvest.app is available!</span>
@@ -157,16 +157,16 @@ const FirstRunSetup: React.FC<FirstRunSetupProps> = ({ tenantId, onFinished }) =
 
         {/* Branding — only for plans that include custom branding (Community / max+) */}
         {features?.customBranding && (
-          <div className="bg-white rounded-2xl border border-gray-100 p-5 mb-6">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">Branding</h3>
+          <div className="bg-white rounded-2xl border border-stone-200 p-5 mb-6">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-warm-brown mb-3">Branding</h3>
             <BrandingSection currentFeatures={features ?? undefined} />
           </div>
         )}
 
         {/* Custom domain — only for plans that include it (Ministry / ultra) */}
         {features?.customDomain && (
-          <div className="bg-white rounded-2xl border border-gray-100 p-5 mb-6">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">Custom Domain</h3>
+          <div className="bg-white rounded-2xl border border-stone-200 p-5 mb-6">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-warm-brown mb-3">Custom Domain</h3>
             <DomainSection hasCustomDomain={!!features?.customDomain} />
           </div>
         )}

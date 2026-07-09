@@ -19,8 +19,8 @@ import { useDocs, useDocFolders, useSharedDocs } from '../hooks/queries/useDocsQ
 import { exportToPDF, exportToDOCX, exportToMarkdown } from '../utils/doc-export';
 import { markdownToHtml, titleFromMarkdown } from '../utils/markdown-import';
 import RichTextEditor from './RichTextEditor';
-import FocusScreen from './FocusScreen';
 import { useAdminHeader, HeaderActionButton } from './AdminScreenHeader';
+import { AdminPageHeader, AdminPrimaryButton, AdminSecondaryButton, AdminBadge } from './admin/AdminUI';
 
 import type { Doc, DocFolder } from '../hooks/queries/useDocsQueries';
 
@@ -62,16 +62,16 @@ const ThreeDotMenu: React.FC<{
     <div className="relative" ref={menuRef}>
       <button
         onClick={(e) => { e.stopPropagation(); setMenuOpen(!menuOpen); }}
-        className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-gray-100 transition-all"
+        className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-stone-100 transition-all"
       >
-        <MoreVertical size={14} className="text-gray-400 hover:text-gray-600" />
+        <MoreVertical size={14} className="text-[color:var(--text-faint)] hover:text-warm-brown" />
       </button>
       {menuOpen && (
-        <div className="absolute right-0 top-full mt-1 w-36 bg-white rounded-lg shadow-lg border border-gray-100 z-50 py-1">
+        <div className="absolute right-0 top-full mt-1 w-36 bg-white rounded-lg shadow-lg border border-stone-200 z-50 py-1">
           {onMove && (
             <button
               onClick={(e) => { e.stopPropagation(); setMenuOpen(false); onMove(); }}
-              className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-100 rounded-lg"
+              className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-[color:var(--text-body)] hover:bg-stone-100 rounded-lg"
             >
               <Move size={12} /> Move to Folder
             </button>
@@ -79,14 +79,14 @@ const ThreeDotMenu: React.FC<{
           {onPin && (
             <button
               onClick={(e) => { e.stopPropagation(); setMenuOpen(false); onPin(); }}
-              className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-100 rounded-lg"
+              className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-[color:var(--text-body)] hover:bg-stone-100 rounded-lg"
             >
               <Pin size={12} /> {isPinned ? 'Unpin' : 'Pin to Top'}
             </button>
           )}
           <button
             onClick={(e) => { e.stopPropagation(); setMenuOpen(false); onRename(); }}
-            className="w-full flex items-center gap-2 text-left px-3 py-2 text-xs text-gray-700 hover:bg-gray-50"
+            className="w-full flex items-center gap-2 text-left px-3 py-2 text-xs text-[color:var(--text-body)] hover:bg-stone-100"
           >
             <Edit2 size={12} /> Rename
           </button>
@@ -118,18 +118,18 @@ const RenameModal: React.FC<{
   return (
     <div className="fixed inset-0 z-[310] flex items-center justify-center bg-black/50 p-4">
       <div className="bg-white rounded-2xl w-full max-w-sm p-5">
-        <h3 className="font-display font-bold text-gray-900 mb-4">{title}</h3>
+        <h3 className="font-display font-bold text-earth mb-4">{title}</h3>
         <input
           ref={inputRef}
           value={value}
           onChange={e => setValue(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter') onConfirm(value); if (e.key === 'Escape') onCancel(); }}
-          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold mb-4"
+          className="w-full border border-stone-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold mb-4"
           placeholder="Name"
           autoFocus
         />
         <div className="flex gap-3">
-          <button onClick={onCancel} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600">Cancel</button>
+          <button onClick={onCancel} className="flex-1 py-2.5 rounded-xl border border-stone-200 text-sm font-semibold text-warm-brown">Cancel</button>
           <button
             onClick={() => onConfirm(value)}
             disabled={!value.trim()}
@@ -158,7 +158,9 @@ const EditorMenu: React.FC<{
   onShare: () => void;
   onShareToLivestream: () => void;
   canShareToLivestream: boolean;
-}> = ({ title, content, createdBy, currentUid, isPinned, onPin, onRename, onDelete, onShare, onShareToLivestream, canShareToLivestream }) => {
+  /** When set, the trigger renders as a labelled button (e.g. "Export") instead of a ⋯ icon. */
+  triggerLabel?: string;
+}> = ({ title, content, createdBy, currentUid, isPinned, onPin, onRename, onDelete, onShare, onShareToLivestream, canShareToLivestream, triggerLabel }) => {
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -197,53 +199,62 @@ const EditorMenu: React.FC<{
 
   return (
     <div className="relative" ref={menuRef}>
-      <button
-        onClick={() => setOpen(!open)}
-        className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
-        aria-label="Document options"
-      >
-        <MoreHorizontal size={18} className="text-gray-500" />
-      </button>
+      {triggerLabel ? (
+        <button
+          onClick={() => setOpen(!open)}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-brand border border-stone-200 text-[13px] font-semibold text-earth hover:bg-stone-100 transition-colors"
+        >
+          <Download size={15} /> {triggerLabel}
+        </button>
+      ) : (
+        <button
+          onClick={() => setOpen(!open)}
+          className="p-1.5 rounded-lg hover:bg-stone-100 transition-colors"
+          aria-label="Document options"
+        >
+          <MoreHorizontal size={18} className="text-warm-brown" />
+        </button>
+      )}
       {open && (
-        <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl shadow-lg border border-gray-100 z-[250] py-1">
-          <div className="px-3 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Export</div>
+        <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl shadow-lg border border-stone-200 z-[250] py-1">
+          <div className="px-3 py-1 text-[10px] font-bold text-[color:var(--text-faint)] uppercase tracking-wider">Export</div>
           <button onClick={handleExportPDF}
-            className="flex items-center gap-2 w-full px-3 py-2 text-xs text-gray-700 hover:bg-gray-50">
+            className="flex items-center gap-2 w-full px-3 py-2 text-xs text-[color:var(--text-body)] hover:bg-stone-100">
             <Download size={13} /> Export as PDF
           </button>
           <button onClick={handleExportDOCX}
-            className="flex items-center gap-2 w-full px-3 py-2 text-xs text-gray-700 hover:bg-gray-50">
+            className="flex items-center gap-2 w-full px-3 py-2 text-xs text-[color:var(--text-body)] hover:bg-stone-100">
             <Download size={13} /> Export as DOCX
           </button>
           <button onClick={handleExportMD}
-            className="flex items-center gap-2 w-full px-3 py-2 text-xs text-gray-700 hover:bg-gray-50">
+            className="flex items-center gap-2 w-full px-3 py-2 text-xs text-[color:var(--text-body)] hover:bg-stone-100">
             <Download size={13} /> Export as Markdown
           </button>
           {currentUid === createdBy && (
             <>
-              <div className="border-t border-gray-100 my-1" />
+              <div className="border-t border-stone-200 my-1" />
               <button onClick={() => { setOpen(false); onShare(); }}
-                className="flex items-center gap-2 w-full px-3 py-2 text-xs text-gray-700 hover:bg-gray-50">
+                className="flex items-center gap-2 w-full px-3 py-2 text-xs text-[color:var(--text-body)] hover:bg-stone-100">
                 <Share2 size={13} /> Share with Admins
               </button>
             </>
           )}
           {canShareToLivestream && (
             <button onClick={() => { setOpen(false); onShareToLivestream(); }}
-              className="flex items-center gap-2 w-full px-3 py-2 text-xs text-gray-700 hover:bg-gray-50">
+              className="flex items-center gap-2 w-full px-3 py-2 text-xs text-[color:var(--text-body)] hover:bg-stone-100">
               <Radio size={13} /> Share to Livestream
             </button>
           )}
-          <div className="border-t border-gray-100 my-1" />
+          <div className="border-t border-stone-200 my-1" />
           <button onClick={() => { setOpen(false); onPin(); }}
-            className="flex items-center gap-2 w-full px-3 py-2 text-xs text-gray-700 hover:bg-gray-50">
+            className="flex items-center gap-2 w-full px-3 py-2 text-xs text-[color:var(--text-body)] hover:bg-stone-100">
             <Pin size={13} /> {isPinned ? 'Unpin' : 'Pin to Top'}
           </button>
           <button onClick={() => { setOpen(false); onRename(); }}
-            className="flex items-center gap-2 w-full px-3 py-2 text-xs text-gray-700 hover:bg-gray-50">
+            className="flex items-center gap-2 w-full px-3 py-2 text-xs text-[color:var(--text-body)] hover:bg-stone-100">
             <Edit2 size={13} /> Rename
           </button>
-          <div className="border-t border-gray-100 my-1" />
+          <div className="border-t border-stone-200 my-1" />
           <button onClick={() => { setOpen(false); onDelete(); }}
             className="flex items-center gap-2 w-full px-3 py-2 text-xs text-red-600 hover:bg-red-50">
             <Trash2 size={13} /> Delete
@@ -280,13 +291,13 @@ const FolderNode: React.FC<{
   return (
     <div>
       <div
-        className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg cursor-pointer group transition-colors ${isActive ? 'bg-[color-mix(in_srgb,var(--brand-color)_10%,transparent)]' : 'hover:bg-gray-100'}`}
+        className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg cursor-pointer group transition-colors ${isActive ? 'bg-[color-mix(in_srgb,var(--brand-color)_10%,transparent)]' : 'hover:bg-stone-100'}`}
         style={{ paddingLeft: `${8 + depth * 16}px` }}
         onClick={() => { setOpen(!open); onSelectFolder(folder.id); }}
       >
-        {open ? <ChevronDown size={13} className="text-gray-400 flex-shrink-0" /> : <ChevronRight size={13} className="text-gray-400 flex-shrink-0" />}
-        {open ? <FolderOpen size={14} style={{ color: 'var(--brand-color, #d4a017)' }} className="flex-shrink-0" /> : <Folder size={14} className="text-gray-400 flex-shrink-0" />}
-        <span className="text-xs font-medium text-gray-800 flex-1 truncate">{folder.name}</span>
+        {open ? <ChevronDown size={13} className="text-[color:var(--text-faint)] flex-shrink-0" /> : <ChevronRight size={13} className="text-[color:var(--text-faint)] flex-shrink-0" />}
+        {open ? <FolderOpen size={14} style={{ color: 'var(--brand-color, #d4a017)' }} className="flex-shrink-0" /> : <Folder size={14} className="text-[color:var(--text-faint)] flex-shrink-0" />}
+        <span className="text-xs font-medium text-[color:var(--text-body)] flex-1 truncate">{folder.name}</span>
         <ThreeDotMenu
           onRename={() => onRenameFolder(folder)}
           onDelete={() => onDeleteFolder(folder.id)}
@@ -317,11 +328,11 @@ const FolderNode: React.FC<{
             <div
               key={d.id}
               onClick={() => onSelectDoc(d)}
-              className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg cursor-pointer group transition-colors ${activeDocId === d.id ? 'bg-[color-mix(in_srgb,var(--brand-color)_10%,transparent)]' : 'hover:bg-gray-100'}`}
+              className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg cursor-pointer group transition-colors ${activeDocId === d.id ? 'bg-[color-mix(in_srgb,var(--brand-color)_10%,transparent)]' : 'hover:bg-stone-100'}`}
               style={{ paddingLeft: `${24 + depth * 16}px` }}
             >
-              <FileText size={13} className="text-gray-400 flex-shrink-0" />
-              <span className="text-xs text-gray-700 flex-1 truncate">{d.title || 'Untitled'}</span>
+              <FileText size={13} className="text-[color:var(--text-faint)] flex-shrink-0" />
+              <span className="text-xs text-[color:var(--text-body)] flex-1 truncate">{d.title || 'Untitled'}</span>
               <ThreeDotMenu
                 onRename={() => onRenameDoc(d)}
                 onDelete={() => onDeleteDoc(d.id)}
@@ -381,6 +392,9 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
   const [activeFolderId, setActiveFolderId] = useState<string | null>(null);
   const [showNewFolder, setShowNewFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
+  // Inline "create folder while moving a doc" (used in the Move-to-Folder modal).
+  const [moveCreating, setMoveCreating] = useState(false);
+  const [moveFolderName, setMoveFolderName] = useState('');
   const [focusMode, setFocusMode] = useState(false);
   const saveTimer = useRef<NodeJS.Timeout | null>(null);
   const titleRef = useRef<HTMLInputElement>(null);
@@ -535,6 +549,27 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
     } catch (e) { notifyError('Failed to move document', e); }
   };
 
+  // Create a new folder and move the doc straight into it (from the Move modal).
+  const createFolderAndMove = async (docId: string, name: string) => {
+    if (!name.trim()) return;
+    try {
+      const ref = await addDoc(collection(db, 'docFolders'), {
+        name: name.trim(),
+        parentId: null,
+        tenantId: tenantId || null,
+        createdAt: serverTimestamp(),
+        createdBy: auth.currentUser?.uid || '',
+        order: folders.length,
+      });
+      await updateDoc(doc(db, 'docs', docId), { folderId: ref.id, updatedAt: serverTimestamp() });
+      setMoveDocId(null);
+      setMoveCreating(false);
+      setMoveFolderName('');
+      await queryClient.invalidateQueries({ queryKey: ['docFolders', tenantId] });
+      await queryClient.invalidateQueries({ queryKey: ['docs', tenantId] });
+    } catch (e) { notifyError('Failed to create folder', e); }
+  };
+
   const togglePinDoc = async (docId: string, currentPinned: boolean) => {
     try {
       await updateDoc(doc(db, 'docs', docId), { pinned: !currentPinned });
@@ -655,10 +690,10 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
   const shareModal = shareDocId ? (
     <div className="fixed inset-0 z-[320] flex items-end sm:items-center justify-center bg-black/50" onClick={() => setShareDocId(null)}>
       <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-sm max-h-[65vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 sticky top-0 bg-white">
-          <h3 className="font-display font-bold text-gray-900">Share with Admins</h3>
-          <button onClick={() => setShareDocId(null)} className="p-1 rounded-lg hover:bg-gray-100">
-            <X size={18} className="text-gray-400" />
+        <div className="flex items-center justify-between px-5 py-4 border-b border-stone-200 sticky top-0 bg-white">
+          <h3 className="font-display font-bold text-earth">Share with Admins</h3>
+          <button onClick={() => setShareDocId(null)} className="p-1 rounded-lg hover:bg-stone-100">
+            <X size={18} className="text-[color:var(--text-faint)]" />
           </button>
         </div>
         {loadingAdmins ? (
@@ -666,7 +701,7 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
             <div className="w-6 h-6 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--brand-color, #d4a017)', borderTopColor: 'transparent' }} />
           </div>
         ) : shareAdmins.length === 0 ? (
-          <p className="text-sm text-gray-400 text-center py-8">No other admins found.</p>
+          <p className="text-sm text-[color:var(--text-faint)] text-center py-8">No other admins found.</p>
         ) : (
           <div className="p-3 space-y-1">
             {shareAdmins.map(admin => {
@@ -676,11 +711,11 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
                 <button
                   key={admin.id}
                   onClick={() => toggleShare(shareDocId, admin.id, isShared)}
-                  className="flex items-center justify-between w-full px-4 py-3 rounded-xl hover:bg-gray-50 transition-colors"
+                  className="flex items-center justify-between w-full px-4 py-3 rounded-xl hover:bg-stone-100 transition-colors"
                 >
                   <div className="text-left">
-                    <p className="text-sm font-semibold text-gray-800">{admin.name}</p>
-                    {admin.email && <p className="text-xs text-gray-400">{admin.email}</p>}
+                    <p className="text-sm font-semibold text-[color:var(--text-body)]">{admin.name}</p>
+                    {admin.email && <p className="text-xs text-[color:var(--text-faint)]">{admin.email}</p>}
                   </div>
                   <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${isShared ? 'bg-gold border-gold' : 'border-gray-300'}`}>
                     {isShared && <Check size={12} className="text-white" />}
@@ -700,13 +735,13 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
       {showNewFolder && (
         <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white rounded-2xl w-full max-w-sm p-5">
-            <h3 className="font-display font-bold text-gray-900 mb-4">New Folder</h3>
+            <h3 className="font-display font-bold text-earth mb-4">New Folder</h3>
             <input value={newFolderName} onChange={e => setNewFolderName(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && createFolder()}
-              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold mb-4"
+              className="w-full border border-stone-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold mb-4"
               placeholder="Folder name" autoFocus />
             <div className="flex gap-3">
-              <button onClick={() => setShowNewFolder(false)} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600">Cancel</button>
+              <button onClick={() => setShowNewFolder(false)} className="flex-1 py-2.5 rounded-xl border border-stone-200 text-sm font-semibold text-warm-brown">Cancel</button>
               <button onClick={createFolder} disabled={!newFolderName.trim()}
                 className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
                 style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}>Create</button>
@@ -717,10 +752,10 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
       {(deleteDocId || deleteFolderId) && (
         <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white rounded-2xl p-6 w-full max-w-sm text-center">
-            <p className="font-display font-bold text-gray-900 mb-2">Delete {deleteDocId ? 'this document' : 'this folder'}?</p>
-            <p className="text-sm text-gray-500 mb-5">This cannot be undone.</p>
+            <p className="font-display font-bold text-earth mb-2">Delete {deleteDocId ? 'this document' : 'this folder'}?</p>
+            <p className="text-sm text-warm-brown mb-5">This cannot be undone.</p>
             <div className="flex gap-3">
-              <button onClick={() => { setDeleteDocId(null); setDeleteFolderId(null); }} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600">Cancel</button>
+              <button onClick={() => { setDeleteDocId(null); setDeleteFolderId(null); }} className="flex-1 py-2.5 rounded-xl border border-stone-200 text-sm font-semibold text-warm-brown">Cancel</button>
               <button onClick={deleteDocId ? confirmDeleteDoc : confirmDeleteFolder} className="flex-1 py-2.5 rounded-xl bg-red-500 text-white text-sm font-semibold">Delete</button>
             </div>
           </div>
@@ -743,27 +778,55 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
         />
       )}
       {moveDocId && (
-        <div className="fixed inset-0 z-[210] flex items-end sm:items-center justify-center bg-black/50" onClick={() => setMoveDocId(null)}>
-          <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-sm p-5 max-h-[60vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <h3 className="font-display font-bold text-gray-900 mb-4">Move to Folder</h3>
+        <div className="fixed inset-0 z-[210] flex items-end sm:items-center justify-center bg-black/50" onClick={() => { setMoveDocId(null); setMoveCreating(false); setMoveFolderName(''); }}>
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-sm p-5 max-h-[65vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <h3 className="font-display font-bold text-earth mb-4">Move to Folder</h3>
             <button
               onClick={() => moveDocToFolder(moveDocId, null)}
-              className="flex items-center gap-2 w-full px-3 py-2.5 rounded-xl hover:bg-gray-100 transition-colors text-sm text-gray-700 mb-1"
+              className="flex items-center gap-2 w-full px-3 py-2.5 rounded-xl hover:bg-stone-100 transition-colors text-sm text-[color:var(--text-body)] mb-1"
             >
-              <FileText size={14} className="text-gray-400" /> No Folder (Root)
+              <FileText size={14} className="text-[color:var(--text-faint)]" /> No Folder (Root)
             </button>
             {folders.map(f => (
               <button
                 key={f.id}
                 onClick={() => moveDocToFolder(moveDocId, f.id)}
-                className="flex items-center gap-2 w-full px-3 py-2.5 rounded-xl hover:bg-gray-100 transition-colors text-sm text-gray-700 mb-1"
+                className="flex items-center gap-2 w-full px-3 py-2.5 rounded-xl hover:bg-stone-100 transition-colors text-sm text-[color:var(--text-body)] mb-1"
               >
                 <Folder size={14} style={{ color: 'var(--brand-color, #d4a017)' }} /> {f.name}
               </button>
             ))}
+
+            {/* Create a new folder inline (works even when there are no folders yet) */}
+            {moveCreating ? (
+              <div className="mt-2 pt-3 border-t border-stone-200">
+                <input
+                  value={moveFolderName}
+                  onChange={e => setMoveFolderName(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && createFolderAndMove(moveDocId, moveFolderName)}
+                  placeholder="New folder name"
+                  autoFocus
+                  className="w-full border border-stone-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold mb-2"
+                />
+                <div className="flex gap-2">
+                  <button onClick={() => { setMoveCreating(false); setMoveFolderName(''); }} className="flex-1 py-2 rounded-xl border border-stone-200 text-sm font-semibold text-warm-brown">Back</button>
+                  <button onClick={() => createFolderAndMove(moveDocId, moveFolderName)} disabled={!moveFolderName.trim()}
+                    className="flex-1 py-2 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
+                    style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}>Create &amp; move</button>
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => setMoveCreating(true)}
+                className="flex items-center gap-2 w-full px-3 py-2.5 rounded-xl hover:bg-[color-mix(in_srgb,var(--brand-color)_10%,white)] transition-colors text-sm font-semibold text-gold mb-1 mt-1"
+              >
+                <Plus size={14} /> New folder…
+              </button>
+            )}
+
             <button
-              onClick={() => setMoveDocId(null)}
-              className="w-full py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 mt-3"
+              onClick={() => { setMoveDocId(null); setMoveCreating(false); setMoveFolderName(''); }}
+              className="w-full py-2.5 rounded-xl border border-stone-200 text-sm font-semibold text-warm-brown mt-3"
             >Cancel</button>
           </div>
         </div>
@@ -774,60 +837,46 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
 
   // ── Focus mode (full editor) ──
   if (focusMode && openDoc) {
+    const closeEditor = () => {
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+      if (editTitle.trim()) saveDoc(openDoc.id, editTitle, editContent);
+      setOpenDoc(null);
+      setFocusMode(false);
+    };
     return (
-      <FocusScreen
-        onBack={() => {
-          if (saveTimer.current) clearTimeout(saveTimer.current);
-          if (editTitle.trim()) saveDoc(openDoc.id, editTitle, editContent);
-          setOpenDoc(null);
-          setFocusMode(false);
-        }}
-        onSidebarToggle={() => setSidebarOpen(!sidebarOpen)}
-        headerCenter={<span className="text-xs text-gray-400">{saveStatus === 'saving' ? 'Saving...' : saveStatus === 'saved' ? 'Saved' : ''}</span>}
-        headerRight={
-          <EditorMenu
-            title={editTitle}
-            content={editContent}
-            createdBy={openDoc.createdBy}
-            currentUid={auth.currentUser?.uid || ''}
-            isPinned={!!openDoc.pinned}
-            onPin={() => togglePinDoc(openDoc.id, !!openDoc.pinned)}
-            onRename={() => setRenameDocData({ id: openDoc.id, name: editTitle })}
-            onDelete={() => setDeleteDocId(openDoc.id)}
-            onShare={() => openShareModal(openDoc.id)}
-            canShareToLivestream={canShareToLivestream}
-            onShareToLivestream={() => handleShareToLivestream(openDoc.id, editTitle, editContent)}
-          />
-        }
-      >
-        <div className="flex h-full bg-white">
-          {/* Sidebar */}
-          {sidebarOpen && (
-            <div className="w-64 flex-shrink-0 border-r border-gray-100 flex flex-col bg-white overflow-hidden">
-              <div className="p-3 border-b border-gray-100 flex gap-2 mt-10">
-                <button
-                  onClick={() => createDoc()}
-                  className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold text-white"
-                  style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}
-                >
-                  <Plus size={12} /> New Doc
-                </button>
-                <button
-                  onClick={() => setShowNewFolder(true)}
-                  className="px-3 py-2 rounded-xl text-xs font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50"
-                >
-                  <FolderOpen size={14} />
-                </button>
-              </div>
-              <div className="flex-1 overflow-y-auto p-2">
-                {docs.filter(d => !d.folderId).map(d => (
+      <div className="lg:h-[calc(100dvh-140px)]">
+        <div className="lg:flex lg:gap-5 lg:h-full">
+
+          {/* Left rail: New doc + doc list (desktop; hidden on mobile) */}
+          <div className={`hidden ${sidebarOpen ? 'lg:flex' : 'lg:hidden'} flex-col lg:w-[300px] lg:shrink-0 lg:min-h-0 bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] overflow-hidden`}>
+            <div className="p-3 border-b border-stone-200 flex gap-2">
+              <button
+                onClick={() => createDoc()}
+                className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-brand text-xs font-semibold text-white"
+                style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}
+              >
+                <Plus size={13} /> New doc
+              </button>
+              <button
+                onClick={() => setShowNewFolder(true)}
+                className="px-3 py-2 rounded-brand border border-stone-200 text-warm-brown hover:bg-stone-100"
+                title="New folder"
+              >
+                <FolderOpen size={14} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-2">
+              {docs.filter(d => !d.folderId).map(d => {
+                const isOpen = openDoc?.id === d.id;
+                return (
                   <div
                     key={d.id}
                     onClick={() => openDocument(d)}
-                    className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg cursor-pointer group transition-colors ${openDoc?.id === d.id ? 'bg-[color-mix(in_srgb,var(--brand-color)_10%,transparent)]' : 'hover:bg-gray-100'}`}
+                    className={`flex items-center gap-1.5 px-2.5 py-2 rounded-brand cursor-pointer group transition-colors ${isOpen ? 'bg-[color-mix(in_srgb,var(--brand-color)_10%,white)]' : 'hover:bg-stone-100'}`}
                   >
-                    <FileText size={13} className="text-gray-400 flex-shrink-0" />
-                    <span className="text-xs text-gray-700 flex-1 truncate">{d.title || 'Untitled'}</span>
+                    <FileText size={13} className={`flex-shrink-0 ${isOpen ? 'text-gold' : 'text-[color:var(--text-faint)]'}`} />
+                    <span className={`text-xs flex-1 truncate ${isOpen ? 'text-earth font-semibold' : 'text-[color:var(--text-body)]'}`}>{d.title || 'Untitled'}</span>
+                    {d.pinned && <Pin size={11} className="text-gold flex-shrink-0" />}
                     <ThreeDotMenu
                       onRename={() => handleRenameDoc(d)}
                       onDelete={() => setDeleteDocId(d.id)}
@@ -836,67 +885,104 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
                       isPinned={!!d.pinned}
                     />
                   </div>
-                ))}
-                {rootFolders.map(f => (
-                  <FolderNode
-                    key={f.id}
-                    folder={f}
-                    folders={folders}
-                    docs={docs}
-                    activeFolderId={activeFolderId}
-                    activeDocId={openDoc?.id || null}
-                    onSelectFolder={setActiveFolderId}
-                    onSelectDoc={openDocument}
-                    onDeleteFolder={setDeleteFolderId}
-                    onDeleteDoc={setDeleteDocId}
-                    onRenameFolder={handleRenameFolder}
-                    onRenameDoc={handleRenameDoc}
-                    onMoveDoc={setMoveDocId}
-                    onPinDoc={togglePinDoc}
-                  />
-                ))}
-                {sharedDocs.length > 0 && (
-                  <div className="mt-3">
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-2 mb-1">Shared with Me</p>
-                    {sharedDocs.map(d => (
-                      <div
-                        key={d.id}
-                        onClick={() => openDocument(d)}
-                        className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg cursor-pointer group transition-colors ${openDoc?.id === d.id ? 'bg-[color-mix(in_srgb,var(--brand-color)_10%,transparent)]' : 'hover:bg-gray-100'}`}
-                      >
-                        <Share2 size={13} className="text-gray-400 flex-shrink-0" />
-                        <span className="text-xs text-gray-700 flex-1 truncate">{d.title || 'Untitled'}</span>
-                      </div>
-                    ))}
-                  </div>
+                );
+              })}
+              {rootFolders.map(f => (
+                <FolderNode
+                  key={f.id}
+                  folder={f}
+                  folders={folders}
+                  docs={docs}
+                  activeFolderId={activeFolderId}
+                  activeDocId={openDoc?.id || null}
+                  onSelectFolder={setActiveFolderId}
+                  onSelectDoc={openDocument}
+                  onDeleteFolder={setDeleteFolderId}
+                  onDeleteDoc={setDeleteDocId}
+                  onRenameFolder={handleRenameFolder}
+                  onRenameDoc={handleRenameDoc}
+                  onMoveDoc={setMoveDocId}
+                  onPinDoc={togglePinDoc}
+                />
+              ))}
+              {sharedDocs.length > 0 && (
+                <div className="mt-3">
+                  <p className="text-[10px] font-bold text-[color:var(--text-faint)] uppercase tracking-wider px-2 mb-1">Shared with Me</p>
+                  {sharedDocs.map(d => (
+                    <div
+                      key={d.id}
+                      onClick={() => openDocument(d)}
+                      className={`flex items-center gap-1.5 px-2.5 py-2 rounded-brand cursor-pointer group transition-colors ${openDoc?.id === d.id ? 'bg-[color-mix(in_srgb,var(--brand-color)_10%,white)]' : 'hover:bg-stone-100'}`}
+                    >
+                      <Share2 size={13} className="text-[color:var(--text-faint)] flex-shrink-0" />
+                      <span className="text-xs text-[color:var(--text-body)] flex-1 truncate">{d.title || 'Untitled'}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Right: editor pane */}
+          <div className="flex-1 min-w-0 flex flex-col lg:min-h-0 bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] overflow-hidden">
+            {/* Editor header — back · saved · Share to livestream · Export */}
+            <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-stone-200 shrink-0">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <button onClick={() => setSidebarOpen(v => !v)} className="hidden lg:flex p-1.5 rounded-lg hover:bg-stone-100 text-[color:var(--text-faint)]" title="Toggle document list">
+                  <PanelLeft size={16} />
+                </button>
+                <button onClick={closeEditor} className="flex items-center gap-1.5 text-[13px] font-semibold text-gold hover:opacity-80 transition-opacity">
+                  <ArrowLeft size={15} /> Notes
+                </button>
+              </div>
+              <span className="text-xs text-[color:var(--text-faint)] hidden sm:block">{saveStatus === 'saving' ? 'Saving…' : saveStatus === 'saved' ? 'Saved' : ''}</span>
+              <div className="flex items-center gap-2 shrink-0">
+                {canShareToLivestream && (
+                  <button
+                    onClick={() => handleShareToLivestream(openDoc.id, editTitle, editContent)}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-brand border border-stone-200 text-[13px] font-semibold text-earth hover:bg-stone-100 transition-colors"
+                  >
+                    <Radio size={15} /> <span className="hidden sm:inline">Share to livestream</span>
+                  </button>
                 )}
+                <EditorMenu
+                  triggerLabel="Export"
+                  title={editTitle}
+                  content={editContent}
+                  createdBy={openDoc.createdBy}
+                  currentUid={auth.currentUser?.uid || ''}
+                  isPinned={!!openDoc.pinned}
+                  onPin={() => togglePinDoc(openDoc.id, !!openDoc.pinned)}
+                  onRename={() => setRenameDocData({ id: openDoc.id, name: editTitle })}
+                  onDelete={() => setDeleteDocId(openDoc.id)}
+                  onShare={() => openShareModal(openDoc.id)}
+                  canShareToLivestream={false}
+                  onShareToLivestream={() => handleShareToLivestream(openDoc.id, editTitle, editContent)}
+                />
               </div>
             </div>
-          )}
-
-          {/* Editor area */}
-          <div className="flex-1 flex flex-col overflow-hidden">
-            <div className="flex-1 overflow-y-auto px-4 lg:px-16 pb-12">
+            {/* Editor body */}
+            <div className="flex-1 lg:overflow-y-auto px-5 lg:px-12 pb-12 docs-editor">
               <input
                 ref={titleRef}
                 value={editTitle}
                 onChange={e => setEditTitle(e.target.value)}
                 onBlur={handleTitleBlur}
-                className="w-full text-3xl font-bold text-gray-900 bg-transparent border-none outline-none placeholder-gray-300 mb-6 mt-6"
+                className="w-full font-display text-4xl font-normal tracking-[-0.01em] text-earth bg-transparent border-none outline-none placeholder-stone-300 mb-6 mt-6"
                 placeholder="Untitled"
               />
               <RichTextEditor
                 content={editContent}
                 onChange={handleContentChange}
-                minHeight="calc(100vh - 200px)"
+                minHeight="calc(100vh - 320px)"
                 placeholder="Start writing... Type / for commands"
               />
             </div>
           </div>
-        </div>
 
+        </div>
         {commonModals}
-      </FocusScreen>
+      </div>
     );
   }
 
@@ -906,72 +992,86 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
   }
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="flex items-center justify-end gap-2 mb-6">
-        <input
-          ref={importInputRef}
-          type="file"
-          accept=".md,.markdown,text/markdown,text/plain"
-          onChange={importMarkdownFile}
-          className="hidden"
-        />
-        <button
-          onClick={() => importInputRef.current?.click()}
-          className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50"
-          title="Import a .md file"
-        >
-          <Upload size={15} /> Import
-        </button>
-        <button
-          onClick={() => setShowNewFolder(true)}
-          className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50"
-        >
-          <FolderOpen size={15} /> New Folder
-        </button>
-      </div>
+    <div className="max-w-5xl mx-auto">
+      <input
+        ref={importInputRef}
+        type="file"
+        accept=".md,.markdown,text/markdown,text/plain"
+        onChange={importMarkdownFile}
+        className="hidden"
+      />
+      <AdminPageHeader
+        className="mb-6"
+        eyebrow="Content"
+        title="Notes & Docs"
+        action={<div className="flex items-center gap-2.5">
+          <AdminSecondaryButton onClick={() => importInputRef.current?.click()} title="Import a .md file">
+            <Upload size={15} /> Import
+          </AdminSecondaryButton>
+          <AdminPrimaryButton onClick={() => createDoc()} icon={<Plus size={16} />}>New doc</AdminPrimaryButton>
+        </div>}
+      />
 
       {folders.length > 0 && (
-        <div className="mb-5">
-          <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Folders</p>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
-            {rootFolders.map(f => (
-              <div
-                key={f.id}
-                className={`relative group flex items-center gap-2 p-3 rounded-2xl border transition-all text-left ${activeFolderId === f.id ? 'border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] bg-[color-mix(in_srgb,var(--brand-color)_5%,transparent)]' : 'border-gray-100 bg-white hover:border-gray-200 shadow-sm'}`}
-              >
-                <button
-                  onClick={() => setActiveFolderId(activeFolderId === f.id ? null : f.id)}
-                  className="flex items-center gap-2 flex-1 min-w-0"
-                >
-                  <Folder size={16} style={{ color: 'var(--brand-color, #d4a017)' }} />
-                  <span className="text-xs font-semibold text-gray-800 truncate">{f.name}</span>
-                </button>
-                <ThreeDotMenu
-                  onRename={() => handleRenameFolder(f)}
-                  onDelete={() => setDeleteFolderId(f.id)}
-                />
-              </div>
-            ))}
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-2.5">
+            <p className="text-[11px] font-semibold text-gold uppercase tracking-[0.14em]">Folders</p>
+            <button onClick={() => setShowNewFolder(true)} className="flex items-center gap-1 text-xs font-semibold text-warm-brown hover:text-gold transition-colors">
+              <Plus size={13} /> New folder
+            </button>
           </div>
+          <div className="flex flex-wrap gap-2.5">
+            {rootFolders.map(f => {
+              const count = docs.filter(d => d.folderId === f.id).length;
+              const active = activeFolderId === f.id;
+              return (
+                <div
+                  key={f.id}
+                  className={`relative group flex items-center gap-2 pl-3.5 pr-2.5 py-2.5 rounded-brand-lg border transition-all text-left ${active ? 'border-[color-mix(in_srgb,var(--brand-color)_45%,transparent)] bg-[color-mix(in_srgb,var(--brand-color)_7%,white)]' : 'border-stone-200 bg-white hover:border-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] shadow-[var(--ds-sh-sm)]'}`}
+                >
+                  <button
+                    onClick={() => setActiveFolderId(active ? null : f.id)}
+                    className="flex items-center gap-2 flex-1 min-w-0"
+                  >
+                    <Folder size={15} style={{ color: 'var(--brand-color, #d4a017)' }} />
+                    <span className="text-sm font-semibold text-earth truncate">{f.name}</span>
+                    <span className="text-xs text-[color:var(--text-faint)] tabular-nums">{count}</span>
+                  </button>
+                  <ThreeDotMenu
+                    onRename={() => handleRenameFolder(f)}
+                    onDelete={() => setDeleteFolderId(f.id)}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {folders.length === 0 && (
+        <div className="mb-6">
+          <button onClick={() => setShowNewFolder(true)} className="flex items-center gap-1.5 text-xs font-semibold text-warm-brown hover:text-gold transition-colors">
+            <FolderOpen size={14} /> New folder
+          </button>
         </div>
       )}
 
       {sharedDocs.length > 0 && !activeFolderId && (
         <div className="mb-5">
-          <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Shared with Me</p>
+          <p className="text-xs font-bold text-warm-brown uppercase tracking-wider mb-2">Shared with Me</p>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {sharedDocs.map(d => (
               <div
                 key={d.id}
                 onClick={() => openDocument(d)}
-                className="relative bg-white rounded-2xl p-4 border border-gray-100 shadow-sm cursor-pointer hover:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] hover:shadow-md transition-all group"
+                className="relative bg-white rounded-2xl p-4 border border-stone-200 shadow-sm cursor-pointer hover:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] hover:shadow-md transition-all group"
               >
                 <div className="flex items-start gap-2 mb-2">
-                  <Share2 size={18} className="text-gray-300 flex-shrink-0 mt-0.5" />
+                  <Share2 size={18} className="text-stone-300 flex-shrink-0 mt-0.5" />
                 </div>
-                <p className="font-semibold text-gray-900 text-sm truncate">{d.title || 'Untitled'}</p>
+                <p className="font-semibold text-earth text-sm truncate">{d.title || 'Untitled'}</p>
                 {d.updatedAt && (
-                  <div className="flex items-center gap-1 mt-3 text-[10px] text-gray-400">
+                  <div className="flex items-center gap-1 mt-3 text-[10px] text-[color:var(--text-faint)]">
                     <Clock size={10} />
                     {fmtDate(d.updatedAt)}
                   </div>
@@ -983,7 +1083,7 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
       )}
 
       {folderDocs.length === 0 && docs.length === 0 ? (
-        <div className="text-center py-16 text-gray-400">
+        <div className="text-center py-16 text-[color:var(--text-faint)]">
           <FileText size={40} className="mx-auto mb-3 opacity-30" />
           <p className="font-display font-medium">No documents yet</p>
           <p className="text-sm mt-1">Create your first document</p>
@@ -992,43 +1092,52 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
         <>
           {activeFolderId && (
             <div className="flex items-center gap-2 mb-3">
-              <button onClick={() => setActiveFolderId(null)} className="text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1">
+              <button onClick={() => setActiveFolderId(null)} className="text-xs text-[color:var(--text-faint)] hover:text-warm-brown flex items-center gap-1">
                 <ArrowLeft size={12} /> All docs
               </button>
-              <span className="text-xs text-gray-400">/</span>
-              <span className="text-xs font-semibold text-gray-700">{folders.find(f => f.id === activeFolderId)?.name}</span>
+              <span className="text-xs text-[color:var(--text-faint)]">/</span>
+              <span className="text-xs font-semibold text-[color:var(--text-body)]">{folders.find(f => f.id === activeFolderId)?.name}</span>
             </div>
           )}
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {folderDocs.map(d => (
-              <div
-                key={d.id}
-                onClick={() => openDocument(d)}
-                className="relative bg-white rounded-2xl p-4 border border-gray-100 shadow-sm cursor-pointer hover:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] hover:shadow-md transition-all group"
-              >
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <FileText size={18} className="text-gray-300 flex-shrink-0 mt-0.5" />
-                  <ThreeDotMenu
-                    onRename={() => handleRenameDoc(d)}
-                    onDelete={() => setDeleteDocId(d.id)}
-                    onMove={() => setMoveDocId(d.id)}
-                    onPin={() => togglePinDoc(d.id, !!d.pinned)}
-                    isPinned={!!d.pinned}
-                  />
-                </div>
-                <p className="font-semibold text-gray-900 text-sm truncate">{d.title || 'Untitled'}</p>
-                {d.content && (
-                  <p className="text-xs text-gray-400 mt-1 line-clamp-2"
-                    dangerouslySetInnerHTML={{ __html: d.content.replace(/<[^>]*>/g, ' ').trim() }} />
-                )}
-                {d.updatedAt && (
-                  <div className="flex items-center gap-1 mt-3 text-[10px] text-gray-400">
-                    <Clock size={10} />
-                    {fmtDate(d.updatedAt)}
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {folderDocs.map(d => {
+              const sharedCount = d.sharedWith?.length || 0;
+              return (
+                <div
+                  key={d.id}
+                  onClick={() => openDocument(d)}
+                  className="relative bg-white rounded-brand-lg p-5 border border-stone-200 shadow-[var(--ds-sh-sm)] cursor-pointer hover:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] hover:shadow-[var(--ds-sh-md)] transition-all group"
+                >
+                  <div className="flex items-start justify-between gap-2 mb-2.5">
+                    <FileText size={18} className="text-stone-300 flex-shrink-0 mt-0.5" />
+                    <div className="flex items-center gap-1">
+                      {d.pinned && <Pin size={13} className="text-gold" />}
+                      <ThreeDotMenu
+                        onRename={() => handleRenameDoc(d)}
+                        onDelete={() => setDeleteDocId(d.id)}
+                        onMove={() => setMoveDocId(d.id)}
+                        onPin={() => togglePinDoc(d.id, !!d.pinned)}
+                        isPinned={!!d.pinned}
+                      />
+                    </div>
                   </div>
-                )}
-              </div>
-            ))}
+                  <p className="font-semibold text-earth text-[15px] truncate group-hover:text-gold transition-colors">{d.title || 'Untitled'}</p>
+                  {d.content && (
+                    <p className="text-xs text-warm-brown mt-1.5 line-clamp-2 leading-relaxed"
+                      dangerouslySetInnerHTML={{ __html: d.content.replace(/<[^>]*>/g, ' ').trim() }} />
+                  )}
+                  <div className="flex items-center gap-2 mt-4">
+                    {d.updatedAt && (
+                      <div className="flex items-center gap-1 text-[11px] text-[color:var(--text-faint)]">
+                        <Clock size={11} />
+                        {fmtDate(d.updatedAt)}
+                      </div>
+                    )}
+                    {sharedCount > 0 && <AdminBadge tone="sky">Shared · {sharedCount}</AdminBadge>}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </>
       )}

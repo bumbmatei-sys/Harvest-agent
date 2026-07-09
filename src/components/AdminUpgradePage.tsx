@@ -113,44 +113,44 @@ const AdminUpgradePage: React.FC<AdminUpgradePageProps> = ({ currentPlan, tenant
     <div className="max-w-3xl mx-auto p-4 space-y-6 pb-12">
       {/* Current plan card */}
       {currentPlan ? (
-        <div className="bg-white rounded-xl border border-gray-200 p-4">
+        <div className="bg-white rounded-xl border border-stone-200 p-4">
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-sm text-gray-600">You&apos;re on</p>
+              <p className="text-sm text-warm-brown">You&apos;re on</p>
               <div className="flex items-center gap-2 mt-1">
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 text-xs font-semibold">
                   <Crown size={13} style={{ color: 'var(--brand-color, #d4a017)' }} />
                   {currentName}
                 </span>
-                <span className="text-xs text-gray-400">{formatPlanPrice(currentPlan, 'monthly')}</span>
+                <span className="text-xs text-[color:var(--text-faint)]">{formatPlanPrice(currentPlan, 'monthly')}</span>
               </div>
             </div>
             <button
               onClick={handleManageSubscription}
               disabled={portalLoading}
-              className="flex items-center gap-1 text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors disabled:opacity-50 whitespace-nowrap"
+              className="flex items-center gap-1 text-sm font-medium text-[color:var(--text-body)] hover:text-earth transition-colors disabled:opacity-50 whitespace-nowrap"
             >
               {portalLoading ? 'Opening…' : <>Manage subscription <ChevronRight size={15} /></>}
             </button>
           </div>
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-gray-200 p-4 flex items-center gap-3">
+        <div className="bg-white rounded-xl border border-stone-200 p-4 flex items-center gap-3">
           <Crown size={18} style={{ color: 'var(--brand-color, #d4a017)' }} />
           <div>
-            <p className="text-sm font-semibold text-gray-900">Super Admin</p>
-            <p className="text-xs text-gray-500">Platform-wide access — every plan feature is enabled.</p>
+            <p className="text-sm font-semibold text-earth">Super Admin</p>
+            <p className="text-xs text-warm-brown">Platform-wide access — every plan feature is enabled.</p>
           </div>
         </div>
       )}
 
       {/* Billing period toggle */}
       <div className="flex flex-col items-center gap-2">
-        <div className="flex items-center gap-2 bg-gray-100 rounded-lg p-1">
+        <div className="flex items-center gap-2 bg-stone-100 rounded-lg p-1">
           <button
             onClick={() => setBillingPeriod('monthly')}
             className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
-              billingPeriod === 'monthly' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+              billingPeriod === 'monthly' ? 'bg-white text-earth shadow-sm' : 'text-warm-brown hover:text-[color:var(--text-body)]'
             }`}
           >
             Monthly
@@ -158,7 +158,7 @@ const AdminUpgradePage: React.FC<AdminUpgradePageProps> = ({ currentPlan, tenant
           <button
             onClick={() => setBillingPeriod('yearly')}
             className={`relative px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
-              billingPeriod === 'yearly' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+              billingPeriod === 'yearly' ? 'bg-white text-earth shadow-sm' : 'text-warm-brown hover:text-[color:var(--text-body)]'
             }`}
           >
             Yearly
@@ -186,13 +186,13 @@ const AdminUpgradePage: React.FC<AdminUpgradePageProps> = ({ currentPlan, tenant
             <div
               key={planId}
               className={`bg-white rounded-xl border p-5 flex flex-col ${
-                isRecommended ? 'border-amber-300 ring-1 ring-amber-200' : 'border-gray-200'
+                isRecommended ? 'border-amber-300 ring-1 ring-amber-200' : 'border-stone-200'
               }`}
             >
               <div className="flex items-center justify-between mb-1">
-                <h3 className="text-sm font-semibold text-gray-900">{name}</h3>
+                <h3 className="text-sm font-semibold text-earth">{name}</h3>
                 {isCurrent && (
-                  <span className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 text-[11px] font-semibold">
+                  <span className="px-2 py-0.5 rounded-full bg-stone-100 text-warm-brown text-[11px] font-semibold">
                     Current Plan
                   </span>
                 )}
@@ -204,23 +204,23 @@ const AdminUpgradePage: React.FC<AdminUpgradePageProps> = ({ currentPlan, tenant
               </div>
 
               <div className="flex items-baseline gap-1 mb-4">
-                <span className="text-2xl font-bold text-gray-900">
+                <span className="text-2xl font-bold text-earth">
                   ${billingPeriod === 'monthly' ? monthly.toLocaleString() : yearly.toLocaleString()}
                 </span>
-                <span className="text-xs text-gray-400">/{billingPeriod === 'monthly' ? 'mo' : 'yr'}</span>
+                <span className="text-xs text-[color:var(--text-faint)]">/{billingPeriod === 'monthly' ? 'mo' : 'yr'}</span>
               </div>
 
               <ul className="space-y-2 mb-5 flex-1">
                 {PLAN_HIGHLIGHTS[planId].map((feature) => (
                   <li key={feature} className="flex items-start gap-2">
-                    <Check size={14} className="text-gray-400 mt-0.5 shrink-0" />
-                    <span className="text-xs text-gray-500">{feature}</span>
+                    <Check size={14} className="text-[color:var(--text-faint)] mt-0.5 shrink-0" />
+                    <span className="text-xs text-warm-brown">{feature}</span>
                   </li>
                 ))}
               </ul>
 
               {isCurrent ? (
-                <div className="w-full py-2 rounded-lg text-sm font-medium text-center bg-gray-50 text-gray-400">
+                <div className="w-full py-2 rounded-lg text-sm font-medium text-center bg-stone-100 text-[color:var(--text-faint)]">
                   Current Plan
                 </div>
               ) : (
@@ -230,7 +230,7 @@ const AdminUpgradePage: React.FC<AdminUpgradePageProps> = ({ currentPlan, tenant
                   className={`w-full py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-60 ${
                     isRecommended
                       ? 'text-white hover:opacity-90'
-                      : 'border border-gray-200 text-gray-700 hover:bg-gray-50'
+                      : 'border border-stone-200 text-[color:var(--text-body)] hover:bg-stone-100'
                   }`}
                   style={isRecommended ? { backgroundColor: 'var(--brand-color, #d4a017)' } : undefined}
                 >
@@ -247,15 +247,15 @@ const AdminUpgradePage: React.FC<AdminUpgradePageProps> = ({ currentPlan, tenant
       </div>
 
       {/* Billing & Invoices */}
-      <div className="border-t border-gray-100 pt-6">
-        <h4 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">Billing &amp; Invoices</h4>
-        <p className="text-sm text-gray-600 mb-3">
+      <div className="border-t border-stone-200 pt-6">
+        <h4 className="text-xs font-semibold uppercase tracking-wider text-warm-brown mb-3">Billing &amp; Invoices</h4>
+        <p className="text-sm text-warm-brown mb-3">
           Manage payment methods and view past invoices through Stripe.
         </p>
         <button
           onClick={handleManageSubscription}
           disabled={portalLoading}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-stone-200 text-sm font-medium text-[color:var(--text-body)] hover:bg-stone-100 transition-colors disabled:opacity-50"
         >
           {portalLoading ? (
             <><span className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" /> Opening portal…</>
@@ -263,7 +263,7 @@ const AdminUpgradePage: React.FC<AdminUpgradePageProps> = ({ currentPlan, tenant
             <>Open Billing Portal <ChevronRight size={15} /></>
           )}
         </button>
-        <p className="text-xs text-gray-400 mt-2">Powered by Stripe</p>
+        <p className="text-xs text-[color:var(--text-faint)] mt-2">Powered by Stripe</p>
       </div>
 
       {/* Cancel subscription */}
@@ -272,7 +272,7 @@ const AdminUpgradePage: React.FC<AdminUpgradePageProps> = ({ currentPlan, tenant
           <button
             onClick={handleManageSubscription}
             disabled={portalLoading}
-            className="text-xs text-gray-400 underline hover:text-gray-600 transition-colors disabled:opacity-50"
+            className="text-xs text-[color:var(--text-faint)] underline hover:text-warm-brown transition-colors disabled:opacity-50"
           >
             Cancel subscription
           </button>

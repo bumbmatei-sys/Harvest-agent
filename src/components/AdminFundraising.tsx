@@ -13,6 +13,7 @@ import { notifyError } from '../utils/notify';
 import { authFetch } from '../utils/auth-fetch';
 import PaymentSection from './settings/PaymentSection';
 import { useAdminHeader, HeaderActionButton } from './AdminScreenHeader';
+import { AdminPageHeader, AdminPrimaryButton, AdminBadge } from './admin/AdminUI';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAppStore } from '../store/useAppStore';
 import { PLATFORM_TENANT_ID, hasPlatformOverride } from '../utils/tenant-scope';
@@ -274,35 +275,35 @@ const AdminFundraising: React.FC<AdminFundraisingProps> = ({ initialCampaignId, 
 
     return (
       <div className="max-w-3xl mx-auto">
-        <button onClick={() => setDetailCampaign(null)} className="flex items-center gap-1.5 text-sm text-gray-500 mb-4 hover:text-gray-800">
+        <button onClick={() => setDetailCampaign(null)} className="flex items-center gap-1.5 text-sm text-warm-brown mb-4 hover:text-[color:var(--text-body)]">
           <ArrowLeft size={15} /> Back to campaigns
         </button>
 
         {isPledge && (
           <div className="flex gap-2 mb-4">
-            <button onClick={() => setTab('overview')} className={`px-4 py-2 rounded-xl text-sm font-semibold ${tab === 'overview' ? 'text-white' : 'text-gray-600 bg-gray-100'}`} style={tab === 'overview' ? { backgroundColor: 'var(--brand-color, #d4a017)' } : undefined}>Overview</button>
-            <button onClick={() => setTab('pledges')} className={`px-4 py-2 rounded-xl text-sm font-semibold ${tab === 'pledges' ? 'text-white' : 'text-gray-600 bg-gray-100'}`} style={tab === 'pledges' ? { backgroundColor: 'var(--brand-color, #d4a017)' } : undefined}>Pledges</button>
+            <button onClick={() => setTab('overview')} className={`px-4 py-2 rounded-xl text-sm font-semibold ${tab === 'overview' ? 'text-white' : 'text-warm-brown bg-stone-100'}`} style={tab === 'overview' ? { backgroundColor: 'var(--brand-color, #d4a017)' } : undefined}>Overview</button>
+            <button onClick={() => setTab('pledges')} className={`px-4 py-2 rounded-xl text-sm font-semibold ${tab === 'pledges' ? 'text-white' : 'text-warm-brown bg-stone-100'}`} style={tab === 'pledges' ? { backgroundColor: 'var(--brand-color, #d4a017)' } : undefined}>Pledges</button>
           </div>
         )}
 
         {(!isPledge || tab === 'overview') ? (
-          <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+          <div className="bg-white rounded-2xl p-5 border border-stone-200 shadow-sm">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="font-bold text-gray-900 font-display">{c.title}</h2>
-              <button onClick={() => openEdit(c)} className="p-2 rounded-xl border border-gray-200 hover:bg-gray-50"><Edit2 size={15} className="text-gray-500" /></button>
+              <h2 className="font-bold text-earth font-display">{c.title}</h2>
+              <button onClick={() => openEdit(c)} className="p-2 rounded-xl border border-stone-200 hover:bg-stone-100"><Edit2 size={15} className="text-warm-brown" /></button>
             </div>
-            <p className="text-sm text-gray-500 mb-4">{c.description}</p>
-            <div className="flex items-baseline justify-between text-xs text-gray-500 mb-1.5">
-              <span className="font-semibold text-gray-800">{fmt(c.raised)} raised</span>
+            <p className="text-sm text-warm-brown mb-4">{c.description}</p>
+            <div className="flex items-baseline justify-between text-xs text-warm-brown mb-1.5">
+              <span className="font-semibold text-[color:var(--text-body)]">{fmt(c.raised)} raised</span>
               <span>of {fmt(c.goal)}</span>
             </div>
-            <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+            <div className="h-2 bg-stone-100 rounded-full overflow-hidden">
               <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: 'var(--brand-color, #d4a017)' }} />
             </div>
             <div className="flex items-center justify-between mt-4">
-              <span className="text-sm font-medium text-gray-700">Active campaign</span>
+              <span className="text-sm font-medium text-[color:var(--text-body)]">Active campaign</span>
               <button onClick={() => toggleActive(c)}>
-                {c.isActive ? <ToggleRight size={28} style={{ color: 'var(--brand-color, #d4a017)' }} /> : <ToggleLeft size={28} className="text-gray-300" />}
+                {c.isActive ? <ToggleRight size={28} style={{ color: 'var(--brand-color, #d4a017)' }} /> : <ToggleLeft size={28} className="text-stone-300" />}
               </button>
             </div>
           </div>
@@ -310,17 +311,17 @@ const AdminFundraising: React.FC<AdminFundraisingProps> = ({ initialCampaignId, 
           <div>
             {/* Totals */}
             <div className="grid grid-cols-3 gap-3 mb-4">
-              <div className="bg-white rounded-2xl p-4 border border-gray-100 text-center shadow-sm">
-                <div className="text-xl font-bold text-gray-900">{fmt(totalPledged)}</div>
-                <div className="text-xs text-gray-400 mt-0.5">Pledged</div>
+              <div className="bg-white rounded-2xl p-4 border border-stone-200 text-center shadow-sm">
+                <div className="text-xl font-bold text-earth">{fmt(totalPledged)}</div>
+                <div className="text-xs text-[color:var(--text-faint)] mt-0.5">Pledged</div>
               </div>
-              <div className="bg-white rounded-2xl p-4 border border-gray-100 text-center shadow-sm">
+              <div className="bg-white rounded-2xl p-4 border border-stone-200 text-center shadow-sm">
                 <div className="text-xl font-bold text-green-600">{fmt(totalPaid)}</div>
-                <div className="text-xs text-gray-400 mt-0.5">Paid</div>
+                <div className="text-xs text-[color:var(--text-faint)] mt-0.5">Paid</div>
               </div>
-              <div className="bg-white rounded-2xl p-4 border border-gray-100 text-center shadow-sm">
+              <div className="bg-white rounded-2xl p-4 border border-stone-200 text-center shadow-sm">
                 <div className="text-xl font-bold" style={{ color: 'var(--brand-color, #d4a017)' }}>{fulfillment}%</div>
-                <div className="text-xs text-gray-400 mt-0.5">Fulfilled</div>
+                <div className="text-xs text-[color:var(--text-faint)] mt-0.5">Fulfilled</div>
               </div>
             </div>
 
@@ -328,40 +329,40 @@ const AdminFundraising: React.FC<AdminFundraisingProps> = ({ initialCampaignId, 
               <button onClick={() => { setPledgeForm(emptyPledge); setShowPledgeForm(true); }} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-white" style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}>
                 <Plus size={13} /> Add Pledge
               </button>
-              <button onClick={copyPledgeLink} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50">
+              <button onClick={copyPledgeLink} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border border-stone-200 text-warm-brown hover:bg-stone-100">
                 {copied ? <Check size={13} /> : <Copy size={13} />} {copied ? 'Copied' : 'Copy Pledge Link'}
               </button>
-              <button onClick={() => setReminderConfirm(true)} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50">
+              <button onClick={() => setReminderConfirm(true)} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border border-stone-200 text-warm-brown hover:bg-stone-100">
                 <Send size={13} /> Send Reminder
               </button>
             </div>
 
             {showPledgeForm && (
-              <div className="bg-gray-50 rounded-2xl p-4 mb-3 space-y-2.5">
+              <div className="bg-stone-100 rounded-2xl p-4 mb-3 space-y-2.5">
                 <div className="grid grid-cols-2 gap-2">
-                  <input value={pledgeForm.donorName} onChange={e => setPledgeForm({ ...pledgeForm, donorName: e.target.value })} placeholder="Donor name *" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold" />
-                  <input value={pledgeForm.donorEmail} onChange={e => setPledgeForm({ ...pledgeForm, donorEmail: e.target.value })} placeholder="Email *" type="email" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold" />
+                  <input value={pledgeForm.donorName} onChange={e => setPledgeForm({ ...pledgeForm, donorName: e.target.value })} placeholder="Donor name *" className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold" />
+                  <input value={pledgeForm.donorEmail} onChange={e => setPledgeForm({ ...pledgeForm, donorEmail: e.target.value })} placeholder="Email *" type="email" className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold" />
                 </div>
                 <div className="grid grid-cols-2 gap-2">
-                  <input value={pledgeForm.donorPhone} onChange={e => setPledgeForm({ ...pledgeForm, donorPhone: e.target.value })} placeholder="Phone (optional)" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold" />
-                  <input value={pledgeForm.pledgeAmount} onChange={e => setPledgeForm({ ...pledgeForm, pledgeAmount: e.target.value })} placeholder="Pledge amount ($) *" type="number" min={0} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold" />
+                  <input value={pledgeForm.donorPhone} onChange={e => setPledgeForm({ ...pledgeForm, donorPhone: e.target.value })} placeholder="Phone (optional)" className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold" />
+                  <input value={pledgeForm.pledgeAmount} onChange={e => setPledgeForm({ ...pledgeForm, pledgeAmount: e.target.value })} placeholder="Pledge amount ($) *" type="number" min={0} className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold" />
                 </div>
-                <input value={pledgeForm.dueDate} onChange={e => setPledgeForm({ ...pledgeForm, dueDate: e.target.value })} type="date" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold" />
-                <textarea value={pledgeForm.notes} onChange={e => setPledgeForm({ ...pledgeForm, notes: e.target.value })} placeholder="Notes (optional)" rows={2} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold resize-none" />
+                <input value={pledgeForm.dueDate} onChange={e => setPledgeForm({ ...pledgeForm, dueDate: e.target.value })} type="date" className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold" />
+                <textarea value={pledgeForm.notes} onChange={e => setPledgeForm({ ...pledgeForm, notes: e.target.value })} placeholder="Notes (optional)" rows={2} className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold resize-none" />
                 <div className="flex gap-2">
-                  <button onClick={() => { setShowPledgeForm(false); setPledgeForm(emptyPledge); }} className="flex-1 py-2 rounded-lg border border-gray-200 text-xs font-semibold text-gray-600">Cancel</button>
+                  <button onClick={() => { setShowPledgeForm(false); setPledgeForm(emptyPledge); }} className="flex-1 py-2 rounded-lg border border-stone-200 text-xs font-semibold text-warm-brown">Cancel</button>
                   <button onClick={savePledge} disabled={savingPledge} className="flex-1 py-2 rounded-lg text-xs font-semibold text-white disabled:opacity-50" style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}>{savingPledge ? 'Saving…' : 'Add Pledge'}</button>
                 </div>
               </div>
             )}
 
             {pledges.length === 0 ? (
-              <div className="text-center py-12 text-gray-400">
+              <div className="text-center py-12 text-[color:var(--text-faint)]">
                 <Heart size={32} className="mx-auto mb-2 opacity-30" />
                 <p className="text-sm font-display">No pledges yet</p>
               </div>
             ) : (
-              <div className="bg-white rounded-2xl border border-gray-100 divide-y divide-gray-50">
+              <div className="bg-white rounded-2xl border border-stone-200 divide-y divide-gray-50">
                 {pledges.map(p => {
                   const status = derivePledgeStatus(p);
                   const isEditing = editPledge?.id === p.id;
@@ -370,20 +371,20 @@ const AdminFundraising: React.FC<AdminFundraisingProps> = ({ initialCampaignId, 
                       <div className="flex items-center gap-3">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
-                            <p className="text-sm font-semibold text-gray-900 truncate">{p.donorName}</p>
+                            <p className="text-sm font-semibold text-earth truncate">{p.donorName}</p>
                             <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${status === 'fulfilled' ? 'bg-green-100 text-green-700' : status === 'lapsed' ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-700'}`}>{status}</span>
                           </div>
-                          <p className="text-xs text-gray-400 truncate">
+                          <p className="text-xs text-[color:var(--text-faint)] truncate">
                             {p.donorEmail} · {fmt(p.paidAmount)} / {fmt(p.pledgeAmount)}{p.dueDate ? ` · due ${new Date(p.dueDate).toLocaleDateString()}` : ''}
                           </p>
                         </div>
-                        <button onClick={() => setEditPledge({ id: p.id, paidAmount: String(p.paidAmount), status })} className="p-1.5 rounded-lg hover:bg-gray-50"><Edit2 size={14} className="text-gray-400" /></button>
+                        <button onClick={() => setEditPledge({ id: p.id, paidAmount: String(p.paidAmount), status })} className="p-1.5 rounded-lg hover:bg-stone-100"><Edit2 size={14} className="text-[color:var(--text-faint)]" /></button>
                         <button onClick={() => deletePledge(p.id)} className="p-1.5 rounded-lg hover:bg-red-50"><X size={14} className="text-red-400" /></button>
                       </div>
                       {isEditing && (
                         <div className="flex items-center gap-2 mt-2">
-                          <input type="number" min={0} value={editPledge.paidAmount} onChange={e => setEditPledge({ ...editPledge, paidAmount: e.target.value })} placeholder="Paid ($)" className="flex-1 min-w-0 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold" />
-                          <select value={editPledge.status} onChange={e => setEditPledge({ ...editPledge, status: e.target.value as Pledge['status'] })} className="border border-gray-200 rounded-lg px-2 py-2 text-sm bg-white focus:outline-none focus:border-gold">
+                          <input type="number" min={0} value={editPledge.paidAmount} onChange={e => setEditPledge({ ...editPledge, paidAmount: e.target.value })} placeholder="Paid ($)" className="flex-1 min-w-0 border border-stone-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold" />
+                          <select value={editPledge.status} onChange={e => setEditPledge({ ...editPledge, status: e.target.value as Pledge['status'] })} className="border border-stone-200 rounded-lg px-2 py-2 text-sm bg-white focus:outline-none focus:border-gold">
                             <option value="active">active</option>
                             <option value="fulfilled">fulfilled</option>
                             <option value="lapsed">lapsed</option>
@@ -403,10 +404,10 @@ const AdminFundraising: React.FC<AdminFundraisingProps> = ({ initialCampaignId, 
         {reminderConfirm && (
           <div className="fixed inset-0 z-[210] flex items-center justify-center bg-black/50 p-4">
             <div className="bg-white rounded-2xl p-6 w-full max-w-sm text-center">
-              <p className="font-bold text-gray-900 mb-2 font-display">Send pledge reminders?</p>
-              <p className="text-sm text-gray-500 mb-5">This sends an SMS reminder to all donors with a phone number on file.</p>
+              <p className="font-bold text-earth mb-2 font-display">Send pledge reminders?</p>
+              <p className="text-sm text-warm-brown mb-5">This sends an SMS reminder to all donors with a phone number on file.</p>
               <div className="flex gap-3">
-                <button onClick={() => setReminderConfirm(false)} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600">Cancel</button>
+                <button onClick={() => setReminderConfirm(false)} className="flex-1 py-2.5 rounded-xl border border-stone-200 text-sm font-semibold text-warm-brown">Cancel</button>
                 <button onClick={sendReminder} disabled={sendingReminder} className="flex-1 py-2.5 rounded-xl text-white text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}>{sendingReminder ? 'Sending…' : 'Send'}</button>
               </div>
             </div>
@@ -418,75 +419,80 @@ const AdminFundraising: React.FC<AdminFundraisingProps> = ({ initialCampaignId, 
 
   // ── List view ──
   return (
-    <div className="max-w-3xl mx-auto">
+    <div className="max-w-5xl mx-auto space-y-6">
       {/* Payment Setup — Stripe Connect for receiving donations (moved from Settings) */}
-      <div className="mb-4 bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] overflow-hidden">
         <button
           onClick={() => setShowPayment((v) => !v)}
-          className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-gray-50 transition-colors text-left"
+          className="w-full flex items-center gap-4 px-5 py-4 hover:bg-stone-100/60 transition-colors text-left"
         >
-          <DollarSign size={18} className="text-gray-400 shrink-0" />
+          <span className="w-11 h-11 rounded-brand bg-[color-mix(in_srgb,var(--brand-color)_12%,white)] flex items-center justify-center shrink-0">
+            <DollarSign size={20} className="text-gold" />
+          </span>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-gray-900 font-display">Payment Setup</p>
-            <p className="text-xs text-gray-400">Connect Stripe to receive donations</p>
+            <p className="text-sm font-semibold text-earth">Payment setup</p>
+            <p className="text-xs text-[color:var(--text-faint)]">Stripe Connect — 100% of donations go to your ministry</p>
           </div>
-          <ChevronDown size={16} className={`text-gray-400 transition-transform ${showPayment ? 'rotate-180' : ''}`} />
+          <ChevronDown size={16} className={`text-[color:var(--text-faint)] transition-transform ${showPayment ? 'rotate-180' : ''}`} />
         </button>
         {showPayment && (
-          <div className="px-4 py-4 border-t border-gray-100">
+          <div className="px-5 py-4 border-t border-stone-200">
             <PaymentSection />
           </div>
         )}
       </div>
 
+      <AdminPageHeader
+        eyebrow="Campaigns"
+        title={`${campaigns.length} campaign${campaigns.length === 1 ? '' : 's'}`}
+        action={<AdminPrimaryButton onClick={openCreate} icon={<Plus size={16} />}>New campaign</AdminPrimaryButton>}
+      />
+
       {campaigns.length === 0 ? (
-        <div className="text-center py-16 text-gray-400">
-          <Heart size={40} className="mx-auto mb-3 opacity-30" />
-          <p className="font-medium font-display">No campaigns yet</p>
-          <p className="text-sm mt-1">Create your first fundraising campaign</p>
+        <div className="bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] text-center py-16 px-6">
+          <Heart size={38} className="mx-auto mb-3 text-stone-300" />
+          <p className="font-display text-lg text-earth">No campaigns yet</p>
+          <p className="text-sm text-warm-brown mt-1">Create your first fundraising campaign</p>
+          <div className="mt-5"><AdminPrimaryButton onClick={openCreate} icon={<Plus size={16} />}>New campaign</AdminPrimaryButton></div>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="grid md:grid-cols-2 gap-5">
           {campaigns.map((c) => {
             const pct = c.goal > 0 ? Math.min(100, Math.round((c.raised / c.goal) * 100)) : 0;
             const isPledge = c.campaignType === 'pledge';
             return (
-              <div key={c.id} className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+              <div key={c.id} className="bg-white rounded-brand-lg p-6 border border-stone-200 shadow-[var(--ds-sh-sm)]">
                 <div className="flex items-start justify-between gap-3 mb-3">
-                  <button onClick={() => openDetail(c)} className="flex-1 min-w-0 text-left">
-                    <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <h3 className="font-bold text-gray-900 truncate">{c.title}</h3>
-                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${isPledge ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
-                        {isPledge ? 'Pledge' : 'Fundraising'}
-                      </span>
-                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${c.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                        {c.isActive ? 'Active' : 'Inactive'}
-                      </span>
+                  <button onClick={() => openDetail(c)} className="flex-1 min-w-0 text-left group">
+                    <div className="flex items-center gap-2 mb-2 flex-wrap">
+                      <h3 className="font-display text-xl font-normal text-earth truncate group-hover:text-gold transition-colors">{c.title}</h3>
+                      <AdminBadge tone={isPledge ? 'sky' : 'gold'}>{isPledge ? 'Pledge' : 'Fundraising'}</AdminBadge>
                     </div>
-                    <p className="text-sm text-gray-500 line-clamp-1">{c.description}</p>
+                    <AdminBadge tone={c.isActive ? 'green' : 'stone'}>{c.isActive ? 'Active' : 'Inactive'}</AdminBadge>
+                    <p className="text-sm text-warm-brown line-clamp-1 mt-2.5">{c.description}</p>
                   </button>
-                  <div className="flex items-center gap-1 flex-shrink-0">
-                    <button onClick={() => toggleActive(c)} className="p-2 rounded-xl hover:bg-gray-50 transition-colors" title={c.isActive ? 'Deactivate' : 'Activate'}>
-                      {c.isActive ? <ToggleRight size={20} style={{ color: 'var(--brand-color, #d4a017)' }} /> : <ToggleLeft size={20} className="text-gray-400" />}
+                  <div className="flex items-center gap-0.5 flex-shrink-0">
+                    <button onClick={() => toggleActive(c)} className="p-2 rounded-brand hover:bg-stone-100 transition-colors" title={c.isActive ? 'Deactivate' : 'Activate'}>
+                      {c.isActive ? <ToggleRight size={18} style={{ color: 'var(--brand-color, #d4a017)' }} /> : <ToggleLeft size={18} className="text-[color:var(--text-faint)]" />}
                     </button>
-                    <button onClick={() => openEdit(c)} className="p-2 rounded-xl hover:bg-gray-50 transition-colors">
-                      <Edit2 size={16} className="text-gray-400" />
+                    <button onClick={() => openEdit(c)} className="p-2 rounded-brand hover:bg-stone-100 transition-colors">
+                      <Edit2 size={15} className="text-[color:var(--text-faint)]" />
                     </button>
-                    <button onClick={() => setDeleteId(c.id)} className="p-2 rounded-xl hover:bg-red-50 transition-colors">
-                      <Trash2 size={16} className="text-red-400" />
+                    <button onClick={() => setDeleteId(c.id)} className="p-2 rounded-brand hover:bg-[#F7E7E2] transition-colors">
+                      <Trash2 size={15} className="text-[#C4553B]" />
                     </button>
                   </div>
                 </div>
-                <div className="flex items-baseline justify-between text-xs text-gray-500 mb-1.5">
-                  <span className="font-semibold text-gray-800">{fmt(c.raised)} raised</span>
-                  <span>of {fmt(c.goal)}</span>
+                <div className="flex items-baseline justify-between mt-4 mb-2">
+                  <span className="font-display text-[1.75rem] font-light text-earth leading-none">{fmt(c.raised)}</span>
+                  <span className="text-xs text-[color:var(--text-faint)]">of {fmt(c.goal)}</span>
                 </div>
-                <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                <div className="h-2 bg-stone-100 rounded-full overflow-hidden">
                   <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: 'var(--brand-color, #d4a017)' }} />
                 </div>
-                <div className="flex justify-between mt-1 text-[11px]">
+                <div className="flex justify-between mt-2 text-[11px]">
                   <span style={{ color: 'var(--brand-color, #d4a017)' }} className="font-semibold">{pct}%</span>
-                  {c.endDate && <span className="text-gray-400">Ends {new Date(c.endDate).toLocaleDateString()}</span>}
+                  {c.endDate && <span className="text-[color:var(--text-faint)]">Ends {new Date(c.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>}
                 </div>
               </div>
             );
@@ -497,84 +503,87 @@ const AdminFundraising: React.FC<AdminFundraisingProps> = ({ initialCampaignId, 
       {/* Campaign form modal */}
       {showForm && (
         <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <div className="p-5 border-b border-gray-100">
-              <h3 className="text-base font-bold text-gray-900 font-display">{editing ? 'Edit Campaign' : 'New Campaign'}</h3>
+          <div className="bg-white rounded-brand-lg w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-[var(--ds-sh-lg)]">
+            <div className="p-6 flex items-center justify-between">
+              <h3 className="font-display text-2xl font-normal text-earth">{editing ? 'Edit campaign' : 'New campaign'}</h3>
+              <button onClick={() => setShowForm(false)} className="p-1.5 rounded-lg hover:bg-stone-100 transition-colors">
+                <X size={18} className="text-[color:var(--text-faint)]" />
+              </button>
             </div>
-            <div className="p-5 space-y-4 pb-32">
+            <div className="px-6 pb-6 space-y-5">
               {canPledge && (
                 <div>
-                  <label className="text-xs font-semibold text-gray-700 mb-1 block">Campaign Type</label>
-                  <div className="grid grid-cols-2 gap-2">
+                  <label className="text-xs font-semibold text-earth mb-2 block">Campaign type</label>
+                  <div className="grid grid-cols-2 gap-3">
                     <button onClick={() => setForm({ ...form, campaignType: 'fundraising' })}
-                      className={`text-left p-3 rounded-xl border transition-colors ${form.campaignType !== 'pledge' ? 'border-transparent ring-2' : 'border-gray-200'}`}
-                      style={form.campaignType !== 'pledge' ? ({ '--tw-ring-color': 'var(--brand-color, #d4a017)' } as React.CSSProperties) : undefined}>
-                      <p className="font-semibold text-sm text-gray-900">Fundraising</p>
-                      <p className="text-[11px] text-gray-400 mt-0.5">Accept one-time and recurring donations toward a goal</p>
+                      className={`text-left p-4 rounded-brand border transition-colors ${form.campaignType !== 'pledge' ? 'border-[color-mix(in_srgb,var(--brand-color)_55%,transparent)] bg-[color-mix(in_srgb,var(--brand-color)_8%,white)]' : 'border-stone-200 hover:border-stone-300'}`}>
+                      <p className={`font-semibold text-sm ${form.campaignType !== 'pledge' ? 'text-gold' : 'text-earth'}`}>Fundraising</p>
+                      <p className="text-[11px] text-warm-brown mt-1 leading-relaxed">One-time &amp; recurring gifts toward a goal</p>
                     </button>
                     <button onClick={() => setForm({ ...form, campaignType: 'pledge' })}
-                      className={`text-left p-3 rounded-xl border transition-colors ${form.campaignType === 'pledge' ? 'border-transparent ring-2' : 'border-gray-200'}`}
-                      style={form.campaignType === 'pledge' ? ({ '--tw-ring-color': 'var(--brand-color, #d4a017)' } as React.CSSProperties) : undefined}>
-                      <p className="font-semibold text-sm text-gray-900">Pledge Campaign</p>
-                      <p className="text-[11px] text-gray-400 mt-0.5">Donors commit to give a set amount, tracked over time</p>
+                      className={`text-left p-4 rounded-brand border transition-colors ${form.campaignType === 'pledge' ? 'border-[color-mix(in_srgb,var(--brand-color)_55%,transparent)] bg-[color-mix(in_srgb,var(--brand-color)_8%,white)]' : 'border-stone-200 hover:border-stone-300'}`}>
+                      <p className={`font-semibold text-sm ${form.campaignType === 'pledge' ? 'text-gold' : 'text-earth'}`}>Pledge campaign</p>
+                      <p className="text-[11px] text-warm-brown mt-1 leading-relaxed">Donors commit an amount, tracked over time</p>
                     </button>
                   </div>
                 </div>
               )}
               <div>
-                <label className="text-xs font-semibold text-gray-700 mb-1 block">Title *</label>
+                <label className="text-xs font-semibold text-earth mb-1.5 block">Title *</label>
                 <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold"
+                  className="w-full border border-stone-200 rounded-brand px-3.5 py-2.5 text-sm text-earth focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent"
                   placeholder="Campaign title" />
               </div>
               <div>
-                <label className="text-xs font-semibold text-gray-700 mb-1 block">Description</label>
+                <label className="text-xs font-semibold text-earth mb-1.5 block">Description</label>
                 <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })}
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold resize-none"
+                  className="w-full border border-stone-200 rounded-brand px-3.5 py-2.5 text-sm text-earth focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent resize-none"
                   rows={3} placeholder="What is this campaign for?" />
               </div>
-              <div>
-                <label className="text-xs font-semibold text-gray-700 mb-1 block">Goal ($)</label>
-                <input type="number" min={0} value={form.goal} onChange={(e) => setForm({ ...form, goal: Number(e.target.value) })}
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold" />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-semibold text-earth mb-1.5 block">Goal ($)</label>
+                  <input type="number" min={0} value={form.goal} onChange={(e) => setForm({ ...form, goal: Number(e.target.value) })}
+                    className="w-full border border-stone-200 rounded-brand px-3.5 py-2.5 text-sm text-earth focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent" />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-earth mb-1.5 block">End date</label>
+                  <input type="date" value={form.endDate || ''} onChange={(e) => setForm({ ...form, endDate: e.target.value })}
+                    className="w-full border border-stone-200 rounded-brand px-3.5 py-2.5 text-sm text-earth focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent" />
+                </div>
               </div>
               {form.campaignType === 'pledge' && (
                 <div>
-                  <label className="text-xs font-semibold text-gray-700 mb-1 block">Pledge Deadline</label>
+                  <label className="text-xs font-semibold text-earth mb-1.5 block">Pledge deadline</label>
                   <input type="date" value={form.pledgeDeadline || ''} onChange={(e) => setForm({ ...form, pledgeDeadline: e.target.value })}
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold" />
-                  <p className="text-[11px] text-gray-400 mt-1">Date by which pledges should be fulfilled</p>
+                    className="w-full border border-stone-200 rounded-brand px-3.5 py-2.5 text-sm text-earth focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent" />
+                  <p className="text-[11px] text-[color:var(--text-faint)] mt-1">Date by which pledges should be fulfilled</p>
                 </div>
               )}
               <div>
-                <label className="text-xs font-semibold text-gray-700 mb-1 block">End Date</label>
-                <input type="date" value={form.endDate || ''} onChange={(e) => setForm({ ...form, endDate: e.target.value })}
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold" />
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-gray-700 mb-1 block">Cover Image URL</label>
+                <label className="text-xs font-semibold text-earth mb-1.5 block">Cover image URL</label>
                 <input value={form.coverImage || ''} onChange={(e) => setForm({ ...form, coverImage: e.target.value })}
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold"
-                  placeholder="https://..." />
+                  className="w-full border border-stone-200 rounded-brand px-3.5 py-2.5 text-sm text-earth focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent"
+                  placeholder="https://…" />
               </div>
-              <div className="flex items-center justify-between py-2">
-                <span className="text-sm font-medium text-gray-700">Set as active campaign</span>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-earth">Set as active campaign</span>
                 <button onClick={() => setForm({ ...form, isActive: !form.isActive })} className="transition-colors">
                   {form.isActive
                     ? <ToggleRight size={28} style={{ color: 'var(--brand-color, #d4a017)' }} />
-                    : <ToggleLeft size={28} className="text-gray-300" />}
+                    : <ToggleLeft size={28} className="text-stone-300" />}
                 </button>
               </div>
-            </div>
-            <div className="p-5 border-t border-gray-100 flex gap-3">
-              <button onClick={() => setShowForm(false)} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50">
-                Cancel
-              </button>
-              <button onClick={handleSave} disabled={saving || !form.title.trim()}
-                className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
-                style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}>
-                {saving ? 'Saving...' : 'Save'}
-              </button>
+              <div className="flex gap-3 pt-2">
+                <button onClick={() => setShowForm(false)} className="flex-1 py-3 rounded-brand border border-stone-200 text-sm font-semibold text-warm-brown hover:bg-stone-100">
+                  Cancel
+                </button>
+                <button onClick={handleSave} disabled={saving || !form.title.trim()}
+                  className="flex-1 py-3 rounded-brand text-sm font-semibold text-white disabled:opacity-50"
+                  style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}>
+                  {saving ? 'Saving…' : editing ? 'Save changes' : 'Create campaign'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -584,10 +593,10 @@ const AdminFundraising: React.FC<AdminFundraisingProps> = ({ initialCampaignId, 
       {deleteId && (
         <div className="fixed inset-0 z-[210] flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white rounded-2xl p-6 w-full max-w-sm text-center">
-            <p className="font-bold text-gray-900 mb-2 font-display">Delete campaign?</p>
-            <p className="text-sm text-gray-500 mb-5">This cannot be undone.</p>
+            <p className="font-bold text-earth mb-2 font-display">Delete campaign?</p>
+            <p className="text-sm text-warm-brown mb-5">This cannot be undone.</p>
             <div className="flex gap-3">
-              <button onClick={() => setDeleteId(null)} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600">Cancel</button>
+              <button onClick={() => setDeleteId(null)} className="flex-1 py-2.5 rounded-xl border border-stone-200 text-sm font-semibold text-warm-brown">Cancel</button>
               <button onClick={confirmDelete} className="flex-1 py-2.5 rounded-xl bg-red-500 text-white text-sm font-semibold">Delete</button>
             </div>
           </div>

@@ -46,8 +46,8 @@ const PlanUpgradeScreen: React.FC<PlanUpgradeScreenProps> = ({
         <Lock size={28} style={{ color: '#d4a017' }} />
       </div>
 
-      <h2 className="text-xl font-bold text-gray-900 mb-2 font-display">{featureName}</h2>
-      <p className="text-sm text-gray-500 mb-6 max-w-xs leading-relaxed">
+      <h2 className="text-xl font-bold text-earth mb-2 font-display">{featureName}</h2>
+      <p className="text-sm text-warm-brown mb-6 max-w-xs leading-relaxed">
         This feature requires the <strong>{minPlanName}</strong> plan or higher.
         Upgrade to unlock access.
       </p>
@@ -60,12 +60,12 @@ const PlanUpgradeScreen: React.FC<PlanUpgradeScreenProps> = ({
             className={`flex items-center justify-between px-4 py-3 rounded-xl border ${
               plan.key === minPlan.key
                 ? 'border-gold bg-[color-mix(in_srgb,var(--brand-color)_12%,white)]'
-                : 'border-gray-100 bg-white'
+                : 'border-stone-200 bg-white'
             }`}
           >
             <div className="text-left">
-              <p className="font-semibold text-gray-900 text-sm">{plan.name}</p>
-              <p className="text-xs text-gray-400">Includes {featureName}</p>
+              <p className="font-semibold text-earth text-sm">{plan.name}</p>
+              <p className="text-xs text-[color:var(--text-faint)]">Includes {featureName}</p>
             </div>
             <span
               className="font-bold text-sm"
@@ -80,7 +80,7 @@ const PlanUpgradeScreen: React.FC<PlanUpgradeScreenProps> = ({
       <div className="flex gap-3 w-full max-w-sm">
         <button
           onClick={onBack}
-          className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
+          className="flex-1 py-2.5 rounded-xl border border-stone-200 text-sm font-semibold text-warm-brown hover:bg-stone-100 transition-colors"
         >
           Go Back
         </button>

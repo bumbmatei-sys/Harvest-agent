@@ -10,7 +10,7 @@ import { getTenantScope } from '../utils/tenant-scope';
 import { sendPushNotification } from '../utils/send-notification';
 import { getPlanFeatures } from '../utils/plan-features';
 import { useTenant } from '@/contexts/TenantContext';
-import { useAdminHeader, HeaderActionButton } from './AdminScreenHeader';
+import { AdminPageHeader, AdminPrimaryButton } from './admin/AdminUI';
 
 /** Every plan includes 1 church free (the tenant's own). */
 const INCLUDED_CHURCHES = 1;
@@ -18,7 +18,6 @@ const INCLUDED_CHURCHES = 1;
 
 const AdminChurches: React.FC = () => {
   const { tenantId, tenantPlan } = useTenant();
-  const { setHeaderAction } = useAdminHeader();
   const [churches, setChurches] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -164,20 +163,7 @@ const AdminChurches: React.FC = () => {
     setIsAdding(true);
   };
 
-  useEffect(() => {
-    setHeaderAction(
-      <HeaderActionButton
-        label="Add Church"
-        onClick={() => handleAddChurchClick()}
-        disabled={atLimit}
-        title={atLimit ? `Your plan includes ${INCLUDED_CHURCHES} church. Upgrade to Ministry to add more.` : undefined}
-      />
-    );
-    return () => setHeaderAction(null);
-    // Re-register when the values handleAddChurchClick closes over change,
-    // so the button never acts on a stale church count or plan.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [setHeaderAction, atLimit, isMinistry, loading, churches.length]);
+  // "Add church" renders in the in-content page header (per the mockup).
 
   const filteredChurches = churches.filter(church => {
     const matchesSearch = searchTerm === '' || 
@@ -192,14 +178,14 @@ const AdminChurches: React.FC = () => {
 
   if (isAdding || editingChurch) {
     return (
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="p-4 border-b border-gray-100 flex justify-between items-center">
-          <h2 className="text-xl font-bold text-gray-900 font-display">
+      <div className="bg-white rounded-2xl shadow-sm border border-stone-200 overflow-hidden">
+        <div className="p-4 border-b border-stone-200 flex justify-between items-center">
+          <h2 className="text-xl font-bold text-earth font-display">
             {isAdding ? 'Add Church' : 'Edit Church'}
           </h2>
           <button 
             onClick={() => { setIsAdding(false); setEditingChurch(null); }}
-            className="text-gray-500 hover:text-gray-700"
+            className="text-warm-brown hover:text-[color:var(--text-body)]"
           >
             Cancel
           </button>
@@ -221,12 +207,13 @@ const AdminChurches: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6 lg:max-w-5xl lg:mx-auto w-full">
-      {isMinistry && (
-        <p className="text-xs text-gray-500">
-          {churches.length} church{churches.length !== 1 ? 'es' : ''} · ${Math.max(0, churches.length - INCLUDED_CHURCHES) * ENTERPRISE_PRICE_PER_CHURCH}/mo ({INCLUDED_CHURCHES} included free)
-        </p>
-      )}
+    <div className="w-full max-w-6xl mx-auto space-y-6">
+      <AdminPageHeader
+        eyebrow="Platform"
+        title="Churches"
+        subtitle={isMinistry ? `${churches.length} church${churches.length !== 1 ? 'es' : ''} · $${Math.max(0, churches.length - INCLUDED_CHURCHES) * ENTERPRISE_PRICE_PER_CHURCH}/mo (${INCLUDED_CHURCHES} included free)` : undefined}
+        action={<AdminPrimaryButton onClick={() => handleAddChurchClick()} disabled={atLimit} title={atLimit ? `Your plan includes ${INCLUDED_CHURCHES} church. Upgrade to Ministry to add more.` : undefined} icon={<span className="text-[15px] leading-none">+</span>}>Add church</AdminPrimaryButton>}
+      />
 
       {/* Billing Notice */}
       {billingNotice && (
@@ -244,17 +231,17 @@ const AdminChurches: React.FC = () => {
               <div className="w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center">
                 <DollarSign size={20} className="text-yellow-600" />
               </div>
-              <h3 className="text-xl font-bold text-gray-900 font-display">Adding a New Church</h3>
+              <h3 className="text-xl font-bold text-earth font-display">Adding a New Church</h3>
             </div>
-            <p className="text-gray-600 mb-6">
+            <p className="text-warm-brown mb-6">
               Each additional church added to your organization will increase your monthly plan by{' '}
-              <span className="font-semibold text-gray-900">$10/mo</span>. This will be charged
+              <span className="font-semibold text-earth">$10/mo</span>. This will be charged
               automatically to your payment method on file.
             </p>
             <div className="flex justify-end gap-3">
               <button
                 onClick={() => setShowBillingConfirm(false)}
-                className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-xl transition-colors font-medium"
+                className="px-4 py-2 text-warm-brown hover:bg-stone-100 rounded-xl transition-colors font-medium"
               >
                 Cancel
               </button>
@@ -271,50 +258,50 @@ const AdminChurches: React.FC = () => {
       )}
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-2 mb-4">
-        <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gold" size={14} strokeWidth={2.5} />
+      <div className="flex flex-wrap items-center gap-2.5">
+        <div className="relative flex-1 min-w-[240px]">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[color:var(--text-faint)]" size={18} />
           <input
             type="text"
-            placeholder="Search"
+            placeholder="Search churches…"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-8 pr-3 py-1.5 text-sm bg-white border border-gold rounded-full focus:outline-none text-gray-900 font-medium placeholder:text-gray-500 w-32 focus:w-48 transition-all duration-300"
+            className="w-full pl-11 pr-4 py-3 bg-white border border-stone-200 rounded-brand-lg text-sm text-earth placeholder:text-[color:var(--text-faint)] focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent outline-none transition-all"
           />
         </div>
         
         <button
           onClick={() => openFilterPopup('city')}
-          className={`px-3 py-1.5 text-sm rounded-full border transition-colors ${cityFilter ? 'bg-gold text-white border-gold' : 'bg-white text-gray-700 border-gray-300 hover:border-gold'}`}
+          className={`px-3 py-1.5 text-sm rounded-full border transition-colors ${cityFilter ? 'bg-gold text-white border-gold' : 'bg-white text-[color:var(--text-body)] border-stone-200 hover:border-gold'}`}
         >
           {cityFilter ? `City: ${cityFilter}` : 'City'}
         </button>
 
         <button
           onClick={() => openFilterPopup('pastor')}
-          className={`px-3 py-1.5 text-sm rounded-full border transition-colors ${pastorFilter ? 'bg-gold text-white border-gold' : 'bg-white text-gray-700 border-gray-300 hover:border-gold'}`}
+          className={`px-3 py-1.5 text-sm rounded-full border transition-colors ${pastorFilter ? 'bg-gold text-white border-gold' : 'bg-white text-[color:var(--text-body)] border-stone-200 hover:border-gold'}`}
         >
           {pastorFilter ? `Pastor: ${pastorFilter}` : 'Pastor'}
         </button>
 
         <button
           onClick={() => openFilterPopup('country')}
-          className={`px-3 py-1.5 text-sm rounded-full border transition-colors ${countryFilter ? 'bg-gold text-white border-gold' : 'bg-white text-gray-700 border-gray-300 hover:border-gold'}`}
+          className={`px-3 py-1.5 text-sm rounded-full border transition-colors ${countryFilter ? 'bg-gold text-white border-gold' : 'bg-white text-[color:var(--text-body)] border-stone-200 hover:border-gold'}`}
         >
           {countryFilter ? `Country: ${countryFilter}` : 'Country'}
         </button>
       </div>
 
       {/* Spreadsheet / Table */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-sm border border-stone-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-gray-50 border-b border-gray-100">
-                <th className="p-4 text-sm font-semibold text-gray-600">Name</th>
-                <th className="p-4 text-sm font-semibold text-gray-600">City</th>
-                <th className="p-4 text-sm font-semibold text-gray-600">Pastor</th>
-                <th className="p-4 text-sm font-semibold text-gray-600 text-right">Actions</th>
+              <tr className="border-b border-stone-200">
+                <th className="px-4 py-3.5 text-[11px] font-semibold text-gold uppercase tracking-[0.12em]">Name</th>
+                <th className="px-4 py-3.5 text-[11px] font-semibold text-gold uppercase tracking-[0.12em]">City</th>
+                <th className="px-4 py-3.5 text-[11px] font-semibold text-gold uppercase tracking-[0.12em]">Pastor</th>
+                <th className="px-4 py-3.5 text-[11px] font-semibold text-gold uppercase tracking-[0.12em] text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -328,22 +315,22 @@ const AdminChurches: React.FC = () => {
                 </tr>
               ) : filteredChurches.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="p-8 text-center text-gray-500">
+                  <td colSpan={4} className="p-8 text-center text-warm-brown">
                     <Church size={48} className="mx-auto mb-4 opacity-20" />
                     <p className="font-display">No churches found matching your filters.</p>
                   </td>
                 </tr>
               ) : (
                 filteredChurches.map((church) => (
-                  <tr key={church.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
+                  <tr key={church.id} className="border-b border-stone-200 hover:bg-stone-100/60 transition-colors">
                     <td className="p-4">
-                      <div className="font-medium text-gray-900">{church.name}</div>
-                      <div className="text-xs text-gray-500">{church.denomination}</div>
+                      <div className="font-semibold text-earth">{church.name}</div>
+                      <div className="text-xs text-warm-brown">{church.denomination}</div>
                     </td>
-                    <td className="p-4 text-gray-700">
+                    <td className="p-4 text-[color:var(--text-body)]">
                       {church.city}{church.country ? `, ${church.country}` : ''}
                     </td>
-                    <td className="p-4 text-gray-700">{church.pastorName}</td>
+                    <td className="p-4 text-[color:var(--text-body)]">{church.pastorName}</td>
                     <td className="p-4 text-right">
                       <div className="flex items-center justify-end gap-2">
                         <button
@@ -374,8 +361,8 @@ const AdminChurches: React.FC = () => {
       {deleteConfirmId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
           <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-xl">
-            <h3 className="text-xl font-bold text-gray-900 mb-2 font-display">Delete Church</h3>
-            <p className="text-gray-600 mb-6">
+            <h3 className="text-xl font-bold text-earth mb-2 font-display">Delete Church</h3>
+            <p className="text-warm-brown mb-6">
               Are you sure you want to delete this church? This action cannot be undone.
               {isMinistry && churches.find(c => c.id === deleteConfirmId)?.stripeSubscriptionItemId && (
                 <span className="block text-sm text-green-700 mt-1">
@@ -386,7 +373,7 @@ const AdminChurches: React.FC = () => {
             <div className="flex justify-end gap-3">
               <button
                 onClick={() => setDeleteConfirmId(null)}
-                className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-xl transition-colors font-medium"
+                className="px-4 py-2 text-warm-brown hover:bg-stone-100 rounded-xl transition-colors font-medium"
               >
                 Cancel
               </button>
@@ -405,7 +392,7 @@ const AdminChurches: React.FC = () => {
       {activeFilterPopup && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-6">
-            <h3 className="text-lg font-bold text-gray-900 mb-4 capitalize font-display">
+            <h3 className="text-lg font-bold text-earth mb-4 capitalize font-display">
               Filter by {activeFilterPopup}
             </h3>
             <input
@@ -417,7 +404,7 @@ const AdminChurches: React.FC = () => {
               onKeyDown={(e) => {
                 if (e.key === 'Enter') applyFilter();
               }}
-              className="w-full px-4 py-2 rounded-lg border border-gray-300 bg-gray-50 text-gray-900 focus:outline-none focus:border-gold mb-6"
+              className="w-full px-4 py-2 rounded-lg border border-stone-200 bg-stone-100 text-earth focus:outline-none focus:border-gold mb-6"
             />
             <div className="flex justify-end gap-3">
               <button
@@ -425,13 +412,13 @@ const AdminChurches: React.FC = () => {
                   setTempFilterValue('');
                   applyFilter('');
                 }}
-                className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900"
+                className="px-4 py-2 text-sm font-medium text-warm-brown hover:text-earth"
               >
                 Clear
               </button>
               <button
                 onClick={() => setActiveFilterPopup(null)}
-                className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900"
+                className="px-4 py-2 text-sm font-medium text-warm-brown hover:text-earth"
               >
                 Cancel
               </button>
@@ -521,27 +508,27 @@ const AnnouncementsSection: React.FC<{ churchId: string }> = ({ churchId }) => {
   };
 
   return (
-    <div className="border-t border-gray-100 p-4">
-      <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2 font-display">
+    <div className="border-t border-stone-200 p-4">
+      <h3 className="text-lg font-bold text-earth mb-4 flex items-center gap-2 font-display">
         <Megaphone size={18} className="text-gold" />
         Announcements
       </h3>
 
       {/* Create Form */}
-      <div className="bg-gray-50 rounded-xl p-4 mb-4">
+      <div className="bg-stone-100 rounded-xl p-4 mb-4">
         <input
           type="text"
           placeholder="Announcement title"
           value={newTitle}
           onChange={(e) => setNewTitle(e.target.value)}
-          className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm mb-2 focus:outline-none focus:border-gold"
+          className="w-full px-3 py-2 rounded-lg border border-stone-200 bg-white text-sm mb-2 focus:outline-none focus:border-gold"
         />
         <textarea
           placeholder="Announcement content"
           value={newContent}
           onChange={(e) => setNewContent(e.target.value)}
           rows={3}
-          className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm mb-2 focus:outline-none focus:border-gold resize-none"
+          className="w-full px-3 py-2 rounded-lg border border-stone-200 bg-white text-sm mb-2 focus:outline-none focus:border-gold resize-none"
         />
         <button
           onClick={handleCreate}
@@ -559,24 +546,24 @@ const AnnouncementsSection: React.FC<{ churchId: string }> = ({ churchId }) => {
           <div className="w-6 h-6 border-4 border-[color-mix(in_srgb,var(--brand-color)_30%,transparent)] border-t-gold rounded-full animate-spin"></div>
         </div>
       ) : announcements.length === 0 ? (
-        <p className="text-sm text-gray-500 text-center py-4 font-display">No announcements yet</p>
+        <p className="text-sm text-warm-brown text-center py-4 font-display">No announcements yet</p>
       ) : (
         <div className="space-y-3">
           {announcements.map((a) => (
-            <div key={a.id} className="bg-gray-50 rounded-xl p-4">
+            <div key={a.id} className="bg-stone-100 rounded-xl p-4">
               {editingId === a.id ? (
                 <div>
                   <input
                     type="text"
                     value={editTitle}
                     onChange={(e) => setEditTitle(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm mb-2 focus:outline-none focus:border-gold"
+                    className="w-full px-3 py-2 rounded-lg border border-stone-200 bg-white text-sm mb-2 focus:outline-none focus:border-gold"
                   />
                   <textarea
                     value={editContent}
                     onChange={(e) => setEditContent(e.target.value)}
                     rows={3}
-                    className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm mb-2 focus:outline-none focus:border-gold resize-none"
+                    className="w-full px-3 py-2 rounded-lg border border-stone-200 bg-white text-sm mb-2 focus:outline-none focus:border-gold resize-none"
                   />
                   <div className="flex gap-2">
                     <button
@@ -587,7 +574,7 @@ const AnnouncementsSection: React.FC<{ churchId: string }> = ({ churchId }) => {
                     </button>
                     <button
                       onClick={() => setEditingId(null)}
-                      className="flex items-center gap-1 bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-gray-300"
+                      className="flex items-center gap-1 bg-stone-200 text-[color:var(--text-body)] px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-gray-300"
                     >
                       <X size={12} /> Cancel
                     </button>
@@ -595,10 +582,10 @@ const AnnouncementsSection: React.FC<{ churchId: string }> = ({ churchId }) => {
                 </div>
               ) : (
                 <div>
-                  <h4 className="font-bold text-gray-900 text-sm">{a.title}</h4>
-                  <p className="text-xs text-gray-600 mt-1 whitespace-pre-wrap">{a.content}</p>
+                  <h4 className="font-bold text-earth text-sm">{a.title}</h4>
+                  <p className="text-xs text-warm-brown mt-1 whitespace-pre-wrap">{a.content}</p>
                   {a.createdAt && (
-                    <p className="text-xs text-gray-400 mt-2">
+                    <p className="text-xs text-[color:var(--text-faint)] mt-2">
                       {new Date(a.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                     </p>
                   )}

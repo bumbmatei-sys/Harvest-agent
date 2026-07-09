@@ -6,7 +6,7 @@ import { Building2, Plus, Search, Edit2, Trash2, Pause, Play, X, Check } from 'l
 import { Tenant, TenantPlan, TenantStatus } from '../types/tenant.types';
 import { createTenant, updateTenant, isSubdomainAvailable } from '../utils/tenant.utils';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
-import { useAdminHeader, HeaderActionButton } from './AdminScreenHeader';
+import { AdminPageHeader, AdminPrimaryButton, AdminSearchBar } from './admin/AdminUI';
 
 const PLAN_LABELS: Record<TenantPlan, string> = {
   plus: 'Plus',
@@ -67,7 +67,6 @@ const AdminTenants: React.FC = () => {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState('');
-  const { setHeaderAction } = useAdminHeader();
 
   useEffect(() => {
     const q = collection(db, 'tenants');
@@ -94,10 +93,7 @@ const AdminTenants: React.FC = () => {
     setShowForm(true);
   };
 
-  useEffect(() => {
-    setHeaderAction(<HeaderActionButton label="Add Tenant" onClick={openCreate} />);
-    return () => setHeaderAction(null);
-  }, [setHeaderAction]);
+  // "Add tenant" renders in the in-content page header (per the mockup).
 
   const openEdit = (tenant: Tenant) => {
     setForm({
@@ -196,34 +192,29 @@ const AdminTenants: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Search */}
-      <div className="relative">
-        <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-        <input
-          type="text"
-          placeholder="Search tenants..."
-          value={searchTerm}
-          onChange={e => setSearchTerm(e.target.value)}
-          className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-gold focus:border-gold outline-none transition-all"
-        />
-      </div>
+    <div className="w-full max-w-6xl mx-auto space-y-6">
+      <AdminPageHeader
+        eyebrow="Super-admin"
+        title="Tenants"
+        action={<AdminPrimaryButton onClick={openCreate} icon={<span className="text-[15px] leading-none">+</span>}>Add tenant</AdminPrimaryButton>}
+      />
+      <AdminSearchBar value={searchTerm} onChange={setSearchTerm} placeholder="Search tenants…" />
 
       {/* Tenant List */}
       {filtered.length === 0 ? (
-        <div className="text-center py-16 bg-white rounded-2xl border border-gray-100">
-          <Building2 size={48} className="mx-auto text-gray-300 mb-4" />
-          <p className="text-gray-500 font-medium font-display">No tenants yet</p>
-          <p className="text-gray-400 text-sm mt-1">Create your first church tenant to get started.</p>
+        <div className="text-center py-16 bg-white rounded-2xl border border-stone-200">
+          <Building2 size={48} className="mx-auto text-stone-300 mb-4" />
+          <p className="text-warm-brown font-medium font-display">No tenants yet</p>
+          <p className="text-[color:var(--text-faint)] text-sm mt-1">Create your first church tenant to get started.</p>
         </div>
       ) : (
         <div className="grid gap-4">
           {filtered.map(tenant => (
-            <div key={tenant.id} className="bg-white rounded-2xl border border-gray-100 p-5 hover:shadow-md transition-shadow">
+            <div key={tenant.id} className="bg-white rounded-2xl border border-stone-200 p-5 hover:shadow-md transition-shadow">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-3 mb-1">
-                    <h3 className="text-lg font-bold text-gray-900 truncate">{tenant.name}</h3>
+                    <h3 className="font-display text-lg font-semibold text-earth truncate">{tenant.name}</h3>
                     <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${PLAN_COLORS[tenant.plan]}`}>
                       {PLAN_LABELS[tenant.plan]}
                     </span>
@@ -231,8 +222,8 @@ const AdminTenants: React.FC = () => {
                       {tenant.status}
                     </span>
                   </div>
-                  <p className="text-sm text-gray-500">
-                    <span className="font-mono text-gray-600">{tenant.subdomain}</span>.theharvest.app
+                  <p className="text-sm text-warm-brown">
+                    <span className="font-mono text-warm-brown">{tenant.subdomain}</span>.theharvest.app
                   </p>
                   {tenant.config?.customDomain && (
                     <p className="text-sm text-blue-600 font-medium mt-0.5">
@@ -240,28 +231,28 @@ const AdminTenants: React.FC = () => {
                     </p>
                   )}
                   {tenant.adminEmails?.length > 0 && (
-                    <p className="text-xs text-gray-400 mt-1">Admin: {tenant.adminEmails[0]}</p>
+                    <p className="text-xs text-[color:var(--text-faint)] mt-1">Admin: {tenant.adminEmails[0]}</p>
                   )}
                 </div>
 
                 <div className="flex items-center gap-2 shrink-0">
                   <button
                     onClick={() => handleToggleStatus(tenant)}
-                    className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                    className="p-2 rounded-lg hover:bg-stone-100 transition-colors"
                     title={tenant.status === 'active' ? 'Suspend' : 'Activate'}
                   >
                     {tenant.status === 'active' ? (
-                      <Pause size={16} className="text-gray-500" />
+                      <Pause size={16} className="text-warm-brown" />
                     ) : (
                       <Play size={16} className="text-green-500" />
                     )}
                   </button>
                   <button
                     onClick={() => openEdit(tenant)}
-                    className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                    className="p-2 rounded-lg hover:bg-stone-100 transition-colors"
                     title="Edit"
                   >
-                    <Edit2 size={16} className="text-gray-500" />
+                    <Edit2 size={16} className="text-warm-brown" />
                   </button>
                   {deleteConfirmId === tenant.id ? (
                     <div className="flex items-center gap-1">
@@ -280,10 +271,10 @@ const AdminTenants: React.FC = () => {
                       <button
                         onClick={() => { setDeleteConfirmId(null); setDeleteError(''); }}
                         disabled={deletingId === tenant.id}
-                        className="p-2 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="p-2 rounded-lg hover:bg-stone-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         title="Cancel"
                       >
-                        <X size={16} className="text-gray-500" />
+                        <X size={16} className="text-warm-brown" />
                       </button>
                     </div>
                   ) : (
@@ -292,7 +283,7 @@ const AdminTenants: React.FC = () => {
                       className="p-2 rounded-lg hover:bg-red-50 transition-colors"
                       title="Delete"
                     >
-                      <Trash2 size={16} className="text-gray-400 hover:text-red-500" />
+                      <Trash2 size={16} className="text-[color:var(--text-faint)] hover:text-red-500" />
                     </button>
                   )}
                 </div>
@@ -316,11 +307,11 @@ const AdminTenants: React.FC = () => {
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90dvh] flex flex-col overflow-hidden">
-            <div className="p-6 border-b border-gray-100 flex justify-between items-center">
-              <h3 className="text-xl font-bold text-gray-900 font-display">
+            <div className="p-6 border-b border-stone-200 flex justify-between items-center">
+              <h3 className="text-xl font-bold text-earth font-display">
                 {editingId ? 'Edit Tenant' : 'New Tenant'}
               </h3>
-              <button onClick={() => setShowForm(false)} className="text-gray-400 hover:text-gray-600">
+              <button onClick={() => setShowForm(false)} className="text-[color:var(--text-faint)] hover:text-warm-brown">
                 <X size={20} />
               </button>
             </div>
@@ -333,48 +324,48 @@ const AdminTenants: React.FC = () => {
               )}
 
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Church / Ministry Name</label>
+                <label className="block text-sm font-semibold text-[color:var(--text-body)] mb-1">Church / Ministry Name</label>
                 <input
                   type="text"
                   value={form.name}
                   onChange={e => setForm({ ...form, name: e.target.value })}
-                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-gold focus:border-gold outline-none"
+                  className="w-full px-4 py-2.5 border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-gold focus:border-gold outline-none"
                   placeholder="Grace Community Church"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Subdomain</label>
+                <label className="block text-sm font-semibold text-[color:var(--text-body)] mb-1">Subdomain</label>
                 <div className="flex items-center gap-0">
                   <input
                     type="text"
                     value={form.subdomain}
                     onChange={e => setForm({ ...form, subdomain: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') })}
                     disabled={!!editingId}
-                    className={`flex-1 px-4 py-2.5 border border-gray-200 rounded-l-xl text-sm focus:ring-2 focus:ring-gold focus:border-gold outline-none font-mono ${editingId ? 'bg-gray-50 text-gray-400' : ''}`}
+                    className={`flex-1 px-4 py-2.5 border border-stone-200 rounded-l-xl text-sm focus:ring-2 focus:ring-gold focus:border-gold outline-none font-mono ${editingId ? 'bg-stone-100 text-[color:var(--text-faint)]' : ''}`}
                     placeholder="gracechurch"
                   />
-                  <span className="px-3 py-2.5 bg-gray-50 border border-l-0 border-gray-200 rounded-r-xl text-sm text-gray-500">
+                  <span className="px-3 py-2.5 bg-stone-100 border border-l-0 border-stone-200 rounded-r-xl text-sm text-warm-brown">
                     .theharvest.app
                   </span>
                 </div>
-                {editingId && <p className="text-xs text-gray-400 mt-1">Subdomain cannot be changed after creation.</p>}
+                {editingId && <p className="text-xs text-[color:var(--text-faint)] mt-1">Subdomain cannot be changed after creation.</p>}
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Plan</label>
+                <label className="block text-sm font-semibold text-[color:var(--text-body)] mb-1">Plan</label>
                 {editingId ? (
                   <>
-                    <div className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm bg-gray-50 text-gray-400">
+                    <div className="w-full px-4 py-2.5 border border-stone-200 rounded-xl text-sm bg-stone-100 text-[color:var(--text-faint)]">
                       {PLAN_DISPLAY[form.plan]}
                     </div>
-                    <p className="text-xs text-gray-400 mt-1">Plan changes are managed through the tenant&apos;s own billing.</p>
+                    <p className="text-xs text-[color:var(--text-faint)] mt-1">Plan changes are managed through the tenant&apos;s own billing.</p>
                   </>
                 ) : (
                   <select
                     value={form.plan}
                     onChange={e => setForm({ ...form, plan: e.target.value as TenantPlan })}
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-gold focus:border-gold outline-none bg-white"
+                    className="w-full px-4 py-2.5 border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-gold focus:border-gold outline-none bg-white"
                   >
                     <option value="plus">Individual — $59/mo</option>
                     <option value="pro">Small Team — $119/mo</option>
@@ -386,35 +377,35 @@ const AdminTenants: React.FC = () => {
 
               {(form.plan === 'max' || form.plan === 'ultra') && (
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">Custom Domain</label>
+                  <label className="block text-sm font-semibold text-[color:var(--text-body)] mb-1">Custom Domain</label>
                   <input
                     type="text"
                     value={form.customDomain}
                     onChange={e => setForm({ ...form, customDomain: e.target.value })}
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-gold focus:border-gold outline-none"
+                    className="w-full px-4 py-2.5 border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-gold focus:border-gold outline-none"
                     placeholder="yourchurch.com"
                   />
-                  <p className="text-xs text-gray-400 mt-1">The church&apos;s own domain. DNS must point to Vercel.</p>
+                  <p className="text-xs text-[color:var(--text-faint)] mt-1">The church&apos;s own domain. DNS must point to Vercel.</p>
                 </div>
               )}
 
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Admin Email</label>
+                <label className="block text-sm font-semibold text-[color:var(--text-body)] mb-1">Admin Email</label>
                 <input
                   type="email"
                   value={form.adminEmail}
                   onChange={e => setForm({ ...form, adminEmail: e.target.value })}
-                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-gold focus:border-gold outline-none"
+                  className="w-full px-4 py-2.5 border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-gold focus:border-gold outline-none"
                   placeholder="pastor@church.com"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Description (optional)</label>
+                <label className="block text-sm font-semibold text-[color:var(--text-body)] mb-1">Description (optional)</label>
                 <textarea
                   value={form.description}
                   onChange={e => setForm({ ...form, description: e.target.value })}
-                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-gold focus:border-gold outline-none resize-none"
+                  className="w-full px-4 py-2.5 border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-gold focus:border-gold outline-none resize-none"
                   rows={3}
                   placeholder="A brief description of the ministry..."
                 />
@@ -422,12 +413,12 @@ const AdminTenants: React.FC = () => {
             </div>
 
             <div
-              className="px-6 pt-6 border-t border-gray-100 flex justify-end gap-3"
+              className="px-6 pt-6 border-t border-stone-200 flex justify-end gap-3"
               style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}
             >
               <button
                 onClick={() => setShowForm(false)}
-                className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+                className="px-4 py-2 text-sm font-medium text-warm-brown hover:text-earth transition-colors"
               >
                 Cancel
               </button>
