@@ -6,7 +6,7 @@ import { Building2, Plus, Search, Edit2, Trash2, Pause, Play, X, Check } from 'l
 import { Tenant, TenantPlan, TenantStatus } from '../types/tenant.types';
 import { createTenant, updateTenant, isSubdomainAvailable } from '../utils/tenant.utils';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
-import { useAdminHeader, HeaderActionButton } from './AdminScreenHeader';
+import { AdminPageHeader, AdminPrimaryButton, AdminSearchBar } from './admin/AdminUI';
 
 const PLAN_LABELS: Record<TenantPlan, string> = {
   plus: 'Plus',
@@ -67,7 +67,6 @@ const AdminTenants: React.FC = () => {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState('');
-  const { setHeaderAction } = useAdminHeader();
 
   useEffect(() => {
     const q = collection(db, 'tenants');
@@ -94,10 +93,7 @@ const AdminTenants: React.FC = () => {
     setShowForm(true);
   };
 
-  useEffect(() => {
-    setHeaderAction(<HeaderActionButton label="Add Tenant" onClick={openCreate} />);
-    return () => setHeaderAction(null);
-  }, [setHeaderAction]);
+  // "Add tenant" renders in the in-content page header (per the mockup).
 
   const openEdit = (tenant: Tenant) => {
     setForm({
@@ -196,18 +192,13 @@ const AdminTenants: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Search */}
-      <div className="relative">
-        <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-[color:var(--text-faint)]" />
-        <input
-          type="text"
-          placeholder="Search tenants..."
-          value={searchTerm}
-          onChange={e => setSearchTerm(e.target.value)}
-          className="w-full pl-10 pr-4 py-2.5 bg-white border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-gold focus:border-gold outline-none transition-all"
-        />
-      </div>
+    <div className="w-full max-w-6xl mx-auto space-y-6">
+      <AdminPageHeader
+        eyebrow="Super-admin"
+        title="Tenants"
+        action={<AdminPrimaryButton onClick={openCreate} icon={<span className="text-[15px] leading-none">+</span>}>Add tenant</AdminPrimaryButton>}
+      />
+      <AdminSearchBar value={searchTerm} onChange={setSearchTerm} placeholder="Search tenants…" />
 
       {/* Tenant List */}
       {filtered.length === 0 ? (
@@ -223,7 +214,7 @@ const AdminTenants: React.FC = () => {
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-3 mb-1">
-                    <h3 className="text-lg font-bold text-earth truncate">{tenant.name}</h3>
+                    <h3 className="font-display text-lg font-semibold text-earth truncate">{tenant.name}</h3>
                     <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${PLAN_COLORS[tenant.plan]}`}>
                       {PLAN_LABELS[tenant.plan]}
                     </span>
