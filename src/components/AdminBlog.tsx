@@ -1,10 +1,10 @@
 "use client";
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Edit2, Trash2, MoreVertical, Filter, FileText, Sparkles, X } from 'lucide-react';
+import { Plus, Edit2, Trash2, FileText, Sparkles, X, ChevronDown } from 'lucide-react';
 import { collection, onSnapshot, query, where, deleteDoc, doc, getDoc, limit } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import AdminBlogPostEditor from './AdminBlogPostEditor';
-import { useAdminHeader, HeaderActionButton } from './AdminScreenHeader';
+import { AdminPageHeader, AdminPrimaryButton, AdminSearchBar, AdminCard, AdminBadge, statusTone } from './admin/AdminUI';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { getTenantScope, hasPlatformOverride } from '../utils/tenant-scope';
 import { sortByTime } from '../utils/query-helpers';
@@ -117,14 +117,7 @@ const AdminBlog: React.FC = () => {
  return matchesCategory && matchesSearch;
  });
 
- const getStatusColor = (status: string) => {
- switch (status) {
- case 'published': return 'bg-green-100 text-green-800 ';
- case 'draft': return 'bg-stone-100 text-[color:var(--text-body)] ';
- case 'scheduled': return 'bg-blue-100 text-blue-800 ';
- default: return 'bg-stone-100 text-[color:var(--text-body)] ';
- }
- };
+// status badge colors come from AdminUI's statusTone
 
  const formatDate = (dateString: string) => {
  try {
@@ -144,23 +137,7 @@ const AdminBlog: React.FC = () => {
  setIsEditorOpen(true);
  };
 
- const { setHeaderAction } = useAdminHeader();
- useEffect(() => {
-   setHeaderAction(
-     <div className="flex items-center gap-2">
-       {canAutomate && (
-         <button
-           onClick={() => setShowAutomation(true)}
-           className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold border border-stone-200 text-[color:var(--text-body)] hover:bg-stone-100"
-         >
-           <Sparkles size={14} style={{ color: GOLD }} /> Automate
-         </button>
-       )}
-       <HeaderActionButton label="New Post" onClick={() => handleNewPost()} />
-     </div>
-   );
-   return () => setHeaderAction(null);
- }, [setHeaderAction, canAutomate]);
+ // New Post / Automate render in the in-content page header below (per the mockup).
 
  const handleSaveAutomation = async () => {
    setSavingAutomation(true);
@@ -226,121 +203,100 @@ const AdminBlog: React.FC = () => {
  }
  };
 
+ if (isEditorOpen) {
+ return <AdminBlogPostEditor post={editingPost} onClose={() => setIsEditorOpen(false)} categories={categories} />;
+ }
+
  return (
- <div className="space-y-6 lg:max-w-5xl lg:mx-auto w-full">
+ <div className="w-full max-w-6xl mx-auto space-y-6">
  {errorMessage && (
- <div className="bg-red-50 text-red-600 p-3 rounded-xl text-sm font-medium border border-red-100">
+ <div className="bg-red-50 text-red-600 p-3 rounded-brand text-sm font-medium border border-red-100">
  {errorMessage}
  </div>
  )}
- {isEditorOpen && (
- <AdminBlogPostEditor 
- post={editingPost} 
- onClose={() => setIsEditorOpen(false)} 
- categories={categories}
- />
- )}
 
- <div className="bg-white rounded-2xl shadow-sm border border-stone-200 overflow-hidden">
- {/* Filters Bar */}
- <div className="p-4 border-b border-stone-200 flex flex-col sm:flex-row gap-4">
- <div className="relative flex-1">
- <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[color:var(--text-faint)]" size={18} />
- <input 
- type="text" 
- placeholder="Search posts..." 
- value={searchQuery}
- onChange={(e) => setSearchQuery(e.target.value)}
- className="w-full pl-10 pr-4 py-2 bg-stone-100 border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-gold focus:border-transparent outline-none text-earth transition-all"
- />
+ <AdminPageHeader
+ eyebrow="Content"
+ title={`${posts.length} post${posts.length === 1 ? '' : 's'}`}
+ action={
+ <div className="flex items-center gap-2.5">
+ {canAutomate && (
+ <button
+ onClick={() => setShowAutomation(true)}
+ className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-brand border border-stone-200 bg-white text-[13px] font-semibold text-earth hover:bg-stone-100 transition-colors"
+ >
+ <Sparkles size={15} className="text-gold" /> Automate
+ </button>
+ )}
+ <AdminPrimaryButton onClick={handleNewPost} icon={<Plus size={16} />}>New post</AdminPrimaryButton>
  </div>
- <div className="relative min-w-[160px]">
- <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-[color:var(--text-faint)]" size={18} />
- <select 
+ }
+ />
+
+ <div className="flex flex-col sm:flex-row gap-3">
+ <AdminSearchBar value={searchQuery} onChange={setSearchQuery} placeholder="Search posts…" className="flex-1" />
+ <div className="relative sm:w-56 shrink-0">
+ <select
  value={selectedCategory}
  onChange={(e) => setSelectedCategory(e.target.value)}
- className="w-full pl-10 pr-8 py-2 bg-stone-100 border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-gold focus:border-transparent outline-none text-earth appearance-none transition-all"
+ className="w-full pl-4 pr-10 py-3 bg-white border border-stone-200 rounded-brand-lg text-sm text-earth appearance-none outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent transition-all"
  >
  {filterCategories.map(category => (
- <option key={category} value={category}>{category}</option>
+ <option key={category} value={category}>{category === 'All' ? 'All categories' : category}</option>
  ))}
  </select>
+ <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-[color:var(--text-faint)] pointer-events-none" />
  </div>
  </div>
 
- {/* Table */}
+ <AdminCard>
  <div className="overflow-x-auto">
  <table className="w-full text-left border-collapse">
  <thead>
- <tr className="bg-stone-100/50 border-b border-stone-200 ">
- <th className="px-6 py-4 text-xs font-semibold text-warm-brown uppercase tracking-wider">Title</th>
- <th className="px-6 py-4 text-xs font-semibold text-warm-brown uppercase tracking-wider">Category</th>
- <th className="px-6 py-4 text-xs font-semibold text-warm-brown uppercase tracking-wider">Status</th>
- <th className="px-6 py-4 text-xs font-semibold text-warm-brown uppercase tracking-wider">Date</th>
- <th className="px-6 py-4 text-xs font-semibold text-warm-brown uppercase tracking-wider text-right">Actions</th>
+ <tr className="border-b border-stone-200">
+ <th className="px-6 py-4 text-[11px] font-semibold text-gold uppercase tracking-[0.12em]">Title</th>
+ <th className="px-6 py-4 text-[11px] font-semibold text-gold uppercase tracking-[0.12em]">Category</th>
+ <th className="px-6 py-4 text-[11px] font-semibold text-gold uppercase tracking-[0.12em]">Status</th>
+ <th className="px-6 py-4 text-[11px] font-semibold text-gold uppercase tracking-[0.12em]">Date</th>
+ <th className="px-6 py-4 text-[11px] font-semibold text-gold uppercase tracking-[0.12em] text-right">Actions</th>
  </tr>
  </thead>
- <tbody className="divide-y divide-gray-100 ">
+ <tbody className="divide-y divide-stone-200">
  {loading ? (
  <tr>
- <td colSpan={5} className="px-6 py-8 text-center text-warm-brown ">
+ <td colSpan={5} className="px-6 py-10 text-center text-warm-brown">
  <div className="flex items-center justify-center gap-2">
  <div className="w-4 h-4 border-2 border-gold border-t-transparent rounded-full animate-spin"></div>
- <span>Loading posts...</span>
+ <span>Loading posts…</span>
  </div>
  </td>
  </tr>
  ) : filteredPosts.length === 0 ? (
  <tr>
- <td colSpan={5} className="px-6 py-12 text-center text-warm-brown ">
- <div className="flex flex-col items-center justify-center gap-2">
- <FileText size={32} className="text-stone-300 mb-2" />
- <p className="text-base font-medium text-earth font-display">No posts found</p>
- <p className="text-sm">Get started by creating a new blog post.</p>
+ <td colSpan={5} className="px-6 py-14 text-center">
+ <div className="flex flex-col items-center justify-center gap-1.5">
+ <FileText size={30} className="text-stone-300 mb-1" />
+ <p className="text-base text-earth font-display">No posts found</p>
+ <p className="text-sm text-warm-brown">Get started by creating a new blog post.</p>
  </div>
  </td>
  </tr>
  ) : (
  filteredPosts.map((post) => (
- <tr key={post.id} className="hover:bg-stone-100 :bg-[#1a1d27] transition-colors group">
- <td className="px-6 py-4">
+ <tr key={post.id} className="hover:bg-stone-100/60 transition-colors group">
+ <td className="px-6 py-3.5">
  <div className="flex items-center gap-2">
- <p className="text-sm font-medium text-earth line-clamp-1">{post.title}</p>
- {post.isAiGenerated && (
- <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0"
- style={{ backgroundColor: 'color-mix(in srgb, var(--brand-color, #B8962E) 12%, white)', color: GOLD }}>
- AI
- </span>
- )}
+ <span className="text-sm font-semibold text-earth line-clamp-1">{post.title}</span>
+ {post.isAiGenerated && <AdminBadge tone="gold">AI</AdminBadge>}
  </div>
  </td>
- <td className="px-6 py-4">
- <span className="text-sm text-warm-brown ">{post.category}</span>
- </td>
- <td className="px-6 py-4">
- <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium capitalize ${getStatusColor(post.status)}`}>
- {post.status}
- </span>
- </td>
- <td className="px-6 py-4">
- <span className="text-sm text-warm-brown whitespace-nowrap">
- {formatDate(post.createdAt)}
- </span>
- </td>
- <td className="px-6 py-4 text-right">
- <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
- <button 
- onClick={() => handleEditPost(post)}
- className="p-2 text-[color:var(--text-faint)] hover:text-blue-500 hover:bg-blue-50 :bg-blue-900/30 rounded-lg transition-colors"
- >
- <Edit2 size={16} />
- </button>
- <button 
- onClick={() => setDeleteConfirmId(post.id)}
- className="p-2 text-[color:var(--text-faint)] hover:text-red-500 hover:bg-red-50 :bg-red-900/30 rounded-lg transition-colors"
- >
- <Trash2 size={16} />
- </button>
+ <td className="px-6 py-3.5"><span className="text-sm text-warm-brown">{post.category}</span></td>
+ <td className="px-6 py-3.5"><AdminBadge tone={statusTone(post.status)}>{post.status}</AdminBadge></td>
+ <td className="px-6 py-3.5"><span className="text-sm text-warm-brown whitespace-nowrap">{formatDate(post.createdAt)}</span></td>
+ <td className="px-6 py-3.5 text-right">
+ <div className="flex items-center justify-end gap-1">
+ <button onClick={() => handleEditPost(post)} className="p-2 rounded-brand text-[color:var(--text-faint)] hover:text-gold hover:bg-stone-100 transition-colors" title="Edit"><Edit2 size={16} /></button>
+ <button onClick={() => setDeleteConfirmId(post.id)} className="p-2 rounded-brand text-[color:var(--text-faint)] hover:text-[#C4553B] hover:bg-[#F7E7E2] transition-colors" title="Delete"><Trash2 size={16} /></button>
  </div>
  </td>
  </tr>
@@ -349,7 +305,7 @@ const AdminBlog: React.FC = () => {
  </tbody>
  </table>
  </div>
- </div>
+ </AdminCard>
 
  {/* Delete Confirmation Modal */}
  {deleteConfirmId && (

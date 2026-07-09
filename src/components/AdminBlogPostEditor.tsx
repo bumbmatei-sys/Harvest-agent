@@ -1,12 +1,13 @@
 "use client";
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { ArrowLeft, ArrowRight, X, Plus, Calendar, Save, Send, Trash2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ArrowLeft, X, Plus, Trash2 } from 'lucide-react';
 import { collection, addDoc, updateDoc, doc, getDoc } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { ImageUpload } from './ImageUpload';
 import RichTextEditor from './RichTextEditor';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { getTenantScope, getWriteTenantScope } from '../utils/tenant-scope';
+import { AdminPrimaryButton, AdminSecondaryButton, AdminCard, AdminSectionLabel } from './admin/AdminUI';
 
 interface BlogPost {
   id?: string;
@@ -28,8 +29,10 @@ interface AdminBlogPostEditorProps {
   categories: string[];
 }
 
+const fieldLabel = 'block text-xs font-semibold text-[color:var(--text-body)] mb-1.5';
+const fieldInput = 'w-full px-3 py-2.5 bg-white border border-stone-200 rounded-brand text-sm text-earth outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent transition-all';
+
 const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose, categories }) => {
-  const [step, setStep] = useState<'write' | 'publish'>('write');
   const [title, setTitle] = useState(post?.title || '');
   const [category, setCategory] = useState(post?.category || '');
   const [newCategory, setNewCategory] = useState('');
@@ -38,6 +41,7 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
   const [content, setContent] = useState(post?.content || '');
   const [tags, setTags] = useState<string[]>(post?.tags || []);
   const [newTag, setNewTag] = useState('');
+  const [status, setStatus] = useState<'published' | 'draft' | 'scheduled'>(post?.status || 'draft');
   const [scheduledDate, setScheduledDate] = useState(post?.publishedAt ? new Date(post.publishedAt).toISOString().slice(0, 16) : '');
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
@@ -70,28 +74,14 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
     setTags(tags.filter(tag => tag !== tagToRemove));
   };
 
-  const handleNext = () => {
-    if (!title.trim()) {
-      setError('Please add a title before continuing');
-      return;
-    }
-    const strippedContent = content.replace(/<[^>]*>/g, '').trim();
-    if (!strippedContent) {
-      setError('Please write some content before continuing');
-      return;
-    }
-    setError('');
-    setStep('publish');
-  };
-
-  const handleSave = async (status: 'published' | 'draft' | 'scheduled') => {
+  const handleSave = async (saveStatus: 'published' | 'draft' | 'scheduled') => {
     const missing: string[] = [];
     if (!title.trim()) missing.push('Title');
     if (!category) missing.push('Category');
     const strippedContent = content.replace(/<[^>]*>/g, '').trim();
     if (!strippedContent) missing.push('Content');
-    if (status === 'scheduled' && !scheduledDate) missing.push('Scheduled date');
-    if (status === 'scheduled' && scheduledDate && new Date(scheduledDate) <= new Date()) missing.push('Scheduled date must be in the future');
+    if (saveStatus === 'scheduled' && !scheduledDate) missing.push('Scheduled date');
+    if (saveStatus === 'scheduled' && scheduledDate && new Date(scheduledDate) <= new Date()) missing.push('Scheduled date must be in the future');
     if (missing.length > 0) {
       setError(`Missing required fields: ${missing.join(', ')}`);
       return;
@@ -104,14 +94,14 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
       const postData = {
         title: title.trim(),
         category,
-        status,
+        status: saveStatus,
         content,
         featuredImage: featuredImage.trim() || null,
         tags,
         authorId: auth.currentUser?.uid,
         updatedAt: new Date().toISOString(),
-        ...(status === 'scheduled' ? { publishedAt: new Date(scheduledDate).toISOString() } : {}),
-        ...(status === 'published' && !post?.publishedAt ? { publishedAt: new Date().toISOString() } : {})
+        ...(saveStatus === 'scheduled' ? { publishedAt: new Date(scheduledDate).toISOString() } : {}),
+        ...(saveStatus === 'published' && !post?.publishedAt ? { publishedAt: new Date().toISOString() } : {})
       };
 
       const tenantId = await getTenantScope();
@@ -143,237 +133,129 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
     }
   };
 
-  // ─── Step 1: Write ─────────────────────────────────────────────
-  if (step === 'write') {
-    return (
-      <div className="fixed inset-0 z-[200] flex flex-col bg-white">
-        {/* Header */}
-        <div className="px-4 py-3 flex items-center justify-between z-10">
-          <button
-            onClick={onClose}
-            className="p-2 -ml-2 text-[color:var(--text-faint)] hover:text-[color:var(--text-body)] transition-colors rounded-full hover:bg-stone-100"
-          >
-            <ArrowLeft size={20} />
-          </button>
-          <button
-            onClick={handleNext}
-            className="flex items-center gap-1.5 px-4 py-2 bg-gold text-white rounded-lg text-sm font-medium hover:bg-[color-mix(in_srgb,var(--brand-color)_85%,black)] transition-colors shadow-sm"
-          >
-            <span>Next</span>
-            <ArrowRight size={16} />
-          </button>
+  // Single-page, in-shell editor: title + TipTap content (left) · post settings
+  // and featured image (right). "Publish" honours the selected status (schedules
+  // when a date is set); "Save draft" always stores a draft.
+  const handlePublish = () => handleSave(scheduledDate || status === 'scheduled' ? 'scheduled' : 'published');
+
+  return (
+    <div className="w-full max-w-6xl mx-auto pb-10">
+      {/* Header */}
+      <div className="flex items-center justify-between gap-4 mb-6">
+        <button onClick={onClose} className="flex items-center gap-1.5 text-[13px] font-semibold text-gold hover:opacity-80 transition-opacity">
+          <ArrowLeft size={16} /> Blog
+        </button>
+        <div className="flex items-center gap-2.5">
+          <AdminSecondaryButton onClick={() => handleSave('draft')} disabled={isSaving}>
+            {isSaving ? 'Saving…' : 'Save draft'}
+          </AdminSecondaryButton>
+          <AdminPrimaryButton onClick={handlePublish} disabled={isSaving}>Publish</AdminPrimaryButton>
         </div>
+      </div>
 
-        {/* Writing area */}
-        <div className="flex-1 overflow-y-auto px-4 pb-20">
-          <div className="max-w-3xl mx-auto">
-            {error && (
-              <div className="bg-red-50 text-red-600 p-3 rounded-xl text-sm mb-4">
-                {error}
-              </div>
-            )}
+      {error && <div className="bg-red-50 text-red-600 p-3 rounded-brand text-sm mb-4 border border-red-100">{error}</div>}
 
-            {/* Title — plain, note-taking style */}
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => { setTitle(e.target.value); setError(''); }}
-              placeholder="Untitled"
-              className="w-full text-3xl sm:text-4xl font-bold text-earth placeholder-gray-300 border-none outline-none bg-transparent py-4 leading-tight"
-              autoFocus
-            />
-
-            {/* Divider */}
-            <div className="h-px bg-stone-100 mb-4" />
-
-            {/* Content editor — no toolbar, use "/" for commands */}
+      <div className="lg:grid lg:grid-cols-[1fr_340px] lg:gap-6 space-y-6 lg:space-y-0 items-start">
+        {/* Main: title + content */}
+        <AdminCard>
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => { setTitle(e.target.value); setError(''); }}
+            placeholder="Post title"
+            className="w-full px-6 pt-6 pb-5 font-display text-[1.9rem] font-normal text-earth placeholder:text-stone-300 border-none outline-none bg-transparent leading-tight"
+            autoFocus
+          />
+          <div className="border-t border-stone-200 px-6 py-5">
             <RichTextEditor
               content={content}
               onChange={(c) => { setContent(c); setError(''); }}
-              minHeight="50vh"
-              placeholder="Start writing... Type '/' for formatting options"
+              minHeight="46vh"
+              placeholder="Write your article… Type '/' for formatting options"
             />
           </div>
-        </div>
+        </AdminCard>
 
-        {/* Hint bar — above admin nav bar */}
-        <div className="fixed bottom-0 left-0 right-0 bg-stone-100 border-t border-stone-200 px-4 pt-2.5 pb-20 text-center z-20">
-          <span className="text-xs text-[color:var(--text-faint)]">
-            Type <kbd className="px-1.5 py-0.5 bg-stone-200 rounded text-warm-brown font-mono">/</kbd> for formatting commands
-          </span>
-        </div>
-      </div>
-    );
-  }
+        {/* Rail: settings + featured image */}
+        <div className="space-y-6">
+          <AdminCard className="p-5 space-y-4">
+            <AdminSectionLabel>Post settings</AdminSectionLabel>
 
-  // ─── Step 2: Publish ───────────────────────────────────────────
-  return (
-    <div className="fixed inset-0 z-[200] flex flex-col bg-[#FAF8F5]">
-      {/* Header */}
-      <div className="bg-white px-4 py-3 flex items-center justify-between shadow-sm z-10">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setStep('write')}
-            className="p-2 -ml-2 text-warm-brown hover:text-earth transition-colors rounded-full hover:bg-stone-100"
-          >
-            <ArrowLeft size={20} />
-          </button>
-          <h1 className="text-lg font-bold text-earth font-display">
-            Publish
-          </h1>
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto p-4" style={{ paddingBottom: 'max(11rem, calc(7rem + env(safe-area-inset-bottom)))' }}>
-        <div className="max-w-2xl mx-auto space-y-5">
-          {error && (
-            <div className="bg-red-50 text-red-600 p-3 rounded-xl text-sm">
-              {error}
+            <div>
+              <label className={fieldLabel}>Status</label>
+              <select value={status} onChange={(e) => setStatus(e.target.value as any)} className={`${fieldInput} appearance-none`}>
+                <option value="draft">Draft</option>
+                <option value="published">Published</option>
+                <option value="scheduled">Scheduled</option>
+              </select>
             </div>
-          )}
 
-          {/* Preview card */}
-          <div className="bg-white rounded-xl border border-stone-200 p-4">
-            <p className="text-xs text-[color:var(--text-faint)] uppercase tracking-wide mb-2">Preview</p>
-            <h3 className="text-lg font-bold text-earth mb-1">{title || 'Untitled'}</h3>
-            <p className="text-sm text-warm-brown line-clamp-2">
-              {content.replace(/<[^>]*>/g, '').slice(0, 150) || 'No content'}
-            </p>
-          </div>
-
-          {/* Category */}
-          <div className="bg-white p-4 rounded-xl border border-stone-200 space-y-2">
-            <label className="block text-sm font-medium text-[color:var(--text-body)]">Category</label>
-            {!isAddingCategory ? (
-              <div className="flex gap-2">
-                <select
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  className="flex-1 px-3 py-2 bg-stone-100 border border-stone-200 rounded-lg text-earth focus:ring-2 focus:ring-gold focus:border-transparent outline-none text-sm"
-                >
-                  <option value="" disabled>Select a category</option>
-                  {availableCategories.map(cat => (
-                    <option key={cat} value={cat}>{cat}</option>
-                  ))}
-                </select>
-                {category && (
+            <div>
+              <label className={fieldLabel}>Category</label>
+              {!isAddingCategory ? (
+                <div className="flex gap-2">
+                  <select value={category} onChange={(e) => setCategory(e.target.value)} className={`${fieldInput} flex-1 appearance-none`}>
+                    <option value="" disabled>Select a category</option>
+                    {availableCategories.map(cat => (<option key={cat} value={cat}>{cat}</option>))}
+                  </select>
+                  {category && (
+                    <button
+                      onClick={() => { setAvailableCategories(availableCategories.filter(c => c !== category)); setCategory(''); }}
+                      className="px-2.5 rounded-brand text-[#C4553B] hover:bg-[#F7E7E2] transition-colors"
+                      title="Remove selected category"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  )}
                   <button
-                    onClick={() => { setAvailableCategories(availableCategories.filter(c => c !== category)); setCategory(''); }}
-                    className="px-2.5 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"
-                    title="Delete selected category"
+                    onClick={() => setIsAddingCategory(true)}
+                    className="px-2.5 rounded-brand text-warm-brown hover:bg-stone-100 transition-colors"
+                    title="New category"
                   >
-                    <Trash2 size={16} />
+                    <Plus size={16} />
                   </button>
-                )}
-                <button
-                  onClick={() => setIsAddingCategory(true)}
-                  className="px-3 py-2 bg-stone-100 text-[color:var(--text-body)] rounded-lg hover:bg-stone-200 transition-colors flex items-center gap-1.5 text-sm"
-                >
-                  <Plus size={16} />
-                  <span className="hidden sm:inline">New</span>
-                </button>
-              </div>
-            ) : (
-              <div className="flex items-center gap-1.5">
-                <input
-                  type="text"
-                  value={newCategory}
-                  onChange={(e) => setNewCategory(e.target.value)}
-                  placeholder="Category name"
-                  className="flex-1 px-3 py-2 bg-stone-100 border border-stone-200 rounded-lg text-earth focus:ring-2 focus:ring-gold focus:border-transparent outline-none text-sm"
-                  autoFocus
-                />
-                <button
-                  onClick={handleAddCategory}
-                  disabled={!newCategory.trim()}
-                  className="px-3 py-2 bg-gold text-white rounded-lg hover:bg-[color-mix(in_srgb,var(--brand-color)_85%,black)] transition-colors disabled:opacity-50 text-sm font-medium"
-                >
-                  Add
-                </button>
-                <button
-                  onClick={() => { setIsAddingCategory(false); setNewCategory(''); }}
-                  className="p-2 text-warm-brown hover:text-[color:var(--text-body)] rounded-lg hover:bg-stone-100 transition-colors"
-                >
-                  <X size={16} />
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Featured Image */}
-          <div className="bg-white p-4 rounded-xl border border-stone-200 space-y-2">
-            <label className="block text-sm font-medium text-[color:var(--text-body)]">Featured Image</label>
-            <ImageUpload value={featuredImage} onChange={setFeaturedImage} placeholder="Upload or paste image URL" />
-          </div>
-
-          {/* Tags */}
-          <div className="bg-white p-4 rounded-xl border border-stone-200 space-y-2">
-            <label className="block text-sm font-medium text-[color:var(--text-body)]">Tags</label>
-            <div className="flex flex-wrap gap-1.5 mb-2">
-              {tags.map(tag => (
-                <span key={tag} className="inline-flex items-center gap-1 px-2.5 py-1 bg-stone-100 text-[color:var(--text-body)] rounded-full text-xs">
-                  {tag}
-                  <button onClick={() => removeTag(tag)} className="hover:text-red-500 transition-colors">
-                    <X size={12} />
-                  </button>
-                </span>
-              ))}
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="text"
+                    value={newCategory}
+                    onChange={(e) => setNewCategory(e.target.value)}
+                    placeholder="Category name"
+                    className={`${fieldInput} flex-1`}
+                    autoFocus
+                  />
+                  <button onClick={handleAddCategory} disabled={!newCategory.trim()} className="px-3 py-2 rounded-brand text-white text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: 'var(--brand-color, #C9963A)' }}>Add</button>
+                  <button onClick={() => { setIsAddingCategory(false); setNewCategory(''); }} className="p-2 rounded-brand text-warm-brown hover:bg-stone-100 transition-colors"><X size={16} /></button>
+                </div>
+              )}
             </div>
-            <input
-              type="text"
-              value={newTag}
-              onChange={(e) => setNewTag(e.target.value)}
-              onKeyDown={handleAddTag}
-              placeholder="Type a tag and press Enter"
-              className="w-full px-3 py-2 bg-stone-100 border border-stone-200 rounded-lg text-earth focus:ring-2 focus:ring-gold focus:border-transparent outline-none text-sm"
-            />
-          </div>
 
-          {/* Schedule */}
-          <div className="bg-white p-4 rounded-xl border border-stone-200 space-y-2">
-            <label className="block text-sm font-medium text-[color:var(--text-body)]">Schedule</label>
-            <input
-              type="datetime-local"
-              value={scheduledDate}
-              onChange={(e) => setScheduledDate(e.target.value)}
-              className="w-full px-3 py-2 bg-stone-100 border border-stone-200 rounded-lg text-earth focus:ring-2 focus:ring-gold focus:border-transparent outline-none text-sm"
-            />
-          </div>
-        </div>
-      </div>
+            <div>
+              <label className={fieldLabel}>Tags</label>
+              {tags.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {tags.map(tag => (
+                    <span key={tag} className="inline-flex items-center gap-1 px-2.5 py-1 bg-stone-100 text-[color:var(--text-body)] rounded-full text-xs">
+                      {tag}
+                      <button onClick={() => removeTag(tag)} className="hover:text-[#C4553B] transition-colors"><X size={12} /></button>
+                    </span>
+                  ))}
+                </div>
+              )}
+              <input type="text" value={newTag} onChange={(e) => setNewTag(e.target.value)} onKeyDown={handleAddTag} placeholder="Type a tag, press Enter" className={fieldInput} />
+            </div>
 
-      {/* Bottom action bar — fixed above admin nav bar */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-stone-200 w-full z-20 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] px-3 pt-3 pb-20">
-        <div className="max-w-2xl mx-auto flex flex-col sm:flex-row gap-2">
-          <button
-            onClick={() => handleSave('draft')}
-            disabled={isSaving}
-            className="flex-1 py-2.5 px-3 bg-stone-100 text-[color:var(--text-body)] rounded-lg text-sm font-medium hover:bg-stone-200 transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50"
-          >
-            <Save size={16} />
-            <span>Save Draft</span>
-          </button>
+            <div>
+              <label className={fieldLabel}>Schedule <span className="font-normal text-[color:var(--text-faint)] normal-case">(optional)</span></label>
+              <input type="datetime-local" value={scheduledDate} onChange={(e) => setScheduledDate(e.target.value)} className={fieldInput} />
+            </div>
+          </AdminCard>
 
-          {scheduledDate ? (
-            <button
-              onClick={() => handleSave('scheduled')}
-              disabled={isSaving}
-              className="flex-1 py-2.5 px-3 bg-blue-100 text-blue-700 rounded-lg text-sm font-medium hover:bg-blue-200 transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50"
-            >
-              <Calendar size={16} />
-              <span>Schedule</span>
-            </button>
-          ) : null}
-
-          <button
-            onClick={() => handleSave('published')}
-            disabled={isSaving}
-            className="flex-[1.5] py-2.5 px-3 bg-gold text-white rounded-lg text-sm font-medium hover:bg-[color-mix(in_srgb,var(--brand-color)_85%,black)] transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50 shadow-sm"
-          >
-            <Send size={16} />
-            <span>Publish Now</span>
-          </button>
+          <AdminCard className="p-5 space-y-3">
+            <AdminSectionLabel>Featured image</AdminSectionLabel>
+            <ImageUpload value={featuredImage} onChange={setFeaturedImage} placeholder="Upload or paste URL" />
+          </AdminCard>
         </div>
       </div>
     </div>
