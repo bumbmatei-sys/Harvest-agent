@@ -634,7 +634,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
           )}
 
           {/* Center: active screen title */}
-          <h1 className="flex-1 text-center font-display text-lg font-bold tracking-[-0.01em] text-earth truncate px-4">
+          <h1 className="flex-1 text-center font-display text-xl font-normal tracking-[-0.01em] text-earth truncate px-4">
             {headerOverride?.title ?? headerTitle}
           </h1>
 
