@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect } from 'react';
-import { Receipt, TrendingUp, Download, Search, ArrowUpRight, FileText, Lock, Loader2, CheckCircle, AlertCircle, RefreshCw, ExternalLink, Link2 } from 'lucide-react';
+import { Receipt, TrendingUp, Download, Search, DollarSign, FileText, Lock, Loader2, CheckCircle, AlertCircle, RefreshCw, ExternalLink, Link2 } from 'lucide-react';
 import {
   collection, query, orderBy, onSnapshot, limit, Timestamp
 } from 'firebase/firestore';
@@ -400,37 +400,29 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
   }
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-5xl mx-auto">
       {subTabBar}
       {/* Summary Cards */}
-      <div className="grid grid-cols-3 gap-3 mb-6">
-        <div className="bg-white rounded-2xl p-4 border border-stone-200 shadow-sm">
-          <div className="flex items-center gap-2 mb-2">
-            <TrendingUp size={16} style={{ color: 'var(--brand-color, #d4a017)' }} />
-            <span className="text-xs text-warm-brown font-medium">This Month</span>
+      <div className="grid grid-cols-3 gap-4 mb-8">
+        {[
+          { label: 'This Month', value: fmt(totalThisMonth), icon: <TrendingUp size={15} /> },
+          { label: 'This Year', value: fmt(totalThisYear), icon: <DollarSign size={15} /> },
+          { label: 'Receipts Sent', value: sentCount, icon: <FileText size={15} /> },
+        ].map(s => (
+          <div key={s.label} className="bg-white rounded-brand-lg p-5 border border-stone-200 shadow-[var(--ds-sh-sm)]">
+            <div className="flex items-start justify-between">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--text-faint)]">{s.label}</span>
+              <span className="text-stone-300">{s.icon}</span>
+            </div>
+            <div className="font-display text-[2rem] font-light text-earth mt-2 leading-none">{s.value}</div>
           </div>
-          <div className="text-2xl font-bold text-earth">{fmt(totalThisMonth)}</div>
-        </div>
-        <div className="bg-white rounded-2xl p-4 border border-stone-200 shadow-sm">
-          <div className="flex items-center gap-2 mb-2">
-            <ArrowUpRight size={16} className="text-green-500" />
-            <span className="text-xs text-warm-brown font-medium">This Year</span>
-          </div>
-          <div className="text-2xl font-bold text-earth">{fmt(totalThisYear)}</div>
-        </div>
-        <div className="bg-white rounded-2xl p-4 border border-stone-200 shadow-sm">
-          <div className="flex items-center gap-2 mb-2">
-            <FileText size={16} className="text-blue-500" />
-            <span className="text-xs text-warm-brown font-medium">Receipts Sent</span>
-          </div>
-          <div className="text-2xl font-bold text-earth">{sentCount}</div>
-        </div>
+        ))}
       </div>
 
       {/* QuickBooks Section */}
       {isQbEnabled && (
         <div className="mb-6">
-          <h3 className="text-sm font-bold text-[color:var(--text-body)] mb-3 font-display">QuickBooks</h3>
+          <h3 className="font-display text-xl font-normal text-earth mb-4">QuickBooks</h3>
           <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4">
             {qbLoading ? (
               <div className="flex items-center gap-2 text-sm text-[color:var(--text-faint)]"><Loader2 size={15} className="animate-spin" /> Checking connection…</div>
@@ -495,7 +487,7 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
       {/* Tax Receipts Section */}
       <div className="mb-6">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-bold text-[color:var(--text-body)] font-display">Tax Receipts</h3>
+          <h3 className="font-display text-xl font-normal text-earth">Tax Receipts</h3>
           {!isTaxReceiptsEnabled && (
             <span className="text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full font-semibold flex items-center gap-1">
               <Lock size={10} /> Ministry plan required
@@ -552,7 +544,7 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
       {/* Giving Statements Section */}
       {isTaxReceiptsEnabled && (
         <div className="mb-6">
-          <h3 className="text-sm font-bold text-[color:var(--text-body)] mb-3 font-display">Giving Statements</h3>
+          <h3 className="font-display text-xl font-normal text-earth mb-4">Giving Statements</h3>
           <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4">
             <p className="text-sm text-warm-brown mb-4">
               Generate annual giving statements (charitable contribution receipts) for each donor, then email them as PDFs.
@@ -597,12 +589,12 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-stone-200">
-                      <th className="px-3 py-2 text-left text-xs font-semibold text-warm-brown uppercase">Donor</th>
-                      <th className="px-3 py-2 text-right text-xs font-semibold text-warm-brown uppercase">Total</th>
-                      <th className="px-3 py-2 text-center text-xs font-semibold text-warm-brown uppercase"># Gifts</th>
-                      <th className="px-3 py-2 text-center text-xs font-semibold text-warm-brown uppercase">Statement</th>
-                      <th className="px-3 py-2 text-center text-xs font-semibold text-warm-brown uppercase">Status</th>
-                      <th className="px-3 py-2 text-right text-xs font-semibold text-warm-brown uppercase">Actions</th>
+                      <th className="px-3 py-2 text-left text-[11px] font-semibold text-gold uppercase tracking-[0.08em]">Donor</th>
+                      <th className="px-3 py-2 text-right text-[11px] font-semibold text-gold uppercase tracking-[0.08em]">Total</th>
+                      <th className="px-3 py-2 text-center text-[11px] font-semibold text-gold uppercase tracking-[0.08em]"># Gifts</th>
+                      <th className="px-3 py-2 text-center text-[11px] font-semibold text-gold uppercase tracking-[0.08em]">Statement</th>
+                      <th className="px-3 py-2 text-center text-[11px] font-semibold text-gold uppercase tracking-[0.08em]">Status</th>
+                      <th className="px-3 py-2 text-right text-[11px] font-semibold text-gold uppercase tracking-[0.08em]">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
@@ -676,13 +668,13 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-stone-200">
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-warm-brown uppercase tracking-wider">Date</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-warm-brown uppercase tracking-wider">Recipient</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-warm-brown uppercase tracking-wider">Type</th>
-                    <th className="px-4 py-3 text-right text-xs font-semibold text-warm-brown uppercase tracking-wider">Amount</th>
-                    <th className="px-4 py-3 text-center text-xs font-semibold text-warm-brown uppercase tracking-wider">Status</th>
-                    {isQbEnabled && <th className="px-4 py-3 text-center text-xs font-semibold text-warm-brown uppercase tracking-wider">QuickBooks</th>}
-                    <th className="px-4 py-3 text-right text-xs font-semibold text-warm-brown uppercase tracking-wider">Actions</th>
+                    <th className="px-4 py-3 text-left text-[11px] font-semibold text-gold uppercase tracking-[0.12em]">Date</th>
+                    <th className="px-4 py-3 text-left text-[11px] font-semibold text-gold uppercase tracking-[0.12em]">Recipient</th>
+                    <th className="px-4 py-3 text-left text-[11px] font-semibold text-gold uppercase tracking-[0.12em]">Type</th>
+                    <th className="px-4 py-3 text-right text-[11px] font-semibold text-gold uppercase tracking-[0.12em]">Amount</th>
+                    <th className="px-4 py-3 text-center text-[11px] font-semibold text-gold uppercase tracking-[0.12em]">Status</th>
+                    {isQbEnabled && <th className="px-4 py-3 text-center text-[11px] font-semibold text-gold uppercase tracking-[0.12em]">QuickBooks</th>}
+                    <th className="px-4 py-3 text-right text-[11px] font-semibold text-gold uppercase tracking-[0.12em]">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
