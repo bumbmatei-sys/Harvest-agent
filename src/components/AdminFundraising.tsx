@@ -13,6 +13,7 @@ import { notifyError } from '../utils/notify';
 import { authFetch } from '../utils/auth-fetch';
 import PaymentSection from './settings/PaymentSection';
 import { useAdminHeader, HeaderActionButton } from './AdminScreenHeader';
+import { AdminPageHeader, AdminPrimaryButton, AdminBadge } from './admin/AdminUI';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAppStore } from '../store/useAppStore';
 import { PLATFORM_TENANT_ID, hasPlatformOverride } from '../utils/tenant-scope';
@@ -418,75 +419,80 @@ const AdminFundraising: React.FC<AdminFundraisingProps> = ({ initialCampaignId, 
 
   // ── List view ──
   return (
-    <div className="max-w-3xl mx-auto">
+    <div className="max-w-5xl mx-auto space-y-6">
       {/* Payment Setup — Stripe Connect for receiving donations (moved from Settings) */}
-      <div className="mb-4 bg-white rounded-xl border border-stone-200 overflow-hidden">
+      <div className="bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] overflow-hidden">
         <button
           onClick={() => setShowPayment((v) => !v)}
-          className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-stone-100 transition-colors text-left"
+          className="w-full flex items-center gap-4 px-5 py-4 hover:bg-stone-100/60 transition-colors text-left"
         >
-          <DollarSign size={18} className="text-[color:var(--text-faint)] shrink-0" />
+          <span className="w-11 h-11 rounded-brand bg-[color-mix(in_srgb,var(--brand-color)_12%,white)] flex items-center justify-center shrink-0">
+            <DollarSign size={20} className="text-gold" />
+          </span>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-earth font-display">Payment Setup</p>
-            <p className="text-xs text-[color:var(--text-faint)]">Connect Stripe to receive donations</p>
+            <p className="text-sm font-semibold text-earth">Payment setup</p>
+            <p className="text-xs text-[color:var(--text-faint)]">Stripe Connect — 100% of donations go to your ministry</p>
           </div>
           <ChevronDown size={16} className={`text-[color:var(--text-faint)] transition-transform ${showPayment ? 'rotate-180' : ''}`} />
         </button>
         {showPayment && (
-          <div className="px-4 py-4 border-t border-stone-200">
+          <div className="px-5 py-4 border-t border-stone-200">
             <PaymentSection />
           </div>
         )}
       </div>
 
+      <AdminPageHeader
+        eyebrow="Campaigns"
+        title={`${campaigns.length} campaign${campaigns.length === 1 ? '' : 's'}`}
+        action={<AdminPrimaryButton onClick={openCreate} icon={<Plus size={16} />}>New campaign</AdminPrimaryButton>}
+      />
+
       {campaigns.length === 0 ? (
-        <div className="text-center py-16 text-[color:var(--text-faint)]">
-          <Heart size={40} className="mx-auto mb-3 opacity-30" />
-          <p className="font-medium font-display">No campaigns yet</p>
-          <p className="text-sm mt-1">Create your first fundraising campaign</p>
+        <div className="bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] text-center py-16 px-6">
+          <Heart size={38} className="mx-auto mb-3 text-stone-300" />
+          <p className="font-display text-lg text-earth">No campaigns yet</p>
+          <p className="text-sm text-warm-brown mt-1">Create your first fundraising campaign</p>
+          <div className="mt-5"><AdminPrimaryButton onClick={openCreate} icon={<Plus size={16} />}>New campaign</AdminPrimaryButton></div>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="grid md:grid-cols-2 gap-5">
           {campaigns.map((c) => {
             const pct = c.goal > 0 ? Math.min(100, Math.round((c.raised / c.goal) * 100)) : 0;
             const isPledge = c.campaignType === 'pledge';
             return (
-              <div key={c.id} className="bg-white rounded-2xl p-5 border border-stone-200 shadow-sm">
+              <div key={c.id} className="bg-white rounded-brand-lg p-6 border border-stone-200 shadow-[var(--ds-sh-sm)]">
                 <div className="flex items-start justify-between gap-3 mb-3">
-                  <button onClick={() => openDetail(c)} className="flex-1 min-w-0 text-left">
-                    <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <h3 className="font-bold text-earth truncate">{c.title}</h3>
-                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${isPledge ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
-                        {isPledge ? 'Pledge' : 'Fundraising'}
-                      </span>
-                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${c.isActive ? 'bg-green-100 text-green-700' : 'bg-stone-100 text-warm-brown'}`}>
-                        {c.isActive ? 'Active' : 'Inactive'}
-                      </span>
+                  <button onClick={() => openDetail(c)} className="flex-1 min-w-0 text-left group">
+                    <div className="flex items-center gap-2 mb-2 flex-wrap">
+                      <h3 className="font-display text-xl font-normal text-earth truncate group-hover:text-gold transition-colors">{c.title}</h3>
+                      <AdminBadge tone={isPledge ? 'sky' : 'gold'}>{isPledge ? 'Pledge' : 'Fundraising'}</AdminBadge>
                     </div>
-                    <p className="text-sm text-warm-brown line-clamp-1">{c.description}</p>
+                    <AdminBadge tone={c.isActive ? 'green' : 'stone'}>{c.isActive ? 'Active' : 'Inactive'}</AdminBadge>
+                    <p className="text-sm text-warm-brown line-clamp-1 mt-2.5">{c.description}</p>
                   </button>
-                  <div className="flex items-center gap-1 flex-shrink-0">
-                    <button onClick={() => toggleActive(c)} className="p-2 rounded-xl hover:bg-stone-100 transition-colors" title={c.isActive ? 'Deactivate' : 'Activate'}>
-                      {c.isActive ? <ToggleRight size={20} style={{ color: 'var(--brand-color, #d4a017)' }} /> : <ToggleLeft size={20} className="text-[color:var(--text-faint)]" />}
+                  <div className="flex items-center gap-0.5 flex-shrink-0">
+                    <button onClick={() => toggleActive(c)} className="p-2 rounded-brand hover:bg-stone-100 transition-colors" title={c.isActive ? 'Deactivate' : 'Activate'}>
+                      {c.isActive ? <ToggleRight size={18} style={{ color: 'var(--brand-color, #d4a017)' }} /> : <ToggleLeft size={18} className="text-[color:var(--text-faint)]" />}
                     </button>
-                    <button onClick={() => openEdit(c)} className="p-2 rounded-xl hover:bg-stone-100 transition-colors">
-                      <Edit2 size={16} className="text-[color:var(--text-faint)]" />
+                    <button onClick={() => openEdit(c)} className="p-2 rounded-brand hover:bg-stone-100 transition-colors">
+                      <Edit2 size={15} className="text-[color:var(--text-faint)]" />
                     </button>
-                    <button onClick={() => setDeleteId(c.id)} className="p-2 rounded-xl hover:bg-red-50 transition-colors">
-                      <Trash2 size={16} className="text-red-400" />
+                    <button onClick={() => setDeleteId(c.id)} className="p-2 rounded-brand hover:bg-[#F7E7E2] transition-colors">
+                      <Trash2 size={15} className="text-[#C4553B]" />
                     </button>
                   </div>
                 </div>
-                <div className="flex items-baseline justify-between text-xs text-warm-brown mb-1.5">
-                  <span className="font-semibold text-[color:var(--text-body)]">{fmt(c.raised)} raised</span>
-                  <span>of {fmt(c.goal)}</span>
+                <div className="flex items-baseline justify-between mt-4 mb-2">
+                  <span className="font-display text-[1.75rem] font-light text-earth leading-none">{fmt(c.raised)}</span>
+                  <span className="text-xs text-[color:var(--text-faint)]">of {fmt(c.goal)}</span>
                 </div>
                 <div className="h-2 bg-stone-100 rounded-full overflow-hidden">
                   <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: 'var(--brand-color, #d4a017)' }} />
                 </div>
-                <div className="flex justify-between mt-1 text-[11px]">
+                <div className="flex justify-between mt-2 text-[11px]">
                   <span style={{ color: 'var(--brand-color, #d4a017)' }} className="font-semibold">{pct}%</span>
-                  {c.endDate && <span className="text-[color:var(--text-faint)]">Ends {new Date(c.endDate).toLocaleDateString()}</span>}
+                  {c.endDate && <span className="text-[color:var(--text-faint)]">Ends {new Date(c.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>}
                 </div>
               </div>
             );
