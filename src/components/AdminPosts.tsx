@@ -4,7 +4,7 @@ import Image from 'next/image';
 import { collection, query, where, onSnapshot, addDoc, deleteDoc, doc, getDoc, updateDoc, arrayUnion, arrayRemove, limit } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { ImageUpload } from './ImageUpload';
-import { MessageSquare, BarChart2, Calendar as CalendarIcon, Image as ImageIcon, Send, MoreVertical, ThumbsUp, Check, X } from 'lucide-react';
+import { Calendar as CalendarIcon, Image as ImageIcon, Send, MoreVertical, ThumbsUp, Check, X } from 'lucide-react';
 import { useAdminHeader, HeaderActionButton } from './AdminScreenHeader';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { getTenantScope, getWriteTenantScope } from '../utils/tenant-scope';
@@ -379,20 +379,18 @@ const AdminPosts: React.FC<AdminPostsProps> = ({ userRole, userPermissions }) =>
  {errorMessage}
  </div>
  )}
- <div className="bg-white rounded-2xl shadow-sm border border-stone-200 p-4">
- <div className="flex items-center gap-6 border-b border-stone-200 pb-3 mb-4">
- <button 
+ <div className="bg-white rounded-brand-lg shadow-[var(--ds-sh-sm)] border border-stone-200 p-5">
+ <div className="flex gap-1 bg-stone-100 rounded-xl p-1 mb-4 w-fit">
+ <button
  onClick={() => setActiveTab('post')}
- className={`flex items-center gap-2 text-sm font-medium transition-colors ${activeTab === 'post' ? 'text-gold border-b-2 border-gold pb-3 -mb-[13px]' : 'text-warm-brown hover:text-[color:var(--text-body)] :text-gray-200'}`}
+ className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${activeTab === 'post' ? 'bg-white shadow-sm text-earth' : 'text-[color:var(--text-faint)]'}`}
  >
- <MessageSquare size={16} />
  Post
  </button>
  <button
  onClick={() => setActiveTab('poll')}
- className={`flex items-center gap-2 text-sm font-medium transition-colors ${activeTab === 'poll' ? 'text-gold border-b-2 border-gold pb-3 -mb-[13px]' : 'text-warm-brown hover:text-[color:var(--text-body)] :text-gray-200'}`}
+ className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${activeTab === 'poll' ? 'bg-white shadow-sm text-earth' : 'text-[color:var(--text-faint)]'}`}
  >
- <BarChart2 size={16} />
  Poll
  </button>
  </div>
@@ -403,7 +401,7 @@ const AdminPosts: React.FC<AdminPostsProps> = ({ userRole, userPermissions }) =>
  value={content}
  onChange={(e) => setContent(e.target.value)}
  placeholder={activeTab === 'poll' ? "Ask a question..." : "Share an update with the community..."}
- className="w-full bg-transparent border-none focus:ring-0 resize-none text-earth placeholder-gray-400 text-sm min-h-[60px] p-0"
+ className="w-full bg-transparent border-none focus:ring-0 resize-none text-earth placeholder-[color:var(--text-faint)] text-sm min-h-[60px] p-0"
  />
 
  {activeTab === 'poll' && (

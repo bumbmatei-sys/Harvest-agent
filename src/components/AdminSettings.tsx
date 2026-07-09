@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect } from 'react';
-import { Crown, Settings2, Bot, Plug, AlertTriangle, Check, FileText, MessageSquare, SlidersHorizontal, ChevronRight } from 'lucide-react';
+import { Crown, Settings2, Bot, Plug, AlertTriangle, Check, FileText, MessageSquare, SlidersHorizontal, ChevronRight, DollarSign } from 'lucide-react';
 import { TenantPlan } from '../types/tenant.types';
 import { getPlanFeatures, AI_TELEGRAM_ASSISTANT_ENABLED } from '../utils/plan-features';
 import { hasPlatformOverride } from '../utils/tenant-scope';
@@ -152,11 +152,17 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
         </div>
       ),
       hidden: !currentPlan,
+      danger: true,
     },
   ];
 
   return (
-    <div className="p-4 lg:p-6 max-w-6xl mx-auto">
+    <div className="max-w-2xl mx-auto space-y-6">
+      <div>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-gold mb-1.5">Platform</p>
+        <h2 className="font-display text-[1.75rem] lg:text-[2rem] leading-[1.1] font-light tracking-[-0.02em] text-earth">Settings</h2>
+      </div>
+
       {/* Stripe status banners */}
       {AI_TELEGRAM_ASSISTANT_ENABLED && stripeStatus === 'success' && stripeAddon === 'ai-assistant' && (
         <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-4">
@@ -202,16 +208,26 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
 
       {/* Current Plan Summary */}
       {currentPlan ? (
-        <div className="bg-white rounded-xl border border-stone-200 p-4 mb-4 flex items-center gap-3">
-          <Crown size={18} style={{ color: 'var(--brand-color, #d4a017)' }} className="shrink-0" />
-          <div className="min-w-0">
+        <div className="bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] p-4 flex items-center gap-4">
+          <span className="w-11 h-11 rounded-brand bg-[color-mix(in_srgb,var(--brand-color)_12%,white)] flex items-center justify-center shrink-0">
+            <DollarSign size={20} className="text-gold" />
+          </span>
+          <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold text-earth">{currentPlanData?.name || 'Current'} plan</p>
             <p className="text-xs text-warm-brown">{planSummary}</p>
           </div>
+          <button
+            onClick={handleManageSubscription}
+            className="shrink-0 px-4 py-2 rounded-brand border border-stone-200 bg-white text-[13px] font-semibold text-earth hover:bg-stone-100 transition-colors"
+          >
+            Manage
+          </button>
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-stone-200 p-4 mb-4 flex items-center gap-3">
-          <Crown size={18} style={{ color: 'var(--brand-color, #d4a017)' }} className="shrink-0" />
+        <div className="bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] p-4 flex items-center gap-4">
+          <span className="w-11 h-11 rounded-brand bg-[color-mix(in_srgb,var(--brand-color)_12%,white)] flex items-center justify-center shrink-0">
+            <Crown size={20} className="text-gold" />
+          </span>
           <div>
             <p className="text-sm font-semibold text-earth">Super Admin</p>
             <p className="text-xs text-warm-brown">Platform-wide access — manage all tenants</p>
@@ -226,11 +242,11 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
       {onCustomizeNav && (
         <button
           onClick={onCustomizeNav}
-          className="mt-4 w-full flex items-center gap-3 px-4 py-3.5 bg-white rounded-xl border border-stone-200 hover:bg-stone-100 transition-colors text-left"
+          className="w-full flex items-center gap-3 px-5 py-4 bg-white rounded-brand border border-stone-200 shadow-[var(--ds-sh-sm)] hover:bg-stone-100/60 transition-colors text-left"
         >
-          <SlidersHorizontal size={18} className="text-[color:var(--text-faint)] shrink-0" />
+          <SlidersHorizontal size={18} className="text-gold shrink-0" />
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-[color:var(--text-body)]">Customize Navigation</p>
+            <p className="text-sm font-semibold text-earth">Customize Navigation</p>
             <p className="text-xs text-[color:var(--text-faint)]">Rearrange your bottom bar &amp; More drawer</p>
           </div>
           <ChevronRight size={16} className="text-[color:var(--text-faint)]" />
