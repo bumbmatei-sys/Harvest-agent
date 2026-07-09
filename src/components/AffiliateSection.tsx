@@ -108,22 +108,23 @@ export default function AffiliateSection() {
   }
 
   return (
-    <div className="space-y-4" style={{ paddingBottom: 32 }}>
+    <div className="w-full max-w-3xl mx-auto space-y-6 pb-8">
 
       {/* Header */}
       <div>
-        <h3 className="text-base font-black text-earth font-display">Affiliate Program</h3>
-        <p className="text-xs text-warm-brown mt-0.5">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-gold mb-1.5">Grow</p>
+        <h2 className="font-display text-[1.75rem] lg:text-[2rem] leading-[1.1] font-light tracking-[-0.02em] text-earth">Affiliate Program</h2>
+        <p className="text-sm text-warm-brown mt-2 max-w-xl">
           Share your link and earn commission on every subscription you refer — for as long as they stay subscribed.
         </p>
       </div>
 
       {/* This Month Earnings — hero stat */}
-      <div className="rounded-2xl p-4 flex items-center justify-between"
+      <div className="rounded-brand-lg p-6 flex items-center justify-between"
         style={{ backgroundColor: GOLD_LIGHT }}>
         <div>
-          <p className="text-xs font-semibold text-warm-brown uppercase tracking-wider">This Month</p>
-          <p className="text-3xl font-black mt-0.5" style={{ color: GOLD }}>
+          <p className="text-[11px] font-semibold text-gold uppercase tracking-[0.14em]">This Month</p>
+          <p className="font-display text-[2.6rem] leading-none font-light mt-1.5" style={{ color: GOLD }}>
             {fmt(status?.thisMonthEarnings || 0)}
           </p>
         </div>
@@ -131,24 +132,24 @@ export default function AffiliateSection() {
       </div>
 
       {/* Stats row */}
-      <div className="grid grid-cols-3 gap-2">
-        <div className="bg-white rounded-xl border border-stone-200 p-3 text-center">
-          <p className="text-lg font-black text-earth">{status?.affiliateClicks || 0}</p>
-          <p className="text-[10px] text-[color:var(--text-faint)] mt-0.5">Clicks</p>
+      <div className="grid grid-cols-3 gap-4">
+        <div className="bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] p-5 text-center">
+          <p className="font-display text-[1.75rem] leading-none font-light text-earth">{status?.affiliateClicks || 0}</p>
+          <p className="text-xs text-warm-brown mt-1.5">Clicks</p>
         </div>
-        <div className="bg-white rounded-xl border border-stone-200 p-3 text-center">
-          <p className="text-lg font-black text-earth">{status?.referralCount || 0}</p>
-          <p className="text-[10px] text-[color:var(--text-faint)] mt-0.5">Referrals</p>
+        <div className="bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] p-5 text-center">
+          <p className="font-display text-[1.75rem] leading-none font-light text-earth">{status?.referralCount || 0}</p>
+          <p className="text-xs text-warm-brown mt-1.5">Referrals</p>
         </div>
-        <div className="bg-white rounded-xl border border-stone-200 p-3 text-center">
-          <p className="text-base font-black text-earth">{fmt(status?.totalEarnings || 0)}</p>
-          <p className="text-[10px] text-[color:var(--text-faint)] mt-0.5">Lifetime</p>
+        <div className="bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] p-5 text-center">
+          <p className="font-display text-[1.75rem] leading-none font-light text-earth">{fmt(status?.totalEarnings || 0)}</p>
+          <p className="text-xs text-warm-brown mt-1.5">Lifetime</p>
         </div>
       </div>
 
       {/* Referral Link */}
       <div>
-        <p className="text-xs font-bold text-warm-brown uppercase tracking-wider mb-2">Your Referral Link</p>
+        <p className="text-[11px] font-semibold text-gold uppercase tracking-[0.14em] mb-2">Your Referral Link</p>
         <div className="bg-white rounded-2xl border border-stone-200 px-4 py-3 flex items-center gap-3">
           <Share2 size={16} style={{ color: GOLD }} className="flex-shrink-0" />
           <span className="flex-1 text-sm text-[color:var(--text-body)] truncate font-mono">
@@ -196,7 +197,7 @@ export default function AffiliateSection() {
 
       {/* Commission info */}
       <div className="bg-white rounded-2xl border border-stone-200 p-4 space-y-2">
-        <p className="text-xs font-bold text-[color:var(--text-faint)] uppercase tracking-wider">Commission Rates</p>
+        <p className="text-[11px] font-semibold text-gold uppercase tracking-[0.14em] pb-1">Commission Rates</p>
         {[
           { plan: 'Individual', rate: '10%', key: 'plus' },
           { plan: 'Small Team', rate: '10%', key: 'pro' },
