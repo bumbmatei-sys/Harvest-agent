@@ -21,6 +21,7 @@ import { markdownToHtml, titleFromMarkdown } from '../utils/markdown-import';
 import RichTextEditor from './RichTextEditor';
 import FocusScreen from './FocusScreen';
 import { useAdminHeader, HeaderActionButton } from './AdminScreenHeader';
+import { AdminPageHeader, AdminPrimaryButton, AdminSecondaryButton, AdminBadge } from './admin/AdminUI';
 
 import type { Doc, DocFolder } from '../hooks/queries/useDocsQueries';
 
@@ -906,53 +907,67 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
   }
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="flex items-center justify-end gap-2 mb-6">
-        <input
-          ref={importInputRef}
-          type="file"
-          accept=".md,.markdown,text/markdown,text/plain"
-          onChange={importMarkdownFile}
-          className="hidden"
-        />
-        <button
-          onClick={() => importInputRef.current?.click()}
-          className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold border border-stone-200 text-warm-brown hover:bg-stone-100"
-          title="Import a .md file"
-        >
-          <Upload size={15} /> Import
-        </button>
-        <button
-          onClick={() => setShowNewFolder(true)}
-          className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold border border-stone-200 text-warm-brown hover:bg-stone-100"
-        >
-          <FolderOpen size={15} /> New Folder
-        </button>
-      </div>
+    <div className="max-w-5xl mx-auto">
+      <input
+        ref={importInputRef}
+        type="file"
+        accept=".md,.markdown,text/markdown,text/plain"
+        onChange={importMarkdownFile}
+        className="hidden"
+      />
+      <AdminPageHeader
+        className="mb-6"
+        eyebrow="Content"
+        title="Notes & Docs"
+        action={<div className="flex items-center gap-2.5">
+          <AdminSecondaryButton onClick={() => importInputRef.current?.click()} title="Import a .md file">
+            <Upload size={15} /> Import
+          </AdminSecondaryButton>
+          <AdminPrimaryButton onClick={() => createDoc()} icon={<Plus size={16} />}>New doc</AdminPrimaryButton>
+        </div>}
+      />
 
       {folders.length > 0 && (
-        <div className="mb-5">
-          <p className="text-xs font-bold text-warm-brown uppercase tracking-wider mb-2">Folders</p>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
-            {rootFolders.map(f => (
-              <div
-                key={f.id}
-                className={`relative group flex items-center gap-2 p-3 rounded-2xl border transition-all text-left ${activeFolderId === f.id ? 'border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] bg-[color-mix(in_srgb,var(--brand-color)_5%,transparent)]' : 'border-stone-200 bg-white hover:border-stone-200 shadow-sm'}`}
-              >
-                <button
-                  onClick={() => setActiveFolderId(activeFolderId === f.id ? null : f.id)}
-                  className="flex items-center gap-2 flex-1 min-w-0"
-                >
-                  <Folder size={16} style={{ color: 'var(--brand-color, #d4a017)' }} />
-                  <span className="text-xs font-semibold text-[color:var(--text-body)] truncate">{f.name}</span>
-                </button>
-                <ThreeDotMenu
-                  onRename={() => handleRenameFolder(f)}
-                  onDelete={() => setDeleteFolderId(f.id)}
-                />
-              </div>
-            ))}
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-2.5">
+            <p className="text-[11px] font-semibold text-gold uppercase tracking-[0.14em]">Folders</p>
+            <button onClick={() => setShowNewFolder(true)} className="flex items-center gap-1 text-xs font-semibold text-warm-brown hover:text-gold transition-colors">
+              <Plus size={13} /> New folder
+            </button>
           </div>
+          <div className="flex flex-wrap gap-2.5">
+            {rootFolders.map(f => {
+              const count = docs.filter(d => d.folderId === f.id).length;
+              const active = activeFolderId === f.id;
+              return (
+                <div
+                  key={f.id}
+                  className={`relative group flex items-center gap-2 pl-3.5 pr-2.5 py-2.5 rounded-brand-lg border transition-all text-left ${active ? 'border-[color-mix(in_srgb,var(--brand-color)_45%,transparent)] bg-[color-mix(in_srgb,var(--brand-color)_7%,white)]' : 'border-stone-200 bg-white hover:border-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] shadow-[var(--ds-sh-sm)]'}`}
+                >
+                  <button
+                    onClick={() => setActiveFolderId(active ? null : f.id)}
+                    className="flex items-center gap-2 flex-1 min-w-0"
+                  >
+                    <Folder size={15} style={{ color: 'var(--brand-color, #d4a017)' }} />
+                    <span className="text-sm font-semibold text-earth truncate">{f.name}</span>
+                    <span className="text-xs text-[color:var(--text-faint)] tabular-nums">{count}</span>
+                  </button>
+                  <ThreeDotMenu
+                    onRename={() => handleRenameFolder(f)}
+                    onDelete={() => setDeleteFolderId(f.id)}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {folders.length === 0 && (
+        <div className="mb-6">
+          <button onClick={() => setShowNewFolder(true)} className="flex items-center gap-1.5 text-xs font-semibold text-warm-brown hover:text-gold transition-colors">
+            <FolderOpen size={14} /> New folder
+          </button>
         </div>
       )}
 
@@ -999,36 +1014,45 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
               <span className="text-xs font-semibold text-[color:var(--text-body)]">{folders.find(f => f.id === activeFolderId)?.name}</span>
             </div>
           )}
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {folderDocs.map(d => (
-              <div
-                key={d.id}
-                onClick={() => openDocument(d)}
-                className="relative bg-white rounded-2xl p-4 border border-stone-200 shadow-sm cursor-pointer hover:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] hover:shadow-md transition-all group"
-              >
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <FileText size={18} className="text-stone-300 flex-shrink-0 mt-0.5" />
-                  <ThreeDotMenu
-                    onRename={() => handleRenameDoc(d)}
-                    onDelete={() => setDeleteDocId(d.id)}
-                    onMove={() => setMoveDocId(d.id)}
-                    onPin={() => togglePinDoc(d.id, !!d.pinned)}
-                    isPinned={!!d.pinned}
-                  />
-                </div>
-                <p className="font-semibold text-earth text-sm truncate">{d.title || 'Untitled'}</p>
-                {d.content && (
-                  <p className="text-xs text-[color:var(--text-faint)] mt-1 line-clamp-2"
-                    dangerouslySetInnerHTML={{ __html: d.content.replace(/<[^>]*>/g, ' ').trim() }} />
-                )}
-                {d.updatedAt && (
-                  <div className="flex items-center gap-1 mt-3 text-[10px] text-[color:var(--text-faint)]">
-                    <Clock size={10} />
-                    {fmtDate(d.updatedAt)}
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {folderDocs.map(d => {
+              const sharedCount = d.sharedWith?.length || 0;
+              return (
+                <div
+                  key={d.id}
+                  onClick={() => openDocument(d)}
+                  className="relative bg-white rounded-brand-lg p-5 border border-stone-200 shadow-[var(--ds-sh-sm)] cursor-pointer hover:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] hover:shadow-[var(--ds-sh-md)] transition-all group"
+                >
+                  <div className="flex items-start justify-between gap-2 mb-2.5">
+                    <FileText size={18} className="text-stone-300 flex-shrink-0 mt-0.5" />
+                    <div className="flex items-center gap-1">
+                      {d.pinned && <Pin size={13} className="text-gold" />}
+                      <ThreeDotMenu
+                        onRename={() => handleRenameDoc(d)}
+                        onDelete={() => setDeleteDocId(d.id)}
+                        onMove={() => setMoveDocId(d.id)}
+                        onPin={() => togglePinDoc(d.id, !!d.pinned)}
+                        isPinned={!!d.pinned}
+                      />
+                    </div>
                   </div>
-                )}
-              </div>
-            ))}
+                  <p className="font-semibold text-earth text-[15px] truncate group-hover:text-gold transition-colors">{d.title || 'Untitled'}</p>
+                  {d.content && (
+                    <p className="text-xs text-warm-brown mt-1.5 line-clamp-2 leading-relaxed"
+                      dangerouslySetInnerHTML={{ __html: d.content.replace(/<[^>]*>/g, ' ').trim() }} />
+                  )}
+                  <div className="flex items-center gap-2 mt-4">
+                    {d.updatedAt && (
+                      <div className="flex items-center gap-1 text-[11px] text-[color:var(--text-faint)]">
+                        <Clock size={11} />
+                        {fmtDate(d.updatedAt)}
+                      </div>
+                    )}
+                    {sharedCount > 0 && <AdminBadge tone="sky">Shared · {sharedCount}</AdminBadge>}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </>
       )}
