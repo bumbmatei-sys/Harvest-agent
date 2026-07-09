@@ -19,7 +19,6 @@ import { useDocs, useDocFolders, useSharedDocs } from '../hooks/queries/useDocsQ
 import { exportToPDF, exportToDOCX, exportToMarkdown } from '../utils/doc-export';
 import { markdownToHtml, titleFromMarkdown } from '../utils/markdown-import';
 import RichTextEditor from './RichTextEditor';
-import FocusScreen from './FocusScreen';
 import { useAdminHeader, HeaderActionButton } from './AdminScreenHeader';
 import { AdminPageHeader, AdminPrimaryButton, AdminSecondaryButton, AdminBadge } from './admin/AdminUI';
 
@@ -159,7 +158,9 @@ const EditorMenu: React.FC<{
   onShare: () => void;
   onShareToLivestream: () => void;
   canShareToLivestream: boolean;
-}> = ({ title, content, createdBy, currentUid, isPinned, onPin, onRename, onDelete, onShare, onShareToLivestream, canShareToLivestream }) => {
+  /** When set, the trigger renders as a labelled button (e.g. "Export") instead of a ⋯ icon. */
+  triggerLabel?: string;
+}> = ({ title, content, createdBy, currentUid, isPinned, onPin, onRename, onDelete, onShare, onShareToLivestream, canShareToLivestream, triggerLabel }) => {
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -198,13 +199,22 @@ const EditorMenu: React.FC<{
 
   return (
     <div className="relative" ref={menuRef}>
-      <button
-        onClick={() => setOpen(!open)}
-        className="p-1.5 rounded-lg hover:bg-stone-100 transition-colors"
-        aria-label="Document options"
-      >
-        <MoreHorizontal size={18} className="text-warm-brown" />
-      </button>
+      {triggerLabel ? (
+        <button
+          onClick={() => setOpen(!open)}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-brand border border-stone-200 text-[13px] font-semibold text-earth hover:bg-stone-100 transition-colors"
+        >
+          <Download size={15} /> {triggerLabel}
+        </button>
+      ) : (
+        <button
+          onClick={() => setOpen(!open)}
+          className="p-1.5 rounded-lg hover:bg-stone-100 transition-colors"
+          aria-label="Document options"
+        >
+          <MoreHorizontal size={18} className="text-warm-brown" />
+        </button>
+      )}
       {open && (
         <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl shadow-lg border border-stone-200 z-[250] py-1">
           <div className="px-3 py-1 text-[10px] font-bold text-[color:var(--text-faint)] uppercase tracking-wider">Export</div>
@@ -827,60 +837,46 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
 
   // ── Focus mode (full editor) ──
   if (focusMode && openDoc) {
+    const closeEditor = () => {
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+      if (editTitle.trim()) saveDoc(openDoc.id, editTitle, editContent);
+      setOpenDoc(null);
+      setFocusMode(false);
+    };
     return (
-      <FocusScreen
-        onBack={() => {
-          if (saveTimer.current) clearTimeout(saveTimer.current);
-          if (editTitle.trim()) saveDoc(openDoc.id, editTitle, editContent);
-          setOpenDoc(null);
-          setFocusMode(false);
-        }}
-        onSidebarToggle={() => setSidebarOpen(!sidebarOpen)}
-        headerCenter={<span className="text-xs text-[color:var(--text-faint)]">{saveStatus === 'saving' ? 'Saving...' : saveStatus === 'saved' ? 'Saved' : ''}</span>}
-        headerRight={
-          <EditorMenu
-            title={editTitle}
-            content={editContent}
-            createdBy={openDoc.createdBy}
-            currentUid={auth.currentUser?.uid || ''}
-            isPinned={!!openDoc.pinned}
-            onPin={() => togglePinDoc(openDoc.id, !!openDoc.pinned)}
-            onRename={() => setRenameDocData({ id: openDoc.id, name: editTitle })}
-            onDelete={() => setDeleteDocId(openDoc.id)}
-            onShare={() => openShareModal(openDoc.id)}
-            canShareToLivestream={canShareToLivestream}
-            onShareToLivestream={() => handleShareToLivestream(openDoc.id, editTitle, editContent)}
-          />
-        }
-      >
-        <div className="flex h-full bg-white">
-          {/* Sidebar */}
-          {sidebarOpen && (
-            <div className="w-64 flex-shrink-0 border-r border-stone-200 flex flex-col bg-white overflow-hidden">
-              <div className="p-3 border-b border-stone-200 flex gap-2 mt-10">
-                <button
-                  onClick={() => createDoc()}
-                  className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold text-white"
-                  style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}
-                >
-                  <Plus size={12} /> New Doc
-                </button>
-                <button
-                  onClick={() => setShowNewFolder(true)}
-                  className="px-3 py-2 rounded-xl text-xs font-semibold border border-stone-200 text-warm-brown hover:bg-stone-100"
-                >
-                  <FolderOpen size={14} />
-                </button>
-              </div>
-              <div className="flex-1 overflow-y-auto p-2">
-                {docs.filter(d => !d.folderId).map(d => (
+      <div className="lg:h-[calc(100dvh-140px)]">
+        <div className="lg:flex lg:gap-5 lg:h-full">
+
+          {/* Left rail: New doc + doc list (desktop; hidden on mobile) */}
+          <div className={`hidden ${sidebarOpen ? 'lg:flex' : 'lg:hidden'} flex-col lg:w-[300px] lg:shrink-0 lg:min-h-0 bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] overflow-hidden`}>
+            <div className="p-3 border-b border-stone-200 flex gap-2">
+              <button
+                onClick={() => createDoc()}
+                className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-brand text-xs font-semibold text-white"
+                style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}
+              >
+                <Plus size={13} /> New doc
+              </button>
+              <button
+                onClick={() => setShowNewFolder(true)}
+                className="px-3 py-2 rounded-brand border border-stone-200 text-warm-brown hover:bg-stone-100"
+                title="New folder"
+              >
+                <FolderOpen size={14} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-2">
+              {docs.filter(d => !d.folderId).map(d => {
+                const isOpen = openDoc?.id === d.id;
+                return (
                   <div
                     key={d.id}
                     onClick={() => openDocument(d)}
-                    className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg cursor-pointer group transition-colors ${openDoc?.id === d.id ? 'bg-[color-mix(in_srgb,var(--brand-color)_10%,transparent)]' : 'hover:bg-stone-100'}`}
+                    className={`flex items-center gap-1.5 px-2.5 py-2 rounded-brand cursor-pointer group transition-colors ${isOpen ? 'bg-[color-mix(in_srgb,var(--brand-color)_10%,white)]' : 'hover:bg-stone-100'}`}
                   >
-                    <FileText size={13} className="text-[color:var(--text-faint)] flex-shrink-0" />
-                    <span className="text-xs text-[color:var(--text-body)] flex-1 truncate">{d.title || 'Untitled'}</span>
+                    <FileText size={13} className={`flex-shrink-0 ${isOpen ? 'text-gold' : 'text-[color:var(--text-faint)]'}`} />
+                    <span className={`text-xs flex-1 truncate ${isOpen ? 'text-earth font-semibold' : 'text-[color:var(--text-body)]'}`}>{d.title || 'Untitled'}</span>
+                    {d.pinned && <Pin size={11} className="text-gold flex-shrink-0" />}
                     <ThreeDotMenu
                       onRename={() => handleRenameDoc(d)}
                       onDelete={() => setDeleteDocId(d.id)}
@@ -889,47 +885,84 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
                       isPinned={!!d.pinned}
                     />
                   </div>
-                ))}
-                {rootFolders.map(f => (
-                  <FolderNode
-                    key={f.id}
-                    folder={f}
-                    folders={folders}
-                    docs={docs}
-                    activeFolderId={activeFolderId}
-                    activeDocId={openDoc?.id || null}
-                    onSelectFolder={setActiveFolderId}
-                    onSelectDoc={openDocument}
-                    onDeleteFolder={setDeleteFolderId}
-                    onDeleteDoc={setDeleteDocId}
-                    onRenameFolder={handleRenameFolder}
-                    onRenameDoc={handleRenameDoc}
-                    onMoveDoc={setMoveDocId}
-                    onPinDoc={togglePinDoc}
-                  />
-                ))}
-                {sharedDocs.length > 0 && (
-                  <div className="mt-3">
-                    <p className="text-[10px] font-bold text-[color:var(--text-faint)] uppercase tracking-wider px-2 mb-1">Shared with Me</p>
-                    {sharedDocs.map(d => (
-                      <div
-                        key={d.id}
-                        onClick={() => openDocument(d)}
-                        className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg cursor-pointer group transition-colors ${openDoc?.id === d.id ? 'bg-[color-mix(in_srgb,var(--brand-color)_10%,transparent)]' : 'hover:bg-stone-100'}`}
-                      >
-                        <Share2 size={13} className="text-[color:var(--text-faint)] flex-shrink-0" />
-                        <span className="text-xs text-[color:var(--text-body)] flex-1 truncate">{d.title || 'Untitled'}</span>
-                      </div>
-                    ))}
-                  </div>
+                );
+              })}
+              {rootFolders.map(f => (
+                <FolderNode
+                  key={f.id}
+                  folder={f}
+                  folders={folders}
+                  docs={docs}
+                  activeFolderId={activeFolderId}
+                  activeDocId={openDoc?.id || null}
+                  onSelectFolder={setActiveFolderId}
+                  onSelectDoc={openDocument}
+                  onDeleteFolder={setDeleteFolderId}
+                  onDeleteDoc={setDeleteDocId}
+                  onRenameFolder={handleRenameFolder}
+                  onRenameDoc={handleRenameDoc}
+                  onMoveDoc={setMoveDocId}
+                  onPinDoc={togglePinDoc}
+                />
+              ))}
+              {sharedDocs.length > 0 && (
+                <div className="mt-3">
+                  <p className="text-[10px] font-bold text-[color:var(--text-faint)] uppercase tracking-wider px-2 mb-1">Shared with Me</p>
+                  {sharedDocs.map(d => (
+                    <div
+                      key={d.id}
+                      onClick={() => openDocument(d)}
+                      className={`flex items-center gap-1.5 px-2.5 py-2 rounded-brand cursor-pointer group transition-colors ${openDoc?.id === d.id ? 'bg-[color-mix(in_srgb,var(--brand-color)_10%,white)]' : 'hover:bg-stone-100'}`}
+                    >
+                      <Share2 size={13} className="text-[color:var(--text-faint)] flex-shrink-0" />
+                      <span className="text-xs text-[color:var(--text-body)] flex-1 truncate">{d.title || 'Untitled'}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Right: editor pane */}
+          <div className="flex-1 min-w-0 flex flex-col lg:min-h-0 bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] overflow-hidden">
+            {/* Editor header — back · saved · Share to livestream · Export */}
+            <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-stone-200 shrink-0">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <button onClick={() => setSidebarOpen(v => !v)} className="hidden lg:flex p-1.5 rounded-lg hover:bg-stone-100 text-[color:var(--text-faint)]" title="Toggle document list">
+                  <PanelLeft size={16} />
+                </button>
+                <button onClick={closeEditor} className="flex items-center gap-1.5 text-[13px] font-semibold text-gold hover:opacity-80 transition-opacity">
+                  <ArrowLeft size={15} /> Notes
+                </button>
+              </div>
+              <span className="text-xs text-[color:var(--text-faint)] hidden sm:block">{saveStatus === 'saving' ? 'Saving…' : saveStatus === 'saved' ? 'Saved' : ''}</span>
+              <div className="flex items-center gap-2 shrink-0">
+                {canShareToLivestream && (
+                  <button
+                    onClick={() => handleShareToLivestream(openDoc.id, editTitle, editContent)}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-brand border border-stone-200 text-[13px] font-semibold text-earth hover:bg-stone-100 transition-colors"
+                  >
+                    <Radio size={15} /> <span className="hidden sm:inline">Share to livestream</span>
+                  </button>
                 )}
+                <EditorMenu
+                  triggerLabel="Export"
+                  title={editTitle}
+                  content={editContent}
+                  createdBy={openDoc.createdBy}
+                  currentUid={auth.currentUser?.uid || ''}
+                  isPinned={!!openDoc.pinned}
+                  onPin={() => togglePinDoc(openDoc.id, !!openDoc.pinned)}
+                  onRename={() => setRenameDocData({ id: openDoc.id, name: editTitle })}
+                  onDelete={() => setDeleteDocId(openDoc.id)}
+                  onShare={() => openShareModal(openDoc.id)}
+                  canShareToLivestream={false}
+                  onShareToLivestream={() => handleShareToLivestream(openDoc.id, editTitle, editContent)}
+                />
               </div>
             </div>
-          )}
-
-          {/* Editor area */}
-          <div className="flex-1 flex flex-col overflow-hidden">
-            <div className="flex-1 overflow-y-auto px-4 lg:px-16 pb-12 docs-editor">
+            {/* Editor body */}
+            <div className="flex-1 lg:overflow-y-auto px-5 lg:px-12 pb-12 docs-editor">
               <input
                 ref={titleRef}
                 value={editTitle}
@@ -941,15 +974,15 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
               <RichTextEditor
                 content={editContent}
                 onChange={handleContentChange}
-                minHeight="calc(100vh - 200px)"
+                minHeight="calc(100vh - 320px)"
                 placeholder="Start writing... Type / for commands"
               />
             </div>
           </div>
-        </div>
 
+        </div>
         {commonModals}
-      </FocusScreen>
+      </div>
     );
   }
 
