@@ -13,7 +13,8 @@ import QRCode from 'qrcode';
 import { db, auth } from '../firebase';
 import { sortByTime } from '../utils/query-helpers';
 import { notifyError } from '../utils/notify';
-import { useAdminHeader, HeaderActionButton } from './AdminScreenHeader';
+import { useAdminHeader } from './AdminScreenHeader';
+import { AdminPageHeader, AdminPrimaryButton, AdminBadge, statusTone } from './admin/AdminUI';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAppStore } from '../store/useAppStore';
 import { PLATFORM_TENANT_ID } from '../utils/tenant-scope';
@@ -87,7 +88,7 @@ const emptyForm = {
 };
 
 const AdminEvents: React.FC = () => {
-  const { setHeaderAction, setHeaderOverride } = useAdminHeader();
+  const { setHeaderOverride } = useAdminHeader();
   const queryClient = useQueryClient();
   // Resolve the tenant from the store, falling back to the platform tenant for a
   // super admin if the store value is briefly null (e.g. on a refresh before the
@@ -141,10 +142,7 @@ const AdminEvents: React.FC = () => {
     return () => setHeaderOverride(null);
   }, [view, selected, setHeaderOverride]);
 
-  useEffect(() => {
-    setHeaderAction(<HeaderActionButton label="Create Event" onClick={() => { setSelected(null); setForm(emptyForm); setView('create'); }} />);
-    return () => setHeaderAction(null);
-  }, [setHeaderAction]);
+  // "Create event" renders in the in-content page header (per the mockup).
 
   // Load registrations when viewing event detail
   useEffect(() => {
@@ -794,9 +792,14 @@ const AdminEvents: React.FC = () => {
     try { await navigator.clipboard.writeText(calendarUrl); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { /* ignore */ }
   };
   return (
-    <div className="max-w-3xl mx-auto">
+    <div className="w-full max-w-6xl mx-auto space-y-6">
+      <AdminPageHeader
+        eyebrow="Broadcasting"
+        title={`${events.length} event${events.length === 1 ? '' : 's'}`}
+        action={<AdminPrimaryButton onClick={() => { setSelected(null); setForm(emptyForm); setView('create'); }} icon={<span className="text-[15px] leading-none">+</span>}>Create event</AdminPrimaryButton>}
+      />
       {events.length > 0 && tenantId && (
-        <div className="flex items-center gap-2 bg-stone-100 border border-stone-200 rounded-xl px-3 py-2.5 mb-4 text-xs">
+        <div className="flex items-center gap-2 bg-stone-100 border border-stone-200 rounded-brand-lg px-3 py-2.5 text-xs">
           <span className="text-[color:var(--text-faint)] shrink-0">Public calendar:</span>
           <span className="text-warm-brown truncate flex-1 min-w-0">{calendarUrl}</span>
           <button onClick={copyCalendarUrl} className="flex items-center gap-1 px-2 py-1 rounded-lg border border-stone-200 text-warm-brown hover:bg-white shrink-0">
@@ -828,11 +831,10 @@ const AdminEvents: React.FC = () => {
               )}
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="font-bold text-earth truncate">{ev.title}</h3>
-                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full flex-shrink-0 ${STATUS_COLORS[ev.status]}`}>
-                      {ev.status}
-                    </span>
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
+                    <h3 className="font-display text-lg font-medium text-earth truncate">{ev.title}</h3>
+                    <AdminBadge tone={statusTone(ev.status)}>{ev.status}</AdminBadge>
+                    {ev.registrationEnabled && <AdminBadge tone="sky">Registration</AdminBadge>}
                   </div>
                   <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1.5">
                     {ev.startDate && (
