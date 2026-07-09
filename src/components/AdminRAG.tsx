@@ -17,8 +17,8 @@ const GOLD_LIGHT = "color-mix(in srgb, var(--brand-color, #C9963A) 12%, white)";
 const GOLD_BTN = "linear-gradient(135deg, var(--brand-color, #C9963A), color-mix(in srgb, var(--brand-color, #C9963A) 82%, #ffffff))";
 const BG = "#FAF8F5";
 const CARD = "#FFFFFF";
-const TEXT = "#111111";
-const TEXT2 = "#888888";
+const TEXT = "#2D2519";
+const TEXT2 = "#8B7355";
 const BORDER = "#E8E2D9";
 const GREEN = "#27AE60";
 const GREEN_BG = "#EAFAF1";
@@ -339,27 +339,26 @@ export default function AdminRAG() {
 
  {deleteTarget && <DeleteModal source={deleteTarget} onConfirm={confirmDelete} onClose={()=>setDeleteTarget(null)} />}
 
- {/* Stats bar */}
- <div style={{ ...s.topBar, justifyContent:"flex-end" }}>
- {/* Stats */}
- <div style={{ display:"flex", gap:16, alignItems:"center", flexShrink: 0 }}>
+ {/* Header: title + description (left) · stats (right) */}
+ <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:16, padding:"18px 20px 0", maxWidth:1160, margin:"0 auto", width:"100%" }}>
+ <div style={{ minWidth:0 }}>
+ <p style={{ fontSize:11, fontWeight:600, letterSpacing:"0.16em", textTransform:"uppercase", color:GOLD, marginBottom:6 }}>Content</p>
+ <h1 style={{ fontFamily:"var(--font-display), Georgia, serif", fontSize:28, fontWeight:300, color:TEXT, letterSpacing:"-0.02em" }}>AI Knowledge Base</h1>
+ <p style={{ fontSize:13, color:TEXT2, marginTop:6, maxWidth:560 }}>
+ Add content to train the AI. All sources are chunked and embedded automatically — the assistant, chat, and blog draw from this.
+ </p>
+ </div>
+ <div style={{ display:"flex", gap:16, alignItems:"center", flexShrink:0 }}>
  <div style={{ textAlign:"right" }}>
- <div style={{ fontSize:11, color:TEXT2 }}>Total Sources</div>
- <div style={{ fontSize:18, fontWeight:800, color:TEXT }}>{sources.length}</div>
+ <div style={{ fontSize:11, color:TEXT2 }}>Sources</div>
+ <div style={{ fontSize:20, fontWeight:700, color:TEXT }}>{sources.length}</div>
  </div>
  <div style={{ width:1, height:32, background:BORDER }} />
  <div style={{ textAlign:"right" }}>
- <div style={{ fontSize:11, color:TEXT2 }}>Chunks Embedded</div>
- <div style={{ fontSize:18, fontWeight:800, color:GOLD }}>{totalChunks}</div>
+ <div style={{ fontSize:11, color:TEXT2 }}>Chunks</div>
+ <div style={{ fontSize:20, fontWeight:700, color:GOLD }}>{totalChunks}</div>
  </div>
  </div>
- </div>
-
- {/* Page description */}
- <div style={{ padding:"16px 20px 0" }}>
- <p style={{ fontSize:13, color:TEXT2 }}>
- Add content to train the AI. All sources are chunked and embedded into Firebase automatically.
- </p>
  </div>
 
  {/* Tabs */}
@@ -378,7 +377,7 @@ export default function AdminRAG() {
 
  {/* Paste text */}
  <div style={s.card}>
- <div style={s.sectionHeading}>📝 Paste Text</div>
+ <div style={s.sectionHeading}>Paste Text</div>
  <div style={s.cardBody}>
  <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
  <label style={s.label}>Source Title (optional)</label>
@@ -400,14 +399,14 @@ export default function AdminRAG() {
  )}
  <button style={{ ...s.publishBtn, padding:"13px", fontSize:14, borderRadius:12 }}
  onClick={handlePasteSubmit} disabled={!pasteText.trim() || pasteLoading}>
- {pasteLoading ? "⏳ Processing..." : "⚡ Chunk & Embed"}
+ {pasteLoading ? "Processing…" : "Chunk & Embed"}
  </button>
  </div>
  </div>
 
  {/* File upload */}
  <div style={s.card}>
- <div style={s.sectionHeading}>📁 Upload Files</div>
+ <div style={s.sectionHeading}>Upload Files</div>
  <div style={s.cardBody}>
  <p style={{ fontSize:13, color:TEXT2, marginTop:-6 }}>Supports TXT, PDF, CSV, and Excel files.</p>
 
@@ -454,7 +453,7 @@ export default function AdminRAG() {
 
  {/* Tips */}
  <div style={{ background:GOLD_LIGHT, border:`1.5px solid ${GOLD}`, borderRadius:14, padding:"14px 16px" }}>
- <div style={{ fontWeight:700, color:GOLD, fontSize:13, marginBottom:8 }}>💡 Tips for better AI results</div>
+ <div style={{ fontWeight:700, color:GOLD, fontSize:13, marginBottom:8 }}>Tips for better AI results</div>
  <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
  {[
  "Use clear, well-structured text — the AI reads it as-is",
@@ -584,7 +583,7 @@ export default function AdminRAG() {
  );
  })}
  <div style={{ background:GOLD_LIGHT, border:`1px solid color-mix(in srgb, var(--brand-color) 20%, transparent)`, borderRadius:99, padding:"5px 14px", fontSize:12, fontWeight:700, color:GOLD }}>
- 🧠 {totalChunks} total chunks
+ {totalChunks} total chunks
  </div>
  </div>
  )}
@@ -608,7 +607,7 @@ const s: Record<string, React.CSSProperties> = {
  panel: { display:"flex", flexDirection:"column", gap:14 },
  card: { background:CARD, borderRadius:16, boxShadow:"0 1px 6px rgba(0,0,0,0.07)", overflow:"hidden" },
  cardBody: { padding:"16px", display:"flex", flexDirection:"column", gap:14 },
- sectionHeading: { padding:"12px 16px", fontSize:11, fontWeight:700, color:TEXT2, letterSpacing:"0.1em", textTransform:"uppercase", borderBottom:`1px solid ${BORDER}` },
+ sectionHeading: { padding:"14px 16px", fontSize:11, fontWeight:700, color:GOLD, letterSpacing:"0.14em", textTransform:"uppercase", borderBottom:`1px solid ${BORDER}` },
  label: { fontSize:12, fontWeight:700, color:TEXT2, letterSpacing:"0.04em", textTransform:"uppercase" },
  input: { background:"#FAF8F5", border:`1.5px solid ${BORDER}`, borderRadius:10, color:TEXT, padding:"10px 13px", fontSize:14, width:"100%", fontFamily:"inherit" },
  textarea: { background:"#FAF8F5", border:`1.5px solid ${BORDER}`, borderRadius:10, color:TEXT, padding:"10px 13px", fontSize:14, width:"100%", resize:"vertical", fontFamily:"inherit", lineHeight:1.6 },
