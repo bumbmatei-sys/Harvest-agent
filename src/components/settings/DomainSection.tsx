@@ -180,118 +180,112 @@ export const DomainSection: React.FC<DomainSectionProps> = ({ hasCustomDomain, o
 
   return (
     <div className="space-y-6" style={{ paddingBottom: 120 }}>
-      <p className="text-sm text-gray-600">
-        Manage your ministry&apos;s web address. Your subdomain is <strong>{subdomain}.theharvest.app</strong>.
-      </p>
+      {/* Web Address */}
+      <div className="bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] p-5">
+        <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gold mb-2">Web Address</h3>
+        <p className="text-sm text-warm-brown mb-4">
+          Manage your ministry&apos;s web address. Your subdomain is <strong className="text-earth">{subdomain}.theharvest.app</strong>.
+        </p>
 
-      {/* Subdomain (read-only) */}
-      <div className="bg-white rounded-xl border border-gray-100 p-4">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">Subdomain</h3>
-        <div className="flex items-center gap-4">
-          <div className="flex-1">
-            <div className="flex items-center">
-              <input
-                type="text"
-                value={subdomain}
-                disabled
-                className="w-full px-4 py-2 border border-gray-200 rounded-l-lg text-sm bg-gray-50 text-gray-600 cursor-not-allowed"
-              />
-              <span className="px-4 py-2 border border-l-0 border-gray-200 rounded-r-lg text-sm text-gray-500 bg-gray-100">.theharvest.app</span>
-            </div>
-            <p className="text-xs text-gray-400 mt-2">
-              To change your subdomain, please contact support. Subdomain changes require migration and may affect your existing links.
-            </p>
-          </div>
+        {/* Subdomain (read-only) */}
+        <label className="block text-sm font-medium text-earth mb-2">Subdomain</label>
+        <div className="flex items-center">
+          <input
+            type="text"
+            value={subdomain}
+            disabled
+            className="w-full px-4 py-2.5 border border-stone-200 rounded-l-brand text-sm bg-stone-100 text-warm-brown cursor-not-allowed"
+          />
+          <span className="px-4 py-2.5 border border-l-0 border-stone-200 rounded-r-brand text-sm text-[color:var(--text-faint)] bg-stone-200 whitespace-nowrap">.theharvest.app</span>
         </div>
-      </div>
+        <p className="text-xs text-[color:var(--text-faint)] mt-2">
+          To change your subdomain, please contact support. Subdomain changes require migration and may affect your existing links.
+        </p>
 
-      {/* Custom Domain (Ministry only) */}
-      {hasCustomDomain ? (
-        <div className="bg-white rounded-xl border border-gray-100 p-4">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500">Custom Domain</h3>
-            {statusBadge()}
-          </div>
-          <div className="flex items-center gap-4">
-            <Globe size={20} className="text-gray-400 shrink-0" />
-            <div className="flex-1">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Your Custom Domain</label>
-              <input
-                type="text"
-                value={customDomain}
-                onChange={(e) => setCustomDomain(e.target.value)}
-                placeholder="e.g. ministry.yourchurch.org"
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gold focus:border-transparent"
-              />
-              <p className="text-xs text-gray-400 mt-1">
-                Enter your custom domain, then point a CNAME record at <span className="font-mono">theharvest.app</span>.
-              </p>
+        {/* Custom Domain (Ministry only) */}
+        {hasCustomDomain ? (
+          <div className="mt-5 pt-5 border-t border-stone-200">
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-medium text-earth">Custom domain</label>
+              {statusBadge()}
             </div>
-          </div>
-
-          {/* DNS Instructions */}
-          <div className="mt-4 pt-4 border-t border-gray-100">
-            <p className="text-sm font-medium text-gray-700 mb-3">DNS Configuration</p>
-            <div className="bg-gray-50 rounded-xl p-4">
-              <p className="text-xs text-gray-600 mb-2">Add the following CNAME record to your DNS provider:</p>
-              <div className="font-mono text-sm bg-white rounded-lg p-3 border border-gray-200">
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Type:</span>
-                  <span className="text-gray-900">CNAME</span>
-                </div>
-                <div className="flex justify-between mt-1">
-                  <span className="text-gray-500">Name:</span>
-                  <span className="text-gray-900">{customDomain || 'your-domain.com'}</span>
-                </div>
-                <div className="flex justify-between mt-1">
-                  <span className="text-gray-500">Value:</span>
-                  <span className="text-gray-900">theharvest.app</span>
-                </div>
+            <div className="flex items-center gap-3">
+              <Globe size={18} className="text-[color:var(--text-faint)] shrink-0" />
+              <div className="flex-1">
+                <input
+                  type="text"
+                  value={customDomain}
+                  onChange={(e) => setCustomDomain(e.target.value)}
+                  placeholder="e.g. ministry.yourchurch.org"
+                  className="w-full px-4 py-2.5 border border-stone-200 rounded-brand text-sm text-earth focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent"
+                />
+                <p className="text-xs text-[color:var(--text-faint)] mt-1.5">
+                  Enter your custom domain, then point a CNAME record at <span className="font-mono">theharvest.app</span>.
+                </p>
               </div>
-              <p className="text-xs text-gray-400 mt-2">
-                DNS changes can take up to 48 hours to propagate. Use &quot;Check Status&quot; to refresh verification.
-              </p>
+            </div>
+
+            {/* DNS Instructions */}
+            <div className="mt-4 pt-4 border-t border-stone-200">
+              <p className="text-sm font-medium text-earth mb-3">DNS Configuration</p>
+              <div className="bg-stone-100 rounded-brand p-4">
+                <p className="text-xs text-warm-brown mb-2">Add the following CNAME record to your DNS provider:</p>
+                <div className="font-mono text-sm bg-white rounded-lg p-3 border border-stone-200">
+                  <div className="flex justify-between">
+                    <span className="text-[color:var(--text-faint)]">Type:</span>
+                    <span className="text-earth">CNAME</span>
+                  </div>
+                  <div className="flex justify-between mt-1">
+                    <span className="text-[color:var(--text-faint)]">Name:</span>
+                    <span className="text-earth">{customDomain || 'your-domain.com'}</span>
+                  </div>
+                  <div className="flex justify-between mt-1">
+                    <span className="text-[color:var(--text-faint)]">Value:</span>
+                    <span className="text-earth">theharvest.app</span>
+                  </div>
+                </div>
+                <p className="text-xs text-[color:var(--text-faint)] mt-2">
+                  DNS changes can take up to 48 hours to propagate. Use &quot;Check Status&quot; to refresh verification.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 flex-wrap mt-4">
+              <button
+                onClick={handleSave}
+                disabled={domainSaving}
+                className="px-5 py-2.5 bg-gold text-white rounded-brand text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
+              >
+                {domainSaving ? 'Saving...' : 'Save Domain'}
+              </button>
+              <button
+                onClick={handleCheckStatus}
+                disabled={checking || !customDomain.trim()}
+                className="px-5 py-2.5 border border-stone-200 text-earth rounded-brand text-sm font-semibold hover:bg-stone-100 transition-colors disabled:opacity-50"
+              >
+                {checking ? 'Checking...' : 'Check Status'}
+              </button>
+              {domainSaved && (
+                <span className="text-sm text-green-600 font-medium">✓ Domain settings saved</span>
+              )}
             </div>
           </div>
-        </div>
-      ) : (
-        <div className="bg-white rounded-xl border border-gray-100 p-4">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">Custom Domain</h3>
-          <p className="text-sm text-gray-600 mb-4">
-            Custom domains are available on the <strong>Ministry</strong> plan.
-            Upgrade to use your own domain name.
-          </p>
-          <button
-            onClick={onUpgrade}
-            className="px-4 py-2 bg-gold text-white rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
-          >
-            Upgrade to Unlock
-          </button>
-        </div>
-      )}
-
-      {/* Save / Verify buttons (only for custom domain) */}
-      {hasCustomDomain && (
-        <div className="flex items-center gap-3 flex-wrap">
-          <button
-            onClick={handleSave}
-            disabled={domainSaving}
-            className="px-4 py-2 bg-gold text-white rounded-lg text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
-          >
-            {domainSaving ? 'Saving...' : 'Save Domain'}
-          </button>
-          <button
-            onClick={handleCheckStatus}
-            disabled={checking || !customDomain.trim()}
-            className="px-4 py-2 border border-gray-200 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
-          >
-            {checking ? 'Checking...' : 'Check Status'}
-          </button>
-          {domainSaved && (
-            <span className="text-sm text-green-600 font-medium">✓ Domain settings saved</span>
-          )}
-        </div>
-      )}
+        ) : (
+          <div className="mt-5 pt-5 border-t border-stone-200">
+            <label className="block text-sm font-medium text-earth mb-2">Custom domain</label>
+            <p className="text-sm text-warm-brown mb-4">
+              Custom domains are available on the <strong>Ministry</strong> plan.
+              Upgrade to use your own domain name.
+            </p>
+            <button
+              onClick={onUpgrade}
+              className="px-5 py-2.5 bg-gold text-white rounded-brand text-sm font-semibold hover:opacity-90 transition-opacity"
+            >
+              Upgrade to Unlock
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

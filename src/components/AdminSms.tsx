@@ -6,6 +6,7 @@ import { db } from '../firebase';
 import { useAppStore } from '../store/useAppStore';
 import { PLATFORM_TENANT_ID } from '../utils/tenant-scope';
 import { authFetch } from '../utils/auth-fetch';
+import { AdminSectionLabel, AdminBadge, statusTone } from './admin/AdminUI';
 
 const GOLD = 'var(--brand-color, #B8962E)';
 
@@ -140,14 +141,14 @@ const AdminSms: React.FC = () => {
 
   return (
     <div className="max-w-2xl mx-auto" style={{ paddingBottom: 120 }}>
-      <div className="flex gap-2 mb-4">
-        <button onClick={() => setTab('broadcast')} className={`px-4 py-2 rounded-xl text-sm font-semibold ${tab === 'broadcast' ? 'text-white' : 'text-warm-brown bg-stone-100'}`} style={tab === 'broadcast' ? { backgroundColor: GOLD } : undefined}>Broadcasts</button>
-        <button onClick={() => setTab('automated')} className={`px-4 py-2 rounded-xl text-sm font-semibold ${tab === 'automated' ? 'text-white' : 'text-warm-brown bg-stone-100'}`} style={tab === 'automated' ? { backgroundColor: GOLD } : undefined}>Automated</button>
+      <div className="flex gap-1 bg-stone-100 rounded-xl p-1 mb-6 w-fit mx-auto">
+        <button onClick={() => setTab('broadcast')} className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${tab === 'broadcast' ? 'bg-white shadow-sm text-earth' : 'text-[color:var(--text-faint)]'}`}>Broadcasts</button>
+        <button onClick={() => setTab('automated')} className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${tab === 'automated' ? 'bg-white shadow-sm text-earth' : 'text-[color:var(--text-faint)]'}`}>Automated</button>
       </div>
 
       {tab === 'broadcast' ? (
         <>
-          <div className="bg-white rounded-2xl border border-stone-200 p-5 space-y-3">
+          <div className="bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] p-5 space-y-3">
             <div>
               <label className="block text-sm font-medium text-[color:var(--text-body)] mb-1.5">Recipients</label>
               <select value={group} onChange={e => setGroup(e.target.value as Group)} className="w-full px-4 py-2.5 border border-stone-200 rounded-xl text-sm bg-white focus:outline-none focus:border-gold">
@@ -171,25 +172,25 @@ const AdminSms: React.FC = () => {
               <label className="block text-sm font-medium text-[color:var(--text-body)] mb-1.5">Schedule <span className="text-[color:var(--text-faint)] font-normal">(optional)</span></label>
               <input type="datetime-local" value={scheduledAt} onChange={e => setScheduledAt(e.target.value)} className="w-full px-4 py-2.5 border border-stone-200 rounded-xl text-sm focus:outline-none focus:border-gold" />
             </div>
-            <button onClick={send} disabled={sending} className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-white text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: GOLD }}>
+            <button onClick={send} disabled={sending} className="w-full flex items-center justify-center gap-2 py-2.5 rounded-brand text-white text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: GOLD }}>
               {sending ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
-              {scheduledAt ? 'Schedule' : 'Send Now'}
+              {scheduledAt ? 'Schedule' : 'Send now'}
             </button>
             {sendMsg && <div className={`p-3 rounded-xl text-sm ${sendMsg.ok ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'}`}>{sendMsg.text}</div>}
           </div>
 
-          <h3 className="font-display text-sm font-bold text-[color:var(--text-body)] mt-6 mb-3">Sent History</h3>
+          <AdminSectionLabel className="mt-8 mb-3 block">Sent History</AdminSectionLabel>
           {history.length === 0 ? (
             <div className="text-center py-10 text-[color:var(--text-faint)]"><MessageSquare size={36} className="mx-auto mb-2 opacity-30" /><p className="text-sm">No broadcasts yet</p></div>
           ) : (
-            <div className="bg-white rounded-2xl border border-stone-200 divide-y divide-gray-50">
+            <div className="bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] divide-y divide-stone-200">
               {history.map(b => (
-                <div key={b.id} className="px-4 py-3">
+                <div key={b.id} className="px-5 py-4">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-sm text-earth truncate flex-1">{b.message}</span>
-                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${b.status === 'sent' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>{b.status}</span>
+                    <span className="text-sm text-earth flex-1">{b.message}</span>
+                    <AdminBadge tone={statusTone(b.status)}>{b.status}</AdminBadge>
                   </div>
-                  <div className="text-xs text-[color:var(--text-faint)] mt-1">
+                  <div className="text-xs text-[color:var(--text-faint)] mt-1.5">
                     {fmtDate(b.createdAt)} · {b.recipientCount} recipients
                     {b.status === 'sent' && ` · ${b.delivered || 0} delivered, ${b.failed || 0} failed`}
                     {b.status === 'scheduled' && ` · for ${fmtDate(b.scheduledAt || undefined)}`}
