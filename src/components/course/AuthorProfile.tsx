@@ -44,16 +44,16 @@ export function AuthorProfile({ author, onBack, courses, onSelectCourse }: Autho
         )}
 
         <div className="text-2xl font-extrabold tracking-tight mb-1 font-display">{author.name}</div>
-        <div className="text-sm text-gray-500 font-medium mb-4">{author.title || "Instructor"}</div>
+        <div className="text-sm text-warm-brown font-medium mb-4">{author.title || "Instructor"}</div>
 
         <div className="flex justify-center gap-8">
           <div className="text-center">
             <div className="text-xl font-extrabold">{authorCourses.length}</div>
-            <div className="text-[11px] text-gray-400 font-semibold uppercase tracking-wider">Courses</div>
+            <div className="text-[11px] text-[color:var(--text-faint)] font-semibold uppercase tracking-wider">Courses</div>
           </div>
           <div className="text-center">
             <div className="text-xl font-extrabold">{totalLessons}</div>
-            <div className="text-[11px] text-gray-400 font-semibold uppercase tracking-wider">Lessons</div>
+            <div className="text-[11px] text-[color:var(--text-faint)] font-semibold uppercase tracking-wider">Lessons</div>
           </div>
         </div>
       </div>
@@ -61,7 +61,7 @@ export function AuthorProfile({ author, onBack, courses, onSelectCourse }: Autho
       <div className="px-5">
         {/* Bio */}
         {author.bio && (
-          <p className="text-sm leading-7 text-gray-500 py-5 border-b border-gray-100">
+          <p className="text-sm leading-7 text-warm-brown py-5 border-b border-stone-200">
             {author.bio}
           </p>
         )}
@@ -79,21 +79,21 @@ export function AuthorProfile({ author, onBack, courses, onSelectCourse }: Autho
               return (
                 <div
                   key={course.id}
-                  className="flex gap-3 p-3 border border-gray-100 rounded-xl mb-2.5 cursor-pointer hover:shadow-md transition-all"
+                  className="flex gap-3 p-3 border border-stone-200 rounded-xl mb-2.5 cursor-pointer hover:shadow-md transition-all"
                   onClick={() => onSelectCourse?.(course)}
                 >
-                  <div className="w-20 h-[60px] rounded-lg overflow-hidden flex-shrink-0 bg-gray-100">
+                  <div className="w-20 h-[60px] rounded-lg overflow-hidden flex-shrink-0 bg-stone-100">
                     {course.thumbnail ? (
                       <img src={course.thumbnail} alt={course.title} className="w-full h-full object-cover" />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-gray-300">
+                      <div className="w-full h-full flex items-center justify-center text-stone-300">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="2" y="3" width="20" height="14" rx="2" /><path d="m8 21 4-4 4 4" /></svg>
                       </div>
                     )}
                   </div>
                   <div className="flex-1 flex flex-col justify-center">
                     <div className="text-sm font-bold mb-0.5">{course.title}</div>
-                    <div className="text-xs text-gray-400">{lessonCount} lessons</div>
+                    <div className="text-xs text-[color:var(--text-faint)]">{lessonCount} lessons</div>
                   </div>
                 </div>
               );
@@ -110,7 +110,7 @@ export function AuthorProfile({ author, onBack, courses, onSelectCourse }: Autho
                 href={link.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-10 h-10 rounded-full bg-gray-50 border border-gray-200 flex items-center justify-center cursor-pointer transition-all hover:bg-gray-900 hover:text-white hover:border-gray-900 text-gray-500"
+                className="w-10 h-10 rounded-full bg-stone-100 border border-stone-200 flex items-center justify-center cursor-pointer transition-all hover:bg-gray-900 hover:text-white hover:border-gray-900 text-warm-brown"
                 title={link.platform}
               >
                 {link.platform === "youtube" ? (

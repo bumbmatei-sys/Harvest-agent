@@ -14,9 +14,11 @@ const inter = Inter({
 });
 
 // Serif display face for headings — matches the marketing site.
+// 300 (Light) carries the editorial display/hero look per the brand system;
+// 600/700 are used for section + card titles.
 const fraunces = Fraunces({
   subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
+  weight: ['300', '400', '500', '600', '700'],
   variable: '--font-display',
   display: 'swap',
 });

@@ -45,7 +45,7 @@ export function CourseLibrary({ courses, authors, categories, onSelectCourse, co
 
       {/* Search */}
       <div className="relative mb-5">
-        <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+        <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[color:var(--text-faint)]" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
           <circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" />
         </svg>
         <input
@@ -53,7 +53,7 @@ export function CourseLibrary({ courses, authors, categories, onSelectCourse, co
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search courses..."
-          className="w-full py-3 pl-10 pr-4 bg-[#faf9f7] border border-gray-100 rounded-xl text-sm text-gray-900 outline-none transition-colors focus:border-amber-600"
+          className="w-full py-3 pl-10 pr-4 bg-[#faf9f7] border border-stone-200 rounded-xl text-sm text-earth outline-none transition-colors focus:border-amber-600"
         />
       </div>
 
@@ -66,7 +66,7 @@ export function CourseLibrary({ courses, authors, categories, onSelectCourse, co
             className={`px-4 py-[7px] rounded-full text-[13px] font-semibold whitespace-nowrap cursor-pointer transition-all duration-200 border ${
               activeCategory === cat
                 ? "bg-gray-900 text-white border-gray-900"
-                : "bg-white text-gray-500 border-gray-200 hover:border-gray-400 hover:text-gray-900"
+                : "bg-white text-warm-brown border-stone-200 hover:border-gray-400 hover:text-earth"
             }`}
           >
             {cat}
@@ -126,8 +126,8 @@ export function CourseLibrary({ courses, authors, categories, onSelectCourse, co
         {continueLearning.length > 0 ? "All Courses" : "Courses"}
       </h2>
       {allCourses.length === 0 ? (
-        <div className="text-center py-16 text-gray-400">
-          <svg className="mx-auto mb-3 text-gray-300" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <div className="text-center py-16 text-[color:var(--text-faint)]">
+          <svg className="mx-auto mb-3 text-stone-300" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
             <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20" />
           </svg>
           <p className="text-sm font-medium">No courses found</p>

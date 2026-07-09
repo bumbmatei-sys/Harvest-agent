@@ -480,15 +480,15 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
       {adminEvents.filter(e => e.pinned).map(event => (
         <div key={event.id} className="bg-white rounded-2xl shadow-sm border border-[color-mix(in_srgb,var(--brand-color)_30%,transparent)] overflow-hidden lg:rounded-[var(--ds-radius-card)] lg:shadow-[var(--ds-sh-sm)]">
           {event.coverImage && (
-            <div className="relative h-36 bg-gray-100">
+            <div className="relative h-36 bg-stone-100">
               <Image src={event.coverImage} alt={event.title} fill sizes="(max-width:768px) 100vw, 800px" className="object-cover" referrerPolicy="no-referrer" />
             </div>
           )}
           <div className="p-4">
-            <span className="inline-flex items-center text-[10px] font-bold text-gold bg-[color-mix(in_srgb,var(--brand-color)_15%,white)] px-2 py-0.5 rounded-full mb-2">Pinned Event</span>
-            <h3 className="font-bold text-gray-900 text-base lg:text-sm mb-1">{event.title}</h3>
-            {event.description ? <p className="text-sm lg:text-xs text-gray-500 line-clamp-2 mb-3">{event.description}</p> : null}
-            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 mb-3">
+            <span className="inline-flex items-center text-[10px] font-bold uppercase tracking-wider text-gold bg-[color-mix(in_srgb,var(--brand-color)_15%,white)] px-2 py-0.5 rounded-full mb-2">Pinned Event</span>
+            <h3 className="font-bold text-earth text-base lg:text-sm mb-1">{event.title}</h3>
+            {event.description ? <p className="text-sm lg:text-xs text-warm-brown line-clamp-2 mb-3">{event.description}</p> : null}
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-warm-brown mb-3">
               {event.startDate && <span className="flex items-center gap-1"><CalendarIcon size={12} />{fmtEventDate(event.startDate)}</span>}
               {event.isOnline
                 ? <span className="flex items-center gap-1"><Globe size={12} />Online</span>
@@ -507,7 +507,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
       ))}
 
       <div className="flex items-center justify-between px-1 mb-2">
-        <h2 className="lg:flex lg:items-center text-xl lg:text-lg font-bold text-gray-900 font-display">
+        <h2 className="lg:flex lg:items-center text-xl lg:text-lg font-bold text-earth font-display">
           <span className="hidden lg:block w-1 h-5 rounded-full bg-gold mr-2.5 shrink-0" aria-hidden="true" />
           News &amp; Updates
         </h2>
@@ -522,13 +522,13 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
       </div>
 
       {posts.length === 0 ? (
-        <div className="text-center py-12 text-gray-500">No news yet.</div>
+        <div className="text-center py-12 text-warm-brown">No news yet.</div>
       ) : (
         posts.map((post, index) => (
-          <div key={post.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 lg:rounded-[var(--ds-radius-card)] lg:border-[color:var(--ds-border)] lg:shadow-[var(--ds-sh-sm)]">
+          <div key={post.id} className="bg-white rounded-2xl shadow-sm border border-stone-200 p-4 lg:rounded-[var(--ds-radius-card)] lg:border-[color:var(--ds-border)] lg:shadow-[var(--ds-sh-sm)]">
             <div className="flex justify-between items-start mb-3">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden flex items-center justify-center font-bold text-gray-600 relative">
+                <div className="w-10 h-10 rounded-full bg-stone-200 overflow-hidden flex items-center justify-center font-bold text-warm-brown relative">
                   {post.authorPhoto ? (
                     <Image src={post.authorPhoto} alt={post.authorName} fill sizes="40px" className="object-cover" referrerPolicy="no-referrer" />
                   ) : (
@@ -537,24 +537,24 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h4 className="font-bold text-gray-900 text-sm">{post.authorName}</h4>
+                    <h4 className="font-bold text-earth text-sm">{post.authorName}</h4>
                     {post.isPinned && (
                       <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-gold bg-[color-mix(in_srgb,var(--brand-color)_15%,white)] px-2 py-0.5 rounded-full">
                         Pinned
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-gray-500">{formatDate(post.createdAt)}</p>
+                  <p className="text-xs text-warm-brown">{formatDate(post.createdAt)}</p>
                 </div>
               </div>
             </div>
 
-            <p className="text-gray-800 text-sm lg:text-[13px] whitespace-pre-wrap mb-3">
+            <p className="text-[color:var(--text-body)] text-sm lg:text-[13px] whitespace-pre-wrap mb-3">
               {post.content}
             </p>
 
             {post.imageUrl && (
-              <div className="rounded-xl overflow-hidden mb-3 max-h-80 bg-gray-100 relative min-h-[200px]">
+              <div className="rounded-xl overflow-hidden mb-3 max-h-80 bg-stone-100 relative min-h-[200px]">
                 <Image src={post.imageUrl} alt="Post attachment" fill sizes="(max-width: 768px) 100vw, 800px" priority={index < 2} className="object-cover" referrerPolicy="no-referrer" />
               </div>
             )}
@@ -575,7 +575,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
                       className={`relative w-full h-10 border rounded-lg overflow-hidden flex items-center px-3 transition-colors ${
                         userVotedThis 
                           ? 'border-gold bg-[color-mix(in_srgb,var(--brand-color)_8%,white)] '
-                          : 'border-gray-200 bg-gray-50 hover:border-gold'
+                          : 'border-stone-200 bg-stone-100 hover:border-gold'
                       }`}
                     >
                       {hasVoted && (
@@ -584,30 +584,30 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
                           style={{ width: `${percentage}%` }}
                         />
                       )}
-                      <div className="relative z-10 flex justify-between w-full text-sm font-medium text-gray-800 ">
+                      <div className="relative z-10 flex justify-between w-full text-sm font-medium text-[color:var(--text-body)] ">
                         <span className="flex items-center gap-2">
                           {option.text}
                           {userVotedThis && <Check size={14} className="text-gold" />}
                         </span>
-                        {hasVoted && <span className="text-gray-500">{percentage}%</span>}
+                        {hasVoted && <span className="text-warm-brown">{percentage}%</span>}
                       </div>
                     </button>
                   );
                 })}
-                <div className="text-right text-xs text-gray-500">
+                <div className="text-right text-xs text-warm-brown">
                   {post.pollOptions.reduce((acc, o) => acc + o.votes.length, 0)} votes total
                 </div>
               </div>
             )}
 
             {post.type === 'event' && post.eventDetails && (
-              <div className="bg-gray-50 rounded-xl p-4 mb-3 border border-gray-100 flex flex-col items-center text-center">
-                <div className="bg-white border border-gray-200 rounded-lg p-2 mb-3 min-w-[80px]">
-                  <div className="text-red-500 text-xs font-bold uppercase">{new Date(post.eventDetails.date).toLocaleString('default', { month: 'short' })}</div>
-                  <div className="text-xl font-bold text-gray-900 ">{new Date(post.eventDetails.date).getDate()}</div>
+              <div className="bg-stone-100 rounded-xl p-4 mb-3 border border-stone-200 flex flex-col items-center text-center">
+                <div className="bg-white border border-stone-200 rounded-lg p-2 mb-3 min-w-[80px]">
+                  <div className="text-gold text-xs font-bold uppercase">{new Date(post.eventDetails.date).toLocaleString('default', { month: 'short' })}</div>
+                  <div className="text-xl font-bold text-earth ">{new Date(post.eventDetails.date).getDate()}</div>
                 </div>
-                <h4 className="font-bold text-gray-900 text-lg mb-2">{post.eventDetails.title}</h4>
-                <div className="flex flex-col gap-1 text-sm text-gray-500 mb-4">
+                <h4 className="font-bold text-earth text-lg mb-2">{post.eventDetails.title}</h4>
+                <div className="flex flex-col gap-1 text-sm text-warm-brown mb-4">
                   <div className="flex items-center justify-center gap-1.5">
                     <CalendarIcon size={14} />
                     <span>{post.eventDetails.time}</span>
@@ -617,7 +617,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
                     <span>{post.eventDetails.location}</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 mb-4 text-xs text-gray-500">
+                <div className="flex items-center gap-2 mb-4 text-xs text-warm-brown">
                   <span>{post.eventDetails.attendees.length} Participating</span>
                 </div>
                 {auth.currentUser && (
@@ -639,13 +639,13 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
               </div>
             )}
 
-            <div className="flex items-center gap-4 pt-3 border-t border-gray-100 ">
+            <div className="flex items-center gap-4 pt-3 border-t border-stone-200 ">
               <button 
                 onClick={() => handleLike(post.id, post.likes)}
                 className={`flex items-center gap-1.5 text-xs transition-colors ${
                   auth.currentUser && post.likes.includes(auth.currentUser.uid)
                     ? 'text-gold'
-                    : 'text-gray-500 hover:text-gold'
+                    : 'text-warm-brown hover:text-gold'
                 }`}
               >
                 <ThumbsUp size={16} className={auth.currentUser && post.likes.includes(auth.currentUser.uid) ? 'fill-current' : ''} />
@@ -654,7 +654,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
               <button
                 onClick={() => toggleComments(post.id)}
                 className={`flex items-center gap-1.5 text-xs transition-colors ${
-                  commentsOpen[post.id] ? 'text-gold' : 'text-gray-500 hover:text-gold'
+                  commentsOpen[post.id] ? 'text-gold' : 'text-warm-brown hover:text-gold'
                 }`}
               >
                 <MessageSquare size={16} />
@@ -664,10 +664,10 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
 
             {/* Comments Section */}
             {commentsOpen[post.id] && (
-              <div className="mt-3 pt-3 border-t border-gray-100 space-y-3">
+              <div className="mt-3 pt-3 border-t border-stone-200 space-y-3">
                 {postComments[post.id]?.map(comment => (
                   <div key={comment.id} className="flex items-start gap-2.5">
-                    <div className="w-7 h-7 rounded-full bg-gray-200 overflow-hidden flex items-center justify-center text-xs font-bold text-gray-600 flex-shrink-0 relative">
+                    <div className="w-7 h-7 rounded-full bg-stone-200 overflow-hidden flex items-center justify-center text-xs font-bold text-warm-brown flex-shrink-0 relative">
                       {comment.authorPhoto ? (
                         <Image src={comment.authorPhoto} alt={comment.authorName} fill sizes="28px" className="object-cover" referrerPolicy="no-referrer" />
                       ) : (
@@ -676,29 +676,29 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-gray-900">{comment.authorName}</span>
-                        <span className="text-[10px] text-gray-400">
+                        <span className="text-xs font-bold text-earth">{comment.authorName}</span>
+                        <span className="text-[10px] text-[color:var(--text-faint)]">
                           {new Date(comment.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                         </span>
                         {auth.currentUser && comment.authorId === auth.currentUser.uid && (
                           <button
                             onClick={() => handleDeleteComment(post.id, comment.id)}
-                            className="ml-auto text-gray-400 hover:text-red-500 transition-colors"
+                            className="ml-auto text-[color:var(--text-faint)] hover:text-red-500 transition-colors"
                           >
                             <Trash2 size={12} />
                           </button>
                         )}
                       </div>
-                      <p className="text-xs text-gray-700 whitespace-pre-wrap">{comment.content}</p>
+                      <p className="text-xs text-[color:var(--text-body)] whitespace-pre-wrap">{comment.content}</p>
                     </div>
                   </div>
                 ))}
                 {postComments[post.id]?.length === 0 && (
-                  <p className="text-xs text-gray-400 text-center py-1">No comments yet</p>
+                  <p className="text-xs text-[color:var(--text-faint)] text-center py-1">No comments yet</p>
                 )}
                 {auth.currentUser && (
                   <div className="flex items-center gap-2 pt-2">
-                    <div className="w-7 h-7 rounded-full bg-gray-200 overflow-hidden flex items-center justify-center text-xs font-bold text-gray-600 flex-shrink-0 relative">
+                    <div className="w-7 h-7 rounded-full bg-stone-200 overflow-hidden flex items-center justify-center text-xs font-bold text-warm-brown flex-shrink-0 relative">
                       {auth.currentUser.photoURL ? (
                         <Image src={auth.currentUser.photoURL} alt="You" fill sizes="28px" className="object-cover" referrerPolicy="no-referrer" />
                       ) : (
@@ -712,7 +712,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
                       onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleComment(post.id); } }}
                       placeholder="Write a comment..."
                       maxLength={280}
-                      className="flex-1 px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-full text-xs text-gray-900 focus:ring-1 focus:ring-gold outline-none"
+                      className="flex-1 px-3 py-1.5 bg-stone-100 border border-stone-200 rounded-full text-xs text-earth focus:ring-1 focus:ring-gold outline-none"
                     />
                     <button
                       onClick={() => handleComment(post.id)}
@@ -732,19 +732,19 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
       {/* Upcoming Events (non-pinned) — mobile only; desktop shows the compact rail version instead */}
       {adminEvents.filter(e => !e.pinned).length > 0 && (
         <div className="mt-4 lg:hidden">
-          <h2 className="text-xl font-bold text-gray-900 px-1 mb-3 font-display">Upcoming Events</h2>
+          <h2 className="text-xl font-bold text-earth px-1 mb-3 font-display">Upcoming Events</h2>
           <div className="space-y-3">
             {adminEvents.filter(e => !e.pinned).map(event => (
-              <div key={event.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden lg:rounded-[var(--ds-radius-card)] lg:shadow-[var(--ds-sh-sm)]">
+              <div key={event.id} className="bg-white rounded-2xl shadow-sm border border-stone-200 overflow-hidden lg:rounded-[var(--ds-radius-card)] lg:shadow-[var(--ds-sh-sm)]">
                 {event.coverImage && (
-                  <div className="relative h-32 bg-gray-100">
+                  <div className="relative h-32 bg-stone-100">
                     <Image src={event.coverImage} alt={event.title} fill sizes="(max-width:768px) 100vw, 800px" className="object-cover" referrerPolicy="no-referrer" />
                   </div>
                 )}
                 <div className="p-4 lg:p-5">
-                  <h3 className="font-bold text-gray-900 text-base mb-1">{event.title}</h3>
-                  {event.description ? <p className="text-sm text-gray-500 line-clamp-2 mb-3">{event.description}</p> : null}
-                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 mb-3">
+                  <h3 className="font-bold text-earth text-base mb-1">{event.title}</h3>
+                  {event.description ? <p className="text-sm text-warm-brown line-clamp-2 mb-3">{event.description}</p> : null}
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-warm-brown mb-3">
                     {event.startDate && <span className="flex items-center gap-1"><CalendarIcon size={12} />{fmtEventDate(event.startDate)}</span>}
                     {event.isOnline
                       ? <span className="flex items-center gap-1"><Globe size={12} />Online</span>
@@ -769,17 +769,17 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
       {articles.length > 0 && (
         <div className="mt-8 lg:hidden">
           <div className="flex items-center justify-between px-1 mb-4">
-            <h2 className="text-xl font-bold text-gray-900 font-display">Latest Articles</h2>
+            <h2 className="text-xl font-bold text-earth font-display">Latest Articles</h2>
           </div>
           <div className="flex flex-col gap-3">
             {articles.map((post, index) => (
               <article 
                 key={post.id} 
                 onClick={() => onOpenArticle(post)}
-                className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-row items-center gap-3 p-2.5 sm:p-3 transition-transform hover:scale-[1.02] duration-300 cursor-pointer lg:rounded-[var(--ds-radius-card)] lg:shadow-[var(--ds-sh-sm)]"
+                className="bg-white rounded-xl shadow-sm border border-stone-200 overflow-hidden flex flex-row items-center gap-3 p-2.5 sm:p-3 transition-transform hover:scale-[1.02] duration-300 cursor-pointer lg:rounded-[var(--ds-radius-card)] lg:shadow-[var(--ds-sh-sm)]"
               >
                 {post.featuredImage ? (
-                  <div className="w-16 h-16 sm:w-20 sm:h-20 flex-shrink-0 overflow-hidden rounded-lg bg-gray-100 relative">
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 flex-shrink-0 overflow-hidden rounded-lg bg-stone-100 relative">
                     <Image 
                       src={post.featuredImage} 
                       alt={post.title} 
@@ -791,18 +791,18 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
                     />
                   </div>
                 ) : (
-                  <div className="w-16 h-16 sm:w-20 sm:h-20 flex-shrink-0 bg-gray-100 flex items-center justify-center rounded-lg">
-                    <FileText size={20} className="text-gray-300 " />
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 flex-shrink-0 bg-stone-100 flex items-center justify-center rounded-lg">
+                    <FileText size={20} className="text-stone-300 " />
                   </div>
                 )}
                 
                 <div className="flex flex-col flex-1 min-w-0 py-1">
-                  <h3 className="text-base sm:text-lg font-bold text-gray-900 mb-1.5 line-clamp-2 leading-tight">
+                  <h3 className="text-base sm:text-lg font-bold text-earth mb-1.5 line-clamp-2 leading-tight">
                     {post.title}
                   </h3>
                   
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-gray-500 mb-2">
-                    <span className="px-2 py-0.5 bg-gray-100 text-gray-600 font-medium rounded uppercase tracking-wider">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-warm-brown mb-2">
+                    <span className="px-2 py-0.5 bg-stone-100 text-warm-brown font-medium rounded uppercase tracking-wider">
                       {post.category}
                     </span>
                     <div className="flex items-center gap-1">
@@ -814,13 +814,13 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
                   {post.tags && post.tags.length > 0 && (
                     <div className="flex flex-wrap gap-1.5 mt-auto">
                       {post.tags.slice(0, 3).map(tag => (
-                        <span key={tag} className="flex items-center gap-1 text-[10px] sm:text-xs text-gray-500 bg-gray-50 px-1.5 py-0.5 rounded">
+                        <span key={tag} className="flex items-center gap-1 text-[10px] sm:text-xs text-warm-brown bg-stone-100 px-1.5 py-0.5 rounded">
                           <Tag size={10} />
                           {tag}
                         </span>
                       ))}
                       {post.tags.length > 3 && (
-                        <span className="text-[10px] sm:text-xs text-gray-400">+{post.tags.length - 3}</span>
+                        <span className="text-[10px] sm:text-xs text-[color:var(--text-faint)]">+{post.tags.length - 3}</span>
                       )}
                     </div>
                   )}
@@ -843,8 +843,8 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
               <span className="relative inline-flex rounded-full h-3 w-3" style={{ backgroundColor: 'var(--brand-color, #e6b325)' }} />
             </span>
             <span className="flex-1 min-w-0">
-              <span className="block font-bold text-sm text-gray-900">Live Now</span>
-              <span className="block text-xs text-gray-500 truncate">{liveTitle}</span>
+              <span className="block font-bold text-sm text-earth">Live Now</span>
+              <span className="block text-xs text-warm-brown truncate">{liveTitle}</span>
             </span>
             <span className="text-xs font-semibold text-white rounded-full px-2.5 py-1 shrink-0" style={{ backgroundColor: 'var(--brand-color, #e6b325)' }}>
               Watch
@@ -855,7 +855,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
 
       {upcomingRailEvents.length > 0 && (
         <DesktopCard elevation="sm" className="p-4">
-          <h3 className="flex items-center gap-2 font-bold text-gray-900 text-sm mb-3 font-display">
+          <h3 className="flex items-center gap-2 font-bold text-earth text-sm mb-3 font-display">
             <span className="w-0.5 h-3.5 rounded-full bg-gold shrink-0" aria-hidden="true" />
             Upcoming Events
           </h3>
@@ -866,20 +866,20 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
                 onClick={() => { window.location.href = `/event/${event.id}`; }}
                 className="w-full flex items-start gap-3 text-left group"
               >
-                <div className="bg-gray-50 border border-gray-100 rounded-lg px-2 py-1.5 text-center shrink-0 min-w-[44px]">
+                <div className="bg-[color-mix(in_srgb,var(--brand-color)_7%,white)] border border-[color-mix(in_srgb,var(--brand-color)_18%,white)] rounded-lg px-2 py-1.5 text-center shrink-0 min-w-[44px]">
                   {event.startDate ? (
                     <>
                       <div className="text-[9px] font-bold uppercase text-gold">{event.startDate.toDate().toLocaleString('default', { month: 'short' })}</div>
-                      <div className="text-sm font-bold text-gray-900 leading-none mt-0.5">{event.startDate.toDate().getDate()}</div>
+                      <div className="text-sm font-bold text-earth leading-none mt-0.5">{event.startDate.toDate().getDate()}</div>
                     </>
                   ) : (
-                    <CalendarIcon size={14} className="text-gray-300 mx-auto" />
+                    <CalendarIcon size={14} className="text-stone-300 mx-auto" />
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-gray-900 truncate group-hover:text-gold transition-colors">{event.title}</p>
+                  <p className="text-sm font-semibold text-earth truncate group-hover:text-gold transition-colors">{event.title}</p>
                   {(event.isOnline || event.location) && (
-                    <p className="text-xs text-gray-500 truncate flex items-center gap-1 mt-0.5">
+                    <p className="text-xs text-warm-brown truncate flex items-center gap-1 mt-0.5">
                       {event.isOnline ? <Globe size={10} className="shrink-0" /> : <MapPin size={10} className="shrink-0" />}
                       {event.isOnline ? 'Online' : event.location}
                     </p>
@@ -893,7 +893,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
 
       {articles.length > 0 && (
         <DesktopCard elevation="sm" className="p-4">
-          <h3 className="flex items-center gap-2 font-bold text-gray-900 text-sm mb-3 font-display">
+          <h3 className="flex items-center gap-2 font-bold text-earth text-sm mb-3 font-display">
             <span className="w-0.5 h-3.5 rounded-full bg-gold shrink-0" aria-hidden="true" />
             Latest Articles
           </h3>
@@ -905,17 +905,17 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
                 className="w-full flex items-start gap-3 text-left group"
               >
                 {post.featuredImage ? (
-                  <div className="w-11 h-11 rounded-lg overflow-hidden bg-gray-100 shrink-0 relative">
+                  <div className="w-11 h-11 rounded-lg overflow-hidden bg-stone-100 shrink-0 relative">
                     <Image src={post.featuredImage} alt={post.title} fill sizes="44px" className="object-cover" referrerPolicy="no-referrer" />
                   </div>
                 ) : (
-                  <div className="w-11 h-11 rounded-lg bg-gray-50 shrink-0 flex items-center justify-center">
-                    <FileText size={16} className="text-gray-300" />
+                  <div className="w-11 h-11 rounded-lg bg-stone-100 shrink-0 flex items-center justify-center">
+                    <FileText size={16} className="text-stone-300" />
                   </div>
                 )}
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-gray-900 line-clamp-2 group-hover:text-gold transition-colors">{post.title}</p>
-                  <p className="text-xs text-gray-500 mt-0.5">{formatArticleDate(post.publishedAt || post.createdAt)}</p>
+                  <p className="text-sm font-semibold text-earth line-clamp-2 group-hover:text-gold transition-colors">{post.title}</p>
+                  <p className="text-xs text-warm-brown mt-0.5">{formatArticleDate(post.publishedAt || post.createdAt)}</p>
                 </div>
               </button>
             ))}
@@ -927,8 +927,8 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
         <div className="w-11 h-11 mx-auto rounded-full flex items-center justify-center mb-3" style={{ backgroundColor: 'color-mix(in srgb, var(--brand-color) 12%, white)' }}>
           <HeartHandshake size={20} className="text-gold" />
         </div>
-        <h3 className="font-bold text-gray-900 text-sm mb-1 font-display">Partner with Us</h3>
-        <p className="text-xs text-gray-500 mb-3 leading-relaxed">Your generosity keeps this ministry moving forward.</p>
+        <h3 className="font-bold text-earth text-sm mb-1 font-display">Partner with Us</h3>
+        <p className="text-xs text-warm-brown mb-3 leading-relaxed">Your generosity keeps this ministry moving forward.</p>
         <button
           onClick={onGoToPartner}
           className="w-full py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
@@ -944,10 +944,10 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
     <div className="w-full space-y-4 pb-8">
       {/* Desktop greeting hero — Phase 1.6, lg:-only, real user data (no fake stats) */}
       <div className="hidden lg:block">
-        <h1 className="font-display text-2xl font-bold text-gray-900">
+        <h1 className="font-display text-[2.4rem] leading-[1.12] font-light tracking-[-0.02em] text-earth">
           {firstName ? `Good ${timeOfDay}, ${firstName}` : 'Welcome'}
         </h1>
-        <p className="text-sm text-gray-500 mt-1">Here&apos;s what&apos;s happening this week.</p>
+        <p className="text-[15px] text-warm-brown mt-1.5">Here&apos;s what&apos;s happening this week.</p>
       </div>
 
       {errorMessage && (
@@ -962,29 +962,29 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
       {attendingPostId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
           <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl">
-            <h3 className="text-xl font-bold text-gray-900 mb-4 font-display">Join Event</h3>
-            <p className="text-sm text-gray-500 mb-4">
+            <h3 className="text-xl font-bold text-earth mb-4 font-display">Join Event</h3>
+            <p className="text-sm text-warm-brown mb-4">
               Please provide your details to receive more information about this event.
             </p>
             
             <div className="space-y-4 mb-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                <label className="block text-sm font-medium text-[color:var(--text-body)] mb-1">Full Name</label>
                 <input
                   type="text"
                   value={attendeeName}
                   onChange={(e) => setAttendeeName(e.target.value)}
-                  className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:ring-2 focus:ring-gold outline-none"
+                  className="w-full px-4 py-2 bg-stone-100 border border-stone-200 rounded-xl text-earth focus:ring-2 focus:ring-gold outline-none"
                   placeholder="John Doe"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                <label className="block text-sm font-medium text-[color:var(--text-body)] mb-1">Email Address</label>
                 <input
                   type="email"
                   value={attendeeEmail}
                   onChange={(e) => setAttendeeEmail(e.target.value)}
-                  className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:ring-2 focus:ring-gold outline-none"
+                  className="w-full px-4 py-2 bg-stone-100 border border-stone-200 rounded-xl text-earth focus:ring-2 focus:ring-gold outline-none"
                   placeholder="john@example.com"
                 />
               </div>
@@ -997,7 +997,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
                   setAttendeeName('');
                   setAttendeeEmail('');
                 }}
-                className="flex-1 px-4 py-2 border border-gray-200 text-gray-700 rounded-xl font-medium hover:bg-gray-50 :bg-gray-800 transition-colors"
+                className="flex-1 px-4 py-2 border border-stone-200 text-[color:var(--text-body)] rounded-xl font-medium hover:bg-stone-100 transition-colors"
               >
                 Cancel
               </button>

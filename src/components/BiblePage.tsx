@@ -122,7 +122,7 @@ function BookPicker({ currentBook, currentChapter, onSelect, onClose }: { curren
 
   return (
     <div className="fixed inset-0 z-[60] flex flex-col bg-white max-w-[480px] mx-auto">
-      <div className="px-4 py-3.5 border-b border-gray-200 flex items-center gap-3 flex-shrink-0">
+      <div className="px-4 py-3.5 border-b border-stone-200 flex items-center gap-3 flex-shrink-0">
         <button onClick={onClose} className="text-amber-600 p-0 bg-transparent border-none cursor-pointer">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m15 18-6-6 6-6" /></svg>
         </button>
@@ -133,10 +133,10 @@ function BookPicker({ currentBook, currentChapter, onSelect, onClose }: { curren
       </div>
 
       {!selectedBook && (
-        <div className="px-4 py-2.5 border-b border-gray-200 flex-shrink-0">
-          <div className="flex items-center gap-2 bg-gray-50 rounded-full border-[1.5px] border-gray-200 px-3.5 py-2">
+        <div className="px-4 py-2.5 border-b border-stone-200 flex-shrink-0">
+          <div className="flex items-center gap-2 bg-stone-100 rounded-full border-[1.5px] border-stone-200 px-3.5 py-2">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2.5"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
-            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search books..." className="flex-1 border-none bg-transparent text-sm outline-none text-gray-900" />
+            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search books..." className="flex-1 border-none bg-transparent text-sm outline-none text-earth" />
           </div>
         </div>
       )}
@@ -150,17 +150,17 @@ function BookPicker({ currentBook, currentChapter, onSelect, onClose }: { curren
             ].map(({ label, books }) =>
               books.length > 0 ? (
                 <div key={label}>
-                  <div className="px-4 pt-3 pb-1.5 text-[10px] font-bold text-gray-400 tracking-widest uppercase">{label}</div>
+                  <div className="px-4 pt-3 pb-1.5 text-[10px] font-bold text-[color:var(--text-faint)] tracking-widest uppercase">{label}</div>
                   {books.map((book) => (
                     <div
                       key={book.id}
                       onClick={() => setSelectedBook(book)}
                       className={`px-4 py-3.5 border-b border-gray-50 flex justify-between items-center cursor-pointer transition-colors ${
-                        book.id === currentBook.id ? "bg-amber-50" : "hover:bg-gray-50"
+                        book.id === currentBook.id ? "bg-amber-50" : "hover:bg-stone-100"
                       }`}
                     >
-                      <span className={`text-[15px] ${book.id === currentBook.id ? "font-bold text-amber-600" : "font-medium text-gray-900"}`}>{book.name}</span>
-                      <span className="text-xs text-gray-400">{book.chapters} ch</span>
+                      <span className={`text-[15px] ${book.id === currentBook.id ? "font-bold text-amber-600" : "font-medium text-earth"}`}>{book.name}</span>
+                      <span className="text-xs text-[color:var(--text-faint)]">{book.chapters} ch</span>
                     </div>
                   ))}
                 </div>
@@ -181,7 +181,7 @@ function BookPicker({ currentBook, currentChapter, onSelect, onClose }: { curren
                     className={`aspect-square border-[1.5px] font-semibold text-[15px] rounded-xl cursor-pointer transition-all ${
                       active
                         ? "bg-amber-600 border-amber-600 text-white font-extrabold shadow-md"
-                        : "bg-white border-gray-200 text-gray-900 hover:border-amber-600"
+                        : "bg-white border-stone-200 text-earth hover:border-amber-600"
                     }`}
                   >
                     {ch}
@@ -213,14 +213,14 @@ function VerseActionSheet({ verseAction, highlighted, onHighlight, onRemoveHighl
     <>
       <div onClick={onClose} className="fixed inset-0 bg-black/40 z-[70]" />
       <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] bg-white rounded-t-[20px] z-[80] shadow-[0_-8px_32px_rgba(0,0,0,0.15)]">
-        <div className="flex justify-center pt-2.5"><div className="w-9 h-1 bg-gray-200 rounded-full" /></div>
-        <div className="px-5 py-3 border-b border-gray-100">
+        <div className="flex justify-center pt-2.5"><div className="w-9 h-1 bg-stone-200 rounded-full" /></div>
+        <div className="px-5 py-3 border-b border-stone-200">
           <div className="text-[11px] font-bold text-amber-600 uppercase tracking-wider mb-1">{ref}</div>
-          <div className="text-sm text-gray-500 leading-relaxed" style={{ fontFamily: "'Crimson Pro', Georgia, serif" }}>{verse.text}</div>
+          <div className="text-sm text-warm-brown leading-relaxed" style={{ fontFamily: "'Crimson Pro', Georgia, serif" }}>{verse.text}</div>
         </div>
 
-        <div className="px-5 py-3.5 border-b border-gray-100">
-          <div className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2.5">Highlight</div>
+        <div className="px-5 py-3.5 border-b border-stone-200">
+          <div className="text-[11px] font-bold text-warm-brown uppercase tracking-wider mb-2.5">Highlight</div>
           <div className="flex gap-2.5 items-center">
             {(Object.entries(HIGHLIGHT_COLORS) as [HighlightColor, string][]).map(([color, hex]) => (
               <button
@@ -231,19 +231,19 @@ function VerseActionSheet({ verseAction, highlighted, onHighlight, onRemoveHighl
               />
             ))}
             {currentHl && (
-              <button onClick={() => onRemoveHighlight(key)} className="text-xs text-gray-500 bg-transparent border border-gray-200 rounded-full px-2.5 py-1 cursor-pointer font-semibold">Remove</button>
+              <button onClick={() => onRemoveHighlight(key)} className="text-xs text-warm-brown bg-transparent border border-stone-200 rounded-full px-2.5 py-1 cursor-pointer font-semibold">Remove</button>
             )}
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-2.5 px-4 py-3.5 pb-8">
-          <button onClick={() => { onCopy(verse.text, ref); onClose(); }} className="bg-gray-50 border-[1.5px] border-gray-200 rounded-xl py-3 cursor-pointer flex flex-col items-center gap-1.5 hover:border-amber-600 hover:bg-amber-50 transition-colors">
+          <button onClick={() => { onCopy(verse.text, ref); onClose(); }} className="bg-stone-100 border-[1.5px] border-stone-200 rounded-xl py-3 cursor-pointer flex flex-col items-center gap-1.5 hover:border-amber-600 hover:bg-amber-50 transition-colors">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
-            <span className="text-[11px] font-bold text-gray-500">Copy</span>
+            <span className="text-[11px] font-bold text-warm-brown">Copy</span>
           </button>
-          <button onClick={() => { onShare(verse.text, ref); onClose(); }} className="bg-gray-50 border-[1.5px] border-gray-200 rounded-xl py-3 cursor-pointer flex flex-col items-center gap-1.5 hover:border-amber-600 hover:bg-amber-50 transition-colors">
+          <button onClick={() => { onShare(verse.text, ref); onClose(); }} className="bg-stone-100 border-[1.5px] border-stone-200 rounded-xl py-3 cursor-pointer flex flex-col items-center gap-1.5 hover:border-amber-600 hover:bg-amber-50 transition-colors">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" /><polyline points="16 6 12 2 8 6" /><line x1="12" y1="2" x2="12" y2="15" /></svg>
-            <span className="text-[11px] font-bold text-gray-500">Share</span>
+            <span className="text-[11px] font-bold text-warm-brown">Share</span>
           </button>
         </div>
       </div>
@@ -308,13 +308,13 @@ export default function BiblePage() {
       {toast && <div className="fixed bottom-[100px] left-1/2 -translate-x-1/2 bg-gray-900 text-white rounded-full px-4 py-2 text-[13px] font-semibold z-[99] whitespace-nowrap animate-[fadeIn_0.25s_ease]">{toast}</div>}
 
       {/* ── DESKTOP BOOK SIDEBAR (lg+ only; hidden on mobile so mobile is unchanged) ── */}
-      <aside className={`hidden lg:flex-col lg:w-[264px] lg:flex-shrink-0 lg:border-r lg:border-gray-200 lg:bg-white lg:min-h-0 ${bookNavCollapsed ? 'lg:hidden' : 'lg:flex'}`}>
-        <div className="p-4 border-b border-gray-100 flex items-center gap-2">
-          <div className="flex-1 flex items-center gap-2 bg-gray-50 rounded-lg border border-gray-200 px-3 py-2">
+      <aside className={`hidden lg:flex-col lg:w-[264px] lg:flex-shrink-0 lg:border-r lg:border-stone-200 lg:bg-white lg:min-h-0 ${bookNavCollapsed ? 'lg:hidden' : 'lg:flex'}`}>
+        <div className="p-4 border-b border-stone-200 flex items-center gap-2">
+          <div className="flex-1 flex items-center gap-2 bg-stone-100 rounded-lg border border-stone-200 px-3 py-2">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2.5"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
-            <input value={deskSearch} onChange={(e) => setDeskSearch(e.target.value)} placeholder="Search books…" className="flex-1 border-none bg-transparent text-[13px] outline-none text-gray-900" />
+            <input value={deskSearch} onChange={(e) => setDeskSearch(e.target.value)} placeholder="Search books…" className="flex-1 border-none bg-transparent text-[13px] outline-none text-earth" />
           </div>
-          <button onClick={() => setBookNavCollapsed(true)} title="Collapse books" className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-100 shrink-0">
+          <button onClick={() => setBookNavCollapsed(true)} title="Collapse books" className="w-8 h-8 rounded-lg flex items-center justify-center text-[color:var(--text-faint)] hover:bg-stone-100 shrink-0">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
           </button>
         </div>
@@ -324,17 +324,17 @@ export default function BiblePage() {
             if (list.length === 0) return null;
             return (
               <div key={testament}>
-                <div className="px-3 pt-3 pb-1 text-[10px] font-bold text-gray-400 tracking-widest uppercase">{label}</div>
+                <div className="px-3 pt-3 pb-1 text-[10px] font-bold text-[color:var(--text-faint)] tracking-widest uppercase">{label}</div>
                 {list.map((b) => {
                   const active = b.id === book.id;
                   const isExpanded = expandedBook === b.id;
                   return (
                     <div key={b.id}>
                       <button onClick={() => setExpandedBook(isExpanded ? null : b.id)}
-                        className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-left transition-colors ${active ? "" : "hover:bg-gray-50"}`}
+                        className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-left transition-colors ${active ? "" : "hover:bg-stone-100"}`}
                         style={active ? { background: GOLD_LIGHT } : undefined}>
                         <span className="text-[13.5px]" style={active ? { color: GOLD, fontWeight: 600 } : { color: "#374151" }}>{b.name}</span>
-                        <span className="text-[11px] text-gray-400">{b.chapters} ch</span>
+                        <span className="text-[11px] text-[color:var(--text-faint)]">{b.chapters} ch</span>
                       </button>
                       {isExpanded && (
                         <div className="grid grid-cols-5 gap-1.5 px-2 py-2">
@@ -342,7 +342,7 @@ export default function BiblePage() {
                             const chActive = active && ch === chapter;
                             return (
                               <button key={ch} onClick={() => { setBook(b); setChapter(ch); setTab("read"); }}
-                                className={`aspect-square rounded-md text-[12px] font-semibold transition-colors ${chActive ? "text-white" : "text-gray-600 hover:bg-gray-100"}`}
+                                className={`aspect-square rounded-md text-[12px] font-semibold transition-colors ${chActive ? "text-white" : "text-warm-brown hover:bg-stone-100"}`}
                                 style={chActive ? { background: GOLD } : undefined}>
                                 {ch}
                               </button>
@@ -363,23 +363,23 @@ export default function BiblePage() {
       <div className="contents lg:flex lg:flex-1 lg:flex-col lg:min-h-0">
 
       {/* ── TOP BAR ── */}
-      <div className="bg-white border-b border-gray-200 px-4 py-3 lg:py-2 flex-shrink-0 shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
+      <div className="bg-white border-b border-stone-200 px-4 py-3 lg:py-2 flex-shrink-0 shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
         <div className="flex items-center justify-between mb-3 lg:mb-0">
           <div className="flex items-center gap-2">
           <button onClick={() => setShowPicker(true)} className="bg-transparent border-none cursor-pointer flex items-center gap-1 lg:hidden">
-            <span className="font-extrabold text-[17px] text-gray-900 font-display">{book.name} {chapter}</span>
+            <span className="font-extrabold text-[17px] text-earth font-display">{book.name} {chapter}</span>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2"><path d="m6 9 6 6 6-6" /></svg>
           </button>
           {/* Desktop: re-open the book sidebar after collapsing it */}
           {bookNavCollapsed && (
-            <button onClick={() => setBookNavCollapsed(false)} title="Show books" className="hidden lg:flex w-7 h-7 rounded-md items-center justify-center text-gray-500 border border-gray-200 hover:bg-gray-50">
+            <button onClick={() => setBookNavCollapsed(false)} title="Show books" className="hidden lg:flex w-7 h-7 rounded-md items-center justify-center text-warm-brown border border-stone-200 hover:bg-stone-100">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M3 12h18M3 18h18" /></svg>
             </button>
           )}
           {/* Desktop-only reader font-size, next to the translation */}
           <div className="hidden lg:flex items-center gap-1.5">
-            <button onClick={() => setFontSize((s) => Math.max(13, s - 2))} className="w-7 h-7 rounded-md bg-gray-50 border border-gray-200 text-xs font-bold text-gray-500 flex items-center justify-center hover:bg-gray-100">A-</button>
-            <button onClick={() => setFontSize((s) => Math.min(26, s + 2))} className="w-7 h-7 rounded-md bg-gray-50 border border-gray-200 text-sm font-bold text-gray-500 flex items-center justify-center hover:bg-gray-100">A+</button>
+            <button onClick={() => setFontSize((s) => Math.max(13, s - 2))} className="w-7 h-7 rounded-md bg-stone-100 border border-stone-200 text-xs font-bold text-warm-brown flex items-center justify-center hover:bg-stone-100">A-</button>
+            <button onClick={() => setFontSize((s) => Math.min(26, s + 2))} className="w-7 h-7 rounded-md bg-stone-100 border border-stone-200 text-sm font-bold text-warm-brown flex items-center justify-center hover:bg-stone-100">A+</button>
           </div>
           </div>
           <div className="relative">
@@ -389,13 +389,13 @@ export default function BiblePage() {
             {showTranslations && (
               <>
                 <div onClick={() => setShowTranslations(false)} className="fixed inset-0 z-30" />
-                <div className="absolute top-9 right-0 bg-white rounded-xl shadow-[0_8px_24px_rgba(0,0,0,0.12)] border border-gray-200 z-40 overflow-y-auto max-h-[60vh] min-w-[160px]">
+                <div className="absolute top-9 right-0 bg-white rounded-xl shadow-[0_8px_24px_rgba(0,0,0,0.12)] border border-stone-200 z-40 overflow-y-auto max-h-[60vh] min-w-[160px]">
                   {(Object.entries(TRANSLATIONS_BY_LANGUAGE) as [Language, { id: string; name: string }[]][]).map(([lang, transList]) => (
                     <div key={lang}>
-                      <div className="px-4 py-2 text-[10px] font-bold text-gray-400 tracking-widest uppercase bg-gray-50">{lang}</div>
+                      <div className="px-4 py-2 text-[10px] font-bold text-[color:var(--text-faint)] tracking-widest uppercase bg-stone-100">{lang}</div>
                       {transList.map((t) => (
                         <div key={t.id} onClick={() => { setTranslation(t.id); setShowTranslations(false); }}
-                          className={`px-4 py-2.5 cursor-pointer text-sm border-b border-gray-100 transition-colors ${t.id === translation ? "font-extrabold text-amber-600 bg-amber-50" : "font-medium text-gray-900 hover:bg-gray-50"}`}>
+                          className={`px-4 py-2.5 cursor-pointer text-sm border-b border-stone-200 transition-colors ${t.id === translation ? "font-extrabold text-amber-600 bg-amber-50" : "font-medium text-earth hover:bg-stone-100"}`}>
                           {t.name}
                         </div>
                       ))}
@@ -406,10 +406,10 @@ export default function BiblePage() {
             )}
           </div>
         </div>
-        <div className="flex border-b border-gray-200 -mx-4 px-4 lg:hidden">
+        <div className="flex border-b border-stone-200 -mx-4 px-4 lg:hidden">
           {(["read", "search"] as Tab[]).map((t) => (
             <button key={t} onClick={() => setTab(t)}
-              className={`flex-1 bg-transparent border-none border-b-[2.5px] font-semibold text-[13px] py-2.5 cursor-pointer flex items-center justify-center gap-1.5 transition-colors ${tab === t ? "text-amber-600 border-amber-600" : "text-gray-400 border-transparent hover:text-gray-600"}`}>
+              className={`flex-1 bg-transparent border-none border-b-[2.5px] font-semibold text-[13px] py-2.5 cursor-pointer flex items-center justify-center gap-1.5 transition-colors ${tab === t ? "text-amber-600 border-amber-600" : "text-[color:var(--text-faint)] border-transparent hover:text-warm-brown"}`}>
               {t === "read" ? (
                 <><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" /><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" /></svg>Read</>
               ) : (
@@ -425,10 +425,10 @@ export default function BiblePage() {
         <div className="flex-1 overflow-y-auto flex flex-col">
           <div className="flex justify-between items-center px-4 pt-3 lg:hidden">
             <div className="flex gap-1.5">
-              <button onClick={() => setFontSize((s) => Math.max(13, s - 2))} className="w-[30px] h-[30px] rounded-lg bg-white border border-gray-200 cursor-pointer text-xs font-bold text-gray-500 flex items-center justify-center">A-</button>
-              <button onClick={() => setFontSize((s) => Math.min(26, s + 2))} className="w-[30px] h-[30px] rounded-lg bg-white border border-gray-200 cursor-pointer text-base font-bold text-gray-500 flex items-center justify-center">A+</button>
+              <button onClick={() => setFontSize((s) => Math.max(13, s - 2))} className="w-[30px] h-[30px] rounded-lg bg-white border border-stone-200 cursor-pointer text-xs font-bold text-warm-brown flex items-center justify-center">A-</button>
+              <button onClick={() => setFontSize((s) => Math.min(26, s + 2))} className="w-[30px] h-[30px] rounded-lg bg-white border border-stone-200 cursor-pointer text-base font-bold text-warm-brown flex items-center justify-center">A+</button>
             </div>
-            <span className="text-[11px] text-gray-400">Tap a verse for options</span>
+            <span className="text-[11px] text-[color:var(--text-faint)]">Tap a verse for options</span>
           </div>
 
           {loading && (
@@ -449,7 +449,7 @@ export default function BiblePage() {
             <div className="px-4 pt-3 pb-2 flex-1 lg:max-w-[760px] lg:mx-auto lg:w-full lg:px-10">
               {/* Desktop reader heading — big book title + chapter label (mockup) */}
               <div className="hidden lg:block mb-6 mt-2">
-                <h2 className="text-[30px] leading-tight text-gray-900" style={{ fontFamily: "var(--font-serif), Georgia, serif" }}>{book.name}</h2>
+                <h2 className="text-[30px] leading-tight text-earth" style={{ fontFamily: "var(--font-serif), Georgia, serif" }}>{book.name}</h2>
                 <div className="text-[12px] font-bold mt-1.5 uppercase tracking-wider" style={{ color: GOLD }}>Chapter {chapter}</div>
               </div>
               {verses.map((verse) => {
@@ -460,7 +460,7 @@ export default function BiblePage() {
                     className="flex gap-3 mb-4 cursor-pointer rounded-[10px] py-2 px-2.5 transition-colors hover:bg-black/[0.02]"
                     style={{ background: hlColor ? HIGHLIGHT_COLORS[hlColor] : "transparent" }}>
                     <span className="text-[11px] font-extrabold min-w-[24px] pt-1 flex-shrink-0" style={{ color: GOLD }}>{verse.number}</span>
-                    <span style={{ fontSize: fontSize, fontFamily: "'Crimson Pro', Georgia, serif", lineHeight: 1.85 }} className="text-gray-900 lg:![font-family:var(--font-serif),Georgia,serif]">{verse.text}</span>
+                    <span style={{ fontSize: fontSize, fontFamily: "'Crimson Pro', Georgia, serif", lineHeight: 1.85 }} className="text-earth lg:![font-family:var(--font-serif),Georgia,serif]">{verse.text}</span>
                   </div>
                 );
               })}
@@ -470,12 +470,12 @@ export default function BiblePage() {
           {!loading && !error && (
             <div className="flex gap-2.5 px-4 py-3 pb-6 flex-shrink-0 lg:max-w-[760px] lg:mx-auto lg:w-full lg:px-10">
               <button onClick={() => goToChapter(-1)} disabled={chapter === 1}
-                className={`flex-1 py-3 rounded-xl text-sm font-bold cursor-pointer flex items-center justify-center gap-1.5 transition-colors ${chapter > 1 ? "bg-white border-[1.5px] border-gray-200 text-gray-600 hover:border-gray-300" : "bg-gray-50 border border-gray-100 text-gray-300 cursor-not-allowed"}`}>
+                className={`flex-1 py-3 rounded-xl text-sm font-bold cursor-pointer flex items-center justify-center gap-1.5 transition-colors ${chapter > 1 ? "bg-white border-[1.5px] border-stone-200 text-warm-brown hover:border-gray-300" : "bg-stone-100 border border-stone-200 text-stone-300 cursor-not-allowed"}`}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m15 18-6-6 6-6" /></svg>
                 Chapter {chapter - 1}
               </button>
               <button onClick={() => goToChapter(1)} disabled={chapter === book.chapters}
-                className={`flex-1 py-3 rounded-xl text-sm font-bold cursor-pointer flex items-center justify-center gap-1.5 transition-colors ${chapter < book.chapters ? "bg-amber-600 border-none text-white hover:bg-amber-700" : "bg-gray-50 border border-gray-100 text-gray-300 cursor-not-allowed"}`}>
+                className={`flex-1 py-3 rounded-xl text-sm font-bold cursor-pointer flex items-center justify-center gap-1.5 transition-colors ${chapter < book.chapters ? "bg-amber-600 border-none text-white hover:bg-amber-700" : "bg-stone-100 border border-stone-200 text-stone-300 cursor-not-allowed"}`}>
                 Chapter {chapter + 1}
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m9 18 6-6-6-6" /></svg>
               </button>
@@ -488,18 +488,18 @@ export default function BiblePage() {
       {tab === "search" && (
         <div className="flex-1 overflow-y-auto flex flex-col">
           <div className="px-4 py-3 flex-shrink-0">
-            <div className="flex items-center gap-2 bg-white rounded-full border-[1.5px] border-gray-200 px-4 py-3">
+            <div className="flex items-center gap-2 bg-white rounded-full border-[1.5px] border-stone-200 px-4 py-3">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2.5"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
-              <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder='Try "John 3:16" or "love"...' autoFocus className="flex-1 border-none bg-transparent text-sm outline-none text-gray-900" />
-              {searchQuery && <button onClick={() => { setSearchQuery(""); setSearchResults([]); }} className="bg-transparent border-none text-gray-400 cursor-pointer text-sm">✕</button>}
+              <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder='Try "John 3:16" or "love"...' autoFocus className="flex-1 border-none bg-transparent text-sm outline-none text-earth" />
+              {searchQuery && <button onClick={() => { setSearchQuery(""); setSearchResults([]); }} className="bg-transparent border-none text-[color:var(--text-faint)] cursor-pointer text-sm">✕</button>}
             </div>
-            <div className="text-[11px] text-gray-400 text-center mt-1.5">Powered by bible-api.com · {getTranslationName(translation)}</div>
+            <div className="text-[11px] text-[color:var(--text-faint)] text-center mt-1.5">Powered by bible-api.com · {getTranslationName(translation)}</div>
           </div>
 
           <div className="flex-1 px-4 pb-8 flex flex-col gap-3">
             {!searchQuery && (
-              <div className="text-center py-12 text-gray-400">
-                <svg className="mx-auto mb-3 text-gray-300" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" /><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" /></svg>
+              <div className="text-center py-12 text-[color:var(--text-faint)]">
+                <svg className="mx-auto mb-3 text-stone-300" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" /><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" /></svg>
                 <p className="text-sm font-semibold">Search the Scriptures</p>
                 <p className="text-[13px] mt-1">Type a verse reference or keyword</p>
               </div>
@@ -508,7 +508,7 @@ export default function BiblePage() {
             {searching && <div className="flex justify-center p-5"><div className="w-6 h-6 border-[3px] border-amber-100 border-t-amber-600 rounded-full animate-spin" /></div>}
 
             {!searching && searchQuery && searchResults.length === 0 && (
-              <div className="text-center py-8 text-gray-400 text-sm">No results. Try a verse reference like &quot;Romans 8:28&quot;.</div>
+              <div className="text-center py-8 text-[color:var(--text-faint)] text-sm">No results. Try a verse reference like &quot;Romans 8:28&quot;.</div>
             )}
 
             {searchResults.map((result, i) => (
@@ -519,9 +519,9 @@ export default function BiblePage() {
                 const bookName = parts.slice(0, parts.length - 1).join(" ");
                 const found = BOOKS.find((b) => b.name.toLowerCase() === bookName.toLowerCase());
                 if (found) { setBook(found); setChapter(ch); setTab("read"); }
-              }} className="bg-white rounded-xl p-3.5 border border-gray-100 cursor-pointer hover:shadow-md transition-shadow">
+              }} className="bg-white rounded-xl p-3.5 border border-stone-200 cursor-pointer hover:shadow-md transition-shadow">
                 <div className="text-xs font-extrabold mb-1.5 tracking-wide" style={{ color: GOLD }}>{result.ref} · {getTranslationName(translation)}</div>
-                <div className="text-base leading-7 text-gray-900" style={{ fontFamily: "'Crimson Pro', Georgia, serif" }}>{result.text}</div>
+                <div className="text-base leading-7 text-earth" style={{ fontFamily: "'Crimson Pro', Georgia, serif" }}>{result.text}</div>
               </div>
             ))}
           </div>

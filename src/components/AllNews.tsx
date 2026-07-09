@@ -342,14 +342,14 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack }) => {
 
   return (
     <div className="flex flex-col h-screen bg-[#f8f9fa] ">
-      <div className="sticky top-0 z-20 bg-white/80 backdrop-blur-md border-b border-gray-100 px-4 py-3 flex items-center gap-3 lg:max-w-2xl lg:mx-auto w-full">
+      <div className="sticky top-0 z-20 bg-white/80 backdrop-blur-md border-b border-stone-200 px-4 py-3 flex items-center gap-3 lg:max-w-2xl lg:mx-auto w-full">
         <button 
           onClick={onBack}
-          className="p-2 -ml-2 text-gray-600 hover:bg-gray-100 :bg-gray-800 rounded-full transition-colors"
+          className="p-2 -ml-2 text-warm-brown hover:bg-stone-100 :bg-gray-800 rounded-full transition-colors"
         >
           <ArrowLeft size={20} />
         </button>
-        <span className="font-medium text-gray-900 truncate font-display">News & Updates</span>
+        <span className="font-medium text-earth truncate font-display">News & Updates</span>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-24 lg:max-w-2xl lg:mx-auto w-full">
@@ -363,10 +363,10 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack }) => {
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gold"></div>
           </div>
         ) : posts.length === 0 ? (
-          <div className="text-center py-12 text-gray-500">No news yet.</div>
+          <div className="text-center py-12 text-warm-brown">No news yet.</div>
         ) : (
           posts.map((post, index) => (
-            <div key={post.id} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 ">
+            <div key={post.id} className="bg-white rounded-2xl p-4 shadow-sm border border-stone-200 ">
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-10 h-10 rounded-full bg-[#1a1d27] text-white flex items-center justify-center font-bold overflow-hidden relative">
                   {post.authorPhoto ? (
@@ -377,23 +377,23 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack }) => {
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <div className="font-bold text-gray-900 text-sm">{post.authorName}</div>
+                    <div className="font-bold text-earth text-sm">{post.authorName}</div>
                     {post.isPinned && (
                       <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-gold bg-[color-mix(in_srgb,var(--brand-color)_15%,white)] px-2 py-0.5 rounded-full">
                         Pinned
                       </span>
                     )}
                   </div>
-                  <div className="text-xs text-gray-500">{formatDate(post.createdAt)}</div>
+                  <div className="text-xs text-warm-brown">{formatDate(post.createdAt)}</div>
                 </div>
               </div>
 
-              <div className="text-gray-800 text-sm whitespace-pre-wrap mb-3">
+              <div className="text-[color:var(--text-body)] text-sm whitespace-pre-wrap mb-3">
                 {post.content}
               </div>
 
               {post.imageUrl && (
-                <div className="mb-3 rounded-xl overflow-hidden bg-gray-100 relative min-h-[200px]">
+                <div className="mb-3 rounded-xl overflow-hidden bg-stone-100 relative min-h-[200px]">
                   <Image src={post.imageUrl} alt="Post attachment" fill sizes="(max-width: 768px) 100vw, 800px" priority={index < 2} className="object-cover" referrerPolicy="no-referrer" />
                 </div>
               )}
@@ -414,7 +414,7 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack }) => {
                         className={`w-full relative overflow-hidden rounded-xl border p-3 text-left transition-all ${
                           isMyVote 
                             ? 'border-gold bg-[color-mix(in_srgb,var(--brand-color)_15%,white)] ' 
-                            : 'border-gray-200 hover:border-gold :border-gold'
+                            : 'border-stone-200 hover:border-gold :border-gold'
                         }`}
                       >
                         {hasVoted && (
@@ -424,11 +424,11 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack }) => {
                           />
                         )}
                         <div className="relative flex justify-between items-center z-10">
-                          <span className={`text-sm font-medium ${isMyVote ? 'text-gold ' : 'text-gray-700 '}`}>
+                          <span className={`text-sm font-medium ${isMyVote ? 'text-gold ' : 'text-[color:var(--text-body)] '}`}>
                             {option.text}
                           </span>
                           {hasVoted && (
-                            <span className="text-xs font-bold text-gray-500 ">
+                            <span className="text-xs font-bold text-warm-brown ">
                               {percentage}%
                             </span>
                           )}
@@ -436,20 +436,20 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack }) => {
                       </button>
                     );
                   })}
-                  <div className="text-xs text-gray-500 text-right mt-1">
+                  <div className="text-xs text-warm-brown text-right mt-1">
                     {post.pollOptions.reduce((sum, opt) => sum + opt.votes.length, 0)} votes
                   </div>
                 </div>
               )}
 
               {post.type === 'event' && post.eventDetails && (
-                <div className="bg-gray-50 rounded-xl p-4 mb-3 border border-gray-100 flex flex-col items-center text-center">
-                  <div className="bg-white border border-gray-200 rounded-lg p-2 mb-3 min-w-[80px]">
+                <div className="bg-stone-100 rounded-xl p-4 mb-3 border border-stone-200 flex flex-col items-center text-center">
+                  <div className="bg-white border border-stone-200 rounded-lg p-2 mb-3 min-w-[80px]">
                     <div className="text-red-500 text-xs font-bold uppercase">{new Date(post.eventDetails.date).toLocaleString('default', { month: 'short' })}</div>
-                    <div className="text-xl font-bold text-gray-900 ">{new Date(post.eventDetails.date).getDate()}</div>
+                    <div className="text-xl font-bold text-earth ">{new Date(post.eventDetails.date).getDate()}</div>
                   </div>
-                  <h4 className="font-bold text-gray-900 text-lg mb-2">{post.eventDetails.title}</h4>
-                  <div className="flex flex-col gap-1 text-sm text-gray-500 mb-4">
+                  <h4 className="font-bold text-earth text-lg mb-2">{post.eventDetails.title}</h4>
+                  <div className="flex flex-col gap-1 text-sm text-warm-brown mb-4">
                     <div className="flex items-center justify-center gap-1.5">
                       <CalendarIcon size={14} />
                       <span>{post.eventDetails.time}</span>
@@ -459,7 +459,7 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack }) => {
                       <span>{post.eventDetails.location}</span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 mb-4 text-xs text-gray-500">
+                  <div className="flex items-center gap-2 mb-4 text-xs text-warm-brown">
                     <span>{post.eventDetails.attendees.length} Participating</span>
                   </div>
                   {auth.currentUser && (
@@ -481,13 +481,13 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack }) => {
                 </div>
               )}
 
-              <div className="flex items-center gap-4 pt-3 border-t border-gray-100 ">
+              <div className="flex items-center gap-4 pt-3 border-t border-stone-200 ">
                 <button 
                   onClick={() => handleLike(post.id, post.likes)}
                   className={`flex items-center gap-1.5 text-xs transition-colors ${
                     auth.currentUser && post.likes.includes(auth.currentUser.uid)
                       ? 'text-gold'
-                      : 'text-gray-500 hover:text-gold'
+                      : 'text-warm-brown hover:text-gold'
                   }`}
                 >
                   <ThumbsUp size={16} className={auth.currentUser && post.likes.includes(auth.currentUser.uid) ? 'fill-current' : ''} />
@@ -496,7 +496,7 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack }) => {
                 <button
                   onClick={() => toggleComments(post.id)}
                   className={`flex items-center gap-1.5 text-xs transition-colors ${
-                    commentsOpen[post.id] ? 'text-gold' : 'text-gray-500 hover:text-gold'
+                    commentsOpen[post.id] ? 'text-gold' : 'text-warm-brown hover:text-gold'
                   }`}
                 >
                   <MessageSquare size={16} />
@@ -506,10 +506,10 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack }) => {
 
               {/* Comments Section */}
               {commentsOpen[post.id] && (
-                <div className="mt-3 pt-3 border-t border-gray-100 space-y-3">
+                <div className="mt-3 pt-3 border-t border-stone-200 space-y-3">
                   {postComments[post.id]?.map(comment => (
                     <div key={comment.id} className="flex items-start gap-2.5">
-                      <div className="w-7 h-7 rounded-full bg-gray-200 overflow-hidden flex items-center justify-center text-xs font-bold text-gray-600 flex-shrink-0 relative">
+                      <div className="w-7 h-7 rounded-full bg-stone-200 overflow-hidden flex items-center justify-center text-xs font-bold text-warm-brown flex-shrink-0 relative">
                         {comment.authorPhoto ? (
                           <Image src={comment.authorPhoto} alt={comment.authorName} fill sizes="28px" className="object-cover" referrerPolicy="no-referrer" />
                         ) : (
@@ -518,29 +518,29 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack }) => {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className="text-xs font-bold text-gray-900">{comment.authorName}</span>
-                          <span className="text-[10px] text-gray-400">
+                          <span className="text-xs font-bold text-earth">{comment.authorName}</span>
+                          <span className="text-[10px] text-[color:var(--text-faint)]">
                             {new Date(comment.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                           </span>
                           {auth.currentUser && comment.authorId === auth.currentUser.uid && (
                             <button
                               onClick={() => handleDeleteComment(post.id, comment.id)}
-                              className="ml-auto text-gray-400 hover:text-red-500 transition-colors"
+                              className="ml-auto text-[color:var(--text-faint)] hover:text-red-500 transition-colors"
                             >
                               <Trash2 size={12} />
                             </button>
                           )}
                         </div>
-                        <p className="text-xs text-gray-700 whitespace-pre-wrap">{comment.content}</p>
+                        <p className="text-xs text-[color:var(--text-body)] whitespace-pre-wrap">{comment.content}</p>
                       </div>
                     </div>
                   ))}
                   {postComments[post.id]?.length === 0 && (
-                    <p className="text-xs text-gray-400 text-center py-1">No comments yet</p>
+                    <p className="text-xs text-[color:var(--text-faint)] text-center py-1">No comments yet</p>
                   )}
                   {auth.currentUser && (
                     <div className="flex items-center gap-2 pt-2">
-                      <div className="w-7 h-7 rounded-full bg-gray-200 overflow-hidden flex items-center justify-center text-xs font-bold text-gray-600 flex-shrink-0 relative">
+                      <div className="w-7 h-7 rounded-full bg-stone-200 overflow-hidden flex items-center justify-center text-xs font-bold text-warm-brown flex-shrink-0 relative">
                         {auth.currentUser.photoURL ? (
                           <Image src={auth.currentUser.photoURL} alt="You" fill sizes="28px" className="object-cover" referrerPolicy="no-referrer" />
                         ) : (
@@ -554,7 +554,7 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack }) => {
                         onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleComment(post.id); } }}
                         placeholder="Write a comment..."
                         maxLength={280}
-                        className="flex-1 px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-full text-xs text-gray-900 focus:ring-1 focus:ring-gold outline-none"
+                        className="flex-1 px-3 py-1.5 bg-stone-100 border border-stone-200 rounded-full text-xs text-earth focus:ring-1 focus:ring-gold outline-none"
                       />
                       <button
                         onClick={() => handleComment(post.id)}
@@ -576,29 +576,29 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack }) => {
       {attendingPostId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
           <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl">
-            <h3 className="text-xl font-bold text-gray-900 mb-4 font-display">Join Event</h3>
-            <p className="text-sm text-gray-500 mb-4">
+            <h3 className="text-xl font-bold text-earth mb-4 font-display">Join Event</h3>
+            <p className="text-sm text-warm-brown mb-4">
               Please provide your details to receive more information about this event.
             </p>
             
             <div className="space-y-4 mb-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                <label className="block text-sm font-medium text-[color:var(--text-body)] mb-1">Full Name</label>
                 <input
                   type="text"
                   value={attendeeName}
                   onChange={(e) => setAttendeeName(e.target.value)}
-                  className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:ring-2 focus:ring-gold outline-none"
+                  className="w-full px-4 py-2 bg-stone-100 border border-stone-200 rounded-xl text-earth focus:ring-2 focus:ring-gold outline-none"
                   placeholder="John Doe"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                <label className="block text-sm font-medium text-[color:var(--text-body)] mb-1">Email Address</label>
                 <input
                   type="email"
                   value={attendeeEmail}
                   onChange={(e) => setAttendeeEmail(e.target.value)}
-                  className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:ring-2 focus:ring-gold outline-none"
+                  className="w-full px-4 py-2 bg-stone-100 border border-stone-200 rounded-xl text-earth focus:ring-2 focus:ring-gold outline-none"
                   placeholder="john@example.com"
                 />
               </div>
@@ -611,7 +611,7 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack }) => {
                   setAttendeeName('');
                   setAttendeeEmail('');
                 }}
-                className="flex-1 px-4 py-2 border border-gray-200 text-gray-700 rounded-xl font-medium hover:bg-gray-50 :bg-gray-800 transition-colors"
+                className="flex-1 px-4 py-2 border border-stone-200 text-[color:var(--text-body)] rounded-xl font-medium hover:bg-stone-100 :bg-gray-800 transition-colors"
               >
                 Cancel
               </button>

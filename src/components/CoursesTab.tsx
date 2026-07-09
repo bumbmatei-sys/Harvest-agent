@@ -48,7 +48,7 @@ const CoursesTab: React.FC<CoursesTabProps> = ({ onOpenCourse }) => {
  return (
  <div className="flex flex-col items-center justify-center h-64">
  <div className="w-8 h-8 border-4 border-gold border-t-transparent rounded-full animate-spin"></div>
- <p className="mt-4 text-gray-500 font-medium">Loading courses...</p>
+ <p className="mt-4 text-warm-brown font-medium">Loading courses...</p>
  </div>
  );
  }
@@ -56,11 +56,11 @@ const CoursesTab: React.FC<CoursesTabProps> = ({ onOpenCourse }) => {
  if (courses.length === 0) {
  return (
  <div className="flex flex-col items-center justify-center h-64 text-center px-4">
- <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
- <BookOpen size={32} className="text-gray-400 " />
+ <div className="w-16 h-16 bg-stone-100 rounded-full flex items-center justify-center mb-4">
+ <BookOpen size={32} className="text-[color:var(--text-faint)] " />
  </div>
- <h3 className="text-lg font-bold text-gray-900 mb-2 font-display">No Courses Available</h3>
- <p className="text-gray-500 text-sm max-w-xs">
+ <h3 className="text-lg font-bold text-earth mb-2 font-display">No Courses Available</h3>
+ <p className="text-warm-brown text-sm max-w-xs">
  Check back later for new educational content and courses.
  </p>
  </div>
@@ -71,8 +71,8 @@ const CoursesTab: React.FC<CoursesTabProps> = ({ onOpenCourse }) => {
  <div className="space-y-6 pb-24 lg:max-w-5xl lg:mx-auto w-full">
  <div className="flex justify-between items-end mb-2">
  <div>
- <h2 className="text-2xl font-bold text-gray-900 font-display">Available Courses</h2>
- <p className="text-sm text-gray-500 mt-1">Expand your knowledge and faith.</p>
+ <h2 className="text-2xl font-bold text-earth font-display">Available Courses</h2>
+ <p className="text-sm text-warm-brown mt-1">Expand your knowledge and faith.</p>
  </div>
  </div>
 
@@ -81,9 +81,9 @@ const CoursesTab: React.FC<CoursesTabProps> = ({ onOpenCourse }) => {
  <div 
  key={course.id}
  onClick={() => onOpenCourse && onOpenCourse(course)}
- className="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition-shadow group flex flex-col"
+ className="bg-white rounded-2xl overflow-hidden shadow-sm border border-stone-200 cursor-pointer hover:shadow-md transition-shadow group flex flex-col"
  >
- <div className="relative h-48 w-full bg-gray-200 overflow-hidden">
+ <div className="relative h-48 w-full bg-stone-200 overflow-hidden">
  <Image 
  src={course.coverImage || getPlaceholderImage(course.id, 600, 400)} 
  alt={course.title}
@@ -100,15 +100,15 @@ const CoursesTab: React.FC<CoursesTabProps> = ({ onOpenCourse }) => {
  </div>
  
  <div className="p-5 flex flex-col flex-1">
- <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-2 group-hover:text-gold transition-colors">
+ <h3 className="text-lg font-bold text-earth mb-2 line-clamp-2 group-hover:text-gold transition-colors">
  {course.title}
  </h3>
  
- <div className="flex items-center gap-2 text-sm text-gray-500 mb-4">
- <span className="font-medium text-gray-700 ">{course.author}</span>
+ <div className="flex items-center gap-2 text-sm text-warm-brown mb-4">
+ <span className="font-medium text-[color:var(--text-body)] ">{course.author}</span>
  </div>
  
- <div className="mt-auto pt-4 border-t border-gray-100 flex items-center justify-between">
+ <div className="mt-auto pt-4 border-t border-stone-200 flex items-center justify-between">
  <div className="flex items-center gap-1.5 text-gold text-sm font-bold">
  <span>View Course</span>
  <ChevronRight size={16} />

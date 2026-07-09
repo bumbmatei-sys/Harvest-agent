@@ -82,48 +82,48 @@ export function CourseOverview({ course, authors, onBack, onStartLesson, complet
         {/* Author strip */}
         {primaryAuthor && (
           <div
-            className="flex items-center gap-3 py-4 border-b border-gray-100 cursor-pointer"
+            className="flex items-center gap-3 py-4 border-b border-stone-200 cursor-pointer"
             onClick={() => onSelectAuthor?.(primaryAuthor)}
           >
             {primaryAuthor.picture ? (
               <img src={primaryAuthor.picture} alt={primaryAuthor.name} className="w-10 h-10 rounded-full object-cover border-2" style={{ borderColor: GOLD_LIGHT }} />
             ) : (
-              <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-sm font-bold text-gray-400">
+              <div className="w-10 h-10 rounded-full bg-stone-100 flex items-center justify-center text-sm font-bold text-[color:var(--text-faint)]">
                 {primaryAuthor.name?.charAt(0) || "?"}
               </div>
             )}
             <div className="flex-1 min-w-0">
               <div className="text-sm font-bold">{primaryAuthor.name}</div>
-              <div className="text-xs text-gray-400">{primaryAuthor.title || "Instructor"}</div>
+              <div className="text-xs text-[color:var(--text-faint)]">{primaryAuthor.title || "Instructor"}</div>
             </div>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round"><path d="m9 18 6-6-6-6" /></svg>
           </div>
         )}
 
         {/* Stats row */}
-        <div className="flex py-4 border-b border-gray-100">
-          <div className="flex-1 text-center border-r border-gray-100">
+        <div className="flex py-4 border-b border-stone-200">
+          <div className="flex-1 text-center border-r border-stone-200">
             <div className="text-lg font-extrabold">{totalLessons}</div>
-            <div className="text-[11px] text-gray-400 font-semibold uppercase tracking-wider">Lessons</div>
+            <div className="text-[11px] text-[color:var(--text-faint)] font-semibold uppercase tracking-wider">Lessons</div>
           </div>
-          <div className="flex-1 text-center border-r border-gray-100">
+          <div className="flex-1 text-center border-r border-stone-200">
             <div className="text-lg font-extrabold">{durationStr}</div>
-            <div className="text-[11px] text-gray-400 font-semibold uppercase tracking-wider">Duration</div>
+            <div className="text-[11px] text-[color:var(--text-faint)] font-semibold uppercase tracking-wider">Duration</div>
           </div>
           <div className="flex-1 text-center">
             <div className="text-lg font-extrabold">{completedCount}/{totalLessons}</div>
-            <div className="text-[11px] text-gray-400 font-semibold uppercase tracking-wider">Complete</div>
+            <div className="text-[11px] text-[color:var(--text-faint)] font-semibold uppercase tracking-wider">Complete</div>
           </div>
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-gray-100 -mx-5 px-5">
+        <div className="flex border-b border-stone-200 -mx-5 px-5">
           {(["about", "curriculum"] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
               className={`py-3.5 mr-6 text-sm font-semibold capitalize cursor-pointer border-b-2 transition-colors ${
-                activeTab === tab ? "text-gray-900 border-amber-600" : "text-gray-400 border-transparent hover:text-gray-600"
+                activeTab === tab ? "text-earth border-amber-600" : "text-[color:var(--text-faint)] border-transparent hover:text-warm-brown"
               }`}
             >
               {tab}
@@ -135,7 +135,7 @@ export function CourseOverview({ course, authors, onBack, onStartLesson, complet
         {activeTab === "about" && (
           <div className="py-5">
             <h3 className="text-base font-bold mb-2.5 font-display">About This Course</h3>
-            <p className="text-sm leading-7 text-gray-500 whitespace-pre-wrap">
+            <p className="text-sm leading-7 text-warm-brown whitespace-pre-wrap">
               {course.description || "No description available."}
             </p>
           </div>
@@ -163,7 +163,7 @@ export function CourseOverview({ course, authors, onBack, onStartLesson, complet
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-[13px] text-gray-400 font-medium">{levelLessons.length} lessons</span>
+                      <span className="text-[13px] text-[color:var(--text-faint)] font-medium">{levelLessons.length} lessons</span>
                       <svg
                         width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round"
                         style={{ transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s" }}
@@ -176,7 +176,7 @@ export function CourseOverview({ course, authors, onBack, onStartLesson, complet
                   {isExpanded && level.sections?.map((section) => (
                     <div key={section.id}>
                       {section.title && (
-                        <div className="text-xs font-bold text-gray-400 uppercase tracking-wider pt-2 pb-1 pl-1">
+                        <div className="text-xs font-bold text-[color:var(--text-faint)] uppercase tracking-wider pt-2 pb-1 pl-1">
                           {section.title}
                         </div>
                       )}
@@ -188,7 +188,7 @@ export function CourseOverview({ course, authors, onBack, onStartLesson, complet
                         return (
                           <div
                             key={lesson.id}
-                            className="flex items-center gap-3 py-3 border-t border-gray-50 cursor-pointer hover:bg-gray-50 -mx-5 px-5 transition-colors"
+                            className="flex items-center gap-3 py-3 border-t border-gray-50 cursor-pointer hover:bg-stone-100 -mx-5 px-5 transition-colors"
                             onClick={() => onStartLesson(course, lesson)}
                           >
                             <div
@@ -197,7 +197,7 @@ export function CourseOverview({ course, authors, onBack, onStartLesson, complet
                                   ? "border-green-500 bg-green-50 text-green-600"
                                   : isCurrent
                                   ? "border-amber-600 bg-amber-50 text-amber-700"
-                                  : "border-gray-200 bg-gray-50 text-gray-500"
+                                  : "border-stone-200 bg-stone-100 text-warm-brown"
                               }`}
                             >
                               {isCompleted ? (
@@ -207,10 +207,10 @@ export function CourseOverview({ course, authors, onBack, onStartLesson, complet
                               )}
                             </div>
                             <div className="flex-1 min-w-0">
-                              <div className={`text-sm ${isCurrent ? "font-bold text-gray-900" : "font-semibold text-gray-700"}`}>
+                              <div className={`text-sm ${isCurrent ? "font-bold text-earth" : "font-semibold text-[color:var(--text-body)]"}`}>
                                 {lesson.title}
                               </div>
-                              <div className="text-xs text-gray-400 mt-0.5">
+                              <div className="text-xs text-[color:var(--text-faint)] mt-0.5">
                                 {lesson.duration || "~"}{isCurrent ? " · Current" : ""}
                               </div>
                             </div>
@@ -232,7 +232,7 @@ export function CourseOverview({ course, authors, onBack, onStartLesson, complet
       </div>
 
       {/* CTA */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-5 py-4 z-50" style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}>
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-stone-200 px-5 py-4 z-50" style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}>
         <button
           onClick={() => nextLesson && onStartLesson(course, nextLesson)}
           className="w-full py-3.5 rounded-lg text-white text-[15px] font-bold cursor-pointer transition-colors"

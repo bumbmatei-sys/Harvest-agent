@@ -78,13 +78,13 @@ const PartnerWithUsTab: React.FC = () => {
       </div>
 
       {/* One-Time / Monthly Toggle */}
-      <div className="bg-white rounded-xl p-1 flex mb-8 shadow-sm border border-gray-100">
+      <div className="bg-white rounded-xl p-1 flex mb-8 shadow-sm border border-stone-200">
         <button
           onClick={() => setDonationType('one-time')}
           className={`flex-1 py-3 rounded-lg text-sm font-bold transition-colors ${
             donationType === 'one-time'
               ? 'bg-gold text-white'
-              : 'text-[#64748b] hover:bg-gray-50'
+              : 'text-[#64748b] hover:bg-stone-100'
           }`}
         >
           One-Time
@@ -94,7 +94,7 @@ const PartnerWithUsTab: React.FC = () => {
           className={`flex-1 py-3 rounded-lg text-sm font-bold transition-colors flex items-center justify-center gap-2 ${
             donationType === 'monthly'
               ? 'bg-gold text-white'
-              : 'text-[#64748b] hover:bg-gray-50'
+              : 'text-[#64748b] hover:bg-stone-100'
           }`}
         >
           Monthly <Heart size={14} className={donationType === 'monthly' ? 'fill-white' : 'fill-[#64748b]'} />
@@ -121,7 +121,7 @@ const PartnerWithUsTab: React.FC = () => {
             </button>
           ))}
         </div>
-        <div className="bg-white rounded-xl p-4 flex items-center shadow-sm border border-gray-100">
+        <div className="bg-white rounded-xl p-4 flex items-center shadow-sm border border-stone-200">
           <span className="text-[#94a3b8] font-bold mr-2">$</span>
           <input
             type="number"
@@ -178,7 +178,7 @@ const PartnerWithUsTab: React.FC = () => {
             ${amount || '0'}
             {donationType === 'monthly' && <span className="text-base font-semibold text-[#64748b]"> /mo</span>}
           </div>
-          <div className="mt-5 border-t border-b border-gray-100">
+          <div className="mt-5 border-t border-b border-stone-200">
             <div className="flex items-center justify-between py-2.5 text-sm">
               <span className="text-[#64748b]">Frequency</span>
               <b className="text-[#0b1121] font-semibold">{donationType === 'monthly' ? 'Monthly' : 'One-time'}</b>
