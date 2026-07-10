@@ -122,7 +122,14 @@ const PublicEventRegistration: React.FC<PublicEventRegistrationProps> = ({
 
   const selectedTicket = ticketTypes.find((t) => t.id === selectedTicketId) || null;
   const discountAmount = discountResult?.discountAmount || 0;
-  const total = selectedTicket ? Math.max(0, selectedTicket.price - discountAmount) : 0;
+  // Headcount = the primary registrant + every named additional attendee. Each
+  // attendee takes a seat and is charged for a ticket (BUG 5) — the total is
+  // price × headcount − discount, NOT a single ticket price. This mirrors the
+  // server's quantity math in /api/event-registration/submit exactly.
+  const attendeeCount = additional.filter((a) => a.name.trim()).length;
+  const quantity = 1 + attendeeCount;
+  const gross = selectedTicket ? selectedTicket.price * quantity : 0;
+  const total = Math.max(0, gross - discountAmount);
 
   const inputCls = 'w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:border-transparent';
   const ring = { '--tw-ring-color': primaryColor } as React.CSSProperties;
@@ -428,7 +435,13 @@ const PublicEventRegistration: React.FC<PublicEventRegistrationProps> = ({
         {/* Order summary */}
         {selectedTicket && (
           <div className="mt-5 bg-gray-50 rounded-xl p-4 text-sm">
-            <div className="flex justify-between text-gray-600"><span>{selectedTicket.name}</span><span>{fmtCents(selectedTicket.price)}</span></div>
+            <div className="flex justify-between text-gray-600">
+              <span>{selectedTicket.name}{quantity > 1 ? ` × ${quantity}` : ''}</span>
+              <span>{fmtCents(gross)}</span>
+            </div>
+            {quantity > 1 && (
+              <p className="text-[11px] text-gray-400 mt-0.5">{quantity} tickets ({fmtCents(selectedTicket.price)} each)</p>
+            )}
             {discountAmount > 0 && (
               <div className="flex justify-between text-green-600 mt-1"><span>Discount</span><span>-{fmtCents(discountAmount)}</span></div>
             )}

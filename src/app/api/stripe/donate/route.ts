@@ -146,6 +146,12 @@ export async function POST(request: NextRequest) {
         },
         application_fee_percent: feePercent * 100,
         metadata: {
+          // `type: 'partnership'` lets the webhook's checkout.session.completed
+          // recognize this as a monthly partnership and write the donor's
+          // donationSubscriptionId/donationAmount/donationChurchName (BUG 3/4) —
+          // and intercept it BEFORE the plan-change path, which would otherwise
+          // read `plan` and cancel the tenant's real subscription.
+          type: 'partnership',
           tenantId,
           donationType,
           plan,
@@ -153,6 +159,9 @@ export async function POST(request: NextRequest) {
           donorName: donorName || '',
           donorEmail: effectiveDonorEmail,
           donorUserId,
+          // Church name for the donor's Profile partnership card (webhook falls
+          // back to the tenant doc's name if this is empty).
+          donationChurchName: tenantData.name || tenantData.displayName || '',
         },
       },
       success_url: `${returnBase}/?donation=success`,

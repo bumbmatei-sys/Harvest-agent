@@ -197,6 +197,73 @@ describe('POST /api/event-registration/submit — free tickets (unchanged)', () 
   });
 });
 
+describe('POST /api/event-registration/submit — multi-attendee quantity (BUG 5)', () => {
+  it('charges price × headcount and records quantity for a paid multi-attendee registration', async () => {
+    mockDocGet
+      .mockResolvedValueOnce({ exists: true, data: () => PAID_EVENT }) // event
+      .mockResolvedValueOnce({ exists: true, data: () => ({ stripeConnectAccountId: 'acct_T', plan: 'plus' }) }); // tenant
+
+    const res = await POST(makeRequest({ ...baseBody, additionalAttendees: [{ name: 'Bob Lee' }] }));
+    expect(res.status).toBe(200);
+
+    // 2 attendees × $50 = $100 charge; pending reg records quantity 2 (not 1).
+    expect(mockAdd).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'pending_payment', amount: 10000, quantity: 2 }),
+    );
+    // Destination charge AND platform fee (15% plus) both reflect the full headcount.
+    expect(mockCheckoutCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        payment_intent_data: expect.objectContaining({ application_fee_amount: 1500 }),
+        line_items: [expect.objectContaining({
+          price_data: expect.objectContaining({ unit_amount: 10000 }),
+        })],
+      }),
+    );
+  });
+
+  it('ignores blank additional-attendee rows (no phantom seats or charge)', async () => {
+    mockDocGet
+      .mockResolvedValueOnce({ exists: true, data: () => PAID_EVENT })
+      .mockResolvedValueOnce({ exists: true, data: () => ({ stripeConnectAccountId: 'acct_T', plan: 'plus' }) });
+
+    const res = await POST(makeRequest({ ...baseBody, additionalAttendees: [{ name: '   ' }, { name: '' }] }));
+    expect(res.status).toBe(200);
+    expect(mockAdd).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'pending_payment', amount: 5000, quantity: 1 }),
+    );
+  });
+
+  it('a free event still works with multiple attendees ($0, quantity reflects headcount)', async () => {
+    const freeEvent = { ...PAID_EVENT, ticketTypes: [{ id: 'tt1', name: 'Free', price: 0, capacity: null, order: 0 }] };
+    mockDocGet.mockResolvedValueOnce({ exists: true, data: () => freeEvent });
+
+    const res = await POST(makeRequest({ ...baseBody, additionalAttendees: [{ name: 'Bob' }, { name: 'Cara' }] }));
+    expect(res.status).toBe(200);
+    expect(mockAdd).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'confirmed', amount: 0, quantity: 3 }),
+    );
+    expect(mockCheckoutCreate).not.toHaveBeenCalled();
+  });
+
+  it('counts SEATS for capacity — a party that does not fit is rejected (no waitlist)', async () => {
+    const capEvent = {
+      ...PAID_EVENT,
+      ticketTypes: [{ id: 'tt1', name: 'General', price: 5000, capacity: 3, order: 0 }],
+      waitlistEnabled: false,
+    };
+    mockDocGet.mockResolvedValueOnce({ exists: true, data: () => capEvent }); // event
+    // 2 seats already confirmed (one couple). A new couple (2) → 2 + 2 = 4 > 3.
+    mockCollGet.mockResolvedValueOnce({
+      docs: [{ data: () => ({ ticketTypeId: 'tt1', status: 'confirmed', quantity: 2 }) }],
+    });
+
+    const res = await POST(makeRequest({ ...baseBody, additionalAttendees: [{ name: 'Bob' }] }));
+    expect(res.status).toBe(410);
+    expect((await res.json()).error).toMatch(/sold out/i);
+    expect(mockAdd).not.toHaveBeenCalled();
+  });
+});
+
 describe('POST /api/event-registration/submit — userId identity link', () => {
   const freeEvent = {
     ...PAID_EVENT,

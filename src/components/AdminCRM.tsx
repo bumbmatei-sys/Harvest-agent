@@ -7,9 +7,10 @@ import {
 } from 'lucide-react';
 import {
   collection, addDoc, deleteDoc, setDoc,
-  doc, serverTimestamp, Timestamp,
+  doc, serverTimestamp,
 } from 'firebase/firestore';
 import { db, auth } from '../firebase';
+import { toSafeDate, type DateLike } from '../utils/format-date';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { sortByTime, sortByString } from '../utils/query-helpers';
 import { notifyError } from '../utils/notify';
@@ -63,9 +64,13 @@ const STAGES: { id: PipelineStage; label: string; color: string; bg: string }[] 
 
 const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n);
 
-const fmtDate = (ts: Timestamp | null) => {
-  if (!ts) return '';
-  const d = ts.toDate();
+// Robust to EVERY date shape the CRM data actually contains — a Firestore
+// Timestamp, an ISO string (donation webhook, #119), a JS Date, epoch millis, or
+// null. Assuming `.toDate()` here is what threw "e.toDate is not a function" and
+// white-screened the whole CRM; toSafeDate normalizes all of them and never throws.
+const fmtDate = (ts: DateLike) => {
+  const d = toSafeDate(ts);
+  if (!d) return '';
   const diff = Date.now() - d.getTime();
   if (diff < 86400000) return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
