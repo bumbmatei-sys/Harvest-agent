@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { LayoutDashboard, Church, FileText, Rss, BrainCircuit, Inbox, GraduationCap, ChevronLeft, ChevronRight, ChevronDown, Building2, Settings, MoreHorizontal, Mail, Heart, Users, MessageSquare, Receipt, CalendarCheck, LogOut, ClipboardList, QrCode, Radio, ExternalLink, Link2, Crown, Palette, Bell, X } from 'lucide-react';
+import { LayoutDashboard, Church, FileText, Rss, BrainCircuit, Inbox, GraduationCap, ChevronLeft, ChevronRight, ChevronDown, Building2, Settings, MoreHorizontal, Mail, Heart, Users, MessageSquare, Receipt, CalendarCheck, ClipboardList, QrCode, Radio, ExternalLink, Link2, Palette, Bell, X } from 'lucide-react';
 import AdminBlog from './AdminBlog';
 import AdminPosts from './AdminPosts';
 import PlatformInbox from './PlatformInbox';
@@ -251,16 +251,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
   // ownerId is the buyer uid set by the Stripe webhook at tenant creation.
   const currentUid = auth.currentUser?.uid;
   const isOwner = !!currentUid && !!tenantData?.ownerId && currentUid === tenantData.ownerId;
-  const accountMenuProps = {
-    photoURL: userData?.photoURL ?? null,
-    displayName: userData?.displayName ?? null,
-    email: userData?.email ?? auth.currentUser?.email ?? null,
-    isOwner,
-    onOpenProfile: () => setShowProfile(true),
-    // Billing item is shown only to the owner (MyAccountMenu also guards on isOwner).
-    onOpenBilling: isOwner ? () => setShowBilling(true) : undefined,
-    onLogout: handleLogout,
-  };
 
   // Branding tab/page entitlement — keyed off the branding-family feature flags
   // (matches the old Settings branding gate). Used both in allTabs and the render
@@ -272,6 +262,25 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
   // admin) can reach the integrations/config screen. Branding lives in its own
   // tab (canBranding), so a branding-only admin reaches Branding, not Settings.
   const canSettings = hasFullAccess || !!perms.manageSettings;
+
+  // My Account menu props (top-right avatar) — assembled after the entitlement
+  // flags above so the menu can gate Settings the same way the drawer/sidebar do.
+  const accountMenuProps = {
+    photoURL: userData?.photoURL ?? null,
+    displayName: userData?.displayName ?? null,
+    email: userData?.email ?? auth.currentUser?.email ?? null,
+    isOwner,
+    onOpenProfile: () => setShowProfile(true),
+    // Settings item shows only when entitled (canSettings) — undefined hides the
+    // row, matching the More-drawer / desktop-sidebar Settings gate.
+    onOpenSettings: canSettings ? () => go('settings') : undefined,
+    // Billing item is shown only to the owner (MyAccountMenu also guards on isOwner).
+    onOpenBilling: isOwner ? () => setShowBilling(true) : undefined,
+    // Member-app shortcut (same one-shot-intent action the More drawer used). The
+    // menu row is mobile-only; desktop keeps its "Open member app" top-bar pill.
+    onGoToUserApp: handleViewApp,
+    onLogout: handleLogout,
+  };
 
   // The inbox is platform-only now (Contact / Feature / Bug reports go to the
   // platform owner). It shows ONLY for a super admin in the platform context
@@ -864,54 +873,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
                   );
                 })()}
 
-                {/* Divider */}
-                <div className="mx-4 my-2 border-t border-gray-100" />
-
-                {/* Upgrade Plan — gold accent; kept reachable above the action stack */}
-                <button
-                  onClick={() => go('upgrade')}
-                  className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors hover:bg-amber-50 text-left mb-2"
-                >
-                  <Crown size={16} style={{ color: 'var(--brand-color, #C9963A)' }} />
-                  <span className="text-sm font-semibold" style={{ color: 'var(--brand-color, #C9963A)' }}>
-                    Upgrade Plan
-                  </span>
-                  <ChevronRight size={14} className="ml-auto text-amber-400" />
-                </button>
-
-                {/* Divider */}
-                <div className="mx-4 my-2 border-t border-gray-100" />
-
-                {/* Action stack — Settings · Go to User App · Log Out, one consistent
-                    row style so the three read as a single block. */}
-                <button
-                  onClick={() => go('settings')}
-                  className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors hover:bg-gray-50 text-left"
-                >
-                  <Settings size={16} className="text-gray-500" />
-                  <span className="text-sm font-medium text-gray-800">Settings</span>
-                </button>
-
-                {/* Go to User App — gold accent; opens the member app and stays there
-                    (one-shot intent flag, see handleViewApp + App.tsx). */}
-                <button
-                  onClick={handleViewApp}
-                  className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors hover:bg-gray-50 text-left"
-                >
-                  <ExternalLink size={16} style={{ color: 'var(--brand-color, #C9963A)' }} />
-                  <span className="text-sm font-semibold" style={{ color: 'var(--brand-color, #C9963A)' }}>
-                    Go to User App
-                  </span>
-                </button>
-
-                {/* Log Out — the very last row of the drawer */}
-                <button
-                  onClick={handleLogout}
-                  className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors hover:bg-red-50 text-left mb-2"
-                >
-                  <LogOut size={16} className="text-red-500" />
-                  <span className="text-sm font-semibold text-red-600">Log Out</span>
-                </button>
+                {/* The drawer's bottom action stack is gone — it's nav tabs only now.
+                    Upgrade Plan was dropped (plan changes go through Billing → the
+                    Stripe portal); Settings, Go to User App and Log Out moved to the
+                    top-right profile menu (MyAccountMenu) to de-duplicate entry points. */}
               </div>
             </div>
             <style>{`@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }`}</style>
