@@ -2,10 +2,11 @@
 import React, { useState, useEffect } from 'react';
 import { Receipt, TrendingUp, Download, Search, DollarSign, FileText, Lock, Loader2, CheckCircle, AlertCircle, RefreshCw, ExternalLink, Link2 } from 'lucide-react';
 import {
-  collection, query, orderBy, onSnapshot, limit, Timestamp
+  collection, query, orderBy, onSnapshot, limit
 } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { db } from '../firebase';
+import { toSafeDate, type DateLike } from '../utils/format-date';
 import { getWriteTenantScope } from '../utils/tenant-scope';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { useTenantOptional } from '../contexts/TenantContext';
@@ -23,7 +24,8 @@ interface Invoice {
   description: string;
   relatedId: string;
   receiptNumber: string;
-  issuedAt: Timestamp | null;
+  // ISO string (donation webhook / event receipts) OR Timestamp — normalize before formatting.
+  issuedAt: DateLike;
   tenantName: string;
   pdfUrl: string | null;
   pdfPath?: string | null;
@@ -66,9 +68,12 @@ const STATUS_COLORS: Record<Invoice['status'], string> = {
 const fmt = (n: number, currency = 'usd') =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency: currency.toUpperCase(), maximumFractionDigits: 0 }).format(n);
 
-const fmtDate = (ts: Timestamp | null) => {
-  if (!ts) return '—';
-  return ts.toDate().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+const fmtDate = (ts: DateLike) => {
+  // The donation-receipt webhook writes issuedAt as an ISO string, so a bare
+  // .toDate() here throws the same "e.toDate is not a function" that crashed the CRM.
+  const d = toSafeDate(ts);
+  if (!d) return '—';
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 };
 
 interface AdminAccountingProps {
@@ -329,13 +334,13 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
 
   const now = new Date();
   const thisMonth = invoices.filter(inv => {
-    if (!inv.issuedAt) return false;
-    const d = inv.issuedAt.toDate();
+    const d = toSafeDate(inv.issuedAt);
+    if (!d) return false;
     return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
   });
   const thisYear = invoices.filter(inv => {
-    if (!inv.issuedAt) return false;
-    return inv.issuedAt.toDate().getFullYear() === now.getFullYear();
+    const d = toSafeDate(inv.issuedAt);
+    return !!d && d.getFullYear() === now.getFullYear();
   });
 
   const totalThisMonth = thisMonth.reduce((s, i) => s + i.amount, 0);
@@ -344,13 +349,15 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
 
   const availableYears = [...new Set(
     invoices
-      .filter(i => i.issuedAt)
-      .map(i => i.issuedAt!.toDate().getFullYear().toString())
+      .map(i => toSafeDate(i.issuedAt))
+      .filter((d): d is Date => d != null)
+      .map(d => d.getFullYear().toString())
   )].sort((a, b) => Number(b) - Number(a));
 
   const filtered = invoices.filter(inv => {
     const matchType = typeFilter === 'all' || inv.type === typeFilter;
-    const matchYear = yearFilter === 'all' || (inv.issuedAt && inv.issuedAt.toDate().getFullYear().toString() === yearFilter);
+    const issuedDate = toSafeDate(inv.issuedAt);
+    const matchYear = yearFilter === 'all' || (!!issuedDate && issuedDate.getFullYear().toString() === yearFilter);
     const matchSearch = !search ||
       inv.recipientName.toLowerCase().includes(search.toLowerCase()) ||
       inv.recipientEmail.toLowerCase().includes(search.toLowerCase()) ||

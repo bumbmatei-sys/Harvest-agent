@@ -104,13 +104,22 @@ export async function POST(request: NextRequest) {
       .where('eventId', '==', eventId)
       .limit(5000)
       .get();
-    const soldForType = regSnap.docs.filter((d) => {
+    // Capacity is counted in SEATS, not registrations: a registration for a couple
+    // holds `quantity` seats (BUG 5). Legacy rows with no `quantity` field count as 1.
+    const soldForType = regSnap.docs.reduce((sum, d) => {
       const r = d.data();
-      return r.ticketTypeId === ticketTypeId && r.status === 'confirmed';
-    }).length;
+      return r.ticketTypeId === ticketTypeId && r.status === 'confirmed'
+        ? sum + (Number(r.quantity) || 1)
+        : sum;
+    }, 0);
+
+    // Headcount for THIS registration = primary registrant + named additional
+    // attendees. Every attendee takes a seat and pays for a ticket.
+    const quantity = 1 + additionalAttendees.length;
 
     let waitlisted = false;
-    if (ticketType.capacity != null && soldForType >= ticketType.capacity) {
+    // The whole party is waitlisted/rejected together — a couple can't take half a seat.
+    if (ticketType.capacity != null && soldForType + quantity > ticketType.capacity) {
       if (event.waitlistEnabled) {
         waitlisted = true;
       } else {
@@ -136,7 +145,11 @@ export async function POST(request: NextRequest) {
       discountAmount = Math.min(discountAmount, ticketType.price);
     }
 
-    const amount = Math.max(0, ticketType.price - discountAmount);
+    // Charge = ticket price × headcount − discount (BUG 5). The discount is an
+    // order-level reduction computed from a single ticket price (matches
+    // apply-discount + the public page's displayed total). Never negative.
+    const gross = ticketType.price * quantity;
+    const amount = Math.max(0, gross - discountAmount);
     const ticketCode = Math.random().toString(36).slice(2, 10).toUpperCase();
 
     // A real seat that costs money must be PAID before it is confirmed. A
@@ -196,6 +209,7 @@ export async function POST(request: NextRequest) {
         status: 'pending_payment',
         waitlisted: false,
         amount,
+        quantity,
         discountCode: appliedCode ? appliedCode.code : null,
         discountAmount: discountAmount || 0,
         additionalAttendees,
@@ -218,11 +232,19 @@ export async function POST(request: NextRequest) {
       try {
         const session = await stripe.checkout.sessions.create({
           mode: 'payment',
+          // Single line item carrying the FULL headcount charge (price × quantity −
+          // discount). Keeping quantity:1 with the net unit_amount makes the
+          // destination charge and the platform fee exact even when a discount
+          // applies; the headcount is reflected in the amount and the line name.
           line_items: [
             {
               price_data: {
                 currency: 'usd',
-                product_data: { name: `${event.title} — ${ticketType.name}` },
+                product_data: {
+                  name: quantity > 1
+                    ? `${event.title} — ${ticketType.name} × ${quantity}`
+                    : `${event.title} — ${ticketType.name}`,
+                },
                 unit_amount: amount,
               },
               quantity: 1,
@@ -262,6 +284,7 @@ export async function POST(request: NextRequest) {
       status: waitlisted ? 'waitlisted' : 'confirmed',
       waitlisted: !!waitlisted,
       amount,
+      quantity,
       discountCode: appliedCode ? appliedCode.code : null,
       discountAmount: discountAmount || 0,
       additionalAttendees,

@@ -395,7 +395,8 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap 
  </div>
  <div>
  <p className="text-sm font-bold text-earth">
- ${donationAmount ? (donationAmount / 100).toFixed(0) : '—'} / month
+ {/* donationAmount is stored in DOLLARS (BUG 2) — display it directly. */}
+ ${donationAmount ? donationAmount.toFixed(0) : '—'} / month
  </p>
  {donationChurchName && (
  <p className="text-xs text-warm-brown">{donationChurchName}</p>
@@ -441,7 +442,8 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap 
  </div>
  <div className="flex-1">
  <p className="text-sm font-bold text-earth">Donor</p>
- <p className="text-xs text-warm-brown">${(totalDonated / 100).toFixed(0)} given</p>
+ {/* totalDonated is stored in DOLLARS (BUG 2) — display it directly. */}
+ <p className="text-xs text-warm-brown">${totalDonated.toFixed(0)} given</p>
  </div>
  <button
  onClick={onGoToPartner}

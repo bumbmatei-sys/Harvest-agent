@@ -97,15 +97,16 @@ describe('webhook payment_intent.succeeded — donation CRM linkage (ISSUE 5)', 
 
     // Member of this tenant with no manual contact → stamp the users doc so the CRM
     // synthetic row + profile show donor status. No duplicate donor contact created.
+    // totalDonated is stored in DOLLARS (BUG 2): $50 gift (5000 cents) → increment 50.
     expect(mockDocUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({ totalDonated: { __increment: 5000 } }),
+      expect.objectContaining({ totalDonated: { __increment: 50 } }),
     );
     const madeDonorContact = mockAdd.mock.calls.some(([arg]) => (arg as any)?.type === 'donor');
     expect(madeDonorContact).toBe(false);
     // CRM timeline activity carries tenantId (else useContactActivities filters it out)
-    // and attaches to the synthetic contact id (= the member's uid).
+    // and attaches to the synthetic contact id (= the member's uid). Amount in DOLLARS.
     expect(mockAdd).toHaveBeenCalledWith(
-      expect.objectContaining({ contactId: 'member1', tenantId: 't1', type: 'donation', amount: 5000 }),
+      expect.objectContaining({ contactId: 'member1', tenantId: 't1', type: 'donation', amount: 50 }),
     );
   });
 
@@ -121,8 +122,9 @@ describe('webhook payment_intent.succeeded — donation CRM linkage (ISSUE 5)', 
     mockCollGet.mockResolvedValueOnce({ docs: [existing] }); // contacts.where(userId==) hit
 
     await POST(makeRequest());
+    // totalDonated increment is DOLLARS (BUG 2): 5000 cents → 50.
     expect(existing.ref.update).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'both', totalDonated: { __increment: 5000 } }),
+      expect.objectContaining({ type: 'both', totalDonated: { __increment: 50 } }),
     );
   });
 
@@ -157,9 +159,10 @@ describe('webhook payment_intent.succeeded — donation CRM linkage (ISSUE 5)', 
     mockCollGet.mockResolvedValue({ docs: [] });
 
     await POST(makeRequest());
-    // Donation lands in the RECIPIENT tenant CRM as a donor contact, uid recorded…
+    // Donation lands in the RECIPIENT tenant CRM as a donor contact, uid recorded,
+    // totalDonated in DOLLARS (5000 cents → 50)…
     expect(mockAdd).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'donor', tenantId: 't1', userId: 'member2', email: 'x@y.co' }),
+      expect.objectContaining({ type: 'donor', tenantId: 't1', userId: 'member2', email: 'x@y.co', totalDonated: 50 }),
     );
     // …and the donor's own (t2) users doc is never stamped — no cross-tenant CRM leak.
     expect(mockDocUpdate).not.toHaveBeenCalled();

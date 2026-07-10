@@ -5,6 +5,7 @@ import { Resend } from 'resend';
 import { requireAdmin } from '@/lib/api-auth';
 import { adminDb, getReceiptsBucket } from '@/lib/firebase-admin';
 import { PLATFORM_TENANT_ID } from '@/utils/tenant-scope';
+import { toSafeDate } from '@/utils/format-date';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
@@ -185,7 +186,10 @@ export async function POST(request: NextRequest) {
     for (const doc of invoicesSnap.docs) {
       const inv = doc.data();
       if (inv.type !== 'donation_receipt') continue;
-      const issued = inv.issuedAt?.toDate ? inv.issuedAt.toDate() : null;
+      // issuedAt may be a Timestamp OR an ISO string (the donation webhook writes
+      // ISO). A bare `.toDate` check silently dropped every ISO-dated receipt, so
+      // statements came back empty; toSafeDate parses both shapes.
+      const issued = toSafeDate(inv.issuedAt);
       if (!issued || issued.getFullYear() !== year) continue;
       const donorEmail = (inv.recipientEmail || '').toLowerCase();
       if (!donorEmail) continue;

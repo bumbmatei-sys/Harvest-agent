@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { collection, query, where, getDocs, getDoc, doc, limit } from 'firebase/firestore';
 import { db } from '../../firebase';
-import type { Timestamp } from 'firebase/firestore';
+import type { DateLike } from '../../utils/format-date';
 import { sortByString, sortByTime } from '../../utils/query-helpers';
 import { PLATFORM_TENANT_ID, getTenantScope } from '../../utils/tenant-scope';
 
@@ -29,13 +29,16 @@ export interface Contact {
     country?: string;
   };
   notes: string;
-  tags: string[];
+  /** DOLLARS. Written by the donation webhook and the CRM manual-add in the same
+   *  unit; formatted directly by `fmt()` (no /100). See BUG 2 units fix. */
   totalDonated: number;
-  lastDonationAt: Timestamp | null;
-  memberSince: Timestamp | null;
-  createdAt: Timestamp | null;
+  // Date fields arrive in mixed shapes (Timestamp from client writes, ISO strings
+  // from the donation webhook) — DateLike + toSafeDate keep formatting crash-proof.
+  lastDonationAt: DateLike;
+  memberSince: DateLike;
+  createdAt: DateLike;
   createdBy: string;
-  updatedAt: Timestamp | null;
+  updatedAt: DateLike;
   tenantId?: string;
 }
 
@@ -44,8 +47,10 @@ export interface ContactActivity {
   contactId: string;
   type: 'note' | 'donation' | 'email' | 'call' | 'meeting';
   description: string;
+  /** DOLLARS for donation activities (webhook writes amount/100; manual-add writes
+   *  the admin-typed dollar figure). Formatted directly by `fmt()`. See BUG 2. */
   amount: number | null;
-  createdAt: Timestamp | null;
+  createdAt: DateLike;
   createdBy: string;
   tenantId?: string;
 }
