@@ -1,6 +1,10 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { CheckCircle2, Calendar, MapPin, Globe, Plus, X } from 'lucide-react';
+import type { User } from 'firebase/auth';
+import { auth } from '../firebase';
+import { onAuthStateChanged } from 'firebase/auth';
+import { authFetch } from '../utils/auth-fetch';
 
 interface TicketType {
   id: string;
@@ -73,6 +77,30 @@ const PublicEventRegistration: React.FC<PublicEventRegistrationProps> = ({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<{ ticketCode: string; waitlisted: boolean } | null>(null);
+
+  // This same public page also renders inside the logged-in app. When an app
+  // user is signed in we (a) pre-fill their name/email from the account and
+  // (b) send their Firebase ID token on submit so the server can stamp the
+  // registration with their verified uid — linking the ticket to "My Events".
+  // Logged-out visitors see the untouched manual form and are NEVER forced to
+  // sign in; the public registration flow is unchanged for them.
+  const [authUser, setAuthUser] = useState<User | null>(null);
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (u) => {
+      setAuthUser(u);
+      if (u) {
+        // Pre-fill, but never clobber anything the visitor already typed.
+        setEmail((prev) => prev || (u.email || ''));
+        const displayName = (u.displayName || '').trim();
+        if (displayName) {
+          const [first, ...rest] = displayName.split(/\s+/);
+          setFirstName((prev) => prev || first || '');
+          setLastName((prev) => prev || rest.join(' ') || '');
+        }
+      }
+    });
+    return () => unsub();
+  }, []);
 
   // When Stripe Checkout redirects back to /event/{id}?registration=success|cancel,
   // show the matching state. The QR ticket for a paid registration arrives by
@@ -147,21 +175,29 @@ const PublicEventRegistration: React.FC<PublicEventRegistrationProps> = ({
     setError(null);
     setSubmitting(true);
     try {
-      const resp = await fetch('/api/event-registration/submit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tenantId,
-          eventId: event.id,
-          ticketTypeId: selectedTicket.id,
-          firstName,
-          lastName,
-          email,
-          phone: phone || undefined,
-          additionalAttendees: additional.filter((a) => a.name.trim()).map((a) => ({ name: a.name.trim(), email: a.email.trim() || undefined })),
-          discountCode: discountResult ? discountInput.trim() : undefined,
-        }),
-      });
+      const payload = {
+        tenantId,
+        eventId: event.id,
+        ticketTypeId: selectedTicket.id,
+        firstName,
+        lastName,
+        email,
+        phone: phone || undefined,
+        additionalAttendees: additional.filter((a) => a.name.trim()).map((a) => ({ name: a.name.trim(), email: a.email.trim() || undefined })),
+        discountCode: discountResult ? discountInput.trim() : undefined,
+      };
+      // Signed-in → authFetch attaches the ID token so the server links the reg
+      // to the verified uid. Signed-out → plain fetch, no token, userId stays null.
+      const resp = authUser && auth.currentUser
+        ? await authFetch('/api/event-registration/submit', {
+            method: 'POST',
+            body: JSON.stringify(payload),
+          })
+        : await fetch('/api/event-registration/submit', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
       const data = await resp.json().catch(() => ({}));
       if (!resp.ok) throw new Error(data.error || 'Registration failed');
       // Paid ticket → the server created a Stripe Checkout session. Redirect there;
@@ -313,6 +349,14 @@ const PublicEventRegistration: React.FC<PublicEventRegistrationProps> = ({
                 );
               })}
             </div>
+          </div>
+        )}
+
+        {/* Signed-in hint — the ticket links to this account's "My Events". */}
+        {authUser && (
+          <div className="mb-4 flex items-center gap-2 text-xs text-gray-500 bg-gray-50 rounded-xl px-3 py-2">
+            <CheckCircle2 size={14} style={{ color: primaryColor }} />
+            <span>Registering as <span className="font-semibold text-gray-700">{authUser.email}</span> — your ticket will appear in My Events.</span>
           </div>
         )}
 

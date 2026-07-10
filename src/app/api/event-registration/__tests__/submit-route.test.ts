@@ -6,6 +6,10 @@ const { mockCheckoutCreate } = vi.hoisted(() => ({
   mockCheckoutCreate: vi.fn(),
 }));
 
+const { mockVerifyAuth } = vi.hoisted(() => ({
+  mockVerifyAuth: vi.fn(),
+}));
+
 const { mockDocGet, mockDocSet, mockDocUpdate, mockDocDelete, mockCollGet, mockAdd } = vi.hoisted(() => ({
   mockDocGet: vi.fn(),
   mockDocSet: vi.fn().mockResolvedValue(undefined),
@@ -47,6 +51,9 @@ vi.mock('stripe', () => ({
 vi.mock('@/lib/firebase-admin', () => ({
   adminDb: { collection: vi.fn(() => makeCollRef()) },
 }));
+
+// Identity link is resolved from the verified token, never the request body.
+vi.mock('@/lib/api-auth', () => ({ verifyAuth: mockVerifyAuth }));
 
 vi.mock('firebase-admin/firestore', () => ({
   FieldValue: {
@@ -90,6 +97,8 @@ beforeEach(() => {
   // .add() returns a DocumentReference (has .id AND .delete() for rollback).
   mockAdd.mockResolvedValue({ id: 'pending1', delete: mockDocDelete });
   mockCheckoutCreate.mockResolvedValue({ url: 'https://checkout.stripe.test/cs_1' });
+  // Default: logged-out visitor (no token) → verifyAuth returns null.
+  mockVerifyAuth.mockResolvedValue(null);
 });
 
 describe('POST /api/event-registration/submit — paid tickets', () => {
@@ -185,5 +194,67 @@ describe('POST /api/event-registration/submit — free tickets (unchanged)', () 
     expect(body.success).toBe(true);
     expect(mockAdd).toHaveBeenCalledWith(expect.objectContaining({ status: 'confirmed', amount: 0 }));
     expect(mockCheckoutCreate).not.toHaveBeenCalled();
+  });
+});
+
+describe('POST /api/event-registration/submit — userId identity link', () => {
+  const freeEvent = {
+    ...PAID_EVENT,
+    ticketTypes: [{ id: 'tt1', name: 'Free', price: 0, capacity: null, order: 0 }],
+  };
+
+  it('stamps the VERIFIED userId on a free confirmed registration when authenticated', async () => {
+    mockVerifyAuth.mockResolvedValue({ uid: 'user_9', email: 'sam@example.com' });
+    mockDocGet.mockResolvedValueOnce({ exists: true, data: () => freeEvent });
+
+    const res = await POST(makeRequest(baseBody));
+    expect(res.status).toBe(200);
+    expect(mockAdd).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'confirmed', amount: 0, userId: 'user_9' }),
+    );
+  });
+
+  it('stamps the verified userId on the pending doc AND the Checkout metadata for a paid ticket', async () => {
+    mockVerifyAuth.mockResolvedValue({ uid: 'user_9', email: 'sam@example.com' });
+    mockDocGet
+      .mockResolvedValueOnce({ exists: true, data: () => PAID_EVENT }) // event
+      .mockResolvedValueOnce({ exists: true, data: () => ({ stripeConnectAccountId: 'acct_T', plan: 'plus' }) }); // tenant
+
+    const res = await POST(makeRequest(baseBody));
+    expect(res.status).toBe(200);
+
+    // Pending reg carries the uid…
+    expect(mockAdd).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'pending_payment', userId: 'user_9' }),
+    );
+    // …and so does the Checkout metadata, so the webhook keeps it on confirm.
+    expect(mockCheckoutCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: expect.objectContaining({ userId: 'user_9' }),
+        payment_intent_data: expect.objectContaining({
+          metadata: expect.objectContaining({ userId: 'user_9' }),
+        }),
+      }),
+    );
+  });
+
+  it('leaves userId null for a logged-out registration (public path unchanged)', async () => {
+    mockVerifyAuth.mockResolvedValue(null);
+    mockDocGet.mockResolvedValueOnce({ exists: true, data: () => freeEvent });
+
+    const res = await POST(makeRequest(baseBody));
+    expect(res.status).toBe(200);
+    expect(mockAdd).toHaveBeenCalledWith(expect.objectContaining({ status: 'confirmed', userId: null }));
+  });
+
+  it('NEVER trusts a client-sent userId — only the verified token counts', async () => {
+    mockVerifyAuth.mockResolvedValue(null); // no valid token
+    mockDocGet.mockResolvedValueOnce({ exists: true, data: () => freeEvent });
+
+    // Attacker tries to inject someone else's uid in the body.
+    const res = await POST(makeRequest({ ...baseBody, userId: 'victim_uid' }));
+    expect(res.status).toBe(200);
+    expect(mockAdd).toHaveBeenCalledWith(expect.objectContaining({ userId: null }));
+    expect(mockAdd).not.toHaveBeenCalledWith(expect.objectContaining({ userId: 'victim_uid' }));
   });
 });

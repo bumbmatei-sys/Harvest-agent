@@ -100,6 +100,35 @@ describe('webhook — paid event ticket confirmation', () => {
     expect(mockRefundsCreate).not.toHaveBeenCalled();
   });
 
+  it('retains the userId from the pending doc on confirm (links to My Events)', async () => {
+    mockConstructEvent.mockReturnValue(makeEvent('checkout.session.completed', completedSession()));
+    mockDocGet
+      .mockResolvedValueOnce({ exists: false }) // dedup → new
+      .mockResolvedValueOnce({ exists: true, data: () => ({ status: 'pending_payment', email: 'a@b.co', firstName: 'Sam', ticketCode: 'ABC123', amount: 5000, userId: 'user_9' }) }) // reg (has uid)
+      .mockResolvedValueOnce({ exists: true, data: () => ({ title: 'Gala', ticketTypes: [{ id: 'tt1', name: 'GA', capacity: null }] }) }); // event
+
+    const res = await POST(makeRequest());
+    expect(res.status).toBe(200);
+    expect(mockDocUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'confirmed', userId: 'user_9' }),
+    );
+  });
+
+  it('restores the userId from Checkout metadata when the pending doc lacks it', async () => {
+    mockConstructEvent.mockReturnValue(makeEvent('checkout.session.completed',
+      completedSession({ metadata: { ...REG_META, userId: 'meta_user' } })));
+    mockDocGet
+      .mockResolvedValueOnce({ exists: false }) // dedup → new
+      .mockResolvedValueOnce({ exists: true, data: () => ({ status: 'pending_payment', email: 'a@b.co', ticketCode: 'ABC123', amount: 5000 }) }) // reg (no uid)
+      .mockResolvedValueOnce({ exists: true, data: () => ({ title: 'Gala', ticketTypes: [{ id: 'tt1', name: 'GA', capacity: null }] }) }); // event
+
+    const res = await POST(makeRequest());
+    expect(res.status).toBe(200);
+    expect(mockDocUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'confirmed', userId: 'meta_user' }),
+    );
+  });
+
   it('does NOT re-confirm on redelivery (webhook_events dedup)', async () => {
     mockConstructEvent.mockReturnValue(makeEvent('checkout.session.completed', completedSession()));
     mockDocGet.mockResolvedValueOnce({ exists: true }); // already processed

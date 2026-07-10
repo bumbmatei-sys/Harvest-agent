@@ -338,11 +338,17 @@ async function finalizeEventRegistration(stripe: Stripe, session: Stripe.Checkou
   // ── Confirm the seat. This flip is the money-critical write; everything after
   // it is best-effort, so a transient failure there won't un-confirm a paid seat
   // (and a redelivery no-ops on the status guard above). ──
+  // Retain the logged-in user's uid on the confirmed reg so it shows in their
+  // in-app "My Events". The pending doc already carries it (submit stamps the
+  // verified uid), and .update() leaves it intact — but we also restore it from
+  // the Checkout metadata as a belt-and-suspenders. '' metadata = logged-out.
+  const linkedUserId = reg.userId || meta.userId || null;
   await regRef.update({
     status: 'confirmed',
     waitlisted: false,
     stripePaymentIntentId: paymentIntentId,
     amountPaid,
+    ...(linkedUserId ? { userId: linkedUserId } : {}),
     confirmedAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   });
