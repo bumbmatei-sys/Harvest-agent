@@ -277,7 +277,12 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack }) => {
 
   const handleComment = async (postId: string) => {
     const text = (commentInputs[postId] || '').trim();
-    if (!text || text.length > 280) return;
+    if (!text) return;
+    if (text.length > 280) {
+      setErrorMessage('Comment is too long (280 character max).');
+      setTimeout(() => setErrorMessage(null), 3000);
+      return;
+    }
     const user = auth.currentUser;
     if (!user) {
       setErrorMessage('Please sign in to comment');
@@ -296,7 +301,12 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack }) => {
       });
       setCommentInputs(prev => ({ ...prev, [postId]: '' }));
     } catch (error) {
+      // A rejected write is otherwise silent — Firestore's latency compensation
+      // shows the comment locally, then rolls it back ("appears then disappears").
+      // Surface it so the member knows the comment didn't post.
       try { handleFirestoreError(error, OperationType.WRITE, 'comments'); } catch (e) { console.error(e); }
+      setErrorMessage("Couldn't post your comment. Please try again.");
+      setTimeout(() => setErrorMessage(null), 3000);
     }
   };
 

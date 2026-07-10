@@ -57,6 +57,9 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap 
  const [donationAmount, setDonationAmount] = useState<number | null>(null);
  const [donationChurchName, setDonationChurchName] = useState<string | null>(null);
  const [donationSubscriptionId, setDonationSubscriptionId] = useState<string | null>(null);
+ // Lifetime giving stamped on the user doc by the donation webhook — reflects
+ // one-time gifts too (donationSubscriptionId only covers recurring partnerships).
+ const [totalDonated, setTotalDonated] = useState<number>(0);
  const [isCancelingPartnership, setIsCancelingPartnership] = useState(false);
  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
@@ -154,6 +157,7 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap 
    setDonationAmount(data.donationAmount || null);
    setDonationChurchName(data.donationChurchName || null);
    setDonationSubscriptionId(data.donationSubscriptionId || null);
+   setTotalDonated(Number(data.totalDonated) || 0);
  } else {
  setUserName(auth.currentUser?.displayName || 'User');
  }
@@ -424,6 +428,24 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap 
  <X size={16} className="text-red-400" />
  </button>
  )}
+ </div>
+ ) : totalDonated > 0 ? (
+ <div>
+ <div className="flex items-center gap-3">
+ <div className="w-7 h-7 rounded-full flex items-center justify-center bg-yellow-50">
+ <HeartHandshake size={16} className="text-yellow-500" />
+ </div>
+ <div className="flex-1">
+ <p className="text-sm font-bold text-earth">Donor</p>
+ <p className="text-xs text-warm-brown">${(totalDonated / 100).toFixed(0)} given</p>
+ </div>
+ <button
+ onClick={onGoToPartner}
+ className="text-sm font-bold text-gold"
+ >
+ Give again →
+ </button>
+ </div>
  </div>
  ) : (
  <div className="text-center py-2">

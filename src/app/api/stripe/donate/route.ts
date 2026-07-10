@@ -3,8 +3,13 @@ import type { NextRequest } from 'next/server';
 import Stripe from 'stripe';
 import { adminDb } from '@/lib/firebase-admin';
 import { PLATFORM_FEE_MAP as FEE_MAP } from '@/lib/stripe-config';
+import { verifyAuth } from '@/lib/api-auth';
 
 export const dynamic = 'force-dynamic';
+
+// The platform/apex "tenant" is not a real subdomain — donations to it stay on
+// the apex. Any other tenantId is a live subdomain (tenants/{id}.id == subdomain).
+const PLATFORM_TENANT_ID = process.env.NEXT_PUBLIC_PLATFORM_TENANT_ID || 'harvest';
 
 export async function POST(request: NextRequest) {
   try {
@@ -25,6 +30,15 @@ export async function POST(request: NextRequest) {
     if (!amount || !tenantId || !donationType) {
       return NextResponse.json({ error: 'Missing required fields: amount, tenantId, donationType' }, { status: 400 });
     }
+
+    // Optional auth: this endpoint is public (anonymous/cross-church giving), but
+    // an in-app donor sends a Bearer token (authFetch). When present, capture their
+    // account email + uid so the webhook can link the donation to their CRM contact
+    // and move them member→donor. Falls back to the body's donorEmail for anonymous
+    // donors. Without this, pi.receipt_email is null and CRM linkage never fires.
+    const authedUser = await verifyAuth(request);
+    const effectiveDonorEmail = (donorEmail || authedUser?.email || '').trim();
+    const donorUserId = authedUser?.uid || '';
 
     // Validate donation amount (Stripe minimum $0.50, max $100,000)
     if (typeof amount !== 'number' || amount < 50 || amount > 10000000) {
@@ -51,7 +65,14 @@ export async function POST(request: NextRequest) {
     const feePercent = FEE_MAP[plan] ?? 0;
     const applicationFeeAmount = Math.round(amount * feePercent);
 
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://theharvest.app';
+    // Return the donor to the TENANT'S subdomain after checkout, not the apex.
+    // Same bug class as the Connect callback fix (#114): building from
+    // NEXT_PUBLIC_APP_URL drops tenant context (bumb.theharvest.app → theharvest.app).
+    // The platform/apex "tenant" has no real subdomain, so it stays on the apex.
+    const apexBase = process.env.NEXT_PUBLIC_APP_URL || 'https://theharvest.app';
+    const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'theharvest.app';
+    const isPlatform = tenantId === PLATFORM_TENANT_ID;
+    const returnBase = isPlatform ? apexBase : `https://${tenantId}.${rootDomain}`;
 
     if (donationType === 'one-time') {
       const session = await stripe.checkout.sessions.create({
@@ -79,11 +100,16 @@ export async function POST(request: NextRequest) {
             donationType,
             campaignId: campaignId || '',
             donorName: donorName || '',
+            // Donor identity for CRM linkage in the webhook (payment_intent.succeeded).
+            // donorUserId lets a logged-in member be matched by uid (survives email
+            // changes) and stamped as donor; donorEmail is the fallback / anonymous key.
+            donorEmail: effectiveDonorEmail,
+            donorUserId,
           },
         },
-        success_url: `${baseUrl}/?donation=success`,
-        cancel_url: `${baseUrl}/?donation=cancel`,
-        customer_email: donorEmail || undefined,
+        success_url: `${returnBase}/?donation=success`,
+        cancel_url: `${returnBase}/?donation=cancel`,
+        customer_email: effectiveDonorEmail || undefined,
         metadata: {
           tenantId,
           donationType,
@@ -125,11 +151,13 @@ export async function POST(request: NextRequest) {
           plan,
           campaignId: campaignId || '',
           donorName: donorName || '',
+          donorEmail: effectiveDonorEmail,
+          donorUserId,
         },
       },
-      success_url: `${baseUrl}/?donation=success`,
-      cancel_url: `${baseUrl}/?donation=cancel`,
-      customer_email: donorEmail || undefined,
+      success_url: `${returnBase}/?donation=success`,
+      cancel_url: `${returnBase}/?donation=cancel`,
+      customer_email: effectiveDonorEmail || undefined,
     };
     const session = await stripe.checkout.sessions.create(subParams as any);
 
