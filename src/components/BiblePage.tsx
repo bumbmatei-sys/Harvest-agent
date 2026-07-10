@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 
 // ─────────────────────────────────────────────
 // HARVEST — Bible Page
-// API: bible-api.com (no key, CORS enabled)
+// API: HelloAO Free Use Bible API (bible.helloao.org) — no key, no rate limits, MIT-licensed
 // Tailwind CSS, Inter + Crimson Pro
 // ─────────────────────────────────────────────
 
@@ -13,34 +13,56 @@ const GOLD_LIGHT = "color-mix(in srgb, var(--brand-color, #C9963A) 12%, white)";
 // ── Types ──────────────────────────────────────
 type Tab = "read" | "search";
 type HighlightColor = "gold" | "green" | "blue" | "pink";
-type Language = "English" | "Portuguese" | "Romanian" | "Maori" | "Cherokee";
 
-const TRANSLATIONS_BY_LANGUAGE: Record<Language, { id: string; name: string }[]> = {
+const HELLOAO_API_BASE = "https://bible.helloao.org/api";
+const DEFAULT_TRANSLATION = "BSB"; // Berean Standard Bible — modern, public domain
+const TRANSLATIONS_CACHE_KEY = "harvest-bible-translations-v1";
+
+// Small built-in list used only if the live translation list fails to load.
+const FALLBACK_TRANSLATIONS: Record<string, { id: string; name: string }[]> = {
   English: [
-    { id: "web", name: "WEB" }, { id: "kjv", name: "KJV" }, { id: "asv", name: "ASV" },
-    { id: "ylt", name: "YLT" }, { id: "darby", name: "DARBY" }, { id: "webster", name: "WEBSTER" },
-    { id: "bbe", name: "BBE" }, { id: "oeb-us", name: "OEB-US" }, { id: "oeb-cw", name: "OEB-CW" },
-    { id: "webbe", name: "WEBBE" },
+    { id: "BSB", name: "BSB" }, { id: "WEB", name: "WEB" }, { id: "KJV", name: "KJV" },
+    { id: "ASV", name: "ASV" }, { id: "WEBBE", name: "WEBBE" },
   ],
-  Portuguese: [{ id: "almeida", name: "Almeida" }],
-  Romanian: [{ id: "rccv", name: "RCCV" }],
-  Maori: [{ id: "maori", name: "Maori" }],
-  Cherokee: [{ id: "cherokee", name: "Cherokee" }],
 };
 
-const getTranslationName = (id: string) => {
-  for (const lang of Object.values(TRANSLATIONS_BY_LANGUAGE)) {
-    const found = lang.find((t) => t.id === id);
-    if (found) return found.name;
-  }
-  return id.toUpperCase();
-};
+// English first, then alphabetical — keeps the (now much longer) language list scannable.
+const sortedLanguageEntries = (byLanguage: Record<string, { id: string; name: string }[]>) =>
+  Object.entries(byLanguage).sort(([a], [b]) => (a === "English" ? -1 : b === "English" ? 1 : a.localeCompare(b)));
 
-interface ApiVerse { book_id: string; book_name: string; chapter: number; verse: number; text: string; }
-interface ApiResponse { reference: string; verses: ApiVerse[]; text: string; translation_id: string; translation_name: string; }
+// ── HelloAO response shapes ─────────────────────
+// Verified against packages/free-use-bible-api/types.gen.ts and
+// parser/__snapshots__/usfm-parser.spec.ts.snap in github.com/HelloAOLab/bible-api
+// (bible.helloao.org itself is unreachable from this sandbox's network policy).
+interface HelloAoTranslation {
+  id: string; name: string; englishName: string; shortName?: string;
+  language: string; languageName?: string; languageEnglishName?: string; licenseUrl?: string;
+}
+interface HelloAoTranslationsResponse { translations: HelloAoTranslation[]; }
+
+type HelloAoVerseContentItem =
+  | string
+  | { text: string; poem?: number; wordsOfJesus?: boolean }
+  | { heading: string }
+  | { lineBreak: true }
+  | { noteId: number };
+
+interface HelloAoChapterVerseItem { type: "verse"; number: number; content: HelloAoVerseContentItem[]; }
+type HelloAoChapterContentItem =
+  | HelloAoChapterVerseItem
+  | { type: "heading"; content: string[] }
+  | { type: "line_break" }
+  | { type: "hebrew_subtitle"; content: HelloAoVerseContentItem[] };
+
+interface HelloAoChapterResponse {
+  chapter: { number: number; content: HelloAoChapterContentItem[] };
+  translation: HelloAoTranslation;
+  book: { id: string; name: string };
+}
+
 interface Verse { number: number; text: string; }
 interface VerseAction { verse: Verse; book: string; chapter: number; }
-interface BookMeta { name: string; id: string; chapters: number; testament: "OT" | "NT"; }
+interface BookMeta { name: string; id: string; helloId: string; chapters: number; testament: "OT" | "NT"; }
 
 // ── Highlight colors ───────────────────────────
 const HIGHLIGHT_COLORS: Record<HighlightColor, string> = {
@@ -59,55 +81,93 @@ function saveHighlights(map: Map<string, HighlightColor>): void {
 
 // ── Bible books ────────────────────────────────
 const BOOKS: BookMeta[] = [
-  { name: "Genesis", id: "genesis", chapters: 50, testament: "OT" }, { name: "Exodus", id: "exodus", chapters: 40, testament: "OT" },
-  { name: "Leviticus", id: "leviticus", chapters: 27, testament: "OT" }, { name: "Numbers", id: "numbers", chapters: 36, testament: "OT" },
-  { name: "Deuteronomy", id: "deuteronomy", chapters: 34, testament: "OT" }, { name: "Joshua", id: "joshua", chapters: 24, testament: "OT" },
-  { name: "Judges", id: "judges", chapters: 21, testament: "OT" }, { name: "Ruth", id: "ruth", chapters: 4, testament: "OT" },
-  { name: "1 Samuel", id: "1+samuel", chapters: 31, testament: "OT" }, { name: "2 Samuel", id: "2+samuel", chapters: 24, testament: "OT" },
-  { name: "1 Kings", id: "1+kings", chapters: 22, testament: "OT" }, { name: "2 Kings", id: "2+kings", chapters: 25, testament: "OT" },
-  { name: "1 Chronicles", id: "1+chronicles", chapters: 29, testament: "OT" }, { name: "2 Chronicles", id: "2+chronicles", chapters: 36, testament: "OT" },
-  { name: "Ezra", id: "ezra", chapters: 10, testament: "OT" }, { name: "Nehemiah", id: "nehemiah", chapters: 13, testament: "OT" },
-  { name: "Esther", id: "esther", chapters: 10, testament: "OT" }, { name: "Job", id: "job", chapters: 42, testament: "OT" },
-  { name: "Psalms", id: "psalms", chapters: 150, testament: "OT" }, { name: "Proverbs", id: "proverbs", chapters: 31, testament: "OT" },
-  { name: "Ecclesiastes", id: "ecclesiastes", chapters: 12, testament: "OT" }, { name: "Song of Solomon", id: "song+of+solomon", chapters: 8, testament: "OT" },
-  { name: "Isaiah", id: "isaiah", chapters: 66, testament: "OT" }, { name: "Jeremiah", id: "jeremiah", chapters: 52, testament: "OT" },
-  { name: "Lamentations", id: "lamentations", chapters: 5, testament: "OT" }, { name: "Ezekiel", id: "ezekiel", chapters: 48, testament: "OT" },
-  { name: "Daniel", id: "daniel", chapters: 12, testament: "OT" }, { name: "Hosea", id: "hosea", chapters: 14, testament: "OT" },
-  { name: "Joel", id: "joel", chapters: 3, testament: "OT" }, { name: "Amos", id: "amos", chapters: 9, testament: "OT" },
-  { name: "Obadiah", id: "obadiah", chapters: 1, testament: "OT" }, { name: "Jonah", id: "jonah", chapters: 4, testament: "OT" },
-  { name: "Micah", id: "micah", chapters: 7, testament: "OT" }, { name: "Nahum", id: "nahum", chapters: 3, testament: "OT" },
-  { name: "Habakkuk", id: "habakkuk", chapters: 3, testament: "OT" }, { name: "Zephaniah", id: "zephaniah", chapters: 3, testament: "OT" },
-  { name: "Haggai", id: "haggai", chapters: 2, testament: "OT" }, { name: "Zechariah", id: "zechariah", chapters: 14, testament: "OT" },
-  { name: "Malachi", id: "malachi", chapters: 4, testament: "OT" },
-  { name: "Matthew", id: "matthew", chapters: 28, testament: "NT" }, { name: "Mark", id: "mark", chapters: 16, testament: "NT" },
-  { name: "Luke", id: "luke", chapters: 24, testament: "NT" }, { name: "John", id: "john", chapters: 21, testament: "NT" },
-  { name: "Acts", id: "acts", chapters: 28, testament: "NT" }, { name: "Romans", id: "romans", chapters: 16, testament: "NT" },
-  { name: "1 Corinthians", id: "1+corinthians", chapters: 16, testament: "NT" }, { name: "2 Corinthians", id: "2+corinthians", chapters: 13, testament: "NT" },
-  { name: "Galatians", id: "galatians", chapters: 6, testament: "NT" }, { name: "Ephesians", id: "ephesians", chapters: 6, testament: "NT" },
-  { name: "Philippians", id: "philippians", chapters: 4, testament: "NT" }, { name: "Colossians", id: "colossians", chapters: 4, testament: "NT" },
-  { name: "1 Thessalonians", id: "1+thessalonians", chapters: 5, testament: "NT" }, { name: "2 Thessalonians", id: "2+thessalonians", chapters: 3, testament: "NT" },
-  { name: "1 Timothy", id: "1+timothy", chapters: 6, testament: "NT" }, { name: "2 Timothy", id: "2+timothy", chapters: 4, testament: "NT" },
-  { name: "Titus", id: "titus", chapters: 3, testament: "NT" }, { name: "Philemon", id: "philemon", chapters: 1, testament: "NT" },
-  { name: "Hebrews", id: "hebrews", chapters: 13, testament: "NT" }, { name: "James", id: "james", chapters: 5, testament: "NT" },
-  { name: "1 Peter", id: "1+peter", chapters: 5, testament: "NT" }, { name: "2 Peter", id: "2+peter", chapters: 3, testament: "NT" },
-  { name: "1 John", id: "1+john", chapters: 5, testament: "NT" }, { name: "2 John", id: "2+john", chapters: 1, testament: "NT" },
-  { name: "3 John", id: "3+john", chapters: 1, testament: "NT" }, { name: "Jude", id: "jude", chapters: 1, testament: "NT" },
-  { name: "Revelation", id: "revelation", chapters: 22, testament: "NT" },
+  { name: "Genesis", id: "genesis", helloId: "GEN", chapters: 50, testament: "OT" }, { name: "Exodus", id: "exodus", helloId: "EXO", chapters: 40, testament: "OT" },
+  { name: "Leviticus", id: "leviticus", helloId: "LEV", chapters: 27, testament: "OT" }, { name: "Numbers", id: "numbers", helloId: "NUM", chapters: 36, testament: "OT" },
+  { name: "Deuteronomy", id: "deuteronomy", helloId: "DEU", chapters: 34, testament: "OT" }, { name: "Joshua", id: "joshua", helloId: "JOS", chapters: 24, testament: "OT" },
+  { name: "Judges", id: "judges", helloId: "JDG", chapters: 21, testament: "OT" }, { name: "Ruth", id: "ruth", helloId: "RUT", chapters: 4, testament: "OT" },
+  { name: "1 Samuel", id: "1+samuel", helloId: "1SA", chapters: 31, testament: "OT" }, { name: "2 Samuel", id: "2+samuel", helloId: "2SA", chapters: 24, testament: "OT" },
+  { name: "1 Kings", id: "1+kings", helloId: "1KI", chapters: 22, testament: "OT" }, { name: "2 Kings", id: "2+kings", helloId: "2KI", chapters: 25, testament: "OT" },
+  { name: "1 Chronicles", id: "1+chronicles", helloId: "1CH", chapters: 29, testament: "OT" }, { name: "2 Chronicles", id: "2+chronicles", helloId: "2CH", chapters: 36, testament: "OT" },
+  { name: "Ezra", id: "ezra", helloId: "EZR", chapters: 10, testament: "OT" }, { name: "Nehemiah", id: "nehemiah", helloId: "NEH", chapters: 13, testament: "OT" },
+  { name: "Esther", id: "esther", helloId: "EST", chapters: 10, testament: "OT" }, { name: "Job", id: "job", helloId: "JOB", chapters: 42, testament: "OT" },
+  { name: "Psalms", id: "psalms", helloId: "PSA", chapters: 150, testament: "OT" }, { name: "Proverbs", id: "proverbs", helloId: "PRO", chapters: 31, testament: "OT" },
+  { name: "Ecclesiastes", id: "ecclesiastes", helloId: "ECC", chapters: 12, testament: "OT" }, { name: "Song of Solomon", id: "song+of+solomon", helloId: "SNG", chapters: 8, testament: "OT" },
+  { name: "Isaiah", id: "isaiah", helloId: "ISA", chapters: 66, testament: "OT" }, { name: "Jeremiah", id: "jeremiah", helloId: "JER", chapters: 52, testament: "OT" },
+  { name: "Lamentations", id: "lamentations", helloId: "LAM", chapters: 5, testament: "OT" }, { name: "Ezekiel", id: "ezekiel", helloId: "EZK", chapters: 48, testament: "OT" },
+  { name: "Daniel", id: "daniel", helloId: "DAN", chapters: 12, testament: "OT" }, { name: "Hosea", id: "hosea", helloId: "HOS", chapters: 14, testament: "OT" },
+  { name: "Joel", id: "joel", helloId: "JOL", chapters: 3, testament: "OT" }, { name: "Amos", id: "amos", helloId: "AMO", chapters: 9, testament: "OT" },
+  { name: "Obadiah", id: "obadiah", helloId: "OBA", chapters: 1, testament: "OT" }, { name: "Jonah", id: "jonah", helloId: "JON", chapters: 4, testament: "OT" },
+  { name: "Micah", id: "micah", helloId: "MIC", chapters: 7, testament: "OT" }, { name: "Nahum", id: "nahum", helloId: "NAM", chapters: 3, testament: "OT" },
+  { name: "Habakkuk", id: "habakkuk", helloId: "HAB", chapters: 3, testament: "OT" }, { name: "Zephaniah", id: "zephaniah", helloId: "ZEP", chapters: 3, testament: "OT" },
+  { name: "Haggai", id: "haggai", helloId: "HAG", chapters: 2, testament: "OT" }, { name: "Zechariah", id: "zechariah", helloId: "ZEC", chapters: 14, testament: "OT" },
+  { name: "Malachi", id: "malachi", helloId: "MAL", chapters: 4, testament: "OT" },
+  { name: "Matthew", id: "matthew", helloId: "MAT", chapters: 28, testament: "NT" }, { name: "Mark", id: "mark", helloId: "MRK", chapters: 16, testament: "NT" },
+  { name: "Luke", id: "luke", helloId: "LUK", chapters: 24, testament: "NT" }, { name: "John", id: "john", helloId: "JHN", chapters: 21, testament: "NT" },
+  { name: "Acts", id: "acts", helloId: "ACT", chapters: 28, testament: "NT" }, { name: "Romans", id: "romans", helloId: "ROM", chapters: 16, testament: "NT" },
+  { name: "1 Corinthians", id: "1+corinthians", helloId: "1CO", chapters: 16, testament: "NT" }, { name: "2 Corinthians", id: "2+corinthians", helloId: "2CO", chapters: 13, testament: "NT" },
+  { name: "Galatians", id: "galatians", helloId: "GAL", chapters: 6, testament: "NT" }, { name: "Ephesians", id: "ephesians", helloId: "EPH", chapters: 6, testament: "NT" },
+  { name: "Philippians", id: "philippians", helloId: "PHP", chapters: 4, testament: "NT" }, { name: "Colossians", id: "colossians", helloId: "COL", chapters: 4, testament: "NT" },
+  { name: "1 Thessalonians", id: "1+thessalonians", helloId: "1TH", chapters: 5, testament: "NT" }, { name: "2 Thessalonians", id: "2+thessalonians", helloId: "2TH", chapters: 3, testament: "NT" },
+  { name: "1 Timothy", id: "1+timothy", helloId: "1TI", chapters: 6, testament: "NT" }, { name: "2 Timothy", id: "2+timothy", helloId: "2TI", chapters: 4, testament: "NT" },
+  { name: "Titus", id: "titus", helloId: "TIT", chapters: 3, testament: "NT" }, { name: "Philemon", id: "philemon", helloId: "PHM", chapters: 1, testament: "NT" },
+  { name: "Hebrews", id: "hebrews", helloId: "HEB", chapters: 13, testament: "NT" }, { name: "James", id: "james", helloId: "JAS", chapters: 5, testament: "NT" },
+  { name: "1 Peter", id: "1+peter", helloId: "1PE", chapters: 5, testament: "NT" }, { name: "2 Peter", id: "2+peter", helloId: "2PE", chapters: 3, testament: "NT" },
+  { name: "1 John", id: "1+john", helloId: "1JN", chapters: 5, testament: "NT" }, { name: "2 John", id: "2+john", helloId: "2JN", chapters: 1, testament: "NT" },
+  { name: "3 John", id: "3+john", helloId: "3JN", chapters: 1, testament: "NT" }, { name: "Jude", id: "jude", helloId: "JUD", chapters: 1, testament: "NT" },
+  { name: "Revelation", id: "revelation", helloId: "REV", chapters: 22, testament: "NT" },
 ];
 
-// ── API ────────────────────────────────────────
-const fetchChapter = async (bookId: string, chapter: number, translation: string): Promise<Verse[]> => {
-  const res = await fetch(`https://bible-api.com/${bookId}+${chapter}?translation=${translation}`);
-  if (!res.ok) { let msg = "Failed to fetch chapter"; try { const e = await res.json(); if (e.error) msg = e.error; } catch {} throw new Error(msg); }
-  const data: ApiResponse = await res.json();
-  return data.verses.map((v) => ({ number: v.verse, text: v.text.trim() }));
+// ── API (HelloAO Free Use Bible API) ────────────
+// Flattens a HelloAO verse `content` array (strings + formatting/footnote objects) into
+// plain text. Footnote markers ({noteId}) and line breaks contribute no visible text;
+// segments are joined with a single space and whitespace is collapsed since individual
+// fragments aren't guaranteed to carry their own spacing (confirmed against real parser
+// snapshots, e.g. content: [{poem:1,text:"Blessed are the poor in spirit,"}, {poem:2,text:"for theirs is the kingdom of heaven."}]).
+const flattenVerseContent = (content: HelloAoVerseContentItem[]): string => {
+  const parts: string[] = [];
+  for (const item of content) {
+    if (typeof item === "string") parts.push(item);
+    else if ("text" in item) parts.push(item.text);
+    else if ("heading" in item) parts.push(item.heading);
+  }
+  return parts.join(" ").replace(/\s+/g, " ").trim();
+};
+
+const fetchChapter = async (helloBookId: string, chapter: number, translation: string): Promise<Verse[]> => {
+  const res = await fetch(`${HELLOAO_API_BASE}/${translation}/${helloBookId}/${chapter}.json`);
+  if (!res.ok) throw new Error(res.status === 404 ? "This chapter isn't available in this translation." : "Failed to fetch chapter");
+  const data: HelloAoChapterResponse = await res.json();
+  return data.chapter.content
+    .filter((item): item is HelloAoChapterVerseItem => item.type === "verse")
+    .map((item) => ({ number: item.number, text: flattenVerseContent(item.content) }));
+};
+
+// HelloAO is static JSON with no full-text search endpoint, so "search" here means
+// reference lookup: "John 3:16", "Romans 8:28-29", "Genesis 1" all resolve; free-text
+// keyword queries intentionally return no results (see the search tab's helper copy).
+const parseReference = (query: string): { book: BookMeta; chapter: number; verseStart?: number; verseEnd?: number } | null => {
+  const match = query.trim().match(/^(.+?)\s+(\d+)(?::(\d+)(?:-(\d+))?)?$/);
+  if (!match) return null;
+  const [, bookPart, chapterStr, verseStartStr, verseEndStr] = match;
+  const needle = bookPart.trim().toLowerCase();
+  const book = BOOKS.find((b) => b.name.toLowerCase() === needle) || BOOKS.find((b) => b.name.toLowerCase().startsWith(needle));
+  if (!book) return null;
+  const chapter = parseInt(chapterStr, 10);
+  if (!chapter || chapter < 1 || chapter > book.chapters) return null;
+  const verseStart = verseStartStr ? parseInt(verseStartStr, 10) : undefined;
+  const verseEnd = verseEndStr ? parseInt(verseEndStr, 10) : verseStart;
+  return { book, chapter, verseStart, verseEnd };
 };
 
 const fetchSearch = async (query: string, translation: string): Promise<{ ref: string; text: string }[]> => {
-  const res = await fetch(`https://bible-api.com/${encodeURIComponent(query.trim())}?translation=${translation}`);
-  if (!res.ok) return [];
-  const data: ApiResponse = await res.json();
-  return data.verses.map((v) => ({ ref: `${v.book_name} ${v.chapter}:${v.verse}`, text: v.text.trim() }));
+  const parsed = parseReference(query);
+  if (!parsed) return [];
+  const { book, chapter, verseStart, verseEnd } = parsed;
+  try {
+    const verses = await fetchChapter(book.helloId, chapter, translation);
+    const filtered = verseStart ? verses.filter((v) => v.number >= verseStart && v.number <= (verseEnd ?? verseStart)) : verses;
+    return filtered.map((v) => ({ ref: `${book.name} ${chapter}:${v.number}`, text: v.text }));
+  } catch { return []; }
 };
 
 // ═══════════════════════════════════════════════
@@ -256,7 +316,11 @@ function VerseActionSheet({ verseAction, highlighted, onHighlight, onRemoveHighl
 // ═══════════════════════════════════════════════
 export default function BiblePage() {
   const [tab, setTab] = useState<Tab>("read");
-  const [translation, setTranslation] = useState("web");
+  const [translation, setTranslation] = useState(DEFAULT_TRANSLATION);
+  const [translationsByLanguage, setTranslationsByLanguage] = useState<Record<string, { id: string; name: string }[]>>(FALLBACK_TRANSLATIONS);
+  const [translationsMeta, setTranslationsMeta] = useState<Map<string, HelloAoTranslation>>(new Map());
+  const [translationsLoading, setTranslationsLoading] = useState(true);
+  const [translationsError, setTranslationsError] = useState<string | null>(null);
   const [book, setBook] = useState<BookMeta>(BOOKS.find((b) => b.id === "john")!);
   const [chapter, setChapter] = useState(3);
   const [verses, setVerses] = useState<Verse[]>([]);
@@ -278,9 +342,53 @@ export default function BiblePage() {
   useEffect(() => { setHighlighted(loadHighlights()); }, []);
   useEffect(() => { saveHighlights(highlighted); }, [highlighted]);
 
+  // Fetch the full HelloAO translation list once (cached in sessionStorage so it isn't
+  // refetched on every mount). Falls back to FALLBACK_TRANSLATIONS on failure so the
+  // dropdown is never empty.
+  useEffect(() => {
+    let cancelled = false;
+    const applyTranslations = (list: HelloAoTranslation[]) => {
+      const grouped: Record<string, { id: string; name: string }[]> = {};
+      const meta = new Map<string, HelloAoTranslation>();
+      for (const t of list) {
+        const lang = t.languageEnglishName || t.languageName || t.language || "Other";
+        if (!grouped[lang]) grouped[lang] = [];
+        grouped[lang].push({ id: t.id, name: t.shortName || t.englishName || t.name || t.id });
+        meta.set(t.id, t);
+      }
+      Object.values(grouped).forEach((group) => group.sort((a, b) => a.name.localeCompare(b.name)));
+      setTranslationsByLanguage(grouped);
+      setTranslationsMeta(meta);
+    };
+    (async () => {
+      try {
+        const cached = sessionStorage.getItem(TRANSLATIONS_CACHE_KEY);
+        if (cached) { applyTranslations(JSON.parse(cached)); setTranslationsLoading(false); return; }
+      } catch {}
+      try {
+        const res = await fetch(`${HELLOAO_API_BASE}/available_translations.json`);
+        if (!res.ok) throw new Error("bad status");
+        const data: HelloAoTranslationsResponse = await res.json();
+        if (cancelled) return;
+        applyTranslations(data.translations);
+        try { sessionStorage.setItem(TRANSLATIONS_CACHE_KEY, JSON.stringify(data.translations)); } catch {}
+      } catch {
+        if (!cancelled) setTranslationsError("Couldn't load the full translation list — showing common translations.");
+      } finally {
+        if (!cancelled) setTranslationsLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const getTranslationName = (id: string) => {
+    const meta = translationsMeta.get(id);
+    return (meta && (meta.shortName || meta.englishName || meta.name)) || id.toUpperCase();
+  };
+
   const loadChapter = useCallback(async () => {
     setLoading(true); setError(null);
-    try { setVerses(await fetchChapter(book.id, chapter, translation)); }
+    try { setVerses(await fetchChapter(book.helloId, chapter, translation)); }
     catch (err: any) { setError(err.message || "Could not load chapter."); }
     finally { setLoading(false); }
   }, [book, chapter, translation]);
@@ -298,6 +406,8 @@ export default function BiblePage() {
   const handleCopy = (text: string, ref: string) => { navigator.clipboard?.writeText(`"${text}" — ${ref} (${getTranslationName(translation)})`); showToast("Verse copied"); };
   const handleShare = async (text: string, ref: string) => { if (navigator.share) { try { await navigator.share({ text: `"${text}" — ${ref} (${getTranslationName(translation)})` }); } catch (e: any) { if (e.name !== "AbortError") handleCopy(text, ref); } } else handleCopy(text, ref); };
   const goToChapter = (delta: number) => { const next = chapter + delta; if (next < 1 || next > book.chapters) return; setChapter(next); window.scrollTo(0, 0); };
+  const currentTranslationMeta = translationsMeta.get(translation);
+  const currentLicenseUrl = currentTranslationMeta?.licenseUrl;
 
   return (
     <div className="bg-[#FAF8F5] h-screen w-full max-w-[480px] mx-auto flex flex-col overflow-hidden relative lg:max-w-none lg:mx-0 lg:h-full lg:flex-row">
@@ -390,7 +500,13 @@ export default function BiblePage() {
               <>
                 <div onClick={() => setShowTranslations(false)} className="fixed inset-0 z-30" />
                 <div className="absolute top-9 right-0 bg-white rounded-xl shadow-[0_8px_24px_rgba(0,0,0,0.12)] border border-stone-200 z-40 overflow-y-auto max-h-[60vh] min-w-[160px]">
-                  {(Object.entries(TRANSLATIONS_BY_LANGUAGE) as [Language, { id: string; name: string }[]][]).map(([lang, transList]) => (
+                  {translationsLoading && (
+                    <div className="px-4 py-2 text-[11px] text-[color:var(--text-faint)]">Loading translations…</div>
+                  )}
+                  {translationsError && !translationsLoading && (
+                    <div className="px-4 py-2 text-[11px] text-red-600">{translationsError}</div>
+                  )}
+                  {sortedLanguageEntries(translationsByLanguage).map(([lang, transList]) => (
                     <div key={lang}>
                       <div className="px-4 py-2 text-[10px] font-bold text-[color:var(--text-faint)] tracking-widest uppercase bg-stone-100">{lang}</div>
                       {transList.map((t) => (
@@ -490,10 +606,17 @@ export default function BiblePage() {
           <div className="px-4 py-3 flex-shrink-0">
             <div className="flex items-center gap-2 bg-white rounded-full border-[1.5px] border-stone-200 px-4 py-3">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#A89A87" strokeWidth="2.5"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
-              <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder='Try "John 3:16" or "love"...' autoFocus className="flex-1 border-none bg-transparent text-sm outline-none text-earth" />
+              <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder='Try "John 3:16" or "Romans 8:28"...' autoFocus className="flex-1 border-none bg-transparent text-sm outline-none text-earth" />
               {searchQuery && <button onClick={() => { setSearchQuery(""); setSearchResults([]); }} className="bg-transparent border-none text-[color:var(--text-faint)] cursor-pointer text-sm">✕</button>}
             </div>
-            <div className="text-[11px] text-[color:var(--text-faint)] text-center mt-1.5">Powered by bible-api.com · {getTranslationName(translation)}</div>
+            <div className="text-[11px] text-[color:var(--text-faint)] text-center mt-1.5">
+              Search by reference · Powered by{" "}
+              <a href="https://bible.helloao.org" target="_blank" rel="noopener noreferrer" className="underline">HelloAO</a>
+              {" "}· {getTranslationName(translation)}
+              {currentLicenseUrl && (
+                <>{" "}· <a href={currentLicenseUrl} target="_blank" rel="noopener noreferrer" className="underline">License</a></>
+              )}
+            </div>
           </div>
 
           <div className="flex-1 px-4 pb-8 flex flex-col gap-3">
