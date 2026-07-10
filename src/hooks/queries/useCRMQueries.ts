@@ -91,13 +91,16 @@ const userDocToMemberContact = (
 ): Contact => {
   const fullName = String(u.displayName || u.name || '').trim();
   const parts = fullName ? fullName.split(/\s+/) : [];
+  // A member who has donated (their users doc was stamped by the donation webhook)
+  // surfaces here as Donor & Member with their real total — no duplicate contact row.
+  const totalDonated = Number(u.totalDonated) || 0;
   return {
     id,
     firstName: parts[0] || '',
     lastName: parts.slice(1).join(' '),
     email: u.email || '',
     phone: u.phone || '',
-    type: 'member',
+    type: totalDonated > 0 ? 'both' : 'member',
     stage: 'new',
     address: {
       city: u.city || undefined,
@@ -105,7 +108,7 @@ const userDocToMemberContact = (
     },
     notes: '',
     tags: [],
-    totalDonated: 0,
+    totalDonated,
     lastDonationAt: null,
     memberSince: null,
     createdAt: null,

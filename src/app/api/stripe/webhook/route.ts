@@ -1149,57 +1149,110 @@ export async function POST(request: NextRequest) {
         const meta = pi.metadata || {};
 
         if (meta.type === 'partnership' && meta.tenantId) {
-          const donorEmail = pi.receipt_email || '';
-          const amount = pi.amount_received || pi.amount || 0;
           const tenantId = meta.tenantId;
+          const amount = pi.amount_received || pi.amount || 0;
+          const donorUserId = meta.donorUserId || '';
+          // Prefer the email captured at checkout (metadata) over receipt_email: Stripe
+          // does NOT copy customer_email into receipt_email, so the old code — which
+          // keyed off receipt_email alone — skipped ALL CRM linkage whenever it was null.
+          const donorEmail = (meta.donorEmail || pi.receipt_email || '').trim();
+          const nowIso = new Date().toISOString();
 
-          if (donorEmail) {
-            const existingContactSnap = await adminDb.collection('contacts')
-              .where('email', '==', donorEmail)
-              .limit(20).get();
-            const existingContactDoc = existingContactSnap.docs.find(d => d.data().tenantId === tenantId);
+          // Is the donor a logged-in app member of THIS tenant? Cross-church and
+          // anonymous donors are not — they get a donor contact but never a users-doc
+          // stamp, so a gift to another church never lands in the donor's own tenant CRM.
+          let donorIsTenantMember = false;
+          let donorDisplayName = '';
+          if (donorUserId) {
+            const donorUserSnap = await adminDb.collection('users').doc(donorUserId).get();
+            if (donorUserSnap.exists) {
+              const du = donorUserSnap.data() || {};
+              donorIsTenantMember = (du.tenantId || null) === tenantId;
+              donorDisplayName = du.displayName || du.name || '';
+            }
+          }
 
-            let contactId: string;
+          if (donorUserId || donorEmail) {
+            // Find an existing CRM contact for this donor, scoped to the recipient
+            // tenant. Prefer userId (stable across email changes), fall back to email.
+            let candidateDocs: FirebaseFirestore.QueryDocumentSnapshot[] = [];
+            if (donorUserId) {
+              candidateDocs = (await adminDb.collection('contacts')
+                .where('userId', '==', donorUserId).limit(20).get()).docs;
+            }
+            let existingContactDoc = candidateDocs.find(d => (d.data().tenantId || null) === tenantId);
+            if (!existingContactDoc && donorEmail) {
+              const byEmail = (await adminDb.collection('contacts')
+                .where('email', '==', donorEmail).limit(20).get()).docs;
+              existingContactDoc = byEmail.find(d => (d.data().tenantId || null) === tenantId);
+            }
+
+            let contactId: string | null = null;
             if (existingContactDoc) {
-              contactId = existingContactDoc.id;
-              const contactData = existingContactDoc.data();
-              const newType = contactData.type === 'member' ? 'both' : (contactData.type as string);
+              const cd = existingContactDoc.data();
+              const newType = cd.type === 'member' ? 'both' : (cd.type || 'donor');
               await existingContactDoc.ref.update({
                 type: newType,
                 totalDonated: FieldValue.increment(amount),
-                lastDonationAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
+                lastDonationAt: nowIso,
+                updatedAt: nowIso,
+                // Backfill the uid link so later gifts match by userId even if email differs.
+                ...(donorUserId && !cd.userId ? { userId: donorUserId } : {}),
               });
-            } else {
+              contactId = existingContactDoc.id;
+            } else if (donorIsTenantMember) {
+              // App member of this tenant with no manual contact: the CRM synthesizes
+              // their row from `users`, so DON'T create a duplicate contact. The
+              // users-doc stamp below turns that synthetic row into Donor & Member.
+              // Activities attach to the synthetic contact id, which is the user's uid.
+              contactId = donorUserId;
+            } else if (donorEmail) {
+              // Anonymous or cross-church donor: a fresh donor contact in the recipient tenant.
+              const nameParts = (meta.donorName || '').trim().split(/\s+/).filter(Boolean);
               const ref = await adminDb.collection('contacts').add({
-                firstName: '', lastName: '', email: donorEmail, phone: '',
-                type: 'donor', userId: '', tenantId,
-                totalDonated: amount, lastDonationAt: new Date().toISOString(),
+                firstName: nameParts[0] || '', lastName: nameParts.slice(1).join(' '),
+                email: donorEmail, phone: '',
+                type: 'donor', userId: donorUserId || '', tenantId,
+                totalDonated: amount, lastDonationAt: nowIso,
                 memberSince: null, notes: '', tags: [],
-                createdAt: new Date().toISOString(), createdBy: 'system',
+                createdAt: nowIso, createdBy: 'system',
               });
               contactId = ref.id;
             }
 
-            await adminDb.collection('contactActivities').add({
-              contactId, type: 'donation',
-              description: 'Partnership donation via Stripe',
-              amount, createdAt: new Date().toISOString(), createdBy: 'system',
-            });
+            // Reflect donor status on the member's own account so the CRM synthetic row
+            // AND their in-app profile both show Donor/Partner + total given.
+            if (donorIsTenantMember) {
+              await adminDb.collection('users').doc(donorUserId).update({
+                totalDonated: FieldValue.increment(amount),
+                lastDonationAt: nowIso,
+                updatedAt: nowIso,
+              });
+            }
 
-            const tenantDoc = await adminDb.collection('tenants').doc(tenantId).get();
-            const tenantName = tenantDoc.data()?.name || tenantDoc.data()?.displayName || '';
-            const contactDoc = await adminDb.collection('contacts').doc(contactId).get();
-            const cData = contactDoc.data() || {};
-            const recipientName = `${cData.firstName || ''} ${cData.lastName || ''}`.trim() || donorEmail;
+            // CRM timeline entry. tenantId is REQUIRED here — useContactActivities
+            // filters by it, so the old tenantId-less write never showed in the timeline.
+            if (contactId) {
+              await adminDb.collection('contactActivities').add({
+                contactId, tenantId, type: 'donation',
+                description: 'Partnership donation via Stripe',
+                amount, createdAt: nowIso, createdBy: 'system',
+              });
+            }
 
-            const receiptNumber = `R-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
-            await adminDb.collection('tenants').doc(tenantId).collection('invoices').add({
-              type: 'donation_receipt', recipientName, recipientEmail: donorEmail,
-              amount, currency: pi.currency || 'usd', description: 'Partnership donation',
-              relatedId: pi.id, receiptNumber, issuedAt: new Date().toISOString(),
-              tenantName, pdfUrl: null, status: 'pending',
-            });
+            // Donation receipt (needs an email to address it to).
+            if (donorEmail) {
+              const tenantDoc = await adminDb.collection('tenants').doc(tenantId).get();
+              const tenantName = tenantDoc.data()?.name || tenantDoc.data()?.displayName || '';
+              const recipientName = (meta.donorName || '').trim() || donorDisplayName || donorEmail;
+              const receiptNumber = `R-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+              await adminDb.collection('tenants').doc(tenantId).collection('invoices').add({
+                type: 'donation_receipt', recipientName, recipientEmail: donorEmail,
+                amount, currency: pi.currency || 'usd', description: 'Partnership donation',
+                relatedId: pi.id, receiptNumber, issuedAt: nowIso,
+                tenantName, pdfUrl: null, status: 'pending',
+              });
+            }
           }
         }
         break;

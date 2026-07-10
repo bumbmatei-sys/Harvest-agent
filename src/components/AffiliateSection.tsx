@@ -17,6 +17,8 @@ interface AffiliateStatus {
   pendingPayouts: number;
   referralCount: number;
   thisMonthEarnings: number;
+  thisMonthPending: number;
+  recurringEarnings: number;
 }
 
 export default function AffiliateSection() {
@@ -140,12 +142,18 @@ export default function AffiliateSection() {
           <p className="font-display text-[2.6rem] leading-none font-light mt-1.5" style={{ color: GOLD }}>
             {fmt(status?.thisMonthEarnings || 0)}
           </p>
+          {(status?.thisMonthPending || 0) > 0 && (
+            <p className="text-xs text-warm-brown mt-1.5">
+              {fmt(status?.thisMonthPending || 0)} pending payout
+            </p>
+          )}
         </div>
         <TrendingUp size={32} style={{ color: GOLD }} className="opacity-40" />
       </div>
 
-      {/* Stats row */}
-      <div className="grid grid-cols-3 gap-4">
+      {/* Stats row — 2×2 on mobile, 4-across on desktop so the Recurring card fits
+          without cramping the phone layout. */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] p-5 text-center">
           <p className="font-display text-[1.75rem] leading-none font-light text-earth">{status?.affiliateClicks || 0}</p>
           <p className="text-xs text-warm-brown mt-1.5">Clicks</p>
@@ -153,6 +161,10 @@ export default function AffiliateSection() {
         <div className="bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] p-5 text-center">
           <p className="font-display text-[1.75rem] leading-none font-light text-earth">{status?.referralCount || 0}</p>
           <p className="text-xs text-warm-brown mt-1.5">Referrals</p>
+        </div>
+        <div className="bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] p-5 text-center">
+          <p className="font-display text-[1.75rem] leading-none font-light" style={{ color: GOLD }}>{fmt(status?.recurringEarnings || 0)}</p>
+          <p className="text-xs text-warm-brown mt-1.5">Recurring</p>
         </div>
         <div className="bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] p-5 text-center">
           <p className="font-display text-[1.75rem] leading-none font-light text-earth">{fmt(status?.totalEarnings || 0)}</p>
