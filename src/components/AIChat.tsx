@@ -664,6 +664,10 @@ Friendly neighbor, not a corporate chatbot. Short. Helpful. Human.`;
  </svg>
  </button>
  </div>
+ {/* Desktop-only disclaimer line, per the Harvest Member App design. */}
+ <p className="hidden lg:block" style={{ textAlign: "center", fontSize: 11, color: TEXT2, margin: "8px auto 0", maxWidth: "48rem", lineHeight: 1.5 }}>
+ {`Ask ${askBrandName} can make mistakes. Verify important details with Scripture.`}
+ </p>
  </div>
  </div>
  </div>

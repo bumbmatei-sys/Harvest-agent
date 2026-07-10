@@ -299,17 +299,17 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap 
  <div className="hidden lg:block">
  <div className="bg-white rounded-3xl border p-6 text-center lg:sticky lg:top-4" style={{ borderColor: 'var(--ds-border)' }}>
  <label htmlFor="profile-pic-upload" className="cursor-pointer group block">
- <div className="w-24 h-24 rounded-full mx-auto mb-3 bg-stone-100 overflow-hidden flex items-center justify-center">
+ <div className="w-24 h-24 rounded-full mx-auto mb-3 overflow-hidden flex items-center justify-center" style={{ background: 'var(--surface-gold)' }}>
  {profilePic ? (
  <img src={profilePic} alt={userName} className="w-full h-full object-cover" />
  ) : (
- <span className="text-3xl font-bold text-[color:var(--text-faint)]">{(userName || 'U').charAt(0).toUpperCase()}</span>
+ <span className="text-3xl font-light font-display" style={{ color: 'var(--wheat-700)' }}>{(userName || 'U').charAt(0).toUpperCase()}</span>
  )}
  </div>
  <span className="text-[12px] font-semibold group-hover:underline" style={{ color: 'var(--brand-color, #C9963A)' }}>Change photo</span>
  </label>
- <h2 className="text-xl font-bold text-earth font-display mt-3">{userName}</h2>
- <div className="inline-flex items-center gap-1.5 mt-2 px-3 py-1 rounded-full text-[11px] font-bold" style={{ background: 'color-mix(in srgb, var(--brand-color, #C9963A) 12%, white)', color: 'var(--brand-color, #C9963A)' }}>
+ <h2 className="text-xl font-light text-earth font-display mt-3 tracking-[-0.01em]">{userName}</h2>
+ <div className="inline-flex items-center gap-1.5 mt-2 px-3 py-1 rounded-full text-[11px] font-bold" style={{ background: 'var(--surface-gold)', color: 'var(--wheat-700)' }}>
  <BadgeCheck size={13} /> Member since 2026
  </div>
  </div>
