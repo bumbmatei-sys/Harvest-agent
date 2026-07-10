@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect, useRef, useState } from 'react';
-import { User, CreditCard, LogOut } from 'lucide-react';
+import { User, Settings, CreditCard, ExternalLink, LogOut } from 'lucide-react';
 
 const GOLD = 'var(--brand-color, #B8962E)';
 
@@ -12,8 +12,14 @@ interface MyAccountMenuProps {
   /** True only for the plan owner (tenant.ownerId). Gates the Billing item. */
   isOwner: boolean;
   onOpenProfile: () => void;
+  /** When provided, the Settings item is shown. The parent passes this only when
+   *  the admin is entitled to Settings (canSettings), so absence hides the row. */
+  onOpenSettings?: () => void;
   /** When provided AND isOwner, the Billing & Payments item is shown. */
   onOpenBilling?: () => void;
+  /** Open the member app (same one-shot-intent action the More drawer used). The
+   *  menu row is mobile-only; desktop keeps its "Open member app" top-bar pill. */
+  onGoToUserApp: () => void;
   onLogout: () => void;
 }
 
@@ -43,11 +49,12 @@ const Avatar: React.FC<{ photoURL?: string | null; name?: string | null; email?:
 
 /**
  * Circular avatar button (admin header, top-right) that opens a small dropdown
- * with My Profile · Billing & Payments (owner only) · Log out. Closes on
- * outside-click / Esc. Admin-side only — the user app has its own Profile tab.
+ * with My Profile · Settings (if entitled) · Billing & Payments (owner only) ·
+ * Go to User App · Log out. Closes on outside-click / Esc. Admin-side only —
+ * the user app has its own Profile tab.
  */
 const MyAccountMenu: React.FC<MyAccountMenuProps> = ({
-  photoURL, displayName, email, isOwner, onOpenProfile, onOpenBilling, onLogout,
+  photoURL, displayName, email, isOwner, onOpenProfile, onOpenSettings, onOpenBilling, onGoToUserApp, onLogout,
 }) => {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -105,6 +112,17 @@ const MyAccountMenu: React.FC<MyAccountMenuProps> = ({
               <span className="text-sm font-medium text-[color:var(--text-body)]">My Profile</span>
             </button>
 
+            {onOpenSettings && (
+              <button
+                role="menuitem"
+                onClick={() => run(onOpenSettings)}
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-stone-100 transition-colors"
+              >
+                <Settings size={16} className="text-warm-brown" />
+                <span className="text-sm font-medium text-[color:var(--text-body)]">Settings</span>
+              </button>
+            )}
+
             {isOwner && onOpenBilling && (
               <button
                 role="menuitem"
@@ -115,6 +133,18 @@ const MyAccountMenu: React.FC<MyAccountMenuProps> = ({
                 <span className="text-sm font-medium text-[color:var(--text-body)]">Billing &amp; Payments</span>
               </button>
             )}
+
+            {/* Go to User App — gold accent, mirroring the old More-drawer row.
+                Hidden on desktop (lg:hidden): the branded top bar already has an
+                "Open member app" pill there, so showing it here too would double it. */}
+            <button
+              role="menuitem"
+              onClick={() => run(onGoToUserApp)}
+              className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-stone-100 transition-colors lg:hidden"
+            >
+              <ExternalLink size={16} style={{ color: GOLD }} />
+              <span className="text-sm font-semibold" style={{ color: GOLD }}>Go to User App</span>
+            </button>
 
             <div className="my-1 border-t border-gray-50" />
 
