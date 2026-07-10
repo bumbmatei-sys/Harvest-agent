@@ -43,16 +43,28 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(new URL('/?error=connect_tenant_not_found', apexUrl));
     }
 
-    const updateData: Record<string, any> = {
+    await tenantsSnapshot.docs[0].ref.update({
       stripeConnectStatus: status,
       updatedAt: new Date().toISOString(),
-    };
-    // Also update affiliate status if this account is the affiliate account
-    const tenantData = tenantsSnapshot.docs[0].data();
-    if (tenantData.affiliateAccountId === accountId) {
-      updateData.affiliateStatus = status;
+    });
+
+    // Unified account: keep affiliate payouts in lock-step with the donations
+    // status. The affiliate-payout path reads users/{referrerId}.affiliateConnectStatus,
+    // and any user who set up payouts against this account had it mirrored onto
+    // their own doc (affiliateStripeAccountId == accountId). Reconcile status for
+    // EVERY such user — covers the owner AND any other admin/affiliate on this
+    // tenant, without guessing a single owner id.
+    const linkedUsersSnap = await adminDb.collection('users')
+      .where('affiliateStripeAccountId', '==', accountId)
+      .get();
+    if (!linkedUsersSnap.empty) {
+      const batch = adminDb.batch();
+      linkedUsersSnap.docs.forEach(d => batch.update(d.ref, {
+        affiliateConnectStatus: status,
+        updatedAt: new Date().toISOString(),
+      }));
+      await batch.commit();
     }
-    await tenantsSnapshot.docs[0].ref.update(updateData);
 
     // The tenant doc id IS the tenantId (== subdomain), so route the admin back to
     // their own tenant (e.g. bumb.theharvest.app) instead of the apex/super-admin,

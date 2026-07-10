@@ -5,6 +5,7 @@ import { Inter, Fraunces, Newsreader } from 'next/font/google';
 import './globals.css';
 import { cn } from "@/lib/utils";
 import { getTenantFromHost } from '@/lib/server-tenant';
+import ReferralTracker from '@/components/ReferralTracker';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -84,6 +85,11 @@ export default function RootLayout({
         <script src="/sw-cache-buster.js" defer />
       </head>
       <body className="bg-background-light text-[#1c1c1e] antialiased">
+        {/* Capture ?ref=CODE on the FIRST public page load — before login/onboarding
+            and independent of the (ssr:false) SPA's auth-driven redirects — so a
+            logged-out affiliate visitor's referral survives all the way to checkout.
+            Renders nothing; only writes localStorage['affiliateReferrerId']. */}
+        <ReferralTracker />
         {children}
         <Script id="sw-register" strategy="afterInteractive">
           {`

@@ -119,6 +119,17 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Referral-capture breadcrumb: makes silent drops visible. If a checkout
+    // carries a referrerId it lands in the subscription metadata below (→ the
+    // webhook pays the commission). A code that arrives but doesn't resolve, or a
+    // checkout with no referral at all, is logged so a mis-captured/forwarded
+    // ?ref= can be spotted server-side instead of failing invisibly.
+    if (resolvedReferrerId) {
+      console.log(`🔗 Checkout carries affiliate referrerId ${resolvedReferrerId} (plan ${plan}, billing ${billing})`);
+    } else if (referrerId) {
+      console.warn(`⚠️ Checkout received an unresolvable referral code "${referrerId}" — no commission will be attributed`);
+    }
+
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://theharvest.app';
 
     // ── New-ministry signup: there is NO tenant yet. ─────────────────────────
