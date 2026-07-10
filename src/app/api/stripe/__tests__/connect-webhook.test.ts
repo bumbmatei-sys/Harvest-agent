@@ -185,7 +185,7 @@ describe('account.updated status sync', () => {
     mockConstructEvent.mockReturnValue(makeAccountEvent({
       id: 'acct_unknown', charges_enabled: true, payouts_enabled: true,
     }));
-    // Both the donations-field and affiliate-field lookups come back empty.
+    // The account id is not any tenant's canonical (donations) account.
     mockCollGet.mockResolvedValue(tenantSnapshot(null));
 
     const res = await POST(makeRequest());
@@ -196,41 +196,63 @@ describe('account.updated status sync', () => {
   });
 });
 
-// ── Two-accounts lens ───────────────────────────────────────────────────────
+// ── Unified-account lens ─────────────────────────────────────────────────────
 
-describe('account.updated affiliate handling', () => {
-  it('updates affiliateStatus too when the same id is the donations AND affiliate account', async () => {
+describe('account.updated unified-account mirror', () => {
+  it('mirrors the account onto the tenant owner so the SAME account powers affiliate payouts', async () => {
     mockConstructEvent.mockReturnValue(makeAccountEvent({
-      id: 'acct_dual', charges_enabled: true, payouts_enabled: true,
+      id: 'acct_123', charges_enabled: true, payouts_enabled: true,
     }));
     mockCollGet.mockResolvedValue(
-      tenantSnapshot({ stripeConnectAccountId: 'acct_dual', affiliateAccountId: 'acct_dual' }),
+      tenantSnapshot({ stripeConnectAccountId: 'acct_123', ownerId: 'owner1' }),
     );
+
+    const res = await POST(makeRequest());
+    expect(res.status).toBe(200);
+    // Donations status synced onto the tenant doc…
+    expect(mockTenantUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ stripeConnectStatus: 'active' }),
+    );
+    // …and the owner's affiliate-payout fields mirrored to the SAME account id/status
+    // (the payout path reads users/{referrerId}.affiliateStripeAccountId / affiliateConnectStatus).
+    expect(mockDocSet).toHaveBeenCalledWith(
+      expect.objectContaining({ affiliateStripeAccountId: 'acct_123', affiliateConnectStatus: 'active' }),
+      { merge: true },
+    );
+  });
+
+  it('falls back to createdBy when the tenant has no ownerId', async () => {
+    mockConstructEvent.mockReturnValue(makeAccountEvent({
+      id: 'acct_123', charges_enabled: true, payouts_enabled: true,
+    }));
+    mockCollGet.mockResolvedValue(
+      tenantSnapshot({ stripeConnectAccountId: 'acct_123', createdBy: 'creator9' }),
+    );
+
+    const res = await POST(makeRequest());
+    expect(res.status).toBe(200);
+    expect(mockDocSet).toHaveBeenCalledWith(
+      expect.objectContaining({ affiliateStripeAccountId: 'acct_123', affiliateConnectStatus: 'active' }),
+      { merge: true },
+    );
+  });
+
+  it('does not mirror to a user doc when the tenant has neither ownerId nor createdBy', async () => {
+    mockConstructEvent.mockReturnValue(makeAccountEvent({
+      id: 'acct_123', charges_enabled: true, payouts_enabled: true,
+    }));
+    mockCollGet.mockResolvedValue(tenantSnapshot({ stripeConnectAccountId: 'acct_123' }));
 
     const res = await POST(makeRequest());
     expect(res.status).toBe(200);
     expect(mockTenantUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({ stripeConnectStatus: 'active', affiliateStatus: 'active' }),
+      expect.objectContaining({ stripeConnectStatus: 'active' }),
     );
-  });
-
-  it('resolves via the affiliate fallback and updates ONLY affiliateStatus (no donations clobber)', async () => {
-    mockConstructEvent.mockReturnValue(makeAccountEvent({
-      id: 'acct_aff', charges_enabled: true, payouts_enabled: true,
-    }));
-    // First lookup (by stripeConnectAccountId) misses; affiliate fallback hits.
-    mockCollGet
-      .mockResolvedValueOnce(tenantSnapshot(null))
-      .mockResolvedValueOnce(
-        tenantSnapshot({ stripeConnectAccountId: 'acct_donations', affiliateAccountId: 'acct_aff' }),
-      );
-
-    const res = await POST(makeRequest());
-    expect(res.status).toBe(200);
-    const update = mockTenantUpdate.mock.calls[0][0];
-    expect(update.affiliateStatus).toBe('active');
-    // The donations account's status belongs to a different id — must not be touched.
-    expect(update.stripeConnectStatus).toBeUndefined();
+    // Only the webhook_events marker set() — never an affiliate mirror.
+    expect(mockDocSet).not.toHaveBeenCalledWith(
+      expect.objectContaining({ affiliateStripeAccountId: expect.anything() }),
+      { merge: true },
+    );
   });
 });
 

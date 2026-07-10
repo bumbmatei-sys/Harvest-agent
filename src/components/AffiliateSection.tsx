@@ -70,10 +70,23 @@ export default function AffiliateSection() {
       const user = auth.currentUser;
       if (!user) return;
       const token = await user.getIdToken();
-      const res = await fetch('/api/affiliate/onboard', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-      });
+      // Unified Connect: the ONE church account powers donations AND affiliate
+      // payouts. Route tenant owners through /api/stripe/connect so no SECOND
+      // Stripe account is ever created (it reuses tenants/{id}.stripeConnectAccountId
+      // and mirrors it onto the owner's affiliate fields). Fall back to the
+      // affiliate-only onboarding for users without a tenant (e.g. platform admins).
+      const { getTenantId } = await import('./settings/useTenantId');
+      const tid = await getTenantId();
+      const res = tid
+        ? await fetch('/api/stripe/connect', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tenantId: tid }),
+          })
+        : await fetch('/api/affiliate/onboard', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+          });
       const data = await res.json();
       if (data.url) window.location.href = data.url;
       else alert(data.error || 'Failed to start payout setup. Please try again.');

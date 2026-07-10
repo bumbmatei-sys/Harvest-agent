@@ -1,10 +1,11 @@
 "use client";
 import React, { useState, useEffect } from 'react';
-import { Crown, Settings2, Bot, Plug, AlertTriangle, Check, FileText, MessageSquare, SlidersHorizontal, ChevronRight, DollarSign } from 'lucide-react';
+import { Crown, Settings2, Bot, Plug, AlertTriangle, Check, FileText, MessageSquare, SlidersHorizontal, ChevronRight, DollarSign, CreditCard } from 'lucide-react';
 import { TenantPlan } from '../types/tenant.types';
 import { getPlanFeatures, AI_TELEGRAM_ASSISTANT_ENABLED } from '../utils/plan-features';
 import { hasPlatformOverride } from '../utils/tenant-scope';
 import SettingsAccordion from './settings/SettingsAccordion';
+import PaymentSection from './settings/PaymentSection';
 import OnboardingSection from './settings/OnboardingSection';
 import GivingStatementsSection from './settings/GivingStatementsSection';
 import SmsSection from './settings/SmsSection';
@@ -65,6 +66,9 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
       window.history.replaceState({}, '', window.location.pathname);
     } else if (stripeConnect) {
       setStripeStatus(stripeConnect);
+      // Returning from Stripe Connect onboarding → open the Payments section so
+      // the (now updated) connection status is visible immediately.
+      setForceOpen('payments');
       window.history.replaceState({}, '', window.location.pathname);
     }
   }, []);
@@ -98,10 +102,18 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
     }
   };
 
-  // Sections kept in Settings after the nav overhaul. Plan, Payment, Branding,
-  // Domain, and Billing now live in their own tabs/pages (Upgrade, Branding,
-  // Fundraising). Icons are neutral gray (no rainbow), rendered at 18px.
+  // Sections kept in Settings after the nav overhaul. Branding, Domain, and
+  // Billing live in their own tabs/pages. Payments (Stripe Connect) is now
+  // surfaced here as the PRIMARY home for connecting the ONE account that powers
+  // donations AND affiliate payouts (it also remains inside Fundraising).
+  // Icons are neutral gray (no rainbow), rendered at 18px.
   const sections = [
+    {
+      id: 'payments',
+      label: 'Payments (Connect Stripe)',
+      icon: <CreditCard size={18} />,
+      content: <PaymentSection />,
+    },
     {
       id: 'onboarding',
       label: 'Onboarding Questions',

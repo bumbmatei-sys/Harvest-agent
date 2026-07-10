@@ -43,16 +43,24 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(new URL('/?error=connect_tenant_not_found', apexUrl));
     }
 
-    const updateData: Record<string, any> = {
+    const tenantData = tenantsSnapshot.docs[0].data();
+    await tenantsSnapshot.docs[0].ref.update({
       stripeConnectStatus: status,
       updatedAt: new Date().toISOString(),
-    };
-    // Also update affiliate status if this account is the affiliate account
-    const tenantData = tenantsSnapshot.docs[0].data();
-    if (tenantData.affiliateAccountId === accountId) {
-      updateData.affiliateStatus = status;
+    });
+
+    // Unified account: mirror the same account id/status onto the tenant owner's
+    // user doc so this ONE onboarding also marks affiliate payouts ready. The
+    // affiliate-payout path reads users/{referrerId}.affiliateStripeAccountId /
+    // affiliateConnectStatus — keep it in lock-step with the donations status.
+    const affiliateOwnerId = tenantData.ownerId || tenantData.createdBy;
+    if (affiliateOwnerId) {
+      await adminDb.collection('users').doc(affiliateOwnerId).set({
+        affiliateStripeAccountId: accountId,
+        affiliateConnectStatus: status,
+        updatedAt: new Date().toISOString(),
+      }, { merge: true });
     }
-    await tenantsSnapshot.docs[0].ref.update(updateData);
 
     // The tenant doc id IS the tenantId (== subdomain), so route the admin back to
     // their own tenant (e.g. bumb.theharvest.app) instead of the apex/super-admin,

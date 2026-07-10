@@ -10,8 +10,10 @@ export const dynamic = 'force-dynamic';
  * Connected-account webhook (separate Stripe endpoint from the main platform
  * webhook, with its OWN signing secret STRIPE_CONNECT_WEBHOOK_SECRET). It listens
  * to `account.updated` and syncs the church's Connect payout status onto its
- * tenant doc. Structure mirrors src/app/api/stripe/webhook/route.ts: verify the
- * signature FIRST, then dedup, then process.
+ * tenant doc AND mirrors it onto the tenant owner's user doc so the ONE account
+ * powers donations and affiliate payouts alike. Structure mirrors
+ * src/app/api/stripe/webhook/route.ts: verify the signature FIRST, then dedup,
+ * then process.
  */
 export async function POST(request: NextRequest) {
   const stripeKey = process.env.STRIPE_SECRET_KEY;
@@ -67,19 +69,12 @@ export async function POST(request: NextRequest) {
         const status = deriveConnectStatus(account);
 
         // Resolve the tenant strictly via the verified account id (there is no
-        // tenantId in the body to trust). Try the donations account field first,
-        // then fall back to the affiliate account field — an account may be
-        // registered only as the affiliate account.
-        let tenantsSnapshot = await adminDb.collection('tenants')
+        // tenantId in the body to trust). The unified account is the tenant's
+        // single donations/canonical account.
+        const tenantsSnapshot = await adminDb.collection('tenants')
           .where('stripeConnectAccountId', '==', account.id)
           .limit(1)
           .get();
-        if (tenantsSnapshot.empty) {
-          tenantsSnapshot = await adminDb.collection('tenants')
-            .where('affiliateAccountId', '==', account.id)
-            .limit(1)
-            .get();
-        }
 
         if (tenantsSnapshot.empty) {
           // Not an account we track (or not yet linked). Return 200 so Stripe stops
@@ -91,20 +86,25 @@ export async function POST(request: NextRequest) {
         const tenantDoc = tenantsSnapshot.docs[0];
         const tenantData = tenantDoc.data();
 
-        // Update only the status field(s) this account backs — never clobber the
-        // other account's status when the same tenant uses two different ids.
-        const updateData: Record<string, any> = {
-          updatedAt: new Date().toISOString(),
-        };
-        if (tenantData.stripeConnectAccountId === account.id) {
-          updateData.stripeConnectStatus = status;
-        }
-        if (tenantData.affiliateAccountId === account.id) {
-          updateData.affiliateStatus = status;
-        }
         // A real write failure here bubbles to the catch → 500 → Stripe retries,
         // and the idempotency marker undo makes that retry safe.
-        await tenantDoc.ref.update(updateData);
+        await tenantDoc.ref.update({
+          stripeConnectStatus: status,
+          updatedAt: new Date().toISOString(),
+        });
+
+        // Unified account: the SAME account also powers affiliate payouts. Mirror
+        // id + status onto the tenant owner's user doc so this single account.updated
+        // keeps ALL consumers (donations + affiliate) in sync — the affiliate-payout
+        // path reads users/{referrerId}.affiliateStripeAccountId / affiliateConnectStatus.
+        const affiliateOwnerId = tenantData.ownerId || tenantData.createdBy;
+        if (affiliateOwnerId) {
+          await adminDb.collection('users').doc(affiliateOwnerId).set({
+            affiliateStripeAccountId: account.id,
+            affiliateConnectStatus: status,
+            updatedAt: new Date().toISOString(),
+          }, { merge: true });
+        }
 
         console.log(`✅ Connect account ${account.id} → ${status} for tenant ${tenantDoc.id}`);
         break;
