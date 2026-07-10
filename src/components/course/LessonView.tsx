@@ -34,9 +34,9 @@ export function LessonView({ course, lesson, authors, onBack, onComplete, comple
   const author = authors.find((a) => a.id === lesson.authorId);
 
   return (
-    <div className="max-w-[480px] mx-auto pb-24">
+    <div className="max-w-[480px] lg:max-w-[760px] mx-auto pb-24 lg:pb-10">
       {/* Header */}
-      <div className="flex items-center gap-3 px-5 py-4 bg-white border-b border-stone-200">
+      <div className="flex items-center gap-3 px-5 lg:px-0 py-4 bg-white lg:bg-transparent border-b border-stone-200 lg:border-b-0">
         <button
           onClick={onBack}
           className="w-8 h-8 rounded-full bg-stone-100 border-none flex items-center justify-center cursor-pointer flex-shrink-0"
@@ -50,7 +50,7 @@ export function LessonView({ course, lesson, authors, onBack, onComplete, comple
       </div>
 
       {/* Video player */}
-      <div className="relative w-full bg-black" style={{ aspectRatio: "16/9" }}>
+      <div className="relative w-full bg-black lg:rounded-[var(--ds-radius-card)] lg:overflow-hidden lg:mt-4" style={{ aspectRatio: "16/9" }}>
         {videoUrl ? (
           <ReactPlayer
             url={videoUrl}
@@ -80,7 +80,7 @@ export function LessonView({ course, lesson, authors, onBack, onComplete, comple
         <div className="text-xs text-[color:var(--text-faint)] font-semibold uppercase tracking-wider mt-5 mb-1">
           Lesson {lessonNumber} of {allLessons.length}
         </div>
-        <div className="text-[22px] font-extrabold tracking-tight mb-4 font-display">{lesson.title}</div>
+        <div className="text-[22px] font-extrabold lg:font-light text-earth tracking-tight lg:tracking-[-0.02em] mb-4 font-display">{lesson.title}</div>
 
         {/* Tabs */}
         <div className="flex border-b border-stone-200 -mx-5 px-5 mb-4">

@@ -454,7 +454,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
         <div className="hidden lg:block bg-white border-b border-stone-200 flex-shrink-0">
           <div className="flex items-center justify-between py-3 px-6 xl:px-8">
             <div>
-              <h1 className="font-display text-lg font-bold tracking-[-0.01em] text-earth">{desktopTitle}</h1>
+              <h1 className="font-display text-lg font-normal tracking-[-0.01em] text-earth">{desktopTitle}</h1>
               {showDesktopDate && <p className="text-xs text-[color:var(--text-faint)] mt-0.5">{desktopDate}</p>}
             </div>
             <button

@@ -41,7 +41,7 @@ export function CourseLibrary({ courses, authors, categories, onSelectCourse, co
   return (
     <div className="max-w-[480px] mx-auto px-4 pt-5 pb-24 lg:max-w-none lg:px-8 lg:pt-6">
       {/* Header */}
-      <h1 className="text-[28px] font-extrabold tracking-tight mb-5 font-display">Courses</h1>
+      <h1 className="text-[28px] font-extrabold lg:font-light tracking-tight lg:tracking-[-0.02em] text-earth mb-5 font-display">Courses</h1>
 
       {/* Search */}
       <div className="relative mb-5">
@@ -65,8 +65,8 @@ export function CourseLibrary({ courses, authors, categories, onSelectCourse, co
             onClick={() => setActiveCategory(cat)}
             className={`px-4 py-[7px] rounded-full text-[13px] font-semibold whitespace-nowrap cursor-pointer transition-all duration-200 border ${
               activeCategory === cat
-                ? "bg-gray-900 text-white border-gray-900"
-                : "bg-white text-warm-brown border-stone-200 hover:border-gray-400 hover:text-earth"
+                ? "bg-gray-900 lg:bg-navy-900 text-white border-gray-900 lg:border-navy-900"
+                : "bg-white text-warm-brown border-stone-200 lg:border-stone-300 hover:border-gray-400 lg:hover:border-navy-700 hover:text-earth"
             }`}
           >
             {cat}
@@ -93,7 +93,7 @@ export function CourseLibrary({ courses, authors, categories, onSelectCourse, co
             >
               ★ Featured
             </div>
-            <div className="text-[22px] font-extrabold text-white tracking-tight mb-1">
+            <div className="text-[22px] lg:text-[26px] font-extrabold lg:font-light text-white tracking-tight lg:tracking-[-0.01em] mb-1">
               {featured.title}
             </div>
             <div className="text-[13px] font-medium text-white/70">

@@ -611,6 +611,7 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false })
   const [openDm, setOpenDm] = useState<DirectMessage | null>(null);
   const [openChannel, setOpenChannel] = useState<Channel | null>(null);
   const [showNewMessage, setShowNewMessage] = useState(false);
+  const [listCollapsed, setListCollapsed] = useState(false); // desktop conversation-list collapse
   const [admins, setAdmins] = useState<AdminContact[]>([]);
   const [adminsLoading, setAdminsLoading] = useState(false);
   const [adminSearch, setAdminSearch] = useState('');
@@ -787,8 +788,17 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false })
   return (
     <div className="flex flex-col lg:flex-row h-full bg-[#F7F6F3]">
       {/* LEFT: conversation list — the whole view on mobile (hidden while a thread
-          is open); a fixed 320px rail on desktop, always visible. */}
-      <div className={`${hasOpen ? 'hidden lg:flex' : 'flex'} flex-col min-h-full lg:min-h-0 lg:h-full lg:w-[360px] lg:flex-shrink-0 lg:border-r lg:border-[#EDEBE8]`}>
+          is open); a 360px rail on desktop that can be collapsed (like the Bible
+          book nav and Ask Harvest history rail). */}
+      <div className={`${hasOpen ? 'hidden lg:flex' : 'flex'} ${listCollapsed ? 'lg:hidden' : ''} flex-col min-h-full lg:min-h-0 lg:h-full lg:w-[360px] lg:flex-shrink-0 lg:border-r lg:border-[#EDEBE8]`}>
+      {/* Desktop-only list header + collapse toggle (always shown on lg, even when
+          the member can't start DMs). */}
+      <div className="hidden lg:flex items-center justify-between px-4 pt-3.5 pb-1 lg:flex-shrink-0">
+        <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-[color:var(--text-faint)]">Conversations</span>
+        <button onClick={() => setListCollapsed(true)} title="Collapse" className="w-8 h-8 rounded-lg flex items-center justify-center text-[color:var(--text-faint)] hover:bg-stone-100">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
+        </button>
+      </div>
       <div className="flex items-center gap-3 px-4 py-4 bg-white border-b border-[#EDEBE8] lg:hidden">
         {!embedded && (
           <button onClick={onBack} className="p-1 -ml-1" aria-label="Back">
@@ -839,8 +849,7 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false })
                       onClick={() => setOpenChannel(ch)}
                       className="w-full bg-white rounded-2xl border border-[#EDEBE8] px-4 py-3.5 flex items-center gap-3 hover:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] hover:shadow-sm transition-all text-left"
                     >
-                      <div className="w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center"
-                        style={{ backgroundColor: 'var(--brand-color, #B8962E)1A' }}>
+                      <div className="w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center lg:bg-[color-mix(in_srgb,var(--brand-color)_12%,white)]">
                         <Hash size={18} style={{ color: 'var(--brand-color, #B8962E)' }} />
                       </div>
                       <div className="flex-1 min-w-0">
@@ -881,7 +890,13 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false })
       </div>{/* /left rail */}
 
       {/* RIGHT: the open thread, or a desktop-only "select a conversation" state. */}
-      <div className={`${hasOpen ? 'flex' : 'hidden lg:flex'} flex-col h-full lg:flex-1 min-w-0`}>
+      <div className={`${hasOpen ? 'flex' : 'hidden lg:flex'} relative flex-col h-full lg:flex-1 min-w-0`}>
+        {/* Desktop-only handle to re-open the collapsed conversation list. */}
+        {listCollapsed && (
+          <button onClick={() => setListCollapsed(false)} title="Show conversations" className="hidden lg:flex absolute left-0 top-1/2 -translate-y-1/2 z-20 w-6 h-16 items-center justify-center rounded-r-lg bg-white border border-l-0 border-[#EDEBE8] text-warm-brown hover:bg-stone-100">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
+          </button>
+        )}
         {selectedThread || (
           <div className="hidden lg:flex flex-1 items-center justify-center text-[color:var(--text-faint)]">
             <div className="text-center px-6">

@@ -265,9 +265,9 @@ const BlogTab: React.FC<BlogTabProps> = ({ onOpenArticle, initialPost, onBack, i
  {errorMessage}
  </div>
  )}
- {/* Search Bar */}
+ {/* Search Bar — desktop (lg:) grows to the Harvest Member App scale. */}
  <div className="relative">
- <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+ <div className="absolute inset-y-0 left-0 pl-3 lg:pl-4 flex items-center pointer-events-none">
  <Search size={16} className="text-[color:var(--text-faint)]" />
  </div>
  <input
@@ -275,21 +275,21 @@ const BlogTab: React.FC<BlogTabProps> = ({ onOpenArticle, initialPost, onBack, i
  value={searchQuery}
  onChange={(e) => setSearchQuery(e.target.value)}
  placeholder="Search articles by title, content, or tags..."
- className="w-full pl-9 pr-3 py-1.5 bg-white border border-stone-200 rounded-lg text-sm text-earth focus:ring-2 focus:ring-gold focus:border-transparent outline-none transition-all"
+ className="w-full pl-9 lg:pl-11 pr-3 py-1.5 lg:py-2.5 bg-white border border-stone-200 rounded-lg lg:rounded-xl text-sm text-earth focus:ring-2 focus:ring-gold focus:border-transparent outline-none transition-all"
  />
  </div>
 
  {/* Categories */}
  {categories.length > 1 && (
- <div className="flex overflow-x-auto gap-1.5 pb-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+ <div className="flex overflow-x-auto lg:flex-wrap gap-1.5 lg:gap-2 pb-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
  {categories.map(category => (
  <button
  key={category}
  onClick={() => setSelectedCategory(category)}
- className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
+ className={`px-3 py-1 lg:px-[15px] lg:py-[7px] rounded-full text-xs lg:text-[12.5px] font-medium lg:font-semibold whitespace-nowrap transition-colors ${
  selectedCategory === category
  ? 'bg-gold text-white'
- : 'bg-white text-warm-brown border border-stone-200 hover:border-gold :border-gold'
+ : 'bg-white text-warm-brown lg:text-[color:var(--text-body)] border border-stone-200 lg:border-stone-300 hover:border-gold :border-gold'
  }`}
  >
  {category}

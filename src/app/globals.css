@@ -55,6 +55,19 @@
  --ds-sh-sm: 0 1px 2px rgba(45, 37, 25, 0.05), 0 2px 8px rgba(45, 37, 25, 0.06);
  --ds-sh-md: 0 4px 12px rgba(45, 37, 25, 0.07), 0 12px 24px rgba(45, 37, 25, 0.05);
  --ds-sh-lg: 0 8px 24px rgba(45, 37, 25, 0.09), 0 20px 48px rgba(45, 37, 25, 0.07);
+
+ /* Member desktop redesign (Harvest Member App) — additive semantic aliases.
+    Purely presentational conveniences for the member-app desktop passes; every
+    consumer is lg:-scoped, so mobile surfaces are untouched. Gold stays
+    tenant-overridable via --brand-color. */
+ --surface-gold:   var(--wheat-100);   /* soft gold tint fill (icon discs, active pills) */
+ --surface-sunken: var(--stone-100);   /* recessed fills (toggles, inputs) */
+ --surface-night:  var(--navy-900);    /* dark hero band ground */
+ --border-gold:    rgba(201, 150, 58, 0.40);
+ /* Warm gold glow for primary CTAs on light — reads as a halo, tenant-aware. */
+ --glow-gold: 0 10px 30px -8px color-mix(in srgb, var(--brand-color) 42%, transparent);
+ /* ~6% film-grain overlay — the signature texture on dark hero bands. */
+ --grain-url: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.4'/%3E%3C/svg%3E");
  }
 }
 
