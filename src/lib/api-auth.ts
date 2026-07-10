@@ -176,3 +176,48 @@ export async function requireTenantAdmin(
   }
   return userOrResponse;
 }
+
+/**
+ * Require the caller to hold a specific per-admin permission flag for the
+ * tenant. Mirrors firestore.rules' hasPermission(perm, tenantId): super
+ * admins, the tenant owner (tenants/{tenantId}.ownerId), and adminEmails-
+ * roster admins always pass; any other tenant admin must hold the specific
+ * permission flag (or fullAccess) on their users/{uid}.permissions map.
+ * Non-admins never pass. Use this for admin-moderation API routes that stand
+ * in for a client write the rules can't express (e.g. cross-author deletes on
+ * a subcollection whose rule can't see the parent doc's tenant/permission).
+ */
+export async function requireTenantPermission(
+  request: NextRequest,
+  tenantId: string,
+  permission: string
+): Promise<AuthenticatedUser | NextResponse> {
+  const userOrResponse = await requireTenantMember(request, tenantId);
+  if (userOrResponse instanceof NextResponse) return userOrResponse;
+  const user = userOrResponse;
+
+  if (user.isSuperAdmin) return user;
+
+  const tenantDoc = await adminDb.collection('tenants').doc(tenantId).get();
+  const tenantData = tenantDoc.exists ? tenantDoc.data() || {} : {};
+
+  if (tenantData.ownerId === user.uid) return user;
+
+  const adminEmails: string[] = Array.isArray(tenantData.adminEmails) ? tenantData.adminEmails : [];
+  const email = (user.email || '').toLowerCase();
+  if (email && adminEmails.some((e) => (e || '').toLowerCase() === email)) {
+    return user;
+  }
+
+  if (!user.isAdmin) {
+    return NextResponse.json({ error: 'Tenant admin access required' }, { status: 403 });
+  }
+
+  const userDoc = await adminDb.collection('users').doc(user.uid).get();
+  const permissions = userDoc.exists ? (userDoc.data()?.permissions || {}) : {};
+  if (permissions.fullAccess === true || permissions[permission] === true) {
+    return user;
+  }
+
+  return NextResponse.json({ error: `Missing '${permission}' permission` }, { status: 403 });
+}
