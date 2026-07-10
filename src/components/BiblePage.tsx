@@ -615,10 +615,11 @@ export default function BiblePage() {
 
           {!loading && !error && (
             <div className="px-4 pt-3 pb-2 flex-1 lg:max-w-[760px] lg:mx-auto lg:w-full lg:px-10">
-              {/* Desktop reader heading — big book title + chapter label (mockup) */}
+              {/* Desktop reader heading — translation eyebrow + Fraunces-light
+                  "Book Chapter" title, matching the Harvest Member App design. */}
               <div className="hidden lg:block mb-6 mt-2">
-                <h2 className="text-[30px] leading-tight text-earth" style={{ fontFamily: "var(--font-serif), Georgia, serif" }}>{book.name}</h2>
-                <div className="text-[12px] font-bold mt-1.5 uppercase tracking-wider" style={{ color: GOLD }}>Chapter {chapter}</div>
+                <div className="text-[12px] font-bold uppercase tracking-[0.14em]" style={{ color: 'var(--text-faint)' }}>{getTranslationName(translation)}</div>
+                <h2 className="text-[30px] leading-tight font-light tracking-[-0.02em] text-earth mt-1" style={{ fontFamily: "var(--font-display), Georgia, serif" }}>{book.name} {chapter}</h2>
               </div>
               {verses.map((verse) => {
                 const key = `${book.name}-${chapter}-${verse.number}`;

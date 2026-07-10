@@ -12,6 +12,7 @@ import CampaignWidget from './CampaignWidget';
 import KebabMenu from './KebabMenu';
 import { sortByTime } from '../utils/query-helpers';
 import { TwoColumnLayout, DesktopCard } from './layout/DesktopLayout';
+import { HeroBand } from './member/desktopKit';
 import { useLiveNow } from '../hooks/useLiveNow';
 
 interface Comment {
@@ -581,15 +582,25 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
 
       {/* Pinned events from AdminEvents system */}
       {adminEvents.filter(e => e.pinned).map(event => (
-        <div key={event.id} className="bg-white rounded-2xl shadow-sm border border-[color-mix(in_srgb,var(--brand-color)_30%,transparent)] overflow-hidden lg:rounded-[var(--ds-radius-card)] lg:shadow-[var(--ds-sh-sm)]">
+        <div key={event.id} className="bg-white rounded-2xl shadow-sm border border-[color-mix(in_srgb,var(--brand-color)_30%,transparent)] overflow-hidden lg:rounded-[var(--ds-radius-card)] lg:border-[color:var(--border-gold)] lg:shadow-[var(--ds-sh-sm)]">
+          {/* Mobile: cover image only when present */}
           {event.coverImage && (
-            <div className="relative h-36 bg-stone-100">
+            <div className="relative h-36 bg-stone-100 lg:hidden">
               <Image src={event.coverImage} alt={event.title} fill sizes="(max-width:768px) 100vw, 800px" className="object-cover" referrerPolicy="no-referrer" />
             </div>
           )}
-          <div className="p-4">
-            <span className="inline-flex items-center text-[10px] font-bold uppercase tracking-wider text-gold bg-[color-mix(in_srgb,var(--brand-color)_15%,white)] px-2 py-0.5 rounded-full mb-2">Pinned Event</span>
-            <h3 className="font-bold text-earth text-base lg:text-sm mb-1">{event.title}</h3>
+          {/* Desktop: always a hero band — cover photo, else navy→gold gradient — with the Pinned Event chip overlaid */}
+          <div className="hidden lg:block relative h-[150px]">
+            {event.coverImage ? (
+              <Image src={event.coverImage} alt={event.title} fill sizes="800px" className="object-cover" referrerPolicy="no-referrer" />
+            ) : (
+              <HeroBand radius="0" className="!absolute inset-0" />
+            )}
+            <span className="absolute top-3 left-3 z-10 inline-flex items-center text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full" style={{ background: 'var(--surface-gold)', color: 'var(--wheat-700)' }}>Pinned Event</span>
+          </div>
+          <div className="p-4 lg:p-[18px]">
+            <span className="lg:hidden inline-flex items-center text-[10px] font-bold uppercase tracking-wider text-gold bg-[color-mix(in_srgb,var(--brand-color)_15%,white)] px-2 py-0.5 rounded-full mb-2">Pinned Event</span>
+            <h3 className="font-bold text-earth text-base lg:text-[17px] mb-1">{event.title}</h3>
             {event.description ? <p className="text-sm lg:text-xs text-warm-brown line-clamp-2 mb-3">{event.description}</p> : null}
             <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-warm-brown mb-3">
               {event.startDate && <span className="flex items-center gap-1"><CalendarIcon size={12} />{fmtEventDate(event.startDate)}</span>}

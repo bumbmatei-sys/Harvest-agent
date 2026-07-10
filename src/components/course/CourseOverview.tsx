@@ -51,9 +51,9 @@ export function CourseOverview({ course, authors, onBack, onStartLesson, complet
   };
 
   return (
-    <div className="max-w-[480px] mx-auto pb-24">
+    <div className="max-w-[480px] lg:max-w-[720px] mx-auto pb-24 lg:pb-10">
       {/* Hero */}
-      <div className="relative w-full" style={{ aspectRatio: "16/10" }}>
+      <div className="relative w-full lg:rounded-[var(--ds-radius-card)] lg:overflow-hidden" style={{ aspectRatio: "16/10" }}>
         {course.thumbnail ? (
           <img src={course.thumbnail} alt={course.title} className="w-full h-full object-cover" />
         ) : (
@@ -69,7 +69,7 @@ export function CourseOverview({ course, authors, onBack, onStartLesson, complet
           <div className="text-[11px] font-bold uppercase tracking-widest mb-2" style={{ color: GOLD }}>
             {course.category || "Course"}
           </div>
-          <div className="text-2xl font-extrabold text-white tracking-tight leading-tight mb-2 font-display">
+          <div className="text-2xl lg:text-[28px] font-extrabold lg:font-light text-white tracking-tight lg:tracking-[-0.01em] leading-tight mb-2 font-display">
             {course.title}
           </div>
           <div className="text-sm font-medium text-white/60">
@@ -231,11 +231,13 @@ export function CourseOverview({ course, authors, onBack, onStartLesson, complet
         )}
       </div>
 
-      {/* CTA */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-stone-200 px-5 py-4 z-50" style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}>
+      {/* CTA — fixed action bar on mobile; on desktop it sits inline at the
+          bottom of the 720px column (a viewport-wide fixed bar would overlap
+          the desktop shell). */}
+      <div className="fixed lg:static bottom-0 left-0 right-0 bg-white lg:bg-transparent border-t border-stone-200 lg:border-t-0 px-5 lg:px-5 py-4 lg:py-0 lg:mt-4 z-50" style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}>
         <button
           onClick={() => nextLesson && onStartLesson(course, nextLesson)}
-          className="w-full py-3.5 rounded-lg text-white text-[15px] font-bold cursor-pointer transition-colors"
+          className="w-full py-3.5 rounded-lg lg:rounded-xl text-white text-[15px] font-bold cursor-pointer transition-colors"
           style={{ background: GOLD }}
           onMouseEnter={(e) => (e.currentTarget.style.background = "color-mix(in srgb, var(--brand-color, #C9963A) 85%, black)")}
           onMouseLeave={(e) => (e.currentTarget.style.background = GOLD)}

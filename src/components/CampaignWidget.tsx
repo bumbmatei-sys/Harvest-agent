@@ -5,6 +5,7 @@ import { collection, query, where, onSnapshot, limit } from 'firebase/firestore'
 import { db, auth } from '../firebase';
 import { getTenantScope } from '../utils/tenant-scope';
 import { Heart, Clock, ChevronLeft, Loader2 } from 'lucide-react';
+import { HeroBand, Eyebrow } from './member/desktopKit';
 
 interface Campaign {
   id: string;
@@ -144,7 +145,44 @@ const CampaignWidget: React.FC<CampaignWidgetProps> = ({ onDonate }) => {
 
   return (
     <>
-      <div className="bg-white rounded-2xl shadow-sm border border-stone-200 overflow-hidden mb-4 lg:rounded-[var(--ds-radius-card)] lg:border-[color:var(--ds-border)] lg:shadow-[var(--ds-sh-sm)]">
+      {/* Desktop (lg:+) — the navy "money band" from the Harvest Member App design:
+          a compact campaign banner (title eyebrow, big serif amount, progress,
+          Give Now). Mobile keeps the white card below untouched. */}
+      <div className="hidden lg:block mb-3">
+        <HeroBand className="px-6 py-5">
+          {campaign.coverImage && (
+            <span aria-hidden className="absolute inset-0 pointer-events-none">
+              <Image src={campaign.coverImage} alt="" fill sizes="900px" className="object-cover opacity-25" style={{ objectPosition: 'center 35%' }} referrerPolicy="no-referrer" />
+            </span>
+          )}
+          <div className="relative flex items-center justify-between gap-4">
+            <div className="min-w-0">
+              <Eyebrow tone="glow" className="truncate">{campaign.title}</Eyebrow>
+              <div className="flex items-baseline gap-2 mt-1.5">
+                <span className="font-display font-light text-[30px] leading-none text-white tracking-[-0.02em]">{fmt(campaign.raised)}</span>
+                <span className="text-[13px] text-white/70">of {fmt(campaign.goal)}</span>
+              </div>
+              <div className="mt-2.5 h-1.5 w-[220px] max-w-full rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.2)' }}>
+                <div className="h-full rounded-full transition-[width] duration-700" style={{ width: `${percentage}%`, background: 'var(--wheat-glow)' }} />
+              </div>
+              {daysLeft !== null && (
+                <div className="mt-2 flex items-center gap-1 text-[11px] text-white/60">
+                  <Clock size={11} />{daysLeft === 0 ? 'Last day!' : `${daysLeft} days left`}
+                </div>
+              )}
+            </div>
+            <button
+              onClick={handleDonateClick}
+              className="shrink-0 whitespace-nowrap px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
+              style={{ backgroundColor: 'var(--brand-color, #e6b325)', boxShadow: 'var(--glow-gold)' }}
+            >
+              Give Now
+            </button>
+          </div>
+        </HeroBand>
+      </div>
+
+      <div className="bg-white rounded-2xl shadow-sm border border-stone-200 overflow-hidden mb-4 lg:hidden">
         {campaign.coverImage && (
           <div className="relative h-40 bg-stone-100">
             <Image src={campaign.coverImage} alt={campaign.title} fill sizes="(max-width: 768px) 100vw, 800px" className="object-cover" referrerPolicy="no-referrer" />
