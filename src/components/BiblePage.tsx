@@ -18,11 +18,44 @@ const HELLOAO_API_BASE = "https://bible.helloao.org/api";
 const DEFAULT_TRANSLATION = "BSB"; // Berean Standard Bible — modern, public domain
 const TRANSLATIONS_CACHE_KEY = "harvest-bible-translations-v1";
 
-// Small built-in list used only if the live translation list fails to load.
+// Shown when a chapter can't be loaded for the selected translation (404, malformed
+// payload, or a translation that turns out to be incomplete). Kept as one constant so
+// the message is identical everywhere it can surface.
+const CHAPTER_UNAVAILABLE = "This chapter isn't available in this translation.";
+
+// ── Curated translation allowlist ──────────────
+// HelloAO serves 1000+ translations, but many are partial or non-standard: requesting a
+// chapter for one can 404 or return malformed JSON, which is what produced the Bible's
+// "json errors". So we only OFFER a vetted set of complete, public-domain translations,
+// intersected with what the live list actually returns (see applyTranslations) — we never
+// show an id HelloAO doesn't serve, and never one outside this set.
+//
+// IDs verified against HelloAO's own source (github.com/HelloAOLab/bible-api): the API id
+// is the normalized `{language}_{code}` form, except the ones remapped in
+// packages/helloao-tools/utils.ts `TRANSLATION_ID_MAP` (e.g. eng_bsb→BSB, eng_webp→ENGWEBP).
+// "BSB" is the live default; "BSB", "ENGWEBP" (map) and "eng_kjv" (the typed LuaU HelloAO
+// client's working call) are corroborated, and the remaining eng_* forms follow the same
+// documented scheme. All are complete 66-book Bibles, so whichever HelloAO serves loads
+// cleanly; any id it doesn't serve is simply dropped by the intersection.
+const ALLOWED_TRANSLATION_IDS = new Set<string>([
+  "BSB",       // Berean Standard Bible (eng_bsb → BSB)
+  "eng_kjv",   // King James Version
+  "ENGWEBP",   // World English Bible (eng_webp → ENGWEBP)
+  "eng_web",   // World English Bible (classic id, if served under this form)
+  "eng_webbe", // World English Bible, British Edition
+  "eng_asv",   // American Standard Version
+  "eng_ylt",   // Young's Literal Translation
+  "eng_dby",   // Darby Translation
+]);
+
+// Shown only if the live translation list fails to load. Every id here is in the allowlist
+// above and is one of the highest-confidence complete translations (BSB is the live
+// default; ENGWEBP and eng_kjv are independently corroborated).
 const FALLBACK_TRANSLATIONS: Record<string, { id: string; name: string }[]> = {
   English: [
-    { id: "BSB", name: "BSB" }, { id: "WEB", name: "WEB" }, { id: "KJV", name: "KJV" },
-    { id: "ASV", name: "ASV" }, { id: "WEBBE", name: "WEBBE" },
+    { id: "BSB", name: "BSB" },
+    { id: "eng_kjv", name: "KJV" },
+    { id: "ENGWEBP", name: "WEB" },
   ],
 };
 
@@ -124,21 +157,33 @@ const BOOKS: BookMeta[] = [
 // fragments aren't guaranteed to carry their own spacing (confirmed against real parser
 // snapshots, e.g. content: [{poem:1,text:"Blessed are the poor in spirit,"}, {poem:2,text:"for theirs is the kingdom of heaven."}]).
 const flattenVerseContent = (content: HelloAoVerseContentItem[]): string => {
+  if (!Array.isArray(content)) return "";
   const parts: string[] = [];
   for (const item of content) {
     if (typeof item === "string") parts.push(item);
-    else if ("text" in item) parts.push(item.text);
-    else if ("heading" in item) parts.push(item.heading);
+    else if (item && "text" in item) parts.push(item.text);
+    else if (item && "heading" in item) parts.push(item.heading);
   }
   return parts.join(" ").replace(/\s+/g, " ").trim();
 };
 
 const fetchChapter = async (helloBookId: string, chapter: number, translation: string): Promise<Verse[]> => {
   const res = await fetch(`${HELLOAO_API_BASE}/${translation}/${helloBookId}/${chapter}.json`);
-  if (!res.ok) throw new Error(res.status === 404 ? "This chapter isn't available in this translation." : "Failed to fetch chapter");
-  const data: HelloAoChapterResponse = await res.json();
+  if (!res.ok) throw new Error(res.status === 404 ? CHAPTER_UNAVAILABLE : "Failed to fetch chapter");
+  // A malformed / non-JSON body (some partial translations return truncated JSON or HTML)
+  // must surface the friendly message, not a raw "Unexpected token …" parse error.
+  let data: HelloAoChapterResponse;
+  try {
+    data = await res.json();
+  } catch {
+    throw new Error(CHAPTER_UNAVAILABLE);
+  }
+  // Defense-in-depth: if a bad translation ever slips past the allowlist, its chapter
+  // payload may be missing or misshapen. Guard the shape instead of letting `.filter`
+  // crash on a non-array `content`.
+  if (!Array.isArray(data?.chapter?.content)) throw new Error(CHAPTER_UNAVAILABLE);
   return data.chapter.content
-    .filter((item): item is HelloAoChapterVerseItem => item.type === "verse")
+    .filter((item): item is HelloAoChapterVerseItem => item?.type === "verse")
     .map((item) => ({ number: item.number, text: flattenVerseContent(item.content) }));
 };
 
@@ -348,9 +393,16 @@ export default function BiblePage() {
   useEffect(() => {
     let cancelled = false;
     const applyTranslations = (list: HelloAoTranslation[]) => {
+      // Curate: keep only vetted, known-complete translations that HelloAO actually serves
+      // (allowlist ∩ returned). This is what removes the partial/broken translations that
+      // used to throw JSON/parse errors when selected.
+      const curated = (Array.isArray(list) ? list : []).filter((t) => t && ALLOWED_TRANSLATION_IDS.has(t.id));
+      // If none of the allowlisted ids came back (unexpected — e.g. HelloAO changed its id
+      // scheme), keep the built-in fallback rather than showing an empty dropdown.
+      if (curated.length === 0) return;
       const grouped: Record<string, { id: string; name: string }[]> = {};
       const meta = new Map<string, HelloAoTranslation>();
-      for (const t of list) {
+      for (const t of curated) {
         const lang = t.languageEnglishName || t.languageName || t.language || "Other";
         if (!grouped[lang]) grouped[lang] = [];
         grouped[lang].push({ id: t.id, name: t.shortName || t.englishName || t.name || t.id });
