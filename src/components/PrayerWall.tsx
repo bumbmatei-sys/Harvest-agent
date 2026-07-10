@@ -190,7 +190,7 @@ const PrayerWall: React.FC = () => {
 
  {/* Desktop header (mockup) */}
  <div className="hidden lg:flex items-baseline justify-between">
- <h1 className="text-[26px] font-bold text-[#0b1121] font-display">Prayer wall</h1>
+ <h1 className="text-[26px] font-light tracking-[-0.02em] text-earth font-display">Prayer wall</h1>
  <span className="text-[13px] text-[color:var(--text-faint)]">Requests auto-clear after 30 days</span>
  </div>
 

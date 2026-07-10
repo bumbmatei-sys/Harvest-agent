@@ -839,8 +839,7 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false })
                       onClick={() => setOpenChannel(ch)}
                       className="w-full bg-white rounded-2xl border border-[#EDEBE8] px-4 py-3.5 flex items-center gap-3 hover:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] hover:shadow-sm transition-all text-left"
                     >
-                      <div className="w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center"
-                        style={{ backgroundColor: 'var(--brand-color, #B8962E)1A' }}>
+                      <div className="w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center lg:bg-[color-mix(in_srgb,var(--brand-color)_12%,white)]">
                         <Hash size={18} style={{ color: 'var(--brand-color, #B8962E)' }} />
                       </div>
                       <div className="flex-1 min-w-0">
