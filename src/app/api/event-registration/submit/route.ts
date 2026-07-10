@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { FieldValue } from 'firebase-admin/firestore';
+import Stripe from 'stripe';
 import QRCode from 'qrcode';
 import { Resend } from 'resend';
 import { adminDb } from '@/lib/firebase-admin';
+import { PLATFORM_FEE_MAP } from '@/lib/stripe-config';
 
 export const dynamic = 'force-dynamic';
 
@@ -84,6 +86,10 @@ export async function POST(request: NextRequest) {
     }
 
     // ── Capacity check (single-field query on eventId; filter client-side) ──
+    // Only CONFIRMED seats hold capacity. A `pending_payment` registration (a
+    // paid ticket whose Checkout hasn't completed) holds nothing — otherwise an
+    // abandoned checkout would burn a seat. Capacity is re-checked at webhook
+    // confirmation, where the seat is actually claimed.
     const regSnap = await adminDb
       .collection('tenants').doc(tenantId).collection('registrations')
       .where('eventId', '==', eventId)
@@ -91,7 +97,7 @@ export async function POST(request: NextRequest) {
       .get();
     const soldForType = regSnap.docs.filter((d) => {
       const r = d.data();
-      return r.ticketTypeId === ticketTypeId && r.waitlisted !== true;
+      return r.ticketTypeId === ticketTypeId && r.status === 'confirmed';
     }).length;
 
     let waitlisted = false;
@@ -123,6 +129,112 @@ export async function POST(request: NextRequest) {
 
     const amount = Math.max(0, ticketType.price - discountAmount);
     const ticketCode = Math.random().toString(36).slice(2, 10).toUpperCase();
+
+    // A real seat that costs money must be PAID before it is confirmed. A
+    // waitlisted entry is free/held (never charged) regardless of ticket price,
+    // and a ticket that discounts to $0 is free — both keep the immediate-confirm
+    // flow below. Everything else goes through Stripe Checkout and is confirmed
+    // only by the webhook after payment succeeds.
+    const requiresPayment = amount > 0 && !waitlisted;
+
+    if (requiresPayment) {
+      const stripeKey = process.env.STRIPE_SECRET_KEY;
+      if (!stripeKey) {
+        return NextResponse.json({ error: 'Payments are not configured' }, { status: 500 });
+      }
+
+      // Connect account + plan live on the tenant doc — the SAME fields donations
+      // use (see /api/stripe/donate). Missing account → fail cleanly; NEVER fall
+      // back to confirming a paid ticket for free.
+      const tenantSnap = await adminDb.collection('tenants').doc(tenantId).get();
+      const tenantData = tenantSnap.data() || {};
+      const connectAccountId = tenantData.stripeConnectAccountId;
+      const plan = tenantData.plan || 'plus';
+      if (!connectAccountId) {
+        return NextResponse.json(
+          { error: "This ministry hasn't set up payments yet — please contact them to complete your registration." },
+          { status: 400 },
+        );
+      }
+
+      const stripe = new Stripe(stripeKey);
+      const feePercent = PLATFORM_FEE_MAP[plan] ?? 0;
+      const applicationFeeAmount = Math.round(amount * feePercent);
+
+      // Return to the SAME public event page the browser is on so the tenant
+      // resolves by Host (getTenantFromHost). Don't use the platform apex — that
+      // would resolve to the wrong tenant (or none).
+      const host = request.headers.get('host');
+      const proto = request.headers.get('x-forwarded-proto') || 'https';
+      const origin = host ? `${proto}://${host}` : (process.env.NEXT_PUBLIC_APP_URL || 'https://theharvest.app');
+
+      // Persist the registration as pending BEFORE creating the session so the
+      // session metadata can carry its id. Pending regs hold no capacity and
+      // consume no discount — those happen only at confirmation. `firstName` is
+      // stored so the webhook can address the confirmation email.
+      const pendingRef = await adminDb.collection('tenants').doc(tenantId).collection('registrations').add({
+        eventId,
+        tenantId,
+        userId: null,
+        name: `${firstName} ${lastName}`,
+        firstName,
+        lastName,
+        email,
+        phone: phone || null,
+        ticketTypeId,
+        ticketTypeName: ticketType.name,
+        ticketCode,
+        status: 'pending_payment',
+        waitlisted: false,
+        amount,
+        discountCode: appliedCode ? appliedCode.code : null,
+        discountAmount: discountAmount || 0,
+        additionalAttendees,
+        registeredAt: FieldValue.serverTimestamp(),
+      });
+
+      // Everything the webhook needs to finalize this registration server-side.
+      const metadata: Record<string, string> = {
+        type: 'event_registration',
+        tenantId,
+        eventId,
+        ticketTypeId,
+        registrationId: pendingRef.id,
+        discountCode: appliedCode ? appliedCode.code : '',
+      };
+
+      try {
+        const session = await stripe.checkout.sessions.create({
+          mode: 'payment',
+          line_items: [
+            {
+              price_data: {
+                currency: 'usd',
+                product_data: { name: `${event.title} — ${ticketType.name}` },
+                unit_amount: amount,
+              },
+              quantity: 1,
+            },
+          ],
+          payment_intent_data: {
+            transfer_data: { destination: connectAccountId },
+            application_fee_amount: applicationFeeAmount,
+            metadata,
+          },
+          success_url: `${origin}/event/${eventId}?registration=success`,
+          cancel_url: `${origin}/event/${eventId}?registration=cancel`,
+          customer_email: email || undefined,
+          metadata,
+        });
+
+        return NextResponse.json({ url: session.url });
+      } catch (stripeErr) {
+        console.error('Event ticket checkout session creation failed:', stripeErr);
+        // Roll back the orphaned pending registration so it doesn't linger.
+        await pendingRef.delete().catch(() => {});
+        return NextResponse.json({ error: 'Could not start checkout. Please try again.' }, { status: 500 });
+      }
+    }
 
     // ── Write registration ──
     await adminDb.collection('tenants').doc(tenantId).collection('registrations').add({
