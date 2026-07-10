@@ -12,12 +12,16 @@ const {
   mockDocDelete,
   mockCollGet,
   mockTenantUpdate,
+  mockBatchUpdate,
+  mockBatchCommit,
 } = vi.hoisted(() => ({
   mockDocGet: vi.fn(),
   mockDocSet: vi.fn().mockResolvedValue(undefined),
   mockDocDelete: vi.fn().mockResolvedValue(undefined),
   mockCollGet: vi.fn(),
   mockTenantUpdate: vi.fn().mockResolvedValue(undefined),
+  mockBatchUpdate: vi.fn(),
+  mockBatchCommit: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('stripe', () => ({
@@ -37,6 +41,10 @@ vi.mock('@/lib/firebase-admin', () => ({
       where: vi.fn().mockReturnThis(),
       limit: vi.fn().mockReturnThis(),
       get: mockCollGet,
+    })),
+    batch: vi.fn(() => ({
+      update: mockBatchUpdate,
+      commit: mockBatchCommit,
     })),
   },
 }));
@@ -65,6 +73,16 @@ function tenantSnapshot(data: Record<string, unknown> | null, id = 'bumb') {
   return {
     empty: false,
     docs: [{ id, data: () => data, ref: { update: mockTenantUpdate } }],
+  };
+}
+
+/** Build a users QuerySnapshot for the "reconcile affiliate status" batch update.
+ *  Pass an array of user ids; each doc exposes a distinct ref for batch.update. */
+function usersSnapshot(ids: string[]) {
+  if (ids.length === 0) return { empty: true, docs: [] };
+  return {
+    empty: false,
+    docs: ids.map((id) => ({ id, ref: { id }, data: () => ({}) })),
   };
 }
 
@@ -198,14 +216,15 @@ describe('account.updated status sync', () => {
 
 // ── Unified-account lens ─────────────────────────────────────────────────────
 
-describe('account.updated unified-account mirror', () => {
-  it('mirrors the account onto the tenant owner so the SAME account powers affiliate payouts', async () => {
+describe('account.updated unified-account reconcile', () => {
+  it('reconciles affiliate status for EVERY user linked to the account (owner + other admins)', async () => {
     mockConstructEvent.mockReturnValue(makeAccountEvent({
       id: 'acct_123', charges_enabled: true, payouts_enabled: true,
     }));
-    mockCollGet.mockResolvedValue(
-      tenantSnapshot({ stripeConnectAccountId: 'acct_123', ownerId: 'owner1' }),
-    );
+    // 1st collGet → tenant lookup; 2nd collGet → users linked to this account.
+    mockCollGet
+      .mockResolvedValueOnce(tenantSnapshot({ stripeConnectAccountId: 'acct_123', ownerId: 'owner1' }))
+      .mockResolvedValueOnce(usersSnapshot(['owner1', 'adminB']));
 
     const res = await POST(makeRequest());
     expect(res.status).toBe(200);
@@ -213,46 +232,52 @@ describe('account.updated unified-account mirror', () => {
     expect(mockTenantUpdate).toHaveBeenCalledWith(
       expect.objectContaining({ stripeConnectStatus: 'active' }),
     );
-    // …and the owner's affiliate-payout fields mirrored to the SAME account id/status
-    // (the payout path reads users/{referrerId}.affiliateStripeAccountId / affiliateConnectStatus).
-    expect(mockDocSet).toHaveBeenCalledWith(
-      expect.objectContaining({ affiliateStripeAccountId: 'acct_123', affiliateConnectStatus: 'active' }),
-      { merge: true },
+    // …and affiliate status flipped for BOTH linked users to the same status.
+    expect(mockBatchUpdate).toHaveBeenCalledWith(
+      { id: 'owner1' },
+      expect.objectContaining({ affiliateConnectStatus: 'active' }),
     );
+    expect(mockBatchUpdate).toHaveBeenCalledWith(
+      { id: 'adminB' },
+      expect.objectContaining({ affiliateConnectStatus: 'active' }),
+    );
+    expect(mockBatchCommit).toHaveBeenCalled();
   });
 
-  it('falls back to createdBy when the tenant has no ownerId', async () => {
+  it('propagates a restricted status to linked users', async () => {
     mockConstructEvent.mockReturnValue(makeAccountEvent({
-      id: 'acct_123', charges_enabled: true, payouts_enabled: true,
+      id: 'acct_123',
+      charges_enabled: false,
+      payouts_enabled: false,
+      requirements: { currently_due: ['external_account'] },
     }));
-    mockCollGet.mockResolvedValue(
-      tenantSnapshot({ stripeConnectAccountId: 'acct_123', createdBy: 'creator9' }),
-    );
+    mockCollGet
+      .mockResolvedValueOnce(tenantSnapshot({ stripeConnectAccountId: 'acct_123' }))
+      .mockResolvedValueOnce(usersSnapshot(['owner1']));
 
     const res = await POST(makeRequest());
     expect(res.status).toBe(200);
-    expect(mockDocSet).toHaveBeenCalledWith(
-      expect.objectContaining({ affiliateStripeAccountId: 'acct_123', affiliateConnectStatus: 'active' }),
-      { merge: true },
+    expect(mockBatchUpdate).toHaveBeenCalledWith(
+      { id: 'owner1' },
+      expect.objectContaining({ affiliateConnectStatus: 'restricted' }),
     );
   });
 
-  it('does not mirror to a user doc when the tenant has neither ownerId nor createdBy', async () => {
+  it('still 200s (donations status synced) when no user is linked to the account yet', async () => {
     mockConstructEvent.mockReturnValue(makeAccountEvent({
       id: 'acct_123', charges_enabled: true, payouts_enabled: true,
     }));
-    mockCollGet.mockResolvedValue(tenantSnapshot({ stripeConnectAccountId: 'acct_123' }));
+    mockCollGet
+      .mockResolvedValueOnce(tenantSnapshot({ stripeConnectAccountId: 'acct_123' }))
+      .mockResolvedValueOnce(usersSnapshot([]));
 
     const res = await POST(makeRequest());
     expect(res.status).toBe(200);
     expect(mockTenantUpdate).toHaveBeenCalledWith(
       expect.objectContaining({ stripeConnectStatus: 'active' }),
     );
-    // Only the webhook_events marker set() — never an affiliate mirror.
-    expect(mockDocSet).not.toHaveBeenCalledWith(
-      expect.objectContaining({ affiliateStripeAccountId: expect.anything() }),
-      { merge: true },
-    );
+    // No linked users → no batch update.
+    expect(mockBatchUpdate).not.toHaveBeenCalled();
   });
 });
 
@@ -282,6 +307,24 @@ describe('connect webhook idempotency', () => {
 
     const res = await POST(makeRequest());
     expect(res.status).toBe(500); // Stripe retries on 5xx
+    expect(mockDocDelete).toHaveBeenCalled(); // marker undone → redelivery not skipped
+  });
+
+  it('undoes the marker and 500s when the affiliate reconcile (batch) write fails', async () => {
+    // The NEW owner→account status reconciliation runs after the tenant write. A
+    // failure there must also bubble → 500 → marker undone, so the retry re-runs the
+    // whole (idempotent) handler rather than skipping it as a duplicate.
+    mockConstructEvent.mockReturnValue(makeAccountEvent({
+      id: 'acct_123', charges_enabled: true, payouts_enabled: true,
+    }));
+    mockCollGet
+      .mockResolvedValueOnce(tenantSnapshot({ stripeConnectAccountId: 'acct_123' }))
+      .mockResolvedValueOnce(usersSnapshot(['owner1']));
+    mockBatchCommit.mockRejectedValueOnce(new Error('Firestore unavailable'));
+
+    const res = await POST(makeRequest());
+    expect(res.status).toBe(500);
+    expect(mockTenantUpdate).toHaveBeenCalled(); // tenant status write happened first
     expect(mockDocDelete).toHaveBeenCalled(); // marker undone → redelivery not skipped
   });
 

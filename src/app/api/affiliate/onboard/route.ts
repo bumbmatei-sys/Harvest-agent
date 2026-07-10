@@ -28,26 +28,79 @@ export async function POST(request: NextRequest) {
 
     const stripe = new Stripe(stripeKey);
 
-    const userDoc = await adminDb.collection('users').doc(userOrErr.uid).get();
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://theharvest.app';
+    const userRef = adminDb.collection('users').doc(userOrErr.uid);
+    const userDoc = await userRef.get();
     const userData = userDoc.data();
 
-    // Already has a Connect account — generate a new account link
-    if (userData?.affiliateStripeAccountId) {
-      // Backfill affiliate code if missing
-      if (!userData?.affiliateCode) {
-        try {
-          const code = await generateUniqueAffiliateCode();
-          await adminDb.collection('users').doc(userOrErr.uid).update({
-            affiliateCode: code,
-            affiliateClicks: 0,
+    // Backfill an affiliate code if missing — the referral link works without a
+    // Connect account (Connect is only needed to RECEIVE payouts).
+    if (!userData?.affiliateCode) {
+      try {
+        const code = await generateUniqueAffiliateCode();
+        await userRef.set({
+          affiliateCode: code,
+          affiliateClicks: userData?.affiliateClicks || 0,
+          updatedAt: new Date().toISOString(),
+        }, { merge: true });
+      } catch (codeErr) {
+        console.error('Failed to backfill affiliate code:', codeErr);
+      }
+    }
+
+    // ── Unified-account backstop (server-authoritative) ──────────────────────
+    // The ONE tenant Connect account (tenants/{id}.stripeConnectAccountId) powers
+    // affiliate payouts too, so if the caller belongs to a tenant we must NEVER
+    // mint a second, user-scoped Express account here. Reuse the tenant's account
+    // (or create it AS the canonical account) and mirror it onto the user doc.
+    // tenantId comes from requireAuth, which resolves it from the token claim OR
+    // the authoritative user-doc read — so a flaky CLIENT-side tenant lookup can't
+    // route us into a double-account. Onboarding returns through the shared connect
+    // callback so status reconciliation (and the owner mirror) stays unified.
+    const tenantId = userOrErr.tenantId;
+    if (tenantId) {
+      const tenantRef = adminDb.collection('tenants').doc(tenantId);
+      const tenantSnap = await tenantRef.get();
+      if (tenantSnap.exists) {
+        const tData = tenantSnap.data()!;
+        let accountId: string | undefined = tData.stripeConnectAccountId;
+        let connectStatus: string | undefined = tData.stripeConnectStatus;
+        if (!accountId) {
+          const account = await stripe.accounts.create({
+            type: 'express',
+            metadata: { tenantId, tenantName: tData.name || '', app: 'harvest' },
+          });
+          accountId = account.id;
+          connectStatus = 'pending';
+          await tenantRef.update({
+            stripeConnectAccountId: accountId,
+            stripeConnectStatus: 'pending',
             updatedAt: new Date().toISOString(),
           });
-        } catch (codeErr) {
-          console.error('Failed to backfill affiliate code:', codeErr);
         }
+        // Mirror onto the caller's user doc so their affiliate-payout path resolves
+        // the SAME account (the payout path reads users/{uid}.affiliateStripeAccountId).
+        await userRef.set({
+          affiliateStripeAccountId: accountId,
+          ...(connectStatus ? { affiliateConnectStatus: connectStatus } : {}),
+          updatedAt: new Date().toISOString(),
+        }, { merge: true });
+        const accountLink = await stripe.accountLinks.create({
+          account: accountId,
+          refresh_url: `${baseUrl}/?section=payment`,
+          return_url: `${baseUrl}/api/stripe/connect/callback?account_id=${accountId}`,
+          type: 'account_onboarding',
+        });
+        return NextResponse.json({ url: accountLink.url });
       }
+      // tenantId set but the tenant doc is missing → fall through to the
+      // user-scoped path (defensive; shouldn't happen for a real member).
+    }
 
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://theharvest.app';
+    // ── Tenant-less affiliate (e.g. platform super admin) ────────────────────
+    // No tenant to unify with → keep a user-scoped Connect account. Already has one
+    // → just refresh the onboarding link.
+    if (userData?.affiliateStripeAccountId) {
       const accountLink = await stripe.accountLinks.create({
         account: userData.affiliateStripeAccountId,
         refresh_url: `${baseUrl}/?section=settings`,
@@ -57,10 +110,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ url: accountLink.url });
     }
 
-    // Generate unique affiliate code for new affiliate
-    const affiliateCode = await generateUniqueAffiliateCode();
-
-    // Create a new Stripe Connect Express account
+    // Create a new user-scoped Stripe Connect Express account.
     const account = await stripe.accounts.create({
       type: 'express',
       metadata: {
@@ -71,17 +121,15 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    await adminDb.collection('users').doc(userOrErr.uid).update({
+    await userRef.set({
       affiliateStripeAccountId: account.id,
-      affiliateCode,
-      affiliateClicks: 0,
-      affiliateEarnings: 0,
-      affiliatePendingPayouts: 0,
-      affiliateReferralCount: 0,
+      affiliateClicks: userData?.affiliateClicks || 0,
+      affiliateEarnings: userData?.affiliateEarnings || 0,
+      affiliatePendingPayouts: userData?.affiliatePendingPayouts || 0,
+      affiliateReferralCount: userData?.affiliateReferralCount || 0,
       updatedAt: new Date().toISOString(),
-    });
+    }, { merge: true });
 
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://theharvest.app';
     const accountLink = await stripe.accountLinks.create({
       account: account.id,
       refresh_url: `${baseUrl}/?section=settings`,

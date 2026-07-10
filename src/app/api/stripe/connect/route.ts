@@ -38,9 +38,11 @@ export async function POST(request: NextRequest) {
     // Unified account: the ONE Connect account created here powers BOTH donations
     // (tenants/{id}.stripeConnectAccountId, read by /api/stripe/donate) AND affiliate
     // payouts. The affiliate-payout path reads users/{referrerId}.affiliateStripeAccountId
-    // / affiliateConnectStatus, so we mirror the SAME account id/status onto the tenant
-    // owner's user doc — one onboarding populates both consumers, no second account.
-    const affiliateOwnerId = tenantData.ownerId || tenantData.createdBy || userOrErr.uid;
+    // / affiliateConnectStatus, so we mirror the SAME account id/status onto the
+    // CONNECTING user's doc — that user is the affiliate whose referrals credit their
+    // own uid, so this makes THEIR payouts resolve the one account. The connect
+    // callback / account.updated webhook then reconcile status for EVERY user linked
+    // to this account (so a multi-admin tenant works too, still with one account).
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://theharvest.app';
 
     // Check if already connected
@@ -49,13 +51,11 @@ export async function POST(request: NextRequest) {
       // tenants connected before unification. Mirror the tenant's current status
       // too so a fully-onboarded account is immediately payout-ready for affiliate
       // commissions (account.updated may not fire again for an existing account).
-      if (affiliateOwnerId) {
-        await adminDb.collection('users').doc(affiliateOwnerId).set({
-          affiliateStripeAccountId: tenantData.stripeConnectAccountId,
-          ...(tenantData.stripeConnectStatus ? { affiliateConnectStatus: tenantData.stripeConnectStatus } : {}),
-          updatedAt: new Date().toISOString(),
-        }, { merge: true });
-      }
+      await adminDb.collection('users').doc(userOrErr.uid).set({
+        affiliateStripeAccountId: tenantData.stripeConnectAccountId,
+        ...(tenantData.stripeConnectStatus ? { affiliateConnectStatus: tenantData.stripeConnectStatus } : {}),
+        updatedAt: new Date().toISOString(),
+      }, { merge: true });
       // Create a new account link for existing account
       const accountLink = await stripe.accountLinks.create({
         account: tenantData.stripeConnectAccountId,
@@ -83,16 +83,14 @@ export async function POST(request: NextRequest) {
       updatedAt: new Date().toISOString(),
     });
 
-    // Mirror onto the tenant owner so the SAME account also powers affiliate
-    // payouts. Status starts 'pending'; the connect callback and account.updated
-    // webhook flip it to 'active' once Express onboarding completes.
-    if (affiliateOwnerId) {
-      await adminDb.collection('users').doc(affiliateOwnerId).set({
-        affiliateStripeAccountId: account.id,
-        affiliateConnectStatus: 'pending',
-        updatedAt: new Date().toISOString(),
-      }, { merge: true });
-    }
+    // Mirror onto the connecting user so the SAME account also powers their
+    // affiliate payouts. Status starts 'pending'; the connect callback and
+    // account.updated webhook flip it to 'active' once Express onboarding completes.
+    await adminDb.collection('users').doc(userOrErr.uid).set({
+      affiliateStripeAccountId: account.id,
+      affiliateConnectStatus: 'pending',
+      updatedAt: new Date().toISOString(),
+    }, { merge: true });
 
     // Create an account link for onboarding
     const accountLink = await stripe.accountLinks.create({

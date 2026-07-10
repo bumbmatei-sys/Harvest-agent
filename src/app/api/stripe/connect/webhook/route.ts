@@ -84,7 +84,6 @@ export async function POST(request: NextRequest) {
         }
 
         const tenantDoc = tenantsSnapshot.docs[0];
-        const tenantData = tenantDoc.data();
 
         // A real write failure here bubbles to the catch → 500 → Stripe retries,
         // and the idempotency marker undo makes that retry safe.
@@ -93,17 +92,21 @@ export async function POST(request: NextRequest) {
           updatedAt: new Date().toISOString(),
         });
 
-        // Unified account: the SAME account also powers affiliate payouts. Mirror
-        // id + status onto the tenant owner's user doc so this single account.updated
-        // keeps ALL consumers (donations + affiliate) in sync — the affiliate-payout
-        // path reads users/{referrerId}.affiliateStripeAccountId / affiliateConnectStatus.
-        const affiliateOwnerId = tenantData.ownerId || tenantData.createdBy;
-        if (affiliateOwnerId) {
-          await adminDb.collection('users').doc(affiliateOwnerId).set({
-            affiliateStripeAccountId: account.id,
+        // Unified account: the SAME account also powers affiliate payouts. Any user
+        // who set up payouts against it had it mirrored onto their own doc
+        // (affiliateStripeAccountId == account.id), so this single account.updated
+        // reconciles affiliate status for EVERY linked user (owner + any other
+        // admin/affiliate on the tenant) — keeping ALL consumers in sync, one account.
+        const linkedUsersSnap = await adminDb.collection('users')
+          .where('affiliateStripeAccountId', '==', account.id)
+          .get();
+        if (!linkedUsersSnap.empty) {
+          const batch = adminDb.batch();
+          linkedUsersSnap.docs.forEach(d => batch.update(d.ref, {
             affiliateConnectStatus: status,
             updatedAt: new Date().toISOString(),
-          }, { merge: true });
+          }));
+          await batch.commit();
         }
 
         console.log(`✅ Connect account ${account.id} → ${status} for tenant ${tenantDoc.id}`);

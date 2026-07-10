@@ -43,23 +43,27 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(new URL('/?error=connect_tenant_not_found', apexUrl));
     }
 
-    const tenantData = tenantsSnapshot.docs[0].data();
     await tenantsSnapshot.docs[0].ref.update({
       stripeConnectStatus: status,
       updatedAt: new Date().toISOString(),
     });
 
-    // Unified account: mirror the same account id/status onto the tenant owner's
-    // user doc so this ONE onboarding also marks affiliate payouts ready. The
-    // affiliate-payout path reads users/{referrerId}.affiliateStripeAccountId /
-    // affiliateConnectStatus — keep it in lock-step with the donations status.
-    const affiliateOwnerId = tenantData.ownerId || tenantData.createdBy;
-    if (affiliateOwnerId) {
-      await adminDb.collection('users').doc(affiliateOwnerId).set({
-        affiliateStripeAccountId: accountId,
+    // Unified account: keep affiliate payouts in lock-step with the donations
+    // status. The affiliate-payout path reads users/{referrerId}.affiliateConnectStatus,
+    // and any user who set up payouts against this account had it mirrored onto
+    // their own doc (affiliateStripeAccountId == accountId). Reconcile status for
+    // EVERY such user — covers the owner AND any other admin/affiliate on this
+    // tenant, without guessing a single owner id.
+    const linkedUsersSnap = await adminDb.collection('users')
+      .where('affiliateStripeAccountId', '==', accountId)
+      .get();
+    if (!linkedUsersSnap.empty) {
+      const batch = adminDb.batch();
+      linkedUsersSnap.docs.forEach(d => batch.update(d.ref, {
         affiliateConnectStatus: status,
         updatedAt: new Date().toISOString(),
-      }, { merge: true });
+      }));
+      await batch.commit();
     }
 
     // The tenant doc id IS the tenantId (== subdomain), so route the admin back to
