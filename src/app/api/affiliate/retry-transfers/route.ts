@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server';
 import Stripe from 'stripe';
 import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
+import { affiliateSweepIdempotencyKey } from '@/lib/affiliate-payout';
 
 export const dynamic = 'force-dynamic';
 
@@ -65,7 +66,12 @@ export async function POST(request: NextRequest) {
           continue;
         }
 
-        // Attempt the transfer
+        // Attempt the transfer. Key it per-commission with the SAME scheme the
+        // account.updated sweep uses (affiliateSweepIdempotencyKey), so this daily
+        // cron and the real-time sweep can never double-pay the same commission —
+        // whichever runs second gets back the original transfer. This also closes
+        // the cron's own latent double-pay: a transfer that succeeds but whose
+        // status write below fails would otherwise be re-sent (unkeyed) next run.
         const transfer = await stripe.transfers.create({
           amount: data.commission,
           currency: 'usd',
@@ -77,6 +83,8 @@ export async function POST(request: NextRequest) {
             type: data.type === 'recurring' ? 'affiliate_commission_recurring' : 'affiliate_commission',
             retry: 'true',
           },
+        }, {
+          idempotencyKey: affiliateSweepIdempotencyKey(doc.id),
         });
 
         // Update commission status

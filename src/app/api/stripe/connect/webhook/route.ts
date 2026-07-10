@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server';
 import Stripe from 'stripe';
 import { adminDb } from '@/lib/firebase-admin';
 import { deriveConnectStatus } from '@/lib/stripe-connect-status';
+import { sweepPendingAffiliateCommissions } from '@/lib/affiliate-payout';
 
 export const dynamic = 'force-dynamic';
 
@@ -107,6 +108,35 @@ export async function POST(request: NextRequest) {
             updatedAt: new Date().toISOString(),
           }));
           await batch.commit();
+        }
+
+        // Backfill: the moment this account becomes payout-ready, sweep any
+        // affiliate commissions that were banked `pending` because the affiliate
+        // hadn't connected Connect when they earned them. Each linked user's
+        // affiliate payouts resolve THIS same account (the unified account), so we
+        // sweep with connectAccountId = account.id for each. Only on `active` —
+        // `restricted`/`pending` are not payout-ready.
+        //
+        // Resilience: each user's sweep is wrapped so a failure NEVER 500s the
+        // webhook. The status write above must stick; a stuck commission is not
+        // lost — it stays `pending` and is retried by a future account.updated or
+        // the daily retry-transfers cron, both idempotent via the per-commission
+        // transfer key. (One user failing must not block another, either.)
+        if (status === 'active' && !linkedUsersSnap.empty) {
+          for (const userDoc of linkedUsersSnap.docs) {
+            try {
+              const { swept, total } = await sweepPendingAffiliateCommissions({
+                stripe,
+                referrerId: userDoc.id,
+                connectAccountId: account.id,
+              });
+              if (total > 0) {
+                console.log(`💸 Swept ${swept}/${total} pending affiliate commission(s) for ${userDoc.id} on ${account.id}`);
+              }
+            } catch (sweepErr) {
+              console.error(`Affiliate sweep failed for ${userDoc.id} on ${account.id} (will retry on redelivery / cron):`, sweepErr);
+            }
+          }
         }
 
         console.log(`✅ Connect account ${account.id} → ${status} for tenant ${tenantDoc.id}`);

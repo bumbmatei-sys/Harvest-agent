@@ -24,10 +24,22 @@ const {
   mockBatchCommit: vi.fn().mockResolvedValue(undefined),
 }));
 
+// The commission sweep lives in a separate, unit-tested helper (see
+// src/lib/__tests__/affiliate-payout.test.ts). Here we mock it to verify WIRING:
+// that the webhook calls it for each linked user on activation, skips it for
+// non-active statuses, and never lets a sweep failure 500 the webhook.
+const { mockSweep } = vi.hoisted(() => ({
+  mockSweep: vi.fn(),
+}));
+
 vi.mock('stripe', () => ({
   default: class MockStripe {
     webhooks = { constructEvent: mockConstructEvent };
   },
+}));
+
+vi.mock('@/lib/affiliate-payout', () => ({
+  sweepPendingAffiliateCommissions: mockSweep,
 }));
 
 vi.mock('@/lib/firebase-admin', () => ({
@@ -94,6 +106,8 @@ beforeEach(() => {
   mockDocGet.mockResolvedValue({ exists: false });
   // Default: no tenant matches (both lookups empty).
   mockCollGet.mockResolvedValue(tenantSnapshot(null));
+  // Default: sweep finds nothing to do (overridden per-test).
+  mockSweep.mockResolvedValue({ total: 0, swept: 0 });
 });
 
 // ── Signature validation (security boundary) ────────────────────────────────
@@ -356,5 +370,120 @@ describe('connect webhook other event types', () => {
     expect(body.received).toBe(true);
     expect(mockTenantUpdate).not.toHaveBeenCalled();
     expect(mockCollGet).not.toHaveBeenCalled();
+  });
+});
+
+// ── Pending-commission backfill (sweep on activation) ────────────────────────
+
+describe('account.updated → pending affiliate commission sweep', () => {
+  it('sweeps pending commissions for EVERY linked user when the account goes active', async () => {
+    mockConstructEvent.mockReturnValue(makeAccountEvent({
+      id: 'acct_123', charges_enabled: true, payouts_enabled: true,
+    }));
+    mockCollGet
+      .mockResolvedValueOnce(tenantSnapshot({ stripeConnectAccountId: 'acct_123' }))
+      .mockResolvedValueOnce(usersSnapshot(['owner1', 'adminB']));
+    mockSweep.mockResolvedValue({ total: 1, swept: 1 });
+
+    const res = await POST(makeRequest());
+    expect(res.status).toBe(200);
+
+    // One sweep per linked user, each destined for THIS account (unified account).
+    expect(mockSweep).toHaveBeenCalledTimes(2);
+    expect(mockSweep).toHaveBeenCalledWith(
+      expect.objectContaining({ referrerId: 'owner1', connectAccountId: 'acct_123' }),
+    );
+    expect(mockSweep).toHaveBeenCalledWith(
+      expect.objectContaining({ referrerId: 'adminB', connectAccountId: 'acct_123' }),
+    );
+  });
+
+  it('does NOT sweep when the account is restricted (not payout-ready)', async () => {
+    mockConstructEvent.mockReturnValue(makeAccountEvent({
+      id: 'acct_123',
+      charges_enabled: false,
+      payouts_enabled: false,
+      requirements: { currently_due: ['external_account'] },
+    }));
+    mockCollGet
+      .mockResolvedValueOnce(tenantSnapshot({ stripeConnectAccountId: 'acct_123' }))
+      .mockResolvedValueOnce(usersSnapshot(['owner1']));
+
+    const res = await POST(makeRequest());
+    expect(res.status).toBe(200);
+    // Status still mirrored, but no money moved.
+    expect(mockBatchUpdate).toHaveBeenCalledWith(
+      { id: 'owner1' },
+      expect.objectContaining({ affiliateConnectStatus: 'restricted' }),
+    );
+    expect(mockSweep).not.toHaveBeenCalled();
+  });
+
+  it('does NOT sweep when the account is still pending', async () => {
+    mockConstructEvent.mockReturnValue(makeAccountEvent({
+      id: 'acct_123',
+      charges_enabled: false,
+      payouts_enabled: false,
+      requirements: { currently_due: [] },
+    }));
+    mockCollGet
+      .mockResolvedValueOnce(tenantSnapshot({ stripeConnectAccountId: 'acct_123' }))
+      .mockResolvedValueOnce(usersSnapshot(['owner1']));
+
+    const res = await POST(makeRequest());
+    expect(res.status).toBe(200);
+    expect(mockSweep).not.toHaveBeenCalled();
+  });
+
+  it('does NOT sweep when no user is linked to the account', async () => {
+    mockConstructEvent.mockReturnValue(makeAccountEvent({
+      id: 'acct_123', charges_enabled: true, payouts_enabled: true,
+    }));
+    mockCollGet
+      .mockResolvedValueOnce(tenantSnapshot({ stripeConnectAccountId: 'acct_123' }))
+      .mockResolvedValueOnce(usersSnapshot([]));
+
+    const res = await POST(makeRequest());
+    expect(res.status).toBe(200);
+    expect(mockSweep).not.toHaveBeenCalled();
+  });
+
+  it('a sweep failure does NOT 500 the webhook — the status write still commits', async () => {
+    mockConstructEvent.mockReturnValue(makeAccountEvent({
+      id: 'acct_123', charges_enabled: true, payouts_enabled: true,
+    }));
+    mockCollGet
+      .mockResolvedValueOnce(tenantSnapshot({ stripeConnectAccountId: 'acct_123' }))
+      .mockResolvedValueOnce(usersSnapshot(['owner1']));
+    mockSweep.mockRejectedValue(new Error('Stripe unavailable'));
+
+    const res = await POST(makeRequest());
+    // Webhook still succeeds: status update stuck, marker NOT undone (no retry storm).
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.received).toBe(true);
+    expect(mockTenantUpdate).toHaveBeenCalled();
+    expect(mockBatchCommit).toHaveBeenCalled();
+    expect(mockDocDelete).not.toHaveBeenCalled();
+  });
+
+  it("one user's sweep failure does not block the other linked users", async () => {
+    mockConstructEvent.mockReturnValue(makeAccountEvent({
+      id: 'acct_123', charges_enabled: true, payouts_enabled: true,
+    }));
+    mockCollGet
+      .mockResolvedValueOnce(tenantSnapshot({ stripeConnectAccountId: 'acct_123' }))
+      .mockResolvedValueOnce(usersSnapshot(['owner1', 'adminB']));
+    // owner1's sweep throws; adminB's must still be attempted.
+    mockSweep
+      .mockRejectedValueOnce(new Error('owner1 sweep failed'))
+      .mockResolvedValueOnce({ total: 1, swept: 1 });
+
+    const res = await POST(makeRequest());
+    expect(res.status).toBe(200);
+    expect(mockSweep).toHaveBeenCalledTimes(2);
+    expect(mockSweep).toHaveBeenCalledWith(
+      expect.objectContaining({ referrerId: 'adminB', connectAccountId: 'acct_123' }),
+    );
   });
 });
