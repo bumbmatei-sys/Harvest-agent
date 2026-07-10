@@ -524,7 +524,12 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
                   {/* Content based on activeTopTab */}
                   {activeTopTab === 'news' && (
                     <>
-                      <LiveNowBanner tenantId={tenantId} onOpen={() => setFullScreenView({ type: 'livestream' })} />
+                      {/* Live banner is mobile-only — on desktop the right rail's
+                          "Live Now" card already surfaces the live stream, so the
+                          full-width banner would be redundant. */}
+                      <div className="lg:hidden">
+                        <LiveNowBanner tenantId={tenantId} onOpen={() => setFullScreenView({ type: 'livestream' })} />
+                      </div>
                       <NewsTab
                         tenantId={tenantId}
                         onOpenAllNews={() => setFullScreenView({type: 'all-news'})}
