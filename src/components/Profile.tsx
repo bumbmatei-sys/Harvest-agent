@@ -364,8 +364,12 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap 
  onClick={onGoToPartner}
  />
  {/* Messages now lives in the top tab bar (News | Blog | Courses | Messages | Partner) */}
- {/* My Events row */}
- {!isAdmin && tenantPlan && (
+ {/* My Events row — shown to everyone with a resolved tenant/plan context.
+     Admins/owners register for and hold their own event tickets too, so they
+     need this just like members do. UserEvents queries /api/my-registrations by
+     the current user's own uid/email, so an admin only ever sees their own
+     tickets — no admin-specific logic and no cross-user leakage. */}
+ {tenantPlan && (
  <>
  <div className="h-px bg-stone-100 mx-4"></div>
  <SettingItem
