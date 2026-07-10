@@ -9,6 +9,7 @@ import { db, auth } from '../firebase';
 import { getTenantScope, isPlatformContext, PLATFORM_TENANT_ID } from '../utils/tenant-scope';
 import { isSuperAdminEmail } from '../utils/super-admins';
 import { sortByTime } from '../utils/query-helpers';
+import { getOrCreateDm } from '../lib/dm';
 
 interface MessageAttachment {
   type: 'doc' | 'contact' | 'campaign' | 'form';
@@ -719,6 +720,8 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false })
   };
 
   // Create (or reopen) a DM with the chosen admin, then jump into the thread.
+  // The already-loaded `dms` list is checked first (fast path, no round trip);
+  // getOrCreateDm does the same existence check server-side for the create case.
   const startDm = async (admin: AdminContact) => {
     if (!tenantId || !currentUser || creating) return;
     const existing = dms.find(dm => dm.participants.includes(admin.id) && dm.participants.includes(currentUser.uid));
@@ -727,18 +730,14 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false })
     try {
       const participantNames = { [currentUser.uid]: currentUser.name, [admin.id]: admin.displayName };
       const participantRoles = { [currentUser.uid]: 'user', [admin.id]: 'admin' };
-      const ref = await addDoc(collection(db, 'tenants', tenantId, 'directMessages'), {
-        participants: [currentUser.uid, admin.id],
-        participantRoles,
-        participantNames,
-        createdAt: serverTimestamp(),
-        lastMessage: '',
-        lastMessageAt: serverTimestamp(),
-        initiatedBy: currentUser.uid,
-      });
+      const dmId = await getOrCreateDm(
+        tenantId,
+        { uid: currentUser.uid, name: currentUser.name, role: 'user' },
+        { uid: admin.id, name: admin.displayName, role: 'admin' }
+      );
       setShowNewMessage(false);
       setOpenDm({
-        id: ref.id,
+        id: dmId,
         participants: [currentUser.uid, admin.id],
         participantRoles,
         participantNames,

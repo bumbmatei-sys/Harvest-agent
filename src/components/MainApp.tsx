@@ -345,7 +345,10 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
 
   if (fullScreenView.type === 'all-news') {
     return (
-      <AllNews onBack={() => setFullScreenView({type: 'none'})} />
+      <AllNews
+        onBack={() => setFullScreenView({type: 'none'})}
+        onOpenMessages={() => { setFullScreenView({type: 'none'}); setActiveBottomTab('home'); setActiveTopTab('messages'); }}
+      />
     );
   }
 
@@ -528,6 +531,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
                         onOpenArticle={(post) => setFullScreenView({type: 'article', data: post})}
                         onOpenLivestream={() => setFullScreenView({ type: 'livestream' })}
                         onGoToPartner={() => setActiveTopTab('partner')}
+                        onOpenMessages={() => setActiveTopTab('messages')}
                       />
                     </>
                   )}

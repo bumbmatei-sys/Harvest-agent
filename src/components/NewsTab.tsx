@@ -3,10 +3,13 @@ import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { collection, query, orderBy, onSnapshot, doc, updateDoc, arrayUnion, arrayRemove, limit, where, getDoc, addDoc, deleteDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { db, auth } from '../firebase';
-import { Calendar as CalendarIcon, ThumbsUp, Check, ChevronRight, FileText, Tag, Calendar, MessageSquare, Send, Trash2, MapPin, Globe, HeartHandshake } from 'lucide-react';
+import { Calendar as CalendarIcon, ThumbsUp, Check, ChevronRight, FileText, Tag, Calendar, MessageSquare, Send, MapPin, Globe, HeartHandshake } from 'lucide-react';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { getTenantScope } from '../utils/tenant-scope';
+import { isSuperAdminEmail } from '../utils/super-admins';
+import { getOrCreateDm } from '../lib/dm';
 import CampaignWidget from './CampaignWidget';
+import KebabMenu from './KebabMenu';
 import { sortByTime } from '../utils/query-helpers';
 import { TwoColumnLayout, DesktopCard } from './layout/DesktopLayout';
 import { useLiveNow } from '../hooks/useLiveNow';
@@ -92,9 +95,11 @@ interface NewsTabProps {
   onOpenLivestream?: () => void;
   /** Navigates to the "Partner with Us" top-tab; used by the desktop rail's Give card. */
   onGoToPartner?: () => void;
+  /** Navigates to the Messages top-tab; used by the comment menu's "Message privately". */
+  onOpenMessages?: () => void;
 }
 
-const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantId = null, onOpenLivestream, onGoToPartner }) => {
+const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantId = null, onOpenLivestream, onGoToPartner, onOpenMessages }) => {
   const [allPosts, setAllPosts] = useState<CommunityPost[]>([]);
   const [articles, setArticles] = useState<BlogPost[]>([]);
   const [adminEvents, setAdminEvents] = useState<AdminEvent[]>([]);
@@ -112,22 +117,53 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
   const [commentInputs, setCommentInputs] = useState<Record<string, string>>({});
   const [postComments, setPostComments] = useState<Record<string, Comment[]>>({});
 
+  // Admin moderation state — kebab menus on posts/comments.
+  const [canManage, setCanManage] = useState(false);
+  const [currentUserRole, setCurrentUserRole] = useState('user');
+  const [deletePostId, setDeletePostId] = useState<string | null>(null);
+  const [dmBusyId, setDmBusyId] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchUserLocation = async () => {
-      if (auth.currentUser) {
-        try {
-          const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
-          if (userDoc.exists()) {
-            const data = userDoc.data();
-            setUserLocation({ country: data.country, city: data.city });
+    let cancelled = false;
+    const fetchUserContext = async () => {
+      const user = auth.currentUser;
+      if (!user) return;
+      try {
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        if (cancelled) return;
+        if (userDoc.exists()) {
+          const data = userDoc.data();
+          setUserLocation({ country: data.country, city: data.city });
+
+          // Admin capability mirrors firestore.rules' hasPermission('createPosts', tenantId):
+          // super admin, fullAccess/createPosts permission, or church_admin role always
+          // qualify. A plain 'admin' role (the tenant owner's default right after
+          // build-on-payment signup, before they've touched Roles) additionally
+          // qualifies via the tenant's adminEmails roster — the same owner check
+          // AdminDashboard.tsx uses to show the Posts tab — so a fresh owner isn't
+          // hidden from moderating their own feed.
+          const role = data.role || 'user';
+          const perms = data.permissions || {};
+          setCurrentUserRole(role);
+          const isSuper = role === 'super_admin' || isSuperAdminEmail(user.email);
+          let manage = isSuper || role === 'church_admin' || perms.fullAccess === true || perms.createPosts === true;
+          if (!manage && role === 'admin' && data.tenantId) {
+            const tenantDoc = await getDoc(doc(db, 'tenants', data.tenantId));
+            if (cancelled) return;
+            if (tenantDoc.exists()) {
+              const adminEmails: string[] = tenantDoc.data().adminEmails || [];
+              const email = (user.email || '').toLowerCase();
+              manage = adminEmails.some((e: string) => (e || '').toLowerCase() === email);
+            }
           }
-        } catch (error) {
-          console.error('Failed to fetch user location', error);
+          setCanManage(manage);
         }
+      } catch (error) {
+        console.error('Failed to fetch user location', error);
       }
     };
-    fetchUserLocation();
+    fetchUserContext();
+    return () => { cancelled = true; };
   }, []);
 
   // Subscribe to comments for open posts
@@ -366,6 +402,23 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
     setAttendeeEmail('');
   };
 
+  const handleDeletePost = async (postId: string) => {
+    try {
+      const tenantIdDel = await getTenantScope();
+      if (tenantIdDel) {
+        const docSnapDel = await getDoc(doc(db, 'community_posts', postId));
+        if (docSnapDel.exists() && docSnapDel.data().tenantId && docSnapDel.data().tenantId !== tenantIdDel) {
+          console.error('Tenant mismatch');
+          return;
+        }
+      }
+      await deleteDoc(doc(db, 'community_posts', postId));
+      setDeletePostId(null);
+    } catch (error) {
+      try { handleFirestoreError(error, OperationType.DELETE, `community_posts/${postId}`); } catch (e) { console.error(e); }
+    }
+  };
+
   const handleComment = async (postId: string) => {
     const text = (commentInputs[postId] || '').trim();
     if (!text) return;
@@ -401,11 +454,51 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
     }
   };
 
-  const handleDeleteComment = async (postId: string, commentId: string) => {
+  const handleDeleteComment = async (postId: string, comment: Comment) => {
+    const uid = auth.currentUser?.uid;
+    if (!uid) return;
     try {
-      await deleteDoc(doc(db, 'community_posts', postId, 'comments', commentId));
+      if (comment.authorId === uid) {
+        // Author deleting their own comment — firestore.rules allows this directly.
+        await deleteDoc(doc(db, 'community_posts', postId, 'comments', comment.id));
+        return;
+      }
+      if (!canManage) return;
+      // Admin deleting another member's comment — the comments subrule only
+      // allows the author to delete client-side, so this goes through an
+      // Admin-SDK route instead of loosening firestore.rules.
+      const token = await auth.currentUser?.getIdToken();
+      const res = await fetch('/api/community/comments/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ postId, commentId: comment.id }),
+      });
+      if (!res.ok) throw new Error('Failed to delete comment');
     } catch (error) {
       try { handleFirestoreError(error, OperationType.DELETE, 'comments'); } catch (e) { console.error(e); }
+    }
+  };
+
+  const handleMessagePrivately = async (comment: Comment) => {
+    const user = auth.currentUser;
+    if (!user || dmBusyId) return;
+    setDmBusyId(comment.id);
+    try {
+      const tenantIdDm = await getTenantScope();
+      if (!tenantIdDm) return;
+      const adminRole = ['admin', 'church_admin', 'super_admin'].includes(currentUserRole) ? currentUserRole : 'admin';
+      await getOrCreateDm(
+        tenantIdDm,
+        { uid: user.uid, name: user.displayName || 'Admin', role: adminRole },
+        { uid: comment.authorId, name: comment.authorName || 'Member', role: 'user' }
+      );
+      onOpenMessages?.();
+    } catch (error) {
+      console.error('Failed to start DM', error);
+      setErrorMessage("Couldn't start a message. Please try again.");
+      setTimeout(() => setErrorMessage(null), 3000);
+    } finally {
+      setDmBusyId(null);
     }
   };
 
@@ -557,6 +650,12 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
                   <p className="text-xs text-warm-brown">{formatDate(post.createdAt)}</p>
                 </div>
               </div>
+              <KebabMenu
+                ariaLabel="Post options"
+                items={(canManage || auth.currentUser?.uid === post.authorId) ? [
+                  { label: 'Delete post', danger: true, onClick: () => setDeletePostId(post.id) },
+                ] : []}
+              />
             </div>
 
             <p className="text-[color:var(--text-body)] text-sm lg:text-[13px] whitespace-pre-wrap mb-3">
@@ -690,14 +789,24 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
                         <span className="text-[10px] text-[color:var(--text-faint)]">
                           {new Date(comment.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                         </span>
-                        {auth.currentUser && comment.authorId === auth.currentUser.uid && (
-                          <button
-                            onClick={() => handleDeleteComment(post.id, comment.id)}
-                            className="ml-auto text-[color:var(--text-faint)] hover:text-red-500 transition-colors"
-                          >
-                            <Trash2 size={12} />
-                          </button>
-                        )}
+                        <div className="ml-auto">
+                          <KebabMenu
+                            ariaLabel="Comment options"
+                            size={13}
+                            items={[
+                              ...(canManage && auth.currentUser && comment.authorId !== auth.currentUser.uid ? [{
+                                label: 'Message privately',
+                                onClick: () => handleMessagePrivately(comment),
+                                disabled: dmBusyId === comment.id,
+                              }] : []),
+                              ...(canManage || auth.currentUser?.uid === comment.authorId ? [{
+                                label: 'Delete comment',
+                                danger: true,
+                                onClick: () => handleDeleteComment(post.id, comment),
+                              }] : []),
+                            ]}
+                          />
+                        </div>
                       </div>
                       <p className="text-xs text-[color:var(--text-body)] whitespace-pre-wrap">{comment.content}</p>
                     </div>
@@ -967,6 +1076,32 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
       )}
 
       <TwoColumnLayout main={mainColumn} rail={rail} />
+
+      {/* Delete Post Confirmation Modal */}
+      {deletePostId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 border border-stone-200">
+            <h3 className="text-xl font-bold text-earth mb-2 font-display">Delete Post</h3>
+            <p className="text-warm-brown mb-6">
+              Are you sure you want to delete this post? This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setDeletePostId(null)}
+                className="px-4 py-2 text-warm-brown hover:bg-stone-100 rounded-xl font-medium transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleDeletePost(deletePostId)}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl font-medium transition-colors"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Event Attendance Modal */}
       {attendingPostId && (
