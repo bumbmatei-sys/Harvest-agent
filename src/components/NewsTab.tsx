@@ -621,7 +621,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
       ))}
 
       <div className="flex items-center justify-between px-1 mb-2">
-        <h2 className="lg:flex lg:items-center text-xl lg:text-lg font-bold text-earth font-display">
+        <h2 className="lg:flex lg:items-center text-xl lg:text-lg font-bold lg:font-light lg:tracking-[-0.02em] text-earth font-display">
           <span className="hidden lg:block w-1 h-5 rounded-full bg-gold mr-2.5 shrink-0" aria-hidden="true" />
           News &amp; Updates
         </h2>
