@@ -136,13 +136,35 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const result = await ai.models.embedContent({
-        model: 'gemini-embedding-2-preview',
-        contents: [text],
-      });
+      try {
+        const result = await ai.models.embedContent({
+          // Current GA Gemini embedding model. The previous id
+          // ('gemini-embedding-2-preview') is not a valid model, so every embed
+          // call 500'd — which left AI Knowledge sources stuck on "Processing…".
+          model: 'gemini-embedding-001',
+          contents: [text],
+        });
 
-      const vector = result.embeddings?.[0]?.values;
-      return NextResponse.json({ vector });
+        const vector = result.embeddings?.[0]?.values;
+        if (!vector) {
+          console.error('Gemini embed returned no vector for request');
+          return NextResponse.json(
+            { error: 'Embedding provider returned no vector.' },
+            { status: 502 }
+          );
+        }
+        return NextResponse.json({ vector });
+      } catch (embedErr: any) {
+        // Surface the real upstream cause (bad model id, invalid key, quota) to
+        // the client instead of a generic 500, without echoing the API key.
+        const status = embedErr?.status ?? embedErr?.code ?? null;
+        const message = embedErr?.message || String(embedErr);
+        console.error('Gemini embedContent error:', status, message);
+        return NextResponse.json(
+          { error: `Embedding failed: ${message}`, status },
+          { status: 502 }
+        );
+      }
     }
 
     if (action === 'generate') {

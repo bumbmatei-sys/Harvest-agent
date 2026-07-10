@@ -3,6 +3,7 @@ import { Upload, Search, Trash2, Sparkles, Database } from 'lucide-react';
 import { db, auth } from '../firebase';
 import { collection, addDoc, serverTimestamp, query, where, getDocs, getDoc, deleteDoc, onSnapshot, updateDoc, doc } from 'firebase/firestore';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
+import { notifyError } from '../utils/notify';
 import { getTenantScope, getWriteTenantScope } from '../utils/tenant-scope';
 
 
@@ -55,9 +56,16 @@ function chunkText(text: string, size = 500) {
 }
 
 // ── Chunking + embedding + Firebase save
-async function chunkAndEmbed(text: string, sourceId: string, title: string, type: string, tenantId?: string | null) {
+// Returns how many chunks were ACTUALLY embedded and written (not just the
+// intended count) plus the first error encountered, so the caller can reflect a
+// real success/failure state instead of leaving a source stuck on "Processing…".
+async function chunkAndEmbed(
+ text: string, sourceId: string, title: string, type: string, tenantId?: string | null
+): Promise<{ written: number; total: number; error: string | null }> {
  const chunks = chunkText(text);
- 
+ let written = 0;
+ let firstError: string | null = null;
+
  for (const chunk of chunks) {
    try {
      const res = await fetch('/api/gemini', {
@@ -68,27 +76,56 @@ async function chunkAndEmbed(text: string, sourceId: string, title: string, type
        },
        body: JSON.stringify({ action: 'embed', text: chunk }),
      });
-     const data = await res.json();
-     if (!res.ok) throw new Error(data.error || 'Embed request failed');
-     
+     const data = await res.json().catch(() => ({}));
+     if (!res.ok) throw new Error(data.error || `Embed request failed (HTTP ${res.status})`);
+
      const vector = data.vector;
-     if (vector) {
-       await addDoc(collection(db, "rag_chunks"), {
-         sourceId,
-         title,
-         type,
-         chunk,
-         vector,
-         createdAt: serverTimestamp(),
-         tenantId: tenantId || null
-       });
-     }
+     if (!vector) throw new Error('Embedding returned no vector');
+
+     await addDoc(collection(db, "rag_chunks"), {
+       sourceId,
+       title,
+       type,
+       chunk,
+       vector,
+       createdAt: serverTimestamp(),
+       // Carry the source's concrete tenantId so the chunk passes the
+       // rag_chunks create rule (requestHasCorrectTenant + uploadRag) and is
+       // readable by the tenant's admins.
+       tenantId: tenantId ?? null
+     });
+     written++;
    } catch (error) {
+     if (!firstError) firstError = error instanceof Error ? error.message : String(error);
      try { handleFirestoreError(error, OperationType.WRITE, `rag_chunks`); } catch (e) { console.error(e); }
    }
  }
- 
- return chunks.length;
+
+ return { written, total: chunks.length, error: firstError };
+}
+
+// Reflect the real embedding outcome on the source doc so the row leaves
+// "Processing…" for a definite Embedded (real chunk count) or Failed state.
+async function finalizeSource(sourceId: string, written: number, error: string | null) {
+ // Single-field filter only (sourceId is unique); avoids a composite index.
+ const q = query(collection(db, 'rag_sources'), where('sourceId', '==', sourceId));
+ const snap = await getDocs(q);
+ if (snap.empty) return;
+ if (written > 0) {
+   await updateDoc(snap.docs[0].ref, { status: "processed", chunks: written, error: null });
+ } else {
+   await updateDoc(snap.docs[0].ref, { status: "error", chunks: 0, error: error || 'Embedding failed' });
+ }
+}
+
+// Best-effort: flip a created source row to a failed state so a thrown error
+// never leaves it hanging on "Processing…" with no signal to the user.
+async function markSourceError(sourceId: string, message: string) {
+ try {
+   const q = query(collection(db, 'rag_sources'), where('sourceId', '==', sourceId));
+   const snap = await getDocs(q);
+   if (!snap.empty) await updateDoc(snap.docs[0].ref, { status: "error", error: message });
+ } catch (e) { console.error(e); }
 }
 
 // ── Read file as text ──────────────────────────
@@ -192,35 +229,38 @@ export default function AdminRAG() {
  if (!pasteText.trim()) return;
  const title = pasteTitle.trim() || `Text — ${new Date().toLocaleDateString()}`;
  const sourceId = uid();
- 
+
  setPasteTitle(""); setPasteText(""); setTab("sources"); setPasteLoading(true);
 
- // Add to Firestore rag_sources
- const tenantId = await getWriteTenantScope();
- await addDoc(collection(db, "rag_sources"), {
-   sourceId,
-   title,
-   type: "text",
-   status: "processing",
-   chunks: 0,
-   addedAt: serverTimestamp(),
-   tenantId
- });
+ try {
+   // A concrete tenantId is required — chunks written with a null tenantId are
+   // rejected by the rag_chunks rule and are unreadable, so bail loudly instead.
+   const tenantId = await getWriteTenantScope();
+   if (!tenantId) {
+     notifyError('Cannot add knowledge', 'No tenant context — sign in as a tenant admin.');
+     return;
+   }
 
- const chunks = await chunkAndEmbed(pasteText, sourceId, title, "text", tenantId);
-    
- // Update status to processed
- // Single-field filter only (sourceId is unique); avoids a composite index.
- const q = query(collection(db, 'rag_sources'), where('sourceId', '==', sourceId));
- const snap = await getDocs(q);
- if (!snap.empty) {
- await updateDoc(snap.docs[0].ref, {
- status: "processed",
- chunks
- });
+   // Add to Firestore rag_sources
+   await addDoc(collection(db, "rag_sources"), {
+     sourceId,
+     title,
+     type: "text",
+     status: "processing",
+     chunks: 0,
+     addedAt: serverTimestamp(),
+     tenantId
+   });
+
+   const { written, error } = await chunkAndEmbed(pasteText, sourceId, title, "text", tenantId);
+   await finalizeSource(sourceId, written, error);
+   if (written === 0) notifyError(`Failed to embed "${title}"`, error || 'Embedding failed');
+ } catch (err) {
+   notifyError('Failed to add knowledge source', err);
+   await markSourceError(sourceId, err instanceof Error ? err.message : 'Processing failed');
+ } finally {
+   setPasteLoading(false);
  }
- 
- setPasteLoading(false);
  };
 
  // ── Handle file upload ──
@@ -229,52 +269,43 @@ export default function AdminRAG() {
  const ext = file.name.split(".").pop()?.toLowerCase() || "";
  const type = ext === "pdf" ? "pdf" : ext === "txt" ? "txt" : (ext === "csv" || ext === "xlsx" || ext === "xls") ? "sheet" : "txt";
  const sourceId = uid();
- 
+
  setTab("sources");
 
- // Add to Firestore rag_sources
- const tenantId = await getWriteTenantScope();
- await addDoc(collection(db, "rag_sources"), {
-   sourceId,
-   title: file.name,
-   type,
-   status: "processing",
-   chunks: 0,
-   addedAt: serverTimestamp(),
-   tenantId
- });
-
- let text = "";
  try {
- if (type === "pdf") {
- // 🔌 For PDF: use pdf.js or send to a backend parser
- // For now we simulate with placeholder text
- text = `[PDF content of ${file.name} — wire up pdf.js or a backend parser to extract text]`;
- } else {
- text = await readFileAsText(file);
- }
- const chunks = await chunkAndEmbed(text, sourceId, file.name, type, tenantId);
-    
- // Update status to processed
- // Single-field filter only (sourceId is unique); avoids a composite index.
- const q = query(collection(db, 'rag_sources'), where('sourceId', '==', sourceId));
- const snap = await getDocs(q);
- if (!snap.empty) {
- await updateDoc(snap.docs[0].ref, {
- status: "processed",
- chunks
- });
- }
+   // A concrete tenantId is required (see handlePasteSubmit) — bail loudly
+   // rather than write unreadable null-tenant chunks.
+   const tenantId = await getWriteTenantScope();
+   if (!tenantId) {
+     notifyError('Cannot upload file', 'No tenant context — sign in as a tenant admin.');
+     continue;
+   }
+
+   // Add to Firestore rag_sources
+   await addDoc(collection(db, "rag_sources"), {
+     sourceId,
+     title: file.name,
+     type,
+     status: "processing",
+     chunks: 0,
+     addedAt: serverTimestamp(),
+     tenantId
+   });
+
+   let text = "";
+   if (type === "pdf") {
+     // 🔌 For PDF: use pdf.js or send to a backend parser
+     // For now we simulate with placeholder text
+     text = `[PDF content of ${file.name} — wire up pdf.js or a backend parser to extract text]`;
+   } else {
+     text = await readFileAsText(file);
+   }
+   const { written, error } = await chunkAndEmbed(text, sourceId, file.name, type, tenantId);
+   await finalizeSource(sourceId, written, error);
+   if (written === 0) notifyError(`Failed to embed "${file.name}"`, error || 'Embedding failed');
  } catch (err) {
-   // Update status to error
-   // Single-field filter only (sourceId is unique); avoids a composite index.
-   const q = query(collection(db, 'rag_sources'), where('sourceId', '==', sourceId));
- const snap = await getDocs(q);
- if (!snap.empty) {
- await updateDoc(snap.docs[0].ref, {
- status: "error"
- });
- }
+   notifyError(`Failed to process "${file.name}"`, err);
+   await markSourceError(sourceId, err instanceof Error ? err.message : 'Processing failed');
  }
  }
  };
@@ -541,9 +572,16 @@ export default function AdminRAG() {
  </div>
  )}
  {source.status === "error" && (
+ <div style={{ display:"flex", flexDirection:"column", gap:2 }} title={source.error || "Failed to process"}>
  <div style={{ display:"flex", alignItems:"center", gap:6 }}>
  <div style={{ width:8, height:8, borderRadius:"50%", background:RED }} />
- <span style={{ fontSize:12, color:RED, fontWeight:600 }}>Error</span>
+ <span style={{ fontSize:12, color:RED, fontWeight:600 }}>Failed</span>
+ </div>
+ {source.error && (
+ <span style={{ fontSize:10, color:TEXT2, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:110 }}>
+ {source.error}
+ </span>
+ )}
  </div>
  )}
  </div>

@@ -376,7 +376,12 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
     setSavingAct(true);
     try {
       await addDoc(collection(db, 'contactActivities'), {
-        contactId: selected.id, tenantId: tenantId || null, type: actForm.type,
+        // Store the contact's own concrete tenantId (never null) so the doc is
+        // readable under the top-level contactActivities rule, which gates the
+        // read on isTenantAdmin(resource.data.tenantId). A null/mismatched
+        // tenantId is why an added activity wrote but never showed in the
+        // timeline. Mirrors the donation branch below and the contact writes.
+        contactId: selected.id, tenantId: selected.tenantId || tenantId || PLATFORM_TENANT_ID, type: actForm.type,
         description: actForm.description.trim(),
         amount: actForm.type === 'donation' && actForm.amount ? Number(actForm.amount) : null,
         createdAt: serverTimestamp(), createdBy: auth.currentUser?.uid || '',

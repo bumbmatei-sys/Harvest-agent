@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { LayoutDashboard, Church, FileText, Rss, BrainCircuit, Inbox, GraduationCap, ChevronLeft, ChevronRight, ChevronDown, Building2, Settings, MoreHorizontal, Mail, Heart, Users, MessageSquare, Receipt, CalendarCheck, LogOut, ClipboardList, QrCode, Radio, ExternalLink, Link2, Crown, Palette, Search, Bell, X } from 'lucide-react';
+import { LayoutDashboard, Church, FileText, Rss, BrainCircuit, Inbox, GraduationCap, ChevronLeft, ChevronRight, ChevronDown, Building2, Settings, MoreHorizontal, Mail, Heart, Users, MessageSquare, Receipt, CalendarCheck, LogOut, ClipboardList, QrCode, Radio, ExternalLink, Link2, Crown, Palette, Bell, X } from 'lucide-react';
 import AdminBlog from './AdminBlog';
 import AdminPosts from './AdminPosts';
 import PlatformInbox from './PlatformInbox';
@@ -643,13 +643,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
             {(headerOverride ? headerOverride.action : headerAction) && (
               <div className="mr-1 flex items-center">{headerOverride ? headerOverride.action : headerAction}</div>
             )}
-            <button
-              className="w-9 h-9 rounded-full flex items-center justify-center text-warm-brown hover:text-earth hover:bg-stone-100 transition-colors"
-              title="Search"
-              aria-label="Search"
-            >
-              <Search size={18} />
-            </button>
             {showInbox && (
               <button
                 onClick={() => go('inbox')}
