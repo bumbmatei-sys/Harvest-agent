@@ -30,6 +30,19 @@ export const PLAN_PRICES: Record<string, { monthly: string; yearly: string }> = 
 export const AI_ASSISTANT_MONTHLY = process.env.STRIPE_PRICE_AI_MONTHLY ?? 'price_1TmgRP1YKkcSbTf3wjxEsdr';
 export const AI_ASSISTANT_SETUP = process.env.STRIPE_PRICE_AI_SETUP ?? 'price_1TjKTd1YKkcSbTf3tQVxQfC5';
 
+/**
+ * Platform application-fee rate per plan, applied to money that flows through a
+ * tenant's connected account via a destination charge (donations AND paid event
+ * tickets). Single source of truth so the two money paths can never charge a
+ * different platform fee for the same plan. A missing plan defaults to 0.
+ */
+export const PLATFORM_FEE_MAP: Record<string, number> = {
+  plus: 0.15,
+  pro: 0.10,
+  max: 0.05,
+  ultra: 0,
+};
+
 // Reverse mapping: price ID → plan name (for webhook)
 export function getPlanFromPriceId(priceId: string): string | null {
   for (const [plan, prices] of Object.entries(PLAN_PRICES)) {

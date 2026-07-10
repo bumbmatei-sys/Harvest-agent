@@ -2,15 +2,9 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import Stripe from 'stripe';
 import { adminDb } from '@/lib/firebase-admin';
+import { PLATFORM_FEE_MAP as FEE_MAP } from '@/lib/stripe-config';
 
 export const dynamic = 'force-dynamic';
-
-const FEE_MAP: Record<string, number> = {
-  plus: 0.15,
-  pro: 0.10,
-  max: 0.05,
-  ultra: 0,
-};
 
 export async function POST(request: NextRequest) {
   try {

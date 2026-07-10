@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CheckCircle2, Calendar, MapPin, Globe, Plus, X } from 'lucide-react';
 
 interface TicketType {
@@ -74,6 +74,24 @@ const PublicEventRegistration: React.FC<PublicEventRegistrationProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<{ ticketCode: string; waitlisted: boolean } | null>(null);
 
+  // When Stripe Checkout redirects back to /event/{id}?registration=success|cancel,
+  // show the matching state. The QR ticket for a paid registration arrives by
+  // email once the webhook confirms the payment.
+  const [postPayment, setPostPayment] = useState<'success' | 'cancel' | null>(null);
+  useEffect(() => {
+    const reg = new URLSearchParams(window.location.search).get('registration');
+    if (reg === 'success' || reg === 'cancel') setPostPayment(reg);
+  }, []);
+
+  // Return to a clean form after an abandoned/cancelled paid checkout, stripping
+  // the ?registration=cancel param so a refresh doesn't re-show the cancel state.
+  const dismissPostPayment = () => {
+    setPostPayment(null);
+    if (typeof window !== 'undefined' && window.history?.replaceState) {
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+  };
+
   const selectedTicket = ticketTypes.find((t) => t.id === selectedTicketId) || null;
   const discountAmount = discountResult?.discountAmount || 0;
   const total = selectedTicket ? Math.max(0, selectedTicket.price - discountAmount) : 0;
@@ -146,6 +164,13 @@ const PublicEventRegistration: React.FC<PublicEventRegistrationProps> = ({
       });
       const data = await resp.json().catch(() => ({}));
       if (!resp.ok) throw new Error(data.error || 'Registration failed');
+      // Paid ticket → the server created a Stripe Checkout session. Redirect there;
+      // the registration is confirmed by the webhook only after payment succeeds.
+      if (data.url) {
+        window.location.href = data.url;
+        return; // keep the button disabled through the redirect
+      }
+      // Free (or waitlisted) ticket → confirmed immediately, show the ticket code.
       setDone({ ticketCode: data.ticketCode, waitlisted: !!data.waitlisted });
     } catch (err: any) {
       setError(err?.message || 'Something went wrong. Please try again.');
@@ -178,6 +203,37 @@ const PublicEventRegistration: React.FC<PublicEventRegistrationProps> = ({
       </div>
     </div>
   );
+
+  // ── Returned from Stripe Checkout (paid ticket) ──
+  if (postPayment === 'success') {
+    return (
+      <Shell logo={logo} tenantName={tenantName} primaryColor={primaryColor}>
+        {EventHeader}
+        <div className="bg-white rounded-[14px] shadow-sm border border-gray-100 p-8 text-center">
+          <CheckCircle2 size={48} className="mx-auto mb-4" style={{ color: primaryColor }} />
+          <h2 className="font-display text-xl font-bold text-gray-900 mb-1">Payment received — you&apos;re registered!</h2>
+          <p className="text-sm text-gray-500 mb-2">Thanks for registering for {event.title}.</p>
+          <p className="text-sm text-gray-400">Your ticket and QR code are on their way to your email.</p>
+        </div>
+      </Shell>
+    );
+  }
+  if (postPayment === 'cancel') {
+    return (
+      <Shell logo={logo} tenantName={tenantName} primaryColor={primaryColor}>
+        {EventHeader}
+        <div className="bg-white rounded-[14px] shadow-sm border border-gray-100 p-8 text-center">
+          <h2 className="font-display text-xl font-bold text-gray-900 mb-1">Registration not completed</h2>
+          <p className="text-sm text-gray-500 mb-5">Your payment was cancelled, so you haven&apos;t been charged and no ticket was issued.</p>
+          <button onClick={dismissPostPayment}
+            className="px-5 py-2.5 rounded-xl text-white font-semibold"
+            style={{ backgroundColor: primaryColor }}>
+            Try again
+          </button>
+        </div>
+      </Shell>
+    );
+  }
 
   // ── Success ──
   if (done) {
@@ -341,7 +397,9 @@ const PublicEventRegistration: React.FC<PublicEventRegistrationProps> = ({
         <button onClick={submit} disabled={submitting}
           className="mt-6 w-full py-3 rounded-xl text-white font-semibold disabled:opacity-50"
           style={{ backgroundColor: primaryColor }}>
-          {submitting ? 'Registering…' : 'Register'}
+          {submitting
+            ? (total > 0 ? 'Redirecting to payment…' : 'Registering…')
+            : (total > 0 ? `Continue to payment · ${fmtCents(total)}` : 'Register')}
         </button>
       </div>
     </Shell>
