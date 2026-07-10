@@ -80,11 +80,18 @@ export async function POST(request: NextRequest) {
         }
         // Mirror onto the caller's user doc so their affiliate-payout path resolves
         // the SAME account (the payout path reads users/{uid}.affiliateStripeAccountId).
-        await userRef.set({
-          affiliateStripeAccountId: accountId,
-          ...(connectStatus ? { affiliateConnectStatus: connectStatus } : {}),
-          updatedAt: new Date().toISOString(),
-        }, { merge: true });
+        // Guard: don't repoint/downgrade a DIFFERENT, already-active affiliate account
+        // a legacy user still receives payouts on — leave their working payout be.
+        const mirrorSafe = !(userData?.affiliateStripeAccountId
+          && userData.affiliateStripeAccountId !== accountId
+          && userData.affiliateConnectStatus === 'active');
+        if (mirrorSafe) {
+          await userRef.set({
+            affiliateStripeAccountId: accountId,
+            ...(connectStatus ? { affiliateConnectStatus: connectStatus } : {}),
+            updatedAt: new Date().toISOString(),
+          }, { merge: true });
+        }
         const accountLink = await stripe.accountLinks.create({
           account: accountId,
           refresh_url: `${baseUrl}/?section=payment`,

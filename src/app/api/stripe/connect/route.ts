@@ -45,17 +45,32 @@ export async function POST(request: NextRequest) {
     // to this account (so a multi-admin tenant works too, still with one account).
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://theharvest.app';
 
+    // Safety: never silently repoint/downgrade a DIFFERENT, already-ACTIVE affiliate
+    // account. A legacy user who onboarded a standalone affiliate account via
+    // /api/affiliate/onboard (active, receiving payouts) must not have it clobbered
+    // by a not-yet-ready tenant donations account just because they clicked Connect.
+    // We still mirror when they have no account, already point at this one, or their
+    // affiliate isn't active — so the founder's primary (no-account) flow is unaffected.
+    const connectingUserRef = adminDb.collection('users').doc(userOrErr.uid);
+    const connectingUser = (await connectingUserRef.get()).data();
+    const mirrorSafe = (accountId: string): boolean =>
+      !(connectingUser?.affiliateStripeAccountId
+        && connectingUser.affiliateStripeAccountId !== accountId
+        && connectingUser.affiliateConnectStatus === 'active');
+
     // Check if already connected
     if (tenantData.stripeConnectAccountId) {
       // Ensure the affiliate mirror points at the canonical account, even for
       // tenants connected before unification. Mirror the tenant's current status
       // too so a fully-onboarded account is immediately payout-ready for affiliate
       // commissions (account.updated may not fire again for an existing account).
-      await adminDb.collection('users').doc(userOrErr.uid).set({
-        affiliateStripeAccountId: tenantData.stripeConnectAccountId,
-        ...(tenantData.stripeConnectStatus ? { affiliateConnectStatus: tenantData.stripeConnectStatus } : {}),
-        updatedAt: new Date().toISOString(),
-      }, { merge: true });
+      if (mirrorSafe(tenantData.stripeConnectAccountId)) {
+        await connectingUserRef.set({
+          affiliateStripeAccountId: tenantData.stripeConnectAccountId,
+          ...(tenantData.stripeConnectStatus ? { affiliateConnectStatus: tenantData.stripeConnectStatus } : {}),
+          updatedAt: new Date().toISOString(),
+        }, { merge: true });
+      }
       // Create a new account link for existing account
       const accountLink = await stripe.accountLinks.create({
         account: tenantData.stripeConnectAccountId,
@@ -86,11 +101,15 @@ export async function POST(request: NextRequest) {
     // Mirror onto the connecting user so the SAME account also powers their
     // affiliate payouts. Status starts 'pending'; the connect callback and
     // account.updated webhook flip it to 'active' once Express onboarding completes.
-    await adminDb.collection('users').doc(userOrErr.uid).set({
-      affiliateStripeAccountId: account.id,
-      affiliateConnectStatus: 'pending',
-      updatedAt: new Date().toISOString(),
-    }, { merge: true });
+    // (mirrorSafe is always true here for a brand-new account unless the user already
+    // holds a different active one — in which case we leave their working payout be.)
+    if (mirrorSafe(account.id)) {
+      await connectingUserRef.set({
+        affiliateStripeAccountId: account.id,
+        affiliateConnectStatus: 'pending',
+        updatedAt: new Date().toISOString(),
+      }, { merge: true });
+    }
 
     // Create an account link for onboarding
     const accountLink = await stripe.accountLinks.create({
