@@ -5,6 +5,7 @@ import Stripe from 'stripe';
 import QRCode from 'qrcode';
 import { Resend } from 'resend';
 import { adminDb } from '@/lib/firebase-admin';
+import { verifyAuth } from '@/lib/api-auth';
 import { PLATFORM_FEE_MAP } from '@/lib/stripe-config';
 
 export const dynamic = 'force-dynamic';
@@ -66,6 +67,14 @@ export async function POST(request: NextRequest) {
       { status: 400 },
     );
   }
+
+  // Optional identity link: when a logged-in app user registers, the client
+  // sends their Firebase ID token. We resolve the uid SERVER-SIDE from the
+  // verified token — never from a client-supplied field — so this money/identity
+  // link can't be spoofed. Logged-out visitors send no token → verifyAuth returns
+  // null → userId stays null and the public path is entirely unchanged.
+  const authedUser = await verifyAuth(request);
+  const userId = authedUser?.uid || null;
 
   try {
     const eventRef = adminDb.collection('tenants').doc(tenantId).collection('events').doc(eventId);
@@ -175,7 +184,7 @@ export async function POST(request: NextRequest) {
       const pendingRef = await adminDb.collection('tenants').doc(tenantId).collection('registrations').add({
         eventId,
         tenantId,
-        userId: null,
+        userId,
         name: `${firstName} ${lastName}`,
         firstName,
         lastName,
@@ -201,6 +210,9 @@ export async function POST(request: NextRequest) {
         ticketTypeId,
         registrationId: pendingRef.id,
         discountCode: appliedCode ? appliedCode.code : '',
+        // Carry the verified uid so the webhook can retain it on the confirmed
+        // reg even if the pending doc is ever re-created. '' for logged-out.
+        userId: userId || '',
       };
 
       try {
@@ -240,7 +252,7 @@ export async function POST(request: NextRequest) {
     await adminDb.collection('tenants').doc(tenantId).collection('registrations').add({
       eventId,
       tenantId,
-      userId: null,
+      userId,
       name: `${firstName} ${lastName}`,
       email,
       phone: phone || null,
