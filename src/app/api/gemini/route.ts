@@ -11,6 +11,18 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 const MAX_TEXT_LENGTH = 50000; // 50KB limit for embed text
 const MAX_PROMPT_LENGTH = 30000; // 30KB limit for generate prompts
 
+// MiMo (Xiaomi) Token Plan chat-completions endpoint.
+//
+// Contract: `MIMO_BASE_URL` is the REGION base URL exactly as shown on the
+// Token Plan subscription page (e.g. https://token-plan-sgp.xiaomimimo.com/v1),
+// i.e. everything up to and INCLUDING `/v1` — the code appends
+// `/chat/completions`. A Token Plan key only authenticates against its own
+// region's base URL, so this must be configurable per deployment. Unset →
+// defaults to the China cluster, keeping current behavior byte-for-byte.
+const MIMO_CHAT_URL = `${(
+  process.env.MIMO_BASE_URL || 'https://token-plan-cn.xiaomimimo.com/v1'
+).replace(/\/+$/, '')}/chat/completions`;
+
 // ── AI RAG chat usage limits (server-side, easy to tune) ──
 // The chat runs on a single shared MiMo subscription, so per-user usage is
 // capped to protect against runaway token use and concurrency spikes. The
@@ -197,7 +209,7 @@ export async function POST(request: NextRequest) {
         }
         messages.push({ role: 'user', content: prompt });
 
-        const response = await fetch('https://token-plan-cn.xiaomimimo.com/v1/chat/completions', {
+        const response = await fetch(MIMO_CHAT_URL, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
