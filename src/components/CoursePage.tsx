@@ -240,6 +240,7 @@ export default function CoursePage({
           onBack={onBack || (() => setScreen("library"))}
           onStartLesson={goToLesson}
           completed={completed}
+          quizAttempts={quizAttempts}
           onSelectAuthor={(author) => {
             setSelectedAuthor(author);
             setPreviousScreen("overview");
