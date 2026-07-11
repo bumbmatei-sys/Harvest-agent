@@ -592,7 +592,10 @@ describe('RAG read isolation', () => {
       const sa = (await superAdmin()).firestore();
       await assertSucceeds(sa.doc(`${coll}/${coll}-a`).get());
 
-      // The owner (no permissions map) still reads via ownerId → isTenantAdmin.
+      // The owner reads via the dedicated isTenantOwner branch on the rag read
+      // rule (a pure owner — ownerId only — is NOT covered by isTenantAdmin;
+      // see rag-owner.rules.test.ts). This fixture owner is also role 'admin' +
+      // on adminEmails, so it would pass either way.
       const own2 = (await owner()).firestore();
       await assertSucceeds(own2.doc(`${coll}/${coll}-a`).get());
     });

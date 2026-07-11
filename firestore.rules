@@ -320,8 +320,21 @@ service cloud.firestore {
     // filters by tenantId (AdminRAG, AIChat). isAdmin() carries a GLOBAL admin
     // claim, so it let any tenant's admin read another tenant's chunks via a
     // direct SDK query — the same cross-tenant leak the donations block fixed.
+    //
+    // The read must ALSO honor the tenant OWNER via isTenantOwner, matching how
+    // the write rules gate on hasPermission('uploadRag', …) (which folds in the
+    // owner). Without it, an owner whose authority comes purely from
+    // tenants/{t}.ownerId — role 'user', not on the adminEmails roster, no
+    // permissions map — could CREATE rag_sources/rag_chunks (writes pass via the
+    // owner) but was DENIED the read-back: AdminRAG's finalizeSource getDocs, the
+    // delete-cleanup getDoc, the onSnapshot listener, and AIChat retrieval all
+    // failed with "Missing or insufficient permissions", surfaced in the UI as
+    // "Failed to add knowledge source". isTenantAdmin does not check ownerId, so
+    // add the owner explicitly here (tenant-scoped — isolation is preserved).
     match /rag_sources/{sourceId} {
-      allow read: if isAuthenticated() && isTenantAdmin(resource.data.get('tenantId', ''));
+      allow read: if isAuthenticated() &&
+        (isTenantAdmin(resource.data.get('tenantId', '')) ||
+         isTenantOwner(request.auth.uid, resource.data.get('tenantId', '')));
       allow create: if isAuthenticated() && requestHasCorrectTenant() &&
         hasPermission('uploadRag', request.resource.data.get('tenantId', ''));
       allow update: if isAuthenticated() && hasPermission('uploadRag', resource.data.tenantId);
@@ -329,7 +342,9 @@ service cloud.firestore {
     }
 
     match /rag_chunks/{chunkId} {
-      allow read: if isAuthenticated() && isTenantAdmin(resource.data.get('tenantId', ''));
+      allow read: if isAuthenticated() &&
+        (isTenantAdmin(resource.data.get('tenantId', '')) ||
+         isTenantOwner(request.auth.uid, resource.data.get('tenantId', '')));
       allow create: if isAuthenticated() && requestHasCorrectTenant() &&
         hasPermission('uploadRag', request.resource.data.get('tenantId', ''));
       allow update: if isAuthenticated() && hasPermission('uploadRag', resource.data.tenantId);
