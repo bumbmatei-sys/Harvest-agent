@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Upload, Search, Trash2, Sparkles, Database } from 'lucide-react';
 import { db, auth } from '../firebase';
-import { collection, addDoc, serverTimestamp, query, where, getDocs, getDoc, deleteDoc, onSnapshot, updateDoc, doc } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, where, getDocs, getDoc, deleteDoc, onSnapshot, updateDoc, doc, type DocumentReference } from 'firebase/firestore';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { notifyError } from '../utils/notify';
 import { getTenantScope, getWriteTenantScope } from '../utils/tenant-scope';
@@ -106,25 +106,30 @@ async function chunkAndEmbed(
 
 // Reflect the real embedding outcome on the source doc so the row leaves
 // "Processing…" for a definite Embedded (real chunk count) or Failed state.
-async function finalizeSource(sourceId: string, written: number, error: string | null) {
- // Single-field filter only (sourceId is unique); avoids a composite index.
- const q = query(collection(db, 'rag_sources'), where('sourceId', '==', sourceId));
- const snap = await getDocs(q);
- if (snap.empty) return;
+//
+// We updateDoc the source's OWN DocumentReference (returned by the addDoc that
+// created it) instead of looking it up again. A `where('sourceId','==',…)`
+// lookup is NOT tenant-scoped, so Firestore's "rules are not filters" analysis
+// rejects it for everyone but a super admin (the rag_sources read rule keys off
+// resource.data.tenantId) — that denied read was what surfaced as "Failed to
+// add knowledge source" for a tenant owner. Writing straight to the ref needs
+// no read and passes the update rule (hasPermission('uploadRag')).
+async function finalizeSource(sourceRef: DocumentReference, written: number, error: string | null) {
  if (written > 0) {
-   await updateDoc(snap.docs[0].ref, { status: "processed", chunks: written, error: null });
+   await updateDoc(sourceRef, { status: "processed", chunks: written, error: null });
  } else {
-   await updateDoc(snap.docs[0].ref, { status: "error", chunks: 0, error: error || 'Embedding failed' });
+   await updateDoc(sourceRef, { status: "error", chunks: 0, error: error || 'Embedding failed' });
  }
 }
 
 // Best-effort: flip a created source row to a failed state so a thrown error
-// never leaves it hanging on "Processing…" with no signal to the user.
-async function markSourceError(sourceId: string, message: string) {
+// never leaves it hanging on "Processing…" with no signal to the user. Uses the
+// source's own ref (see finalizeSource) — null when the source was never
+// created (the addDoc itself threw), in which case there is nothing to mark.
+async function markSourceError(sourceRef: DocumentReference | null, message: string) {
+ if (!sourceRef) return;
  try {
-   const q = query(collection(db, 'rag_sources'), where('sourceId', '==', sourceId));
-   const snap = await getDocs(q);
-   if (!snap.empty) await updateDoc(snap.docs[0].ref, { status: "error", error: message });
+   await updateDoc(sourceRef, { status: "error", error: message });
  } catch (e) { console.error(e); }
 }
 
@@ -232,6 +237,9 @@ export default function AdminRAG() {
 
  setPasteTitle(""); setPasteText(""); setTab("sources"); setPasteLoading(true);
 
+ // Hold the created source's ref so finalize/mark-error write straight to it
+ // (no non-tenant-scoped lookup) — null until the addDoc succeeds.
+ let sourceRef: DocumentReference | null = null;
  try {
    // A concrete tenantId is required — chunks written with a null tenantId are
    // rejected by the rag_chunks rule and are unreadable, so bail loudly instead.
@@ -242,7 +250,7 @@ export default function AdminRAG() {
    }
 
    // Add to Firestore rag_sources
-   await addDoc(collection(db, "rag_sources"), {
+   sourceRef = await addDoc(collection(db, "rag_sources"), {
      sourceId,
      title,
      type: "text",
@@ -253,11 +261,11 @@ export default function AdminRAG() {
    });
 
    const { written, error } = await chunkAndEmbed(pasteText, sourceId, title, "text", tenantId);
-   await finalizeSource(sourceId, written, error);
+   await finalizeSource(sourceRef, written, error);
    if (written === 0) notifyError(`Failed to embed "${title}"`, error || 'Embedding failed');
  } catch (err) {
    notifyError('Failed to add knowledge source', err);
-   await markSourceError(sourceId, err instanceof Error ? err.message : 'Processing failed');
+   await markSourceError(sourceRef, err instanceof Error ? err.message : 'Processing failed');
  } finally {
    setPasteLoading(false);
  }
@@ -272,6 +280,8 @@ export default function AdminRAG() {
 
  setTab("sources");
 
+ // See handlePasteSubmit — finalize/mark-error write straight to this ref.
+ let sourceRef: DocumentReference | null = null;
  try {
    // A concrete tenantId is required (see handlePasteSubmit) — bail loudly
    // rather than write unreadable null-tenant chunks.
@@ -282,7 +292,7 @@ export default function AdminRAG() {
    }
 
    // Add to Firestore rag_sources
-   await addDoc(collection(db, "rag_sources"), {
+   sourceRef = await addDoc(collection(db, "rag_sources"), {
      sourceId,
      title: file.name,
      type,
@@ -301,11 +311,11 @@ export default function AdminRAG() {
      text = await readFileAsText(file);
    }
    const { written, error } = await chunkAndEmbed(text, sourceId, file.name, type, tenantId);
-   await finalizeSource(sourceId, written, error);
+   await finalizeSource(sourceRef, written, error);
    if (written === 0) notifyError(`Failed to embed "${file.name}"`, error || 'Embedding failed');
  } catch (err) {
    notifyError(`Failed to process "${file.name}"`, err);
-   await markSourceError(sourceId, err instanceof Error ? err.message : 'Processing failed');
+   await markSourceError(sourceRef, err instanceof Error ? err.message : 'Processing failed');
  }
  }
  };
@@ -337,11 +347,16 @@ export default function AdminRAG() {
 
    // Delete from rag_sources
    await deleteDoc(doc(db, "rag_sources", deleteTarget.id));
-    
-   // Delete chunks from Firestore
-   // Single-field filter only (sourceId is unique); avoids a composite index.
-   const q = query(collection(db, "rag_chunks"), where("sourceId", "==", deleteTarget.sourceId));
- const snap = await getDocs(q);
+
+   // Delete chunks from Firestore. Scope by tenantId as well as sourceId: a
+   // sourceId-only query isn't tenant-scoped, so Firestore's "rules are not
+   // filters" analysis rejects it for a tenant owner/admin (the rag_chunks read
+   // rule keys off tenantId). Two equality filters need no composite index; a
+   // super admin on the platform domain (null tenant) reads unscoped.
+   const chunksQ = tenantId
+     ? query(collection(db, "rag_chunks"), where("tenantId", "==", tenantId), where("sourceId", "==", deleteTarget.sourceId))
+     : query(collection(db, "rag_chunks"), where("sourceId", "==", deleteTarget.sourceId));
+ const snap = await getDocs(chunksQ);
  const deletePromises = snap.docs.map(document => deleteDoc(document.ref));
  await Promise.all(deletePromises);
  } catch (error) {
