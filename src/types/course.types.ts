@@ -19,6 +19,18 @@ export interface OutlineItem {
   text: string;
 }
 
+export interface QuizOption {
+  id: string;
+  text: string;
+  correct: boolean;
+}
+
+export interface QuizQuestion {
+  id: string;
+  q: string;
+  options: QuizOption[];
+}
+
 export interface Lesson {
   id: string;
   youtubeId?: string;
@@ -29,6 +41,8 @@ export interface Lesson {
   summary: string;
   outline?: OutlineItem[];
   sources?: string;
+  scripture?: string;
+  quiz?: QuizQuestion[];
 }
 
 export interface Section {
@@ -52,4 +66,6 @@ export interface Course {
   thumbnail: string;
   authorIds: string[];
   levels: Level[];
+  issueCertificate?: boolean;
+  requireQuiz?: boolean;
 }
