@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { doc, getDoc, updateDoc, getDocs, collection, query, where } from "firebase/firestore";
 import { db, auth } from "../firebase";
-import { Course, Lesson, Author } from "../types/course.types";
+import { Course, Lesson, Author, QuizAttempt } from "../types/course.types";
 import { getAllLessons } from "../utils/course.utils";
 import { CourseLibrary } from "../components/course/CourseLibrary";
 import { CourseOverview } from "../components/course/CourseOverview";
@@ -30,6 +30,7 @@ export default function CoursePage({
   const [selectedAuthor, setSelectedAuthor] = useState<Author | null>(null);
   const [previousScreen, setPreviousScreen] = useState<"overview" | "lesson" | null>(null);
   const [completed, setCompleted] = useState<Set<string>>(new Set());
+  const [quizAttempts, setQuizAttempts] = useState<Record<string, QuizAttempt>>({});
 
   const [courses, setCourses] = useState<Course[]>([]);
   const [authors, setAuthors] = useState<Author[]>([]);
@@ -47,6 +48,9 @@ export default function CoursePage({
           const data = userSnap.data();
           if (data.completedLessons) {
             setCompleted(new Set(data.completedLessons));
+          }
+          if (data.quizAttempts) {
+            setQuizAttempts(data.quizAttempts);
           }
         }
       } catch (error) {
@@ -186,6 +190,20 @@ export default function CoursePage({
     }
   };
 
+  const submitQuizAttempt = async (lessonId: string, attempt: QuizAttempt) => {
+    setQuizAttempts((prev) => ({ ...prev, [lessonId]: attempt }));
+    if (auth.currentUser) {
+      try {
+        const userRef = doc(db, "users", auth.currentUser.uid);
+        await updateDoc(userRef, {
+          [`quizAttempts.${lessonId}`]: attempt,
+        });
+      } catch (error) {
+        try { handleFirestoreError(error, OperationType.UPDATE, `users/${auth.currentUser?.uid}`); } catch (e) { console.error(e); }
+      }
+    }
+  };
+
   const selectLesson = (lesson: Lesson) => {
     setSelectedLesson(lesson);
     window.scrollTo(0, 0);
@@ -238,6 +256,8 @@ export default function CoursePage({
           onBack={() => setScreen("overview")}
           onComplete={toggleComplete}
           completed={completed}
+          quizAttempts={quizAttempts}
+          onQuizSubmit={submitQuizAttempt}
           onSelectLesson={selectLesson}
           onSelectAuthor={(author) => {
             setSelectedAuthor(author);

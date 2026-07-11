@@ -23,3 +23,10 @@ export function extractYouTubeId(url: string | undefined): string | undefined {
   const match = url.match(regExp);
   return (match && match[2].length === 11) ? match[2] : undefined;
 }
+
+// A quiz is "encouragement, not gatekeeping" by default — 70% is a lenient bar
+// (on a 2-3 question quiz this rounds up to needing all correct anyway).
+export const QUIZ_PASS_THRESHOLD = 0.7;
+
+export const isQuizPassing = (score: number, total: number): boolean =>
+  total > 0 && score / total >= QUIZ_PASS_THRESHOLD;

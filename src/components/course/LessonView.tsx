@@ -1,10 +1,14 @@
 "use client";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import ReactPlayer from "react-player/youtube";
-import { Course, Lesson, Author } from "../../types/course.types";
+import { Course, Lesson, Author, QuizAttempt } from "../../types/course.types";
 import { getAllLessons } from "../../utils/course.utils";
 import { GOLD, GREEN, GREEN_BG } from "../../utils/course.constants";
 import { sanitizeHtml } from "../../utils/sanitize";
+import { QuizPanel } from "./QuizPanel";
+
+const BASE_TABS = ["outline", "notes", "resources"] as const;
+type TabId = typeof BASE_TABS[number] | "quiz";
 
 interface LessonViewProps {
   course: Course;
@@ -13,12 +17,14 @@ interface LessonViewProps {
   onBack: () => void;
   onComplete: (id: string) => void;
   completed?: Set<string>;
+  quizAttempts?: Record<string, QuizAttempt>;
+  onQuizSubmit: (lessonId: string, attempt: QuizAttempt) => void;
   onSelectLesson: (lesson: Lesson) => void;
   onSelectAuthor?: (author: Author) => void;
 }
 
-export function LessonView({ course, lesson, authors, onBack, onComplete, completed, onSelectLesson, onSelectAuthor }: LessonViewProps) {
-  const [activeTab, setActiveTab] = useState<"outline" | "notes" | "resources">("outline");
+export function LessonView({ course, lesson, authors, onBack, onComplete, completed, quizAttempts, onQuizSubmit, onSelectLesson, onSelectAuthor }: LessonViewProps) {
+  const [activeTab, setActiveTab] = useState<TabId>("outline");
 
   const allLessons = getAllLessons(course);
   const currentIndex = allLessons.findIndex((l) => l.id === lesson.id);
@@ -26,6 +32,23 @@ export function LessonView({ course, lesson, authors, onBack, onComplete, comple
   const nextLesson = currentIndex < allLessons.length - 1 ? allLessons[currentIndex + 1] : null;
   const isCompleted = completed?.has(lesson.id);
   const lessonNumber = currentIndex >= 0 ? currentIndex + 1 : 0;
+
+  // Quiz is optional per lesson and never blocks completion unless the
+  // course requires it AND this specific lesson has one (requireQuiz must
+  // not retroactively block quiz-less lessons).
+  const quizQuestions = lesson.quiz ?? [];
+  const hasQuiz = quizQuestions.length > 0;
+  const quizAttempt = quizAttempts?.[lesson.id];
+  const quizPassed = !!quizAttempt?.passed;
+  const quizGateActive = hasQuiz && !!course.requireQuiz;
+  const completionBlocked = quizGateActive && !quizPassed && !isCompleted;
+  const tabs: TabId[] = hasQuiz ? [...BASE_TABS, "quiz"] : [...BASE_TABS];
+
+  // Guard against landing on the Quiz tab for a lesson that turns out to have
+  // none (e.g. Prev/Next into a quiz-less lesson while that tab was active).
+  useEffect(() => {
+    if (activeTab === "quiz" && !hasQuiz) setActiveTab("outline");
+  }, [lesson.id, hasQuiz, activeTab]);
 
   // Resolve video URL
   const videoUrl = lesson.youtubeUrl
@@ -85,7 +108,7 @@ export function LessonView({ course, lesson, authors, onBack, onComplete, comple
 
         {/* Tabs */}
         <div className="flex border-b border-stone-200 -mx-5 px-5 mb-4">
-          {(["outline", "notes", "resources"] as const).map((tab) => (
+          {tabs.map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -137,6 +160,15 @@ export function LessonView({ course, lesson, authors, onBack, onComplete, comple
           </div>
         )}
 
+        {/* Quiz tab */}
+        {activeTab === "quiz" && hasQuiz && (
+          <QuizPanel
+            quiz={quizQuestions}
+            attempt={quizAttempt}
+            onSubmit={(result) => onQuizSubmit(lesson.id, result)}
+          />
+        )}
+
         {/* Author link */}
         {author && onSelectAuthor && (
           <div
@@ -161,16 +193,25 @@ export function LessonView({ course, lesson, authors, onBack, onComplete, comple
         {/* Actions */}
         <div className="mt-6 space-y-3">
           <button
-            onClick={() => onComplete(lesson.id)}
-            className={`w-full py-3.5 rounded-lg text-sm font-bold cursor-pointer flex items-center justify-center gap-2 transition-all ${
-              isCompleted
-                ? "bg-green-50 text-green-600 border border-green-500 hover:bg-green-600 hover:text-white"
-                : "bg-green-50 text-green-600 border border-green-500 hover:bg-green-600 hover:text-white"
+            onClick={() => { if (!completionBlocked) onComplete(lesson.id); }}
+            disabled={completionBlocked}
+            className={`w-full py-3.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all ${
+              completionBlocked
+                ? "bg-stone-100 text-[color:var(--text-faint)] border border-stone-200 cursor-not-allowed"
+                : "bg-green-50 text-green-600 border border-green-500 hover:bg-green-600 hover:text-white cursor-pointer"
             }`}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="m5 13 4 4L19 7" /></svg>
             {isCompleted ? "Completed ✓" : "Mark as Completed"}
           </button>
+          {completionBlocked && (
+            <button
+              onClick={() => setActiveTab("quiz")}
+              className="w-full text-center text-xs font-semibold text-[color:var(--text-faint)] hover:text-warm-brown cursor-pointer underline decoration-dotted -mt-1"
+            >
+              Pass the quiz to complete this lesson
+            </button>
+          )}
 
           <div className="flex gap-3">
             {prevLesson && (
