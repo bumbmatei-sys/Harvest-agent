@@ -1,4 +1,4 @@
-import { Course, Lesson, Author } from "../types/course.types";
+import { Course, Lesson, Author, QuizAttempt } from "../types/course.types";
 
 export const getAuthor = (id: string, authors: Author[]): Author | undefined => authors.find(a => a.id === id);
 
@@ -30,3 +30,37 @@ export const QUIZ_PASS_THRESHOLD = 0.7;
 
 export const isQuizPassing = (score: number, total: number): boolean =>
   total > 0 && score / total >= QUIZ_PASS_THRESHOLD;
+
+/** A lesson gates on a quiz only when it actually carries questions. */
+export const lessonHasQuiz = (lesson: Lesson): boolean =>
+  Array.isArray(lesson.quiz) && lesson.quiz.length > 0;
+
+/**
+ * Whole-course completion — the SINGLE source of truth shared by the client
+ * (which decides whether to offer the certificate) and the server (which
+ * independently re-verifies before issuing one). Do not fork this: the whole
+ * point of the certificate being un-fakeable is that both sides run the exact
+ * same rule against the same data shape (completedLessons + quizAttempts).
+ *
+ * Complete ⇔ the course has lessons, every lesson id is in `completed`, and —
+ * when `requireQuiz` is on — every lesson that carries a quiz has a passing
+ * attempt (scored with the shared isQuizPassing threshold, never a trusted
+ * `passed` flag, so a forged `{ passed: true }` with a failing score is caught).
+ */
+export const isCourseComplete = (
+  course: Course,
+  completed: Set<string>,
+  quizAttempts: Record<string, QuizAttempt | undefined>
+): boolean => {
+  const lessons = getAllLessons(course);
+  if (lessons.length === 0) return false;
+  if (!lessons.every((l) => completed.has(l.id))) return false;
+  if (course.requireQuiz) {
+    for (const lesson of lessons) {
+      if (!lessonHasQuiz(lesson)) continue;
+      const attempt = quizAttempts[lesson.id];
+      if (!attempt || !isQuizPassing(attempt.score, attempt.total)) return false;
+    }
+  }
+  return true;
+};

@@ -1,9 +1,10 @@
 "use client";
 import React, { useState } from "react";
-import { Course, Lesson, Author, Level } from "../../types/course.types";
-import { getAllLessons } from "../../utils/course.utils";
+import { Course, Lesson, Author, Level, QuizAttempt } from "../../types/course.types";
+import { getAllLessons, isCourseComplete } from "../../utils/course.utils";
 import { GOLD, GOLD_LIGHT, GREEN, GREEN_BG } from "../../utils/course.constants";
 import { sanitizeHtml } from "../../utils/sanitize";
+import { CertificateDownload } from "./CertificateDownload";
 
 interface CourseOverviewProps {
   course: Course;
@@ -11,12 +12,20 @@ interface CourseOverviewProps {
   onBack: () => void;
   onStartLesson: (course: Course, lesson: Lesson) => void;
   completed?: Set<string>;
+  quizAttempts?: Record<string, QuizAttempt>;
   onSelectAuthor?: (author: Author) => void;
 }
 
-export function CourseOverview({ course, authors, onBack, onStartLesson, completed, onSelectAuthor }: CourseOverviewProps) {
+export function CourseOverview({ course, authors, onBack, onStartLesson, completed, quizAttempts, onSelectAuthor }: CourseOverviewProps) {
   const [activeTab, setActiveTab] = useState<"about" | "curriculum">("about");
   const [expandedLevels, setExpandedLevels] = useState<Set<string>>(new Set(course.levels?.map((l) => l.id) || []));
+
+  // Only offer the certificate when the course issues one AND the learner has
+  // genuinely completed it (same rule the server re-verifies before issuing).
+  // This is UI convenience only — the /api/certificate route enforces it too.
+  const certificateReady =
+    course.issueCertificate === true &&
+    isCourseComplete(course, completed || new Set(), quizAttempts || {});
 
   const allLessons = getAllLessons(course);
   const totalLessons = allLessons.length;
@@ -135,6 +144,9 @@ export function CourseOverview({ course, authors, onBack, onStartLesson, complet
         {/* About tab */}
         {activeTab === "about" && (
           <div className="py-5">
+            {certificateReady && (
+              <CertificateDownload courseId={course.id} courseTitle={course.title} />
+            )}
             <h3 className="text-base font-bold mb-2.5 font-display">About This Course</h3>
             {course.description ? (
               <div className="prose max-w-none text-sm leading-7 text-warm-brown">

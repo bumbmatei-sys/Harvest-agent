@@ -375,6 +375,19 @@ service cloud.firestore {
       allow delete: if isAuthenticated() && hasPermission('createCourses', resource.data.tenantId);
     }
 
+    // ─── Course completion certificates (server-issued) ──────────────
+    // Trust artifact: a cert is minted ONLY by /api/certificate (Admin SDK)
+    // after the server independently re-verifies completion. Docs are keyed
+    // certificates/{uid}_{courseId}; a learner may read only their OWN cert
+    // (the server-written `uid` field must equal their uid), and nobody writes
+    // from the client — all create/update/delete is server-only (the Admin SDK
+    // bypasses rules).
+    match /certificates/{certId} {
+      allow read: if isAuthenticated() &&
+        (isSuperAdmin() || resource.data.get('uid', '') == request.auth.uid);
+      allow write: if false; // server-only (Admin SDK)
+    }
+
     // ─── Tenants ────────────────────────────────────────────────────
 
     match /tenants/{tenantId} {
