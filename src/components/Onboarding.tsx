@@ -7,11 +7,67 @@ import { getToken } from 'firebase/messaging';
 import CountrySelect from './CountrySelect';
 import { useTenant } from '../contexts/TenantContext';
 import { getTenantScope } from '../utils/tenant-scope';
-import { CheckCircle2, ArrowRight, ArrowLeft, MapPin, Share, Download, Bell } from 'lucide-react';
+import { CheckCircle2, ArrowRight, ArrowLeft, MapPin, Share, Download, Bell, User, Phone } from 'lucide-react';
 import type { TenantPlan } from '../types/tenant.types';
 
 const GOLD = 'var(--brand-color, #B8962E)';
 const HARVEST_LOGO = 'https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png';
+
+/* ── Shared brand chrome (cream editorial ground, Fraunces display) ─────────── */
+
+/** Cream editorial ground that frames the onboarding flow. */
+const OnbShell: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <div
+    className="relative flex min-h-screen items-center justify-center overflow-hidden px-5 py-14 sm:py-20"
+    style={{ background: 'var(--cream, #FAF8F5)' }}
+  >
+    <div
+      aria-hidden
+      className="pointer-events-none absolute left-1/2 -translate-x-1/2"
+      style={{ top: '-18%', width: 760, height: 540, maxWidth: '160vw', background: 'radial-gradient(circle, color-mix(in srgb, var(--brand-color, #C9963A) 12%, transparent), transparent 68%)' }}
+    />
+    <div className="absolute left-8 top-8 hidden items-center gap-2 sm:flex" style={{ color: 'var(--text-faint, #A89A87)' }}>
+      <span className="h-px w-6" style={{ background: 'var(--stone-300, #D6CCBE)' }} />
+      <span className="text-xs font-medium">The digital foundation for ministries</span>
+    </div>
+    <div className="relative z-[1] w-full" style={{ maxWidth: 452 }}>{children}</div>
+  </div>
+);
+
+const Eyebrow: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <div className="text-xs font-semibold uppercase" style={{ letterSpacing: '0.19em', color: GOLD }}>{children}</div>
+);
+
+const Display: React.FC<{ children: React.ReactNode; size?: number }> = ({ children, size = 28 }) => (
+  <h1 className="font-display" style={{ fontWeight: 300, fontSize: size, letterSpacing: '-0.02em', lineHeight: 1.1, color: 'var(--text-heading, #2D2519)', margin: 0 }}>
+    {children}
+  </h1>
+);
+
+/** Text field with a leading line-icon and a brand-coloured focus ring. */
+const ObInput: React.FC<{ icon?: React.ReactNode } & React.InputHTMLAttributes<HTMLInputElement>> = ({ icon, ...props }) => {
+  const [focus, setFocus] = useState(false);
+  return (
+    <div
+      className="flex items-center gap-2.5 rounded-lg bg-white transition-all"
+      style={{ height: 48, padding: '0 14px', border: `1px solid ${focus ? GOLD : 'var(--stone-200, #E8E2D9)'}`, boxShadow: focus ? `0 0 0 3px color-mix(in srgb, ${GOLD} 16%, transparent)` : 'none' }}
+    >
+      {icon && <span className="flex shrink-0" style={{ color: 'var(--text-muted, #8B7355)' }}>{icon}</span>}
+      <input
+        {...props}
+        onFocus={(e) => { setFocus(true); props.onFocus?.(e); }}
+        onBlur={(e) => { setFocus(false); props.onBlur?.(e); }}
+        className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-[#A89A87]"
+        style={{ fontSize: 15, color: 'var(--text-heading, #2D2519)' }}
+      />
+    </div>
+  );
+};
+
+const fieldLabel = 'mb-1.5 block text-xs font-semibold';
+const cardClass = 'rounded-brand-xl border border-stone-200 bg-white shadow-[var(--ds-sh-md)]';
+// Soft brand-tinted disc background for step icons (tenant-aware).
+const goldDisc = { background: 'color-mix(in srgb, var(--brand-color, #C9963A) 13%, white)', color: GOLD } as React.CSSProperties;
 
 interface OnboardingQuestion {
   id: string;
@@ -56,14 +112,14 @@ const DEFAULT_QUESTION_STEPS: StepDef[] = [
 // ─── System Step: Install the App ─────────────────────────────────────────────
 
 const InstructionRow: React.FC<{ num: number; children: React.ReactNode }> = ({ num, children }) => (
-  <div className="flex items-start gap-3 bg-gray-50 rounded-xl px-3.5 py-3">
+  <div className="flex items-center gap-3 rounded-lg px-3.5 py-3" style={{ background: 'var(--surface-sunken, #F3EEE7)' }}>
     <span
-      className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white"
-      style={{ backgroundColor: GOLD }}
+      className="flex h-6.5 w-6.5 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
+      style={{ width: 26, height: 26, backgroundColor: GOLD }}
     >
       {num}
     </span>
-    <span className="text-sm text-gray-700 leading-snug pt-0.5">{children}</span>
+    <span className="flex-1 pt-0.5 text-sm leading-snug" style={{ color: 'var(--text-body, #4A4038)' }}>{children}</span>
   </div>
 );
 
@@ -75,21 +131,26 @@ const PwaInstallStep: React.FC<{
   const isAndroid = typeof navigator !== 'undefined' && /android/i.test(navigator.userAgent);
   const isMobile = isIOS || isAndroid;
   const [installing, setInstalling] = useState(false);
+  // `beforeinstallprompt` fires on Chromium browsers — Android AND desktop
+  // Chrome/Edge — so a native one-tap install is offered on desktop too, not
+  // only on mobile. Mirror the parent-cached prompt into state (and keep our
+  // own listener) so we react whether it fired before or after this step mounts.
+  const [nativeReady, setNativeReady] = useState<boolean>(!!deferredPrompt.current);
 
   const finish = () => {
     try { localStorage.setItem('pwa_installed', 'true'); } catch { /* ignore */ }
     onDone();
   };
 
-  // Desktop (neither iOS nor Android): skip this step silently.
   useEffect(() => {
-    if (!isMobile) finish();
+    if (deferredPrompt.current) setNativeReady(true);
+    const handler = (e: any) => { e.preventDefault(); deferredPrompt.current = e; setNativeReady(true); };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (!isMobile) return null;
-
-  const handleAndroidInstall = async () => {
+  const handleNativeInstall = async () => {
     const dp = deferredPrompt.current;
     if (!dp) return; // fallback instructions are rendered instead
     setInstalling(true);
@@ -102,55 +163,74 @@ const PwaInstallStep: React.FC<{
     finish();
   };
 
-  // Android with a native install prompt available → one-tap install.
-  const showNativeInstall = isAndroid && !!deferredPrompt.current;
+  // A native install prompt is available (Android or desktop Chrome/Edge).
+  const showNativeInstall = nativeReady;
 
+  // Mobile (iOS / Android without a native prompt) → add-to-home-screen steps.
   const manualInstructions = (
-    <div className="space-y-2.5 mb-6">
+    <div className="mb-6 space-y-2.5">
       <InstructionRow num={1}>
-        Tap the <strong className="font-semibold text-gray-900">Share</strong> button at the bottom of
+        Tap the <strong className="font-semibold" style={{ color: 'var(--text-heading, #2D2519)' }}>Share</strong> button at the bottom of
         your browser <Share size={15} className="inline-block align-text-bottom" style={{ color: GOLD }} />
       </InstructionRow>
       <InstructionRow num={2}>
-        Scroll down and tap <strong className="font-semibold text-gray-900">Add to Home Screen</strong>
+        Scroll down and tap <strong className="font-semibold" style={{ color: 'var(--text-heading, #2D2519)' }}>Add to Home Screen</strong>
       </InstructionRow>
       <InstructionRow num={3}>
-        Tap <strong className="font-semibold text-gray-900">Add</strong> — you&apos;re done! 🎉
+        Tap <strong className="font-semibold" style={{ color: 'var(--text-heading, #2D2519)' }}>Add</strong> — you&apos;re done!
+      </InstructionRow>
+    </div>
+  );
+
+  // Desktop without a native prompt (e.g. Safari / Firefox) → point at the
+  // browser's own install affordance rather than mobile Share steps.
+  const desktopInstructions = (
+    <div className="mb-6 space-y-2.5">
+      <InstructionRow num={1}>
+        Open the <strong className="font-semibold" style={{ color: 'var(--text-heading, #2D2519)' }}>install icon</strong> in your browser&apos;s address bar (or the browser menu)
+      </InstructionRow>
+      <InstructionRow num={2}>
+        Choose <strong className="font-semibold" style={{ color: 'var(--text-heading, #2D2519)' }}>Install Harvest</strong> (or <strong className="font-semibold" style={{ color: 'var(--text-heading, #2D2519)' }}>Add to Dock</strong>)
+      </InstructionRow>
+      <InstructionRow num={3}>
+        Confirm — Harvest opens like a native app
       </InstructionRow>
     </div>
   );
 
   return (
-    <div className="py-2">
-      <div
-        className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-5"
-        style={{ backgroundColor: `color-mix(in srgb, var(--brand-color) 13%, white)` }}
-      >
-        {isIOS ? <Share size={28} style={{ color: GOLD }} /> : <Download size={28} style={{ color: GOLD }} />}
+    <div className="py-1">
+      <Eyebrow>Almost there</Eyebrow>
+      <div className="mt-4 mb-5 flex justify-center">
+        <div className="flex h-20 w-20 items-center justify-center rounded-brand-lg" style={goldDisc}>
+          {isIOS ? <Share size={32} /> : <Download size={32} />}
+        </div>
       </div>
-      <h1 className="text-[22px] font-semibold text-[#111111] text-center mb-1.5 font-display">Install the App</h1>
-      <p className="text-sm text-[#888888] text-center mb-6">
+      <h1 className="mb-1.5 text-center font-display" style={{ fontWeight: 300, fontSize: 26, letterSpacing: '-0.02em', color: 'var(--text-heading, #2D2519)' }}>Install the app</h1>
+      <p className="mb-6 text-center text-sm leading-relaxed" style={{ color: 'var(--text-body, #4A4038)' }}>
         {showNativeInstall
-          ? 'Get the full experience on your home screen'
-          : 'Access Harvest instantly from your home screen'}
+          ? 'Add Harvest to your device for one-tap access — it works like a native app, offline included.'
+          : isMobile
+            ? 'Add Harvest to your home screen for one-tap access — it works like a native app, offline included.'
+            : 'Install Harvest as a desktop app for one-tap access — it works like a native app, offline included.'}
       </p>
 
       {showNativeInstall ? (
         <button
-          onClick={handleAndroidInstall}
+          onClick={handleNativeInstall}
           disabled={installing}
-          className="w-full flex items-center justify-center gap-2 text-white font-semibold py-3.5 px-6 rounded-xl transition-all disabled:opacity-50 mb-3"
-          style={{ backgroundColor: GOLD }}
+          className="mb-3 flex h-12 w-full items-center justify-center gap-2 rounded-lg font-semibold text-white transition-all disabled:opacity-50"
+          style={{ backgroundColor: GOLD, boxShadow: `0 10px 30px -8px color-mix(in srgb, ${GOLD} 42%, transparent)` }}
         >
-          <Download size={18} /> {installing ? 'Installing…' : 'Install App'}
+          <Download size={18} /> {installing ? 'Installing…' : 'Install app'}
         </button>
       ) : (
         <>
-          {manualInstructions}
+          {isMobile ? manualInstructions : desktopInstructions}
           <button
             onClick={finish}
-            className="w-full text-white font-semibold py-3.5 px-6 rounded-xl transition-all mb-3"
-            style={{ backgroundColor: GOLD }}
+            className="mb-3 flex h-12 w-full items-center justify-center rounded-lg font-semibold text-white transition-all"
+            style={{ backgroundColor: GOLD, boxShadow: `0 10px 30px -8px color-mix(in srgb, ${GOLD} 42%, transparent)` }}
           >
             I&apos;ve added it
           </button>
@@ -159,7 +239,8 @@ const PwaInstallStep: React.FC<{
 
       <button
         onClick={finish}
-        className="w-full text-center text-sm text-gray-400 hover:text-gray-600 transition-colors py-1"
+        className="w-full py-1 text-center text-sm font-semibold transition-colors hover:opacity-70"
+        style={{ color: 'var(--text-body, #4A4038)' }}
       >
         Skip for now
       </button>
@@ -212,30 +293,30 @@ const NotificationsStep: React.FC<{ onDone: () => void }> = ({ onDone }) => {
   };
 
   return (
-    <div className="py-2">
-      <div
-        className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-5"
-        style={{ backgroundColor: `color-mix(in srgb, var(--brand-color) 13%, white)` }}
-      >
-        <Bell size={28} style={{ color: GOLD }} />
+    <div className="py-1">
+      <Eyebrow>One last thing</Eyebrow>
+      <div className="mt-4 mb-5 flex justify-center">
+        <div className="flex h-20 w-20 items-center justify-center rounded-brand-lg" style={goldDisc}>
+          <Bell size={34} />
+        </div>
       </div>
-      <h1 className="text-[22px] font-semibold text-[#111111] text-center mb-1.5 font-display">Stay Connected</h1>
-      <p className="text-sm text-[#888888] text-center mb-6">
-        Enable notifications to receive messages, prayer updates, and announcements from your
-        ministry.
+      <h1 className="mb-1.5 text-center font-display" style={{ fontWeight: 300, fontSize: 26, letterSpacing: '-0.02em', color: 'var(--text-heading, #2D2519)' }}>Stay connected</h1>
+      <p className="mb-6 text-center text-sm leading-relaxed" style={{ color: 'var(--text-body, #4A4038)' }}>
+        Turn on notifications for messages, prayer updates and announcements from your ministry.
       </p>
 
       <button
         onClick={handleEnable}
         disabled={requesting}
-        className="w-full flex items-center justify-center gap-2 text-white font-semibold py-3.5 px-6 rounded-xl transition-all disabled:opacity-50 mb-3"
-        style={{ backgroundColor: GOLD }}
+        className="mb-3 flex h-12 w-full items-center justify-center gap-2 rounded-lg font-semibold text-white transition-all disabled:opacity-50"
+        style={{ backgroundColor: GOLD, boxShadow: `0 10px 30px -8px color-mix(in srgb, ${GOLD} 42%, transparent)` }}
       >
-        <Bell size={18} /> {requesting ? 'Enabling…' : 'Enable Notifications'}
+        <Bell size={18} /> {requesting ? 'Enabling…' : 'Enable notifications'}
       </button>
       <button
         onClick={finish}
-        className="w-full text-center text-sm text-gray-400 hover:text-gray-600 transition-colors py-1"
+        className="w-full py-1 text-center text-sm font-semibold transition-colors hover:opacity-70"
+        style={{ color: 'var(--text-body, #4A4038)' }}
       >
         Maybe later
       </button>
@@ -267,14 +348,14 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
   const hasCustomBranding = tenantPlan === 'max' || tenantPlan === 'ultra';
   const logoSrc = hasCustomBranding && branding.logo ? branding.logo : HARVEST_LOGO;
 
-  // Shared light input styling (mirrors AuthPage): white bg, soft border,
-  // dark text, brand-coloured focus border.
-  const inputClass =
-    'w-full px-4 py-3 rounded-xl bg-white text-[#111111] placeholder-[#AAAAAA] border border-[#E5E5E5] outline-none transition-colors';
+  // Branded field styling for textarea / select (icon inputs use <ObInput/>).
+  const brandFieldClass =
+    'w-full rounded-lg bg-white px-3.5 py-3 outline-none transition-all placeholder:text-[#A89A87]';
   const focusHandlers = {
-    onFocus: (e: React.FocusEvent<HTMLElement>) => { e.currentTarget.style.borderColor = GOLD; },
-    onBlur: (e: React.FocusEvent<HTMLElement>) => { e.currentTarget.style.borderColor = '#E5E5E5'; },
+    onFocus: (e: React.FocusEvent<HTMLElement>) => { e.currentTarget.style.borderColor = GOLD; e.currentTarget.style.boxShadow = `0 0 0 3px color-mix(in srgb, ${GOLD} 16%, transparent)`; },
+    onBlur: (e: React.FocusEvent<HTMLElement>) => { e.currentTarget.style.borderColor = 'var(--stone-200, #E8E2D9)'; e.currentTarget.style.boxShadow = 'none'; },
   };
+  const fieldStyle: React.CSSProperties = { border: '1px solid var(--stone-200, #E8E2D9)', color: 'var(--text-heading, #2D2519)', fontSize: 15 };
 
   const steps = useMemo<StepDef[]>(() => {
     // 1) Build the admin-configured question steps.
@@ -488,10 +569,10 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
 
   const getHeading = (s: StepDef): { title: string; sub: string } => {
     switch (s.kind) {
-      case 'default_name': return { title: "What's your name?", sub: "We'll use this to personalize your experience." };
-      case 'default_location': return { title: 'Where are you based?', sub: "We'll show you posts and events near you." };
-      case 'default_phone': return { title: 'Your phone number', sub: 'So your church can reach you when it matters.' };
-      case 'default_faith': return { title: s.faithLabel || 'Have you accepted Jesus?', sub: '' };
+      case 'default_name': return { title: "What should we call you?", sub: "We'll use this to personalize your experience across the app." };
+      case 'default_location': return { title: 'Where are you based?', sub: "We'll surface posts, groups and events happening near you." };
+      case 'default_phone': return { title: 'Your phone number', sub: 'So your ministry can reach you when it matters most.' };
+      case 'default_faith': return { title: s.faithLabel || 'Have you accepted Jesus?', sub: "There's no wrong answer — it just helps us walk with you." };
       case 'custom': return { title: s.question?.label || '', sub: '' };
       default: return { title: '', sub: '' };
     }
@@ -501,60 +582,54 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
     switch (s.kind) {
       case 'default_name':
         return (
-          <input
+          <ObInput
             type="text" value={name}
             onChange={e => setName(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && !loading && goNext()}
-            className={inputClass}
-            style={{ borderColor: '#E5E5E5' }}
-            {...focusHandlers}
             placeholder="Your full name" autoFocus
+            icon={<User size={16} />}
           />
         );
       case 'default_location':
         return (
-          <div className="space-y-3">
+          <div className="space-y-4">
             <button type="button" onClick={handleUseGPS} disabled={gpsLoading}
-              className="w-full flex items-center justify-center gap-2 bg-white hover:bg-gray-50 text-gray-700 text-sm font-medium py-2.5 px-4 rounded-xl border border-gray-200 transition-colors disabled:opacity-50">
+              className="flex h-11 w-full items-center justify-center gap-2 rounded-lg border bg-white text-sm font-semibold transition-colors hover:bg-stone-100 disabled:opacity-50"
+              style={{ borderColor: 'var(--stone-300, #D6CCBE)', color: 'var(--text-heading, #2D2519)' }}>
               <MapPin size={15} />
-              {gpsLoading ? 'Detecting location…' : 'Use my current location'}
+              {gpsLoading ? 'Detecting your location…' : 'Use my current location'}
             </button>
             <div className="relative z-50">
-              <label className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">Country</label>
+              <label className={fieldLabel} style={{ color: 'var(--text-heading, #2D2519)' }}>Country</label>
               <CountrySelect value={country} onChange={setCountry} className="w-full" />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">City</label>
-              <input type="text" value={city} onChange={e => setCity(e.target.value)}
+              <label className={fieldLabel} style={{ color: 'var(--text-heading, #2D2519)' }}>City</label>
+              <ObInput type="text" value={city} onChange={e => setCity(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && !loading && goNext()}
-                className={inputClass}
-                style={{ borderColor: '#E5E5E5' }}
-                {...focusHandlers}
-                placeholder="Your city" />
+                placeholder="Your city" icon={<MapPin size={16} />} />
             </div>
           </div>
         );
       case 'default_phone':
         return (
-          <input type="tel" value={phone}
+          <ObInput type="tel" value={phone}
             onChange={e => setPhone(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && !loading && goNext()}
-            className={inputClass}
-            style={{ borderColor: '#E5E5E5' }}
-            {...focusHandlers}
             placeholder="+1 234 567 8900" autoFocus
+            icon={<Phone size={16} />}
           />
         );
       case 'default_faith':
         return (
-          <div className="flex gap-4">
+          <div className="flex gap-3.5">
             <label className="flex-1 cursor-pointer">
               <input type="radio" name="acceptedJesus" value="yes" checked={acceptedJesus === 'yes'} onChange={e => setAcceptedJesus(e.target.value)} className="peer sr-only" />
-              <div className="w-full px-4 py-5 rounded-xl bg-white border-2 border-gray-200 text-center text-gray-800 transition-all font-bold text-lg peer-checked:bg-[color-mix(in_srgb,var(--brand-color)_12%,white)] peer-checked:border-[var(--brand-color)] peer-checked:text-[var(--brand-color)]">Yes</div>
+              <div className="w-full rounded-brand-lg border-2 border-stone-300 bg-white px-4 py-6 text-center font-display text-[22px] font-light transition-all peer-checked:bg-[color-mix(in_srgb,var(--brand-color)_12%,white)] peer-checked:border-[var(--brand-color)] peer-checked:text-[var(--brand-color)]" style={{ letterSpacing: '-0.02em', color: 'var(--text-heading, #2D2519)' }}>Yes</div>
             </label>
             <label className="flex-1 cursor-pointer">
               <input type="radio" name="acceptedJesus" value="no" checked={acceptedJesus === 'no'} onChange={e => setAcceptedJesus(e.target.value)} className="peer sr-only" />
-              <div className="w-full px-4 py-5 rounded-xl bg-white border-2 border-gray-200 text-center text-gray-800 transition-all font-bold text-lg peer-checked:bg-gray-100 peer-checked:border-gray-400 peer-checked:text-gray-900">Not yet</div>
+              <div className="w-full rounded-brand-lg border-2 border-stone-300 bg-white px-4 py-6 text-center font-display text-[22px] font-light transition-all peer-checked:bg-[color-mix(in_srgb,var(--brand-color)_12%,white)] peer-checked:border-[var(--brand-color)] peer-checked:text-[var(--brand-color)]" style={{ letterSpacing: '-0.02em', color: 'var(--text-heading, #2D2519)' }}>Not yet</div>
             </label>
           </div>
         );
@@ -571,20 +646,17 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
     switch (question.type) {
       case 'text':
         return (
-          <input type="text" value={value}
+          <ObInput type="text" value={value}
             onChange={e => setCustomAnswers(p => ({ ...p, [question.id]: e.target.value }))}
             onKeyDown={e => e.key === 'Enter' && !loading && goNext()}
-            className={inputClass}
-            style={{ borderColor: '#E5E5E5' }}
-            {...focusHandlers}
             placeholder={question.label} autoFocus />
         );
       case 'textarea':
         return (
           <textarea value={value}
             onChange={e => setCustomAnswers(p => ({ ...p, [question.id]: e.target.value }))}
-            className={`${inputClass} resize-none`}
-            style={{ borderColor: '#E5E5E5' }}
+            className={`${brandFieldClass} resize-none`}
+            style={fieldStyle}
             {...focusHandlers}
             placeholder={question.label} rows={3} />
         );
@@ -592,8 +664,8 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
         return (
           <select value={value}
             onChange={e => setCustomAnswers(p => ({ ...p, [question.id]: e.target.value }))}
-            className={`${inputClass} appearance-none`}
-            style={{ borderColor: '#E5E5E5' }}
+            className={`${brandFieldClass} appearance-none`}
+            style={fieldStyle}
             {...focusHandlers}>
             <option value="">Select…</option>
             {(question.options || []).map(opt => <option key={opt} value={opt}>{opt}</option>)}
@@ -601,12 +673,12 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
         );
       case 'radio':
         return (
-          <div className="flex gap-3 flex-wrap">
+          <div className="flex flex-wrap gap-3">
             {(question.options || []).map(opt => (
-              <label key={opt} className="flex-1 cursor-pointer min-w-[100px]">
+              <label key={opt} className="min-w-[100px] flex-1 cursor-pointer">
                 <input type="radio" name={`custom_${question.id}`} value={opt} checked={value === opt}
                   onChange={e => setCustomAnswers(p => ({ ...p, [question.id]: e.target.value }))} className="peer sr-only" />
-                <div className="w-full px-4 py-3 rounded-xl bg-white border border-gray-200 text-center text-gray-800 transition-all font-semibold text-sm peer-checked:bg-[color-mix(in_srgb,var(--brand-color)_12%,white)] peer-checked:border-[var(--brand-color)] peer-checked:text-[var(--brand-color)]">
+                <div className="w-full rounded-lg border border-stone-300 bg-white px-4 py-3 text-center text-sm font-semibold transition-all peer-checked:bg-[color-mix(in_srgb,var(--brand-color)_12%,white)] peer-checked:border-[var(--brand-color)] peer-checked:text-[var(--brand-color)]" style={{ color: 'var(--text-heading, #2D2519)' }}>
                   {opt}
                 </div>
               </label>
@@ -625,35 +697,36 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
     : Math.min(100, Math.round(((stepIndex + 1) / Math.max(questionStepCount, 1)) * 100));
 
   return (
-    <div className="min-h-screen bg-white px-6 py-12 flex flex-col">
-      <div className="max-w-sm w-full mx-auto flex-1 flex flex-col justify-center">
-        {/* Logo */}
-        <div className="flex justify-center mb-6">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={logoSrc} alt="Harvest logo" className="h-20 w-auto object-contain" />
-        </div>
+    <OnbShell>
+      {/* Logo */}
+      <div className="mb-6 flex justify-center">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={logoSrc} alt="Harvest logo" className="h-12 w-auto object-contain" />
+      </div>
 
-        {/* Progress */}
-        {!isDone && (
-          <div className="mb-6">
-            <div className="flex justify-between text-xs text-gray-500 mb-1.5">
-              <span>{isSystemStep ? 'Final steps' : `Step ${stepIndex + 1} of ${questionStepCount}`}</span>
-              <span>{progressPct}%</span>
-            </div>
-            <div className="h-1 bg-gray-100 rounded-full overflow-hidden">
-              <motion.div
-                className="h-full rounded-full"
-                style={{ backgroundColor: GOLD }}
-                initial={false}
-                animate={{ width: `${progressPct}%` }}
-                transition={{ duration: 0.3, ease: 'easeOut' }}
-              />
-            </div>
+      {/* Progress */}
+      {!isDone && (
+        <div className="mb-4">
+          <div className="mb-1.5 flex justify-between text-xs font-medium" style={{ color: 'var(--text-muted, #8B7355)' }}>
+            <span>{isSystemStep ? 'Final steps' : `Step ${stepIndex + 1} of ${questionStepCount}`}</span>
+            <span>{progressPct}%</span>
           </div>
-        )}
+          <div className="h-1.5 overflow-hidden rounded-full" style={{ background: 'var(--stone-200, #E8E2D9)' }}>
+            <motion.div
+              className="h-full rounded-full"
+              style={{ backgroundColor: GOLD }}
+              initial={false}
+              animate={{ width: `${progressPct}%` }}
+              transition={{ duration: 0.3, ease: 'easeOut' }}
+            />
+          </div>
+        </div>
+      )}
 
-        {/* Step content — sits directly on white, no card. overflowX:clip
-            contains the horizontal slide without clipping the country dropdown. */}
+      {/* Card. overflowX:clip contains the horizontal slide without clipping the
+          country dropdown (the card itself never sets overflow, so the dropdown
+          renders freely). */}
+      <div className={`${cardClass} px-6 py-8 sm:px-9`}>
         <div style={{ overflowX: 'clip' }}>
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
@@ -664,25 +737,26 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
               transition={{ duration: 0.2, ease: 'easeOut' }}
             >
               {isDone ? (
-                <div className="text-center py-6">
+                <div className="py-4 text-center">
                   <motion.div
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
                     transition={{ type: 'spring', stiffness: 280, damping: 20, delay: 0.05 }}
-                    className="w-20 h-20 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-6"
+                    className="mx-auto mb-6 flex h-[76px] w-[76px] items-center justify-center rounded-full"
+                    style={goldDisc}
                   >
-                    <CheckCircle2 size={40} className="text-green-500" />
+                    <CheckCircle2 size={38} />
                   </motion.div>
-                  <h1 className="text-[22px] font-semibold text-[#111111] mb-2 font-display">
-                    You&apos;re all set{name ? `, ${name.split(' ')[0]}` : ''}!
+                  <h1 className="mb-2 font-display" style={{ fontWeight: 300, fontSize: 30, letterSpacing: '-0.02em', color: 'var(--text-heading, #2D2519)' }}>
+                    You&apos;re all set{name ? `, ${name.split(' ')[0]}` : ''}.
                   </h1>
-                  <p className="text-sm text-[#888888] mb-8">
-                    Welcome to Harvest. Everything&apos;s ready for you.
+                  <p className="mb-8 text-sm leading-relaxed" style={{ color: 'var(--text-body, #4A4038)' }}>
+                    Welcome to Harvest. From conversion to devotion — everything&apos;s ready for you.
                   </p>
                   <button onClick={onComplete}
-                    className="inline-flex items-center gap-2 text-white font-semibold py-3 px-8 rounded-xl transition-all"
-                    style={{ backgroundColor: GOLD }}>
-                    Let&apos;s go <ArrowRight size={18} />
+                    className="inline-flex items-center gap-2 rounded-lg px-8 py-3 font-semibold text-white transition-all"
+                    style={{ backgroundColor: GOLD, boxShadow: `0 10px 30px -8px color-mix(in srgb, ${GOLD} 42%, transparent)` }}>
+                    Enter the app <ArrowRight size={18} />
                   </button>
                 </div>
               ) : currentStep.kind === 'pwaInstall' ? (
@@ -691,16 +765,17 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                 <NotificationsStep onDone={advanceStep} />
               ) : (
                 <>
-                  <div className="mb-6">
-                    <h1 className="text-[22px] font-semibold text-[#111111] mb-1 font-display">{heading.title}</h1>
-                    {heading.sub && <p className="text-sm text-[#888888]">{heading.sub}</p>}
+                  <Eyebrow>{`Step ${stepIndex + 1} of ${questionStepCount}`}</Eyebrow>
+                  <div className="mb-1.5 mt-3">
+                    <h1 className="font-display" style={{ fontWeight: 300, fontSize: 28, letterSpacing: '-0.02em', lineHeight: 1.12, color: 'var(--text-heading, #2D2519)' }}>{heading.title}</h1>
                   </div>
+                  {heading.sub && <p className="text-sm leading-relaxed" style={{ color: 'var(--text-body, #4A4038)' }}>{heading.sub}</p>}
                   {error && (
-                    <div className="mb-4 p-3 bg-red-50 border border-red-100 text-red-600 text-sm rounded-xl">
+                    <div className="mt-4 rounded-lg border px-3.5 py-3 text-sm" style={{ background: '#FBEEEA', borderColor: '#EBD0C7', color: '#B0432B' }}>
                       {error}
                     </div>
                   )}
-                  {renderField(currentStep)}
+                  <div className="mt-6">{renderField(currentStep)}</div>
                 </>
               )}
             </motion.div>
@@ -708,23 +783,23 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
         </div>
 
         {!isDone && !isSystemStep && (
-          <div className="mt-8 flex items-center justify-between">
+          <div className="mt-7 flex items-center justify-between">
             {stepIndex > 0 ? (
               <button onClick={goBack}
-                className="flex items-center gap-1.5 text-gray-500 hover:text-gray-800 text-sm font-medium transition-colors">
+                className="flex items-center gap-1.5 text-sm font-semibold transition-colors hover:opacity-70" style={{ color: 'var(--text-body, #4A4038)' }}>
                 <ArrowLeft size={16} /> Back
               </button>
             ) : <div />}
             <button onClick={goNext} disabled={loading || !questionsLoaded}
-              className="flex items-center gap-2 text-white font-semibold py-3 px-6 rounded-xl transition-all disabled:opacity-50"
-              style={{ backgroundColor: GOLD }}>
+              className="flex items-center gap-2 rounded-lg px-6 py-3 font-semibold text-white transition-all disabled:opacity-50"
+              style={{ backgroundColor: GOLD, boxShadow: `0 10px 30px -8px color-mix(in srgb, ${GOLD} 42%, transparent)` }}>
               {loading ? 'Saving…' : stepIndex === questionStepCount - 1 ? 'Finish' : 'Continue'}
               <ArrowRight size={16} />
             </button>
           </div>
         )}
       </div>
-    </div>
+    </OnbShell>
   );
 };
 

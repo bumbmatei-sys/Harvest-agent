@@ -5,11 +5,14 @@ import { signInWithPopup, GoogleAuthProvider, createUserWithEmailAndPassword, si
 import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { useTenant } from '../contexts/TenantContext';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, ArrowLeft, X } from 'lucide-react';
 import { Turnstile } from '@marsidev/react-turnstile';
 
 const HARVEST_GOLD = 'var(--brand-color, #B8962E)';
 const HARVEST_LOGO = 'https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png';
+
+// Hairline stone border used across the auth fields at rest (brand border-light).
+const FIELD_BORDER = 'var(--stone-200, #E8E2D9)';
 
 /** Multi-colour Google "G" mark. */
 const GoogleIcon = () => (
@@ -20,6 +23,133 @@ const GoogleIcon = () => (
     <path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58C13.46.89 11.43 0 9 0A9 9 0 0 0 .96 4.95l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58z" />
   </svg>
 );
+
+/* ── Shared brand chrome (cream editorial ground, Fraunces display) ─────────── */
+
+/** Cream editorial ground that frames every auth/onboarding screen. */
+const AuthShell: React.FC<{ children: React.ReactNode; signature?: boolean }> = ({ children, signature }) => (
+  <div
+    className="relative flex min-h-screen items-center justify-center overflow-hidden px-5 py-16 sm:py-20"
+    style={{ background: 'var(--cream, #FAF8F5)' }}
+  >
+    {/* soft gold halo */}
+    <div
+      aria-hidden
+      className="pointer-events-none absolute left-1/2 -translate-x-1/2"
+      style={{ top: '-18%', width: 760, height: 540, maxWidth: '160vw', background: 'radial-gradient(circle, color-mix(in srgb, var(--brand-color, #C9963A) 12%, transparent), transparent 68%)' }}
+    />
+    {/* top-left brand tagline (desktop) */}
+    <div className="absolute left-8 top-8 hidden items-center gap-2 sm:flex" style={{ color: 'var(--text-faint, #A89A87)' }}>
+      <span className="h-px w-6" style={{ background: 'var(--stone-300, #D6CCBE)' }} />
+      <span className="text-xs font-medium">The digital foundation for ministries</span>
+    </div>
+    <div className="relative z-[1] flex w-full flex-col items-center">
+      {children}
+      {signature && (
+        <p className="mt-7 font-display italic" style={{ fontWeight: 300, fontSize: 15, letterSpacing: '-0.02em', color: 'var(--text-body, #4A4038)' }}>
+          From conversion to devotion.
+        </p>
+      )}
+    </div>
+  </div>
+);
+
+const Eyebrow: React.FC<{ children: React.ReactNode; color?: string }> = ({ children, color }) => (
+  <div className="text-xs font-semibold uppercase" style={{ letterSpacing: '0.19em', color: color || HARVEST_GOLD }}>
+    {children}
+  </div>
+);
+
+const Display: React.FC<{ children: React.ReactNode; size?: number }> = ({ children, size = 30 }) => (
+  <h1 className="font-display" style={{ fontWeight: 300, fontSize: size, letterSpacing: '-0.02em', lineHeight: 1.1, color: 'var(--text-heading, #2D2519)', margin: 0 }}>
+    {children}
+  </h1>
+);
+
+/** Text field with a leading line-icon and a brand-coloured focus ring. */
+const IconInput: React.FC<
+  { icon?: React.ReactNode; brandColor: string; invalid?: boolean } & React.InputHTMLAttributes<HTMLInputElement>
+> = ({ icon, brandColor, invalid, ...props }) => {
+  const [focus, setFocus] = useState(false);
+  const border = invalid ? 'var(--brand-danger, #C4553B)' : focus ? brandColor : FIELD_BORDER;
+  return (
+    <div
+      className="flex items-center gap-2.5 rounded-lg bg-white transition-all"
+      style={{ height: 48, padding: '0 14px', border: `1px solid ${border}`, boxShadow: focus ? `0 0 0 3px color-mix(in srgb, ${brandColor} 16%, transparent)` : 'none' }}
+    >
+      {icon && <span className="flex shrink-0" style={{ color: 'var(--text-muted, #8B7355)' }}>{icon}</span>}
+      <input
+        {...props}
+        onFocus={(e) => { setFocus(true); props.onFocus?.(e); }}
+        onBlur={(e) => { setFocus(false); props.onBlur?.(e); }}
+        className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-[#A89A87]"
+        style={{ fontSize: 15, color: 'var(--text-heading, #2D2519)' }}
+      />
+    </div>
+  );
+};
+
+/** Password field: leading lock icon + trailing show/hide toggle. */
+const PasswordInput: React.FC<{
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  placeholder: string;
+  show: boolean;
+  onToggle: () => void;
+  brandColor: string;
+  required?: boolean;
+}> = ({ value, onChange, placeholder, show, onToggle, brandColor, required }) => {
+  const [focus, setFocus] = useState(false);
+  const border = focus ? brandColor : FIELD_BORDER;
+  return (
+    <div
+      className="flex items-center gap-2.5 rounded-lg bg-white transition-all"
+      style={{ height: 48, padding: '0 14px', border: `1px solid ${border}`, boxShadow: focus ? `0 0 0 3px color-mix(in srgb, ${brandColor} 16%, transparent)` : 'none' }}
+    >
+      <span className="flex shrink-0" style={{ color: 'var(--text-muted, #8B7355)' }}><Lock size={16} /></span>
+      <input
+        type={show ? 'text' : 'password'}
+        required={required}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        onFocus={() => setFocus(true)}
+        onBlur={() => setFocus(false)}
+        className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-[#A89A87]"
+        style={{ fontSize: 15, color: 'var(--text-heading, #2D2519)' }}
+      />
+      <button
+        type="button"
+        onClick={onToggle}
+        tabIndex={-1}
+        aria-label={show ? 'Hide password' : 'Show password'}
+        className="flex shrink-0 transition-colors"
+        style={{ color: 'var(--text-muted, #8B7355)' }}
+      >
+        {show ? <EyeOff size={18} /> : <Eye size={18} />}
+      </button>
+    </div>
+  );
+};
+
+/** Pill toggle used for the newsletter opt-in. */
+const ToggleSwitch: React.FC<{ checked: boolean; onChange: (v: boolean) => void; color: string }> = ({ checked, onChange, color }) => (
+  <button
+    type="button"
+    role="switch"
+    aria-checked={checked}
+    onClick={() => onChange(!checked)}
+    className="relative shrink-0 rounded-full transition-colors"
+    style={{ width: 42, height: 24, padding: 2, background: checked ? color : 'var(--stone-300, #D6CCBE)' }}
+  >
+    <span
+      className="block rounded-full bg-white transition-transform"
+      style={{ width: 20, height: 20, transform: checked ? 'translateX(18px)' : 'translateX(0)', boxShadow: '0 1px 2px rgba(45,37,25,0.2)' }}
+    />
+  </button>
+);
+
+const fieldLabel = 'mb-1.5 block text-xs font-semibold';
 
 interface AuthPageProps {
   onNavigate: (page: string) => void;
@@ -300,263 +430,261 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
     }
   };
 
-  // Shared input styling: white bg, light border, dark text, brand-coloured focus ring.
-  const inputClass =
-    'w-full px-4 py-3 rounded-xl bg-white text-[#111111] placeholder-[#AAAAAA] border outline-none transition-colors';
-  const focusHandlers = {
-    onFocus: (e: React.FocusEvent<HTMLInputElement>) => { e.currentTarget.style.borderColor = brandColor; },
-    onBlur: (e: React.FocusEvent<HTMLInputElement>) => { e.currentTarget.style.borderColor = '#E2E2E2'; },
-  };
+  // Editorial eyebrow / title / sub for the current view.
+  let eyebrowText: string;
+  let titleText: string;
+  let subText: string;
+  if (showForgotPassword) {
+    eyebrowText = 'Reset access';
+    titleText = 'Forgot your password?';
+    subText = "Enter your email and we'll send you a link to set a new one.";
+  } else if (isChurchSignup) {
+    eyebrowText = 'Start your ministry';
+    titleText = 'Create your account';
+    subText = "First, your login. You'll name your ministry and set up your app in the next steps.";
+  } else if (isLogin) {
+    eyebrowText = 'Welcome back';
+    titleText = `Sign in to ${appName}`;
+    subText = 'One home for the whole ministry — pick up right where you left off.';
+  } else {
+    eyebrowText = 'Join your community';
+    titleText = 'Create your account';
+    subText = 'Your data. Your brand. One account for everything your ministry publishes.';
+  }
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="max-w-sm mx-auto px-6 min-h-screen flex flex-col justify-center">
-        {/* Logo */}
-        <div className="flex justify-center mb-5">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={logoSrc} alt={`${appName} logo`} className="h-20 w-auto object-contain" />
-        </div>
-
-        {/* App name + tagline */}
-        <h1 className="text-center font-semibold font-display" style={{ fontSize: 22, color: '#111111' }}>
-          {appName}
-        </h1>
-        <p className="text-center mt-1" style={{ fontSize: 13, color: '#888888' }}>
-          {isChurchSignup
-            ? "Create your account to set up your church's app"
-            : (isLogin ? 'Sign in to continue' : 'Create your account')}
-        </p>
-
-        {/* Messages */}
-        {error && (
-          <div className="mt-6 p-3 bg-red-50 border border-red-100 text-red-600 text-sm rounded-xl">
-            {error}
+    <>
+      <AuthShell signature>
+        <div className="w-full" style={{ maxWidth: 452 }}>
+          {/* Logo mark */}
+          <div className="mb-5 flex justify-center">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={logoSrc} alt={`${appName} logo`} className="h-12 w-auto object-contain" />
           </div>
-        )}
-        {success && (
-          <div className="mt-6 p-3 bg-green-50 border border-green-100 text-green-700 text-sm rounded-xl">
-            {success}
-          </div>
-        )}
 
-        {showForgotPassword ? (
-          /* ── Forgot password sub-view ── */
-          <form onSubmit={handleForgotPassword} className="mt-7 space-y-4">
-            <p className="text-sm" style={{ color: '#666666' }}>
-              Enter your email address and we&apos;ll send you a link to reset your password.
-            </p>
-            <input
-              type="email"
-              required
-              value={forgotEmail}
-              onChange={(e) => setForgotEmail(e.target.value)}
-              className={inputClass}
-              style={{ borderColor: '#E2E2E2' }}
-              {...focusHandlers}
-              placeholder="you@example.com"
-            />
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full text-white font-semibold py-3 px-4 rounded-xl transition-all disabled:opacity-50"
-              style={{ backgroundColor: brandColor }}
-            >
-              {loading ? 'Sending…' : 'Send reset link'}
-            </button>
-            <div className="text-center">
-              <button
-                type="button"
-                onClick={() => { setShowForgotPassword(false); setError(''); setSuccess(''); }}
-                className="text-sm font-semibold hover:underline"
-                style={{ color: brandColor }}
-              >
-                Back to sign in
-              </button>
-            </div>
-          </form>
-        ) : (
-          /* ── Main auth view ── */
-          <div className="mt-7">
-            {/* Google */}
-            <button
-              onClick={handleGoogleSignIn}
-              disabled={loading}
-              className="w-full flex items-center justify-center gap-3 bg-white rounded-xl shadow-sm border py-3 px-4 font-semibold transition-colors hover:bg-gray-50 disabled:opacity-50"
-              style={{ borderColor: '#E2E2E2', color: '#111111' }}
-            >
-              <GoogleIcon /> Sign in with Google
-            </button>
+          {/* Card */}
+          <div className="rounded-brand-xl border border-stone-200 bg-white px-6 py-8 shadow-[var(--ds-sh-md)] sm:px-9 sm:py-9">
+            <Eyebrow color={brandColor}>{eyebrowText}</Eyebrow>
+            <div className="mt-3"><Display size={30}>{titleText}</Display></div>
+            <p className="mt-2.5 text-[13px] leading-relaxed" style={{ color: 'var(--text-body, #4A4038)' }}>{subText}</p>
 
-            {/* Divider */}
-            <div className="flex items-center gap-3 my-3">
-              <div className="h-px flex-1" style={{ backgroundColor: '#EEEEEE' }} />
-              <span className="text-xs" style={{ color: '#999999' }}>or</span>
-              <div className="h-px flex-1" style={{ backgroundColor: '#EEEEEE' }} />
-            </div>
+            {/* Messages */}
+            {error && (
+              <div className="mt-5 rounded-lg border px-3.5 py-3 text-sm" style={{ background: '#FBEEEA', borderColor: '#EBD0C7', color: '#B0432B' }}>
+                {error}
+              </div>
+            )}
+            {success && (
+              <div className="mt-5 rounded-lg border px-3.5 py-3 text-sm" style={{ background: '#EEF3E7', borderColor: '#D3E0C1', color: '#4E6A34' }}>
+                {success}
+              </div>
+            )}
 
-            <form onSubmit={handleEmailAuth} className="space-y-3">
-              {/* Email */}
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className={inputClass}
-                style={{ borderColor: '#E2E2E2' }}
-                {...focusHandlers}
-                placeholder="you@example.com"
-              />
-
-              {/* Password with show/hide toggle */}
-              <div className="relative">
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className={`${inputClass} pr-11`}
-                  style={{ borderColor: '#E2E2E2' }}
-                  {...focusHandlers}
-                  placeholder="Password"
-                />
+            {showForgotPassword ? (
+              /* ── Forgot password sub-view ── */
+              <form onSubmit={handleForgotPassword} className="mt-6 flex flex-col gap-4">
+                <div>
+                  <label className={fieldLabel} style={{ color: 'var(--text-heading, #2D2519)' }}>Email</label>
+                  <IconInput
+                    type="email"
+                    required
+                    value={forgotEmail}
+                    onChange={(e) => setForgotEmail(e.target.value)}
+                    placeholder="you@ministry.org"
+                    icon={<Mail size={16} />}
+                    brandColor={brandColor}
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="flex h-12 w-full items-center justify-center gap-2 rounded-lg font-semibold text-white transition-all disabled:opacity-50"
+                  style={{ background: brandColor, boxShadow: `0 10px 30px -8px color-mix(in srgb, ${brandColor} 42%, transparent)` }}
+                >
+                  {loading ? 'Sending…' : 'Send reset link'}
+                </button>
                 <button
                   type="button"
-                  onClick={() => setShowPassword(s => !s)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#999999] hover:text-[#555555] transition-colors"
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  tabIndex={-1}
+                  onClick={() => { setShowForgotPassword(false); setError(''); setSuccess(''); }}
+                  className="flex items-center justify-center gap-1.5 text-sm font-semibold hover:underline"
+                  style={{ color: brandColor }}
                 >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  <ArrowLeft size={15} /> Back to sign in
                 </button>
-              </div>
+              </form>
+            ) : (
+              /* ── Main auth view ── */
+              <div className="mt-6">
+                {/* Google */}
+                <button
+                  onClick={handleGoogleSignIn}
+                  disabled={loading}
+                  className="flex h-12 w-full items-center justify-center gap-2.5 rounded-lg border bg-white text-sm font-semibold transition-colors hover:bg-stone-100 disabled:opacity-50"
+                  style={{ borderColor: 'var(--stone-300, #D6CCBE)', color: 'var(--text-heading, #2D2519)' }}
+                >
+                  <GoogleIcon /> {isLogin ? 'Continue with Google' : 'Sign up with Google'}
+                </button>
 
-              {!isLogin && (
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  required
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className={inputClass}
-                  style={{ borderColor: '#E2E2E2' }}
-                  {...focusHandlers}
-                  placeholder="Confirm password"
-                />
-              )}
+                {/* Divider */}
+                <div className="my-4 flex items-center gap-3">
+                  <div className="h-px flex-1" style={{ backgroundColor: FIELD_BORDER }} />
+                  <span className="text-xs" style={{ color: 'var(--text-muted, #8B7355)' }}>or</span>
+                  <div className="h-px flex-1" style={{ backgroundColor: FIELD_BORDER }} />
+                </div>
 
-              {!isLogin && (
-                <p className="text-xs" style={{ color: '#999999' }}>
-                  Must be at least 10 characters, 1 capital letter, and 1 symbol.
-                </p>
-              )}
+                <form onSubmit={handleEmailAuth} className="flex flex-col gap-4">
+                  {/* Email */}
+                  <div>
+                    <label className={fieldLabel} style={{ color: 'var(--text-heading, #2D2519)' }}>Email</label>
+                    <IconInput
+                      type="email"
+                      required
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="you@ministry.org"
+                      icon={<Mail size={16} />}
+                      brandColor={brandColor}
+                    />
+                  </div>
 
-              {!isLogin && (
-                <label className="flex items-start gap-2.5 cursor-pointer pt-1">
-                  <input
-                    type="checkbox"
-                    checked={newsletter}
-                    onChange={(e) => setNewsletter(e.target.checked)}
-                    className="w-4 h-4 mt-0.5 rounded border-gray-300 cursor-pointer"
-                    style={{ accentColor: brandColor }}
-                  />
-                  <span className="text-xs" style={{ color: '#666666' }}>
-                    Sign up for the Harvest newsletter to receive updates and news.
-                  </span>
-                </label>
-              )}
+                  {/* Password with show/hide toggle */}
+                  <div>
+                    <div className="mb-1.5 flex items-baseline justify-between">
+                      <label className="text-xs font-semibold" style={{ color: 'var(--text-heading, #2D2519)' }}>Password</label>
+                      {isLogin && (
+                        <button
+                          type="button"
+                          onClick={() => { setShowForgotPassword(true); setForgotEmail(email); setError(''); setSuccess(''); }}
+                          className="text-xs font-semibold hover:underline"
+                          style={{ color: brandColor }}
+                        >
+                          Forgot?
+                        </button>
+                      )}
+                    </div>
+                    <PasswordInput
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder={isLogin ? 'Your password' : 'Create a password'}
+                      show={showPassword}
+                      onToggle={() => setShowPassword((s) => !s)}
+                      brandColor={brandColor}
+                      required
+                    />
+                  </div>
 
-              {isLogin && (
-                <div className="text-right">
+                  {!isLogin && (
+                    <div>
+                      <label className={fieldLabel} style={{ color: 'var(--text-heading, #2D2519)' }}>Confirm password</label>
+                      <IconInput
+                        type={showPassword ? 'text' : 'password'}
+                        required
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        placeholder="Re-enter password"
+                        icon={<Lock size={16} />}
+                        brandColor={brandColor}
+                      />
+                    </div>
+                  )}
+
+                  {!isLogin && (
+                    <p className="-mt-1 text-xs leading-relaxed" style={{ color: 'var(--text-muted, #8B7355)' }}>
+                      At least 10 characters, one capital letter, and one symbol.
+                    </p>
+                  )}
+
+                  {!isLogin && (
+                    <div className="flex items-start gap-3">
+                      <ToggleSwitch checked={newsletter} onChange={setNewsletter} color={brandColor} />
+                      <span className="text-xs leading-relaxed" style={{ color: 'var(--text-body, #4A4038)' }}>
+                        Send me the Harvest newsletter — product updates and ministry stories. No noise.
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Bot gate — renders for both Sign In and Sign Up. Submit stays
+                      disabled until solved; key remount forces a fresh single-use token. */}
+                  <div className="flex justify-center pt-1">
+                    <Turnstile
+                      key={turnstileKey}
+                      siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY as string}
+                      onSuccess={(token) => setTurnstileToken(token)}
+                      onExpire={() => setTurnstileToken(null)}
+                    />
+                  </div>
+
                   <button
-                    type="button"
-                    onClick={() => { setShowForgotPassword(true); setForgotEmail(email); setError(''); setSuccess(''); }}
-                    className="text-sm font-medium hover:underline"
+                    type="submit"
+                    disabled={loading || !turnstileToken}
+                    className="mt-1 flex h-12 w-full items-center justify-center gap-2 rounded-lg font-semibold text-white transition-all disabled:opacity-50"
+                    style={{ background: brandColor, boxShadow: `0 10px 30px -8px color-mix(in srgb, ${brandColor} 42%, transparent)` }}
+                  >
+                    {loading ? 'Please wait…' : (isLogin ? 'Sign in' : 'Create account')}
+                  </button>
+                </form>
+
+                {/* Toggle login / signup */}
+                <p className="mt-5 text-center text-[13px]" style={{ color: 'var(--text-body, #4A4038)' }}>
+                  {isLogin ? 'New to Harvest?' : 'Already have an account?'}{' '}
+                  <button
+                    onClick={() => {
+                      setIsLogin(!isLogin);
+                      setError('');
+                      setSuccess('');
+                      // Reset the bot gate on mode switch so a token solved for one
+                      // view never carries over to the other (a submit's finally block
+                      // handles the post-attempt case; this handles a direct toggle).
+                      setTurnstileToken(null);
+                      setTurnstileKey((k) => k + 1);
+                    }}
+                    className="font-semibold hover:underline"
                     style={{ color: brandColor }}
                   >
-                    Forgot password?
+                    {isLogin ? 'Create an account' : 'Sign in'}
                   </button>
-                </div>
-              )}
-
-              {/* Bot gate — renders for both Sign In and Sign Up. Submit stays
-                  disabled until solved; key remount forces a fresh single-use token. */}
-              <div className="flex justify-center pt-1">
-                <Turnstile
-                  key={turnstileKey}
-                  siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY as string}
-                  onSuccess={(token) => setTurnstileToken(token)}
-                  onExpire={() => setTurnstileToken(null)}
-                />
+                </p>
               </div>
-
-              <button
-                type="submit"
-                disabled={loading || !turnstileToken}
-                className="w-full text-white font-semibold py-3 px-4 rounded-xl transition-all disabled:opacity-50 !mt-4"
-                style={{ backgroundColor: brandColor }}
-              >
-                {loading ? 'Please wait…' : (isLogin ? 'Sign In' : 'Sign Up')}
-              </button>
-            </form>
-
-            {/* Toggle login / signup */}
-            <p className="text-center text-sm mt-4" style={{ color: '#666666' }}>
-              {isLogin ? "Don't have an account?" : 'Already have an account?'}{' '}
-              <button
-                onClick={() => {
-                  setIsLogin(!isLogin);
-                  setError('');
-                  setSuccess('');
-                  // Reset the bot gate on mode switch so a token solved for one
-                  // view never carries over to the other (a submit's finally block
-                  // handles the post-attempt case; this handles a direct toggle).
-                  setTurnstileToken(null);
-                  setTurnstileKey((k) => k + 1);
-                }}
-                className="font-semibold hover:underline"
-                style={{ color: brandColor }}
-              >
-                {isLogin ? 'Sign up' : 'Sign in'}
-              </button>
-            </p>
+            )}
           </div>
-        )}
 
-        {/* Terms */}
-        <p className="text-center text-xs mt-8 mb-2" style={{ color: '#999999' }}>
-          By registering you accept the{' '}
-          <button
-            type="button"
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setLegalModalContent('terms'); }}
-            className="hover:underline"
-            style={{ color: brandColor }}
-          >
-            Terms of Use
-          </button>
-          {' '}and{' '}
-          <button
-            type="button"
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setLegalModalContent('privacy'); }}
-            className="hover:underline"
-            style={{ color: brandColor }}
-          >
-            Privacy Policy
-          </button>
-          .
-        </p>
-      </div>
+          {/* Terms */}
+          <p className="mt-5 text-center text-xs leading-relaxed" style={{ color: 'var(--text-muted, #8B7355)' }}>
+            By continuing you accept the{' '}
+            <button
+              type="button"
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setLegalModalContent('terms'); }}
+              className="underline"
+              style={{ color: brandColor }}
+            >
+              Terms of Use
+            </button>
+            {' '}and{' '}
+            <button
+              type="button"
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setLegalModalContent('privacy'); }}
+              className="underline"
+              style={{ color: brandColor }}
+            >
+              Privacy Policy
+            </button>
+            .
+          </p>
+        </div>
+      </AuthShell>
 
       {legalModalContent && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col overflow-hidden">
-            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-              <h3 className="text-2xl font-bold text-gray-900 font-display">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="flex max-h-[80vh] w-full max-w-2xl flex-col overflow-hidden rounded-brand-xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-stone-200 bg-stone-100 p-6">
+              <h3 className="font-display text-2xl font-semibold" style={{ color: 'var(--text-heading, #2D2519)' }}>
                 {legalModalContent === 'terms' ? 'Terms of Use' : 'Privacy Policy'}
               </h3>
-              <button onClick={() => setLegalModalContent(null)} className="text-gray-400 hover:text-gray-600 transition-colors">
-                <span className="material-symbols-outlined">close</span>
+              <button onClick={() => setLegalModalContent(null)} className="transition-colors" style={{ color: 'var(--text-muted, #8B7355)' }} aria-label="Close">
+                <X size={22} />
               </button>
             </div>
-            <div className="p-6 overflow-y-auto text-gray-600 space-y-4">
+            <div className="space-y-4 overflow-y-auto p-6" style={{ color: 'var(--text-body, #4A4038)' }}>
               {legalModalContent === 'terms' ? (
                 <>
                   <p><strong>1. Acceptance of Terms</strong><br/>By accessing and using the Harvest App, you accept and agree to be bound by the terms and provision of this agreement.</p>
@@ -573,10 +701,10 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
                 </>
               )}
             </div>
-            <div className="p-6 border-t border-gray-100 bg-gray-50 flex justify-end">
+            <div className="flex justify-end border-t border-stone-200 bg-stone-100 p-6">
               <button
                 onClick={() => setLegalModalContent(null)}
-                className="px-6 py-2 text-white font-bold rounded-xl transition-colors"
+                className="rounded-lg px-6 py-2.5 font-semibold text-white transition-opacity hover:opacity-90"
                 style={{ backgroundColor: brandColor }}
               >
                 Close
@@ -585,7 +713,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 };
 

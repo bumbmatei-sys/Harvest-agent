@@ -14,14 +14,26 @@ const ADMIN_ROLES = ['admin', 'church_admin', 'super_admin'];
 
 type GateStatus = 'loading' | 'ready' | 'paying' | 'needs-payment' | 'first-run';
 
-/** Full-screen centred message (loading / setting-up). */
+/** Soft gold halo shared by the transitional screens. */
+const Halo = () => (
+  <div
+    aria-hidden
+    className="pointer-events-none absolute left-1/2 -translate-x-1/2"
+    style={{ top: '-16%', width: 720, height: 480, maxWidth: '160vw', background: 'radial-gradient(circle, color-mix(in srgb, var(--brand-color, #C9963A) 12%, transparent), transparent 68%)' }}
+  />
+);
+
+/** Full-screen centred message (loading / setting-up) on the cream ground. */
 const CenteredScreen: React.FC<{ title: string; subtitle?: string; spin?: boolean }> = ({ title, subtitle, spin = true }) => (
-  <div className="min-h-screen bg-white flex flex-col items-center justify-center px-6 text-center">
-    {/* eslint-disable-next-line @next/next/no-img-element */}
-    <img src={HARVEST_LOGO} alt="Harvest" className="h-16 w-auto object-contain mb-6" />
-    {spin && <Loader2 size={32} className="animate-spin mb-4" style={{ color: BRAND }} />}
-    <h1 className="text-xl font-semibold text-gray-900 font-display">{title}</h1>
-    {subtitle && <p className="text-sm text-gray-500 mt-2 max-w-sm">{subtitle}</p>}
+  <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-6 text-center" style={{ background: 'var(--cream, #FAF8F5)' }}>
+    <Halo />
+    <div className="relative z-[1] flex flex-col items-center">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={HARVEST_LOGO} alt="Harvest" className="mb-6 h-12 w-auto object-contain" />
+      {spin && <Loader2 size={32} className="mb-5 animate-spin" style={{ color: BRAND }} />}
+      <h1 className="font-display" style={{ fontWeight: 300, fontSize: 26, letterSpacing: '-0.02em', color: 'var(--text-heading, #2D2519)' }}>{title}</h1>
+      {subtitle && <p className="mt-2.5 max-w-sm text-sm leading-relaxed" style={{ color: 'var(--text-body, #4A4038)' }}>{subtitle}</p>}
+    </div>
   </div>
 );
 
@@ -172,27 +184,31 @@ const OnboardingGate: React.FC<{ children: React.ReactNode }> = ({ children }) =
 
   // needs-payment: closed the Stripe tab before paying.
   return (
-    <div className="min-h-screen bg-white flex flex-col items-center justify-center px-6 text-center">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={HARVEST_LOGO} alt="Harvest" className="h-16 w-auto object-contain mb-6" />
-      <div className="w-14 h-14 rounded-full flex items-center justify-center mb-4" style={{ background: 'color-mix(in srgb, var(--brand-color, #B8962E) 12%, white)' }}>
-        <CreditCard size={26} style={{ color: BRAND }} />
+    <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-6 text-center" style={{ background: 'var(--cream, #FAF8F5)' }}>
+      <Halo />
+      <div className="relative z-[1] flex flex-col items-center">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={HARVEST_LOGO} alt="Harvest" className="mb-6 h-12 w-auto object-contain" />
+        <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-brand-lg" style={{ background: 'color-mix(in srgb, var(--brand-color, #C9963A) 13%, white)', color: BRAND }}>
+          <CreditCard size={28} />
+        </div>
+        <h1 className="font-display" style={{ fontWeight: 300, fontSize: 28, letterSpacing: '-0.02em', color: 'var(--text-heading, #2D2519)' }}>Complete your payment</h1>
+        <p className="mt-2.5 max-w-sm text-sm leading-relaxed" style={{ color: 'var(--text-body, #4A4038)' }}>
+          Your ministry isn&apos;t active yet. Finish checkout to create your account and get started.
+        </p>
+        <button
+          onClick={restartCheckout}
+          disabled={restarting}
+          className="mt-7 inline-flex items-center gap-2 rounded-lg font-semibold text-white"
+          style={{
+            background: BRAND, padding: '12px 28px', border: 'none',
+            boxShadow: `0 10px 30px -8px color-mix(in srgb, ${BRAND} 42%, transparent)`,
+            cursor: restarting ? 'wait' : 'pointer', opacity: restarting ? 0.7 : 1, fontSize: '15px',
+          }}
+        >
+          {restarting ? <><Loader2 size={18} className="animate-spin" /> Redirecting…</> : <>Continue to payment</>}
+        </button>
       </div>
-      <h1 className="text-xl font-semibold text-gray-900 font-display">Complete your payment</h1>
-      <p className="text-sm text-gray-500 mt-2 max-w-sm">
-        Your ministry isn&apos;t active yet. Finish checkout to create your account and get started.
-      </p>
-      <button
-        onClick={restartCheckout}
-        disabled={restarting}
-        style={{
-          marginTop: '24px', display: 'inline-flex', alignItems: 'center', gap: '8px', background: BRAND,
-          color: '#fff', fontWeight: 600, padding: '12px 28px', borderRadius: '12px', border: 'none',
-          cursor: restarting ? 'wait' : 'pointer', opacity: restarting ? 0.7 : 1, fontSize: '15px',
-        }}
-      >
-        {restarting ? <><Loader2 size={18} className="animate-spin" /> Redirecting…</> : <>Continue to Payment</>}
-      </button>
     </div>
   );
 };
