@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, CSSProperties, KeyboardEvent, MouseEvent } from "react";
 import Image from 'next/image';
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Sparkles } from "lucide-react";
 import { collection, addDoc, doc, updateDoc, getDocs, deleteDoc, setDoc, getDoc, query, where } from "firebase/firestore";
 import { db, auth } from "../firebase";
 import { ImageUpload } from './ImageUpload';
@@ -71,6 +71,18 @@ interface OutlineItem {
  text: string;
 }
 
+interface QuizOption {
+ id: string;
+ text: string;
+ correct: boolean;
+}
+
+interface QuizQuestion {
+ id: string;
+ q: string;
+ options: QuizOption[];
+}
+
 interface Lesson {
  id: string;
  title: string;
@@ -78,6 +90,8 @@ interface Lesson {
  youtubeUrl: string;
  duration: string;
  outline: OutlineItem[];
+ scripture: string;
+ quiz: QuizQuestion[];
  sources: string;
  teacherNote: string;
  authorId: string;
@@ -105,6 +119,8 @@ export interface Course {
  thumbnail: string;
  status: CourseStatus;
  featured: boolean;
+ issueCertificate: boolean;
+ requireQuiz: boolean;
  authorIds: string[];
  levels: Level[];
  author?: string; // For compatibility with AdminCourses list
@@ -117,10 +133,12 @@ const uid = (): string => crypto.randomUUID().slice(0, 7);
 const emptyLink = (platform = ""): AuthorLink => ({ id: uid(), platform, url: "" });
 const emptyAuthor = (): Author => ({ id: uid(), name: "", title: "", picture: "", bio: "", links: [emptyLink("Website")] });
 const emptyOutlineItem = (): OutlineItem => ({ id: uid(), title: "", text: "" });
-const emptyLesson = (): Lesson => ({ id: uid(), title: "", summary: "", youtubeUrl: "", duration: "", outline: [emptyOutlineItem()], sources: "", teacherNote: "", authorId: "" });
+const emptyQuizOption = (correct = false): QuizOption => ({ id: uid(), text: "", correct });
+const emptyQuizQuestion = (): QuizQuestion => ({ id: uid(), q: "", options: [emptyQuizOption(true), emptyQuizOption(false)] });
+const emptyLesson = (): Lesson => ({ id: uid(), title: "", summary: "", youtubeUrl: "", duration: "", outline: [emptyOutlineItem()], scripture: "", quiz: [], sources: "", teacherNote: "", authorId: "" });
 const emptySection = (): Section => ({ id: uid(), title: "", lessons: [emptyLesson()] });
 const emptyLevel = (): Level => ({ id: uid(), title: "", sections: [emptySection()] });
-const emptyCourse = (): Course => ({ title: "", description: "", category: "", thumbnail: "", status: "draft", featured: false, authorIds: [], levels: [emptyLevel()] });
+const emptyCourse = (): Course => ({ title: "", description: "", category: "", thumbnail: "", status: "draft", featured: false, issueCertificate: true, requireQuiz: false, authorIds: [], levels: [emptyLevel()] });
 
 // Categories are keyed per-tenant (`${tenantId}__${name}`) so two tenants can
 // hold the same label without colliding on one shared doc. Courses reference a
@@ -189,6 +207,60 @@ function OutlineEditor({ items, onChange }: OutlineEditorProps) {
  </div>
  ))}
  <button style={s.addLessonBtn} onClick={() => onChange([...items, emptyOutlineItem()])}>+ Add Outline Point</button>
+ </div>
+ );
+}
+
+// ═══════════════════════════════════════════════
+// QUIZ EDITOR
+// Writes lesson.quiz. This is the admin-authoring UI only — learner-facing
+// scoring/attempts is a later phase; here a question is just data.
+// ═══════════════════════════════════════════════
+interface QuizEditorProps {
+ items: QuizQuestion[];
+ onChange: (items: QuizQuestion[]) => void;
+}
+
+function QuizEditor({ items, onChange }: QuizEditorProps) {
+ const setQuestion = (i: number, q: QuizQuestion): void => { const next = [...items]; next[i] = q; onChange(next); };
+ return (
+ <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+ {items.map((q, i) => {
+ const setOptionText = (oi: number, text: string): void => {
+ const options = q.options.map((o, idx) => (idx === oi ? { ...o, text } : o));
+ setQuestion(i, { ...q, options });
+ };
+ const markCorrect = (oi: number): void => {
+ const options = q.options.map((o, idx) => ({ ...o, correct: idx === oi }));
+ setQuestion(i, { ...q, options });
+ };
+ const removeOption = (oi: number): void => setQuestion(i, { ...q, options: q.options.filter((_, idx) => idx !== oi) });
+ return (
+ <div key={q.id} style={{ background: "#FAF8F5", border: `1.5px solid ${BORDER}`, borderRadius: 12, overflow: "hidden" }}>
+ <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", borderBottom: `1px solid ${BORDER}` }}>
+ <div style={{ width: 22, height: 22, borderRadius: "50%", background: GOLD_LIGHT, border: `1.5px solid ${GOLD}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: GOLD, flexShrink: 0 }}>{i + 1}</div>
+ <input style={{ flex: 1, border: "none", outline: "none", fontWeight: 700, fontSize: 14, color: TEXT, background: "transparent", fontFamily: "inherit" }}
+ value={q.q} onChange={(e) => setQuestion(i, { ...q, q: e.target.value })} placeholder="Question..." />
+ <button style={s.removeBtn} onClick={() => onChange(items.filter((_, idx) => idx !== i))}>✕</button>
+ </div>
+ <div style={{ padding: "10px 12px", display: "flex", flexDirection: "column", gap: 7 }}>
+ {q.options.map((o, oi) => (
+ <div key={o.id} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+ <button type="button" title="Mark correct" onClick={() => markCorrect(oi)}
+ style={{ width: 18, height: 18, borderRadius: "50%", flexShrink: 0, border: `1.5px solid ${o.correct ? GREEN : BORDER}`, background: o.correct ? GREEN : "transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", padding: 0, fontSize: 11, lineHeight: 1 }}>
+ {o.correct && "✓"}
+ </button>
+ <input style={{ flex: 1, border: `1.5px solid ${BORDER}`, borderRadius: 10, padding: "7px 11px", fontSize: 13, fontFamily: "inherit", outline: "none", background: "#fff", color: o.correct ? GREEN : TEXT, fontWeight: o.correct ? 700 : 400 }}
+ value={o.text} onChange={(e) => setOptionText(oi, e.target.value)} placeholder={`Option ${oi + 1}`} />
+ {q.options.length > 2 && <button style={s.removeBtn} onClick={() => removeOption(oi)}>✕</button>}
+ </div>
+ ))}
+ <button style={{ ...s.addLessonBtn, marginTop: 2, padding: 8, fontSize: 12.5 }} onClick={() => setQuestion(i, { ...q, options: [...q.options, emptyQuizOption(false)] })}>+ Add Option</button>
+ </div>
+ </div>
+ );
+ })}
+ <button style={s.addLessonBtn} onClick={() => onChange([...items, emptyQuizQuestion()])}>+ Add Quiz Question</button>
  </div>
  );
 }
@@ -331,12 +403,25 @@ function LessonCard({ lesson, onChange, onRemove, authorsLibrary = [] }: LessonC
  </select>
  {authorsLibrary.length === 0 && <div style={{ fontSize: 12, color: TEXT2 }}>No authors on this course yet — add them in the Authors tab.</div>}
  </div>
+ <div style={{ display: "flex", alignItems: "flex-end", gap: 10 }}>
+ <div style={{ flex: 1 }}>
  <Field label="YouTube URL" value={lesson.youtubeUrl} onChange={(v) => set("youtubeUrl", v)} placeholder="https://youtube.com/watch?v=..." />
+ </div>
+ <button type="button" title="Coming soon — watches the video and drafts summary, outline, scripture & quiz" style={s.aiBtn}>
+ <Sparkles size={15} /> Generate with AI
+ </button>
+ </div>
  <Field label="Summary" value={lesson.summary} onChange={(v) => set("summary", v)} textarea placeholder="Brief summary of this lesson..." />
  <div>
  <label style={s.label}>Teaching Outline</label>
  <p style={{ fontSize: 12, color: TEXT2, marginBottom: 10, marginTop: -4 }}>Each point shows as an expandable title in the lesson view.</p>
  <OutlineEditor items={lesson.outline} onChange={(v) => set("outline", v)} />
+ </div>
+ <Field label="Scripture Reference" value={lesson.scripture} onChange={(v) => set("scripture", v)} placeholder="e.g. John 1:14" />
+ <div>
+ <label style={s.label}>Quiz</label>
+ <p style={{ fontSize: 12, color: TEXT2, marginBottom: 10, marginTop: -4 }}>Optional — shown after a learner marks this lesson complete. Never blocks progress.</p>
+ <QuizEditor items={lesson.quiz} onChange={(v) => set("quiz", v)} />
  </div>
  <div>
  <label style={s.label}>Sources & References</label>
@@ -542,6 +627,43 @@ function AuthorPickerModal({ authorsLibrary, selectedIds, onConfirm, onClose }: 
 }
 
 // ═══════════════════════════════════════════════
+// TOGGLE SWITCH (visual only — used by Certificate toggles)
+// ═══════════════════════════════════════════════
+function ToggleSwitch({ on }: { on: boolean }) {
+ return (
+ <div style={{ width: 44, height: 24, borderRadius: 99, background: on ? GOLD : BORDER, position: "relative", transition: "background 0.2s", flexShrink: 0 }}>
+ <div style={{ position: "absolute", top: 3, left: on ? 22 : 3, width: 18, height: 18, borderRadius: "50%", background: "#fff", boxShadow: "0 1px 4px rgba(0,0,0,0.2)", transition: "left 0.2s" }} />
+ </div>
+ );
+}
+
+// ═══════════════════════════════════════════════
+// CERTIFICATE PREVIEW
+// Static, presentational placeholder — no PDF generation. Real certificate
+// issuing/rendering is a later phase.
+// ═══════════════════════════════════════════════
+interface CertificatePreviewProps {
+ title: string;
+ teacherName?: string;
+}
+
+function CertificatePreview({ title, teacherName }: CertificatePreviewProps) {
+ return (
+ <div style={{ marginTop: 14, background: GOLD_LIGHT, border: `1.5px solid ${GOLD}`, borderRadius: 16, padding: "32px 28px", textAlign: "center" }}>
+ <div style={{ fontSize: 24, color: GOLD, marginBottom: 8 }}>✦</div>
+ <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: TEXT2, marginBottom: 14 }}>Certificate of Completion</div>
+ <div style={{ fontFamily: "var(--font-display), Georgia, serif", fontWeight: 400, fontSize: 26, letterSpacing: "-0.01em", color: TEXT, marginBottom: 8 }}>Learner name</div>
+ <div style={{ fontSize: 13, color: TEXT2, marginBottom: 6 }}>has successfully completed</div>
+ <div style={{ fontSize: 16, fontWeight: 700, color: TEXT, lineHeight: 1.3, marginBottom: 8 }}>{title || "Course title"}</div>
+ {teacherName && <div style={{ fontSize: 12.5, color: TEXT, fontStyle: "italic", marginBottom: 18 }}>under the teaching of {teacherName}</div>}
+ <div style={{ display: "flex", justifyContent: "center", gap: 10, fontSize: 11, color: TEXT2, fontWeight: 600, paddingTop: 16, borderTop: `1px solid ${BORDER}` }}>
+ <span>Issue date</span><span>·</span><span>Cert #</span>
+ </div>
+ </div>
+ );
+}
+
+// ═══════════════════════════════════════════════
 // MAIN COURSE BUILDER
 // ═══════════════════════════════════════════════
 interface CourseBuilderProps {
@@ -558,6 +680,7 @@ export default function CourseBuilder({ course: initialCourse, onClose }: Course
  const [showAuthorPicker, setShowAuthorPicker] = useState<boolean>(false);
  const [categories, setCategories] = useState<string[]>([]);
  const [showCatManager, setShowCatManager] = useState<boolean>(false);
+ const [showCertPreview, setShowCertPreview] = useState<boolean>(false);
 
  useEffect(() => {
  const fetchData = async () => {
@@ -832,6 +955,31 @@ export default function CourseBuilder({ course: initialCourse, onClose }: Course
  </div>
  </div>
  </div>
+ <div style={s.card}>
+ <div style={s.sectionHeading}>Certificate</div>
+ <div style={{ padding: "0 16px 16px" }}>
+ <div onClick={() => set("issueCertificate", !course.issueCertificate)}
+ style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, cursor: "pointer", padding: "14px 0" }}>
+ <div>
+ <div style={{ fontWeight: 700, fontSize: 14, color: TEXT }}>Issue certificates</div>
+ <div style={{ fontSize: 12, color: TEXT2, marginTop: 2 }}>Awarded automatically on course completion</div>
+ </div>
+ <ToggleSwitch on={course.issueCertificate} />
+ </div>
+ <div onClick={() => set("requireQuiz", !course.requireQuiz)}
+ style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, cursor: "pointer", padding: "14px 0 0", borderTop: `1px solid ${BORDER}` }}>
+ <div>
+ <div style={{ fontWeight: 700, fontSize: 14, color: TEXT }}>Require passing quiz</div>
+ <div style={{ fontSize: 12, color: TEXT2, marginTop: 2 }}>Off by default — most ministries want encouragement, not gatekeeping</div>
+ </div>
+ <ToggleSwitch on={course.requireQuiz} />
+ </div>
+ <button style={s.certPreviewBtn} onClick={() => setShowCertPreview((v) => !v)}>
+ {showCertPreview ? "Hide certificate preview" : "Preview certificate →"}
+ </button>
+ {showCertPreview && <CertificatePreview title={course.title} teacherName={selectedAuthors[0]?.name} />}
+ </div>
+ </div>
  </div>
  )}
 
@@ -935,4 +1083,6 @@ const s: Record<string, CSSProperties> = {
  removeBtn: { background: "none", border: "none", color: "#CCC", cursor: "pointer", fontSize: 16, padding: "2px 4px", lineHeight: 1, fontFamily: "inherit", marginLeft: 4 },
  newBtn: { background: GOLD_BTN, border: "none", color: "#fff", fontWeight: 700, padding: "13px", borderRadius: 12, cursor: "pointer", fontSize: 14, width: "100%", fontFamily: "inherit", boxShadow: "0 2px 8px rgba(201,150,58,0.3)" },
  addLessonBtn: { background: "transparent", border: `1.5px dashed ${BORDER}`, color: TEXT2, padding: "10px", borderRadius: 10, cursor: "pointer", fontSize: 13, width: "100%", fontFamily: "inherit", fontWeight: 600, marginTop: 4 },
+ aiBtn: { display: "inline-flex", alignItems: "center", gap: 6, border: `1.5px solid ${GOLD}`, background: GOLD_LIGHT, color: GOLD, borderRadius: 10, padding: "10px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap", flexShrink: 0 },
+ certPreviewBtn: { width: "100%", marginTop: 4, border: `1.5px solid ${GOLD}`, background: GOLD_LIGHT, color: GOLD, borderRadius: 10, padding: "11px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" },
 };
