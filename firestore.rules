@@ -297,6 +297,18 @@ service cloud.firestore {
       allow delete: if isAuthenticated() && hasPermission('createCourses', resource.data.tenantId);
     }
 
+    // ─── Course completion certificates (server-owned) ───────────────
+    // A certificate is a TRUST ARTIFACT: it must be un-fakeable. Issuance is
+    // server-only — /api/certificate (Admin SDK) independently recomputes
+    // completion from the authed user's own data before writing here, so a
+    // client can never forge a cert by writing this doc directly. A learner may
+    // READ only their OWN certificate (doc.uid == their uid); nobody may write
+    // from a client. Doc id is `${uid}_${courseId}` (deterministic/idempotent).
+    match /certificates/{certId} {
+      allow read: if isAuthenticated() && resource.data.get('uid', '') == request.auth.uid;
+      allow write: if false; // server-only (Admin SDK)
+    }
+
     // ─── Churches ───────────────────────────────────────────────────
 
     match /churches/{churchId} {

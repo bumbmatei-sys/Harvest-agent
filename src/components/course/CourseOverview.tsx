@@ -1,9 +1,10 @@
 "use client";
 import React, { useState } from "react";
-import { Course, Lesson, Author, Level } from "../../types/course.types";
-import { getAllLessons } from "../../utils/course.utils";
+import { Course, Lesson, Author, Level, QuizAttempt } from "../../types/course.types";
+import { getAllLessons, verifyCourseCompletion } from "../../utils/course.utils";
 import { GOLD, GOLD_LIGHT, GREEN, GREEN_BG } from "../../utils/course.constants";
 import { sanitizeHtml } from "../../utils/sanitize";
+import { auth } from "../../firebase";
 
 interface CourseOverviewProps {
   course: Course;
@@ -11,16 +12,50 @@ interface CourseOverviewProps {
   onBack: () => void;
   onStartLesson: (course: Course, lesson: Lesson) => void;
   completed?: Set<string>;
+  quizAttempts?: Record<string, QuizAttempt>;
   onSelectAuthor?: (author: Author) => void;
 }
 
-export function CourseOverview({ course, authors, onBack, onStartLesson, completed, onSelectAuthor }: CourseOverviewProps) {
+export function CourseOverview({ course, authors, onBack, onStartLesson, completed, quizAttempts, onSelectAuthor }: CourseOverviewProps) {
   const [activeTab, setActiveTab] = useState<"about" | "curriculum">("about");
   const [expandedLevels, setExpandedLevels] = useState<Set<string>>(new Set(course.levels?.map((l) => l.id) || []));
+  const [certLoading, setCertLoading] = useState(false);
+  const [certError, setCertError] = useState<string | null>(null);
 
   const allLessons = getAllLessons(course);
   const totalLessons = allLessons.length;
   const completedCount = completed ? allLessons.filter((l) => completed.has(l.id)).length : 0;
+
+  // Same completion check the server recomputes before issuing — the button is
+  // only offered when genuinely earned. The server enforces it regardless
+  // (defense in depth); the UI just avoids offering an action that would 403.
+  const certEligible =
+    course.issueCertificate === true &&
+    verifyCourseCompletion(course, completed ?? new Set(), quizAttempts ?? {}).complete;
+
+  const downloadCertificate = async () => {
+    if (certLoading) return;
+    setCertLoading(true);
+    setCertError(null);
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) throw new Error("Please sign in to download your certificate.");
+      const res = await fetch("/api/certificate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ courseId: course.id }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.url) {
+        throw new Error(data.error || "Could not generate your certificate.");
+      }
+      window.open(data.url, "_blank", "noopener,noreferrer");
+    } catch (e: any) {
+      setCertError(e?.message || "Could not generate your certificate.");
+    } finally {
+      setCertLoading(false);
+    }
+  };
 
   const totalMinutes = allLessons.reduce((sum, l) => {
     const match = l.duration?.match(/(\d+)/);
@@ -240,15 +275,36 @@ export function CourseOverview({ course, authors, onBack, onStartLesson, complet
           bottom of the 720px column (a viewport-wide fixed bar would overlap
           the desktop shell). */}
       <div className="fixed lg:static bottom-0 left-0 right-0 bg-white lg:bg-transparent border-t border-stone-200 lg:border-t-0 px-5 lg:px-5 py-4 lg:py-0 lg:mt-4 z-50" style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}>
-        <button
-          onClick={() => nextLesson && onStartLesson(course, nextLesson)}
-          className="w-full py-3.5 rounded-lg lg:rounded-xl text-white text-[15px] font-bold cursor-pointer transition-colors"
-          style={{ background: GOLD }}
-          onMouseEnter={(e) => (e.currentTarget.style.background = "color-mix(in srgb, var(--brand-color, #C9963A) 85%, black)")}
-          onMouseLeave={(e) => (e.currentTarget.style.background = GOLD)}
-        >
-          {completedCount > 0 ? `Continue — ${nextLesson?.title || "Next Lesson"}` : `Start Course`}
-        </button>
+        {certEligible ? (
+          <>
+            <button
+              onClick={downloadCertificate}
+              disabled={certLoading}
+              className="w-full py-3.5 rounded-lg lg:rounded-xl text-white text-[15px] font-bold cursor-pointer transition-colors flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-wait"
+              style={{ background: GOLD }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = "color-mix(in srgb, var(--brand-color, #C9963A) 85%, black)")}
+              onMouseLeave={(e) => (e.currentTarget.style.background = GOLD)}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><path d="M7 10l5 5 5-5" /><path d="M12 15V3" />
+              </svg>
+              {certLoading ? "Preparing…" : "Download certificate"}
+            </button>
+            {certError && (
+              <div className="text-xs text-center text-red-600 mt-2">{certError}</div>
+            )}
+          </>
+        ) : (
+          <button
+            onClick={() => nextLesson && onStartLesson(course, nextLesson)}
+            className="w-full py-3.5 rounded-lg lg:rounded-xl text-white text-[15px] font-bold cursor-pointer transition-colors"
+            style={{ background: GOLD }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = "color-mix(in srgb, var(--brand-color, #C9963A) 85%, black)")}
+            onMouseLeave={(e) => (e.currentTarget.style.background = GOLD)}
+          >
+            {completedCount > 0 ? `Continue — ${nextLesson?.title || "Next Lesson"}` : `Start Course`}
+          </button>
+        )}
       </div>
     </div>
   );
