@@ -131,21 +131,26 @@ const PwaInstallStep: React.FC<{
   const isAndroid = typeof navigator !== 'undefined' && /android/i.test(navigator.userAgent);
   const isMobile = isIOS || isAndroid;
   const [installing, setInstalling] = useState(false);
+  // `beforeinstallprompt` fires on Chromium browsers — Android AND desktop
+  // Chrome/Edge — so a native one-tap install is offered on desktop too, not
+  // only on mobile. Mirror the parent-cached prompt into state (and keep our
+  // own listener) so we react whether it fired before or after this step mounts.
+  const [nativeReady, setNativeReady] = useState<boolean>(!!deferredPrompt.current);
 
   const finish = () => {
     try { localStorage.setItem('pwa_installed', 'true'); } catch { /* ignore */ }
     onDone();
   };
 
-  // Desktop (neither iOS nor Android): skip this step silently.
   useEffect(() => {
-    if (!isMobile) finish();
+    if (deferredPrompt.current) setNativeReady(true);
+    const handler = (e: any) => { e.preventDefault(); deferredPrompt.current = e; setNativeReady(true); };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (!isMobile) return null;
-
-  const handleAndroidInstall = async () => {
+  const handleNativeInstall = async () => {
     const dp = deferredPrompt.current;
     if (!dp) return; // fallback instructions are rendered instead
     setInstalling(true);
@@ -158,9 +163,10 @@ const PwaInstallStep: React.FC<{
     finish();
   };
 
-  // Android with a native install prompt available → one-tap install.
-  const showNativeInstall = isAndroid && !!deferredPrompt.current;
+  // A native install prompt is available (Android or desktop Chrome/Edge).
+  const showNativeInstall = nativeReady;
 
+  // Mobile (iOS / Android without a native prompt) → add-to-home-screen steps.
   const manualInstructions = (
     <div className="mb-6 space-y-2.5">
       <InstructionRow num={1}>
@@ -176,6 +182,22 @@ const PwaInstallStep: React.FC<{
     </div>
   );
 
+  // Desktop without a native prompt (e.g. Safari / Firefox) → point at the
+  // browser's own install affordance rather than mobile Share steps.
+  const desktopInstructions = (
+    <div className="mb-6 space-y-2.5">
+      <InstructionRow num={1}>
+        Open the <strong className="font-semibold" style={{ color: 'var(--text-heading, #2D2519)' }}>install icon</strong> in your browser&apos;s address bar (or the browser menu)
+      </InstructionRow>
+      <InstructionRow num={2}>
+        Choose <strong className="font-semibold" style={{ color: 'var(--text-heading, #2D2519)' }}>Install Harvest</strong> (or <strong className="font-semibold" style={{ color: 'var(--text-heading, #2D2519)' }}>Add to Dock</strong>)
+      </InstructionRow>
+      <InstructionRow num={3}>
+        Confirm — Harvest opens like a native app
+      </InstructionRow>
+    </div>
+  );
+
   return (
     <div className="py-1">
       <Eyebrow>Almost there</Eyebrow>
@@ -187,13 +209,15 @@ const PwaInstallStep: React.FC<{
       <h1 className="mb-1.5 text-center font-display" style={{ fontWeight: 300, fontSize: 26, letterSpacing: '-0.02em', color: 'var(--text-heading, #2D2519)' }}>Install the app</h1>
       <p className="mb-6 text-center text-sm leading-relaxed" style={{ color: 'var(--text-body, #4A4038)' }}>
         {showNativeInstall
-          ? 'Get the full experience on your home screen.'
-          : 'Add Harvest to your home screen for one-tap access — it works like a native app, offline included.'}
+          ? 'Add Harvest to your device for one-tap access — it works like a native app, offline included.'
+          : isMobile
+            ? 'Add Harvest to your home screen for one-tap access — it works like a native app, offline included.'
+            : 'Install Harvest as a desktop app for one-tap access — it works like a native app, offline included.'}
       </p>
 
       {showNativeInstall ? (
         <button
-          onClick={handleAndroidInstall}
+          onClick={handleNativeInstall}
           disabled={installing}
           className="mb-3 flex h-12 w-full items-center justify-center gap-2 rounded-lg font-semibold text-white transition-all disabled:opacity-50"
           style={{ backgroundColor: GOLD, boxShadow: `0 10px 30px -8px color-mix(in srgb, ${GOLD} 42%, transparent)` }}
@@ -202,7 +226,7 @@ const PwaInstallStep: React.FC<{
         </button>
       ) : (
         <>
-          {manualInstructions}
+          {isMobile ? manualInstructions : desktopInstructions}
           <button
             onClick={finish}
             className="mb-3 flex h-12 w-full items-center justify-center rounded-lg font-semibold text-white transition-all"
