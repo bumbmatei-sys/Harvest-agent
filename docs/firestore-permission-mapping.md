@@ -27,7 +27,7 @@ mirroring the client's `normalizePermissions()`.
 |---|---|---|
 | `writeArticles` | `blog_posts`; `tenants/{t}/blogAutomation` | blog editor + automation settings |
 | `createPosts` | `community_posts` cross-author moderation (edit/delete/pin) | member carve-outs unchanged: own posts, `likes`/`pollOptions`/`eventDetails` field updates, comments |
-| `createCourses` | `courses`; `authors`; `categories` | authors/categories are a **global** library with no tenantId on docs — gated on the writer's own-tenant permission; the old rule referenced a tenantId field that never existed, so these writes were accidentally super-admin-only (now fixed + gated) |
+| `createCourses` | `courses`; `authors`; `categories` | all three are **per-tenant**: read is `belongsToTenant(resource.data.tenantId)` and writes verify the doc's tenantId (create → `request.resource`, update/delete → `resource`), mirroring `courses`. authors/categories used to be a global library readable by any signed-in user (white-label leak) — now each doc carries a tenantId (client filters reads by it; categories are keyed `${tenantId}__${name}`) |
 | `uploadRag` | `rag_sources`; `rag_chunks` | create still pins the doc's tenantId to the writer's tenant |
 | `manageNewsletter` | `tenants/{t}/newsletters` | all live traffic is via `/api/newsletter/*` (Admin SDK); rule guards direct SDK writes |
 | `manageDocs` | `docs`; `docFolders`; plus a `sermonNote`-only update on `tenants/{t}/livestream/*` | the carve-out keeps Notes → "Share to Livestream" working for docs-only admins |

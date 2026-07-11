@@ -60,7 +60,13 @@ export default function CoursePage({
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const authorsSnap = await getDocs(collection(db, "authors"));
+        // Tenant-scoped: authors carry a tenantId and the rules require it to
+        // match, so the query must filter by tenantId — an unfiltered read is
+        // rejected. A super admin in platform context (null) reads unscoped.
+        const tenantId = await getTenantScope();
+        const authorsSnap = tenantId
+          ? await getDocs(query(collection(db, "authors"), where("tenantId", "==", tenantId)))
+          : await getDocs(collection(db, "authors"));
         const fetchedAuthors: Author[] = [];
         authorsSnap.forEach((d) => {
           fetchedAuthors.push({ id: d.id, ...d.data() } as Author);
@@ -71,7 +77,12 @@ export default function CoursePage({
       }
 
       try {
-        const catsSnap = await getDocs(collection(db, "categories"));
+        // Tenant-scoped (same as authors above): filter categories by tenantId
+        // so the query is accepted by the tenant-scoped rules.
+        const tenantId = await getTenantScope();
+        const catsSnap = tenantId
+          ? await getDocs(query(collection(db, "categories"), where("tenantId", "==", tenantId)))
+          : await getDocs(collection(db, "categories"));
         const fetchedCats: string[] = ["All"];
         catsSnap.forEach((d) => {
           fetchedCats.push(d.data().name);

@@ -34,12 +34,6 @@ interface FeatureCase {
   updateData?: Record<string, unknown>;
   /** ops to exercise (default: all three) */
   ops?: Array<'create' | 'update' | 'delete'>;
-  /**
-   * Docs with no tenantId (shared global library, e.g. authors/categories):
-   * an admin of ANY tenant holding the permission may write, so the
-   * cross-tenant denial doesn't apply.
-   */
-  sharedGlobal?: boolean;
 }
 
 const T = TENANT_A;
@@ -61,18 +55,16 @@ const CASES: FeatureCase[] = [
     updateData: { title: 'Edited' },
   },
   {
-    name: 'authors (global, course library)', perm: 'createCourses',
+    name: 'authors', perm: 'createCourses',
     path: s => `authors/author-${s}`,
-    createData: { name: 'Author', title: 'Teacher' },
+    createData: { tenantId: T, name: 'Author', title: 'Teacher' },
     updateData: { name: 'Renamed' },
-    sharedGlobal: true,
   },
   {
-    name: 'categories (global, course library)', perm: 'createCourses',
+    name: 'categories', perm: 'createCourses',
     path: s => `categories/cat-${s}`,
-    createData: { name: 'Discipleship' },
+    createData: { tenantId: T, name: 'Discipleship' },
     updateData: { name: 'Renamed' },
-    sharedGlobal: true,
   },
   {
     name: 'rag_sources', perm: 'uploadRag',
@@ -325,18 +317,16 @@ for (const c of CASES) {
       }
     });
 
-    it(c.sharedGlobal
-      ? 'a plain member is denied (global docs stay open to other tenants\' permission holders)'
-      : 'a cross-tenant admin and a plain member are denied', async () => {
+    it('a cross-tenant admin and a plain member are denied', async () => {
       const dbB = (await adminB()).firestore();
       const dbM = (await member()).firestore();
       if (ops.includes('create')) {
-        if (!c.sharedGlobal) await assertFails(dbB.doc(c.path('b-create')).set(c.createData));
+        await assertFails(dbB.doc(c.path('b-create')).set(c.createData));
         await assertFails(dbM.doc(c.path('m-create')).set(c.createData));
       }
       if (ops.includes('update')) {
         const p = await seedTarget(c, 'bm-update');
-        if (!c.sharedGlobal) await assertFails(dbB.doc(p).update(c.updateData ?? { _touched: true }));
+        await assertFails(dbB.doc(p).update(c.updateData ?? { _touched: true }));
         await assertFails(dbM.doc(p).update(c.updateData ?? { _touched: true }));
       }
     });
