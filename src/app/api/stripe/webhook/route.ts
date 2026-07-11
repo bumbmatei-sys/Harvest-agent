@@ -532,6 +532,61 @@ async function linkDonationToCRM(opts: {
 }
 
 /**
+ * Credit a completed donation toward a fundraising campaign's running `raised`
+ * total. Nothing wrote `raised` before this, so every campaign's progress bar
+ * (`raised / goal`) sat at 0% forever — this is the single writer.
+ *
+ * Unit: DOLLARS. `goal` is stored in dollars (the create form writes
+ * `Number(form.goal)`) and every surface renders `raised`/`goal` through an Intl
+ * currency formatter, so `raised` must be dollars too. Callers pass
+ * `amountDollars = cents / 100` — a $50 gift moves the bar by $50, never $5,000
+ * (raw cents) or $0.50.
+ *
+ * Idempotency: every caller runs inside the `webhook_events/{event.id}` marker,
+ * so a redelivered event never re-enters here and can't double-count. The one
+ * place two DISTINCT events cover the same money — a monthly subscription's
+ * `checkout.session.completed` and its first `invoice.payment_succeeded` — is
+ * de-duplicated by the invoice caller skipping `billing_reason === 'subscription_create'`.
+ *
+ * Safety: a missing/stray/cross-tenant `campaignId` logs and returns instead of
+ * throwing, so a real gift is never lost to a 500 (which would make Stripe
+ * redeliver the money event). Campaigns are a top-level collection keyed by id
+ * with a `tenantId` field (see /api/campaigns/active), so we update
+ * `campaigns/{id}` directly and refuse to credit a campaign that belongs to a
+ * different tenant than the one that received the money.
+ */
+async function incrementCampaignRaised(opts: {
+  campaignId: string | undefined;
+  tenantId: string | undefined;
+  amountDollars: number;
+}): Promise<void> {
+  const { campaignId, tenantId, amountDollars } = opts;
+  if (!campaignId || !(amountDollars > 0)) return;
+
+  const campaignRef = adminDb.collection('campaigns').doc(campaignId);
+  const snap = await campaignRef.get();
+  if (!snap.exists) {
+    console.warn(`campaign raised: campaign ${campaignId} not found; skipping increment`);
+    return;
+  }
+
+  // The campaignId rode in on client-supplied donate metadata, so only credit it
+  // when the campaign actually belongs to the tenant that received the money — a
+  // mismatched id must never inflate another tenant's campaign.
+  const campaignTenantId = snap.data()?.tenantId || null;
+  if (tenantId && campaignTenantId && campaignTenantId !== tenantId) {
+    console.warn(`campaign raised: campaign ${campaignId} belongs to tenant ${campaignTenantId}, not ${tenantId}; skipping increment`);
+    return;
+  }
+
+  await campaignRef.update({
+    raised: FieldValue.increment(amountDollars),
+    updatedAt: FieldValue.serverTimestamp(),
+  });
+  console.log(`📈 Campaign ${campaignId} raised += $${amountDollars.toFixed(2)} (tenant ${tenantId || 'unknown'})`);
+}
+
+/**
  * Finalize a MONTHLY partnership donation — a Stripe *subscription* created by
  * /api/stripe/donate's monthly branch (metadata.type === 'partnership').
  *
@@ -608,6 +663,12 @@ async function finalizePartnershipSubscription(
       tenantName: churchName, pdfUrl: null, status: 'pending',
     });
   }
+
+  // Credit this FIRST monthly payment to the campaign's progress bar when the gift
+  // is campaign-designated. Renewals are credited from invoice.payment_succeeded,
+  // which skips billing_reason 'subscription_create' so this opening month is not
+  // double-counted. No-op when meta.campaignId is absent (general partnership).
+  await incrementCampaignRaised({ campaignId: meta.campaignId, tenantId, amountDollars });
 }
 
 export async function POST(request: NextRequest) {
@@ -1206,10 +1267,12 @@ export async function POST(request: NextRequest) {
         const invoice = event.data.object as Stripe.Invoice;
         const invoiceSubId = invoice.subscription as string | null;
         let tenantId: string | null = null;
+        let subMeta: Record<string, string> = {};
         if (invoiceSubId) {
           try {
             const sub = await stripe.subscriptions.retrieve(invoiceSubId);
-            tenantId = sub.metadata?.tenantId || null;
+            subMeta = (sub.metadata || {}) as Record<string, string>;
+            tenantId = subMeta.tenantId || null;
           } catch (subErr) {
             console.error('Failed to retrieve subscription for invoice.payment_succeeded:', subErr);
           }
@@ -1283,6 +1346,25 @@ export async function POST(request: NextRequest) {
             } catch (subErr) {
               console.error('Failed to check subscription for affiliate commission:', subErr);
             }
+          }
+
+          // Recurring monthly-partnership gift toward a fundraising campaign: credit
+          // each RENEWAL to the campaign's running total. The FIRST payment
+          // (billing_reason 'subscription_create') is already credited by
+          // checkout.session.completed's finalizePartnershipSubscription, so skip it
+          // here — the two are DISTINCT events (different event.id), so the
+          // webhook_events marker cannot dedup across them; this guard is what stops
+          // the opening month from counting twice.
+          if (
+            subMeta.type === 'partnership' &&
+            subMeta.campaignId &&
+            (invoice as any).billing_reason !== 'subscription_create'
+          ) {
+            await incrementCampaignRaised({
+              campaignId: subMeta.campaignId,
+              tenantId: subMeta.tenantId,
+              amountDollars: (invoice.amount_paid || 0) / 100,
+            });
           }
         }
         break;
@@ -1397,6 +1479,11 @@ export async function POST(request: NextRequest) {
               tenantName, pdfUrl: null, status: 'pending',
             });
           }
+
+          // Credit a campaign-designated one-time gift to its progress bar. No-op
+          // when the gift isn't tied to a campaign (general partnership) or the
+          // campaign doc is gone — never throws, so the donation is never lost.
+          await incrementCampaignRaised({ campaignId: meta.campaignId, tenantId, amountDollars });
         }
         break;
       }
