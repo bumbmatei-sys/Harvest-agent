@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import { Course, Lesson, Author, Level } from "../../types/course.types";
 import { getAllLessons } from "../../utils/course.utils";
 import { GOLD, GOLD_LIGHT, GREEN, GREEN_BG } from "../../utils/course.constants";
+import { sanitizeHtml } from "../../utils/sanitize";
 
 interface CourseOverviewProps {
   course: Course;
@@ -135,9 +136,13 @@ export function CourseOverview({ course, authors, onBack, onStartLesson, complet
         {activeTab === "about" && (
           <div className="py-5">
             <h3 className="text-base font-bold mb-2.5 font-display">About This Course</h3>
-            <p className="text-sm leading-7 text-warm-brown whitespace-pre-wrap">
-              {course.description || "No description available."}
-            </p>
+            {course.description ? (
+              <div className="prose max-w-none text-sm leading-7 text-warm-brown">
+                <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(course.description) }} />
+              </div>
+            ) : (
+              <p className="text-sm leading-7 text-warm-brown">No description available.</p>
+            )}
           </div>
         )}
 

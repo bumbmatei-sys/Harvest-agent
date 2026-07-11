@@ -4,6 +4,7 @@ import ReactPlayer from "react-player/youtube";
 import { Course, Lesson, Author } from "../../types/course.types";
 import { getAllLessons } from "../../utils/course.utils";
 import { GOLD, GREEN, GREEN_BG } from "../../utils/course.constants";
+import { sanitizeHtml } from "../../utils/sanitize";
 
 interface LessonViewProps {
   course: Course;
@@ -127,7 +128,9 @@ export function LessonView({ course, lesson, authors, onBack, onComplete, comple
         {activeTab === "resources" && (
           <div className="py-5">
             {lesson.sources ? (
-              <div className="text-sm leading-7 text-warm-brown whitespace-pre-wrap">{lesson.sources}</div>
+              <div className="prose max-w-none text-sm leading-7 text-warm-brown">
+                <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(lesson.sources) }} />
+              </div>
             ) : (
               <p className="text-sm text-[color:var(--text-faint)]">No additional resources.</p>
             )}
