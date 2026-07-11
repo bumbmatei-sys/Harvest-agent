@@ -338,18 +338,26 @@ service cloud.firestore {
 
     // ─── Authors & Categories ────────────────────────────────────────
 
-    // Global course-author/category library, written only by the course
-    // editor. Docs carry NO tenantId (the old belongsToTenant(...tenantId)
-    // checks could never pass for regular admins), so gate on the writer's
-    // own-tenant courses permission instead.
+    // Per-tenant course-author/category library (mirrors the courses rule):
+    // each doc carries a `tenantId`, so read is scoped to the doc's tenant and
+    // writes verify the doc's tenantId — NOT the writer's own tenant. The old
+    // `allow read: if isAuthenticated()` let any signed-in user read every
+    // tenant's authors + categories (names, bios, photos, social links) — a
+    // white-label isolation breach, the same cross-tenant leak the courses /
+    // rag / donations blocks already close. Reads are filtered by tenantId
+    // client-side (CoursePage, AdminCourseEditor) so the query is scoped too.
     match /authors/{authorId} {
-      allow read: if isAuthenticated();
-      allow write: if hasPermission('createCourses', userTenantId());
+      allow read: if isAuthenticated() && belongsToTenant(resource.data.get('tenantId', ''));
+      allow create: if isAuthenticated() && hasPermission('createCourses', request.resource.data.get('tenantId', ''));
+      allow update: if isAuthenticated() && hasPermission('createCourses', resource.data.tenantId);
+      allow delete: if isAuthenticated() && hasPermission('createCourses', resource.data.tenantId);
     }
 
     match /categories/{catId} {
-      allow read: if isAuthenticated();
-      allow write: if hasPermission('createCourses', userTenantId());
+      allow read: if isAuthenticated() && belongsToTenant(resource.data.get('tenantId', ''));
+      allow create: if isAuthenticated() && hasPermission('createCourses', request.resource.data.get('tenantId', ''));
+      allow update: if isAuthenticated() && hasPermission('createCourses', resource.data.tenantId);
+      allow delete: if isAuthenticated() && hasPermission('createCourses', resource.data.tenantId);
     }
 
     // ─── Tenants ────────────────────────────────────────────────────

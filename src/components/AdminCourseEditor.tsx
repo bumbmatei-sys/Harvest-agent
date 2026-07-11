@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, CSSProperties, KeyboardEvent, MouseEvent } from "react";
 import Image from 'next/image';
 import { ArrowLeft } from "lucide-react";
-import { collection, addDoc, doc, updateDoc, getDocs, deleteDoc, setDoc, getDoc } from "firebase/firestore";
+import { collection, addDoc, doc, updateDoc, getDocs, deleteDoc, setDoc, getDoc, query, where } from "firebase/firestore";
 import { db, auth } from "../firebase";
 import { ImageUpload } from './ImageUpload';
 import RichTextEditor from './RichTextEditor';
@@ -62,6 +62,7 @@ interface Author {
  picture: string;
  bio: string;
  links: AuthorLink[];
+ tenantId?: string; // per-tenant course library (white-label isolation)
 }
 
 interface OutlineItem {
@@ -120,6 +121,11 @@ const emptyLesson = (): Lesson => ({ id: uid(), title: "", summary: "", youtubeU
 const emptySection = (): Section => ({ id: uid(), title: "", lessons: [emptyLesson()] });
 const emptyLevel = (): Level => ({ id: uid(), title: "", sections: [emptySection()] });
 const emptyCourse = (): Course => ({ title: "", description: "", category: "", thumbnail: "", status: "draft", featured: false, authorIds: [], levels: [emptyLevel()] });
+
+// Categories are keyed per-tenant (`${tenantId}__${name}`) so two tenants can
+// hold the same label without colliding on one shared doc. Courses reference a
+// category by its NAME (course.category is the label string), never by this id.
+const categoryDocId = (tenantId: string, name: string): string => `${tenantId}__${name}`;
 
 // ═══════════════════════════════════════════════
 // STYLE HELPERS
@@ -556,14 +562,23 @@ export default function CourseBuilder({ course: initialCourse, onClose }: Course
  useEffect(() => {
  const fetchData = async () => {
  try {
- const authorsSnap = await getDocs(collection(db, "authors"));
+ // Tenant-scoped: the authors/categories rules require the doc's tenantId to
+ // match, so the query MUST filter by tenantId — an unfiltered collection read
+ // is rejected under the new rules. A super admin in platform context
+ // (getTenantScope() === null) reads unscoped; the rule passes via isSuperAdmin().
+ const tenantId = await getTenantScope();
+ const authorsSnap = tenantId
+ ? await getDocs(query(collection(db, "authors"), where("tenantId", "==", tenantId)))
+ : await getDocs(collection(db, "authors"));
  const fetchedAuthors: Author[] = [];
  authorsSnap.forEach((doc) => {
  fetchedAuthors.push({ id: doc.id, ...doc.data() } as Author);
  });
  setAuthorsLibrary(fetchedAuthors);
 
- const catsSnap = await getDocs(collection(db, "categories"));
+ const catsSnap = tenantId
+ ? await getDocs(query(collection(db, "categories"), where("tenantId", "==", tenantId)))
+ : await getDocs(collection(db, "categories"));
  const fetchedCats: string[] = [];
  catsSnap.forEach((doc) => {
  fetchedCats.push(doc.data().name);
@@ -580,16 +595,21 @@ export default function CourseBuilder({ course: initialCourse, onClose }: Course
  const handleUpdateCategories = async (newCats: string[]) => {
  setCategories(newCats);
  try {
+ // Categories carry a tenantId and are keyed per-tenant so two tenants can
+ // reuse the same label. getWriteTenantScope() resolves the platform tenant
+ // for a super admin on the apex so writes are never orphaned.
+ const tenantId = await getWriteTenantScope();
+ if (!tenantId) return; // no tenant scope → nothing we can legitimately write
  // Find added categories
  const added = newCats.filter(c => !categories.includes(c));
  // Find removed categories
  const removed = categories.filter(c => !newCats.includes(c));
 
  for (const cat of added) {
- await setDoc(doc(db, "categories", cat), { name: cat });
+ await setDoc(doc(db, "categories", categoryDocId(tenantId, cat)), { name: cat, tenantId });
  }
  for (const cat of removed) {
- await deleteDoc(doc(db, "categories", cat));
+ await deleteDoc(doc(db, "categories", categoryDocId(tenantId, cat)));
  }
  } catch (e) {
  try { handleFirestoreError(e, OperationType.WRITE, `categories`); } catch (e) { console.error(e); }
@@ -599,8 +619,12 @@ export default function CourseBuilder({ course: initialCourse, onClose }: Course
 
  const set = <K extends keyof Course>(k: K, v: Course[K]): void => setCourse((c) => ({ ...c, [k]: v }));
 
- const addAuthorToLibrary = async (): void => {
- const newAuthor = emptyAuthor();
+ const addAuthorToLibrary = async (): Promise<void> => {
+ // Stamp the tenantId so the author is scoped to this tenant's library and
+ // readable under the tenant-scoped rules. Keep it in state too, so a later
+ // edit (updateLibraryAuthor overwrites the doc) never drops it.
+ const tenantId = await getWriteTenantScope();
+ const newAuthor: Author = { ...emptyAuthor(), tenantId: tenantId ?? undefined };
  setAuthorsLibrary((lib) => [...lib, newAuthor]);
  try {
  await setDoc(doc(db, "authors", newAuthor.id), newAuthor);
@@ -612,7 +636,11 @@ export default function CourseBuilder({ course: initialCourse, onClose }: Course
  const updateLibraryAuthor = async (i: number, a: Author): Promise<void> => {
  setAuthorsLibrary((lib) => { const next = [...lib]; next[i] = a; return next; });
  try {
- await setDoc(doc(db, "authors", a.id), a);
+ // setDoc fully overwrites — preserve the tenantId (fall back to the write
+ // scope for any author that predates tenant stamping) so the isolation
+ // field is never stripped on edit.
+ const tenantId = a.tenantId ?? (await getWriteTenantScope()) ?? undefined;
+ await setDoc(doc(db, "authors", a.id), { ...a, tenantId });
  } catch (e) {
  try { handleFirestoreError(e, OperationType.UPDATE, `authors`); } catch (e) { console.error(e); }
  }
