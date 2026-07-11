@@ -12,12 +12,19 @@ import DomainSection from './settings/DomainSection';
 
 const BRAND = 'var(--brand-color, #B8962E)';
 const HARVEST_LOGO = 'https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png';
+const SUCCESS = 'var(--brand-success, #6E8E52)';
+const DANGER = 'var(--brand-danger, #C4553B)';
 
 interface FirstRunSetupProps {
   tenantId: string;
   /** Called with the final tenant id once setup is complete. */
   onFinished: (finalTenantId: string) => void;
 }
+
+/** Small uppercase gold section label used to group the setup cards. */
+const SectionLabel: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <div className="mb-2.5 mt-8 text-xs font-semibold uppercase" style={{ letterSpacing: '0.16em', color: BRAND }}>{children}</div>
+);
 
 /**
  * One-time "Finish setup" screen shown to a brand-new church admin right after
@@ -31,6 +38,7 @@ const FirstRunSetup: React.FC<FirstRunSetupProps> = ({ tenantId, onFinished }) =
   const [status, setStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
   const [finishing, setFinishing] = useState(false);
   const [error, setError] = useState('');
+  const [subFocus, setSubFocus] = useState(false);
 
   // Load the tenant's plan + current (auto-generated) subdomain.
   useEffect(() => {
@@ -96,23 +104,35 @@ const FirstRunSetup: React.FC<FirstRunSetupProps> = ({ tenantId, onFinished }) =
     }
   };
 
+  const subBorder = status === 'taken' ? DANGER : status === 'available' ? SUCCESS : (subFocus ? BRAND : 'var(--stone-300, #D6CCBE)');
+
   return (
-    <div className="min-h-screen bg-stone-100 py-10 px-4">
-      <div className="max-w-2xl mx-auto">
+    <div className="relative min-h-screen overflow-hidden" style={{ background: 'var(--cream, #FAF8F5)' }}>
+      {/* soft gold halo behind the header */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute left-1/2 -translate-x-1/2"
+        style={{ top: '-14%', width: 760, height: 480, maxWidth: '160vw', background: 'radial-gradient(circle, color-mix(in srgb, var(--brand-color, #C9963A) 12%, transparent), transparent 68%)' }}
+      />
+      <div className="relative z-[1] mx-auto w-full px-5 py-12 sm:py-16" style={{ maxWidth: 560 }}>
         {/* Header */}
-        <div className="text-center mb-8">
+        <div className="mb-2 text-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={HARVEST_LOGO} alt="Harvest" className="h-16 w-auto object-contain mx-auto mb-4" />
-          <div style={{
-            display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '6px 16px', borderRadius: '9999px',
-            background: 'color-mix(in srgb, var(--brand-color, #B8962E) 12%, white)',
-            border: '1px solid color-mix(in srgb, var(--brand-color, #B8962E) 30%, white)',
-            fontSize: '13px', fontWeight: 700, color: BRAND, marginBottom: '12px',
-          }}>
-            <Sparkles size={14} /> Payment received
+          <img src={HARVEST_LOGO} alt="Harvest" className="mx-auto mb-4 h-12 w-auto object-contain" />
+          <div
+            className="mb-3.5 inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-[12.5px] font-bold"
+            style={{
+              background: 'color-mix(in srgb, var(--brand-color, #C9963A) 12%, white)',
+              border: '1px solid var(--border-gold, rgba(201,150,58,0.40))',
+              color: BRAND,
+            }}
+          >
+            <Sparkles size={13} /> Payment received
           </div>
-          <h1 className="text-2xl font-bold text-earth font-display">Finish setting up your ministry</h1>
-          <p className="text-sm text-warm-brown mt-2">
+          <h1 className="font-display" style={{ fontWeight: 300, fontSize: 32, letterSpacing: '-0.02em', color: 'var(--text-heading, #2D2519)' }}>
+            Finish setting up your ministry
+          </h1>
+          <p className="mx-auto mt-2.5 max-w-[46ch] text-sm leading-relaxed" style={{ color: 'var(--text-body, #4A4038)' }}>
             {features?.customBranding || features?.customDomain
               ? 'Claim your web address and brand your app. You can change all of this later in Settings.'
               : 'Claim your web address. You can change it later in Settings.'}
@@ -120,66 +140,78 @@ const FirstRunSetup: React.FC<FirstRunSetupProps> = ({ tenantId, onFinished }) =
         </div>
 
         {error && (
-          <div className="mb-6 p-3 bg-red-50 border border-red-100 text-red-600 text-sm rounded-xl flex items-start gap-2">
-            <AlertCircle size={18} className="shrink-0 mt-0.5" />
+          <div className="mb-6 mt-6 flex items-start gap-2 rounded-lg border px-3.5 py-3 text-sm" style={{ background: '#FBEEEA', borderColor: '#EBD0C7', color: '#B0432B' }}>
+            <AlertCircle size={18} className="mt-0.5 shrink-0" />
             {error}
           </div>
         )}
 
         {/* Subdomain claim */}
-        <div className="bg-white rounded-2xl border border-stone-200 p-5 mb-6">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-warm-brown mb-3">Your Web Address</h3>
-          <div className="flex items-center">
+        <div className="mt-8 rounded-brand-lg border border-stone-200 bg-white p-5 shadow-[var(--ds-sh-sm)]">
+          <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.14em]" style={{ color: 'var(--text-muted, #8B7355)' }}>Your web address</h3>
+          <div className="flex items-stretch">
             <input
               type="text"
               value={subdomain}
               onChange={(e) => { setSubdomain(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '')); }}
-              className="flex-1 px-4 py-2.5 border rounded-l-lg text-sm font-mono outline-none transition-colors focus:ring-2 focus:ring-gold"
-              style={{ borderColor: status === 'taken' ? '#EF4444' : status === 'available' ? '#22C55E' : '#E8E2D9' }}
+              onFocus={() => setSubFocus(true)}
+              onBlur={() => setSubFocus(false)}
+              className="min-w-0 flex-1 rounded-l-lg px-4 font-mono text-sm outline-none transition-colors"
+              style={{ height: 46, border: `1px solid ${subBorder}`, borderRight: 'none', color: 'var(--text-heading, #2D2519)', background: 'white' }}
               placeholder="gracechurch"
             />
-            <span className="px-4 py-2.5 border border-l-0 border-stone-200 rounded-r-lg text-sm text-warm-brown bg-stone-100">
+            <span
+              className="flex items-center whitespace-nowrap rounded-r-lg px-4 text-sm"
+              style={{ border: '1px solid var(--stone-300, #D6CCBE)', background: 'var(--surface-sunken, #F3EEE7)', color: 'var(--text-body, #4A4038)' }}
+            >
               .theharvest.app
             </span>
           </div>
           <div className="mt-2 h-5 text-xs">
             {status === 'checking' && (
-              <span className="text-warm-brown inline-flex items-center gap-1"><Loader2 size={12} className="animate-spin" /> Checking availability…</span>
+              <span className="inline-flex items-center gap-1.5" style={{ color: 'var(--text-muted, #8B7355)' }}><Loader2 size={12} className="animate-spin" /> Checking availability…</span>
             )}
             {status === 'available' && (
-              <span className="text-green-600 inline-flex items-center gap-1"><CheckCircle2 size={12} /> {subdomain}.theharvest.app is available!</span>
+              <span className="inline-flex items-center gap-1.5" style={{ color: SUCCESS }}><CheckCircle2 size={13} /> {subdomain}.theharvest.app is available</span>
             )}
             {status === 'taken' && (
-              <span className="text-red-600 inline-flex items-center gap-1"><AlertCircle size={12} /> This subdomain is already taken.</span>
+              <span className="inline-flex items-center gap-1.5" style={{ color: DANGER }}><AlertCircle size={13} /> That subdomain is taken — try another.</span>
             )}
           </div>
         </div>
 
-        {/* Branding — only for plans that include custom branding (Community / max+) */}
+        {/* Branding — only for plans that include custom branding (Community / max+).
+            Renders the shared BrandingSection (its own titled cards); gated exactly
+            as before on features.customBranding. */}
         {features?.customBranding && (
-          <div className="bg-white rounded-2xl border border-stone-200 p-5 mb-6">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-warm-brown mb-3">Branding</h3>
+          <>
+            <SectionLabel>Branding</SectionLabel>
             <BrandingSection currentFeatures={features ?? undefined} />
-          </div>
+          </>
         )}
 
-        {/* Custom domain — only for plans that include it (Ministry / ultra) */}
+        {/* Custom domain — only for plans that include it (Ministry / ultra).
+            Renders the shared DomainSection (its own titled card — it self-labels
+            "Web Address" / "Custom domain"); gated on features.customDomain
+            exactly as before. */}
         {features?.customDomain && (
-          <div className="bg-white rounded-2xl border border-stone-200 p-5 mb-6">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-warm-brown mb-3">Custom Domain</h3>
+          <div className="mt-8">
             <DomainSection hasCustomDomain={!!features?.customDomain} />
           </div>
         )}
 
         {/* Finish */}
-        <div className="flex justify-end pb-10">
+        <div className="flex justify-end pb-12 pt-8">
           <button
             onClick={handleFinish}
             disabled={!canFinish}
+            className="inline-flex items-center gap-2 rounded-lg px-7 py-3 font-semibold text-white transition-all"
             style={{
-              display: 'inline-flex', alignItems: 'center', gap: '8px', background: BRAND, color: '#fff',
-              fontWeight: 600, padding: '12px 28px', borderRadius: '12px', border: 'none',
-              cursor: canFinish ? 'pointer' : 'not-allowed', opacity: canFinish ? 1 : 0.5, fontSize: '15px',
+              background: BRAND,
+              boxShadow: `0 10px 30px -8px color-mix(in srgb, ${BRAND} 42%, transparent)`,
+              cursor: canFinish ? 'pointer' : 'not-allowed',
+              opacity: canFinish ? 1 : 0.5,
+              fontSize: 15,
             }}
           >
             {finishing ? (

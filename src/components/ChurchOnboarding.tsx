@@ -9,6 +9,26 @@ import { PLAN_DISPLAY_NAMES } from '../utils/plan-features';
 const BRAND = 'var(--brand-color, #B8962E)';
 const HARVEST_LOGO = 'https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png';
 
+/* ── Shared brand chrome (cream editorial ground, Fraunces display) ─────────── */
+
+const MinShell: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <div
+    className="relative flex min-h-screen items-center justify-center overflow-hidden px-5 py-14 sm:py-20"
+    style={{ background: 'var(--cream, #FAF8F5)' }}
+  >
+    <div
+      aria-hidden
+      className="pointer-events-none absolute left-1/2 -translate-x-1/2"
+      style={{ top: '-18%', width: 760, height: 540, maxWidth: '160vw', background: 'radial-gradient(circle, color-mix(in srgb, var(--brand-color, #C9963A) 12%, transparent), transparent 68%)' }}
+    />
+    <div className="absolute left-8 top-8 hidden items-center gap-2 sm:flex" style={{ color: 'var(--text-faint, #A89A87)' }}>
+      <span className="h-px w-6" style={{ background: 'var(--stone-300, #D6CCBE)' }} />
+      <span className="text-xs font-medium">The digital foundation for ministries</span>
+    </div>
+    <div className="relative z-[1] w-full" style={{ maxWidth: 452 }}>{children}</div>
+  </div>
+);
+
 interface ChurchOnboardingProps {
   onComplete: () => void;
   signupPlan?: TenantPlan;
@@ -21,6 +41,9 @@ interface ChurchOnboardingProps {
  * webhook builds the tenant once payment lands (build-on-payment onboarding).
  * Subdomain, domain, logo, colour and description are claimed in the first-run
  * "Finish setup" screen after payment.
+ *
+ * The plan is chosen upstream (marketing site → ?plan=…&signup=church) and is
+ * shown here read-only — there is intentionally NO in-app plan picker.
  */
 const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ signupPlan }) => {
   const urlPlan = typeof window !== 'undefined'
@@ -32,6 +55,7 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ signupPlan }) => {
   const [ministryName, setMinistryName] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [focus, setFocus] = useState(false);
 
   const canSubmit = ministryName.trim().length >= 2;
 
@@ -106,96 +130,95 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ signupPlan }) => {
     }
   };
 
-  const inputClass =
-    'w-full px-4 py-3 rounded-xl bg-white text-[#111111] placeholder-[#AAAAAA] border border-[#E5E5E5] outline-none transition-colors';
-  const focusHandlers = {
-    onFocus: (e: React.FocusEvent<HTMLElement>) => { e.currentTarget.style.borderColor = BRAND; },
-    onBlur: (e: React.FocusEvent<HTMLElement>) => { e.currentTarget.style.borderColor = '#E5E5E5'; },
-  };
-
   return (
-    <div className="min-h-screen bg-white px-6 py-10 flex flex-col">
-      <div className="max-w-md w-full mx-auto flex-1 flex flex-col justify-center">
-        {/* Logo */}
-        <div className="flex justify-center mb-6">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={HARVEST_LOGO} alt="Harvest logo" className="h-20 w-auto object-contain" />
+    <MinShell>
+      {/* Logo */}
+      <div className="mb-5 flex justify-center">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={HARVEST_LOGO} alt="Harvest logo" className="h-12 w-auto object-contain" />
+      </div>
+
+      {/* Chosen plan — read-only (no in-app plan picker; plan is chosen upstream) */}
+      <div className="mb-4 flex justify-center">
+        <span
+          className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-[13px] font-bold"
+          style={{
+            background: 'color-mix(in srgb, var(--brand-color, #C9963A) 12%, white)',
+            border: '1px solid var(--border-gold, rgba(201,150,58,0.40))',
+            color: BRAND,
+          }}
+        >
+          <Sparkles size={14} /> {PLAN_DISPLAY_NAMES[selectedPlan]} plan
+        </span>
+      </div>
+
+      {/* Card */}
+      <div className="rounded-brand-xl border border-stone-200 bg-white px-6 py-8 shadow-[var(--ds-sh-md)] sm:px-9">
+        {error && (
+          <div className="mb-6 flex items-start gap-2 rounded-lg border px-3.5 py-3 text-sm" style={{ background: '#FBEEEA', borderColor: '#EBD0C7', color: '#B0432B' }}>
+            <AlertCircle size={18} className="mt-0.5 shrink-0" />
+            {error}
+          </div>
+        )}
+
+        <div className="mb-7 flex justify-center">
+          <div className="flex h-[62px] w-[62px] items-center justify-center rounded-brand-lg" style={{ background: 'color-mix(in srgb, var(--brand-color, #C9963A) 13%, white)', color: BRAND }}>
+            <Church size={30} />
+          </div>
         </div>
 
-        {/* Plan badge */}
-        <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-          <span style={{
-            display: 'inline-flex', alignItems: 'center', gap: '8px',
-            padding: '6px 16px', borderRadius: '9999px',
-            background: 'color-mix(in srgb, var(--brand-color, #B8962E) 12%, white)',
-            border: '1px solid color-mix(in srgb, var(--brand-color, #B8962E) 30%, white)',
-            fontSize: '14px', fontWeight: 700, color: BRAND,
-          }}>
-            <Sparkles size={14} />
-            {PLAN_DISPLAY_NAMES[selectedPlan]} Plan
-          </span>
+        <div className="mb-1.5 text-center text-xs font-semibold uppercase" style={{ letterSpacing: '0.19em', color: BRAND }}>Almost there</div>
+        <h1 className="text-center font-display" style={{ fontWeight: 300, fontSize: 28, letterSpacing: '-0.02em', color: 'var(--text-heading, #2D2519)' }}>Name your ministry</h1>
+        <p className="mx-auto mt-2.5 max-w-[38ch] text-center text-[13px] leading-relaxed" style={{ color: 'var(--text-body, #4A4038)' }}>
+          You&apos;ll customise your subdomain, logo and colours right after payment.
+        </p>
+
+        <div className="mt-7">
+          <label className="mb-1.5 block text-xs font-semibold" style={{ color: 'var(--text-heading, #2D2519)' }}>
+            Ministry name
+          </label>
+          <div
+            className="flex items-center gap-2.5 rounded-lg bg-white transition-all"
+            style={{ height: 48, padding: '0 14px', border: `1px solid ${focus ? BRAND : 'var(--stone-200, #E8E2D9)'}`, boxShadow: focus ? `0 0 0 3px color-mix(in srgb, ${BRAND} 16%, transparent)` : 'none' }}
+          >
+            <span className="flex shrink-0" style={{ color: 'var(--text-muted, #8B7355)' }}><Church size={16} /></span>
+            <input
+              type="text"
+              value={ministryName}
+              onChange={(e) => setMinistryName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter' && canSubmit && !submitting) handleContinue(); }}
+              onFocus={() => setFocus(true)}
+              onBlur={() => setFocus(false)}
+              className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-[#A89A87]"
+              style={{ fontSize: 15, color: 'var(--text-heading, #2D2519)' }}
+              placeholder="Grace Community Church"
+              autoFocus
+            />
+          </div>
         </div>
 
-        {/* Card */}
-        <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
-          <div className="p-6 sm:p-8">
-            {error && (
-              <div className="mb-6 p-3 bg-red-50 border border-red-100 text-red-600 text-sm rounded-xl flex items-start gap-2">
-                <AlertCircle size={18} className="shrink-0 mt-0.5" />
-                {error}
-              </div>
+        {/* Action */}
+        <div className="mt-7 flex justify-end">
+          <button
+            onClick={handleContinue}
+            disabled={submitting || !canSubmit}
+            className="inline-flex items-center gap-2 rounded-lg px-6 py-3 font-semibold text-white transition-all"
+            style={{
+              background: BRAND,
+              boxShadow: `0 10px 30px -8px color-mix(in srgb, ${BRAND} 42%, transparent)`,
+              cursor: (submitting || !canSubmit) ? 'not-allowed' : 'pointer',
+              opacity: (submitting || !canSubmit) ? 0.5 : 1,
+            }}
+          >
+            {submitting ? (
+              <><Loader2 size={16} className="animate-spin" /> Redirecting to payment…</>
+            ) : (
+              <>Continue to payment <ArrowRight size={16} /></>
             )}
-
-            <div className="animate-fade-in-up">
-              <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-                <Church style={{ margin: '0 auto 12px', color: BRAND }} size={32} />
-                <h1 className="font-display" style={{ fontSize: '22px', fontWeight: 600, color: '#111111', marginBottom: '4px' }}>Name your ministry</h1>
-                <p style={{ fontSize: '14px', color: '#888888', marginTop: '8px' }}>
-                  You&apos;ll customise your subdomain, logo and colours right after payment.
-                </p>
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#111111', marginBottom: '6px' }}>
-                  Ministry Name
-                </label>
-                <input
-                  type="text"
-                  value={ministryName}
-                  onChange={(e) => setMinistryName(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter' && canSubmit && !submitting) handleContinue(); }}
-                  className={inputClass}
-                  style={{ borderColor: '#E5E5E5' }}
-                  {...focusHandlers}
-                  placeholder="Grace Community Church"
-                  autoFocus
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Action */}
-          <div style={{ padding: '20px 24px', borderTop: '1px solid #F0F0F0', display: 'flex', justifyContent: 'flex-end' }}>
-            <button
-              onClick={handleContinue}
-              disabled={submitting || !canSubmit}
-              style={{
-                display: 'flex', alignItems: 'center', gap: '8px', background: BRAND, color: '#ffffff',
-                fontWeight: 600, padding: '12px 24px', borderRadius: '12px', border: 'none',
-                cursor: (submitting || !canSubmit) ? 'not-allowed' : 'pointer',
-                opacity: (submitting || !canSubmit) ? 0.5 : 1,
-              }}
-            >
-              {submitting ? (
-                <><Loader2 size={16} className="animate-spin" /> Redirecting to payment…</>
-              ) : (
-                <>Continue to Payment <ArrowRight size={16} /></>
-              )}
-            </button>
-          </div>
+          </button>
         </div>
       </div>
-    </div>
+    </MinShell>
   );
 };
 
