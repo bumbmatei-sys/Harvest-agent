@@ -161,14 +161,16 @@ const UserEvents: React.FC<UserEventsProps> = ({ onBack }) => {
 
   return (
     <div className="flex flex-col min-h-full h-full bg-[#F7F6F3] overflow-y-auto">
-      <div className="sticky top-0 z-10 flex items-center gap-3 px-4 py-4 bg-white border-b border-gray-100">
-        <button onClick={onBack} className="p-1.5 rounded-lg hover:bg-gray-100">
-          <ArrowLeft size={18} className="text-gray-600" />
-        </button>
-        <h2 className="font-display text-lg font-bold text-gray-900">My Events</h2>
+      <div className="sticky top-0 z-10 bg-white border-b border-gray-100">
+        <div className="flex items-center gap-3 px-4 py-4 lg:max-w-[760px] lg:mx-auto">
+          <button onClick={onBack} className="p-1.5 rounded-lg hover:bg-gray-100">
+            <ArrowLeft size={18} className="text-gray-600" />
+          </button>
+          <h2 className="font-display text-lg font-normal tracking-[-0.01em] text-earth">My Events</h2>
+        </div>
       </div>
 
-      <div className="flex-1 p-4">
+      <div className="flex-1 p-4 lg:max-w-[760px] lg:mx-auto lg:w-full">
         {loading ? (
           <div className="flex items-center justify-center h-40">
             <div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin"

@@ -293,9 +293,9 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap 
  </div>
  </div>
 
- {/* Content Section — centered desktop column (1000px reads balanced on wide
-     monitors without spanning the full content width). */}
- <div className="px-4 mt-6 relative z-10 space-y-6 lg:mt-0 lg:px-8 lg:pt-6 lg:max-w-[1000px] lg:mx-auto lg:grid lg:grid-cols-[300px_1fr] lg:gap-6 lg:items-start lg:space-y-0">
+ {/* Content Section — centered desktop column at the brand's wide container
+     (1280px) so it fills wide monitors instead of floating narrow. */}
+ <div className="px-4 mt-6 relative z-10 space-y-6 lg:mt-0 lg:px-8 lg:pt-6 lg:max-w-[1280px] lg:mx-auto lg:grid lg:grid-cols-[320px_1fr] lg:gap-8 lg:items-start lg:space-y-0">
  {/* Desktop profile card — left column */}
  <div className="hidden lg:block">
  <div className="bg-white rounded-3xl border p-6 text-center lg:sticky lg:top-4" style={{ borderColor: 'var(--ds-border)' }}>
