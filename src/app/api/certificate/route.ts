@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { createHash } from 'crypto';
+import net from 'net';
+import { lookup } from 'dns/promises';
 import { PDFDocument, rgb, StandardFonts, PDFFont, PDFImage } from 'pdf-lib';
 import { requireAuth } from '@/lib/api-auth';
 import { adminDb, getReceiptsBucket } from '@/lib/firebase-admin';
@@ -83,20 +85,69 @@ function sanitizePdfText(input: unknown): string {
     .join('');
 }
 
+const MAX_LOGO_BYTES = 5 * 1024 * 1024;
+
+/** True for loopback / private / link-local / CGNAT / ULA addresses (SSRF-unsafe). */
+function isPrivateIp(ip: string): boolean {
+  if (net.isIPv4(ip)) {
+    const p = ip.split('.').map(Number);
+    if (p[0] === 10 || p[0] === 127 || p[0] === 0) return true;
+    if (p[0] === 169 && p[1] === 254) return true;         // link-local (incl. cloud metadata 169.254.169.254)
+    if (p[0] === 172 && p[1] >= 16 && p[1] <= 31) return true;
+    if (p[0] === 192 && p[1] === 168) return true;
+    if (p[0] === 100 && p[1] >= 64 && p[1] <= 127) return true; // CGNAT
+    return false;
+  }
+  if (net.isIPv6(ip)) {
+    const low = ip.toLowerCase();
+    if (low === '::1' || low === '::') return true;
+    if (low.startsWith('fc') || low.startsWith('fd') || low.startsWith('fe80')) return true; // ULA / link-local
+    const mapped = low.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/);
+    if (mapped) return isPrivateIp(mapped[1]);
+    return false;
+  }
+  return true; // unrecognized → treat as unsafe
+}
+
 /**
- * Fetch a remote logo and embed it. Best-effort: any failure (bad URL,
- * non-image, unsupported format like webp/svg, timeout, oversize) returns
- * null so the certificate still issues — just without the logo.
+ * SSRF guard for the tenant-admin-controlled logo URL: allow only http(s) to a
+ * public host. IP literals are checked directly; hostnames are resolved and
+ * rejected if ANY resolved address is internal, so a logo URL can't be pointed
+ * at the cloud metadata endpoint or an internal service.
+ */
+async function isSafeRemoteUrl(url: string): Promise<boolean> {
+  let u: URL;
+  try { u = new URL(url); } catch { return false; }
+  if (u.protocol !== 'http:' && u.protocol !== 'https:') return false;
+  const host = u.hostname.toLowerCase();
+  if (host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.internal') || host.endsWith('.local')) {
+    return false;
+  }
+  if (net.isIP(host)) return !isPrivateIp(host);
+  try {
+    const results = await lookup(host, { all: true });
+    return results.length > 0 && results.every((r) => !isPrivateIp(r.address));
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Fetch a remote logo and embed it. Best-effort: any failure (unsafe/bad URL,
+ * non-image, unsupported format like webp/svg, timeout, oversize) returns null
+ * so the certificate still issues — just without the logo.
  */
 async function tryEmbedLogo(pdf: PDFDocument, url: unknown): Promise<PDFImage | null> {
-  if (typeof url !== 'string' || !/^https?:\/\//i.test(url)) return null;
+  if (typeof url !== 'string' || !(await isSafeRemoteUrl(url))) return null;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 5000);
   try {
-    const res = await fetch(url, { signal: controller.signal });
+    // redirect:'error' stops a public URL from bouncing to an internal one.
+    const res = await fetch(url, { signal: controller.signal, redirect: 'error' });
     if (!res.ok) return null;
+    if (Number(res.headers.get('content-length') || 0) > MAX_LOGO_BYTES) return null; // declared-size precheck
     const buf = Buffer.from(await res.arrayBuffer());
-    if (buf.length === 0 || buf.length > 5 * 1024 * 1024) return null;
+    if (buf.length === 0 || buf.length > MAX_LOGO_BYTES) return null;
     // Magic bytes: PNG (89 50 4E 47) vs JPEG (FF D8).
     if (buf[0] === 0x89 && buf[1] === 0x50) return await pdf.embedPng(buf);
     if (buf[0] === 0xff && buf[1] === 0xd8) return await pdf.embedJpg(buf);

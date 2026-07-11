@@ -38,6 +38,12 @@ vi.mock('@/lib/firebase-admin', () => ({
   getReceiptsBucket: () => ({ file: (_p: string) => ({ save: mockFileSave, getSignedUrl: mockGetSignedUrl }) }),
 }));
 vi.mock('@/lib/api-auth', () => ({ requireAuth: mockRequireAuth }));
+// Resolve any hostname to a PUBLIC IP so the SSRF guard admits ordinary logo
+// hosts; the guard's private-range rejection is exercised with IP-literal URLs.
+vi.mock('dns/promises', () => {
+  const lookup = vi.fn(async () => [{ address: '93.184.216.34', family: 4 }]);
+  return { lookup, default: { lookup } };
+});
 
 const { POST } = await import('../route');
 
@@ -224,5 +230,25 @@ describe('POST /api/certificate — tenant branding gate', () => {
     store.tenants.set('tenant-a', { name: 'Grace', plan: 'ultra', config: { primaryColor: 'not-a-hex' } });
     const res = await POST(makeReq({ courseId: 'course-1' }));
     expect(res.status).toBe(200);
+  });
+
+  it('SSRF guard: a logo pointed at the cloud metadata IP is NOT fetched (cert still issues)', async () => {
+    const fetchSpy = vi.fn();
+    vi.stubGlobal('fetch', fetchSpy);
+    store.tenants.set('tenant-a', { name: 'Grace', plan: 'ultra', config: { logo: 'http://169.254.169.254/latest/meta-data/' } });
+    const res = await POST(makeReq({ courseId: 'course-1' }));
+    expect(res.status).toBe(200);
+    expect(fetchSpy).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+
+  it('SSRF guard: a localhost logo URL is NOT fetched', async () => {
+    const fetchSpy = vi.fn();
+    vi.stubGlobal('fetch', fetchSpy);
+    store.tenants.set('tenant-a', { name: 'Grace', plan: 'ultra', config: { logo: 'http://localhost:9000/logo.png' } });
+    const res = await POST(makeReq({ courseId: 'course-1' }));
+    expect(res.status).toBe(200);
+    expect(fetchSpy).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
   });
 });
