@@ -1,0 +1,46 @@
+name: Backfill Authors + Categories tenantId
+
+# One-time (re-runnable) backfill for the authors + categories tenant-isolation
+# fix. Stamps a tenantId on existing author docs and re-keys category docs to
+# `${tenantId}__${name}`, inferring ownership from the courses that reference
+# them. Manual trigger only.
+#
+# RUN ORDER: run once with "commit" unchecked to review the dry-run counts and
+# any ORPHAN/SHARED items, then re-run with "commit" checked — WHILE the current
+# (permissive) rules are still live — BEFORE merging the firestore.rules PR that
+# tightens the authors/categories rules. Idempotent: already-scoped docs are
+# skipped, so re-runs are safe.
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit:
+        description: 'Apply the backfill (--commit). Leave unchecked for a dry run.'
+        type: boolean
+        default: false
+      include_orphans:
+        description: 'Assign orphan categories (used by no course) to the platform tenant.'
+        type: boolean
+        default: false
+
+jobs:
+  backfill:
+    name: ${{ inputs.commit && 'Backfill (COMMIT)' || 'Dry run (count only)' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install firebase-admin
+        run: npm install firebase-admin@^12
+
+      - name: Backfill authors + categories tenantId
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: >-
+          node scripts/backfill-authors-categories-tenant.mjs
+          ${{ inputs.commit && '--commit' || '' }}
+          ${{ inputs.include_orphans && '--include-orphans' || '' }}
