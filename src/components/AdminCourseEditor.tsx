@@ -7,6 +7,10 @@ import { ImageUpload } from './ImageUpload';
 import RichTextEditor from './RichTextEditor';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { getTenantScope, getWriteTenantScope } from '../utils/tenant-scope';
+// Reused, tenant-scoped AI Knowledge write path — the "Generate with AI" flow's
+// optional "add to AI Knowledge" checkbox feeds the video summary through this.
+import { ingestTextSource } from '../utils/rag-ingest';
+import { notifyError } from '../utils/notify';
 
 
 
@@ -95,6 +99,19 @@ interface Lesson {
  sources: string;
  teacherNote: string;
  authorId: string;
+}
+
+// AI-generated, still-editable lesson draft shown in the review modal before the
+// admin applies it. Outline/quiz carry client ids (like a live lesson) so they
+// drop straight into OutlineEditor / QuizEditor for editing.
+interface GeneratedDraft {
+ title: string;
+ duration: string;
+ summary: string;
+ outline: OutlineItem[];
+ scripture: string;
+ quiz: QuizQuestion[];
+ videoSummary: string;
 }
 
 interface Section {
@@ -358,6 +375,93 @@ function AuthorCard({ author, onChange, onRemove, selectable = false, selected =
 }
 
 // ═══════════════════════════════════════════════
+// GENERATE-WITH-AI REVIEW MODAL
+// Shows the AI draft for REVIEW/EDIT. Nothing is written to the lesson until the
+// admin clicks Apply (no auto-save). The optional checkbox additionally feeds
+// the video summary into AI Knowledge via the shared, tenant-scoped ingest path.
+// ═══════════════════════════════════════════════
+interface GenerateReviewModalProps {
+ draft: GeneratedDraft;
+ onApply: (draft: GeneratedDraft, addToKnowledge: boolean) => Promise<void> | void;
+ onClose: () => void;
+}
+
+function GenerateReviewModal({ draft, onApply, onClose }: GenerateReviewModalProps) {
+ const [d, setD] = useState<GeneratedDraft>(draft);
+ const [addToKnowledge, setAddToKnowledge] = useState<boolean>(false);
+ const [applying, setApplying] = useState<boolean>(false);
+ const set = <K extends keyof GeneratedDraft>(k: K, v: GeneratedDraft[K]): void => setD((prev) => ({ ...prev, [k]: v }));
+
+ const handleApply = async (): Promise<void> => {
+ setApplying(true);
+ try { await onApply(d, addToKnowledge); } finally { setApplying(false); }
+ onClose();
+ };
+
+ return (
+ <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+ <div style={{ background: CARD, borderRadius: 20, width: "100%", maxWidth: 640, maxHeight: "88vh", overflow: "hidden", display: "flex", flexDirection: "column", boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}>
+ <div style={{ padding: "18px 20px", borderBottom: `1px solid ${BORDER}`, display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+ <div style={{ display: "flex", gap: 10 }}>
+ <div style={{ width: 34, height: 34, borderRadius: "50%", background: GOLD_LIGHT, border: `1.5px solid ${GOLD}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+ <Sparkles size={17} color={GOLD} />
+ </div>
+ <div>
+ <div style={{ fontWeight: 800, fontSize: 17, color: TEXT }}>Review AI-generated content</div>
+ <div style={{ fontSize: 12, color: TEXT2, marginTop: 2 }}>Edit anything below, then apply it to your lesson. Nothing is saved until you apply.</div>
+ </div>
+ </div>
+ <button style={{ background: "none", border: "none", color: TEXT2, cursor: "pointer", fontSize: 20, lineHeight: 1 }} onClick={onClose}>✕</button>
+ </div>
+
+ <div style={{ overflowY: "auto", padding: 20, flex: 1, display: "flex", flexDirection: "column", gap: 16 }}>
+ <div style={s.row2}>
+ <Field label="Lesson Title" value={d.title} onChange={(v) => set("title", v)} placeholder="e.g. The Power of Grace" />
+ <Field label="Video Duration" value={d.duration} onChange={(v) => set("duration", v)} placeholder="e.g. 34 min" />
+ </div>
+ <Field label="Summary" value={d.summary} onChange={(v) => set("summary", v)} textarea placeholder="Brief summary of this lesson..." />
+ <div>
+ <label style={s.label}>Teaching Outline</label>
+ <OutlineEditor items={d.outline} onChange={(v) => set("outline", v)} />
+ </div>
+ <Field label="Scripture Reference" value={d.scripture} onChange={(v) => set("scripture", v)} placeholder="e.g. John 1:14" />
+ <div>
+ <label style={s.label}>Quiz</label>
+ <QuizEditor items={d.quiz} onChange={(v) => set("quiz", v)} />
+ </div>
+
+ {/* Optional: embed the video summary into AI Knowledge (reused RAG path) */}
+ <div style={{ borderTop: `1px solid ${BORDER}`, paddingTop: 16 }}>
+ <div onClick={() => setAddToKnowledge((v) => !v)}
+ style={{ display: "flex", alignItems: "flex-start", gap: 12, cursor: "pointer", padding: "12px 14px", borderRadius: 12, border: `1.5px solid ${addToKnowledge ? GOLD : BORDER}`, background: addToKnowledge ? GOLD_LIGHT : CARD }}>
+ <div style={{ width: 20, height: 20, borderRadius: 6, border: `2px solid ${addToKnowledge ? GOLD : BORDER}`, background: addToKnowledge ? GOLD : "transparent", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1 }}>
+ {addToKnowledge && <span style={{ color: "#fff", fontSize: 11, fontWeight: 700 }}>✓</span>}
+ </div>
+ <div>
+ <div style={{ fontWeight: 700, fontSize: 14, color: TEXT }}>Add this video&apos;s summary to AI Knowledge</div>
+ <div style={{ fontSize: 12, color: TEXT2, marginTop: 2 }}>Lets the AI chat answer questions from this lesson. Optional — embeds under your ministry only.</div>
+ </div>
+ </div>
+ {addToKnowledge && (
+ <div style={{ marginTop: 12 }}>
+ <Field label="Knowledge summary (what gets embedded)" value={d.videoSummary} onChange={(v) => set("videoSummary", v)} textarea placeholder="Plain-text recap of the teaching..." />
+ </div>
+ )}
+ </div>
+ </div>
+
+ <div style={{ padding: "14px 20px", borderTop: `1px solid ${BORDER}`, display: "flex", gap: 10 }}>
+ <button style={{ ...s.draftBtn, flex: 1 }} onClick={onClose} disabled={applying}>Cancel</button>
+ <button style={{ ...s.publishBtn, flex: 2 }} onClick={handleApply} disabled={applying}>
+ {applying ? "Applying…" : "Apply to lesson"}
+ </button>
+ </div>
+ </div>
+ </div>
+ );
+}
+
+// ═══════════════════════════════════════════════
 // LESSON CARD
 // ═══════════════════════════════════════════════
 interface LessonCardProps {
@@ -371,6 +475,84 @@ function LessonCard({ lesson, onChange, onRemove, authorsLibrary = [] }: LessonC
  const [open, setOpen] = useState<boolean>(false);
  const set = <K extends keyof Lesson>(k: K, v: Lesson[K]): void => onChange({ ...lesson, [k]: v });
  const lessonAuthor = authorsLibrary.find((a) => a.id === lesson.authorId);
+
+ // ── Generate-with-AI state ──
+ const [genLoading, setGenLoading] = useState<boolean>(false);
+ const [genError, setGenError] = useState<string | null>(null);
+ const [draft, setDraft] = useState<GeneratedDraft | null>(null);
+
+ // Watch the (existing) YouTube video and draft reviewable lesson fields. The
+ // Gemini key stays server-side — we only call our own routes. YouTube meta is
+ // best-effort (a missing key / private video just yields no duration), while a
+ // failed generation surfaces a clear "fill manually" message.
+ const handleGenerate = async (): Promise<void> => {
+ const url = lesson.youtubeUrl.trim();
+ if (!url) return;
+ setGenLoading(true); setGenError(null);
+ try {
+ const token = await auth.currentUser?.getIdToken();
+ const headers = { "Content-Type": "application/json", "Authorization": `Bearer ${token}` };
+ const [genRes, metaRes] = await Promise.all([
+ fetch("/api/lesson-generate", { method: "POST", headers, body: JSON.stringify({ url }) }),
+ fetch("/api/youtube-meta", { method: "POST", headers, body: JSON.stringify({ url }) }).catch(() => null),
+ ]);
+
+ const genData = await genRes.json().catch(() => ({}));
+ if (!genRes.ok || !genData.lesson) {
+ throw new Error(genData.error || "This video could not be processed. Please fill the lesson in manually.");
+ }
+ const metaData = metaRes && metaRes.ok ? await metaRes.json().catch(() => ({})) : {};
+ const gen = genData.lesson;
+
+ setDraft({
+ title: gen.title || metaData.title || "",
+ duration: metaData.duration || "",
+ summary: gen.summary || "",
+ outline: Array.isArray(gen.outline)
+ ? gen.outline.map((o: any) => ({ id: uid(), title: o?.title || "", text: o?.text || "" }))
+ : [],
+ scripture: gen.scripture || "",
+ quiz: Array.isArray(gen.quiz)
+ ? gen.quiz.map((q: any) => ({
+ id: uid(),
+ q: q?.q || "",
+ options: Array.isArray(q?.options)
+ ? q.options.map((op: any) => ({ id: uid(), text: op?.text || "", correct: !!op?.correct }))
+ : [],
+ }))
+ : [],
+ videoSummary: gen.videoSummary || gen.summary || "",
+ });
+ } catch (e) {
+ setGenError(e instanceof Error ? e.message : "Generation failed. Please fill the lesson in manually.");
+ } finally {
+ setGenLoading(false);
+ }
+ };
+
+ // Apply the reviewed draft to the lesson in ONE onChange (state here isn't
+ // functional, so separate set() calls would clobber each other). Empty fields
+ // fall back to the lesson's current value so a blank draft never wipes data.
+ const applyGen = async (dr: GeneratedDraft, addToKnowledge: boolean): Promise<void> => {
+ onChange({
+ ...lesson,
+ title: dr.title.trim() || lesson.title,
+ duration: dr.duration.trim() || lesson.duration,
+ summary: dr.summary.trim() || lesson.summary,
+ outline: dr.outline.length ? dr.outline : lesson.outline,
+ scripture: dr.scripture.trim() || lesson.scripture,
+ quiz: dr.quiz.length ? dr.quiz : lesson.quiz,
+ });
+ // Optional AI-Knowledge embed via the shared, tenant-scoped ingest path.
+ // Degrades gracefully — the lesson fields above already applied regardless.
+ if (addToKnowledge && dr.videoSummary.trim()) {
+ const kbTitle = (dr.title || lesson.title || "Lesson video").trim();
+ const result = await ingestTextSource(dr.videoSummary, kbTitle, "text");
+ if (!result.ok) {
+ notifyError("Lesson applied, but adding to AI Knowledge failed", result.error || "Embedding failed");
+ }
+ }
+ };
  return (
  <div style={{ background: "#FAF8F5", border: `1.5px solid ${BORDER}`, borderRadius: 12, marginBottom: 8, overflow: "hidden" }}>
  <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 14px", cursor: "pointer" }} onClick={() => setOpen((o) => !o)}>
@@ -407,10 +589,19 @@ function LessonCard({ lesson, onChange, onRemove, authorsLibrary = [] }: LessonC
  <div style={{ flex: 1 }}>
  <Field label="YouTube URL" value={lesson.youtubeUrl} onChange={(v) => set("youtubeUrl", v)} placeholder="https://youtube.com/watch?v=..." />
  </div>
- <button type="button" title="Coming soon — watches the video and drafts summary, outline, scripture & quiz" style={s.aiBtn}>
- <Sparkles size={15} /> Generate with AI
+ <button type="button"
+ onClick={handleGenerate}
+ disabled={!lesson.youtubeUrl.trim() || genLoading}
+ title={lesson.youtubeUrl.trim() ? "Watch the video and draft summary, outline, scripture & quiz" : "Paste a YouTube URL first"}
+ style={s.aiBtn}>
+ <Sparkles size={15} /> {genLoading ? "Generating…" : "Generate with AI"}
  </button>
  </div>
+ {genError && (
+ <div style={{ fontSize: 12.5, color: RED, background: RED_BG, border: `1px solid ${RED}`, borderRadius: 8, padding: "8px 11px", marginTop: -8 }}>
+ {genError}
+ </div>
+ )}
  <Field label="Summary" value={lesson.summary} onChange={(v) => set("summary", v)} textarea placeholder="Brief summary of this lesson..." />
  <div>
  <label style={s.label}>Teaching Outline</label>
@@ -429,6 +620,13 @@ function LessonCard({ lesson, onChange, onRemove, authorsLibrary = [] }: LessonC
  </div>
  <Field label="Teacher Notes" value={lesson.teacherNote} onChange={(v) => set("teacherNote", v)} textarea placeholder="Private notes for this session..." />
  </div>
+ )}
+ {draft && (
+ <GenerateReviewModal
+ draft={draft}
+ onApply={applyGen}
+ onClose={() => setDraft(null)}
+ />
  )}
  </div>
  );

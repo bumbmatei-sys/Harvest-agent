@@ -1,10 +1,13 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Upload, Search, Trash2, Sparkles, Database } from 'lucide-react';
-import { db, auth } from '../firebase';
-import { collection, addDoc, serverTimestamp, query, where, getDocs, getDoc, deleteDoc, onSnapshot, updateDoc, doc, type DocumentReference } from 'firebase/firestore';
+import { db } from '../firebase';
+import { collection, addDoc, serverTimestamp, query, where, getDocs, getDoc, deleteDoc, onSnapshot, doc, type DocumentReference } from 'firebase/firestore';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { notifyError } from '../utils/notify';
 import { getTenantScope, getWriteTenantScope } from '../utils/tenant-scope';
+// Chunk → embed → save pipeline lives in one place so the course builder's
+// "add to AI Knowledge" reuses this EXACT tenant-scoped write path.
+import { chunkText, chunkAndEmbed, finalizeSource, markSourceError } from '../utils/rag-ingest';
 
 
 // Gemini API calls are proxied through /api/gemini to keep the API key server-side
@@ -37,101 +40,6 @@ const TYPE_META: Record<string, any> = {
  pdf: { label:"PDF" },
  sheet: { label:"Sheet" },
 };
-
-// ── Chunk text into ~500 char pieces ──────────
-function chunkText(text: string, size = 500) {
- const sentences = text.match(/[^.!?\n]+[.!?\n]*/g) || [text];
- const chunks = [];
- let current = "";
- for (const sentence of sentences) {
- if ((current + sentence).length > size && current.length > 0) {
- chunks.push(current.trim());
- current = sentence;
- } else {
- current += sentence;
- }
- }
- if (current.trim()) chunks.push(current.trim());
- return chunks.filter(c => c.length > 10);
-}
-
-// ── Chunking + embedding + Firebase save
-// Returns how many chunks were ACTUALLY embedded and written (not just the
-// intended count) plus the first error encountered, so the caller can reflect a
-// real success/failure state instead of leaving a source stuck on "Processing…".
-async function chunkAndEmbed(
- text: string, sourceId: string, title: string, type: string, tenantId?: string | null
-): Promise<{ written: number; total: number; error: string | null }> {
- const chunks = chunkText(text);
- let written = 0;
- let firstError: string | null = null;
-
- for (const chunk of chunks) {
-   try {
-     const res = await fetch('/api/gemini', {
-       method: 'POST',
-       headers: {
-         'Content-Type': 'application/json',
-         'Authorization': `Bearer ${await auth.currentUser?.getIdToken()}`,
-       },
-       body: JSON.stringify({ action: 'embed', text: chunk }),
-     });
-     const data = await res.json().catch(() => ({}));
-     if (!res.ok) throw new Error(data.error || `Embed request failed (HTTP ${res.status})`);
-
-     const vector = data.vector;
-     if (!vector) throw new Error('Embedding returned no vector');
-
-     await addDoc(collection(db, "rag_chunks"), {
-       sourceId,
-       title,
-       type,
-       chunk,
-       vector,
-       createdAt: serverTimestamp(),
-       // Carry the source's concrete tenantId so the chunk passes the
-       // rag_chunks create rule (requestHasCorrectTenant + uploadRag) and is
-       // readable by the tenant's admins.
-       tenantId: tenantId ?? null
-     });
-     written++;
-   } catch (error) {
-     if (!firstError) firstError = error instanceof Error ? error.message : String(error);
-     try { handleFirestoreError(error, OperationType.WRITE, `rag_chunks`); } catch (e) { console.error(e); }
-   }
- }
-
- return { written, total: chunks.length, error: firstError };
-}
-
-// Reflect the real embedding outcome on the source doc so the row leaves
-// "Processing…" for a definite Embedded (real chunk count) or Failed state.
-//
-// We updateDoc the source's OWN DocumentReference (returned by the addDoc that
-// created it) instead of looking it up again. A `where('sourceId','==',…)`
-// lookup is NOT tenant-scoped, so Firestore's "rules are not filters" analysis
-// rejects it for everyone but a super admin (the rag_sources read rule keys off
-// resource.data.tenantId) — that denied read was what surfaced as "Failed to
-// add knowledge source" for a tenant owner. Writing straight to the ref needs
-// no read and passes the update rule (hasPermission('uploadRag')).
-async function finalizeSource(sourceRef: DocumentReference, written: number, error: string | null) {
- if (written > 0) {
-   await updateDoc(sourceRef, { status: "processed", chunks: written, error: null });
- } else {
-   await updateDoc(sourceRef, { status: "error", chunks: 0, error: error || 'Embedding failed' });
- }
-}
-
-// Best-effort: flip a created source row to a failed state so a thrown error
-// never leaves it hanging on "Processing…" with no signal to the user. Uses the
-// source's own ref (see finalizeSource) — null when the source was never
-// created (the addDoc itself threw), in which case there is nothing to mark.
-async function markSourceError(sourceRef: DocumentReference | null, message: string) {
- if (!sourceRef) return;
- try {
-   await updateDoc(sourceRef, { status: "error", error: message });
- } catch (e) { console.error(e); }
-}
 
 // ── Read file as text ──────────────────────────
 function readFileAsText(file: File): Promise<string> {
