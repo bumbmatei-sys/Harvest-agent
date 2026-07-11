@@ -31,6 +31,13 @@ export interface QuizQuestion {
   options: QuizOption[];
 }
 
+export interface QuizAttempt {
+  score: number;
+  total: number;
+  passed: boolean;
+  answeredAt: string;
+}
+
 export interface Lesson {
   id: string;
   youtubeId?: string;
