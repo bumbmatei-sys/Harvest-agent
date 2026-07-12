@@ -30,6 +30,13 @@ import { DesktopContainer } from './layout/DesktopLayout';
 const PLATFORM_TENANT_ID = process.env.NEXT_PUBLIC_PLATFORM_TENANT_ID || 'harvest';
 const DEFAULT_LOGO = 'https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png';
 
+// The server (RootLayout) stamps a white-label tenant's logo onto <body> so the
+// first client render can use it instead of the Harvest DEFAULT_LOGO — otherwise
+// the sidebar logo flashes Harvest until the async branding fetch resolves. Only
+// present on white-label hosts; null on apex/platform.
+const getServerTenantLogo = (): string | null =>
+  typeof document !== 'undefined' ? document.body?.dataset?.tenantLogo || null : null;
+
 // Icons for the former top-tabs, now also surfaced as desktop-only sidebar items (Phase 1.5).
 const TOP_TAB_ICONS: Record<string, any> = {
   news: Newspaper,
@@ -53,7 +60,12 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
   // name + logo; the platform / super-admin view keeps the "Harvest" brand.
   const isWhiteLabel = !!tenantId && tenantId !== PLATFORM_TENANT_ID;
   const displayName = isWhiteLabel && tenantName ? tenantName : 'Harvest';
-  const displayLogo = isWhiteLabel && branding?.logo ? branding.logo : DEFAULT_LOGO;
+  // Prefer the client-loaded branding logo once available; before it resolves,
+  // fall back to the server-stamped tenant logo (white-label hosts) so the first
+  // paint is already tenant-branded, and only then to the Harvest DEFAULT_LOGO.
+  const displayLogo = isWhiteLabel && branding?.logo
+    ? branding.logo
+    : (getServerTenantLogo() || DEFAULT_LOGO);
   // "Ask {ministry}" — the AI assistant is branded with the ministry's short name
   // on the desktop sidebar, the desktop top-bar title, and the AI page hero.
   // Mobile's bottom-tab keeps the short "Chat" label to avoid crowding the 64px
