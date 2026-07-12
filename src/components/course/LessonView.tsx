@@ -1,11 +1,11 @@
 "use client";
 import React, { useEffect, useState } from "react";
+import ReactPlayer from "react-player/youtube";
 import { Course, Lesson, Author, QuizAttempt } from "../../types/course.types";
 import { getAllLessons } from "../../utils/course.utils";
 import { GOLD, GREEN, GREEN_BG } from "../../utils/course.constants";
 import { sanitizeHtml } from "../../utils/sanitize";
 import { QuizPanel } from "./QuizPanel";
-import { LessonVideoPlayer } from "./LessonVideoPlayer";
 
 const BASE_TABS = ["outline", "notes", "resources"] as const;
 type TabId = typeof BASE_TABS[number] | "quiz";
@@ -74,7 +74,30 @@ export function LessonView({ course, lesson, authors, onBack, onComplete, comple
       </div>
 
       {/* Video player */}
-      <LessonVideoPlayer url={videoUrl} />
+      <div className="relative w-full bg-black lg:rounded-[var(--ds-radius-card)] lg:overflow-hidden lg:mt-4" style={{ aspectRatio: "16/9" }}>
+        {videoUrl ? (
+          <ReactPlayer
+            url={videoUrl}
+            width="100%"
+            height="100%"
+            controls
+            playing={false}
+            config={{
+              playerVars: {
+                modestbranding: 1,
+                rel: 0,
+              },
+            }}
+          />
+        ) : (
+          <div className="w-full h-full flex flex-col items-center justify-center text-warm-brown">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="mb-2 text-warm-brown">
+              <rect x="2" y="3" width="20" height="14" rx="2" /><path d="m8 21 4-4 4 4" />
+            </svg>
+            <span className="text-sm font-medium">No video content</span>
+          </div>
+        )}
+      </div>
 
       {/* Content */}
       <div className="px-5">
