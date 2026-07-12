@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
-import { collection, query, orderBy, onSnapshot, doc, updateDoc, arrayUnion, arrayRemove, limit, where, getDoc, getDocs, addDoc, deleteDoc, deleteField, serverTimestamp, Timestamp } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, doc, updateDoc, arrayUnion, arrayRemove, limit, where, getDoc, getDocs, getCountFromServer, addDoc, deleteDoc, deleteField, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { Calendar as CalendarIcon, ThumbsUp, Check, ChevronRight, ChevronLeft, FileText, Tag, Calendar, MessageSquare, Send, MapPin, Globe, HeartHandshake, Paperclip, X } from 'lucide-react';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
@@ -298,6 +298,11 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
   const [commentsOpen, setCommentsOpen] = useState<Record<string, boolean>>({});
   const [commentInputs, setCommentInputs] = useState<Record<string, string>>({});
   const [postComments, setPostComments] = useState<Record<string, Comment[]>>({});
+  // Comment counts — fetched per post via a cheap aggregation query so the
+  // count is correct before a post is ever expanded (postComments is only
+  // populated for expanded posts). Kept in sync on add/delete below.
+  const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
+  const fetchedCommentCountIds = useRef<Set<string>>(new Set());
 
   // Admin moderation state — kebab menus on posts/comments.
   const [canManage, setCanManage] = useState(false);
@@ -512,6 +517,36 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
     fetchUserContext();
     return () => { cancelled = true; };
   }, []);
+
+  // Fetch each visible post's comment count via server-side aggregation
+  // (no schema change, no maintained counter field — mirrors the public
+  // /post page's adminDb `.collection('comments').count().get()` pattern).
+  // Only fetches ids not yet seen this session; add/delete keep counts in sync.
+  useEffect(() => {
+    const missing = allPosts.filter(p => !fetchedCommentCountIds.current.has(p.id));
+    if (missing.length === 0) return;
+    missing.forEach(p => fetchedCommentCountIds.current.add(p.id));
+    let cancelled = false;
+    (async () => {
+      const entries = await Promise.all(missing.map(async (post) => {
+        try {
+          const snap = await getCountFromServer(collection(db, 'community_posts', post.id, 'comments'));
+          return [post.id, snap.data().count] as const;
+        } catch (error) {
+          console.error('Failed to fetch comment count:', error);
+          return [post.id, 0] as const;
+        }
+      }));
+      if (!cancelled) {
+        setCommentCounts(prev => {
+          const next = { ...prev };
+          entries.forEach(([id, count]) => { next[id] = count; });
+          return next;
+        });
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [allPosts]);
 
   // Subscribe to comments for open posts
   useEffect(() => {
@@ -782,15 +817,22 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
     }
     try {
       const tenantId = await getTenantScope();
+      // Resolve author from the user doc (mirrors the post path's #147 fix —
+      // Auth displayName/photoURL are often blank; the real profile is on the doc).
+      const userSnap = await getDoc(doc(db, 'users', user.uid));
+      const userData = userSnap.exists() ? userSnap.data() : null;
+      const authorName = userData?.displayName || userData?.name || user.displayName || 'Member';
+      const authorPhoto = userData?.photoURL || user.photoURL || '';
       await addDoc(collection(db, 'community_posts', postId, 'comments'), {
         authorId: user.uid,
-        authorName: user.displayName || 'Member',
-        authorPhoto: user.photoURL || '',
+        authorName,
+        authorPhoto,
         content: text,
         createdAt: new Date().toISOString(),
         tenantId: tenantId || null,
       });
       setCommentInputs(prev => ({ ...prev, [postId]: '' }));
+      setCommentCounts(prev => ({ ...prev, [postId]: (prev[postId] ?? 0) + 1 }));
     } catch (error) {
       // A rejected write is otherwise silent — Firestore's latency compensation
       // shows the comment locally, then rolls it back ("appears then disappears").
@@ -808,6 +850,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
       if (comment.authorId === uid) {
         // Author deleting their own comment — firestore.rules allows this directly.
         await deleteDoc(doc(db, 'community_posts', postId, 'comments', comment.id));
+        setCommentCounts(prev => ({ ...prev, [postId]: Math.max(0, (prev[postId] ?? 1) - 1) }));
         return;
       }
       if (!canManage) return;
@@ -821,6 +864,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
         body: JSON.stringify({ postId, commentId: comment.id }),
       });
       if (!res.ok) throw new Error('Failed to delete comment');
+      setCommentCounts(prev => ({ ...prev, [postId]: Math.max(0, (prev[postId] ?? 1) - 1) }));
     } catch (error) {
       try { handleFirestoreError(error, OperationType.DELETE, 'comments'); } catch (e) { console.error(e); }
     }
@@ -1309,7 +1353,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
                 }`}
               >
                 <MessageSquare size={16} />
-                <span>{postComments[post.id]?.length ?? 0} Comments</span>
+                <span>{commentCounts[post.id] ?? postComments[post.id]?.length ?? 0} Comments</span>
               </button>
               <ShareButton
                 url={shareBase ? `${shareBase}/post/${post.id}` : ''}
