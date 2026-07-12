@@ -3,9 +3,16 @@ import type { NextRequest } from 'next/server';
 import { requireAdmin } from '@/lib/api-auth';
 import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
-import { GoogleGenAI } from '@google/genai';
 
 export const dynamic = 'force-dynamic';
+
+// MiMo (Xiaomi) Token Plan chat-completions endpoint — same provider as the
+// newsletter generator and the AI RAG chat. See src/app/api/gemini/route.ts
+// for the full contract on MIMO_BASE_URL.
+const MIMO_CHAT_URL = `${(
+  process.env.MIMO_BASE_URL || 'https://token-plan-cn.xiaomimimo.com/v1'
+).replace(/\/+$/, '')}/chat/completions`;
+const MIMO_MODEL = 'mimo-v2.5';
 
 /** Compute the next scheduled timestamp from frequency settings. */
 export function computeNextScheduled(
@@ -78,8 +85,7 @@ export async function generateAndSavePost(
   tenantId: string,
   topicHint: string,
 ): Promise<{ postId: string; title: string }> {
-  const geminiKey = process.env.GEMINI_API_KEY;
-  if (!geminiKey) throw new Error('GEMINI_API_KEY not configured');
+  if (!process.env.MIMO_API_KEY) throw new Error('MIMO_API_KEY not configured');
 
   // 1. Fetch up to 25 rag_chunks for this tenant (sample for context)
   const chunksSnap = await adminDb
@@ -141,18 +147,32 @@ Return ONLY a valid JSON object with NO markdown, NO backticks, NO preamble. Sch
     - No keyword stuffing — reads naturally"
 }`;
 
-  // 3. Call Gemini for generation
-  const ai = new GoogleGenAI({ apiKey: geminiKey });
-  const result = await ai.models.generateContent({
-    model: 'gemini-2.0-flash',
-    contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    // responseMimeType keeps the model from wrapping JSON in markdown fences;
-    // a higher token ceiling avoids truncating the ~800-1200 word article into
-    // invalid JSON.
-    config: { temperature: 0.7, maxOutputTokens: 8192, responseMimeType: 'application/json' },
+  // 3. Call MiMo for generation
+  const mimoRes = await fetch(MIMO_CHAT_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${process.env.MIMO_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: MIMO_MODEL,
+      messages: [{ role: 'user', content: prompt }],
+      // MiMo has no responseMimeType — the prompt instructs strict JSON, and
+      // the fence-stripping/parse below handles any accidental wrapping. The
+      // higher token ceiling avoids truncating the ~800-1200 word article.
+      max_completion_tokens: 8192,
+      temperature: 0.7,
+    }),
   });
 
-  const rawText = result.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  if (!mimoRes.ok) {
+    const errBody = await mimoRes.text();
+    console.error('MiMo API error:', mimoRes.status, errBody);
+    throw new Error('AI service error while generating the article. Please try again.');
+  }
+
+  const mimoData = await mimoRes.json();
+  const rawText = mimoData.choices?.[0]?.message?.content || '';
 
   // 4. Parse JSON response — strip any accidental markdown fences
   let parsed: any;
