@@ -6,6 +6,8 @@ import { db, auth } from '../firebase';
 import { Calendar as CalendarIcon, ThumbsUp, Check, ChevronRight, FileText, Tag, Calendar, MessageSquare, Send, MapPin, Globe, HeartHandshake } from 'lucide-react';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { getTenantScope } from '../utils/tenant-scope';
+import { useShareBaseUrl } from '../utils/share-url';
+import ShareButton from './ShareButton';
 import { isSuperAdminEmail } from '../utils/super-admins';
 import { getOrCreateDm } from '../lib/dm';
 import CampaignWidget from './CampaignWidget';
@@ -102,6 +104,7 @@ interface NewsTabProps {
 
 const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantId = null, onOpenLivestream, onGoToPartner, onOpenMessages }) => {
   const [allPosts, setAllPosts] = useState<CommunityPost[]>([]);
+  const shareBase = useShareBaseUrl();
   const [articles, setArticles] = useState<BlogPost[]>([]);
   const [adminEvents, setAdminEvents] = useState<AdminEvent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -780,6 +783,11 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
                 <MessageSquare size={16} />
                 <span>{postComments[post.id]?.length ?? 0} Comments</span>
               </button>
+              <ShareButton
+                url={shareBase ? `${shareBase}/post/${post.id}` : ''}
+                title={post.authorName ? `${post.authorName}'s post` : 'Community post'}
+                className="ml-auto"
+              />
             </div>
 
             {/* Comments Section */}

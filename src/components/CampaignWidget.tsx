@@ -4,6 +4,8 @@ import Image from 'next/image';
 import { collection, query, where, onSnapshot, limit } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { getTenantScope } from '../utils/tenant-scope';
+import { usePublicShareUrl } from '../utils/share-url';
+import ShareButton from './ShareButton';
 import { Heart, Clock, ChevronLeft, Loader2 } from 'lucide-react';
 import { HeroBand, Eyebrow } from './member/desktopKit';
 
@@ -18,6 +20,7 @@ interface Campaign {
   isActive: boolean;
   donateUrl?: string;
   tenantId?: string;
+  campaignType?: string;
 }
 
 interface CampaignWidgetProps {
@@ -36,6 +39,12 @@ const CampaignWidget: React.FC<CampaignWidgetProps> = ({ onDonate }) => {
   const [donorEmail, setDonorEmail] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [donateError, setDonateError] = useState('');
+  // Pledge campaigns have their own public page (/pledge/[id]); regular
+  // (fundraising) donation campaigns live at /campaign/[id] — mirror the routing
+  // the public pages enforce (src/app/campaign/[campaignId]/page.tsx:29).
+  const shareUrl = usePublicShareUrl(
+    campaign ? `/${campaign.campaignType === 'pledge' ? 'pledge' : 'campaign'}/${campaign.id}` : null,
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -233,6 +242,7 @@ const CampaignWidget: React.FC<CampaignWidgetProps> = ({ onDonate }) => {
               <ChevronLeft size={24} color="var(--brand-color, #B8962E)" strokeWidth={2.5} />
             </button>
             <h2 className="text-base font-bold text-earth flex-1 truncate font-display">{campaign.title}</h2>
+            <ShareButton url={shareUrl} title={campaign.title} />
           </div>
 
           {/* Cover Image */}

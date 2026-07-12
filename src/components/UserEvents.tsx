@@ -6,6 +6,8 @@ import QRCode from 'qrcode';
 import { db, auth } from '../firebase';
 import { getTenantScope } from '../utils/tenant-scope';
 import { authFetch } from '../utils/auth-fetch';
+import { useShareBaseUrl } from '../utils/share-url';
+import ShareButton from './ShareButton';
 
 const BRAND = 'var(--brand-color, #B8962E)';
 
@@ -63,6 +65,7 @@ const UserEvents: React.FC<UserEventsProps> = ({ onBack }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [ticketView, setTicketView] = useState<EventRow | null>(null);
+  const shareBase = useShareBaseUrl();
 
   useEffect(() => {
     if (!auth.currentUser) { setLoading(false); return; }
@@ -235,11 +238,11 @@ const UserEvents: React.FC<UserEventsProps> = ({ onBack }) => {
                     ) : null}
                   </div>
 
-                  <div className="mt-3">
+                  <div className="mt-3 flex items-center gap-2">
                     {ticketed ? (
                       <button
                         onClick={() => setTicketView(r)}
-                        className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-white text-sm font-semibold"
+                        className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-white text-sm font-semibold"
                         style={{ backgroundColor: BRAND }}
                       >
                         <QrCode size={15} /> View ticket
@@ -247,12 +250,17 @@ const UserEvents: React.FC<UserEventsProps> = ({ onBack }) => {
                     ) : r.registrationEnabled ? (
                       <button
                         onClick={() => { window.location.href = `/event/${r.id}`; }}
-                        className="w-full py-2.5 rounded-xl text-sm font-semibold border"
+                        className="flex-1 py-2.5 rounded-xl text-sm font-semibold border"
                         style={{ borderColor: BRAND, color: BRAND }}
                       >
                         Register
                       </button>
                     ) : null}
+                    <ShareButton
+                      url={shareBase ? `${shareBase}/event/${r.id}` : ''}
+                      title={r.title}
+                      className="!py-2.5 ml-auto"
+                    />
                   </div>
                 </div>
               );
