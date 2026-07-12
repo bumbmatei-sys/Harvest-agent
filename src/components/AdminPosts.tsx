@@ -122,11 +122,18 @@ const AdminPosts: React.FC<AdminPostsProps> = ({ userRole, userPermissions }) =>
  const user = auth.currentUser;
  if (!user) throw new Error('Not authenticated');
 
+ // Auth's displayName/photoURL are blank for these accounts — the real
+ // profile info lives on the user's Firestore doc (see PersonalInformationModal).
+ const userSnap = await getDoc(doc(db, 'users', user.uid));
+ const userData = userSnap.exists() ? userSnap.data() : null;
+ const authorName = userData?.displayName || userData?.name || user.displayName || 'Admin';
+ const authorPhoto = userData?.photoURL || user.photoURL || '';
+
  const postData: any = {
  type: activeTab,
  authorId: user.uid,
- authorName: user.displayName || 'Admin',
- authorPhoto: user.photoURL || '',
+ authorName,
+ authorPhoto,
  createdAt: new Date().toISOString(),
  content: content.trim(),
         likes: [],

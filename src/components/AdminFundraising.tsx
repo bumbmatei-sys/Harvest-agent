@@ -9,6 +9,7 @@ import {
   query, where, onSnapshot, limit, Timestamp,
 } from 'firebase/firestore';
 import { db } from '../firebase';
+import { ImageUpload } from './ImageUpload';
 import { notifyError } from '../utils/notify';
 import { authFetch } from '../utils/auth-fetch';
 import PaymentSection from './settings/PaymentSection';
@@ -561,10 +562,8 @@ const AdminFundraising: React.FC<AdminFundraisingProps> = ({ initialCampaignId, 
                 </div>
               )}
               <div>
-                <label className="text-xs font-semibold text-earth mb-1.5 block">Cover image URL</label>
-                <input value={form.coverImage || ''} onChange={(e) => setForm({ ...form, coverImage: e.target.value })}
-                  className="w-full border border-stone-200 rounded-brand px-3.5 py-2.5 text-sm text-earth focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent"
-                  placeholder="https://…" />
+                <label className="text-xs font-semibold text-earth mb-1.5 block">Cover image</label>
+                <ImageUpload value={form.coverImage || ''} onChange={(url) => setForm({ ...form, coverImage: url })} label="Add cover image" />
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium text-earth">Set as active campaign</span>

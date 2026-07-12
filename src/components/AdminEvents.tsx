@@ -11,6 +11,7 @@ import {
 } from 'firebase/firestore';
 import QRCode from 'qrcode';
 import { db, auth } from '../firebase';
+import { ImageUpload } from './ImageUpload';
 import { sortByTime } from '../utils/query-helpers';
 import { notifyError } from '../utils/notify';
 import { useAdminHeader } from './AdminScreenHeader';
@@ -409,9 +410,8 @@ const AdminEvents: React.FC = () => {
                 placeholder="What is this event about?" />
             </div>
             <div>
-              <label className="text-xs font-semibold text-[color:var(--text-body)] mb-1.5 block">Cover Image URL</label>
-              <input value={form.coverImage} onChange={e => setForm({ ...form, coverImage: e.target.value })}
-                className="w-full border border-stone-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold" placeholder="https://..." />
+              <label className="text-xs font-semibold text-[color:var(--text-body)] mb-1.5 block">Cover Image</label>
+              <ImageUpload value={form.coverImage || ''} onChange={url => setForm({ ...form, coverImage: url })} label="Add cover image" />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
