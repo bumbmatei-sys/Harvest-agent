@@ -135,8 +135,8 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
 
   // Single-page, in-shell editor: title + TipTap content (left) · post settings
   // and featured image (right). "Publish" honours the selected status (schedules
-  // when a date is set); "Save draft" always stores a draft.
-  const handlePublish = () => handleSave(scheduledDate || status === 'scheduled' ? 'scheduled' : 'published');
+  // only when Status is explicitly "Scheduled"); "Save draft" always stores a draft.
+  const handlePublish = () => handleSave(status === 'scheduled' ? 'scheduled' : 'published');
 
   return (
     <div className="w-full max-w-6xl mx-auto pb-10">
