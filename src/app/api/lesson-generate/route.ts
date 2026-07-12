@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
 
 // Gemini model with native video (incl. YouTube URL) understanding.
-const VIDEO_MODEL = 'gemini-2.5-flash';
+const VIDEO_MODEL = 'gemini-3.5-flash';
 
 // The lesson-content contract. STRICT JSON so the client can map it straight
 // onto the lesson editor's fields (title/summary/outline/quiz/scripture) and,
