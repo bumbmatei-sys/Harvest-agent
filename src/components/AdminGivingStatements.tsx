@@ -18,6 +18,7 @@ interface GenerationResult {
   failed?: number;
   emailConfigured?: boolean;
   message?: string;
+  isError?: boolean;
 }
 
 interface StatementStatus {
@@ -110,11 +111,11 @@ const AdminGivingStatements: React.FC = () => {
         body: JSON.stringify({ year, donorEmail: singleDonor ? (donorEmail.trim() || undefined) : undefined, send: true }),
       });
       const d = await resp.json();
-      if (!resp.ok) { setResults({ generated: 0, sent: 0, totalDonors: 0, message: d.error || 'Failed to generate.' }); return; }
-      setResults(d);
+      if (!resp.ok) { setResults({ generated: 0, sent: 0, totalDonors: 0, message: d.error || 'Failed to generate.', isError: true }); return; }
+      setResults({ ...d, isError: false });
       await loadStatuses();
     } catch (e: any) {
-      setResults({ generated: 0, sent: 0, totalDonors: 0, message: e?.message || 'Failed to generate.' });
+      setResults({ generated: 0, sent: 0, totalDonors: 0, message: e?.message || 'Failed to generate.', isError: true });
     } finally {
       setGenerating(false);
     }
@@ -199,7 +200,15 @@ const AdminGivingStatements: React.FC = () => {
           {generating ? 'Generating…' : 'Generate & Send'}
         </button>
         {results && (
-          <div className={`p-3 rounded-xl text-sm ${results.message ? 'bg-amber-50 text-amber-700' : 'bg-green-50 text-green-700'}`}>
+          <div className={`p-3 rounded-xl text-sm ${
+            results.isError
+              ? 'bg-red-50 text-red-600'
+              : results.generated === 0 && results.message
+                ? 'bg-stone-100 text-warm-brown'
+                : results.message
+                  ? 'bg-amber-50 text-amber-700'
+                  : 'bg-green-50 text-green-700'
+          }`}>
             {results.message
               ? results.message
               : `Generated ${results.generated} statement(s), sent ${results.sent} email(s).${results.failed ? ` ${results.failed} failed.` : ''}`}
