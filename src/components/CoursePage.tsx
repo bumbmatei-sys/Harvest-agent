@@ -97,13 +97,19 @@ export default function CoursePage({
       }
 
       try {
+        // Tenant-scoped (same as authors/categories above): the courses read
+        // rule requires belongsToTenant(tenantId), so the query MUST filter by
+        // tenantId — a status-only query is rejected ("rules are not filters").
+        // Query by tenantId alone (single-field, no composite index) and apply
+        // the published-status filter client-side. A super admin in platform
+        // context (null) reads unscoped and filters status client-side too.
         const tenantId = await getTenantScope();
-        // Single-field filter only (status); tenant scoping applied client-side.
-        const coursesQuery = query(collection(db, "courses"), where("status", "==", "published"));
-        const coursesSnap = await getDocs(coursesQuery);
+        const coursesSnap = tenantId
+          ? await getDocs(query(collection(db, "courses"), where("tenantId", "==", tenantId)))
+          : await getDocs(collection(db, "courses"));
         const fetchedCourses: Course[] = [];
         coursesSnap.forEach((d) => {
-          if (tenantId && d.data().tenantId !== tenantId) return;
+          if (d.data().status !== "published") return;
           fetchedCourses.push({ id: d.id, ...d.data() } as Course);
         });
         setCourses(fetchedCourses);
