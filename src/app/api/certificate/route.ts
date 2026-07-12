@@ -182,6 +182,23 @@ function drawCentered(
   page.drawText(safe, { x: (width - w) / 2, y, size, font, color });
 }
 
+/**
+ * Draw `text` horizontally centered with extra letter-spacing (tracking),
+ * for refined all-caps eyebrow labels. WinAnsi-safe.
+ */
+function drawTrackedCentered(
+  page: any, text: string, y: number, size: number, font: PDFFont, color: any, width: number, tracking: number,
+): void {
+  const chars = sanitizePdfText(text).split('');
+  const widths = chars.map((ch) => font.widthOfTextAtSize(ch, size));
+  const totalW = widths.reduce((a, b) => a + b, 0) + tracking * Math.max(0, chars.length - 1);
+  let x = (width - totalW) / 2;
+  for (let i = 0; i < chars.length; i++) {
+    page.drawText(chars[i], { x, y, size, font, color });
+    x += widths[i] + tracking;
+  }
+}
+
 /** Draw a small outlined diamond flourish centered at (cx, cy). */
 function drawDiamond(page: any, cx: number, cy: number, r: number, color: any): void {
   const pts = [
@@ -189,6 +206,25 @@ function drawDiamond(page: any, cx: number, cy: number, r: number, color: any): 
   ];
   for (let i = 0; i < pts.length; i++) {
     page.drawLine({ start: pts[i], end: pts[(i + 1) % pts.length], thickness: 1.2, color });
+  }
+}
+
+/**
+ * Draw a right-angle corner ornament (an inward-pointing bracket) at each
+ * corner of the rectangle described by (x0,y0)-(x1,y1).
+ */
+function drawCornerOrnaments(
+  page: any, x0: number, y0: number, x1: number, y1: number, armLen: number, thickness: number, color: any,
+): void {
+  const corners = [
+    { x: x0, y: y0, dx: 1, dy: 1 },
+    { x: x1, y: y0, dx: -1, dy: 1 },
+    { x: x0, y: y1, dx: 1, dy: -1 },
+    { x: x1, y: y1, dx: -1, dy: -1 },
+  ];
+  for (const c of corners) {
+    page.drawLine({ start: { x: c.x, y: c.y }, end: { x: c.x + c.dx * armLen, y: c.y }, thickness, color });
+    page.drawLine({ start: { x: c.x, y: c.y }, end: { x: c.x, y: c.y + c.dy * armLen }, thickness, color });
   }
 }
 
@@ -203,11 +239,13 @@ async function buildCertificatePdf(data: CertData): Promise<Uint8Array> {
 
   const accent = rgb(data.accent.r, data.accent.g, data.accent.b);
 
-  // Decorative double border in the accent color.
-  page.drawRectangle({ x: 24, y: 24, width: W - 48, height: H - 48, borderColor: accent, borderWidth: 2 });
-  page.drawRectangle({ x: 32, y: 32, width: W - 64, height: H - 64, borderColor: accent, borderWidth: 0.75 });
+  // Frame: a single understated hairline rule, with crisp accent-color corner
+  // ornaments set slightly inside it — quieter and more crafted than the old
+  // double rectangle.
+  page.drawRectangle({ x: 28, y: 28, width: W - 56, height: H - 56, borderColor: FAINT, borderWidth: 0.75 });
+  drawCornerOrnaments(page, 40, 40, W - 40, H - 40, 26, 1.5, accent);
 
-  let y = H - 92;
+  let y = H - 106;
 
   // Branded logo (best-effort, already null on any failure) centered at the top.
   if (data.branded && data.logo) {
@@ -217,26 +255,27 @@ async function buildCertificatePdf(data: CertData): Promise<Uint8Array> {
       const scale = Math.min(maxW / img.width, maxH / img.height);
       const iw = img.width * scale, ih = img.height * scale;
       page.drawImage(img, { x: (W - iw) / 2, y: y - ih + 12, width: iw, height: ih });
-      y -= ih + 8;
+      y -= ih + 10;
     }
   }
 
   // Ministry wordmark (tenant name when branded, else neutral "Harvest").
-  drawCentered(page, data.ministryName, y, 15, helvBold, accent, W);
-  y -= 40;
+  drawCentered(page, data.ministryName, y, 14, helvBold, accent, W);
+  y -= 30;
 
-  // Accent flourish + eyebrow.
-  drawDiamond(page, W / 2, y + 4, 6, accent);
-  y -= 26;
-  drawCentered(page, 'CERTIFICATE OF COMPLETION', y, 12, helvBold, MUTED, W);
-  y -= 52;
+  // Accent flourish + eyebrow (letter-spaced for a refined label feel).
+  drawDiamond(page, W / 2, y + 4, 5, accent);
+  y -= 24;
+  drawTrackedCentered(page, 'CERTIFICATE OF COMPLETION', y, 11, helvBold, accent, W, 3.2);
+  y -= 64;
 
-  // Learner name (serif display).
-  drawCentered(page, data.learnerName, y, 34, serif, INK, W);
-  y -= 34;
+  // Learner name — the hero of the composition: larger, with generous air
+  // above and below.
+  drawCentered(page, data.learnerName, y, 40, serif, INK, W);
+  y -= 46;
 
   drawCentered(page, 'has successfully completed', y, 12, helv, MUTED, W);
-  y -= 34;
+  y -= 32;
 
   // Course title (bold), wrapped to two lines if very long.
   const titleSize = 20;
@@ -256,20 +295,25 @@ async function buildCertificatePdf(data: CertData): Promise<Uint8Array> {
     drawCentered(page, data.courseTitle, y, titleSize, helvBold, INK, W);
     y -= 26;
   }
-  y -= 8;
 
   if (data.teacherName) {
+    y -= 12;
     drawCentered(page, `under the teaching of ${data.teacherName}`, y, 13, serifItalic, INK, W);
-    y -= 30;
   }
 
-  // Short accent divider.
-  page.drawLine({ start: { x: W / 2 - 60, y: 120 }, end: { x: W / 2 + 60, y: 120 }, thickness: 1, color: accent });
+  // Divider + footer sit a fixed gap below wherever the content actually
+  // ended (title wraps to 1-2 lines; the teacher line is optional), so short
+  // and tall certificates both read as balanced instead of leaving a large
+  // empty gap above a footer pinned to an absolute position. A floor keeps
+  // the footer clear of the bottom frame when content runs long.
+  const dividerY = Math.max(y - 40, 148);
+  page.drawLine({ start: { x: W / 2 - 54, y: dividerY }, end: { x: W / 2 + 54, y: dividerY }, thickness: 1, color: accent });
 
-  // Footer: issue date · certificate number.
+  const footerRuleY = dividerY - 26;
+  page.drawLine({ start: { x: W / 2 - 90, y: footerRuleY }, end: { x: W / 2 + 90, y: footerRuleY }, thickness: 0.5, color: FAINT });
   const issued = data.issuedAt.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-  drawCentered(page, `Issued ${issued}`, 96, 11, helv, MUTED, W);
-  drawCentered(page, `Certificate No. ${data.certNumber}`, 78, 9, helv, FAINT, W);
+  drawCentered(page, `Issued ${issued}`, footerRuleY - 16, 11, helv, MUTED, W);
+  drawCentered(page, `Certificate No. ${data.certNumber}`, footerRuleY - 34, 9, helv, FAINT, W);
 
   return pdf.save();
 }
