@@ -34,6 +34,13 @@ const newsreader = Newsreader({
 
 const PLATFORM_TENANT_ID = process.env.NEXT_PUBLIC_PLATFORM_TENANT_ID || 'harvest';
 
+// A tenant primaryColor is only trusted for injection when it's a plain 6-digit
+// hex. Anything else (empty, shorthand, rgb(), or malformed) is ignored so the
+// CSS default (Harvest gold) stands and nothing unvalidated is ever interpolated
+// into the inline <style> — no injection surface.
+const isValidHex = (value: string | undefined): value is string =>
+  !!value && /^#[0-9a-fA-F]{6}$/.test(value);
+
 export const viewport: Viewport = {
   themeColor: '#C9963A',
   viewportFit: 'cover',
@@ -72,19 +79,51 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default function RootLayout({
+// RootLayout is async so it can resolve the tenant server-side (same pattern as
+// generateMetadata above) and brand the VERY FIRST paint. Without this, the SPA
+// (ssr:false) paints Harvest defaults — gold spinner + Harvest logo — until the
+// client-side branding fetch resolves, so a white-label tenant's users see a
+// Harvest flash on every load/refresh. getTenantFromHost is deduped within a
+// request, so the second call here is cheap.
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const headersList = await headers();
+  const host = headersList.get('host') || '';
+  const tenant = await getTenantFromHost(host);
+
+  const isWhiteLabel = !!tenant && tenant.id !== PLATFORM_TENANT_ID;
+  // Only white-label tenants override the defaults; apex/platform/unknown hosts
+  // (isWhiteLabel === false) inject nothing and keep the Harvest CSS default.
+  const brandColor = isWhiteLabel ? tenant?.config?.primaryColor : undefined;
+  const brandLogo = isWhiteLabel ? tenant?.config?.logo : undefined;
+  const brandColorValid = isValidHex(brandColor);
+
   return (
     <html lang="en" className={cn("scroll-smooth font-sans", inter.variable, fraunces.variable, newsreader.variable)} suppressHydrationWarning>
       <head>
         {/* apple-touch-icon / icon are emitted dynamically via generateMetadata() */}
+        {/* White-label tenant brand color, injected before body paint so the first
+            paint (loading spinner included) is already tenant-colored — no Harvest
+            gold flash. --color-primary feeds the App shell spinner (border-primary);
+            --brand-color feeds MainApp's spinner + active accents. Unlayered, so it
+            overrides the @layer base default in globals.css. Only a validated hex is
+            interpolated (brandColorValid), so there is no injection surface. */}
+        {brandColorValid && (
+          <style dangerouslySetInnerHTML={{ __html: `:root{--brand-color:${brandColor};--color-primary:${brandColor};}` }} />
+        )}
         <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block" rel="stylesheet" />
         <script src="/sw-cache-buster.js" defer />
       </head>
-      <body className="bg-background-light text-[#1c1c1e] antialiased">
+      {/* data-tenant-logo lets the client's FIRST render start from the tenant logo
+          instead of the Harvest default (see getServerTenantLogo in MainApp). Only
+          set for white-label tenants; React escapes the attribute value. */}
+      <body
+        className="bg-background-light text-[#1c1c1e] antialiased"
+        data-tenant-logo={isWhiteLabel && brandLogo ? brandLogo : undefined}
+      >
         {/* Capture ?ref=CODE on the FIRST public page load — before login/onboarding
             and independent of the (ssr:false) SPA's auth-driven redirects — so a
             logged-out affiliate visitor's referral survives all the way to checkout.
