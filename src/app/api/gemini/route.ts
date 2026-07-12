@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
 import { requireAuth, type AuthenticatedUser } from '@/lib/api-auth';
 import { adminDb } from '@/lib/firebase-admin';
+import { getMimoChatUrl, MIMO_MODEL, GEMINI_EMBEDDING_MODEL } from '@/lib/ai-config';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,18 +11,6 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 const MAX_TEXT_LENGTH = 50000; // 50KB limit for embed text
 const MAX_PROMPT_LENGTH = 30000; // 30KB limit for generate prompts
-
-// MiMo (Xiaomi) Token Plan chat-completions endpoint.
-//
-// Contract: `MIMO_BASE_URL` is the REGION base URL exactly as shown on the
-// Token Plan subscription page (e.g. https://token-plan-sgp.xiaomimimo.com/v1),
-// i.e. everything up to and INCLUDING `/v1` — the code appends
-// `/chat/completions`. A Token Plan key only authenticates against its own
-// region's base URL, so this must be configurable per deployment. Unset →
-// defaults to the China cluster, keeping current behavior byte-for-byte.
-const MIMO_CHAT_URL = `${(
-  process.env.MIMO_BASE_URL || 'https://token-plan-cn.xiaomimimo.com/v1'
-).replace(/\/+$/, '')}/chat/completions`;
 
 // ── AI RAG chat usage limits (server-side, easy to tune) ──
 // The chat runs on a single shared MiMo subscription, so per-user usage is
@@ -150,10 +139,7 @@ export async function POST(request: NextRequest) {
 
       try {
         const result = await ai.models.embedContent({
-          // Current GA Gemini embedding model. The previous id
-          // ('gemini-embedding-2-preview') is not a valid model, so every embed
-          // call 500'd — which left AI Knowledge sources stuck on "Processing…".
-          model: 'gemini-embedding-001',
+          model: GEMINI_EMBEDDING_MODEL,
           contents: [text],
         });
 
@@ -209,14 +195,14 @@ export async function POST(request: NextRequest) {
         }
         messages.push({ role: 'user', content: prompt });
 
-        const response = await fetch(MIMO_CHAT_URL, {
+        const response = await fetch(getMimoChatUrl(), {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${process.env.MIMO_API_KEY}`,
           },
           body: JSON.stringify({
-            model: 'mimo-v2.5',
+            model: MIMO_MODEL,
             messages,
             max_completion_tokens: 4096,
             temperature: 0.7,

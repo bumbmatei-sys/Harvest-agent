@@ -3,16 +3,9 @@ import type { NextRequest } from 'next/server';
 import { requireAdmin } from '@/lib/api-auth';
 import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
+import { getMimoChatUrl, MIMO_MODEL } from '@/lib/ai-config';
 
 export const dynamic = 'force-dynamic';
-
-// MiMo (Xiaomi) Token Plan chat-completions endpoint — same provider as the
-// newsletter generator and the AI RAG chat. See src/app/api/gemini/route.ts
-// for the full contract on MIMO_BASE_URL.
-const MIMO_CHAT_URL = `${(
-  process.env.MIMO_BASE_URL || 'https://token-plan-cn.xiaomimimo.com/v1'
-).replace(/\/+$/, '')}/chat/completions`;
-const MIMO_MODEL = 'mimo-v2.5';
 
 /** Compute the next scheduled timestamp from frequency settings. */
 export function computeNextScheduled(
@@ -186,7 +179,7 @@ JSON object from what is available. Schema:
 }`;
 
   // 3. Call MiMo for generation
-  const mimoRes = await fetch(MIMO_CHAT_URL, {
+  const mimoRes = await fetch(getMimoChatUrl(), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
