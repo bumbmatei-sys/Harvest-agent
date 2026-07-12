@@ -3,6 +3,7 @@ import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { adminDb } from '@/lib/firebase-admin';
 import { getTenantFromHost } from '@/lib/server-tenant';
+import { stripHtml } from '@/utils/stripHtml';
 import type { Course, Level } from '@/types/course.types';
 
 interface CourseDoc extends Course {
@@ -27,20 +28,21 @@ export async function generateMetadata({
   if (!snap.exists) return { title: 'Course Not Found' };
 
   const course = snap.data() as CourseDoc;
+  const plainDescription = course.description ? stripHtml(course.description) : undefined;
 
   return {
     title: course.title,
-    description: course.description || undefined,
+    description: plainDescription,
     openGraph: {
       title: course.title,
-      description: course.description || undefined,
+      description: plainDescription,
       type: 'website',
       ...(course.thumbnail ? { images: [course.thumbnail] } : {}),
     },
     twitter: {
       card: 'summary_large_image',
       title: course.title,
-      description: course.description || undefined,
+      description: plainDescription,
       ...(course.thumbnail ? { images: [course.thumbnail] } : {}),
     },
   };
@@ -113,7 +115,7 @@ export default async function CoursePublicPage({
 
         {course.description && (
           <p className="text-gray-600 text-base mb-6 leading-relaxed">
-            {course.description}
+            {stripHtml(course.description)}
           </p>
         )}
 
