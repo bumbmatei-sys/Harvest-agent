@@ -1,11 +1,12 @@
 "use client";
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import { collection, query, orderBy, onSnapshot, doc, updateDoc, arrayUnion, arrayRemove, limit, where, getDoc, addDoc, deleteDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { db, auth } from '../firebase';
-import { Calendar as CalendarIcon, ThumbsUp, Check, ChevronRight, FileText, Tag, Calendar, MessageSquare, Send, MapPin, Globe, HeartHandshake } from 'lucide-react';
+import { Calendar as CalendarIcon, ThumbsUp, Check, ChevronRight, ChevronLeft, FileText, Tag, Calendar, MessageSquare, Send, MapPin, Globe, HeartHandshake, Paperclip, X } from 'lucide-react';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
-import { getTenantScope } from '../utils/tenant-scope';
+import { getTenantScope, getWriteTenantScope } from '../utils/tenant-scope';
+import { ImageUpload } from './ImageUpload';
 import { useShareBaseUrl } from '../utils/share-url';
 import ShareButton from './ShareButton';
 import { isSuperAdminEmail } from '../utils/super-admins';
@@ -49,7 +50,10 @@ interface CommunityPost {
   authorPhoto?: string;
   createdAt: string;
   content: string;
+  /** Legacy single image — kept readable for back-compat with older posts. */
   imageUrl?: string;
+  /** Up to 3 images on newer posts. Preferred over imageUrl when present. */
+  imageUrls?: string[];
   likes: string[];
   pollOptions?: PollOption[];
   eventDetails?: EventDetails;
@@ -102,6 +106,174 @@ interface NewsTabProps {
   onOpenMessages?: () => void;
 }
 
+/**
+ * Full-screen, uncropped image viewer. Feed thumbnails are cropped
+ * (object-cover); this shows the whole image (object-contain) so nothing is
+ * cut off. Supports paging when a post has multiple images — arrows on desktop,
+ * swipe on touch, Esc/backdrop/X to close.
+ */
+const ImageLightbox: React.FC<{ images: string[]; index: number; onClose: () => void }> = ({ images, index, onClose }) => {
+  const [current, setCurrent] = useState(index);
+  const touchStartX = useRef<number | null>(null);
+
+  useEffect(() => { setCurrent(index); }, [index]);
+
+  const go = React.useCallback((delta: number) => {
+    setCurrent(c => {
+      const next = c + delta;
+      if (next < 0) return images.length - 1;
+      if (next >= images.length) return 0;
+      return next;
+    });
+  }, [images.length]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+      else if (e.key === 'ArrowRight') go(1);
+      else if (e.key === 'ArrowLeft') go(-1);
+    };
+    document.addEventListener('keydown', onKey);
+    // Lock background scroll while open.
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [go, onClose]);
+
+  const handleTouchStart = (e: React.TouchEvent) => { touchStartX.current = e.touches[0].clientX; };
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null) return;
+    const delta = e.changedTouches[0].clientX - touchStartX.current;
+    if (Math.abs(delta) > 50 && images.length > 1) go(delta < 0 ? 1 : -1);
+    touchStartX.current = null;
+  };
+
+  const src = images[current];
+  if (!src) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-[70] flex items-center justify-center bg-black/90"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Image viewer"
+    >
+      <button
+        onClick={(e) => { e.stopPropagation(); onClose(); }}
+        aria-label="Close image viewer"
+        className="absolute top-4 right-4 z-10 w-10 h-10 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors"
+      >
+        <X size={22} />
+      </button>
+
+      {images.length > 1 && (
+        <button
+          onClick={(e) => { e.stopPropagation(); go(-1); }}
+          aria-label="Previous image"
+          className="absolute left-2 sm:left-4 z-10 w-11 h-11 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors"
+        >
+          <ChevronLeft size={26} />
+        </button>
+      )}
+
+      <div
+        className="relative w-full h-full flex items-center justify-center p-4 sm:p-10"
+        onClick={(e) => e.stopPropagation()}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
+        {/* Plain <img> (not next/image) so the full, uncropped picture fits the
+            viewport via object-contain without layout/fill constraints. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={src}
+          alt={`Image ${current + 1} of ${images.length}`}
+          className="max-w-full max-h-full object-contain select-none"
+          referrerPolicy="no-referrer"
+          draggable={false}
+        />
+      </div>
+
+      {images.length > 1 && (
+        <button
+          onClick={(e) => { e.stopPropagation(); go(1); }}
+          aria-label="Next image"
+          className="absolute right-2 sm:right-4 z-10 w-11 h-11 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors"
+        >
+          <ChevronRight size={26} />
+        </button>
+      )}
+
+      {images.length > 1 && (
+        <div className="absolute bottom-5 left-1/2 -translate-x-1/2 flex items-center gap-2 z-10">
+          {images.map((_, i) => (
+            <span
+              key={i}
+              className={`h-1.5 rounded-full transition-all ${i === current ? 'w-5 bg-white' : 'w-1.5 bg-white/40'}`}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+/**
+ * Feed image grid. Thumbnails are cropped (object-cover) into a 1/2/3-up
+ * layout; each is tappable and opens the uncropped lightbox at that index.
+ */
+const PostImageGrid: React.FC<{ images: string[]; priority?: boolean; onOpen: (index: number) => void }> = ({ images, priority = false, onOpen }) => {
+  if (images.length === 0) return null;
+
+  const cell = (src: string, i: number, extra = '') => (
+    <button
+      key={i}
+      type="button"
+      onClick={() => onOpen(i)}
+      className={`relative bg-stone-100 overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-gold ${extra}`}
+      aria-label={`Open image ${i + 1}`}
+    >
+      <Image src={src} alt={`Post image ${i + 1}`} fill sizes="(max-width: 768px) 100vw, 800px" priority={priority && i === 0} className="object-cover" referrerPolicy="no-referrer" />
+    </button>
+  );
+
+  if (images.length === 1) {
+    return (
+      <div className="rounded-xl overflow-hidden mb-3 h-72 sm:h-80">
+        {cell(images[0], 0, 'w-full h-full')}
+      </div>
+    );
+  }
+
+  if (images.length === 2) {
+    return (
+      <div className="grid grid-cols-2 gap-1 rounded-xl overflow-hidden mb-3 h-64">
+        {images.map((src, i) => cell(src, i, 'w-full h-full'))}
+      </div>
+    );
+  }
+
+  // 3 images → one big on the left, two stacked on the right.
+  return (
+    <div className="grid grid-cols-2 grid-rows-2 gap-1 rounded-xl overflow-hidden mb-3 h-80">
+      {cell(images[0], 0, 'row-span-2 w-full h-full')}
+      {cell(images[1], 1, 'w-full h-full')}
+      {cell(images[2], 2, 'w-full h-full')}
+    </div>
+  );
+};
+
+/** Resolve a post's renderable image list: prefer imageUrls, fall back to the legacy single imageUrl. */
+const postImages = (post: CommunityPost): string[] => {
+  if (post.imageUrls && post.imageUrls.length > 0) return post.imageUrls.slice(0, 3);
+  if (post.imageUrl) return [post.imageUrl];
+  return [];
+};
+
 const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantId = null, onOpenLivestream, onGoToPartner, onOpenMessages }) => {
   const [allPosts, setAllPosts] = useState<CommunityPost[]>([]);
   const shareBase = useShareBaseUrl();
@@ -126,6 +298,116 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
   const [currentUserRole, setCurrentUserRole] = useState('user');
   const [deletePostId, setDeletePostId] = useState<string | null>(null);
   const [dmBusyId, setDmBusyId] = useState<string | null>(null);
+
+  // User post composer state (any authenticated user can post text + up to 3 images).
+  const [composerText, setComposerText] = useState('');
+  const [composerImages, setComposerImages] = useState<string[]>([]);
+  const [showImageAttach, setShowImageAttach] = useState(false);
+  const [attachMenuOpen, setAttachMenuOpen] = useState(false);
+  const [isPosting, setIsPosting] = useState(false);
+  const [editingPostId, setEditingPostId] = useState<string | null>(null);
+  const attachMenuRef = useRef<HTMLDivElement>(null);
+
+  // Lightbox: the images to page through + which one is open.
+  const [lightbox, setLightbox] = useState<{ images: string[]; index: number } | null>(null);
+
+  const MAX_IMAGES = 3;
+
+  // Close the paperclip "add" menu on outside-click / Esc.
+  useEffect(() => {
+    if (!attachMenuOpen) return;
+    const onClick = (e: MouseEvent) => {
+      if (attachMenuRef.current && !attachMenuRef.current.contains(e.target as Node)) setAttachMenuOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setAttachMenuOpen(false); };
+    document.addEventListener('mousedown', onClick);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onClick);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [attachMenuOpen]);
+
+  const resetComposer = () => {
+    setComposerText('');
+    setComposerImages([]);
+    setShowImageAttach(false);
+    setAttachMenuOpen(false);
+    setEditingPostId(null);
+  };
+
+  const beginEditPost = (post: CommunityPost) => {
+    setEditingPostId(post.id);
+    setComposerText(post.content || '');
+    const imgs = postImages(post);
+    setComposerImages(imgs);
+    setShowImageAttach(imgs.length > 0);
+    setAttachMenuOpen(false);
+    if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleSubmitPost = async () => {
+    const text = composerText.trim();
+    if (!text && composerImages.length === 0) return;
+    const user = auth.currentUser;
+    if (!user) {
+      setErrorMessage('Please sign in to post');
+      setTimeout(() => setErrorMessage(null), 3000);
+      return;
+    }
+
+    setIsPosting(true);
+    try {
+      const images = composerImages.slice(0, MAX_IMAGES);
+
+      if (editingPostId) {
+        // Edit own post — verify tenant, then update content + images.
+        const tenantIdEdit = await getTenantScope();
+        const postRef = doc(db, 'community_posts', editingPostId);
+        if (tenantIdEdit) {
+          const snap = await getDoc(postRef);
+          if (snap.exists() && snap.data().tenantId && snap.data().tenantId !== tenantIdEdit) {
+            console.error('Tenant mismatch');
+            return;
+          }
+        }
+        await updateDoc(postRef, {
+          content: text,
+          imageUrls: images,
+          // Keep the legacy single field in sync so older readers still show the primary image.
+          imageUrl: images[0] || '',
+        });
+      } else {
+        // New post — resolve author from the user doc (the #147 fix: Auth
+        // displayName/photoURL are often blank; the real profile is on the doc).
+        const userSnap = await getDoc(doc(db, 'users', user.uid));
+        const userData = userSnap.exists() ? userSnap.data() : null;
+        const authorName = userData?.displayName || userData?.name || user.displayName || 'Member';
+        const authorPhoto = userData?.photoURL || user.photoURL || '';
+
+        await addDoc(collection(db, 'community_posts'), {
+          type: 'post',
+          authorId: user.uid,
+          authorName,
+          authorPhoto,
+          content: text,
+          imageUrls: images,
+          // Legacy single field kept in sync for back-compat (public post page, AllNews, admin feed).
+          imageUrl: images[0] || '',
+          likes: [],
+          createdAt: new Date().toISOString(),
+          tenantId: await getWriteTenantScope(),
+        });
+      }
+      resetComposer();
+    } catch (error) {
+      try { handleFirestoreError(error, OperationType.WRITE, 'community_posts'); } catch (e) { console.error(e); }
+      setErrorMessage("Couldn't post. Please try again.");
+      setTimeout(() => setErrorMessage(null), 3000);
+    } finally {
+      setIsPosting(false);
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -578,8 +860,118 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
     );
   }
 
+  const canPostImages = composerImages.length < MAX_IMAGES;
+
   const mainColumn = (
     <div className="space-y-4 lg:space-y-3 w-full">
+      {/* User post composer — any authenticated member can share text + up to 3 images */}
+      {auth.currentUser && (
+        <div className="bg-white rounded-2xl shadow-sm border border-stone-200 p-4 lg:rounded-[var(--ds-radius-card)] lg:border-[color:var(--ds-border)] lg:shadow-[var(--ds-sh-sm)]">
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-full bg-stone-200 overflow-hidden flex items-center justify-center text-sm font-bold text-warm-brown flex-shrink-0 relative">
+              {auth.currentUser.photoURL ? (
+                <Image src={auth.currentUser.photoURL} alt="You" fill sizes="36px" className="object-cover" referrerPolicy="no-referrer" />
+              ) : (
+                (auth.currentUser.displayName || 'Y').charAt(0)
+              )}
+            </div>
+            <textarea
+              value={composerText}
+              onChange={(e) => setComposerText(e.target.value)}
+              placeholder={editingPostId ? 'Edit your post…' : 'Share an update with the community…'}
+              rows={2}
+              className="flex-1 min-w-0 bg-transparent border-none focus:ring-0 resize-none text-earth placeholder-[color:var(--text-faint)] text-sm p-0 pt-1.5 outline-none"
+            />
+          </div>
+
+          {/* Attached image thumbnails + remove-each */}
+          {composerImages.length > 0 && (
+            <div className="flex flex-wrap gap-2 mt-3 pl-12">
+              {composerImages.map((url, i) => (
+                <div key={i} className="relative w-20 h-20 rounded-lg overflow-hidden bg-stone-100 border border-stone-200">
+                  <Image src={url} alt={`Attachment ${i + 1}`} fill sizes="80px" className="object-cover" referrerPolicy="no-referrer" />
+                  <button
+                    type="button"
+                    onClick={() => setComposerImages(prev => prev.filter((_, idx) => idx !== i))}
+                    aria-label={`Remove image ${i + 1}`}
+                    className="absolute top-1 right-1 w-5 h-5 flex items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors"
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Image attach zone — reveals the uploader (reuses ImageUpload); appends to the array, capped at 3 */}
+          {showImageAttach && canPostImages && (
+            <div className="mt-3 pl-12">
+              <ImageUpload
+                value=""
+                onChange={(url) => {
+                  if (!url) return;
+                  setComposerImages(prev => prev.length < MAX_IMAGES ? [...prev, url] : prev);
+                }}
+                label={`Add image (${composerImages.length}/${MAX_IMAGES})`}
+              />
+            </div>
+          )}
+
+          <div className="flex items-center justify-between mt-3 pt-3 border-t border-stone-200 pl-12">
+            {/* Paperclip "add" menu — image-only for now; A2 extends this same entry point with blog/fundraising/event. */}
+            <div className="relative" ref={attachMenuRef}>
+              <button
+                type="button"
+                onClick={() => setAttachMenuOpen(o => !o)}
+                aria-label="Add attachment"
+                aria-haspopup="menu"
+                aria-expanded={attachMenuOpen}
+                className="p-2 -ml-2 text-warm-brown hover:text-gold hover:bg-stone-100 rounded-full transition-colors"
+              >
+                <Paperclip size={18} />
+              </button>
+              {attachMenuOpen && (
+                <div
+                  role="menu"
+                  className="absolute left-0 bottom-full mb-1 min-w-[160px] bg-white rounded-xl border border-stone-200 shadow-[0_8px_30px_rgba(0,0,0,0.12)] overflow-hidden z-20"
+                >
+                  <button
+                    type="button"
+                    role="menuitem"
+                    disabled={!canPostImages}
+                    onClick={() => { setShowImageAttach(true); setAttachMenuOpen(false); }}
+                    className="w-full text-left px-4 py-2.5 text-sm font-medium text-[color:var(--text-body)] hover:bg-stone-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {canPostImages ? 'Add image' : 'Max 3 images'}
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2">
+              {editingPostId && (
+                <button
+                  type="button"
+                  onClick={resetComposer}
+                  className="px-4 py-1.5 text-sm font-medium text-warm-brown hover:bg-stone-100 rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={handleSubmitPost}
+                disabled={isPosting || (!composerText.trim() && composerImages.length === 0)}
+                className="flex items-center gap-2 px-5 py-1.5 bg-gold text-white rounded-lg font-medium text-sm hover:bg-[color-mix(in_srgb,var(--brand-color)_85%,black)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Send size={16} />
+                {editingPostId ? 'Update' : 'Post'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Fundraising campaign widget — pinned at the top, disappears when no campaign is active */}
       <CampaignWidget />
 
@@ -666,9 +1058,15 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
               </div>
               <KebabMenu
                 ariaLabel="Post options"
-                items={(canManage || auth.currentUser?.uid === post.authorId) ? [
-                  { label: 'Delete post', danger: true, onClick: () => setDeletePostId(post.id) },
-                ] : []}
+                items={[
+                  // Author can edit their own text post (polls/events aren't text-editable here).
+                  ...(auth.currentUser?.uid === post.authorId && post.type === 'post'
+                    ? [{ label: 'Edit post', onClick: () => beginEditPost(post) }]
+                    : []),
+                  ...(canManage || auth.currentUser?.uid === post.authorId
+                    ? [{ label: 'Delete post', danger: true, onClick: () => setDeletePostId(post.id) }]
+                    : []),
+                ]}
               />
             </div>
 
@@ -676,11 +1074,16 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
               {post.content}
             </p>
 
-            {post.imageUrl && (
-              <div className="rounded-xl overflow-hidden mb-3 max-h-80 bg-stone-100 relative min-h-[200px]">
-                <Image src={post.imageUrl} alt="Post attachment" fill sizes="(max-width: 768px) 100vw, 800px" priority={index < 2} className="object-cover" referrerPolicy="no-referrer" />
-              </div>
-            )}
+            {(() => {
+              const images = postImages(post);
+              return images.length > 0 ? (
+                <PostImageGrid
+                  images={images}
+                  priority={index < 2}
+                  onOpen={(i) => setLightbox({ images, index: i })}
+                />
+              ) : null;
+            })()}
 
             {post.type === 'poll' && post.pollOptions && (
               <div className="space-y-2 mb-3">
@@ -1095,6 +1498,15 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
       )}
 
       <TwoColumnLayout main={mainColumn} rail={rail} />
+
+      {/* Full-image lightbox — uncropped view with paging for multi-image posts */}
+      {lightbox && (
+        <ImageLightbox
+          images={lightbox.images}
+          index={lightbox.index}
+          onClose={() => setLightbox(null)}
+        />
+      )}
 
       {/* Delete Post Confirmation Modal */}
       {deletePostId && (
