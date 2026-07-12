@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { Course, Lesson, Author, Level, QuizAttempt } from "../../types/course.types";
 import { getAllLessons, verifyCourseCompletion } from "../../utils/course.utils";
 import { GOLD, GOLD_LIGHT, GREEN, GREEN_BG } from "../../utils/course.constants";
-import { sanitizeHtml } from "../../utils/sanitize";
+import { sanitizeHtml, stripHtml } from "../../utils/sanitize";
 import { auth } from "../../firebase";
 
 interface CourseOverviewProps {
@@ -68,6 +68,8 @@ export function CourseOverview({ course, authors, onBack, onStartLesson, complet
   // Find first incomplete lesson for CTA
   const nextLesson = allLessons.find((l) => !completed?.has(l.id)) || allLessons[0];
 
+  const plainDescription = stripHtml(course.description || "");
+
   // Resolve authors
   const courseAuthors = course.authorIds
     ?.map((id) => authors.find((a) => a.id === id))
@@ -109,7 +111,7 @@ export function CourseOverview({ course, authors, onBack, onStartLesson, complet
             {course.title}
           </div>
           <div className="text-sm font-medium text-white/60">
-            {course.description?.slice(0, 100)}{course.description && course.description.length > 100 ? "..." : ""}
+            {plainDescription.slice(0, 100)}{plainDescription.length > 100 ? "..." : ""}
           </div>
         </div>
       </div>
