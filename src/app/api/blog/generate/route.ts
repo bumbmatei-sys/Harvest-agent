@@ -47,6 +47,41 @@ export function computeNextScheduled(
   return next;
 }
 
+/** Extract the first balanced {...} substring from text, or null if none found. */
+function extractFirstJsonObject(text: string): string | null {
+  const start = text.indexOf('{');
+  if (start === -1) return null;
+
+  let depth = 0;
+  let inString = false;
+  let escapeNext = false;
+
+  for (let i = start; i < text.length; i++) {
+    const char = text[i];
+
+    if (escapeNext) {
+      escapeNext = false;
+      continue;
+    }
+    if (char === '\\' && inString) {
+      escapeNext = true;
+      continue;
+    }
+    if (char === '"') {
+      inString = !inString;
+      continue;
+    }
+    if (inString) continue;
+
+    if (char === '{') depth++;
+    else if (char === '}') {
+      depth--;
+      if (depth === 0) return text.slice(start, i + 1);
+    }
+  }
+  return null;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const userOrErr = await requireAdmin(request);
@@ -118,7 +153,10 @@ ${topicHint ? `Topic focus: ${topicHint}\n` : ''}
 SOURCE MATERIAL (ministry knowledge base):
 ${knowledgeContext}
 
-Return ONLY a valid JSON object with NO markdown, NO backticks, NO preamble. Schema:
+Respond with ONLY the JSON object below — no markdown, no backticks, no preamble, no
+explanation, and no commentary of any kind, even if you have concerns about the source
+material. If the source material is insufficient, still do your best to produce the
+JSON object from what is available. Schema:
 {
   "seoTitle": "string — 50-60 characters, primary keyword near start, compelling",
   "seoDescription": "string — 140-155 characters, includes primary keyword, clear value proposition, encourages clicks",
@@ -183,7 +221,22 @@ Return ONLY a valid JSON object with NO markdown, NO backticks, NO preamble. Sch
       .trim();
     parsed = JSON.parse(clean);
   } catch {
-    throw new Error('AI returned invalid JSON. Raw: ' + rawText.slice(0, 300));
+    // Model may have wrapped the JSON in prose (e.g. a refusal/explanation) —
+    // salvage the first balanced {...} object before giving up.
+    const salvaged = extractFirstJsonObject(rawText);
+    if (salvaged) {
+      try {
+        parsed = JSON.parse(salvaged);
+      } catch {
+        parsed = null;
+      }
+    }
+    if (!parsed) {
+      console.error('AI returned invalid JSON. Raw response:', rawText);
+      throw new Error(
+        "Couldn't generate a post from your current Knowledge Base. Add ministry-focused source material (sermons, devotionals, teaching notes) to the AI Knowledge Base, then try again.",
+      );
+    }
   }
 
   // 5. Validate required fields
