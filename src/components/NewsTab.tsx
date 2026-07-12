@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
-import { collection, query, orderBy, onSnapshot, doc, updateDoc, arrayUnion, arrayRemove, limit, where, getDoc, addDoc, deleteDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, doc, updateDoc, arrayUnion, arrayRemove, limit, where, getDoc, getDocs, addDoc, deleteDoc, deleteField, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { Calendar as CalendarIcon, ThumbsUp, Check, ChevronRight, ChevronLeft, FileText, Tag, Calendar, MessageSquare, Send, MapPin, Globe, HeartHandshake, Paperclip, X } from 'lucide-react';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
@@ -17,6 +17,9 @@ import { sortByTime } from '../utils/query-helpers';
 import { TwoColumnLayout, DesktopCard } from './layout/DesktopLayout';
 import { HeroBand } from './member/desktopKit';
 import { useLiveNow } from '../hooks/useLiveNow';
+import { useCampaigns } from '../hooks/queries/useCampaignQueries';
+import EmbedPicker, { type PickerItem } from './EmbedPicker';
+import { FeedEmbedCard, EmbedComposerChip, type PostEmbed, type EmbedType } from './EmbedCard';
 
 interface Comment {
   id: string;
@@ -61,6 +64,9 @@ interface CommunityPost {
   targetRegions?: string[];
   targetCountry?: string;
   targetCity?: string;
+  /** Optional single rich attachment — a reference (type + id), resolved to a
+      live card at render time. At most one per post (replaces any prior one). */
+  embed?: PostEmbed;
 }
 
 interface BlogPost {
@@ -308,10 +314,58 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
   const [editingPostId, setEditingPostId] = useState<string | null>(null);
   const attachMenuRef = useRef<HTMLDivElement>(null);
 
+  // Single embed attachment (blog / fundraising / event) — one per post.
+  const [composerEmbed, setComposerEmbed] = useState<PostEmbed | null>(null);
+  // Which embed picker modal is open (null = closed).
+  const [embedPicker, setEmbedPicker] = useState<EmbedType | null>(null);
+  // Resolved tenant scope, used to tenant-scope the pickers and resolve cards.
+  const [scopeTenantId, setScopeTenantId] = useState<string | null | undefined>(undefined);
+  // Blog list for the picker — fetched lazily the first time the blog picker opens.
+  const [pickerBlog, setPickerBlog] = useState<BlogPost[] | null>(null);
+  const [pickerBlogLoading, setPickerBlogLoading] = useState(false);
+
   // Lightbox: the images to page through + which one is open.
   const [lightbox, setLightbox] = useState<{ images: string[]; index: number } | null>(null);
 
   const MAX_IMAGES = 3;
+
+  // Campaigns for the fundraising picker (tenant-scoped; enabled once scope resolves).
+  const { data: pickerCampaigns = [], isLoading: campaignsLoading } = useCampaigns(scopeTenantId, scopeTenantId !== undefined);
+
+  // Resolve the tenant scope once — used to tenant-scope every embed picker and
+  // to resolve event embeds (which live under tenants/{id}/events).
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const t = await getTenantScope();
+      if (!cancelled) setScopeTenantId(t);
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Lazy-load this tenant's published articles the first time the blog picker opens.
+  useEffect(() => {
+    if (embedPicker !== 'blog' || pickerBlog !== null || scopeTenantId === undefined) return;
+    let cancelled = false;
+    setPickerBlogLoading(true);
+    (async () => {
+      try {
+        // Single-field filter only (tenantId / status); published filter applied client-side.
+        const q = scopeTenantId
+          ? query(collection(db, 'blog_posts'), where('tenantId', '==', scopeTenantId), limit(100))
+          : query(collection(db, 'blog_posts'), where('status', '==', 'published'), limit(100));
+        const snap = await getDocs(q);
+        const list = (snap.docs.map(d => ({ id: d.id, ...d.data() })) as BlogPost[]).filter(b => b.status === 'published');
+        if (!cancelled) setPickerBlog(sortByTime(list, 'publishedAt', 'desc'));
+      } catch (e) {
+        console.error('Failed to load articles for picker', e);
+        if (!cancelled) setPickerBlog([]);
+      } finally {
+        if (!cancelled) setPickerBlogLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [embedPicker, pickerBlog, scopeTenantId]);
 
   // Close the paperclip "add" menu on outside-click / Esc.
   useEffect(() => {
@@ -334,6 +388,8 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
     setShowImageAttach(false);
     setAttachMenuOpen(false);
     setEditingPostId(null);
+    setComposerEmbed(null);
+    setEmbedPicker(null);
   };
 
   const beginEditPost = (post: CommunityPost) => {
@@ -343,6 +399,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
     setComposerImages(imgs);
     setShowImageAttach(imgs.length > 0);
     setAttachMenuOpen(false);
+    setComposerEmbed(post.embed || null);
     if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -376,6 +433,8 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
           imageUrls: images,
           // Keep the legacy single field in sync so older readers still show the primary image.
           imageUrl: images[0] || '',
+          // Persist the single embed; drop the field entirely if it was removed.
+          embed: composerEmbed ?? deleteField(),
         });
       } else {
         // New post — resolve author from the user doc (the #147 fix: Auth
@@ -394,6 +453,8 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
           imageUrls: images,
           // Legacy single field kept in sync for back-compat (public post page, AllNews, admin feed).
           imageUrl: images[0] || '',
+          // A reference (type + id), not a copy — the card resolves the live doc at render time.
+          ...(composerEmbed ? { embed: composerEmbed } : {}),
           likes: [],
           createdAt: new Date().toISOString(),
           tenantId: await getWriteTenantScope(),
@@ -862,6 +923,36 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
 
   const canPostImages = composerImages.length < MAX_IMAGES;
 
+  // Build the tenant-scoped item list for whichever embed picker is open.
+  const fmtPickerMoney = (n: number) =>
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n || 0);
+  let pickerItems: PickerItem[] = [];
+  let pickerLoading = false;
+  if (embedPicker === 'fundraising') {
+    pickerItems = pickerCampaigns.map(c => ({
+      id: c.id,
+      title: c.title,
+      subtitle: `${fmtPickerMoney(c.raised)} of ${fmtPickerMoney(c.goal)}`,
+      image: c.coverImage,
+    }));
+    pickerLoading = campaignsLoading;
+  } else if (embedPicker === 'event') {
+    pickerItems = adminEvents.map(e => ({
+      id: e.id,
+      title: e.title,
+      subtitle: e.startDate ? fmtEventDate(e.startDate) : e.isOnline ? 'Online' : e.location || '',
+      image: e.coverImage || undefined,
+    }));
+  } else if (embedPicker === 'blog') {
+    pickerItems = (pickerBlog || []).map(b => ({
+      id: b.id,
+      title: b.title,
+      subtitle: b.category,
+      image: b.featuredImage,
+    }));
+    pickerLoading = pickerBlogLoading;
+  }
+
   const mainColumn = (
     <div className="space-y-4 lg:space-y-3 w-full">
       {/* User post composer — any authenticated member can share text + up to 3 images */}
@@ -917,8 +1008,15 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
             </div>
           )}
 
+          {/* Attached embed preview — one per post, removable, replaced when a new one is picked */}
+          {composerEmbed && (
+            <div className="mt-3 pl-12">
+              <EmbedComposerChip embed={composerEmbed} tenantId={scopeTenantId} onRemove={() => setComposerEmbed(null)} />
+            </div>
+          )}
+
           <div className="flex items-center justify-between mt-3 pt-3 border-t border-stone-200 pl-12">
-            {/* Paperclip "add" menu — image-only for now; A2 extends this same entry point with blog/fundraising/event. */}
+            {/* Paperclip "add" menu — image + blog / fundraising / event embeds. */}
             <div className="relative" ref={attachMenuRef}>
               <button
                 type="button"
@@ -943,6 +1041,30 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
                     className="w-full text-left px-4 py-2.5 text-sm font-medium text-[color:var(--text-body)] hover:bg-stone-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {canPostImages ? 'Add image' : 'Max 3 images'}
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => { setEmbedPicker('blog'); setAttachMenuOpen(false); }}
+                    className="w-full text-left px-4 py-2.5 text-sm font-medium text-[color:var(--text-body)] hover:bg-stone-100 transition-colors"
+                  >
+                    Add blog article
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => { setEmbedPicker('fundraising'); setAttachMenuOpen(false); }}
+                    className="w-full text-left px-4 py-2.5 text-sm font-medium text-[color:var(--text-body)] hover:bg-stone-100 transition-colors"
+                  >
+                    Add fundraising
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => { setEmbedPicker('event'); setAttachMenuOpen(false); }}
+                    className="w-full text-left px-4 py-2.5 text-sm font-medium text-[color:var(--text-body)] hover:bg-stone-100 transition-colors"
+                  >
+                    Add event
                   </button>
                 </div>
               )}
@@ -1084,6 +1206,9 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
                 />
               ) : null;
             })()}
+
+            {/* Rich embed card — resolves the referenced blog/campaign/event live */}
+            {post.embed && <FeedEmbedCard embed={post.embed} tenantId={scopeTenantId} />}
 
             {post.type === 'poll' && post.pollOptions && (
               <div className="space-y-2 mb-3">
@@ -1505,6 +1630,17 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
           images={lightbox.images}
           index={lightbox.index}
           onClose={() => setLightbox(null)}
+        />
+      )}
+
+      {/* Embed picker — choose the single blog / fundraising / event to attach */}
+      {embedPicker && (
+        <EmbedPicker
+          type={embedPicker}
+          items={pickerItems}
+          loading={pickerLoading}
+          onPick={(id) => { setComposerEmbed({ type: embedPicker, id }); setEmbedPicker(null); }}
+          onClose={() => setEmbedPicker(null)}
         />
       )}
 
