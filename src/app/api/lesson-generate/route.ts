@@ -4,13 +4,11 @@ import { GoogleGenAI } from '@google/genai';
 import { requireAuth } from '@/lib/api-auth';
 import { extractYouTubeId, canonicalYouTubeUrl } from '@/lib/youtube';
 import { parseLessonGenerationJson } from '@/lib/lesson-content';
+import { GEMINI_VIDEO_MODEL } from '@/lib/ai-config';
 
 export const dynamic = 'force-dynamic';
 // Video understanding is slow — give Gemini room to watch a full lesson.
 export const maxDuration = 300;
-
-// Gemini model with native video (incl. YouTube URL) understanding.
-const VIDEO_MODEL = 'gemini-3.5-flash';
 
 // The lesson-content contract. STRICT JSON so the client can map it straight
 // onto the lesson editor's fields (title/summary/outline/quiz/scripture) and,
@@ -78,7 +76,7 @@ export async function POST(request: NextRequest) {
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
       const result = await ai.models.generateContent({
-        model: VIDEO_MODEL,
+        model: GEMINI_VIDEO_MODEL,
         contents: [
           {
             role: 'user',

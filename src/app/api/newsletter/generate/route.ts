@@ -5,21 +5,10 @@ import { executeComposioAction } from '@/lib/composio-client';
 import { adminDb } from '@/lib/firebase-admin';
 import { hasFeature } from '@/utils/plan-features';
 import { PLATFORM_TENANT_ID } from '@/utils/tenant-scope';
+import { getMimoChatUrl, MIMO_MODEL } from '@/lib/ai-config';
 
 export const dynamic = 'force-dynamic';
 
-// MiMo (Xiaomi) Token Plan chat-completions endpoint.
-//
-// Contract: `MIMO_BASE_URL` is the REGION base URL exactly as shown on the
-// Token Plan subscription page (e.g. https://token-plan-sgp.xiaomimimo.com/v1),
-// i.e. everything up to and INCLUDING `/v1` — the code appends
-// `/chat/completions`. A Token Plan key only authenticates against its own
-// region's base URL, so this must be configurable per deployment. Unset →
-// defaults to the China cluster, keeping current behavior byte-for-byte.
-const MIMO_CHAT_URL = `${(
-  process.env.MIMO_BASE_URL || 'https://token-plan-cn.xiaomimimo.com/v1'
-).replace(/\/+$/, '')}/chat/completions`;
-const MIMO_MODEL = 'mimo-v2.5';
 const RATE_LIMIT = 5;
 
 export async function POST(request: NextRequest) {
@@ -175,7 +164,7 @@ export async function POST(request: NextRequest) {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 60_000);
 
-      const mimoRes = await fetch(MIMO_CHAT_URL, {
+      const mimoRes = await fetch(getMimoChatUrl(), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
