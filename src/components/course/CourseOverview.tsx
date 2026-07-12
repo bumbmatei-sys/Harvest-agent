@@ -5,6 +5,8 @@ import { getAllLessons, verifyCourseCompletion } from "../../utils/course.utils"
 import { GOLD, GOLD_LIGHT, GREEN, GREEN_BG } from "../../utils/course.constants";
 import { sanitizeHtml, stripHtml } from "../../utils/sanitize";
 import { auth } from "../../firebase";
+import { usePublicShareUrl } from "../../utils/share-url";
+import ShareButton from "../ShareButton";
 
 interface CourseOverviewProps {
   course: Course;
@@ -21,6 +23,7 @@ export function CourseOverview({ course, authors, onBack, onStartLesson, complet
   const [expandedLevels, setExpandedLevels] = useState<Set<string>>(new Set(course.levels?.map((l) => l.id) || []));
   const [certLoading, setCertLoading] = useState(false);
   const [certError, setCertError] = useState<string | null>(null);
+  const shareUrl = usePublicShareUrl(`/courses/${course.id}`);
 
   const allLessons = getAllLessons(course);
   const totalLessons = allLessons.length;
@@ -104,6 +107,9 @@ export function CourseOverview({ course, authors, onBack, onStartLesson, complet
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round"><path d="m15 18-6-6 6-6" /></svg>
           </button>
+          <div className="absolute top-4 right-4">
+            <ShareButton url={shareUrl} title={course.title} />
+          </div>
           <div className="text-[11px] font-bold uppercase tracking-widest mb-2" style={{ color: GOLD }}>
             {course.category || "Course"}
           </div>

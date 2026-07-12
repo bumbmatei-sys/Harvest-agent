@@ -7,6 +7,8 @@ import { db, auth } from '../firebase';
 import { FileText, Calendar, Tag, ArrowLeft, Search } from 'lucide-react';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { getTenantScope } from '../utils/tenant-scope';
+import { usePublicShareUrl } from '../utils/share-url';
+import ShareButton from './ShareButton';
 
 
 
@@ -39,6 +41,7 @@ const BlogTab: React.FC<BlogTabProps> = ({ onOpenArticle, initialPost, onBack, i
  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
  const [selectedPost, setSelectedPost] = useState<BlogPost | null>(initialPost || null);
+ const shareUrl = usePublicShareUrl(selectedPost ? `/blog/${selectedPost.id}` : null);
 
  useEffect(() => {
   let unsubscribe: (() => void) | null = null;
@@ -157,6 +160,7 @@ const BlogTab: React.FC<BlogTabProps> = ({ onOpenArticle, initialPost, onBack, i
  </button>
  <span className="font-medium text-earth truncate">Back to Blog</span>
  </div>
+ <ShareButton url={shareUrl} title={selectedPost.title} />
  </div>
  
  <article className="pb-24">
