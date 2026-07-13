@@ -18,9 +18,10 @@ import {
   CalendarCheck
 } from 'lucide-react';
 import Image from 'next/image';
-import { auth, db } from '../firebase';
+import { auth, db, messaging, VAPID_KEY } from '../firebase';
 import { signOut, updateProfile } from 'firebase/auth';
-import { doc, onSnapshot, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, onSnapshot, updateDoc, collection, query, where, getDocs, arrayUnion } from 'firebase/firestore';
+import { getToken } from 'firebase/messaging';
 import PersonalInformationModal from './PersonalInformationModal';
 import { authFetch } from '../utils/auth-fetch';
 import ContactModal from './ContactModal';
@@ -129,6 +130,9 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap 
  const [profilePic, setProfilePic] = useState<string | null>(auth.currentUser?.photoURL || null);
  const [userName, setUserName] = useState<string>('Loading...');
  const [isAdmin, setIsAdmin] = useState(false);
+ // Missing field on existing user docs == enabled (back-compat default).
+ const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+ const [notificationsPermissionDenied, setNotificationsPermissionDenied] = useState(false);
 
  useEffect(() => {
  let unsubscribe: (() => void) | null = null;
@@ -158,6 +162,7 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap 
    setDonationChurchName(data.donationChurchName || null);
    setDonationSubscriptionId(data.donationSubscriptionId || null);
    setTotalDonated(Number(data.totalDonated) || 0);
+   setNotificationsEnabled(data.notificationsEnabled !== false);
  } else {
  setUserName(auth.currentUser?.displayName || 'User');
  }
@@ -187,6 +192,49 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap 
  setProfilePic(savedPic);
  }
  }, []);
+
+ useEffect(() => {
+ if (typeof Notification !== 'undefined') {
+ setNotificationsPermissionDenied(Notification.permission === 'denied');
+ }
+ }, []);
+
+ const handleToggleNotifications = async () => {
+ if (!auth.currentUser) return;
+ const uid = auth.currentUser.uid;
+ const next = !notificationsEnabled;
+ setNotificationsEnabled(next);
+ try {
+ await updateDoc(doc(db, 'users', uid), { notificationsEnabled: next });
+ } catch (error) {
+ setNotificationsEnabled(!next);
+ try { handleFirestoreError(error, OperationType.UPDATE, `users/${uid}`); } catch (e) { console.error(e); }
+ return;
+ }
+
+ if (!next || typeof Notification === 'undefined') return;
+
+ // Turning on: the pref alone doesn't grant OS permission or register a
+ // device token, so mirror onboarding's opt-in flow to make it actually work.
+ try {
+ let permission = Notification.permission;
+ if (permission === 'default') {
+ permission = await Notification.requestPermission();
+ }
+ setNotificationsPermissionDenied(permission === 'denied');
+ if (permission === 'granted') {
+ const msg = await messaging;
+ if (msg) {
+ const token = await getToken(msg, { vapidKey: VAPID_KEY });
+ if (token) {
+ await updateDoc(doc(db, 'users', uid), { fcmTokens: arrayUnion(token) });
+ }
+ }
+ }
+ } catch (e) {
+ console.error('Failed to (re-)register notification token:', e);
+ }
+ };
 
  const handleLogout = async () => {
  try {
@@ -360,9 +408,18 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap 
  <div className="h-px bg-stone-100 mx-4"></div>
  <SettingItem
  icon={<HeartHandshake size={16} className="text-yellow-500" />}
- iconBg="bg-yellow-50" 
+ iconBg="bg-yellow-50"
  label="Partner with Us"
  onClick={onGoToPartner}
+ />
+ <div className="h-px bg-stone-100 mx-4"></div>
+ <ToggleSettingItem
+ icon={<Bell size={16} className="text-purple-500" />}
+ iconBg="bg-purple-50"
+ label="Push Notifications"
+ sublabel={notificationsEnabled && notificationsPermissionDenied ? 'Blocked in device settings' : undefined}
+ checked={notificationsEnabled}
+ onChange={handleToggleNotifications}
  />
  {/* Messages now lives in the top tab bar (News | Blog | Courses | Messages | Partner) */}
  {/* My Events row — shown to everyone with a resolved tenant/plan context.
@@ -591,6 +648,36 @@ const SettingItem = ({ icon, iconBg, label, onClick, badge }: { icon: React.Reac
  <ChevronRight size={16} className="text-[color:var(--text-faint)]" />
  </div>
  </button>
+);
+
+const ToggleSettingItem = ({ icon, iconBg, label, sublabel, checked, onChange }: { icon: React.ReactNode, iconBg: string, label: string, sublabel?: string, checked: boolean, onChange: () => void }) => (
+ <div className="w-full flex items-center justify-between p-3.5">
+ <div className="flex items-center gap-3 min-w-0">
+ <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${iconBg}`}>
+ {icon}
+ </div>
+ <div className="min-w-0">
+ <span className="block text-[13px] font-medium text-[color:var(--text-body)]">{label}</span>
+ {sublabel && (
+ <span className="block text-[11px] text-[color:var(--text-faint)] truncate">{sublabel}</span>
+ )}
+ </div>
+ </div>
+ <button
+ type="button"
+ role="switch"
+ aria-checked={checked}
+ aria-label={label}
+ onClick={onChange}
+ className="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors"
+ style={{ background: checked ? 'var(--brand-color, #C9963A)' : '#D6CCBE' }}
+ >
+ <span
+ className="inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform"
+ style={{ transform: checked ? 'translateX(21px)' : 'translateX(2px)' }}
+ />
+ </button>
+ </div>
 );
 
 export default Profile;
