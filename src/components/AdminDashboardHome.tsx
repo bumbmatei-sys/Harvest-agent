@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect } from 'react';
-import { Users, Rss, GraduationCap, Inbox, Building2, ArrowRight } from 'lucide-react';
+import { Users, GraduationCap, Inbox, Building2, ArrowRight } from 'lucide-react';
 import { collection, query, where, getDocs, limit } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 
@@ -13,7 +13,6 @@ interface AdminDashboardHomeProps {
 }
 
 interface MemberRow { id: string; name: string; createdAt: number | null }
-interface PostRow { id: string; title: string; createdAt: number | null }
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -35,20 +34,6 @@ const joinedLabel = (ms: number | null) => {
   return new Date(ms).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 };
 
-const relativeLabel = (ms: number | null) => {
-  if (!ms) return '';
-  const diff = Date.now() - ms;
-  const mins = Math.round(diff / 60000);
-  if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins} min ago`;
-  const hours = Math.round(mins / 60);
-  if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} ago`;
-  const days = Math.round(hours / 24);
-  if (days === 1) return 'yesterday';
-  if (days < 30) return `${days} days ago`;
-  return new Date(ms).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-};
-
 const greeting = () => {
   const h = new Date().getHours();
   if (h < 12) return 'Good morning';
@@ -60,11 +45,9 @@ const AdminDashboardHome: React.FC<AdminDashboardHomeProps> = ({ tenantId, tenan
   const [state, setState] = useState<'loading' | 'loaded'>('loading');
   const [memberCount, setMemberCount] = useState(0);
   const [newThisWeek, setNewThisWeek] = useState(0);
-  const [postCount, setPostCount] = useState(0);
   const [courseCount, setCourseCount] = useState(0);
   const [tenantCount, setTenantCount] = useState(0);
   const [recentMembers, setRecentMembers] = useState<MemberRow[]>([]);
-  const [recentPosts, setRecentPosts] = useState<PostRow[]>([]);
 
   const adminName = (auth.currentUser?.displayName || '').split(' ')[0] || 'there';
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
@@ -80,9 +63,8 @@ const AdminDashboardHome: React.FC<AdminDashboardHomeProps> = ({ tenantId, tenan
 
     (async () => {
       try {
-        const [usersSnap, postsSnap, coursesSnap] = await Promise.all([
+        const [usersSnap, coursesSnap] = await Promise.all([
           getDocs(scoped('users')),
-          getDocs(scoped('community_posts')),
           getDocs(scoped('courses')),
         ]);
         if (cancelled) return;
@@ -102,17 +84,6 @@ const AdminDashboardHome: React.FC<AdminDashboardHomeProps> = ({ tenantId, tenan
         // Real, derived signal: members whose createdAt is within the last 7 days.
         const cutoff = Date.now() - WEEK_MS;
         setNewThisWeek(members.filter((m) => m.createdAt != null && m.createdAt >= cutoff).length);
-
-        // Posts — community_posts store `content` (and `eventDetails.title` for
-        // event posts); there is no top-level `title`. Derive a short label.
-        const posts: PostRow[] = postsSnap.docs.map((d) => {
-          const data = d.data();
-          const raw = data.eventDetails?.title || (typeof data.content === 'string' ? data.content : '') || '';
-          return { id: d.id, title: raw.trim().slice(0, 70) || 'Untitled post', createdAt: toMillis(data.createdAt) };
-        });
-        posts.sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
-        setPostCount(posts.length);
-        setRecentPosts(posts.slice(0, 4));
 
         // Published courses
         setCourseCount(coursesSnap.docs.filter((d) => d.data().status === 'published').length);
@@ -139,18 +110,15 @@ const AdminDashboardHome: React.FC<AdminDashboardHomeProps> = ({ tenantId, tenan
     ? [
         { label: 'Tenants', value: tenantCount, icon: Building2, tab: 'tenants' },
         { label: 'Members', value: memberCount, icon: Users, tab: 'crm' },
-        { label: 'Posts', value: postCount, icon: Rss, tab: 'posts' },
         { label: 'Inbox', value: unreadCount, icon: Inbox, tab: 'inbox' },
       ]
     : [
         { label: 'Members', value: memberCount, icon: Users, tab: 'crm' },
-        { label: 'Posts', value: postCount, icon: Rss, tab: 'posts' },
         { label: 'Courses', value: courseCount, icon: GraduationCap, tab: 'courses' },
       ];
   const statColsClass = stats.length === 4 ? 'lg:grid-cols-4' : 'lg:grid-cols-3';
 
   const quickActions = [
-    { label: 'New Post', tab: 'posts' },
     { label: 'New Course', tab: 'courses' },
     ...(isPlatform ? [{ label: 'View Inbox', tab: 'inbox' }] : []),
     { label: 'View Members', tab: 'crm' },
@@ -211,64 +179,37 @@ const AdminDashboardHome: React.FC<AdminDashboardHomeProps> = ({ tenantId, tenan
         })}
       </div>
 
-      {/* Two-column: Recent Members (wide) · Recent Posts (in place of the removed
-          Donation Retention card). Stacks on < lg. */}
-      <div className="lg:grid lg:grid-cols-[3fr_2fr] lg:gap-6 space-y-6 lg:space-y-0 items-start">
-        {/* Recent Members */}
-        <div className="bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] overflow-hidden">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-stone-200">
-            <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gold">Recent Members</h3>
-            <button
-              onClick={() => onNavigate('crm')}
-              className="flex items-center gap-1 text-xs font-semibold text-gold hover:opacity-80 transition-opacity"
-            >
-              View all <ArrowRight size={13} />
-            </button>
-          </div>
-          <div className="px-5">
-            {recentMembers.length === 0 ? (
-              <p className="text-sm text-warm-brown py-6">No members yet.</p>
-            ) : (
-              recentMembers.map((m) => {
-                const isNew = m.createdAt != null && m.createdAt >= cutoff;
-                return (
-                  <div key={m.id} className="flex items-center gap-3 py-3 border-b border-stone-200 last:border-0">
-                    <div className="w-9 h-9 rounded-full bg-stone-100 flex items-center justify-center text-xs font-bold text-warm-brown shrink-0">
-                      {initials(m.name)}
-                    </div>
-                    <span className="text-sm font-semibold text-earth flex-1 truncate">{m.name}</span>
-                    {isNew && (
-                      <span className="text-[10px] font-bold uppercase tracking-wide text-sky-700 bg-sky-100 rounded-full px-2 py-0.5 shrink-0">New</span>
-                    )}
-                    <span className="text-xs text-[color:var(--text-faint)] shrink-0 w-14 text-right">{joinedLabel(m.createdAt)}</span>
-                  </div>
-                );
-              })
-            )}
-          </div>
+      {/* Recent Members */}
+      <div className="bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-stone-200">
+          <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gold">Recent Members</h3>
+          <button
+            onClick={() => onNavigate('crm')}
+            className="flex items-center gap-1 text-xs font-semibold text-gold hover:opacity-80 transition-opacity"
+          >
+            View all <ArrowRight size={13} />
+          </button>
         </div>
-
-        {/* Recent Posts */}
-        <div className="bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] overflow-hidden">
-          <div className="px-5 py-4 border-b border-stone-200">
-            <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gold">Recent Posts</h3>
-          </div>
-          <div className="px-5">
-            {recentPosts.length === 0 ? (
-              <p className="text-sm text-warm-brown py-6">No posts yet.</p>
-            ) : (
-              recentPosts.map((p) => (
-                <button
-                  key={p.id}
-                  onClick={() => onNavigate('posts')}
-                  className="w-full flex flex-col items-start gap-0.5 py-3 border-b border-stone-200 last:border-0 text-left hover:opacity-80 transition-opacity"
-                >
-                  <span className="text-sm font-semibold text-earth line-clamp-1 w-full">{p.title}</span>
-                  <span className="text-xs text-[color:var(--text-faint)]">{relativeLabel(p.createdAt)}</span>
-                </button>
-              ))
-            )}
-          </div>
+        <div className="px-5">
+          {recentMembers.length === 0 ? (
+            <p className="text-sm text-warm-brown py-6">No members yet.</p>
+          ) : (
+            recentMembers.map((m) => {
+              const isNew = m.createdAt != null && m.createdAt >= cutoff;
+              return (
+                <div key={m.id} className="flex items-center gap-3 py-3 border-b border-stone-200 last:border-0">
+                  <div className="w-9 h-9 rounded-full bg-stone-100 flex items-center justify-center text-xs font-bold text-warm-brown shrink-0">
+                    {initials(m.name)}
+                  </div>
+                  <span className="text-sm font-semibold text-earth flex-1 truncate">{m.name}</span>
+                  {isNew && (
+                    <span className="text-[10px] font-bold uppercase tracking-wide text-sky-700 bg-sky-100 rounded-full px-2 py-0.5 shrink-0">New</span>
+                  )}
+                  <span className="text-xs text-[color:var(--text-faint)] shrink-0 w-14 text-right">{joinedLabel(m.createdAt)}</span>
+                </div>
+              );
+            })
+          )}
         </div>
       </div>
 
