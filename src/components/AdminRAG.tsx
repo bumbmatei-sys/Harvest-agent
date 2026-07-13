@@ -253,24 +253,45 @@ export default function AdminRAG() {
      }
    }
 
-   // Delete from rag_sources
-   await deleteDoc(doc(db, "rag_sources", deleteTarget.id));
+   // Delete the embedded CHUNKS FIRST, then the source doc. Chunks are keyed by
+   // the source's generated `sourceId` field — the SAME value chunkAndEmbed
+   // writes onto every rag_chunk (NOT the Firestore doc id, which is `.id`).
+   // Deleting chunks before the source means any failure here leaves the source
+   // row visible and re-deletable instead of orphaning its chunks — orphaned
+   // chunks are exactly what kept feeding the blog with deleted content.
+   //
+   // Scope by tenantId as well as sourceId: a sourceId-only query isn't
+   // tenant-scoped, so Firestore's "rules are not filters" analysis rejects it
+   // for a tenant owner/admin (the rag_chunks read rule keys off tenantId). Two
+   // equality filters need no composite index; a super admin on the platform
+   // domain (null tenant) reads unscoped.
+   const sourceId = deleteTarget.sourceId;
+   if (sourceId) {
+     const chunksQ = tenantId
+       ? query(collection(db, "rag_chunks"), where("tenantId", "==", tenantId), where("sourceId", "==", sourceId))
+       : query(collection(db, "rag_chunks"), where("sourceId", "==", sourceId));
+     const snap = await getDocs(chunksQ);
+     // Await every delete and fail loudly if any rejects — a swallowed failure
+     // here is precisely what left orphaned chunks behind before.
+     const results = await Promise.allSettled(snap.docs.map(document => deleteDoc(document.ref)));
+     const failed = results.filter(r => r.status === "rejected");
+     if (failed.length) {
+       throw new Error(`Deleted ${results.length - failed.length}/${snap.size} chunk(s); ${failed.length} failed — source left intact so it can be retried.`);
+     }
+   } else {
+     // A legacy source doc with no sourceId can't have its chunks targeted by
+     // sourceId — surface it (the cleanup script sweeps such orphans) rather
+     // than silently deleting the source and stranding them.
+     console.warn(`rag_sources/${deleteTarget.id} has no sourceId — deleting source only; run cleanup-orphaned-rag-chunks if chunks remain.`);
+   }
 
-   // Delete chunks from Firestore. Scope by tenantId as well as sourceId: a
-   // sourceId-only query isn't tenant-scoped, so Firestore's "rules are not
-   // filters" analysis rejects it for a tenant owner/admin (the rag_chunks read
-   // rule keys off tenantId). Two equality filters need no composite index; a
-   // super admin on the platform domain (null tenant) reads unscoped.
-   const chunksQ = tenantId
-     ? query(collection(db, "rag_chunks"), where("tenantId", "==", tenantId), where("sourceId", "==", deleteTarget.sourceId))
-     : query(collection(db, "rag_chunks"), where("sourceId", "==", deleteTarget.sourceId));
- const snap = await getDocs(chunksQ);
- const deletePromises = snap.docs.map(document => deleteDoc(document.ref));
- await Promise.all(deletePromises);
+   // Chunks gone (or none to target) → remove the source doc.
+   await deleteDoc(doc(db, "rag_sources", deleteTarget.id));
  } catch (error) {
- try { handleFirestoreError(error, OperationType.DELETE, `rag_sources/${deleteTarget.id}`); } catch (e) { console.error(e); }
+   try { handleFirestoreError(error, OperationType.DELETE, `rag_sources/${deleteTarget.id}`); } catch (e) { console.error(e); }
+   notifyError('Failed to delete source', error);
  }
- 
+
  setDeleteTarget(null);
  };
 
