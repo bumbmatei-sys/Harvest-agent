@@ -55,14 +55,18 @@ const EmbedPicker: React.FC<{
 
   return (
     <div
-      className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm"
+      // Centered on every breakpoint (was items-end on mobile, which stuck the
+      // sheet to the bottom behind the mobile nav bar — the list opened off-screen).
+      // p-4 keeps it off the edges and the max-height caps it so the search box +
+      // first items are visible immediately without scrolling the page.
+      className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
       aria-label={TITLES[type]}
     >
       <div
-        className="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl shadow-xl max-h-[80vh] flex flex-col"
+        className="bg-white w-full sm:max-w-md rounded-2xl shadow-xl max-h-[75vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-2 px-4 py-3 border-b border-stone-200">
