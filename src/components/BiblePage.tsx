@@ -1,5 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
+import { useSavedItems } from "../contexts/SavedItemsContext";
+import { verseKey } from "../types/saved.types";
 
 // ─────────────────────────────────────────────
 // HARVEST — Bible Page
@@ -304,8 +306,8 @@ function BookPicker({ currentBook, currentChapter, onSelect, onClose }: { curren
 // ═══════════════════════════════════════════════
 // VERSE ACTION SHEET
 // ═══════════════════════════════════════════════
-function VerseActionSheet({ verseAction, highlighted, onHighlight, onRemoveHighlight, onCopy, onShare, onClose }: {
-  verseAction: VerseAction; highlighted: Map<string, HighlightColor>;
+function VerseActionSheet({ verseAction, translation, highlighted, onHighlight, onRemoveHighlight, onCopy, onShare, onClose }: {
+  verseAction: VerseAction; translation: string; highlighted: Map<string, HighlightColor>;
   onHighlight: (k: string, c: HighlightColor) => void; onRemoveHighlight: (k: string) => void;
   onCopy: (t: string, r: string) => void; onShare: (t: string, r: string) => void; onClose: () => void;
 }) {
@@ -313,6 +315,14 @@ function VerseActionSheet({ verseAction, highlighted, onHighlight, onRemoveHighl
   const key = `${book}-${chapter}-${verse.number}`;
   const ref = `${book} ${chapter}:${verse.number}`;
   const currentHl = highlighted.get(key);
+
+  // Save / unsave this verse. Verses aren't Firestore docs, so we persist the
+  // text + reference on the user doc (translation + book + chapter + verse key).
+  const { isSaved, toggleSave } = useSavedItems();
+  const savedKey = verseKey(translation, book, chapter, verse.number);
+  const verseSaved = isSaved(savedKey);
+  const toggleVerseSave = () =>
+    toggleSave({ type: 'verse', translation, book, chapter, verse: verse.number, text: verse.text, reference: ref });
 
   return (
     <>
@@ -341,7 +351,11 @@ function VerseActionSheet({ verseAction, highlighted, onHighlight, onRemoveHighl
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-2.5 px-4 py-3.5 pb-8">
+        <div className="grid grid-cols-3 gap-2.5 px-4 py-3.5 pb-8">
+          <button onClick={toggleVerseSave} aria-pressed={verseSaved} className={`border-[1.5px] rounded-xl py-3 cursor-pointer flex flex-col items-center gap-1.5 transition-colors ${verseSaved ? "bg-amber-50 border-amber-600" : "bg-stone-100 border-stone-200 hover:border-amber-600 hover:bg-amber-50"}`}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill={verseSaved ? "#D97706" : "none"} stroke={verseSaved ? "#D97706" : "#8B7355"} strokeWidth="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" /></svg>
+            <span className={`text-[11px] font-bold ${verseSaved ? "text-amber-700" : "text-warm-brown"}`}>{verseSaved ? "Saved" : "Save"}</span>
+          </button>
           <button onClick={() => { onCopy(verse.text, ref); onClose(); }} className="bg-stone-100 border-[1.5px] border-stone-200 rounded-xl py-3 cursor-pointer flex flex-col items-center gap-1.5 hover:border-amber-600 hover:bg-amber-50 transition-colors">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8B7355" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
             <span className="text-[11px] font-bold text-warm-brown">Copy</span>
@@ -466,7 +480,7 @@ export default function BiblePage() {
       <style>{`@import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,400;0,600;1,400&display=swap');`}</style>
 
       {showPicker && <BookPicker currentBook={book} currentChapter={chapter} onSelect={(b, ch) => { setBook(b); setChapter(ch); }} onClose={() => setShowPicker(false)} />}
-      {activeVerse && <VerseActionSheet verseAction={activeVerse} highlighted={highlighted} onHighlight={handleHighlight} onRemoveHighlight={handleRemoveHighlight} onCopy={handleCopy} onShare={handleShare} onClose={() => setActiveVerse(null)} />}
+      {activeVerse && <VerseActionSheet verseAction={activeVerse} translation={translation} highlighted={highlighted} onHighlight={handleHighlight} onRemoveHighlight={handleRemoveHighlight} onCopy={handleCopy} onShare={handleShare} onClose={() => setActiveVerse(null)} />}
       {toast && <div className="fixed bottom-[100px] left-1/2 -translate-x-1/2 bg-gray-900 text-white rounded-full px-4 py-2 text-[13px] font-semibold z-[99] whitespace-nowrap animate-[fadeIn_0.25s_ease]">{toast}</div>}
 
       {/* ── DESKTOP BOOK SIDEBAR (lg+ only; hidden on mobile so mobile is unchanged) ── */}

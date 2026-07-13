@@ -15,7 +15,8 @@ import {
   Moon,
   Play,
   X,
-  CalendarCheck
+  CalendarCheck,
+  Bookmark
 } from 'lucide-react';
 import Image from 'next/image';
 import { auth, db, messaging, VAPID_KEY } from '../firebase';
@@ -29,6 +30,7 @@ import PrivacyTermsModal from './PrivacyTermsModal';
 import FAQModal from './FAQModal';
 import ChurchDetailsModal from './ChurchDetailsModal';
 import UserEvents from './UserEvents';
+import SavedItems from './SavedItems';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { SUPER_ADMIN_EMAIL, isSuperAdmin as checkIsSuperAdmin, getTenantScope } from '../utils/tenant-scope';
 import { isSuperAdminEmail } from '../utils/super-admins';
@@ -40,11 +42,18 @@ interface ProfileProps {
   onNavigate: (page: string) => void;
   onGoToPartner: () => void;
   onGoToMap: () => void;
+  /** Open a saved blog article by id (from the "Saved" section). */
+  onOpenSavedBlog?: (postId: string) => void;
+  /** Open a saved course lesson by courseId + lessonId. */
+  onOpenSavedLesson?: (courseId: string, lessonId: string) => void;
+  /** Open the feed for a saved post. */
+  onOpenSavedPost?: (postId: string) => void;
 }
 
-const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap }) => {
+const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap, onOpenSavedBlog, onOpenSavedLesson, onOpenSavedPost }) => {
   const { tenantPlan } = useAppStore();
   const [showMyEvents, setShowMyEvents] = useState(false);
+  const [showSaved, setShowSaved] = useState(false);
  const [isPersonalInfoOpen, setIsPersonalInfoOpen] = useState(false);
  const [isContactOpen, setIsContactOpen] = useState(false);
  const [isPrivacyTermsOpen, setIsPrivacyTermsOpen] = useState(false);
@@ -438,6 +447,14 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap 
  />
  </>
  )}
+ {/* Saved — bookmarked articles, lessons, posts and verses (private to the user). */}
+ <div className="h-px bg-stone-100 mx-4"></div>
+ <SettingItem
+ icon={<Bookmark size={16} className="text-amber-500" />}
+ iconBg="bg-amber-50"
+ label="Saved"
+ onClick={() => setShowSaved(true)}
+ />
  </div>
  </div>
 
@@ -625,6 +642,17 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap 
  {showMyEvents && (
  <div className="fixed inset-0 z-[300] bg-[#F7F6F3]">
  <UserEvents onBack={() => setShowMyEvents(false)} />
+ </div>
+ )}
+
+ {showSaved && (
+ <div className="fixed inset-0 z-[300] bg-[#F7F6F3]">
+ <SavedItems
+ onBack={() => setShowSaved(false)}
+ onOpenBlog={(id) => { setShowSaved(false); onOpenSavedBlog?.(id); }}
+ onOpenLesson={(courseId, lessonId) => { setShowSaved(false); onOpenSavedLesson?.(courseId, lessonId); }}
+ onOpenPost={(id) => { setShowSaved(false); onOpenSavedPost?.(id); }}
+ />
  </div>
  )}
  </div>
