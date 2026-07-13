@@ -99,7 +99,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
   const tenantName = tenantData?.name ?? tenantData?.config?.name ?? 'Ministry';
   // Mirror MainApp: white-label tenants show their own logo; the platform /
   // super-admin view keeps the default Harvest mark.
-  const { branding } = useTenant();
+  const { branding, isLoading: tenantLoading, tenantPlan: ctxTenantPlan } = useTenant();
   const isWhiteLabel = !!tenantId && tenantId !== PLATFORM_TENANT_ID;
   const displayLogo = isWhiteLabel && branding?.logo ? branding.logo : DEFAULT_LOGO;
   const { data: userData, isLoading: userLoading } = useCurrentUser(auth.currentUser?.uid);
@@ -242,10 +242,25 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
     && (tenantData as any).adminEmails.some((e: string) => (e || '').toLowerCase() === ownerEmail);
   const isChurchAdmin = userRole === 'church_admin' || isTenantOwnerEmail;
   const perms = userPermissions ?? {} as Permission;
-  const features = tenantPlan ? getPlanFeatures(tenantPlan) : null;
-  const isTenantAdmin = !!tenantPlan;
+  // The store `tenantPlan` is synced from the context plan by an effect in App.tsx,
+  // so it can lag the authoritative context value by a render on first mount. Fall
+  // back to the context plan so `features`/`isTenantAdmin` are correct on the first
+  // render once the plan is known, rather than waiting on that lagging sync.
+  const resolvedPlan = tenantPlan ?? ctxTenantPlan ?? null;
+  const features = resolvedPlan ? getPlanFeatures(resolvedPlan) : null;
+  const isTenantAdmin = !!resolvedPlan;
   const hasFullAccess = isSuperAdmin || isChurchAdmin || perms.fullAccess;
-  const isLoading = !isAuthReady || userLoading;
+  // Plan readiness. A white-label tenant's plan is loaded async from the tenant
+  // doc (TenantContext); until it resolves we must NOT build the plan-gated nav —
+  // the `!isTenantAdmin` fallback in the tab list treats an unknown plan as
+  // "platform", which would flash paid tabs (AI Knowledge, CRM, …) before the plan
+  // confirms them. Fold plan-readiness into `isLoading` so the dashboard shows its
+  // loading skeleton until the plan is known, then builds the nav from the real
+  // plan. `tenantLoading` is false once the tenant doc has been read — even when it
+  // yields no plan — and platform/apex contexts have no tenant plan to wait on, so
+  // this never hangs into an infinite skeleton.
+  const isPlanReady = platformOverride || !isWhiteLabel || !tenantLoading;
+  const isLoading = !isAuthReady || userLoading || !isPlanReady;
 
   // My Account menu (top-right avatar). Owner identity gates Billing & Payments —
   // ownerId is the buyer uid set by the Stripe webhook at tenant creation.
