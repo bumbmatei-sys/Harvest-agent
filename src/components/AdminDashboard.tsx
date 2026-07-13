@@ -1,9 +1,8 @@
 "use client";
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { LayoutDashboard, Church, FileText, Rss, BrainCircuit, Inbox, GraduationCap, ChevronLeft, ChevronRight, ChevronDown, Building2, Settings, MoreHorizontal, Mail, Heart, Users, MessageSquare, Receipt, CalendarCheck, ClipboardList, QrCode, Radio, ExternalLink, Link2, Palette, Bell, X } from 'lucide-react';
+import { LayoutDashboard, Church, FileText, BrainCircuit, Inbox, GraduationCap, ChevronLeft, ChevronRight, ChevronDown, Building2, Settings, MoreHorizontal, Mail, Heart, Users, MessageSquare, Receipt, CalendarCheck, ClipboardList, QrCode, Radio, ExternalLink, Link2, Palette, Bell, X } from 'lucide-react';
 import AdminBlog from './AdminBlog';
-import AdminPosts from './AdminPosts';
 import PlatformInbox from './PlatformInbox';
 import AdminChurches from './AdminChurches';
 import AdminCourses from './AdminCourses';
@@ -57,7 +56,7 @@ const TAB_TO_SLUG: Record<string, string> = { 'ai': 'ai-knowledge' };
 // More-drawer groupings (Vercel-style). The section a tab appears in is keyed by
 // its tab id; order matters. Groups with no permitted tabs are omitted entirely.
 const MORE_GROUPS: { label: string; ids: string[] }[] = [
-  { label: 'CONTENT', ids: ['posts', 'blog', 'courses', 'newsletter', 'ai', 'docs'] },
+  { label: 'CONTENT', ids: ['blog', 'courses', 'newsletter', 'ai', 'docs'] },
   // Ministry: the "who" + giving. CRM leads the group AND is surfaced on the
   // Dashboard home (Members card / "View Members") — both are valid entry points.
   // Analytics & Admin Roles live inside the CRM screen as internal tabs, not as
@@ -77,7 +76,7 @@ const GROUPED_MORE_IDS = new Set(MORE_GROUPS.flatMap((g) => g.ids));
 // above the groups; Settings sits below them. Any id the admin isn't permitted
 // for is dropped, and a group with no permitted tabs is omitted entirely.
 const DESKTOP_NAV_GROUPS: { label: string; ids: string[] }[] = [
-  { label: 'CONTENT', ids: ['posts', 'blog', 'courses', 'newsletter', 'ai', 'docs'] },
+  { label: 'CONTENT', ids: ['blog', 'courses', 'newsletter', 'ai', 'docs'] },
   { label: 'MINISTRY', ids: ['crm', 'churches', 'community', 'fundraising', 'forms', 'accounting'] },
   { label: 'BROADCASTING', ids: ['events', 'checkin', 'sms', 'livestream'] },
   { label: 'GROW', ids: ['affiliate', 'branding', 'tenants', 'inbox'] },
@@ -310,7 +309,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
     (hasFullAccess || perms.modifyChurches) && { id: 'churches', label: isTenantAdmin && features && features.maxChurches === 1 ? 'Church' : 'Church List', icon: Church },
     (platformOverride || !isTenantAdmin || (features && features.blog)) && (hasFullAccess || perms.createCourses) && { id: 'courses', label: 'Courses', icon: GraduationCap },
     (platformOverride || !isTenantAdmin || (features && features.blog)) && (hasFullAccess || perms.writeArticles) && { id: 'blog', label: 'Blog', icon: FileText },
-    (hasFullAccess || perms.createPosts) && { id: 'posts', label: 'Posts', icon: Rss },
     (platformOverride || !isTenantAdmin || (features && features.aiKnowledge)) && (hasFullAccess || perms.uploadRag) && { id: 'ai', label: 'AI Knowledge', icon: BrainCircuit },
     // Newsletter tab — gated behind plan feature
     (platformOverride || !isTenantAdmin || (features && features.newsletterAutomation)) &&
@@ -713,8 +711,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
             </div>
           ) : activeTab === 'blog' ? (
             <div className="p-4 lg:p-0"><AdminBlog /></div>
-          ) : activeTab === 'posts' ? (
-            <div className="p-4 lg:p-0"><AdminPosts userRole={isSuperAdmin ? 'super_admin' : userRole} userPermissions={userPermissions} /></div>
           ) : activeTab === 'inbox' ? (
             <div className="p-4 lg:p-0"><PlatformInbox /></div>
           ) : activeTab === 'churches' ? (
