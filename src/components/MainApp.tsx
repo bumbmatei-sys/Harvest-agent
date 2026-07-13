@@ -55,7 +55,7 @@ interface MainAppProps {
 
 const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
   const { tenantPlan, currentUser } = useAppStore();
-  const { tenantId, tenantName, branding } = useTenant();
+  const { tenantId, tenantName, branding, tenantPlan: ctxTenantPlan, isLoading: tenantLoading } = useTenant();
   // White-label tenants (any real tenant other than the platform) show their own
   // name + logo; the platform / super-admin view keeps the "Harvest" brand.
   const isWhiteLabel = !!tenantId && tenantId !== PLATFORM_TENANT_ID;
@@ -87,13 +87,25 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
   const [fullScreenView, setFullScreenView] = useState<{type: 'none' | 'all-news' | 'article' | 'course' | 'livestream', id?: string, data?: any}>({type: 'none'});
 
   // The platform tenant (apex/harvest) and super admins get all features.
-  // White-label tenants are gated strictly by their plan. While the plan is still
-  // loading for a white-label tenant, default to the MOST restrictive set (no leaks).
+  // White-label tenants are gated strictly by their plan.
   // Platform context (apex domain, super admin) => all features. On a tenant
   // subdomain everyone is gated by the tenant plan, including super admins.
   const platformOverride = hasPlatformOverride();
   const isMainSite = !isWhiteLabel || platformOverride;
-  const features = isMainSite ? null : getPlanFeatures(tenantPlan ?? 'plus');
+
+  // Plan readiness. A white-label tenant's plan is loaded async from the tenant
+  // doc (TenantContext). We must distinguish "plan still LOADING" from "plan
+  // LOADED = no/low plan": `tenantLoading` is false once the tenant doc has been
+  // read, EVEN when that read yields no plan — so this becomes ready on apex/no
+  // plan too (never an infinite wait). Platform context has no plan to wait on.
+  const isPlanReady = isMainSite || !tenantLoading;
+  // The store `tenantPlan` is synced from the context plan by an effect in App.tsx,
+  // so it can lag the authoritative context value by a render on first mount.
+  // Fall back to the context plan so gating never depends solely on that lagging
+  // sync — otherwise legit higher-tier features (Map, AI chat) flash hidden until
+  // the store catches up. A resolved null/low plan stays correctly restricted.
+  const resolvedPlan = tenantPlan ?? ctxTenantPlan ?? null;
+  const features = isMainSite ? null : (resolvedPlan ? getPlanFeatures(resolvedPlan) : null);
 
   // 'loading' means we haven't fetched yet — hide tab until we know.
   // 'empty' means 0 published courses — hide tab.
@@ -129,7 +141,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
 
   const topTabs = [
     { id: 'news', label: 'News' },
-    (isMainSite || features?.blog === true) && { id: 'blog', label: 'Blog' },
+    (isMainSite || (isPlanReady && features?.blog === true)) && { id: 'blog', label: 'Blog' },
     // Only include Courses tab once we know at least 1 course exists
     coursesStatus === 'present' && { id: 'courses', label: 'Courses' },
     { id: 'messages', label: 'Messages' },
@@ -140,8 +152,8 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
   const bottomTabs = [
     { id: 'home', label: 'Home', icon: Home },
     { id: 'bible', label: 'Bible', icon: BookOpen },
-    (isMainSite || features?.aiChat === true) && { id: 'chat', label: 'Chat', icon: MessageCircle },
-    (isMainSite || features?.map === true) && { id: 'map', label: 'Map', icon: MapIcon },
+    (isMainSite || (isPlanReady && features?.aiChat === true)) && { id: 'chat', label: 'Chat', icon: MessageCircle },
+    (isMainSite || (isPlanReady && features?.map === true)) && { id: 'map', label: 'Map', icon: MapIcon },
     { id: 'profile', label: 'My Profile', icon: User },
   ].filter(Boolean) as { id: string; label: string; icon: any }[];
   // 'home' is always the unconditional first entry above — desktop's grouped
