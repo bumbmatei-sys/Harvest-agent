@@ -3,9 +3,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import { collection, query, orderBy, onSnapshot, doc, updateDoc, arrayUnion, arrayRemove, limit, where, getDoc, getDocs, getCountFromServer, addDoc, deleteDoc, deleteField, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { db, auth } from '../firebase';
-import { Calendar as CalendarIcon, ThumbsUp, Check, ChevronRight, ChevronLeft, FileText, Tag, Calendar, MessageSquare, Send, MapPin, Globe, HeartHandshake, Paperclip, X } from 'lucide-react';
+import { Calendar as CalendarIcon, ThumbsUp, Check, ChevronRight, ChevronLeft, FileText, Tag, Calendar, MessageSquare, Send, MapPin, Globe, HeartHandshake, Paperclip, Pin, X } from 'lucide-react';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { getTenantScope, getWriteTenantScope } from '../utils/tenant-scope';
+import { sendPushNotification } from '../utils/send-notification';
 import { ImageUpload } from './ImageUpload';
 import { useShareBaseUrl } from '../utils/share-url';
 import ShareButton from './ShareButton';
@@ -273,6 +274,14 @@ const PostImageGrid: React.FC<{ images: string[]; priority?: boolean; onOpen: (i
   );
 };
 
+/**
+ * Feed post composer is admin-only: posts are announcements — members read,
+ * like, and comment but do not get a composer. The underlying create path and
+ * firestore.rules already permit member posting; this flag only gates the UI.
+ * Flip it to `true` to re-enable member posting — a one-line change.
+ */
+const ALLOW_MEMBER_POSTS = false;
+
 /** Resolve a post's renderable image list: prefer imageUrls, fall back to the legacy single imageUrl. */
 const postImages = (post: CommunityPost): string[] => {
   if (post.imageUrls && post.imageUrls.length > 0) return post.imageUrls.slice(0, 3);
@@ -310,7 +319,8 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
   const [deletePostId, setDeletePostId] = useState<string | null>(null);
   const [dmBusyId, setDmBusyId] = useState<string | null>(null);
 
-  // User post composer state (any authenticated user can post text + up to 3 images).
+  // Admin announcement composer state (text + up to 3 images + embed + poll + pin).
+  // Gated to admins via `canCompose` below; members read/like/comment only.
   const [composerText, setComposerText] = useState('');
   const [composerImages, setComposerImages] = useState<string[]>([]);
   const [showImageAttach, setShowImageAttach] = useState(false);
@@ -318,6 +328,13 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
   const [isPosting, setIsPosting] = useState(false);
   const [editingPostId, setEditingPostId] = useState<string | null>(null);
   const attachMenuRef = useRef<HTMLDivElement>(null);
+  // Post vs Poll authoring (ported from AdminPosts). Poll mode is mutually
+  // exclusive with images/embeds — same as the old Post/Poll tab.
+  const [composerMode, setComposerMode] = useState<'post' | 'poll'>('post');
+  const [pollOptions, setPollOptions] = useState<{ id: string; text: string; votes?: string[] }[]>([{ id: '1', text: '' }, { id: '2', text: '' }]);
+  // Pin-to-top toggle (admins). Written as `isPinned` — the same field the feed
+  // already sorts on and AdminPosts wrote.
+  const [composerPinned, setComposerPinned] = useState(false);
 
   // Single embed attachment (blog / fundraising / event) — one per post.
   const [composerEmbed, setComposerEmbed] = useState<PostEmbed | null>(null);
@@ -395,22 +412,49 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
     setEditingPostId(null);
     setComposerEmbed(null);
     setEmbedPicker(null);
+    setComposerMode('post');
+    setPollOptions([{ id: '1', text: '' }, { id: '2', text: '' }]);
+    setComposerPinned(false);
   };
 
   const beginEditPost = (post: CommunityPost) => {
     setEditingPostId(post.id);
     setComposerText(post.content || '');
-    const imgs = postImages(post);
-    setComposerImages(imgs);
-    setShowImageAttach(imgs.length > 0);
+    setComposerPinned(!!post.isPinned);
     setAttachMenuOpen(false);
-    setComposerEmbed(post.embed || null);
+    if (post.type === 'poll') {
+      // Editing a poll — carry existing options (and their votes, so an edit
+      // that only tweaks wording doesn't wipe tallies).
+      setComposerMode('poll');
+      setPollOptions(
+        post.pollOptions && post.pollOptions.length >= 2
+          ? post.pollOptions.map(o => ({ id: o.id, text: o.text, votes: o.votes }))
+          : [{ id: '1', text: '' }, { id: '2', text: '' }]
+      );
+      setComposerImages([]);
+      setShowImageAttach(false);
+      setComposerEmbed(null);
+    } else {
+      setComposerMode('post');
+      const imgs = postImages(post);
+      setComposerImages(imgs);
+      setShowImageAttach(imgs.length > 0);
+      setComposerEmbed(post.embed || null);
+      setPollOptions([{ id: '1', text: '' }, { id: '2', text: '' }]);
+    }
     if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleSubmitPost = async () => {
     const text = composerText.trim();
-    if (!text && composerImages.length === 0) return;
+    const isPoll = composerMode === 'poll';
+    // Poll needs a question + at least two non-empty options (mirrors AdminPosts).
+    const validPollOptions = pollOptions.filter(o => o.text.trim());
+    if (isPoll) {
+      if (!text || validPollOptions.length < 2) return;
+    } else if (!text && composerImages.length === 0) {
+      return;
+    }
     const user = auth.currentUser;
     if (!user) {
       setErrorMessage('Please sign in to post');
@@ -420,10 +464,13 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
 
     setIsPosting(true);
     try {
-      const images = composerImages.slice(0, MAX_IMAGES);
+      // Poll posts carry no images/embeds; post-mode posts carry no poll.
+      const images = isPoll ? [] : composerImages.slice(0, MAX_IMAGES);
+      const embed = isPoll ? null : composerEmbed;
+      const pollDocOptions = validPollOptions.map(o => ({ id: o.id, text: o.text.trim(), votes: o.votes || [] }));
 
       if (editingPostId) {
-        // Edit own post — verify tenant, then update content + images.
+        // Edit own post/poll — verify tenant, then update.
         const tenantIdEdit = await getTenantScope();
         const postRef = doc(db, 'community_posts', editingPostId);
         if (tenantIdEdit) {
@@ -433,14 +480,26 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
             return;
           }
         }
-        await updateDoc(postRef, {
+        const update: Record<string, unknown> = {
+          type: isPoll ? 'poll' : 'post',
           content: text,
-          imageUrls: images,
+          isPinned: composerPinned,
+        };
+        if (isPoll) {
+          update.pollOptions = pollDocOptions;
+          // Clear post-only fields so a post→poll switch leaves no stale data.
+          update.imageUrls = [];
+          update.imageUrl = '';
+          update.embed = deleteField();
+        } else {
+          update.imageUrls = images;
           // Keep the legacy single field in sync so older readers still show the primary image.
-          imageUrl: images[0] || '',
+          update.imageUrl = images[0] || '';
           // Persist the single embed; drop the field entirely if it was removed.
-          embed: composerEmbed ?? deleteField(),
-        });
+          update.embed = embed ?? deleteField();
+          update.pollOptions = deleteField();
+        }
+        await updateDoc(postRef, update);
       } else {
         // New post — resolve author from the user doc (the #147 fix: Auth
         // displayName/photoURL are often blank; the real profile is on the doc).
@@ -449,21 +508,29 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
         const authorName = userData?.displayName || userData?.name || user.displayName || 'Member';
         const authorPhoto = userData?.photoURL || user.photoURL || '';
 
-        await addDoc(collection(db, 'community_posts'), {
-          type: 'post',
+        const base: Record<string, unknown> = {
+          type: isPoll ? 'poll' : 'post',
           authorId: user.uid,
           authorName,
           authorPhoto,
           content: text,
-          imageUrls: images,
-          // Legacy single field kept in sync for back-compat (public post page, AllNews, admin feed).
-          imageUrl: images[0] || '',
-          // A reference (type + id), not a copy — the card resolves the live doc at render time.
-          ...(composerEmbed ? { embed: composerEmbed } : {}),
           likes: [],
+          isPinned: composerPinned,
           createdAt: new Date().toISOString(),
           tenantId: await getWriteTenantScope(),
-        });
+        };
+        if (isPoll) {
+          base.pollOptions = pollDocOptions;
+        } else {
+          base.imageUrls = images;
+          // Legacy single field kept in sync for back-compat (public post page, AllNews, admin feed).
+          base.imageUrl = images[0] || '';
+          // A reference (type + id), not a copy — the card resolves the live doc at render time.
+          if (embed) base.embed = embed;
+        }
+        await addDoc(collection(db, 'community_posts'), base);
+        // Announce the new post via push (mirrors the former AdminPosts composer).
+        sendPushNotification('New Community Post', text.slice(0, 100));
       }
       resetComposer();
     } catch (error) {
@@ -967,6 +1034,15 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
 
   const canPostImages = composerImages.length < MAX_IMAGES;
 
+  // Composer is admin-only (posts are announcements). `canManage` starts false
+  // and only flips true after the async role check resolves, so a regular user
+  // never sees the composer flash. Flip ALLOW_MEMBER_POSTS to re-enable members.
+  const canCompose = canManage || ALLOW_MEMBER_POSTS;
+  // Poll submit needs a question + two non-empty options; post submit needs text or an image.
+  const composerCanSubmit = composerMode === 'poll'
+    ? Boolean(composerText.trim()) && pollOptions.filter(o => o.text.trim()).length >= 2
+    : Boolean(composerText.trim()) || composerImages.length > 0;
+
   // Build the tenant-scoped item list for whichever embed picker is open.
   const fmtPickerMoney = (n: number) =>
     new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n || 0);
@@ -999,9 +1075,37 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
 
   const mainColumn = (
     <div className="space-y-4 lg:space-y-3 w-full">
-      {/* User post composer — any authenticated member can share text + up to 3 images */}
-      {auth.currentUser && (
+      {/* Admin announcement composer — text + up to 3 images + embed + poll + pin.
+          Admin-only (posts are announcements); members read/like/comment only. */}
+      {canCompose && auth.currentUser && (
         <div className="bg-white rounded-2xl shadow-sm border border-stone-200 p-4 lg:rounded-[var(--ds-radius-card)] lg:border-[color:var(--ds-border)] lg:shadow-[var(--ds-sh-sm)]">
+          {/* Post / Poll switch (ported from AdminPosts). Hidden while editing so
+              an existing post's type isn't accidentally flipped. */}
+          {!editingPostId && (
+            <div className="flex gap-1 bg-stone-100 rounded-xl p-1 mb-3 w-fit">
+              <button
+                type="button"
+                onClick={() => setComposerMode('post')}
+                className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${composerMode === 'post' ? 'bg-white shadow-sm text-earth' : 'text-[color:var(--text-faint)]'}`}
+              >
+                Post
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  // Poll is mutually exclusive with images/embeds — clear them.
+                  setComposerMode('poll');
+                  setComposerImages([]);
+                  setShowImageAttach(false);
+                  setComposerEmbed(null);
+                  setAttachMenuOpen(false);
+                }}
+                className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${composerMode === 'poll' ? 'bg-white shadow-sm text-earth' : 'text-[color:var(--text-faint)]'}`}
+              >
+                Poll
+              </button>
+            </div>
+          )}
           <div className="flex items-start gap-3">
             <div className="w-9 h-9 rounded-full bg-stone-200 overflow-hidden flex items-center justify-center text-sm font-bold text-warm-brown flex-shrink-0 relative">
               {auth.currentUser.photoURL ? (
@@ -1013,14 +1117,50 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
             <textarea
               value={composerText}
               onChange={(e) => setComposerText(e.target.value)}
-              placeholder={editingPostId ? 'Edit your post…' : 'Share an update with the community…'}
+              placeholder={composerMode === 'poll' ? 'Ask a question…' : editingPostId ? 'Edit your post…' : 'Share an update with the community…'}
               rows={2}
               className="flex-1 min-w-0 bg-transparent border-none focus:ring-0 resize-none text-earth placeholder-[color:var(--text-faint)] text-sm p-0 pt-1.5 outline-none"
             />
           </div>
 
-          {/* Attached image thumbnails + remove-each */}
-          {composerImages.length > 0 && (
+          {/* Poll options — add/remove; needs at least two non-empty to post. */}
+          {composerMode === 'poll' && (
+            <div className="space-y-2 mt-3 pl-12">
+              {pollOptions.map((option, index) => (
+                <div key={option.id} className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={option.text}
+                    onChange={(e) => setPollOptions(prev => prev.map((o, i) => i === index ? { ...o, text: e.target.value } : o))}
+                    placeholder={`Option ${index + 1}`}
+                    className="flex-1 px-3 py-2 bg-stone-100 border border-stone-200 rounded-lg text-sm text-earth focus:ring-1 focus:ring-gold outline-none"
+                  />
+                  {pollOptions.length > 2 && (
+                    <button
+                      type="button"
+                      onClick={() => setPollOptions(prev => prev.filter(o => o.id !== option.id))}
+                      aria-label={`Remove option ${index + 1}`}
+                      className="p-2 text-[color:var(--text-faint)] hover:text-red-500 transition-colors"
+                    >
+                      <X size={16} />
+                    </button>
+                  )}
+                </div>
+              ))}
+              {pollOptions.length < 5 && (
+                <button
+                  type="button"
+                  onClick={() => setPollOptions(prev => [...prev, { id: Date.now().toString(), text: '' }])}
+                  className="text-sm text-gold font-medium hover:underline"
+                >
+                  + Add option
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Attached image thumbnails + remove-each (post mode only) */}
+          {composerMode === 'post' && composerImages.length > 0 && (
             <div className="flex flex-wrap gap-2 mt-3 pl-12">
               {composerImages.map((url, i) => (
                 <div key={i} className="relative w-20 h-20 rounded-lg overflow-hidden bg-stone-100 border border-stone-200">
@@ -1039,7 +1179,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
           )}
 
           {/* Image attach zone — reveals the uploader (reuses ImageUpload); appends to the array, capped at 3 */}
-          {showImageAttach && canPostImages && (
+          {composerMode === 'post' && showImageAttach && canPostImages && (
             <div className="mt-3 pl-12">
               <ImageUpload
                 value=""
@@ -1053,65 +1193,81 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
           )}
 
           {/* Attached embed preview — one per post, removable, replaced when a new one is picked */}
-          {composerEmbed && (
+          {composerMode === 'post' && composerEmbed && (
             <div className="mt-3 pl-12">
               <EmbedComposerChip embed={composerEmbed} tenantId={scopeTenantId} onRemove={() => setComposerEmbed(null)} />
             </div>
           )}
 
           <div className="flex items-center justify-between mt-3 pt-3 border-t border-stone-200 pl-12">
-            {/* Paperclip "add" menu — image + blog / fundraising / event embeds. */}
-            <div className="relative" ref={attachMenuRef}>
-              <button
-                type="button"
-                onClick={() => setAttachMenuOpen(o => !o)}
-                aria-label="Add attachment"
-                aria-haspopup="menu"
-                aria-expanded={attachMenuOpen}
-                className="p-2 -ml-2 text-warm-brown hover:text-gold hover:bg-stone-100 rounded-full transition-colors"
-              >
-                <Paperclip size={18} />
-              </button>
-              {attachMenuOpen && (
-                <div
-                  role="menu"
-                  className="absolute left-0 bottom-full mb-1 min-w-[160px] bg-white rounded-xl border border-stone-200 shadow-[0_8px_30px_rgba(0,0,0,0.12)] overflow-hidden z-20"
-                >
+            <div className="flex items-center gap-1">
+              {/* Paperclip "add" menu — image + blog / fundraising / event embeds (post mode only). */}
+              {composerMode === 'post' && (
+                <div className="relative" ref={attachMenuRef}>
                   <button
                     type="button"
-                    role="menuitem"
-                    disabled={!canPostImages}
-                    onClick={() => { setShowImageAttach(true); setAttachMenuOpen(false); }}
-                    className="w-full text-left px-4 py-2.5 text-sm font-medium text-[color:var(--text-body)] hover:bg-stone-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    onClick={() => setAttachMenuOpen(o => !o)}
+                    aria-label="Add attachment"
+                    aria-haspopup="menu"
+                    aria-expanded={attachMenuOpen}
+                    className="p-2 -ml-2 text-warm-brown hover:text-gold hover:bg-stone-100 rounded-full transition-colors"
                   >
-                    {canPostImages ? 'Add image' : 'Max 3 images'}
+                    <Paperclip size={18} />
                   </button>
-                  <button
-                    type="button"
-                    role="menuitem"
-                    onClick={() => { setEmbedPicker('blog'); setAttachMenuOpen(false); }}
-                    className="w-full text-left px-4 py-2.5 text-sm font-medium text-[color:var(--text-body)] hover:bg-stone-100 transition-colors"
-                  >
-                    Add blog article
-                  </button>
-                  <button
-                    type="button"
-                    role="menuitem"
-                    onClick={() => { setEmbedPicker('fundraising'); setAttachMenuOpen(false); }}
-                    className="w-full text-left px-4 py-2.5 text-sm font-medium text-[color:var(--text-body)] hover:bg-stone-100 transition-colors"
-                  >
-                    Add fundraising
-                  </button>
-                  <button
-                    type="button"
-                    role="menuitem"
-                    onClick={() => { setEmbedPicker('event'); setAttachMenuOpen(false); }}
-                    className="w-full text-left px-4 py-2.5 text-sm font-medium text-[color:var(--text-body)] hover:bg-stone-100 transition-colors"
-                  >
-                    Add event
-                  </button>
+                  {attachMenuOpen && (
+                    <div
+                      role="menu"
+                      className="absolute left-0 bottom-full mb-1 min-w-[160px] bg-white rounded-xl border border-stone-200 shadow-[0_8px_30px_rgba(0,0,0,0.12)] overflow-hidden z-20"
+                    >
+                      <button
+                        type="button"
+                        role="menuitem"
+                        disabled={!canPostImages}
+                        onClick={() => { setShowImageAttach(true); setAttachMenuOpen(false); }}
+                        className="w-full text-left px-4 py-2.5 text-sm font-medium text-[color:var(--text-body)] hover:bg-stone-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {canPostImages ? 'Add image' : 'Max 3 images'}
+                      </button>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => { setEmbedPicker('blog'); setAttachMenuOpen(false); }}
+                        className="w-full text-left px-4 py-2.5 text-sm font-medium text-[color:var(--text-body)] hover:bg-stone-100 transition-colors"
+                      >
+                        Add blog article
+                      </button>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => { setEmbedPicker('fundraising'); setAttachMenuOpen(false); }}
+                        className="w-full text-left px-4 py-2.5 text-sm font-medium text-[color:var(--text-body)] hover:bg-stone-100 transition-colors"
+                      >
+                        Add fundraising
+                      </button>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => { setEmbedPicker('event'); setAttachMenuOpen(false); }}
+                        className="w-full text-left px-4 py-2.5 text-sm font-medium text-[color:var(--text-body)] hover:bg-stone-100 transition-colors"
+                      >
+                        Add event
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
+
+              {/* Pin-to-top toggle (admin). Writes `isPinned` — the field the feed sorts on. */}
+              <button
+                type="button"
+                onClick={() => setComposerPinned(p => !p)}
+                aria-pressed={composerPinned}
+                aria-label={composerPinned ? 'Unpin from top' : 'Pin to top'}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium transition-colors ${composerPinned ? 'bg-[color-mix(in_srgb,var(--brand-color)_15%,white)] text-gold' : 'text-warm-brown hover:bg-stone-100'}`}
+              >
+                <Pin size={15} className={composerPinned ? 'fill-current' : ''} />
+                {composerPinned ? 'Pinned' : 'Pin'}
+              </button>
             </div>
 
             <div className="flex items-center gap-2">
@@ -1127,11 +1283,11 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
               <button
                 type="button"
                 onClick={handleSubmitPost}
-                disabled={isPosting || (!composerText.trim() && composerImages.length === 0)}
+                disabled={isPosting || !composerCanSubmit}
                 className="flex items-center gap-2 px-5 py-1.5 bg-gold text-white rounded-lg font-medium text-sm hover:bg-[color-mix(in_srgb,var(--brand-color)_85%,black)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Send size={16} />
-                {editingPostId ? 'Update' : 'Post'}
+                {editingPostId ? 'Update' : composerMode === 'poll' ? 'Post Poll' : 'Post'}
               </button>
             </div>
           </div>
@@ -1225,9 +1381,9 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
               <KebabMenu
                 ariaLabel="Post options"
                 items={[
-                  // Author can edit their own text post (polls/events aren't text-editable here).
-                  ...(auth.currentUser?.uid === post.authorId && post.type === 'post'
-                    ? [{ label: 'Edit post', onClick: () => beginEditPost(post) }]
+                  // Author can edit their own post or poll (legacy events aren't editable here).
+                  ...(auth.currentUser?.uid === post.authorId && (post.type === 'post' || post.type === 'poll')
+                    ? [{ label: post.type === 'poll' ? 'Edit poll' : 'Edit post', onClick: () => beginEditPost(post) }]
                     : []),
                   ...(canManage || auth.currentUser?.uid === post.authorId
                     ? [{ label: 'Delete post', danger: true, onClick: () => setDeletePostId(post.id) }]

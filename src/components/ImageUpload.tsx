@@ -31,36 +31,52 @@ export function ImageUpload({ value, onChange, className = '', rounded = false, 
         return;
       }
 
-      // 1. Ask our API for a short-lived presigned R2 PUT URL.
-      const presignRes = await fetch('/api/storage/presign', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          fileName: file.name,
-          contentType: file.type,
-          fileSize: file.size,
-        }),
-      });
+      // 1. Ask our API for a short-lived presigned R2 PUT URL. A thrown fetch
+      // here means the request never reached our server (offline / DNS), which
+      // is a different failure than the server rejecting the file — say so.
+      let presignRes: Response;
+      try {
+        presignRes = await fetch('/api/storage/presign', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            fileName: file.name,
+            contentType: file.type,
+            fileSize: file.size,
+          }),
+        });
+      } catch {
+        throw new Error("Couldn't reach the server. Check your connection and try again.");
+      }
 
       if (!presignRes.ok) {
+        // Surface the ACTUAL reason the server gave (e.g. "Image exceeds the
+        // 4MB limit", "Only image uploads are allowed") instead of a generic
+        // message, so the user knows whether it's a too-large file or a real error.
         const data = await presignRes.json().catch(() => ({}));
-        throw new Error(data.error || 'Upload failed');
+        throw new Error(data?.error || `Upload could not be prepared (error ${presignRes.status}).`);
       }
 
       const { uploadUrl, publicUrl } = await presignRes.json();
 
-      // 2. Upload the file bytes directly to R2.
-      const putRes = await fetch(uploadUrl, {
-        method: 'PUT',
-        body: file,
-        headers: { 'Content-Type': file.type },
-      });
+      // 2. Upload the file bytes directly to R2. Distinguish a network failure
+      // reaching R2 from R2 rejecting the request.
+      let putRes: Response;
+      try {
+        putRes = await fetch(uploadUrl, {
+          method: 'PUT',
+          body: file,
+          headers: { 'Content-Type': file.type },
+        });
+      } catch {
+        throw new Error("Couldn't reach the storage server to upload the image. Please try again.");
+      }
 
       if (!putRes.ok) {
-        throw new Error('Upload failed');
+        throw new Error(`The storage server rejected the upload (error ${putRes.status}).`);
       }
 
       // 3. Save the public URL.
