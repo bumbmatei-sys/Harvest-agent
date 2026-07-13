@@ -26,6 +26,7 @@ import PostPurchaseWizard from './components/PostPurchaseWizard';
 import { OperationType, handleFirestoreError } from './utils/firestore-errors';
 import { TenantPlan } from './types/tenant.types';
 import { TenantProvider, useTenant } from './contexts/TenantContext';
+import { SavedItemsProvider } from './contexts/SavedItemsContext';
 import { useClaimsFreshness } from './hooks/useClaimsFreshness';
 import { isSuperAdminEmail } from './utils/super-admins';
 import { useAppStore } from './store/useAppStore';
@@ -335,7 +336,9 @@ const App: React.FC = () => {
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <TenantProvider>
-          <AppInner />
+          <SavedItemsProvider>
+            <AppInner />
+          </SavedItemsProvider>
         </TenantProvider>
       </BrowserRouter>
       <ReactQueryDevtools initialIsOpen={false} />

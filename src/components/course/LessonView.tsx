@@ -6,6 +6,7 @@ import { getAllLessons } from "../../utils/course.utils";
 import { GOLD, GREEN, GREEN_BG } from "../../utils/course.constants";
 import { sanitizeHtml } from "../../utils/sanitize";
 import { QuizPanel } from "./QuizPanel";
+import SaveButton from "../SaveButton";
 
 const BASE_TABS = ["outline", "notes", "resources"] as const;
 type TabId = typeof BASE_TABS[number] | "quiz";
@@ -86,6 +87,17 @@ export function LessonView({ course, lesson, authors, onBack, onComplete, comple
           <div className="text-[11px] text-[color:var(--text-faint)] font-semibold uppercase tracking-wider">{course.title}</div>
           <div className="text-[15px] font-bold truncate font-display">{lesson.title}</div>
         </div>
+        <SaveButton
+          variant="icon"
+          className="flex-shrink-0"
+          entry={{
+            type: 'lesson',
+            courseId: course.id,
+            lessonId: lesson.id,
+            title: lesson.title,
+            courseTitle: course.title,
+          }}
+        />
       </div>
 
       {/* Video player */}

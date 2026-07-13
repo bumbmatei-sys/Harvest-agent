@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Home, BookOpen, MessageCircle, Map as MapIcon, User, Play, ChevronLeft, ChevronRight, Newspaper, FileText, GraduationCap, MessageSquare, HandHeart, HeartHandshake } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import dynamic from 'next/dynamic';
-import { collection, query, where, getDocs, limit } from 'firebase/firestore';
+import { collection, query, where, getDocs, limit, doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { getTenantScope } from '../utils/tenant-scope';
 
@@ -305,6 +305,29 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
     }),
   };
 
+  // Open a saved item from the Profile "Saved" section. Blog/lesson reuse the
+  // same full-screen views the feed/course tabs open; a saved post drops the
+  // user back on the News feed. (Verses render inline in the Saved list.)
+  const openSavedBlog = useCallback(async (postId: string) => {
+    try {
+      const snap = await getDoc(doc(db, 'blog_posts', postId));
+      if (snap.exists()) {
+        setFullScreenView({ type: 'article', data: { id: snap.id, ...snap.data() } });
+      }
+    } catch (e) {
+      console.error('Failed to open saved article', e);
+    }
+  }, []);
+
+  const openSavedLesson = useCallback((courseId: string, lessonId: string) => {
+    setFullScreenView({ type: 'course', data: { courseId, lessonId } });
+  }, []);
+
+  const openSavedPost = useCallback(() => {
+    setActiveBottomTab('home');
+    setActiveTopTab('news');
+  }, []);
+
   const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
     if (fullScreenView.type !== 'none') return;
     const currentScrollY = e.currentTarget.scrollTop;
@@ -596,6 +619,9 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
                 onNavigate={onNavigate}
                 onGoToPartner={() => { setActiveBottomTab('home'); setActiveTopTab('partner'); }}
                 onGoToMap={() => setActiveBottomTab('map')}
+                onOpenSavedBlog={openSavedBlog}
+                onOpenSavedLesson={openSavedLesson}
+                onOpenSavedPost={openSavedPost}
               />
             </div>
           ) : activeBottomTab === 'chat' ? (

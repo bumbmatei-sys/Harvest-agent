@@ -10,6 +10,7 @@ import { sendPushNotification } from '../utils/send-notification';
 import { ImageUpload } from './ImageUpload';
 import { useShareBaseUrl } from '../utils/share-url';
 import ShareButton from './ShareButton';
+import SaveButton from './SaveButton';
 import { isSuperAdminEmail } from '../utils/super-admins';
 import { getOrCreateDm } from '../lib/dm';
 import CampaignWidget from './CampaignWidget';
@@ -1511,11 +1512,22 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
                 <MessageSquare size={16} />
                 <span>{commentCounts[post.id] ?? postComments[post.id]?.length ?? 0} Comments</span>
               </button>
-              <ShareButton
-                url={shareBase ? `${shareBase}/post/${post.id}` : ''}
-                title={post.authorName ? `${post.authorName}'s post` : 'Community post'}
-                className="ml-auto"
-              />
+              <div className="ml-auto flex items-center gap-2">
+                <SaveButton
+                  entry={{
+                    type: 'post',
+                    id: post.id,
+                    authorName: post.authorName,
+                    snippet: post.content
+                      ? (post.content.length > 140 ? `${post.content.slice(0, 140)}…` : post.content)
+                      : undefined,
+                  }}
+                />
+                <ShareButton
+                  url={shareBase ? `${shareBase}/post/${post.id}` : ''}
+                  title={post.authorName ? `${post.authorName}'s post` : 'Community post'}
+                />
+              </div>
             </div>
 
             {/* Comments Section */}

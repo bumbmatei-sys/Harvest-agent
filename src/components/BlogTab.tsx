@@ -9,6 +9,13 @@ import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { getTenantScope } from '../utils/tenant-scope';
 import { usePublicShareUrl } from '../utils/share-url';
 import ShareButton from './ShareButton';
+import SaveButton from './SaveButton';
+
+/** Plain-text snippet from a post's HTML content, for the Saved list. */
+const toSnippet = (html: string, len = 140): string => {
+  const text = (html || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  return text.length > len ? `${text.slice(0, len)}…` : text;
+};
 
 
 
@@ -160,7 +167,17 @@ const BlogTab: React.FC<BlogTabProps> = ({ onOpenArticle, initialPost, onBack, i
  </button>
  <span className="font-medium text-earth truncate">Back to Blog</span>
  </div>
+ <div className="flex items-center gap-2">
+ <SaveButton
+ entry={{
+ type: 'blog',
+ id: selectedPost.id,
+ title: selectedPost.title,
+ snippet: toSnippet(selectedPost.content),
+ }}
+ />
  <ShareButton url={shareUrl} title={selectedPost.title} />
+ </div>
  </div>
  
  <article className="pb-24">
