@@ -19,12 +19,16 @@ interface LessonViewProps {
   completed?: Set<string>;
   quizAttempts?: Record<string, QuizAttempt>;
   onQuizSubmit: (lessonId: string, attempt: QuizAttempt) => void;
+  lessonNotes?: Record<string, string>;
+  onSaveNote: (lessonId: string, text: string) => void;
   onSelectLesson: (lesson: Lesson) => void;
   onSelectAuthor?: (author: Author) => void;
 }
 
-export function LessonView({ course, lesson, authors, onBack, onComplete, completed, quizAttempts, onQuizSubmit, onSelectLesson, onSelectAuthor }: LessonViewProps) {
+export function LessonView({ course, lesson, authors, onBack, onComplete, completed, quizAttempts, onQuizSubmit, lessonNotes, onSaveNote, onSelectLesson, onSelectAuthor }: LessonViewProps) {
   const [activeTab, setActiveTab] = useState<TabId>("outline");
+  const [noteDraft, setNoteDraft] = useState(lessonNotes?.[lesson.id] ?? "");
+  const [noteSaved, setNoteSaved] = useState(false);
 
   const allLessons = getAllLessons(course);
   const currentIndex = allLessons.findIndex((l) => l.id === lesson.id);
@@ -42,6 +46,10 @@ export function LessonView({ course, lesson, authors, onBack, onComplete, comple
   const quizPassed = !!quizAttempt?.passed;
   const quizGateActive = hasQuiz && !!course.requireQuiz;
   const completionBlocked = quizGateActive && !quizPassed && !isCompleted;
+  // Advancing to the next lesson requires finishing this one first (quiz
+  // passing, when required, is already folded into isCompleted via the
+  // Mark Complete gate above).
+  const nextBlocked = !isCompleted;
   const tabs: TabId[] = hasQuiz ? [...BASE_TABS, "quiz"] : [...BASE_TABS];
 
   // Guard against landing on the Quiz tab for a lesson that turns out to have
@@ -49,6 +57,13 @@ export function LessonView({ course, lesson, authors, onBack, onComplete, comple
   useEffect(() => {
     if (activeTab === "quiz" && !hasQuiz) setActiveTab("outline");
   }, [lesson.id, hasQuiz, activeTab]);
+
+  // Reset the notepad draft when navigating to a different lesson.
+  useEffect(() => {
+    setNoteDraft(lessonNotes?.[lesson.id] ?? "");
+    setNoteSaved(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lesson.id]);
 
   // Resolve video URL
   const videoUrl = lesson.youtubeUrl
@@ -122,28 +137,50 @@ export function LessonView({ course, lesson, authors, onBack, onComplete, comple
         </div>
 
         {/* Outline tab */}
-        {activeTab === "outline" && lesson.outline && lesson.outline.length > 0 && (
+        {activeTab === "outline" && (lesson.summary || (lesson.outline && lesson.outline.length > 0)) && (
           <div>
-            {lesson.outline.map((item, idx) => (
-              <div key={item.id || idx} className="flex gap-3.5 py-3.5 border-b border-gray-50">
-                <div className="text-xs font-semibold w-[42px] flex-shrink-0 pt-0.5" style={{ color: GOLD }}>
-                  {item.text?.match(/\d+:\d+/)?.[0] || `${idx * 3}:00`}
-                </div>
-                <div className="text-sm text-warm-brown leading-6">
-                  <strong className="text-earth font-semibold">{item.title}</strong>
-                  {item.text ? ` — ${item.text}` : ""}
-                </div>
+            {lesson.summary && (
+              <p className="text-[15px] leading-8 text-warm-brown mb-4">{lesson.summary}</p>
+            )}
+            {lesson.outline && lesson.outline.length > 0 && (
+              <div>
+                {lesson.outline.map((item, idx) => (
+                  <div key={item.id || idx} className="flex gap-3.5 py-3.5 border-b border-gray-50">
+                    <div className="text-xs font-semibold w-[42px] flex-shrink-0 pt-0.5" style={{ color: GOLD }}>
+                      {item.text?.match(/\d+:\d+/)?.[0] || `${idx * 3}:00`}
+                    </div>
+                    <div className="text-sm text-warm-brown leading-6">
+                      <strong className="text-earth font-semibold">{item.title}</strong>
+                      {item.text ? ` — ${item.text}` : ""}
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
+            )}
           </div>
         )}
 
-        {/* Notes tab */}
+        {/* Notes tab — the learner's own private notes for this lesson */}
         {activeTab === "notes" && (
           <div className="py-5">
-            <p className="text-sm leading-7 text-warm-brown">
-              {lesson.summary || "No notes available for this lesson."}
-            </p>
+            <textarea
+              value={noteDraft}
+              onChange={(e) => { setNoteDraft(e.target.value); setNoteSaved(false); }}
+              placeholder="Write your notes for this lesson…"
+              rows={8}
+              className="w-full min-h-[160px] rounded-lg border border-stone-200 p-3.5 text-sm leading-6 text-warm-brown placeholder:text-[color:var(--text-faint)] focus:outline-none focus:ring-2 focus:ring-amber-600/40 resize-y"
+            />
+            <div className="flex items-center justify-between mt-2.5">
+              <span className={`text-xs font-semibold text-green-600 transition-opacity ${noteSaved ? "opacity-100" : "opacity-0"}`}>
+                Saved
+              </span>
+              <button
+                onClick={() => { onSaveNote(lesson.id, noteDraft); setNoteSaved(true); }}
+                className="py-2.5 px-5 rounded-lg bg-stone-100 border border-stone-200 text-warm-brown text-[13px] font-semibold cursor-pointer hover:bg-stone-200 transition-colors"
+              >
+                Save
+              </button>
+            </div>
           </div>
         )}
 
@@ -204,14 +241,18 @@ export function LessonView({ course, lesson, authors, onBack, onComplete, comple
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="m5 13 4 4L19 7" /></svg>
             {isCompleted ? "Completed ✓" : "Mark as Completed"}
           </button>
-          {completionBlocked && (
+          {completionBlocked ? (
             <button
               onClick={() => setActiveTab("quiz")}
               className="w-full text-center text-xs font-semibold text-[color:var(--text-faint)] hover:text-warm-brown cursor-pointer underline decoration-dotted -mt-1"
             >
               Pass the quiz to complete this lesson
             </button>
-          )}
+          ) : nextBlocked && nextLesson ? (
+            <p className="w-full text-center text-xs font-semibold text-[color:var(--text-faint)] -mt-1">
+              Complete this lesson to continue
+            </p>
+          ) : null}
 
           <div className="flex gap-3">
             {prevLesson && (
@@ -225,11 +266,16 @@ export function LessonView({ course, lesson, authors, onBack, onComplete, comple
             )}
             {nextLesson && (
               <button
-                onClick={() => onSelectLesson(nextLesson)}
-                className="flex-1 py-3 rounded-lg text-white text-[13px] font-semibold cursor-pointer flex items-center justify-center gap-1.5 transition-colors"
-                style={{ background: GOLD }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = "color-mix(in srgb, var(--brand-color, #C9963A) 85%, black)")}
-                onMouseLeave={(e) => (e.currentTarget.style.background = GOLD)}
+                onClick={() => { if (!nextBlocked) onSelectLesson(nextLesson); }}
+                disabled={nextBlocked}
+                className={`flex-1 py-3 rounded-lg text-[13px] font-semibold flex items-center justify-center gap-1.5 transition-colors ${
+                  nextBlocked
+                    ? "bg-stone-100 text-[color:var(--text-faint)] border border-stone-200 cursor-not-allowed"
+                    : "text-white cursor-pointer"
+                }`}
+                style={nextBlocked ? undefined : { background: GOLD }}
+                onMouseEnter={(e) => { if (!nextBlocked) e.currentTarget.style.background = "color-mix(in srgb, var(--brand-color, #C9963A) 85%, black)"; }}
+                onMouseLeave={(e) => { if (!nextBlocked) e.currentTarget.style.background = GOLD; }}
               >
                 Next
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="m9 18 6-6-6-6" /></svg>

@@ -31,6 +31,7 @@ export default function CoursePage({
   const [previousScreen, setPreviousScreen] = useState<"overview" | "lesson" | null>(null);
   const [completed, setCompleted] = useState<Set<string>>(new Set());
   const [quizAttempts, setQuizAttempts] = useState<Record<string, QuizAttempt>>({});
+  const [lessonNotes, setLessonNotes] = useState<Record<string, string>>({});
 
   const [courses, setCourses] = useState<Course[]>([]);
   const [authors, setAuthors] = useState<Author[]>([]);
@@ -51,6 +52,9 @@ export default function CoursePage({
           }
           if (data.quizAttempts) {
             setQuizAttempts(data.quizAttempts);
+          }
+          if (data.lessonNotes) {
+            setLessonNotes(data.lessonNotes);
           }
         }
       } catch (error) {
@@ -210,6 +214,20 @@ export default function CoursePage({
     }
   };
 
+  const saveLessonNote = async (lessonId: string, text: string) => {
+    setLessonNotes((prev) => ({ ...prev, [lessonId]: text }));
+    if (auth.currentUser) {
+      try {
+        const userRef = doc(db, "users", auth.currentUser.uid);
+        await updateDoc(userRef, {
+          [`lessonNotes.${lessonId}`]: text,
+        });
+      } catch (error) {
+        try { handleFirestoreError(error, OperationType.UPDATE, `users/${auth.currentUser?.uid}`); } catch (e) { console.error(e); }
+      }
+    }
+  };
+
   const selectLesson = (lesson: Lesson) => {
     setSelectedLesson(lesson);
     window.scrollTo(0, 0);
@@ -265,6 +283,8 @@ export default function CoursePage({
           completed={completed}
           quizAttempts={quizAttempts}
           onQuizSubmit={submitQuizAttempt}
+          lessonNotes={lessonNotes}
+          onSaveNote={saveLessonNote}
           onSelectLesson={selectLesson}
           onSelectAuthor={(author) => {
             setSelectedAuthor(author);
