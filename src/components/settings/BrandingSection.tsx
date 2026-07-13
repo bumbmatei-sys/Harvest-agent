@@ -14,6 +14,7 @@ export const BrandingSection: React.FC<BrandingSectionProps> = ({ afterName }) =
   const { refreshBranding } = useTenant();
   const [ministryName, setMinistryName] = useState('');
   const [brandingLogo, setBrandingLogo] = useState('');
+  const [squareIcon, setSquareIcon] = useState('');
   const [brandingColor, setBrandingColor] = useState('#B8962E');
   const [brandingSaving, setBrandingSaving] = useState(false);
   const [brandingSaved, setBrandingSaved] = useState(false);
@@ -36,6 +37,7 @@ export const BrandingSection: React.FC<BrandingSectionProps> = ({ afterName }) =
               if (data.name) setMinistryName(data.name);
               const config = data.config || {};
               if (config.logo) setBrandingLogo(config.logo);
+              if (config.squareIcon) setSquareIcon(config.squareIcon);
               if (config.primaryColor) setBrandingColor(config.primaryColor);
             }
           }
@@ -73,6 +75,7 @@ export const BrandingSection: React.FC<BrandingSectionProps> = ({ afterName }) =
           if (tenantId) {
             const updates: Record<string, unknown> = {
               'config.logo': brandingLogo || null,
+              'config.squareIcon': squareIcon || null,
               'config.primaryColor': brandingColor,
               updatedAt: new Date().toISOString(),
             };
@@ -133,6 +136,29 @@ export const BrandingSection: React.FC<BrandingSectionProps> = ({ afterName }) =
               onChange={setBrandingLogo}
               placeholder="Or paste a logo URL (PNG, SVG, JPG)"
             />
+          </div>
+        </div>
+      </div>
+
+      {/* App Icon (square) */}
+      <div className="bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] p-5">
+        <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gold mb-3">App Icon (square)</h3>
+        <div className="flex items-start gap-6">
+          <div className="w-24 h-24 rounded-brand bg-stone-100 flex items-center justify-center overflow-hidden border border-stone-200 shrink-0">
+            {squareIcon ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={squareIcon} alt="App icon" className="w-full h-full object-contain" />
+            ) : (
+              <span className="text-[color:var(--text-faint)] text-sm">No icon</span>
+            )}
+          </div>
+          <div className="flex-1 min-w-0">
+            <ImageUpload
+              value={squareIcon}
+              onChange={setSquareIcon}
+              placeholder="Or paste a square icon URL (PNG, JPG)"
+            />
+            <p className="text-xs text-[color:var(--text-faint)] mt-1.5">Used for the phone home-screen install icon. Upload a square image (e.g. 512&times;512) for best results.</p>
           </div>
         </div>
       </div>

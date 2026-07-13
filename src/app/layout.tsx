@@ -58,7 +58,9 @@ export async function generateMetadata(): Promise<Metadata> {
   const tenant = await getTenantFromHost(host);
 
   const isWhiteLabel = !!tenant && tenant.id !== PLATFORM_TENANT_ID;
-  const logo = tenant?.config?.logo;
+  // Prefer a dedicated square icon (best fit for "Add to Home Screen"); fall
+  // back to the logo, which is often a rectangular wordmark.
+  const iconSource = tenant?.config?.squareIcon || tenant?.config?.logo;
   const name = isWhiteLabel && tenant!.name ? tenant!.name : 'Harvest';
 
   return {
@@ -72,9 +74,10 @@ export async function generateMetadata(): Promise<Metadata> {
     },
     icons: {
       // Apple devices use apple-touch-icon (not the manifest) for
-      // "Add to Home Screen", so point it at the tenant logo when available.
-      icon: isWhiteLabel && logo ? logo : '/icons/icon-96x96.png',
-      apple: isWhiteLabel && logo ? logo : '/icons/icon-192x192.png',
+      // "Add to Home Screen", so point it at the tenant's square icon (or
+      // logo, if no square icon was uploaded) when available.
+      icon: isWhiteLabel && iconSource ? iconSource : '/icons/icon-96x96.png',
+      apple: isWhiteLabel && iconSource ? iconSource : '/icons/icon-192x192.png',
     },
   };
 }
