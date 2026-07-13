@@ -78,6 +78,23 @@ describe('GET /manifest.webmanifest', () => {
     expect(body.icons.every((i: any) => JSON.stringify(i.purpose) === JSON.stringify(['any', 'maskable']))).toBe(true);
   });
 
+  it('prefers the square icon over the logo for install icons when both are set', async () => {
+    setHost('square.theharvest.app');
+    mockGetTenantFromHost.mockResolvedValue({
+      id: 'square',
+      name: 'square',
+      config: {
+        logo: 'https://cdn.example.com/wordmark-logo.png',
+        squareIcon: 'https://cdn.example.com/square-icon.png',
+        primaryColor: '#123456',
+      },
+    });
+    const { body } = await getManifest();
+    expect(body.icons).toHaveLength(2);
+    expect(body.icons.every((i: any) => i.src === 'https://cdn.example.com/square-icon.png')).toBe(true);
+    expect(body.icons.map((i: any) => i.sizes)).toEqual(['192x192', '512x512']);
+  });
+
   it('falls back to the default theme color when the tenant has no brand color', async () => {
     setHost('bumb.theharvest.app');
     mockGetTenantFromHost.mockResolvedValue({

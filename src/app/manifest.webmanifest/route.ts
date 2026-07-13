@@ -68,11 +68,13 @@ export async function GET() {
   const tenant = await getTenantFromHost(host);
 
   const isWhiteLabel = !!tenant && tenant.id !== PLATFORM_TENANT_ID;
-  const logo = tenant?.config?.logo;
+  // Prefer a dedicated square icon (best fit for the install/home-screen slot);
+  // fall back to the logo, which is often a rectangular wordmark.
+  const iconSource = tenant?.config?.squareIcon || tenant?.config?.logo;
 
   let manifest: Record<string, unknown>;
 
-  if (isWhiteLabel && (tenant!.name || logo)) {
+  if (isWhiteLabel && (tenant!.name || iconSource)) {
     const name = tenant!.name || HARVEST_MANIFEST.name;
     const shortName = name.length > SHORT_NAME_MAX ? name.slice(0, SHORT_NAME_MAX).trim() : name;
     manifest = {
@@ -86,7 +88,7 @@ export async function GET() {
       background_color: '#ffffff',
       theme_color: tenant!.config?.primaryColor || DEFAULT_THEME_COLOR,
       categories: HARVEST_MANIFEST.categories,
-      icons: logo ? buildTenantIcons(logo) : HARVEST_MANIFEST.icons,
+      icons: iconSource ? buildTenantIcons(iconSource) : HARVEST_MANIFEST.icons,
     };
   } else {
     manifest = HARVEST_MANIFEST;
