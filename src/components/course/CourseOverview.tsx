@@ -301,6 +301,13 @@ export function CourseOverview({ course, authors, onBack, onStartLesson, complet
             {certError && (
               <div className="text-xs text-center text-red-600 mt-2">{certError}</div>
             )}
+            <button
+              onClick={() => allLessons[0] && onStartLesson(course, allLessons[0])}
+              className="w-full py-3.5 rounded-lg lg:rounded-xl bg-transparent text-[15px] font-bold cursor-pointer transition-colors mt-2.5 border-[1.5px]"
+              style={{ color: GOLD, borderColor: GOLD }}
+            >
+              Start Again
+            </button>
           </>
         ) : (
           <button
