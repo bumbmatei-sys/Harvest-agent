@@ -248,7 +248,7 @@ export function LessonView({ course, lesson, authors, onBack, onComplete, comple
             >
               Pass the quiz to complete this lesson
             </button>
-          ) : nextBlocked && nextLesson ? (
+          ) : nextBlocked ? (
             <p className="w-full text-center text-xs font-semibold text-[color:var(--text-faint)] -mt-1">
               Complete this lesson to continue
             </p>
@@ -264,7 +264,7 @@ export function LessonView({ course, lesson, authors, onBack, onComplete, comple
                 Previous
               </button>
             )}
-            {nextLesson && (
+            {nextLesson ? (
               <button
                 onClick={() => { if (!nextBlocked) onSelectLesson(nextLesson); }}
                 disabled={nextBlocked}
@@ -279,6 +279,22 @@ export function LessonView({ course, lesson, authors, onBack, onComplete, comple
               >
                 Next
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="m9 18 6-6-6-6" /></svg>
+              </button>
+            ) : (
+              <button
+                onClick={() => { if (!nextBlocked) onBack(); }}
+                disabled={nextBlocked}
+                className={`flex-1 py-3 rounded-lg text-[13px] font-semibold flex items-center justify-center gap-1.5 transition-colors ${
+                  nextBlocked
+                    ? "bg-stone-100 text-[color:var(--text-faint)] border border-stone-200 cursor-not-allowed"
+                    : "text-white cursor-pointer"
+                }`}
+                style={nextBlocked ? undefined : { background: GOLD }}
+                onMouseEnter={(e) => { if (!nextBlocked) e.currentTarget.style.background = "color-mix(in srgb, var(--brand-color, #C9963A) 85%, black)"; }}
+                onMouseLeave={(e) => { if (!nextBlocked) e.currentTarget.style.background = GOLD; }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="m5 13 4 4L19 7" /></svg>
+                Finish Course
               </button>
             )}
           </div>
