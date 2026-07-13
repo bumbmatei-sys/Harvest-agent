@@ -44,6 +44,9 @@ export async function POST(request: NextRequest) {
     const userTokenMap = new Map<string, string[]>(); // uid -> tokens for cleanup
     snapshot.forEach((doc) => {
       const data = doc.data();
+      // notificationsEnabled === false is an explicit opt-out; undefined/true
+      // (existing users predate this field) is treated as enabled.
+      if (data.notificationsEnabled === false) return;
       if (Array.isArray(data.fcmTokens) && data.fcmTokens.length > 0) {
         tokens.push(...data.fcmTokens);
         userTokenMap.set(doc.id, data.fcmTokens);
