@@ -115,20 +115,42 @@ export async function generateAndSavePost(
 ): Promise<{ postId: string; title: string }> {
   if (!process.env.MIMO_API_KEY) throw new Error('MIMO_API_KEY not configured');
 
-  // 1. Fetch up to 25 rag_chunks for this tenant (sample for context)
+  // 1. Load the tenant's LIVE knowledge sources first, so we can drop any chunk
+  //    whose source has been deleted. Orphaned chunks (left behind by an earlier
+  //    failed source delete) must never feed generation — otherwise the blog
+  //    writes about content the founder already removed from the AI Knowledge UI.
+  const sourcesSnap = await adminDb
+    .collection('rag_sources')
+    .where('tenantId', '==', tenantId)
+    .get();
+  const liveSourceIds = new Set<string>(
+    sourcesSnap.docs.map((d) => d.data().sourceId).filter(Boolean),
+  );
+
+  // 2. Fetch the NEWEST 25 rag_chunks for this tenant. Ordering by createdAt
+  //    desc uses the founder's most recent content instead of whatever Firestore
+  //    returns first (which could be stale). Requires the composite index
+  //    rag_chunks(tenantId ASC, createdAt DESC) — see firestore.indexes.json.
   const chunksSnap = await adminDb
     .collection('rag_chunks')
     .where('tenantId', '==', tenantId)
+    .orderBy('createdAt', 'desc')
     .limit(25)
     .get();
 
-  if (chunksSnap.empty) {
+  // 3. Structurally exclude orphaned chunks (source no longer exists) even if
+  //    the cleanup script hasn't been run yet.
+  const liveChunks = chunksSnap.docs.filter((d) =>
+    liveSourceIds.has(d.data().sourceId),
+  );
+
+  if (liveChunks.length === 0) {
     throw new Error(
       'No knowledge base content found. Please upload documents to the AI Knowledge Base first.',
     );
   }
 
-  const knowledgeContext = chunksSnap.docs
+  const knowledgeContext = liveChunks
     .map((d, i) => `[${i + 1}] ${d.data().chunk}`)
     .join('\n\n');
 
