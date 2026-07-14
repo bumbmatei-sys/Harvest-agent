@@ -148,7 +148,7 @@ const AdminBlog: React.FC = () => {
          enabled: automation.enabled,
          frequency: automation.frequency,
          dayOfWeek: automation.dayOfWeek,
-         hour: 8, // default to 8 AM UTC
+         hour: automation.hour,
          topicHint: automation.topicHint,
        }),
      });
@@ -411,6 +411,28 @@ const AdminBlog: React.FC = () => {
  </div>
  </div>
  )}
+
+ {/* Hour to post */}
+ <div>
+ <label className="text-xs font-bold text-[color:var(--text-faint)] uppercase tracking-wider mb-2 block">
+ Time to post
+ </label>
+ <div className="relative">
+ <select
+ value={automation.hour}
+ onChange={e => setAutomation(a => ({ ...a, hour: Number(e.target.value) }))}
+ className="w-full pl-4 pr-10 py-2.5 bg-white border border-stone-200 rounded-xl text-sm text-earth appearance-none outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent transition-all"
+ >
+ {Array.from({ length: 24 }, (_, h) => (
+ <option key={h} value={h}>{String(h).padStart(2, '0')}:00 UTC</option>
+ ))}
+ </select>
+ <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-[color:var(--text-faint)] pointer-events-none" />
+ </div>
+ <p className="text-xs text-[color:var(--text-faint)] mt-1">
+ Posts generate around this hour (UTC), when the daily job runs.
+ </p>
+ </div>
 
  {/* Topic hint */}
  <div>
