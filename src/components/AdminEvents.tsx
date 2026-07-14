@@ -20,6 +20,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useAppStore } from '../store/useAppStore';
 import { PLATFORM_TENANT_ID } from '../utils/tenant-scope';
 import { useEvents } from '../hooks/queries/useEventQueries';
+import { HeroBand } from './member/desktopKit';
 
 import type { Event, Registration, TicketType, DiscountCode } from '../hooks/queries/useEventQueries';
 
@@ -819,10 +820,61 @@ const AdminEvents: React.FC = () => {
       ) : (
         <div className="space-y-3">
           {events.map(ev => (
-            <div
-              key={ev.id}
-              className="bg-white rounded-2xl p-4 border border-stone-200 shadow-sm cursor-pointer hover:border-[color-mix(in_srgb,var(--brand-color)_30%,transparent)] transition-all"
-              onClick={() => openDetail(ev)}
+            <React.Fragment key={ev.id}>
+              {/* Mobile card — mockup design: hero band (cover, else navy→gold gradient),
+                  status pill overlay, meta row, actions. Same handlers as the desktop card. */}
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => openDetail(ev)}
+                className="lg:hidden bg-white rounded-brand-xl border border-stone-200 shadow-[var(--ds-sh-sm)] overflow-hidden cursor-pointer"
+              >
+                <div className="relative h-20">
+                  {ev.coverImage ? (
+                    <img src={ev.coverImage} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <HeroBand radius="0" className="!absolute inset-0" />
+                  )}
+                  <span
+                    className="absolute top-2.5 left-2.5 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full"
+                    style={{
+                      background: ev.status === 'published' ? 'var(--surface-gold)' : 'var(--surface-sunken)',
+                      color: ev.status === 'published' ? 'var(--wheat-700)' : 'var(--text-muted)',
+                    }}
+                  >
+                    {ev.status}
+                  </span>
+                </div>
+                <div className="p-3.5">
+                  <div className="font-display text-[15px] font-medium text-earth leading-snug">{ev.title}</div>
+                  <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1.5 text-xs text-warm-brown">
+                    {ev.startDate && <span className="flex items-center gap-1"><Clock size={11} /> {fmtDate(ev.startDate)}</span>}
+                    {ev.isOnline ? (
+                      <span className="flex items-center gap-1"><Globe size={11} /> Online</span>
+                    ) : ev.location ? (
+                      <span className="flex items-center gap-1"><MapPin size={11} /> {ev.location}</span>
+                    ) : null}
+                    <span className={ev.price > 0 ? 'font-semibold text-warm-brown' : 'font-semibold text-field-600'}>{ev.price > 0 ? `$${ev.price}` : 'Free'}</span>
+                  </div>
+                  {ev.registrationEnabled && <div className="text-xs font-semibold text-gold mt-2">Registration open</div>}
+                  <div className="flex items-center gap-1 mt-3 pt-2.5 border-t border-stone-200">
+                    <button onClick={e => { e.stopPropagation(); togglePin(ev); }} className="p-1.5 rounded-lg hover:bg-wheat-50 transition-colors" title={ev.pinned ? 'Unpin from feed' : 'Pin to feed'}>
+                      <Pin size={13} className={ev.pinned ? 'text-wheat-500 fill-wheat-500' : 'text-[color:var(--text-faint)]'} />
+                    </button>
+                    <button onClick={e => { e.stopPropagation(); openEdit(ev); }} className="p-1.5 rounded-lg hover:bg-stone-100 transition-colors">
+                      <Edit2 size={13} className="text-[color:var(--text-faint)]" />
+                    </button>
+                    <button onClick={e => { e.stopPropagation(); setDeleteId(ev.id); }} className="p-1.5 rounded-lg hover:bg-red-50 transition-colors ml-auto">
+                      <Trash2 size={13} className="text-red-400" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Desktop card — existing approved layout, unchanged (now lg-only). */}
+              <div
+                className="hidden lg:block bg-white rounded-2xl p-4 border border-stone-200 shadow-sm cursor-pointer hover:border-[color-mix(in_srgb,var(--brand-color)_30%,transparent)] transition-all"
+                onClick={() => openDetail(ev)}
             >
               {ev.coverImage && (
                 <div className="w-full h-32 rounded-xl overflow-hidden mb-3">
@@ -875,6 +927,7 @@ const AdminEvents: React.FC = () => {
                 </div>
               </div>
             </div>
+            </React.Fragment>
           ))}
         </div>
       )}
