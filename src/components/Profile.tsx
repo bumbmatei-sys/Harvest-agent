@@ -434,16 +434,16 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
      and handles a missing tenant gracefully (empty state). */}
  <div className="h-px bg-stone-100 mx-4"></div>
  <SettingItem
- icon={<CalendarCheck size={16} className="text-wheat-600" />}
- iconBg="bg-wheat-100"
+ icon={<CalendarCheck size={16} className="text-field-600" />}
+ iconBg="bg-field-100"
  label="My Events"
  onClick={() => setShowMyEvents(true)}
  />
  {/* Saved — bookmarked articles, lessons, posts and verses (private to the user). */}
  <div className="h-px bg-stone-100 mx-4"></div>
  <SettingItem
- icon={<Bookmark size={16} className="text-wheat-600" />}
- iconBg="bg-wheat-100"
+ icon={<Bookmark size={16} className="text-sky-600" />}
+ iconBg="bg-sky-100"
  label="Saved"
  onClick={() => setShowSaved(true)}
  />
