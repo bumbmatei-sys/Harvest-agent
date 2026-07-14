@@ -6,6 +6,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 import { generateAccessCode } from '@/lib/ai-utils';
 import { PLAN_PRICES, getPlanFromPriceId } from '@/lib/stripe-config';
 import { setCustomClaims } from '@/lib/set-custom-claims';
+import { issueDonationReceipt } from '@/lib/donation-receipt';
 import { Resend } from 'resend';
 import QRCode from 'qrcode';
 
@@ -656,11 +657,17 @@ async function finalizePartnershipSubscription(
   if (donorEmail) {
     const recipientName = (meta.donorName || '').trim() || donorDisplayName || donorEmail;
     const receiptNumber = `R-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
-    await adminDb.collection('tenants').doc(tenantId).collection('invoices').add({
+    const invoiceRef = await adminDb.collection('tenants').doc(tenantId).collection('invoices').add({
       type: 'donation_receipt', recipientName, recipientEmail: donorEmail,
       amount: amountCents, currency: sub?.currency || 'usd', description: 'Monthly partnership donation',
       relatedId: subscriptionId, receiptNumber, issuedAt: nowIso,
       tenantName: churchName, pdfUrl: null, status: 'pending',
+    });
+    // Best-effort thank-you + PDF receipt (never throws — see issueDonationReceipt).
+    await issueDonationReceipt({
+      tenantId, recipientName, donorEmail, amountCents, currency: sub?.currency || 'usd',
+      receiptNumber, tenantName: churchName, issuedAt: nowIso,
+      description: 'Monthly partnership donation', invoiceRef,
     });
   }
 
@@ -1472,11 +1479,17 @@ export async function POST(request: NextRequest) {
             const tenantName = tenantDoc.data()?.name || tenantDoc.data()?.displayName || '';
             const recipientName = (meta.donorName || '').trim() || donorDisplayName || donorEmail;
             const receiptNumber = `R-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
-            await adminDb.collection('tenants').doc(tenantId).collection('invoices').add({
+            const invoiceRef = await adminDb.collection('tenants').doc(tenantId).collection('invoices').add({
               type: 'donation_receipt', recipientName, recipientEmail: donorEmail,
               amount, currency: pi.currency || 'usd', description: 'Partnership donation',
               relatedId: pi.id, receiptNumber, issuedAt: nowIso,
               tenantName, pdfUrl: null, status: 'pending',
+            });
+            // Best-effort thank-you + PDF receipt (never throws — see issueDonationReceipt).
+            await issueDonationReceipt({
+              tenantId, recipientName, donorEmail, amountCents: amount, currency: pi.currency || 'usd',
+              receiptNumber, tenantName, issuedAt: nowIso,
+              description: 'Partnership donation', invoiceRef,
             });
           }
 
