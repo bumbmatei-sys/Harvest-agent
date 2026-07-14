@@ -10,21 +10,72 @@ interface ImageUploadProps {
   className?: string;
   rounded?: boolean;         // round thumbnail for avatars (default false)
   label?: string;            // empty-state primary text, e.g. "Add thumbnail" (default "Add image")
+  /** Letterbox the picked image onto a transparent square canvas before upload (for app icons). */
+  squarePad?: boolean;
 }
 
-export function ImageUpload({ value, onChange, className = '', rounded = false, label }: ImageUploadProps) {
+const SQUARE_PAD_SIZE = 512;
+
+/**
+ * Draws `file` centered/contained onto a transparent SQUARE_PAD_SIZE canvas
+ * (object-fit: contain semantics) so the exported PNG is truly square — no
+ * stretching when a manifest later declares it at a fixed square size.
+ */
+async function padToSquare(file: File): Promise<File> {
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(new Error('Could not read the image file.'));
+    reader.readAsDataURL(file);
+  });
+
+  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const el = document.createElement('img');
+    el.onload = () => resolve(el);
+    el.onerror = () => reject(new Error('Could not decode the image file.'));
+    el.src = dataUrl;
+  });
+
+  const canvas = document.createElement('canvas');
+  canvas.width = SQUARE_PAD_SIZE;
+  canvas.height = SQUARE_PAD_SIZE;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return file;
+
+  const scale = Math.min(SQUARE_PAD_SIZE / img.width, SQUARE_PAD_SIZE / img.height);
+  const drawWidth = img.width * scale;
+  const drawHeight = img.height * scale;
+  ctx.drawImage(img, (SQUARE_PAD_SIZE - drawWidth) / 2, (SQUARE_PAD_SIZE - drawHeight) / 2, drawWidth, drawHeight);
+
+  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
+  if (!blob) return file;
+
+  const squareName = file.name.replace(/\.[^./]+$/, '') + '.png';
+  return new File([blob], squareName, { type: 'image/png' });
+}
+
+export function ImageUpload({ value, onChange, className = '', rounded = false, label, squarePad = false }: ImageUploadProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    let file = e.target.files?.[0];
     if (!file) return;
 
     setIsUploading(true);
     setError(null);
 
     try {
+      if (squarePad) {
+        try {
+          file = await padToSquare(file);
+        } catch (padErr) {
+          // Fall back to the raw file rather than blocking the upload.
+          console.error('Failed to pad image to a square, uploading original:', padErr);
+        }
+      }
+
       const token = await auth.currentUser?.getIdToken();
       if (!token) {
         setError('You must be signed in to upload images.');
