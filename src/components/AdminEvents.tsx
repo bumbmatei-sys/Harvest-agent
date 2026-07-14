@@ -45,9 +45,9 @@ const fmtDiscount = (d: DiscountCode) => (d.type === 'percent' ? `${d.value}% of
 
 const STATUS_COLORS: Record<Event['status'], string> = {
   draft: 'bg-stone-100 text-warm-brown',
-  published: 'bg-green-100 text-green-700',
+  published: 'bg-field-100 text-field-700',
   cancelled: 'bg-red-100 text-red-600',
-  completed: 'bg-blue-100 text-blue-700',
+  completed: 'bg-sky-100 text-sky-700',
 };
 
 const fmtDate = (ts: Timestamp | null) => {
@@ -555,7 +555,7 @@ const AdminEvents: React.FC = () => {
                     <div className="space-y-2">
                       {form.discountCodes.map(d => (
                         <div key={d.code} className="flex items-center gap-2 bg-white border border-stone-200 rounded-xl px-3 py-2.5">
-                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${d.type === 'percent' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>{d.type === 'percent' ? '%' : '$'}</span>
+                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${d.type === 'percent' ? 'bg-field-100 text-field-700' : 'bg-sky-100 text-sky-700'}`}>{d.type === 'percent' ? '%' : '$'}</span>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-semibold text-earth truncate font-mono">{d.code}</p>
                             <p className="text-xs text-[color:var(--text-faint)]">{fmtDiscount(d)} · {d.usedCount}{d.maxUses == null ? '' : `/${d.maxUses}`} used</p>
@@ -666,7 +666,7 @@ const AdminEvents: React.FC = () => {
             <div className="text-xs text-[color:var(--text-faint)] mt-0.5">Total</div>
           </div>
           <div className="bg-white rounded-2xl p-4 border border-stone-200 text-center shadow-sm">
-            <div className="text-2xl font-bold text-green-600">{confirmed}</div>
+            <div className="text-2xl font-bold text-field-600">{confirmed}</div>
             <div className="text-xs text-[color:var(--text-faint)] mt-0.5">Confirmed</div>
           </div>
           <div className="bg-white rounded-2xl p-4 border border-stone-200 text-center shadow-sm">
@@ -722,7 +722,7 @@ const AdminEvents: React.FC = () => {
                   </div>
                 )}
                 {selected.waitlistEnabled && (
-                  <p className="text-xs text-amber-600 mt-3 font-medium">{waitlistedCount} on waitlist</p>
+                  <p className="text-xs text-wheat-600 mt-3 font-medium">{waitlistedCount} on waitlist</p>
                 )}
               </div>
             </div>
@@ -753,16 +753,16 @@ const AdminEvents: React.FC = () => {
             {filteredRegs.map(r => (
               <div key={r.id} className="bg-white rounded-2xl px-4 py-3 border border-stone-200 shadow-sm flex items-center gap-3">
                 <div className="w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold text-white"
-                  style={{ backgroundColor: r.status === 'attended' ? '#22c55e' : 'var(--brand-color, #d4a017)' }}>
+                  style={{ backgroundColor: r.status === 'attended' ? '#6E8E52' : 'var(--brand-color, #d4a017)' }}>
                   {r.name.charAt(0).toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <p className="text-sm font-semibold text-earth truncate">{r.name}</p>
                     <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
-                      r.status === 'attended' ? 'bg-green-100 text-green-700' :
-                      r.status === 'confirmed' ? 'bg-blue-100 text-blue-700' :
-                      r.status === 'waitlisted' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-600'
+                      r.status === 'attended' ? 'bg-field-100 text-field-700' :
+                      r.status === 'confirmed' ? 'bg-sky-100 text-sky-700' :
+                      r.status === 'waitlisted' ? 'bg-wheat-100 text-wheat-700' : 'bg-red-100 text-red-600'
                     }`}>{r.status}</span>
                   </div>
                   <p className="text-xs text-[color:var(--text-faint)]">
@@ -773,7 +773,7 @@ const AdminEvents: React.FC = () => {
                   <button
                     onClick={() => checkIn(r)}
                     disabled={checkingIn === r.id}
-                    className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-semibold bg-green-50 text-green-700 hover:bg-green-100 disabled:opacity-50"
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-semibold bg-field-100 text-field-700 hover:bg-field-200 disabled:opacity-50"
                   >
                     <Check size={12} /> Check In
                   </button>
@@ -859,10 +859,10 @@ const AdminEvents: React.FC = () => {
                 <div className="flex items-center gap-1 flex-shrink-0">
                   <button
                     onClick={e => { e.stopPropagation(); togglePin(ev); }}
-                    className="p-2 rounded-xl hover:bg-yellow-50 transition-colors"
+                    className="p-2 rounded-xl hover:bg-wheat-50 transition-colors"
                     title={ev.pinned ? 'Unpin from feed' : 'Pin to feed'}
                   >
-                    <Pin size={14} className={ev.pinned ? 'text-yellow-500 fill-yellow-500' : 'text-[color:var(--text-faint)]'} />
+                    <Pin size={14} className={ev.pinned ? 'text-wheat-500 fill-wheat-500' : 'text-[color:var(--text-faint)]'} />
                   </button>
                   <button onClick={e => { e.stopPropagation(); openEdit(ev); }}
                     className="p-2 rounded-xl hover:bg-stone-100 transition-colors">

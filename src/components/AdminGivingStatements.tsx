@@ -124,8 +124,8 @@ const AdminGivingStatements: React.FC = () => {
   const years = Array.from({ length: 6 }, (_, i) => thisYear - i);
 
   const statusBadge = (s: string) => {
-    if (s === 'sent') return <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700">Sent</span>;
-    if (s === 'generated') return <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">Generated (not sent)</span>;
+    if (s === 'sent') return <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-field-100 text-field-700">Sent</span>;
+    if (s === 'generated') return <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-sky-100 text-sky-700">Generated (not sent)</span>;
     if (s === 'failed') return <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-100 text-red-600">Failed</span>;
     return <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-stone-100 text-warm-brown">{s}</span>;
   };
@@ -168,7 +168,7 @@ const AdminGivingStatements: React.FC = () => {
               className="flex items-center gap-2 px-4 py-2 rounded-xl text-white text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: GOLD }}>
               <Save size={14} /> {savingConfig ? 'Saving…' : 'Save Settings'}
             </button>
-            {configSaved && <span className="text-sm text-green-600 font-medium">✓ Saved</span>}
+            {configSaved && <span className="text-sm text-field-600 font-medium">✓ Saved</span>}
           </div>
         </div>
       )}
@@ -206,8 +206,8 @@ const AdminGivingStatements: React.FC = () => {
               : results.generated === 0 && results.message
                 ? 'bg-stone-100 text-warm-brown'
                 : results.message
-                  ? 'bg-amber-50 text-amber-700'
-                  : 'bg-green-50 text-green-700'
+                  ? 'bg-wheat-50 text-wheat-700'
+                  : 'bg-field-100 text-field-700'
           }`}>
             {results.message
               ? results.message
@@ -230,7 +230,7 @@ const AdminGivingStatements: React.FC = () => {
           <p className="text-sm">{loadingStatuses ? 'Loading…' : `No statements generated for ${year} yet.`}</p>
         </div>
       ) : (
-        <div className="bg-white rounded-2xl border border-stone-200 divide-y divide-gray-50">
+        <div className="bg-white rounded-2xl border border-stone-200 divide-y divide-stone-200">
           {statuses.map(s => (
             <div key={s.id} className="px-4 py-3 flex items-center gap-3">
               <div className="flex-1 min-w-0">

@@ -399,7 +399,7 @@ const AttachPicker: React.FC<{
               <button
                 key={item.id}
                 onClick={() => onToggle(item)}
-                className={`w-full flex items-center gap-3 px-5 py-3 text-left transition-colors ${sel ? 'bg-amber-50' : 'hover:bg-stone-100'}`}
+                className={`w-full flex items-center gap-3 px-5 py-3 text-left transition-colors ${sel ? 'bg-wheat-50' : 'hover:bg-stone-100'}`}
               >
                 <span className="text-xl flex-shrink-0">{icon}</span>
                 <div className="flex-1 min-w-0">
@@ -542,7 +542,7 @@ const ChannelMembersSheet: React.FC<{
             <p className="text-center py-8 text-sm text-[color:var(--text-faint)]">{search ? 'No users found' : 'No users found in this tenant'}</p>
           ) : addable.map(u => (
             <button key={u.id} onClick={() => addMember(u.id)} className="w-full flex items-center gap-3 px-5 py-2.5 text-left hover:bg-stone-100">
-              <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0 bg-gray-400">
+              <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0 bg-warm-brown">
                 {u.displayName?.charAt(0)?.toUpperCase() || '?'}
               </div>
               <div className="flex-1 min-w-0">
@@ -711,7 +711,7 @@ const ChannelThread: React.FC<{
             onChange={e => setText(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), send())}
             placeholder={`Post to #${channel.name}`}
-            className="flex-1 bg-transparent outline-none text-sm text-earth placeholder-gray-400"
+            className="flex-1 bg-transparent outline-none text-sm text-earth placeholder-[color:var(--text-faint)]"
           />
           <button
             onClick={send}
@@ -902,7 +902,7 @@ const DmThread: React.FC<{
             onChange={e => setText(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), send())}
             placeholder="Type a message..."
-            className="flex-1 bg-transparent outline-none text-sm text-earth placeholder-gray-400"
+            className="flex-1 bg-transparent outline-none text-sm text-earth placeholder-[color:var(--text-faint)]"
           />
           <button
             onClick={send}
@@ -1379,7 +1379,7 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
                   onClick={() => setOpenMemberDm(dm)}
                   className="w-full bg-white rounded-2xl px-4 py-3.5 border border-[#E8E2D9] flex items-center gap-3 hover:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] hover:shadow-sm transition-all text-left"
                 >
-                  <div className="w-11 h-11 rounded-full flex-shrink-0 flex items-center justify-center text-sm font-bold text-white bg-blue-500">
+                  <div className="w-11 h-11 rounded-full flex-shrink-0 flex items-center justify-center text-sm font-bold text-white bg-sky-500">
                     {getOtherName(dm).charAt(0).toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -1599,7 +1599,7 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
                     onClick={() => startMemberDm(m)}
                     className="w-full flex items-center gap-3 px-5 py-3 hover:bg-stone-100 text-left"
                   >
-                    <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white flex-shrink-0 bg-blue-500">
+                    <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white flex-shrink-0 bg-sky-500">
                       {m.displayName?.charAt(0)?.toUpperCase() || '?'}
                     </div>
                     <div className="min-w-0">

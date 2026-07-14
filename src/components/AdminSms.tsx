@@ -176,7 +176,7 @@ const AdminSms: React.FC = () => {
               {sending ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
               {scheduledAt ? 'Schedule' : 'Send now'}
             </button>
-            {sendMsg && <div className={`p-3 rounded-xl text-sm ${sendMsg.ok ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'}`}>{sendMsg.text}</div>}
+            {sendMsg && <div className={`p-3 rounded-xl text-sm ${sendMsg.ok ? 'bg-field-100 text-field-700' : 'bg-wheat-50 text-wheat-700'}`}>{sendMsg.text}</div>}
           </div>
 
           <AdminSectionLabel className="mt-8 mb-3 block">Sent History</AdminSectionLabel>
@@ -227,7 +227,7 @@ const AdminSms: React.FC = () => {
           <button onClick={saveTemplates} disabled={savingTpl} className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-white text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: GOLD }}>
             <Save size={15} /> {savingTpl ? 'Saving…' : 'Save Templates'}
           </button>
-          {tplSaved && <span className="text-sm text-green-600 font-medium ml-2">✓ Saved</span>}
+          {tplSaved && <span className="text-sm text-field-600 font-medium ml-2">✓ Saved</span>}
 
           {/* ── Text-to-Give ── */}
           <div className="bg-white rounded-2xl border border-stone-200 p-4 mt-6">
@@ -265,7 +265,7 @@ const AdminSms: React.FC = () => {
                   <button onClick={saveT2g} disabled={savingT2g} className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-white text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: GOLD }}>
                     <Save size={15} /> {savingT2g ? 'Saving…' : 'Save Text-to-Give'}
                   </button>
-                  {t2gSaved && <span className="text-sm text-green-600 font-medium">✓ Saved</span>}
+                  {t2gSaved && <span className="text-sm text-field-600 font-medium">✓ Saved</span>}
                 </div>
               </div>
             )}

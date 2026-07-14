@@ -317,7 +317,7 @@ const AdminFundraising: React.FC<AdminFundraisingProps> = ({ initialCampaignId, 
                 <div className="text-xs text-[color:var(--text-faint)] mt-0.5">Pledged</div>
               </div>
               <div className="bg-white rounded-2xl p-4 border border-stone-200 text-center shadow-sm">
-                <div className="text-xl font-bold text-green-600">{fmt(totalPaid)}</div>
+                <div className="text-xl font-bold text-field-600">{fmt(totalPaid)}</div>
                 <div className="text-xs text-[color:var(--text-faint)] mt-0.5">Paid</div>
               </div>
               <div className="bg-white rounded-2xl p-4 border border-stone-200 text-center shadow-sm">
@@ -363,7 +363,7 @@ const AdminFundraising: React.FC<AdminFundraisingProps> = ({ initialCampaignId, 
                 <p className="text-sm font-display">No pledges yet</p>
               </div>
             ) : (
-              <div className="bg-white rounded-2xl border border-stone-200 divide-y divide-gray-50">
+              <div className="bg-white rounded-2xl border border-stone-200 divide-y divide-stone-200">
                 {pledges.map(p => {
                   const status = derivePledgeStatus(p);
                   const isEditing = editPledge?.id === p.id;
@@ -373,7 +373,7 @@ const AdminFundraising: React.FC<AdminFundraisingProps> = ({ initialCampaignId, 
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
                             <p className="text-sm font-semibold text-earth truncate">{p.donorName}</p>
-                            <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${status === 'fulfilled' ? 'bg-green-100 text-green-700' : status === 'lapsed' ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-700'}`}>{status}</span>
+                            <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${status === 'fulfilled' ? 'bg-field-100 text-field-700' : status === 'lapsed' ? 'bg-red-100 text-red-600' : 'bg-sky-100 text-sky-700'}`}>{status}</span>
                           </div>
                           <p className="text-xs text-[color:var(--text-faint)] truncate">
                             {p.donorEmail} · {fmt(p.paidAmount)} / {fmt(p.pledgeAmount)}{p.dueDate ? ` · due ${new Date(p.dueDate).toLocaleDateString()}` : ''}

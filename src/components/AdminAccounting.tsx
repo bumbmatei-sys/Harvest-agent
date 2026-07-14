@@ -54,15 +54,15 @@ const TYPE_LABELS: Record<Invoice['type'], string> = {
 };
 
 const TYPE_COLORS: Record<Invoice['type'], string> = {
-  donation_receipt: 'bg-amber-100 text-amber-700',
-  event_ticket: 'bg-blue-100 text-blue-700',
+  donation_receipt: 'bg-wheat-100 text-wheat-700',
+  event_ticket: 'bg-sky-100 text-sky-700',
   invoice: 'bg-purple-100 text-purple-700',
 };
 
 const STATUS_COLORS: Record<Invoice['status'], string> = {
   pending: 'bg-stone-100 text-warm-brown',
-  generated: 'bg-green-100 text-green-700',
-  sent: 'bg-blue-100 text-blue-700',
+  generated: 'bg-field-100 text-field-700',
+  sent: 'bg-sky-100 text-sky-700',
 };
 
 const fmt = (n: number, currency = 'usd') =>
@@ -437,7 +437,7 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
               <div>
                 <div className="flex items-center justify-between flex-wrap gap-3">
                   <div className="flex items-center gap-2">
-                    <CheckCircle size={16} className="text-green-600" />
+                    <CheckCircle size={16} className="text-field-600" />
                     <span className="text-sm font-medium text-earth">Connected{qbCompany ? ` — ${qbCompany}` : ''}</span>
                   </div>
                   <div className="flex items-center gap-2 flex-wrap">
@@ -467,7 +467,7 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
                 )}
                 {qbSyncMsg && (
                   <div className={`mt-3 p-3 rounded-xl text-sm flex items-center gap-2 ${
-                    qbSyncMsg.ok ? 'bg-green-50 text-green-700 border border-green-100' : 'bg-amber-50 text-amber-700 border border-amber-100'
+                    qbSyncMsg.ok ? 'bg-field-100 text-field-700 border border-field-100' : 'bg-wheat-50 text-wheat-700 border border-wheat-100'
                   }`}>
                     {qbSyncMsg.ok ? <CheckCircle size={14} /> : <AlertCircle size={14} />}
                     {qbSyncMsg.msg}
@@ -496,7 +496,7 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-display text-xl font-normal text-earth">Tax Receipts</h3>
           {!isTaxReceiptsEnabled && (
-            <span className="text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full font-semibold flex items-center gap-1">
+            <span className="text-xs text-wheat-600 bg-wheat-50 px-2 py-0.5 rounded-full font-semibold flex items-center gap-1">
               <Lock size={10} /> Ministry plan required
             </span>
           )}
@@ -530,7 +530,7 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
             </div>
             {genResult && (
               <div className={`mt-3 p-3 rounded-xl text-sm flex items-center gap-2 ${
-                genResult.ok ? 'bg-green-50 text-green-700 border border-green-100' : 'bg-amber-50 text-amber-700 border border-amber-100'
+                genResult.ok ? 'bg-field-100 text-field-700 border border-field-100' : 'bg-wheat-50 text-wheat-700 border border-wheat-100'
               }`}>
                 {genResult.ok ? <CheckCircle size={14} /> : <AlertCircle size={14} />}
                 {genResult.msg}
@@ -538,11 +538,11 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
             )}
           </div>
         ) : (
-          <div className="bg-amber-50 rounded-2xl border border-amber-100 p-4 flex items-start gap-3">
-            <Lock size={18} className="text-amber-500 flex-shrink-0 mt-0.5" />
+          <div className="bg-wheat-50 rounded-2xl border border-wheat-100 p-4 flex items-start gap-3">
+            <Lock size={18} className="text-wheat-500 flex-shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm font-semibold text-amber-800">Tax receipt generation requires the Ministry plan</p>
-              <p className="text-xs text-amber-600 mt-0.5">Upgrade to generate and email year-end tax receipts to all donors.</p>
+              <p className="text-sm font-semibold text-wheat-700">Tax receipt generation requires the Ministry plan</p>
+              <p className="text-xs text-wheat-600 mt-0.5">Upgrade to generate and email year-end tax receipts to all donors.</p>
             </div>
           </div>
         )}
@@ -584,7 +584,7 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
             </div>
             {statementsMsg && (
               <div className={`mt-3 p-3 rounded-xl text-sm flex items-center gap-2 ${
-                statementsMsg.ok ? 'bg-green-50 text-green-700 border border-green-100' : 'bg-amber-50 text-amber-700 border border-amber-100'
+                statementsMsg.ok ? 'bg-field-100 text-field-700 border border-field-100' : 'bg-wheat-50 text-wheat-700 border border-wheat-100'
               }`}>
                 {statementsMsg.ok ? <CheckCircle size={14} /> : <AlertCircle size={14} />}
                 {statementsMsg.msg}
@@ -604,7 +604,7 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
                       <th className="px-3 py-2 text-right text-[11px] font-semibold text-gold uppercase tracking-[0.08em]">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-50">
+                  <tbody className="divide-y divide-stone-200">
                     {yearStatements.map(s => (
                       <tr key={s.id} className="hover:bg-stone-100">
                         <td className="px-3 py-2">
@@ -622,7 +622,7 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
                         </td>
                         <td className="px-3 py-2 text-center">
                           <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-                            s.status === 'sent' ? 'bg-blue-100 text-blue-700' : s.status === 'failed' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
+                            s.status === 'sent' ? 'bg-sky-100 text-sky-700' : s.status === 'failed' ? 'bg-red-100 text-red-700' : 'bg-field-100 text-field-700'
                           }`}>{s.status}</span>
                         </td>
                         <td className="px-3 py-2 text-right">
@@ -684,7 +684,7 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
                     <th className="px-4 py-3 text-right text-[11px] font-semibold text-gold uppercase tracking-[0.12em]">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-50">
+                <tbody className="divide-y divide-stone-200">
                   {filtered.map(inv => (
                     <tr key={inv.id} className="hover:bg-stone-100 transition-colors">
                       <td className="px-4 py-3 text-xs text-warm-brown whitespace-nowrap">{fmtDate(inv.issuedAt)}</td>
@@ -706,7 +706,7 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
                       {isQbEnabled && (
                         <td className="px-4 py-3 text-center">
                           {inv.quickbooksSyncStatus === 'synced' ? (
-                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700">synced</span>
+                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-field-100 text-field-700">synced</span>
                           ) : inv.quickbooksSyncStatus === 'failed' ? (
                             <button
                               onClick={() => handleSyncNow(inv.id)}

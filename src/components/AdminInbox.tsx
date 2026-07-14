@@ -83,10 +83,10 @@ const AdminInbox = () => {
 
  const getIconForType = (type: string) => {
  switch (type) {
- case 'contact': return <Mail size={20} className="text-blue-500" />;
- case 'church_suggestion': return <MapPin size={20} className="text-green-500" />;
- case 'feature': return <Lightbulb size={20} className="text-purple-500" />;
- case 'prayer': return <HeartHandshake size={20} className="text-orange-500" />;
+ case 'contact': return <Mail size={20} className="text-sky-500" />;
+ case 'church_suggestion': return <MapPin size={20} className="text-field-500" />;
+ case 'feature': return <Lightbulb size={20} className="text-navy-500" />;
+ case 'prayer': return <HeartHandshake size={20} className="text-wheat-600" />;
  case 'enrollment': return <Church size={20} className="text-gold" />;
  default: return <Mail size={20} className="text-warm-brown" />;
  }
@@ -193,7 +193,7 @@ const AdminInbox = () => {
  </div>
 
  {isExpanded && (
- <div className="p-4 border-t border-gray-50 bg-stone-100/50 animate-in slide-in-from-top-2 duration-200">
+ <div className="p-4 border-t border-stone-200 bg-stone-100/50 animate-in slide-in-from-top-2 duration-200">
  <div className="space-y-3 mb-6">
  {Object.entries(sub.data).map(([key, value]) => {
  if (!value) return null;
@@ -240,7 +240,7 @@ const AdminInbox = () => {
  {isPending ? (
  <button
  onClick={(e) => { e.stopPropagation(); handleStatusChange(sub.id, 'resolved'); }}
- className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-green-600 bg-green-50 hover:bg-green-100 :bg-green-900/40 rounded-lg transition-colors"
+ className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-field-600 bg-field-100 hover:bg-field-200 :bg-green-900/40 rounded-lg transition-colors"
  >
  <CheckCircle size={16} />
  Mark Resolved

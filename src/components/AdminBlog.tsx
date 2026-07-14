@@ -322,7 +322,7 @@ const AdminBlog: React.FC = () => {
  <div className="flex justify-end gap-3">
  <button
  onClick={() => setDeleteConfirmId(null)}
- className="px-4 py-2 text-warm-brown hover:bg-stone-100 :bg-gray-800 rounded-xl font-medium transition-colors"
+ className="px-4 py-2 text-warm-brown hover:bg-stone-100 :bg-warm-dark rounded-xl font-medium transition-colors"
  >
  Cancel
  </button>

@@ -717,7 +717,7 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
                     <p className="text-sm font-semibold text-[color:var(--text-body)]">{admin.name}</p>
                     {admin.email && <p className="text-xs text-[color:var(--text-faint)]">{admin.email}</p>}
                   </div>
-                  <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${isShared ? 'bg-gold border-gold' : 'border-gray-300'}`}>
+                  <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${isShared ? 'bg-gold border-gold' : 'border-stone-300'}`}>
                     {isShared && <Check size={12} className="text-white" />}
                   </div>
                 </button>

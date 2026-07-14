@@ -385,7 +385,7 @@ const AdminForms: React.FC<AdminFormsProps> = () => {
                   <th className="px-3 py-2.5 text-right text-xs font-semibold text-warm-brown uppercase">CRM</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50">
+              <tbody className="divide-y divide-stone-200">
                 {submissions.map(s => (
                   <tr key={s.id} className="hover:bg-stone-100">
                     <td className="px-3 py-2.5 text-xs text-warm-brown whitespace-nowrap">{fmtDate(s.submittedAt)}</td>
@@ -395,7 +395,7 @@ const AdminForms: React.FC<AdminFormsProps> = () => {
                     })}
                     <td className="px-3 py-2.5 text-right">
                       {s.crmContactId
-                        ? <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700">In CRM</span>
+                        ? <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-field-100 text-field-700">In CRM</span>
                         : <span className="text-stone-300 text-xs">—</span>}
                     </td>
                   </tr>

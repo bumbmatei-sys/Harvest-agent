@@ -381,11 +381,11 @@ const AdminCheckin: React.FC<AdminCheckinProps> = ({ canCheckin = true, canQR = 
 
         {/* Live list */}
         <div className="bg-white rounded-2xl border border-stone-200 mt-4 overflow-hidden">
-          <div className="px-4 py-3 border-b border-gray-50"><h3 className="text-sm font-bold text-[color:var(--text-body)] font-display">Checked In</h3></div>
+          <div className="px-4 py-3 border-b border-stone-200"><h3 className="text-sm font-bold text-[color:var(--text-body)] font-display">Checked In</h3></div>
           {attendees.length === 0 ? (
             <p className="text-center py-10 text-[color:var(--text-faint)] text-sm font-display">No one checked in yet.</p>
           ) : (
-            <div className="divide-y divide-gray-50">
+            <div className="divide-y divide-stone-200">
               {attendees.map(a => (
                 <div key={a.id} className="flex items-center gap-3 px-4 py-2.5">
                   <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0" style={{ backgroundColor: GOLD }}>
@@ -395,7 +395,7 @@ const AdminCheckin: React.FC<AdminCheckinProps> = ({ canCheckin = true, canQR = 
                     <div className="text-sm font-medium text-earth truncate">{a.firstName} {a.lastName}</div>
                     {a.email && <div className="text-xs text-[color:var(--text-faint)] truncate">{a.email}</div>}
                   </div>
-                  {a.crmContactId && <CheckCircle2 size={14} className="text-green-500 shrink-0" />}
+                  {a.crmContactId && <CheckCircle2 size={14} className="text-field-500 shrink-0" />}
                   <span className="text-xs text-[color:var(--text-faint)] shrink-0">{fmtTime(a.checkedInAt)}</span>
                 </div>
               ))}
