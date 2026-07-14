@@ -147,7 +147,7 @@ export function AuthorProfile({ author, onBack, courses, onSelectCourse }: Autho
                 href={link.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-10 h-10 rounded-full bg-stone-100 border border-stone-200 flex items-center justify-center cursor-pointer transition-all hover:bg-gray-900 hover:text-white hover:border-gray-900 text-warm-brown"
+                className="w-10 h-10 rounded-full bg-stone-100 border border-stone-200 flex items-center justify-center cursor-pointer transition-all hover:bg-earth hover:text-white hover:border-earth text-warm-brown"
                 title={link.platform}
               >
                 <SocialIcon platform={link.platform} />

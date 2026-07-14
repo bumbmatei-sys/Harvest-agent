@@ -53,7 +53,7 @@ export function CourseLibrary({ courses, authors, categories, onSelectCourse, co
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search courses..."
-          className="w-full py-3 pl-10 pr-4 bg-[#faf9f7] border border-stone-200 rounded-xl text-sm text-earth outline-none transition-colors focus:border-amber-600"
+          className="w-full py-3 pl-10 pr-4 bg-[#faf9f7] border border-stone-200 rounded-xl text-sm text-earth outline-none transition-colors focus:border-gold"
         />
       </div>
 
@@ -65,8 +65,8 @@ export function CourseLibrary({ courses, authors, categories, onSelectCourse, co
             onClick={() => setActiveCategory(cat)}
             className={`px-4 py-[7px] rounded-full text-[13px] font-semibold whitespace-nowrap cursor-pointer transition-all duration-200 border ${
               activeCategory === cat
-                ? "bg-gray-900 lg:bg-navy-900 text-white border-gray-900 lg:border-navy-900"
-                : "bg-white text-warm-brown border-stone-200 lg:border-stone-300 hover:border-gray-400 lg:hover:border-navy-700 hover:text-earth"
+                ? "bg-earth lg:bg-navy-900 text-white border-earth lg:border-navy-900"
+                : "bg-white text-warm-brown border-stone-200 lg:border-stone-300 hover:border-stone-300 lg:hover:border-navy-700 hover:text-earth"
             }`}
           >
             {cat}

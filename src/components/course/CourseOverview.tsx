@@ -167,7 +167,7 @@ export function CourseOverview({ course, authors, onBack, onStartLesson, complet
               key={tab}
               onClick={() => setActiveTab(tab)}
               className={`py-3.5 mr-6 text-sm font-semibold capitalize cursor-pointer border-b-2 transition-colors ${
-                activeTab === tab ? "text-earth border-amber-600" : "text-[color:var(--text-faint)] border-transparent hover:text-warm-brown"
+                activeTab === tab ? "text-earth border-gold" : "text-[color:var(--text-faint)] border-transparent hover:text-warm-brown"
               }`}
             >
               {tab}
@@ -236,15 +236,15 @@ export function CourseOverview({ course, authors, onBack, onStartLesson, complet
                         return (
                           <div
                             key={lesson.id}
-                            className="flex items-center gap-3 py-3 border-t border-gray-50 cursor-pointer hover:bg-stone-100 -mx-5 px-5 transition-colors"
+                            className="flex items-center gap-3 py-3 border-t border-stone-200 cursor-pointer hover:bg-stone-100 -mx-5 px-5 transition-colors"
                             onClick={() => onStartLesson(course, lesson)}
                           >
                             <div
                               className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 border-[1.5px] ${
                                 isCompleted
-                                  ? "border-green-500 bg-green-50 text-green-600"
+                                  ? "border-field-500 bg-field-100 text-field-600"
                                   : isCurrent
-                                  ? "border-amber-600 bg-amber-50 text-amber-700"
+                                  ? "border-wheat-600 bg-wheat-50 text-wheat-700"
                                   : "border-stone-200 bg-stone-100 text-warm-brown"
                               }`}
                             >

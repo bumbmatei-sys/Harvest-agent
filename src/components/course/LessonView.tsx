@@ -140,7 +140,7 @@ export function LessonView({ course, lesson, authors, onBack, onComplete, comple
               key={tab}
               onClick={() => setActiveTab(tab)}
               className={`py-3 mr-5 text-[13px] font-semibold capitalize cursor-pointer border-b-2 transition-colors ${
-                activeTab === tab ? "text-earth border-amber-600" : "text-[color:var(--text-faint)] border-transparent hover:text-warm-brown"
+                activeTab === tab ? "text-earth border-gold" : "text-[color:var(--text-faint)] border-transparent hover:text-warm-brown"
               }`}
             >
               {tab}
@@ -157,7 +157,7 @@ export function LessonView({ course, lesson, authors, onBack, onComplete, comple
             {lesson.outline && lesson.outline.length > 0 && (
               <div>
                 {lesson.outline.map((item, idx) => (
-                  <div key={item.id || idx} className="flex gap-3.5 py-3.5 border-b border-gray-50">
+                  <div key={item.id || idx} className="flex gap-3.5 py-3.5 border-b border-stone-200">
                     <div className="text-xs font-semibold w-[42px] flex-shrink-0 pt-0.5" style={{ color: GOLD }}>
                       {item.text?.match(/\d+:\d+/)?.[0] || `${idx * 3}:00`}
                     </div>
@@ -180,10 +180,10 @@ export function LessonView({ course, lesson, authors, onBack, onComplete, comple
               onChange={(e) => { setNoteDraft(e.target.value); setNoteSaved(false); }}
               placeholder="Write your notes for this lesson…"
               rows={8}
-              className="w-full min-h-[160px] rounded-lg border border-stone-200 p-3.5 text-sm leading-6 text-warm-brown placeholder:text-[color:var(--text-faint)] focus:outline-none focus:ring-2 focus:ring-amber-600/40 resize-y"
+              className="w-full min-h-[160px] rounded-lg border border-stone-200 p-3.5 text-sm leading-6 text-warm-brown placeholder:text-[color:var(--text-faint)] focus:outline-none focus:ring-2 focus:ring-wheat-500/40 resize-y"
             />
             <div className="flex items-center justify-between mt-2.5">
-              <span className={`text-xs font-semibold text-green-600 transition-opacity ${noteSaved ? "opacity-100" : "opacity-0"}`}>
+              <span className={`text-xs font-semibold text-field-600 transition-opacity ${noteSaved ? "opacity-100" : "opacity-0"}`}>
                 Saved
               </span>
               <button
