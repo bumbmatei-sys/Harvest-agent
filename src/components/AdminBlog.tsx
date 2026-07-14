@@ -50,18 +50,21 @@ const AdminBlog: React.FC = () => {
  const canAutomate = hasPlatformOverride() ||
    (tenantPlan ? getPlanFeatures(tenantPlan).automatedBlog : false);
  const [showAutomation, setShowAutomation] = useState(false);
+ // Detected once — the IANA zone the hour picker's options are labeled in.
+ const detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
  const [automation, setAutomation] = useState<{
    enabled: boolean;
    frequency: string;
    dayOfWeek: number;
    hour: number;
+   timezone: string;
    topicHint: string;
    lastGeneratedAt: string | null;
    nextScheduledAt: string | null;
    totalGenerated: number;
  }>({
    enabled: false, frequency: 'weekly', dayOfWeek: 1,
-   hour: 8, topicHint: '', lastGeneratedAt: null,
+   hour: 8, timezone: detectedTimezone, topicHint: '', lastGeneratedAt: null,
    nextScheduledAt: null, totalGenerated: 0,
  });
  const [savingAutomation, setSavingAutomation] = useState(false);
@@ -149,6 +152,7 @@ const AdminBlog: React.FC = () => {
          frequency: automation.frequency,
          dayOfWeek: automation.dayOfWeek,
          hour: automation.hour,
+         timezone: automation.timezone,
          topicHint: automation.topicHint,
        }),
      });
@@ -415,7 +419,7 @@ const AdminBlog: React.FC = () => {
  {/* Hour to post */}
  <div>
  <label className="text-xs font-bold text-[color:var(--text-faint)] uppercase tracking-wider mb-2 block">
- Time to post
+ Time to post <span className="font-normal normal-case text-[color:var(--text-faint)]">— times shown for {automation.timezone} (your detected timezone)</span>
  </label>
  <div className="relative">
  <select
@@ -424,13 +428,13 @@ const AdminBlog: React.FC = () => {
  className="w-full pl-4 pr-10 py-2.5 bg-white border border-stone-200 rounded-xl text-sm text-earth appearance-none outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent transition-all"
  >
  {Array.from({ length: 24 }, (_, h) => (
- <option key={h} value={h}>{String(h).padStart(2, '0')}:00 UTC</option>
+ <option key={h} value={h}>{String(h).padStart(2, '0')}:00</option>
  ))}
  </select>
  <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-[color:var(--text-faint)] pointer-events-none" />
  </div>
  <p className="text-xs text-[color:var(--text-faint)] mt-1">
- Posts generate around this hour (UTC), when the daily job runs.
+ Choose the hour in your timezone ({automation.timezone}). Posts generate around this time when the daily job runs — not to the exact minute.
  </p>
  </div>
 

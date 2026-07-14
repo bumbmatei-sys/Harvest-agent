@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     const { tenantId } = userOrErr;
     if (!tenantId) return NextResponse.json({ error: 'No tenant' }, { status: 400 });
 
-    const { enabled, frequency, dayOfWeek, hour, topicHint } = await request.json();
+    const { enabled, frequency, dayOfWeek, hour, timezone, topicHint } = await request.json();
 
     await adminDb
       .collection('tenants').doc(tenantId)
@@ -40,6 +40,10 @@ export async function POST(request: NextRequest) {
         frequency: frequency || 'weekly',
         dayOfWeek: dayOfWeek ?? 1,
         hour: hour ?? 8,
+        // IANA zone the admin picked the hour in (e.g. "America/Los_Angeles").
+        // Defaults to UTC so existing tenants with no stored timezone keep
+        // today's behavior unchanged.
+        timezone: timezone || 'UTC',
         topicHint: topicHint || '',
         updatedAt: FieldValue.serverTimestamp(),
         updatedBy: userOrErr.uid,

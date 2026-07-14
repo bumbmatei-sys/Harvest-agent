@@ -7,37 +7,108 @@ import { getMimoChatUrl, MIMO_MODEL } from '@/lib/ai-config';
 
 export const dynamic = 'force-dynamic';
 
-/** Compute the next scheduled timestamp from frequency settings. */
+/**
+ * Get the UTC offset (in minutes, added to local time to get UTC) that `timezone`
+ * observes at the instant `date`. Uses Intl instead of a fixed table so DST is
+ * handled correctly for whatever date is passed in.
+ */
+function getTimezoneOffsetMinutes(date: Date, timezone: string): number {
+  const dtf = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    hourCycle: 'h23',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+  });
+  const parts = dtf.formatToParts(date).reduce<Record<string, string>>((acc, p) => {
+    acc[p.type] = p.value;
+    return acc;
+  }, {});
+  // Reinterpret the wall-clock time the zone shows for `date` as if it were UTC —
+  // the gap between that and `date` itself is the zone's offset at that instant.
+  const asUtc = Date.UTC(
+    Number(parts.year), Number(parts.month) - 1, Number(parts.day),
+    Number(parts.hour), Number(parts.minute), Number(parts.second),
+  );
+  return (asUtc - date.getTime()) / 60000;
+}
+
+/**
+ * Convert a LOCAL wall-clock time (in `timezone`) to its UTC instant. A first
+ * guess reads the offset at the naive UTC interpretation of the wall-clock
+ * time; that guess can land on the wrong side of a DST transition, so a
+ * second pass re-resolves the offset from the guessed instant itself, which
+ * is enough to converge for the once/day granularity this scheduler needs.
+ */
+function zonedTimeToUtc(
+  year: number, month: number, day: number, hour: number,
+  timezone: string,
+): Date {
+  const naiveUtc = Date.UTC(year, month, day, hour, 0, 0, 0);
+  const offset = getTimezoneOffsetMinutes(new Date(naiveUtc), timezone);
+  const candidate = naiveUtc - offset * 60000;
+  const refinedOffset = getTimezoneOffsetMinutes(new Date(candidate), timezone);
+  return new Date(naiveUtc - refinedOffset * 60000);
+}
+
+/**
+ * Get the local (in `timezone`) calendar date/weekday for a given instant.
+ */
+function getZonedDateParts(
+  date: Date, timezone: string,
+): { year: number; month: number; day: number; weekday: number } {
+  const dtf = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    year: 'numeric', month: '2-digit', day: '2-digit', weekday: 'short',
+  });
+  const parts = dtf.formatToParts(date).reduce<Record<string, string>>((acc, p) => {
+    acc[p.type] = p.value;
+    return acc;
+  }, {});
+  const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  return {
+    year: Number(parts.year),
+    month: Number(parts.month) - 1,
+    day: Number(parts.day),
+    weekday: weekdays.indexOf(parts.weekday),
+  };
+}
+
+/**
+ * Compute the next scheduled timestamp from frequency settings. `hour` is the
+ * LOCAL hour (0-23) in `timezone`; the result is the corresponding UTC instant.
+ * `timezone` defaults to 'UTC', which reproduces the pre-timezone behavior
+ * exactly (existing tenants with no stored timezone are unaffected).
+ */
 export function computeNextScheduled(
   frequency: string,
   dayOfWeek: number,
   hour: number,
+  timezone: string = 'UTC',
 ): Date {
   const now = new Date();
-  const next = new Date(now);
-  next.setUTCHours(hour, 0, 0, 0);
+  const nowLocal = getZonedDateParts(now, timezone);
 
+  let targetDay: number; // day-of-month offset from nowLocal, in local calendar terms
   switch (frequency) {
     case 'daily':
-      next.setUTCDate(now.getUTCDate() + 1);
+      targetDay = nowLocal.day + 1;
       break;
     case 'weekly': {
-      const daysUntil = (dayOfWeek - now.getUTCDay() + 7) % 7 || 7;
-      next.setUTCDate(now.getUTCDate() + daysUntil);
+      const daysUntil = (dayOfWeek - nowLocal.weekday + 7) % 7 || 7;
+      targetDay = nowLocal.day + daysUntil;
       break;
     }
     case 'biweekly': {
-      const daysUntil = (dayOfWeek - now.getUTCDay() + 7) % 7 || 7;
-      next.setUTCDate(now.getUTCDate() + daysUntil + 7);
+      const daysUntil = (dayOfWeek - nowLocal.weekday + 7) % 7 || 7;
+      targetDay = nowLocal.day + daysUntil + 7;
       break;
     }
     case 'monthly':
-      next.setUTCMonth(now.getUTCMonth() + 1);
-      break;
+      return zonedTimeToUtc(nowLocal.year, nowLocal.month + 1, nowLocal.day, hour, timezone);
     default:
-      next.setUTCDate(now.getUTCDate() + 7);
+      targetDay = nowLocal.day + 7;
   }
-  return next;
+  return zonedTimeToUtc(nowLocal.year, nowLocal.month, targetDay, hour, timezone);
 }
 
 /** Extract the first balanced {...} substring from text, or null if none found. */
