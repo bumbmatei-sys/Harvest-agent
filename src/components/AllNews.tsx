@@ -10,6 +10,8 @@ import { sortByTime } from '../utils/query-helpers';
 import { isSuperAdminEmail } from '../utils/super-admins';
 import { getOrCreateDm } from '../lib/dm';
 import KebabMenu from './KebabMenu';
+import { FeedEmbedCard, type PostEmbed } from './EmbedCard';
+import { ImageLightbox, PostImageGrid, postImages } from './feed/PostMedia';
 
 interface Comment {
   id: string;
@@ -43,7 +45,10 @@ interface CommunityPost {
   authorPhoto?: string;
   createdAt: string;
   content: string;
+  /** Legacy single image — kept readable for back-compat with older posts. */
   imageUrl?: string;
+  /** Up to 3 images on newer posts. Preferred over imageUrl when present. */
+  imageUrls?: string[];
   likes: string[];
   pollOptions?: PollOption[];
   eventDetails?: EventDetails;
@@ -51,6 +56,9 @@ interface CommunityPost {
   targetRegions?: string[];
   targetCountry?: string;
   targetCity?: string;
+  /** Optional single rich attachment — a reference (type + id), resolved to a
+      live card at render time. At most one per post (replaces any prior one). */
+  embed?: PostEmbed;
 }
 
 interface AllNewsProps {
@@ -80,6 +88,12 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages }) => {
   const [currentUserRole, setCurrentUserRole] = useState('user');
   const [deletePostId, setDeletePostId] = useState<string | null>(null);
   const [dmBusyId, setDmBusyId] = useState<string | null>(null);
+
+  // Lightbox: the images to page through + which one is open.
+  const [lightbox, setLightbox] = useState<{ images: string[]; index: number } | null>(null);
+
+  // Resolved tenant scope — used to resolve embed cards (blog/campaign/event).
+  const [scopeTenantId, setScopeTenantId] = useState<string | null | undefined>(undefined);
 
   useEffect(() => {
     let cancelled = false;
@@ -149,6 +163,7 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages }) => {
     (async () => {
       const tenantId = await getTenantScope();
       if (cancelled) return;
+      setScopeTenantId(tenantId);
       // Single-field filter only (tenantId); sort client-side to avoid a composite index.
       const q = tenantId
         ? query(collection(db, 'community_posts'), where('tenantId', '==', tenantId))
@@ -506,11 +521,19 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages }) => {
                 {post.content}
               </div>
 
-              {post.imageUrl && (
-                <div className="mb-3 rounded-xl overflow-hidden bg-stone-100 relative min-h-[200px]">
-                  <Image src={post.imageUrl} alt="Post attachment" fill sizes="(max-width: 768px) 100vw, 800px" priority={index < 2} className="object-cover" referrerPolicy="no-referrer" />
-                </div>
-              )}
+              {(() => {
+                const images = postImages(post);
+                return images.length > 0 ? (
+                  <PostImageGrid
+                    images={images}
+                    priority={index < 2}
+                    onOpen={(i) => setLightbox({ images, index: i })}
+                  />
+                ) : null;
+              })()}
+
+              {/* Rich embed card — resolves the referenced blog/campaign/event live */}
+              {post.embed && <FeedEmbedCard embed={post.embed} tenantId={scopeTenantId} />}
 
               {post.type === 'poll' && post.pollOptions && (
                 <div className="space-y-2 mb-3">
@@ -775,6 +798,15 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages }) => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Full-image lightbox — uncropped view with paging for multi-image posts */}
+      {lightbox && (
+        <ImageLightbox
+          images={lightbox.images}
+          index={lightbox.index}
+          onClose={() => setLightbox(null)}
+        />
       )}
     </div>
   );
