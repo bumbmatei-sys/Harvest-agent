@@ -353,7 +353,7 @@ function VerseActionSheet({ verseAction, translation, highlighted, onHighlight, 
 
         <div className="grid grid-cols-3 gap-2.5 px-4 py-3.5 pb-8">
           <button onClick={toggleVerseSave} aria-pressed={verseSaved} className={`border-[1.5px] rounded-xl py-3 cursor-pointer flex flex-col items-center gap-1.5 transition-colors ${verseSaved ? "bg-wheat-100 border-gold" : "bg-stone-100 border-stone-200 hover:border-gold hover:bg-wheat-100"}`}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill={verseSaved ? "#D97706" : "none"} stroke={verseSaved ? "#D97706" : "#8B7355"} strokeWidth="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" /></svg>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill={verseSaved ? "var(--brand-color)" : "none"} stroke={verseSaved ? "var(--brand-color)" : "#8B7355"} strokeWidth="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" /></svg>
             <span className={`text-[11px] font-bold ${verseSaved ? "text-wheat-700" : "text-warm-brown"}`}>{verseSaved ? "Saved" : "Save"}</span>
           </button>
           <button onClick={() => { onCopy(verse.text, ref); onClose(); }} className="bg-stone-100 border-[1.5px] border-stone-200 rounded-xl py-3 cursor-pointer flex flex-col items-center gap-1.5 hover:border-gold hover:bg-wheat-100 transition-colors">
