@@ -58,6 +58,7 @@ export async function GET(request: NextRequest) {
           data.frequency || 'weekly',
           data.dayOfWeek ?? 1,
           data.hour ?? 8,
+          data.timezone ?? 'UTC',
         );
         await settingDoc.ref.set(
           { nextScheduledAt: nextDate },
