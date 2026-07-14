@@ -197,7 +197,7 @@ const PrayerWall: React.FC = () => {
  {/* Desktop-only share bar (mockup): avatar + input + Post */}
  <div className="hidden lg:flex items-center gap-3 bg-white rounded-2xl border p-3" style={{ borderColor: 'var(--ds-border)' }}>
  <div className="w-10 h-10 rounded-full bg-stone-100 flex items-center justify-center text-sm font-bold text-warm-brown shrink-0">{(name || 'A').charAt(0).toUpperCase()}</div>
- <input value={request} onChange={(e) => setRequest(e.target.value.slice(0, 200))} onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit(); }} placeholder="Share a prayer request with the community…" className="flex-1 bg-transparent outline-none text-sm text-[color:var(--text-body)] placeholder-gray-400" />
+ <input value={request} onChange={(e) => setRequest(e.target.value.slice(0, 200))} onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit(); }} placeholder="Share a prayer request with the community…" className="flex-1 bg-transparent outline-none text-sm text-[color:var(--text-body)] placeholder:text-[color:var(--text-faint)]" />
  <button onClick={handleSubmit} disabled={submitting || !request.trim()} className="px-5 py-2.5 rounded-xl text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50 shrink-0" style={{ backgroundColor: 'var(--brand-color, #C9963A)' }}>{submitting ? 'Posting…' : 'Post'}</button>
  </div>
 
@@ -209,7 +209,7 @@ const PrayerWall: React.FC = () => {
  value={name}
  onChange={(e) => setName(e.target.value)}
  placeholder="Your name (optional)"
- className="w-full px-4 py-2.5 bg-stone-100 rounded-xl text-sm text-[color:var(--text-body)] placeholder-gray-400 border border-stone-200 focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_20%,transparent)] focus:border-transparent mb-3"
+ className="w-full px-4 py-2.5 bg-stone-100 rounded-xl text-sm text-[color:var(--text-body)] placeholder:text-[color:var(--text-faint)] border border-stone-200 focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_20%,transparent)] focus:border-transparent mb-3"
  />
  <div className="relative">
  <textarea
@@ -218,7 +218,7 @@ const PrayerWall: React.FC = () => {
  placeholder="How can we pray for you?"
  rows={3}
  maxLength={200}
- className="w-full px-4 py-2.5 bg-stone-100 rounded-xl text-sm text-[color:var(--text-body)] placeholder-gray-400 border border-stone-200 focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_20%,transparent)] focus:border-transparent resize-none"
+ className="w-full px-4 py-2.5 bg-stone-100 rounded-xl text-sm text-[color:var(--text-body)] placeholder:text-[color:var(--text-faint)] border border-stone-200 focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_20%,transparent)] focus:border-transparent resize-none"
  />
  <span className="absolute bottom-2 right-3 text-[10px] text-[color:var(--text-faint)] font-medium">{request.length}/200</span>
  </div>
@@ -288,13 +288,13 @@ const PrayerWall: React.FC = () => {
 
  <p className="text-sm text-[color:var(--text-body)] whitespace-pre-wrap mb-3">{p.request}</p>
 
- <div className="flex items-center pt-2 border-t border-gray-50">
+ <div className="flex items-center pt-2 border-t border-stone-100">
  <button
  onClick={() => handlePray(p)}
  className={`flex items-center gap-1.5 text-xs font-semibold rounded-full px-3 py-1.5 transition-colors ${
  prayed ? 'bg-[color-mix(in_srgb,var(--brand-color)_15%,white)]' : 'bg-stone-100 hover:bg-stone-100'
  }`}
- style={prayed ? { color: 'var(--brand-color, #d4a017)' } : { color: '#8B7355' }}
+ style={prayed ? { color: 'var(--brand-color, #d4a017)' } : { color: 'var(--text-muted)' }}
  aria-pressed={prayed}
  >
  <span className="text-base leading-none">🙏</span>

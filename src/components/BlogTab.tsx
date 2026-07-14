@@ -206,7 +206,7 @@ const BlogTab: React.FC<BlogTabProps> = ({ onOpenArticle, initialPost, onBack, i
  </div>
  </div>
  
- <h1 className="text-2xl sm:text-3xl font-bold text-earth mb-6 leading-tight font-display">
+ <h1 className="text-[26px] sm:text-3xl font-light tracking-[-0.02em] text-earth mb-6 leading-tight font-display">
  {selectedPost.title}
  </h1>
  
@@ -233,7 +233,7 @@ const BlogTab: React.FC<BlogTabProps> = ({ onOpenArticle, initialPost, onBack, i
  {/* Continue Learning */}
  {posts.filter(p => p.category === selectedPost.category && p.id !== selectedPost.id).slice(0, 2).length > 0 && (
  <div className="mt-12 pt-8 border-t border-stone-200 ">
- <h3 className="text-lg font-bold text-earth mb-4 font-display">Continue Learning</h3>
+ <h3 className="text-lg font-light tracking-[-0.01em] text-earth mb-4 font-display">Continue Learning</h3>
  <div className="space-y-4">
  {posts.filter(p => p.category === selectedPost.category && p.id !== selectedPost.id).slice(0, 2).map(relatedPost => (
  <div 
