@@ -2,18 +2,25 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // Capture whatever the route writes via `.set(payload, { merge: true })`.
 const setSpy = vi.fn();
+// The snapshot the GET handler's `.get()` resolves to — set per test.
+let getSnap: any = { exists: false, data: () => undefined };
 
 vi.mock('@/lib/firebase-admin', () => ({
   adminDb: {
     collection: () => ({
       doc: () => ({
         collection: () => ({
-          doc: () => ({ set: setSpy }),
+          doc: () => ({ set: setSpy, get: async () => getSnap }),
         }),
       }),
     }),
   },
 }));
+
+// Minimal stand-in for a Firestore Timestamp: has a `.toDate()` method.
+function fakeTimestamp(iso: string) {
+  return { toDate: () => new Date(iso), _seconds: Math.floor(Date.parse(iso) / 1000) };
+}
 
 // FieldValue.delete() returns a sentinel we can assert on. serverTimestamp is a
 // sentinel too — the route uses it for updatedAt.
@@ -37,7 +44,7 @@ vi.mock('@/lib/api-auth', () => ({
   requireAdmin: async () => ({ tenantId: 'tenant-1', uid: 'admin-1' }),
 }));
 
-const { POST } = await import('../automate/route');
+const { POST, GET } = await import('../automate/route');
 const { computeNextScheduled } = await import('../generate/route');
 
 function makeRequest(body: unknown) {
@@ -106,5 +113,52 @@ describe('automate POST — nextScheduledAt seeding', () => {
     const payload = setSpy.mock.calls[0][0];
     expect(payload.enabled).toBe(false);
     expect(payload.nextScheduledAt).toBe(DELETE_SENTINEL);
+  });
+});
+
+describe('automate GET — Timestamp normalization', () => {
+  it('converts nextScheduledAt / updatedAt Timestamps to ISO strings', async () => {
+    getSnap = {
+      exists: true,
+      data: () => ({
+        enabled: true,
+        frequency: 'daily',
+        hour: 8,
+        nextScheduledAt: fakeTimestamp('2026-07-16T08:00:00.000Z'),
+        updatedAt: fakeTimestamp('2026-07-15T12:00:00.000Z'),
+      }),
+    };
+
+    const res = await GET(makeRequest({}));
+    const body = await res.json();
+
+    expect(body.nextScheduledAt).toBe('2026-07-16T08:00:00.000Z');
+    expect(body.updatedAt).toBe('2026-07-15T12:00:00.000Z');
+    expect(body.enabled).toBe(true);
+    expect(body.frequency).toBe('daily');
+  });
+
+  it('passes null / absent nextScheduledAt through unchanged (disabled)', async () => {
+    getSnap = {
+      exists: true,
+      data: () => ({ enabled: false, nextScheduledAt: null }),
+    };
+
+    const res = await GET(makeRequest({}));
+    const body = await res.json();
+
+    expect(body.enabled).toBe(false);
+    expect(body.nextScheduledAt).toBeNull();
+  });
+
+  it('returns the default shape when the settings doc does not exist', async () => {
+    getSnap = { exists: false, data: () => undefined };
+
+    const res = await GET(makeRequest({}));
+    const body = await res.json();
+
+    expect(body.enabled).toBe(false);
+    // No stored Timestamp -> field is undefined (absent), not an object.
+    expect(body.nextScheduledAt).toBeUndefined();
   });
 });
