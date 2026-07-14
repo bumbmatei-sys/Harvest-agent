@@ -196,13 +196,13 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
  
  {/* Section 1: Church Details */}
  <div className="space-y-6">
- <h3 className="text-lg font-bold text-background-dark border-b border-gray-100 pb-3 flex items-center gap-2 font-display">
- <Church className="text-primary" size={24} />
+ <h3 className="text-lg font-bold text-earth border-b border-stone-200 pb-3 flex items-center gap-2 font-display">
+ <Church className="text-gold" size={24} />
  Church Details
  </h3>
 
           <div className="mt-4 mb-2">
-            <label className="block text-sm font-bold text-gray-700 mb-2">Search Church with Google Maps API</label>
+            <label className="block text-sm font-bold text-earth mb-2">Search Church with Google Maps API</label>
             <Autocomplete
               apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}
               onPlaceSelected={(place) => {
@@ -232,37 +232,37 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
               options={{
                 types: ['establishment'],
               }}
-              className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors"
+              className="w-full px-4 py-3 rounded-xl border border-stone-300 focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors"
               placeholder="Start typing to auto-fill..."
             />
           </div>
 
  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
  <div>
- <label className="block text-sm font-bold text-gray-700 mb-2">Church Name <span className="text-red-500">*</span></label>
+ <label className="block text-sm font-bold text-earth mb-2">Church Name <span className="text-red-500">*</span></label>
  <input 
  required 
  type="text" 
  name="churchName"
  value={formData.churchName}
  onChange={handleChange}
- className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors" 
+ className="w-full px-4 py-3 rounded-xl border border-stone-300 focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors" 
  placeholder="e.g. Grace Community Church" 
  />
  </div>
  <div>
- <label className="block text-sm font-bold text-gray-700 mb-2">Denomination <span className="text-gray-400 font-normal">(Optional)</span></label>
+ <label className="block text-sm font-bold text-earth mb-2">Denomination <span className="text-[color:var(--text-faint)] font-normal">(Optional)</span></label>
  <input 
  type="text" 
  name="denomination"
  value={formData.denomination}
  onChange={handleChange}
- className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors" 
+ className="w-full px-4 py-3 rounded-xl border border-stone-300 focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors" 
  placeholder="e.g. Non-denominational" 
  />
  </div>
  <div className="md:col-span-2">
- <label className="block text-sm font-bold text-gray-700 mb-2">Church Image <span className="text-gray-400 font-normal">(Optional)</span></label>
+ <label className="block text-sm font-bold text-earth mb-2">Church Image <span className="text-[color:var(--text-faint)] font-normal">(Optional)</span></label>
  <ImageUpload 
  value={formData.imageUrl} 
  onChange={(url) => setFormData(prev => ({ ...prev, imageUrl: url }))} 
@@ -274,33 +274,33 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
 
  {/* Section 2: Location */}
  <div className="space-y-6">
- <h3 className="text-lg font-bold text-background-dark border-b border-gray-100 pb-3 flex items-center gap-2 font-display">
- <MapPin className="text-primary" size={24} />
+ <h3 className="text-lg font-bold text-earth border-b border-stone-200 pb-3 flex items-center gap-2 font-display">
+ <MapPin className="text-gold" size={24} />
  Location
  </h3>
  
  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
  <div className="md:col-span-2">
- <label className="block text-sm font-bold text-gray-700 mb-2">Street <span className="text-red-500">*</span></label>
+ <label className="block text-sm font-bold text-earth mb-2">Street <span className="text-red-500">*</span></label>
  <input 
  required 
  type="text" 
  name="street"
  value={formData.street}
  onChange={handleChange}
- className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors" 
+ className="w-full px-4 py-3 rounded-xl border border-stone-300 focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors" 
  placeholder="Street Name" 
  />
  </div>
  <div>
- <label className="block text-sm font-bold text-gray-700 mb-2">Number <span className="text-red-500">*</span></label>
+ <label className="block text-sm font-bold text-earth mb-2">Number <span className="text-red-500">*</span></label>
  <input 
  required 
  type="text" 
  name="number"
  value={formData.number}
  onChange={handleChange}
- className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors" 
+ className="w-full px-4 py-3 rounded-xl border border-stone-300 focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors" 
  placeholder="Building/Apt" 
  />
  </div>
@@ -308,50 +308,50 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
 
  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
  <div>
- <label className="block text-sm font-bold text-gray-700 mb-2">City <span className="text-red-500">*</span></label>
+ <label className="block text-sm font-bold text-earth mb-2">City <span className="text-red-500">*</span></label>
  <input 
  required 
  type="text" 
  name="city"
  value={formData.city}
  onChange={handleChange}
- className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors" 
+ className="w-full px-4 py-3 rounded-xl border border-stone-300 focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors" 
  placeholder="City" 
  />
  </div>
  <div>
- <label className="block text-sm font-bold text-gray-700 mb-2">State/Province <span className="text-red-500">*</span></label>
+ <label className="block text-sm font-bold text-earth mb-2">State/Province <span className="text-red-500">*</span></label>
  <input 
  required 
  type="text" 
  name="state"
  value={formData.state}
  onChange={handleChange}
- className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors" 
+ className="w-full px-4 py-3 rounded-xl border border-stone-300 focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors" 
  placeholder="State or Province" 
  />
  </div>
  <div>
- <label className="block text-sm font-bold text-gray-700 mb-2">Zipcode <span className="text-red-500">*</span></label>
+ <label className="block text-sm font-bold text-earth mb-2">Zipcode <span className="text-red-500">*</span></label>
  <input 
  required 
  type="text" 
  name="zipcode"
  value={formData.zipcode}
  onChange={handleChange}
- className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors" 
+ className="w-full px-4 py-3 rounded-xl border border-stone-300 focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors" 
  placeholder="Postal Code" 
  />
  </div>
  <div>
- <label className="block text-sm font-bold text-gray-700 mb-2">Country <span className="text-red-500">*</span></label>
+ <label className="block text-sm font-bold text-earth mb-2">Country <span className="text-red-500">*</span></label>
  <input 
  required 
  type="text" 
  name="country"
  value={formData.country}
  onChange={handleChange}
- className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors" 
+ className="w-full px-4 py-3 rounded-xl border border-stone-300 focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors" 
  placeholder="Country" 
  />
  </div>
@@ -359,24 +359,24 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
 
  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
  <div>
- <label className="block text-sm font-bold text-gray-700 mb-2">Latitude <span className="text-gray-400 font-normal">(Optional - For map display)</span></label>
+ <label className="block text-sm font-bold text-earth mb-2">Latitude <span className="text-[color:var(--text-faint)] font-normal">(Optional - For map display)</span></label>
  <input 
  type="text" 
  name="lat"
  value={formData.lat}
  onChange={handleChange}
- className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors" 
+ className="w-full px-4 py-3 rounded-xl border border-stone-300 focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors" 
  placeholder="e.g. 40.7128" 
  />
  </div>
  <div>
- <label className="block text-sm font-bold text-gray-700 mb-2">Longitude <span className="text-gray-400 font-normal">(Optional - For map display)</span></label>
+ <label className="block text-sm font-bold text-earth mb-2">Longitude <span className="text-[color:var(--text-faint)] font-normal">(Optional - For map display)</span></label>
  <input 
  type="text" 
  name="lng"
  value={formData.lng}
  onChange={handleChange}
- className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors" 
+ className="w-full px-4 py-3 rounded-xl border border-stone-300 focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors" 
  placeholder="e.g. -74.0060" 
  />
  </div>
@@ -385,21 +385,21 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
 
  {/* Section: Weekly Services */}
  <div className="space-y-6">
- <h3 className="text-lg font-bold text-background-dark border-b border-gray-100 pb-3 flex items-center gap-2 font-display">
- <Calendar className="text-primary" size={24} />
+ <h3 className="text-lg font-bold text-earth border-b border-stone-200 pb-3 flex items-center gap-2 font-display">
+ <Calendar className="text-gold" size={24} />
  Weekly Services
  </h3>
- <p className="text-sm text-gray-500 mb-4">Add the regular services and meetings throughout the week.</p>
+ <p className="text-sm text-warm-brown mb-4">Add the regular services and meetings throughout the week.</p>
  
  <div className="space-y-4">
  {formData.services.map((service, index) => (
- <div key={index} className="flex flex-col md:flex-row gap-4 items-start md:items-center bg-gray-50 p-4 rounded-xl border border-gray-100">
+ <div key={index} className="flex flex-col md:flex-row gap-4 items-start md:items-center bg-stone-100 p-4 rounded-xl border border-stone-200">
  <div className="w-full md:w-1/4">
- <label className="block text-xs font-bold text-gray-700 mb-1">Day</label>
+ <label className="block text-xs font-bold text-earth mb-1">Day</label>
  <select 
  value={service.day}
  onChange={(e) => handleServiceChange(index, 'day', e.target.value)}
- className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors"
+ className="w-full px-3 py-2 rounded-lg border border-stone-300 focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors"
  >
  <option value="Sunday">Sunday</option>
  <option value="Monday">Monday</option>
@@ -411,23 +411,23 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
  </select>
  </div>
  <div className="w-full md:w-1/4">
- <label className="block text-xs font-bold text-gray-700 mb-1">Time</label>
+ <label className="block text-xs font-bold text-earth mb-1">Time</label>
  <input 
  type="text" 
  value={service.time}
  onChange={(e) => handleServiceChange(index, 'time', e.target.value)}
- className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors" 
+ className="w-full px-3 py-2 rounded-lg border border-stone-300 focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors" 
  placeholder="e.g. 10:00 AM" 
  />
  </div>
  <div className="w-full md:w-2/4">
- <label className="block text-xs font-bold text-gray-700 mb-1">Service Name</label>
+ <label className="block text-xs font-bold text-earth mb-1">Service Name</label>
  <div className="flex gap-2">
  <input 
  type="text" 
  value={service.name}
  onChange={(e) => handleServiceChange(index, 'name', e.target.value)}
- className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors" 
+ className="w-full px-3 py-2 rounded-lg border border-stone-300 focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors" 
  placeholder="e.g. Main Service, Youth Group" 
  />
  {formData.services.length > 1 && (
@@ -447,7 +447,7 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
  <button 
  type="button"
  onClick={handleAddService}
- className="text-primary font-medium flex items-center gap-1 hover:text-primary-dark transition-colors text-sm"
+ className="text-gold font-medium flex items-center gap-1 hover:opacity-80 transition-colors text-sm"
  >
  <Plus className="text-sm" size={16} />
  Add another service
@@ -456,44 +456,44 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
 
  {/* Section 3: Contact Person */}
  <div className="space-y-6">
- <h3 className="text-lg font-bold text-background-dark border-b border-gray-100 pb-3 flex items-center gap-2 font-display">
- <User className="text-primary" size={24} />
+ <h3 className="text-lg font-bold text-earth border-b border-stone-200 pb-3 flex items-center gap-2 font-display">
+ <User className="text-gold" size={24} />
  Contact Person
  </h3>
  <div>
- <label className="block text-sm font-bold text-gray-700 mb-2">Full Name <span className="text-red-500">*</span></label>
+ <label className="block text-sm font-bold text-earth mb-2">Full Name <span className="text-red-500">*</span></label>
  <input 
  required 
  type="text" 
  name="contactName"
  value={formData.contactName}
  onChange={handleChange}
- className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors" 
+ className="w-full px-4 py-3 rounded-xl border border-stone-300 focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors" 
  placeholder="Lead Pastor or Administrator" 
  />
  </div>
  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
  <div>
- <label className="block text-sm font-bold text-gray-700 mb-2">Email Address <span className="text-red-500">*</span></label>
+ <label className="block text-sm font-bold text-earth mb-2">Email Address <span className="text-red-500">*</span></label>
  <input 
  required 
  type="email" 
  name="contactEmail"
  value={formData.contactEmail}
  onChange={handleChange}
- className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors" 
+ className="w-full px-4 py-3 rounded-xl border border-stone-300 focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors" 
  placeholder="contact@church.org" 
  />
  </div>
  <div>
- <label className="block text-sm font-bold text-gray-700 mb-2">Phone Number <span className="text-red-500">*</span></label>
+ <label className="block text-sm font-bold text-earth mb-2">Phone Number <span className="text-red-500">*</span></label>
  <input 
  required 
  type="tel" 
  name="contactPhone"
  value={formData.contactPhone}
  onChange={handleChange}
- className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors" 
+ className="w-full px-4 py-3 rounded-xl border border-stone-300 focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors" 
  placeholder="+1 (555) 000-0000" 
  />
  </div>
@@ -502,15 +502,15 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
 
  {/* Section 4: Social Links */}
  <div className="space-y-6">
- <h3 className="text-lg font-bold text-background-dark border-b border-gray-100 pb-3 flex items-center gap-2 font-display">
- <Globe className="text-primary" size={24} />
+ <h3 className="text-lg font-bold text-earth border-b border-stone-200 pb-3 flex items-center gap-2 font-display">
+ <Globe className="text-gold" size={24} />
  Online Presence
  </h3>
  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
  <div>
- <label className="block text-sm font-bold text-gray-700 mb-2">Website</label>
+ <label className="block text-sm font-bold text-earth mb-2">Website</label>
  <div className="relative">
- <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+ <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[color:var(--text-faint)]">
  <Globe size={20} />
  </div>
  <input 
@@ -518,35 +518,35 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
  name="website"
  value={formData.website}
  onChange={handleChange}
- className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-300 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors" 
+ className="w-full pl-12 pr-4 py-3 rounded-xl border border-stone-300 focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors" 
  placeholder="https://www.yourchurch.com" 
  />
  </div>
  </div>
  <div>
- <label className="block text-sm font-bold text-gray-700 mb-2">Facebook</label>
+ <label className="block text-sm font-bold text-earth mb-2">Facebook</label>
  <div className="relative">
- <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-lg">f</div>
+ <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[color:var(--text-faint)] font-bold text-lg">f</div>
  <input 
  type="url" 
  name="facebook"
  value={formData.facebook}
  onChange={handleChange}
- className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-300 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors" 
+ className="w-full pl-12 pr-4 py-3 rounded-xl border border-stone-300 focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors" 
  placeholder="facebook.com/page" 
  />
  </div>
  </div>
  <div>
- <label className="block text-sm font-bold text-gray-700 mb-2">Instagram</label>
+ <label className="block text-sm font-bold text-earth mb-2">Instagram</label>
  <div className="relative">
- <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-lg">@</div>
+ <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[color:var(--text-faint)] font-bold text-lg">@</div>
  <input 
  type="text" 
  name="instagram"
  value={formData.instagram}
  onChange={handleChange}
- className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-300 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors" 
+ className="w-full pl-12 pr-4 py-3 rounded-xl border border-stone-300 focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors" 
  placeholder="username" 
  />
  </div>
@@ -558,7 +558,7 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
  <button 
  type="submit" 
  disabled={isSubmitting}
- className={`flex-1 bg-primary text-white font-bold py-4 rounded-xl hover:bg-yellow-600 transition-colors shadow-lg shadow-primary/20 flex items-center justify-center gap-2 ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}
+ className={`flex-1 bg-gold text-white font-bold py-4 rounded-xl hover:bg-[color-mix(in_srgb,var(--brand-color)_85%,black)] transition-colors shadow-[var(--glow-gold)] flex items-center justify-center gap-2 ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}
  >
  {isSubmitting ? (
  <>
