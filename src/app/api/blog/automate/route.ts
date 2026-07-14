@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server';
 import { requireAdmin } from '@/lib/api-auth';
 import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
+import { computeNextScheduled } from '../generate/route';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,6 +33,19 @@ export async function POST(request: NextRequest) {
 
     const { enabled, frequency, dayOfWeek, hour, timezone, topicHint } = await request.json();
 
+    // Seed nextScheduledAt on save so the cron honors the admin-picked schedule.
+    // Use the SAME helper the cron reschedules with, so the save path and the
+    // cron path can't drift. When disabling, clear the field so a stale future
+    // timestamp can't linger and get picked up if automation is re-enabled.
+    const nextScheduledAt = enabled
+      ? computeNextScheduled(
+          frequency || 'weekly',
+          dayOfWeek ?? 1,
+          hour ?? 8,
+          timezone || 'UTC',
+        )
+      : FieldValue.delete();
+
     await adminDb
       .collection('tenants').doc(tenantId)
       .collection('blogAutomation').doc('settings')
@@ -45,6 +59,9 @@ export async function POST(request: NextRequest) {
         // today's behavior unchanged.
         timezone: timezone || 'UTC',
         topicHint: topicHint || '',
+        // A JS Date is stored as a Firestore Timestamp (the cron reads it back
+        // via .toDate()); FieldValue.delete() removes any prior schedule.
+        nextScheduledAt,
         updatedAt: FieldValue.serverTimestamp(),
         updatedBy: userOrErr.uid,
       }, { merge: true });
