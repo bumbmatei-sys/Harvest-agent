@@ -169,8 +169,14 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
   ];
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
-      <div>
+    <div className="max-w-2xl mx-auto space-y-6 px-4 lg:px-0">
+      {/* Mobile side gutter (px-4) to match the mockup's card margins. Desktop is
+          unchanged — lg:px-0 is a no-op and the shell already pads with lg:p-6. */}
+      {/* Desktop page header (Platform eyebrow + Settings title). Hidden on mobile:
+          the shell's AdminScreenHeader already renders "Settings", so an in-content
+          title would duplicate it (same convention as the Accounting rebuild). The
+          mobile settings surface starts at the plan card, per the mockup. */}
+      <div className="hidden lg:block">
         <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-gold mb-1.5">Platform</p>
         <h2 className="font-display text-[1.75rem] lg:text-[2rem] leading-[1.1] font-light tracking-[-0.02em] text-earth">Settings</h2>
       </div>

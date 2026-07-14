@@ -183,7 +183,31 @@ const AdminSms: React.FC = () => {
           {history.length === 0 ? (
             <div className="text-center py-10 text-[color:var(--text-faint)]"><MessageSquare size={36} className="mx-auto mb-2 opacity-30" /><p className="text-sm">No broadcasts yet</p></div>
           ) : (
-            <div className="bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] divide-y divide-stone-200">
+            <>
+              {/* Mobile history — mockup list card: gold SMS disc, message + meta
+                  sub, status pill. Same `history` data, fmtDate, statusTone/AdminBadge
+                  as the desktop list below — no wiring changed. */}
+              <div className="lg:hidden bg-white rounded-brand-xl border border-stone-200 shadow-[var(--ds-sh-sm)] overflow-hidden">
+                {history.map((b, i) => (
+                  <div key={b.id} className={`flex items-start gap-3 px-3.5 py-3 ${i ? 'border-t border-stone-200' : ''}`}>
+                    <div className="w-[38px] h-[38px] rounded-[10px] bg-[var(--surface-gold)] text-gold flex items-center justify-center shrink-0">
+                      <MessageSquare size={16} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[13.5px] font-semibold text-earth leading-snug line-clamp-2">{b.message}</div>
+                      <div className="text-[11.5px] text-[color:var(--text-faint)] mt-1">
+                        {fmtDate(b.createdAt)} · {b.recipientCount} recipients
+                        {b.status === 'sent' && ` · ${b.delivered || 0} delivered, ${b.failed || 0} failed`}
+                        {b.status === 'scheduled' && ` · for ${fmtDate(b.scheduledAt || undefined)}`}
+                      </div>
+                    </div>
+                    <AdminBadge tone={statusTone(b.status)} className="shrink-0">{b.status}</AdminBadge>
+                  </div>
+                ))}
+              </div>
+
+              {/* Desktop history — existing approved layout, unchanged (now lg-only). */}
+            <div className="hidden lg:block bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] divide-y divide-stone-200">
               {history.map(b => (
                 <div key={b.id} className="px-5 py-4">
                   <div className="flex items-center justify-between gap-2">
@@ -198,6 +222,7 @@ const AdminSms: React.FC = () => {
                 </div>
               ))}
             </div>
+            </>
           )}
         </>
       ) : (

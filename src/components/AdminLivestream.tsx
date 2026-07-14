@@ -4,7 +4,7 @@ import {
   collection, query, orderBy, onSnapshot, doc, addDoc, updateDoc, setDoc, getDocs,
   serverTimestamp, Timestamp, limit,
 } from 'firebase/firestore';
-import { Radio, Eye, HandHeart, Check, Loader2, Video } from 'lucide-react';
+import { Radio, Eye, HandHeart, Check, Loader2, Video, Play } from 'lucide-react';
 import { db, auth } from '../firebase';
 import { useAppStore } from '../store/useAppStore';
 import { PLATFORM_TENANT_ID } from '../utils/tenant-scope';
@@ -232,7 +232,43 @@ const AdminLivestream: React.FC = () => {
   return (
     <div className="max-w-5xl mx-auto" style={{ paddingBottom: 120 }}>
       {current?.active ? (
-        <div className="grid lg:grid-cols-[1fr_360px] gap-6 items-start">
+        <>
+          {/* Mobile — mockup design: dark 16:9 stream preview (LIVE badge + play),
+              2-col Watching/Prayers stat cards, full-width End stream, then the same
+              past-streams and prayer-request cards. Reuses current.* data, the endStream
+              handler, liveBadge, pastStreamsBlock and prayerCard — no wiring changed. */}
+          <div className="lg:hidden space-y-4">
+            <div className="relative aspect-[16/9] rounded-brand-xl overflow-hidden flex items-center justify-center" style={{ background: 'var(--surface-night)' }}>
+              <div className="absolute top-2.5 left-2.5 z-10">{liveBadge}</div>
+              <span className="relative w-14 h-14 rounded-full bg-white/90 flex items-center justify-center">
+                <Play size={22} className="text-gold ml-0.5" />
+              </span>
+            </div>
+            <div className="px-0.5">
+              <h2 className="font-display text-xl font-light text-earth tracking-[-0.01em] truncate">{current.title}</h2>
+              <p className="text-xs text-[color:var(--text-faint)] mt-1">Live since {fmtDate(current.startedAt || null)} · Video ID: {current.youtubeVideoId}</p>
+            </div>
+            <div className="grid grid-cols-2 gap-2.5">
+              <div className="bg-white rounded-brand-xl border border-stone-200 shadow-[var(--ds-sh-sm)] p-3.5">
+                <span className="w-7 h-7 rounded-lg bg-[var(--surface-gold)] text-gold flex items-center justify-center mb-2"><Eye size={14} /></span>
+                <div className="font-display text-[1.375rem] font-normal leading-none tracking-[-0.02em] text-earth">{Math.max(0, current.viewerCount || 0)}</div>
+                <div className="text-[11px] text-warm-brown mt-1">Watching now</div>
+              </div>
+              <div className="bg-white rounded-brand-xl border border-stone-200 shadow-[var(--ds-sh-sm)] p-3.5">
+                <span className="w-7 h-7 rounded-lg bg-[var(--surface-gold)] text-gold flex items-center justify-center mb-2"><HandHeart size={14} /></span>
+                <div className="font-display text-[1.375rem] font-normal leading-none tracking-[-0.02em] text-earth">{current.prayerCount || 0}</div>
+                <div className="text-[11px] text-warm-brown mt-1">Prayers</div>
+              </div>
+            </div>
+            <button onClick={endStream} className="w-full py-3 rounded-brand text-sm font-bold text-[#C4553B] bg-[#F7E7E2] hover:opacity-90 transition-opacity">
+              End stream
+            </button>
+            {pastStreamsBlock}
+            {prayerCard}
+          </div>
+
+          {/* Desktop — existing approved layout, unchanged (now lg-only). */}
+        <div className="hidden lg:grid lg:grid-cols-[1fr_360px] gap-6 items-start">
           {/* Left: stream info + past streams */}
           <div className="space-y-6">
             <div className="bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] p-6">
@@ -265,6 +301,7 @@ const AdminLivestream: React.FC = () => {
           {/* Right: prayer requests */}
           {prayerCard}
         </div>
+        </>
       ) : (
         <div className="max-w-2xl mx-auto space-y-6">
           {/* Go Live form */}

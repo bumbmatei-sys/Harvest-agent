@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect, useCallback } from 'react';
 import { collection, query, where, getDocs, limit } from 'firebase/firestore';
-import { Receipt, Loader2, RefreshCw, FileText, Settings, Save, Send } from 'lucide-react';
+import { Receipt, Loader2, RefreshCw, FileText, Settings, Save, Send, DollarSign } from 'lucide-react';
 import { db } from '../firebase';
 import { useAppStore } from '../store/useAppStore';
 import { PLATFORM_TENANT_ID } from '../utils/tenant-scope';
@@ -230,7 +230,50 @@ const AdminGivingStatements: React.FC = () => {
           <p className="text-sm">{loadingStatuses ? 'Loading…' : `No statements generated for ${year} yet.`}</p>
         </div>
       ) : (
-        <div className="bg-white rounded-2xl border border-stone-200 divide-y divide-stone-200">
+        <>
+          {/* Mobile summary — 2-col stat cards (mockup StatRow). Display-only
+              count/sum over the already-loaded `statuses`; desktop shows no stat
+              row and is unchanged. */}
+          <div className="lg:hidden grid grid-cols-2 gap-2.5 mb-4">
+            {[
+              { label: 'Statements', value: String(statuses.length), icon: <Receipt size={14} /> },
+              { label: `Total · ${year}`, value: fmtMoney(statuses.reduce((sum, s) => sum + (s.totalAmount || 0), 0)), icon: <DollarSign size={14} /> },
+            ].map(s => (
+              <div key={s.label} className="bg-white rounded-brand-xl border border-stone-200 shadow-[var(--ds-sh-sm)] p-3.5">
+                <div className="w-7 h-7 rounded-lg bg-[var(--surface-gold)] text-gold flex items-center justify-center mb-2">{s.icon}</div>
+                <div className="font-display text-[1.375rem] font-normal leading-none tracking-[-0.02em] text-earth">{s.value}</div>
+                <div className="text-[11px] text-warm-brown mt-1">{s.label}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Mobile history — mockup list card: gold receipt disc, donor + status,
+              email·total sub (money in field-green), PDF action. Same `statuses`,
+              statusBadge, fmtMoney, openStatementPdf as the desktop list below. */}
+          <div className="lg:hidden bg-white rounded-brand-xl border border-stone-200 shadow-[var(--ds-sh-sm)] overflow-hidden">
+            {statuses.map((s, i) => (
+              <div key={s.id} className={`flex items-center gap-3 px-3.5 py-3 ${i ? 'border-t border-stone-200' : ''}`}>
+                <div className="w-[38px] h-[38px] rounded-[10px] bg-[var(--surface-gold)] text-gold flex items-center justify-center shrink-0">
+                  <Receipt size={16} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <p className="text-[13.5px] font-semibold text-earth truncate">{s.donorName || s.donorEmail}</p>
+                    <span className="shrink-0">{statusBadge(s.status)}</span>
+                  </div>
+                  <p className="text-[11.5px] text-[color:var(--text-faint)] truncate">{s.donorEmail} · <span className="font-semibold text-field-700">{fmtMoney(s.totalAmount)}</span></p>
+                </div>
+                {s.pdfPath && (
+                  <button onClick={() => openStatementPdf(s.pdfPath)} className="flex items-center gap-1 text-xs font-semibold text-warm-brown hover:text-earth shrink-0">
+                    <FileText size={13} /> PDF
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop history — existing approved layout, unchanged (now lg-only). */}
+        <div className="hidden lg:block bg-white rounded-2xl border border-stone-200 divide-y divide-stone-200">
           {statuses.map(s => (
             <div key={s.id} className="px-4 py-3 flex items-center gap-3">
               <div className="flex-1 min-w-0">
@@ -248,6 +291,7 @@ const AdminGivingStatements: React.FC = () => {
             </div>
           ))}
         </div>
+        </>
       )}
     </div>
   );

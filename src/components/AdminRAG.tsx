@@ -319,7 +319,10 @@ export default function AdminRAG() {
 
  {deleteTarget && <DeleteModal source={deleteTarget} onConfirm={confirmDelete} onClose={()=>setDeleteTarget(null)} />}
 
- {/* Header: title + description (left) · stats (right) */}
+ {/* Header — desktop only. On mobile the shell's AdminScreenHeader already
+     renders the "AI Knowledge" screen title, so this in-page title band is
+     hidden to avoid a duplicate; the mobile view starts at the tabs below. */}
+ <div className="hidden lg:block">
  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:16, padding:"18px 20px 0", maxWidth:1160, margin:"0 auto", width:"100%" }}>
  <div style={{ minWidth:0 }}>
  <p style={{ fontSize:11, fontWeight:600, letterSpacing:"0.16em", textTransform:"uppercase", color:GOLD, marginBottom:6 }}>Content</p>
@@ -337,6 +340,7 @@ export default function AdminRAG() {
  <div style={{ textAlign:"right" }}>
  <div style={{ fontSize:11, color:TEXT2 }}>Chunks</div>
  <div style={{ fontSize:20, fontWeight:700, color:GOLD }}>{totalChunks}</div>
+ </div>
  </div>
  </div>
  </div>
@@ -452,8 +456,66 @@ export default function AdminRAG() {
  </select>
  </div>
 
- {/* Table */}
- <div style={{ ...s.card, overflowX:"auto" }}>
+ {/* Mobile sources list — mockup knowledge-source cards: gold AI disc, title,
+     "N chunks · date", a status pill (field=Embedded / wheat=Processing /
+     red=Failed) and a delete button. Same `filtered` data and the same
+     setDeleteTarget handler as the desktop table below. */}
+ <div className="lg:hidden">
+ {filtered.length === 0 ? (
+ <div className="bg-white rounded-brand-xl border border-stone-200 shadow-[var(--ds-sh-sm)] px-5 py-14 text-center">
+ <div className="w-[52px] h-[52px] rounded-full bg-[var(--surface-gold)] text-gold flex items-center justify-center mx-auto mb-3.5">
+ <Database size={22} strokeWidth={1.5} />
+ </div>
+ <div className="font-semibold text-earth mb-1.5">
+ {sources.length === 0 ? "No knowledge added yet" : "No sources match your search"}
+ </div>
+ <div className="text-[13px] text-warm-brown">
+ {sources.length === 0 ? "Go to \"Add Knowledge\" to get started." : "Try a different search or filter."}
+ </div>
+ </div>
+ ) : (
+ <div className="bg-white rounded-brand-xl border border-stone-200 shadow-[var(--ds-sh-sm)] overflow-hidden">
+ {filtered.map((source, i) => (
+ <div key={source.id} className={`flex items-center gap-3 px-3.5 py-3 ${i ? "border-t border-stone-200" : ""}`}>
+ <div className="w-[34px] h-[34px] rounded-[9px] bg-[var(--surface-gold)] text-gold flex items-center justify-center shrink-0">
+ <Sparkles size={15} />
+ </div>
+ <div className="flex-1 min-w-0">
+ <div className="text-[13.5px] font-semibold text-earth truncate" title={source.title || "Untitled"}>{source.title || "Untitled"}</div>
+ <div className="text-[11.5px] text-[color:var(--text-faint)] truncate">
+ {source.chunks} chunks{source.addedAt instanceof Date ? ` · ${source.addedAt.toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})}` : ""}
+ </div>
+ </div>
+ {source.status === "processing" && (
+ <span className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-wheat-100 text-wheat-700 px-2.5 py-1 text-[11px] font-semibold">
+ <span className="w-1.5 h-1.5 rounded-full bg-gold animate-pulse" /> Processing
+ </span>
+ )}
+ {source.status === "processed" && (
+ <span className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-field-100 text-field-700 px-2.5 py-1 text-[11px] font-semibold">
+ <span className="w-1.5 h-1.5 rounded-full bg-field-500" /> Embedded
+ </span>
+ )}
+ {source.status === "error" && (
+ <span className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-[#FDECEA] text-[#C0392B] px-2.5 py-1 text-[11px] font-semibold" title={source.error || "Failed to process"}>
+ <span className="w-1.5 h-1.5 rounded-full bg-[#E74C3C]" /> Failed
+ </span>
+ )}
+ <button
+ onClick={()=>setDeleteTarget(source)}
+ title="Delete source"
+ className="shrink-0 w-8 h-8 flex items-center justify-center rounded-brand text-[color:var(--text-faint)] hover:text-[#C4553B] hover:bg-[#F7E7E2] transition-colors"
+ >
+ <Trash2 size={15} strokeWidth={1.75} />
+ </button>
+ </div>
+ ))}
+ </div>
+ )}
+ </div>
+
+ {/* Table — desktop only (mobile uses the card list above). */}
+ <div className="hidden lg:block" style={{ ...s.card, overflowX:"auto" }}>
  <div style={{ minWidth: 650 }}>
  {/* Header */}
  <div style={{ display:"grid", gridTemplateColumns:"1.5fr 100px 100px 100px 120px 80px", gap:10, padding:"12px 18px", borderBottom:`1px solid ${BORDER}`, background:STONE_100 }}>
