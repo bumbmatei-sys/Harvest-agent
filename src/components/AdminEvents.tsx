@@ -402,12 +402,12 @@ const AdminEvents: React.FC = () => {
             <div>
               <label className="text-xs font-semibold text-[color:var(--text-body)] mb-1.5 block">Event Title *</label>
               <input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })}
-                className="w-full border border-stone-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold" placeholder="Event name" />
+                className="w-full border border-stone-200 bg-stone-100 rounded-xl px-3 py-2.5 text-sm text-earth focus:outline-none focus:border-gold focus:bg-white transition-colors" placeholder="Event name" />
             </div>
             <div>
               <label className="text-xs font-semibold text-[color:var(--text-body)] mb-1.5 block">Description</label>
               <textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })}
-                rows={3} className="w-full border border-stone-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold resize-none"
+                rows={3} className="w-full border border-stone-200 bg-stone-100 rounded-xl px-3 py-2.5 text-sm text-earth focus:outline-none focus:border-gold focus:bg-white transition-colors resize-none"
                 placeholder="What is this event about?" />
             </div>
             <div>
@@ -418,12 +418,12 @@ const AdminEvents: React.FC = () => {
               <div>
                 <label className="text-xs font-semibold text-[color:var(--text-body)] mb-1.5 block">Start Date & Time *</label>
                 <input type="datetime-local" value={form.startDate} onChange={e => setForm({ ...form, startDate: e.target.value })}
-                  className="w-full border border-stone-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold" />
+                  className="w-full border border-stone-200 bg-stone-100 rounded-xl px-3 py-2.5 text-sm text-earth focus:outline-none focus:border-gold focus:bg-white transition-colors" />
               </div>
               <div>
                 <label className="text-xs font-semibold text-[color:var(--text-body)] mb-1.5 block">End Date & Time</label>
                 <input type="datetime-local" value={form.endDate} onChange={e => setForm({ ...form, endDate: e.target.value })}
-                  className="w-full border border-stone-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold" />
+                  className="w-full border border-stone-200 bg-stone-100 rounded-xl px-3 py-2.5 text-sm text-earth focus:outline-none focus:border-gold focus:bg-white transition-colors" />
               </div>
             </div>
             <div>
@@ -437,28 +437,28 @@ const AdminEvents: React.FC = () => {
               </div>
               {form.isOnline ? (
                 <input value={form.onlineLink} onChange={e => setForm({ ...form, onlineLink: e.target.value })}
-                  className="w-full border border-stone-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold" placeholder="Meeting link (Zoom, Google Meet...)" />
+                  className="w-full border border-stone-200 bg-stone-100 rounded-xl px-3 py-2.5 text-sm text-earth focus:outline-none focus:border-gold focus:bg-white transition-colors" placeholder="Meeting link (Zoom, Google Meet...)" />
               ) : (
                 <input value={form.location} onChange={e => setForm({ ...form, location: e.target.value })}
-                  className="w-full border border-stone-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold" placeholder="Event location / address" />
+                  className="w-full border border-stone-200 bg-stone-100 rounded-xl px-3 py-2.5 text-sm text-earth focus:outline-none focus:border-gold focus:bg-white transition-colors" placeholder="Event location / address" />
               )}
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-xs font-semibold text-[color:var(--text-body)] mb-1.5 block">Capacity (blank = unlimited)</label>
                 <input type="number" min={0} value={form.capacity} onChange={e => setForm({ ...form, capacity: e.target.value })}
-                  className="w-full border border-stone-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold" placeholder="e.g. 100" />
+                  className="w-full border border-stone-200 bg-stone-100 rounded-xl px-3 py-2.5 text-sm text-earth focus:outline-none focus:border-gold focus:bg-white transition-colors" placeholder="e.g. 100" />
               </div>
               <div>
                 <label className="text-xs font-semibold text-[color:var(--text-body)] mb-1.5 block">Ticket Price ($)</label>
                 <input type="number" min={0} value={form.price} onChange={e => setForm({ ...form, price: e.target.value })}
-                  className="w-full border border-stone-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold" placeholder="0 = free" />
+                  className="w-full border border-stone-200 bg-stone-100 rounded-xl px-3 py-2.5 text-sm text-earth focus:outline-none focus:border-gold focus:bg-white transition-colors" placeholder="0 = free" />
               </div>
             </div>
             <div>
               <label className="text-xs font-semibold text-[color:var(--text-body)] mb-1.5 block">Registration Deadline</label>
               <input type="datetime-local" value={form.registrationDeadline} onChange={e => setForm({ ...form, registrationDeadline: e.target.value })}
-                className="w-full border border-stone-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold" />
+                className="w-full border border-stone-200 bg-stone-100 rounded-xl px-3 py-2.5 text-sm text-earth focus:outline-none focus:border-gold focus:bg-white transition-colors" />
             </div>
 
             {/* ── Registration engine ── */}
@@ -608,7 +608,7 @@ const AdminEvents: React.FC = () => {
             <div>
               <label className="text-xs font-semibold text-[color:var(--text-body)] mb-1.5 block">Status</label>
               <select value={form.status} onChange={e => setForm({ ...form, status: e.target.value as Event['status'] })}
-                className="w-full border border-stone-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold bg-white">
+                className="w-full border border-stone-200 bg-stone-100 rounded-xl px-3 py-2.5 text-sm text-earth focus:outline-none focus:border-gold focus:bg-white transition-colors">
                 <option value="draft">Draft</option>
                 <option value="published">Published</option>
                 <option value="cancelled">Cancelled</option>
