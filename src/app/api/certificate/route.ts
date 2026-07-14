@@ -4,6 +4,7 @@ import { createHash } from 'crypto';
 import net from 'net';
 import { lookup } from 'dns/promises';
 import { PDFDocument, rgb, StandardFonts, PDFFont, PDFImage } from 'pdf-lib';
+import { Resend } from 'resend';
 import { requireAuth } from '@/lib/api-auth';
 import { adminDb, getReceiptsBucket } from '@/lib/firebase-admin';
 import { PLATFORM_TENANT_ID } from '@/utils/tenant-scope';
@@ -418,6 +419,7 @@ export async function POST(request: NextRequest) {
     const certRef = adminDb.collection('certificates').doc(certId);
     const existingSnap = await certRef.get();
     const existing = existingSnap.exists ? (existingSnap.data() as any) : null;
+    const isFreshIssuance = !existing;
     const certNumber: string = existing?.certNumber || certNumberFor(uid, courseId);
     const issuedAt: Date = existing?.issuedAt ? new Date(existing.issuedAt) : new Date();
 
@@ -462,6 +464,29 @@ export async function POST(request: NextRequest) {
       action: 'read',
       expires: Date.now() + 15 * 60 * 1000,
     });
+
+    // Best-effort: email the cert PDF on first issuance only (never re-send on
+    // a re-request of an already-issued cert). A Resend failure must not
+    // affect issuance — the signed URL above is the guarantee.
+    const resendKey = process.env.RESEND_API_KEY;
+    if (isFreshIssuance && resendKey && email) {
+      try {
+        const resend = new Resend(resendKey);
+        const pdfBase64 = Buffer.from(pdfBytes).toString('base64');
+        const courseTitle = course.title || 'Course';
+        const slug = courseTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'course';
+        const { error } = await resend.emails.send({
+          from: 'Harvest <noreply@theharvest.app>',
+          to: email,
+          subject: `Your certificate — ${courseTitle}`,
+          html: `<p>Congratulations on completing <strong>${courseTitle}</strong>!</p><p>Your certificate is attached.</p>`,
+          attachments: [{ filename: `certificate-${slug}.pdf`, content: pdfBase64 }],
+        });
+        if (error) console.error('Certificate email error:', error);
+      } catch (err: any) {
+        console.error('Certificate email failed:', err?.message || err);
+      }
+    }
 
     return NextResponse.json({
       certificateId: certId,
