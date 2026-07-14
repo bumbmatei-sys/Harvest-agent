@@ -430,8 +430,8 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
      need this just like members do. UserEvents queries /api/my-registrations by
      the current user's own uid/email, so an admin only ever sees their own
      tickets — no admin-specific logic and no cross-user leakage. */}
- {tenantPlan && (
- <>
+ {/* Always shown — UserEvents scopes to the current user's own registrations
+     and handles a missing tenant gracefully (empty state). */}
  <div className="h-px bg-stone-100 mx-4"></div>
  <SettingItem
  icon={<CalendarCheck size={16} className="text-wheat-600" />}
@@ -439,8 +439,6 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
  label="My Events"
  onClick={() => setShowMyEvents(true)}
  />
- </>
- )}
  {/* Saved — bookmarked articles, lessons, posts and verses (private to the user). */}
  <div className="h-px bg-stone-100 mx-4"></div>
  <SettingItem
