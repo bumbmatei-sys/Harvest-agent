@@ -48,17 +48,18 @@ function iconTypeFromUrl(url: string): string | undefined {
 }
 
 /**
- * Build manifest icons pointing at the tenant's uploaded logo. A tenant logo is
- * one arbitrary image (not a set of pre-sized/maskable PNGs), so we declare it
- * for the key install sizes and let the browser scale it. Not pixel-perfect for
- * every logo, but it puts the tenant's brand on the install prompt.
+ * Build manifest icons pointing at the tenant's uploaded logo. The square-icon
+ * uploader letterboxes onto a square canvas client-side, so declaring it at
+ * the install sizes below doesn't stretch it. `purpose: 'any'` (no
+ * 'maskable') because we can't guarantee the ~20% safe-zone padding OS
+ * maskable cropping expects — 'any' renders it as-is, uncropped.
  */
 function buildTenantIcons(logoUrl: string) {
   const type = iconTypeFromUrl(logoUrl);
   const base = type ? { src: logoUrl, type } : { src: logoUrl };
   return [
-    { ...base, sizes: '192x192', purpose: ['any', 'maskable'] },
-    { ...base, sizes: '512x512', purpose: ['any', 'maskable'] },
+    { ...base, sizes: '192x192', purpose: 'any' },
+    { ...base, sizes: '512x512', purpose: 'any' },
   ];
 }
 

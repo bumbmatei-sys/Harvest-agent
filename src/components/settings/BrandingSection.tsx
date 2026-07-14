@@ -157,8 +157,9 @@ export const BrandingSection: React.FC<BrandingSectionProps> = ({ afterName }) =
               value={squareIcon}
               onChange={setSquareIcon}
               placeholder="Or paste a square icon URL (PNG, JPG)"
+              squarePad
             />
-            <p className="text-xs text-[color:var(--text-faint)] mt-1.5">Used for the phone home-screen install icon. Upload a square image (e.g. 512&times;512) for best results.</p>
+            <p className="text-xs text-[color:var(--text-faint)] mt-1.5">Used for the phone home-screen install icon. Your icon will be centered on a square canvas for the app icon.</p>
           </div>
         </div>
       </div>

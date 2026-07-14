@@ -75,7 +75,7 @@ describe('GET /manifest.webmanifest', () => {
     expect(body.icons.every((i: any) => i.src === 'https://cdn.example.com/logo.png')).toBe(true);
     expect(body.icons.map((i: any) => i.sizes)).toEqual(['192x192', '512x512']);
     expect(body.icons.every((i: any) => i.type === 'image/png')).toBe(true);
-    expect(body.icons.every((i: any) => JSON.stringify(i.purpose) === JSON.stringify(['any', 'maskable']))).toBe(true);
+    expect(body.icons.every((i: any) => i.purpose === 'any')).toBe(true);
   });
 
   it('prefers the square icon over the logo for install icons when both are set', async () => {
