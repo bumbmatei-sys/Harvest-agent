@@ -1,5 +1,6 @@
 "use client";
 import React, { useState } from "react";
+import { Search } from "lucide-react";
 import { Course, Author } from "../../types/course.types";
 import { getAllLessons } from "../../utils/course.utils";
 import { CourseCard } from "./CourseCard";
@@ -46,28 +47,28 @@ export function CourseLibrary({ courses, authors, categories, onSelectCourse, co
 
       {/* Search */}
       <div className="relative mb-5">
-        <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[color:var(--text-faint)]" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-          <circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" />
-        </svg>
+        <div className="absolute inset-y-0 left-0 pl-3 lg:pl-4 flex items-center pointer-events-none">
+          <Search size={16} className="text-[color:var(--text-faint)]" />
+        </div>
         <input
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search courses..."
-          className="w-full py-3 pl-10 pr-4 bg-[#faf9f7] border border-stone-200 rounded-xl text-sm text-earth outline-none transition-colors focus:border-gold"
+          className="w-full pl-9 lg:pl-11 pr-3 py-1.5 lg:py-2.5 bg-white border border-stone-200 rounded-lg lg:rounded-xl text-sm text-earth focus:ring-2 focus:ring-gold focus:border-transparent outline-none transition-all"
         />
       </div>
 
       {/* Category pills */}
-      <div className="flex gap-2 overflow-x-auto pb-1 mb-6" style={{ scrollbarWidth: "none" }}>
+      <div className="flex overflow-x-auto lg:flex-wrap gap-1.5 lg:gap-2 pb-2 mb-6 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         {categories.map((cat) => (
           <button
             key={cat}
             onClick={() => setActiveCategory(cat)}
-            className={`px-4 py-[7px] rounded-full text-[13px] font-semibold whitespace-nowrap cursor-pointer transition-all duration-200 border ${
+            className={`px-3 py-1 lg:px-[15px] lg:py-[7px] rounded-full text-xs lg:text-[12.5px] font-medium lg:font-semibold whitespace-nowrap transition-colors ${
               activeCategory === cat
-                ? "bg-navy-900 text-white border-navy-900"
-                : "bg-white text-warm-brown border-stone-200 lg:border-stone-300 hover:border-stone-300 lg:hover:border-navy-700 hover:text-earth"
+                ? "bg-gold text-white"
+                : "bg-white text-warm-brown lg:text-[color:var(--text-body)] border border-stone-200 lg:border-stone-300 hover:border-gold"
             }`}
           >
             {cat}
