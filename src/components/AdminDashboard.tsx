@@ -452,15 +452,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
       <button
         key={tab.id}
         onClick={() => go(tab.id)}
-        className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors text-left ${
-          isActive ? '' : 'hover:bg-stone-100 active:bg-stone-200'
-        }`}
-        style={{ backgroundColor: isActive ? 'color-mix(in srgb, var(--brand-color, #C9963A) 12%, transparent)' : undefined }}
+        className="w-full flex items-center gap-3 px-[15px] py-3 transition-colors text-left hover:bg-stone-50 active:bg-stone-100"
+        style={{ backgroundColor: isActive ? 'color-mix(in srgb, var(--brand-color, #C9963A) 10%, transparent)' : undefined }}
       >
-        <Icon size={16} style={{ color: isActive ? 'var(--brand-color, #C9963A)' : '#8B7355' }} />
+        <span className="w-[30px] h-[30px] shrink-0 rounded-lg bg-stone-100 flex items-center justify-center">
+          <Icon size={16} className="text-gold" />
+        </span>
         <span
-          className="text-sm font-medium flex-1"
-          style={{ color: isActive ? 'var(--brand-color, #C9963A)' : '#2D2519' }}
+          className="text-sm font-medium flex-1 text-earth"
+          style={isActive ? { color: 'var(--brand-color, #C9963A)' } : undefined}
         >
           {tab.label}
         </span>
@@ -469,6 +469,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
+        <ChevronRight size={16} className="text-[color:var(--text-faint)] shrink-0" />
       </button>
     );
   };
@@ -839,16 +840,19 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
         {showMoreSheet && (
           <>
             <div
-              className="fixed inset-0 bg-black/40 z-[101] lg:hidden"
+              className="fixed inset-0 z-[101] lg:hidden"
+              style={{ backgroundColor: 'rgba(15,13,11,0.42)' }}
               onClick={() => setShowMoreSheet(false)}
             />
             <div
-              className="fixed bottom-0 left-0 right-0 bg-white rounded-t-2xl z-[102] lg:hidden shadow-[0_-8px_30px_rgba(0,0,0,0.12)] max-h-[80vh] overflow-y-auto"
+              className="fixed bottom-0 left-0 right-0 bg-cream rounded-t-[22px] z-[102] lg:hidden shadow-[0_-12px_44px_rgba(0,0,0,0.28)] max-h-[84vh] flex flex-col"
               style={{ animation: 'slideUp 0.25s ease-out' }}
             >
-              <div className="w-9 h-1 bg-stone-300 rounded-full mx-auto mt-3 mb-1" />
-              <div className="pb-4">
-                <h3 className="font-display text-sm font-bold text-earth px-4 pt-1">More Tools</h3>
+              <div className="w-9 h-1 bg-stone-300 rounded-full mx-auto mt-3 mb-1 shrink-0" />
+              <div className="flex items-center justify-between px-[18px] pt-1.5 pb-3 shrink-0">
+                <h3 className="font-display font-light text-[22px] leading-none tracking-[-0.02em] text-earth">More</h3>
+              </div>
+              <div className="overflow-y-auto px-[18px] pb-6">
 
                 {/* Grouped, Vercel-style list. Groups with no permitted tabs are omitted. */}
                 {MORE_GROUPS.map((group) => {
@@ -857,11 +861,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
                     .filter(Boolean) as { id: string; label: string; icon: any }[];
                   if (groupTabs.length === 0) return null;
                   return (
-                    <div key={group.label}>
-                      <p className="text-[10px] font-semibold uppercase tracking-widest text-[color:var(--text-faint)] px-4 pt-4 pb-1">
+                    <div key={group.label} className="mb-4">
+                      <p className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-warm-brown px-1 pb-1.5">
                         {group.label}
                       </p>
-                      {groupTabs.map(renderMoreRow)}
+                      <div className="bg-white rounded-brand-xl border border-stone-200 overflow-hidden divide-y divide-stone-200">
+                        {groupTabs.map(renderMoreRow)}
+                      </div>
                     </div>
                   );
                 })}
@@ -875,11 +881,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
                   );
                   if (leftover.length === 0) return null;
                   return (
-                    <div>
-                      <p className="text-[10px] font-semibold uppercase tracking-widest text-[color:var(--text-faint)] px-4 pt-4 pb-1">
+                    <div className="mb-4">
+                      <p className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-warm-brown px-1 pb-1.5">
                         OTHER
                       </p>
-                      {leftover.map(renderMoreRow)}
+                      <div className="bg-white rounded-brand-xl border border-stone-200 overflow-hidden divide-y divide-stone-200">
+                        {leftover.map(renderMoreRow)}
+                      </div>
                     </div>
                   );
                 })()}

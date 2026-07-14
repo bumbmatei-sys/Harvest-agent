@@ -345,13 +345,29 @@ export default function AdminRAG() {
  </div>
  </div>
 
- {/* Tabs */}
- <div style={{ maxWidth:1160, margin:"0 auto", width:"100%", padding:"0 20px" }}>
+ {/* Tabs — desktop underline tabs. On mobile the same add|sources modes render
+     as the segmented control below (responsive split); tab/setTab is shared. */}
+ <div className="hidden lg:block" style={{ maxWidth:1160, margin:"0 auto", width:"100%", padding:"0 20px" }}>
  <div style={s.tabBar}>
  <button style={{ ...s.tab, ...(tab==="add"?s.tabActive:{}) }} onClick={()=>setTab("add")}>+ Add Knowledge</button>
  <button style={{ ...s.tab, ...(tab==="sources"?s.tabActive:{}) }} onClick={()=>setTab("sources")}>
  Sources ({sources.length})
  </button>
+ </div>
+ </div>
+
+ {/* Mobile segmented control — the add|sources tab modes styled as the mockup's
+     segmented control (stone track, white/gold active pill). Same tab/setTab state. */}
+ <div className="lg:hidden px-5 pt-3">
+ <div className="flex bg-stone-100 rounded-full p-1">
+ <button
+ onClick={()=>setTab("add")}
+ className={`flex-1 rounded-full py-2 text-[13px] font-semibold transition-colors ${tab==="add" ? "bg-white text-gold shadow-[var(--ds-sh-sm)]" : "text-warm-brown"}`}
+ >Add Knowledge</button>
+ <button
+ onClick={()=>setTab("sources")}
+ className={`flex-1 rounded-full py-2 text-[13px] font-semibold transition-colors ${tab==="sources" ? "bg-white text-gold shadow-[var(--ds-sh-sm)]" : "text-warm-brown"}`}
+ >Sources ({sources.length})</button>
  </div>
  </div>
 
@@ -441,6 +457,21 @@ export default function AdminRAG() {
  {/* ── SOURCES TAB ── */}
  {tab === "sources" && (
  <div style={s.panel}>
+
+ {/* Mobile — gold eyebrow subhead + "Add source" primary CTA (mockup
+     S.knowledge). "Add source" reuses the existing add flow via setTab. */}
+ <div className="lg:hidden flex flex-col gap-3">
+ <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-gold">
+ {sources.length} {sources.length === 1 ? "source" : "sources"} · {totalChunks} chunks
+ </div>
+ <button
+ onClick={()=>setTab("add")}
+ className="flex items-center justify-center gap-2 w-full rounded-brand-xl py-3 text-[14px] font-semibold text-white shadow-[var(--ds-sh-sm)]"
+ style={{ background: GOLD_BTN }}
+ >
+ <Sparkles size={16} /> Add source
+ </button>
+ </div>
 
  {/* Search + filter */}
  <div style={{ display:"flex", gap:10 }}>
