@@ -1279,7 +1279,26 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
               <p className="text-xs mt-1">Create your first announcement channel</p>
             </div>
           ) : (
-            <div className="space-y-2">
+            <>
+            {/* Mobile — Harvest community card: hash disc (gold tint), #name, last message. Same setOpenChannel handler + channels data. */}
+            <div className="lg:hidden bg-white rounded-brand-xl border border-stone-200 shadow-[var(--ds-sh-sm)] overflow-hidden">
+              {channels.map((ch, i) => (
+                <button
+                  key={ch.id}
+                  onClick={() => setOpenChannel(ch)}
+                  className={`w-full flex items-center gap-3 px-3.5 py-3 text-left transition-colors hover:bg-wheat-50 ${i ? 'border-t border-stone-200' : ''}`}
+                >
+                  <span className="w-9 h-9 rounded-brand bg-[var(--surface-gold)] text-gold flex items-center justify-center shrink-0"><Hash size={16} /></span>
+                  <span className="flex-1 min-w-0">
+                    <span className="block text-[13.5px] font-semibold text-earth truncate">#{ch.name}</span>
+                    <span className="block text-xs text-[color:var(--text-faint)] truncate">{ch.lastMessage || ch.description || `${ch.members?.length || 0} ${(ch.members?.length || 0) === 1 ? 'member' : 'members'}`}</span>
+                  </span>
+                  {ch.lastMessageAt && <span className="text-[11px] text-[color:var(--text-faint)] shrink-0">{fmtTime(ch.lastMessageAt)}</span>}
+                </button>
+              ))}
+            </div>
+            {/* Desktop — existing approved list, unchanged (now lg-only). */}
+            <div className="hidden lg:block space-y-2">
               {channels.map(ch => {
                 const active = openChannel?.id === ch.id;
                 return (
@@ -1306,6 +1325,7 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
                 );
               })}
             </div>
+            </>
           )}
         </div>
       )}
@@ -1329,7 +1349,26 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
               <p className="font-medium text-sm">No admin conversations yet</p>
             </div>
           ) : (
-            <div className="space-y-2">
+            <>
+            {/* Mobile — Harvest people card: avatar disc, name, last message. Same setOpenAdminDm handler + adminDms data. */}
+            <div className="lg:hidden bg-white rounded-brand-xl border border-stone-200 shadow-[var(--ds-sh-sm)] overflow-hidden">
+              {adminDms.map((dm, i) => (
+                <button
+                  key={dm.id}
+                  onClick={() => setOpenAdminDm(dm)}
+                  className={`w-full flex items-center gap-3 px-3.5 py-3 text-left transition-colors hover:bg-wheat-50 ${i ? 'border-t border-stone-200' : ''}`}
+                >
+                  <span className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0" style={{ backgroundColor: 'var(--brand-color, #B8962E)' }}>{getOtherName(dm).charAt(0).toUpperCase()}</span>
+                  <span className="flex-1 min-w-0">
+                    <span className="block text-[13.5px] font-semibold text-earth truncate">{getOtherName(dm)}</span>
+                    {dm.lastMessage && <span className="block text-xs text-[color:var(--text-faint)] truncate">{dm.lastMessage}</span>}
+                  </span>
+                  {dm.lastMessageAt && <span className="text-[11px] text-[color:var(--text-faint)] shrink-0">{fmtTime(dm.lastMessageAt)}</span>}
+                </button>
+              ))}
+            </div>
+            {/* Desktop — existing approved list, unchanged (now lg-only). */}
+            <div className="hidden lg:block space-y-2">
               {adminDms.map(dm => (
                 <button
                   key={dm.id}
@@ -1348,6 +1387,7 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
                 </button>
               ))}
             </div>
+            </>
           )}
         </div>
       )}
@@ -1372,7 +1412,26 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
               <p className="text-xs mt-1">Start a private conversation with a member</p>
             </div>
           ) : (
-            <div className="space-y-2">
+            <>
+            {/* Mobile — Harvest people card: avatar disc, name, last message. Same setOpenMemberDm handler + memberDms data. */}
+            <div className="lg:hidden bg-white rounded-brand-xl border border-stone-200 shadow-[var(--ds-sh-sm)] overflow-hidden">
+              {memberDms.map((dm, i) => (
+                <button
+                  key={dm.id}
+                  onClick={() => setOpenMemberDm(dm)}
+                  className={`w-full flex items-center gap-3 px-3.5 py-3 text-left transition-colors hover:bg-wheat-50 ${i ? 'border-t border-stone-200' : ''}`}
+                >
+                  <span className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0 bg-sky-500">{getOtherName(dm).charAt(0).toUpperCase()}</span>
+                  <span className="flex-1 min-w-0">
+                    <span className="block text-[13.5px] font-semibold text-earth truncate">{getOtherName(dm)}</span>
+                    {dm.lastMessage && <span className="block text-xs text-[color:var(--text-faint)] truncate">{dm.lastMessage}</span>}
+                  </span>
+                  {dm.lastMessageAt && <span className="text-[11px] text-[color:var(--text-faint)] shrink-0">{fmtTime(dm.lastMessageAt)}</span>}
+                </button>
+              ))}
+            </div>
+            {/* Desktop — existing approved list, unchanged (now lg-only). */}
+            <div className="hidden lg:block space-y-2">
               {memberDms.map(dm => (
                 <button
                   key={dm.id}
@@ -1390,6 +1449,7 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
                 </button>
               ))}
             </div>
+            </>
           )}
         </div>
       )}
