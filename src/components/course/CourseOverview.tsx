@@ -94,7 +94,7 @@ export function CourseOverview({ course, authors, onBack, onStartLesson, complet
   return (
     <div className="max-w-[480px] lg:max-w-[720px] mx-auto pb-24 lg:pb-10">
       {/* Hero */}
-      <div className="relative w-full lg:rounded-[var(--ds-radius-card)] lg:overflow-hidden" style={{ aspectRatio: "16/10" }}>
+      <div className="relative w-full aspect-[16/9] lg:aspect-[16/10] lg:rounded-[var(--ds-radius-card)] lg:overflow-hidden">
         {course.thumbnail ? (
           <img src={course.thumbnail} alt={course.title} className="w-full h-full object-cover" />
         ) : (
@@ -113,7 +113,7 @@ export function CourseOverview({ course, authors, onBack, onStartLesson, complet
           <div className="text-[11px] font-bold uppercase tracking-widest mb-2" style={{ color: GOLD }}>
             {course.category || "Course"}
           </div>
-          <div className="text-2xl lg:text-[28px] font-extrabold lg:font-light text-white tracking-tight lg:tracking-[-0.01em] leading-tight mb-2 font-display">
+          <div className="text-2xl lg:text-[28px] font-light text-white tracking-tight lg:tracking-[-0.01em] leading-tight mb-2 font-display">
             {course.title}
           </div>
           <div className="text-sm font-medium text-white/60">
@@ -147,15 +147,15 @@ export function CourseOverview({ course, authors, onBack, onStartLesson, complet
         {/* Stats row */}
         <div className="flex py-4 border-b border-stone-200">
           <div className="flex-1 text-center border-r border-stone-200">
-            <div className="text-lg font-extrabold">{totalLessons}</div>
+            <div className="text-lg font-display font-normal lg:font-sans lg:font-extrabold">{totalLessons}</div>
             <div className="text-[11px] text-[color:var(--text-faint)] font-semibold uppercase tracking-wider">Lessons</div>
           </div>
           <div className="flex-1 text-center border-r border-stone-200">
-            <div className="text-lg font-extrabold">{durationStr}</div>
+            <div className="text-lg font-display font-normal lg:font-sans lg:font-extrabold">{durationStr}</div>
             <div className="text-[11px] text-[color:var(--text-faint)] font-semibold uppercase tracking-wider">Duration</div>
           </div>
           <div className="flex-1 text-center">
-            <div className="text-lg font-extrabold">{completedCount}/{totalLessons}</div>
+            <div className="text-lg font-display font-normal lg:font-sans lg:font-extrabold">{completedCount}/{totalLessons}</div>
             <div className="text-[11px] text-[color:var(--text-faint)] font-semibold uppercase tracking-wider">Complete</div>
           </div>
         </div>

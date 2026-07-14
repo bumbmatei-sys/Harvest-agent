@@ -131,7 +131,7 @@ export function LessonView({ course, lesson, authors, onBack, onComplete, comple
         <div className="text-xs text-[color:var(--text-faint)] font-semibold uppercase tracking-wider mt-5 mb-1">
           Lesson {lessonNumber} of {allLessons.length}
         </div>
-        <div className="text-[22px] font-extrabold lg:font-light text-earth tracking-tight lg:tracking-[-0.02em] mb-4 font-display">{lesson.title}</div>
+        <div className="text-[22px] font-light text-earth tracking-tight lg:tracking-[-0.02em] mb-4 font-display">{lesson.title}</div>
 
         {/* Tabs */}
         <div className="flex border-b border-stone-200 -mx-5 px-5 mb-4">
@@ -241,10 +241,27 @@ export function LessonView({ course, lesson, authors, onBack, onComplete, comple
 
         {/* Actions */}
         <div className="mt-6 space-y-3">
+          {/* Mark complete — mobile (mockup): field-green button with a check
+              glyph. Same onComplete handler + completionBlocked gate as desktop. */}
           <button
             onClick={() => { if (!completionBlocked) onComplete(lesson.id); }}
             disabled={completionBlocked}
-            className={`w-full py-3.5 rounded-lg text-sm font-bold flex items-center justify-center transition-all ${
+            className={`lg:hidden w-full py-3.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 border transition-all ${
+              completionBlocked
+                ? "bg-stone-100 text-[color:var(--text-faint)] border-stone-200 cursor-not-allowed"
+                : isCompleted
+                ? "bg-field-500 text-white border-field-500 cursor-pointer"
+                : "bg-field-100 text-field-700 border-field-500 cursor-pointer"
+            }`}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m5 13 4 4L19 7" /></svg>
+            {isCompleted ? "Completed" : "Mark as Completed"}
+          </button>
+          {/* Mark complete — desktop (approved layout, unchanged; now lg-only). */}
+          <button
+            onClick={() => { if (!completionBlocked) onComplete(lesson.id); }}
+            disabled={completionBlocked}
+            className={`hidden lg:flex w-full py-3.5 rounded-lg text-sm font-bold items-center justify-center transition-all ${
               completionBlocked
                 ? "bg-stone-100 text-[color:var(--text-faint)] border border-stone-200 cursor-not-allowed"
                 : isCompleted
