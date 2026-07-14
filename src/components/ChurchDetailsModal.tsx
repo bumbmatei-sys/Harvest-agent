@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { X, MapPin, User, Clock, Mail, Phone, Globe, Facebook, Instagram, Navigation, Copy, CheckCircle2, Trash2, Megaphone, Info } from 'lucide-react';
-import { doc, getDoc, collection, query, orderBy, getDocs } from 'firebase/firestore';
+import { X, MapPin, User, Clock, Mail, Phone, Globe, Facebook, Instagram, Navigation, Copy, CheckCircle2, Trash2 } from 'lucide-react';
+import { doc, getDoc } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { getPlaceholderImage } from '@/utils/placeholder';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
@@ -34,13 +34,6 @@ interface ChurchData {
   lng: number;
 }
 
-interface Announcement {
-  id: string;
-  title: string;
-  content: string;
-  createdAt: string;
-}
-
 const ChurchDetailsModal: React.FC<ChurchDetailsModalProps> = ({ 
  isOpen, 
  onClose, 
@@ -53,9 +46,6 @@ const ChurchDetailsModal: React.FC<ChurchDetailsModalProps> = ({
  const [loading, setLoading] = useState(true);
  const [copiedEmail, setCopiedEmail] = useState(false);
  const [copiedPhone, setCopiedPhone] = useState(false);
- const [activeTab, setActiveTab] = useState<'announcements' | 'info'>('announcements');
- const [announcements, setAnnouncements] = useState<Announcement[]>([]);
- const [loadingAnnouncements, setLoadingAnnouncements] = useState(false);
 
  useEffect(() => {
  const fetchChurch = async () => {
@@ -63,7 +53,6 @@ const ChurchDetailsModal: React.FC<ChurchDetailsModalProps> = ({
  
  setLoading(true);
  setChurch(null);
- setAnnouncements([]);
  try {
  const docRef = doc(db, 'churches', churchId);
  const docSnap = await getDoc(docRef);
@@ -81,45 +70,6 @@ const ChurchDetailsModal: React.FC<ChurchDetailsModalProps> = ({
  };
 
  fetchChurch();
- }, [churchId, isOpen]);
-
- // Fetch announcements when church changes
- useEffect(() => {
- if (!churchId || !isOpen) return;
- let cancelled = false;
- setLoadingAnnouncements(true);
- try {
-   const announcementsRef = collection(db, 'churches', churchId, 'announcements');
-   const q = query(announcementsRef, orderBy('createdAt', 'desc'));
-   getDocs(q).then((snap) => {
-     if (cancelled) return;
-     const data: Announcement[] = snap.docs.map(d => {
-       const raw = d.data();
-       // Handle both Firestore Timestamp and ISO string
-       let createdAtStr = '';
-       if (raw.createdAt?.toDate) {
-         createdAtStr = raw.createdAt.toDate().toISOString();
-       } else if (typeof raw.createdAt === 'string') {
-         createdAtStr = raw.createdAt;
-       }
-       return {
-         id: d.id,
-         title: raw.title || '',
-         content: raw.content || '',
-         createdAt: createdAtStr,
-       };
-     });
-     setAnnouncements(data);
-     setLoadingAnnouncements(false);
-   }).catch((err) => {
-     if (cancelled) return;
-     console.error('Failed to load announcements:', err);
-     setLoadingAnnouncements(false);
-   });
- } catch {
-   if (!cancelled) setLoadingAnnouncements(false);
- }
- return () => { cancelled = true; };
  }, [churchId, isOpen]);
 
  if (!isOpen) return null;
@@ -206,64 +156,6 @@ const ChurchDetailsModal: React.FC<ChurchDetailsModalProps> = ({
  </div>
 
  <div className="px-4 -mt-8 relative z-10 space-y-4">
-   {/* Tab Buttons */}
-   <div className="flex gap-2 bg-white rounded-2xl p-1.5 shadow-sm border border-stone-200">
-     <button
-       onClick={() => setActiveTab('announcements')}
-       className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition-colors ${
-         activeTab === 'announcements'
-           ? 'bg-[#1e3a8a] text-white shadow-sm'
-           : 'text-warm-brown hover:text-[color:var(--text-body)]'
-       }`}
-     >
-       <Megaphone size={16} />
-       Announcements
-     </button>
-     <button
-       onClick={() => setActiveTab('info')}
-       className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition-colors ${
-         activeTab === 'info'
-           ? 'bg-[#1e3a8a] text-white shadow-sm'
-           : 'text-warm-brown hover:text-[color:var(--text-body)]'
-       }`}
-     >
-       <Info size={16} />
-       Church Info
-     </button>
-   </div>
-
-   {activeTab === 'announcements' ? (
-     /* Announcements Tab */
-     <div className="bg-white rounded-3xl p-6 shadow-sm border border-stone-200">
-       <h3 className="text-sm font-bold text-earth uppercase tracking-wider mb-4">Announcements</h3>
-       {loadingAnnouncements ? (
-         <div className="flex justify-center py-8">
-           <div className="w-6 h-6 border-4 border-[color-mix(in_srgb,var(--brand-color)_30%,transparent)] border-t-gold rounded-full animate-spin"></div>
-         </div>
-       ) : announcements.length === 0 ? (
-         <div className="text-center py-8">
-           <Megaphone size={32} className="mx-auto mb-3 text-stone-300" />
-           <p className="text-sm text-warm-brown">No announcements yet</p>
-         </div>
-       ) : (
-         <div className="space-y-4">
-           {announcements.map((a) => (
-             <div key={a.id} className="border-b border-stone-200 last:border-0 pb-4 last:pb-0">
-               <h4 className="font-bold text-earth text-base">{a.title}</h4>
-               <p className="text-sm text-warm-brown mt-1 whitespace-pre-wrap">{a.content}</p>
-               {a.createdAt && (
-                 <p className="text-xs text-[color:var(--text-faint)] mt-2">
-                   {new Date(a.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                 </p>
-               )}
-             </div>
-           ))}
-         </div>
-       )}
-     </div>
-   ) : (
-     /* Church Info Tab — existing content */
-     <>
        {/* Service Details Card */}
        <div className="bg-white rounded-3xl p-6 shadow-sm border border-stone-200 ">
          <h3 className="text-sm font-bold text-earth uppercase tracking-wider mb-6">Service Details</h3>
@@ -375,8 +267,6 @@ const ChurchDetailsModal: React.FC<ChurchDetailsModalProps> = ({
            Directions
          </button>
        </div>
-     </>
-   )}
 
    {isHomeChurch && onRemoveHomeChurch && (
      <div className="flex justify-center mt-8 mb-6">
