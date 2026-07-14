@@ -94,7 +94,7 @@ export function CourseOverview({ course, authors, onBack, onStartLesson, complet
   return (
     <div className="max-w-[480px] lg:max-w-[720px] mx-auto pb-24 lg:pb-10">
       {/* Hero */}
-      <div className="relative w-full lg:rounded-[var(--ds-radius-card)] lg:overflow-hidden" style={{ aspectRatio: "16/10" }}>
+      <div className="relative w-full aspect-[16/9] lg:aspect-[16/10] lg:rounded-[var(--ds-radius-card)] lg:overflow-hidden">
         {course.thumbnail ? (
           <img src={course.thumbnail} alt={course.title} className="w-full h-full object-cover" />
         ) : (
@@ -113,7 +113,7 @@ export function CourseOverview({ course, authors, onBack, onStartLesson, complet
           <div className="text-[11px] font-bold uppercase tracking-widest mb-2" style={{ color: GOLD }}>
             {course.category || "Course"}
           </div>
-          <div className="text-2xl lg:text-[28px] font-extrabold lg:font-light text-white tracking-tight lg:tracking-[-0.01em] leading-tight mb-2 font-display">
+          <div className="text-2xl lg:text-[28px] font-light text-white tracking-tight lg:tracking-[-0.01em] leading-tight mb-2 font-display">
             {course.title}
           </div>
           <div className="text-sm font-medium text-white/60">
@@ -147,15 +147,15 @@ export function CourseOverview({ course, authors, onBack, onStartLesson, complet
         {/* Stats row */}
         <div className="flex py-4 border-b border-stone-200">
           <div className="flex-1 text-center border-r border-stone-200">
-            <div className="text-lg font-extrabold">{totalLessons}</div>
+            <div className="text-lg font-display font-normal lg:font-sans lg:font-extrabold">{totalLessons}</div>
             <div className="text-[11px] text-[color:var(--text-faint)] font-semibold uppercase tracking-wider">Lessons</div>
           </div>
           <div className="flex-1 text-center border-r border-stone-200">
-            <div className="text-lg font-extrabold">{durationStr}</div>
+            <div className="text-lg font-display font-normal lg:font-sans lg:font-extrabold">{durationStr}</div>
             <div className="text-[11px] text-[color:var(--text-faint)] font-semibold uppercase tracking-wider">Duration</div>
           </div>
           <div className="flex-1 text-center">
-            <div className="text-lg font-extrabold">{completedCount}/{totalLessons}</div>
+            <div className="text-lg font-display font-normal lg:font-sans lg:font-extrabold">{completedCount}/{totalLessons}</div>
             <div className="text-[11px] text-[color:var(--text-faint)] font-semibold uppercase tracking-wider">Complete</div>
           </div>
         </div>
@@ -167,7 +167,7 @@ export function CourseOverview({ course, authors, onBack, onStartLesson, complet
               key={tab}
               onClick={() => setActiveTab(tab)}
               className={`py-3.5 mr-6 text-sm font-semibold capitalize cursor-pointer border-b-2 transition-colors ${
-                activeTab === tab ? "text-earth border-amber-600" : "text-[color:var(--text-faint)] border-transparent hover:text-warm-brown"
+                activeTab === tab ? "text-earth border-gold" : "text-[color:var(--text-faint)] border-transparent hover:text-warm-brown"
               }`}
             >
               {tab}
@@ -236,15 +236,15 @@ export function CourseOverview({ course, authors, onBack, onStartLesson, complet
                         return (
                           <div
                             key={lesson.id}
-                            className="flex items-center gap-3 py-3 border-t border-gray-50 cursor-pointer hover:bg-stone-100 -mx-5 px-5 transition-colors"
+                            className="flex items-center gap-3 py-3 border-t border-stone-200 cursor-pointer hover:bg-stone-100 -mx-5 px-5 transition-colors"
                             onClick={() => onStartLesson(course, lesson)}
                           >
                             <div
                               className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 border-[1.5px] ${
                                 isCompleted
-                                  ? "border-green-500 bg-green-50 text-green-600"
+                                  ? "border-field-500 bg-field-100 text-field-600"
                                   : isCurrent
-                                  ? "border-amber-600 bg-amber-50 text-amber-700"
+                                  ? "border-wheat-600 bg-wheat-50 text-wheat-700"
                                   : "border-stone-200 bg-stone-100 text-warm-brown"
                               }`}
                             >

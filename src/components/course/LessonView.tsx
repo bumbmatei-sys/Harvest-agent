@@ -131,7 +131,7 @@ export function LessonView({ course, lesson, authors, onBack, onComplete, comple
         <div className="text-xs text-[color:var(--text-faint)] font-semibold uppercase tracking-wider mt-5 mb-1">
           Lesson {lessonNumber} of {allLessons.length}
         </div>
-        <div className="text-[22px] font-extrabold lg:font-light text-earth tracking-tight lg:tracking-[-0.02em] mb-4 font-display">{lesson.title}</div>
+        <div className="text-[22px] font-light text-earth tracking-tight lg:tracking-[-0.02em] mb-4 font-display">{lesson.title}</div>
 
         {/* Tabs */}
         <div className="flex border-b border-stone-200 -mx-5 px-5 mb-4">
@@ -140,7 +140,7 @@ export function LessonView({ course, lesson, authors, onBack, onComplete, comple
               key={tab}
               onClick={() => setActiveTab(tab)}
               className={`py-3 mr-5 text-[13px] font-semibold capitalize cursor-pointer border-b-2 transition-colors ${
-                activeTab === tab ? "text-earth border-amber-600" : "text-[color:var(--text-faint)] border-transparent hover:text-warm-brown"
+                activeTab === tab ? "text-earth border-gold" : "text-[color:var(--text-faint)] border-transparent hover:text-warm-brown"
               }`}
             >
               {tab}
@@ -157,7 +157,7 @@ export function LessonView({ course, lesson, authors, onBack, onComplete, comple
             {lesson.outline && lesson.outline.length > 0 && (
               <div>
                 {lesson.outline.map((item, idx) => (
-                  <div key={item.id || idx} className="flex gap-3.5 py-3.5 border-b border-gray-50">
+                  <div key={item.id || idx} className="flex gap-3.5 py-3.5 border-b border-stone-200">
                     <div className="text-xs font-semibold w-[42px] flex-shrink-0 pt-0.5" style={{ color: GOLD }}>
                       {item.text?.match(/\d+:\d+/)?.[0] || `${idx * 3}:00`}
                     </div>
@@ -180,10 +180,10 @@ export function LessonView({ course, lesson, authors, onBack, onComplete, comple
               onChange={(e) => { setNoteDraft(e.target.value); setNoteSaved(false); }}
               placeholder="Write your notes for this lesson…"
               rows={8}
-              className="w-full min-h-[160px] rounded-lg border border-stone-200 p-3.5 text-sm leading-6 text-warm-brown placeholder:text-[color:var(--text-faint)] focus:outline-none focus:ring-2 focus:ring-amber-600/40 resize-y"
+              className="w-full min-h-[160px] rounded-lg border border-stone-200 p-3.5 text-sm leading-6 text-warm-brown placeholder:text-[color:var(--text-faint)] focus:outline-none focus:ring-2 focus:ring-wheat-500/40 resize-y"
             />
             <div className="flex items-center justify-between mt-2.5">
-              <span className={`text-xs font-semibold text-green-600 transition-opacity ${noteSaved ? "opacity-100" : "opacity-0"}`}>
+              <span className={`text-xs font-semibold text-field-600 transition-opacity ${noteSaved ? "opacity-100" : "opacity-0"}`}>
                 Saved
               </span>
               <button
@@ -241,10 +241,27 @@ export function LessonView({ course, lesson, authors, onBack, onComplete, comple
 
         {/* Actions */}
         <div className="mt-6 space-y-3">
+          {/* Mark complete — mobile (mockup): field-green button with a check
+              glyph. Same onComplete handler + completionBlocked gate as desktop. */}
           <button
             onClick={() => { if (!completionBlocked) onComplete(lesson.id); }}
             disabled={completionBlocked}
-            className={`w-full py-3.5 rounded-lg text-sm font-bold flex items-center justify-center transition-all ${
+            className={`lg:hidden w-full py-3.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 border transition-all ${
+              completionBlocked
+                ? "bg-stone-100 text-[color:var(--text-faint)] border-stone-200 cursor-not-allowed"
+                : isCompleted
+                ? "bg-field-500 text-white border-field-500 cursor-pointer"
+                : "bg-field-100 text-field-700 border-field-500 cursor-pointer"
+            }`}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m5 13 4 4L19 7" /></svg>
+            {isCompleted ? "Completed" : "Mark as Completed"}
+          </button>
+          {/* Mark complete — desktop (approved layout, unchanged; now lg-only). */}
+          <button
+            onClick={() => { if (!completionBlocked) onComplete(lesson.id); }}
+            disabled={completionBlocked}
+            className={`hidden lg:flex w-full py-3.5 rounded-lg text-sm font-bold items-center justify-center transition-all ${
               completionBlocked
                 ? "bg-stone-100 text-[color:var(--text-faint)] border border-stone-200 cursor-not-allowed"
                 : isCompleted

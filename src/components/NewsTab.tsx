@@ -1136,23 +1136,16 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
       {/* Pinned events from AdminEvents system */}
       {adminEvents.filter(e => e.pinned).map(event => (
         <div key={event.id} className="bg-white rounded-2xl shadow-sm border border-[color-mix(in_srgb,var(--brand-color)_30%,transparent)] overflow-hidden lg:rounded-[var(--ds-radius-card)] lg:border-[color:var(--border-gold)] lg:shadow-[var(--ds-sh-sm)]">
-          {/* Mobile: cover image only when present */}
-          {event.coverImage && (
-            <div className="relative h-36 bg-stone-100 lg:hidden">
-              <Image src={event.coverImage} alt={event.title} fill sizes="(max-width:768px) 100vw, 800px" className="object-cover" referrerPolicy="no-referrer" />
-            </div>
-          )}
-          {/* Desktop: always a hero band — cover photo, else navy→gold gradient — with the Pinned Event chip overlaid */}
-          <div className="hidden lg:block relative h-[150px]">
+          {/* Hero band — cover photo, else navy→gold gradient — with the Pinned Event chip overlaid (mobile + desktop) */}
+          <div className="relative h-36 lg:h-[150px]">
             {event.coverImage ? (
-              <Image src={event.coverImage} alt={event.title} fill sizes="800px" className="object-cover" referrerPolicy="no-referrer" />
+              <Image src={event.coverImage} alt={event.title} fill sizes="(max-width:768px) 100vw, 800px" className="object-cover" referrerPolicy="no-referrer" />
             ) : (
               <HeroBand radius="0" className="!absolute inset-0" />
             )}
             <span className="absolute top-3 left-3 z-10 inline-flex items-center text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full" style={{ background: 'var(--surface-gold)', color: 'var(--wheat-700)' }}>Pinned Event</span>
           </div>
           <div className="p-4 lg:p-[18px]">
-            <span className="lg:hidden inline-flex items-center text-[10px] font-bold uppercase tracking-wider text-gold bg-[color-mix(in_srgb,var(--brand-color)_15%,white)] px-2 py-0.5 rounded-full mb-2">Pinned Event</span>
             <h3 className="font-bold text-earth text-base lg:text-[17px] mb-1">{event.title}</h3>
             {event.description ? <p className="text-sm lg:text-xs text-warm-brown line-clamp-2 mb-3">{event.description}</p> : null}
             <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-warm-brown mb-3">
@@ -1174,8 +1167,8 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
       ))}
 
       <div className="flex items-center justify-between px-1 mb-2">
-        <h2 className="lg:flex lg:items-center text-xl lg:text-lg font-bold lg:font-light lg:tracking-[-0.02em] text-earth font-display">
-          <span className="hidden lg:block w-1 h-5 rounded-full bg-gold mr-2.5 shrink-0" aria-hidden="true" />
+        <h2 className="flex items-center text-[19px] lg:text-lg font-light tracking-[-0.02em] text-earth font-display">
+          <span className="block w-1 h-[18px] lg:h-5 rounded-full bg-gold mr-2.5 shrink-0" aria-hidden="true" />
           News &amp; Updates
         </h2>
         {posts.length >= 3 && (
@@ -1445,7 +1438,10 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
       {/* Upcoming Events (non-pinned) — mobile only; desktop shows the compact rail version instead */}
       {adminEvents.filter(e => !e.pinned).length > 0 && (
         <div className="mt-4 lg:hidden">
-          <h2 className="text-xl font-bold text-earth px-1 mb-3 font-display">Upcoming Events</h2>
+          <h2 className="flex items-center text-[19px] font-light tracking-[-0.02em] text-earth px-1 mb-3 font-display">
+            <span className="block w-1 h-[18px] rounded-full bg-gold mr-2.5 shrink-0" aria-hidden="true" />
+            Upcoming Events
+          </h2>
           <div className="space-y-3">
             {adminEvents.filter(e => !e.pinned).map(event => (
               <div key={event.id} className="bg-white rounded-2xl shadow-sm border border-stone-200 overflow-hidden lg:rounded-[var(--ds-radius-card)] lg:shadow-[var(--ds-sh-sm)]">
@@ -1482,7 +1478,10 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
       {articles.length > 0 && (
         <div className="mt-8 lg:hidden">
           <div className="flex items-center justify-between px-1 mb-4">
-            <h2 className="text-xl font-bold text-earth font-display">Latest Articles</h2>
+            <h2 className="flex items-center text-[19px] font-light tracking-[-0.02em] text-earth font-display">
+              <span className="block w-1 h-[18px] rounded-full bg-gold mr-2.5 shrink-0" aria-hidden="true" />
+              Latest Articles
+            </h2>
           </div>
           <div className="flex flex-col gap-3">
             {articles.map((post, index) => (

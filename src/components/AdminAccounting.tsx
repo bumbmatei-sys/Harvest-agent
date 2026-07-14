@@ -54,15 +54,15 @@ const TYPE_LABELS: Record<Invoice['type'], string> = {
 };
 
 const TYPE_COLORS: Record<Invoice['type'], string> = {
-  donation_receipt: 'bg-amber-100 text-amber-700',
-  event_ticket: 'bg-blue-100 text-blue-700',
+  donation_receipt: 'bg-wheat-100 text-wheat-700',
+  event_ticket: 'bg-sky-100 text-sky-700',
   invoice: 'bg-purple-100 text-purple-700',
 };
 
 const STATUS_COLORS: Record<Invoice['status'], string> = {
   pending: 'bg-stone-100 text-warm-brown',
-  generated: 'bg-green-100 text-green-700',
-  sent: 'bg-blue-100 text-blue-700',
+  generated: 'bg-field-100 text-field-700',
+  sent: 'bg-sky-100 text-sky-700',
 };
 
 const fmt = (n: number, currency = 'usd') =>
@@ -409,8 +409,29 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
   return (
     <div className="max-w-5xl mx-auto">
       {subTabBar}
+
+      {/* Mobile: no in-content page title — the shell's mobile header already
+          renders "Accounting", so an H1 here would duplicate it. */}
+
+      {/* Summary Cards — mobile: 2-col stat cards with gold icon disc + serif
+          value (mockup StatRow). Same computed totals as the desktop grid;
+          no delta shown (the screen has no period-over-period data). */}
+      <div className="lg:hidden grid grid-cols-2 gap-2.5 mb-6">
+        {[
+          { label: 'This Month', value: fmt(totalThisMonth), icon: <TrendingUp size={14} /> },
+          { label: 'This Year', value: fmt(totalThisYear), icon: <DollarSign size={14} /> },
+          { label: 'Receipts Sent', value: sentCount, icon: <FileText size={14} /> },
+        ].map(s => (
+          <div key={s.label} className="bg-white rounded-brand-xl border border-stone-200 shadow-[var(--ds-sh-sm)] p-3.5">
+            <div className="w-7 h-7 rounded-lg bg-[var(--surface-gold)] text-gold flex items-center justify-center mb-2">{s.icon}</div>
+            <div className="font-display text-[1.375rem] font-normal leading-none tracking-[-0.02em] text-earth">{s.value}</div>
+            <div className="text-[11px] text-warm-brown mt-1">{s.label}</div>
+          </div>
+        ))}
+      </div>
+
       {/* Summary Cards */}
-      <div className="grid grid-cols-3 gap-4 mb-8">
+      <div className="hidden lg:grid grid-cols-3 gap-4 mb-8">
         {[
           { label: 'This Month', value: fmt(totalThisMonth), icon: <TrendingUp size={15} /> },
           { label: 'This Year', value: fmt(totalThisYear), icon: <DollarSign size={15} /> },
@@ -429,7 +450,8 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
       {/* QuickBooks Section */}
       {isQbEnabled && (
         <div className="mb-6">
-          <h3 className="font-display text-xl font-normal text-earth mb-4">QuickBooks</h3>
+          <p className="lg:hidden text-[11px] font-bold uppercase tracking-[0.14em] text-gold mb-3">QuickBooks</p>
+          <h3 className="hidden lg:block font-display text-xl font-normal text-earth mb-4">QuickBooks</h3>
           <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4">
             {qbLoading ? (
               <div className="flex items-center gap-2 text-sm text-[color:var(--text-faint)]"><Loader2 size={15} className="animate-spin" /> Checking connection…</div>
@@ -437,7 +459,7 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
               <div>
                 <div className="flex items-center justify-between flex-wrap gap-3">
                   <div className="flex items-center gap-2">
-                    <CheckCircle size={16} className="text-green-600" />
+                    <CheckCircle size={16} className="text-field-600" />
                     <span className="text-sm font-medium text-earth">Connected{qbCompany ? ` — ${qbCompany}` : ''}</span>
                   </div>
                   <div className="flex items-center gap-2 flex-wrap">
@@ -467,7 +489,7 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
                 )}
                 {qbSyncMsg && (
                   <div className={`mt-3 p-3 rounded-xl text-sm flex items-center gap-2 ${
-                    qbSyncMsg.ok ? 'bg-green-50 text-green-700 border border-green-100' : 'bg-amber-50 text-amber-700 border border-amber-100'
+                    qbSyncMsg.ok ? 'bg-field-100 text-field-700 border border-field-100' : 'bg-wheat-50 text-wheat-700 border border-wheat-100'
                   }`}>
                     {qbSyncMsg.ok ? <CheckCircle size={14} /> : <AlertCircle size={14} />}
                     {qbSyncMsg.msg}
@@ -494,9 +516,10 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
       {/* Tax Receipts Section */}
       <div className="mb-6">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="font-display text-xl font-normal text-earth">Tax Receipts</h3>
+          <p className="lg:hidden text-[11px] font-bold uppercase tracking-[0.14em] text-gold">Tax Receipts</p>
+          <h3 className="hidden lg:block font-display text-xl font-normal text-earth">Tax Receipts</h3>
           {!isTaxReceiptsEnabled && (
-            <span className="text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full font-semibold flex items-center gap-1">
+            <span className="text-xs text-wheat-600 bg-wheat-50 px-2 py-0.5 rounded-full font-semibold flex items-center gap-1">
               <Lock size={10} /> Ministry plan required
             </span>
           )}
@@ -530,7 +553,7 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
             </div>
             {genResult && (
               <div className={`mt-3 p-3 rounded-xl text-sm flex items-center gap-2 ${
-                genResult.ok ? 'bg-green-50 text-green-700 border border-green-100' : 'bg-amber-50 text-amber-700 border border-amber-100'
+                genResult.ok ? 'bg-field-100 text-field-700 border border-field-100' : 'bg-wheat-50 text-wheat-700 border border-wheat-100'
               }`}>
                 {genResult.ok ? <CheckCircle size={14} /> : <AlertCircle size={14} />}
                 {genResult.msg}
@@ -538,11 +561,11 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
             )}
           </div>
         ) : (
-          <div className="bg-amber-50 rounded-2xl border border-amber-100 p-4 flex items-start gap-3">
-            <Lock size={18} className="text-amber-500 flex-shrink-0 mt-0.5" />
+          <div className="bg-wheat-50 rounded-2xl border border-wheat-100 p-4 flex items-start gap-3">
+            <Lock size={18} className="text-wheat-500 flex-shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm font-semibold text-amber-800">Tax receipt generation requires the Ministry plan</p>
-              <p className="text-xs text-amber-600 mt-0.5">Upgrade to generate and email year-end tax receipts to all donors.</p>
+              <p className="text-sm font-semibold text-wheat-700">Tax receipt generation requires the Ministry plan</p>
+              <p className="text-xs text-wheat-600 mt-0.5">Upgrade to generate and email year-end tax receipts to all donors.</p>
             </div>
           </div>
         )}
@@ -551,7 +574,8 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
       {/* Giving Statements Section */}
       {isTaxReceiptsEnabled && (
         <div className="mb-6">
-          <h3 className="font-display text-xl font-normal text-earth mb-4">Giving Statements</h3>
+          <p className="lg:hidden text-[11px] font-bold uppercase tracking-[0.14em] text-gold mb-3">Giving Statements</p>
+          <h3 className="hidden lg:block font-display text-xl font-normal text-earth mb-4">Giving Statements</h3>
           <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4">
             <p className="text-sm text-warm-brown mb-4">
               Generate annual giving statements (charitable contribution receipts) for each donor, then email them as PDFs.
@@ -584,7 +608,7 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
             </div>
             {statementsMsg && (
               <div className={`mt-3 p-3 rounded-xl text-sm flex items-center gap-2 ${
-                statementsMsg.ok ? 'bg-green-50 text-green-700 border border-green-100' : 'bg-amber-50 text-amber-700 border border-amber-100'
+                statementsMsg.ok ? 'bg-field-100 text-field-700 border border-field-100' : 'bg-wheat-50 text-wheat-700 border border-wheat-100'
               }`}>
                 {statementsMsg.ok ? <CheckCircle size={14} /> : <AlertCircle size={14} />}
                 {statementsMsg.msg}
@@ -604,7 +628,7 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
                       <th className="px-3 py-2 text-right text-[11px] font-semibold text-gold uppercase tracking-[0.08em]">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-50">
+                  <tbody className="divide-y divide-stone-200">
                     {yearStatements.map(s => (
                       <tr key={s.id} className="hover:bg-stone-100">
                         <td className="px-3 py-2">
@@ -622,7 +646,7 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
                         </td>
                         <td className="px-3 py-2 text-center">
                           <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-                            s.status === 'sent' ? 'bg-blue-100 text-blue-700' : s.status === 'failed' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
+                            s.status === 'sent' ? 'bg-sky-100 text-sky-700' : s.status === 'failed' ? 'bg-red-100 text-red-700' : 'bg-field-100 text-field-700'
                           }`}>{s.status}</span>
                         </td>
                         <td className="px-3 py-2 text-right">
@@ -646,7 +670,8 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
 
       {/* Invoices List */}
       <div>
-        <h3 className="text-sm font-bold text-[color:var(--text-body)] mb-3 font-display">Invoice History</h3>
+        <p className="lg:hidden text-[11px] font-bold uppercase tracking-[0.14em] text-gold mb-3">Invoice History</p>
+        <h3 className="hidden lg:block text-sm font-bold text-[color:var(--text-body)] mb-3 font-display">Invoice History</h3>
         <div className="flex gap-2 mb-4">
           <div className="relative flex-1">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[color:var(--text-faint)]" />
@@ -670,7 +695,52 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
             <p className="text-sm mt-1">Invoices are created automatically when donations and event registrations are processed</p>
           </div>
         ) : (
-          <div className="bg-white rounded-2xl border border-stone-200 shadow-sm overflow-hidden">
+          <>
+            {/* Mobile transaction list — mockup card list: recipient + type · date,
+                amount in field-green, plus status / QuickBooks / PDF so no column is
+                dropped. Same `filtered` data and handlers as the desktop table. */}
+            <div className="lg:hidden bg-white rounded-brand-xl border border-stone-200 shadow-[var(--ds-sh-sm)] overflow-hidden">
+              {filtered.map(inv => (
+                <div key={inv.id} className="p-3.5 border-t border-stone-200 first:border-t-0">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="text-sm font-semibold text-earth truncate">{inv.recipientName}</div>
+                      <div className="text-xs text-[color:var(--text-faint)] truncate">{inv.recipientEmail}</div>
+                    </div>
+                    <span className="font-display text-[15px] font-semibold text-field-700 whitespace-nowrap">{fmt(inv.amount, inv.currency)}</span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-1.5 mt-2.5">
+                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${TYPE_COLORS[inv.type]}`}>{TYPE_LABELS[inv.type]}</span>
+                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${STATUS_COLORS[inv.status]}`}>{inv.status}</span>
+                    {isQbEnabled && inv.quickbooksSyncStatus === 'synced' && (
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-field-100 text-field-700">synced</span>
+                    )}
+                    {isQbEnabled && inv.quickbooksSyncStatus === 'failed' && (
+                      <button
+                        onClick={() => handleSyncNow(inv.id)}
+                        disabled={!qbConnected || retryingId === inv.id}
+                        className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-100 text-red-700 hover:bg-red-200 disabled:opacity-50"
+                        title={qbConnected ? 'Retry sync' : 'Connect QuickBooks to retry'}
+                      >
+                        {retryingId === inv.id ? <Loader2 size={10} className="animate-spin" /> : <RefreshCw size={10} />} retry
+                      </button>
+                    )}
+                    {isQbEnabled && !inv.quickbooksSyncStatus && (inv.type === 'donation_receipt' || inv.type === 'event_ticket') && (
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-stone-100 text-[color:var(--text-faint)]">not synced</span>
+                    )}
+                    <span className="text-[11px] text-[color:var(--text-faint)] ml-auto whitespace-nowrap">{fmtDate(inv.issuedAt)}</span>
+                    {inv.pdfPath && (
+                      <button onClick={() => openStatementPdf(inv.pdfPath)} className="p-1.5 rounded-lg hover:bg-stone-100 transition-colors text-warm-brown" title="Download PDF">
+                        <Download size={13} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop table — existing approved layout, unchanged (now lg-only). */}
+            <div className="hidden lg:block bg-white rounded-2xl border border-stone-200 shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
@@ -684,7 +754,7 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
                     <th className="px-4 py-3 text-right text-[11px] font-semibold text-gold uppercase tracking-[0.12em]">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-50">
+                <tbody className="divide-y divide-stone-200">
                   {filtered.map(inv => (
                     <tr key={inv.id} className="hover:bg-stone-100 transition-colors">
                       <td className="px-4 py-3 text-xs text-warm-brown whitespace-nowrap">{fmtDate(inv.issuedAt)}</td>
@@ -706,7 +776,7 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
                       {isQbEnabled && (
                         <td className="px-4 py-3 text-center">
                           {inv.quickbooksSyncStatus === 'synced' ? (
-                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700">synced</span>
+                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-field-100 text-field-700">synced</span>
                           ) : inv.quickbooksSyncStatus === 'failed' ? (
                             <button
                               onClick={() => handleSyncNow(inv.id)}
@@ -739,6 +809,7 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
               </table>
             </div>
           </div>
+          </>
         )}
       </div>
     </div>

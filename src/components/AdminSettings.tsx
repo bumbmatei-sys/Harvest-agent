@@ -169,22 +169,28 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
   ];
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
-      <div>
+    <div className="max-w-2xl mx-auto space-y-6 px-4 lg:px-0">
+      {/* Mobile side gutter (px-4) to match the mockup's card margins. Desktop is
+          unchanged — lg:px-0 is a no-op and the shell already pads with lg:p-6. */}
+      {/* Desktop page header (Platform eyebrow + Settings title). Hidden on mobile:
+          the shell's AdminScreenHeader already renders "Settings", so an in-content
+          title would duplicate it (same convention as the Accounting rebuild). The
+          mobile settings surface starts at the plan card, per the mockup. */}
+      <div className="hidden lg:block">
         <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-gold mb-1.5">Platform</p>
         <h2 className="font-display text-[1.75rem] lg:text-[2rem] leading-[1.1] font-light tracking-[-0.02em] text-earth">Settings</h2>
       </div>
 
       {/* Stripe status banners */}
       {AI_TELEGRAM_ASSISTANT_ENABLED && stripeStatus === 'success' && stripeAddon === 'ai-assistant' && (
-        <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-4">
+        <div className="bg-field-100 border border-field-200 rounded-xl p-4 mb-4">
           <div className="flex items-center gap-3 mb-3">
-            <Check size={20} className="text-green-600" />
+            <Check size={20} className="text-field-600" />
             <div>
-              <p className="text-sm font-semibold text-green-800">AI Assistant activated!</p>
-              <p className="text-xs text-green-600">Your access code is ready. Tap below to connect your Telegram bot.</p>
+              <p className="text-sm font-semibold text-field-700">AI Assistant activated!</p>
+              <p className="text-xs text-field-600">Your access code is ready. Tap below to connect your Telegram bot.</p>
             </div>
-            <button onClick={() => { setStripeStatus(null); setStripeAddon(null); }} className="ml-auto text-green-600 hover:text-green-800">✕</button>
+            <button onClick={() => { setStripeStatus(null); setStripeAddon(null); }} className="ml-auto text-field-600 hover:text-field-700">✕</button>
           </div>
           <a
             href="https://t.me/theharvestapp_bot"
@@ -198,23 +204,23 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
         </div>
       )}
       {stripeStatus === 'success' && !stripeAddon && (
-        <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center gap-3 mb-4">
-          <Check size={20} className="text-green-600" />
+        <div className="bg-field-100 border border-field-200 rounded-xl p-4 flex items-center gap-3 mb-4">
+          <Check size={20} className="text-field-600" />
           <div>
-            <p className="text-sm font-semibold text-green-800">Payment successful!</p>
-            <p className="text-xs text-green-600">Your plan has been updated. It may take a moment to reflect.</p>
+            <p className="text-sm font-semibold text-field-700">Payment successful!</p>
+            <p className="text-xs text-field-600">Your plan has been updated. It may take a moment to reflect.</p>
           </div>
-          <button onClick={() => setStripeStatus(null)} className="ml-auto text-green-600 hover:text-green-800">✕</button>
+          <button onClick={() => setStripeStatus(null)} className="ml-auto text-field-600 hover:text-field-700">✕</button>
         </div>
       )}
       {stripeStatus === 'cancel' && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 flex items-center gap-3 mb-4">
-          <AlertTriangle size={20} className="text-yellow-600" />
+        <div className="bg-wheat-50 border border-wheat-200 rounded-xl p-4 flex items-center gap-3 mb-4">
+          <AlertTriangle size={20} className="text-wheat-600" />
           <div>
-            <p className="text-sm font-semibold text-yellow-800">Checkout cancelled</p>
-            <p className="text-xs text-yellow-600">No charges were made. You can try again anytime.</p>
+            <p className="text-sm font-semibold text-wheat-700">Checkout cancelled</p>
+            <p className="text-xs text-wheat-600">No charges were made. You can try again anytime.</p>
           </div>
-          <button onClick={() => setStripeStatus(null)} className="ml-auto text-yellow-600 hover:text-yellow-800">✕</button>
+          <button onClick={() => setStripeStatus(null)} className="ml-auto text-wheat-600 hover:text-wheat-700">✕</button>
         </div>
       )}
 

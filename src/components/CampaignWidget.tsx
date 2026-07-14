@@ -154,83 +154,42 @@ const CampaignWidget: React.FC<CampaignWidgetProps> = ({ onDonate }) => {
 
   return (
     <>
-      {/* Desktop (lg:+) — the navy "money band" from the Harvest Member App design:
-          a compact campaign banner (title eyebrow, big serif amount, progress,
-          Give Now). Mobile keeps the white card below untouched. */}
-      <div className="hidden lg:block mb-3">
-        <HeroBand className="px-6 py-5">
+      {/* Navy "money band" campaign banner — the Harvest Member App design.
+          A cover photo (when set) washes behind the navy→gold gradient. Stacks
+          on mobile, goes horizontal on desktop. */}
+      <div className="mb-4 lg:mb-3">
+        <HeroBand className="px-5 py-5 lg:px-6">
           {campaign.coverImage && (
             <span aria-hidden className="absolute inset-0 pointer-events-none">
               <Image src={campaign.coverImage} alt="" fill sizes="900px" className="object-cover opacity-25" style={{ objectPosition: 'center 35%' }} referrerPolicy="no-referrer" />
             </span>
           )}
-          <div className="relative flex items-center justify-between gap-4">
+          <div className="relative flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="min-w-0">
               <Eyebrow tone="glow" className="truncate">{campaign.title}</Eyebrow>
               <div className="flex items-baseline gap-2 mt-1.5">
                 <span className="font-display font-light text-[30px] leading-none text-white tracking-[-0.02em]">{fmt(campaign.raised)}</span>
                 <span className="text-[13px] text-white/70">of {fmt(campaign.goal)}</span>
               </div>
-              <div className="mt-2.5 h-1.5 w-[220px] max-w-full rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.2)' }}>
+              <div className="mt-3 h-1.5 w-full lg:w-[220px] max-w-full rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.2)' }}>
                 <div className="h-full rounded-full transition-[width] duration-700" style={{ width: `${percentage}%`, background: 'var(--wheat-glow)' }} />
               </div>
-              {daysLeft !== null && (
-                <div className="mt-2 flex items-center gap-1 text-[11px] text-white/60">
-                  <Clock size={11} />{daysLeft === 0 ? 'Last day!' : `${daysLeft} days left`}
-                </div>
-              )}
+              <div className="mt-2 flex items-center gap-3 text-[11px] text-white/60">
+                <span className="font-semibold" style={{ color: 'var(--wheat-glow)' }}>{percentage}% funded</span>
+                {daysLeft !== null && (
+                  <span className="flex items-center gap-1"><Clock size={11} />{daysLeft === 0 ? 'Last day!' : `${daysLeft} days left`}</span>
+                )}
+              </div>
             </div>
             <button
               onClick={handleDonateClick}
-              className="shrink-0 whitespace-nowrap px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
+              className="self-start lg:self-auto shrink-0 whitespace-nowrap px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
               style={{ backgroundColor: 'var(--brand-color, #e6b325)', boxShadow: 'var(--glow-gold)' }}
             >
               Give Now
             </button>
           </div>
         </HeroBand>
-      </div>
-
-      <div className="bg-white rounded-2xl shadow-sm border border-stone-200 overflow-hidden mb-4 lg:hidden">
-        {campaign.coverImage && (
-          <div className="relative h-40 bg-stone-100">
-            <Image src={campaign.coverImage} alt={campaign.title} fill sizes="(max-width: 768px) 100vw, 800px" className="object-cover" referrerPolicy="no-referrer" />
-            {daysLeft !== null && (
-              <div className="absolute top-3 right-3 flex items-center gap-1.5 bg-black/60 text-white text-xs font-semibold px-2.5 py-1 rounded-full backdrop-blur-sm">
-                <Clock size={12} />
-                {daysLeft === 0 ? 'Last day!' : `${daysLeft} days left`}
-              </div>
-            )}
-          </div>
-        )}
-        <div className="p-4 lg:p-5">
-          {!campaign.coverImage && daysLeft !== null && (
-            <div className="flex items-center gap-1 text-xs font-semibold mb-2" style={{ color: 'var(--brand-color, #d4a017)' }}>
-              <Clock size={12} />
-              {daysLeft === 0 ? 'Last day!' : `${daysLeft} days left`}
-            </div>
-          )}
-          <h3 className="text-base font-bold text-earth mb-1 leading-snug">{campaign.title}</h3>
-          <p className="text-sm text-warm-brown line-clamp-2 mb-3 leading-snug">{campaign.description}</p>
-          <div className="mb-3">
-            <div className="flex justify-between items-baseline mb-1.5 text-xs text-warm-brown">
-              <span className="font-semibold text-[color:var(--text-body)]">{fmt(campaign.raised)} raised</span>
-              <span>of {fmt(campaign.goal)}</span>
-            </div>
-            <div className="h-2.5 bg-stone-100 rounded-full overflow-hidden">
-              <div className="h-full rounded-full transition-[width] duration-700" style={{ width: `${percentage}%`, backgroundColor: 'var(--brand-color, #e6b325)' }} />
-            </div>
-            <div className="text-right text-[11px] font-bold mt-1" style={{ color: 'var(--brand-color, #e6b325)' }}>{percentage}%</div>
-          </div>
-          <button
-            onClick={handleDonateClick}
-            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90 active:opacity-75"
-            style={{ backgroundColor: 'var(--brand-color, #e6b325)' }}
-          >
-            <Heart size={15} strokeWidth={2.5} />
-            Donate
-          </button>
-        </div>
       </div>
 
       {/* Campaign Detail / Donation Modal */}

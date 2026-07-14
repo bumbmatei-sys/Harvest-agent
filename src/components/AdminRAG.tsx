@@ -319,7 +319,10 @@ export default function AdminRAG() {
 
  {deleteTarget && <DeleteModal source={deleteTarget} onConfirm={confirmDelete} onClose={()=>setDeleteTarget(null)} />}
 
- {/* Header: title + description (left) · stats (right) */}
+ {/* Header — desktop only. On mobile the shell's AdminScreenHeader already
+     renders the "AI Knowledge" screen title, so this in-page title band is
+     hidden to avoid a duplicate; the mobile view starts at the tabs below. */}
+ <div className="hidden lg:block">
  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:16, padding:"18px 20px 0", maxWidth:1160, margin:"0 auto", width:"100%" }}>
  <div style={{ minWidth:0 }}>
  <p style={{ fontSize:11, fontWeight:600, letterSpacing:"0.16em", textTransform:"uppercase", color:GOLD, marginBottom:6 }}>Content</p>
@@ -340,9 +343,11 @@ export default function AdminRAG() {
  </div>
  </div>
  </div>
+ </div>
 
- {/* Tabs */}
- <div style={{ maxWidth:1160, margin:"0 auto", width:"100%", padding:"0 20px" }}>
+ {/* Tabs — desktop underline tabs. On mobile the same add|sources modes render
+     as the segmented control below (responsive split); tab/setTab is shared. */}
+ <div className="hidden lg:block" style={{ maxWidth:1160, margin:"0 auto", width:"100%", padding:"0 20px" }}>
  <div style={s.tabBar}>
  <button style={{ ...s.tab, ...(tab==="add"?s.tabActive:{}) }} onClick={()=>setTab("add")}>+ Add Knowledge</button>
  <button style={{ ...s.tab, ...(tab==="sources"?s.tabActive:{}) }} onClick={()=>setTab("sources")}>
@@ -351,11 +356,95 @@ export default function AdminRAG() {
  </div>
  </div>
 
+ {/* Mobile segmented control — the add|sources tab modes styled as the mockup's
+     segmented control (stone track, white/gold active pill). Same tab/setTab state. */}
+ <div className="lg:hidden px-5 pt-3">
+ <div className="flex bg-stone-100 rounded-full p-1">
+ <button
+ onClick={()=>setTab("add")}
+ className={`flex-1 rounded-full py-2 text-[13px] font-semibold transition-colors ${tab==="add" ? "bg-white text-gold shadow-[var(--ds-sh-sm)]" : "text-warm-brown"}`}
+ >Add Knowledge</button>
+ <button
+ onClick={()=>setTab("sources")}
+ className={`flex-1 rounded-full py-2 text-[13px] font-semibold transition-colors ${tab==="sources" ? "bg-white text-gold shadow-[var(--ds-sh-sm)]" : "text-warm-brown"}`}
+ >Sources ({sources.length})</button>
+ </div>
+ </div>
+
  <div style={s.content}>
 
  {/* ── ADD TAB ── */}
  {tab === "add" && (
  <div style={s.panel}>
+
+ {/* Shared hidden file input — clicked by BOTH the mobile and desktop upload
+     drop zones. One element/ref, so the two zones never fight over fileInputRef. */}
+ <input ref={fileInputRef} type="file" multiple
+ accept=".txt,.pdf,.csv,.xlsx,.xls"
+ style={{ display:"none" }} onChange={handleFileInput} />
+
+ {/* Mobile add view — mockup S.knowledge_new: a single-column stack of cards
+     (Paste text · Upload files) + a gold tips note. Reuses the SAME paste
+     (pasteTitle/pasteText/handlePasteSubmit/pasteLoading) and upload
+     (handleDrop/dragOver/fileInputRef) wiring as the desktop grid below. */}
+ <div className="lg:hidden flex flex-col gap-3.5">
+
+ {/* Paste text */}
+ <div className="bg-white rounded-brand-xl border border-stone-200 shadow-[var(--ds-sh-sm)] p-4 flex flex-col gap-3">
+ <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-gold">Paste text</div>
+ <input value={pasteTitle} onChange={e=>setPasteTitle(e.target.value)}
+ placeholder="Source title (optional)"
+ className="w-full rounded-brand border border-stone-200 bg-cream px-3.5 py-2.5 text-[14px] text-earth" />
+ <textarea value={pasteText} onChange={e=>setPasteText(e.target.value)}
+ placeholder="Paste sermons, commentary, study notes — anything the AI should know…"
+ className="w-full min-h-[150px] rounded-brand border border-stone-200 bg-cream px-3.5 py-2.5 text-[14px] leading-relaxed text-earth resize-y" />
+ {pasteText.trim() && (
+ <div className="text-[12px] text-warm-brown">
+ ~{pasteText.trim().split(/\s+/).length} words · ~{chunkText(pasteText).length} chunks
+ </div>
+ )}
+ <button onClick={handlePasteSubmit} disabled={!pasteText.trim() || pasteLoading}
+ className="flex items-center justify-center gap-2 w-full rounded-brand-lg py-3 text-[14px] font-semibold text-white shadow-[var(--ds-sh-sm)]"
+ style={{ background: GOLD_BTN }}>
+ <Sparkles size={16} /> {pasteLoading ? "Processing…" : "Chunk & Embed"}
+ </button>
+ </div>
+
+ {/* Upload files */}
+ <div className="bg-white rounded-brand-xl border border-stone-200 shadow-[var(--ds-sh-sm)] p-4 flex flex-col gap-3">
+ <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-gold">Upload files</div>
+ <div onClick={()=>fileInputRef.current?.click()}
+ onDragOver={e=>{e.preventDefault();setDragOver(true);}}
+ onDragLeave={()=>setDragOver(false)}
+ onDrop={handleDrop}
+ className={`flex flex-col items-center justify-center gap-2 rounded-brand-lg border-2 border-dashed px-5 py-10 text-center cursor-pointer transition-colors ${dragOver ? "border-gold bg-[var(--surface-gold)]" : "border-stone-200 bg-stone-100"}`}>
+ <Upload size={26} strokeWidth={1.5} className={dragOver ? "text-gold" : "text-warm-brown"} />
+ <div className="text-[14px] font-semibold text-earth">Drop files or tap to browse</div>
+ <div className="text-[12px] text-warm-brown tracking-wide">TXT · PDF · CSV · XLSX</div>
+ </div>
+ </div>
+
+ {/* Tips */}
+ <div className="rounded-brand-lg border border-gold bg-[var(--surface-gold)] p-4">
+ <div className="text-[13px] font-bold text-gold mb-2">Tips for better AI results</div>
+ <div className="flex flex-col gap-1.5">
+ {[
+ "Use clear, well-structured text — the AI reads it as-is",
+ "Each source is split into ~500 character chunks automatically",
+ "Bible content works best when grouped by book or topic",
+ "PDFs require text — scanned image PDFs won't extract well",
+ ].map((tip,i)=>(
+ <div key={i} className="flex gap-2 text-[13px] text-wheat-700">
+ <span className="shrink-0">•</span><span>{tip}</span>
+ </div>
+ ))}
+ </div>
+ </div>
+ </div>
+
+ {/* Desktop add view — two-column grid, hidden on mobile (mobile uses the
+     stacked cards above). Wrapper reproduces s.panel's 14px column gap. */}
+ <div className="hidden lg:flex lg:flex-col lg:gap-[14px]">
 
  {/* Two columns: Paste Text · Upload Files */}
  <div style={s.addGrid}>
@@ -407,9 +496,6 @@ export default function AdminRAG() {
  Drop files here or click to browse
  </div>
  <div style={{ fontSize:12, color:TEXT2, letterSpacing:"0.02em" }}>TXT · PDF · CSV · XLSX</div>
- <input ref={fileInputRef} type="file" multiple
- accept=".txt,.pdf,.csv,.xlsx,.xls"
- style={{ display:"none" }} onChange={handleFileInput} />
  </div>
  </div>
  </div>
@@ -432,14 +518,31 @@ export default function AdminRAG() {
  </div>
  </div>
  </div>
+ </div>
  )}
 
  {/* ── SOURCES TAB ── */}
  {tab === "sources" && (
  <div style={s.panel}>
 
- {/* Search + filter */}
- <div style={{ display:"flex", gap:10 }}>
+ {/* Mobile — gold eyebrow subhead + "Add source" primary CTA (mockup
+     S.knowledge). "Add source" reuses the existing add flow via setTab. */}
+ <div className="lg:hidden flex flex-col gap-3">
+ <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-gold">
+ {sources.length} {sources.length === 1 ? "source" : "sources"} · {totalChunks} chunks
+ </div>
+ <button
+ onClick={()=>setTab("add")}
+ className="flex items-center justify-center gap-2 w-full rounded-brand-xl py-3 text-[14px] font-semibold text-white shadow-[var(--ds-sh-sm)]"
+ style={{ background: GOLD_BTN }}
+ >
+ <Sparkles size={16} /> Add source
+ </button>
+ </div>
+
+ {/* Search + filter — desktop only. On mobile the mockup shows every source with
+     no filter bar, so this is hidden (search/filterType stay at their defaults). */}
+ <div className="hidden lg:flex" style={{ gap:10 }}>
  <div style={{ flex:1, position:"relative", display:"flex", alignItems:"center" }}>
  <Search size={16} color={TEXT2} style={{ position:"absolute", left:13, top:"50%", transform:"translateY(-50%)" }} />
  <input style={{ ...s.input, paddingLeft:38 }} value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search sources..." />
@@ -452,8 +555,66 @@ export default function AdminRAG() {
  </select>
  </div>
 
- {/* Table */}
- <div style={{ ...s.card, overflowX:"auto" }}>
+ {/* Mobile sources list — mockup knowledge-source cards: gold AI disc, title,
+     "N chunks · date", a status pill (field=Embedded / wheat=Processing /
+     red=Failed) and a delete button. Same `filtered` data and the same
+     setDeleteTarget handler as the desktop table below. */}
+ <div className="lg:hidden">
+ {filtered.length === 0 ? (
+ <div className="bg-white rounded-brand-xl border border-stone-200 shadow-[var(--ds-sh-sm)] px-5 py-14 text-center">
+ <div className="w-[52px] h-[52px] rounded-full bg-[var(--surface-gold)] text-gold flex items-center justify-center mx-auto mb-3.5">
+ <Database size={22} strokeWidth={1.5} />
+ </div>
+ <div className="font-semibold text-earth mb-1.5">
+ {sources.length === 0 ? "No knowledge added yet" : "No sources match your search"}
+ </div>
+ <div className="text-[13px] text-warm-brown">
+ {sources.length === 0 ? "Go to \"Add Knowledge\" to get started." : "Try a different search or filter."}
+ </div>
+ </div>
+ ) : (
+ <div className="bg-white rounded-brand-xl border border-stone-200 shadow-[var(--ds-sh-sm)] overflow-hidden">
+ {filtered.map((source, i) => (
+ <div key={source.id} className={`flex items-center gap-3 px-3.5 py-3 ${i ? "border-t border-stone-200" : ""}`}>
+ <div className="w-[34px] h-[34px] rounded-[9px] bg-[var(--surface-gold)] text-gold flex items-center justify-center shrink-0">
+ <Sparkles size={15} />
+ </div>
+ <div className="flex-1 min-w-0">
+ <div className="text-[13.5px] font-semibold text-earth truncate" title={source.title || "Untitled"}>{source.title || "Untitled"}</div>
+ <div className="text-[11.5px] text-[color:var(--text-faint)] truncate">
+ {source.chunks} chunks{source.addedAt instanceof Date ? ` · ${source.addedAt.toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})}` : ""}
+ </div>
+ </div>
+ {source.status === "processing" && (
+ <span className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-wheat-100 text-wheat-700 px-2.5 py-1 text-[11px] font-semibold">
+ <span className="w-1.5 h-1.5 rounded-full bg-gold animate-pulse" /> Processing
+ </span>
+ )}
+ {source.status === "processed" && (
+ <span className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-field-100 text-field-700 px-2.5 py-1 text-[11px] font-semibold">
+ <span className="w-1.5 h-1.5 rounded-full bg-field-500" /> Embedded
+ </span>
+ )}
+ {source.status === "error" && (
+ <span className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-[#FDECEA] text-[#C0392B] px-2.5 py-1 text-[11px] font-semibold" title={source.error || "Failed to process"}>
+ <span className="w-1.5 h-1.5 rounded-full bg-[#E74C3C]" /> Failed
+ </span>
+ )}
+ <button
+ onClick={()=>setDeleteTarget(source)}
+ title="Delete source"
+ className="shrink-0 w-8 h-8 flex items-center justify-center rounded-brand text-[color:var(--text-faint)] hover:text-[#C4553B] hover:bg-[#F7E7E2] transition-colors"
+ >
+ <Trash2 size={15} strokeWidth={1.75} />
+ </button>
+ </div>
+ ))}
+ </div>
+ )}
+ </div>
+
+ {/* Table — desktop only (mobile uses the card list above). */}
+ <div className="hidden lg:block" style={{ ...s.card, overflowX:"auto" }}>
  <div style={{ minWidth: 650 }}>
  {/* Header */}
  <div style={{ display:"grid", gridTemplateColumns:"1.5fr 100px 100px 100px 120px 80px", gap:10, padding:"12px 18px", borderBottom:`1px solid ${BORDER}`, background:STONE_100 }}>
@@ -548,7 +709,7 @@ export default function AdminRAG() {
 
  {/* Summary footer */}
  {sources.length > 0 && (
- <div style={{ display:"flex", gap:10, flexWrap:"wrap" }}>
+ <div className="hidden lg:flex" style={{ gap:10, flexWrap:"wrap" }}>
  {Object.entries(TYPE_META).map(([type, meta]) => {
  const count = sources.filter(s=>s.type===type).length;
  if (!count) return null;

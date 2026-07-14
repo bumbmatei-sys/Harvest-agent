@@ -217,9 +217,9 @@ const AdminChurches: React.FC = () => {
 
       {/* Billing Notice */}
       {billingNotice && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-3 flex items-center gap-2">
-          <DollarSign size={16} className="text-yellow-600" />
-          <p className="text-sm text-yellow-800 font-medium">{billingNotice}</p>
+        <div className="bg-wheat-50 border border-wheat-200 rounded-xl p-3 flex items-center gap-2">
+          <DollarSign size={16} className="text-wheat-600" />
+          <p className="text-sm text-wheat-700 font-medium">{billingNotice}</p>
         </div>
       )}
 
@@ -228,8 +228,8 @@ const AdminChurches: React.FC = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
           <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-xl">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center">
-                <DollarSign size={20} className="text-yellow-600" />
+              <div className="w-10 h-10 rounded-full bg-wheat-100 flex items-center justify-center">
+                <DollarSign size={20} className="text-wheat-600" />
               </div>
               <h3 className="text-xl font-bold text-earth font-display">Adding a New Church</h3>
             </div>
@@ -292,8 +292,58 @@ const AdminChurches: React.FC = () => {
         </button>
       </div>
 
+      {/* Church list — mobile: mockup card list (gold church disc, name, "city, country · pastor").
+          Edit/delete reuse the same handlers as the desktop table; same filteredChurches + loading data. */}
+      <div className="lg:hidden">
+        {loading ? (
+          <div className="flex justify-center py-10">
+            <div className="w-8 h-8 border-4 border-[color-mix(in_srgb,var(--brand-color)_30%,transparent)] border-t-gold rounded-full animate-spin"></div>
+          </div>
+        ) : filteredChurches.length === 0 ? (
+          <div className="bg-white rounded-brand-xl border border-stone-200 shadow-[var(--ds-sh-sm)] p-8 text-center text-warm-brown">
+            <Church size={48} className="mx-auto mb-4 opacity-20" />
+            <p className="font-display">No churches found matching your filters.</p>
+          </div>
+        ) : (
+          <div className="bg-white rounded-brand-xl border border-stone-200 shadow-[var(--ds-sh-sm)] overflow-hidden">
+            {filteredChurches.map((church) => (
+              <div
+                key={church.id}
+                className="flex items-center gap-3 px-3.5 py-3 border-t border-stone-200 first:border-t-0"
+              >
+                <div className="w-[38px] h-[38px] rounded-[10px] bg-[var(--surface-gold)] text-gold flex items-center justify-center shrink-0">
+                  <Church size={17} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-[13.5px] font-semibold text-earth truncate">{church.name}</div>
+                  <div className="text-[11.5px] text-[color:var(--text-faint)] truncate">
+                    {[church.city && `${church.city}${church.country ? `, ${church.country}` : ''}`, church.pastorName].filter(Boolean).join(' · ')}
+                  </div>
+                </div>
+                <div className="flex items-center gap-0.5 shrink-0">
+                  <button
+                    onClick={() => setEditingChurch(church)}
+                    className="p-1.5 rounded-lg text-[color:var(--text-faint)] hover:bg-stone-100 transition-colors"
+                    title="Edit"
+                  >
+                    <Edit2 size={15} />
+                  </button>
+                  <button
+                    onClick={() => setDeleteConfirmId(church.id)}
+                    className="p-1.5 rounded-lg text-red-400 hover:bg-red-50 transition-colors"
+                    title="Delete"
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* Spreadsheet / Table */}
-      <div className="bg-white rounded-2xl shadow-sm border border-stone-200 overflow-hidden">
+      <div className="hidden lg:block bg-white rounded-2xl shadow-sm border border-stone-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
@@ -335,7 +385,7 @@ const AdminChurches: React.FC = () => {
                       <div className="flex items-center justify-end gap-2">
                         <button
                           onClick={() => setEditingChurch(church)}
-                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          className="p-2 text-sky-600 hover:bg-sky-100 rounded-lg transition-colors"
                           title="Edit"
                         >
                           <Edit2 size={18} />
@@ -365,7 +415,7 @@ const AdminChurches: React.FC = () => {
             <p className="text-warm-brown mb-6">
               Are you sure you want to delete this church? This action cannot be undone.
               {isMinistry && churches.find(c => c.id === deleteConfirmId)?.stripeSubscriptionItemId && (
-                <span className="block text-sm text-green-700 mt-1">
+                <span className="block text-sm text-field-700 mt-1">
                   This will automatically remove the $10/mo charge from your subscription.
                 </span>
               )}
@@ -568,13 +618,13 @@ const AnnouncementsSection: React.FC<{ churchId: string }> = ({ churchId }) => {
                   <div className="flex gap-2">
                     <button
                       onClick={() => handleUpdate(a.id)}
-                      className="flex items-center gap-1 bg-green-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-green-700"
+                      className="flex items-center gap-1 bg-field-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-field-700"
                     >
                       <Save size={12} /> Save
                     </button>
                     <button
                       onClick={() => setEditingId(null)}
-                      className="flex items-center gap-1 bg-stone-200 text-[color:var(--text-body)] px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-gray-300"
+                      className="flex items-center gap-1 bg-stone-200 text-[color:var(--text-body)] px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-stone-300"
                     >
                       <X size={12} /> Cancel
                     </button>
@@ -592,7 +642,7 @@ const AnnouncementsSection: React.FC<{ churchId: string }> = ({ churchId }) => {
                   <div className="flex gap-2 mt-3">
                     <button
                       onClick={() => { setEditingId(a.id); setEditTitle(a.title); setEditContent(a.content); }}
-                      className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                      className="p-1.5 text-sky-600 hover:bg-sky-100 rounded-lg transition-colors"
                     >
                       <Edit2 size={14} />
                     </button>

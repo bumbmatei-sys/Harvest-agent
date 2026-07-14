@@ -67,26 +67,26 @@ const PartnerWithUsTab: React.FC = () => {
           Desktop (lg:) shifts to the warm-neutral Harvest Member App look (serif
           "Give", surface-gold disc, warm copy); mobile classes are unchanged. */}
       <div className="flex flex-col items-center text-center mb-8 mt-4">
-        <div className="w-16 h-16 bg-[color-mix(in_srgb,var(--brand-color)_12%,white)] lg:bg-[var(--surface-gold)] rounded-full flex items-center justify-center mb-4">
+        <div className="w-16 h-16 bg-[var(--surface-gold)] rounded-full flex items-center justify-center mb-4">
           <HeartHandshake size={32} className="text-gold" />
         </div>
-        <h2 className="text-2xl font-bold text-[#0b1121] mb-1 font-display lg:font-light lg:text-[28px] lg:text-earth">Give</h2>
+        <h2 className="text-[26px] font-light text-earth mb-1 font-display lg:text-[28px]">Give</h2>
         {tenantName && (
           <p className="text-gold font-semibold text-sm mb-2">{tenantName}</p>
         )}
-        <p className="text-[#64748b] lg:text-warm-brown text-sm leading-relaxed">
+        <p className="text-warm-brown text-sm leading-relaxed">
           Your partnership keeps this platform free for the new believer and scalable for the nations.
         </p>
       </div>
 
       {/* One-Time / Monthly Toggle */}
-      <div className="bg-white lg:bg-stone-100 rounded-xl p-1 flex mb-8 shadow-sm lg:shadow-none border border-stone-200">
+      <div className="bg-stone-100 rounded-xl p-1 flex mb-8 border border-stone-200">
         <button
           onClick={() => setDonationType('one-time')}
           className={`flex-1 py-3 rounded-lg text-sm font-bold transition-colors ${
             donationType === 'one-time'
               ? 'bg-gold text-white'
-              : 'text-[#64748b] lg:text-[color:var(--text-faint)] hover:bg-stone-100'
+              : 'text-[color:var(--text-muted)] hover:bg-white'
           }`}
         >
           One-Time
@@ -96,16 +96,16 @@ const PartnerWithUsTab: React.FC = () => {
           className={`flex-1 py-3 rounded-lg text-sm font-bold transition-colors flex items-center justify-center gap-2 ${
             donationType === 'monthly'
               ? 'bg-gold text-white'
-              : 'text-[#64748b] lg:text-[color:var(--text-faint)] hover:bg-stone-100'
+              : 'text-[color:var(--text-muted)] hover:bg-white'
           }`}
         >
-          Monthly <Heart size={14} className={donationType === 'monthly' ? 'fill-white' : 'fill-[#64748b]'} />
+          Monthly <Heart size={14} className={donationType === 'monthly' ? 'fill-white' : 'fill-[color:var(--text-muted)]'} />
         </button>
       </div>
 
       {/* Select Amount */}
       <div className="mb-8">
-        <h3 className="text-[11px] font-bold text-[#94a3b8] lg:text-[color:var(--text-faint)] tracking-wider uppercase mb-3">
+        <h3 className="text-[11px] font-bold text-[color:var(--text-faint)] tracking-wider uppercase mb-3">
           Select Amount
         </h3>
         <div className="grid grid-cols-4 gap-3 mb-4">
@@ -115,28 +115,28 @@ const PartnerWithUsTab: React.FC = () => {
               onClick={() => setAmount(preset)}
               className={`py-3 rounded-xl text-sm font-bold transition-colors border ${
                 amount === preset
-                  ? 'bg-[color-mix(in_srgb,var(--brand-color)_12%,white)] border-gold text-gold'
-                  : 'bg-white border-transparent lg:border-stone-200 text-[#0b1121] lg:text-earth shadow-sm lg:shadow-none'
+                  ? 'bg-[var(--surface-gold)] border-gold text-[color:var(--wheat-700)]'
+                  : 'bg-white border-stone-200 text-earth'
               }`}
             >
               ${preset}
             </button>
           ))}
         </div>
-        <div className="bg-white lg:bg-stone-100 rounded-xl p-4 flex items-center shadow-sm lg:shadow-none border border-stone-200">
-          <span className="text-[#94a3b8] lg:text-[color:var(--text-faint)] font-bold mr-2">$</span>
+        <div className="bg-stone-100 rounded-xl p-4 flex items-center border border-stone-200">
+          <span className="text-[color:var(--text-faint)] font-bold mr-2">$</span>
           <input
             type="number"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
-            className="bg-transparent font-bold text-[#0b1121] lg:text-earth w-full focus:outline-none text-lg"
+            className="bg-transparent font-bold text-earth w-full focus:outline-none text-lg"
             placeholder="Other Amount"
           />
         </div>
       </div>
 
       {/* Security Info */}
-      <div className="flex items-center justify-center gap-2 text-[#94a3b8] lg:text-[color:var(--text-faint)] mb-4">
+      <div className="flex items-center justify-center gap-2 text-[color:var(--text-faint)] mb-4">
         <Lock size={14} />
         <span className="text-xs font-medium">Secure, encrypted payment via Stripe</span>
         <ShieldCheck size={14} className="ml-2" />
@@ -153,7 +153,7 @@ const PartnerWithUsTab: React.FC = () => {
       <button
         onClick={handleDonate}
         disabled={isLoading}
-        className="w-full bg-gold hover:bg-[color-mix(in_srgb,var(--brand-color)_85%,black)] disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold py-4 rounded-xl shadow-lg shadow-[color-mix(in_srgb,var(--brand-color)_20%,transparent)] lg:shadow-[var(--glow-gold)] transition-all flex items-center justify-center gap-2"
+        className="w-full bg-gold hover:bg-[color-mix(in_srgb,var(--brand-color)_85%,black)] disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold py-4 rounded-xl shadow-[var(--glow-gold)] transition-all flex items-center justify-center gap-2"
       >
         {isLoading ? (
           <>

@@ -28,7 +28,7 @@ const fmtCents = (cents: number) => (cents > 0 ? `$${(cents / 100).toFixed(2)}` 
 // Module-scope so its identity is stable across renders (a render-time nested
 // component would remount the whole subtree on every keystroke → focus loss).
 const Shell: React.FC<{ logo: string | null; tenantName: string; primaryColor: string; children: React.ReactNode }> = ({ logo, tenantName, primaryColor, children }) => (
-  <div className="min-h-screen bg-[#F7F6F3] py-10 px-4">
+  <div className="min-h-screen bg-cream py-10 px-4">
     <div className="max-w-xl mx-auto">
       <div className="text-center mb-6">
         {logo ? (
@@ -131,7 +131,7 @@ const PublicEventRegistration: React.FC<PublicEventRegistrationProps> = ({
   const gross = selectedTicket ? selectedTicket.price * quantity : 0;
   const total = Math.max(0, gross - discountAmount);
 
-  const inputCls = 'w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:border-transparent';
+  const inputCls = 'w-full px-4 py-2.5 border border-stone-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:border-transparent';
   const ring = { '--tw-ring-color': primaryColor } as React.CSSProperties;
 
   const selectTicket = (id: string) => {
@@ -225,24 +225,24 @@ const PublicEventRegistration: React.FC<PublicEventRegistrationProps> = ({
   const startLabel = fmtDateTime(event.startDate);
 
   const EventHeader = (
-    <div className="bg-white rounded-[14px] shadow-sm border border-gray-100 overflow-hidden mb-4">
+    <div className="bg-white rounded-[14px] shadow-sm border border-stone-200 overflow-hidden mb-4">
       {event.coverImage && (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={event.coverImage} alt={event.title} className="w-full h-44 object-cover" />
       )}
       <div className="p-6">
-        <h1 className="font-display text-2xl font-bold text-gray-900 mb-2">{event.title}</h1>
+        <h1 className="font-display text-2xl font-light tracking-[-0.02em] text-earth mb-2">{event.title}</h1>
         <div className="space-y-1.5 mb-3">
           {startLabel && (
-            <p className="flex items-center gap-2 text-sm text-gray-600"><Calendar size={15} style={{ color: primaryColor }} /> {startLabel}</p>
+            <p className="flex items-center gap-2 text-sm text-[color:var(--text-body)]"><Calendar size={15} style={{ color: primaryColor }} /> {startLabel}</p>
           )}
           {event.isOnline ? (
-            <p className="flex items-center gap-2 text-sm text-gray-600"><Globe size={15} style={{ color: primaryColor }} /> Online event</p>
+            <p className="flex items-center gap-2 text-sm text-[color:var(--text-body)]"><Globe size={15} style={{ color: primaryColor }} /> Online event</p>
           ) : event.location ? (
-            <p className="flex items-center gap-2 text-sm text-gray-600"><MapPin size={15} style={{ color: primaryColor }} /> {event.location}</p>
+            <p className="flex items-center gap-2 text-sm text-[color:var(--text-body)]"><MapPin size={15} style={{ color: primaryColor }} /> {event.location}</p>
           ) : null}
         </div>
-        {event.description && <p className="text-sm text-gray-500 whitespace-pre-line">{event.description}</p>}
+        {event.description && <p className="text-sm text-warm-brown whitespace-pre-line">{event.description}</p>}
       </div>
     </div>
   );
@@ -252,11 +252,11 @@ const PublicEventRegistration: React.FC<PublicEventRegistrationProps> = ({
     return (
       <Shell logo={logo} tenantName={tenantName} primaryColor={primaryColor}>
         {EventHeader}
-        <div className="bg-white rounded-[14px] shadow-sm border border-gray-100 p-8 text-center">
+        <div className="bg-white rounded-[14px] shadow-sm border border-stone-200 p-8 text-center">
           <CheckCircle2 size={48} className="mx-auto mb-4" style={{ color: primaryColor }} />
-          <h2 className="font-display text-xl font-bold text-gray-900 mb-1">Payment received — you&apos;re registered!</h2>
-          <p className="text-sm text-gray-500 mb-2">Thanks for registering for {event.title}.</p>
-          <p className="text-sm text-gray-400">Your ticket and QR code are on their way to your email.</p>
+          <h2 className="font-display text-xl font-bold text-earth mb-1">Payment received — you&apos;re registered!</h2>
+          <p className="text-sm text-warm-brown mb-2">Thanks for registering for {event.title}.</p>
+          <p className="text-sm text-[color:var(--text-faint)]">Your ticket and QR code are on their way to your email.</p>
         </div>
       </Shell>
     );
@@ -265,9 +265,9 @@ const PublicEventRegistration: React.FC<PublicEventRegistrationProps> = ({
     return (
       <Shell logo={logo} tenantName={tenantName} primaryColor={primaryColor}>
         {EventHeader}
-        <div className="bg-white rounded-[14px] shadow-sm border border-gray-100 p-8 text-center">
-          <h2 className="font-display text-xl font-bold text-gray-900 mb-1">Registration not completed</h2>
-          <p className="text-sm text-gray-500 mb-5">Your payment was cancelled, so you haven&apos;t been charged and no ticket was issued.</p>
+        <div className="bg-white rounded-[14px] shadow-sm border border-stone-200 p-8 text-center">
+          <h2 className="font-display text-xl font-bold text-earth mb-1">Registration not completed</h2>
+          <p className="text-sm text-warm-brown mb-5">Your payment was cancelled, so you haven&apos;t been charged and no ticket was issued.</p>
           <button onClick={dismissPostPayment}
             className="px-5 py-2.5 rounded-xl text-white font-semibold"
             style={{ backgroundColor: primaryColor }}>
@@ -283,20 +283,20 @@ const PublicEventRegistration: React.FC<PublicEventRegistrationProps> = ({
     return (
       <Shell logo={logo} tenantName={tenantName} primaryColor={primaryColor}>
         {EventHeader}
-        <div className="bg-white rounded-[14px] shadow-sm border border-gray-100 p-8 text-center">
+        <div className="bg-white rounded-[14px] shadow-sm border border-stone-200 p-8 text-center">
           <CheckCircle2 size={48} className="mx-auto mb-4" style={{ color: primaryColor }} />
-          <h2 className="font-display text-xl font-bold text-gray-900 mb-1">
+          <h2 className="font-display text-xl font-bold text-earth mb-1">
             {done.waitlisted ? "You're on the waitlist!" : "You're registered!"}
           </h2>
-          <p className="text-sm text-gray-500 mb-4">
+          <p className="text-sm text-warm-brown mb-4">
             {done.waitlisted
               ? "We'll contact you if a spot opens up."
               : 'Show this code at the door:'}
           </p>
           {!done.waitlisted && (
-            <div className="text-3xl font-mono font-bold tracking-widest text-gray-900 my-4">{done.ticketCode}</div>
+            <div className="text-3xl font-mono font-bold tracking-widest text-earth my-4">{done.ticketCode}</div>
           )}
-          <p className="text-sm text-gray-400">A confirmation has been sent to {email}.</p>
+          <p className="text-sm text-[color:var(--text-faint)]">A confirmation has been sent to {email}.</p>
         </div>
       </Shell>
     );
@@ -307,8 +307,8 @@ const PublicEventRegistration: React.FC<PublicEventRegistrationProps> = ({
     return (
       <Shell logo={logo} tenantName={tenantName} primaryColor={primaryColor}>
         {EventHeader}
-        <div className="bg-white rounded-[14px] shadow-sm border border-gray-100 p-8 text-center">
-          <p className="text-gray-600">This event has already taken place.</p>
+        <div className="bg-white rounded-[14px] shadow-sm border border-stone-200 p-8 text-center">
+          <p className="text-[color:var(--text-body)]">This event has already taken place.</p>
         </div>
       </Shell>
     );
@@ -319,8 +319,8 @@ const PublicEventRegistration: React.FC<PublicEventRegistrationProps> = ({
     return (
       <Shell logo={logo} tenantName={tenantName} primaryColor={primaryColor}>
         {EventHeader}
-        <div className="bg-white rounded-[14px] shadow-sm border border-gray-100 p-8 text-center">
-          <p className="text-gray-600">Registration is not available online. Contact {tenantName} to sign up.</p>
+        <div className="bg-white rounded-[14px] shadow-sm border border-stone-200 p-8 text-center">
+          <p className="text-[color:var(--text-body)]">Registration is not available online. Contact {tenantName} to sign up.</p>
         </div>
       </Shell>
     );
@@ -330,11 +330,11 @@ const PublicEventRegistration: React.FC<PublicEventRegistrationProps> = ({
   return (
     <Shell logo={logo} tenantName={tenantName} primaryColor={primaryColor}>
       {EventHeader}
-      <div className="bg-white rounded-[14px] shadow-sm border border-gray-100 p-6" style={{ paddingBottom: 24 }}>
+      <div className="bg-white rounded-[14px] shadow-sm border border-stone-200 p-6" style={{ paddingBottom: 24 }}>
         {/* Ticket type selector */}
         {ticketTypes.length > 0 && (
           <div className="mb-5">
-            <label className="block text-sm font-semibold text-gray-800 mb-2">Select a ticket</label>
+            <label className="block text-sm font-semibold text-earth mb-2">Select a ticket</label>
             <div className="space-y-2">
               {ticketTypes.map((t) => {
                 const active = t.id === selectedTicketId;
@@ -342,16 +342,16 @@ const PublicEventRegistration: React.FC<PublicEventRegistrationProps> = ({
                   <button
                     key={t.id}
                     onClick={() => selectTicket(t.id)}
-                    className={`w-full text-left flex items-center gap-3 px-4 py-3 rounded-xl border transition-colors ${active ? 'border-transparent ring-2' : 'border-gray-200 hover:border-gray-300'}`}
+                    className={`w-full text-left flex items-center gap-3 px-4 py-3 rounded-xl border transition-colors ${active ? 'border-transparent ring-2' : 'border-stone-200 hover:border-stone-300'}`}
                     style={active ? ({ '--tw-ring-color': primaryColor } as React.CSSProperties) : undefined}
                   >
-                    <div className={`w-4 h-4 rounded-full border-2 shrink-0 ${active ? '' : 'border-gray-300'}`} style={active ? { borderColor: primaryColor, backgroundColor: primaryColor } : undefined} />
+                    <div className={`w-4 h-4 rounded-full border-2 shrink-0 ${active ? '' : 'border-stone-300'}`} style={active ? { borderColor: primaryColor, backgroundColor: primaryColor } : undefined} />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-gray-900">{t.name}</p>
-                      {t.description && <p className="text-xs text-gray-400">{t.description}</p>}
-                      {t.capacity != null && <p className="text-[11px] text-amber-600 mt-0.5">Limited spots</p>}
+                      <p className="text-sm font-semibold text-earth">{t.name}</p>
+                      {t.description && <p className="text-xs text-[color:var(--text-faint)]">{t.description}</p>}
+                      {t.capacity != null && <p className="text-[11px] text-wheat-600 mt-0.5">Limited spots</p>}
                     </div>
-                    <span className="text-sm font-bold text-gray-900 shrink-0">{fmtCents(t.price)}</span>
+                    <span className="text-sm font-bold text-earth shrink-0">{fmtCents(t.price)}</span>
                   </button>
                 );
               })}
@@ -361,9 +361,9 @@ const PublicEventRegistration: React.FC<PublicEventRegistrationProps> = ({
 
         {/* Signed-in hint — the ticket links to this account's "My Events". */}
         {authUser && (
-          <div className="mb-4 flex items-center gap-2 text-xs text-gray-500 bg-gray-50 rounded-xl px-3 py-2">
+          <div className="mb-4 flex items-center gap-2 text-xs text-warm-brown bg-stone-100 rounded-xl px-3 py-2">
             <CheckCircle2 size={14} style={{ color: primaryColor }} />
-            <span>Registering as <span className="font-semibold text-gray-700">{authUser.email}</span> — your ticket will appear in My Events.</span>
+            <span>Registering as <span className="font-semibold text-earth">{authUser.email}</span> — your ticket will appear in My Events.</span>
           </div>
         )}
 
@@ -371,20 +371,20 @@ const PublicEventRegistration: React.FC<PublicEventRegistrationProps> = ({
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">First Name<span className="text-red-500 ml-0.5">*</span></label>
+              <label className="block text-sm font-medium text-earth mb-1.5">First Name<span className="text-red-500 ml-0.5">*</span></label>
               <input className={inputCls} style={ring} value={firstName} onChange={(e) => setFirstName(e.target.value)} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Last Name<span className="text-red-500 ml-0.5">*</span></label>
+              <label className="block text-sm font-medium text-earth mb-1.5">Last Name<span className="text-red-500 ml-0.5">*</span></label>
               <input className={inputCls} style={ring} value={lastName} onChange={(e) => setLastName(e.target.value)} />
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Email<span className="text-red-500 ml-0.5">*</span></label>
+            <label className="block text-sm font-medium text-earth mb-1.5">Email<span className="text-red-500 ml-0.5">*</span></label>
             <input type="email" className={inputCls} style={ring} value={email} onChange={(e) => setEmail(e.target.value)} />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Phone <span className="text-gray-400 font-normal">(optional)</span></label>
+            <label className="block text-sm font-medium text-earth mb-1.5">Phone <span className="text-[color:var(--text-faint)] font-normal">(optional)</span></label>
             <input type="tel" className={inputCls} style={ring} value={phone} onChange={(e) => setPhone(e.target.value)} />
           </div>
         </div>
@@ -398,7 +398,7 @@ const PublicEventRegistration: React.FC<PublicEventRegistrationProps> = ({
             </button>
           ) : (
             <div className="space-y-2">
-              <p className="text-sm font-semibold text-gray-800">Additional Attendees</p>
+              <p className="text-sm font-semibold text-earth">Additional Attendees</p>
               {additional.map((a, i) => (
                 <div key={i} className="flex items-center gap-2">
                   <input className={inputCls} style={ring} placeholder="Name" value={a.name} onChange={(e) => updateAttendee(i, { name: e.target.value })} />
@@ -417,35 +417,35 @@ const PublicEventRegistration: React.FC<PublicEventRegistrationProps> = ({
         {/* Discount code */}
         {event.hasDiscounts && (
         <div className="mt-5">
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Discount code <span className="text-gray-400 font-normal">(optional)</span></label>
+          <label className="block text-sm font-medium text-earth mb-1.5">Discount code <span className="text-[color:var(--text-faint)] font-normal">(optional)</span></label>
           <div className="flex items-center gap-2">
             <input className={inputCls} style={ring} value={discountInput}
               onChange={(e) => { setDiscountInput(e.target.value.toUpperCase()); setDiscountResult(null); setDiscountError(null); }}
               placeholder="Enter code" />
             <button onClick={applyDiscount} disabled={applyingDiscount || !discountInput.trim() || !selectedTicket}
-              className="px-4 py-2.5 rounded-xl text-sm font-semibold border border-gray-200 text-gray-700 hover:bg-gray-50 disabled:opacity-50 shrink-0">
+              className="px-4 py-2.5 rounded-xl text-sm font-semibold border border-stone-200 text-earth hover:bg-stone-100 disabled:opacity-50 shrink-0">
               {applyingDiscount ? '…' : 'Apply'}
             </button>
           </div>
-          {discountResult && <p className="text-xs text-green-600 mt-1.5 font-medium">✓ Discount applied — {fmtCents(discountResult.discountAmount)} off</p>}
+          {discountResult && <p className="text-xs text-field-600 mt-1.5 font-medium">✓ Discount applied — {fmtCents(discountResult.discountAmount)} off</p>}
           {discountError && <p className="text-xs text-red-600 mt-1.5">{discountError}</p>}
         </div>
         )}
 
         {/* Order summary */}
         {selectedTicket && (
-          <div className="mt-5 bg-gray-50 rounded-xl p-4 text-sm">
-            <div className="flex justify-between text-gray-600">
+          <div className="mt-5 bg-stone-100 rounded-xl p-4 text-sm">
+            <div className="flex justify-between text-[color:var(--text-body)]">
               <span>{selectedTicket.name}{quantity > 1 ? ` × ${quantity}` : ''}</span>
               <span>{fmtCents(gross)}</span>
             </div>
             {quantity > 1 && (
-              <p className="text-[11px] text-gray-400 mt-0.5">{quantity} tickets ({fmtCents(selectedTicket.price)} each)</p>
+              <p className="text-[11px] text-[color:var(--text-faint)] mt-0.5">{quantity} tickets ({fmtCents(selectedTicket.price)} each)</p>
             )}
             {discountAmount > 0 && (
-              <div className="flex justify-between text-green-600 mt-1"><span>Discount</span><span>-{fmtCents(discountAmount)}</span></div>
+              <div className="flex justify-between text-field-600 mt-1"><span>Discount</span><span>-{fmtCents(discountAmount)}</span></div>
             )}
-            <div className="flex justify-between font-bold text-gray-900 mt-2 pt-2 border-t border-gray-200"><span>Total</span><span>{fmtCents(total)}</span></div>
+            <div className="flex justify-between font-bold text-earth mt-2 pt-2 border-t border-stone-200"><span>Total</span><span>{fmtCents(total)}</span></div>
           </div>
         )}
 

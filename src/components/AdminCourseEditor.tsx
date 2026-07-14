@@ -583,7 +583,7 @@ function LessonCard({ lesson, onChange, onRemove, authorsLibrary = [] }: LessonC
  <option key={a.id} value={a.id}>{a.name}{a.title ? ` · ${a.title}` : ""}</option>
  ))}
  </select>
- {authorsLibrary.length === 0 && <div style={{ fontSize: 12, color: TEXT2 }}>No authors on this course yet — add them in the Authors tab.</div>}
+ {authorsLibrary.length === 0 && <div style={{ fontSize: 12, color: TEXT2 }}>No authors on this course yet — add them in the course info.</div>}
  </div>
  <div style={{ display: "flex", alignItems: "flex-end", gap: 10 }}>
  <div style={{ flex: 1 }}>
@@ -871,7 +871,7 @@ interface CourseBuilderProps {
 
 export default function CourseBuilder({ course: initialCourse, onClose }: CourseBuilderProps) {
  const [course, setCourse] = useState<Course>(initialCourse || emptyCourse());
- const [tab, setTab] = useState<"info" | "authors" | "curriculum">("info");
+ const [tab, setTab] = useState<"info" | "curriculum">("info");
  const [saving, setSaving] = useState<boolean>(false);
  const [saved, setSaved] = useState<boolean>(false);
  const [authorsLibrary, setAuthorsLibrary] = useState<Author[]>([]);
@@ -1033,9 +1033,8 @@ export default function CourseBuilder({ course: initialCourse, onClose }: Course
  const totalSections = course.levels.reduce((a, lv) => a + lv.sections.length, 0);
  const totalLessons = course.levels.reduce((a, lv) => a + lv.sections.reduce((b, sec) => b + sec.lessons.length, 0), 0);
 
- const tabs: { id: "info" | "authors" | "curriculum"; label: string }[] = [
+ const tabs: { id: "info" | "curriculum"; label: string }[] = [
  { id: "info", label: "Course Info" },
- { id: "authors", label: `Authors (${selectedAuthors.length})` },
  { id: "curriculum", label: `Curriculum (${course.levels.length})` },
  ];
 
@@ -1143,48 +1142,6 @@ export default function CourseBuilder({ course: initialCourse, onClose }: Course
  </div>
  </div>
  <div style={s.card}>
- <div style={s.sectionHeading}>Thumbnail</div>
- <div style={s.cardBody}>
- <div style={{ padding: "0 0 20px" }}>
- <label style={s.label}>Thumbnail Image</label>
- <div style={{ marginTop: 8 }}>
- <ImageUpload value={course.thumbnail} onChange={(v) => set("thumbnail", v)} placeholder="Upload or paste thumbnail URL" label="Add thumbnail" />
- </div>
- </div>
- </div>
- </div>
- <div style={s.card}>
- <div style={s.sectionHeading}>Certificate</div>
- <div style={{ padding: "0 16px 16px" }}>
- <div onClick={() => set("issueCertificate", !course.issueCertificate)}
- style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, cursor: "pointer", padding: "14px 0" }}>
- <div>
- <div style={{ fontWeight: 700, fontSize: 14, color: TEXT }}>Issue certificates</div>
- <div style={{ fontSize: 12, color: TEXT2, marginTop: 2 }}>Awarded automatically on course completion</div>
- </div>
- <ToggleSwitch on={course.issueCertificate} />
- </div>
- <div onClick={() => set("requireQuiz", !course.requireQuiz)}
- style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, cursor: "pointer", padding: "14px 0 0", borderTop: `1px solid ${BORDER}` }}>
- <div>
- <div style={{ fontWeight: 700, fontSize: 14, color: TEXT }}>Require passing quiz</div>
- <div style={{ fontSize: 12, color: TEXT2, marginTop: 2 }}>Off by default — most ministries want encouragement, not gatekeeping</div>
- </div>
- <ToggleSwitch on={course.requireQuiz} />
- </div>
- <button style={s.certPreviewBtn} onClick={() => setShowCertPreview((v) => !v)}>
- {showCertPreview ? "Hide certificate preview" : "Preview certificate →"}
- </button>
- {showCertPreview && <CertificatePreview title={course.title} teacherName={selectedAuthors[0]?.name} />}
- </div>
- </div>
- </div>
- )}
-
- {/* ── AUTHORS ── */}
- {tab === "authors" && (
- <div style={s.panel}>
- <div style={s.card}>
  <div style={s.sectionHeading}>Authors on this Course</div>
  <div style={s.cardBody}>
  {selectedAuthors.length === 0
@@ -1218,6 +1175,42 @@ export default function CourseBuilder({ course: initialCourse, onClose }: Course
  onRemove={() => removeLibraryAuthor(i)}
  selectable={false} />
  ))}
+ </div>
+ </div>
+ <div style={s.card}>
+ <div style={s.sectionHeading}>Thumbnail</div>
+ <div style={s.cardBody}>
+ <div style={{ padding: "0 0 20px" }}>
+ <label style={s.label}>Thumbnail Image</label>
+ <div style={{ marginTop: 8 }}>
+ <ImageUpload value={course.thumbnail} onChange={(v) => set("thumbnail", v)} placeholder="Upload or paste thumbnail URL" label="Add thumbnail" />
+ </div>
+ </div>
+ </div>
+ </div>
+ <div style={s.card}>
+ <div style={s.sectionHeading}>Certificate</div>
+ <div style={{ padding: "0 16px 16px" }}>
+ <div onClick={() => set("issueCertificate", !course.issueCertificate)}
+ style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, cursor: "pointer", padding: "14px 0" }}>
+ <div>
+ <div style={{ fontWeight: 700, fontSize: 14, color: TEXT }}>Issue certificates</div>
+ <div style={{ fontSize: 12, color: TEXT2, marginTop: 2 }}>Awarded automatically on course completion</div>
+ </div>
+ <ToggleSwitch on={course.issueCertificate} />
+ </div>
+ <div onClick={() => set("requireQuiz", !course.requireQuiz)}
+ style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, cursor: "pointer", padding: "14px 0 0", borderTop: `1px solid ${BORDER}` }}>
+ <div>
+ <div style={{ fontWeight: 700, fontSize: 14, color: TEXT }}>Require passing quiz</div>
+ <div style={{ fontSize: 12, color: TEXT2, marginTop: 2 }}>Off by default — most ministries want encouragement, not gatekeeping</div>
+ </div>
+ <ToggleSwitch on={course.requireQuiz} />
+ </div>
+ <button style={s.certPreviewBtn} onClick={() => setShowCertPreview((v) => !v)}>
+ {showCertPreview ? "Hide certificate preview" : "Preview certificate →"}
+ </button>
+ {showCertPreview && <CertificatePreview title={course.title} teacherName={selectedAuthors[0]?.name} />}
  </div>
  </div>
  </div>

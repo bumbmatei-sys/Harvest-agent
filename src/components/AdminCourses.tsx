@@ -91,7 +91,63 @@ const AdminCourses: React.FC = () => {
 
       <AdminSearchBar value={searchQuery} onChange={setSearchQuery} placeholder="Search by title or author…" />
 
-      <AdminCard>
+      {/* Mobile list — mockup course-card library: thumbnail (cover, else GraduationCap
+          on gold tint), title + status pill, and an author · lesson-count meta line.
+          Same loading / filteredCourses data and the same handleEditCourse (tap = open
+          the builder) / setDeleteConfirmId handlers as the desktop table below. */}
+      <div className="lg:hidden bg-white rounded-brand-xl border border-stone-200 shadow-[var(--ds-sh-sm)] overflow-hidden">
+        {loading ? (
+          <div className="px-3.5 py-10 flex items-center justify-center gap-2 text-warm-brown">
+            <div className="w-4 h-4 border-2 border-gold border-t-transparent rounded-full animate-spin"></div>
+            <span>Loading courses…</span>
+          </div>
+        ) : filteredCourses.length === 0 ? (
+          <div className="px-3.5 py-14 flex flex-col items-center justify-center gap-1.5 text-center">
+            <GraduationCap size={30} className="text-stone-300 mb-1" />
+            <p className="font-display text-base text-earth">No courses found</p>
+            <p className="text-sm text-warm-brown">Get started by creating a new course.</p>
+          </div>
+        ) : (
+          filteredCourses.map((course, i) => {
+            const lessonCount = (course.levels || []).reduce(
+              (sum, lv) => sum + (lv.sections || []).reduce((s, sec) => s + (sec.lessons?.length || 0), 0),
+              0,
+            );
+            const meta = [course.author, lessonCount ? `${lessonCount} lesson${lessonCount === 1 ? '' : 's'}` : null]
+              .filter(Boolean)
+              .join(' · ');
+            return (
+              <div key={course.id} className={`flex items-center gap-3 px-3.5 py-3 ${i ? 'border-t border-stone-200' : ''}`}>
+                <div className="w-[68px] h-[52px] rounded-brand bg-[var(--surface-gold)] text-gold flex items-center justify-center shrink-0 overflow-hidden">
+                  {course.thumbnail
+                    ? <img src={course.thumbnail} alt="" className="w-full h-full object-cover" />
+                    : <GraduationCap size={20} />}
+                </div>
+                <button onClick={() => handleEditCourse(course)} className="flex-1 min-w-0 text-left">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="flex-1 min-w-0 text-sm font-semibold text-earth line-clamp-1">{course.title}</span>
+                    <AdminBadge tone={statusTone(course.status)} className="shrink-0">{course.status}</AdminBadge>
+                  </div>
+                  <div className="flex items-center gap-1.5 mt-1">
+                    {(course as any).featured && <AdminBadge tone="gold">Featured</AdminBadge>}
+                    {meta && <span className="text-xs text-[color:var(--text-faint)] truncate">{meta}</span>}
+                  </div>
+                </button>
+                <button
+                  onClick={() => setDeleteConfirmId(course.id || null)}
+                  className="p-2 rounded-brand text-[color:var(--text-faint)] hover:text-[#C4553B] hover:bg-[#F7E7E2] transition-colors shrink-0"
+                  title="Delete"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* Desktop table — existing approved layout, unchanged (now lg-only). */}
+      <AdminCard className="hidden lg:block">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>

@@ -83,10 +83,10 @@ const AdminInbox = () => {
 
  const getIconForType = (type: string) => {
  switch (type) {
- case 'contact': return <Mail size={20} className="text-blue-500" />;
- case 'church_suggestion': return <MapPin size={20} className="text-green-500" />;
- case 'feature': return <Lightbulb size={20} className="text-purple-500" />;
- case 'prayer': return <HeartHandshake size={20} className="text-orange-500" />;
+ case 'contact': return <Mail size={20} className="text-sky-500" />;
+ case 'church_suggestion': return <MapPin size={20} className="text-field-500" />;
+ case 'feature': return <Lightbulb size={20} className="text-navy-500" />;
+ case 'prayer': return <HeartHandshake size={20} className="text-wheat-600" />;
  case 'enrollment': return <Church size={20} className="text-gold" />;
  default: return <Mail size={20} className="text-warm-brown" />;
  }
@@ -160,7 +160,99 @@ const AdminInbox = () => {
  const isPending = sub.status === 'pending';
 
  return (
- <div key={sub.id} className={`bg-white rounded-2xl shadow-sm border ${isPending ? 'border-[color-mix(in_srgb,var(--brand-color)_30%,transparent)] ' : 'border-stone-200 '} overflow-hidden transition-all duration-300`}>
+ <React.Fragment key={sub.id}>
+ {/* Mobile card — mockup inbox row: neutral disc + type-colored icon, title,
+     submitter label, time, gold unread dot, chevron; expands to the same data
+     entries and the same Delete / Mark resolved·pending actions. Reuses
+     getIconForType, getTitleForType, formatDate, toggleExpand, handleDelete,
+     handleStatusChange, setDeleteConfirmId — no wiring changed. */}
+ <div className={`lg:hidden bg-white rounded-brand-xl shadow-[var(--ds-sh-sm)] overflow-hidden border ${isPending ? 'border-[color-mix(in_srgb,var(--brand-color)_30%,transparent)]' : 'border-stone-200'}`}>
+ <button
+ onClick={() => toggleExpand(sub.id)}
+ className="w-full flex items-start gap-3 p-3.5 text-left"
+ >
+ <span className="w-9 h-9 shrink-0 rounded-brand bg-[var(--surface-sunken)] flex items-center justify-center">
+ {getIconForType(sub.type)}
+ </span>
+ <span className="flex-1 min-w-0">
+ <span className="flex items-center justify-between gap-2">
+ <span className={`min-w-0 truncate text-[13px] font-bold ${isPending ? 'text-earth' : 'text-warm-brown'}`}>{getTitleForType(sub.type)}</span>
+ <span className="shrink-0 text-[11px] text-[color:var(--text-faint)]">{formatDate(sub.createdAt)}</span>
+ </span>
+ <span className="block truncate text-xs text-warm-brown mt-0.5">{sub.data.name || sub.data.churchName || sub.data.title || 'Anonymous'}</span>
+ </span>
+ <span className="flex items-center gap-2 shrink-0">
+ {isPending && <span className="w-2 h-2 rounded-full bg-gold" />}
+ {isExpanded ? <ChevronUp size={16} className="text-[color:var(--text-faint)]" /> : <ChevronDown size={16} className="text-[color:var(--text-faint)]" />}
+ </span>
+ </button>
+ {isExpanded && (
+ <div className="p-3.5 border-t border-stone-200 bg-[var(--surface-sunken)]">
+ <div className="space-y-3 mb-3.5">
+ {Object.entries(sub.data).map(([key, value]) => {
+ if (!value) return null;
+ return (
+ <div key={key}>
+ <span className="block text-[10px] font-bold text-[color:var(--text-faint)] tracking-wider uppercase mb-1">
+ {key.replace(/([A-Z])/g, ' $1').trim()}
+ </span>
+ <p className="text-sm text-earth whitespace-pre-wrap leading-relaxed">
+ {String(value)}
+ </p>
+ </div>
+ );
+ })}
+ </div>
+ <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-stone-200">
+ {deleteConfirmId === sub.id ? (
+ <div className="flex items-center gap-2">
+ <span className="text-xs text-warm-brown">Are you sure?</span>
+ <button
+ onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(null); }}
+ className="px-3 py-1.5 text-xs font-semibold text-warm-brown bg-stone-100 hover:bg-stone-200 rounded-lg transition-colors"
+ >
+ Cancel
+ </button>
+ <button
+ onClick={(e) => { e.stopPropagation(); handleDelete(sub.id); }}
+ className="px-3 py-1.5 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
+ >
+ Yes, Delete
+ </button>
+ </div>
+ ) : (
+ <button
+ onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(sub.id); }}
+ className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+ >
+ <Trash2 size={14} />
+ Delete
+ </button>
+ )}
+ {isPending ? (
+ <button
+ onClick={(e) => { e.stopPropagation(); handleStatusChange(sub.id, 'resolved'); }}
+ className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-field-600 bg-field-100 hover:bg-field-200 rounded-lg transition-colors"
+ >
+ <CheckCircle size={14} />
+ Mark Resolved
+ </button>
+ ) : (
+ <button
+ onClick={(e) => { e.stopPropagation(); handleStatusChange(sub.id, 'pending'); }}
+ className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-warm-brown bg-stone-100 hover:bg-stone-200 rounded-lg transition-colors"
+ >
+ <Clock size={14} />
+ Mark Pending
+ </button>
+ )}
+ </div>
+ </div>
+ )}
+ </div>
+
+ {/* Desktop card — existing approved layout, unchanged (now lg-only). */}
+ <div className={`hidden lg:block bg-white rounded-2xl shadow-sm border ${isPending ? 'border-[color-mix(in_srgb,var(--brand-color)_30%,transparent)] ' : 'border-stone-200 '} overflow-hidden transition-all duration-300`}>
  <div 
  onClick={() => toggleExpand(sub.id)}
  className="p-4 flex items-start gap-4 cursor-pointer hover:bg-stone-100 :bg-gray-800/50 transition-colors"
@@ -193,7 +285,7 @@ const AdminInbox = () => {
  </div>
 
  {isExpanded && (
- <div className="p-4 border-t border-gray-50 bg-stone-100/50 animate-in slide-in-from-top-2 duration-200">
+ <div className="p-4 border-t border-stone-200 bg-stone-100/50 animate-in slide-in-from-top-2 duration-200">
  <div className="space-y-3 mb-6">
  {Object.entries(sub.data).map(([key, value]) => {
  if (!value) return null;
@@ -240,7 +332,7 @@ const AdminInbox = () => {
  {isPending ? (
  <button
  onClick={(e) => { e.stopPropagation(); handleStatusChange(sub.id, 'resolved'); }}
- className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-green-600 bg-green-50 hover:bg-green-100 :bg-green-900/40 rounded-lg transition-colors"
+ className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-field-600 bg-field-100 hover:bg-field-200 :bg-green-900/40 rounded-lg transition-colors"
  >
  <CheckCircle size={16} />
  Mark Resolved
@@ -258,6 +350,7 @@ const AdminInbox = () => {
  </div>
  )}
  </div>
+ </React.Fragment>
  );
  }))}
  </div>

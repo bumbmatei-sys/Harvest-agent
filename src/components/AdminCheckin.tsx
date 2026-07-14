@@ -381,11 +381,11 @@ const AdminCheckin: React.FC<AdminCheckinProps> = ({ canCheckin = true, canQR = 
 
         {/* Live list */}
         <div className="bg-white rounded-2xl border border-stone-200 mt-4 overflow-hidden">
-          <div className="px-4 py-3 border-b border-gray-50"><h3 className="text-sm font-bold text-[color:var(--text-body)] font-display">Checked In</h3></div>
+          <div className="px-4 py-3 border-b border-stone-200"><h3 className="text-sm font-bold text-[color:var(--text-body)] font-display">Checked In</h3></div>
           {attendees.length === 0 ? (
             <p className="text-center py-10 text-[color:var(--text-faint)] text-sm font-display">No one checked in yet.</p>
           ) : (
-            <div className="divide-y divide-gray-50">
+            <div className="divide-y divide-stone-200">
               {attendees.map(a => (
                 <div key={a.id} className="flex items-center gap-3 px-4 py-2.5">
                   <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0" style={{ backgroundColor: GOLD }}>
@@ -395,7 +395,7 @@ const AdminCheckin: React.FC<AdminCheckinProps> = ({ canCheckin = true, canQR = 
                     <div className="text-sm font-medium text-earth truncate">{a.firstName} {a.lastName}</div>
                     {a.email && <div className="text-xs text-[color:var(--text-faint)] truncate">{a.email}</div>}
                   </div>
-                  {a.crmContactId && <CheckCircle2 size={14} className="text-green-500 shrink-0" />}
+                  {a.crmContactId && <CheckCircle2 size={14} className="text-field-500 shrink-0" />}
                   <span className="text-xs text-[color:var(--text-faint)] shrink-0">{fmtTime(a.checkedInAt)}</span>
                 </div>
               ))}
@@ -437,26 +437,66 @@ const AdminCheckin: React.FC<AdminCheckinProps> = ({ canCheckin = true, canQR = 
           {sessions.map(s => {
             const status = sessionStatus(s);
             return (
-              <AdminCard key={s.id} className="p-5">
-                <div className="flex items-start justify-between gap-3">
-                  <button onClick={() => { setSelected(s); setView('detail'); }} className="flex-1 min-w-0 text-left group">
-                    <div className="font-semibold text-earth truncate group-hover:text-gold transition-colors">{s.name}</div>
-                    <div className="text-xs text-[color:var(--text-faint)] mt-1">
-                      {s.date && new Date(s.date).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
-                      {s.location && ` · ${s.location}`}
+              <React.Fragment key={s.id}>
+                {/* Mobile card — mockup design: session name + "N checked in", a status
+                    pill (Active→field/green, Upcoming→wheat/gold, Closed→neutral), and a
+                    QR + instructions row for Active sessions. Same session data and the
+                    same handlers as the desktop card (open detail, copyLink, deleteSession). */}
+                <div className="lg:hidden bg-white rounded-brand-xl border border-stone-200 shadow-[var(--ds-sh-sm)] p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <button onClick={() => { setSelected(s); setView('detail'); }} className="min-w-0 text-left">
+                      <div className="text-[15px] font-semibold text-earth truncate">{s.name}</div>
+                      <div className="text-xs text-warm-brown mt-0.5">{s.attendeeCount || 0} checked in</div>
+                    </button>
+                    <span
+                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold shrink-0 ${
+                        status === 'Active'
+                          ? 'bg-field-100 text-field-700'
+                          : status === 'Upcoming'
+                            ? 'bg-wheat-100 text-wheat-700'
+                            : 'bg-stone-100 text-warm-brown'
+                      }`}
+                    >
+                      {status}
+                    </span>
+                  </div>
+                  {status === 'Active' && (
+                    <div className="flex items-center gap-3 mt-3.5 pt-3.5 border-t border-stone-200">
+                      <div className="w-16 h-16 shrink-0 rounded-xl bg-white border border-stone-200 shadow-[var(--ds-sh-sm)] flex items-center justify-center">
+                        <QrCode size={34} className="text-earth" />
+                      </div>
+                      <p className="text-xs text-warm-brown leading-relaxed">Scan at the door to check in. Live count updates automatically.</p>
                     </div>
-                  </button>
-                  <div className="flex flex-col items-end gap-1.5 shrink-0">
-                    <AdminBadge tone={status === 'Closed' ? 'stone' : status === 'Upcoming' ? 'sky' : 'green'}>{status}</AdminBadge>
-                    <span className="font-display text-lg font-light text-earth leading-none">{s.attendeeCount || 0}</span>
+                  )}
+                  <div className="flex items-center gap-4 mt-3.5 pt-3.5 border-t border-stone-200">
+                    <button onClick={() => { setSelected(s); setView('detail'); }} className="flex items-center gap-1.5 text-xs font-semibold text-warm-brown hover:text-gold transition-colors"><QrCode size={13} /> Open</button>
+                    <button onClick={() => copyLink(s.id)} className="flex items-center gap-1.5 text-xs font-semibold text-warm-brown hover:text-gold transition-colors"><Link2 size={13} /> Copy link</button>
+                    <button onClick={() => deleteSession(s)} className="flex items-center gap-1.5 text-xs font-semibold text-[#C4553B] hover:opacity-80 transition-opacity ml-auto"><Trash2 size={13} /> Delete</button>
                   </div>
                 </div>
-                <div className="flex items-center gap-4 mt-4 pt-4 border-t border-stone-200">
-                  <button onClick={() => { setSelected(s); setView('detail'); }} className="flex items-center gap-1.5 text-xs font-semibold text-warm-brown hover:text-gold transition-colors"><QrCode size={13} /> Open</button>
-                  <button onClick={() => copyLink(s.id)} className="flex items-center gap-1.5 text-xs font-semibold text-warm-brown hover:text-gold transition-colors"><Link2 size={13} /> Copy link</button>
-                  <button onClick={() => deleteSession(s)} className="flex items-center gap-1.5 text-xs font-semibold text-[#C4553B] hover:opacity-80 transition-opacity ml-auto"><Trash2 size={13} /> Delete</button>
-                </div>
-              </AdminCard>
+
+                {/* Desktop card — existing approved layout, unchanged (now lg-only). */}
+                <AdminCard className="p-5 hidden lg:block">
+                  <div className="flex items-start justify-between gap-3">
+                    <button onClick={() => { setSelected(s); setView('detail'); }} className="flex-1 min-w-0 text-left group">
+                      <div className="font-semibold text-earth truncate group-hover:text-gold transition-colors">{s.name}</div>
+                      <div className="text-xs text-[color:var(--text-faint)] mt-1">
+                        {s.date && new Date(s.date).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                        {s.location && ` · ${s.location}`}
+                      </div>
+                    </button>
+                    <div className="flex flex-col items-end gap-1.5 shrink-0">
+                      <AdminBadge tone={status === 'Closed' ? 'stone' : status === 'Upcoming' ? 'sky' : 'green'}>{status}</AdminBadge>
+                      <span className="font-display text-lg font-light text-earth leading-none">{s.attendeeCount || 0}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4 mt-4 pt-4 border-t border-stone-200">
+                    <button onClick={() => { setSelected(s); setView('detail'); }} className="flex items-center gap-1.5 text-xs font-semibold text-warm-brown hover:text-gold transition-colors"><QrCode size={13} /> Open</button>
+                    <button onClick={() => copyLink(s.id)} className="flex items-center gap-1.5 text-xs font-semibold text-warm-brown hover:text-gold transition-colors"><Link2 size={13} /> Copy link</button>
+                    <button onClick={() => deleteSession(s)} className="flex items-center gap-1.5 text-xs font-semibold text-[#C4553B] hover:opacity-80 transition-opacity ml-auto"><Trash2 size={13} /> Delete</button>
+                  </div>
+                </AdminCard>
+              </React.Fragment>
             );
           })}
         </div>

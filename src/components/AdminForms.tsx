@@ -385,7 +385,7 @@ const AdminForms: React.FC<AdminFormsProps> = () => {
                   <th className="px-3 py-2.5 text-right text-xs font-semibold text-warm-brown uppercase">CRM</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50">
+              <tbody className="divide-y divide-stone-200">
                 {submissions.map(s => (
                   <tr key={s.id} className="hover:bg-stone-100">
                     <td className="px-3 py-2.5 text-xs text-warm-brown whitespace-nowrap">{fmtDate(s.submittedAt)}</td>
@@ -395,7 +395,7 @@ const AdminForms: React.FC<AdminFormsProps> = () => {
                     })}
                     <td className="px-3 py-2.5 text-right">
                       {s.crmContactId
-                        ? <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700">In CRM</span>
+                        ? <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-field-100 text-field-700">In CRM</span>
                         : <span className="text-stone-300 text-xs">—</span>}
                     </td>
                   </tr>
@@ -431,7 +431,41 @@ const AdminForms: React.FC<AdminFormsProps> = () => {
           </div>
         </AdminCard>
       ) : (
-        <div className="space-y-4">
+        <>
+          {/* Mobile list — mockup card list: gold disc, title (tap → submissions),
+              submissions · fields meta, Active/Inactive status pill (tap → toggleActive),
+              and an Edit / Copy link / Open / Delete action row. Same `forms` data and the
+              same openSubmissions / toggleActive / openBuilder / copy / formUrl / handleDelete
+              handlers as the desktop cards below — no wiring changed. */}
+          <div className="lg:hidden space-y-3">
+            {forms.map(form => (
+              <div key={form.id} className="bg-white rounded-brand-xl border border-stone-200 shadow-[var(--ds-sh-sm)] p-4">
+                <div className="flex items-start gap-3">
+                  <span className="w-[38px] h-[38px] rounded-[10px] bg-[var(--surface-gold)] text-gold flex items-center justify-center shrink-0">
+                    <FileText size={17} />
+                  </span>
+                  <button onClick={() => openSubmissions(form)} className="flex-1 min-w-0 text-left">
+                    <div className="text-sm font-semibold text-earth truncate">{form.title}</div>
+                    <div className="text-[11.5px] text-[color:var(--text-faint)] mt-0.5">
+                      {form.submissionCount || 0} submission{(form.submissionCount || 0) === 1 ? '' : 's'} · {(form.fields?.length || 0)} field{(form.fields?.length || 0) === 1 ? '' : 's'}
+                    </div>
+                  </button>
+                  <button onClick={() => toggleActive(form)} title={form.active ? 'Deactivate' : 'Activate'} className="shrink-0">
+                    <AdminBadge tone={form.active ? 'green' : 'stone'}>{form.active ? 'Active' : 'Inactive'}</AdminBadge>
+                  </button>
+                </div>
+                <div className="flex items-center gap-1 mt-3 pt-3 border-t border-stone-200">
+                  <button onClick={() => openBuilder(form)} className="p-1.5 rounded-brand text-[color:var(--text-faint)] hover:text-gold hover:bg-stone-100 transition-colors" title="Edit"><Edit2 size={15} /></button>
+                  <button onClick={() => copy(formUrl(form.id), `link_${form.id}`)} className="p-1.5 rounded-brand text-[color:var(--text-faint)] hover:text-gold hover:bg-stone-100 transition-colors" title={copied === `link_${form.id}` ? 'Copied!' : 'Copy link'}><Link2 size={15} /></button>
+                  <a href={formUrl(form.id)} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-brand text-[color:var(--text-faint)] hover:text-gold hover:bg-stone-100 transition-colors" title="Open"><ExternalLink size={15} /></a>
+                  <button onClick={() => handleDelete(form)} className="p-1.5 rounded-brand text-[#C4553B] hover:bg-[#F7E7E2] transition-colors ml-auto" title="Delete"><Trash2 size={15} /></button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop cards — existing approved layout, unchanged (now lg-only). */}
+          <div className="hidden lg:block space-y-4">
           {forms.map(form => (
             <AdminCard key={form.id} className="p-5">
               <div className="flex items-start justify-between gap-3">
@@ -464,6 +498,7 @@ const AdminForms: React.FC<AdminFormsProps> = () => {
             </AdminCard>
           ))}
         </div>
+        </>
       )}
     </div>
   );

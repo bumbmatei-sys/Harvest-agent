@@ -176,14 +176,38 @@ const AdminSms: React.FC = () => {
               {sending ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
               {scheduledAt ? 'Schedule' : 'Send now'}
             </button>
-            {sendMsg && <div className={`p-3 rounded-xl text-sm ${sendMsg.ok ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'}`}>{sendMsg.text}</div>}
+            {sendMsg && <div className={`p-3 rounded-xl text-sm ${sendMsg.ok ? 'bg-field-100 text-field-700' : 'bg-wheat-50 text-wheat-700'}`}>{sendMsg.text}</div>}
           </div>
 
           <AdminSectionLabel className="mt-8 mb-3 block">Sent History</AdminSectionLabel>
           {history.length === 0 ? (
             <div className="text-center py-10 text-[color:var(--text-faint)]"><MessageSquare size={36} className="mx-auto mb-2 opacity-30" /><p className="text-sm">No broadcasts yet</p></div>
           ) : (
-            <div className="bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] divide-y divide-stone-200">
+            <>
+              {/* Mobile history — mockup list card: gold SMS disc, message + meta
+                  sub, status pill. Same `history` data, fmtDate, statusTone/AdminBadge
+                  as the desktop list below — no wiring changed. */}
+              <div className="lg:hidden bg-white rounded-brand-xl border border-stone-200 shadow-[var(--ds-sh-sm)] overflow-hidden">
+                {history.map((b, i) => (
+                  <div key={b.id} className={`flex items-start gap-3 px-3.5 py-3 ${i ? 'border-t border-stone-200' : ''}`}>
+                    <div className="w-[38px] h-[38px] rounded-[10px] bg-[var(--surface-gold)] text-gold flex items-center justify-center shrink-0">
+                      <MessageSquare size={16} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[13.5px] font-semibold text-earth leading-snug line-clamp-2">{b.message}</div>
+                      <div className="text-[11.5px] text-[color:var(--text-faint)] mt-1">
+                        {fmtDate(b.createdAt)} · {b.recipientCount} recipients
+                        {b.status === 'sent' && ` · ${b.delivered || 0} delivered, ${b.failed || 0} failed`}
+                        {b.status === 'scheduled' && ` · for ${fmtDate(b.scheduledAt || undefined)}`}
+                      </div>
+                    </div>
+                    <AdminBadge tone={statusTone(b.status)} className="shrink-0">{b.status}</AdminBadge>
+                  </div>
+                ))}
+              </div>
+
+              {/* Desktop history — existing approved layout, unchanged (now lg-only). */}
+            <div className="hidden lg:block bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] divide-y divide-stone-200">
               {history.map(b => (
                 <div key={b.id} className="px-5 py-4">
                   <div className="flex items-center justify-between gap-2">
@@ -198,6 +222,7 @@ const AdminSms: React.FC = () => {
                 </div>
               ))}
             </div>
+            </>
           )}
         </>
       ) : (
@@ -227,7 +252,7 @@ const AdminSms: React.FC = () => {
           <button onClick={saveTemplates} disabled={savingTpl} className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-white text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: GOLD }}>
             <Save size={15} /> {savingTpl ? 'Saving…' : 'Save Templates'}
           </button>
-          {tplSaved && <span className="text-sm text-green-600 font-medium ml-2">✓ Saved</span>}
+          {tplSaved && <span className="text-sm text-field-600 font-medium ml-2">✓ Saved</span>}
 
           {/* ── Text-to-Give ── */}
           <div className="bg-white rounded-2xl border border-stone-200 p-4 mt-6">
@@ -265,7 +290,7 @@ const AdminSms: React.FC = () => {
                   <button onClick={saveT2g} disabled={savingT2g} className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-white text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: GOLD }}>
                     <Save size={15} /> {savingT2g ? 'Saving…' : 'Save Text-to-Give'}
                   </button>
-                  {t2gSaved && <span className="text-sm text-green-600 font-medium">✓ Saved</span>}
+                  {t2gSaved && <span className="text-sm text-field-600 font-medium">✓ Saved</span>}
                 </div>
               </div>
             )}

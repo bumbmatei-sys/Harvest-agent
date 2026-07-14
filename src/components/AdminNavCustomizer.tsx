@@ -269,7 +269,7 @@ const AdminNavCustomizer: React.FC<AdminNavCustomizerProps> = ({
               <span
                 className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
                   barItems.length >= MAX_BAR_ITEMS
-                    ? 'bg-amber-100 text-amber-700'
+                    ? 'bg-wheat-100 text-wheat-700'
                     : 'bg-stone-100 text-warm-brown'
                 }`}
               >

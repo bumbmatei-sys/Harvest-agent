@@ -58,8 +58,8 @@ export function QuizPanel({ quiz, attempt, onSubmit }: QuizPanelProps) {
   if (mode === "result" && !hasLocalAnswers && attempt) {
     return (
       <div className="py-5">
-        <div className={`rounded-lg border p-4 mb-4 ${attempt.passed ? "bg-green-50 border-green-500" : "bg-stone-50 border-stone-200"}`}>
-          <div className={`text-sm font-bold ${attempt.passed ? "text-green-600" : "text-earth"}`}>
+        <div className={`rounded-lg border p-4 mb-4 ${attempt.passed ? "bg-field-100 border-field-500" : "bg-stone-50 border-stone-200"}`}>
+          <div className={`text-sm font-bold ${attempt.passed ? "text-field-600" : "text-earth"}`}>
             {attempt.passed ? "Passed ✓" : "Not passed yet"}
           </div>
           <div className="text-xs text-[color:var(--text-faint)] mt-0.5">
@@ -79,8 +79,8 @@ export function QuizPanel({ quiz, attempt, onSubmit }: QuizPanelProps) {
   return (
     <div className="py-5">
       {mode === "result" && (
-        <div className={`rounded-lg border p-4 mb-4 ${isQuizPassing(score, quiz.length) ? "bg-green-50 border-green-500" : "bg-stone-50 border-stone-200"}`}>
-          <div className={`text-sm font-bold ${isQuizPassing(score, quiz.length) ? "text-green-600" : "text-earth"}`}>
+        <div className={`rounded-lg border p-4 mb-4 ${isQuizPassing(score, quiz.length) ? "bg-field-100 border-field-500" : "bg-stone-50 border-stone-200"}`}>
+          <div className={`text-sm font-bold ${isQuizPassing(score, quiz.length) ? "text-field-600" : "text-earth"}`}>
             {score} / {quiz.length} correct
           </div>
           <div className="text-xs text-[color:var(--text-faint)] mt-0.5">
@@ -99,14 +99,14 @@ export function QuizPanel({ quiz, attempt, onSubmit }: QuizPanelProps) {
                 let optionClass = "border-stone-200 hover:bg-stone-50";
                 if (mode === "result") {
                   if (option.correct) {
-                    optionClass = "border-green-500 bg-green-50 text-green-600";
+                    optionClass = "border-field-500 bg-field-100 text-field-600";
                   } else if (isSelected) {
                     optionClass = "border-red-500 bg-red-50 text-red-600";
                   } else {
                     optionClass = "border-stone-200 opacity-60";
                   }
                 } else if (isSelected) {
-                  optionClass = "border-amber-600 bg-[#FBF3E4]";
+                  optionClass = "border-gold bg-[#FBF3E4]";
                 }
                 return (
                   <button
@@ -118,7 +118,7 @@ export function QuizPanel({ quiz, attempt, onSubmit }: QuizPanelProps) {
                     } ${optionClass}`}
                   >
                     <span>{option.text}</span>
-                    {mode === "result" && option.correct && <span className="text-green-600 flex-shrink-0">✓</span>}
+                    {mode === "result" && option.correct && <span className="text-field-600 flex-shrink-0">✓</span>}
                     {mode === "result" && isSelected && !option.correct && <span className="text-red-600 flex-shrink-0">✕</span>}
                   </button>
                 );

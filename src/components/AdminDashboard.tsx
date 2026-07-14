@@ -452,15 +452,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
       <button
         key={tab.id}
         onClick={() => go(tab.id)}
-        className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors text-left ${
-          isActive ? '' : 'hover:bg-stone-100 active:bg-stone-200'
-        }`}
-        style={{ backgroundColor: isActive ? 'color-mix(in srgb, var(--brand-color, #C9963A) 12%, transparent)' : undefined }}
+        className="w-full flex items-center gap-3 px-[15px] py-3 transition-colors text-left hover:bg-stone-50 active:bg-stone-100"
+        style={{ backgroundColor: isActive ? 'color-mix(in srgb, var(--brand-color, #C9963A) 10%, transparent)' : undefined }}
       >
-        <Icon size={16} style={{ color: isActive ? 'var(--brand-color, #C9963A)' : '#8B7355' }} />
+        <span className="w-[30px] h-[30px] shrink-0 rounded-lg bg-stone-100 flex items-center justify-center">
+          <Icon size={16} className="text-gold" />
+        </span>
         <span
-          className="text-sm font-medium flex-1"
-          style={{ color: isActive ? 'var(--brand-color, #C9963A)' : '#2D2519' }}
+          className="text-sm font-medium flex-1 text-earth"
+          style={isActive ? { color: 'var(--brand-color, #C9963A)' } : undefined}
         >
           {tab.label}
         </span>
@@ -469,6 +469,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
+        <ChevronRight size={16} className="text-[color:var(--text-faint)] shrink-0" />
       </button>
     );
   };
@@ -517,10 +518,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
 
   return (
     <AdminHeaderContext.Provider value={headerApi}>
-    <div className="flex flex-col lg:flex-row h-[100dvh] bg-[#f8f9fa] lg:bg-cream font-sans overflow-hidden transition-colors duration-300">
+    <div className="flex flex-col lg:flex-row h-[100dvh] bg-cream lg:bg-cream font-sans overflow-hidden transition-colors duration-300">
 
       {/* Side/Bottom Navigation */}
-      <div className={`bg-white border-t lg:border-t-0 lg:border-r border-gray-100 lg:border-stone-200 flex justify-center lg:justify-start py-2 lg:py-6 px-2 lg:px-4 pb-safe lg:pb-0 fixed lg:relative bottom-0 lg:bottom-auto w-full ${isSidebarCollapsed ? 'lg:w-[88px]' : 'lg:w-64'} lg:h-screen z-[100] shadow-[0_-4px_20px_rgba(0,0,0,0.05)] lg:shadow-[2px_0_10px_rgba(0,0,0,0.02)] transition-all duration-300`}>
+      <div className={`bg-white border-t lg:border-t-0 lg:border-r border-stone-200 lg:border-stone-200 flex justify-center lg:justify-start py-2 lg:py-6 px-2 lg:px-4 pb-safe lg:pb-0 fixed lg:relative bottom-0 lg:bottom-auto w-full ${isSidebarCollapsed ? 'lg:w-[88px]' : 'lg:w-64'} lg:h-screen z-[100] shadow-[0_-4px_20px_rgba(0,0,0,0.05)] lg:shadow-[2px_0_10px_rgba(0,0,0,0.02)] transition-all duration-300`}>
         <div className={`flex lg:flex-col justify-around lg:justify-start items-center lg:items-stretch w-full lg:max-w-none lg:gap-2 ${isSidebarCollapsed ? 'lg:items-center' : ''}`}>
           {/* Desktop Logo — the member-app entry point on desktop (the More-drawer
               "Go to User App" row is mobile-only). Routes through handleViewApp so
@@ -553,7 +554,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
                   key={tab.id}
                   onClick={() => go(tab.id)}
                   className={`flex flex-col items-center justify-center gap-1 w-16 h-12 rounded-xl transition-all relative ${
-                    isActive ? '' : 'text-gray-400'
+                    isActive ? '' : 'text-[color:var(--text-faint)]'
                   }`}
                   style={isActive ? { color: 'var(--brand-color, #C9963A)' } : undefined}
                 >
@@ -568,7 +569,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
             <button
               onClick={() => setShowMoreSheet(!showMoreSheet)}
               className={`flex flex-col items-center justify-center gap-1 w-16 h-12 rounded-xl transition-all ${
-                showMoreSheet ? '' : 'text-gray-400'
+                showMoreSheet ? '' : 'text-[color:var(--text-faint)]'
               }`}
               style={showMoreSheet ? { color: 'var(--brand-color, #C9963A)' } : undefined}
             >
@@ -627,7 +628,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
       </div>
 
       {/* Main Container */}
-      <div className="flex-1 flex flex-col h-[100dvh] relative bg-[#f8f9fa] lg:bg-cream overflow-hidden min-w-0">
+      <div className="flex-1 flex flex-col h-[100dvh] relative bg-cream lg:bg-cream overflow-hidden min-w-0">
         {/* Desktop branded top bar — Open member app · centered page title ·
             search / notifications / account. Matches the admin mockup. */}
         <div className="hidden lg:flex bg-white border-b border-stone-200 h-14 items-center px-6 xl:px-8 z-10 w-full shrink-0">
@@ -829,7 +830,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
               }}
             />
           ) : (
-            <div className="flex flex-col items-center justify-center h-full text-gray-400">
+            <div className="flex flex-col items-center justify-center h-full text-[color:var(--text-faint)]">
               <p className="text-lg font-medium">{allTabs.find(t => t.id === activeTab)?.label || 'Inbox'} coming soon.</p>
             </div>
           )}
@@ -839,16 +840,19 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
         {showMoreSheet && (
           <>
             <div
-              className="fixed inset-0 bg-black/40 z-[101] lg:hidden"
+              className="fixed inset-0 z-[101] lg:hidden"
+              style={{ backgroundColor: 'rgba(15,13,11,0.42)' }}
               onClick={() => setShowMoreSheet(false)}
             />
             <div
-              className="fixed bottom-0 left-0 right-0 bg-white rounded-t-2xl z-[102] lg:hidden shadow-[0_-8px_30px_rgba(0,0,0,0.12)] max-h-[80vh] overflow-y-auto"
+              className="fixed bottom-0 left-0 right-0 bg-cream rounded-t-[22px] z-[102] lg:hidden shadow-[0_-12px_44px_rgba(0,0,0,0.28)] max-h-[84vh] flex flex-col"
               style={{ animation: 'slideUp 0.25s ease-out' }}
             >
-              <div className="w-9 h-1 bg-gray-300 rounded-full mx-auto mt-3 mb-1" />
-              <div className="pb-4">
-                <h3 className="font-display text-sm font-bold text-gray-900 px-4 pt-1">More Tools</h3>
+              <div className="w-9 h-1 bg-stone-300 rounded-full mx-auto mt-3 mb-1 shrink-0" />
+              <div className="flex items-center justify-between px-[18px] pt-1.5 pb-3 shrink-0">
+                <h3 className="font-display font-light text-[22px] leading-none tracking-[-0.02em] text-earth">More</h3>
+              </div>
+              <div className="overflow-y-auto px-[18px] pb-6">
 
                 {/* Grouped, Vercel-style list. Groups with no permitted tabs are omitted. */}
                 {MORE_GROUPS.map((group) => {
@@ -857,11 +861,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
                     .filter(Boolean) as { id: string; label: string; icon: any }[];
                   if (groupTabs.length === 0) return null;
                   return (
-                    <div key={group.label}>
-                      <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 px-4 pt-4 pb-1">
+                    <div key={group.label} className="mb-4">
+                      <p className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-warm-brown px-1 pb-1.5">
                         {group.label}
                       </p>
-                      {groupTabs.map(renderMoreRow)}
+                      <div className="bg-white rounded-brand-xl border border-stone-200 overflow-hidden divide-y divide-stone-200">
+                        {groupTabs.map(renderMoreRow)}
+                      </div>
                     </div>
                   );
                 })}
@@ -875,11 +881,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
                   );
                   if (leftover.length === 0) return null;
                   return (
-                    <div>
-                      <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 px-4 pt-4 pb-1">
+                    <div className="mb-4">
+                      <p className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-warm-brown px-1 pb-1.5">
                         OTHER
                       </p>
-                      {leftover.map(renderMoreRow)}
+                      <div className="bg-white rounded-brand-xl border border-stone-200 overflow-hidden divide-y divide-stone-200">
+                        {leftover.map(renderMoreRow)}
+                      </div>
                     </div>
                   );
                 })()}
@@ -927,16 +935,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
           admin never navigates away. A slim top bar provides the close affordance;
           Profile's own sub-modals (fixed inset-0) cover it while open. */}
       {showProfile && (
-        <div className="fixed inset-0 z-[200] bg-[#f8f9fa] flex flex-col">
-          <div className="flex items-center gap-1 h-12 px-3 bg-white border-b border-gray-100 shrink-0">
+        <div className="fixed inset-0 z-[200] bg-cream flex flex-col">
+          <div className="flex items-center gap-1 h-12 px-3 bg-white border-b border-stone-200 shrink-0">
             <button
               onClick={() => setShowProfile(false)}
               aria-label="Close profile"
-              className="p-1.5 -ml-1 text-gray-600 hover:text-gray-900 transition-colors"
+              className="p-1.5 -ml-1 text-earth hover:text-earth transition-colors"
             >
               <X size={22} />
             </button>
-            <span className="text-sm font-bold text-gray-900">My Profile</span>
+            <span className="text-sm font-bold text-earth">My Profile</span>
           </div>
           <div className="flex-1 overflow-y-auto">
             <Profile
@@ -951,16 +959,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
       {/* Billing & Payments — owner-only overlay (the item is hidden for non-owners
           and the /api/billing/* routes enforce the same owner gate server-side). */}
       {showBilling && isOwner && (
-        <div className="fixed inset-0 z-[200] bg-[#f8f9fa] flex flex-col">
-          <div className="flex items-center gap-1 h-12 px-3 bg-white border-b border-gray-100 shrink-0">
+        <div className="fixed inset-0 z-[200] bg-cream flex flex-col">
+          <div className="flex items-center gap-1 h-12 px-3 bg-white border-b border-stone-200 shrink-0">
             <button
               onClick={() => setShowBilling(false)}
               aria-label="Close billing"
-              className="p-1.5 -ml-1 text-gray-600 hover:text-gray-900 transition-colors"
+              className="p-1.5 -ml-1 text-earth hover:text-earth transition-colors"
             >
               <X size={22} />
             </button>
-            <span className="text-sm font-bold text-gray-900">Billing &amp; Payments</span>
+            <span className="text-sm font-bold text-earth">Billing &amp; Payments</span>
           </div>
           <div className="flex-1 overflow-y-auto p-4 lg:p-6">
             <BillingAndPayments

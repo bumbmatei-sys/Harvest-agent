@@ -228,7 +228,7 @@ const FormPicker: React.FC<{
               <button
                 key={item.id}
                 onClick={() => onToggle(item)}
-                className={`w-full flex items-center gap-3 px-5 py-3 text-left transition-colors ${sel ? 'bg-amber-50' : 'hover:bg-stone-100'}`}
+                className={`w-full flex items-center gap-3 px-5 py-3 text-left transition-colors ${sel ? 'bg-wheat-50' : 'hover:bg-stone-100'}`}
               >
                 <span className="text-xl flex-shrink-0">📝</span>
                 <div className="flex-1 min-w-0">
@@ -434,7 +434,7 @@ const DmThread: React.FC<{
             onChange={e => setText(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), send())}
             placeholder="Type a message..."
-            className="flex-1 bg-transparent outline-none text-sm text-earth placeholder-gray-400"
+            className="flex-1 bg-transparent outline-none text-sm text-earth placeholder-[color:var(--text-faint)]"
           />
           <button
             onClick={send}
@@ -580,7 +580,7 @@ const ChannelView: React.FC<{
             onChange={e => setText(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), send())}
             placeholder={`Message #${channel.name}`}
-            className="flex-1 bg-transparent outline-none text-sm text-earth placeholder-gray-400"
+            className="flex-1 bg-transparent outline-none text-sm text-earth placeholder-[color:var(--text-faint)]"
           />
           <button
             onClick={send}

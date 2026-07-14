@@ -490,7 +490,7 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages }) => {
             <div key={post.id} className="bg-white rounded-2xl p-4 shadow-sm border border-stone-200 ">
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-[#1a1d27] text-white flex items-center justify-center font-bold overflow-hidden relative">
+                  <div className="w-10 h-10 rounded-full bg-earth text-white flex items-center justify-center font-bold overflow-hidden relative">
                     {post.authorPhoto ? (
                       <Image src={post.authorPhoto} alt={post.authorName} fill sizes="40px" className="object-cover" referrerPolicy="no-referrer" />
                     ) : (
@@ -604,7 +604,7 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages }) => {
                       onClick={() => handleAttend(post.id, post.eventDetails!.attendees, post.eventDetails!.attendeeDetails)}
                       className={`px-6 py-2 font-medium rounded-lg text-sm flex items-center gap-1.5 transition-colors ${
                         post.eventDetails.attendees.includes(auth.currentUser.uid)
-                          ? 'bg-green-100 text-green-700 '
+                          ? 'bg-field-100 text-field-700 '
                           : 'bg-gold text-white hover:bg-[color-mix(in_srgb,var(--brand-color)_85%,black)]'
                       }`}
                     >

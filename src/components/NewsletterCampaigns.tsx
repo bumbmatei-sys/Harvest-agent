@@ -134,7 +134,29 @@ const NewsletterCampaigns: React.FC<NewsletterCampaignsProps> = ({ tenantId, onC
       {localNewsletters.length > 0 && (
         <div>
           <h3 className="text-[11px] font-semibold text-gold uppercase tracking-[0.14em] mb-3">Drafts &amp; Sends</h3>
-          <div className="space-y-3">
+          {/* Mobile — mockup list card: gold mail disc, subject + date/posts sub,
+              status pill. Same localNewsletters data, statusBadge, formatDate as
+              the desktop cards below. */}
+          <div className="lg:hidden bg-white rounded-brand-xl border border-stone-200 shadow-[var(--ds-sh-sm)] overflow-hidden">
+            {localNewsletters.map((nl, i) => (
+              <div key={nl.newsletterId} className={`flex items-center gap-3 px-3.5 py-3 ${i ? 'border-t border-stone-200' : ''}`}>
+                <div className="w-[38px] h-[38px] rounded-[10px] bg-[var(--surface-gold)] text-gold flex items-center justify-center shrink-0">
+                  <Mail size={16} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-[13.5px] font-semibold text-earth truncate">{nl.subject || 'Untitled'}</div>
+                  <div className="flex items-center gap-2 mt-0.5 text-[11.5px] text-[color:var(--text-faint)]">
+                    <span>{nl.status === 'sent' ? formatDate(nl.send_time) : formatDate(nl.created_at)}</span>
+                    {nl.posts_used > 0 && <span className="flex items-center gap-1"><Users size={11} /> {nl.posts_used} posts</span>}
+                  </div>
+                </div>
+                <span className="shrink-0">{statusBadge(nl.status)}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop — existing approved layout, unchanged (now lg-only). */}
+          <div className="hidden lg:block space-y-3">
             {localNewsletters.map((nl) => (
               <div key={nl.newsletterId} className="bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] p-5 flex items-center gap-4">
                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
@@ -169,7 +191,30 @@ const NewsletterCampaigns: React.FC<NewsletterCampaignsProps> = ({ tenantId, onC
       {mailchimpCampaigns.length > 0 && (
         <div>
           <h3 className="text-[11px] font-semibold text-gold uppercase tracking-[0.14em] mb-3">Mailchimp Campaigns</h3>
-          <div className="space-y-3">
+          {/* Mobile — mockup list card: gold mail disc, subject + date/opens/sent
+              sub, status pill. Same mailchimpCampaigns data, statusBadge, formatDate
+              as the desktop cards below. */}
+          <div className="lg:hidden bg-white rounded-brand-xl border border-stone-200 shadow-[var(--ds-sh-sm)] overflow-hidden">
+            {mailchimpCampaigns.map((c, i) => (
+              <div key={c.id} className={`flex items-center gap-3 px-3.5 py-3 ${i ? 'border-t border-stone-200' : ''}`}>
+                <div className="w-[38px] h-[38px] rounded-[10px] bg-[var(--surface-gold)] text-gold flex items-center justify-center shrink-0">
+                  <Mail size={16} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-[13.5px] font-semibold text-earth truncate">{c.subject}</div>
+                  <div className="flex items-center gap-2 mt-0.5 text-[11.5px] text-[color:var(--text-faint)]">
+                    <span>{formatDate(c.send_time || c.created_at)}</span>
+                    {c.open_rate != null && <span>{Math.round(c.open_rate * 100)}% opens</span>}
+                    {c.emails_sent > 0 && <span className="flex items-center gap-1"><Users size={11} /> {c.emails_sent}</span>}
+                  </div>
+                </div>
+                <span className="shrink-0">{statusBadge(c.status)}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop — existing approved layout, unchanged (now lg-only). */}
+          <div className="hidden lg:block space-y-3">
             {mailchimpCampaigns.map((c) => (
               <div key={c.id} className="bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] p-5 flex items-center gap-4">
                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${

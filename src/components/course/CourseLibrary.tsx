@@ -40,8 +40,9 @@ export function CourseLibrary({ courses, authors, categories, onSelectCourse, co
 
   return (
     <div className="max-w-[480px] mx-auto px-4 pt-5 pb-24 lg:max-w-none lg:px-8 lg:pt-6">
-      {/* Header */}
-      <h1 className="text-[28px] font-extrabold lg:font-light tracking-tight lg:tracking-[-0.02em] text-earth mb-5 font-display">Courses</h1>
+      {/* Header — desktop only; the mobile screen opens straight into search
+          to match the member mockup (the tab bar supplies the section label). */}
+      <h1 className="hidden lg:block text-[28px] font-light tracking-[-0.02em] text-earth mb-5 font-display">Courses</h1>
 
       {/* Search */}
       <div className="relative mb-5">
@@ -53,7 +54,7 @@ export function CourseLibrary({ courses, authors, categories, onSelectCourse, co
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search courses..."
-          className="w-full py-3 pl-10 pr-4 bg-[#faf9f7] border border-stone-200 rounded-xl text-sm text-earth outline-none transition-colors focus:border-amber-600"
+          className="w-full py-3 pl-10 pr-4 bg-[#faf9f7] border border-stone-200 rounded-xl text-sm text-earth outline-none transition-colors focus:border-gold"
         />
       </div>
 
@@ -65,8 +66,8 @@ export function CourseLibrary({ courses, authors, categories, onSelectCourse, co
             onClick={() => setActiveCategory(cat)}
             className={`px-4 py-[7px] rounded-full text-[13px] font-semibold whitespace-nowrap cursor-pointer transition-all duration-200 border ${
               activeCategory === cat
-                ? "bg-gray-900 lg:bg-navy-900 text-white border-gray-900 lg:border-navy-900"
-                : "bg-white text-warm-brown border-stone-200 lg:border-stone-300 hover:border-gray-400 lg:hover:border-navy-700 hover:text-earth"
+                ? "bg-navy-900 text-white border-navy-900"
+                : "bg-white text-warm-brown border-stone-200 lg:border-stone-300 hover:border-stone-300 lg:hover:border-navy-700 hover:text-earth"
             }`}
           >
             {cat}
@@ -76,37 +77,71 @@ export function CourseLibrary({ courses, authors, categories, onSelectCourse, co
 
       {/* Featured course hero */}
       {featured && activeCategory === "All" && !search && (
-        <div
-          className="relative rounded-2xl overflow-hidden mb-7 cursor-pointer lg:max-w-[760px]"
-          style={{ aspectRatio: "16/9" }}
-          onClick={() => onSelectCourse(featured)}
-        >
-          {featured.thumbnail ? (
-            <img src={featured.thumbnail} alt={featured.title} className="w-full h-full object-cover" />
-          ) : (
-            <div className="w-full h-full bg-gradient-to-br from-[#2e4057] to-[#1a2a3a]" />
-          )}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent flex flex-col justify-end p-6">
-            <div
-              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider text-white mb-2.5 w-fit"
-              style={{ background: GOLD }}
-            >
-              ★ Featured
-            </div>
-            <div className="text-[22px] lg:text-[26px] font-extrabold lg:font-light text-white tracking-tight lg:tracking-[-0.01em] mb-1">
-              {featured.title}
-            </div>
-            <div className="text-[13px] font-medium text-white/70">
-              {featuredAuthor?.name || "Harvest"} · {featured.levels?.reduce((s, l) => s + l.sections?.reduce((s2, sec) => s2 + (sec.lessons?.length || 0), 0), 0) || 0} lessons
+        <>
+          {/* Mobile — mockup featured hero: 16:9 cover (else navy gradient),
+              gradient wash, sparkle "Featured" chip, Fraunces title, meta.
+              Same onSelectCourse handler + author/lesson data as desktop. */}
+          <div
+            className="lg:hidden relative rounded-brand-xl overflow-hidden mb-6 cursor-pointer"
+            style={{ aspectRatio: "16/9" }}
+            onClick={() => onSelectCourse(featured)}
+          >
+            {featured.thumbnail ? (
+              <img src={featured.thumbnail} alt={featured.title} className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full bg-gradient-to-br from-[#2e4057] to-[#1a2a3a]" />
+            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/10 to-transparent flex flex-col justify-end p-[18px]">
+              <div
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[9.5px] font-bold uppercase tracking-[0.08em] text-white mb-2 w-fit"
+                style={{ background: GOLD }}
+              >
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.35 6.9L21 11l-6.65 2.1L12 20l-2.35-6.9L3 11l6.65-2.1z" /></svg>
+                Featured
+              </div>
+              <div className="font-display font-light text-[22px] text-white tracking-[-0.01em] leading-tight">
+                {featured.title}
+              </div>
+              <div className="text-xs font-medium text-white/70 mt-1">
+                {featuredAuthor?.name || "Harvest"} · {featured.levels?.reduce((s, l) => s + l.sections?.reduce((s2, sec) => s2 + (sec.lessons?.length || 0), 0), 0) || 0} lessons
+              </div>
             </div>
           </div>
-        </div>
+
+          {/* Desktop — existing approved hero, unchanged (now lg-only). */}
+          <div
+            className="hidden lg:block relative rounded-2xl overflow-hidden mb-7 cursor-pointer lg:max-w-[760px]"
+            style={{ aspectRatio: "16/9" }}
+            onClick={() => onSelectCourse(featured)}
+          >
+            {featured.thumbnail ? (
+              <img src={featured.thumbnail} alt={featured.title} className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full bg-gradient-to-br from-[#2e4057] to-[#1a2a3a]" />
+            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent flex flex-col justify-end p-6">
+              <div
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider text-white mb-2.5 w-fit"
+                style={{ background: GOLD }}
+              >
+                ★ Featured
+              </div>
+              <div className="text-[26px] font-light text-white tracking-[-0.01em] mb-1">
+                {featured.title}
+              </div>
+              <div className="text-[13px] font-medium text-white/70">
+                {featuredAuthor?.name || "Harvest"} · {featured.levels?.reduce((s, l) => s + l.sections?.reduce((s2, sec) => s2 + (sec.lessons?.length || 0), 0), 0) || 0} lessons
+              </div>
+            </div>
+          </div>
+        </>
       )}
 
       {/* Continue learning */}
       {continueLearning.length > 0 && (
         <div className="mb-7">
-          <h2 className="text-lg font-bold tracking-tight mb-4 font-display">Continue Learning</h2>
+          <span className="lg:hidden block text-[11px] font-bold uppercase tracking-[0.14em] text-[color:var(--text-faint)] mb-4">Continue Learning</span>
+          <h2 className="hidden lg:block text-lg font-bold tracking-tight mb-4 font-display">Continue Learning</h2>
           <div className="lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-5">
           {continueLearning.map((course) => (
             <CourseCard
@@ -122,7 +157,10 @@ export function CourseLibrary({ courses, authors, categories, onSelectCourse, co
       )}
 
       {/* All courses */}
-      <h2 className="text-lg font-bold tracking-tight mb-4 font-display">
+      <span className="lg:hidden block text-[11px] font-bold uppercase tracking-[0.14em] text-[color:var(--text-faint)] mb-4">
+        {continueLearning.length > 0 ? "All Courses" : "Courses"}
+      </span>
+      <h2 className="hidden lg:block text-lg font-bold tracking-tight mb-4 font-display">
         {continueLearning.length > 0 ? "All Courses" : "Courses"}
       </h2>
       {allCourses.length === 0 ? (

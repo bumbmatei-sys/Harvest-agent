@@ -239,7 +239,7 @@ export default function CoursePage({
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen bg-white">
-        <div className="w-8 h-8 border-4 border-amber-600 border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-4 border-gold border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }

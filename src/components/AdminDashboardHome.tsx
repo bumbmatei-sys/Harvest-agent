@@ -165,15 +165,18 @@ const AdminDashboardHome: React.FC<AdminDashboardHomeProps> = ({ tenantId, tenan
             <button
               key={s.label}
               onClick={() => onNavigate(s.tab)}
-              className="bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] p-5 text-left hover:border-[color-mix(in_srgb,var(--brand-color)_40%,var(--stone-200,#E8E2D9))] transition-colors group"
+              className="bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] p-4 lg:p-5 text-left hover:border-[color-mix(in_srgb,var(--brand-color)_40%,var(--stone-200,#E8E2D9))] transition-colors group"
             >
+              {/* Mockup stat card: gold icon disc, serif value, label below. */}
               <div className="flex items-center justify-between mb-3">
-                <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gold">{s.label}</span>
-                <Icon size={16} className="text-[color:var(--text-faint)] group-hover:text-gold transition-colors" />
+                <span className="w-9 h-9 rounded-brand bg-[var(--surface-gold)] text-gold flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                  <Icon size={17} />
+                </span>
               </div>
-              <span className="font-display text-[2.1rem] leading-none font-light text-earth">
+              <div className="font-display text-[1.9rem] lg:text-[2.1rem] leading-none font-light text-earth">
                 {s.value.toLocaleString()}
-              </span>
+              </div>
+              <div className="text-[11.5px] text-warm-brown mt-1.5">{s.label}</div>
             </button>
           );
         })}

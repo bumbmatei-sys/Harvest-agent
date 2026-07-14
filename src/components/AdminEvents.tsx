@@ -20,6 +20,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useAppStore } from '../store/useAppStore';
 import { PLATFORM_TENANT_ID } from '../utils/tenant-scope';
 import { useEvents } from '../hooks/queries/useEventQueries';
+import { HeroBand } from './member/desktopKit';
 
 import type { Event, Registration, TicketType, DiscountCode } from '../hooks/queries/useEventQueries';
 
@@ -45,9 +46,9 @@ const fmtDiscount = (d: DiscountCode) => (d.type === 'percent' ? `${d.value}% of
 
 const STATUS_COLORS: Record<Event['status'], string> = {
   draft: 'bg-stone-100 text-warm-brown',
-  published: 'bg-green-100 text-green-700',
+  published: 'bg-field-100 text-field-700',
   cancelled: 'bg-red-100 text-red-600',
-  completed: 'bg-blue-100 text-blue-700',
+  completed: 'bg-sky-100 text-sky-700',
 };
 
 const fmtDate = (ts: Timestamp | null) => {
@@ -401,12 +402,12 @@ const AdminEvents: React.FC = () => {
             <div>
               <label className="text-xs font-semibold text-[color:var(--text-body)] mb-1.5 block">Event Title *</label>
               <input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })}
-                className="w-full border border-stone-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold" placeholder="Event name" />
+                className="w-full border border-stone-200 bg-stone-100 rounded-xl px-3 py-2.5 text-sm text-earth focus:outline-none focus:border-gold focus:bg-white transition-colors" placeholder="Event name" />
             </div>
             <div>
               <label className="text-xs font-semibold text-[color:var(--text-body)] mb-1.5 block">Description</label>
               <textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })}
-                rows={3} className="w-full border border-stone-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold resize-none"
+                rows={3} className="w-full border border-stone-200 bg-stone-100 rounded-xl px-3 py-2.5 text-sm text-earth focus:outline-none focus:border-gold focus:bg-white transition-colors resize-none"
                 placeholder="What is this event about?" />
             </div>
             <div>
@@ -417,12 +418,12 @@ const AdminEvents: React.FC = () => {
               <div>
                 <label className="text-xs font-semibold text-[color:var(--text-body)] mb-1.5 block">Start Date & Time *</label>
                 <input type="datetime-local" value={form.startDate} onChange={e => setForm({ ...form, startDate: e.target.value })}
-                  className="w-full border border-stone-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold" />
+                  className="w-full border border-stone-200 bg-stone-100 rounded-xl px-3 py-2.5 text-sm text-earth focus:outline-none focus:border-gold focus:bg-white transition-colors" />
               </div>
               <div>
                 <label className="text-xs font-semibold text-[color:var(--text-body)] mb-1.5 block">End Date & Time</label>
                 <input type="datetime-local" value={form.endDate} onChange={e => setForm({ ...form, endDate: e.target.value })}
-                  className="w-full border border-stone-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold" />
+                  className="w-full border border-stone-200 bg-stone-100 rounded-xl px-3 py-2.5 text-sm text-earth focus:outline-none focus:border-gold focus:bg-white transition-colors" />
               </div>
             </div>
             <div>
@@ -436,28 +437,28 @@ const AdminEvents: React.FC = () => {
               </div>
               {form.isOnline ? (
                 <input value={form.onlineLink} onChange={e => setForm({ ...form, onlineLink: e.target.value })}
-                  className="w-full border border-stone-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold" placeholder="Meeting link (Zoom, Google Meet...)" />
+                  className="w-full border border-stone-200 bg-stone-100 rounded-xl px-3 py-2.5 text-sm text-earth focus:outline-none focus:border-gold focus:bg-white transition-colors" placeholder="Meeting link (Zoom, Google Meet...)" />
               ) : (
                 <input value={form.location} onChange={e => setForm({ ...form, location: e.target.value })}
-                  className="w-full border border-stone-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold" placeholder="Event location / address" />
+                  className="w-full border border-stone-200 bg-stone-100 rounded-xl px-3 py-2.5 text-sm text-earth focus:outline-none focus:border-gold focus:bg-white transition-colors" placeholder="Event location / address" />
               )}
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-xs font-semibold text-[color:var(--text-body)] mb-1.5 block">Capacity (blank = unlimited)</label>
                 <input type="number" min={0} value={form.capacity} onChange={e => setForm({ ...form, capacity: e.target.value })}
-                  className="w-full border border-stone-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold" placeholder="e.g. 100" />
+                  className="w-full border border-stone-200 bg-stone-100 rounded-xl px-3 py-2.5 text-sm text-earth focus:outline-none focus:border-gold focus:bg-white transition-colors" placeholder="e.g. 100" />
               </div>
               <div>
                 <label className="text-xs font-semibold text-[color:var(--text-body)] mb-1.5 block">Ticket Price ($)</label>
                 <input type="number" min={0} value={form.price} onChange={e => setForm({ ...form, price: e.target.value })}
-                  className="w-full border border-stone-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold" placeholder="0 = free" />
+                  className="w-full border border-stone-200 bg-stone-100 rounded-xl px-3 py-2.5 text-sm text-earth focus:outline-none focus:border-gold focus:bg-white transition-colors" placeholder="0 = free" />
               </div>
             </div>
             <div>
               <label className="text-xs font-semibold text-[color:var(--text-body)] mb-1.5 block">Registration Deadline</label>
               <input type="datetime-local" value={form.registrationDeadline} onChange={e => setForm({ ...form, registrationDeadline: e.target.value })}
-                className="w-full border border-stone-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold" />
+                className="w-full border border-stone-200 bg-stone-100 rounded-xl px-3 py-2.5 text-sm text-earth focus:outline-none focus:border-gold focus:bg-white transition-colors" />
             </div>
 
             {/* ── Registration engine ── */}
@@ -555,7 +556,7 @@ const AdminEvents: React.FC = () => {
                     <div className="space-y-2">
                       {form.discountCodes.map(d => (
                         <div key={d.code} className="flex items-center gap-2 bg-white border border-stone-200 rounded-xl px-3 py-2.5">
-                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${d.type === 'percent' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>{d.type === 'percent' ? '%' : '$'}</span>
+                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${d.type === 'percent' ? 'bg-field-100 text-field-700' : 'bg-sky-100 text-sky-700'}`}>{d.type === 'percent' ? '%' : '$'}</span>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-semibold text-earth truncate font-mono">{d.code}</p>
                             <p className="text-xs text-[color:var(--text-faint)]">{fmtDiscount(d)} · {d.usedCount}{d.maxUses == null ? '' : `/${d.maxUses}`} used</p>
@@ -607,7 +608,7 @@ const AdminEvents: React.FC = () => {
             <div>
               <label className="text-xs font-semibold text-[color:var(--text-body)] mb-1.5 block">Status</label>
               <select value={form.status} onChange={e => setForm({ ...form, status: e.target.value as Event['status'] })}
-                className="w-full border border-stone-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold bg-white">
+                className="w-full border border-stone-200 bg-stone-100 rounded-xl px-3 py-2.5 text-sm text-earth focus:outline-none focus:border-gold focus:bg-white transition-colors">
                 <option value="draft">Draft</option>
                 <option value="published">Published</option>
                 <option value="cancelled">Cancelled</option>
@@ -666,7 +667,7 @@ const AdminEvents: React.FC = () => {
             <div className="text-xs text-[color:var(--text-faint)] mt-0.5">Total</div>
           </div>
           <div className="bg-white rounded-2xl p-4 border border-stone-200 text-center shadow-sm">
-            <div className="text-2xl font-bold text-green-600">{confirmed}</div>
+            <div className="text-2xl font-bold text-field-600">{confirmed}</div>
             <div className="text-xs text-[color:var(--text-faint)] mt-0.5">Confirmed</div>
           </div>
           <div className="bg-white rounded-2xl p-4 border border-stone-200 text-center shadow-sm">
@@ -722,7 +723,7 @@ const AdminEvents: React.FC = () => {
                   </div>
                 )}
                 {selected.waitlistEnabled && (
-                  <p className="text-xs text-amber-600 mt-3 font-medium">{waitlistedCount} on waitlist</p>
+                  <p className="text-xs text-wheat-600 mt-3 font-medium">{waitlistedCount} on waitlist</p>
                 )}
               </div>
             </div>
@@ -753,16 +754,16 @@ const AdminEvents: React.FC = () => {
             {filteredRegs.map(r => (
               <div key={r.id} className="bg-white rounded-2xl px-4 py-3 border border-stone-200 shadow-sm flex items-center gap-3">
                 <div className="w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold text-white"
-                  style={{ backgroundColor: r.status === 'attended' ? '#22c55e' : 'var(--brand-color, #d4a017)' }}>
+                  style={{ backgroundColor: r.status === 'attended' ? '#6E8E52' : 'var(--brand-color, #d4a017)' }}>
                   {r.name.charAt(0).toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <p className="text-sm font-semibold text-earth truncate">{r.name}</p>
                     <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
-                      r.status === 'attended' ? 'bg-green-100 text-green-700' :
-                      r.status === 'confirmed' ? 'bg-blue-100 text-blue-700' :
-                      r.status === 'waitlisted' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-600'
+                      r.status === 'attended' ? 'bg-field-100 text-field-700' :
+                      r.status === 'confirmed' ? 'bg-sky-100 text-sky-700' :
+                      r.status === 'waitlisted' ? 'bg-wheat-100 text-wheat-700' : 'bg-red-100 text-red-600'
                     }`}>{r.status}</span>
                   </div>
                   <p className="text-xs text-[color:var(--text-faint)]">
@@ -773,7 +774,7 @@ const AdminEvents: React.FC = () => {
                   <button
                     onClick={() => checkIn(r)}
                     disabled={checkingIn === r.id}
-                    className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-semibold bg-green-50 text-green-700 hover:bg-green-100 disabled:opacity-50"
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-semibold bg-field-100 text-field-700 hover:bg-field-200 disabled:opacity-50"
                   >
                     <Check size={12} /> Check In
                   </button>
@@ -819,10 +820,61 @@ const AdminEvents: React.FC = () => {
       ) : (
         <div className="space-y-3">
           {events.map(ev => (
-            <div
-              key={ev.id}
-              className="bg-white rounded-2xl p-4 border border-stone-200 shadow-sm cursor-pointer hover:border-[color-mix(in_srgb,var(--brand-color)_30%,transparent)] transition-all"
-              onClick={() => openDetail(ev)}
+            <React.Fragment key={ev.id}>
+              {/* Mobile card — mockup design: hero band (cover, else navy→gold gradient),
+                  status pill overlay, meta row, actions. Same handlers as the desktop card. */}
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => openDetail(ev)}
+                className="lg:hidden bg-white rounded-brand-xl border border-stone-200 shadow-[var(--ds-sh-sm)] overflow-hidden cursor-pointer"
+              >
+                <div className="relative h-20">
+                  {ev.coverImage ? (
+                    <img src={ev.coverImage} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <HeroBand radius="0" className="!absolute inset-0" />
+                  )}
+                  <span
+                    className="absolute top-2.5 left-2.5 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full"
+                    style={{
+                      background: ev.status === 'published' ? 'var(--surface-gold)' : 'var(--surface-sunken)',
+                      color: ev.status === 'published' ? 'var(--wheat-700)' : 'var(--text-muted)',
+                    }}
+                  >
+                    {ev.status}
+                  </span>
+                </div>
+                <div className="p-3.5">
+                  <div className="font-display text-[15px] font-medium text-earth leading-snug">{ev.title}</div>
+                  <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1.5 text-xs text-warm-brown">
+                    {ev.startDate && <span className="flex items-center gap-1"><Clock size={11} /> {fmtDate(ev.startDate)}</span>}
+                    {ev.isOnline ? (
+                      <span className="flex items-center gap-1"><Globe size={11} /> Online</span>
+                    ) : ev.location ? (
+                      <span className="flex items-center gap-1"><MapPin size={11} /> {ev.location}</span>
+                    ) : null}
+                    <span className={ev.price > 0 ? 'font-semibold text-warm-brown' : 'font-semibold text-field-600'}>{ev.price > 0 ? `$${ev.price}` : 'Free'}</span>
+                  </div>
+                  {ev.registrationEnabled && <div className="text-xs font-semibold text-gold mt-2">Registration open</div>}
+                  <div className="flex items-center gap-1 mt-3 pt-2.5 border-t border-stone-200">
+                    <button onClick={e => { e.stopPropagation(); togglePin(ev); }} className="p-1.5 rounded-lg hover:bg-wheat-50 transition-colors" title={ev.pinned ? 'Unpin from feed' : 'Pin to feed'}>
+                      <Pin size={13} className={ev.pinned ? 'text-wheat-500 fill-wheat-500' : 'text-[color:var(--text-faint)]'} />
+                    </button>
+                    <button onClick={e => { e.stopPropagation(); openEdit(ev); }} className="p-1.5 rounded-lg hover:bg-stone-100 transition-colors">
+                      <Edit2 size={13} className="text-[color:var(--text-faint)]" />
+                    </button>
+                    <button onClick={e => { e.stopPropagation(); setDeleteId(ev.id); }} className="p-1.5 rounded-lg hover:bg-red-50 transition-colors ml-auto">
+                      <Trash2 size={13} className="text-red-400" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Desktop card — existing approved layout, unchanged (now lg-only). */}
+              <div
+                className="hidden lg:block bg-white rounded-2xl p-4 border border-stone-200 shadow-sm cursor-pointer hover:border-[color-mix(in_srgb,var(--brand-color)_30%,transparent)] transition-all"
+                onClick={() => openDetail(ev)}
             >
               {ev.coverImage && (
                 <div className="w-full h-32 rounded-xl overflow-hidden mb-3">
@@ -859,10 +911,10 @@ const AdminEvents: React.FC = () => {
                 <div className="flex items-center gap-1 flex-shrink-0">
                   <button
                     onClick={e => { e.stopPropagation(); togglePin(ev); }}
-                    className="p-2 rounded-xl hover:bg-yellow-50 transition-colors"
+                    className="p-2 rounded-xl hover:bg-wheat-50 transition-colors"
                     title={ev.pinned ? 'Unpin from feed' : 'Pin to feed'}
                   >
-                    <Pin size={14} className={ev.pinned ? 'text-yellow-500 fill-yellow-500' : 'text-[color:var(--text-faint)]'} />
+                    <Pin size={14} className={ev.pinned ? 'text-wheat-500 fill-wheat-500' : 'text-[color:var(--text-faint)]'} />
                   </button>
                   <button onClick={e => { e.stopPropagation(); openEdit(ev); }}
                     className="p-2 rounded-xl hover:bg-stone-100 transition-colors">
@@ -875,6 +927,7 @@ const AdminEvents: React.FC = () => {
                 </div>
               </div>
             </div>
+            </React.Fragment>
           ))}
         </div>
       )}
