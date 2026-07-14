@@ -797,7 +797,7 @@ export default function BiblePage() {
           )}
 
           {!loading && !error && (
-            <div className="flex gap-2.5 px-4 py-3 pb-6 flex-shrink-0 lg:max-w-[760px] lg:mx-auto lg:w-full lg:px-10">
+            <div className="flex gap-2.5 px-4 py-3 pb-24 lg:pb-6 flex-shrink-0 lg:max-w-[760px] lg:mx-auto lg:w-full lg:px-10">
               <button onClick={() => goToChapter(-1)} disabled={chapter === 1}
                 className={`flex-1 py-3 rounded-xl text-sm font-bold cursor-pointer flex items-center justify-center gap-1.5 transition-colors ${chapter > 1 ? "bg-white border-[1.5px] border-stone-200 text-warm-brown hover:border-stone-300" : "bg-stone-100 border border-stone-200 text-stone-300 cursor-not-allowed"}`}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m15 18-6-6 6-6" /></svg>
