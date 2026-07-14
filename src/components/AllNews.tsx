@@ -430,17 +430,19 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages }) => {
   const posts = allPosts.filter(post => {
     // Legacy support
     if (post.targetRegions && post.targetRegions.length > 0 && !post.targetRegions.includes('Global')) {
-      if (!userLocation) return false;
+      // Location unknown/unresolved: fail open (show) rather than hiding targeted posts.
+      if (!userLocation) return true;
       return post.targetRegions.includes(userLocation.country || '') || post.targetRegions.includes(userLocation.city || '');
     }
 
     // New format
     if (!post.targetCountry || post.targetCountry === 'Global') return true;
-    if (!userLocation) return false;
-    
+    // Location unknown/unresolved: fail open (show) rather than hiding targeted posts.
+    if (!userLocation) return true;
+
     if (post.targetCountry !== userLocation.country) return false;
     if (post.targetCity && post.targetCity !== userLocation.city) return false;
-    
+
     return true;
   });
 
