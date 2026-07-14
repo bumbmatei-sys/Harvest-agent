@@ -308,43 +308,37 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
 
  return (
  <div className="flex flex-col min-h-full bg-cream lg:bg-transparent transition-colors duration-300">
- {/* Top Background Section */}
- <div className="pt-12 pb-24 px-4 rounded-b-[40px] relative overflow-hidden bg-gray-800 lg:hidden">
- {/* Background Image & Overlay */}
- {profilePic ? (
- <div 
- className="absolute inset-0 bg-cover bg-center"
- style={{ backgroundImage: `url(${profilePic})` }}
- />
- ) : (
- <div className="absolute inset-0 bg-gradient-to-b from-[#cbd5e1] to-[#475569]" />
- )}
- {/* Dark Overlay for text readability */}
- <div className="absolute inset-0 bg-black/50" />
-
+ {/* Branded navy header card — Harvest Member App design: navy→gold wash + film
+     grain, gold avatar disc (photo or initial), Fraunces name, member-since chip.
+     Mobile only; desktop uses the white profile card in the grid below. */}
+ <div className="lg:hidden px-4 pt-4">
  {/* Hidden File Input */}
- <input 
- type="file" 
- id="profile-pic-upload" 
- className="hidden" 
+ <input
+ type="file"
+ id="profile-pic-upload"
+ className="hidden"
  accept="image/*"
  onChange={handleFileChange}
  />
+ <div className="relative overflow-hidden rounded-[24px] px-5 pt-8 pb-6 text-center" style={{ background: 'var(--surface-night)' }}>
+ {/* navy→gold radial wash */}
+ <span aria-hidden className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(120% 130% at 85% 10%, color-mix(in srgb, var(--brand-color) 30%, transparent), transparent 55%)' }} />
+ {/* film grain */}
+ <span aria-hidden className="absolute inset-0 pointer-events-none mix-blend-overlay" style={{ backgroundImage: 'var(--grain-url)', opacity: 0.06 }} />
 
- {/* Content */}
- <div className="relative z-10 flex flex-col min-h-[220px] justify-between">
- <div className="flex justify-center mb-6">
- <label htmlFor="profile-pic-upload" className="cursor-pointer bg-white/20 hover:bg-white/30 transition-colors backdrop-blur-md px-4 py-1.5 rounded-full text-white text-[10px] font-bold tracking-wider border border-white/10">
- MY PROFILE
- </label>
+ <div className="relative z-10">
+ <label htmlFor="profile-pic-upload" className="cursor-pointer inline-block">
+ <div className="w-[76px] h-[76px] mx-auto mb-3 rounded-full overflow-hidden flex items-center justify-center" style={{ background: 'var(--surface-gold)', border: '2px solid rgba(255,255,255,0.16)' }}>
+ {profilePic ? (
+ <img src={profilePic} alt={userName} className="w-full h-full object-cover" />
+ ) : (
+ <span className="font-display text-3xl font-light" style={{ color: 'var(--wheat-700)' }}>{(userName || 'U').charAt(0).toUpperCase()}</span>
+ )}
  </div>
-
- {/* Profile Info */}
- <div className="flex flex-col items-center mt-auto mb-4">
- <h2 className="text-3xl font-bold text-white mb-2 font-display">{userName}</h2>
- <div className="bg-white/10 backdrop-blur-md px-4 py-1.5 rounded-full flex items-center gap-2 text-white text-[10px] font-bold tracking-wider border border-white/10">
- <BadgeCheck size={14} className="text-gold" />
- MEMBER SINCE 2026
+ </label>
+ <h2 className="font-display font-light text-[22px] tracking-[-0.01em] text-white">{userName}</h2>
+ <div className="inline-flex items-center gap-1.5 mt-2.5 px-3 py-1 rounded-full text-[10.5px] font-bold tracking-wider" style={{ background: 'rgba(212,165,74,0.18)', color: 'var(--wheat-glow)' }}>
+ <BadgeCheck size={12} /> Member since 2026
  </div>
  </div>
  </div>
@@ -392,8 +386,8 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
  </>
  )}
  <SettingItem 
- icon={<User size={16} className="text-blue-500" />} 
- iconBg="bg-blue-50" 
+ icon={<User size={16} className="text-sky-600" />} 
+ iconBg="bg-sky-100" 
  label="Personal Information" 
  onClick={() => setIsPersonalInfoOpen(true)}
  />
@@ -401,8 +395,8 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
  <>
  <div className="h-px bg-stone-100 mx-4"></div>
  <SettingItem
- icon={<Church size={16} className="text-green-500" />}
- iconBg="bg-green-50"
+ icon={<Church size={16} className="text-field-600" />}
+ iconBg="bg-field-100"
  label="My Home Church"
  onClick={() => {
  if (homeChurchId) {
@@ -416,15 +410,15 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
  )}
  <div className="h-px bg-stone-100 mx-4"></div>
  <SettingItem
- icon={<HeartHandshake size={16} className="text-yellow-500" />}
- iconBg="bg-yellow-50"
+ icon={<HeartHandshake size={16} className="text-wheat-600" />}
+ iconBg="bg-wheat-100"
  label="Partner with Us"
  onClick={onGoToPartner}
  />
  <div className="h-px bg-stone-100 mx-4"></div>
  <ToggleSettingItem
- icon={<Bell size={16} className="text-purple-500" />}
- iconBg="bg-purple-50"
+ icon={<Bell size={16} className="text-sky-600" />}
+ iconBg="bg-sky-100"
  label="Push Notifications"
  sublabel={notificationsEnabled && notificationsPermissionDenied ? 'Blocked in device settings' : undefined}
  checked={notificationsEnabled}
@@ -440,8 +434,8 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
  <>
  <div className="h-px bg-stone-100 mx-4"></div>
  <SettingItem
- icon={<CalendarCheck size={16} className="text-orange-500" />}
- iconBg="bg-orange-50"
+ icon={<CalendarCheck size={16} className="text-wheat-600" />}
+ iconBg="bg-wheat-100"
  label="My Events"
  onClick={() => setShowMyEvents(true)}
  />
@@ -450,8 +444,8 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
  {/* Saved — bookmarked articles, lessons, posts and verses (private to the user). */}
  <div className="h-px bg-stone-100 mx-4"></div>
  <SettingItem
- icon={<Bookmark size={16} className="text-amber-500" />}
- iconBg="bg-amber-50"
+ icon={<Bookmark size={16} className="text-wheat-600" />}
+ iconBg="bg-wheat-100"
  label="Saved"
  onClick={() => setShowSaved(true)}
  />
@@ -465,8 +459,8 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
  {donationSubscriptionId ? (
  <div>
  <div className="flex items-center gap-3 mb-3">
- <div className="w-7 h-7 rounded-full flex items-center justify-center bg-yellow-50">
- <HeartHandshake size={16} className="text-yellow-500" />
+ <div className="w-7 h-7 rounded-full flex items-center justify-center bg-wheat-100">
+ <HeartHandshake size={16} className="text-wheat-600" />
  </div>
  <div>
  <p className="text-sm font-bold text-earth">
@@ -512,8 +506,8 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
  ) : totalDonated > 0 ? (
  <div>
  <div className="flex items-center gap-3">
- <div className="w-7 h-7 rounded-full flex items-center justify-center bg-yellow-50">
- <HeartHandshake size={16} className="text-yellow-500" />
+ <div className="w-7 h-7 rounded-full flex items-center justify-center bg-wheat-100">
+ <HeartHandshake size={16} className="text-wheat-600" />
  </div>
  <div className="flex-1">
  <p className="text-sm font-bold text-earth">Donor</p>
@@ -547,22 +541,22 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
  <h4 className="text-[10px] font-bold text-[color:var(--text-faint)] tracking-wider uppercase mb-3 ml-2">Support & Info</h4>
  <div className="bg-white rounded-3xl shadow-sm border border-stone-200 overflow-hidden transition-colors duration-300">
  <SettingItem 
- icon={<HelpCircle size={16} className="text-yellow-500" />} 
- iconBg="bg-yellow-50" 
+ icon={<HelpCircle size={16} className="text-wheat-600" />} 
+ iconBg="bg-wheat-100" 
  label="Contact Us"
  onClick={() => setIsContactOpen(true)}
  />
  <div className="h-px bg-stone-100 mx-4"></div>
  <SettingItem
- icon={<FileQuestion size={16} className="text-green-500" />}
- iconBg="bg-green-50" 
+ icon={<FileQuestion size={16} className="text-field-600" />}
+ iconBg="bg-field-100" 
  label="FAQ" 
  onClick={() => setIsFAQOpen(true)}
  />
  <div className="h-px bg-stone-100 mx-4"></div>
  <SettingItem 
- icon={<ShieldCheck size={16} className="text-teal-500" />} 
- iconBg="bg-teal-50" 
+ icon={<ShieldCheck size={16} className="text-sky-600" />} 
+ iconBg="bg-sky-100" 
  label="Privacy & Terms" 
  onClick={() => setIsPrivacyTermsOpen(true)}
  />
