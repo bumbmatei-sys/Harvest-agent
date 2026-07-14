@@ -443,11 +443,16 @@ const AdminFundraising: React.FC<AdminFundraisingProps> = ({ initialCampaignId, 
         )}
       </div>
 
-      <AdminPageHeader
-        eyebrow="Campaigns"
-        title={`${campaigns.length} campaign${campaigns.length === 1 ? '' : 's'}`}
-        action={<AdminPrimaryButton onClick={openCreate} icon={<Plus size={16} />}>New campaign</AdminPrimaryButton>}
-      />
+      {/* Page header — desktop only. On mobile the shell header already shows the
+          "Fundraising" title and the "New Campaign" action (see useEffect above), and
+          the mockup's mobile list opens straight into the payment row + stat cards. */}
+      <div className="hidden lg:block">
+        <AdminPageHeader
+          eyebrow="Campaigns"
+          title={`${campaigns.length} campaign${campaigns.length === 1 ? '' : 's'}`}
+          action={<AdminPrimaryButton onClick={openCreate} icon={<Plus size={16} />}>New campaign</AdminPrimaryButton>}
+        />
+      </div>
 
       {campaigns.length === 0 ? (
         <div className="bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] text-center py-16 px-6">
@@ -458,21 +463,33 @@ const AdminFundraising: React.FC<AdminFundraisingProps> = ({ initialCampaignId, 
         </div>
       ) : (
         <>
-          {/* Mobile summary — 2-col money stat cards (mockup StatRow). Display-only
-              sums over the already-loaded campaigns; the mockup's "Donors" has no field
-              in the campaign data, so it is dropped. Desktop shows no stat row, unchanged. */}
-          <div className="lg:hidden grid grid-cols-2 gap-2.5 mb-5">
-            {[
-              { label: 'Raised · all', value: fmt(campaigns.reduce((sum, x) => sum + (x.raised || 0), 0)), icon: <DollarSign size={14} /> },
-              { label: 'Goal · all', value: fmt(campaigns.reduce((sum, x) => sum + (x.goal || 0), 0)), icon: <Heart size={14} /> },
-            ].map((s) => (
-              <div key={s.label} className="bg-white rounded-brand-xl border border-stone-200 shadow-[var(--ds-sh-sm)] p-3.5">
-                <span className="w-7 h-7 rounded-lg bg-[var(--surface-gold)] text-gold flex items-center justify-center mb-2">{s.icon}</span>
-                <div className="font-display text-[1.375rem] font-normal leading-none tracking-[-0.02em] text-earth">{s.value}</div>
-                <div className="text-[11px] text-warm-brown mt-1">{s.label}</div>
+          {/* Mobile totals — mockup StatRow: a gold icon disc (+ optional field-green
+              chip) on one row, then a serif value and a muted label. Display-only sums
+              over the already-loaded campaigns; the mockup's "Donors" has no field in the
+              campaign data, so Raised/Goal are shown. Desktop uses the page header above. */}
+          {(() => {
+            const totalRaised = campaigns.reduce((sum, x) => sum + (x.raised || 0), 0);
+            const totalGoal = campaigns.reduce((sum, x) => sum + (x.goal || 0), 0);
+            const overallPct = totalGoal > 0 ? Math.min(100, Math.round((totalRaised / totalGoal) * 100)) : null;
+            const stats = [
+              { label: 'Raised · all', value: fmt(totalRaised), icon: <DollarSign size={14} />, chip: overallPct != null ? `${overallPct}%` : null },
+              { label: 'Goal · all', value: fmt(totalGoal), icon: <Heart size={14} />, chip: null },
+            ];
+            return (
+              <div className="lg:hidden grid grid-cols-2 gap-2.5 mb-5">
+                {stats.map((s) => (
+                  <div key={s.label} className="bg-white rounded-brand-xl border border-stone-200 shadow-[var(--ds-sh-sm)] p-3.5">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="w-7 h-7 rounded-lg bg-[var(--surface-gold)] text-gold flex items-center justify-center">{s.icon}</span>
+                      {s.chip && <span className="text-[11px] font-semibold text-field-600">{s.chip}</span>}
+                    </div>
+                    <div className="font-display text-[1.375rem] font-normal leading-none tracking-[-0.02em] text-earth">{s.value}</div>
+                    <div className="text-[11px] text-warm-brown mt-1">{s.label}</div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            );
+          })()}
         <div className="grid md:grid-cols-2 gap-5">
           {campaigns.map((c) => {
             const pct = c.goal > 0 ? Math.min(100, Math.round((c.raised / c.goal) * 100)) : 0;
@@ -505,7 +522,7 @@ const AdminFundraising: React.FC<AdminFundraisingProps> = ({ initialCampaignId, 
                     </div>
                   </div>
                   <div className="flex items-baseline justify-between mt-3 mb-1.5">
-                    <span className="font-display text-[1.375rem] font-light text-earth leading-none">{fmt(c.raised)}</span>
+                    <span className="font-display text-[1.375rem] font-light text-field-700 leading-none">{fmt(c.raised)}</span>
                     <span className="text-[11px] text-[color:var(--text-faint)]">of {fmt(c.goal)}</span>
                   </div>
                   <div className="h-1.5 bg-stone-100 rounded-full overflow-hidden">

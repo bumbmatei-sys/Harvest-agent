@@ -377,6 +377,75 @@ export default function AdminRAG() {
  {tab === "add" && (
  <div style={s.panel}>
 
+ {/* Shared hidden file input — clicked by BOTH the mobile and desktop upload
+     drop zones. One element/ref, so the two zones never fight over fileInputRef. */}
+ <input ref={fileInputRef} type="file" multiple
+ accept=".txt,.pdf,.csv,.xlsx,.xls"
+ style={{ display:"none" }} onChange={handleFileInput} />
+
+ {/* Mobile add view — mockup S.knowledge_new: a single-column stack of cards
+     (Paste text · Upload files) + a gold tips note. Reuses the SAME paste
+     (pasteTitle/pasteText/handlePasteSubmit/pasteLoading) and upload
+     (handleDrop/dragOver/fileInputRef) wiring as the desktop grid below. */}
+ <div className="lg:hidden flex flex-col gap-3.5">
+
+ {/* Paste text */}
+ <div className="bg-white rounded-brand-xl border border-stone-200 shadow-[var(--ds-sh-sm)] p-4 flex flex-col gap-3">
+ <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-gold">Paste text</div>
+ <input value={pasteTitle} onChange={e=>setPasteTitle(e.target.value)}
+ placeholder="Source title (optional)"
+ className="w-full rounded-brand border border-stone-200 bg-cream px-3.5 py-2.5 text-[14px] text-earth" />
+ <textarea value={pasteText} onChange={e=>setPasteText(e.target.value)}
+ placeholder="Paste sermons, commentary, study notes — anything the AI should know…"
+ className="w-full min-h-[150px] rounded-brand border border-stone-200 bg-cream px-3.5 py-2.5 text-[14px] leading-relaxed text-earth resize-y" />
+ {pasteText.trim() && (
+ <div className="text-[12px] text-warm-brown">
+ ~{pasteText.trim().split(/\s+/).length} words · ~{chunkText(pasteText).length} chunks
+ </div>
+ )}
+ <button onClick={handlePasteSubmit} disabled={!pasteText.trim() || pasteLoading}
+ className="flex items-center justify-center gap-2 w-full rounded-brand-lg py-3 text-[14px] font-semibold text-white shadow-[var(--ds-sh-sm)]"
+ style={{ background: GOLD_BTN }}>
+ <Sparkles size={16} /> {pasteLoading ? "Processing…" : "Chunk & Embed"}
+ </button>
+ </div>
+
+ {/* Upload files */}
+ <div className="bg-white rounded-brand-xl border border-stone-200 shadow-[var(--ds-sh-sm)] p-4 flex flex-col gap-3">
+ <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-gold">Upload files</div>
+ <div onClick={()=>fileInputRef.current?.click()}
+ onDragOver={e=>{e.preventDefault();setDragOver(true);}}
+ onDragLeave={()=>setDragOver(false)}
+ onDrop={handleDrop}
+ className={`flex flex-col items-center justify-center gap-2 rounded-brand-lg border-2 border-dashed px-5 py-10 text-center cursor-pointer transition-colors ${dragOver ? "border-gold bg-[var(--surface-gold)]" : "border-stone-200 bg-stone-100"}`}>
+ <Upload size={26} strokeWidth={1.5} className={dragOver ? "text-gold" : "text-warm-brown"} />
+ <div className="text-[14px] font-semibold text-earth">Drop files or tap to browse</div>
+ <div className="text-[12px] text-warm-brown tracking-wide">TXT · PDF · CSV · XLSX</div>
+ </div>
+ </div>
+
+ {/* Tips */}
+ <div className="rounded-brand-lg border border-gold bg-[var(--surface-gold)] p-4">
+ <div className="text-[13px] font-bold text-gold mb-2">Tips for better AI results</div>
+ <div className="flex flex-col gap-1.5">
+ {[
+ "Use clear, well-structured text — the AI reads it as-is",
+ "Each source is split into ~500 character chunks automatically",
+ "Bible content works best when grouped by book or topic",
+ "PDFs require text — scanned image PDFs won't extract well",
+ ].map((tip,i)=>(
+ <div key={i} className="flex gap-2 text-[13px] text-wheat-700">
+ <span className="shrink-0">•</span><span>{tip}</span>
+ </div>
+ ))}
+ </div>
+ </div>
+ </div>
+
+ {/* Desktop add view — two-column grid, hidden on mobile (mobile uses the
+     stacked cards above). Wrapper reproduces s.panel's 14px column gap. */}
+ <div className="hidden lg:flex lg:flex-col lg:gap-[14px]">
+
  {/* Two columns: Paste Text · Upload Files */}
  <div style={s.addGrid}>
 
@@ -427,9 +496,6 @@ export default function AdminRAG() {
  Drop files here or click to browse
  </div>
  <div style={{ fontSize:12, color:TEXT2, letterSpacing:"0.02em" }}>TXT · PDF · CSV · XLSX</div>
- <input ref={fileInputRef} type="file" multiple
- accept=".txt,.pdf,.csv,.xlsx,.xls"
- style={{ display:"none" }} onChange={handleFileInput} />
  </div>
  </div>
  </div>
@@ -449,6 +515,7 @@ export default function AdminRAG() {
  <span style={{ flexShrink:0 }}>•</span><span>{tip}</span>
  </div>
  ))}
+ </div>
  </div>
  </div>
  </div>
@@ -473,8 +540,9 @@ export default function AdminRAG() {
  </button>
  </div>
 
- {/* Search + filter */}
- <div style={{ display:"flex", gap:10 }}>
+ {/* Search + filter — desktop only. On mobile the mockup shows every source with
+     no filter bar, so this is hidden (search/filterType stay at their defaults). */}
+ <div className="hidden lg:flex" style={{ gap:10 }}>
  <div style={{ flex:1, position:"relative", display:"flex", alignItems:"center" }}>
  <Search size={16} color={TEXT2} style={{ position:"absolute", left:13, top:"50%", transform:"translateY(-50%)" }} />
  <input style={{ ...s.input, paddingLeft:38 }} value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search sources..." />
@@ -641,7 +709,7 @@ export default function AdminRAG() {
 
  {/* Summary footer */}
  {sources.length > 0 && (
- <div style={{ display:"flex", gap:10, flexWrap:"wrap" }}>
+ <div className="hidden lg:flex" style={{ gap:10, flexWrap:"wrap" }}>
  {Object.entries(TYPE_META).map(([type, meta]) => {
  const count = sources.filter(s=>s.type===type).length;
  if (!count) return null;

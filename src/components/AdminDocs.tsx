@@ -389,6 +389,10 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
   const [renameFolderData, setRenameFolderData] = useState<{ id: string; name: string } | null>(null);
   const [renameDocData, setRenameDocData] = useState<{ id: string; name: string } | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  // Mobile-only presentational UI state: whether the slide-in notes/folders
+  // drawer is open. On desktop the same content lives in the always-visible
+  // left rail, so this is never used there.
+  const [mobileNotesOpen, setMobileNotesOpen] = useState(false);
   const [activeFolderId, setActiveFolderId] = useState<string | null>(null);
   const [showNewFolder, setShowNewFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
@@ -835,6 +839,87 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
     </>
   );
 
+  // Notes list + folder tree shared by the desktop left rail and the mobile
+  // slide-in drawer. Same content, same handlers — the optional `onNavigate`
+  // (passed only by the drawer) additionally closes the drawer after a note or
+  // folder is chosen. On desktop it is undefined, so behaviour is unchanged.
+  const renderNotesSidebar = (onNavigate?: () => void) => (
+    <>
+      <div className="p-3 border-b border-stone-200 flex gap-2">
+        <button
+          onClick={() => { createDoc(); onNavigate?.(); }}
+          className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-brand text-xs font-semibold text-white"
+          style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}
+        >
+          <Plus size={13} /> New doc
+        </button>
+        <button
+          onClick={() => setShowNewFolder(true)}
+          className="px-3 py-2 rounded-brand border border-stone-200 text-warm-brown hover:bg-stone-100"
+          title="New folder"
+        >
+          <FolderOpen size={14} />
+        </button>
+      </div>
+      <div className="flex-1 overflow-y-auto p-2">
+        {docs.filter(d => !d.folderId).map(d => {
+          const isOpen = openDoc?.id === d.id;
+          return (
+            <div
+              key={d.id}
+              onClick={() => { openDocument(d); onNavigate?.(); }}
+              className={`flex items-center gap-1.5 px-2.5 py-2 rounded-brand cursor-pointer group transition-colors ${isOpen ? 'bg-[color-mix(in_srgb,var(--brand-color)_10%,white)]' : 'hover:bg-stone-100'}`}
+            >
+              <FileText size={13} className={`flex-shrink-0 ${isOpen ? 'text-gold' : 'text-[color:var(--text-faint)]'}`} />
+              <span className={`text-xs flex-1 truncate ${isOpen ? 'text-earth font-semibold' : 'text-[color:var(--text-body)]'}`}>{d.title || 'Untitled'}</span>
+              {d.pinned && <Pin size={11} className="text-gold flex-shrink-0" />}
+              <ThreeDotMenu
+                onRename={() => handleRenameDoc(d)}
+                onDelete={() => setDeleteDocId(d.id)}
+                onMove={() => setMoveDocId(d.id)}
+                onPin={() => togglePinDoc(d.id, !!d.pinned)}
+                isPinned={!!d.pinned}
+              />
+            </div>
+          );
+        })}
+        {rootFolders.map(f => (
+          <FolderNode
+            key={f.id}
+            folder={f}
+            folders={folders}
+            docs={docs}
+            activeFolderId={activeFolderId}
+            activeDocId={openDoc?.id || null}
+            onSelectFolder={(id) => { setActiveFolderId(id); onNavigate?.(); }}
+            onSelectDoc={(d) => { openDocument(d); onNavigate?.(); }}
+            onDeleteFolder={setDeleteFolderId}
+            onDeleteDoc={setDeleteDocId}
+            onRenameFolder={handleRenameFolder}
+            onRenameDoc={handleRenameDoc}
+            onMoveDoc={setMoveDocId}
+            onPinDoc={togglePinDoc}
+          />
+        ))}
+        {sharedDocs.length > 0 && (
+          <div className="mt-3">
+            <p className="text-[10px] font-bold text-[color:var(--text-faint)] uppercase tracking-wider px-2 mb-1">Shared with Me</p>
+            {sharedDocs.map(d => (
+              <div
+                key={d.id}
+                onClick={() => { openDocument(d); onNavigate?.(); }}
+                className={`flex items-center gap-1.5 px-2.5 py-2 rounded-brand cursor-pointer group transition-colors ${openDoc?.id === d.id ? 'bg-[color-mix(in_srgb,var(--brand-color)_10%,white)]' : 'hover:bg-stone-100'}`}
+              >
+                <Share2 size={13} className="text-[color:var(--text-faint)] flex-shrink-0" />
+                <span className="text-xs text-[color:var(--text-body)] flex-1 truncate">{d.title || 'Untitled'}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </>
+  );
+
   // ── Focus mode (full editor) ──
   if (focusMode && openDoc) {
     const closeEditor = () => {
@@ -849,78 +934,7 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
 
           {/* Left rail: New doc + doc list (desktop; hidden on mobile) */}
           <div className={`hidden ${sidebarOpen ? 'lg:flex' : 'lg:hidden'} flex-col lg:w-[300px] lg:shrink-0 lg:min-h-0 bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] overflow-hidden`}>
-            <div className="p-3 border-b border-stone-200 flex gap-2">
-              <button
-                onClick={() => createDoc()}
-                className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-brand text-xs font-semibold text-white"
-                style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}
-              >
-                <Plus size={13} /> New doc
-              </button>
-              <button
-                onClick={() => setShowNewFolder(true)}
-                className="px-3 py-2 rounded-brand border border-stone-200 text-warm-brown hover:bg-stone-100"
-                title="New folder"
-              >
-                <FolderOpen size={14} />
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto p-2">
-              {docs.filter(d => !d.folderId).map(d => {
-                const isOpen = openDoc?.id === d.id;
-                return (
-                  <div
-                    key={d.id}
-                    onClick={() => openDocument(d)}
-                    className={`flex items-center gap-1.5 px-2.5 py-2 rounded-brand cursor-pointer group transition-colors ${isOpen ? 'bg-[color-mix(in_srgb,var(--brand-color)_10%,white)]' : 'hover:bg-stone-100'}`}
-                  >
-                    <FileText size={13} className={`flex-shrink-0 ${isOpen ? 'text-gold' : 'text-[color:var(--text-faint)]'}`} />
-                    <span className={`text-xs flex-1 truncate ${isOpen ? 'text-earth font-semibold' : 'text-[color:var(--text-body)]'}`}>{d.title || 'Untitled'}</span>
-                    {d.pinned && <Pin size={11} className="text-gold flex-shrink-0" />}
-                    <ThreeDotMenu
-                      onRename={() => handleRenameDoc(d)}
-                      onDelete={() => setDeleteDocId(d.id)}
-                      onMove={() => setMoveDocId(d.id)}
-                      onPin={() => togglePinDoc(d.id, !!d.pinned)}
-                      isPinned={!!d.pinned}
-                    />
-                  </div>
-                );
-              })}
-              {rootFolders.map(f => (
-                <FolderNode
-                  key={f.id}
-                  folder={f}
-                  folders={folders}
-                  docs={docs}
-                  activeFolderId={activeFolderId}
-                  activeDocId={openDoc?.id || null}
-                  onSelectFolder={setActiveFolderId}
-                  onSelectDoc={openDocument}
-                  onDeleteFolder={setDeleteFolderId}
-                  onDeleteDoc={setDeleteDocId}
-                  onRenameFolder={handleRenameFolder}
-                  onRenameDoc={handleRenameDoc}
-                  onMoveDoc={setMoveDocId}
-                  onPinDoc={togglePinDoc}
-                />
-              ))}
-              {sharedDocs.length > 0 && (
-                <div className="mt-3">
-                  <p className="text-[10px] font-bold text-[color:var(--text-faint)] uppercase tracking-wider px-2 mb-1">Shared with Me</p>
-                  {sharedDocs.map(d => (
-                    <div
-                      key={d.id}
-                      onClick={() => openDocument(d)}
-                      className={`flex items-center gap-1.5 px-2.5 py-2 rounded-brand cursor-pointer group transition-colors ${openDoc?.id === d.id ? 'bg-[color-mix(in_srgb,var(--brand-color)_10%,white)]' : 'hover:bg-stone-100'}`}
-                    >
-                      <Share2 size={13} className="text-[color:var(--text-faint)] flex-shrink-0" />
-                      <span className="text-xs text-[color:var(--text-body)] flex-1 truncate">{d.title || 'Untitled'}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            {renderNotesSidebar()}
           </div>
 
           {/* Right: editor pane */}
@@ -928,6 +942,10 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
             {/* Editor header — back · saved · Share to livestream · Export */}
             <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-stone-200 shrink-0">
               <div className="flex items-center gap-1.5 min-w-0">
+                {/* Mobile-only: open the slide-in notes/folders drawer (desktop shows the left rail instead). */}
+                <button onClick={() => setMobileNotesOpen(true)} className="lg:hidden flex items-center gap-1 p-1.5 rounded-lg hover:bg-stone-100 text-[color:var(--text-faint)]" title="All notes & folders" aria-label="Open notes and folders">
+                  <PanelLeft size={16} />
+                </button>
                 <button onClick={() => setSidebarOpen(v => !v)} className="hidden lg:flex p-1.5 rounded-lg hover:bg-stone-100 text-[color:var(--text-faint)]" title="Toggle document list">
                   <PanelLeft size={16} />
                 </button>
@@ -981,6 +999,41 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
           </div>
 
         </div>
+
+        {/* Mobile-only slide-in LEFT drawer: the full notes list + folder tree,
+            the same content the desktop left rail shows. Selecting a note or
+            folder reuses the existing handlers and then closes the drawer. */}
+        {mobileNotesOpen && (
+          <div className="fixed inset-0 z-[200] lg:hidden">
+            <style>{`@keyframes docsDrawerIn { from { transform: translateX(-100%); } to { transform: translateX(0); } }`}</style>
+            {/* Dim backdrop — tap to close */}
+            <div
+              className="absolute inset-0"
+              style={{ backgroundColor: 'rgba(15,13,11,0.42)' }}
+              onClick={() => setMobileNotesOpen(false)}
+            />
+            {/* Sliding cream panel */}
+            <div
+              className="absolute left-0 top-0 h-full w-[300px] max-w-[85%] bg-cream shadow-[12px_0_44px_rgba(0,0,0,0.28)] flex flex-col"
+              style={{ animation: 'docsDrawerIn 0.25s ease-out' }}
+            >
+              <div className="flex items-center justify-between px-4 py-3 shrink-0">
+                <h3 className="font-display font-bold text-earth">All Notes</h3>
+                <button
+                  onClick={() => setMobileNotesOpen(false)}
+                  className="p-1.5 rounded-lg hover:bg-stone-100 text-[color:var(--text-faint)]"
+                  aria-label="Close notes list"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+              {/* White card mirrors the desktop rail's look */}
+              <div className="flex-1 min-h-0 mx-3 mb-3 flex flex-col bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] overflow-hidden">
+                {renderNotesSidebar(() => setMobileNotesOpen(false))}
+              </div>
+            </div>
+          </div>
+        )}
         {commonModals}
       </div>
     );
