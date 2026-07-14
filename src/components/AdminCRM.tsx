@@ -922,7 +922,43 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
           {!search && filter === 'all' && <p className="text-sm mt-1">Add your first donor or member</p>}
         </div>
       ) : (
-        <div className="bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] overflow-hidden">
+        <>
+          {/* Mobile contact list — mockup card list: each row is an avatar disc +
+              name/email, then a right column with the type badge (member→sky,
+              donor→gold, both→field via TYPE_COLORS), the pipeline stage dot +
+              label, and total given in field-green. Same `filtered` data and the
+              same openDetail handler as the desktop table below. */}
+          <div className="lg:hidden bg-white rounded-brand-xl border border-stone-200 shadow-[var(--ds-sh-sm)] overflow-hidden">
+            {filtered.map((c, i) => {
+              const stage = STAGES.find(s => s.id === (c.stage || 'new')) || STAGES[0];
+              return (
+                <button
+                  key={c.id}
+                  onClick={() => openDetail(c)}
+                  className={`w-full flex items-center gap-3 px-3.5 py-3 text-left transition-colors hover:bg-wheat-50 ${i ? 'border-t border-stone-200' : ''}`}
+                >
+                  <span className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0" style={{ backgroundColor: 'var(--brand-color, #C9963A)' }}>
+                    {c.firstName?.charAt(0)?.toUpperCase() || '?'}
+                  </span>
+                  <span className="flex-1 min-w-0">
+                    <span className="block text-sm font-semibold text-earth truncate">{c.firstName} {c.lastName}</span>
+                    {c.email && <span className="block text-xs text-[color:var(--text-faint)] truncate">{c.email}</span>}
+                  </span>
+                  <span className="flex flex-col items-end gap-1 shrink-0">
+                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${TYPE_COLORS[c.type]}`}>{TYPE_LABELS[c.type]}</span>
+                    <span className="flex items-center gap-1.5 text-[11px] font-semibold text-warm-brown">
+                      <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: stage.color }} />
+                      {stage.label}
+                    </span>
+                    {c.totalDonated > 0 && <span className="text-[11px] font-semibold text-field-700">{fmt(c.totalDonated)}</span>}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Desktop table — existing approved layout, unchanged (now lg-only). */}
+          <div className="hidden lg:block bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse min-w-[720px]">
               <thead>
@@ -972,6 +1008,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
             </table>
           </div>
         </div>
+        </>
       )}
 
       {deleteId && (

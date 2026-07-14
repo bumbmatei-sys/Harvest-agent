@@ -292,8 +292,58 @@ const AdminChurches: React.FC = () => {
         </button>
       </div>
 
+      {/* Church list — mobile: mockup card list (gold church disc, name, "city, country · pastor").
+          Edit/delete reuse the same handlers as the desktop table; same filteredChurches + loading data. */}
+      <div className="lg:hidden">
+        {loading ? (
+          <div className="flex justify-center py-10">
+            <div className="w-8 h-8 border-4 border-[color-mix(in_srgb,var(--brand-color)_30%,transparent)] border-t-gold rounded-full animate-spin"></div>
+          </div>
+        ) : filteredChurches.length === 0 ? (
+          <div className="bg-white rounded-brand-xl border border-stone-200 shadow-[var(--ds-sh-sm)] p-8 text-center text-warm-brown">
+            <Church size={48} className="mx-auto mb-4 opacity-20" />
+            <p className="font-display">No churches found matching your filters.</p>
+          </div>
+        ) : (
+          <div className="bg-white rounded-brand-xl border border-stone-200 shadow-[var(--ds-sh-sm)] overflow-hidden">
+            {filteredChurches.map((church) => (
+              <div
+                key={church.id}
+                className="flex items-center gap-3 px-3.5 py-3 border-t border-stone-200 first:border-t-0"
+              >
+                <div className="w-[38px] h-[38px] rounded-[10px] bg-[var(--surface-gold)] text-gold flex items-center justify-center shrink-0">
+                  <Church size={17} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-[13.5px] font-semibold text-earth truncate">{church.name}</div>
+                  <div className="text-[11.5px] text-[color:var(--text-faint)] truncate">
+                    {[church.city && `${church.city}${church.country ? `, ${church.country}` : ''}`, church.pastorName].filter(Boolean).join(' · ')}
+                  </div>
+                </div>
+                <div className="flex items-center gap-0.5 shrink-0">
+                  <button
+                    onClick={() => setEditingChurch(church)}
+                    className="p-1.5 rounded-lg text-[color:var(--text-faint)] hover:bg-stone-100 transition-colors"
+                    title="Edit"
+                  >
+                    <Edit2 size={15} />
+                  </button>
+                  <button
+                    onClick={() => setDeleteConfirmId(church.id)}
+                    className="p-1.5 rounded-lg text-red-400 hover:bg-red-50 transition-colors"
+                    title="Delete"
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* Spreadsheet / Table */}
-      <div className="bg-white rounded-2xl shadow-sm border border-stone-200 overflow-hidden">
+      <div className="hidden lg:block bg-white rounded-2xl shadow-sm border border-stone-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>

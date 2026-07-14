@@ -1059,7 +1059,24 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
       {sharedDocs.length > 0 && !activeFolderId && (
         <div className="mb-5">
           <p className="text-xs font-bold text-warm-brown uppercase tracking-wider mb-2">Shared with Me</p>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {/* Mobile — same Harvest notes card (Share2 icon), 2-col. Same
+              sharedDocs data and openDocument handler as the desktop grid below. */}
+          <div className="lg:hidden grid grid-cols-2 gap-2.5">
+            {sharedDocs.map(d => (
+              <div
+                key={d.id}
+                onClick={() => openDocument(d)}
+                className="bg-white rounded-brand-xl border border-stone-200 shadow-[var(--ds-sh-sm)] p-3.5 cursor-pointer"
+              >
+                <Share2 size={18} className="text-stone-300" />
+                <div className="text-[13.5px] font-semibold text-earth mt-2 leading-[1.3] line-clamp-2">{d.title || 'Untitled'}</div>
+                {d.updatedAt && <div className="text-[11px] text-[color:var(--text-faint)] mt-1.5">{fmtDate(d.updatedAt)}</div>}
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop — existing approved grid, unchanged (now lg-only). */}
+          <div className="hidden lg:grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {sharedDocs.map(d => (
               <div
                 key={d.id}
@@ -1099,7 +1116,27 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
               <span className="text-xs font-semibold text-[color:var(--text-body)]">{folders.find(f => f.id === activeFolderId)?.name}</span>
             </div>
           )}
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {/* Mobile — Harvest notes card grid (mockup): 2-col compact cards
+              (doc icon, title, folder · date). Same folderDocs data and the same
+              openDocument handler as the desktop grid below. */}
+          <div className="lg:hidden grid grid-cols-2 gap-2.5">
+            {folderDocs.map(d => (
+              <div
+                key={d.id}
+                onClick={() => openDocument(d)}
+                className="bg-white rounded-brand-xl border border-stone-200 shadow-[var(--ds-sh-sm)] p-3.5 cursor-pointer"
+              >
+                <FileText size={18} className="text-stone-300" />
+                <div className="text-[13.5px] font-semibold text-earth mt-2 leading-[1.3] line-clamp-2">{d.title || 'Untitled'}</div>
+                <div className="text-[11px] text-[color:var(--text-faint)] mt-1.5">
+                  {[folders.find(f => f.id === d.folderId)?.name, fmtDate(d.updatedAt)].filter(Boolean).join(' · ')}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop — existing approved grid, unchanged (now lg-only). */}
+          <div className="hidden lg:grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {folderDocs.map(d => {
               const sharedCount = d.sharedWith?.length || 0;
               return (

@@ -410,9 +410,8 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
     <div className="max-w-5xl mx-auto">
       {subTabBar}
 
-      {/* Mobile page title — Fraunces H1 (mockup framing). Desktop keeps its
-          existing header-less layout untouched. */}
-      <h1 className="lg:hidden font-display text-[1.75rem] font-light leading-[1.1] tracking-[-0.02em] text-earth mb-5">Accounting</h1>
+      {/* Mobile: no in-content page title — the shell's mobile header already
+          renders "Accounting", so an H1 here would duplicate it. */}
 
       {/* Summary Cards — mobile: 2-col stat cards with gold icon disc + serif
           value (mockup StatRow). Same computed totals as the desktop grid;

@@ -253,7 +253,52 @@ const AdminBlog: React.FC = () => {
  </div>
  </div>
 
- <AdminCard>
+ <>
+ {/* Mobile list — mockup card list: thumb/icon disc, title (+AI), category
+     chip · date, status pill. Same filteredPosts data and the same
+     handleEditPost / setDeleteConfirmId handlers as the desktop table. */}
+ <div className="lg:hidden bg-white rounded-brand-xl border border-stone-200 shadow-[var(--ds-sh-sm)] overflow-hidden">
+ {loading ? (
+ <div className="px-3.5 py-10 flex items-center justify-center gap-2 text-warm-brown">
+ <div className="w-4 h-4 border-2 border-gold border-t-transparent rounded-full animate-spin"></div>
+ <span>Loading posts…</span>
+ </div>
+ ) : filteredPosts.length === 0 ? (
+ <div className="px-3.5 py-14 flex flex-col items-center justify-center gap-1.5 text-center">
+ <FileText size={30} className="text-stone-300 mb-1" />
+ <p className="text-base text-earth font-display">No posts found</p>
+ <p className="text-sm text-warm-brown">Get started by creating a new blog post.</p>
+ </div>
+ ) : (
+ filteredPosts.map((post, i) => (
+ <div key={post.id} className={`flex items-center gap-3 px-3.5 py-3 ${i ? 'border-t border-stone-200' : ''}`}>
+ <div className="w-11 h-11 rounded-brand bg-[var(--surface-gold)] flex items-center justify-center text-warm-brown shrink-0 overflow-hidden">
+ {post.featuredImage
+ ? <img src={post.featuredImage} alt="" className="w-full h-full object-cover" />
+ : <FileText size={17} />}
+ </div>
+ <div className="flex-1 min-w-0">
+ <div className="flex items-center gap-1.5">
+ <span className="text-sm font-semibold text-earth leading-snug line-clamp-1">{post.title}</span>
+ {post.isAiGenerated && <AdminBadge tone="gold">AI</AdminBadge>}
+ </div>
+ <div className="flex items-center gap-2 mt-1">
+ <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-stone-100 text-warm-brown text-[11px] font-medium">{post.category}</span>
+ <span className="text-[11px] text-[color:var(--text-faint)] whitespace-nowrap">{formatDate(post.createdAt)}</span>
+ </div>
+ </div>
+ <AdminBadge tone={statusTone(post.status)} className="shrink-0">{post.status}</AdminBadge>
+ <div className="flex items-center shrink-0">
+ <button onClick={() => handleEditPost(post)} className="p-2 rounded-brand text-[color:var(--text-faint)] hover:text-gold hover:bg-stone-100 transition-colors" title="Edit"><Edit2 size={15} /></button>
+ <button onClick={() => setDeleteConfirmId(post.id)} className="p-2 rounded-brand text-[color:var(--text-faint)] hover:text-[#C4553B] hover:bg-[#F7E7E2] transition-colors" title="Delete"><Trash2 size={15} /></button>
+ </div>
+ </div>
+ ))
+ )}
+ </div>
+
+ {/* Desktop table — existing approved layout, unchanged (now lg-only). */}
+ <AdminCard className="hidden lg:block">
  <div className="overflow-x-auto">
  <table className="w-full text-left border-collapse">
  <thead>
@@ -310,6 +355,7 @@ const AdminBlog: React.FC = () => {
  </table>
  </div>
  </AdminCard>
+ </>
 
  {/* Delete Confirmation Modal */}
  {deleteConfirmId && (
