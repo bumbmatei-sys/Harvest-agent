@@ -16,7 +16,8 @@ import {
   Play,
   X,
   CalendarCheck,
-  Bookmark
+  Bookmark,
+  Map
 } from 'lucide-react';
 import Image from 'next/image';
 import { auth, db, messaging, VAPID_KEY } from '../firebase';
@@ -32,10 +33,11 @@ import ChurchDetailsModal from './ChurchDetailsModal';
 import UserEvents from './UserEvents';
 import SavedItems from './SavedItems';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
-import { SUPER_ADMIN_EMAIL, isSuperAdmin as checkIsSuperAdmin, getTenantScope } from '../utils/tenant-scope';
+import { SUPER_ADMIN_EMAIL, isSuperAdmin as checkIsSuperAdmin, getTenantScope, PLATFORM_TENANT_ID } from '../utils/tenant-scope';
 import { isSuperAdminEmail } from '../utils/super-admins';
 import { getPlanFeatures } from '../utils/plan-features';
 import { useAppStore } from '../store/useAppStore';
+import { useTenant } from '../contexts/TenantContext';
 
 
 interface ProfileProps {
@@ -52,6 +54,10 @@ interface ProfileProps {
 
 const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap, onOpenSavedBlog, onOpenSavedLesson, onOpenSavedPost }) => {
   const { tenantPlan } = useAppStore();
+  // Platform tenant only — a branded tenant's members shouldn't be linked out to
+  // Harvest's own public roadmap (same white-label rule as AdminDashboard/AIChat).
+  const { tenantId } = useTenant();
+  const isWhiteLabel = !!tenantId && tenantId !== PLATFORM_TENANT_ID;
   const [showMyEvents, setShowMyEvents] = useState(false);
   const [showSaved, setShowSaved] = useState(false);
  const [isPersonalInfoOpen, setIsPersonalInfoOpen] = useState(false);
@@ -552,12 +558,23 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
  onClick={() => setIsFAQOpen(true)}
  />
  <div className="h-px bg-stone-100 mx-4"></div>
- <SettingItem 
- icon={<ShieldCheck size={16} className="text-sky-600" />} 
- iconBg="bg-sky-100" 
- label="Privacy & Terms" 
+ <SettingItem
+ icon={<ShieldCheck size={16} className="text-sky-600" />}
+ iconBg="bg-sky-100"
+ label="Privacy & Terms"
  onClick={() => setIsPrivacyTermsOpen(true)}
  />
+ {!isWhiteLabel && (
+ <>
+ <div className="h-px bg-stone-100 mx-4"></div>
+ <SettingItem
+ icon={<Map size={16} className="text-navy-600" />}
+ iconBg="bg-navy-500/10"
+ label="Roadmap"
+ onClick={() => window.open('https://trello.com/b/1Uz9u1Lb/harvest-roadmap', '_blank', 'noopener,noreferrer')}
+ />
+ </>
+ )}
  </div>
  </div>
 

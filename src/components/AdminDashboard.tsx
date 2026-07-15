@@ -652,7 +652,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
               className="flex items-center gap-2 rounded-full border border-stone-200 bg-white pl-1.5 pr-3 py-1.5 text-[13px] font-semibold text-earth hover:bg-stone-100 transition-colors shrink-0"
             >
               <span className="w-6 h-6 rounded-md bg-[color-mix(in_srgb,var(--brand-color)_14%,white)] flex items-center justify-center shrink-0">
-                <img src={DEFAULT_LOGO} alt="" className="w-4 h-4 object-contain" />
+                <img src={displayLogo} alt="" className="w-4 h-4 object-contain" />
               </span>
               Open member app
               <ExternalLink size={13} className="text-warm-brown" />
