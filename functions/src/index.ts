@@ -600,8 +600,9 @@ export const telegramWebhook = functions
 });
 
 // ─── 9. notifyPlatformInbox ──────────────────────────────────────────────────────────
-export const notifyPlatformInbox = functions.firestore
-  .document('platform_inbox/{reportId}')
+export const notifyPlatformInbox = functions
+  .runWith({ secrets: ['RESEND_API_KEY'] })
+  .firestore.document('platform_inbox/{reportId}')
   .onCreate(async (snap, context) => {
     const report = snap.data();
     const reportId = context.params.reportId;
