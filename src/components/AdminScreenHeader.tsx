@@ -95,6 +95,12 @@ interface AdminHeaderApi {
   setHeaderAction: (node: React.ReactNode) => void;
   /** Fully override the shared header (or clear with null) — e.g. an open chat thread. */
   setHeaderOverride: (override: AdminHeaderOverride | null) => void;
+  /**
+   * Hide the shared mobile app header entirely (e.g. the Notes editor going
+   * fullscreen). The screen supplies its own in-view navigation while hidden and
+   * must restore it (false) on exit/unmount. Desktop chrome is unaffected.
+   */
+  setHeaderHidden: (hidden: boolean) => void;
 }
 
 /**
@@ -105,6 +111,7 @@ interface AdminHeaderApi {
 export const AdminHeaderContext = createContext<AdminHeaderApi>({
   setHeaderAction: () => {},
   setHeaderOverride: () => {},
+  setHeaderHidden: () => {},
 });
 export const useAdminHeader = (): AdminHeaderApi => useContext(AdminHeaderContext);
 

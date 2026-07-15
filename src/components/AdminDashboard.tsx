@@ -137,7 +137,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
   const [headerAction, setHeaderAction] = useState<React.ReactNode>(null);
   // Full header override published by a sub-view (e.g. an open chat thread).
   const [headerOverride, setHeaderOverride] = useState<AdminHeaderOverride | null>(null);
-  const headerApi = React.useMemo(() => ({ setHeaderAction, setHeaderOverride }), []);
+  // When a sub-view wants a fullscreen writing surface (Notes editor) it hides
+  // the mobile app header entirely. Desktop chrome is left untouched.
+  const [headerHidden, setHeaderHidden] = useState(false);
+  const headerApi = React.useMemo(() => ({ setHeaderAction, setHeaderOverride, setHeaderHidden }), []);
 
   // Restore saved nav configuration from user data
   const navInitialized = useRef(false);
@@ -687,8 +690,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
 
         {/* Mobile screen header — back + title + screen action + account. On
             desktop the branded top bar above carries title/action/back, so this
-            is hidden (lg:hidden) to avoid a duplicate header. */}
-        <div className="lg:hidden">
+            is hidden (lg:hidden) to avoid a duplicate header. A fullscreen
+            sub-view (Notes editor) can hide it entirely via setHeaderHidden. */}
+        <div className={headerHidden ? 'hidden' : 'lg:hidden'}>
           <AdminScreenHeader
             title={headerOverride?.title ?? headerTitle}
             titleIcon={headerOverride?.titleIcon}

@@ -7,7 +7,6 @@ import {
 import { Radio, Eye, HandHeart, Check, Loader2, Video, Play } from 'lucide-react';
 import { db, auth } from '../firebase';
 import { useAppStore } from '../store/useAppStore';
-import { PLATFORM_TENANT_ID } from '../utils/tenant-scope';
 
 const GOLD = 'var(--brand-color, #B8962E)';
 
@@ -62,11 +61,17 @@ interface PastSession {
 }
 
 const AdminLivestream: React.FC = () => {
-  // Fall back to the platform tenant for a super admin if the store value is
-  // briefly null (e.g. on a refresh) so "Start Stream" never silently no-ops.
-  // On a tenant subdomain currentTenantId is set and takes precedence.
-  const { currentTenantId, isAuthReady, isSuperAdmin } = useAppStore();
-  const tenantId = currentTenantId || (isSuperAdmin ? PLATFORM_TENANT_ID : null);
+  // Use the store's already-resolved tenant (matches AdminCRM). App.tsx resolves
+  // currentTenantId with an APEX-ONLY platform fallback: on a tenant subdomain it
+  // is the subdomain tenant (e.g. `bumb`), and only on the apex domain does a
+  // super admin fall back to the platform tenant. Re-applying a naive
+  // `isSuperAdmin ? PLATFORM_TENANT_ID` fallback here was the bug — before the
+  // store hydrated, a super admin on a tenant subdomain resolved to `harvest`
+  // and read tenants/harvest/livestream/current instead of the subdomain's doc,
+  // so admin saw nothing while the user app (which reads tenants/{tenantId}/…)
+  // showed the stream. Waiting for currentTenantId to hydrate makes admin read
+  // the SAME doc the user app reads for the same subdomain.
+  const { currentTenantId: tenantId, isAuthReady } = useAppStore();
 
   const [current, setCurrent] = useState<CurrentStream | null>(null);
   const [prayers, setPrayers] = useState<Prayer[]>([]);
