@@ -127,7 +127,7 @@ describe('Known security gaps (tracked)', () => {
     'RESOLVED: DELETE /api/tenants/delete now cascades to every top-level tenantId ' +
     'collection (users + Auth accounts, courses, blog_posts, community_posts, rag_sources, ' +
     'rag_chunks, contacts, contactActivities, prayer_requests, docs, docFolders, authors, ' +
-    'categories, campaigns, churches, certificates, chat_usage, domains, ai_assistant_bindings, ' +
+    'categories, campaigns, churches, chat_usage, domains, ai_assistant_bindings, ' +
     'twilioNumbers, submissions) via batched/paginated deletes, plus a dryRun preview. ' +
     'See src/app/api/tenants/tests/delete-route.test.ts for coverage.',
     () => { expect(true).toBe(true); }

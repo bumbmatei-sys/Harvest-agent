@@ -31,7 +31,7 @@ function makeRequest(token?: string, tenantId?: string, dryRun?: boolean): NextR
 const CASCADE_COLLECTIONS = [
   'courses', 'blog_posts', 'community_posts', 'prayer_requests', 'rag_sources',
   'rag_chunks', 'contacts', 'contactActivities', 'docs', 'docFolders', 'authors',
-  'categories', 'campaigns', 'churches', 'certificates', 'chat_usage', 'domains',
+  'categories', 'campaigns', 'churches', 'chat_usage', 'domains',
   'ai_assistant_bindings', 'twilioNumbers', 'submissions',
 ];
 
@@ -133,6 +133,8 @@ describe('DELETE /api/tenants/delete — real cascade', () => {
     mockGetDoc.mockResolvedValue({ exists: true });
     __setCollectionDocs('users', [{ tenantId: 't1', email: 'a@t.com' }]);
     CASCADE_COLLECTIONS.forEach((n) => __setCollectionDocs(n, [{ tenantId: 't1' }]));
+    // certificates are intentionally RETAINED (kept as records), not cascaded.
+    __setCollectionDocs('certificates', [{ tenantId: 't1' }]);
 
     const res = await DELETE(makeRequest('tok', 't1'));
     expect(res.status).toBe(200);
@@ -142,6 +144,8 @@ describe('DELETE /api/tenants/delete — real cascade', () => {
     expect(json.errors).toEqual([]);
     expect(json.deleted.users).toBe(1);
     CASCADE_COLLECTIONS.forEach((n) => expect(json.deleted[n]).toBe(1));
+    // certificates must NOT be part of the cascade.
+    expect(json.deleted.certificates).toBeUndefined();
 
     // Firebase Auth account was deleted (not just the Firestore doc).
     expect(json.authDeleted).toBe(1);

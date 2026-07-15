@@ -40,7 +40,11 @@ import { adminDb, adminAuth } from '@/lib/firebase-admin';
  * with recursiveDelete per matched doc, or the nested docs would themselves be
  * orphaned — the exact bug this route fixes.
  *
- * Deliberately EXCLUDED (top-level, but NOT tenant-owned content):
+ * Deliberately EXCLUDED:
+ *   - certificates: course-completion trust artifacts. Carry `tenantId`, but the
+ *     founder chose to KEEP them as records rather than delete them with the
+ *     tenant. (Their `read` rule requires the reader to be the cert's uid, so
+ *     deleted users can't read them anyway — but they are retained on purpose.)
  *   - affiliate_commissions: payout records owned by the *referrer* (a different
  *     user's earnings); `tenantId` only names which subscription generated them.
  *   - donations: legacy/dead (create disabled); real donations live under
@@ -65,7 +69,6 @@ const TENANT_COLLECTIONS: { name: string; recursive?: boolean }[] = [
   { name: 'categories' },
   { name: 'campaigns' },
   { name: 'churches', recursive: true },
-  { name: 'certificates' },
   { name: 'chat_usage' },
   { name: 'domains' },
   { name: 'ai_assistant_bindings' },
