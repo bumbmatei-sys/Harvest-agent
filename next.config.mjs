@@ -4,7 +4,13 @@ import withPWAInit from "next-pwa";
 const withPWA = withPWAInit({
   dest: "public",
   register: true,
-  skipWaiting: true,
+  // false: a new service worker waits for all tabs it controls to close before
+  // activating, instead of claiming open tabs immediately. With skipWaiting: true,
+  // next-pwa's generated sw.js calls self.skipWaiting() + clientsClaim(), so an
+  // in-progress deploy would claim already-open tabs and force them to reload to
+  // reconcile assets with the new SW — including tabs mid-sign-up/sign-in, wiping
+  // form state. skipWaiting: false defers the update to the user's next fresh visit.
+  skipWaiting: false,
   disable: process.env.NODE_ENV === "development",
 });
 
