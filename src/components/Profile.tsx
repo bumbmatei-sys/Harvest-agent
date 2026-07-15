@@ -33,11 +33,10 @@ import ChurchDetailsModal from './ChurchDetailsModal';
 import UserEvents from './UserEvents';
 import SavedItems from './SavedItems';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
-import { SUPER_ADMIN_EMAIL, isSuperAdmin as checkIsSuperAdmin, getTenantScope, PLATFORM_TENANT_ID } from '../utils/tenant-scope';
+import { SUPER_ADMIN_EMAIL, isSuperAdmin as checkIsSuperAdmin, getTenantScope } from '../utils/tenant-scope';
 import { isSuperAdminEmail } from '../utils/super-admins';
 import { getPlanFeatures } from '../utils/plan-features';
 import { useAppStore } from '../store/useAppStore';
-import { useTenant } from '../contexts/TenantContext';
 
 
 interface ProfileProps {
@@ -54,10 +53,6 @@ interface ProfileProps {
 
 const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap, onOpenSavedBlog, onOpenSavedLesson, onOpenSavedPost }) => {
   const { tenantPlan } = useAppStore();
-  // Platform tenant only — a branded tenant's members shouldn't be linked out to
-  // Harvest's own public roadmap (same white-label rule as AdminDashboard/AIChat).
-  const { tenantId } = useTenant();
-  const isWhiteLabel = !!tenantId && tenantId !== PLATFORM_TENANT_ID;
   const [showMyEvents, setShowMyEvents] = useState(false);
   const [showSaved, setShowSaved] = useState(false);
  const [isPersonalInfoOpen, setIsPersonalInfoOpen] = useState(false);
@@ -564,7 +559,7 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
  label="Privacy & Terms"
  onClick={() => setIsPrivacyTermsOpen(true)}
  />
- {!isWhiteLabel && (
+ {isAdmin && (
  <>
  <div className="h-px bg-stone-100 mx-4"></div>
  <SettingItem
