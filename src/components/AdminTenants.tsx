@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { db, auth } from '../firebase';
 import { collection, onSnapshot, limit } from 'firebase/firestore';
-import { Building2, Plus, Search, Edit2, Trash2, Pause, Play, X, Check } from 'lucide-react';
+import { Building2, Plus, Search, Edit2, Trash2, Pause, Play, X } from 'lucide-react';
 import { Tenant, TenantPlan, TenantStatus } from '../types/tenant.types';
 import { createTenant, updateTenant, isSubdomainAvailable } from '../utils/tenant.utils';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
@@ -55,6 +55,13 @@ const EMPTY_FORM: FormData = {
   customDomain: '',
 };
 
+/** Shape returned by `DELETE /api/tenants/delete?...&dryRun=true`. */
+interface DeletePreview {
+  deleted: Record<string, number>;
+  authDeleted: number;
+  userAccounts?: { uid: string; email: string | null }[];
+}
+
 const AdminTenants: React.FC = () => {
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [loading, setLoading] = useState(true);
@@ -67,6 +74,10 @@ const AdminTenants: React.FC = () => {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState('');
+  // Dry-run preview of what a delete would remove (per-collection counts + user
+  // list), fetched when the confirmation opens so the copy shows real numbers.
+  const [dryRun, setDryRun] = useState<DeletePreview | null>(null);
+  const [dryRunLoading, setDryRunLoading] = useState(false);
 
   useEffect(() => {
     const q = collection(db, 'tenants');
@@ -157,6 +168,35 @@ const AdminTenants: React.FC = () => {
     }
   };
 
+  // Open the delete confirmation and fetch a dry-run preview so the warning shows
+  // real counts (user ACCOUNTS + content) before the irreversible action.
+  const openDeleteConfirm = async (tenant: Tenant) => {
+    setDeleteConfirmId(tenant.id);
+    setDeleteError('');
+    setDryRun(null);
+    setDryRunLoading(true);
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) return;
+      const res = await fetch(`/api/tenants/delete?id=${tenant.id}&dryRun=true`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (res.ok) setDryRun(data);
+    } catch {
+      // Preview is best-effort — the confirmation copy still warns clearly.
+    } finally {
+      setDryRunLoading(false);
+    }
+  };
+
+  const closeDeleteConfirm = () => {
+    setDeleteConfirmId(null);
+    setDeleteError('');
+    setDryRun(null);
+  };
+
   const handleDelete = async (id: string) => {
     setDeleteError('');
     setDeletingId(id);
@@ -169,13 +209,17 @@ const AdminTenants: React.FC = () => {
       });
       const data = await res.json();
       if (!res.ok) {
-        setDeleteError(data.error || 'Delete failed');
+        // The route returns a structured summary; surface any per-step errors.
+        const detail = Array.isArray(data.errors) && data.errors.length
+          ? `${data.errors.length} step(s) failed — some data may remain.`
+          : (data.error || 'Delete failed');
+        setDeleteError(detail);
         return;
       }
       // Optimistically remove the row so it disappears instantly regardless of
       // snapshot lag; the onSnapshot listener will later confirm the same state.
       setTenants(prev => prev.filter(t => t.id !== id));
-      setDeleteConfirmId(null);
+      closeDeleteConfirm();
     } catch (err: any) {
       setDeleteError(err.message || 'Delete failed');
     } finally {
@@ -254,40 +298,79 @@ const AdminTenants: React.FC = () => {
                   >
                     <Edit2 size={16} className="text-warm-brown" />
                   </button>
-                  {deleteConfirmId === tenant.id ? (
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => handleDelete(tenant.id)}
-                        disabled={deletingId === tenant.id}
-                        className="p-2 rounded-lg bg-red-50 hover:bg-red-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        title="Confirm delete"
-                      >
-                        {deletingId === tenant.id ? (
-                          <div className="w-4 h-4 border-2 border-gold border-t-transparent rounded-full animate-spin"></div>
-                        ) : (
-                          <Check size={16} className="text-red-600" />
-                        )}
-                      </button>
-                      <button
-                        onClick={() => { setDeleteConfirmId(null); setDeleteError(''); }}
-                        disabled={deletingId === tenant.id}
-                        className="p-2 rounded-lg hover:bg-stone-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        title="Cancel"
-                      >
-                        <X size={16} className="text-warm-brown" />
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => setDeleteConfirmId(tenant.id)}
-                      className="p-2 rounded-lg hover:bg-red-50 transition-colors"
-                      title="Delete"
-                    >
-                      <Trash2 size={16} className="text-[color:var(--text-faint)] hover:text-red-500" />
-                    </button>
-                  )}
+                  <button
+                    onClick={() => openDeleteConfirm(tenant)}
+                    disabled={deleteConfirmId === tenant.id}
+                    className="p-2 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50"
+                    title="Delete"
+                  >
+                    <Trash2 size={16} className="text-[color:var(--text-faint)] hover:text-red-500" />
+                  </button>
                 </div>
               </div>
+
+              {/* Destructive-delete confirmation — deletion also destroys user
+                  ACCOUNTS (Firebase Auth) and all tenant content, so spell that
+                  out with real counts from a dry-run before confirming. */}
+              {deleteConfirmId === tenant.id && (
+                <div className="mt-4 pt-4 border-t border-red-100 bg-red-50/40 -mx-5 -mb-5 px-5 pb-5 rounded-b-2xl">
+                  {(() => {
+                    const userCount = dryRun?.deleted?.users ?? tenant.adminEmails?.length ?? 0;
+                    const contentCount = dryRun
+                      ? Object.entries(dryRun.deleted)
+                          .filter(([k]) => k !== 'users')
+                          .reduce((sum, [, v]) => sum + (v || 0), 0)
+                      : null;
+                    return (
+                      <>
+                        <p className="text-sm font-semibold text-red-700">
+                          This permanently deletes the tenant, all its content, and{' '}
+                          {dryRunLoading ? 'its' : `all ${userCount}`} user account{userCount === 1 ? '' : 's'}
+                          {' '}(including their sign-in). This cannot be undone.
+                        </p>
+                        {dryRunLoading ? (
+                          <p className="text-xs text-warm-brown mt-1">Counting what will be deleted…</p>
+                        ) : dryRun ? (
+                          <p className="text-xs text-warm-brown mt-1">
+                            {userCount} user account{userCount === 1 ? '' : 's'} and {contentCount} content item
+                            {contentCount === 1 ? '' : 's'} across {Object.keys(dryRun.deleted).length - 1} collections
+                            will be removed.
+                          </p>
+                        ) : (
+                          <p className="text-xs text-warm-brown mt-1">
+                            Preview unavailable — proceeding will still delete everything above.
+                          </p>
+                        )}
+                        <div className="flex items-center gap-2 mt-3">
+                          <button
+                            onClick={() => handleDelete(tenant.id)}
+                            disabled={deletingId === tenant.id}
+                            className="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                          >
+                            {deletingId === tenant.id ? (
+                              <>
+                                <div className="w-4 h-4 border-2 border-white/70 border-t-transparent rounded-full animate-spin"></div>
+                                Deleting…
+                              </>
+                            ) : (
+                              <>
+                                <Trash2 size={14} /> Delete permanently
+                              </>
+                            )}
+                          </button>
+                          <button
+                            onClick={closeDeleteConfirm}
+                            disabled={deletingId === tenant.id}
+                            className="px-3 py-1.5 rounded-lg hover:bg-stone-100 text-warm-brown text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
+              )}
             </div>
           ))}
         </div>
