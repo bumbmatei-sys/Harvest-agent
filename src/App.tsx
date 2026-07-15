@@ -221,7 +221,27 @@ const AppInner: React.FC = () => {
                 // which resolves no tenant and shows a broken/limited view. Super admins
                 // (no tenantId) stay on the apex admin as before.
                 if (data.tenantId && !onSubdomain) {
-                  window.location.href = `https://${data.tenantId}.theharvest.app/admin`;
+                  // Before hard-redirecting to the tenant's subdomain, confirm the
+                  // tenant still exists. An orphaned user doc (tenantId pointing at a
+                  // deleted tenant) would otherwise bounce the user to a dead
+                  // subdomain that renders "Organization Not Found". If it's gone,
+                  // stay on the apex admin (the always-valid destination) instead.
+                  let tenantExists = false;
+                  try {
+                    const tenantSnap = await getDoc(doc(db, 'tenants', data.tenantId));
+                    tenantExists = tenantSnap.exists();
+                  } catch (e) {
+                    // Lookup failed — don't gamble on a possibly-dead subdomain.
+                    console.warn('Tenant existence check failed before subdomain redirect:', e);
+                  }
+                  if (tenantExists) {
+                    window.location.href = `https://${data.tenantId}.theharvest.app/admin`;
+                  } else {
+                    console.warn(
+                      `User ${user.uid} references tenant '${data.tenantId}' which no longer exists; staying on apex admin.`
+                    );
+                    navigate('/admin', { replace: true });
+                  }
                 } else {
                   navigate('/admin', { replace: true });
                 }
