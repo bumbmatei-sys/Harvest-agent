@@ -598,3 +598,71 @@ export const telegramWebhook = functions
 
   res.json({ ok: true });
 });
+
+// ─── 9. notifyPlatformInbox ──────────────────────────────────────────────────────────
+export const notifyPlatformInbox = functions.firestore
+  .document('platform_inbox/{reportId}')
+  .onCreate(async (snap, context) => {
+    const report = snap.data();
+    const reportId = context.params.reportId;
+
+    try {
+      const resendKey = process.env.RESEND_API_KEY;
+      if (!resendKey) {
+        console.log('notifyPlatformInbox: RESEND_API_KEY not set, skipping email');
+        return;
+      }
+      const resend = new Resend(resendKey);
+
+      const typeLabels: Record<string, string> = {
+        contact: 'Contact Support',
+        feature: 'Feature Request',
+        bug: 'Bug Report',
+      };
+      const label = typeLabels[report.type] || 'Platform Inbox';
+      const data = report.data || {};
+
+      let bodyHtml = '';
+      if (report.type === 'contact') {
+        bodyHtml = `
+          <p><strong>From:</strong> ${data.name || 'N/A'} (${data.email || 'N/A'})</p>
+          <p><strong>Subject:</strong> ${data.subject || 'N/A'}</p>
+          <p><strong>Message:</strong><br>${data.message || 'N/A'}</p>`;
+      } else if (report.type === 'feature') {
+        bodyHtml = `
+          <p><strong>Title:</strong> ${data.title || 'N/A'}</p>
+          <p><strong>Details:</strong><br>${data.details || 'N/A'}</p>`;
+      } else if (report.type === 'bug') {
+        bodyHtml = `
+          <p><strong>Reported by:</strong> ${data.role || 'N/A'}</p>
+          <p><strong>What went wrong:</strong> ${data.title || 'N/A'}</p>
+          <p><strong>Area:</strong> ${data.area === 'Other' ? (data.areaOther || 'Other') : (data.area || 'N/A')}</p>
+          <p><strong>Steps:</strong><br>${data.steps || 'N/A'}</p>
+          <p><strong>Expected:</strong><br>${data.expected || 'N/A'}</p>
+          <p><strong>Device/Browser:</strong> ${data.device || 'N/A'}</p>`;
+      }
+
+      const pageUrlHtml = report.pageUrl ? `<p><strong>Page:</strong> ${report.pageUrl}</p>` : '';
+
+      const html = `
+        <p><strong>Reporter:</strong> ${report.userEmail || 'Anonymous'}</p>
+        <p><strong>From tenant:</strong> ${report.fromTenantId || 'platform/unknown'}</p>
+        ${pageUrlHtml}
+        ${bodyHtml}`;
+
+      const { error } = await resend.emails.send({
+        from: 'Harvest <noreply@theharvest.app>',
+        to: process.env.PLATFORM_OWNER_EMAIL || 'bumbmatei@gmail.com',
+        subject: `[${label}] New submission`,
+        html,
+      });
+
+      if (error) {
+        console.error(`notifyPlatformInbox: Resend error for ${reportId}:`, error);
+      } else {
+        console.log(`notifyPlatformInbox: Notified for ${reportId}`);
+      }
+    } catch (err: any) {
+      console.error(`notifyPlatformInbox: Failed for ${reportId}:`, err?.message || err);
+    }
+  });
