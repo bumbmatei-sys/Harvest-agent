@@ -201,9 +201,9 @@ const NewsletterEditor: React.FC<NewsletterEditorProps> = ({
             <ChevronLeft size={24} />
           </button>
           <div>
-            <h2 className="text-xl font-bold text-earth font-display">
-              {newsletterId ? 'Edit Newsletter' : 'New Newsletter'}
-            </h2>
+            {/* The app header already shows the "Newsletter" title, so no in-body
+                heading here (it duplicated the shell title). Back chevron and the
+                subtitle below are kept. */}
             <p className="text-xs text-warm-brown">
               {canAutoGenerate ? 'AI-generated from Instagram · sent via Mailchimp' : 'Write manually · sent via Mailchimp'}
             </p>

@@ -348,7 +348,10 @@ const DmThread: React.FC<{
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+      {/* min-h-0 lets this flex child shrink below its content height so it
+          scrolls internally; without it the list grows and pushes the composer
+          down instead of the composer staying pinned above the bottom nav. */}
+      <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-3">
         {messages.length === 0 && (
           <div className="text-center py-12 text-[color:var(--text-faint)]">
             <MessageSquare size={32} className="mx-auto mb-2 opacity-30" />

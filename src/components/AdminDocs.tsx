@@ -358,7 +358,7 @@ interface AdminDocsProps {
 }
 
 const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) => {
-  const { setHeaderAction } = useAdminHeader();
+  const { setHeaderAction, setHeaderHidden } = useAdminHeader();
   const queryClient = useQueryClient();
   // Fall back to the platform tenant for a super admin if the store value is
   // briefly null so created docs/folders are never orphaned with a null
@@ -424,6 +424,16 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
     setHeaderAction(<HeaderActionButton label="New Doc" onClick={() => createDoc()} />);
     return () => setHeaderAction(null);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // While a note is open (focus mode) hide the mobile app header so the editor is
+  // fullscreen. The editor keeps its own toolbar row (sidebar toggle · back to
+  // Notes · broadcast · Export), so there is still a way back. Always restore the
+  // header on exit and on unmount so you can never get stuck headerless.
+  const editorFullscreen = focusMode && !!openDoc;
+  useEffect(() => {
+    setHeaderHidden(editorFullscreen);
+    return () => setHeaderHidden(false);
+  }, [editorFullscreen, setHeaderHidden]);
 
   const saveDoc = useCallback(async (id: string, title: string, content: string) => {
     setSaveStatus('saving');

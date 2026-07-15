@@ -304,7 +304,18 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
         limit(500)
       );
       unsub = onSnapshot(q, snap => {
-        setInvoices(snap.docs.map(d => ({ id: d.id, ...d.data() }) as Invoice));
+        // Invoices store `amount` in CENTS (written by the Stripe webhook:
+        // `amount: amountCents`). Normalize to DOLLARS once here so every
+        // downstream sum (This Month / This Year) and every render of an invoice
+        // amount works in dollars — matching how giving-statements and the
+        // annual-receipt function already divide by 100. (Before this, cents were
+        // formatted as dollars, so $105,500 showed as $10,550,000.) The separate
+        // givingStatements collection has its own `totalAmount` field, still
+        // divided at its own render site, so it is unaffected.
+        setInvoices(snap.docs.map(d => {
+          const data = d.data() as Omit<Invoice, 'id'>;
+          return { id: d.id, ...data, amount: (data.amount || 0) / 100 } as Invoice;
+        }));
         setLoading(false);
       }, err => {
         try { handleFirestoreError(err, OperationType.GET, 'invoices'); } catch (e) { console.error(e); }

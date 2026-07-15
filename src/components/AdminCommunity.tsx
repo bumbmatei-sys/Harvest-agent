@@ -804,8 +804,11 @@ const DmThread: React.FC<{
   };
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+    <div className="flex flex-col h-full min-h-0">
+      {/* min-h-0 lets this flex child shrink below its content height so it
+          scrolls internally; without it the list grows and pushes the composer
+          down instead of the composer staying pinned above the bottom nav. */}
+      <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-3">
         {messages.length === 0 && (
           <div className="text-center py-12 text-[color:var(--text-faint)]">
             <MessageSquare size={32} className="mx-auto mb-2 opacity-30" />
@@ -1239,8 +1242,8 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
   );
 
   return (
-    <div className="max-w-6xl mx-auto lg:h-[calc(100dvh-140px)]">
-      <div className="lg:flex lg:gap-5 lg:h-full">
+    <div className="max-w-6xl mx-auto h-full lg:h-[calc(100dvh-140px)]">
+      <div className="flex flex-col h-full lg:flex-row lg:gap-5">
 
       {/* ── Left rail: tabs + conversation list ── */}
       <div className={`${anyThreadOpen ? 'hidden lg:flex' : 'flex'} flex-col lg:w-[340px] lg:shrink-0 lg:min-h-0 lg:bg-white lg:rounded-brand-lg lg:border lg:border-stone-200 lg:shadow-[var(--ds-sh-sm)] lg:overflow-hidden`}>
@@ -1457,7 +1460,7 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
       </div>{/* /left rail */}
 
       {/* ── Right pane: active channel / DM thread (persistent on desktop, full-width takeover on mobile) ── */}
-      <div className={`${anyThreadOpen ? 'flex' : 'hidden lg:flex'} flex-1 min-w-0 flex-col min-h-[calc(100dvh-200px)] lg:min-h-0 lg:bg-white lg:rounded-brand-lg lg:border lg:border-stone-200 lg:shadow-[var(--ds-sh-sm)] lg:overflow-hidden`}>
+      <div className={`${anyThreadOpen ? 'flex' : 'hidden lg:flex'} flex-1 min-w-0 flex-col min-h-0 lg:bg-white lg:rounded-brand-lg lg:border lg:border-stone-200 lg:shadow-[var(--ds-sh-sm)] lg:overflow-hidden`}>
         {openChannel && currentUser ? (
           <>
             {/* Channel header — desktop only; on mobile the shell header override supplies back + Members */}
