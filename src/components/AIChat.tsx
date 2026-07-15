@@ -68,11 +68,16 @@ const SUGGESTIONS = [
 // ═══════════════════════════════════════════════
 // TYPING INDICATOR
 // ═══════════════════════════════════════════════
-function TypingIndicator() {
+interface TypingIndicatorProps {
+ logoSrc: string;
+ logoAlt: string;
+}
+
+function TypingIndicator({ logoSrc, logoAlt }: TypingIndicatorProps) {
  return (
  <div style={{ display: "flex", alignItems: "flex-end", gap: 8, padding: "4px 0" }}>
  <div style={{ width: 32, height: 32, borderRadius: "50%", background: GOLD_LIGHT, border: `1.5px solid ${GOLD}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, flexShrink: 0, overflow: "hidden" }}>
- <Image src="https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png" alt="Harvest Logo" width={20} height={20} className="object-contain" />
+ <Image src={logoSrc} alt={logoAlt} width={20} height={20} className="object-contain" />
  </div>
  <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: "18px 18px 18px 4px", padding: "12px 16px", boxShadow: "0 1px 4px rgba(0,0,0,0.06)", display: "flex", gap: 5, alignItems: "center" }}>
  {[0, 1, 2].map((i) => (
@@ -88,15 +93,17 @@ function TypingIndicator() {
 // ═══════════════════════════════════════════════
 interface MessageBubbleProps {
  message: Message;
+ logoSrc: string;
+ logoAlt: string;
 }
 
-function MessageBubble({ message }: MessageBubbleProps) {
+function MessageBubble({ message, logoSrc, logoAlt }: MessageBubbleProps) {
  const isUser = message.role === "user";
  return (
  <div style={{ display: "flex", flexDirection: isUser ? "row-reverse" : "row", alignItems: "flex-end", gap: 8, marginBottom: 4 }}>
  {!isUser && (
  <div style={{ width: 32, height: 32, borderRadius: "50%", background: GOLD_LIGHT, border: `1.5px solid ${GOLD}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, flexShrink: 0, overflow: "hidden" }}>
- <Image src="https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png" alt="Harvest Logo" width={20} height={20} className="object-contain" />
+ <Image src={logoSrc} alt={logoAlt} width={20} height={20} className="object-contain" />
  </div>
  )}
  <div style={{ maxWidth: "78%", display: "flex", flexDirection: "column", alignItems: isUser ? "flex-end" : "flex-start", gap: 3 }}>
@@ -631,10 +638,10 @@ Friendly neighbor, not a corporate chatbot. Short. Helpful. Human.`;
  <div className="lg:w-full lg:max-w-3xl lg:self-center" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
  {messages.map((msg) => (
  <div key={msg.id} style={{ animation: "fadeSlideUp 0.3s ease" }}>
- <MessageBubble message={msg} />
+ <MessageBubble message={msg} logoSrc={displayLogo} logoAlt={displayName} />
  </div>
  ))}
- {typing && <TypingIndicator />}
+ {typing && <TypingIndicator logoSrc={displayLogo} logoAlt={displayName} />}
  <div ref={messagesEndRef} />
  </div>
  )}
