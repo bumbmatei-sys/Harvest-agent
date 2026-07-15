@@ -158,12 +158,22 @@ const CampaignWidget: React.FC<CampaignWidgetProps> = ({ onDonate }) => {
           A cover photo (when set) washes behind the navy→gold gradient. Stacks
           on mobile, goes horizontal on desktop. */}
       <div className="mb-4 lg:mb-3">
-        <HeroBand className="px-5 py-5 lg:px-6">
-          {campaign.coverImage && (
+        <HeroBand
+          className="px-5 py-5 lg:px-6"
+          backdrop={campaign.coverImage ? (
             <span aria-hidden className="absolute inset-0 pointer-events-none">
-              <Image src={campaign.coverImage} alt="" fill sizes="900px" className="object-cover opacity-25" style={{ objectPosition: 'center 35%' }} referrerPolicy="no-referrer" />
+              <Image
+                src={campaign.coverImage}
+                alt=""
+                fill
+                sizes="(max-width: 1024px) 100vw, 900px"
+                className="object-cover opacity-25"
+                style={{ objectPosition: 'center 35%' }}
+                referrerPolicy="no-referrer"
+              />
             </span>
-          )}
+          ) : null}
+        >
           <div className="relative flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="min-w-0">
               <Eyebrow tone="glow" className="truncate">{campaign.title}</Eyebrow>

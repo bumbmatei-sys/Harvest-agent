@@ -62,13 +62,14 @@ export const SectionTitle: React.FC<{
  * for the mockup's wheat-field photography. Children render above the texture.
  */
 export const HeroBand: React.FC<
-  React.HTMLAttributes<HTMLDivElement> & { radius?: string; overlayOpacity?: number }
-> = ({ children, className = '', style, radius = 'var(--ds-radius-card)', overlayOpacity = 1, ...rest }) => (
+  React.HTMLAttributes<HTMLDivElement> & { radius?: string; overlayOpacity?: number; backdrop?: React.ReactNode }
+> = ({ children, className = '', style, radius = 'var(--ds-radius-card)', overlayOpacity = 1, backdrop, ...rest }) => (
   <div
     className={`relative overflow-hidden ${className}`}
     style={{ background: 'var(--surface-night)', borderRadius: radius, ...style }}
     {...rest}
   >
+    {backdrop}
     {/* navy→gold diagonal wash */}
     <span
       aria-hidden
