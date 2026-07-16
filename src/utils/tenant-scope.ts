@@ -1,6 +1,7 @@
 import { auth, db } from '../firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { isSuperAdminEmail, SUPER_ADMIN_EMAILS } from './super-admins';
+import { NON_TENANT_SUBDOMAINS } from './non-tenant-subdomains';
 
 // Module-level cache for tenantId
 let _cachedTenantId: string | null | undefined = undefined;
@@ -11,9 +12,6 @@ const SUPER_ADMIN_EMAIL = SUPER_ADMIN_EMAILS[0] || 'bumbmatei@proton.me';
 
 /** Platform tenant ID — used as fallback for super admin flows (newsletter, partner, etc.) */
 export const PLATFORM_TENANT_ID = process.env.NEXT_PUBLIC_PLATFORM_TENANT_ID || 'harvest';
-
-/** Subdomains that are NOT tenants (root/marketing/app aliases) */
-const NON_TENANT_SUBDOMAINS = new Set(['www', 'app', 'admin']);
 
 /**
  * Resolve the tenantId from the current subdomain. This is the AUTHORITATIVE

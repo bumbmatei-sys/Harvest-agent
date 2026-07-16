@@ -1,10 +1,12 @@
 import { adminDb } from './firebase-admin';
 import type { Tenant } from '@/types/tenant.types';
+import { isNonTenantSubdomain } from '@/utils/non-tenant-subdomains';
 
 /**
  * Resolves a tenant from the HTTP Host header (server-side only).
  * Handles both subdomain pattern (nations.theharvest.app) and custom domains.
- * Returns null for the root domain, www, or unknown hosts.
+ * Returns null for the root domain, non-tenant subdomains (www/app/admin/
+ * affiliate), or unknown hosts.
  */
 export async function getTenantFromHost(host: string): Promise<Tenant | null> {
   const hostname = host.split(':')[0]; // strip port
@@ -13,7 +15,10 @@ export async function getTenantFromHost(host: string): Promise<Tenant | null> {
   // Subdomain pattern: <tenantId>.theharvest.app
   if (parts.length >= 3 && hostname.endsWith('.theharvest.app')) {
     const subdomain = parts[0];
-    if (subdomain === 'www') return null;
+    // Non-tenant subdomains (www/app/admin/affiliate) are platform aliases, not
+    // tenants — mirror the client resolvers so SSR branding never treats them as
+    // a tenant. Shared NON_TENANT_SUBDOMAINS keeps server and client in sync.
+    if (isNonTenantSubdomain(subdomain)) return null;
 
     try {
       const snap = await adminDb.collection('tenants').doc(subdomain).get();

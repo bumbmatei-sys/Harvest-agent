@@ -4,10 +4,14 @@ import Stripe from 'stripe';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireAuth } from '@/lib/api-auth';
 import { setCustomClaims } from '@/lib/set-custom-claims';
+import { NON_TENANT_SUBDOMAINS } from '@/utils/non-tenant-subdomains';
 
 export const dynamic = 'force-dynamic';
 
-const RESERVED = new Set(['www', 'app', 'admin', 'api', 'harvest', 'nations', 'platform']);
+// A tenant can never claim a non-tenant subdomain (www/app/admin/affiliate) or a
+// platform-reserved label (api/harvest/nations/platform). Derived from the shared
+// NON_TENANT_SUBDOMAINS so a new non-tenant subdomain is automatically unclaimable.
+const RESERVED = new Set([...NON_TENANT_SUBDOMAINS, 'api', 'harvest', 'nations', 'platform']);
 
 function normalizeSubdomain(raw: string): string {
   return (raw || '')

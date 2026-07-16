@@ -7,6 +7,7 @@ import { generateAccessCode } from '@/lib/ai-utils';
 import { PLAN_PRICES, getPlanFromPriceId } from '@/lib/stripe-config';
 import { setCustomClaims } from '@/lib/set-custom-claims';
 import { issueDonationReceipt } from '@/lib/donation-receipt';
+import { NON_TENANT_SUBDOMAINS } from '@/utils/non-tenant-subdomains';
 import { Resend } from 'resend';
 import QRCode from 'qrcode';
 
@@ -206,7 +207,9 @@ async function revokePlanIncludedAssistant(ownerId: string | null | undefined): 
  * random suffix until no tenant doc exists at that id (and avoids reserved labels).
  */
 async function generateUniqueSubdomain(ministryName: string): Promise<string> {
-  const RESERVED = new Set(['www', 'app', 'admin', 'api', 'harvest', 'nations', 'platform']);
+  // Derived from the shared NON_TENANT_SUBDOMAINS (www/app/admin/affiliate) plus
+  // the platform-reserved labels, so a non-tenant subdomain is never auto-assigned.
+  const RESERVED = new Set([...NON_TENANT_SUBDOMAINS, 'api', 'harvest', 'nations', 'platform']);
   const base = (ministryName || 'ministry')
     .toLowerCase()
     .replace(/[^a-z0-9\s-]/g, '')
