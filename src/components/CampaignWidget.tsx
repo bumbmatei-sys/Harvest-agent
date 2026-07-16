@@ -216,7 +216,7 @@ const CampaignWidget: React.FC<CampaignWidgetProps> = ({ onDonate }) => {
 
           {/* Cover Image */}
           {campaign.coverImage && (
-            <div className="relative h-52 bg-stone-100 flex-shrink-0">
+            <div className="relative h-52 bg-stone-100 flex-shrink-0 lg:max-w-2xl lg:mx-auto w-full">
               <Image src={campaign.coverImage} alt={campaign.title} fill sizes="100vw" className="object-cover" referrerPolicy="no-referrer" />
               {daysLeft !== null && (
                 <div className="absolute top-3 right-3 flex items-center gap-1.5 bg-black/60 text-white text-xs font-semibold px-2.5 py-1 rounded-full backdrop-blur-sm">
@@ -227,7 +227,7 @@ const CampaignWidget: React.FC<CampaignWidgetProps> = ({ onDonate }) => {
             </div>
           )}
 
-          <div className="p-4 space-y-5 pb-10">
+          <div className="p-4 space-y-5 pb-10 lg:max-w-2xl lg:mx-auto w-full">
             {/* Progress */}
             <div className="bg-stone-100 rounded-2xl p-4">
               <div className="flex justify-between items-baseline mb-2 text-sm">
