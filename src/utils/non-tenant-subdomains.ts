@@ -22,7 +22,15 @@
  * server-only (firebase-admin) and must not transitively import the client
  * Firebase SDK, so this shared constant cannot live in tenant-scope.ts.
  */
-export const NON_TENANT_SUBDOMAINS = new Set(['www', 'app', 'admin', 'affiliate']);
+/**
+ * The subdomain label for the affiliate product surface
+ * (`affiliate.theharvest.app`). Defined here, in the single source of truth, so
+ * no call site hardcodes the string `'affiliate'` — they derive the affiliate
+ * host from `isAffiliateHost()` / this constant instead.
+ */
+export const AFFILIATE_SUBDOMAIN = 'affiliate';
+
+export const NON_TENANT_SUBDOMAINS = new Set(['www', 'app', 'admin', AFFILIATE_SUBDOMAIN]);
 
 /**
  * True when `subdomain` (the first label of a *.theharvest.app host) is a
@@ -30,4 +38,24 @@ export const NON_TENANT_SUBDOMAINS = new Set(['www', 'app', 'admin', 'affiliate'
  */
 export function isNonTenantSubdomain(subdomain: string): boolean {
   return NON_TENANT_SUBDOMAINS.has(subdomain);
+}
+
+/**
+ * True when `hostname` is the affiliate product surface (`affiliate.theharvest.app`).
+ *
+ * The affiliate subdomain implies affiliate intent — this is the single signal
+ * that drives the affiliate auth copy (AuthPage) and the tenant-less post-signup
+ * routing (App.tsx), so neither has to hardcode `'affiliate'`.
+ *
+ * Server-safe by design: it reads only its `hostname` argument and never touches
+ * `window`, so it is valid in SSR / API routes as well as the client. Mirrors the
+ * `*.theharvest.app` host-matching used by the tenant resolvers (getTenantIdFromHost,
+ * resolveTenantIdFromHostname, getTenantFromHost) so "is this a tenant?" and
+ * "is this the affiliate host?" can never disagree about host shape.
+ */
+export function isAffiliateHost(hostname: string): boolean {
+  if (!hostname) return false;
+  const host = hostname.toLowerCase();
+  const parts = host.split('.');
+  return parts.length >= 3 && host.endsWith('.theharvest.app') && parts[0] === AFFILIATE_SUBDOMAIN;
 }

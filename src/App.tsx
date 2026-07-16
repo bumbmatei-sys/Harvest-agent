@@ -31,6 +31,7 @@ import { useClaimsFreshness } from './hooks/useClaimsFreshness';
 import { isSuperAdminEmail } from './utils/super-admins';
 import { useAppStore } from './store/useAppStore';
 import { PLATFORM_TENANT_ID, getTenantIdFromHost } from './utils/tenant-scope';
+import { isAffiliateHost } from './utils/non-tenant-subdomains';
 
 /** Paths that represent the auth / onboarding funnel (used to decide redirects). */
 const FUNNEL_PATHS = ['/auth', '/onboarding', '/church-onboarding'];
@@ -156,6 +157,12 @@ const AppInner: React.FC = () => {
   const isChurchSignup = signupParam === 'church';
   const signupPlan = signupParam && ['plus', 'pro', 'max', 'ultra'].includes(signupParam)
     ? signupParam as TenantPlan : undefined;
+  // Affiliate host (affiliate.theharvest.app): the subdomain implies affiliate
+  // intent (no ?signup param). An affiliate is a tenant-less account, so it must
+  // skip BOTH the church funnel and the member onboarding (whose default steps
+  // ask faith questions that don't belong in a business relationship). Phase 2
+  // lands them on the platform/apex view; the affiliate dashboard is Phase 3.
+  const isAffiliateSignup = typeof window !== 'undefined' && isAffiliateHost(window.location.hostname);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -252,14 +259,28 @@ const AppInner: React.FC = () => {
               // or payment abandoned). The OnboardingGate renders the right
               // "Setting up…" / "Complete your payment" screen — don't bounce them
               // into the generic onboarding funnel.
+            } else if (isAffiliateSignup && !data.tenantId) {
+              // Tenant-less user on the affiliate host = an affiliate. Skip the
+              // onboarding funnels entirely and land on the platform/apex view.
+              // Gated on !data.tenantId so a church admin who happens to be on the
+              // affiliate origin still routes to their church flow below.
+              navigate('/', { replace: true });
             } else if (isChurchSignup || signupPlan || role === 'church_admin') {
               navigate('/church-onboarding', { replace: true });
             } else {
               navigate('/onboarding', { replace: true });
             }
           } else {
-            // No user doc yet → onboarding funnel
-            navigate(isChurchSignup || signupPlan ? '/church-onboarding' : '/onboarding', { replace: true });
+            // No user doc yet → onboarding funnel (or, on the affiliate host, the
+            // platform/apex view — an affiliate never enters an onboarding funnel).
+            navigate(
+              isAffiliateSignup
+                ? '/'
+                : isChurchSignup || signupPlan
+                  ? '/church-onboarding'
+                  : '/onboarding',
+              { replace: true }
+            );
           }
         } catch (error) {
           try {
@@ -280,7 +301,7 @@ const AppInner: React.FC = () => {
       storeSetIsAuthReady(true);
     });
     return () => unsubscribe();
-  }, [isChurchSignup, signupPlan, isAdminDomain, ctxSetTenantPlan, navigate, setCurrentUser, setIsSuperAdmin, setTenantPlan, storeSetIsAuthReady]);
+  }, [isChurchSignup, signupPlan, isAffiliateSignup, isAdminDomain, ctxSetTenantPlan, navigate, setCurrentUser, setIsSuperAdmin, setTenantPlan, storeSetIsAuthReady]);
 
   // Map legacy string-based navigation (onNavigate('admin'|'home'|...)) to routes
   // so child components keep their existing API while routing is URL-driven.
