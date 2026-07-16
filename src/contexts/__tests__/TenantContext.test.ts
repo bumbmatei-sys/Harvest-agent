@@ -7,6 +7,16 @@ describe('resolveTenantIdFromHostname', () => {
     expect(resolveTenantIdFromHostname('acme.theharvest.app', null)).toBe('acme');
   });
 
+  it('does NOT treat non-tenant subdomains as tenants — falls through to cookie', () => {
+    // affiliate is a separate product surface, not a tenant; www/app/admin are
+    // platform aliases. All must resolve like the apex (cookie fallback), never
+    // as a tenant named "affiliate" / "www" / "app" / "admin".
+    for (const sub of ['affiliate', 'www', 'app', 'admin']) {
+      expect(resolveTenantIdFromHostname(`${sub}.theharvest.app`, null)).toBeNull();
+      expect(resolveTenantIdFromHostname(`${sub}.theharvest.app`, 'cookieTenant')).toBe('cookieTenant');
+    }
+  });
+
   it('falls through to cookie for apex theharvest.app (no subdomain)', () => {
     expect(resolveTenantIdFromHostname('theharvest.app', 'cookieTenant')).toBe('cookieTenant');
     expect(resolveTenantIdFromHostname('theharvest.app', null)).toBeNull();

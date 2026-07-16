@@ -40,6 +40,11 @@ describe('getTenantIdFromHost', () => {
     setHostname('admin.theharvest.app');
     expect(getTenantIdFromHost()).toBeNull();
   });
+
+  it('returns null for the affiliate subdomain (non-tenant product surface)', () => {
+    setHostname('affiliate.theharvest.app');
+    expect(getTenantIdFromHost()).toBeNull();
+  });
 });
 
 describe('isPlatformContext / hasPlatformOverride', () => {

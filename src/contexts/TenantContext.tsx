@@ -5,6 +5,7 @@ import { db } from '../firebase';
 import { TenantPlan, TenantConfig } from '../types/tenant.types';
 import { getPlanFeatures, PlanFeatures } from '../utils/plan-features';
 import { hasPlatformOverride } from '../utils/tenant-scope';
+import { isNonTenantSubdomain } from '../utils/non-tenant-subdomains';
 
 /** What the context exposes to consumers */
 export interface TenantContextValue {
@@ -41,14 +42,20 @@ export function getCookie(name: string): string | null {
 
 /**
  * Resolve a tenant ID from a hostname and cookie fallback.
- * Only *.theharvest.app subdomains are treated as tenant slugs.
- * Preview/staging URLs (*.vercel.app, apex domain, localhost, etc.) fall through
+ * Only *.theharvest.app subdomains are treated as tenant slugs, and only when the
+ * first label is not a NON_TENANT_SUBDOMAIN (www/app/admin/affiliate) — those, like
+ * preview/staging URLs (*.vercel.app), the apex domain, and localhost, fall through
  * to the cookie fallback so they render the global/platform view.
+ *
+ * Keep the non-tenant exclusion in sync with getTenantIdFromHost() in
+ * tenant-scope.ts — both read the shared NON_TENANT_SUBDOMAINS set, so the server
+ * and client can never disagree about which subdomains are tenants.
  */
 export function resolveTenantIdFromHostname(hostname: string, cookieTenantId: string | null): string | null {
   const parts = hostname.split('.');
   if (parts.length >= 3 && hostname.endsWith('.theharvest.app')) {
-    return parts[0];
+    const sub = parts[0];
+    if (!isNonTenantSubdomain(sub)) return sub;
   }
   return cookieTenantId;
 }

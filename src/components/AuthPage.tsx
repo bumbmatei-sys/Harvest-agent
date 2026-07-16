@@ -4,6 +4,7 @@ import { auth, db } from '../firebase';
 import { signInWithPopup, GoogleAuthProvider, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
+import { isNonTenantSubdomain } from '../utils/non-tenant-subdomains';
 import { useTenant } from '../contexts/TenantContext';
 import { Eye, EyeOff, Mail, Lock, ArrowLeft, X } from 'lucide-react';
 import { Turnstile } from '@marsidev/react-turnstile';
@@ -196,10 +197,12 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
     // Derive tenantId from hostname (not spoofable) — cookie is fallback for custom domains
     const hostname = window.location.hostname;
     const parts = hostname.split('.');
-    if (parts.length >= 3 && (hostname.endsWith('.theharvest.app') || hostname.endsWith('.vercel.app'))) {
+    // Non-tenant subdomains (www/app/admin/affiliate) are platform aliases, not
+    // tenants — skip them here so the auth screen never derives a bogus tenantId.
+    if (parts.length >= 3 && (hostname.endsWith('.theharvest.app') || hostname.endsWith('.vercel.app')) && !isNonTenantSubdomain(parts[0])) {
       setTenantId(parts[0]);
     } else {
-      // Custom domain — use cookie (set server-side by middleware via resolve-domain)
+      // Custom domain (or non-tenant subdomain) — use cookie (set server-side by middleware via resolve-domain)
       const cookies = document.cookie.split(';');
       const tenantCookie = cookies.find(c => c.trim().startsWith('tenantId='));
       if (tenantCookie) {
