@@ -4,6 +4,7 @@ import Stripe from 'stripe';
 import { randomBytes } from 'crypto';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireAuth } from '@/lib/api-auth';
+import { resolveReturnBaseUrl } from '@/lib/connect-return-url';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,7 +29,11 @@ export async function POST(request: NextRequest) {
 
     const stripe = new Stripe(stripeKey);
 
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://theharvest.app';
+    // Send the affiliate back to the host they STARTED on (e.g.
+    // affiliate.theharvest.app), not a hardcoded apex — otherwise a tenant-less
+    // affiliate completes onboarding and lands on theharvest.app. Derived from
+    // the request and allowlist-validated so a spoofed Host can't open-redirect.
+    const baseUrl = resolveReturnBaseUrl(request);
     const userRef = adminDb.collection('users').doc(userOrErr.uid);
     const userDoc = await userRef.get();
     const userData = userDoc.data();

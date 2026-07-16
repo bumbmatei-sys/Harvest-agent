@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import Stripe from 'stripe';
 import { adminDb } from '@/lib/firebase-admin';
+import { resolveReturnBaseUrl } from '@/lib/connect-return-url';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,21 +12,22 @@ export const dynamic = 'force-dynamic';
  * Retrieves account status and updates the user document.
  */
 export async function GET(request: NextRequest) {
+  // Route the affiliate back to the host they onboarded from (the onboard route
+  // built this callback's return_url from that same host), not a hardcoded apex.
+  // Allowlist-validated inside resolveReturnBaseUrl, so a spoofed Host header
+  // falls back to the apex rather than becoming an open redirect.
+  const baseUrl = resolveReturnBaseUrl(request);
   try {
     const { searchParams } = new URL(request.url);
     const accountId = searchParams.get('account_id');
 
     if (!accountId) {
-      return NextResponse.redirect(
-        new URL('/?error=missing_account', process.env.NEXT_PUBLIC_APP_URL || 'https://theharvest.app')
-      );
+      return NextResponse.redirect(new URL('/?error=missing_account', baseUrl));
     }
 
     const stripeKey = process.env.STRIPE_SECRET_KEY;
     if (!stripeKey) {
-      return NextResponse.redirect(
-        new URL('/?error=stripe_not_configured', process.env.NEXT_PUBLIC_APP_URL || 'https://theharvest.app')
-      );
+      return NextResponse.redirect(new URL('/?error=stripe_not_configured', baseUrl));
     }
 
     const stripe = new Stripe(stripeKey);
@@ -47,11 +49,9 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://theharvest.app';
     return NextResponse.redirect(new URL(`/?affiliate_connect=success`, baseUrl));
   } catch (error: any) {
     console.error('Affiliate callback error:', error?.message || error);
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://theharvest.app';
     return NextResponse.redirect(new URL('/?error=affiliate_callback_failed', baseUrl));
   }
 }

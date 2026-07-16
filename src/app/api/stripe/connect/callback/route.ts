@@ -3,14 +3,18 @@ import type { NextRequest } from 'next/server';
 import Stripe from 'stripe';
 import { adminDb } from '@/lib/firebase-admin';
 import { deriveConnectStatus } from '@/lib/stripe-connect-status';
+import { resolveReturnBaseUrl } from '@/lib/connect-return-url';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
-  // Apex fallback for redirects that happen BEFORE the tenant is known (or in the
-  // catch, where tenantId may be out of scope). Same convention as the Composio
-  // callbacks, which keep missing/invalid-state redirects on the apex.
-  const apexUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://theharvest.app';
+  // Fallback for redirects that happen BEFORE the tenant is known (or in the
+  // catch, where tenantId may be out of scope). Derived from the host the admin
+  // came back on (allowlist-validated, so a spoofed Host falls back to the apex)
+  // rather than a hardcoded apex — an error mid-onboarding keeps them on the host
+  // they started from. The success path below still routes to the tenant
+  // subdomain resolved from the account's tenant doc.
+  const apexUrl = resolveReturnBaseUrl(request);
   try {
     const { searchParams } = new URL(request.url);
     const accountId = searchParams.get('account_id');

@@ -59,3 +59,27 @@ export function isAffiliateHost(hostname: string): boolean {
   const parts = host.split('.');
   return parts.length >= 3 && host.endsWith('.theharvest.app') && parts[0] === AFFILIATE_SUBDOMAIN;
 }
+
+/**
+ * True when `hostname` is a Harvest-owned host — the apex `theharvest.app` or any
+ * `*.theharvest.app` subdomain (tenants, plus the www/app/admin/affiliate
+ * aliases). This is the ALLOWLIST for turning a request-derived host into a
+ * redirect target: the Stripe Connect return/refresh URLs are built from the
+ * incoming request's host so a user lands back where they started, and an
+ * attacker-supplied `Host` / `X-Forwarded-Host` header must NEVER be able to
+ * redirect off our domain (an open redirect on a money callback). Matches the
+ * exact `*.theharvest.app` shape the tenant resolvers use, so "is this a valid
+ * Harvest host?" can't drift from "is this a tenant / the affiliate host?".
+ *
+ * Server-safe (reads only its argument, never `window`) so it is valid in API
+ * routes. Deliberately does NOT accept custom tenant domains: the Connect
+ * callbacks resolve those back to the tenant subdomain from the account's
+ * tenant doc, so the derived host only needs to cover *.theharvest.app.
+ */
+export function isHarvestHost(hostname: string): boolean {
+  if (!hostname) return false;
+  const host = hostname.toLowerCase();
+  if (host === 'theharvest.app') return true;
+  const parts = host.split('.');
+  return parts.length >= 3 && host.endsWith('.theharvest.app');
+}
