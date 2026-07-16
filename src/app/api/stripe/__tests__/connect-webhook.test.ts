@@ -487,3 +487,156 @@ describe('account.updated → pending affiliate commission sweep', () => {
     );
   });
 });
+
+// ── Decoupled tenant vs. affiliate lookups ───────────────────────────────────
+// The regression: the tenant lookup early-returned when empty, so a standalone
+// affiliate (NO tenant — the whole point of the affiliate track) never had their
+// status synced OR their pending commissions swept on activation. These tests
+// pin the two lookups as INDEPENDENT: tenant-only, affiliate-only, both, neither.
+describe('account.updated decoupled tenant/affiliate lookups', () => {
+  it('(a) tenant only, no linked affiliate users: updates tenant status, does NO affiliate work', async () => {
+    mockConstructEvent.mockReturnValue(makeAccountEvent({
+      id: 'acct_123', charges_enabled: true, payouts_enabled: true,
+    }));
+    mockCollGet
+      .mockResolvedValueOnce(tenantSnapshot({ stripeConnectAccountId: 'acct_123' }))
+      .mockResolvedValueOnce(usersSnapshot([]));
+
+    const res = await POST(makeRequest());
+    expect(res.status).toBe(200);
+    expect(mockTenantUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ stripeConnectStatus: 'active' }),
+    );
+    // No affiliate users → no status batch, no sweep.
+    expect(mockBatchUpdate).not.toHaveBeenCalled();
+    expect(mockSweep).not.toHaveBeenCalled();
+  });
+
+  it('(b) THE BUG: affiliate users but NO tenant → status synced AND pending commissions swept', async () => {
+    // A standalone affiliate has no tenant row. The old early-return here skipped
+    // both the status sync and the sweep, stranding them until the daily cron.
+    mockConstructEvent.mockReturnValue(makeAccountEvent({
+      id: 'acct_aff', charges_enabled: true, payouts_enabled: true,
+    }));
+    mockCollGet
+      .mockResolvedValueOnce(tenantSnapshot(null)) // no tenant
+      .mockResolvedValueOnce(usersSnapshot(['aff1'])); // standalone affiliate
+    mockSweep.mockResolvedValue({ total: 1, swept: 1 });
+
+    const res = await POST(makeRequest());
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.received).toBe(true);
+
+    // No tenant doc was written…
+    expect(mockTenantUpdate).not.toHaveBeenCalled();
+    // …but the affiliate's status IS synced…
+    expect(mockBatchUpdate).toHaveBeenCalledWith(
+      { id: 'aff1' },
+      expect.objectContaining({ affiliateConnectStatus: 'active' }),
+    );
+    expect(mockBatchCommit).toHaveBeenCalled();
+    // …and their pending commissions ARE swept to THIS account on activation.
+    expect(mockSweep).toHaveBeenCalledTimes(1);
+    expect(mockSweep).toHaveBeenCalledWith(
+      expect.objectContaining({ referrerId: 'aff1', connectAccountId: 'acct_aff' }),
+    );
+  });
+
+  it('(c) both tenant and affiliate users: tenant status updated AND affiliate synced + swept', async () => {
+    mockConstructEvent.mockReturnValue(makeAccountEvent({
+      id: 'acct_123', charges_enabled: true, payouts_enabled: true,
+    }));
+    mockCollGet
+      .mockResolvedValueOnce(tenantSnapshot({ stripeConnectAccountId: 'acct_123', ownerId: 'owner1' }))
+      .mockResolvedValueOnce(usersSnapshot(['owner1']));
+    mockSweep.mockResolvedValue({ total: 2, swept: 2 });
+
+    const res = await POST(makeRequest());
+    expect(res.status).toBe(200);
+    expect(mockTenantUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ stripeConnectStatus: 'active' }),
+    );
+    expect(mockBatchUpdate).toHaveBeenCalledWith(
+      { id: 'owner1' },
+      expect.objectContaining({ affiliateConnectStatus: 'active' }),
+    );
+    expect(mockSweep).toHaveBeenCalledWith(
+      expect.objectContaining({ referrerId: 'owner1', connectAccountId: 'acct_123' }),
+    );
+  });
+
+  it('(d) neither tenant nor affiliate users: logs unknown, 200, writes nothing', async () => {
+    mockConstructEvent.mockReturnValue(makeAccountEvent({
+      id: 'acct_unknown', charges_enabled: true, payouts_enabled: true,
+    }));
+    mockCollGet
+      .mockResolvedValueOnce(tenantSnapshot(null))
+      .mockResolvedValueOnce(usersSnapshot([]));
+
+    const res = await POST(makeRequest());
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.received).toBe(true);
+    // A genuinely unknown account touches nothing.
+    expect(mockTenantUpdate).not.toHaveBeenCalled();
+    expect(mockBatchUpdate).not.toHaveBeenCalled();
+    expect(mockSweep).not.toHaveBeenCalled();
+  });
+
+  it('(e) affiliate users, NO tenant, status restricted: status synced but NO sweep', async () => {
+    // Standalone affiliate whose account is not yet payout-ready — sync the status
+    // so the dashboard reflects it, but move no money.
+    mockConstructEvent.mockReturnValue(makeAccountEvent({
+      id: 'acct_aff',
+      charges_enabled: false,
+      payouts_enabled: false,
+      requirements: { currently_due: ['external_account'] },
+    }));
+    mockCollGet
+      .mockResolvedValueOnce(tenantSnapshot(null))
+      .mockResolvedValueOnce(usersSnapshot(['aff1']));
+
+    const res = await POST(makeRequest());
+    expect(res.status).toBe(200);
+    expect(mockTenantUpdate).not.toHaveBeenCalled();
+    expect(mockBatchUpdate).toHaveBeenCalledWith(
+      { id: 'aff1' },
+      expect.objectContaining({ affiliateConnectStatus: 'restricted' }),
+    );
+    expect(mockSweep).not.toHaveBeenCalled();
+  });
+
+  it('(f) affiliate-only sweep failure still 200s the webhook (status write stuck, no retry storm)', async () => {
+    mockConstructEvent.mockReturnValue(makeAccountEvent({
+      id: 'acct_aff', charges_enabled: true, payouts_enabled: true,
+    }));
+    mockCollGet
+      .mockResolvedValueOnce(tenantSnapshot(null))
+      .mockResolvedValueOnce(usersSnapshot(['aff1']));
+    mockSweep.mockRejectedValue(new Error('Stripe unavailable'));
+
+    const res = await POST(makeRequest());
+    expect(res.status).toBe(200);
+    expect(mockBatchCommit).toHaveBeenCalled(); // status sync stuck
+    expect(mockDocDelete).not.toHaveBeenCalled(); // marker NOT undone
+  });
+
+  it('affiliate-only reconcile (batch) failure bubbles → 500 → marker undone', async () => {
+    // The affiliate status write "must stick" even with no tenant present: a real
+    // failure bubbles to the catch → 500 → Stripe retries the (idempotent) handler.
+    mockConstructEvent.mockReturnValue(makeAccountEvent({
+      id: 'acct_aff', charges_enabled: true, payouts_enabled: true,
+    }));
+    mockCollGet
+      .mockResolvedValueOnce(tenantSnapshot(null))
+      .mockResolvedValueOnce(usersSnapshot(['aff1']));
+    mockBatchCommit.mockRejectedValueOnce(new Error('Firestore unavailable'));
+
+    const res = await POST(makeRequest());
+    expect(res.status).toBe(500);
+    expect(mockTenantUpdate).not.toHaveBeenCalled(); // no tenant to write
+    expect(mockDocDelete).toHaveBeenCalled(); // marker undone → redelivery re-processes
+    expect(mockSweep).not.toHaveBeenCalled(); // never reached the sweep
+  });
+});

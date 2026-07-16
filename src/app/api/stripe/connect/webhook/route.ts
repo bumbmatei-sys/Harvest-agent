@@ -69,38 +69,58 @@ export async function POST(request: NextRequest) {
         const account = event.data.object as Stripe.Account;
         const status = deriveConnectStatus(account);
 
-        // Resolve the tenant strictly via the verified account id (there is no
-        // tenantId in the body to trust). The unified account is the tenant's
-        // single donations/canonical account.
+        // An account.updated can belong to a tenant (the church's unified
+        // donations/canonical account), to standalone affiliate users who connected
+        // Connect for payouts ONLY (they have NO tenant — that's the whole point of
+        // the affiliate track), to BOTH, or — legitimately — to NEITHER. These two
+        // lookups are INDEPENDENT, so resolve both up front and act on each on its
+        // own merits. Resolve strictly via the verified account id (there is no
+        // tenantId / userId in the body to trust).
+        //
+        // The tenant lookup previously early-returned when empty, which made the
+        // affiliate status-sync + sweep below dead code for exactly the standalone
+        // affiliates it was meant to serve — a tenant-less affiliate never had a
+        // tenant row to match, so the route returned before ever reaching them.
         const tenantsSnapshot = await adminDb.collection('tenants')
           .where('stripeConnectAccountId', '==', account.id)
           .limit(1)
           .get();
 
-        if (tenantsSnapshot.empty) {
-          // Not an account we track (or not yet linked). Return 200 so Stripe stops
-          // retrying — this is a benign "unknown account", not a processing failure.
-          console.log(`ℹ️ No tenant found for Connect account ${account.id}`);
-          return NextResponse.json({ received: true });
-        }
-
-        const tenantDoc = tenantsSnapshot.docs[0];
-
-        // A real write failure here bubbles to the catch → 500 → Stripe retries,
-        // and the idempotency marker undo makes that retry safe.
-        await tenantDoc.ref.update({
-          stripeConnectStatus: status,
-          updatedAt: new Date().toISOString(),
-        });
-
-        // Unified account: the SAME account also powers affiliate payouts. Any user
-        // who set up payouts against it had it mirrored onto their own doc
-        // (affiliateStripeAccountId == account.id), so this single account.updated
-        // reconciles affiliate status for EVERY linked user (owner + any other
-        // admin/affiliate on the tenant) — keeping ALL consumers in sync, one account.
+        // The SAME account also powers affiliate payouts. Any user who set up payouts
+        // against it had it mirrored onto their own doc (affiliateStripeAccountId ==
+        // account.id): for a tenant's unified account that's the owner (+ any other
+        // admin/affiliate on the tenant); for a standalone affiliate it's just that
+        // one user, with no tenant at all.
         const linkedUsersSnap = await adminDb.collection('users')
           .where('affiliateStripeAccountId', '==', account.id)
           .get();
+
+        if (tenantsSnapshot.empty && linkedUsersSnap.empty) {
+          // Only when BOTH are empty is this a genuinely unknown account (or one not
+          // yet linked). Return 200 so Stripe stops retrying — a benign "unknown
+          // account", not a processing failure. An account with affiliate users but
+          // no tenant must NOT fall through here — that is the standalone-affiliate
+          // path, handled below.
+          console.log(`ℹ️ No tenant or affiliate user found for Connect account ${account.id}`);
+          return NextResponse.json({ received: true });
+        }
+
+        // Tenant path — runs only if a tenant is linked (church donations/canonical
+        // account). A real write failure here bubbles to the catch → 500 → Stripe
+        // retries, and the idempotency marker undo makes that retry safe.
+        const tenantDoc = tenantsSnapshot.empty ? null : tenantsSnapshot.docs[0];
+        if (tenantDoc) {
+          await tenantDoc.ref.update({
+            stripeConnectStatus: status,
+            updatedAt: new Date().toISOString(),
+          });
+        }
+
+        // Affiliate path — runs INDEPENDENTLY of whether a tenant was found. This
+        // single account.updated reconciles affiliate status for EVERY linked user
+        // (a standalone affiliate, or the owner + any other admin/affiliate on a
+        // tenant) — keeping ALL consumers in sync off one account. A batch write
+        // failure bubbles to the catch → 500 → safe (idempotent) retry.
         if (!linkedUsersSnap.empty) {
           const batch = adminDb.batch();
           linkedUsersSnap.docs.forEach(d => batch.update(d.ref, {
@@ -113,12 +133,14 @@ export async function POST(request: NextRequest) {
         // Backfill: the moment this account becomes payout-ready, sweep any
         // affiliate commissions that were banked `pending` because the affiliate
         // hadn't connected Connect when they earned them. Each linked user's
-        // affiliate payouts resolve THIS same account (the unified account), so we
-        // sweep with connectAccountId = account.id for each. Only on `active` —
-        // `restricted`/`pending` are not payout-ready.
+        // affiliate payouts resolve THIS same account, so we sweep with
+        // connectAccountId = account.id for each. Only on `active` —
+        // `restricted`/`pending` are not payout-ready. This is the fix's payoff: a
+        // standalone affiliate (no tenant) is now paid on activation instead of
+        // waiting up to 24h for the daily retry-transfers cron.
         //
         // Resilience: each user's sweep is wrapped so a failure NEVER 500s the
-        // webhook. The status write above must stick; a stuck commission is not
+        // webhook. The status write(s) above must stick; a stuck commission is not
         // lost — it stays `pending` and is retried by a future account.updated or
         // the daily retry-transfers cron, both idempotent via the per-commission
         // transfer key. (One user failing must not block another, either.)
@@ -139,7 +161,7 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        console.log(`✅ Connect account ${account.id} → ${status} for tenant ${tenantDoc.id}`);
+        console.log(`✅ Connect account ${account.id} → ${status}${tenantDoc ? ` for tenant ${tenantDoc.id}` : ' (affiliate-only, no tenant)'}`);
         break;
       }
 
