@@ -16,6 +16,7 @@ import { doc, getDoc } from 'firebase/firestore';
 
 import AuthPage from './components/AuthPage';
 import MainApp from './components/MainApp';
+import AffiliateDashboard from './components/AffiliateDashboard';
 import Onboarding from './components/Onboarding';
 import ChurchOnboarding from './components/ChurchOnboarding';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -87,6 +88,17 @@ const AppInner: React.FC = () => {
 
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [userRole, setUserRole] = useState<string>('user');
+  // The signed-in user's OWN tenant, read from their user doc. Tri-state on purpose:
+  //   undefined = not yet resolved (initial, or a failed user-doc read)
+  //   null      = resolved AND tenant-less (an affiliate)
+  //   string    = resolved tenant id (a church account)
+  // Distinct from the host-derived `tenantId` below, which is always null on the
+  // affiliate host. The affiliate dashboard is gated on `=== null` (confirmed
+  // tenant-less) — NOT falsiness — so a church user who lands on the affiliate
+  // origin, or any user whose doc read errors, falls back to MainApp instead of
+  // being trapped in the affiliate view. Mirrors the post-auth routing's
+  // `isAffiliateSignup && !data.tenantId` reasoning against the real doc field.
+  const [userTenantId, setUserTenantId] = useState<string | null | undefined>(undefined);
   const { tenantId, isAdminDomain, error: tenantError, isLoading: tenantLoading, setTenantPlan: ctxSetTenantPlan, tenantPlan: ctxTenantPlan } = useTenant();
 
   const {
@@ -179,6 +191,7 @@ const AppInner: React.FC = () => {
             const data = userDoc.data();
             const role = data.role || 'user';
             setUserRole(role);
+            setUserTenantId(data.tenantId || null);
             const onboardingDone = data.onboardingCompleted;
 
             if (onboardingDone) {
@@ -273,6 +286,11 @@ const AppInner: React.FC = () => {
           } else {
             // No user doc yet → onboarding funnel (or, on the affiliate host, the
             // platform/apex view — an affiliate never enters an onboarding funnel).
+            // No doc means no tenantId field can exist, so this is a confirmed
+            // tenant-less state (null, not undefined): a brand-new affiliate whose
+            // doc write is still racing lands on the dashboard, and a real church
+            // account — which always has a doc — can never reach here.
+            setUserTenantId(null);
             navigate(
               isAffiliateSignup
                 ? '/'
@@ -295,6 +313,7 @@ const AppInner: React.FC = () => {
         setTenantPlan(null);
         setIsSuperAdmin(false);
         setUserRole('user');
+        setUserTenantId(undefined); // unresolved — no signed-in user to resolve a tenant for
         navigate('/auth', { replace: true });
       }
       setIsAuthReady(true);
@@ -358,7 +377,16 @@ const AppInner: React.FC = () => {
           path="/"
           element={
             <ErrorBoundary>
-              <MainApp onNavigate={handleNavigate} />
+              {/* On the affiliate host, a confirmed tenant-less user (an affiliate)
+                  gets the affiliate dashboard instead of the church member app.
+                  Gated on `userTenantId === null` (resolved AND tenant-less) — not
+                  mere falsiness — so a church admin/member who lands on the affiliate
+                  origin, or any user whose doc read hasn't resolved/errored, still
+                  gets MainApp (admins are redirected to their own tenant by the auth
+                  callback), never trapped in the affiliate view. */}
+              {isAffiliateSignup && userTenantId === null
+                ? <AffiliateDashboard />
+                : <MainApp onNavigate={handleNavigate} />}
             </ErrorBoundary>
           }
         />
