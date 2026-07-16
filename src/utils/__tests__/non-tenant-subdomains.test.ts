@@ -3,6 +3,7 @@ import {
   NON_TENANT_SUBDOMAINS,
   isNonTenantSubdomain,
   isAffiliateHost,
+  isHarvestHost,
   AFFILIATE_SUBDOMAIN,
 } from '../non-tenant-subdomains';
 
@@ -60,5 +61,32 @@ describe('isAffiliateHost', () => {
     expect(isAffiliateHost('affiliate.theharvest.app.evil.com')).toBe(false);
     expect(isAffiliateHost('harvest-git-main.vercel.app')).toBe(false);
     expect(isAffiliateHost('')).toBe(false);
+  });
+});
+
+describe('isHarvestHost (Connect redirect allowlist)', () => {
+  it('accepts the apex and every *.theharvest.app host', () => {
+    expect(isHarvestHost('theharvest.app')).toBe(true);
+    expect(isHarvestHost('affiliate.theharvest.app')).toBe(true);
+    expect(isHarvestHost('www.theharvest.app')).toBe(true);
+    expect(isHarvestHost('app.theharvest.app')).toBe(true);
+    expect(isHarvestHost('admin.theharvest.app')).toBe(true);
+    // Tenant (church-admin) subdomains
+    expect(isHarvestHost('nations.theharvest.app')).toBe(true);
+    expect(isHarvestHost('gracechurch.theharvest.app')).toBe(true);
+    // Case-insensitive (hostnames are)
+    expect(isHarvestHost('Affiliate.TheHarvest.app')).toBe(true);
+  });
+
+  it('rejects attacker-supplied / foreign hosts so they can never open-redirect', () => {
+    expect(isHarvestHost('evil.com')).toBe(false);
+    expect(isHarvestHost('theharvest.app.evil.com')).toBe(false);
+    expect(isHarvestHost('affiliate.theharvest.app.evil.com')).toBe(false);
+    // A suffix without the separating dot must not slip through endsWith.
+    expect(isHarvestHost('eviltheharvest.app')).toBe(false);
+    expect(isHarvestHost('nottheharvest.app')).toBe(false);
+    // Vercel previews are not Harvest hosts.
+    expect(isHarvestHost('harvest-git-main.vercel.app')).toBe(false);
+    expect(isHarvestHost('')).toBe(false);
   });
 });

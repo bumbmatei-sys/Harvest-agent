@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server';
 import Stripe from 'stripe';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireAuth } from '@/lib/api-auth';
+import { resolveReturnBaseUrl } from '@/lib/connect-return-url';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,7 +44,12 @@ export async function POST(request: NextRequest) {
     // own uid, so this makes THEIR payouts resolve the one account. The connect
     // callback / account.updated webhook then reconcile status for EVERY user linked
     // to this account (so a multi-admin tenant works too, still with one account).
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://theharvest.app';
+    // Build the return/refresh URLs from the host the admin STARTED on (their
+    // tenant subdomain or the apex), allowlist-validated so a spoofed Host can't
+    // open-redirect. The final destination is unchanged: the connect callback
+    // still routes the admin to their own tenant subdomain from the account's
+    // tenant doc — this only keeps the intermediate hop on the same host.
+    const baseUrl = resolveReturnBaseUrl(request);
 
     // Safety: never silently repoint/downgrade a DIFFERENT, already-ACTIVE affiliate
     // account. A legacy user who onboarded a standalone affiliate account via
