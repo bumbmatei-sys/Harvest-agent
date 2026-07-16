@@ -129,12 +129,20 @@ export async function POST(request: NextRequest) {
 
     // Keep the Stripe subscription pointed at the new tenant id so future
     // lifecycle events (cancellation, payment failure) resolve to this tenant.
+    // Stripe metadata updates REPLACE the whole object, so read the existing
+    // metadata and merge — re-pointing tenantId must not wipe `referrerId` (the
+    // recurring affiliate-commission path keys off it), `plan`, or `billing`.
+    // This is the new-church first-run rename, exactly where referrals live, so
+    // a blind replace would silently stop the affiliate's recurring payout.
     const subId = tenantData.stripeSubscriptionId;
     const stripeKey = process.env.STRIPE_SECRET_KEY;
     if (subId && stripeKey) {
       try {
         const stripe = new Stripe(stripeKey);
-        await stripe.subscriptions.update(subId, { metadata: { tenantId: desired } });
+        const existingSub = await stripe.subscriptions.retrieve(subId);
+        await stripe.subscriptions.update(subId, {
+          metadata: { ...(existingSub.metadata || {}), tenantId: desired },
+        });
       } catch (subErr) {
         console.error('finish-setup: failed to update subscription metadata:', subErr);
       }

@@ -12,16 +12,15 @@ import QRCode from 'qrcode';
 
 export const dynamic = 'force-dynamic';
 
-/** Returns the affiliate commission rate for a given plan. */
-function getAffiliateRate(plan: string): number {
-  switch (plan) {
-    case 'ultra': return 0.20;
-    case 'max':   return 0.15;
-    case 'pro':   return 0.10;
-    case 'plus':  return 0.10;
-    default:      return 0.10;
-  }
-}
+/**
+ * Flat affiliate/referral commission rate — 15% for every plan, every referrer,
+ * always. Intentionally replaces the old per-plan ladder (ultra 20% / max 15% /
+ * pro 10% / plus 10%): the rate no longer depends on the purchased plan, the
+ * referrer's own plan, or whether the referrer is an affiliate vs a church admin.
+ * Commission still stops when the referred tenant cancels — that is driven by
+ * whether Stripe charges an invoice at all, not by any rate lookup here.
+ */
+const AFFILIATE_RATE = 0.15;
 
 /**
  * Pay-out the one-time ("initial") affiliate commission for a paid signup/upgrade.
@@ -54,7 +53,7 @@ async function processInitialAffiliateCommission(opts: {
     return;
   }
 
-  const commissionAmount = Math.round((amountTotal || 0) * getAffiliateRate(plan));
+  const commissionAmount = Math.round((amountTotal || 0) * AFFILIATE_RATE);
   let commissionStatus = 'pending';
   try {
     const referrerDoc = await adminDb.collection('users').doc(referrerId).get();
@@ -880,8 +879,15 @@ export async function POST(request: NextRequest) {
           // Tag the subscription with the new tenant id so later lifecycle
           // events (subscription.updated/deleted, invoice.*) resolve to it — the
           // subscription was created before the tenant existed, so it had none.
+          // Stripe metadata updates REPLACE the whole object, so spread the
+          // existing metadata (already retrieved above as `meta`) rather than
+          // dropping it. Critically this preserves `referrerId` — the recurring-
+          // commission path reads it to decide whether to pay the affiliate at
+          // all, so replacing metadata here would silently kill the affiliate's
+          // recurring stream at the first renewal — plus `plan`/`billing`, which
+          // stay useful for reporting.
           try {
-            await stripe.subscriptions.update(subscriptionId, { metadata: { tenantId: newTenantId } });
+            await stripe.subscriptions.update(subscriptionId, { metadata: { ...meta, tenantId: newTenantId } });
           } catch (metaErr) {
             console.error('new-tenant: failed to tag subscription with tenantId:', metaErr);
           }
@@ -1307,8 +1313,7 @@ export async function POST(request: NextRequest) {
                 if (!existingCommission.empty) {
                   console.log('⚠️ Commission already exists for invoice', invoice.id);
                 } else {
-                  const subscriptionPlan = subscription.metadata?.plan || 'plus';
-                  const commissionAmount = Math.round((invoice.amount_paid || 0) * getAffiliateRate(subscriptionPlan));
+                  const commissionAmount = Math.round((invoice.amount_paid || 0) * AFFILIATE_RATE);
                   let commissionStatus = 'pending';
                   let stripeTransferId: string | undefined;
                   try {

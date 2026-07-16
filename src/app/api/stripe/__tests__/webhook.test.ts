@@ -279,8 +279,12 @@ describe('checkout.session.completed', () => {
         signupInProgress: false,
       })
     );
-    // Subscription tagged with the new tenant id for future lifecycle events.
-    expect(mockSubsUpdate).toHaveBeenCalledWith('sub_new', { metadata: { tenantId: 'grace-church' } });
+    // Subscription tagged with the new tenant id WITHOUT clobbering the metadata
+    // set at checkout — the merge preserves plan/billing (and referrerId when
+    // present) so later lifecycle/commission events keep resolving.
+    expect(mockSubsUpdate).toHaveBeenCalledWith('sub_new', {
+      metadata: expect.objectContaining({ tenantId: 'grace-church', plan: 'pro', billing: 'monthly' }),
+    });
   });
 
   it('pays the initial affiliate transfer with a per-subscription idempotency key (retry-safe)', async () => {
@@ -299,8 +303,9 @@ describe('checkout.session.completed', () => {
     const res = await POST(makeRequest());
     expect(res.status).toBe(200);
     // A retry of this event must not move money twice: Stripe dedups on the key.
+    // Flat 15% of the $119 charge = 1785 cents (was 10% = 1190 under the old ladder).
     expect(mockTransfersCreate).toHaveBeenCalledWith(
-      expect.objectContaining({ amount: 1190, destination: 'acct_ref' }),
+      expect.objectContaining({ amount: 1785, destination: 'acct_ref' }),
       expect.objectContaining({ idempotencyKey: 'aff_initial_sub_aff' }),
     );
   });
@@ -746,5 +751,111 @@ describe('invoice.payment_succeeded', () => {
     expect(mockDocUpdate).not.toHaveBeenCalledWith(
       expect.objectContaining({ status: 'active' })
     );
+  });
+});
+
+// ── Flat 15% affiliate commission (replaces the per-plan ladder) ────────────
+describe('flat 15% affiliate commission', () => {
+  // [plan, amount_total (cents), expected 15% commission (cents)]. The old ladder
+  // would have paid 490 / 1190 / 2985 / 6980 — only 'max' coincided with 15%.
+  const PLANS: Array<[string, number, number]> = [
+    ['plus', 4900, 735],
+    ['pro', 11900, 1785],
+    ['max', 19900, 2985],
+    ['ultra', 34900, 5235],
+  ];
+
+  it.each(PLANS)(
+    'initial commission is 15%% of the charge for the %s plan (%d cents -> %d)',
+    async (plan, amountTotal, expected) => {
+      const session = { subscription: 'sub_x', customer: 'cus_x', amount_total: amountTotal };
+      mockConstructEvent.mockReturnValue(makeEvent('checkout.session.completed', session));
+      mockSubsRetrieve.mockResolvedValue({
+        id: 'sub_x',
+        metadata: { tenantId: 'tenant1', plan, billing: 'monthly', referrerId: 'refUser' },
+        current_period_end: 1800000000,
+      });
+      mockDocGet
+        .mockResolvedValueOnce({ exists: false }) // dedup → new event
+        .mockResolvedValueOnce({ exists: true, data: () => ({ stripeSubscriptionId: null, ownerId: 'someoneElse', addOnAiAssistantCode: null }) }) // tenant (owner != referrer)
+        .mockResolvedValueOnce({ exists: true, data: () => ({ affiliateStripeAccountId: 'acct_ref', affiliateConnectStatus: 'active' }) }); // referrer w/ active Connect
+
+      const res = await POST(makeRequest());
+      expect(res.status).toBe(200);
+      // Same 15% for every tier — the rate no longer depends on the plan.
+      expect(mockTransfersCreate).toHaveBeenCalledWith(
+        expect.objectContaining({ amount: expected, destination: 'acct_ref' }),
+        expect.objectContaining({ idempotencyKey: 'aff_initial_sub_x' }),
+      );
+    },
+  );
+
+  it('recurring commission is 15% of invoice.amount_paid', async () => {
+    const invoice = { id: 'in_rec', subscription: 'sub_rec', amount_paid: 11900, billing_reason: 'subscription_cycle' };
+    mockConstructEvent.mockReturnValue(makeEvent('invoice.payment_succeeded', invoice));
+    mockSubsRetrieve.mockResolvedValue({ metadata: { tenantId: 'tenant1', plan: 'pro', referrerId: 'refUser' } });
+    mockDocGet
+      .mockResolvedValueOnce({ exists: false }) // dedup
+      .mockResolvedValueOnce({ exists: true, data: () => ({ status: 'active' }) }) // tenant (not suspended)
+      .mockResolvedValueOnce({ exists: true, data: () => ({ affiliateStripeAccountId: 'acct_ref', affiliateConnectStatus: 'active' }) }); // referrer
+
+    const res = await POST(makeRequest());
+    expect(res.status).toBe(200);
+    expect(mockTransfersCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        amount: 1785, // round(11900 * 0.15)
+        destination: 'acct_ref',
+        metadata: expect.objectContaining({ type: 'affiliate_commission_recurring' }),
+      }),
+    );
+  });
+
+  it('recurring commission follows the charged amount after the referred tenant upgrades', async () => {
+    // Tenant upgraded (Stripe now charges the higher price), so amount_paid rises
+    // and 15% is taken off the ACTUAL charge. A stale metadata.plan ('pro') does
+    // not change the money — the rate is flat and the amount is authoritative.
+    const invoice = { id: 'in_up', subscription: 'sub_up', amount_paid: 34900, billing_reason: 'subscription_cycle' };
+    mockConstructEvent.mockReturnValue(makeEvent('invoice.payment_succeeded', invoice));
+    mockSubsRetrieve.mockResolvedValue({ metadata: { tenantId: 'tenant1', plan: 'pro', referrerId: 'refUser' } });
+    mockDocGet
+      .mockResolvedValueOnce({ exists: false }) // dedup
+      .mockResolvedValueOnce({ exists: true, data: () => ({ status: 'active' }) }) // tenant
+      .mockResolvedValueOnce({ exists: true, data: () => ({ affiliateStripeAccountId: 'acct_ref', affiliateConnectStatus: 'active' }) }); // referrer
+
+    const res = await POST(makeRequest());
+    expect(res.status).toBe(200);
+    expect(mockTransfersCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ amount: 5235 }), // round(34900 * 0.15)
+    );
+  });
+
+  it('new-tenant signup preserves referrerId/plan/billing while adding tenantId', async () => {
+    // Regression: Stripe metadata updates REPLACE the object. A blind { tenantId }
+    // write here wiped referrerId — which the recurring-commission path reads to
+    // decide whether to pay at all — silently killing the affiliate's stream at
+    // the first renewal, on the exact path where referrals live.
+    const session = { id: 'cs_ref', subscription: 'sub_ref', customer: 'cus_ref', amount_total: 11900 };
+    mockConstructEvent.mockReturnValue(makeEvent('checkout.session.completed', session));
+    mockSubsRetrieve.mockResolvedValue({
+      id: 'sub_ref',
+      metadata: {
+        newTenant: 'true', userId: 'u1', plan: 'pro', billing: 'monthly',
+        ministryName: 'Grace Church', referrerId: 'refUser',
+      },
+    });
+    // Blanket not-exists WITH a data() so the referrer lookup in the initial-
+    // commission path is benign (no Connect → pending, no transfer). We only
+    // assert the metadata merge here.
+    mockDocGet.mockResolvedValue({ exists: false, data: () => ({}) });
+    mockGetUser.mockResolvedValue({ uid: 'u1', email: 'pastor@grace.org' });
+
+    const res = await POST(makeRequest());
+    expect(res.status).toBe(200);
+    expect(mockSubsUpdate).toHaveBeenCalledWith('sub_ref', {
+      metadata: {
+        newTenant: 'true', userId: 'u1', plan: 'pro', billing: 'monthly',
+        ministryName: 'Grace Church', referrerId: 'refUser', tenantId: 'grace-church',
+      },
+    });
   });
 });

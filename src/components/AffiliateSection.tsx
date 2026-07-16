@@ -220,20 +220,13 @@ export default function AffiliateSection() {
         </div>
       )}
 
-      {/* Commission info */}
+      {/* Commission info — one flat rate for every referral, every plan. */}
       <div className="bg-white rounded-2xl border border-stone-200 p-4 space-y-2">
-        <p className="text-[11px] font-semibold text-gold uppercase tracking-[0.14em] pb-1">Commission Rates</p>
-        {[
-          { plan: 'Individual', rate: '10%', key: 'plus' },
-          { plan: 'Small Team', rate: '10%', key: 'pro' },
-          { plan: 'Community', rate: '15%', key: 'max' },
-          { plan: 'Ministry', rate: '20%', key: 'ultra' },
-        ].map(row => (
-          <div key={row.key} className="flex items-center justify-between">
-            <span className="text-sm text-warm-brown">{row.plan}</span>
-            <span className="text-sm font-bold" style={{ color: GOLD }}>{row.rate} recurring</span>
-          </div>
-        ))}
+        <p className="text-[11px] font-semibold text-gold uppercase tracking-[0.14em] pb-1">Commission Rate</p>
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-warm-brown">All plans</span>
+          <span className="text-sm font-bold" style={{ color: GOLD }}>15% recurring</span>
+        </div>
         <p className="text-[10px] text-[color:var(--text-faint)] pt-1 border-t border-stone-200">
           You earn commission every month for as long as your referral stays subscribed.
           If they cancel, commission stops.
