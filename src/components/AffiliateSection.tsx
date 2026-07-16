@@ -231,6 +231,12 @@ export default function AffiliateSection() {
           You earn commission every month for as long as your referral stays subscribed.
           If they cancel, commission stops.
         </p>
+        <p className="text-[10px] text-[color:var(--text-faint)]">
+          Commissions transfer to your Stripe account automatically — instantly when a
+          referral pays if your payouts are already connected, or as soon as you finish
+          connecting Stripe for anything you earned beforehand. When the money reaches
+          your bank follows Stripe&rsquo;s payout schedule.
+        </p>
       </div>
 
     </div>
