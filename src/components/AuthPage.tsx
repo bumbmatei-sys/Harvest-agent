@@ -4,7 +4,7 @@ import { auth, db } from '../firebase';
 import { signInWithPopup, GoogleAuthProvider, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
-import { isNonTenantSubdomain } from '../utils/non-tenant-subdomains';
+import { isNonTenantSubdomain, isAffiliateHost } from '../utils/non-tenant-subdomains';
 import { useTenant } from '../contexts/TenantContext';
 import { Eye, EyeOff, Mail, Lock, ArrowLeft, X } from 'lucide-react';
 import { Turnstile } from '@marsidev/react-turnstile';
@@ -157,14 +157,23 @@ interface AuthPageProps {
 }
 
 const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
+  // Affiliate product surface (affiliate.theharvest.app). The subdomain IS the
+  // signal — no ?signup param needed — so it drives both the affiliate copy and
+  // the default view below. The SPA is client-only (App is imported with
+  // ssr:false), so reading window.location during render is safe here, and the
+  // hostname is stable for the session.
+  const isAffiliate = typeof window !== 'undefined' && isAffiliateHost(window.location.hostname);
+
   const [isLogin, setIsLogin] = useState(() => {
     // Signup intent may be in the URL (?signup=…) OR preserved by App.tsx in
     // sessionStorage['harvest_signup'] after the /auth redirect drops the query.
+    // On the affiliate host the subdomain implies signup intent, so default to
+    // the sign-up view there too (returning affiliates use the "Sign in" toggle).
     try {
       const fromUrl = new URLSearchParams(window.location.search).has('signup');
       const fromStore = !!sessionStorage.getItem('harvest_signup');
-      return !(fromUrl || fromStore);
-    } catch { return true; }
+      return !(fromUrl || fromStore || isAffiliate);
+    } catch { return !isAffiliate; }
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
@@ -191,7 +200,11 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
   // Branding: logo + brand colour only gate on plan; the page is always white.
   const brandColor = hasCustomBranding && branding.primaryColor ? branding.primaryColor : HARVEST_GOLD;
   const logoSrc = hasCustomBranding && branding.logo ? branding.logo : HARVEST_LOGO;
-  const appName = isChurchSignup ? 'Ministry' : (isSubdomain && tenantName ? tenantName : 'Harvest');
+  const appName = isChurchSignup
+    ? 'Ministry'
+    : isAffiliate
+      ? 'Harvest affiliate'
+      : (isSubdomain && tenantName ? tenantName : 'Harvest');
 
   useEffect(() => {
     // Derive tenantId from hostname (not spoofable) — cookie is fallback for custom domains
@@ -209,9 +222,12 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
         setTenantId(tenantCookie.split('=')[1].trim());
       }
     }
-    // Check if arriving from presentation site "Start Ministry" button
+    // Check if arriving from presentation site "Start Ministry" button. On the
+    // affiliate host the subdomain implies affiliate intent (single-role, hard
+    // boundary), so a stray ?signup=church never flips this screen into the
+    // church flow there — a hostname can't be lost the way a param can.
     const params = new URLSearchParams(window.location.search);
-    if (params.get('signup') === 'church') {
+    if (params.get('signup') === 'church' && !isAffiliateHost(hostname)) {
       setIsChurchSignup(true);
     }
   }, []);
@@ -445,6 +461,18 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
     eyebrowText = 'Start your ministry';
     titleText = 'Create your account';
     subText = "First, your login. You'll name your ministry and set up your app in the next steps.";
+  } else if (isAffiliate) {
+    // Affiliate host owns both states so the copy stays business-framed
+    // (commission for referring ministries) — never the ministry/faith framing.
+    if (isLogin) {
+      eyebrowText = 'Welcome back';
+      titleText = `Sign in to ${appName}`;
+      subText = 'Pick up where you left off — track your referrals and commission.';
+    } else {
+      eyebrowText = 'Affiliate program';
+      titleText = 'Welcome to Harvest affiliate';
+      subText = 'Earn recurring commission for every ministry you refer to Harvest — get your account and referral link in one step.';
+    }
   } else if (isLogin) {
     eyebrowText = 'Welcome back';
     titleText = `Sign in to ${appName}`;
