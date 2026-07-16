@@ -596,9 +596,13 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
         {/* Hero */}
         <div className="flex items-start justify-between mb-4">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-2xl font-black text-white flex-shrink-0"
+            <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-2xl font-black text-white flex-shrink-0 overflow-hidden"
               style={{ backgroundColor: 'var(--brand-color, #B8962E)' }}>
-              {selected.firstName.charAt(0).toUpperCase()}
+              {selected.photoURL ? (
+                <img src={selected.photoURL} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+              ) : (
+                selected.firstName?.charAt(0)?.toUpperCase() || '?'
+              )}
             </div>
             <div className="min-w-0">
               <h2 className="text-2xl font-black text-earth leading-tight truncate">{selected.firstName} {selected.lastName}</h2>
@@ -937,8 +941,12 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
                   onClick={() => openDetail(c)}
                   className={`w-full flex items-center gap-3 px-3.5 py-3 text-left transition-colors hover:bg-wheat-50 ${i ? 'border-t border-stone-200' : ''}`}
                 >
-                  <span className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0" style={{ backgroundColor: 'var(--brand-color, #C9963A)' }}>
-                    {c.firstName?.charAt(0)?.toUpperCase() || '?'}
+                  <span className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0 overflow-hidden" style={{ backgroundColor: 'var(--brand-color, #C9963A)' }}>
+                    {c.photoURL ? (
+                      <img src={c.photoURL} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                    ) : (
+                      c.firstName?.charAt(0)?.toUpperCase() || '?'
+                    )}
                   </span>
                   <span className="flex-1 min-w-0">
                     <span className="block text-sm font-semibold text-earth truncate">{c.firstName} {c.lastName}</span>
@@ -977,8 +985,12 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
                     <tr key={c.id} onClick={() => openDetail(c)} className="hover:bg-stone-100/60 transition-colors cursor-pointer">
                       <td className="px-6 py-3.5">
                         <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0" style={{ backgroundColor: 'var(--brand-color, #C9963A)' }}>
-                            {c.firstName?.charAt(0)?.toUpperCase() || '?'}
+                          <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0 overflow-hidden" style={{ backgroundColor: 'var(--brand-color, #C9963A)' }}>
+                            {c.photoURL ? (
+                              <img src={c.photoURL} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                            ) : (
+                              c.firstName?.charAt(0)?.toUpperCase() || '?'
+                            )}
                           </div>
                           <div className="min-w-0">
                             <p className="text-sm font-semibold text-earth truncate">{c.firstName} {c.lastName}</p>
