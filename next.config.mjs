@@ -16,9 +16,6 @@ const withPWA = withPWAInit({
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Force a unique build ID on every deploy so the PWA service worker precache
-  // and Next asset hashes change, busting stale caches for installed PWA users.
-  generateBuildId: async () => `build-${Date.now()}`,
   typescript: {
     ignoreBuildErrors: true,
   },

@@ -118,7 +118,6 @@ export default async function RootLayout({
           <style dangerouslySetInnerHTML={{ __html: `:root{--brand-color:${brandColor};--color-primary:${brandColor};}` }} />
         )}
         <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block" rel="stylesheet" />
-        <script src="/sw-cache-buster.js" defer />
       </head>
       {/* data-tenant-logo lets the client's FIRST render start from the tenant logo
           instead of the Harvest default (see getServerTenantLogo in MainApp). Only

@@ -29,6 +29,9 @@ export interface Contact {
     country?: string;
   };
   notes: string;
+  /** Member contacts synced from a user account carry their profile photo.
+   *  Manually-added contacts have none and fall back to an initial. */
+  photoURL?: string;
   /** DOLLARS. Written by the donation webhook and the CRM manual-add in the same
    *  unit; formatted directly by `fmt()` (no /100). See BUG 2 units fix. */
   totalDonated: number;
@@ -105,6 +108,7 @@ const userDocToMemberContact = (
     lastName: parts.slice(1).join(' '),
     email: u.email || '',
     phone: u.phone || '',
+    photoURL: u.photoURL || undefined,
     type: totalDonated > 0 ? 'both' : 'member',
     stage: 'new',
     address: {
