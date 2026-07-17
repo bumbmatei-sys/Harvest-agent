@@ -420,7 +420,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
       <LivestreamView
         tenantId={tenantId}
         onBack={() => setFullScreenView({ type: 'none' })}
-        onDonate={() => { setFullScreenView({ type: 'none' }); setActiveBottomTab('home'); setActiveTopTab('partner'); }}
+        onDonate={() => window.open('/?giving=1', '_blank', 'noopener,noreferrer')}
       />
     );
   }

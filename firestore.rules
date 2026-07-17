@@ -624,6 +624,21 @@ service cloud.firestore {
           allow read: if isTenantAdmin(tenantId);
           allow write: if hasPermission('manageLivestream', tenantId);
         }
+
+        // Live comments — the ONLY member-readable livestream surface. Members of
+        // THIS tenant read the live chat via onSnapshot; scoped with
+        // belongsToTenant(tenantId), the same member-read gate used for tenant
+        // `forms`, `settings`, and `events` reads — a signed-in user whose
+        // userTenantId == tenantId (or an adminEmails-roster admin, or a super
+        // admin). A cross-tenant user, or any anonymous request, is denied, so one
+        // broadcast's chat never leaks to another tenant. Writes stay
+        // admin/permission-gated (manageLivestream): members post ONLY via
+        // /api/livestream/comment (Admin SDK, which bypasses rules), and admins
+        // moderate/delete via this same write gate — no member client write path.
+        match /comments/{commentId} {
+          allow read: if belongsToTenant(tenantId);
+          allow write: if hasPermission('manageLivestream', tenantId);
+        }
       }
 
       // SMS broadcasts + logs — admin-only. Sends happen server-side via the

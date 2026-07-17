@@ -1,10 +1,10 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import {
-  collection, query, orderBy, onSnapshot, doc, addDoc, updateDoc, setDoc, getDocs,
+  collection, query, orderBy, onSnapshot, doc, addDoc, updateDoc, setDoc, getDocs, deleteDoc,
   serverTimestamp, Timestamp, limit,
 } from 'firebase/firestore';
-import { Radio, Eye, HandHeart, Check, Loader2, Video, Play } from 'lucide-react';
+import { Radio, Eye, HandHeart, Check, Loader2, Video, Play, MessageCircle, Trash2 } from 'lucide-react';
 import { db, auth } from '../firebase';
 import { useAppStore } from '../store/useAppStore';
 
@@ -50,6 +50,13 @@ interface Prayer {
   prayed: boolean;
 }
 
+interface Comment {
+  id: string;
+  name: string;
+  text: string;
+  createdAt: Timestamp | null;
+}
+
 interface PastSession {
   id: string;
   title: string;
@@ -75,6 +82,7 @@ const AdminLivestream: React.FC = () => {
 
   const [current, setCurrent] = useState<CurrentStream | null>(null);
   const [prayers, setPrayers] = useState<Prayer[]>([]);
+  const [comments, setComments] = useState<Comment[]>([]);
   const [pastSessions, setPastSessions] = useState<PastSession[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -100,6 +108,17 @@ const AdminLivestream: React.FC = () => {
       orderBy('submittedAt', 'desc'), limit(500),
     );
     const unsub = onSnapshot(q, snap => setPrayers(snap.docs.map(d => ({ id: d.id, ...d.data() }) as Prayer)));
+    return () => unsub();
+  }, [tenantId, current?.active, current?.sessionId]);
+
+  // Subscribe to live comments of the active session (mirrors the prayers panel).
+  useEffect(() => {
+    if (!tenantId || !current?.active || !current.sessionId) { setComments([]); return; }
+    const q = query(
+      collection(db, 'tenants', tenantId, 'livestreamSessions', current.sessionId, 'comments'),
+      orderBy('createdAt', 'desc'), limit(500),
+    );
+    const unsub = onSnapshot(q, snap => setComments(snap.docs.map(d => ({ id: d.id, ...d.data() }) as Comment)));
     return () => unsub();
   }, [tenantId, current?.active, current?.sessionId]);
 
@@ -163,6 +182,20 @@ const AdminLivestream: React.FC = () => {
   const markPrayed = async (prayerId: string) => {
     if (!tenantId || !current?.sessionId) return;
     await updateDoc(doc(db, 'tenants', tenantId, 'livestreamSessions', current.sessionId, 'prayers', prayerId), { prayed: true });
+  };
+
+  // Delete-only moderation: the comments subcollection write rule
+  // (hasPermission('manageLivestream')) already covers deletes — the same gate
+  // that authorizes markPrayed — so no new permission is needed. No blocking,
+  // muting, word filters, or approval queues: delete is the whole surface.
+  const deleteComment = async (commentId: string) => {
+    if (!tenantId || !current?.sessionId) return;
+    if (!confirm('Delete this comment? It will disappear for all viewers.')) return;
+    try {
+      await deleteDoc(doc(db, 'tenants', tenantId, 'livestreamSessions', current.sessionId, 'comments', commentId));
+    } catch (e) {
+      console.error('Failed to delete comment:', e);
+    }
   };
 
   const fmtDate = (ts: Timestamp | null) =>
@@ -234,6 +267,39 @@ const AdminLivestream: React.FC = () => {
     </div>
   );
 
+  const commentsCard = (
+    <div className="bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] overflow-hidden">
+      <div className="px-5 py-4 border-b border-stone-200 flex items-center justify-between">
+        <h3 className="font-display text-base font-semibold text-earth flex items-center gap-2">
+          <MessageCircle size={16} className="text-gold" /> Live comments
+        </h3>
+        <span className="text-xs text-[color:var(--text-faint)]">{comments.length}</span>
+      </div>
+      {comments.length === 0 ? (
+        <p className="text-center py-12 text-[color:var(--text-faint)] text-sm">No comments yet.</p>
+      ) : (
+        <div className="divide-y divide-stone-200 max-h-[28rem] overflow-y-auto">
+          {comments.map(c => (
+            <div key={c.id} className="flex items-start gap-3 px-5 py-3.5">
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-semibold text-earth">{c.name}</div>
+                <div className="text-sm text-warm-brown mt-0.5 break-words">{c.text}</div>
+                <div className="text-xs text-[color:var(--text-faint)] mt-1">{fmtDate(c.createdAt)}</div>
+              </div>
+              <button
+                onClick={() => deleteComment(c.id)}
+                aria-label="Delete comment"
+                className="flex items-center gap-1 text-xs font-semibold text-[#C4553B] hover:bg-[#F7E7E2] rounded-lg px-2 py-1 shrink-0 transition-colors"
+              >
+                <Trash2 size={14} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div className="max-w-5xl mx-auto" style={{ paddingBottom: 120 }}>
       {current?.active ? (
@@ -270,6 +336,7 @@ const AdminLivestream: React.FC = () => {
             </button>
             {pastStreamsBlock}
             {prayerCard}
+            {commentsCard}
           </div>
 
           {/* Desktop — existing approved layout, unchanged (now lg-only). */}
@@ -303,8 +370,11 @@ const AdminLivestream: React.FC = () => {
             {pastStreamsBlock}
           </div>
 
-          {/* Right: prayer requests */}
-          {prayerCard}
+          {/* Right: prayer requests + live comments moderation */}
+          <div className="space-y-6">
+            {prayerCard}
+            {commentsCard}
+          </div>
         </div>
         </>
       ) : (

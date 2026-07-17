@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useRef, useState } from 'react';
-import { doc, onSnapshot } from 'firebase/firestore';
-import { ChevronLeft, Heart, Eye, BookOpen, ChevronDown } from 'lucide-react';
+import { doc, collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
+import { ChevronLeft, Heart, Eye, BookOpen, ChevronDown, MessageCircle } from 'lucide-react';
 import { db, auth } from '../firebase';
 import { authFetch } from '../utils/auth-fetch';
 import TipTapReadOnly from './TipTapReadOnly';
@@ -26,7 +26,12 @@ const LivestreamView: React.FC<LivestreamViewProps> = ({ tenantId, onBack, onDon
   const [prayerText, setPrayerText] = useState('');
   const [prayerSubmitting, setPrayerSubmitting] = useState(false);
   const [prayerDone, setPrayerDone] = useState(false);
+  const [sessionId, setSessionId] = useState('');
+  const [comments, setComments] = useState<{ id: string; name: string; text: string }[]>([]);
+  const [commentText, setCommentText] = useState('');
+  const [commentSubmitting, setCommentSubmitting] = useState(false);
   const countedRef = useRef(false);
+  const commentListRef = useRef<HTMLDivElement>(null);
 
   // Subscribe to the current stream doc
   useEffect(() => {
@@ -37,6 +42,7 @@ const LivestreamView: React.FC<LivestreamViewProps> = ({ tenantId, onBack, onDon
         const data = snap.data();
         const isActive = !!data?.active;
         setActive(isActive);
+        setSessionId(data?.sessionId || '');
         setVideoId(data?.youtubeVideoId || '');
         setTitle(data?.title || '');
         setViewerCount(Math.max(0, data?.viewerCount || 0));
@@ -60,6 +66,48 @@ const LivestreamView: React.FC<LivestreamViewProps> = ({ tenantId, onBack, onDon
       authFetch('/api/livestream/viewer', { method: 'POST', body: JSON.stringify({ tenantId, delta: -1 }) }).catch(() => {});
     };
   }, [tenantId, active]);
+
+  // Live comments — the one member-readable livestream surface. Realtime via
+  // onSnapshot on the active session's comments (see firestore.rules: member read
+  // is belongsToTenant-scoped). Query newest-first, then reverse so the freshest
+  // sits at the bottom like a chat log.
+  useEffect(() => {
+    if (!tenantId || active !== true || !sessionId) { setComments([]); return; }
+    const q = query(
+      collection(db, 'tenants', tenantId, 'livestreamSessions', sessionId, 'comments'),
+      orderBy('createdAt', 'desc'), limit(100),
+    );
+    const unsub = onSnapshot(
+      q,
+      (snap) => setComments(
+        snap.docs
+          .map((d) => ({ id: d.id, name: d.data().name || 'Anonymous', text: d.data().text || '' }))
+          .reverse(),
+      ),
+      () => setComments([]),
+    );
+    return () => unsub();
+  }, [tenantId, active, sessionId]);
+
+  // Keep the newest comment in view without scrolling the whole page.
+  useEffect(() => {
+    const el = commentListRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [comments]);
+
+  const submitComment = async () => {
+    const trimmed = commentText.trim();
+    if (!trimmed || !tenantId) return;
+    setCommentSubmitting(true);
+    try {
+      const resp = await authFetch('/api/livestream/comment', {
+        method: 'POST',
+        body: JSON.stringify({ tenantId, name: auth.currentUser?.displayName || 'Anonymous', text: trimmed }),
+      });
+      if (resp.ok) setCommentText('');
+    } catch { /* ignore */ }
+    finally { setCommentSubmitting(false); }
+  };
 
   const submitPrayer = async () => {
     if (!prayerText.trim() || !tenantId) return;
@@ -168,6 +216,48 @@ const LivestreamView: React.FC<LivestreamViewProps> = ({ tenantId, onBack, onDon
             >
               🙏 Submit Prayer Request
             </button>
+          </div>
+
+          {/* Live chat — members read the live comment feed and post to it.
+              Moderation (delete) lives in the ADMIN dashboard, never here: no
+              delete, report, or block controls for members. */}
+          <div className="p-4 max-w-2xl mx-auto lg:col-start-1 lg:row-start-4 lg:max-w-none lg:mx-0 lg:p-0 lg:mt-4">
+            <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
+              <div className="flex items-center gap-2 px-4 py-3 border-b border-white/10 text-white">
+                <MessageCircle size={15} className="text-gold" />
+                <span className="text-sm font-semibold">Live Chat</span>
+              </div>
+              <div ref={commentListRef} className="max-h-72 overflow-y-auto px-4 py-3 space-y-2.5">
+                {comments.length === 0 ? (
+                  <p className="text-white/50 text-sm text-center py-4">Be the first to comment.</p>
+                ) : (
+                  comments.map((c) => (
+                    <div key={c.id} className="text-sm leading-snug">
+                      <span className="font-semibold text-gold">{c.name}</span>
+                      <span className="text-white/85 ml-2 break-words">{c.text}</span>
+                    </div>
+                  ))
+                )}
+              </div>
+              <div className="flex items-center gap-2 px-3 py-3 border-t border-white/10">
+                <input
+                  value={commentText}
+                  onChange={(e) => setCommentText(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' && !commentSubmitting) submitComment(); }}
+                  maxLength={500}
+                  placeholder="Say something…"
+                  className="flex-1 px-3 py-2 rounded-xl bg-white/10 text-white placeholder-white/40 text-sm focus:outline-none focus:ring-2 focus:ring-gold"
+                />
+                <button
+                  onClick={submitComment}
+                  disabled={commentSubmitting || !commentText.trim()}
+                  className="px-4 py-2 rounded-xl text-white text-sm font-semibold disabled:opacity-50 shrink-0"
+                  style={{ backgroundColor: GOLD }}
+                >
+                  {commentSubmitting ? '…' : 'Send'}
+                </button>
+              </div>
+            </div>
           </div>
           </div>
         </div>
