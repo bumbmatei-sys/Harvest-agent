@@ -62,15 +62,25 @@ export async function POST(request: NextRequest) {
     }
 
     const pdfPath = typeof inv.pdfUrl === 'string' ? inv.pdfUrl : '';
-    // The PDF may not exist yet (receipt generation is best-effort on the webhook).
+    // TRANSIENT case: the PDF may not exist yet (receipt generation is best-effort on
+    // the webhook, and pdfUrl is null for the brief 'pending' window before it lands).
     if (!pdfPath) {
       return NextResponse.json({ error: 'Receipt PDF is not available yet' }, { status: 404 });
     }
-    // Defense-in-depth: the path is server-derived (receipts/{tenant}/...), but
-    // never sign something outside that prefix or containing traversal.
+    // Defense-in-depth: the stored path is server-derived (receipts/{tenant}/...), so
+    // never sign something outside that prefix or containing traversal. This ALSO
+    // catches legacy rows created before the private-file hardening, which stored a
+    // full public URL (https://storage.googleapis.com/...) instead of a bare path.
+    // Those fail the prefix check correctly. We fix forward — no migration, no legacy
+    // format support — but the copy is distinct and HONEST: a member who was emailed
+    // their receipt is told it's an older format to seek from the church, NOT the
+    // transient "not available yet" above (which would read as "never existed").
     if (pdfPath.includes('..') || !pdfPath.startsWith('receipts/')) {
       console.error('donation-history download: unexpected pdf path', pdfPath);
-      return NextResponse.json({ error: 'Receipt PDF is not available' }, { status: 404 });
+      return NextResponse.json(
+        { error: "This receipt was issued in an older format and can't be downloaded here. Please contact the church for a copy." },
+        { status: 404 },
+      );
     }
 
     const [url] = await getReceiptsBucket().file(pdfPath).getSignedUrl({

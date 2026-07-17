@@ -27,9 +27,15 @@ interface Invoice {
   // ISO string (donation webhook / event receipts) OR Timestamp — normalize before formatting.
   issuedAt: DateLike;
   tenantName: string;
+  // Authoritative downloadable-PDF field, written by issueDonationReceipt: a bare
+  // `receipts/{tenant}/donations/{receiptNumber}.pdf` storage path (null while pending).
+  // The retired generateSingleReceipt Cloud Function also used to write a `pdfPath`
+  // here (a `tenants/{tenant}/invoices/{id}.pdf` path); that field is gone — do not
+  // reintroduce a pdfPath reader for invoices.
   pdfUrl: string | null;
-  pdfPath?: string | null;
-  status: 'pending' | 'generated' | 'sent';
+  // 'generated' is the retired CF's status, kept so legacy rows still render a badge.
+  // 'stored' is issueDonationReceipt's status when the donor email was skipped.
+  status: 'pending' | 'generated' | 'sent' | 'stored';
   quickbooksSyncStatus?: 'synced' | 'failed' | null;
   quickbooksReceiptId?: string | null;
 }
@@ -63,6 +69,7 @@ const STATUS_COLORS: Record<Invoice['status'], string> = {
   pending: 'bg-stone-100 text-warm-brown',
   generated: 'bg-field-100 text-field-700',
   sent: 'bg-sky-100 text-sky-700',
+  stored: 'bg-field-100 text-field-700',
 };
 
 const fmt = (n: number, currency = 'usd') =>
@@ -740,8 +747,8 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
                       <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-stone-100 text-[color:var(--text-faint)]">not synced</span>
                     )}
                     <span className="text-[11px] text-[color:var(--text-faint)] ml-auto whitespace-nowrap">{fmtDate(inv.issuedAt)}</span>
-                    {inv.pdfPath && (
-                      <button onClick={() => openStatementPdf(inv.pdfPath)} className="p-1.5 rounded-lg hover:bg-stone-100 transition-colors text-warm-brown" title="Download PDF">
+                    {inv.pdfUrl?.startsWith('receipts/') && (
+                      <button onClick={() => openStatementPdf(inv.pdfUrl)} className="p-1.5 rounded-lg hover:bg-stone-100 transition-colors text-warm-brown" title="Download PDF">
                         <Download size={13} />
                       </button>
                     )}
@@ -806,8 +813,8 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
                       )}
                       <td className="px-4 py-3 text-right">
                         <div className="flex items-center justify-end gap-1">
-                          {inv.pdfPath && (
-                            <button onClick={() => openStatementPdf(inv.pdfPath)}
+                          {inv.pdfUrl?.startsWith('receipts/') && (
+                            <button onClick={() => openStatementPdf(inv.pdfUrl)}
                               className="p-1.5 rounded-lg hover:bg-stone-100 transition-colors text-warm-brown" title="Download PDF">
                               <Download size={13} />
                             </button>

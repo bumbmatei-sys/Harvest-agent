@@ -51,6 +51,10 @@ describe('issueDonationReceipt', () => {
 
     await issueDonationReceipt(input);
 
+    // EXACTLY ONE PDF per donation. issueDonationReceipt is the single authoritative
+    // generator now that the generateSingleReceipt Cloud Function (which produced a
+    // duplicate PDF on the same invoice create) has been retired.
+    expect(mockSave).toHaveBeenCalledTimes(1);
     // PDF stored at the donations path, as an application/pdf buffer.
     expect(mockFile).toHaveBeenCalledWith('receipts/t1/donations/R-123-ABC.pdf');
     const [buf, opts] = mockSave.mock.calls[0];
