@@ -53,7 +53,6 @@ beforeEach(() => {
     exists: true,
     data: () => ({
       affiliateCode: 'abc12345',
-      affiliateClicks: 5,
       affiliateEarnings: 9580,
       affiliatePendingPayouts: 4580,
       affiliateReferralCount: 1,

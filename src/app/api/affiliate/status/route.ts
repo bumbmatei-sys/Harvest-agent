@@ -36,7 +36,6 @@ export async function GET(request: NextRequest) {
         affiliateCode = await generateUniqueAffiliateCode();
         await adminDb.collection('users').doc(userOrErr.uid).update({
           affiliateCode,
-          affiliateClicks: userData?.affiliateClicks || 0,
           updatedAt: new Date().toISOString(),
         });
       } catch (codeErr) {
@@ -88,7 +87,6 @@ export async function GET(request: NextRequest) {
       stripeConnectAccountId,
       affiliateConnectStatus: userData?.affiliateConnectStatus || null,
       affiliateCode,
-      affiliateClicks: userData?.affiliateClicks || 0,
       totalEarnings: userData?.affiliateEarnings || 0,
       pendingPayouts: userData?.affiliatePendingPayouts || 0,
       referralCount: userData?.affiliateReferralCount || 0,

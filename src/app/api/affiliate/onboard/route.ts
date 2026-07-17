@@ -45,7 +45,6 @@ export async function POST(request: NextRequest) {
         const code = await generateUniqueAffiliateCode();
         await userRef.set({
           affiliateCode: code,
-          affiliateClicks: userData?.affiliateClicks || 0,
           updatedAt: new Date().toISOString(),
         }, { merge: true });
       } catch (codeErr) {
@@ -135,7 +134,6 @@ export async function POST(request: NextRequest) {
 
     await userRef.set({
       affiliateStripeAccountId: account.id,
-      affiliateClicks: userData?.affiliateClicks || 0,
       affiliateEarnings: userData?.affiliateEarnings || 0,
       affiliatePendingPayouts: userData?.affiliatePendingPayouts || 0,
       affiliateReferralCount: userData?.affiliateReferralCount || 0,

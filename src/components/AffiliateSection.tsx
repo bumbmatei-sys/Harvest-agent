@@ -12,7 +12,6 @@ interface AffiliateStatus {
   stripeConnectAccountId: string | null;
   affiliateConnectStatus: string | null;
   affiliateCode: string | null;
-  affiliateClicks: number;
   totalEarnings: number;
   pendingPayouts: number;
   referralCount: number;
@@ -151,13 +150,8 @@ export default function AffiliateSection() {
         <TrendingUp size={32} style={{ color: GOLD }} className="opacity-40" />
       </div>
 
-      {/* Stats row — 2×2 on mobile, 4-across on desktop so the Recurring card fits
-          without cramping the phone layout. */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] p-5 text-center">
-          <p className="font-display text-[1.75rem] leading-none font-light text-earth">{status?.affiliateClicks || 0}</p>
-          <p className="text-xs text-warm-brown mt-1.5">Clicks</p>
-        </div>
+      {/* Stats row — 3-across at every breakpoint. */}
+      <div className="grid grid-cols-3 gap-4">
         <div className="bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] p-5 text-center">
           <p className="font-display text-[1.75rem] leading-none font-light text-earth">{status?.referralCount || 0}</p>
           <p className="text-xs text-warm-brown mt-1.5">Referrals</p>
