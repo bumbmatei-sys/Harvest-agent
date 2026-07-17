@@ -77,7 +77,7 @@ const FirstRunSetup: React.FC<FirstRunSetupProps> = ({ tenantId, onFinished }) =
   }, [subdomain, tenantId]);
 
   const features = plan ? getPlanFeatures(plan) : null;
-  const canFinish = subdomain.length >= 3 && (subdomain === tenantId || status === 'available') && !finishing;
+  const canFinish = subdomain.length >= 3 && (subdomain === tenantId || status === 'available');
 
   const handleFinish = async () => {
     if (status === 'taken') { setError('That subdomain is taken. Try another.'); return; }
@@ -105,6 +105,33 @@ const FirstRunSetup: React.FC<FirstRunSetupProps> = ({ tenantId, onFinished }) =
   };
 
   const subBorder = status === 'taken' ? DANGER : status === 'available' ? SUCCESS : (subFocus ? BRAND : 'var(--stone-300, #D6CCBE)');
+
+  // Once the user commits, replace the editable form with a dedicated transition
+  // instead of leaving it on screen behind a spinning button — the finish-setup
+  // write + token refresh below still take a beat, and without this the form's
+  // sudden swap for a different origin's sign-in screen reads as a flash.
+  if (finishing) {
+    return (
+      <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-6 text-center" style={{ background: 'var(--cream, #FAF8F5)' }}>
+        <div
+          aria-hidden
+          className="pointer-events-none absolute left-1/2 -translate-x-1/2"
+          style={{ top: '-16%', width: 720, height: 480, maxWidth: '160vw', background: 'radial-gradient(circle, color-mix(in srgb, var(--brand-color, #C9963A) 12%, transparent), transparent 68%)' }}
+        />
+        <div className="relative z-[1] flex flex-col items-center">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={HARVEST_LOGO} alt="Harvest" className="mb-6 h-12 w-auto object-contain" />
+          <Loader2 size={32} className="mb-5 animate-spin" style={{ color: BRAND }} />
+          <h1 className="font-display" style={{ fontWeight: 300, fontSize: 26, letterSpacing: '-0.02em', color: 'var(--text-heading, #2D2519)' }}>
+            Taking you to your ministry…
+          </h1>
+          <p className="mt-2.5 max-w-sm text-sm leading-relaxed" style={{ color: 'var(--text-body, #4A4038)' }}>
+            One more sign-in on your new address and you&rsquo;re in.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative min-h-screen overflow-hidden" style={{ background: 'var(--cream, #FAF8F5)' }}>
@@ -214,11 +241,7 @@ const FirstRunSetup: React.FC<FirstRunSetupProps> = ({ tenantId, onFinished }) =
               fontSize: 15,
             }}
           >
-            {finishing ? (
-              <><Loader2 size={18} className="animate-spin" /> Finishing…</>
-            ) : (
-              <><Rocket size={18} /> Finish &amp; enter app</>
-            )}
+            <Rocket size={18} /> Finish &amp; enter app
           </button>
         </div>
       </div>
