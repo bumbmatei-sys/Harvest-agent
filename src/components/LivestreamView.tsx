@@ -30,8 +30,10 @@ const LivestreamView: React.FC<LivestreamViewProps> = ({ tenantId, onBack, onDon
   const [comments, setComments] = useState<{ id: string; name: string; text: string }[]>([]);
   const [commentText, setCommentText] = useState('');
   const [commentSubmitting, setCommentSubmitting] = useState(false);
+  const [activeTab, setActiveTab] = useState<'chat' | 'notes'>('chat');
   const countedRef = useRef(false);
   const commentListRef = useRef<HTMLDivElement>(null);
+  const desktopCommentListRef = useRef<HTMLDivElement>(null);
 
   // Subscribe to the current stream doc
   useEffect(() => {
@@ -90,9 +92,13 @@ const LivestreamView: React.FC<LivestreamViewProps> = ({ tenantId, onBack, onDon
   }, [tenantId, active, sessionId]);
 
   // Keep the newest comment in view without scrolling the whole page.
+  // Two lists exist in the DOM (mobile inline chat, desktop rail chat tab);
+  // only one is visible at a time, but both should stay scrolled to bottom.
   useEffect(() => {
-    const el = commentListRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
+    for (const ref of [commentListRef, desktopCommentListRef]) {
+      const el = ref.current;
+      if (el) el.scrollTop = el.scrollHeight;
+    }
   }, [comments]);
 
   const submitComment = async () => {
@@ -126,6 +132,9 @@ const LivestreamView: React.FC<LivestreamViewProps> = ({ tenantId, onBack, onDon
     finally { setPrayerSubmitting(false); }
   };
 
+  // Notes tab only exists when there's a note; fall back to chat otherwise.
+  const tab = sermonNote ? activeTab : 'chat';
+
   return (
     <div className="fixed inset-0 z-[200] bg-[#0b1121] flex flex-col">
       {/* Header */}
@@ -148,12 +157,14 @@ const LivestreamView: React.FC<LivestreamViewProps> = ({ tenantId, onBack, onDon
       ) : active === true && videoId ? (
         <div className="flex-1 overflow-y-auto">
           {/* Desktop (lg:+) only: a centered two-column stage — video + title +
-              actions in the main column, the sermon-notes card in a right rail.
-              With no sermon note there's nothing for the rail, so the wrapper
-              stays a single centered column. Every grid/placement class is
-              lg:-gated and the DOM order (video → notes → actions) is the current
-              mobile order, so mobile renders byte-identically. */}
-          <div className={`lg:mx-auto lg:px-6 lg:py-6 ${sermonNote ? 'lg:max-w-[1280px] lg:grid lg:grid-cols-[1fr_360px] lg:gap-x-6 lg:items-start' : 'lg:max-w-3xl'}`}>
+              actions in the main column, a right rail with a pinned prayer form
+              and Chat|Notes tabs. Chat is always present, so the rail is always
+              present. Every grid/placement class is lg:-gated and the DOM order
+              (video → notes → actions → chat) is the current mobile order, so
+              mobile renders byte-identically; the rail's contents (prayer form,
+              chat, notes) are separate lg:-only elements, not repositioned
+              copies of the mobile ones. */}
+          <div className="lg:mx-auto lg:px-6 lg:py-6 lg:max-w-[1280px] lg:grid lg:grid-cols-[1fr_400px] lg:gap-x-6 lg:items-start">
           {/* 16:9 responsive embed */}
           <div className="w-full bg-black lg:col-start-1 lg:row-start-1 lg:rounded-[var(--ds-radius-card)] lg:overflow-hidden" style={{ aspectRatio: '16 / 9' }}>
             <iframe
@@ -177,7 +188,7 @@ const LivestreamView: React.FC<LivestreamViewProps> = ({ tenantId, onBack, onDon
           </div>
 
           {sermonNote && (
-            <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden mx-4 mt-3 max-w-2xl md:mx-auto lg:col-start-2 lg:row-start-1 lg:row-span-3 lg:mx-0 lg:mt-0 lg:max-w-none lg:w-full lg:rounded-[var(--ds-radius-card)]">
+            <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden mx-4 mt-3 max-w-2xl md:mx-auto lg:hidden">
               <button
                 onClick={() => setNotesOpen(p => !p)}
                 className="flex items-center justify-between w-full px-4 py-3 text-white lg:cursor-default"
@@ -212,7 +223,7 @@ const LivestreamView: React.FC<LivestreamViewProps> = ({ tenantId, onBack, onDon
             </button>
             <button
               onClick={() => setShowPrayer(true)}
-              className="w-full py-3 rounded-xl font-semibold text-white bg-white/10 hover:bg-white/15 lg:flex-1"
+              className="w-full py-3 rounded-xl font-semibold text-white bg-white/10 hover:bg-white/15 lg:hidden"
             >
               🙏 Submit Prayer Request
             </button>
@@ -220,8 +231,9 @@ const LivestreamView: React.FC<LivestreamViewProps> = ({ tenantId, onBack, onDon
 
           {/* Live chat — members read the live comment feed and post to it.
               Moderation (delete) lives in the ADMIN dashboard, never here: no
-              delete, report, or block controls for members. */}
-          <div className="p-4 max-w-2xl mx-auto lg:col-start-1 lg:row-start-4 lg:max-w-none lg:mx-0 lg:p-0 lg:mt-4">
+              delete, report, or block controls for members. Desktop-hidden:
+              the rail's Chat tab below is the desktop copy of this panel. */}
+          <div className="p-4 max-w-2xl mx-auto lg:hidden">
             <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
               <div className="flex items-center gap-2 px-4 py-3 border-b border-white/10 text-white">
                 <MessageCircle size={15} className="text-gold" />
@@ -259,15 +271,124 @@ const LivestreamView: React.FC<LivestreamViewProps> = ({ tenantId, onBack, onDon
               </div>
             </div>
           </div>
+
+          {/* Desktop-only right rail: prayer form pinned at top, Chat|Notes
+              tabs below it filling the remaining height. Replaces the prayer
+              modal on desktop — the form is inline and always visible here.
+              Self-contained (not the mobile nodes moved via grid placement)
+              since the mobile blocks above must stay untouched for byte-
+              identical mobile rendering. */}
+          <div className="hidden lg:flex lg:flex-col lg:col-start-2 lg:row-start-1 lg:row-span-3 lg:self-stretch">
+            {/* Prayer form — pinned, always visible, no popup */}
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-4 shrink-0">
+              {prayerDone ? (
+                <div className="text-center py-2">
+                  <p className="text-base font-bold text-white font-display">🙏 Prayer received</p>
+                  <p className="text-sm text-white/70 mt-1">Our team will be praying for you.</p>
+                </div>
+              ) : (
+                <>
+                  <h3 className="text-sm font-semibold text-white mb-2 font-display">🙏 Submit Prayer Request</h3>
+                  <input
+                    value={prayerName}
+                    onChange={(e) => setPrayerName(e.target.value)}
+                    placeholder="Your name"
+                    className="w-full px-3 py-2 rounded-xl bg-white/10 text-white placeholder-white/40 text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-gold"
+                  />
+                  <textarea
+                    value={prayerText}
+                    onChange={(e) => setPrayerText(e.target.value)}
+                    placeholder="How can we pray for you?"
+                    rows={2}
+                    className="w-full px-3 py-2 rounded-xl bg-white/10 text-white placeholder-white/40 text-sm focus:outline-none focus:ring-2 focus:ring-gold resize-none"
+                  />
+                  <button
+                    onClick={submitPrayer}
+                    disabled={prayerSubmitting || !prayerText.trim()}
+                    className="w-full mt-2 py-2 rounded-xl text-white text-sm font-semibold disabled:opacity-50"
+                    style={{ backgroundColor: GOLD }}
+                  >
+                    {prayerSubmitting ? 'Sending…' : 'Send Prayer'}
+                  </button>
+                </>
+              )}
+            </div>
+
+            {/* Tab bar — Notes only appears when there's a note to show; with
+                no note, no tab bar renders at all and the panel below is just
+                the chat (no empty/dead Notes tab). */}
+            {sermonNote && (
+              <div className="flex items-center gap-1 mt-3 shrink-0">
+                <button
+                  onClick={() => setActiveTab('chat')}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-semibold ${tab === 'chat' ? 'text-white bg-white/10' : 'text-white/50 hover:text-white/80'}`}
+                >
+                  Chat
+                </button>
+                <button
+                  onClick={() => setActiveTab('notes')}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-semibold ${tab === 'notes' ? 'text-white bg-white/10' : 'text-white/50 hover:text-white/80'}`}
+                >
+                  Notes
+                </button>
+              </div>
+            )}
+
+            {/* Tab panel — fills the remaining rail height, scrolls internally
+                so the rail never stretches the page. */}
+            <div className="flex-1 min-h-0 mt-3 bg-white/5 border border-white/10 rounded-2xl overflow-hidden flex flex-col">
+              {tab === 'notes' && sermonNote ? (
+                <div className="flex-1 min-h-0 overflow-y-auto px-4 py-3 text-white/80 text-sm leading-relaxed">
+                  {sermonNote.title && (
+                    <h3 className="text-white font-semibold text-base mb-2 font-display">{sermonNote.title}</h3>
+                  )}
+                  <TipTapReadOnly contentHtml={sermonNote.contentHtml} />
+                </div>
+              ) : (
+                <>
+                  <div ref={desktopCommentListRef} className="flex-1 min-h-0 overflow-y-auto px-4 py-3 space-y-2.5">
+                    {comments.length === 0 ? (
+                      <p className="text-white/50 text-sm text-center py-4">Be the first to comment.</p>
+                    ) : (
+                      comments.map((c) => (
+                        <div key={c.id} className="text-sm leading-snug">
+                          <span className="font-semibold text-gold">{c.name}</span>
+                          <span className="text-white/85 ml-2 break-words">{c.text}</span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 px-3 py-3 border-t border-white/10 shrink-0">
+                    <input
+                      value={commentText}
+                      onChange={(e) => setCommentText(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter' && !commentSubmitting) submitComment(); }}
+                      maxLength={500}
+                      placeholder="Say something…"
+                      className="flex-1 px-3 py-2 rounded-xl bg-white/10 text-white placeholder-white/40 text-sm focus:outline-none focus:ring-2 focus:ring-gold"
+                    />
+                    <button
+                      onClick={submitComment}
+                      disabled={commentSubmitting || !commentText.trim()}
+                      className="px-4 py-2 rounded-xl text-white text-sm font-semibold disabled:opacity-50 shrink-0"
+                      style={{ backgroundColor: GOLD }}
+                    >
+                      {commentSubmitting ? '…' : 'Send'}
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
           </div>
         </div>
       ) : (
         <div className="flex-1 flex items-center justify-center text-white/50">Loading…</div>
       )}
 
-      {/* Prayer bottom sheet */}
+      {/* Prayer bottom sheet — mobile only; desktop uses the inline rail form. */}
       {showPrayer && (
-        <div className="fixed inset-0 z-[210] flex items-end justify-center bg-black/50" onClick={() => setShowPrayer(false)}>
+        <div className="fixed inset-0 z-[210] flex items-end justify-center bg-black/50 lg:hidden" onClick={() => setShowPrayer(false)}>
           <div className="w-full max-w-lg bg-white rounded-t-2xl p-5" style={{ paddingBottom: 32 }} onClick={(e) => e.stopPropagation()}>
             {prayerDone ? (
               <div className="text-center py-6">
