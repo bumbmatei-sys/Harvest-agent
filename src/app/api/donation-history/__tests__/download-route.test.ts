@@ -122,11 +122,32 @@ describe('POST /api/donation-history/download', () => {
     expect(mockGetSignedUrl).not.toHaveBeenCalled();
   });
 
-  it("404s when the caller's own receipt has no PDF yet", async () => {
+  it("404s with the TRANSIENT copy when the caller's own receipt has no PDF yet", async () => {
     mockDocGet.mockResolvedValue(invoice({ ...OWN, pdfUrl: null }));
     const res = await POST(makeRequest({ tenantId: 't1', invoiceId: 'inv_1' }));
     expect(res.status).toBe(404);
+    // "not available yet" — distinct from the legacy/malformed copy below.
+    expect((await res.json()).error).toBe('Receipt PDF is not available yet');
     expect(mockGetSignedUrl).not.toHaveBeenCalled();
+  });
+
+  it('404s with a DISTINCT, honest message for a legacy full-URL pdfUrl (fix-forward, no migration)', async () => {
+    // The 7 legacy prod rows stored a full public URL here (pre private-file hardening)
+    // instead of a bare `receipts/...` path. The guard correctly refuses to sign it; the
+    // member sees an honest "older format, contact the church" message — NOT the transient
+    // "not available yet", which would read as "your receipt never existed".
+    mockDocGet.mockResolvedValue(invoice({
+      ...OWN,
+      pdfUrl: 'https://storage.googleapis.com/harvest-receipts-233a1/tenants/bumb/invoices/inv_1.pdf',
+    }));
+    const res = await POST(makeRequest({ tenantId: 't1', invoiceId: 'inv_1' }));
+    expect(res.status).toBe(404);
+    const { error } = await res.json();
+    expect(error).toContain('older format');
+    expect(error).not.toBe('Receipt PDF is not available yet');
+    // Never signs a legacy/off-prefix path.
+    expect(mockGetSignedUrl).not.toHaveBeenCalled();
+    expect(mockFile).not.toHaveBeenCalled();
   });
 
   it('403s when the doc is not a donation receipt (even with a matching email)', async () => {
