@@ -157,7 +157,7 @@ export default async function BlogPostPage({
             {post.tags.map(tag => (
               <span
                 key={tag}
-                className="text-xs font-medium px-2.5 py-1 rounded-full bg-amber-50 text-[#D4AF37]"
+                className="text-xs font-medium px-2.5 py-1 rounded-full bg-[color-mix(in_srgb,var(--brand-color)_12%,white)] text-[var(--brand-color)]"
               >
                 {tag}
               </span>
@@ -183,7 +183,7 @@ export default async function BlogPostPage({
         )}
 
         <article
-          className="prose prose-slate prose-headings:font-bold prose-a:text-[#D4AF37] prose-a:no-underline hover:prose-a:underline max-w-none"
+          className="prose prose-slate prose-headings:font-bold prose-a:text-[var(--brand-color)] prose-a:no-underline hover:prose-a:underline max-w-none"
           dangerouslySetInnerHTML={{ __html: safeContent }}
         />
 
