@@ -33,6 +33,7 @@ import { isSuperAdminEmail } from './utils/super-admins';
 import { useAppStore } from './store/useAppStore';
 import { PLATFORM_TENANT_ID, getTenantIdFromHost } from './utils/tenant-scope';
 import { isAffiliateHost } from './utils/non-tenant-subdomains';
+import { resolvePostAuthFunnelRoute } from './utils/post-auth-route';
 
 /** Paths that represent the auth / onboarding funnel (used to decide redirects). */
 const FUNNEL_PATHS = ['/auth', '/onboarding', '/church-onboarding'];
@@ -151,6 +152,17 @@ const AppInner: React.FC = () => {
   // onboarding after authenticating instead of the build-on-payment church onboarding.
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    if (isAffiliateHost(window.location.hostname)) {
+      // The affiliate surface never runs a purchase funnel, so a plan/church
+      // signup intent has no meaning here — don't capture one, and drop any
+      // stale value stashed by an earlier ?signup=<plan> visit in this tab
+      // (e.g. the pricing page opened via a referral link), which would
+      // otherwise keep leaking into signupPlan / isChurchSignup / AuthPage
+      // copy for the rest of the session. sessionStorage is per-origin, so
+      // this can never touch the apex/tenant hosts' paid funnel.
+      try { sessionStorage.removeItem('harvest_signup'); } catch {}
+      return;
+    }
     const p = new URLSearchParams(window.location.search).get('signup');
     if (p) { try { sessionStorage.setItem('harvest_signup', p); } catch {} }
   }, []);
@@ -272,16 +284,25 @@ const AppInner: React.FC = () => {
               // or payment abandoned). The OnboardingGate renders the right
               // "Setting up…" / "Complete your payment" screen — don't bounce them
               // into the generic onboarding funnel.
-            } else if (isAffiliateSignup && !data.tenantId) {
-              // Tenant-less user on the affiliate host = an affiliate. Skip the
-              // onboarding funnels entirely and land on the platform/apex view.
-              // Gated on !data.tenantId so a church admin who happens to be on the
-              // affiliate origin still routes to their church flow below.
-              navigate('/', { replace: true });
-            } else if (isChurchSignup || signupPlan || role === 'church_admin') {
-              navigate('/church-onboarding', { replace: true });
             } else {
-              navigate('/onboarding', { replace: true });
+              // Funnel choice is a single shared decision (see post-auth-route.ts):
+              // on the affiliate host a confirmed tenant-less user is an affiliate
+              // and ALWAYS lands on '/', no matter what signup intent (URL param or
+              // stale sessionStorage plan) is in play — signup intent can only pick
+              // BETWEEN funnels, never pull an affiliate into one. The doc read
+              // succeeded here, so a null/absent tenantId is confirmed tenant-less;
+              // a church admin on the affiliate origin has a tenantId and still
+              // reaches their church flow.
+              navigate(
+                resolvePostAuthFunnelRoute({
+                  onAffiliateHost: isAffiliateSignup,
+                  confirmedTenantless: !data.tenantId,
+                  churchSignupIntent: isChurchSignup,
+                  planSignupIntent: !!signupPlan,
+                  isChurchAdminRole: role === 'church_admin',
+                }),
+                { replace: true }
+              );
             }
           } else {
             // No user doc yet → onboarding funnel (or, on the affiliate host, the
@@ -292,11 +313,13 @@ const AppInner: React.FC = () => {
             // account — which always has a doc — can never reach here.
             setUserTenantId(null);
             navigate(
-              isAffiliateSignup
-                ? '/'
-                : isChurchSignup || signupPlan
-                  ? '/church-onboarding'
-                  : '/onboarding',
+              resolvePostAuthFunnelRoute({
+                onAffiliateHost: isAffiliateSignup,
+                confirmedTenantless: true, // no doc ⇒ no tenantId field can exist
+                churchSignupIntent: isChurchSignup,
+                planSignupIntent: !!signupPlan,
+                isChurchAdminRole: false, // no doc ⇒ no role
+              }),
               { replace: true }
             );
           }
