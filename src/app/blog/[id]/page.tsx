@@ -1,9 +1,14 @@
 import type { Metadata } from 'next';
+import type { CSSProperties } from 'react';
 import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import sanitizeHtml from 'sanitize-html';
 import { adminDb } from '@/lib/firebase-admin';
 import { getTenantFromHost } from '@/lib/server-tenant';
+import { getPlanFeatures } from '@/utils/plan-features';
+
+const DEFAULT_BRAND_COLOR = '#D4AF37';
+const HEX_COLOR_RE = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
 
 interface BlogPost {
   id: string;
@@ -98,6 +103,14 @@ export default async function BlogPostPage({
   const appUrl = '/';
   const backLabel = tenant ? `Back to ${tenant.name}` : 'Back to Harvest';
 
+  // Custom branding (logo/colors) is a paid Community+/Ministry feature — a
+  // tenant on Individual/Small Team keeps the Harvest default even if
+  // config.primaryColor happens to be set (e.g. downgraded from a higher plan).
+  const canBrand = tenant ? getPlanFeatures(tenant.plan).customBranding : false;
+  const rawColor = tenant?.config?.primaryColor;
+  const brandColor = canBrand && rawColor && HEX_COLOR_RE.test(rawColor) ? rawColor : DEFAULT_BRAND_COLOR;
+  const brandColorVars = { '--brand-color': brandColor } as CSSProperties;
+
   // JSON-LD Article structured data for search engines.
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -110,7 +123,7 @@ export default async function BlogPostPage({
   };
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white" style={brandColorVars}>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
@@ -120,7 +133,7 @@ export default async function BlogPostPage({
         <div className="max-w-2xl mx-auto px-4 py-4">
           <a
             href={appUrl}
-            className="inline-flex items-center gap-1.5 text-sm text-[#D4AF37] hover:text-[#C9963A] font-medium transition-colors"
+            className="inline-flex items-center gap-1.5 text-sm text-[var(--brand-color)] hover:text-[color-mix(in_srgb,var(--brand-color)_85%,black)] font-medium transition-colors"
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
               <path d="M10 12L6 8l4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -144,7 +157,7 @@ export default async function BlogPostPage({
             {post.tags.map(tag => (
               <span
                 key={tag}
-                className="text-xs font-medium px-2.5 py-1 rounded-full bg-amber-50 text-[#D4AF37]"
+                className="text-xs font-medium px-2.5 py-1 rounded-full bg-[color-mix(in_srgb,var(--brand-color)_12%,white)] text-[var(--brand-color)]"
               >
                 {tag}
               </span>
@@ -170,7 +183,7 @@ export default async function BlogPostPage({
         )}
 
         <article
-          className="prose prose-slate prose-headings:font-bold prose-a:text-[#D4AF37] prose-a:no-underline hover:prose-a:underline max-w-none"
+          className="prose prose-slate prose-headings:font-bold prose-a:text-[var(--brand-color)] prose-a:no-underline hover:prose-a:underline max-w-none"
           dangerouslySetInnerHTML={{ __html: safeContent }}
         />
 
@@ -181,7 +194,7 @@ export default async function BlogPostPage({
           </p>
           <a
             href={appUrl}
-            className="inline-block bg-[#D4AF37] text-white font-bold px-8 py-3 rounded-xl hover:bg-[#C9963A] transition-colors"
+            className="inline-block bg-[var(--brand-color)] text-white font-bold px-8 py-3 rounded-xl hover:bg-[color-mix(in_srgb,var(--brand-color)_85%,black)] transition-colors"
           >
             Open App
           </a>
