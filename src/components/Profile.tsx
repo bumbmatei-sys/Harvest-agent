@@ -17,7 +17,8 @@ import {
   X,
   CalendarCheck,
   Bookmark,
-  Map
+  Map,
+  Receipt
 } from 'lucide-react';
 import Image from 'next/image';
 import { auth, db, messaging, VAPID_KEY } from '../firebase';
@@ -32,6 +33,7 @@ import FAQModal from './FAQModal';
 import ChurchDetailsModal from './ChurchDetailsModal';
 import UserEvents from './UserEvents';
 import SavedItems from './SavedItems';
+import DonationHistory from './DonationHistory';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { SUPER_ADMIN_EMAIL, isSuperAdmin as checkIsSuperAdmin, getTenantScope } from '../utils/tenant-scope';
 import { isSuperAdminEmail } from '../utils/super-admins';
@@ -55,6 +57,7 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
   const { tenantPlan } = useAppStore();
   const [showMyEvents, setShowMyEvents] = useState(false);
   const [showSaved, setShowSaved] = useState(false);
+  const [showDonationHistory, setShowDonationHistory] = useState(false);
  const [isPersonalInfoOpen, setIsPersonalInfoOpen] = useState(false);
  const [isContactOpen, setIsContactOpen] = useState(false);
  const [isPrivacyTermsOpen, setIsPrivacyTermsOpen] = useState(false);
@@ -409,13 +412,8 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
  />
  </>
  )}
- <div className="h-px bg-stone-100 mx-4"></div>
- <SettingItem
- icon={<HeartHandshake size={16} className="text-wheat-600" />}
- iconBg="bg-wheat-100"
- label="Partner with Us"
- onClick={onGoToPartner}
- />
+ {/* "Partner with Us" removed here — the Partnership card below is the single
+     home for giving (Give again / Partner CTA + Donation History). */}
  <div className="h-px bg-stone-100 mx-4"></div>
  <ToggleSettingItem
  icon={<Bell size={16} className="text-sky-600" />}
@@ -532,6 +530,17 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
  </button>
  </div>
  )}
+ </div>
+ {/* Donation History — the member's own receipts + giving totals, private to
+     them. Placed under Partnership (per the founder), reusing SettingItem/card
+     styling. Always shown; the view renders an empty state for non-donors. */}
+ <div className="bg-white rounded-3xl shadow-sm border border-stone-200 overflow-hidden mt-3">
+ <SettingItem
+ icon={<Receipt size={16} className="text-wheat-600" />}
+ iconBg="bg-wheat-100"
+ label="Donation History"
+ onClick={() => setShowDonationHistory(true)}
+ />
  </div>
  </div>
 
@@ -657,6 +666,12 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
  onOpenLesson={(courseId, lessonId) => { setShowSaved(false); onOpenSavedLesson?.(courseId, lessonId); }}
  onOpenPost={(id) => { setShowSaved(false); onOpenSavedPost?.(id); }}
  />
+ </div>
+ )}
+
+ {showDonationHistory && (
+ <div className="fixed inset-0 z-[300] bg-[#F7F6F3]">
+ <DonationHistory onBack={() => setShowDonationHistory(false)} />
  </div>
  )}
  </div>
