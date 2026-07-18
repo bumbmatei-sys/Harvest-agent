@@ -1,81 +1,99 @@
 /**
  * Purge TEST-MODE Stripe IDs from Firestore ahead of go-live (audit §3 / S3).
  *
- * BACKGROUND
- * Stripe test and live modes are completely separate: Connect accounts,
- * customers, subscriptions and transfers created with a TEST key do not exist
- * under a LIVE key. Every Stripe id currently stored in Firestore was written
- * while the app ran on a test key, so at go-live these become live-key API
- * calls against `acct_`/`cus_`/`sub_` ids that don't exist in live mode.
+ * ============================================================================
+ * ⛔ RUN-WINDOW CONSTRAINT — READ BEFORE USING --commit
+ * ============================================================================
+ * This script classifies Stripe ids by SHAPE (`acct_`, `cus_`, `sub_`, `si_`,
+ * `pi_`, `in_`, `price_`, `tr_`), NOT by test-vs-live — because those ids are
+ * OPAQUE and IDENTICAL across modes. (Only price ids differ per environment and
+ * only KEYS `sk_/pk_/rk_` and Checkout Sessions `cs_test_/cs_live_` embed the
+ * mode — none of those are stored in these fields.)
  *
- * The three that cause real failures at go-live (the audit's HIGHs):
- *   - tenants.stripeConnectAccountId        → donations/event payouts (transfer_data.destination)
- *   - users.affiliateStripeAccountId        → affiliate payout destination
- *   - affiliate_commissions (status=pending)→ the daily payout cron
- *       (src/app/api/affiliate/retry-transfers/route.ts) keeps retrying
- *       transfers to a dead test account FOREVER. This is the worst one (S3).
+ * Therefore the purge is safe ONLY on the premise that NO LIVE KEY HAS EVER
+ * WRITTEN THIS DATA:
+ *   • TRUE today  — pre-go-live, every id in Firestore came from the TEST key.
+ *   • FALSE the instant the app flips to a live key — a shape-matching `acct_`
+ *     could then be a REAL connected account, and purging it would break a
+ *     paying tenant.
  *
- * WHY WE CANNOT KEY OFF THE ID PREFIX
- * The audit assumes test vs live ids are "distinguishable by prefix". They are
- * NOT for the fields in this schema. `acct_`, `cus_`, `sub_`, `tr_`, `si_` ids
- * are opaque and identical in shape across modes — only KEYS (`sk_test_`/
- * `sk_live_`, `pk_*`, `rk_*`) and Checkout Session ids (`cs_test_`/`cs_live_`)
- * embed the mode, and none of those are stored in these fields. So this script
- * classifies by id SHAPE (is it a well-formed Stripe id of the expected type?)
- * and relies on the PRE-GO-LIVE PREMISE that every stored id is test-mode. As a
- * safety net it hard-SKIPS (never writes) any value that carries a live marker
- * or that doesn't match the expected shape, and reports it for manual review.
- *   ⇒ Before running with --commit, confirm no LIVE Stripe key has ever been
- *     used to write these fields. If one has, STOP — this script can't tell.
+ * RUN THIS AFTER test data is confirmed and BEFORE the first live write — never
+ * after launch. The dry run may run anytime; `--commit` REQUIRES the explicit
+ * `--i-am-pre-go-live` acknowledgement flag (hard gate below).
+ * ============================================================================
  *
- * WHAT IT DOES
- *   tenants / users : deletes the stale id field (and its paired *Status field)
- *                     with FieldValue.delete(). The code reads these with `?.`
- *                     truthiness checks, so an absent field == "not connected".
+ * WHY IT EXISTS
+ * Stripe test and live modes are fully separate: a test `acct_`/`cus_`/`sub_`
+ * id does not exist under a live key, so every stored id becomes a failing
+ * live-key API call at go-live. The worst is the audit's S3 — pending
+ * `affiliate_commissions` make the daily payout cron
+ * (src/app/api/affiliate/retry-transfers/route.ts) retry transfers to dead test
+ * accounts forever.
+ *
+ * WHAT IT DOES (fields verified against the writers in the repo)
+ *   tenants / users / invoices / registrations : clears the stale id field
+ *       (and any paired field) with FieldValue.delete(). Code reads these with
+ *       `?.` truthiness checks, so an absent field == "not connected".
  *   affiliate_commissions : MARKS pending rows terminal (status → 'cancelled')
- *                     rather than deleting them — see the note below. The stored
- *                     stripeSubscriptionId/stripeTransferId are LEFT as history.
+ *       rather than deleting — the retry cron and sweep both query only
+ *       status=='pending' (retry-transfers/route.ts:33-36; affiliate-payout.ts
+ *       :76-83) and the earnings view already excludes 'cancelled'
+ *       (api/affiliate/status/route.ts:68), so this stops every retry path AND
+ *       preserves the referral record. The stored sub_/in_/tr_ ids are LEFT as
+ *       history. Deleting would destroy real referral records.
  *
- * DELETE vs. MARK-TERMINAL for affiliate_commissions — why 'cancelled':
- *   The retry cron and the real-time sweep both query ONLY status == 'pending'
- *   (retry-transfers/route.ts:33-36; lib/affiliate-payout.ts:76-83), and the
- *   affiliate earnings view already EXCLUDES status == 'cancelled'
- *   (api/affiliate/status/route.ts:68). So flipping pending → 'cancelled' is a
- *   status the codebase already treats as terminal: it stops every retry path
- *   AND keeps the referral record (referrerId/tenantId/amount) as history, which
- *   deletion would destroy. 'cancelled' is therefore safe and preferred here.
+ * URGENCY TIERS (which fields --commit touches)
+ *   Default --commit = HIGH only. Add `--include=med,low` to widen.
+ *     HIGH  tenants.stripeConnectAccountId(+stripeConnectStatus);
+ *           users.affiliateStripeAccountId(+affiliateConnectStatus);
+ *           affiliate_commissions pending rows → cancelled.
+ *     MED   tenants.stripeSubscriptionId, tenants.stripePriceId (S2 — see B1),
+ *           tenants.addOnAiAssistant; users.aiAssistantCustomerId,
+ *           users.donationSubscriptionId(+donationChurchId paired).
+ *     LOW   tenants.stripeCustomerId (self-heals — recommend LEAVE);
+ *           tenants/{id}/invoices.relatedId; tenants/{id}/registrations
+ *           .stripePaymentIntentId; webhook_events (report only, harmless).
  *
- * OUT OF SCOPE (reported, never mutated — need a human decision):
- *   users.aiAssistantSubscriptionItemId   entitlement pointer; clearing it
- *                                          silently strips a paid AI-assistant.
- *   churches.stripeSubscriptionItemId     a line item on the tenant's parent
- *                                          subscription; drop the pointer and the
- *                                          billable item is orphaned. Use the
- *                                          existing remove-billing route instead.
- *   This script does NOT delete test tenants/users/subscriptions (tenant
- *   deletion already has its own cascade path). It touches Stripe id fields only.
+ * 🚫 GUARDED — NEVER field-wiped by a normal run (enumerate, don't execute):
+ *   churches.stripeSubscriptionItemId       a billable line item on the tenant's
+ *       parent subscription; nulling the pointer ORPHANS the item (billing stays,
+ *       handle lost). Use the existing remove-billing route.
+ *   users.aiAssistantSubscriptionItemId     clearing silently strips a paid
+ *       $200/mo AI-assistant entitlement.
+ *   Both are DETECTED + LISTED with a warning and refused even under --commit,
+ *   unless the operator explicitly passes --force-guarded-fields (per-run opt-in).
+ *
+ * NOTE — mislabels in the field list, handled correctly here:
+ *   • users.donationChurchId is a tenantId, NOT a Stripe id — cleared only as the
+ *     paired field of donationSubscriptionId (as cancel-partnership does).
+ *   • registrations / invoices are SUBCOLLECTIONS under tenants/{id}; scanned via
+ *     collectionGroup(), not as top-level collections.
+ *
+ * OUT OF SCOPE: does not delete test tenants/users/subscriptions (tenant deletion
+ * has its own cascade), and does not touch stripe-config.ts (B1 / PR #207) or
+ * firestore.rules.
  *
  * USAGE
  *   Dry run (default — NO writes; this output IS the review gate):
  *     node scripts/purge-test-stripe-ids.mjs
- *   Scope to one collection at a time (recommended):
+ *   Scope one collection at a time (recommended):
  *     node scripts/purge-test-stripe-ids.mjs --collection=affiliate_commissions
- *     node scripts/purge-test-stripe-ids.mjs --collection=tenants,users
- *   Apply, after reviewing the dry run:
- *     node scripts/purge-test-stripe-ids.mjs --collection=tenants --commit
+ *   Apply HIGH-tier fixes (requires the run-window ack):
+ *     node scripts/purge-test-stripe-ids.mjs --collection=tenants,users --commit --i-am-pre-go-live
+ *   Widen to MED/LOW:
+ *     node scripts/purge-test-stripe-ids.mjs --commit --i-am-pre-go-live --include=med,low
  *
  * CREDENTIALS (keep any key OUTSIDE the repo, referenced by env var only):
  *   FIREBASE_SERVICE_ACCOUNT="$(cat /path/outside/repo/sa.json)" node scripts/purge-test-stripe-ids.mjs
  *   — or — GOOGLE_APPLICATION_CREDENTIALS=/path/outside/repo/sa.json node scripts/purge-test-stripe-ids.mjs
  *   — or — run inside Firebase Cloud Shell with Application Default Credentials.
- *
- * CAUTION: --commit permanently clears fields / cancels commissions. Always run
- * the dry run first, paste it for review, and scope with --collection=.
  */
 import { initializeApp, cert, applicationDefault } from 'firebase-admin/app';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 
 const COMMIT = process.argv.includes('--commit');
+const PRE_GO_LIVE = process.argv.includes('--i-am-pre-go-live');
+const FORCE_GUARDED = process.argv.includes('--force-guarded-fields');
 
 function argValue(name) {
   const a = process.argv.find((x) => x.startsWith(`--${name}=`));
@@ -89,40 +107,70 @@ function loadCredential() {
   return applicationDefault();
 }
 
-// Collections whose Stripe id fields are cleared with FieldValue.delete().
-// `pairedStatus` is deleted alongside the id so the record fully resets to
-// "not connected" (leaving e.g. stripeConnectStatus:'active' with no account id
-// would be an inconsistent state the UI/onboard routes could misread).
-const CLEAR_TARGETS = {
-  tenants: [
-    { field: 'stripeConnectAccountId', shape: /^acct_/, label: 'Connect account (acct_)', pairedStatus: 'stripeConnectStatus' },
-    { field: 'stripeCustomerId', shape: /^cus_/, label: 'customer (cus_)' },
-    { field: 'stripeSubscriptionId', shape: /^sub_/, label: 'subscription (sub_)' },
-  ],
-  users: [
-    { field: 'affiliateStripeAccountId', shape: /^acct_/, label: 'affiliate Connect account (acct_)', pairedStatus: 'affiliateConnectStatus' },
-  ],
+const SHAPE = {
+  acct: /^acct_/, cus: /^cus_/, sub: /^sub_/, si: /^si_/,
+  tr: /^tr_/, in: /^in_/, price: /^price_/, pi: /^pi_/, subOrPi: /^(sub|pi)_/,
 };
-
-// Fields we deliberately do NOT automate; surfaced in the report so the reviewer
-// sees the full inventory. { collection: [{ field, why }] }
-const REPORT_ONLY = {
-  users: [{ field: 'aiAssistantSubscriptionItemId', why: 'entitlement pointer — clearing strips a paid AI-assistant; needs owner decision' }],
-  churches: [{ field: 'stripeSubscriptionItemId', why: 'line item on the parent subscription — use the remove-billing route, do not blind-clear' }],
-};
-
-const ALL_COLLECTIONS = ['tenants', 'users', 'affiliate_commissions'];
 
 // A value we must never touch: it carries an explicit live-mode marker. Rare for
 // the opaque ids here, but it's the safe asymmetry — skip anything live-looking.
 const looksLive = (s) => /_live_/.test(s) || /^(sk|pk|rk)_live/.test(s) || /^cs_live_/.test(s);
 
+// scan: 'top' = db.collection(name); 'group' = db.collectionGroup(name) (subcollection).
+// clears[].tier gates whether --commit writes it. paired[] fields are deleted alongside.
+// guarded[] fields are enumerated but never written without --force-guarded-fields.
+const SPECS = {
+  tenants: {
+    scan: 'top',
+    clears: [
+      { field: 'stripeConnectAccountId', shape: SHAPE.acct, tier: 'high', label: 'Connect account (acct_)', paired: ['stripeConnectStatus'] },
+      { field: 'stripeSubscriptionId', shape: SHAPE.sub, tier: 'med', label: 'subscription (sub_)' },
+      { field: 'stripePriceId', shape: SHAPE.price, tier: 'med', label: 'price (price_) — S2, coordinate w/ B1' },
+      { field: 'addOnAiAssistant', shape: SHAPE.sub, tier: 'med', label: 'AI add-on subscription (sub_)' },
+      { field: 'stripeCustomerId', shape: SHAPE.cus, tier: 'low', label: 'customer (cus_) — self-heals, recommend LEAVE' },
+    ],
+  },
+  users: {
+    scan: 'top',
+    clears: [
+      { field: 'affiliateStripeAccountId', shape: SHAPE.acct, tier: 'high', label: 'affiliate Connect account (acct_)', paired: ['affiliateConnectStatus'] },
+      { field: 'aiAssistantCustomerId', shape: SHAPE.cus, tier: 'med', label: 'AI add-on customer (cus_)' },
+      { field: 'donationSubscriptionId', shape: SHAPE.sub, tier: 'med', label: 'partnership subscription (sub_)', paired: ['donationChurchId'] },
+    ],
+    guarded: [
+      { field: 'aiAssistantSubscriptionItemId', shape: SHAPE.si, why: 'paid $200/mo AI-assistant entitlement — use billing route' },
+    ],
+  },
+  churches: {
+    scan: 'top',
+    guarded: [
+      { field: 'stripeSubscriptionItemId', shape: SHAPE.si, why: 'line item on parent subscription — orphans if nulled; use remove-billing route' },
+    ],
+  },
+  affiliate_commissions: { scan: 'cancel' },
+  invoices: {
+    scan: 'group',
+    clears: [
+      { field: 'relatedId', shape: SHAPE.subOrPi, tier: 'low', label: 'receipt relatedId (sub_/pi_)' },
+    ],
+  },
+  registrations: {
+    scan: 'group',
+    clears: [
+      { field: 'stripePaymentIntentId', shape: SHAPE.pi, tier: 'low', label: 'event payment intent (pi_)' },
+    ],
+  },
+  webhook_events: { scan: 'report-docids' },
+};
+
+const ALL_COLLECTIONS = Object.keys(SPECS);
+
 function classify(value, shape) {
   if (value == null || value === '') return { kind: 'absent' };
   const s = String(value);
   if (looksLive(s)) return { kind: 'skip', value: s, reason: 'LIVE-mode marker present' };
-  if (shape.test(s)) return { kind: 'clear', value: s };
-  return { kind: 'skip', value: s, reason: 'unrecognized id shape (not a test-mode ' + shape.source + ' id)' };
+  if (shape.test(s)) return { kind: 'match', value: s };
+  return { kind: 'skip', value: s, reason: `unrecognized shape (not ${shape.source})` };
 }
 
 async function main() {
@@ -136,113 +184,131 @@ async function main() {
     process.exit(1);
   }
 
+  const includeArg = argValue('include');
+  const activeTiers = new Set(['high']);
+  if (includeArg) includeArg.split(',').map((t) => t.trim()).filter(Boolean).forEach((t) => activeTiers.add(t));
+
+  // ── Run-window hard gate ──────────────────────────────────────────────────
+  if (COMMIT && !PRE_GO_LIVE) {
+    console.error(
+      '\n⛔ REFUSING TO COMMIT.\n' +
+      '   This purge classifies ids by shape, not by test-vs-live, so it is only\n' +
+      '   safe BEFORE the first live Stripe write. Confirm test data + pre-go-live,\n' +
+      '   then re-run with --i-am-pre-go-live. (Dry run needs no flag.)\n',
+    );
+    process.exit(1);
+  }
+
   initializeApp({ credential: loadCredential() });
   const db = getFirestore();
 
   console.log(`\nPurge test-mode Stripe IDs — ${COMMIT ? 'COMMIT (writing)' : 'DRY RUN (no writes)'}`);
   console.log(`Collections in scope: ${scope.join(', ')}`);
+  console.log(`Commit tiers: ${[...activeTiers].join(', ')}${includeArg ? '' : '  (default HIGH-only; add --include=med,low to widen)'}`);
   console.log(
-    '\n⚠ Stripe account/customer/subscription IDs do NOT encode test-vs-live in\n' +
-    '  the ID string. This purge is valid ONLY if every stored ID was written\n' +
-    '  with a TEST key. Values with a live marker or an unexpected shape are\n' +
-    '  always SKIPPED and reported — never written.\n',
+    '\n⚠ Stripe ids do NOT encode test-vs-live in the id string — this purge is\n' +
+    '  valid ONLY pre-go-live (no live key has ever written this data). Values with\n' +
+    '  a live marker or an unexpected shape are always SKIPPED and reported.\n',
   );
 
-  const writes = []; // { ref, data } — applied only with --commit
-  let clearCount = 0;
+  const writes = []; // { ref, data }
+  let clearCount = 0; // fields that WILL be cleared under current tiers/commit
+  let deferCount = 0; // matched fields shown but outside the active tiers
   let cancelCount = 0;
+  let guardedCount = 0;
   const skipped = []; // { path, field, value, reason }
 
-  // ── tenants / users : clear stale id fields ──────────────────────────────
+  // ── Clear-collections (top-level or collectionGroup) ─────────────────────
   for (const coll of scope) {
-    const targets = CLEAR_TARGETS[coll];
-    if (!targets) continue;
-    const snap = await db.collection(coll).get();
+    const spec = SPECS[coll];
+    if (!spec.clears && !spec.guarded) continue;
+    const snap = spec.scan === 'group'
+      ? await db.collectionGroup(coll).get()
+      : await db.collection(coll).get();
+
+    console.log(`── ${coll}${spec.scan === 'group' ? ' (subcollection)' : ''} ─────────────────────────────`);
     let collFields = 0;
     let collDocs = 0;
-    console.log(`── ${coll} ─────────────────────────────────────────────`);
     for (const doc of snap.docs) {
       const d = doc.data();
+      const path = spec.scan === 'group' ? doc.ref.path : `${coll}/${doc.id}`;
       const update = {};
       const lines = [];
-      for (const t of targets) {
+
+      for (const t of spec.clears || []) {
         const res = classify(d[t.field], t.shape);
         if (res.kind === 'absent') continue;
-        if (res.kind === 'skip') {
-          skipped.push({ path: `${coll}/${doc.id}`, field: t.field, value: res.value, reason: res.reason });
-          continue;
+        if (res.kind === 'skip') { skipped.push({ path, field: t.field, value: res.value, reason: res.reason }); continue; }
+        const willClear = activeTiers.has(t.tier);
+        if (willClear) {
+          update[t.field] = FieldValue.delete();
+          let extra = '';
+          for (const p of t.paired || []) {
+            if (d[p] !== undefined) { update[p] = FieldValue.delete(); extra += ` + ${p}`; }
+          }
+          lines.push(`    ${t.field} = ${res.value}  [${t.label}]  → CLEAR field${extra}`);
+          clearCount++; collFields++;
+        } else {
+          lines.push(`    ${t.field} = ${res.value}  [${t.label}]  → ${t.tier.toUpperCase()} (add --include=${t.tier} to clear)`);
+          deferCount++;
         }
-        // clear
-        update[t.field] = FieldValue.delete();
-        let extra = '';
-        if (t.pairedStatus && d[t.pairedStatus] !== undefined) {
-          update[t.pairedStatus] = FieldValue.delete();
-          extra = ` + ${t.pairedStatus}`;
-        }
-        lines.push(`    ${t.field} = ${res.value}  [${t.label}]  → CLEAR field${extra}`);
-        clearCount++;
-        collFields++;
       }
+
+      // Guarded fields: enumerate; only write with --force-guarded-fields.
+      for (const g of spec.guarded || []) {
+        const res = classify(d[g.field], g.shape);
+        if (res.kind === 'absent') continue;
+        if (res.kind === 'skip') { skipped.push({ path, field: g.field, value: res.value, reason: res.reason }); continue; }
+        guardedCount++;
+        if (FORCE_GUARDED) {
+          update[g.field] = FieldValue.delete();
+          lines.push(`    🚫 ${g.field} = ${res.value}  → CLEAR (--force-guarded-fields set) — ${g.why}`);
+        } else {
+          lines.push(`    🚫 ${g.field} = ${res.value}  → GUARDED, NOT touched — ${g.why}`);
+        }
+      }
+
+      if (lines.length) { console.log(`  ${path}`); lines.forEach((l) => console.log(l)); }
       if (Object.keys(update).length) {
         update.updatedAt = new Date().toISOString();
         writes.push({ ref: doc.ref, data: update });
         collDocs++;
-        console.log(`  ${coll}/${doc.id}`);
-        lines.forEach((l) => console.log(l));
       }
     }
-    console.log(`  Subtotal: ${collFields} field(s) across ${collDocs} doc(s) to clear.\n`);
+    console.log(`  Subtotal: ${collFields} field(s) across ${collDocs} doc(s) to clear now.\n`);
   }
 
-  // ── affiliate_commissions : cancel pending rows (stop the retry cron) ─────
+  // ── affiliate_commissions : cancel pending rows ──────────────────────────
   if (scope.includes('affiliate_commissions')) {
     console.log('── affiliate_commissions ───────────────────────────────────');
     console.log('  (pending rows only — the retry cron transfers these to dead test accounts)');
     const pendingSnap = await db.collection('affiliate_commissions').where('status', '==', 'pending').get();
-    let nonPendingNote = '';
     for (const doc of pendingSnap.docs) {
       const c = doc.data();
-      // Safety: a pending row whose stored ids look live is anomalous — skip it.
       const sub = c.stripeSubscriptionId ? String(c.stripeSubscriptionId) : '';
       const tr = c.stripeTransferId ? String(c.stripeTransferId) : '';
-      if (looksLive(sub) || looksLive(tr)) {
-        skipped.push({ path: `affiliate_commissions/${doc.id}`, field: 'stripeSubscriptionId/stripeTransferId', value: sub || tr, reason: 'LIVE-mode marker on a pending commission' });
+      const inv = c.stripeInvoiceId ? String(c.stripeInvoiceId) : '';
+      if (looksLive(sub) || looksLive(tr) || looksLive(inv)) {
+        skipped.push({ path: `affiliate_commissions/${doc.id}`, field: 'stripe*Id', value: sub || tr || inv, reason: 'LIVE-mode marker on a pending commission' });
         continue;
       }
       console.log(
         `  affiliate_commissions/${doc.id}\n` +
-        `    status=pending  commission=${c.commission}  referrerId=${c.referrerId}  sub=${sub || '(none)'}\n` +
-        `      → SET status='cancelled' (stops retry cron; keeps referral history)`,
+        `    status=pending  commission=${c.commission}  referrerId=${c.referrerId}  sub=${sub || '(none)'}  inv=${inv || '(none)'}\n` +
+        `      → SET status='cancelled' (stops retry cron; sub_/in_/tr_ kept as history)`,
       );
-      writes.push({
-        ref: doc.ref,
-        data: { status: 'cancelled', cancelReason: 'test-stripe-purge', updatedAt: new Date().toISOString() },
-      });
+      writes.push({ ref: doc.ref, data: { status: 'cancelled', cancelReason: 'test-stripe-purge', updatedAt: new Date().toISOString() } });
       cancelCount++;
     }
-    // Report (never touch) the inert non-pending rows so the count is complete.
     const allSnap = await db.collection('affiliate_commissions').get();
-    const nonPending = allSnap.size - pendingSnap.size;
-    nonPendingNote = `${nonPending} non-pending row(s) left as history`;
-    console.log(`  Subtotal: ${cancelCount} pending row(s) to cancel; ${nonPendingNote}.\n`);
+    console.log(`  Subtotal: ${cancelCount} pending row(s) to cancel; ${allSnap.size - pendingSnap.size} non-pending row(s) left as history.\n`);
   }
 
-  // ── Report-only fields found in scope (inventory completeness) ────────────
-  const reportRows = [];
-  for (const coll of Object.keys(REPORT_ONLY)) {
-    // churches isn't a scope option; always scan it for the inventory note.
-    if (coll !== 'churches' && !scope.includes(coll)) continue;
-    const snap = await db.collection(coll).get();
-    for (const spec of REPORT_ONLY[coll]) {
-      let n = 0;
-      snap.forEach((doc) => { if (doc.data()[spec.field]) n++; });
-      if (n) reportRows.push({ coll, field: spec.field, n, why: spec.why });
-    }
-  }
-  if (reportRows.length) {
-    console.log('── OTHER test-mode Stripe IDs found (reported, NOT purged) ──');
-    for (const r of reportRows) console.log(`  ${r.coll}.${r.field}: ${r.n} doc(s) — ${r.why}`);
-    console.log('');
+  // ── webhook_events : report only (harmless test dedup markers) ────────────
+  if (scope.includes('webhook_events')) {
+    const evSnap = await db.collection('webhook_events').get();
+    console.log('── webhook_events (report only) ────────────────────────────');
+    console.log(`  ${evSnap.size} dedup marker(s) keyed by test event.id — harmless, NOT deleted.\n`);
   }
 
   // ── Skipped (unclassifiable / live-looking — never written) ──────────────
@@ -252,11 +318,18 @@ async function main() {
     console.log('');
   }
 
-  console.log(`TOTAL: ${clearCount} field(s) to clear, ${cancelCount} commission(s) to cancel, ${skipped.length} skipped.`);
+  console.log(
+    `TOTAL: ${clearCount} field(s) to clear now, ${cancelCount} commission(s) to cancel, ` +
+    `${deferCount} deferred (other tiers), ${guardedCount} guarded, ${skipped.length} skipped.`,
+  );
 
   if (!COMMIT) {
-    console.log('\nDRY RUN — nothing written. Re-run with --commit (keep --collection scoped) to apply.');
+    console.log('\nDRY RUN — nothing written. Re-run with --commit --i-am-pre-go-live (keep --collection scoped) to apply.');
     process.exit(0);
+  }
+
+  if (guardedCount && FORCE_GUARDED) {
+    console.log('\n⚠ --force-guarded-fields is set: entitlement/line-item pointers will be cleared. Ensure billing was handled separately.');
   }
 
   // ── Apply, batched (Firestore batch limit 500) ───────────────────────────
