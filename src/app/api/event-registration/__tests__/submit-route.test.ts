@@ -118,7 +118,7 @@ describe('POST /api/event-registration/submit — paid tickets', () => {
     );
     expect(mockAdd).not.toHaveBeenCalledWith(expect.objectContaining({ status: 'confirmed' }));
 
-    // Destination charge to the tenant's connected account, platform fee 15% (plus).
+    // Destination charge to the tenant's connected account, platform fee 5% (plus).
     expect(mockCheckoutCreate).toHaveBeenCalledWith(
       expect.objectContaining({
         mode: 'payment',
@@ -126,7 +126,7 @@ describe('POST /api/event-registration/submit — paid tickets', () => {
         cancel_url: expect.stringContaining('/event/e1?registration=cancel'),
         payment_intent_data: expect.objectContaining({
           transfer_data: { destination: 'acct_T' },
-          application_fee_amount: 750,
+          application_fee_amount: 250,
           metadata: expect.objectContaining({ type: 'event_registration', registrationId: 'pending1' }),
         }),
         metadata: expect.objectContaining({
@@ -210,10 +210,10 @@ describe('POST /api/event-registration/submit — multi-attendee quantity (BUG 5
     expect(mockAdd).toHaveBeenCalledWith(
       expect.objectContaining({ status: 'pending_payment', amount: 10000, quantity: 2 }),
     );
-    // Destination charge AND platform fee (15% plus) both reflect the full headcount.
+    // Destination charge AND platform fee (5% plus) both reflect the full headcount.
     expect(mockCheckoutCreate).toHaveBeenCalledWith(
       expect.objectContaining({
-        payment_intent_data: expect.objectContaining({ application_fee_amount: 1500 }),
+        payment_intent_data: expect.objectContaining({ application_fee_amount: 500 }),
         line_items: [expect.objectContaining({
           price_data: expect.objectContaining({ unit_amount: 10000 }),
         })],
