@@ -37,9 +37,9 @@ export const AI_ASSISTANT_SETUP = process.env.STRIPE_PRICE_AI_SETUP ?? 'price_1T
  * different platform fee for the same plan. A missing plan defaults to 0.
  */
 export const PLATFORM_FEE_MAP: Record<string, number> = {
-  plus: 0.15,
-  pro: 0.10,
-  max: 0.05,
+  plus: 0.05,
+  pro: 0.05,
+  max: 0.025,
   ultra: 0,
 };
 
