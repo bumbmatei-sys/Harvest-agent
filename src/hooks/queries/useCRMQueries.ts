@@ -43,6 +43,10 @@ export interface Contact {
   createdBy: string;
   updatedAt: DateLike;
   tenantId?: string;
+  /** Stable link to the person's `users` doc id, written by the donation webhook
+   *  and manual-add. Used to fold a member's `users` row into their existing
+   *  contact row so the same person never surfaces under two different ids. */
+  userId?: string;
 }
 
 export interface ContactActivity {
@@ -127,6 +131,56 @@ const userDocToMemberContact = (
   };
 };
 
+/** Normalize an email for cross-collection matching: a missing value, casing, or
+ *  stray surrounding whitespace must never split one person into two rows. */
+const normEmail = (s: unknown): string => String(s ?? '').trim().toLowerCase();
+
+/**
+ * Merge CRM `contacts` rows with app `users` rows into ONE contact list, keeping
+ * each person's id STABLE.
+ *
+ * A person who exists in BOTH collections must surface as a single row carrying
+ * the `contacts` doc id — never the `users` doc id. This is the fix for the
+ * dual-id bug: contact activities are keyed by whichever id is selected at write
+ * time (manual CRM add) and by the id the donation webhook resolves to (the
+ * contact id when a contact exists). If the same person could surface under two
+ * ids, activities keyed to one become invisible when the other is selected.
+ *
+ * A `users` row is folded into an existing contact (i.e. dropped from the member
+ * list) when it matches a contact on EITHER:
+ *   1. the contact's `userId` link (`contact.userId === users doc id`) — stable
+ *      across email changes and immune to casing/whitespace, or
+ *   2. the normalized (trim + lowercase) email — a fallback for contacts written
+ *      before the `userId` link was populated.
+ * The previous email-only, lowercase-but-not-trimmed match missed people whose
+ * two docs differed by surrounding whitespace or the `userId` link, which is how
+ * a member ended up surfaced under their `users` id with an empty timeline.
+ *
+ * `users`-only members (no matching contact) are still surfaced, keyed by their
+ * `users` id — the same id the webhook writes their activities under.
+ */
+export const mergeContactsWithUsers = (
+  contactRows: Contact[],
+  userRows: Array<{ id: string; data: Record<string, any> }>,
+  fallbackTenantId: string | null | undefined,
+): Contact[] => {
+  const linkedUserIds = new Set(
+    contactRows.map(c => c.userId).filter(Boolean) as string[],
+  );
+  const seenEmails = new Set(
+    contactRows.map(c => normEmail(c.email)).filter(Boolean),
+  );
+  const userMembers: Contact[] = [];
+  for (const d of userRows) {
+    if (linkedUserIds.has(d.id)) continue;        // already a contact (by userId link)
+    const email = normEmail(d.data.email);
+    if (email && seenEmails.has(email)) continue; // already a contact (by email)
+    if (email) seenEmails.add(email);
+    userMembers.push(userDocToMemberContact(d.id, d.data, fallbackTenantId));
+  }
+  return [...contactRows, ...userMembers];
+};
+
 /**
  * CRM contacts list that ALSO surfaces app members from the `users` collection.
  *
@@ -168,20 +222,15 @@ export const useContactsWithUsers = (tenantId: string | null | undefined, isAuth
         console.error('[CRM] failed to load app members from users:', e);
       }
 
-      // Merge: skip any user already present as a manual contact (by email).
-      const seenEmails = new Set(
-        contactRows.map(c => (c.email || '').toLowerCase()).filter(Boolean),
+      // Merge, folding each app member into their existing contact so a person in
+      // BOTH collections keeps ONE stable id (the contacts id). See the helper.
+      const merged = mergeContactsWithUsers(
+        contactRows,
+        userDocs.map(d => ({ id: d.id, data: d.data() as Record<string, any> })),
+        tenantId,
       );
-      const userMembers: Contact[] = [];
-      for (const d of userDocs) {
-        const u = d.data() as Record<string, any>;
-        const email = String(u.email || '').toLowerCase();
-        if (email && seenEmails.has(email)) continue;
-        if (email) seenEmails.add(email);
-        userMembers.push(userDocToMemberContact(d.id, u, tenantId));
-      }
 
-      return sortByString([...contactRows, ...userMembers], 'lastName', 'asc');
+      return sortByString(merged, 'lastName', 'asc');
     },
     enabled: isAuthReady && tenantId !== undefined,
     staleTime: 1000 * 60 * 5,
