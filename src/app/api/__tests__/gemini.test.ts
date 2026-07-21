@@ -350,7 +350,9 @@ describe('query metering — chat token cap', () => {
       ok: true,
       json: vi.fn().mockResolvedValue({
         choices: [{ message: { content: 'Peace!' } }],
-        usage: { prompt_tokens: 137, completion_tokens: 914, total_tokens: 1051 },
+        // total_tokens deliberately != prompt+completion (137+914=1051) so the
+        // assertion pins that we read usage.total_tokens, not a re-sum.
+        usage: { prompt_tokens: 137, completion_tokens: 914, total_tokens: 1200 },
       }),
     }));
 
@@ -359,7 +361,23 @@ describe('query metering — chat token cap', () => {
     const body = await res.json();
     expect(body.text).toBe('Peace!');
     expect(mockCheckQueryBudget).toHaveBeenCalledWith('tenant1');
-    expect(mockIncrementQueryTokens).toHaveBeenCalledWith('tenant1', 1051);
+    expect(mockIncrementQueryTokens).toHaveBeenCalledWith('tenant1', 1200);
+  });
+
+  it('does NOT increment query tokens when MiMo returns a non-200 (failed answer)', async () => {
+    mockRequireAuth.mockResolvedValue(mockUser({ tenantId: 'tenant1' }));
+    mockDocGet.mockResolvedValue({ exists: false }); // fresh chat_usage (per-user gate)
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: false,
+      status: 429,
+      text: vi.fn().mockResolvedValue('rate limited'),
+    }));
+
+    const res = await POST(makeRequest({ action: 'generate', prompt: 'hi', purpose: 'chat' }));
+    expect(res.status).toBe(502);
+    // The increment lives strictly after the !response.ok early-return, so a
+    // failed answer must never charge the tenant.
+    expect(mockIncrementQueryTokens).not.toHaveBeenCalled();
   });
 
   it('blocks the next query when the monthly cap is reached, WITHOUT calling MiMo', async () => {
