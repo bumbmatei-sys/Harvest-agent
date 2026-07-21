@@ -50,7 +50,11 @@ export async function GET() {
         customBackground: features.customBackground,
         newsletterAutomation: features.newsletterAutomation,
         smsAutomation: features.smsAutomation,
-        aiAssistant: features.aiAssistant,
+        // The AI (Telegram) Assistant is the retired add-on (NOT the RAG aiChat/
+        // aiKnowledge capabilities above, which stay). Omit its plan-comparison
+        // value while hidden so no client renders the row. Flip
+        // AI_TELEGRAM_ASSISTANT_ENABLED to advertise it again.
+        ...(AI_TELEGRAM_ASSISTANT_ENABLED ? { aiAssistant: features.aiAssistant } : {}),
       },
     };
   });
@@ -58,16 +62,22 @@ export async function GET() {
   return NextResponse.json(
     {
       plans,
-      addons: {
-        aiAssistant: {
-          available: AI_TELEGRAM_ASSISTANT_ENABLED,   // false while hidden
-          monthlyUsd: AI_ASSISTANT_ADDON_PRICING.monthlyUsd,
-          description: 'Connects to 900+ apps, automates tasks, manages schedules.',
-          includedOn: PLAN_ORDER.filter(
-            (id) => getPlanFeatures(id).aiAssistant !== 0
-          ),
-        },
-      },
+      // The AI (Telegram) Assistant add-on is retired: omit it from the catalog
+      // entirely so no marketing/client surface can render a purchase option.
+      // Pricing (AI_ASSISTANT_ADDON_PRICING) and the plan flag are left intact —
+      // flip AI_TELEGRAM_ASSISTANT_ENABLED to list the add-on again.
+      addons: AI_TELEGRAM_ASSISTANT_ENABLED
+        ? {
+            aiAssistant: {
+              available: true,
+              monthlyUsd: AI_ASSISTANT_ADDON_PRICING.monthlyUsd,
+              description: 'Connects to 900+ apps, automates tasks, manages schedules.',
+              includedOn: PLAN_ORDER.filter(
+                (id) => getPlanFeatures(id).aiAssistant !== 0
+              ),
+            },
+          }
+        : {},
     },
     {
       headers: {

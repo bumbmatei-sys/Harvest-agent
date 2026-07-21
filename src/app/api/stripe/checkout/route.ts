@@ -4,6 +4,7 @@ import Stripe from 'stripe';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireAuth } from '@/lib/api-auth';
 import { PLAN_PRICES, AI_ASSISTANT_MONTHLY } from '@/lib/stripe-config';
+import { AI_TELEGRAM_ASSISTANT_ENABLED } from '@/utils/plan-features';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,6 +45,14 @@ export async function POST(request: NextRequest) {
 
     // Handle AI Assistant add-on checkout — always scoped to an existing tenant.
     if (addOn === 'ai-assistant') {
+      // The AI (Telegram) Assistant add-on is retired: no new purchase can be
+      // initiated while it is hidden. This closes the money path even if a stale
+      // client (the now-dormant AiAssistantSection) still posts here. The Stripe
+      // wiring and provisioning code stay intact — flip AI_TELEGRAM_ASSISTANT_ENABLED
+      // to bring the add-on back.
+      if (!AI_TELEGRAM_ASSISTANT_ENABLED) {
+        return NextResponse.json({ error: 'The AI Assistant add-on is no longer available.' }, { status: 410 });
+      }
       if (!tenantId) {
         return NextResponse.json({ error: 'Missing required field: tenantId' }, { status: 400 });
       }
