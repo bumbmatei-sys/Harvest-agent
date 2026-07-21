@@ -256,6 +256,9 @@ export default function AIChat({ onBack }: { onBack?: () => void }) {
   // canned "resting" reply. We surface a small note; the input stays usable so
   // the user is never hard-locked out (the server is the real gate).
   const [resting, setResting] = useState<boolean>(false);
+  // When the block is the monthly query-token CAP (not the per-user cooldown),
+  // the server returns capReached:'query' so we can show a tailored upgrade note.
+  const [capReached, setCapReached] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -434,9 +437,11 @@ Friendly neighbor, not a corporate chatbot. Short. Helpful. Human.`;
  const genData = await response.json();
  if (!response.ok) throw new Error(genData.error || 'Generate request failed');
 
- // The server returns `limited: true` with a canned reply once the per-user
- // usage limit is reached (Holy-Spirit redirect, then a cooldown rest).
+ // The server returns `limited: true` with a canned reply once a usage limit is
+ // reached — either the per-user cooldown (Holy-Spirit redirect → rest) or the
+ // tenant monthly query-token CAP (capReached: 'query').
  setResting(genData.limited === true);
+ setCapReached(genData.capReached ?? null);
 
  const aiText = genData.text || "I'm sorry, I couldn't generate a response.";
  
@@ -651,14 +656,16 @@ Friendly neighbor, not a corporate chatbot. Short. Helpful. Human.`;
  <div style={{ background: CARD, borderTop: `1px solid ${BORDER}`, padding: "8px 12px 20px", flexShrink: 0 }}>
  {resting && (
  <div style={{ textAlign: "center", fontSize: 11, color: TEXT2, padding: "0 8px 8px", lineHeight: 1.5 }}>
- Resting for a little while — spend some time with God directly. The chat will be ready again soon.
+ {capReached === 'query'
+ ? "You've reached this month's AI question limit for your ministry. It resets on the 1st — or ask your admin to upgrade for a higher limit."
+ : "Resting for a little while — spend some time with God directly. The chat will be ready again soon."}
  </div>
  )}
  <div className="lg:max-w-3xl lg:mx-auto lg:w-full" style={{ display: "flex", alignItems: "center", gap: 8, background: BG, borderRadius: 99, border: `1.5px solid ${BORDER}`, padding: "0 6px 0 16px", minHeight: 44 }}>
  <textarea
  ref={inputRef}
  value={input}
- onChange={(e) => { setInput(e.target.value); if (resting) setResting(false); e.target.style.height = "auto"; e.target.style.height = Math.min(e.target.scrollHeight, 100) + "px"; }}
+ onChange={(e) => { setInput(e.target.value); if (resting) { setResting(false); setCapReached(null); } e.target.style.height = "auto"; e.target.style.height = Math.min(e.target.scrollHeight, 100) + "px"; }}
  onKeyDown={handleKeyDown}
  placeholder="Ask about Scripture, theology, prayer..."
  rows={1}

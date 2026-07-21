@@ -4,6 +4,13 @@ import { GoogleGenAI } from '@google/genai';
 import { requireAuth, type AuthenticatedUser } from '@/lib/api-auth';
 import { adminDb } from '@/lib/firebase-admin';
 import { getMimoChatUrl, MIMO_MODEL, GEMINI_EMBEDDING_MODEL } from '@/lib/ai-config';
+import {
+  approxTokens,
+  checkAndReserveIngest,
+  refundIngest,
+  checkQueryBudget,
+  incrementQueryTokens,
+} from '@/lib/rag-usage';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,6 +18,25 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 const MAX_TEXT_LENGTH = 50000; // 50KB limit for embed text
 const MAX_PROMPT_LENGTH = 30000; // 30KB limit for generate prompts
+
+/**
+ * Exact billed token count for an embed input. Gemini's embedContent response
+ * (developer API, apiKey auth) exposes NO token count — its billableCharacter
+ * /statistics.tokenCount fields are "Gemini Enterprise Agent Platform" (Vertex)
+ * only, undefined here — so we ask the free `countTokens` endpoint (the real
+ * billed unit). If that ever fails/returns nothing we fall back to the documented
+ * ~4-chars/token APPROXIMATION. Used only for the ingest gate; never metered
+ * against a field that might silently be 0.
+ */
+async function countEmbedTokens(text: string): Promise<number> {
+  try {
+    const r = await ai.models.countTokens({ model: GEMINI_EMBEDDING_MODEL, contents: [text] });
+    if (typeof r.totalTokens === 'number' && r.totalTokens > 0) return r.totalTokens;
+  } catch (e) {
+    console.warn('Gemini countTokens failed — falling back to char/4 estimate:', e);
+  }
+  return approxTokens(text); // documented approximation (~4 chars/token)
+}
 
 // ── AI RAG chat usage limits (server-side, easy to tune) ──
 // The chat runs on a single shared MiMo subscription, so per-user usage is
@@ -123,7 +149,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const { text } = body;
+      const { text, purpose } = body;
       if (!text || typeof text !== 'string') {
         return NextResponse.json(
           { error: '"text" is required for embed action.' },
@@ -137,6 +163,32 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // Ingest metering — ONLY for `purpose: 'ingest'` (embedding a KB document).
+      // The chat's query-time embed (searchVectorDB) sends NO purpose, so it is
+      // never charged to the ingest ceiling — otherwise a full KB would block
+      // querying, which is exactly what option C avoids. Super admins
+      // (tenantId: null) are exempt, and we only meter a real tenantId so no
+      // tenants/null/usage doc is ever written. This is a HARD pre-call gate:
+      // reserve atomically first; only embed if it fits.
+      const meterIngest = purpose === 'ingest' && !userOrErr.isSuperAdmin && !!userOrErr.tenantId;
+      let reservedTokens = 0;
+      if (meterIngest) {
+        reservedTokens = await countEmbedTokens(text);
+        const gate = await checkAndReserveIngest(userOrErr.tenantId as string, reservedTokens);
+        if (!gate.allowed) {
+          return NextResponse.json(
+            {
+              error:
+                'Knowledge base is full — delete sources to free space, or upgrade your plan for more capacity.',
+              code: 'ingest_ceiling_reached',
+              used: gate.used,
+              ceiling: gate.ceiling,
+            },
+            { status: 403 }
+          );
+        }
+      }
+
       try {
         const result = await ai.models.embedContent({
           model: GEMINI_EMBEDDING_MODEL,
@@ -146,6 +198,8 @@ export async function POST(request: NextRequest) {
         const vector = result.embeddings?.[0]?.values;
         if (!vector) {
           console.error('Gemini embed returned no vector for request');
+          // Nothing embedded → give the reserved ceiling back.
+          if (meterIngest) await refundIngest(userOrErr.tenantId as string, reservedTokens);
           return NextResponse.json(
             { error: 'Embedding provider returned no vector.' },
             { status: 502 }
@@ -153,6 +207,9 @@ export async function POST(request: NextRequest) {
         }
         return NextResponse.json({ vector });
       } catch (embedErr: any) {
+        // Provider error → refund the reservation so a transient failure never
+        // permanently consumes the tenant's ingest ceiling.
+        if (meterIngest) await refundIngest(userOrErr.tenantId as string, reservedTokens);
         // Surface the real upstream cause (bad model id, invalid key, quota) to
         // the client instead of a generic 500, without echoing the API key.
         const status = embedErr?.status ?? embedErr?.code ?? null;
@@ -221,6 +278,25 @@ export async function POST(request: NextRequest) {
 
         const data = await response.json();
         const text = data.choices?.[0]?.message?.content || '';
+
+        // Query-token metering (post-call): chat only, real tenant, non-super-
+        // admin. MiMo is OpenAI-compatible and returns usage.total_tokens
+        // (prompt + completion); fall back to the documented ~4-chars/token
+        // APPROXIMATION only if it is ever absent. Best-effort — a metering
+        // failure must never break the answer. FieldValue.increment keeps
+        // concurrent answers race-free.
+        if (purpose === 'chat' && !userOrErr.isSuperAdmin && userOrErr.tenantId) {
+          const usedTokens =
+            typeof data?.usage?.total_tokens === 'number' && data.usage.total_tokens > 0
+              ? data.usage.total_tokens
+              : approxTokens(`${systemInstruction || ''}${prompt}${text}`);
+          try {
+            await incrementQueryTokens(userOrErr.tenantId, usedTokens);
+          } catch (e) {
+            console.error('query token metering failed:', e);
+          }
+        }
+
         return NextResponse.json({ text });
       };
 
@@ -229,6 +305,23 @@ export async function POST(request: NextRequest) {
       // exempt. Enforcement is server-side and keyed on the authenticated uid,
       // so the client cannot bypass or reset it.
       if (purpose === 'chat' && !userOrErr.isSuperAdmin) {
+        // Tenant monthly query-token cap — HARD pre-call gate. Block the NEXT
+        // query once at/over cap (token cost is known only after the answer, so
+        // one final over-shoot is acceptable). Only a real tenant is metered; a
+        // null-tenant chat (main-site user) is never charged and never writes a
+        // tenants/null doc.
+        if (userOrErr.tenantId) {
+          const budget = await checkQueryBudget(userOrErr.tenantId);
+          if (!budget.allowed) {
+            return NextResponse.json({
+              text: "You've reached your ministry's monthly AI question limit (it resets on the 1st). To keep going now, ask your ministry admin to upgrade the plan.",
+              limited: true,
+              capReached: 'query',
+              used: budget.used,
+              cap: budget.cap,
+            });
+          }
+        }
         return await enforceChatLimit(userOrErr, callMimo);
       }
 
