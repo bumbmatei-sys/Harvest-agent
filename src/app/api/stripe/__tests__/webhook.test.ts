@@ -859,3 +859,99 @@ describe('flat 15% affiliate commission', () => {
     });
   });
 });
+
+// ── $0 initial-commission guard (7-day trial signups) ───────────────────────
+// A trial signup fires checkout.session.completed at trial START with
+// amount_total: 0. Before the guard this wrote a $0 'initial' commission doc
+// (which the retry cron re-attempts forever) and bumped affiliateReferralCount —
+// even for a trial that is later abandoned and never pays. The guard early-returns
+// on a $0 event; the real charge is paid later by the recurring path (see the
+// 'recurring commission is 15% of invoice.amount_paid' test above, which covers
+// the billing_reason 'subscription_cycle' conversion invoice).
+describe('initial affiliate commission — $0 trial guard', () => {
+  it('builds the new tenant on a $0 trial signup but writes NO commission and does NOT bump referral count', async () => {
+    const session = { id: 'cs_trial', subscription: 'sub_trial', customer: 'cus_trial', amount_total: 0 };
+    mockConstructEvent.mockReturnValue(makeEvent('checkout.session.completed', session, 'evt_trial'));
+    mockSubsRetrieve.mockResolvedValue({
+      id: 'sub_trial',
+      metadata: {
+        newTenant: 'true', userId: 'u1', plan: 'pro', billing: 'monthly',
+        ministryName: 'Grace Church', referrerId: 'refUser',
+      },
+    });
+    // Blanket not-exists: webhook dedup (new), user-has-no-tenant (build proceeds),
+    // subdomain free. The $0 guard returns before the referrer doc is ever read.
+    mockDocGet.mockResolvedValue({ exists: false });
+    mockGetUser.mockResolvedValue({ uid: 'u1', email: 'pastor@grace.org' });
+
+    const res = await POST(makeRequest());
+    expect(res.status).toBe(200);
+
+    // The signup itself still succeeds — the trial tenant is created.
+    expect(mockDocSet).toHaveBeenCalledWith(
+      expect.objectContaining({ subdomain: 'grace-church', plan: 'pro', status: 'active' }),
+    );
+    // …but the $0 event pays/records nothing and never touches the referral count.
+    expect(mockTransfersCreate).not.toHaveBeenCalled();
+    expect(mockAdd).not.toHaveBeenCalled(); // no affiliate_commissions doc
+    expect(mockDocUpdate).not.toHaveBeenCalledWith(
+      expect.objectContaining({ affiliateReferralCount: expect.anything() }),
+    );
+  });
+
+  it('still changes the plan on a $0 plan-change but writes NO commission and does NOT bump referral count', async () => {
+    const session = { subscription: 'sub_pc0', customer: 'cus_pc', amount_total: 0 };
+    mockConstructEvent.mockReturnValue(makeEvent('checkout.session.completed', session, 'evt_pc0'));
+    mockSubsRetrieve.mockResolvedValue({
+      id: 'sub_pc0',
+      metadata: { tenantId: 'tenant1', plan: 'max', billing: 'monthly', referrerId: 'refUser' },
+    });
+    mockDocGet
+      .mockResolvedValueOnce({ exists: false }) // dedup → new event
+      .mockResolvedValueOnce({ exists: true, data: () => ({ stripeSubscriptionId: null, ownerId: 'someoneElse', addOnAiAssistantCode: null }) }); // tenant
+
+    const res = await POST(makeRequest());
+    expect(res.status).toBe(200);
+
+    // The plan change itself is unaffected — the guard is scoped to the commission.
+    expect(mockDocUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ plan: 'max', status: 'active' }),
+    );
+    // No money moved, no commission doc, no referral-count bump for the $0 event.
+    expect(mockTransfersCreate).not.toHaveBeenCalled();
+    expect(mockAdd).not.toHaveBeenCalled();
+    expect(mockDocUpdate).not.toHaveBeenCalledWith(
+      expect.objectContaining({ affiliateReferralCount: expect.anything() }),
+    );
+  });
+
+  it('a real (>$0) charge is unchanged: commission doc + referral-count increment + transfer', async () => {
+    const session = { subscription: 'sub_pc1', customer: 'cus_pc', amount_total: 11900 };
+    mockConstructEvent.mockReturnValue(makeEvent('checkout.session.completed', session, 'evt_pc1'));
+    mockSubsRetrieve.mockResolvedValue({
+      id: 'sub_pc1',
+      metadata: { tenantId: 'tenant1', plan: 'pro', billing: 'monthly', referrerId: 'refUser' },
+    });
+    mockDocGet
+      .mockResolvedValueOnce({ exists: false }) // dedup → new event
+      .mockResolvedValueOnce({ exists: true, data: () => ({ stripeSubscriptionId: null, ownerId: 'someoneElse', addOnAiAssistantCode: null }) }) // tenant (owner != referrer)
+      .mockResolvedValueOnce({ exists: true, data: () => ({ affiliateStripeAccountId: 'acct_ref', affiliateConnectStatus: 'active' }) }); // referrer w/ active Connect
+
+    const res = await POST(makeRequest());
+    expect(res.status).toBe(200);
+
+    // Flat 15% of $119 = 1785 cents, paid via a per-subscription idempotency key.
+    expect(mockTransfersCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ amount: 1785, destination: 'acct_ref' }),
+      expect.objectContaining({ idempotencyKey: 'aff_initial_sub_pc1' }),
+    );
+    // Commission doc recorded…
+    expect(mockAdd).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'initial', amount: 11900, commission: 1785, status: 'paid' }),
+    );
+    // …and the referral count is incremented exactly for the real charge.
+    expect(mockDocUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ affiliateReferralCount: { __increment: 1 } }),
+    );
+  });
+});

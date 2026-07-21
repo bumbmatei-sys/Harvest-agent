@@ -39,6 +39,19 @@ async function processInitialAffiliateCommission(opts: {
 }): Promise<void> {
   const { stripe, referrerId, ownerId, tenantId, plan, amountTotal, subscriptionId } = opts;
 
+  // No real charge yet (7-day trial signup, or any $0/free checkout): don't pay,
+  // don't write a $0 commission doc, and don't inflate affiliateReferralCount. The
+  // retry cron re-attempts any lingering $0 doc forever, and an abandoned trial
+  // would otherwise leave a phantom referral behind. When the trial converts, the
+  // first paid invoice (billing_reason 'subscription_cycle') fires
+  // invoice.payment_succeeded → the recurring commission path, which creates the
+  // commission and pays the affiliate on the real amount. So this only skips the
+  // $0 initial event — never the real conversion.
+  if (!amountTotal || amountTotal <= 0) {
+    console.log(`⏭️  Skipping initial affiliate commission for ${referrerId}: $0 (trial or free) — will fire on first paid invoice`);
+    return;
+  }
+
   if (ownerId && referrerId === ownerId) {
     console.log('⚠️ Self-referral blocked for tenant', tenantId);
     return;
