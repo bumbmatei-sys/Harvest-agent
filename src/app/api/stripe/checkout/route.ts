@@ -174,6 +174,14 @@ export async function POST(request: NextRequest) {
         success_url: `${origin}/?stripe=success&session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${origin}/?stripe=cancel`,
         subscription_data: {
+          // New ministries get a 7-day free trial with the card captured up
+          // front (Checkout still collects payment details). Stripe charges the
+          // first real invoice when the trial ends; only then does the affiliate
+          // commission fire (see processInitialAffiliateCommission's $0 guard and
+          // the recurring invoice.payment_succeeded path in the webhook). This
+          // trial is scoped to new-tenant signup ONLY — the AI add-on and the
+          // existing-tenant plan-change sessions intentionally have no trial.
+          trial_period_days: 7,
           metadata: {
             plan,
             billing,
