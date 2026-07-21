@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Upload, Search, Trash2, Sparkles, Database } from 'lucide-react';
-import { db } from '../firebase';
+import { db, auth } from '../firebase';
 import { collection, addDoc, serverTimestamp, query, where, getDocs, getDoc, deleteDoc, onSnapshot, doc, type DocumentReference } from 'firebase/firestore';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { notifyError } from '../utils/notify';
@@ -87,6 +87,84 @@ function DeleteModal({ source, onConfirm, onClose }: { source: any, onConfirm: (
 }
 
 // ═══════════════════════════════════════════════
+// USAGE INDICATOR — surfaces the RAG caps BEFORE the wall (query tokens this
+// month vs cap; ingest used vs ceiling), with an 80% warning and a "full"/
+// "limit reached" state carrying the delete-or-upgrade CTA. Reads the snapshot
+// from /api/rag-usage (server-side, Admin SDK). Renders nothing for a super
+// admin / non-tenant account (unmetered) so no empty card shows.
+// ═══════════════════════════════════════════════
+function formatTokens(n: number): string {
+ if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(n >= 10_000_000 ? 0 : 1)}M`;
+ if (n >= 1_000) return `${(n / 1_000).toFixed(n >= 10_000 ? 0 : 1)}k`;
+ return `${Math.round(n)}`;
+}
+
+interface UsageData {
+ metered: boolean;
+ queryTokensUsed?: number; queryTokensCap?: number;
+ ingestTokensUsed?: number; ingestTokensCeiling?: number;
+ month?: string;
+}
+
+function UsageMeter({ label, used, limit, kind }: { label: string; used: number; limit: number; kind: 'query' | 'ingest' }) {
+ const pct = limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 0;
+ const over = limit > 0 && used >= limit;
+ const warn = pct >= 80 && !over;
+ const barColor = over ? RED : warn ? "#E67E22" : GOLD;
+ return (
+ <div style={{ display:"flex", flexDirection:"column", gap:5, flex:1, minWidth:180 }}>
+ <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", gap:8 }}>
+ <span style={{ fontSize:11.5, color:TEXT2, fontWeight:600 }}>{label}</span>
+ <span style={{ fontSize:11.5, fontWeight:700, color: over ? RED : TEXT }}>
+ {formatTokens(used)} / {formatTokens(limit)}
+ </span>
+ </div>
+ <div style={{ height:6, borderRadius:99, background:STONE_100, overflow:"hidden" }}>
+ <div style={{ width:`${pct}%`, height:"100%", background:barColor, borderRadius:99, transition:"width 0.3s" }} />
+ </div>
+ {over && (
+ <span style={{ fontSize:10.5, color:RED, fontWeight:600 }}>
+ {kind === "ingest" ? "Full — delete sources or upgrade to add more" : "Limit reached — upgrade to keep asking"}
+ </span>
+ )}
+ {warn && (
+ <span style={{ fontSize:10.5, color:"#B9770E", fontWeight:600 }}>{pct}% used — nearing your plan limit</span>
+ )}
+ </div>
+ );
+}
+
+function UsageIndicator({ refreshKey }: { refreshKey: number }) {
+ const [usage, setUsage] = useState<UsageData | null>(null);
+ useEffect(() => {
+ let cancelled = false;
+ (async () => {
+ try {
+ const token = await auth.currentUser?.getIdToken();
+ if (!token) return;
+ const res = await fetch('/api/rag-usage', { headers: { Authorization: `Bearer ${token}` } });
+ if (!res.ok) return;
+ const data = await res.json();
+ if (!cancelled) setUsage(data);
+ } catch (e) { console.warn('Failed to load RAG usage:', e); }
+ })();
+ return () => { cancelled = true; };
+ }, [refreshKey]);
+
+ if (!usage || !usage.metered) return null; // super admin / no tenant → unmetered
+
+ return (
+ <div style={{ ...s.card, padding:"14px 16px", display:"flex", flexDirection:"column", gap:12 }}>
+ <div style={{ fontSize:11, fontWeight:700, color:GOLD, letterSpacing:"0.14em", textTransform:"uppercase" }}>Plan usage</div>
+ <div style={{ display:"flex", gap:24, flexWrap:"wrap" }}>
+ <UsageMeter label="AI queries · this month" used={usage.queryTokensUsed ?? 0} limit={usage.queryTokensCap ?? 0} kind="query" />
+ <UsageMeter label="Knowledge base · total" used={usage.ingestTokensUsed ?? 0} limit={usage.ingestTokensCeiling ?? 0} kind="ingest" />
+ </div>
+ </div>
+ );
+}
+
+// ═══════════════════════════════════════════════
 // MAIN
 // ═══════════════════════════════════════════════
 export default function AdminRAG() {
@@ -108,6 +186,9 @@ export default function AdminRAG() {
  // Search
  const [search, setSearch] = useState("");
  const [filterType, setFilterType] = useState("all");
+
+ // Bumped after each ingest so the usage meter re-reads its snapshot.
+ const [usageRefresh, setUsageRefresh] = useState(0);
 
  // Load sources from Firestore (we can aggregate from rag_chunks or maintain a separate rag_sources collection)
  // For simplicity based on the provided design, we'll maintain a 'rag_sources' collection
@@ -176,6 +257,7 @@ export default function AdminRAG() {
    await markSourceError(sourceRef, err instanceof Error ? err.message : 'Processing failed');
  } finally {
    setPasteLoading(false);
+   setUsageRefresh(k => k + 1); // ingest done → refresh the usage meter
  }
  };
 
@@ -226,6 +308,7 @@ export default function AdminRAG() {
    await markSourceError(sourceRef, err instanceof Error ? err.message : 'Processing failed');
  }
  }
+ setUsageRefresh(k => k + 1); // ingest done → refresh the usage meter
  };
 
  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -372,6 +455,12 @@ export default function AdminRAG() {
  </div>
 
  <div style={s.content}>
+
+ {/* Usage meter — always visible above the tabs so admins see the caps
+     before they hit them. Renders nothing for unmetered (super-admin) accounts. */}
+ <div style={{ marginBottom:14 }}>
+ <UsageIndicator refreshKey={usageRefresh} />
+ </div>
 
  {/* ── ADD TAB ── */}
  {tab === "add" && (

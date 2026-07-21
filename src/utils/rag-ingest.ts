@@ -58,10 +58,22 @@ export async function chunkAndEmbed(
          'Content-Type': 'application/json',
          'Authorization': `Bearer ${await auth.currentUser?.getIdToken()}`,
        },
-       body: JSON.stringify({ action: 'embed', text: chunk }),
+       // `purpose: 'ingest'` marks this as a KB-document embed so the server
+       // meters it against the tenant's persistent ingest ceiling. The chat's
+       // query-time embed omits it and is never charged to that ceiling.
+       body: JSON.stringify({ action: 'embed', text: chunk, purpose: 'ingest' }),
      });
      const data = await res.json().catch(() => ({}));
-     if (!res.ok) throw new Error(data.error || `Embed request failed (HTTP ${res.status})`);
+     if (!res.ok) {
+       // Ingest ceiling reached → the KB is full. Stop here: every remaining
+       // chunk of this doc would fail identically. Surface the server's
+       // "delete something or upgrade" message so the caller can show the CTA.
+       if (res.status === 403 && data.code === 'ingest_ceiling_reached') {
+         if (!firstError) firstError = data.error || 'Knowledge base is full — delete sources or upgrade your plan.';
+         break;
+       }
+       throw new Error(data.error || `Embed request failed (HTTP ${res.status})`);
+     }
 
      const vector = data.vector;
      if (!vector) throw new Error('Embedding returned no vector');
