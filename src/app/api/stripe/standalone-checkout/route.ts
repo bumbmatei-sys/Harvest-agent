@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import Stripe from 'stripe';
 import { AI_ASSISTANT_MONTHLY } from '@/lib/stripe-config';
+import { AI_TELEGRAM_ASSISTANT_ENABLED } from '@/utils/plan-features';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,6 +18,15 @@ export async function OPTIONS() {
 
 export async function POST(request: NextRequest) {
   try {
+    // This route exists solely to sell the AI (Telegram) Assistant add-on to
+    // marketing-site (theharvest.site) visitors. The add-on is retired, so the
+    // whole route is disabled — no checkout session can be created. Backend
+    // provisioning/webhook code is left dormant; flip AI_TELEGRAM_ASSISTANT_ENABLED
+    // to re-enable purchases.
+    if (!AI_TELEGRAM_ASSISTANT_ENABLED) {
+      return NextResponse.json({ error: 'The AI Assistant add-on is no longer available.' }, { status: 410, headers: CORS_HEADERS });
+    }
+
     const stripeKey = process.env.STRIPE_SECRET_KEY;
     if (!stripeKey) {
       return NextResponse.json({ error: 'Stripe not configured' }, { status: 500, headers: CORS_HEADERS });

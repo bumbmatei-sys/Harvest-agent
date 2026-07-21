@@ -97,20 +97,19 @@ describe('POST /api/stripe/checkout — 7-day trial scoping', () => {
     expect(args.line_items[0].price).toBe('price_pro_m');
   });
 
-  it('does NOT add a trial to the AI-assistant add-on session', async () => {
+  // The AI Assistant add-on is retired (AI_TELEGRAM_ASSISTANT_ENABLED === false):
+  // the add-on branch is disabled before any Stripe call, so no checkout session —
+  // trialed or otherwise — can be created. This locks the money path closed.
+  it('rejects the AI-assistant add-on checkout as no longer available (no session created)', async () => {
     mockRequireAuth.mockResolvedValue({ uid: 'u1', email: 'admin@t.org', tenantId: 'tenant1', isSuperAdmin: false });
-    // getValidCustomerId reads the buyer's users doc for a stored aiAssistantCustomerId.
     mockDocGet.mockResolvedValue({ data: () => ({ aiAssistantCustomerId: 'cus_stored' }) });
 
     const res = await POST(makeRequest({ addOn: 'ai-assistant', tenantId: 'tenant1' }));
-    expect(res.status).toBe(200);
-
-    const args = lastSessionArgs();
-    expect(args.subscription_data.trial_period_days).toBeUndefined();
-    // Confirm this is the add-on session, not the signup one.
-    expect(args.subscription_data.metadata.addOn).toBe('ai-assistant');
-    expect(args.subscription_data.metadata.newTenant).toBeUndefined();
-    expect(args.line_items[0].price).toBe('price_ai_m');
+    expect(res.status).toBe(410);
+    const body = await res.json();
+    expect(body.error).toMatch(/no longer available/i);
+    // No Stripe checkout session is ever created for the retired add-on.
+    expect(mockSessionsCreate).not.toHaveBeenCalled();
   });
 
   it('does NOT add a trial to the existing-tenant plan-change session', async () => {
