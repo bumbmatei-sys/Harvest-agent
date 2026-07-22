@@ -44,6 +44,21 @@ const config: Config = {
         "background-light": "var(--color-background-light)",
         "background-alt": "var(--color-background-alt)",
         "background-dark": "var(--color-background-dark)",
+        // Theming stage 1 — semantic surface/border tokens (vocabulary only,
+        // same colours as the scales above). Borders are named `line` rather
+        // than `border`: Tailwind's borderColor scale already extends
+        // `colors`, so a `border` key here would generate a confusing
+        // `border-border` utility instead of clashing outright — `line`
+        // avoids that ambiguity entirely (`border-line`, `border-line-subtle`).
+        surface: {
+          DEFAULT: "var(--surface)",
+          raised: "var(--surface-raised)",
+        },
+        line: {
+          DEFAULT: "var(--border-default)",
+          subtle: "var(--border-subtle)",
+          strong: "var(--border-strong)",
+        },
       },
       borderRadius: {
         // Brand corner radii (lg 12 / xl 16 / 2xl 24).
