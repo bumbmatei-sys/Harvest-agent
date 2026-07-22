@@ -68,6 +68,21 @@
  --glow-gold: 0 10px 30px -8px color-mix(in srgb, var(--brand-color) 42%, transparent);
  /* ~6% film-grain overlay — the signature texture on dark hero bands. */
  --grain-url: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.4'/%3E%3C/svg%3E");
+
+ /* ── Theming stage 1: surface / border / text-strong tokens ─────────────
+    Vocabulary only — ZERO visual change. Every value below equals the
+    colour already rendered today; each references an existing scale var
+    where one exists, rather than repeating a hex. Future themes (dark
+    mode, high-contrast, richer per-tenant white-label) override these
+    vars only — components keep their current utility classes until
+    migrated incrementally in a later, separate PR. */
+ --surface:         var(--cream);      /* page ground, = bg-cream */
+ --surface-raised:  #FFFFFF;           /* cards/panels, = Tailwind `white` (bg-white) */
+ /* (--surface-sunken, --surface-gold, --surface-night already exist above) */
+ --border-default:  var(--stone-200);  /* common border, = border-stone-200 */
+ --border-subtle:   var(--stone-100);  /* hairlines, = border-stone-100 */
+ --border-strong:   var(--stone-300);  /* emphasis border, = border-stone-300 */
+ --text-strong:     var(--earth);      /* headings/emphasis, = text-earth */
  }
 }
 
