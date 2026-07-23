@@ -3,7 +3,7 @@ import type { NextRequest } from 'next/server';
 import { FieldValue } from 'firebase-admin/firestore';
 import { Resend } from 'resend';
 import { adminDb } from '@/lib/firebase-admin';
-import { getTwilioConfig, sendSms, renderTemplate } from '@/lib/twilio';
+import { sendAutomatedSms } from '@/lib/twilio';
 
 export const dynamic = 'force-dynamic';
 
@@ -67,21 +67,20 @@ export async function POST(request: NextRequest) {
     const tenantSnap = await adminDb.collection('tenants').doc(tenantId).get();
     const tenantName = tenantSnap.data()?.name || tenantSnap.data()?.displayName || 'Harvest';
 
-    // Best-effort SMS confirmation.
+    // Best-effort SMS confirmation. Routed through sendAutomatedSms so the
+    // pledge trigger obeys the SAME rules as every other automated SMS:
+    //   • it sends only when the admin has enabled `pledge_confirmation` with
+    //     non-empty text (the AdminSms toggle) — no more hardcoded fallback that
+    //     fired even with the trigger off / unconfigured;
+    //   • it logs the REAL Twilio outcome (status 'delivered'/'failed' +
+    //     errorCode) instead of an unconditional 'delivered'.
+    // sendAutomatedSms is best-effort and never throws.
     if (donorPhone) {
-      try {
-        const cfg = await getTwilioConfig(tenantId);
-        if (cfg) {
-          const tpl = cfg.templates?.['pledge_confirmation'];
-          const text = tpl?.enabled && tpl.text
-            ? renderTemplate(tpl.text, { name: donorName, amount: String(pledgeAmount), tenantName })
-            : `Thanks ${donorName}, your pledge of $${pledgeAmount} has been recorded by ${tenantName}.`;
-          await sendSms(cfg, donorPhone, text);
-          await adminDb.collection('tenants').doc(tenantId).collection('smsLogs').add({
-            trigger: 'pledge_confirmation', phone: donorPhone, status: 'delivered', errorCode: null, sentAt: new Date().toISOString(),
-          }).catch(() => {});
-        }
-      } catch (e) { console.warn('Pledge SMS confirmation failed:', e); }
+      await sendAutomatedSms(tenantId, 'pledge_confirmation', donorPhone, {
+        name: donorName,
+        amount: String(pledgeAmount),
+        tenantName,
+      });
     }
 
     // Best-effort email confirmation.
