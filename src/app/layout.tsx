@@ -6,6 +6,7 @@ import './globals.css';
 import { cn } from "@/lib/utils";
 import { getTenantFromHost } from '@/lib/server-tenant';
 import ReferralTracker from '@/components/ReferralTracker';
+import { Analytics } from '@vercel/analytics/next';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -151,6 +152,7 @@ export default async function RootLayout({
             }
           `}
         </Script>
+        <Analytics />
       </body>
     </html>
   );
