@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { headers } from 'next/headers';
 import Script from 'next/script';
+import { Analytics } from '@vercel/analytics/next';
 import { Inter, Fraunces, Newsreader } from 'next/font/google';
 import './globals.css';
 import { cn } from "@/lib/utils";
@@ -132,6 +133,7 @@ export default async function RootLayout({
             Renders nothing; only writes localStorage['affiliateReferrerId']. */}
         <ReferralTracker />
         {children}
+        <Analytics />
         <Script id="sw-register" strategy="afterInteractive">
           {`
             if ('serviceWorker' in navigator) {
