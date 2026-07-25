@@ -615,11 +615,27 @@ async function linkDonationToCRM(opts: {
  * `amountDollars = cents / 100` — a $50 gift moves the bar by $50, never $5,000
  * (raw cents) or $0.50.
  *
- * Idempotency: every caller runs inside the `webhook_events/{event.id}` marker,
- * so a redelivered event never re-enters here and can't double-count. The one
- * place two DISTINCT events cover the same money — a monthly subscription's
- * `checkout.session.completed` and its first `invoice.payment_succeeded` — is
- * de-duplicated by the invoice caller skipping `billing_reason === 'subscription_create'`.
+ * IDEMPOTENCY: the `webhook_events/{event.id}` marker is NOT enough on its own —
+ * it is deliberately deleted when the handler throws, so any failure *after* this
+ * function has already incremented sends the same money event back around and a
+ * bare `FieldValue.increment` credits the campaign twice. (The live path: the
+ * renewal caller runs `recordPartnershipRenewalDonation` immediately after this;
+ * that throwing 500s the request with the increment already applied.) So, mirroring
+ * `recordPartnershipRenewalDonation`'s `relatedId` gate, every credit is keyed to
+ * the PAYMENT that produced it — `campaigns/{id}/credits/{paymentId}` — and the
+ * marker is written in the SAME batch as the increment, so the two can never
+ * disagree: no double-credit on a redelivery, and no silent under-credit from a
+ * marker that outlived a failed increment. Callers pass the id that identifies
+ * "this payment" for their path: the checkout session for a subscription's first
+ * gift, the invoice for a renewal, the payment intent for a one-time gift. Without
+ * one there is nothing to dedup on, so — again like the renewal recorder — we
+ * record nothing rather than risk crediting twice.
+ *
+ * The one place two DISTINCT events cover the same money — a monthly
+ * subscription's `checkout.session.completed` and its first
+ * `invoice.payment_succeeded` — carries two different payment ids, so it is still
+ * the invoice caller's `billing_reason === 'subscription_create'` skip that keeps
+ * the opening month from counting twice.
  *
  * Safety: a missing/stray/cross-tenant `campaignId` logs and returns instead of
  * throwing, so a real gift is never lost to a 500 (which would make Stripe
@@ -632,9 +648,18 @@ async function incrementCampaignRaised(opts: {
   campaignId: string | undefined;
   tenantId: string | undefined;
   amountDollars: number;
+  paymentId: string | undefined;
 }): Promise<void> {
-  const { campaignId, tenantId, amountDollars } = opts;
+  const { campaignId, tenantId, amountDollars, paymentId } = opts;
   if (!campaignId || !(amountDollars > 0)) return;
+
+  // No payment id → no dedup key → a bare increment, which is the double-credit this
+  // exists to stop. Skip rather than credit blind (same call the renewal recorder
+  // makes when an invoice has no id).
+  if (!paymentId) {
+    console.warn(`campaign raised: campaign ${campaignId} — no payment id to dedup on; skipping increment`);
+    return;
+  }
 
   const campaignRef = adminDb.collection('campaigns').doc(campaignId);
   const snap = await campaignRef.get();
@@ -652,11 +677,32 @@ async function incrementCampaignRaised(opts: {
     return;
   }
 
-  await campaignRef.update({
+  // Per-payment idempotency gate. Checked AFTER the two guards above so a missing
+  // campaign and a cross-tenant id still short-circuit before any extra read.
+  const creditRef = campaignRef.collection('credits').doc(paymentId);
+  const creditSnap = await creditRef.get();
+  if (creditSnap.exists) {
+    console.log(`⚠️ Campaign ${campaignId} already credited for payment ${paymentId} — skipping increment`);
+    return;
+  }
+
+  // The increment and its dedup marker are ONE atomic batch. Marker-first would turn
+  // a failed increment into a permanent silent under-credit; increment-first would
+  // leave a failed marker write open to the double-credit on redelivery. Neither is
+  // possible when both land or neither does.
+  const batch = adminDb.batch();
+  batch.update(campaignRef, {
     raised: FieldValue.increment(amountDollars),
     updatedAt: FieldValue.serverTimestamp(),
   });
-  console.log(`📈 Campaign ${campaignId} raised += $${amountDollars.toFixed(2)} (tenant ${tenantId || 'unknown'})`);
+  batch.set(creditRef, {
+    paymentId,
+    amountDollars,
+    tenantId: tenantId || null,
+    creditedAt: FieldValue.serverTimestamp(),
+  });
+  await batch.commit();
+  console.log(`📈 Campaign ${campaignId} raised += $${amountDollars.toFixed(2)} (tenant ${tenantId || 'unknown'}, payment ${paymentId})`);
 }
 
 /**
@@ -748,7 +794,19 @@ async function finalizePartnershipSubscription(
   // is campaign-designated. Renewals are credited from invoice.payment_succeeded,
   // which skips billing_reason 'subscription_create' so this opening month is not
   // double-counted. No-op when meta.campaignId is absent (general partnership).
-  await incrementCampaignRaised({ campaignId: meta.campaignId, tenantId, amountDollars });
+  //
+  // Dedup key = the CHECKOUT SESSION id. That is what "this payment" means on this
+  // path: one completed checkout is one opening gift, and the id is stable across
+  // every redelivery of the event. The subscription id would be wrong (it names the
+  // whole subscription, not this month) and the first invoice id is not on the
+  // session object we are handed. Renewals key off invoice ids, so the two
+  // namespaces never collide.
+  await incrementCampaignRaised({
+    campaignId: meta.campaignId,
+    tenantId,
+    amountDollars,
+    paymentId: session.id,
+  });
 }
 
 /**
@@ -1809,10 +1867,13 @@ export async function POST(request: NextRequest) {
                   // nothing. Only ever a marker THIS invocation wrote.
                   await eventRef.delete().catch(() => { /* best effort */ });
                 }
-                // Returning here — rather than finishing the case — is what keeps
-                // the retry safe: `incrementCampaignRaised` below is a bare
-                // `FieldValue.increment` with no per-invoice dedup, so it must not
-                // run on a delivery that is going to be redelivered.
+                // Returning here — rather than finishing the case — keeps the retry
+                // clean: nothing below should half-run on a delivery that is about
+                // to be redelivered. `incrementCampaignRaised` now carries its own
+                // per-invoice dedup (THE-30), so this return is no longer the only
+                // thing standing between a redelivery and a double-credited
+                // campaign — but the renewal receipt and CRM writes below still
+                // belong on the retry, not on this doomed attempt.
                 return NextResponse.json(
                   { error: 'Recurring affiliate commission failed; will retry' },
                   { status: 500 },
@@ -1832,11 +1893,19 @@ export async function POST(request: NextRequest) {
             subMeta.type === 'partnership' &&
             (invoice as any).billing_reason !== 'subscription_create';
 
+          // Dedup key = the INVOICE id — one renewal invoice is one month's money,
+          // the same identity `recordPartnershipRenewalDonation` dedups its receipt
+          // on. This is the site with real retry exposure: that recorder runs a few
+          // lines below and its Firestore writes can throw, which deletes the
+          // `webhook_events` marker and 500s with this increment already applied.
+          // #230 only closed the *affiliate* interleaving (that catch returns before
+          // reaching here); this one was still open.
           if (isPartnershipRenewal && subMeta.campaignId) {
             await incrementCampaignRaised({
               campaignId: subMeta.campaignId,
               tenantId: subMeta.tenantId,
               amountDollars: (invoice.amount_paid || 0) / 100,
+              paymentId: invoice.id,
             });
           }
 
@@ -1996,7 +2065,18 @@ export async function POST(request: NextRequest) {
           // Credit a campaign-designated one-time gift to its progress bar. No-op
           // when the gift isn't tied to a campaign (general partnership) or the
           // campaign doc is gone — never throws, so the donation is never lost.
-          await incrementCampaignRaised({ campaignId: meta.campaignId, tenantId, amountDollars });
+          //
+          // Dedup key = the PAYMENT INTENT id: for a one-time gift the PI *is* the
+          // payment. This site is the least exposed of the three — nothing after it
+          // can throw before the 200 — but a write that lands while the response is
+          // lost still comes back as a redelivery, and keying it means a future line
+          // added below can't quietly reopen the hole.
+          await incrementCampaignRaised({
+            campaignId: meta.campaignId,
+            tenantId,
+            amountDollars,
+            paymentId: pi.id,
+          });
         }
         break;
       }
