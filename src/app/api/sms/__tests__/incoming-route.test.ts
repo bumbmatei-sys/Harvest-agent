@@ -31,7 +31,13 @@ function makeColRef(path: string): any {
 vi.mock('@/lib/firebase-admin', () => ({
   adminDb: { collection: (name: string) => makeColRef(name) },
 }));
-vi.mock('@/lib/twilio', () => ({ sendSms: mockSendSms }));
+// Only the send itself is stubbed. `resolveTwilioConfig` is the REAL one, so
+// these tests prove the route declares the source the shared resolver actually
+// chose for the credentials it sends with — not a source it made up locally.
+vi.mock('@/lib/twilio', async (importActual) => ({
+  ...(await importActual<typeof import('@/lib/twilio')>()),
+  sendSms: mockSendSms,
+}));
 
 const { POST } = await import('../incoming/route');
 
@@ -69,7 +75,9 @@ describe('POST /api/sms/incoming — the reply is metered, not TwiML', () => {
     expect(to).toBe(TEXTER);
     expect(body).toBe('Give here: https://t1.theharvest.app/?giving=1');
     // Tenant resolved SERVER-SIDE from the To-number index, not from the texter.
-    expect(meter).toEqual({ tenantId: 't1' });
+    // The tenant has its own credentials, so the reply is a BYO send: billed by
+    // Twilio to the church, and not against Harvest's allotment.
+    expect(meter).toEqual({ tenantId: 't1', source: 'byo' });
   });
 
   it('returns EMPTY TwiML so Twilio does not send the message a second time', async () => {
@@ -126,7 +134,7 @@ describe('POST /api/sms/incoming — the reply is metered, not TwiML', () => {
     expect(mockSendSms).not.toHaveBeenCalled();
   });
 
-  it('logs a failure instead of sending when credentials are missing', async () => {
+  it('logs a failure instead of sending when NEITHER the tenant nor Harvest has credentials', async () => {
     docData.set('tenants/t1/integrations/twilio', {
       text2give: { enabled: true, keyword: 'GIVE', responseTemplate: 'Give here: {link}' },
     });

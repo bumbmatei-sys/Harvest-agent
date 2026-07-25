@@ -68,9 +68,20 @@ export const TRIGGERS: TriggerDef[] = [
 // The unit is SEGMENTS, and the copy says so explicitly. Twilio bills per
 // segment and a body over 160 characters is more than one, so an admin reading
 // "4,000" must not walk away believing it means 4,000 messages of any length.
+//
+// THE METER MUST MATCH WHO IS ACTUALLY CAPPED. The allotment applies only to
+// sends on Harvest's own Twilio account (`source: 'platform'`, `metered: true`).
+// A church sending on its OWN credentials is billed by Twilio directly and is
+// subject to no limit, so it gets the volume card below instead — its own count
+// and no number that looks like a ceiling. Showing a "1,234 / 4,000" bar to a
+// tenant nothing would ever stop is exactly the advertised-vs-delivered gap
+// THE-20 closed.
 // ─────────────────────────────────────────────────────────────────────────────
 interface SmsUsage {
   metered: boolean;
+  /** Which Twilio account this tenant's sends go out on. 'byo' = their own
+   * credentials (no cap applies); null = none configured, nothing to show. */
+  source?: 'platform' | 'byo' | null;
   smsSegmentsUsed?: number;
   smsSegmentsCap?: number;
   month?: string;
@@ -79,6 +90,28 @@ interface SmsUsage {
 export function segmentUnitNote(cap: number): string {
   return `${cap.toLocaleString('en-US')} SMS segments per month — a message over 160 characters counts as more than one.`;
 }
+
+/** The one place the BYO billing reality is stated, so the wording can't drift
+ * between the usage card and the Twilio settings screen. */
+export const BYO_BILLING_NOTE =
+  "These messages go out on your own Twilio account, so Twilio bills you directly and your Harvest plan's monthly SMS allotment doesn't apply. A message over 160 characters counts as more than one segment.";
+
+/** Volume-only card for a tenant on their own Twilio credentials: what they
+ * sent, no cap, no upgrade CTA, and why. */
+const ByoSmsVolume: React.FC<{ usage: SmsUsage }> = ({ usage }) => {
+  const used = usage.smsSegmentsUsed ?? 0;
+  return (
+    <div className="bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] p-4 mb-4">
+      <div className="flex items-baseline justify-between gap-3 mb-1.5">
+        <span className="text-xs font-semibold uppercase tracking-[0.14em]" style={{ color: GOLD }}>Your Twilio account</span>
+        <span className="text-xs font-bold text-earth">
+          {used.toLocaleString('en-US')} segment{used === 1 ? '' : 's'} this month
+        </span>
+      </div>
+      <p className="text-[11px] text-[color:var(--text-faint)]">{BYO_BILLING_NOTE}</p>
+    </div>
+  );
+};
 
 const SmsUsageMeter: React.FC<{ usage: SmsUsage; onUpgrade: () => void }> = ({ usage, onUpgrade }) => {
   const used = usage.smsSegmentsUsed ?? 0;
@@ -170,6 +203,9 @@ const AdminSms: React.FC = () => {
     return () => { cancelled = true; };
   }, [usageRefresh]);
 
+  // Only a metered (platform-account) tenant can hit a wall. A BYO tenant
+  // reports metered:false, so the send button is never disabled for them —
+  // there is no allotment of Harvest's for them to exhaust.
   const capReached =
     !!usage?.metered && (usage.smsSegmentsUsed ?? 0) >= (usage.smsSegmentsCap ?? Infinity);
 
@@ -279,7 +315,9 @@ const AdminSms: React.FC = () => {
         <button onClick={() => setTab('automated')} className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${tab === 'automated' ? 'bg-white shadow-sm text-earth' : 'text-[color:var(--text-faint)]'}`}>Automated</button>
       </div>
 
-      {usage?.metered && <SmsUsageMeter usage={usage} onUpgrade={() => navigate('/admin/upgrade')} />}
+      {usage?.metered
+        ? <SmsUsageMeter usage={usage} onUpgrade={() => navigate('/admin/upgrade')} />
+        : usage?.source === 'byo' && <ByoSmsVolume usage={usage} />}
 
       {tab === 'broadcast' ? (
         <>

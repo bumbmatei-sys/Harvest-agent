@@ -76,6 +76,7 @@ const {
   reserveSmsSegment,
   settleSmsSegments,
   refundSmsSegment,
+  recordByoSegments,
   getSmsUsageSnapshot,
 } = await import('../sms-usage');
 
@@ -219,6 +220,36 @@ describe('settleSmsSegments', () => {
   });
 });
 
+// ── BYO counting (visibility only — never a gate) ───────────────────────────
+
+describe('recordByoSegments', () => {
+  it('counts into its OWN field, leaving the capped counter untouched', async () => {
+    store.set(JULY_DOC, { smsSegments: 7 });
+    await recordByoSegments('t1', 3, JULY);
+    expect(store.get(JULY_DOC)?.smsSegmentsByo).toBe(3);
+    // The field the cap is checked against must not move for a send Harvest
+    // is not paying for.
+    expect(store.get(JULY_DOC)?.smsSegments).toBe(7);
+  });
+
+  it('accumulates across sends and counts a delivered message as at least 1', async () => {
+    await recordByoSegments('t1', 2, JULY);
+    await recordByoSegments('t1', 0, JULY); // Twilio omitted num_segments
+    expect(store.get(JULY_DOC)?.smsSegmentsByo).toBe(3);
+  });
+
+  it('is never blocked by the cap — it records well past the plus allotment', async () => {
+    store.set('tenants/t1', { plan: 'plus' });
+    for (let i = 0; i < 3; i++) await recordByoSegments('t1', 200, JULY);
+    expect(store.get(JULY_DOC)?.smsSegmentsByo).toBe(600); // > PLUS_CAP, no gate
+  });
+
+  it('stamps the TTL on the month doc', async () => {
+    await recordByoSegments('t1', 1, JULY);
+    expect(store.get(JULY_DOC)?.expiresAt).toBeDefined();
+  });
+});
+
 describe('refundSmsSegment', () => {
   it('gives the reserved segment back and clamps at 0', async () => {
     store.set(JULY_DOC, { smsSegments: 5 });
@@ -235,11 +266,12 @@ describe('refundSmsSegment', () => {
 describe('getSmsUsageSnapshot', () => {
   it('reads the counter + cap for the admin indicator', async () => {
     store.set('tenants/t1', { plan: 'ultra' });
-    store.set(JULY_DOC, { smsSegments: 1_234 });
+    store.set(JULY_DOC, { smsSegments: 1_234, smsSegmentsByo: 56 });
     expect(await getSmsUsageSnapshot('t1', JULY)).toEqual({
       plan: 'ultra',
       month: '2026-07',
       smsSegmentsUsed: 1_234,
+      smsSegmentsByoUsed: 56,
       smsSegmentsCap: 4_000,
     });
   });
@@ -247,6 +279,7 @@ describe('getSmsUsageSnapshot', () => {
   it('reports 0 for a tenant with no usage doc yet (missing doc reads as 0)', async () => {
     const snap = await getSmsUsageSnapshot('t-fresh', JULY);
     expect(snap.smsSegmentsUsed).toBe(0);
+    expect(snap.smsSegmentsByoUsed).toBe(0);
     expect(snap.plan).toBe('plus');
     expect(snap.smsSegmentsCap).toBe(PLUS_CAP);
   });

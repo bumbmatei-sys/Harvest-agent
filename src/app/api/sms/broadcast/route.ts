@@ -89,7 +89,11 @@ export async function POST(request: NextRequest) {
   // inside sendSms is authoritative and runs per recipient regardless. So a
   // Firestore hiccup reading the snapshot must not 500 the whole request: fail
   // OPEN here and let the per-send gate do the real work.
-  if (meterTenantId) {
+  //
+  // It runs for PLATFORM sends only, matching sendSms exactly. Refusing a
+  // broadcast a BYO tenant is not subject to would be the same lie the meter
+  // would be telling if it showed them a limit.
+  if (meterTenantId && cfg.source === 'platform') {
     try {
       const usage = await getSmsUsageSnapshot(meterTenantId);
       if (usage.smsSegmentsCap !== null && usage.smsSegmentsUsed >= usage.smsSegmentsCap) {
@@ -134,7 +138,7 @@ export async function POST(request: NextRequest) {
   let attempted = 0;
 
   for (const c of recipients) {
-    const result = await sendSms(cfg, c.phone!, message, { tenantId: meterTenantId });
+    const result = await sendSms(cfg, c.phone!, message, { tenantId: meterTenantId, source: cfg.source });
 
     if (result.code === 'sms_cap_reached') {
       // Nothing was sent for this recipient and no allotment was consumed.

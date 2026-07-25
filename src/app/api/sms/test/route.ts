@@ -41,13 +41,15 @@ export async function POST(request: NextRequest) {
   }
   // A test send is a real billed send, so it is metered like any other. Super
   // admins bypass metering (their tenantId is null); every other admin bills to
-  // their server-resolved tenant. The US-only gate and the cap both live inside
+  // their server-resolved tenant. The source is `cfg.source` — the account these
+  // exact credentials belong to — so the send is capped only when it is going
+  // out on Harvest's account. The US-only gate and the cap both live inside
   // sendSms, so this route inherits them without its own copy of the rules.
   const result = await sendSms(
     cfg,
     to,
     'Test message from your Harvest ministry app. SMS is working! 🎉',
-    { tenantId: authResult.isSuperAdmin ? null : tenantId },
+    { tenantId: authResult.isSuperAdmin ? null : tenantId, source: cfg.source },
   );
   return result.ok
     ? NextResponse.json({ ok: true, message: `Test SMS sent to ${to}.`, segments: result.segments })
