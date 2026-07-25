@@ -30,6 +30,7 @@ const TRIGGERS: TriggerDef[] = [
   { key: 'event_registration', label: 'Event registration confirmed', placeholder: "Hi {name}, you're registered for {event}! See you {date}." },
   { key: 'checkin_thankyou', label: 'Check-in thank-you', placeholder: 'Thanks for joining us today, {name}! God bless you.' },
   { key: 'donation_thankyou', label: 'Donation thank-you', placeholder: 'Thank you for your gift of ${amount}, {name}. It makes a difference.' },
+  { key: 'pledge_confirmation', label: 'Pledge confirmation', placeholder: 'Thanks {name}, your pledge of ${amount} has been recorded by {tenantName}.' },
   { key: 'campaign_goal', label: 'Campaign goal reached', placeholder: 'We did it! {campaign} reached its goal. Thank you, {name}!' },
   { key: 'new_prayer', label: 'New prayer request (to admin)', placeholder: 'New prayer request from {name}: {prayer}' },
 ];

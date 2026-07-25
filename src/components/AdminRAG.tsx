@@ -51,6 +51,30 @@ function readFileAsText(file: File): Promise<string> {
  });
 }
 
+// ── Server-side PDF extraction ──────────────────────────
+// A PDF is a binary format that readFileAsText turns into garbage. It goes to
+// /api/rag/extract, which parses it server-side (pdf.js kept out of the bundle;
+// large files parsed off the phone's main thread) and returns real text — or a
+// 422 with a clear message for an encrypted, scanned, or corrupt file. On any
+// non-OK response we THROW so the caller's catch marks the source failed and
+// embeds nothing (an embedded error string is the very bug this replaces).
+async function extractFileViaServer(file: File): Promise<string> {
+ const token = await auth.currentUser?.getIdToken();
+ const form = new FormData();
+ form.append("file", file);
+ const res = await fetch("/api/rag/extract", {
+   method: "POST",
+   // No Content-Type — the browser sets the multipart boundary itself.
+   headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+   body: form,
+ });
+ const data = await res.json().catch(() => ({}));
+ if (!res.ok) throw new Error(data.error || `Could not extract text from "${file.name}" (HTTP ${res.status})`);
+ const text = (data.text || "").trim();
+ if (!text) throw new Error(`No readable text found in "${file.name}".`);
+ return text;
+}
+
 // ═══════════════════════════════════════════════
 // TYPE BADGE
 // ═══════════════════════════════════════════════
@@ -265,7 +289,21 @@ export default function AdminRAG() {
  const handleFiles = async (files: File[]) => {
  for (const file of files) {
  const ext = file.name.split(".").pop()?.toLowerCase() || "";
- const type = ext === "pdf" ? "pdf" : ext === "txt" ? "txt" : (ext === "csv" || ext === "xlsx" || ext === "xls") ? "sheet" : "txt";
+
+ // Excel workbooks are ZIP archives: readFileAsText would embed binary noise,
+ // and we don't parse them server-side (the only npm-installable SheetJS build
+ // carries unpatched CVEs). Reject them honestly with a clear message and a
+ // usable alternative — better than storing garbage that bills against the
+ // tenant's ingest ceiling. CSV/TXT plain text still upload fine.
+ if (ext === "xlsx" || ext === "xls") {
+   notifyError(
+     `Can't read "${file.name}"`,
+     "Excel files aren't supported. Export the sheet to CSV and upload that, or paste the content as text.",
+   );
+   continue;
+ }
+
+ const type = ext === "pdf" ? "pdf" : ext === "txt" ? "txt" : ext === "csv" ? "sheet" : "txt";
  const sourceId = uid();
 
  setTab("sources");
@@ -292,11 +330,12 @@ export default function AdminRAG() {
      tenantId
    });
 
+   // PDF is a binary format — parse it server-side. CSV and TXT are plain text
+   // and read fine in the browser. A failed extraction throws, dropping to the
+   // catch below (source marked failed, nothing embedded).
    let text = "";
    if (type === "pdf") {
-     // 🔌 For PDF: use pdf.js or send to a backend parser
-     // For now we simulate with placeholder text
-     text = `[PDF content of ${file.name} — wire up pdf.js or a backend parser to extract text]`;
+     text = await extractFileViaServer(file);
    } else {
      text = await readFileAsText(file);
    }
@@ -469,7 +508,7 @@ export default function AdminRAG() {
  {/* Shared hidden file input — clicked by BOTH the mobile and desktop upload
      drop zones. One element/ref, so the two zones never fight over fileInputRef. */}
  <input ref={fileInputRef} type="file" multiple
- accept=".txt,.pdf,.csv,.xlsx,.xls"
+ accept=".txt,.pdf,.csv"
  style={{ display:"none" }} onChange={handleFileInput} />
 
  {/* Mobile add view — mockup S.knowledge_new: a single-column stack of cards
@@ -509,7 +548,7 @@ export default function AdminRAG() {
  className={`flex flex-col items-center justify-center gap-2 rounded-brand-lg border-2 border-dashed px-5 py-10 text-center cursor-pointer transition-colors ${dragOver ? "border-gold bg-[var(--surface-gold)]" : "border-stone-200 bg-stone-100"}`}>
  <Upload size={26} strokeWidth={1.5} className={dragOver ? "text-gold" : "text-warm-brown"} />
  <div className="text-[14px] font-semibold text-earth">Drop files or tap to browse</div>
- <div className="text-[12px] text-warm-brown tracking-wide">TXT · PDF · CSV · XLSX</div>
+ <div className="text-[12px] text-warm-brown tracking-wide">TXT · PDF · CSV</div>
  </div>
  </div>
 
@@ -584,7 +623,7 @@ export default function AdminRAG() {
  <div style={{ fontWeight:700, fontSize:15, color:TEXT, marginBottom:6 }}>
  Drop files here or click to browse
  </div>
- <div style={{ fontSize:12, color:TEXT2, letterSpacing:"0.02em" }}>TXT · PDF · CSV · XLSX</div>
+ <div style={{ fontSize:12, color:TEXT2, letterSpacing:"0.02em" }}>TXT · PDF · CSV</div>
  </div>
  </div>
  </div>
