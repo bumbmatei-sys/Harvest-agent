@@ -3,6 +3,7 @@ import {
   getPlanFeatures,
   getPlanDisplayName,
   hasFeature,
+  hasBrandingAccess,
   PLAN_PRICING,
   PLAN_DONATION_RETENTION,
   AI_ASSISTANT_ADDON_PRICING,
@@ -190,6 +191,52 @@ describe('hasFeature', () => {
     expect(hasFeature('pro', 'textToGive')).toBe(false);
     expect(hasFeature('max', 'textToGive')).toBe(false);
     expect(hasFeature('ultra', 'textToGive')).toBe(true);
+  });
+});
+
+describe('Branding tab entitlement (hasBrandingAccess)', () => {
+  // The retired `customBackground` flag used to be a third term in this OR chain
+  // (AdminDashboard's canBranding). It was true on exactly max + ultra — the same
+  // tiers customBranding is true on — so removing it must not hide the Branding
+  // tab from any tier. This table is the before AND the after; if it ever
+  // changes, a paying plan just lost a feature.
+  const EXPECTED: Record<string, boolean> = {
+    plus: false,   // Individual  — no branding, no domain (unchanged)
+    pro: false,    // Small Team  — no branding, no domain (unchanged)
+    max: true,     // Community   — customBranding (unchanged)
+    ultra: true,   // Ministry    — customBranding + customDomain (unchanged)
+  };
+
+  (['plus', 'pro', 'max', 'ultra'] as const).forEach((plan) => {
+    it(`${plan}: Branding tab ${EXPECTED[plan] ? 'visible' : 'hidden'}`, () => {
+      expect(hasBrandingAccess(getPlanFeatures(plan))).toBe(EXPECTED[plan]);
+    });
+  });
+
+  it('every tier that had branding-family access before the customBackground removal still has it', () => {
+    // Pre-removal matrix values, transcribed from git history:
+    //   plan   customBranding  customBackground  customDomain
+    //   plus   false           false             false
+    //   pro    false           false             false
+    //   max    true            true              false
+    //   ultra  true            true              true
+    const BEFORE: Record<string, { branding: boolean; background: boolean; domain: boolean }> = {
+      plus:  { branding: false, background: false, domain: false },
+      pro:   { branding: false, background: false, domain: false },
+      max:   { branding: true,  background: true,  domain: false },
+      ultra: { branding: true,  background: true,  domain: true },
+    };
+    (['plus', 'pro', 'max', 'ultra'] as const).forEach((plan) => {
+      const b = BEFORE[plan];
+      const beforeVisible = b.branding || b.background || b.domain;
+      expect(hasBrandingAccess(getPlanFeatures(plan))).toBe(beforeVisible);
+    });
+  });
+
+  it('customBackground is gone from the plan matrix entirely', () => {
+    (['plus', 'pro', 'max', 'ultra'] as const).forEach((plan) => {
+      expect('customBackground' in getPlanFeatures(plan)).toBe(false);
+    });
   });
 });
 

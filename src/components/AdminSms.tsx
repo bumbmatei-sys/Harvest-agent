@@ -26,13 +26,35 @@ interface Broadcast {
 
 interface TriggerDef { key: string; label: string; placeholder: string }
 
-const TRIGGERS: TriggerDef[] = [
+/**
+ * Automated SMS triggers offered to tenants.
+ *
+ * ONLY list a trigger here once something actually calls
+ * `sendAutomatedSms(tenantId, '<key>', …)` server-side. A trigger in this list
+ * with no caller is a toggle the admin can switch on that silently never fires.
+ * Every key below is wired:
+ *   • event_registration  → api/event-registration/submit
+ *   • checkin_thankyou    → api/checkin/submit
+ *   • pledge_confirmation → api/pledge/submit
+ *
+ * Three triggers were REMOVED from this list because they cannot work as-is.
+ * Do not re-add them without building the missing piece first (saved templates
+ * in Firestore are left untouched, so a re-added trigger keeps its text):
+ *   • donation_thankyou — api/stripe/donate collects no phone number at all,
+ *     so there is nothing to text. Needs phone collection on the donation form
+ *     (a product change, not a wiring fix).
+ *   • new_prayer — there is no prayer-requests API route (only cleanup/);
+ *     prayer requests are written client-side straight to Firestore, so an
+ *     admin notification needs a Cloud Function in the separate functions/
+ *     deploy.
+ *   • campaign_goal — the hook point exists (incrementCampaignRaised in the
+ *     Stripe webhook) but firing needs goal-threshold + "did we just cross it"
+ *     logic, otherwise it would text on every single gift.
+ */
+export const TRIGGERS: TriggerDef[] = [
   { key: 'event_registration', label: 'Event registration confirmed', placeholder: "Hi {name}, you're registered for {event}! See you {date}." },
   { key: 'checkin_thankyou', label: 'Check-in thank-you', placeholder: 'Thanks for joining us today, {name}! God bless you.' },
-  { key: 'donation_thankyou', label: 'Donation thank-you', placeholder: 'Thank you for your gift of ${amount}, {name}. It makes a difference.' },
   { key: 'pledge_confirmation', label: 'Pledge confirmation', placeholder: 'Thanks {name}, your pledge of ${amount} has been recorded by {tenantName}.' },
-  { key: 'campaign_goal', label: 'Campaign goal reached', placeholder: 'We did it! {campaign} reached its goal. Thank you, {name}!' },
-  { key: 'new_prayer', label: 'New prayer request (to admin)', placeholder: 'New prayer request from {name}: {prayer}' },
 ];
 
 const AdminSms: React.FC = () => {
@@ -47,7 +69,6 @@ const AdminSms: React.FC = () => {
   const [group, setGroup] = useState<Group>('all_members');
   const [tag, setTag] = useState('');
   const [message, setMessage] = useState('');
-  const [scheduledAt, setScheduledAt] = useState('');
   const [recipientCount, setRecipientCount] = useState<number | null>(null);
   const [sending, setSending] = useState(false);
   const [sendMsg, setSendMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -95,15 +116,18 @@ const AdminSms: React.FC = () => {
     setSending(true);
     setSendMsg(null);
     try {
+      // Send-now only. Scheduling was removed: the API wrote a `scheduled`
+      // broadcast doc and reported success, but nothing has ever processed that
+      // collection (no cron, no worker) — the message was never sent. The route
+      // now rejects `scheduledAt` outright so the UI and the API agree.
       const resp = await authFetch('/api/sms/broadcast', {
         method: 'POST',
-        body: JSON.stringify({ recipientGroup: group, tag, message, ...(scheduledAt ? { scheduledAt: new Date(scheduledAt).toISOString() } : {}) }),
+        body: JSON.stringify({ recipientGroup: group, tag, message }),
       });
       const d = await resp.json();
       if (!resp.ok) { setSendMsg({ ok: false, text: d.error || 'Failed to send.' }); return; }
-      if (d.scheduled) setSendMsg({ ok: true, text: `Scheduled for ${d.recipientCount} recipient(s).` });
-      else setSendMsg({ ok: d.failed === 0, text: `Sent ${d.delivered} • ${d.failed} failed.` });
-      setMessage(''); setScheduledAt('');
+      setSendMsg({ ok: d.failed === 0, text: `Sent ${d.delivered} • ${d.failed} failed.` });
+      setMessage('');
     } catch (e: any) {
       setSendMsg({ ok: false, text: e?.message || 'Failed to send.' });
     } finally {
@@ -169,13 +193,11 @@ const AdminSms: React.FC = () => {
                 <span>{segments} SMS segment{segments > 1 ? 's' : ''}</span>
               </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-[color:var(--text-body)] mb-1.5">Schedule <span className="text-[color:var(--text-faint)] font-normal">(optional)</span></label>
-              <input type="datetime-local" value={scheduledAt} onChange={e => setScheduledAt(e.target.value)} className="w-full px-4 py-2.5 border border-stone-200 rounded-xl text-sm focus:outline-none focus:border-gold" />
-            </div>
+            {/* No schedule picker — see the comment in `send()`. Scheduled
+                broadcasts were never delivered, so only immediate send is offered. */}
             <button onClick={send} disabled={sending} className="w-full flex items-center justify-center gap-2 py-2.5 rounded-brand text-white text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: GOLD }}>
               {sending ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
-              {scheduledAt ? 'Schedule' : 'Send now'}
+              Send now
             </button>
             {sendMsg && <div className={`p-3 rounded-xl text-sm ${sendMsg.ok ? 'bg-field-100 text-field-700' : 'bg-wheat-50 text-wheat-700'}`}>{sendMsg.text}</div>}
           </div>

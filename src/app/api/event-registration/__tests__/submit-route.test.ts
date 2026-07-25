@@ -10,6 +10,14 @@ const { mockVerifyAuth } = vi.hoisted(() => ({
   mockVerifyAuth: vi.fn(),
 }));
 
+// The route delegates all SMS behaviour to sendAutomatedSms — the single source
+// of the per-trigger enabled flag, template text and smsLogs record. The route's
+// only jobs are: call it with the right trigger/phone/tokens, and never let it
+// affect the registration response.
+const { mockSendAutomatedSms } = vi.hoisted(() => ({
+  mockSendAutomatedSms: vi.fn().mockResolvedValue(undefined),
+}));
+
 const { mockDocGet, mockDocSet, mockDocUpdate, mockDocDelete, mockCollGet, mockAdd } = vi.hoisted(() => ({
   mockDocGet: vi.fn(),
   mockDocSet: vi.fn().mockResolvedValue(undefined),
@@ -55,6 +63,8 @@ vi.mock('@/lib/firebase-admin', () => ({
 // Identity link is resolved from the verified token, never the request body.
 vi.mock('@/lib/api-auth', () => ({ verifyAuth: mockVerifyAuth }));
 
+vi.mock('@/lib/twilio', () => ({ sendAutomatedSms: mockSendAutomatedSms }));
+
 vi.mock('firebase-admin/firestore', () => ({
   FieldValue: {
     serverTimestamp: vi.fn(() => 'SERVER_TS'),
@@ -99,6 +109,7 @@ beforeEach(() => {
   mockCheckoutCreate.mockResolvedValue({ url: 'https://checkout.stripe.test/cs_1' });
   // Default: logged-out visitor (no token) → verifyAuth returns null.
   mockVerifyAuth.mockResolvedValue(null);
+  mockSendAutomatedSms.mockResolvedValue(undefined);
 });
 
 describe('POST /api/event-registration/submit — paid tickets', () => {
@@ -261,6 +272,101 @@ describe('POST /api/event-registration/submit — multi-attendee quantity (BUG 5
     expect(res.status).toBe(410);
     expect((await res.json()).error).toMatch(/sold out/i);
     expect(mockAdd).not.toHaveBeenCalled();
+  });
+});
+
+describe('POST /api/event-registration/submit — automated SMS (event_registration trigger)', () => {
+  // Mid-day UTC so the date renders as Aug 2 in any plausible test timezone.
+  const FREE_EVENT = {
+    ...PAID_EVENT,
+    title: 'Summer Picnic',
+    startDate: { toDate: () => new Date('2026-08-02T12:00:00Z') },
+    ticketTypes: [{ id: 'tt1', name: 'Free', price: 0, capacity: null, order: 0 }],
+  };
+
+  it('fires the trigger with {name}/{event}/{date} when a phone was supplied', async () => {
+    mockDocGet.mockResolvedValueOnce({ exists: true, data: () => FREE_EVENT });
+
+    const res = await POST(makeRequest({ ...baseBody, phone: '+15551234567' }));
+    expect(res.status).toBe(200);
+
+    expect(mockSendAutomatedSms).toHaveBeenCalledTimes(1);
+    expect(mockSendAutomatedSms).toHaveBeenCalledWith(
+      't1',
+      'event_registration',
+      '+15551234567',
+      { name: 'Sam', event: 'Summer Picnic', date: 'Aug 2, 2026' },
+    );
+  });
+
+  it('does NOT fire when the (optional) phone is absent', async () => {
+    mockDocGet.mockResolvedValueOnce({ exists: true, data: () => FREE_EVENT });
+
+    const res = await POST(makeRequest(baseBody)); // no phone field
+    expect(res.status).toBe(200);
+    expect((await res.json()).success).toBe(true);
+    expect(mockSendAutomatedSms).not.toHaveBeenCalled();
+  });
+
+  it('does NOT fire when the phone is blank/whitespace', async () => {
+    mockDocGet.mockResolvedValueOnce({ exists: true, data: () => FREE_EVENT });
+
+    const res = await POST(makeRequest({ ...baseBody, phone: '   ' }));
+    expect(res.status).toBe(200);
+    expect(mockSendAutomatedSms).not.toHaveBeenCalled();
+  });
+
+  it('does NOT fire for a waitlisted entry — the template says "you\'re registered"', async () => {
+    const capEvent = {
+      ...FREE_EVENT,
+      ticketTypes: [{ id: 'tt1', name: 'Free', price: 0, capacity: 1, order: 0 }],
+      waitlistEnabled: true,
+    };
+    mockDocGet.mockResolvedValueOnce({ exists: true, data: () => capEvent });
+    mockCollGet.mockResolvedValueOnce({
+      docs: [{ data: () => ({ ticketTypeId: 'tt1', status: 'confirmed', quantity: 1 }) }],
+    });
+
+    const res = await POST(makeRequest({ ...baseBody, phone: '+15551234567' }));
+    expect(res.status).toBe(200);
+    expect((await res.json()).waitlisted).toBe(true);
+    expect(mockSendAutomatedSms).not.toHaveBeenCalled();
+  });
+
+  it('does not add its own enable check — the trigger being off is sendAutomatedSms\'s job', async () => {
+    // A disabled trigger is a no-op INSIDE sendAutomatedSms (see twilio.test.ts).
+    // The route must still call it unconditionally, or the trigger would be
+    // double-gated and impossible to turn on.
+    mockSendAutomatedSms.mockResolvedValue(undefined);
+    mockDocGet.mockResolvedValueOnce({ exists: true, data: () => FREE_EVENT });
+
+    await POST(makeRequest({ ...baseBody, phone: '+15551234567' }));
+    expect(mockSendAutomatedSms).toHaveBeenCalledTimes(1);
+  });
+
+  it('a failed send does not break or alter the registration response', async () => {
+    // sendAutomatedSms swallows Twilio failures (logs status:'failed') and
+    // resolves — the registration must be entirely unaffected.
+    mockDocGet.mockResolvedValueOnce({ exists: true, data: () => FREE_EVENT });
+
+    const res = await POST(makeRequest({ ...baseBody, phone: '+15551234567' }));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.success).toBe(true);
+    expect(body.ticketCode).toBeTruthy();
+    expect(mockAdd).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'confirmed', phone: '+15551234567' }),
+    );
+  });
+
+  it('is not attempted on the paid path — the webhook confirms those, not this route', async () => {
+    mockDocGet
+      .mockResolvedValueOnce({ exists: true, data: () => PAID_EVENT })
+      .mockResolvedValueOnce({ exists: true, data: () => ({ stripeConnectAccountId: 'acct_T', plan: 'plus' }) });
+
+    const res = await POST(makeRequest({ ...baseBody, phone: '+15551234567' }));
+    expect(res.status).toBe(200);
+    expect(mockSendAutomatedSms).not.toHaveBeenCalled();
   });
 });
 

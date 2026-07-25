@@ -47,7 +47,9 @@ export async function GET() {
         maxCourses: features.maxCourses,
         maxAdmins: features.maxAdmins,
         customDomain: features.customDomain,
-        customBackground: features.customBackground,
+        // `customBackground` is intentionally absent: the app has no background
+        // uploader, so advertising it here would sell a capability that does not
+        // exist. Removed from the plan matrix too — see plan-features.ts.
         newsletterAutomation: features.newsletterAutomation,
         smsAutomation: features.smsAutomation,
         // The AI (Telegram) Assistant is the retired add-on (NOT the RAG aiChat/
