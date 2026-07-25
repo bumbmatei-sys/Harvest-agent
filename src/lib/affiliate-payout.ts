@@ -14,7 +14,13 @@ import { captureMoneyPathError } from '@/lib/money-path-sentry';
  * attempt gets back the ORIGINAL transfer instead of moving money twice.
  *
  * Keep EVERY affiliate-payout transfer keyed through this function. A divergent
- * (or absent) key on any path reintroduces double-pay.
+ * (or absent) key on any path reintroduces double-pay. That is not hypothetical:
+ * the webhook's FIRST-attempt transfer used to carry its own
+ * `aff_initial_${subscriptionId}` key, so a transfer that succeeded and then
+ * failed to write its `paid` status left a `pending` row the sweep re-sent under
+ * `aff_sweep_*` — a different key, a second real transfer, the affiliate paid
+ * twice. The webhook now creates the commission row first and keys its transfer
+ * through here too, so there is no second scheme left to drift from.
  */
 export function affiliateSweepIdempotencyKey(commissionId: string): string {
   return `aff_sweep_${commissionId}`;
@@ -31,11 +37,14 @@ export interface SweepResult {
  * Backfill: sweep ONE affiliate's outstanding `pending` commissions to `paid`
  * once their Stripe Connect account is payout-ready.
  *
- * A commission is written `pending` when it is earned BEFORE the affiliate has
- * connected Connect — the webhook can't transfer to an account that doesn't
- * exist yet, so it banks the amount and bumps `affiliatePendingPayouts`. Nothing
- * then moved that money when the affiliate later connected (the daily cron is a
- * once-a-day backstop). This function does it at the moment of activation: for
+ * A commission is written `pending` whenever the webhook banks the amount without
+ * paying it out: most often because it was earned BEFORE the affiliate connected
+ * Connect (the webhook can't transfer to an account that doesn't exist yet), and
+ * otherwise because the transfer — or the write that flips the row to `paid` —
+ * failed. Both land in the same place: a durable row plus a bumped
+ * `affiliatePendingPayouts`. Nothing then moved that money when the affiliate
+ * later connected (the hourly cron is a backstop). This function does it at the
+ * moment of activation: for
  * each pending commission it creates the Stripe transfer to `connectAccountId`,
  * flips the doc to `paid`, and decrements the affiliate's
  * `affiliatePendingPayouts` counter by exactly the swept amount.
@@ -134,9 +143,10 @@ export async function sweepPendingAffiliateCommissions(opts: {
         `Affiliate sweep failed for commission ${doc.id} (referrer ${referrerId}); leaving pending:`,
         transferErr,
       );
-      // `warning`, unlike the webhook's first-attempt transfers: the commission row
-      // is already durable and every attempt shares affiliateSweepIdempotencyKey, so
-      // the next redelivery or the hourly cron re-tries it without double-paying.
+      // `warning`: the commission row is already durable and every attempt — this
+      // sweep, the hourly cron, the webhook's own first attempt — shares
+      // affiliateSweepIdempotencyKey, so the next try re-sends it without
+      // double-paying. Late, not lost.
       captureMoneyPathError(transferErr, {
         step: 'affiliate-commission-sweep',
         level: 'warning',
