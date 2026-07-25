@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server';
 import Stripe from 'stripe';
 import { AI_ASSISTANT_MONTHLY } from '@/lib/stripe-config';
 import { AI_TELEGRAM_ASSISTANT_ENABLED } from '@/utils/plan-features';
+import { captureMoneyPathError } from '@/lib/money-path-sentry';
 
 export const dynamic = 'force-dynamic';
 
@@ -70,6 +71,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ url: session.url }, { headers: CORS_HEADERS });
   } catch (error: any) {
     console.error('Standalone checkout error:', error?.message || error);
+    // Someone on the marketing site tried to buy the AI Assistant and couldn't.
+    // Same reasoning as the stripe-checkout / stripe-donate captures in #221:
+    // a failed purchase attempt has no other record anywhere.
+    captureMoneyPathError(error, { step: 'standalone-ai-assistant-checkout', level: 'error' });
     return NextResponse.json({ error: error?.message || 'Failed to create checkout' }, { status: 500, headers: CORS_HEADERS });
   }
 }

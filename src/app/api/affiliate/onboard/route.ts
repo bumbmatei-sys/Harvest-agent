@@ -5,6 +5,7 @@ import { randomBytes } from 'crypto';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireAuth } from '@/lib/api-auth';
 import { resolveReturnBaseUrl } from '@/lib/connect-return-url';
+import { captureHandledError, captureMoneyPathError } from '@/lib/money-path-sentry';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,7 +49,16 @@ export async function POST(request: NextRequest) {
           updatedAt: new Date().toISOString(),
         }, { merge: true });
       } catch (codeErr) {
+        // Swallowed so onboarding still proceeds, but the affiliate leaves with no
+        // referral code — their link silently does nothing. /api/affiliate/status
+        // retries the backfill on the next dashboard load, hence warning.
         console.error('Failed to backfill affiliate code:', codeErr);
+        captureHandledError(codeErr, {
+          step: 'affiliate-code-backfill',
+          level: 'warning',
+          tenantId: userOrErr.tenantId,
+          ids: { userId: userOrErr.uid },
+        });
       }
     }
 
@@ -150,6 +160,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ url: accountLink.url });
   } catch (error: any) {
     console.error('Affiliate onboard error:', error?.message || error);
+    // Same failure mode #221 captured on /api/stripe/connect: a live Stripe
+    // Express account can be created and then not persisted, leaving an orphaned
+    // Connect account no tenant or user doc points at — the affiliate cannot be
+    // paid and the account is invisible to the app.
+    captureMoneyPathError(error, { step: 'affiliate-connect-onboarding', level: 'error' });
     return NextResponse.json(
       { error: 'Failed to create affiliate account' },
       { status: 500 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/api-auth';
 import { adminDb, adminAuth } from '@/lib/firebase-admin';
+import { captureHandledError } from '@/lib/money-path-sentry';
 
 /**
  * DELETE /api/tenants/delete?id=<tenantId>[&dryRun=true]
@@ -186,8 +187,11 @@ async function deleteUsersAndAuth(
       }
     } catch (e) {
       // A wholesale Auth failure (e.g. network) — record it and stop the users
-      // phase rather than looping forever on a page we can't clear.
+      // phase rather than looping forever on a page we can't clear. The users
+      // phase stopping means Auth accounts for a deleted tenant SURVIVE: those
+      // people can still sign in, and their emails stay locked against re-signup.
       errors.push({ step: 'auth:batch', message: errMsg(e) });
+      captureHandledError(e, { step: 'tenant-delete-auth-batch', tenantId });
       break;
     }
 
@@ -268,6 +272,7 @@ export async function DELETE(request: NextRequest) {
     } catch (e) {
       deleted.users = deleted.users ?? 0;
       errors.push({ step: 'delete:users', message: errMsg(e) });
+      captureHandledError(e, { step: 'tenant-delete-users', tenantId });
     }
 
     // 2) Every other top-level tenant-owned collection.
@@ -279,6 +284,7 @@ export async function DELETE(request: NextRequest) {
       } catch (e) {
         deleted[name] = deleted[name] ?? 0;
         errors.push({ step: `delete:${name}`, message: errMsg(e) });
+        captureHandledError(e, { step: 'tenant-delete-collection', tenantId, ids: { collection: name } });
       }
     }
 
@@ -288,6 +294,7 @@ export async function DELETE(request: NextRequest) {
       await adminDb.recursiveDelete(tenantRef);
     } catch (e) {
       errors.push({ step: 'delete:tenant', message: errMsg(e) });
+      captureHandledError(e, { step: 'tenant-delete-tenant-doc', tenantId });
     }
 
     return NextResponse.json(
@@ -296,6 +303,10 @@ export async function DELETE(request: NextRequest) {
     );
   } catch (error) {
     console.error('Tenant delete error:', error);
+    // This route is irreversible and has no rollback by design, so every failure
+    // above leaves a partially-deleted tenant. The per-step `errors` array only
+    // reaches whoever's browser made the call; nothing persists it.
+    captureHandledError(error, { step: 'tenant-delete', tenantId });
     return NextResponse.json({ error: 'Delete failed' }, { status: 500 });
   }
 }

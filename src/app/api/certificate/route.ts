@@ -12,6 +12,7 @@ import { getPlanFeatures } from '@/utils/plan-features';
 import { verifyCourseCompletion } from '@/utils/course.utils';
 import type { Course, QuizAttempt } from '@/types/course.types';
 import type { TenantPlan } from '@/types/tenant.types';
+import { captureHandledError } from '@/lib/money-path-sentry';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -412,7 +413,17 @@ export async function POST(request: NextRequest) {
         // customBranding false → neutral Harvest styling: no logo, gold accent,
         // generic wordmark. Branding never leaks to plans that don't have it.
       }
-    } catch { /* branding is best-effort; a neutral cert still issues */ }
+    } catch (brandingErr) {
+      // Best-effort by design, but the degraded outcome is invisible: a tenant
+      // PAYING for customBranding silently gets the neutral Harvest certificate,
+      // and the learner has no way to tell it was supposed to be branded.
+      captureHandledError(brandingErr, {
+        step: 'certificate-tenant-branding',
+        level: 'warning',
+        tenantId: resolvedTenantId,
+        ids: { courseId },
+      });
+    }
 
     // ── Idempotency: deterministic id; preserve first issue date + number ───
     const certId = `${uid}_${courseId}`;
@@ -484,7 +495,16 @@ export async function POST(request: NextRequest) {
         });
         if (error) console.error('Certificate email error:', error);
       } catch (err: any) {
+        // Fires ONCE per certificate (first issuance only), so the learner's copy
+        // of their certificate is simply never sent. The signed URL in the
+        // response is the only other way they get it.
         console.error('Certificate email failed:', err?.message || err);
+        captureHandledError(err, {
+          step: 'certificate-email',
+          level: 'warning',
+          tenantId: resolvedTenantId,
+          ids: { certificateId: certId, courseId },
+        });
       }
     }
 
@@ -497,6 +517,10 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('Certificate error:', error);
+    // Covers the gap between file.save() and certRef.set(): a PDF can land in the
+    // bucket with no certificate record, and the next request then re-mints the
+    // cert with a NEW issue date — the idempotency this route is built on.
+    captureHandledError(error, { step: 'certificate-issue' });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

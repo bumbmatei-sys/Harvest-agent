@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/api-auth';
 import { adminDb } from '@/lib/firebase-admin';
 import { PLATFORM_TENANT_ID } from '@/utils/tenant-scope';
+import { captureHandledError } from '@/lib/money-path-sentry';
 
 /**
  * Custom domain provisioning via the Vercel API.
@@ -133,6 +134,10 @@ export async function POST(request: NextRequest) {
     });
   } catch (e) {
     console.error('Domain provision error:', e);
+    // Vercel and Firestore can end up disagreeing here: the domain may already be
+    // attached to the project while the tenant doc and/or the `domains` lookup row
+    // never got written, so the custom domain resolves to nothing.
+    captureHandledError(e, { step: 'domain-provision', tenantId, ids: { domain } });
     return NextResponse.json({ error: 'Failed to provision domain' }, { status: 500 });
   }
 }

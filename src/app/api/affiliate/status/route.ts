@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server';
 import { randomBytes } from 'crypto';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireAuth } from '@/lib/api-auth';
+import { captureHandledError } from '@/lib/money-path-sentry';
 
 export const dynamic = 'force-dynamic';
 
@@ -78,7 +79,15 @@ export async function GET(request: NextRequest) {
         }
       }
     } catch (monthErr) {
+      // The response is still a 200 — with thisMonthEarnings/recurringEarnings
+      // left at ZERO. An affiliate who earned this month is shown $0 and has no
+      // way to tell that from genuinely having earned nothing.
       console.warn('Failed to compute affiliate earnings:', monthErr);
+      captureHandledError(monthErr, {
+        step: 'affiliate-earnings-compute',
+        level: 'warning',
+        ids: { userId: userOrErr.uid },
+      });
     }
 
     return NextResponse.json({

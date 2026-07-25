@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server';
 import Stripe from 'stripe';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireAdmin } from '@/lib/api-auth';
+import { captureMoneyPathError } from '@/lib/money-path-sentry';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,6 +44,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true, subscriptionItemId });
   } catch (error: any) {
     console.error('remove-billing error:', error?.message || error);
+    // AdminChurches calls this with `.catch(err => console.error(...))` and then
+    // deletes the church regardless, so a failure here is invisible to the admin
+    // AND leaves the $10/mo subscription item live for a church that no longer
+    // exists. This is the only place that can report it.
+    captureMoneyPathError(error, { step: 'church-billing-remove', level: 'error' });
     return NextResponse.json({ error: error?.message || 'Failed to remove billing' }, { status: 500 });
   }
 }

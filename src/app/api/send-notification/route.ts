@@ -4,6 +4,7 @@ import { Resend } from 'resend';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireAuth } from '@/lib/api-auth';
 import * as admin from 'firebase-admin';
+import { captureHandledError } from '@/lib/money-path-sentry';
 
 export const dynamic = 'force-dynamic';
 
@@ -153,6 +154,11 @@ export async function POST(request: NextRequest) {
     // token. A Resend failure here must not fail the overall request — push
     // delivery to everyone else already succeeded.
     let totalEmailed = 0;
+    // Reported ONCE after the loop rather than per recipient: a Resend outage on a
+    // 500-person announcement would otherwise burn 500 Sentry events to say one
+    // thing. The count is the signal; the address never leaves this function.
+    let emailFallbackFailures = 0;
+    let lastEmailFallbackError: unknown = null;
     const resendKey = process.env.RESEND_API_KEY;
     if (resendKey && noTokenEmails.length > 0) {
       const resend = new Resend(resendKey);
@@ -169,13 +175,30 @@ export async function POST(request: NextRequest) {
           else totalEmailed++;
         } catch (err: any) {
           console.error(`Announcement email failed for ${to}:`, err?.message || err);
+          emailFallbackFailures++;
+          lastEmailFallbackError = err;
         }
       }
+    }
+
+    // These users opted IN to announcements and got neither a push nor an email.
+    // The response reports `emailed` but never says how many were missed.
+    if (emailFallbackFailures > 0) {
+      captureHandledError(lastEmailFallbackError, {
+        step: 'push-announcement-email-fallback',
+        level: 'warning',
+        tenantId,
+        ids: { failedCount: String(emailFallbackFailures) },
+      });
     }
 
     return NextResponse.json({ success: true, sent: totalSent, failed: totalFailed, emailed: totalEmailed });
   } catch (error) {
     console.error('Send notification error:', error);
+    // The multicast may have already delivered to part of the tenant before this
+    // threw, so the admin sees a flat failure for an announcement that half went
+    // out — and re-sending double-notifies everyone who did receive it.
+    captureHandledError(error, { step: 'push-announcement', tenantId: user.tenantId });
     return NextResponse.json({ error: 'Failed to send notification' }, { status: 500 });
   }
 }

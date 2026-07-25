@@ -5,6 +5,7 @@ import Stripe from 'stripe';
 import { requireOwner } from '@/lib/api-auth';
 import { getPlanDisplayName } from '@/utils/plan-features';
 import type { TenantPlan } from '@/types/tenant.types';
+import { captureHandledError } from '@/lib/money-path-sentry';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -182,7 +183,13 @@ export async function POST(request: NextRequest) {
           if (item?.price?.unit_amount != null) nextAmount = item.price.unit_amount * (item.quantity || 1);
           if (item?.price?.currency) currency = item.price.currency;
         } catch (subErr) {
+          // The PDF is still generated and downloaded — just silently missing its
+          // next-billing-date and next-amount rows, so it looks complete.
           console.warn('billing/statement: failed to load subscription:', subErr);
+          captureHandledError(subErr, {
+            step: 'billing-statement-subscription-load',
+            level: 'warning',
+          });
         }
       }
     }

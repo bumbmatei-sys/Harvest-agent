@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { setCustomClaims } from '@/lib/set-custom-claims';
 import { adminAuth } from '@/lib/firebase-admin';
+import { captureHandledError } from '@/lib/money-path-sentry';
 
 /**
  * POST /api/auth/set-claims
@@ -31,6 +32,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true, forceRefresh: true });
   } catch (error: any) {
     console.error('set-claims error:', error);
+    // Called right after registration and after every role change. When it fails,
+    // the Firestore user doc says one thing and the Auth token says another — the
+    // person is signed in but firestore.rules deny them their own tenant.
+    captureHandledError(error, { step: 'auth-set-claims' });
     return NextResponse.json({ error: 'Failed to set claims' }, { status: 500 });
   }
 }

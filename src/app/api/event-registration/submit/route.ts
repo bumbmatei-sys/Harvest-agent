@@ -8,6 +8,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { verifyAuth } from '@/lib/api-auth';
 import { PLATFORM_FEE_MAP } from '@/lib/stripe-config';
 import { sendAutomatedSms } from '@/lib/twilio';
+import { captureHandledError, captureMoneyPathError } from '@/lib/money-path-sentry';
 
 export const dynamic = 'force-dynamic';
 
@@ -265,6 +266,13 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ url: session.url });
       } catch (stripeErr) {
         console.error('Event ticket checkout session creation failed:', stripeErr);
+        // Someone tried to buy a ticket and couldn't. The ministry never hears
+        // about it — the visitor just sees "Could not start checkout".
+        captureMoneyPathError(stripeErr, {
+          step: 'event-ticket-checkout',
+          tenantId,
+          ids: { eventId, ticketTypeId, registrationId: pendingRef.id },
+        });
         // Roll back the orphaned pending registration so it doesn't linger.
         await pendingRef.delete().catch(() => {});
         return NextResponse.json({ error: 'Could not start checkout. Please try again.' }, { status: 500 });
@@ -299,7 +307,18 @@ export async function POST(request: NextRequest) {
           ? { ...d, usedCount: (d.usedCount || 0) + 1 }
           : d,
       );
-      await eventRef.set({ discountCodes: nextCodes }, { merge: true }).catch(() => {});
+      // The registration is already CONFIRMED at this point, so a swallowed
+      // failure here means usedCount never advances — and a code with maxUses
+      // becomes effectively unlimited, silently, for every later registrant.
+      await eventRef
+        .set({ discountCodes: nextCodes }, { merge: true })
+        .catch((e) =>
+          captureHandledError(e, {
+            step: 'event-discount-usage-increment',
+            tenantId,
+            ids: { eventId, discountCode: appliedCode!.code },
+          }),
+        );
     }
 
     // ── Automated SMS confirmation (best-effort) ──
@@ -342,7 +361,16 @@ export async function POST(request: NextRequest) {
             `<br><p>— ${tenantName}</p>`,
         });
       } catch (e) {
+        // The seat is held but the attendee never receives their ticket QR. The
+        // response carries the ticketCode, so the public page can still show it —
+        // hence warning rather than error.
         console.warn('Registration confirmation email failed:', e);
+        captureHandledError(e, {
+          step: 'event-registration-email',
+          level: 'warning',
+          tenantId,
+          ids: { eventId, ticketTypeId },
+        });
       }
     }
 
@@ -368,6 +396,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true, ticketCode, waitlisted });
   } catch (e) {
     console.error('Event registration submit error:', e);
+    // A public visitor's registration didn't happen. They see a generic failure
+    // and go away; the ministry has no signal that anyone ever tried.
+    captureHandledError(e, { step: 'event-registration-submit', tenantId, ids: { eventId, ticketTypeId } });
     return NextResponse.json({ error: 'Failed to register' }, { status: 500 });
   }
 }

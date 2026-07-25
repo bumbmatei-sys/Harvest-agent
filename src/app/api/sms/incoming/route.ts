@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { sendSms } from '@/lib/twilio';
+import { captureHandledError } from '@/lib/money-path-sentry';
 
 export const dynamic = 'force-dynamic';
 
@@ -92,6 +93,11 @@ export async function POST(request: NextRequest) {
     return twimlResponse('');
   } catch (e) {
     console.error('Inbound SMS error:', e);
+    // Text-to-Give is silent by construction — the answer is empty TwiML either
+    // way, so a texter who asked for a giving link and got nothing looks identical
+    // to a texter who was never meant to get one. Nothing else reports this.
+    // No tenantId: it is resolved inside the try, so the catch cannot see it.
+    captureHandledError(e, { step: 'text2give-inbound' });
     return twimlResponse('');
   }
 }

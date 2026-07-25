@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server';
 import Stripe from 'stripe';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireAuth } from '@/lib/api-auth';
+import { captureMoneyPathError } from '@/lib/money-path-sentry';
 
 export const dynamic = 'force-dynamic';
 
@@ -58,6 +59,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error('Cancel partnership error:', error?.message || error);
+    // Same ordering: the recurring donation is cancelled at Stripe before the
+    // user doc is cleared. A failure in between shows the partner an active
+    // partnership that will stop charging, or a failed cancel that did cancel.
+    captureMoneyPathError(error, { step: 'cancel-partnership-subscription', level: 'error' });
     return NextResponse.json({ error: 'Failed to cancel partnership' }, { status: 500 });
   }
 }

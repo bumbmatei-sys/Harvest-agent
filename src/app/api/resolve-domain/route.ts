@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { captureHandledError } from '@/lib/money-path-sentry';
 
 /**
  * Resolve a custom domain to a tenantId using Firestore REST API.
@@ -69,6 +70,11 @@ export async function GET(request: NextRequest) {
     return response;
   } catch (error) {
     console.error('Domain resolution error:', error);
+    // A visitor on a ministry's custom domain is bounced to the platform apex
+    // instead of that ministry's site, with no error anywhere they can see. The
+    // clean "not found" paths above return the same redirect WITHOUT throwing, so
+    // this only fires on a real lookup fault.
+    captureHandledError(error, { step: 'resolve-custom-domain', level: 'warning', ids: { domain } });
     return NextResponse.redirect(baseUrl);
   }
 }

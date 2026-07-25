@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { FieldValue } from 'firebase-admin/firestore';
 import { adminDb } from '@/lib/firebase-admin';
+import { captureHandledError } from '@/lib/money-path-sentry';
 
 export const dynamic = 'force-dynamic';
 
@@ -141,6 +142,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true, crmContactId });
   } catch (e) {
     console.error('Form submit error:', e);
+    // A public form response was lost. The CRM half of this handler runs FIRST,
+    // so a failure on the submission write can also leave a freshly-created
+    // contact and activity pointing at a submission that does not exist.
+    captureHandledError(e, { step: 'form-submit', tenantId, ids: { formId } });
     return NextResponse.json({ error: 'Failed to submit form' }, { status: 500 });
   }
 }

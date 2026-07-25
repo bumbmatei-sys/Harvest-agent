@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server';
 import { requireAdmin } from '@/lib/api-auth';
 import { deleteConnection } from '@/lib/composio-client';
 import { adminDb } from '@/lib/firebase-admin';
+import { captureHandledError } from '@/lib/money-path-sentry';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,7 +45,16 @@ export async function POST(request: NextRequest) {
       try {
         await deleteConnection(data.connectedAccountId);
       } catch (error) {
+        // The local doc is set to 'disconnected' immediately below regardless, and
+        // connectedAccountId is nulled with it — so the third party keeps a live
+        // OAuth grant on the ministry's account that the app can no longer even
+        // name, let alone revoke. The admin is told the disconnect succeeded.
         console.warn('Could not delete Composio connection:', error);
+        captureHandledError(error, {
+          step: 'instagram-composio-delete-connection',
+          tenantId: tenantId,
+          ids: { connectedAccountId: data.connectedAccountId },
+        });
       }
     }
 

@@ -6,6 +6,7 @@ import {
   verifySignedState,
 } from '@/lib/composio-client';
 import { adminDb } from '@/lib/firebase-admin';
+import { captureHandledError } from '@/lib/money-path-sentry';
 
 export const dynamic = 'force-dynamic';
 
@@ -87,6 +88,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL('/admin/settings?instagram_connected=true', tenantBaseUrl));
   } catch (error) {
     console.error('Instagram callback error:', error);
+    // Composio holds a live ACTIVE connected account; only our persist failed. The
+    // tenant granted Instagram access the app has no record of.
+    captureHandledError(error, {
+      step: 'instagram-oauth-callback',
+      tenantId,
+      ids: { connectedAccountId },
+    });
     return NextResponse.redirect(new URL('/admin/settings?instagram_error=callback_failed', tenantBaseUrl));
   }
 }

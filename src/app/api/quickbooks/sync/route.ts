@@ -4,6 +4,7 @@ import { requireAdmin } from '@/lib/api-auth';
 import { executeComposioAction } from '@/lib/composio-client';
 import { adminDb } from '@/lib/firebase-admin';
 import { PLATFORM_TENANT_ID } from '@/utils/tenant-scope';
+import { captureHandledError } from '@/lib/money-path-sentry';
 
 export const dynamic = 'force-dynamic';
 
@@ -161,6 +162,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ synced, failed, total: toSync.length, results });
   } catch (error) {
     console.error('QuickBooks sync error:', error);
+    // The per-invoice catch records `quickbooksSyncStatus: 'failed'` on the row
+    // itself, so those are visible and retryable — deliberately NOT captured. This
+    // outer one is different: it aborts the run mid-loop, and if it fired while
+    // marking a row failed, that invoice already has a sales receipt in QuickBooks
+    // with no local record, so the next "Sync Now" books a duplicate.
+    captureHandledError(error, { step: 'quickbooks-sync' });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

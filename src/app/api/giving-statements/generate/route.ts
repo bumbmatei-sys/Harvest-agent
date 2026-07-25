@@ -6,6 +6,7 @@ import { requireAdmin } from '@/lib/api-auth';
 import { adminDb, getReceiptsBucket } from '@/lib/firebase-admin';
 import { PLATFORM_TENANT_ID } from '@/utils/tenant-scope';
 import { toSafeDate } from '@/utils/format-date';
+import { captureHandledError } from '@/lib/money-path-sentry';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
@@ -215,6 +216,10 @@ export async function POST(request: NextRequest) {
     let generated = 0;
     let sent = 0;
     const failures: string[] = [];
+    // Reported once after the loop, not per donor: a broken bucket on a
+    // 2000-donor tenant would otherwise be 2000 Sentry events. The donor's email
+    // is what `failures` holds, so only the COUNT is ever captured.
+    let lastStatementError: unknown = null;
 
     for (const [donorEmail, donor] of donorsMap) {
       const donorId = donorIdFromEmail(donorEmail);
@@ -259,6 +264,7 @@ export async function POST(request: NextRequest) {
       } catch (err: any) {
         console.error(`Giving statement failed for ${donorEmail}:`, err?.message || err);
         failures.push(donorEmail);
+        lastStatementError = err;
         try {
           await statementRef.set({
             donorId, donorEmail, donorName: donor.name, year,
@@ -267,6 +273,17 @@ export async function POST(request: NextRequest) {
           }, { merge: true });
         } catch { /* best-effort */ }
       }
+    }
+
+    // The response carries a bare `failed` count and no reason. These are annual
+    // charitable-contribution receipts a donor needs for their tax return, so a
+    // partial run is worth a human looking at.
+    if (failures.length > 0) {
+      captureHandledError(lastStatementError, {
+        step: 'giving-statement-batch',
+        tenantId: resolvedTenantId,
+        ids: { year: String(year), failedCount: String(failures.length), generated: String(generated) },
+      });
     }
 
     return NextResponse.json({
@@ -278,6 +295,10 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('Giving statements error:', error);
+    // A mid-run abort can leave statements already generated AND EMAILED to some
+    // donors while the admin sees only a 500 — re-running then sends duplicate
+    // tax statements to everyone who already had one.
+    captureHandledError(error, { step: 'giving-statements-generate' });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

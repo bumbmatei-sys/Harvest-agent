@@ -6,6 +6,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { hasFeature } from '@/utils/plan-features';
 import { PLATFORM_TENANT_ID } from '@/utils/tenant-scope';
 import sanitizeHtml from 'sanitize-html';
+import { captureHandledError } from '@/lib/money-path-sentry';
 
 export const dynamic = 'force-dynamic';
 
@@ -222,6 +223,14 @@ export async function POST(request: NextRequest) {
       );
     } catch (actionError) {
       console.error('Mailchimp set content error:', actionError);
+      // Step 1 already created the campaign in Mailchimp. Failing here leaves an
+      // empty draft campaign behind that nothing in the app knows about, and a
+      // retry mints another one — the local newsletter doc is still 'draft'.
+      captureHandledError(actionError, {
+        step: 'newsletter-mailchimp-set-content',
+        tenantId: resolvedTenantId,
+        ids: { newsletterId, campaignId },
+      });
       return NextResponse.json({ error: 'Failed to set campaign content. Please try again.' }, { status: 502 });
     }
 
@@ -271,6 +280,14 @@ export async function POST(request: NextRequest) {
       }
     } catch (actionError) {
       console.error('Mailchimp send/schedule error:', actionError);
+      // A fully-populated campaign exists in Mailchimp but was never sent, and the
+      // newsletter doc still says 'draft' — so the admin's retry builds a SECOND
+      // campaign. The send may also have partially fired.
+      captureHandledError(actionError, {
+        step: 'newsletter-mailchimp-send',
+        tenantId: resolvedTenantId,
+        ids: { newsletterId, campaignId, scheduled: schedule ? 'true' : 'false' },
+      });
       return NextResponse.json(
         { error: `Failed to ${schedule ? 'schedule' : 'send'} campaign. Please try again.` },
         { status: 502 }
@@ -294,6 +311,10 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('Newsletter send error:', error);
+    // This also covers the newsletterRef.update() that follows a SUCCESSFUL send:
+    // if that write fails, the whole list has already been emailed while the doc
+    // still reads 'draft', so the admin can send the same newsletter twice.
+    captureHandledError(error, { step: 'newsletter-send' });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

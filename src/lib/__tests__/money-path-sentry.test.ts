@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const { mockCaptureException } = vi.hoisted(() => ({ mockCaptureException: vi.fn() }));
 vi.mock('@sentry/nextjs', () => ({ captureException: mockCaptureException }));
 
-const { captureMoneyPathError } = await import('../money-path-sentry');
+const { captureMoneyPathError, captureHandledError } = await import('../money-path-sentry');
 
 /** The single captureContext the helper passed to Sentry. */
 function lastContext(): any {
@@ -80,6 +80,90 @@ describe('captureMoneyPathError — must never disturb the path it observes', ()
 
   it('returns undefined so no call site can accidentally branch on it', () => {
     expect(captureMoneyPathError(new Error('x'), { step: 'stripe-donate' })).toBeUndefined();
+  });
+});
+
+describe('captureHandledError — shape', () => {
+  it('tags the step and marks the event as a handled path, defaulting to level error', () => {
+    const err = new Error('resend boom');
+    captureHandledError(err, { step: 'certificate-email' });
+
+    expect(mockCaptureException).toHaveBeenCalledTimes(1);
+    expect(mockCaptureException.mock.calls[0][0]).toBe(err);
+    expect(lastContext()).toEqual(
+      expect.objectContaining({
+        level: 'error',
+        tags: { handled_path: 'true', step: 'certificate-email' },
+      }),
+    );
+  });
+
+  it('honours an explicit warning level', () => {
+    captureHandledError(new Error('x'), { step: 'canvas-cleanup-cron', level: 'warning' });
+    expect(lastContext().level).toBe('warning');
+  });
+
+  it('carries tenantId plus arbitrary identifiers, dropping empty ones', () => {
+    captureHandledError(new Error('x'), {
+      step: 'event-registration-submit',
+      tenantId: 't1',
+      ids: { eventId: 'ev_1', ticketTypeId: 'tt_1', registrationId: undefined, discountCode: '' },
+    });
+
+    expect(lastContext().contexts.handled_path).toEqual({
+      step: 'event-registration-submit',
+      tenantId: 't1',
+      eventId: 'ev_1',
+      ticketTypeId: 'tt_1',
+    });
+  });
+
+  it('never throws, and returns undefined so no call site can branch on it', () => {
+    mockCaptureException.mockImplementationOnce(() => {
+      throw new Error('sentry is down');
+    });
+    expect(() => captureHandledError(new Error('x'), { step: 'pledge-submit' })).not.toThrow();
+    expect(captureHandledError(new Error('x'), { step: 'form-submit' })).toBeUndefined();
+  });
+});
+
+describe('the two entry points are one shape, not two abstractions', () => {
+  it('builds an identical context body for identical input, differing only in the surface tag', () => {
+    captureMoneyPathError(new Error('x'), { step: 'shared', tenantId: 't1', ids: { recordId: 'r1' } });
+    const money = lastContext();
+    captureHandledError(new Error('x'), { step: 'shared', tenantId: 't1', ids: { recordId: 'r1' } });
+    const handled = lastContext();
+
+    // Same field vocabulary — `step`, `tenantId`, then identifiers — so one Sentry
+    // search on `step:` works across both surfaces.
+    expect(handled.contexts.handled_path).toEqual(money.contexts.money_path);
+    expect(handled.tags.step).toBe(money.tags.step);
+    expect(money.tags.money_path).toBe('true');
+    expect(handled.tags.money_path).toBeUndefined();
+    expect(handled.tags.handled_path).toBe('true');
+  });
+});
+
+describe('captureHandledError — PII', () => {
+  it('exposes no field for identity or money: only step, level, tags and id context', () => {
+    // Same load-bearing property as the money helper: no `extra`/`user`
+    // passthrough, so a call site cannot attach a donor email, name, phone or
+    // amount even by mistake. This app holds all four.
+    captureHandledError(new Error('x'), {
+      step: 'giving-statement-batch',
+      tenantId: 't1',
+      ids: { year: '2025', failedCount: '3' },
+    });
+
+    const ctx = lastContext();
+    expect(Object.keys(ctx).sort()).toEqual(['contexts', 'level', 'tags']);
+    expect(ctx.extra).toBeUndefined();
+    expect(ctx.user).toBeUndefined();
+
+    const serialized = JSON.stringify(ctx).toLowerCase();
+    for (const banned of ['email', 'donorname', 'phone', 'amount']) {
+      expect(serialized).not.toContain(banned);
+    }
   });
 });
 
