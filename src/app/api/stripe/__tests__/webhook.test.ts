@@ -26,6 +26,7 @@ const {
   mockDocUpdate,
   mockDocDelete,
   mockCollGet,
+  mockBatchSet,
   mockBatchUpdate,
   mockBatchCommit,
   mockAdd,
@@ -36,6 +37,7 @@ const {
   mockDocUpdate: vi.fn().mockResolvedValue(undefined),
   mockDocDelete: vi.fn().mockResolvedValue(undefined),
   mockCollGet: vi.fn().mockResolvedValue({ docs: [], empty: true, forEach: vi.fn() }),
+  mockBatchSet: vi.fn(),
   mockBatchUpdate: vi.fn(),
   mockBatchCommit: vi.fn().mockResolvedValue(undefined),
   mockAdd: vi.fn().mockResolvedValue({ id: 'new-id' }),
@@ -54,8 +56,15 @@ vi.mock('stripe', () => ({
 
 vi.mock('@/lib/firebase-admin', () => ({
   adminDb: {
-    collection: vi.fn(() => ({
-      doc: vi.fn(() => ({
+    // Refs carry their collection + id so batch assertions can tell WHICH doc a
+    // write targeted. `doc()` with no argument is Firestore's auto-id form (the
+    // affiliate commission ref is minted that way, before any write) — the stable
+    // 'auto-id' stands in for the generated id, so the idempotency key derived
+    // from it is assertable.
+    collection: vi.fn((name: string) => ({
+      doc: vi.fn((id?: string) => ({
+        id: id ?? 'auto-id',
+        __coll: name,
         get: mockDocGet,
         set: mockDocSet,
         update: mockDocUpdate,
@@ -68,6 +77,7 @@ vi.mock('@/lib/firebase-admin', () => ({
       add: mockAdd,
     })),
     batch: vi.fn(() => ({
+      set: mockBatchSet,
       update: mockBatchUpdate,
       delete: vi.fn(),
       commit: mockBatchCommit,
@@ -109,6 +119,7 @@ vi.mock('@/lib/stripe-config', () => ({
 }));
 
 const { POST } = await import('../webhook/route');
+const { affiliateSweepIdempotencyKey } = await import('@/lib/affiliate-payout');
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -287,7 +298,7 @@ describe('checkout.session.completed', () => {
     });
   });
 
-  it('pays the initial affiliate transfer with a per-subscription idempotency key (retry-safe)', async () => {
+  it('pays the initial affiliate transfer with the shared per-commission idempotency key (retry-safe)', async () => {
     const session = { subscription: 'sub_aff', customer: 'cus_1', amount_total: 11900 };
     mockConstructEvent.mockReturnValue(makeEvent('checkout.session.completed', session));
     mockSubsRetrieve.mockResolvedValue({
@@ -302,11 +313,13 @@ describe('checkout.session.completed', () => {
 
     const res = await POST(makeRequest());
     expect(res.status).toBe(200);
-    // A retry of this event must not move money twice: Stripe dedups on the key.
+    // A retry of this event must not move money twice: Stripe dedups on the key,
+    // and the key is derived from the commission doc id — the SAME scheme the sweep
+    // and the hourly cron use, so no retry path can drift onto a second transfer.
     // Flat 15% of the $119 charge = 1785 cents (was 10% = 1190 under the old ladder).
     expect(mockTransfersCreate).toHaveBeenCalledWith(
       expect.objectContaining({ amount: 1785, destination: 'acct_ref' }),
-      expect.objectContaining({ idempotencyKey: 'aff_initial_sub_aff' }),
+      expect.objectContaining({ idempotencyKey: affiliateSweepIdempotencyKey('auto-id') }),
     );
   });
 
@@ -785,7 +798,7 @@ describe('flat 15% affiliate commission', () => {
       // Same 15% for every tier — the rate no longer depends on the plan.
       expect(mockTransfersCreate).toHaveBeenCalledWith(
         expect.objectContaining({ amount: expected, destination: 'acct_ref' }),
-        expect.objectContaining({ idempotencyKey: 'aff_initial_sub_x' }),
+        expect.objectContaining({ idempotencyKey: affiliateSweepIdempotencyKey('auto-id') }),
       );
     },
   );
@@ -893,8 +906,13 @@ describe('initial affiliate commission — $0 trial guard', () => {
     );
     // …but the $0 event pays/records nothing and never touches the referral count.
     expect(mockTransfersCreate).not.toHaveBeenCalled();
-    expect(mockAdd).not.toHaveBeenCalled(); // no affiliate_commissions doc
-    expect(mockDocUpdate).not.toHaveBeenCalledWith(
+    expect(mockAdd).not.toHaveBeenCalled();
+    expect(mockBatchSet).not.toHaveBeenCalledWith( // no affiliate_commissions doc
+      expect.objectContaining({ __coll: 'affiliate_commissions' }),
+      expect.anything(),
+    );
+    expect(mockBatchUpdate).not.toHaveBeenCalledWith(
+      expect.anything(),
       expect.objectContaining({ affiliateReferralCount: expect.anything() }),
     );
   });
@@ -920,7 +938,12 @@ describe('initial affiliate commission — $0 trial guard', () => {
     // No money moved, no commission doc, no referral-count bump for the $0 event.
     expect(mockTransfersCreate).not.toHaveBeenCalled();
     expect(mockAdd).not.toHaveBeenCalled();
-    expect(mockDocUpdate).not.toHaveBeenCalledWith(
+    expect(mockBatchSet).not.toHaveBeenCalledWith(
+      expect.objectContaining({ __coll: 'affiliate_commissions' }),
+      expect.anything(),
+    );
+    expect(mockBatchUpdate).not.toHaveBeenCalledWith(
+      expect.anything(),
       expect.objectContaining({ affiliateReferralCount: expect.anything() }),
     );
   });
@@ -940,17 +963,24 @@ describe('initial affiliate commission — $0 trial guard', () => {
     const res = await POST(makeRequest());
     expect(res.status).toBe(200);
 
-    // Flat 15% of $119 = 1785 cents, paid via a per-subscription idempotency key.
+    // Flat 15% of $119 = 1785 cents, paid via the shared per-commission key.
     expect(mockTransfersCreate).toHaveBeenCalledWith(
       expect.objectContaining({ amount: 1785, destination: 'acct_ref' }),
-      expect.objectContaining({ idempotencyKey: 'aff_initial_sub_pc1' }),
+      expect.objectContaining({ idempotencyKey: affiliateSweepIdempotencyKey('auto-id') }),
     );
-    // Commission doc recorded…
-    expect(mockAdd).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'initial', amount: 11900, commission: 1785, status: 'paid' }),
+    // Commission doc recorded — written `pending` BEFORE the transfer…
+    expect(mockBatchSet).toHaveBeenCalledWith(
+      expect.objectContaining({ __coll: 'affiliate_commissions' }),
+      expect.objectContaining({ type: 'initial', amount: 11900, commission: 1785, status: 'pending' }),
+    );
+    // …then flipped to `paid` with the transfer id once the money moved.
+    expect(mockBatchUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ __coll: 'affiliate_commissions' }),
+      expect.objectContaining({ status: 'paid', stripeTransferId: 'tr_123' }),
     );
     // …and the referral count is incremented exactly for the real charge.
-    expect(mockDocUpdate).toHaveBeenCalledWith(
+    expect(mockBatchUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ __coll: 'users', id: 'refUser' }),
       expect.objectContaining({ affiliateReferralCount: { __increment: 1 } }),
     );
   });

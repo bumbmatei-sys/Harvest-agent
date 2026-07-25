@@ -1,11 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 /**
- * The affiliate sweep's transfer failure is captured at `warning`, deliberately
- * unlike the webhook's first-attempt transfers (`error`): here the commission row
- * is already durable and every attempt shares `affiliateSweepIdempotencyKey`, so a
- * failure means "not paid yet, will be safely re-attempted" rather than "the ledger
- * may have diverged". This suite pins that distinction and the unchanged
+ * The affiliate sweep's transfer failure is captured at `warning`: the commission
+ * row is already durable and every attempt shares `affiliateSweepIdempotencyKey`,
+ * so a failure means "not paid yet, will be safely re-attempted" rather than "the
+ * ledger may have diverged". The webhook's first-attempt transfer is now `warning`
+ * for exactly the same two reasons — it writes the row before paying and keys the
+ * transfer through the same function. This suite pins the level and the unchanged
  * partial-failure isolation.
  */
 
