@@ -4,6 +4,7 @@ import Stripe from 'stripe';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireAuth } from '@/lib/api-auth';
 import { resolveReturnBaseUrl } from '@/lib/connect-return-url';
+import { captureMoneyPathError } from '@/lib/money-path-sentry';
 
 export const dynamic = 'force-dynamic';
 
@@ -128,6 +129,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ url: accountLink.url });
   } catch (error: any) {
     console.error('Stripe Connect error:', error?.message || error);
+    // This catch also covers the account-id persistence between account creation
+    // and the onboarding link, so it can mean a live Stripe account exists that no
+    // tenant or user doc points at — the tenant cannot take donations and the
+    // orphaned account is invisible to the app.
+    captureMoneyPathError(error, { step: 'stripe-connect-onboarding', level: 'error' });
     return NextResponse.json({ error: 'Failed to create Stripe Connect account' }, { status: 500 });
   }
 }

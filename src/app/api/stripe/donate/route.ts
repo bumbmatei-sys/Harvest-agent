@@ -4,6 +4,7 @@ import Stripe from 'stripe';
 import { adminDb } from '@/lib/firebase-admin';
 import { PLATFORM_FEE_MAP as FEE_MAP } from '@/lib/stripe-config';
 import { verifyAuth } from '@/lib/api-auth';
+import { captureMoneyPathError } from '@/lib/money-path-sentry';
 
 export const dynamic = 'force-dynamic';
 
@@ -173,6 +174,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ url: session.url });
   } catch (error: any) {
     console.error('Stripe donate error:', error?.message || error);
+    // A donor tried to give and couldn't. The generic 'Failed to process donation'
+    // body tells them nothing and tells us nothing; this is the only report.
+    captureMoneyPathError(error, { step: 'stripe-donate', level: 'error' });
     return NextResponse.json({ error: 'Failed to process donation' }, { status: 500 });
   }
 }

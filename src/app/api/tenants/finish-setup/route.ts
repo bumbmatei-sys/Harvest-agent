@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server';
 import Stripe from 'stripe';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireAuth } from '@/lib/api-auth';
+import { captureMoneyPathError } from '@/lib/money-path-sentry';
 import { setCustomClaims } from '@/lib/set-custom-claims';
 import { NON_TENANT_SUBDOMAINS } from '@/utils/non-tenant-subdomains';
 
@@ -103,6 +104,19 @@ export async function POST(request: NextRequest) {
       const ours = existing.exists
         && existing.data()?.stripeSubscriptionId === tenantData.stripeSubscriptionId;
       if (!ours) {
+        // Only report when create() failed with NOTHING at the target: that is not
+        // the ALREADY_EXISTS collision this catch exists for (a routine 409 on a
+        // taken subdomain, which must not page anyone) but a real Firestore fault
+        // being reported to the caller as "already taken" — and it never reaches
+        // the outer catch. The 409 below is returned either way.
+        if (!existing.exists) {
+          captureMoneyPathError(createErr, {
+            step: 'finish-setup-claim-subdomain',
+            level: 'warning',
+            tenantId: oldId,
+            ids: { desiredTenantId: desired },
+          });
+        }
         return NextResponse.json({ error: 'That subdomain is already taken.' }, { status: 409 });
       }
       // Our own partially-applied rename — make sure it's marked complete.
@@ -129,6 +143,15 @@ export async function POST(request: NextRequest) {
       }
     } catch (domErr) {
       console.error('finish-setup: failed to migrate domain lookup docs:', domErr);
+      // The rename completes anyway, so any custom domain saved during first-run is
+      // left pointing at the tenant id that gets deleted below — the domain stops
+      // resolving, permanently, with nothing to retry it.
+      captureMoneyPathError(domErr, {
+        step: 'finish-setup-migrate-domains',
+        level: 'error',
+        tenantId: oldId,
+        ids: { desiredTenantId: desired },
+      });
     }
 
     // Keep the Stripe subscription pointed at the new tenant id so future
@@ -149,6 +172,15 @@ export async function POST(request: NextRequest) {
         });
       } catch (subErr) {
         console.error('finish-setup: failed to update subscription metadata:', subErr);
+        // The subscription still points at the tenant id deleted below, so every
+        // future lifecycle event (cancellation, payment failure, renewal + its
+        // affiliate commission) resolves to a tenant that no longer exists.
+        captureMoneyPathError(subErr, {
+          step: 'finish-setup-update-subscription-metadata',
+          level: 'error',
+          tenantId: oldId,
+          ids: { desiredTenantId: desired, subscriptionId: subId },
+        });
       }
     }
 
@@ -156,11 +188,23 @@ export async function POST(request: NextRequest) {
     // routable) doc intact rather than stranding the user with no tenant.
     await tenantRef.delete().catch((delErr) => {
       console.error('finish-setup: failed to delete old tenant doc:', delErr);
+      // Deliberately non-fatal (see above), but it leaves a duplicate, still-routable
+      // tenant doc at the old subdomain carrying the same stripeSubscriptionId.
+      captureMoneyPathError(delErr, {
+        step: 'finish-setup-delete-old-tenant',
+        level: 'warning',
+        tenantId: oldId,
+        ids: { desiredTenantId: desired },
+      });
     });
 
     return NextResponse.json({ tenantId: desired });
   } catch (error: any) {
     console.error('finish-setup error:', error?.message || error);
+    // First-run provisioning failing mid-way is the worst case here: the rename can
+    // be half-applied (new tenant doc written, users not yet re-pointed). No
+    // identifiers are attached because `oldId`/`desired` are scoped to the try.
+    captureMoneyPathError(error, { step: 'finish-setup', level: 'error' });
     return NextResponse.json({ error: error?.message || 'Failed to finish setup' }, { status: 500 });
   }
 }

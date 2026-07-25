@@ -4,6 +4,7 @@ import Stripe from 'stripe';
 import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { affiliateSweepIdempotencyKey } from '@/lib/affiliate-payout';
+import { captureMoneyPathError } from '@/lib/money-path-sentry';
 
 export const dynamic = 'force-dynamic';
 
@@ -103,6 +104,15 @@ export async function POST(request: NextRequest) {
         retried++;
       } catch (err) {
         console.error(`Retry transfer failed for commission ${doc.id}:`, err);
+        // `warning`: the commission row stays `pending` and every attempt is keyed
+        // with the same affiliateSweepIdempotencyKey, so the next hourly run
+        // re-attempts it with no risk of double-paying. Degraded, not lost.
+        captureMoneyPathError(err, {
+          step: 'affiliate-retry-transfer',
+          level: 'warning',
+          tenantId: data.tenantId,
+          ids: { commissionId: doc.id, referrerId, commissionType: data.type },
+        });
         failed++;
       }
     }
@@ -116,6 +126,10 @@ export async function POST(request: NextRequest) {
     });
   } catch (error: any) {
     console.error('Retry transfers error:', error);
+    // Not one commission but the whole sweep: this catch sits outside the loop, so
+    // reaching it means none of up to 50 pending payouts were attempted. A cron
+    // failing silently is how affiliates go unpaid for days.
+    captureMoneyPathError(error, { step: 'affiliate-retry-transfers-sweep', level: 'error' });
     return NextResponse.json({ error: 'Failed to retry transfers' }, { status: 500 });
   }
 }

@@ -1,6 +1,7 @@
 import type Stripe from 'stripe';
 import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
+import { captureMoneyPathError } from '@/lib/money-path-sentry';
 
 /**
  * Stable, per-commission idempotency key for an affiliate-payout transfer.
@@ -133,6 +134,14 @@ export async function sweepPendingAffiliateCommissions(opts: {
         `Affiliate sweep failed for commission ${doc.id} (referrer ${referrerId}); leaving pending:`,
         transferErr,
       );
+      // `warning`, unlike the webhook's first-attempt transfers: the commission row
+      // is already durable and every attempt shares affiliateSweepIdempotencyKey, so
+      // the next redelivery or the hourly cron re-tries it without double-paying.
+      captureMoneyPathError(transferErr, {
+        step: 'affiliate-commission-sweep',
+        level: 'warning',
+        ids: { commissionId: doc.id, referrerId, connectAccountId },
+      });
     }
   }
 
