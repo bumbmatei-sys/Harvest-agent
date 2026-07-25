@@ -7,6 +7,7 @@ import './globals.css';
 import { cn } from "@/lib/utils";
 import { getTenantFromHost } from '@/lib/server-tenant';
 import ReferralTracker from '@/components/ReferralTracker';
+import { Toaster } from '@/components/ui/sonner';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -133,6 +134,12 @@ export default async function RootLayout({
             Renders nothing; only writes localStorage['affiliateReferrerId']. */}
         <ReferralTracker />
         {children}
+        {/* sonner renders nothing until something calls `toast()`, but WITHOUT it
+            mounted every `toast.*` call in the tree is a silent no-op — which is
+            exactly what AdminDocs' export / import / share-to-livestream feedback
+            had been doing. Mounted here rather than inside the SPA so it also
+            covers anything rendered outside App (ssr:false). */}
+        <Toaster />
         <Analytics />
         <Script id="sw-register" strategy="afterInteractive">
           {`

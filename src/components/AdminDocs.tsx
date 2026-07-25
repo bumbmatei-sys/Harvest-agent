@@ -378,8 +378,11 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
   const [openDoc, setOpenDoc] = useState<Doc | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editContent, setEditContent] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'idle'>('idle');
+  // 'error' is a real, sticky state: without it a failed write fell back to
+  // 'idle', which the status chip renders as an empty string — the "Saving…"
+  // text simply vanished and a lost save looked exactly like a document nobody
+  // had touched.
+  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'idle' | 'error'>('idle');
   const [deleteDocId, setDeleteDocId] = useState<string | null>(null);
   const [deleteFolderId, setDeleteFolderId] = useState<string | null>(null);
   const [moveDocId, setMoveDocId] = useState<string | null>(null);
@@ -402,6 +405,23 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
   const [focusMode, setFocusMode] = useState(false);
   const saveTimer = useRef<NodeJS.Timeout | null>(null);
   const titleRef = useRef<HTMLInputElement>(null);
+  // The exact payload the queued auto-save will write. Held here rather than
+  // captured in the setTimeout closure so the title can be kept current while
+  // the timer runs: the debounce is scheduled on a CONTENT keystroke, so it
+  // carries whatever title existed up to 2s earlier, and writing that would put
+  // a stale title back over one the user has since typed — including one a title
+  // blur has already saved. `id` travels with it so a payload queued for one
+  // document can never be redirected at another.
+  const pendingSave = useRef<{ id: string; title: string; content: string } | null>(null);
+  // Cleared by the unmount cleanup so the flush it fires can finish its Firestore
+  // write — the SDK owns that, not React — without setState-ing a component that
+  // is already gone.
+  const isMounted = useRef(true);
+  // Only the most recently issued write may drive the status chip and the error
+  // toast. An older save failing after a newer one succeeded means the newer
+  // content is already on the server, so the failure is moot and must not raise
+  // an alarm the user cannot act on.
+  const saveSeq = useRef(0);
 
   const openDocument = (d: Doc) => {
     setOpenDoc(d);
@@ -435,28 +455,96 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
     return () => setHeaderHidden(false);
   }, [editorFullscreen, setHeaderHidden]);
 
-  const saveDoc = useCallback(async (id: string, title: string, content: string) => {
-    setSaveStatus('saving');
+  /**
+   * The single writer for a document. Resolves true only once the write is on
+   * the server, so callers can decide what to do about a failure instead of
+   * carrying on as though it had worked.
+   */
+  const saveDoc = useCallback(async (id: string, title: string, content: string): Promise<boolean> => {
+    const seq = ++saveSeq.current;
+    const isLatest = () => saveSeq.current === seq;
+    if (isMounted.current) setSaveStatus('saving');
     try {
-      await updateDoc(doc(db, 'docs', id), { title, content, updatedAt: serverTimestamp() });
-      setSaveStatus('saved');
+      // A whitespace-only title is stored as '' so the `title || 'Untitled'`
+      // fallback that every card, sidebar row and export already applies
+      // actually fires — ' ' is truthy and would render as a blank name.
+      await updateDoc(doc(db, 'docs', id), { title: title.trim(), content, updatedAt: serverTimestamp() });
+      if (isLatest() && isMounted.current) setSaveStatus('saved');
       await queryClient.invalidateQueries({ queryKey: ['docs', tenantId] });
-    } catch (e) { console.error(e); setSaveStatus('idle'); }
+      return true;
+    } catch (e) {
+      console.error('Failed to save note', e);
+      if (isLatest()) {
+        if (isMounted.current) setSaveStatus('error');
+        // The toast is NOT gated on isMounted: the Toaster lives in the root
+        // layout, so a save that fails as the screen goes away can still say so.
+        // A fixed id means a run of failures (offline) replaces rather than stacks.
+        toast.error('Could not save this note — your changes are still here. Try again.', { id: 'doc-save-error' });
+      }
+      return false;
+    }
   }, [queryClient, tenantId]);
+
+  /** Drop the queued auto-save without writing it (the document is going away). */
+  const cancelPendingSave = useCallback(() => {
+    if (saveTimer.current) { clearTimeout(saveTimer.current); saveTimer.current = null; }
+    pendingSave.current = null;
+  }, []);
+
+  /**
+   * Write whatever the debounce has not written yet, now. Resolves true when
+   * there was nothing queued or the queued write landed.
+   */
+  const flushPendingSave = useCallback((): Promise<boolean> => {
+    const pending = pendingSave.current;
+    cancelPendingSave();
+    if (!pending) return Promise.resolve(true);
+    return saveDoc(pending.id, pending.title, pending.content);
+  }, [cancelPendingSave, saveDoc]);
+
+  // Flush on unmount instead of leaving the timer to fire into a component that
+  // no longer exists.
+  //
+  // What the un-cleared timer actually did: `updateDoc` belongs to the Firestore
+  // SDK, not to React, so the write still went out and the text was NOT lost —
+  // the opposite of CanvasEditor, which cleared its timer and dropped the work.
+  // What it did do is fire up to 2s after the screen was gone, and that window
+  // is exactly where a tab close or hard navigation kills the write (no
+  // IndexedDB persistence is enabled here, so queued mutations are in memory
+  // only). It also ran setSaveStatus on an unmounted component — a no-op under
+  // React 18, but only by luck. Flushing closes the window and makes the exit
+  // deterministic; `isMounted` goes false first so the flush's own status
+  // updates are skipped while its write proceeds.
+  const flushRef = useRef(flushPendingSave);
+  useEffect(() => { flushRef.current = flushPendingSave; }, [flushPendingSave]);
+  useEffect(() => {
+    // Re-armed on mount so a StrictMode remount doesn't inherit `false`.
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+      void flushRef.current();
+    };
+  }, []);
 
   const handleContentChange = (content: string) => {
     setEditContent(content);
     if (openDoc) {
       setSaveStatus('saving');
+      pendingSave.current = { id: openDoc.id, title: editTitle, content };
       if (saveTimer.current) clearTimeout(saveTimer.current);
-      saveTimer.current = setTimeout(() => saveDoc(openDoc.id, editTitle, content), 2000);
+      saveTimer.current = setTimeout(() => { void flushPendingSave(); }, 2000);
     }
   };
 
   const handleTitleBlur = () => {
-    if (openDoc && editTitle.trim()) {
-      saveDoc(openDoc.id, editTitle, editContent);
-    }
+    if (!openDoc) return;
+    // No `editTitle.trim()` guard: an untitled note is still the user's work,
+    // and skipping the write here also meant clearing a title never persisted.
+    // Absorb the queued content save rather than racing it — this write already
+    // carries the latest content, and letting the debounce land afterwards would
+    // put the pre-blur title back on top of it.
+    cancelPendingSave();
+    void saveDoc(openDoc.id, editTitle, editContent);
   };
 
   const createDoc = async (folderId?: string | null) => {
@@ -547,7 +635,10 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
 
   const confirmDeleteDoc = async () => {
     if (!deleteDocId) return;
-    if (openDoc?.id === deleteDocId) { setOpenDoc(null); setFocusMode(false); }
+    // Drop the queued auto-save before the document goes: flushing it would write
+    // to a doc that is about to stop existing and raise a save error for a delete
+    // the user asked for.
+    if (openDoc?.id === deleteDocId) { cancelPendingSave(); setOpenDoc(null); setFocusMode(false); }
     try {
       await deleteDoc(doc(db, 'docs', deleteDocId));
       await queryClient.invalidateQueries({ queryKey: ['docs', tenantId] });
@@ -932,9 +1023,19 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
 
   // ── Focus mode (full editor) ──
   if (focusMode && openDoc) {
-    const closeEditor = () => {
-      if (saveTimer.current) clearTimeout(saveTimer.current);
-      if (editTitle.trim()) saveDoc(openDoc.id, editTitle, editContent);
+    const closeEditor = async () => {
+      // Save what is on screen — not just what the debounce happened to queue —
+      // and do NOT leave until it lands. Closing over a failed write dropped the
+      // user on a list where the error was no longer visible, while the only copy
+      // of the text lived in the editor they had just left. Staying put keeps the
+      // work on screen and makes "Notes" a retry button.
+      //
+      // The `editTitle.trim()` guard is gone: a note with content and a blank
+      // title was previously never written on close, so everything typed since
+      // the last debounce was silently discarded.
+      cancelPendingSave();
+      const ok = await saveDoc(openDoc.id, editTitle, editContent);
+      if (!ok) return;
       setOpenDoc(null);
       setFocusMode(false);
     };
@@ -963,7 +1064,16 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
                   <ArrowLeft size={15} /> Notes
                 </button>
               </div>
-              <span className="text-xs text-[color:var(--text-faint)] hidden sm:block">{saveStatus === 'saving' ? 'Saving…' : saveStatus === 'saved' ? 'Saved' : ''}</span>
+              {/* A failure stays on screen as "Not saved" rather than reverting to
+                  the empty idle string, and — unlike the quiet Saving…/Saved chip —
+                  shows on mobile too, where `hidden sm:block` would otherwise make
+                  the only in-page signal of a lost save invisible. */}
+              <span
+                className={`text-xs ${saveStatus === 'error' ? 'block text-[color:var(--brand-danger)] font-semibold' : 'hidden sm:block text-[color:var(--text-faint)]'}`}
+                role={saveStatus === 'error' ? 'alert' : undefined}
+              >
+                {saveStatus === 'saving' ? 'Saving…' : saveStatus === 'saved' ? 'Saved' : saveStatus === 'error' ? 'Not saved' : ''}
+              </span>
               <div className="flex items-center gap-2 shrink-0">
                 {canShareToLivestream && (
                   <button
@@ -994,7 +1104,16 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
               <input
                 ref={titleRef}
                 value={editTitle}
-                onChange={e => setEditTitle(e.target.value)}
+                onChange={e => {
+                  setEditTitle(e.target.value);
+                  // Keep an already-queued auto-save pointed at the title the
+                  // user has NOW, so the debounce can't write back the one that
+                  // was on screen when the content keystroke scheduled it. Guarded
+                  // by id so a payload queued for another document is left alone.
+                  if (pendingSave.current && pendingSave.current.id === openDoc?.id) {
+                    pendingSave.current.title = e.target.value;
+                  }
+                }}
                 onBlur={handleTitleBlur}
                 className="w-full font-display text-4xl font-normal tracking-[-0.01em] text-earth bg-transparent border-none outline-none placeholder-stone-300 mb-6 mt-6"
                 placeholder="Untitled"
