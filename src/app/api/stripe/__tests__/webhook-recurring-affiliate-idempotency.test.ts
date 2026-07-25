@@ -399,9 +399,14 @@ describe('BUG B — the row can no longer be missing after money moves', () => {
     hooks.failBatchCommit = failTheRecord;
 
     const res = await WEBHOOK(renewalEvent('evt_norow'));
-    // The outer `catch (subErr)` still swallows and still 200s — unchanged. What
-    // changed is WHAT can be lost: the throw now happens before any money moves.
-    expect(res.status).toBe(200);
+    // #224 moved the throw to BEFORE any money moves; THE-26 then made that throw
+    // retryable. A simulated Firestore fault is transient by default, so
+    // `catch (subErr)` now undoes the idempotency marker and 5xxs instead of
+    // swallowing at 200 — Stripe redelivers and the commission is recorded on the
+    // retry. (Full coverage of that behaviour lives in
+    // webhook-recurring-commission-retry.test.ts.)
+    expect(res.status).toBe(500);
+    expect(store.has('webhook_events/evt_norow')).toBe(false);
 
     expect(mockTransfersCreate).not.toHaveBeenCalled(); // nothing paid without a record
     expect(commissionRowCount()).toBe(0);
