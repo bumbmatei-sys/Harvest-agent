@@ -21,7 +21,7 @@ const { mockConstructEvent, mockSubRetrieve, mockTransferCreate, mockChargeRetri
   mockTransferCreate: vi.fn(),
   mockChargeRetrieve: vi.fn(),
 }));
-const { mockDocGet, mockDocSet, mockDocUpdate, mockDocDelete, mockCollGet, mockAdd, mockIssueReceipt } =
+const { mockDocGet, mockDocSet, mockDocUpdate, mockDocDelete, mockCollGet, mockAdd, mockBatchSet, mockIssueReceipt } =
   vi.hoisted(() => ({
     mockDocGet: vi.fn(),
     mockDocSet: vi.fn().mockResolvedValue(undefined),
@@ -29,18 +29,23 @@ const { mockDocGet, mockDocSet, mockDocUpdate, mockDocDelete, mockCollGet, mockA
     mockDocDelete: vi.fn().mockResolvedValue(undefined),
     mockCollGet: vi.fn(),
     mockAdd: vi.fn(),
+    mockBatchSet: vi.fn(),
     mockIssueReceipt: vi.fn().mockResolvedValue(undefined),
   }));
 
 function makeCollRef(): any {
-  const coll: any = { doc: vi.fn(() => makeDocRef()), add: mockAdd, get: mockCollGet };
+  const coll: any = { doc: vi.fn((id?: string) => makeDocRef(id)), add: mockAdd, get: mockCollGet };
   coll.where = vi.fn(() => coll);
   coll.limit = vi.fn(() => coll);
   coll.orderBy = vi.fn(() => coll);
   return coll;
 }
-function makeDocRef(): any {
+// `doc()` with no argument is Firestore's auto-id form — how the affiliate
+// commission ref is minted, before any write. The stable 'auto-id' stands in for
+// the generated id, so the idempotency key and the reported commissionId are real.
+function makeDocRef(id?: string): any {
   return {
+    id: id ?? 'auto-id',
     get: mockDocGet, set: mockDocSet, update: mockDocUpdate, delete: mockDocDelete,
     collection: vi.fn(() => makeCollRef()),
   };
@@ -58,7 +63,9 @@ vi.mock('stripe', () => ({
 }));
 
 vi.mock('@/lib/firebase-admin', () => ({
-  adminDb: { collection: vi.fn(() => makeCollRef()), batch: vi.fn(() => ({ update: vi.fn(), delete: vi.fn(), commit: vi.fn().mockResolvedValue(undefined) })) },
+  // `set` is part of the batch surface: the affiliate paths create their
+  // commission row through `batch.set` before any money moves.
+  adminDb: { collection: vi.fn(() => makeCollRef()), batch: vi.fn(() => ({ set: mockBatchSet, update: vi.fn(), delete: vi.fn(), commit: vi.fn().mockResolvedValue(undefined) })) },
   adminAuth: { getUser: vi.fn(), getUserByEmail: vi.fn(), createUser: vi.fn(), createCustomToken: vi.fn() },
   getReceiptsBucket: vi.fn(),
 }));
@@ -125,7 +132,7 @@ describe('recurring affiliate transfer failure', () => {
     mockTransferCreate.mockRejectedValue(new Error('insufficient funds'));
   }
 
-  it('captures the failure with the recurring-affiliate-transfer step at error level', async () => {
+  it('captures the failure with the recurring-affiliate-transfer step at warning level', async () => {
     arrangeFailedRecurringTransfer();
 
     await POST(makeRequest());
@@ -133,16 +140,21 @@ describe('recurring affiliate transfer failure', () => {
     const captured = captureForStep('recurring-affiliate-transfer');
     expect(captured).toBeDefined();
     expect((captured!.error as Error).message).toBe('insufficient funds');
-    expect(captured!.context.level).toBe('error');
+    // Downgraded from `error`: the transfer now carries a per-commission
+    // idempotency key and its row is durable BEFORE the money moves, so landing
+    // here means the payout is late, not that it may have been double-sent.
+    expect(captured!.context.level).toBe('warning');
     expect(captured!.context.tags).toEqual(expect.objectContaining({
       money_path: 'true',
       stripe_event_type: 'invoice.payment_succeeded',
     }));
-    // Identifiers sufficient to find the transfer in Stripe and the tenant in Firestore.
+    // Identifiers sufficient to find the transfer in Stripe and the tenant in
+    // Firestore — now including the commission id the retry key is derived from.
     expect(captured!.context.contexts.money_path).toEqual(expect.objectContaining({
       tenantId: 't1', stripeEventId: 'evt_inv_1', invoiceId: 'in_1',
       subscriptionId: 'sub_1', referrerId: 'ref1',
     }));
+    expect(captured!.context.contexts.money_path.commissionId).toBeDefined();
   });
 
   it('still returns 200 { received: true } and still banks the commission as pending', async () => {
@@ -153,11 +165,15 @@ describe('recurring affiliate transfer failure', () => {
     // Unchanged behaviour: Stripe is told the event succeeded, exactly as before.
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ received: true });
-    // Unchanged behaviour: the commission is recorded pending for the retry sweep.
-    expect(mockAdd).toHaveBeenCalledWith(expect.objectContaining({
-      referrerId: 'ref1', tenantId: 't1', status: 'pending', type: 'recurring',
-      stripeInvoiceId: 'in_1', commission: 1500,
-    }));
+    // Still recorded pending for the retry sweep — now via the record-first batch
+    // that lands before the transfer rather than an `add()` after it.
+    expect(mockBatchSet).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        referrerId: 'ref1', tenantId: 't1', status: 'pending', type: 'recurring',
+        stripeInvoiceId: 'in_1', commission: 1500,
+      }),
+    );
     // Unchanged behaviour: the idempotency marker is NOT undone on a 200.
     expect(mockDocDelete).not.toHaveBeenCalled();
   });
