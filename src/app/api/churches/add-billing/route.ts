@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server';
 import Stripe from 'stripe';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireAdmin } from '@/lib/api-auth';
+import { captureMoneyPathError } from '@/lib/money-path-sentry';
 
 export const dynamic = 'force-dynamic';
 
@@ -95,6 +96,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true, subscriptionItemId: subItem.id });
   } catch (error: any) {
     console.error('add-billing error:', error?.message || error);
+    // Same ordering hazard as the legacy route: the subscription item exists in
+    // Stripe before the church doc records it. AdminChurches shows a "billing
+    // setup failed" notice and creates the church anyway, so the ministry ends up
+    // with an unbilled church or an untracked charge, and nothing reconciles it.
+    captureMoneyPathError(error, { step: 'church-billing-add', level: 'error' });
     return NextResponse.json({ error: error?.message || 'Failed to add billing' }, { status: 500 });
   }
 }

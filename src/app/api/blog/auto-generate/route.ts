@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { generateAndSavePost, computeNextScheduled } from '../generate/route';
+import { captureHandledError } from '@/lib/money-path-sentry';
 
 export const dynamic = 'force-dynamic';
 
@@ -67,7 +68,11 @@ export async function GET(request: NextRequest) {
 
         results.push({ tenantId, status: 'generated', title: result.title });
       } catch (genErr: any) {
+        // Unattended cron: the `results` array goes back to Vercel Cron and no
+        // human reads it. A tenant whose scheduled post keeps failing just stops
+        // publishing, and nothing anywhere says so.
         console.error(`Failed to generate post for ${tenantId}:`, genErr?.message);
+        captureHandledError(genErr, { step: 'blog-auto-generate-tenant', tenantId });
         results.push({ tenantId, status: `error: ${genErr?.message}` });
       }
     }
@@ -75,6 +80,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ ok: true, processed: results.length, results });
   } catch (err: any) {
     console.error('Auto-generate cron error:', err?.message);
+    // The whole daily run died — every tenant with automation enabled silently
+    // skips their post, and only a 500 in a cron log records it.
+    captureHandledError(err, { step: 'blog-auto-generate-cron' });
     return NextResponse.json({ error: err?.message }, { status: 500 });
   }
 }

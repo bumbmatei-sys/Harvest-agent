@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireAdmin } from '@/lib/api-auth';
+import { captureHandledError } from '@/lib/money-path-sentry';
 
 async function getResend() {
   const { Resend } = await import('resend');
@@ -61,6 +62,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true, status: 'logged' });
   } catch (error) {
     console.error('Email API error:', error);
+    // An admin-triggered email that never went out, and nothing retries it. Also
+    // covers the no-API-key fallback write to `email_log`, whose failure loses the
+    // only record that the send was ever attempted.
+    captureHandledError(error, { step: 'admin-email-send' });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

@@ -4,6 +4,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 import { Resend } from 'resend';
 import { adminDb } from '@/lib/firebase-admin';
 import { sendAutomatedSms } from '@/lib/twilio';
+import { captureHandledError } from '@/lib/money-path-sentry';
 
 export const dynamic = 'force-dynamic';
 
@@ -94,12 +95,24 @@ export async function POST(request: NextRequest) {
           subject: `Your pledge to ${campaign.title}`,
           html: `<p>Thank you, ${donorName}!</p><p>Your pledge of <strong>$${pledgeAmount}</strong> to <strong>${campaign.title}</strong> has been recorded. We'll be in touch.</p><br><p>— ${tenantName}</p>`,
         });
-      } catch (e) { console.warn('Pledge email confirmation failed:', e); }
+      } catch (e) {
+        // The pledge is durably recorded; only the donor's confirmation is lost.
+        console.warn('Pledge email confirmation failed:', e);
+        captureHandledError(e, {
+          step: 'pledge-confirmation-email',
+          level: 'warning',
+          tenantId,
+          ids: { campaignId },
+        });
+      }
     }
 
     return NextResponse.json({ success: true });
   } catch (e) {
     console.error('Pledge submit error:', e);
+    // A public pledge to a campaign was lost. Nothing records the attempt, so the
+    // campaign total is quietly short by an amount nobody can reconstruct.
+    captureHandledError(e, { step: 'pledge-submit', tenantId, ids: { campaignId } });
     return NextResponse.json({ error: 'Failed to record pledge' }, { status: 500 });
   }
 }

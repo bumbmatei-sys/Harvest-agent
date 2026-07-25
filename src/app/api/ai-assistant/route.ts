@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { generateAccessCode } from '@/lib/ai-utils';
+import { captureHandledError } from '@/lib/money-path-sentry';
 
 /**
  * POST /api/ai-assistant/verify
@@ -85,6 +86,9 @@ export async function POST(request: NextRequest) {
     });
   } catch (error: any) {
     console.error('AI assistant verify error:', error);
+    // A paying add-on customer cannot bind their Telegram account. The only party
+    // that sees the failure is the bot, which has nowhere to report it.
+    captureHandledError(error, { step: 'ai-assistant-bind' });
     return NextResponse.json({ error: 'Failed to verify access code' }, { status: 500 });
   }
 }
@@ -138,6 +142,10 @@ export async function PUT(request: NextRequest) {
     });
   } catch (error: any) {
     console.error('AI assistant check error:', error);
+    // Note the response body: `active: false`. The bot calls this on EVERY
+    // message, so a Firestore blip revokes the add-on for every paying customer
+    // at once and reads to them as "your subscription isn't active".
+    captureHandledError(error, { step: 'ai-assistant-subscription-check' });
     return NextResponse.json({ active: false, error: 'Failed to check subscription' }, { status: 500 });
   }
 }

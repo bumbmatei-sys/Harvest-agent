@@ -11,6 +11,7 @@ import {
   checkQueryBudget,
   incrementQueryTokens,
 } from '@/lib/rag-usage';
+import { captureHandledError } from '@/lib/money-path-sentry';
 
 export const dynamic = 'force-dynamic';
 
@@ -293,7 +294,15 @@ export async function POST(request: NextRequest) {
           try {
             await incrementQueryTokens(userOrErr.tenantId, usedTokens);
           } catch (e) {
+            // The answer is returned regardless (correctly — metering must not
+            // break the chat), so the tenant is silently under-billed against its
+            // monthly query cap and the ledger drifts from real usage.
             console.error('query token metering failed:', e);
+            captureHandledError(e, {
+              step: 'rag-query-token-metering',
+              level: 'warning',
+              tenantId: userOrErr.tenantId,
+            });
           }
         }
 
@@ -334,6 +343,10 @@ export async function POST(request: NextRequest) {
     );
   } catch (error: any) {
     console.error('API route error:', error);
+    // Includes a throwing refundIngest: the tenant reserved ingest capacity that
+    // is then never given back, so a transient provider blip permanently eats a
+    // slice of their knowledge-base ceiling with nothing to show why.
+    captureHandledError(error, { step: 'gemini-route' });
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

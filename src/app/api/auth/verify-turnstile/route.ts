@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { captureHandledError } from '@/lib/money-path-sentry';
 
 /**
  * POST /api/auth/verify-turnstile
@@ -52,7 +53,11 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     // Fail closed — a Cloudflare outage must not silently let the check pass,
     // since the whole point is that this is verified before the sensitive action.
+    // Failing closed is right, but it means a siteverify outage blocks EVERY
+    // email/password sign-in and sign-up behind a generic "Verification failed",
+    // which is indistinguishable from a user simply failing the challenge.
     console.error('verify-turnstile error:', error);
+    captureHandledError(error, { step: 'turnstile-verify', level: 'warning' });
     return NextResponse.json({ success: false, error: GENERIC_ERROR }, { status: 400 });
   }
 }

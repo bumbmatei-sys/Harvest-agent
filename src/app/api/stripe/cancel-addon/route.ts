@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server';
 import Stripe from 'stripe';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireAuth } from '@/lib/api-auth';
+import { captureMoneyPathError } from '@/lib/money-path-sentry';
 
 export const dynamic = 'force-dynamic';
 
@@ -55,6 +56,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error('Cancel addon error:', error?.message || error);
+    // Stripe is told to cancel at period end BEFORE the tenant doc records it. If
+    // the doc write is what failed, the subscription really is cancelling while
+    // the admin was told the cancellation failed.
+    captureMoneyPathError(error, { step: 'cancel-ai-assistant-addon', level: 'error' });
     return NextResponse.json({ error: 'Failed to cancel add-on' }, { status: 500 });
   }
 }

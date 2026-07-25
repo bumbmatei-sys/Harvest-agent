@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server';
 import Stripe from 'stripe';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireAuth } from '@/lib/api-auth';
+import { captureMoneyPathError } from '@/lib/money-path-sentry';
 
 export const dynamic = 'force-dynamic';
 
@@ -78,6 +79,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true, churchCount, newAmount });
   } catch (error: any) {
     console.error('Update quantity error:', error?.message || error);
+    // The enterprise subscription quantity is what the tenant is billed on. If it
+    // is not brought in line with the church count, they are charged for the
+    // wrong number of churches until someone notices on an invoice.
+    captureMoneyPathError(error, { step: 'enterprise-quantity-update', level: 'error' });
     return NextResponse.json({ error: 'Failed to update subscription quantity' }, { status: 500 });
   }
 }

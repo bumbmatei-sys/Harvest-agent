@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server';
 import { FieldValue } from 'firebase-admin/firestore';
 import { adminDb } from '@/lib/firebase-admin';
 import { sendAutomatedSms } from '@/lib/twilio';
+import { captureHandledError } from '@/lib/money-path-sentry';
 
 export const dynamic = 'force-dynamic';
 
@@ -78,6 +79,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true });
   } catch (e) {
     console.error('Check-in submit error:', e);
+    // An attendee at the door didn't get checked in. The CRM "Attended" activity
+    // is written before the attendee row, so a failure can also leave the contact
+    // marked as having attended a session they were never recorded on.
+    captureHandledError(e, { step: 'checkin-submit', tenantId, ids: { sessionId } });
     return NextResponse.json({ error: 'Failed to check in' }, { status: 500 });
   }
 }

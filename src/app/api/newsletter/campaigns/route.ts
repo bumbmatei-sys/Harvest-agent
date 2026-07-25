@@ -4,6 +4,7 @@ import { requireAdmin } from '@/lib/api-auth';
 import { executeComposioAction } from '@/lib/composio-client';
 import { adminDb } from '@/lib/firebase-admin';
 import { PLATFORM_TENANT_ID } from '@/utils/tenant-scope';
+import { captureHandledError } from '@/lib/money-path-sentry';
 
 export const dynamic = 'force-dynamic';
 
@@ -75,7 +76,15 @@ export async function GET(request: NextRequest) {
           }));
         }
       } catch (actionError) {
+        // Swallowed on purpose, but the response then reports ZERO campaigns with
+        // a 200 — the admin sees an empty history and reads it as "nothing sent",
+        // not as "we couldn't reach Mailchimp".
         console.error('Mailchimp list campaigns error:', actionError);
+        captureHandledError(actionError, {
+          step: 'newsletter-mailchimp-list-campaigns',
+          level: 'warning',
+          tenantId: resolvedTenantId,
+        });
       }
     }
 
@@ -104,7 +113,14 @@ export async function GET(request: NextRequest) {
         };
       });
     } catch (localError) {
+      // Same silent-empty-list problem, but for the tenant's OWN drafts: they
+      // disappear from the UI with a 200 rather than an error.
       console.warn('Failed to fetch local newsletters:', localError);
+      captureHandledError(localError, {
+        step: 'newsletter-local-list',
+        level: 'warning',
+        tenantId: resolvedTenantId,
+      });
     }
 
     return NextResponse.json({ campaigns, localNewsletters });

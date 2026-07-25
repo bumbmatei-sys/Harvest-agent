@@ -4,6 +4,7 @@ import { requireAdmin } from '@/lib/api-auth';
 import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { getMimoChatUrl, MIMO_MODEL } from '@/lib/ai-config';
+import { captureHandledError } from '@/lib/money-path-sentry';
 
 export const dynamic = 'force-dynamic';
 
@@ -172,6 +173,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(await generateAndSavePost(tenantId, topicHint));
   } catch (err: any) {
     console.error('Blog generate error:', err?.message || err);
+    // generateAndSavePost publishes the post BEFORE updating the automation
+    // stats, so a failure on that last write means a live published article the
+    // admin was told failed — and retrying publishes a second one.
+    captureHandledError(err, { step: 'blog-generate' });
     return NextResponse.json(
       { error: err?.message || 'Failed to generate article' },
       { status: 500 },

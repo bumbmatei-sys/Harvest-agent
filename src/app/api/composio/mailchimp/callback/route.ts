@@ -6,6 +6,7 @@ import {
   verifySignedState,
 } from '@/lib/composio-client';
 import { adminDb } from '@/lib/firebase-admin';
+import { captureHandledError } from '@/lib/money-path-sentry';
 
 export const dynamic = 'force-dynamic';
 
@@ -76,7 +77,19 @@ export async function GET(request: NextRequest) {
         name: list.name,
         memberCount: list.stats?.member_count || 0,
       }));
-    } catch (e) { console.warn('Could not fetch Mailchimp audiences:', e); }
+    } catch (e) {
+      // The integration is still written as `status: 'active'` below, but with an
+      // EMPTY audience list — so the admin can never pick an audience and
+      // /api/newsletter/send refuses every send with "No Mailchimp audience
+      // selected", while Settings insists Mailchimp is connected.
+      console.warn('Could not fetch Mailchimp audiences:', e);
+      captureHandledError(e, {
+        step: 'mailchimp-fetch-audiences',
+        level: 'warning',
+        tenantId,
+        ids: { connectedAccountId },
+      });
+    }
 
     await integrationRef.set({
       connectedAccountId,
@@ -97,6 +110,14 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL('/admin/settings?mailchimp_connected=true', tenantBaseUrl));
   } catch (error) {
     console.error('Mailchimp callback error:', error);
+    // Composio holds a live, ACTIVE connected account at this point; the failure
+    // is on our side of the persist. The tenant has granted Mailchimp access that
+    // the app has no record of, and the user just sees `?mailchimp_error=`.
+    captureHandledError(error, {
+      step: 'mailchimp-oauth-callback',
+      tenantId,
+      ids: { connectedAccountId },
+    });
     return NextResponse.redirect(new URL('/admin/settings?mailchimp_error=callback_failed', tenantBaseUrl));
   }
 }

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
+import { captureHandledError } from '@/lib/money-path-sentry';
 
 export const dynamic = 'force-dynamic';
 
@@ -127,6 +128,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true }, { headers: CORS_HEADERS });
   } catch (error) {
     console.error('Contact form error:', error);
+    // The marketing site's only contact channel. A failed write means the enquiry
+    // never reaches platform_inbox, so the notifyPlatformInbox function never
+    // fires either — the message is gone with no trace.
+    captureHandledError(error, { step: 'contact-submit' });
     return NextResponse.json({ error: 'Failed to submit' }, { status: 500, headers: CORS_HEADERS });
   }
 }

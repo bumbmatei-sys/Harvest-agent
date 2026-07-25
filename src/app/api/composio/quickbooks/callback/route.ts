@@ -6,6 +6,7 @@ import {
   verifySignedState,
 } from '@/lib/composio-client';
 import { adminDb } from '@/lib/firebase-admin';
+import { captureHandledError } from '@/lib/money-path-sentry';
 
 export const dynamic = 'force-dynamic';
 
@@ -68,7 +69,18 @@ export async function GET(request: NextRequest) {
       const company = info?.data?.CompanyInfo || info?.data?.companyInfo || info?.data || info;
       companyName = company?.CompanyName || company?.companyName || '';
       realmId = company?.Id || company?.realmId || connectionStatus.metadata?.realmId || '';
-    } catch (e) { console.warn('Could not fetch QuickBooks company info:', e); }
+    } catch (e) {
+      // Persisted as `status: 'active'` below with an EMPTY realmId/companyName —
+      // the connection looks healthy in Settings but carries none of the company
+      // identity the sales-receipt sync is written against.
+      console.warn('Could not fetch QuickBooks company info:', e);
+      captureHandledError(e, {
+        step: 'quickbooks-fetch-company-info',
+        level: 'warning',
+        tenantId,
+        ids: { connectedAccountId },
+      });
+    }
 
     await integrationRef.set({
       connectedAccountId,
@@ -88,6 +100,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL('/admin/accounting?quickbooks_connected=true', tenantBaseUrl));
   } catch (error) {
     console.error('QuickBooks callback error:', error);
+    // Composio holds a live ACTIVE connected account; only our persist failed. The
+    // tenant granted QuickBooks access the app has no record of.
+    captureHandledError(error, {
+      step: 'quickbooks-oauth-callback',
+      tenantId,
+      ids: { connectedAccountId },
+    });
     return NextResponse.redirect(new URL('/admin/accounting?quickbooks_error=callback_failed', tenantBaseUrl));
   }
 }

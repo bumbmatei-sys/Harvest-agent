@@ -6,6 +6,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { hasFeature } from '@/utils/plan-features';
 import { PLATFORM_TENANT_ID } from '@/utils/tenant-scope';
 import { getMimoChatUrl, MIMO_MODEL } from '@/lib/ai-config';
+import { captureHandledError } from '@/lib/money-path-sentry';
 
 export const dynamic = 'force-dynamic';
 
@@ -263,6 +264,10 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('Newsletter generate error:', error);
+    // Covers the newsletterRef.set() at the end: the Instagram fetch and the MiMo
+    // generation have both already been paid for by that point, and a failed write
+    // throws the generated newsletter away with only a 500 to show for it.
+    captureHandledError(error, { step: 'newsletter-generate' });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

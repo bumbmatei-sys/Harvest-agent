@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server';
 import Stripe from 'stripe';
 import { adminDb } from '@/lib/firebase-admin';
 import { resolveReturnBaseUrl } from '@/lib/connect-return-url';
+import { captureMoneyPathError } from '@/lib/money-path-sentry';
 
 export const dynamic = 'force-dynamic';
 
@@ -52,6 +53,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL(`/?affiliate_connect=success`, baseUrl));
   } catch (error: any) {
     console.error('Affiliate callback error:', error?.message || error);
+    // The affiliate finished Stripe onboarding, but affiliateConnectStatus was
+    // never reconciled — they stay 'pending', so every commission they earn banks
+    // as unpayable and no payout is ever attempted.
+    captureMoneyPathError(error, { step: 'affiliate-connect-callback', level: 'error' });
     return NextResponse.redirect(new URL('/?error=affiliate_callback_failed', baseUrl));
   }
 }

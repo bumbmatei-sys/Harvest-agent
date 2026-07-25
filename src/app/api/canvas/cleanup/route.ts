@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { Timestamp } from 'firebase-admin/firestore';
+import { captureHandledError } from '@/lib/money-path-sentry';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,6 +47,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ deleted });
   } catch (error) {
     console.error('Canvas cleanup error:', error);
+    // Unattended nightly cron. A cleanup that has been failing for weeks looks
+    // exactly like one that has nothing to do.
+    captureHandledError(error, { step: 'canvas-cleanup-cron', level: 'warning' });
     return NextResponse.json(
       { error: 'Cleanup failed' },
       { status: 500 }

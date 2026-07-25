@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
+import { captureHandledError } from '@/lib/money-path-sentry';
 
 async function getResend() {
   const { Resend } = await import('resend');
@@ -118,13 +119,18 @@ export async function POST(request: NextRequest) {
           replyTo: safeEmail,
         });
       } catch (emailErr) {
+        // The lead row is already in Firestore, so nothing is lost — but the
+        // notification is the only thing that makes anyone look at it.
         console.error('Failed to send enterprise lead email:', emailErr);
+        captureHandledError(emailErr, { step: 'enterprise-lead-email', level: 'warning' });
       }
     }
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error('Enterprise lead error:', error);
+    // A sales enquiry that never got stored and never got emailed.
+    captureHandledError(error, { step: 'enterprise-lead-submit' });
     return NextResponse.json({ error: 'Failed to submit' }, { status: 500 });
   }
 }

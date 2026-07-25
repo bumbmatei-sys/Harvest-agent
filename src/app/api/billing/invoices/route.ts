@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import Stripe from 'stripe';
 import { requireOwner } from '@/lib/api-auth';
+import { captureHandledError } from '@/lib/money-path-sentry';
 
 export const dynamic = 'force-dynamic';
 
@@ -72,7 +73,11 @@ export async function GET(request: NextRequest) {
           cancelAtPeriodEnd: !!sub.cancel_at_period_end,
         };
       } catch (subErr) {
+        // Degrades to a null-filled summary that renders as an em-dash next to
+        // "Next billing" — the owner reads that as "nothing due", not as "we
+        // couldn't reach Stripe". Their real renewal date and amount are unchanged.
         console.warn('billing/invoices: failed to load subscription:', subErr);
+        captureHandledError(subErr, { step: 'billing-subscription-load', level: 'warning' });
         subscription = {
           plan: tenantData.plan ?? null,
           status: tenantData.status ?? null,

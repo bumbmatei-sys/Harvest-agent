@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server';
 import Stripe from 'stripe';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireAuth } from '@/lib/api-auth';
+import { captureMoneyPathError } from '@/lib/money-path-sentry';
 
 export const dynamic = 'force-dynamic';
 
@@ -115,6 +116,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true, results });
   } catch (error: any) {
     console.error('Update prices error:', error?.message || error);
+    // Prices are created in Stripe in a loop and the resulting ids are written to
+    // config/stripe-prices only at the end — a failure leaves live Stripe prices
+    // that nothing in the app references.
+    captureMoneyPathError(error, { step: 'stripe-update-prices', level: 'error' });
     return NextResponse.json({ error: error?.message || 'Failed to update prices' }, { status: 500 });
   }
 }

@@ -4,6 +4,7 @@ import Stripe from 'stripe';
 import { adminDb } from '@/lib/firebase-admin';
 import { deriveConnectStatus } from '@/lib/stripe-connect-status';
 import { sweepPendingAffiliateCommissions } from '@/lib/affiliate-payout';
+import { captureMoneyPathError } from '@/lib/money-path-sentry';
 
 export const dynamic = 'force-dynamic';
 
@@ -156,7 +157,18 @@ export async function POST(request: NextRequest) {
                 console.log(`💸 Swept ${swept}/${total} pending affiliate commission(s) for ${userDoc.id} on ${account.id}`);
               }
             } catch (sweepErr) {
+              // Warning, not error: the commissions stay `pending` and both a
+              // future account.updated and the daily retry-transfers cron will
+              // pick them up, idempotently. But a sweep that keeps failing means
+              // an affiliate is not being paid, and nothing else says so.
               console.error(`Affiliate sweep failed for ${userDoc.id} on ${account.id} (will retry on redelivery / cron):`, sweepErr);
+              captureMoneyPathError(sweepErr, {
+                step: 'connect-webhook-affiliate-sweep',
+                level: 'warning',
+                eventId: event.id,
+                eventType: event.type,
+                ids: { referrerId: userDoc.id, connectAccountId: account.id },
+              });
             }
           }
         }
@@ -173,6 +185,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ received: true });
   } catch (error: any) {
     console.error('Connect webhook handler error:', error?.message || error);
+    // Warning: the marker undo below makes Stripe's redelivery safe, so one
+    // failure self-heals. A persistent one does not — Connect payout status stops
+    // syncing onto tenants and affiliates entirely, and Stripe eventually gives up.
+    captureMoneyPathError(error, {
+      step: 'connect-webhook',
+      level: 'warning',
+      eventId: event.id,
+      eventType: event.type,
+    });
     if (markerWritten) {
       // Undo the idempotency marker so Stripe's retry re-processes this event.
       // Without this, a mid-processing failure leaves the event marked "done" and

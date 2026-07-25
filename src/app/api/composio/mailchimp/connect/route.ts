@@ -7,6 +7,7 @@ import {
   deleteConnection,
 } from '@/lib/composio-client';
 import { adminDb } from '@/lib/firebase-admin';
+import { captureHandledError } from '@/lib/money-path-sentry';
 
 export const dynamic = 'force-dynamic';
 
@@ -95,6 +96,13 @@ export async function POST(request: NextRequest) {
     if (error?.message === 'CONNECTION_IN_PROGRESS') {
       return NextResponse.json({ error: 'Connection in progress. Please wait.' }, { status: 409 });
     }
+    // Captured only AFTER the two sentinel branches: ALREADY_CONNECTED and
+    // CONNECTION_IN_PROGRESS are deliberate control flow thrown by the
+    // transaction, not faults. What is left is a real failure, and by then
+    // initiateConnection may already have minted a Composio connected account
+    // that the pending doc never recorded — an orphan nothing will clean up.
+    // (No tenantId: it is resolved inside the try, so the catch cannot see it.)
+    captureHandledError(error, { step: 'mailchimp-connect-initiate' });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
