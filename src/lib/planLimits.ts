@@ -17,6 +17,10 @@ import type { TenantPlan } from '@/types/tenant.types';
 //     embedded corpus, option C — not doc count, and not folded into the monthly
 //     bucket, since embedding is one-time and conflating it would block querying
 //     after a big upload).
+//
+// SMS is metered in SEGMENTS — the unit Twilio bills on — for the same reason:
+//   • smsSegmentsPerMonth — a FLOW. Monthly Twilio segments. Resets each month
+//     (shares the month-keyed usage doc with queryTokens).
 // ─────────────────────────────────────────────────────────────────────────────
 
 export type PlanId = TenantPlan; // 'plus' | 'pro' | 'max' | 'ultra'
@@ -27,9 +31,16 @@ export interface PlanLimits {
   /** Total embedded-corpus ceiling, in Gemini embed tokens. Persistent. */
   ingestTokensTotal: number;
   /**
-   * PLACEHOLDER ONLY — SMS metering (Twilio) is a SEPARATE prompt and is NOT
-   * wired to anything here. This key exists so the shared limits table has one
-   * home when SMS lands; `null` = not yet tuned. Do not meter against it.
+   * Monthly Twilio budget, in SEGMENTS (not messages). Resets each month.
+   *
+   * SEGMENTS, deliberately: Twilio bills per segment, and a body over 160 GSM-7
+   * characters (70 for UCS-2 — any emoji or non-Latin character forces UCS-2)
+   * splits into several. A 300-character template is 2 segments, so metering it
+   * as "1 message" would undercount real cost by 2–3× and the cap would not
+   * bind. The counter is fed by Twilio's own `num_segments`, never an estimate.
+   *
+   * `null` keeps the original #213 meaning — NOT metered (see sms-usage.ts).
+   * No tier is null today.
    */
   smsSegmentsPerMonth: number | null;
 }
@@ -39,11 +50,23 @@ export interface PlanLimits {
 // resets). Query numbers are the confirmed roadmap values. Ingest numbers are a
 // proposal (plus ≈ 750 pages, ultra ≈ 45,000 pages @ ~660 embed tokens/page) —
 // left tunable on purpose; they are NOT locked.
+//
+// SMS segments:
+//   • ultra — 4,000/mo is CONFIRMED (set by Matei, 2026-07-25). At the verified
+//     US rate (~$0.0079 + ~$0.003 carrier surcharge ≈ $0.0109/segment) that
+//     ceiling costs ~$44/mo, 9.4% of the $479 plan.
+//   • plus / pro / max — TUNE THESE. 250 / 500 / 2,000 are drafts from the
+//     roadmap conversation and are NOT signed off. Confirm before relying on
+//     them commercially.
+// A segment cap bounds VOLUME, not SPEND — the price per segment varies ~10× by
+// country (UK ~$0.04, Brazil ~$0.075, where 4,000 segments would be ~$160 and
+// ~$300). That is why sends are restricted to US destinations; see
+// sms-destination.ts.
 export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
-  plus:  { queryTokensPerMonth: 2_000_000,   ingestTokensTotal: 500_000,    smsSegmentsPerMonth: null },
-  pro:   { queryTokensPerMonth: 10_000_000,  ingestTokensTotal: 2_000_000,  smsSegmentsPerMonth: null },
-  max:   { queryTokensPerMonth: 50_000_000,  ingestTokensTotal: 10_000_000, smsSegmentsPerMonth: null },
-  ultra: { queryTokensPerMonth: 150_000_000, ingestTokensTotal: 30_000_000, smsSegmentsPerMonth: null },
+  plus:  { queryTokensPerMonth: 2_000_000,   ingestTokensTotal: 500_000,    smsSegmentsPerMonth: 250 },   // UNCONFIRMED
+  pro:   { queryTokensPerMonth: 10_000_000,  ingestTokensTotal: 2_000_000,  smsSegmentsPerMonth: 500 },   // UNCONFIRMED
+  max:   { queryTokensPerMonth: 50_000_000,  ingestTokensTotal: 10_000_000, smsSegmentsPerMonth: 2_000 }, // UNCONFIRMED
+  ultra: { queryTokensPerMonth: 150_000_000, ingestTokensTotal: 30_000_000, smsSegmentsPerMonth: 4_000 }, // confirmed 2026-07-25
 };
 
 /** Fallback tier when a tenant's plan is missing/unknown — the most restrictive,

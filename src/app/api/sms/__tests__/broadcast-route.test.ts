@@ -10,10 +10,11 @@ import { NextRequest } from 'next/server';
  */
 
 // ── Hoisted mocks ────────────────────────────────────────────────────────────
-const { mockRequireAdmin, mockGetTwilioConfig, mockSendSms } = vi.hoisted(() => ({
+const { mockRequireAdmin, mockGetTwilioConfig, mockSendSms, mockUsageSnapshot } = vi.hoisted(() => ({
   mockRequireAdmin: vi.fn(),
   mockGetTwilioConfig: vi.fn(),
   mockSendSms: vi.fn(),
+  mockUsageSnapshot: vi.fn(),
 }));
 
 const { mockContactsGet, mockDocSet, mockLogAdd } = vi.hoisted(() => ({
@@ -40,7 +41,12 @@ vi.mock('@/lib/firebase-admin', () => ({
   adminDb: { collection: vi.fn(() => makeCollRef()) },
 }));
 vi.mock('@/lib/api-auth', () => ({ requireAdmin: mockRequireAdmin }));
-vi.mock('@/lib/twilio', () => ({ getTwilioConfig: mockGetTwilioConfig, sendSms: mockSendSms }));
+vi.mock('@/lib/twilio', () => ({
+  getTwilioConfig: mockGetTwilioConfig,
+  sendSms: mockSendSms,
+  SMS_CAP_MESSAGE: 'CAP_MESSAGE',
+}));
+vi.mock('@/lib/sms-usage', () => ({ getSmsUsageSnapshot: mockUsageSnapshot }));
 vi.mock('firebase-admin/firestore', () => ({
   FieldValue: { serverTimestamp: vi.fn(() => 'SERVER_TS') },
 }));
@@ -55,14 +61,24 @@ function makeRequest(body: object): NextRequest {
   });
 }
 
+/** N member contacts with distinct US phone numbers. */
+function withRecipients(n: number) {
+  mockContactsGet.mockResolvedValue({
+    docs: Array.from({ length: n }, (_, i) => ({
+      data: () => ({ phone: `+1212555${String(1000 + i).padStart(4, '0')}`, type: 'member' }),
+    })),
+  });
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
-  mockRequireAdmin.mockResolvedValue({ uid: 'admin1', tenantId: 't1' });
-  mockGetTwilioConfig.mockResolvedValue({ accountSid: 'AC1', authToken: 'tok', fromNumber: '+1000' });
-  mockSendSms.mockResolvedValue({ ok: true, sid: 'SM1' });
-  mockContactsGet.mockResolvedValue({
-    docs: [{ data: () => ({ phone: '+15551234567', type: 'member' }) }],
+  mockRequireAdmin.mockResolvedValue({ uid: 'admin1', tenantId: 't1', isSuperAdmin: false });
+  mockGetTwilioConfig.mockResolvedValue({ accountSid: 'AC1', authToken: 'tok', fromNumber: '+12125550000' });
+  mockSendSms.mockResolvedValue({ ok: true, sid: 'SM1', segments: 1 });
+  mockUsageSnapshot.mockResolvedValue({
+    plan: 'plus', month: '2026-07', smsSegmentsUsed: 0, smsSegmentsCap: 250,
   });
+  withRecipients(1);
 });
 
 describe('POST /api/sms/broadcast — scheduling is not supported', () => {
@@ -94,7 +110,9 @@ describe('POST /api/sms/broadcast — send now still works', () => {
     const res = await POST(makeRequest({ recipientGroup: 'all_members', message: 'Hello' }));
 
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ sent: true, delivered: 1, failed: 0, recipientCount: 1 });
+    expect(await res.json()).toMatchObject({
+      sent: true, delivered: 1, failed: 0, skipped: 0, recipientCount: 1,
+    });
     expect(mockSendSms).toHaveBeenCalledTimes(1);
     // The smsBroadcasts record is the send log — deliberately kept.
     expect(mockDocSet).toHaveBeenCalledWith(
@@ -108,5 +126,87 @@ describe('POST /api/sms/broadcast — send now still works', () => {
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ recipientCount: 1 });
     expect(mockSendSms).not.toHaveBeenCalled();
+  });
+});
+
+// ── Segment metering ────────────────────────────────────────────────────────
+/**
+ * A broadcast to 500 recipients is 500+ SEGMENTS in one admin action, so it is
+ * metered PER RECIPIENT, not once per broadcast. When the allotment runs out
+ * mid-send the broadcast is PARTIAL and says so — never silently truncated.
+ */
+describe('POST /api/sms/broadcast — per-recipient segment metering', () => {
+  it('meters PER RECIPIENT — one sendSms call per contact, each carrying the tenant', async () => {
+    withRecipients(5);
+
+    await POST(makeRequest({ recipientGroup: 'all_members', message: 'Hello' }));
+
+    expect(mockSendSms).toHaveBeenCalledTimes(5);
+    for (const call of mockSendSms.mock.calls) {
+      expect(call[3]).toEqual({ tenantId: 't1' }); // billed per send, server-resolved
+    }
+  });
+
+  it('refuses the whole broadcast with an upgrade CTA when already at cap', async () => {
+    mockUsageSnapshot.mockResolvedValue({
+      plan: 'plus', month: '2026-07', smsSegmentsUsed: 250, smsSegmentsCap: 250,
+    });
+    withRecipients(5);
+
+    const res = await POST(makeRequest({ recipientGroup: 'all_members', message: 'Hello' }));
+
+    expect(res.status).toBe(403);
+    expect(await res.json()).toMatchObject({ code: 'sms_cap_reached', used: 250, cap: 250 });
+    expect(mockSendSms).not.toHaveBeenCalled();
+    expect(mockDocSet).not.toHaveBeenCalled();
+  });
+
+  it('crossing the cap MID-SEND sends partially and reports it precisely', async () => {
+    withRecipients(5);
+    // Recipients 1–3 go out; the 4th is refused by the cap.
+    mockSendSms
+      .mockResolvedValueOnce({ ok: true, sid: 'SM1', segments: 1 })
+      .mockResolvedValueOnce({ ok: true, sid: 'SM2', segments: 2 })
+      .mockResolvedValueOnce({ ok: true, sid: 'SM3', segments: 1 })
+      .mockResolvedValue({ ok: false, code: 'sms_cap_reached', error: 'CAP_MESSAGE', used: 250, cap: 250 });
+
+    const res = await POST(makeRequest({ recipientGroup: 'all_members', message: 'Hello' }));
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body).toMatchObject({
+      sent: true, delivered: 3, skipped: 2, capReached: true, recipientCount: 5,
+    });
+    // It STOPS at the cap — it does not keep calling Twilio for the rest.
+    expect(mockSendSms).toHaveBeenCalledTimes(4);
+    // The history doc records a partial send, not a clean 'sent'.
+    expect(mockDocSet).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'partial', capReached: true, delivered: 3, skipped: 2 }),
+    );
+  });
+
+  it('skips a non-US recipient individually without aborting the broadcast', async () => {
+    withRecipients(3);
+    mockSendSms
+      .mockResolvedValueOnce({ ok: true, sid: 'SM1', segments: 1 })
+      .mockResolvedValueOnce({ ok: false, code: 'non_us_destination', error: 'SMS is currently available for US numbers only.' })
+      .mockResolvedValueOnce({ ok: true, sid: 'SM3', segments: 1 });
+
+    const res = await POST(makeRequest({ recipientGroup: 'all_members', message: 'Hello' }));
+
+    expect(await res.json()).toMatchObject({
+      delivered: 2, skippedNonUs: 1, failed: 0, skipped: 0, recipientCount: 3,
+    });
+    expect(mockSendSms).toHaveBeenCalledTimes(3); // everyone else still got it
+  });
+
+  it('a super admin is not metered — sendSms is called with a null tenant', async () => {
+    mockRequireAdmin.mockResolvedValue({ uid: 'super1', tenantId: null, isSuperAdmin: true });
+
+    await POST(makeRequest({ recipientGroup: 'all_members', message: 'Hello' }));
+
+    // No pre-flight usage read, and no tenant to bill → no tenants/null write.
+    expect(mockUsageSnapshot).not.toHaveBeenCalled();
+    expect(mockSendSms.mock.calls[0][3]).toEqual({ tenantId: null });
   });
 });

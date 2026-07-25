@@ -3,7 +3,8 @@ import type { NextRequest } from 'next/server';
 import { FieldValue } from 'firebase-admin/firestore';
 import { requireAdmin } from '@/lib/api-auth';
 import { adminDb } from '@/lib/firebase-admin';
-import { getTwilioConfig, sendSms } from '@/lib/twilio';
+import { getTwilioConfig, sendSms, SMS_CAP_MESSAGE } from '@/lib/twilio';
+import { getSmsUsageSnapshot } from '@/lib/sms-usage';
 import { PLATFORM_TENANT_ID } from '@/utils/tenant-scope';
 
 export const dynamic = 'force-dynamic';
@@ -31,6 +32,12 @@ export async function POST(request: NextRequest) {
   if (authResult instanceof NextResponse) return authResult;
   const { uid } = authResult;
   const tenantId = authResult.tenantId || PLATFORM_TENANT_ID;
+  // Billing tenant, resolved SERVER-SIDE from the verified token — never from
+  // the request body. Only a super admin bypasses metering; a super admin's own
+  // tenantId is null, and `null` here means "do not meter" so no
+  // tenants/null/usage doc is ever written. Every other admin meters against a
+  // real tenant id.
+  const meterTenantId = authResult.isSuperAdmin ? null : tenantId;
 
   let body: { message?: string; recipientGroup?: Group; tag?: string; scheduledAt?: string; previewOnly?: boolean };
   try {
@@ -72,27 +79,101 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Twilio is not configured.' }, { status: 400 });
   }
 
+  // A broadcast to 500 recipients is 500+ SEGMENTS, not one send, so it is
+  // metered PER RECIPIENT — each sendSms call reserves and settles its own
+  // segments. Refuse up front when the tenant is already at cap, so an admin
+  // gets an upgrade CTA instead of a broadcast that delivers nothing.
+  if (meterTenantId) {
+    const usage = await getSmsUsageSnapshot(meterTenantId);
+    if (usage.smsSegmentsCap !== null && usage.smsSegmentsUsed >= usage.smsSegmentsCap) {
+      return NextResponse.json(
+        {
+          error: SMS_CAP_MESSAGE,
+          code: 'sms_cap_reached',
+          used: usage.smsSegmentsUsed,
+          cap: usage.smsSegmentsCap,
+        },
+        { status: 403 },
+      );
+    }
+  }
+
   const broadcastRef = adminDb.collection('tenants').doc(tenantId).collection('smsBroadcasts').doc();
 
   // Send now.
+  //
+  // CROSSING THE CAP MID-BROADCAST: send PARTIALLY and report it precisely.
+  // The alternatives are worse — refusing the whole broadcast because recipient
+  // 480 of 500 wouldn't fit throws away 479 legitimate messages, and continuing
+  // past the cap is the unbounded bill this cap exists to prevent. So the loop
+  // stops at the first recipient the cap rejects, every remaining recipient is
+  // counted as `skipped`, the history doc is written with status 'partial', and
+  // the response says exactly how many were sent, how many were not, and why.
+  // Truncating silently — reporting "sent" for a broadcast that stopped at 480 —
+  // is the one thing this must never do.
+  //
+  // Non-US recipients are skipped INDIVIDUALLY (they cost nothing and consume no
+  // allotment) and counted separately, so one international contact never aborts
+  // a broadcast to everyone else. They are reported, not dropped quietly.
   let delivered = 0;
   let failed = 0;
+  let skippedNonUs = 0;
+  let capReached = false;
+  let capUsed: number | undefined;
+  let capLimit: number | null | undefined;
+  let attempted = 0;
+
   for (const c of recipients) {
-    const result = await sendSms(cfg, c.phone!, message);
-    if (result.ok) delivered++; else failed++;
+    const result = await sendSms(cfg, c.phone!, message, { tenantId: meterTenantId });
+
+    if (result.code === 'sms_cap_reached') {
+      // Nothing was sent for this recipient and no allotment was consumed.
+      capReached = true;
+      capUsed = result.used;
+      capLimit = result.cap;
+      break;
+    }
+
+    attempted++;
+    let status: string;
+    if (result.ok) {
+      delivered++;
+      status = 'delivered';
+    } else if (result.code === 'non_us_destination' || result.code === 'invalid_destination') {
+      skippedNonUs++;
+      status = 'blocked';
+    } else {
+      failed++;
+      status = 'failed';
+    }
+
     await broadcastRef.collection('logs').add({
-      phone: c.phone, status: result.ok ? 'delivered' : 'failed',
-      errorCode: result.error || null, sentAt: new Date().toISOString(),
+      phone: c.phone, status,
+      errorCode: result.error || null,
+      segments: result.ok ? result.segments ?? null : null,
+      sentAt: new Date().toISOString(),
     }).catch(() => {});
   }
+
+  const skipped = recipients.length - attempted;
 
   await broadcastRef.set({
     message, recipientGroup: group, tag: body.tag || null,
     recipientCount: recipients.length,
     sentAt: FieldValue.serverTimestamp(), scheduledAt: null,
-    delivered, failed, status: 'sent',
+    delivered, failed, skipped, skippedNonUs,
+    status: capReached ? 'partial' : 'sent',
+    capReached,
     createdBy: uid, createdAt: new Date().toISOString(),
   });
 
-  return NextResponse.json({ sent: true, delivered, failed, recipientCount: recipients.length });
+  return NextResponse.json({
+    sent: true,
+    delivered,
+    failed,
+    skipped,
+    skippedNonUs,
+    recipientCount: recipients.length,
+    ...(capReached ? { capReached: true, error: SMS_CAP_MESSAGE, used: capUsed, cap: capLimit } : {}),
+  });
 }

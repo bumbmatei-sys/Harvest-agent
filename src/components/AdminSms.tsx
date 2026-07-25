@@ -1,7 +1,8 @@
 "use client";
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { collection, query, orderBy, onSnapshot, limit, Timestamp } from 'firebase/firestore';
-import { Send, MessageSquare, Loader2, Save, Gift } from 'lucide-react';
+import { Send, MessageSquare, Loader2, Save, Gift, AlertTriangle } from 'lucide-react';
 import { db } from '../firebase';
 import { useAppStore } from '../store/useAppStore';
 import { PLATFORM_TENANT_ID } from '../utils/tenant-scope';
@@ -57,7 +58,79 @@ export const TRIGGERS: TriggerDef[] = [
   { key: 'pledge_confirmation', label: 'Pledge confirmation', placeholder: 'Thanks {name}, your pledge of ${amount} has been recorded by {tenantName}.' },
 ];
 
+// ─────────────────────────────────────────────────────────────────────────────
+// SMS USAGE INDICATOR — surfaces the plan cap BEFORE an admin hits the wall:
+// segments used this month vs cap, an 80% warning, and a hard block with an
+// upgrade CTA at 100%. Reads /api/sms-usage (server-side, Admin SDK — the usage
+// subcollection is default-deny to clients). Renders nothing for a super admin
+// or an unmetered tier, so no empty card shows. Mirrors the RAG usage meter.
+//
+// The unit is SEGMENTS, and the copy says so explicitly. Twilio bills per
+// segment and a body over 160 characters is more than one, so an admin reading
+// "4,000" must not walk away believing it means 4,000 messages of any length.
+// ─────────────────────────────────────────────────────────────────────────────
+interface SmsUsage {
+  metered: boolean;
+  smsSegmentsUsed?: number;
+  smsSegmentsCap?: number;
+  month?: string;
+}
+
+export function segmentUnitNote(cap: number): string {
+  return `${cap.toLocaleString('en-US')} SMS segments per month — a message over 160 characters counts as more than one.`;
+}
+
+const SmsUsageMeter: React.FC<{ usage: SmsUsage; onUpgrade: () => void }> = ({ usage, onUpgrade }) => {
+  const used = usage.smsSegmentsUsed ?? 0;
+  const cap = usage.smsSegmentsCap ?? 0;
+  const pct = cap > 0 ? Math.min(100, Math.round((used / cap) * 100)) : 0;
+  const over = cap > 0 && used >= cap;
+  const warn = pct >= 80 && !over;
+
+  return (
+    <div className="bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] p-4 mb-4">
+      <div className="flex items-baseline justify-between gap-3 mb-1.5">
+        <span className="text-xs font-semibold uppercase tracking-[0.14em]" style={{ color: GOLD }}>Plan usage</span>
+        <span className={`text-xs font-bold ${over ? 'text-red-600' : 'text-earth'}`}>
+          {used.toLocaleString('en-US')} / {cap.toLocaleString('en-US')} segments
+        </span>
+      </div>
+      <div className="h-1.5 rounded-full bg-stone-100 overflow-hidden">
+        <div
+          className="h-full rounded-full transition-all"
+          style={{ width: `${pct}%`, background: over ? '#DC2626' : warn ? '#E67E22' : GOLD }}
+        />
+      </div>
+      {/* SEGMENTS, not messages — stated wherever the number is shown. */}
+      <p className="text-[11px] text-[color:var(--text-faint)] mt-1.5">
+        {segmentUnitNote(cap)}
+      </p>
+      {warn && (
+        <p className="text-[11px] font-semibold mt-1.5" style={{ color: '#B9770E' }}>
+          {pct}% used — nearing your monthly SMS limit.
+        </p>
+      )}
+      {over && (
+        <div className="mt-2.5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-[11.5px] font-semibold text-red-600 flex items-start gap-1.5">
+            <AlertTriangle size={13} className="shrink-0 mt-px" />
+            <span>Monthly SMS limit reached — sending is paused until the 1st.</span>
+          </p>
+          <button
+            onClick={onUpgrade}
+            className="shrink-0 px-3.5 py-1.5 rounded-brand text-white text-xs font-semibold"
+            style={{ backgroundColor: GOLD }}
+          >
+            Upgrade plan
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const AdminSms: React.FC = () => {
+  const navigate = useNavigate();
   // Fall back to the platform tenant for a super admin if the store value is
   // briefly null so the history loader and send guard resolve. On a tenant
   // subdomain currentTenantId is set and takes precedence.
@@ -84,6 +157,22 @@ const AdminSms: React.FC = () => {
   const [savingT2g, setSavingT2g] = useState(false);
   const [t2gSaved, setT2gSaved] = useState(false);
 
+  // SMS segment usage. Re-read after every send so the meter reflects what the
+  // broadcast just consumed (a broadcast can move it a long way in one action).
+  const [usage, setUsage] = useState<SmsUsage | null>(null);
+  const [usageRefresh, setUsageRefresh] = useState(0);
+  useEffect(() => {
+    let cancelled = false;
+    authFetch('/api/sms-usage')
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => { if (!cancelled && d) setUsage(d); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [usageRefresh]);
+
+  const capReached =
+    !!usage?.metered && (usage.smsSegmentsUsed ?? 0) >= (usage.smsSegmentsCap ?? Infinity);
+
   useEffect(() => {
     authFetch('/api/sms/config').then(r => r.json()).then(d => {
       setTemplates(d.templates || {});
@@ -108,7 +197,14 @@ const AdminSms: React.FC = () => {
     return () => { cancelled = true; };
   }, [group, tag]);
 
-  const segments = Math.ceil(message.length / 160) || 1;
+  // Compose-box ESTIMATE only — it is never what the counter is billed by. The
+  // meter is incremented by Twilio's own `num_segments` after each send. Shown
+  // per recipient, because a broadcast costs this many segments times the
+  // recipient count. Any emoji or non-Latin character forces UCS-2 encoding,
+  // which fits 70 characters per segment instead of 160.
+  const isUcs2 = /[^\u0000-\u007F]/.test(message);
+  const perSegment = isUcs2 ? 70 : 160;
+  const segments = Math.ceil(message.length / perSegment) || 1;
 
   const send = async () => {
     if (!message.trim()) { setSendMsg({ ok: false, text: 'Message is required.' }); return; }
@@ -126,12 +222,24 @@ const AdminSms: React.FC = () => {
       });
       const d = await resp.json();
       if (!resp.ok) { setSendMsg({ ok: false, text: d.error || 'Failed to send.' }); return; }
-      setSendMsg({ ok: d.failed === 0, text: `Sent ${d.delivered} • ${d.failed} failed.` });
-      setMessage('');
+
+      // Report exactly what happened, including the two partial outcomes: a
+      // broadcast that ran out of segments part-way through, and recipients
+      // skipped because their number is not a US number. Neither is silent.
+      const parts = [`Sent ${d.delivered}`];
+      if (d.failed) parts.push(`${d.failed} failed`);
+      if (d.skippedNonUs) parts.push(`${d.skippedNonUs} skipped (non-US number)`);
+      if (d.capReached) parts.push(`${d.skipped} not sent — monthly SMS limit reached`);
+      setSendMsg({
+        ok: !d.failed && !d.capReached && !d.skippedNonUs,
+        text: parts.join(' • ') + '.',
+      });
+      if (!d.capReached) setMessage('');
     } catch (e: any) {
       setSendMsg({ ok: false, text: e?.message || 'Failed to send.' });
     } finally {
       setSending(false);
+      setUsageRefresh(n => n + 1);
     }
   };
 
@@ -171,6 +279,8 @@ const AdminSms: React.FC = () => {
         <button onClick={() => setTab('automated')} className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${tab === 'automated' ? 'bg-white shadow-sm text-earth' : 'text-[color:var(--text-faint)]'}`}>Automated</button>
       </div>
 
+      {usage?.metered && <SmsUsageMeter usage={usage} onUpgrade={() => navigate('/admin/upgrade')} />}
+
       {tab === 'broadcast' ? (
         <>
           <div className="bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] p-5 space-y-3">
@@ -186,18 +296,28 @@ const AdminSms: React.FC = () => {
               <input value={tag} onChange={e => setTag(e.target.value)} placeholder="Tag name" className="w-full px-4 py-2.5 border border-stone-200 rounded-xl text-sm focus:outline-none focus:border-gold" />
             )}
             <p className="text-xs text-warm-brown">Will send to <strong>{recipientCount ?? '…'}</strong> contact(s) with a phone number.</p>
+            {/* The US-only limit is stated up front, not discovered from a
+                skipped-recipient count after the fact. */}
+            <p className="text-[11px] text-[color:var(--text-faint)]">SMS is currently available for US numbers only — contacts with a non-US number are skipped and reported.</p>
             <div>
               <textarea value={message} onChange={e => setMessage(e.target.value)} placeholder="Your message…" rows={4} className="w-full px-4 py-2.5 border border-stone-200 rounded-xl text-sm focus:outline-none focus:border-gold" />
               <div className="flex justify-between text-xs text-[color:var(--text-faint)] mt-1">
                 <span>{message.length} chars</span>
-                <span>{segments} SMS segment{segments > 1 ? 's' : ''}</span>
+                <span>
+                  ~{segments} segment{segments > 1 ? 's' : ''} per recipient
+                  {recipientCount ? ` · ~${segments * recipientCount} total` : ''}
+                </span>
               </div>
             </div>
             {/* No schedule picker — see the comment in `send()`. Scheduled
                 broadcasts were never delivered, so only immediate send is offered. */}
-            <button onClick={send} disabled={sending} className="w-full flex items-center justify-center gap-2 py-2.5 rounded-brand text-white text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: GOLD }}>
+            {/* Hard block at 100%: the button is disabled here AND the server
+                refuses the request (403 from the broadcast route), so this is a
+                courtesy, not the enforcement. The upgrade CTA lives in the
+                usage meter above. */}
+            <button onClick={send} disabled={sending || capReached} className="w-full flex items-center justify-center gap-2 py-2.5 rounded-brand text-white text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: GOLD }}>
               {sending ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
-              Send now
+              {capReached ? 'Monthly SMS limit reached' : 'Send now'}
             </button>
             {sendMsg && <div className={`p-3 rounded-xl text-sm ${sendMsg.ok ? 'bg-field-100 text-field-700' : 'bg-wheat-50 text-wheat-700'}`}>{sendMsg.text}</div>}
           </div>
