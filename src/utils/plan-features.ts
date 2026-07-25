@@ -40,7 +40,7 @@ export interface PlanFeatures {
   newsletterAutomation: boolean;
   /** AI-generated newsletter from Instagram (Community / max+) */
   automatedNewsletter: boolean;
-  /** SMS automation (coming soon) */
+  /** SMS: manual broadcasts + automated event-registration/check-in/pledge triggers (see AdminSms TRIGGERS; scheduled broadcasts and other triggers are not promised) */
   smsAutomation: boolean;
   /** Number of AI assistants (0 = none, 1 = one, -1 = unlimited) */
   aiAssistant: number;
