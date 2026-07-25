@@ -40,8 +40,24 @@ vi.mock('stripe', () => ({
   },
 }));
 
+// Batched writes replay through the same doc refs on commit, so `raised` still lands
+// on mockDocUpdate — and, like a real batch, nothing is applied until commit().
+function makeBatch(): any {
+  const ops: Array<{ type: 'set' | 'update'; ref: any; data: any }> = [];
+  return {
+    set: (ref: any, data: any) => { ops.push({ type: 'set', ref, data }); },
+    update: (ref: any, data: any) => { ops.push({ type: 'update', ref, data }); },
+    commit: async () => {
+      for (const op of ops) {
+        if (op.type === 'set') await op.ref.set(op.data);
+        else await op.ref.update(op.data);
+      }
+    },
+  };
+}
+
 vi.mock('@/lib/firebase-admin', () => ({
-  adminDb: { collection: vi.fn(() => makeCollRef()) },
+  adminDb: { collection: vi.fn(() => makeCollRef()), batch: vi.fn(() => makeBatch()) },
   adminAuth: { getUser: vi.fn(), getUserByEmail: vi.fn(), createUser: vi.fn(), createCustomToken: vi.fn() },
 }));
 
