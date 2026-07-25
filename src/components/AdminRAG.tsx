@@ -8,6 +8,7 @@ import { getTenantScope, getWriteTenantScope } from '../utils/tenant-scope';
 // Chunk → embed → save pipeline lives in one place so the course builder's
 // "add to AI Knowledge" reuses this EXACT tenant-scoped write path.
 import { chunkText, chunkAndEmbed, finalizeSource, markSourceError } from '../utils/rag-ingest';
+import { MAX_PDF_UPLOAD_BYTES, limitMb } from '../utils/upload-limits';
 
 
 // Gemini API calls are proxied through /api/gemini to keep the API key server-side
@@ -52,21 +53,74 @@ function readFileAsText(file: File): Promise<string> {
 }
 
 // ── Server-side PDF extraction ──────────────────────────
-// A PDF is a binary format that readFileAsText turns into garbage. It goes to
-// /api/rag/extract, which parses it server-side (pdf.js kept out of the bundle;
-// large files parsed off the phone's main thread) and returns real text — or a
-// 422 with a clear message for an encrypted, scanned, or corrupt file. On any
-// non-OK response we THROW so the caller's catch marks the source failed and
-// embeds nothing (an embedded error string is the very bug this replaces).
+// A PDF is a binary format that readFileAsText turns into garbage, so it's
+// parsed server-side (pdf.js kept out of the bundle; large files parsed off the
+// phone's main thread).
+//
+// The bytes do NOT go through /api/rag/extract. Vercel caps a function's request
+// body at 4.5MB and rejects anything larger with a 413 raised before the handler
+// runs — no JSON body, so the route's own "max 15MB" message never reached the
+// admin and the cap was pure fiction. Instead: presign → PUT straight to R2 →
+// post only the object key. Same path for every PDF, big or small; a second
+// branch for small files would just be a second thing to break.
+//
+// On any non-OK response we THROW so the caller's catch marks the source failed
+// and embeds nothing (an embedded error string is the very bug this replaces).
 async function extractFileViaServer(file: File): Promise<string> {
  const token = await auth.currentUser?.getIdToken();
- const form = new FormData();
- form.append("file", file);
+ if (!token) throw new Error("You must be signed in to upload files.");
+
+ // Checked here so a 40MB file is never uploaded at all. This is UX, not
+ // enforcement — the route re-checks the real size R2 reports for the object.
+ if (file.size > MAX_PDF_UPLOAD_BYTES) {
+   throw new Error(`"${file.name}" is too large (max ${limitMb(MAX_PDF_UPLOAD_BYTES)}MB).`);
+ }
+
+ // 1. Short-lived presigned R2 PUT URL. The key is minted server-side under the
+ // caller's own tenant prefix — we just carry it to step 3.
+ let presignRes: Response;
+ try {
+   presignRes = await fetch("/api/storage/presign", {
+     method: "POST",
+     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+     body: JSON.stringify({
+       fileName: file.name,
+       contentType: "application/pdf",
+       fileSize: file.size,
+     }),
+   });
+ } catch {
+   throw new Error("Couldn't reach the server. Check your connection and try again.");
+ }
+ if (!presignRes.ok) {
+   const data = await presignRes.json().catch(() => ({}));
+   throw new Error(data?.error || `Upload could not be prepared (error ${presignRes.status}).`);
+ }
+ const { uploadUrl, key } = await presignRes.json();
+
+ // 2. Upload the bytes directly to R2 — no Vercel body limit involved. The
+ // Content-Type must match the one that was signed, or R2 rejects the PUT.
+ let putRes: Response;
+ try {
+   putRes = await fetch(uploadUrl, {
+     method: "PUT",
+     body: file,
+     headers: { "Content-Type": "application/pdf" },
+   });
+ } catch {
+   throw new Error(`Couldn't reach the storage server to upload "${file.name}". Please try again.`);
+ }
+ if (!putRes.ok) {
+   throw new Error(`The storage server rejected the upload (error ${putRes.status}).`);
+ }
+
+ // 3. Extract from storage. This body is a few dozen bytes, so the platform no
+ // longer swallows the response — a 413/422 now arrives with the route's own
+ // message intact. The route deletes the temp object either way.
  const res = await fetch("/api/rag/extract", {
    method: "POST",
-   // No Content-Type — the browser sets the multipart boundary itself.
-   headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-   body: form,
+   headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+   body: JSON.stringify({ r2Key: key }),
  });
  const data = await res.json().catch(() => ({}));
  if (!res.ok) throw new Error(data.error || `Could not extract text from "${file.name}" (HTTP ${res.status})`);
