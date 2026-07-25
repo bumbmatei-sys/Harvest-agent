@@ -8,7 +8,9 @@ import { getPlanLimits, type PlanLimits } from '@/lib/planLimits';
 // Two independent per-tenant limits, both in TOKENS (see planLimits.ts):
 //   • QUERY  — a monthly FLOW.  Doc: tenants/{tenantId}/usage/{YYYY-MM}
 //              field `queryTokens`. Month-keyed → resets with no cron; a TTL
-//              field (`expiresAt`) lets Firestore sweep finished months.
+//              field (`expiresAt`) lets Firestore sweep finished months. SMS
+//              segment metering (sms-usage.ts) shares this doc under its own
+//              `smsSegments` field and the same TTL — see monthlyUsageTtl.
 //   • INGEST — a persistent STOCK. Doc: tenants/{tenantId}/usage/ingest
 //              field `ingestTokens`. Never resets.
 //
@@ -69,8 +71,15 @@ export async function getTenantPlanLimits(tenantId: string): Promise<PlanLimits>
   }
 }
 
-/** TTL instant for a month's query doc: the 1st of that month + TTL days. */
-function ttlTimestamp(month: string): Timestamp {
+/**
+ * TTL instant for a month's usage doc: the 1st of that month + TTL days.
+ *
+ * Exported because the month doc `tenants/{t}/usage/{YYYY-MM}` is SHARED — SMS
+ * segment metering (sms-usage.ts) writes its own field on the same doc and must
+ * stamp the same `expiresAt`, or the two writers would fight over the TTL and a
+ * month could be swept early. One TTL policy, one definition.
+ */
+export function monthlyUsageTtl(month: string): Timestamp {
   const [y, m] = month.split('-').map(Number);
   const expire = new Date(Date.UTC(y, m - 1, 1));
   expire.setUTCDate(expire.getUTCDate() + QUERY_DOC_TTL_DAYS);
@@ -158,7 +167,7 @@ export async function incrementQueryTokens(tenantId: string, tokens: number, dat
     {
       queryTokens: FieldValue.increment(tokens),
       updatedAt: FieldValue.serverTimestamp(),
-      expiresAt: ttlTimestamp(month),
+      expiresAt: monthlyUsageTtl(month),
     },
     { merge: true },
   );

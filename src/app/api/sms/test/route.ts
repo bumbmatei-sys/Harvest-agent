@@ -39,8 +39,20 @@ export async function POST(request: NextRequest) {
   if (!to) {
     return NextResponse.json({ error: 'A destination phone number is required.' }, { status: 400 });
   }
-  const result = await sendSms(cfg, to, 'Test message from your Harvest ministry app. SMS is working! 🎉');
+  // A test send is a real billed send, so it is metered like any other. Super
+  // admins bypass metering (their tenantId is null); every other admin bills to
+  // their server-resolved tenant. The US-only gate and the cap both live inside
+  // sendSms, so this route inherits them without its own copy of the rules.
+  const result = await sendSms(
+    cfg,
+    to,
+    'Test message from your Harvest ministry app. SMS is working! 🎉',
+    { tenantId: authResult.isSuperAdmin ? null : tenantId },
+  );
   return result.ok
-    ? NextResponse.json({ ok: true, message: `Test SMS sent to ${to}.` })
-    : NextResponse.json({ error: result.error || 'Failed to send test SMS.' }, { status: 400 });
+    ? NextResponse.json({ ok: true, message: `Test SMS sent to ${to}.`, segments: result.segments })
+    : NextResponse.json(
+        { error: result.error || 'Failed to send test SMS.', code: result.code, used: result.used, cap: result.cap },
+        { status: result.code === 'sms_cap_reached' ? 403 : 400 },
+      );
 }

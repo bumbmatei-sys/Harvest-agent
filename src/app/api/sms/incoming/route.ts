@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
+import { sendSms } from '@/lib/twilio';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,6 +25,7 @@ export async function POST(request: NextRequest) {
 
     let tenantId: string | null = null;
     let t2gConfig: any = null;
+    let twilioCfg: { accountSid: string; authToken: string; fromNumber: string } | null = null;
 
     if (indexSnap.exists) {
       tenantId = indexSnap.data()?.tenantId || null;
@@ -38,6 +40,9 @@ export async function POST(request: NextRequest) {
       if (cfgSnap.exists) {
         const d = cfgSnap.data() || {};
         t2gConfig = d.text2give || null;
+        if (d.accountSid && d.authToken && d.fromNumber) {
+          twilioCfg = { accountSid: d.accountSid, authToken: d.authToken, fromNumber: d.fromNumber };
+        }
       }
     }
 
@@ -58,20 +63,56 @@ export async function POST(request: NextRequest) {
     const template = t2gConfig.responseTemplate || 'Thank you! Give here: {link}';
     const reply = template.replace('{link}', givingLink);
 
-    // Log the interaction
-    await adminDb.collection('tenants').doc(tenantId!).collection('smsLogs').add({
-      trigger: 'text2give_inbound',
-      phone: from,
-      status: 'replied',
-      errorCode: null,
-      sentAt: new Date().toISOString(),
-    });
+    // The reply used to be returned as a TwiML <Message>, which makes Twilio
+    // send a BILLED outbound SMS that never touched sendSms — so it bypassed
+    // both the US-only destination gate and the tenant's segment cap. Anyone who
+    // knew a tenant's keyword could run their bill up from outside the app.
+    // It now goes through sendSms like every other send path (the one funnel),
+    // and the webhook answers with EMPTY TwiML so Twilio doesn't send it twice.
+    // The message the sender receives is identical.
+    //
+    // The billing tenant is resolved server-side from the twilioNumbers index on
+    // the `To` number, never from anything the texter controls.
+    if (!twilioCfg) {
+      // Text-to-Give is configured but the credentials are not — nothing to send
+      // with. Log it rather than dropping it silently.
+      await logInbound(tenantId!, from, 'failed', 'Twilio credentials are not configured.');
+      return twimlResponse('');
+    }
 
-    return twimlResponse(reply);
+    const result = await sendSms(twilioCfg, from, reply, { tenantId });
+    await logInbound(
+      tenantId!,
+      from,
+      result.ok ? 'replied' : (result.code === 'non_us_destination' || result.code === 'sms_cap_reached' ? 'blocked' : 'failed'),
+      result.error || null,
+      result.ok ? result.segments ?? null : null,
+    );
+
+    return twimlResponse('');
   } catch (e) {
     console.error('Inbound SMS error:', e);
     return twimlResponse('');
   }
+}
+
+/** Record a Text-to-Give interaction on the tenant's smsLogs — the surface an
+ * admin uses to see why a reply did or didn't go out. Best-effort. */
+async function logInbound(
+  tenantId: string,
+  phone: string,
+  status: string,
+  errorCode: string | null,
+  segments: number | null = null,
+): Promise<void> {
+  await adminDb.collection('tenants').doc(tenantId).collection('smsLogs').add({
+    trigger: 'text2give_inbound',
+    phone,
+    status,
+    errorCode,
+    segments,
+    sentAt: new Date().toISOString(),
+  }).catch((e) => console.warn('Text-to-Give log failed:', e));
 }
 
 function twimlResponse(message: string): NextResponse {
