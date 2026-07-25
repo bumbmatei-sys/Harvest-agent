@@ -7,6 +7,7 @@ import { generateAccessCode } from '@/lib/ai-utils';
 import { PLAN_PRICES, getPlanFromPriceId } from '@/lib/stripe-config';
 import { setCustomClaims } from '@/lib/set-custom-claims';
 import { issueDonationReceipt } from '@/lib/donation-receipt';
+import { captureMoneyPathError } from '@/lib/money-path-sentry';
 import { NON_TENANT_SUBDOMAINS } from '@/utils/non-tenant-subdomains';
 import { Resend } from 'resend';
 import QRCode from 'qrcode';
@@ -113,6 +114,16 @@ async function processInitialAffiliateCommission(opts: {
     }
   } catch (transferErr) {
     console.error('Affiliate transfer failed (will remain pending):', transferErr);
+    // `error`, not `warning`: this catch spans the transfer AND the commission-doc
+    // write that records it, and the transfer's `aff_initial_*` key is not the
+    // `aff_sweep_*` key the retry paths use — so landing here means either the
+    // affiliate wasn't paid, or they were paid and the retry may pay them again.
+    captureMoneyPathError(transferErr, {
+      step: 'initial-affiliate-transfer',
+      level: 'error',
+      tenantId,
+      ids: { subscriptionId, referrerId, plan },
+    });
     await adminDb.collection('affiliate_commissions').add({
       referrerId, tenantId, plan,
       amount: amountTotal || 0,
@@ -390,6 +401,14 @@ async function finalizeEventRegistration(stripe: Stripe, session: Stripe.Checkou
       await eventRef.set({ discountCodes: nextCodes }, { merge: true });
     } catch (e) {
       console.warn('event_registration webhook: discount increment failed:', e);
+      // A capped discount code that never records this use can be redeemed past
+      // its limit — revenue leakage, and nothing re-attempts the increment.
+      captureMoneyPathError(e, {
+        step: 'event-registration-discount-increment',
+        level: 'warning',
+        tenantId,
+        ids: { eventId, registrationId, ticketTypeId },
+      });
     }
   }
 
@@ -433,6 +452,14 @@ async function finalizeEventRegistration(stripe: Stripe, session: Stripe.Checkou
     }
   } catch (e) {
     console.warn('event_registration webhook: CRM activity log failed:', e);
+    // The seat is paid and confirmed, but the tenant's CRM timeline never learns
+    // about it — CRM state diverging from a real, completed transaction.
+    captureMoneyPathError(e, {
+      step: 'event-registration-crm-activity',
+      level: 'warning',
+      tenantId,
+      ids: { eventId, registrationId },
+    });
   }
 
   console.log(`✅ event_registration ${registrationId} confirmed for tenant ${tenantId} ($${(amountPaid / 100).toFixed(2)})`);
@@ -881,6 +908,17 @@ export async function POST(request: NextRequest) {
             meta = (subObj.metadata || {}) as Record<string, string>;
           } catch (subErr) {
             console.error('Failed to retrieve subscription metadata:', subErr);
+            // Captured even though this path already 503s for a retry: a paying
+            // signup is stalled until a redelivery succeeds, and a persistent
+            // failure means no new ministry can be provisioned at all. Retries of
+            // the same event land in this one issue rather than opening new ones.
+            captureMoneyPathError(subErr, {
+              step: 'subscription-metadata-load',
+              level: 'warning',
+              eventId: event.id,
+              eventType: event.type,
+              ids: { subscriptionId },
+            });
             // Without metadata we can't tell a new-ministry signup from an upgrade,
             // and would silently strand a paying customer (no tenant created). Undo
             // the idempotency marker and 5xx so Stripe redelivers this event.
@@ -989,12 +1027,38 @@ export async function POST(request: NextRequest) {
             userEmail = u.email || '';
           } catch (userErr) {
             console.error('new-tenant: failed to load paying user:', userErr);
+            // No email → the new tenant is created with an empty `adminEmails`,
+            // which is what finish-setup authorizes the owner against. The Stripe
+            // customer fallback below may still fill it in, hence `warning`.
+            captureMoneyPathError(userErr, {
+              step: 'new-tenant-load-paying-user',
+              level: 'warning',
+              eventId: event.id,
+              eventType: event.type,
+              ids: { subscriptionId, userId: meta.userId, newTenantId },
+            });
           }
           if (!userEmail && session.customer) {
             try {
               const cust = await stripe.customers.retrieve(session.customer as string);
               if (cust && !(cust as any).deleted) userEmail = (cust as Stripe.Customer).email || '';
-            } catch { /* best effort */ }
+            } catch (custErr) {
+              /* best effort */
+              // Silent until now. Both email sources having failed leaves the new
+              // tenant with no `adminEmails` entry for its own paying owner.
+              captureMoneyPathError(custErr, {
+                step: 'new-tenant-load-stripe-customer-email',
+                level: 'warning',
+                eventId: event.id,
+                eventType: event.type,
+                ids: {
+                  subscriptionId,
+                  userId: meta.userId,
+                  newTenantId,
+                  stripeCustomerId: session.customer as string,
+                },
+              });
+            }
           }
 
           const now = new Date().toISOString();
@@ -1031,6 +1095,18 @@ export async function POST(request: NextRequest) {
             await stripe.subscriptions.update(subscriptionId, { metadata: { ...meta, tenantId: newTenantId } });
           } catch (metaErr) {
             console.error('new-tenant: failed to tag subscription with tenantId:', metaErr);
+            // Permanent and unretried: an untagged subscription means every later
+            // lifecycle event (subscription.updated/deleted, invoice.*) fails to
+            // resolve this tenant — no downgrade on cancellation, no reactivation
+            // on payment, and no recurring affiliate commission.
+            captureMoneyPathError(metaErr, {
+              step: 'new-tenant-tag-subscription',
+              level: 'error',
+              tenantId: newTenantId,
+              eventId: event.id,
+              eventType: event.type,
+              ids: { subscriptionId, referrerId: meta.referrerId },
+            });
           }
 
           // Assign the paying user as admin and mint their claim.
@@ -1097,6 +1173,17 @@ export async function POST(request: NextRequest) {
                   console.log(`🔄 Cancelled old subscription ${oldSubId} for tenant ${tenantId}`);
                 } catch (cancelErr) {
                   console.error(`Failed to cancel old subscription ${oldSubId}:`, cancelErr);
+                  // The tenant now has TWO live subscriptions and is being billed
+                  // for both. Nothing retries this — the tenant doc has already
+                  // moved to the new subscription id.
+                  captureMoneyPathError(cancelErr, {
+                    step: 'plan-change-cancel-old-subscription',
+                    level: 'error',
+                    tenantId,
+                    eventId: event.id,
+                    eventType: event.type,
+                    ids: { oldSubscriptionId: oldSubId, newSubscriptionId: subscriptionId, plan },
+                  });
                 }
               }
 
@@ -1264,6 +1351,16 @@ export async function POST(request: NextRequest) {
               console.log(`❌ Standalone AI Assistant cancelled for ${standaloneEmail}`);
             } catch (standaloneErr) {
               console.error('Failed to revoke standalone AI Assistant:', standaloneErr);
+              // The subscription is gone but the entitlement isn't: the customer
+              // keeps a paid AI Assistant they no longer pay for, and nothing
+              // re-attempts the revocation.
+              captureMoneyPathError(standaloneErr, {
+                step: 'standalone-assistant-revoke',
+                level: 'error',
+                eventId: event.id,
+                eventType: event.type,
+                ids: { subscriptionId: subscription.id },
+              });
             }
           }
           break;
@@ -1391,6 +1488,19 @@ export async function POST(request: NextRequest) {
             }
           } catch (cancelCommissionErr) {
             console.error('Failed to record commission cancellation:', cancelCommissionErr);
+            // No money moves here — the affiliate's dashboard just keeps showing a
+            // commission stream that has actually ended.
+            captureMoneyPathError(cancelCommissionErr, {
+              step: 'affiliate-commission-cancellation-record',
+              level: 'warning',
+              tenantId,
+              eventId: event.id,
+              eventType: event.type,
+              ids: {
+                subscriptionId: subscription.id,
+                referrerId: subscription.metadata?.referrerId,
+              },
+            });
           }
         }
         break;
@@ -1412,6 +1522,17 @@ export async function POST(request: NextRequest) {
             }
           } catch (subErr) {
             console.error('Failed to retrieve subscription for invoice.payment_failed:', subErr);
+            // The tenant is NOT suspended despite a failed payment, so they keep
+            // full access while unpaid. `warning`: Stripe fires this event again on
+            // each dunning attempt, and the terminal state still arrives as
+            // customer.subscription.deleted.
+            captureMoneyPathError(subErr, {
+              step: 'invoice-payment-failed-subscription-load',
+              level: 'warning',
+              eventId: event.id,
+              eventType: event.type,
+              ids: { subscriptionId: invSubId, invoiceId: invoice.id },
+            });
           }
         }
         break;
@@ -1429,6 +1550,17 @@ export async function POST(request: NextRequest) {
             tenantId = subMeta.tenantId || null;
           } catch (subErr) {
             console.error('Failed to retrieve subscription for invoice.payment_succeeded:', subErr);
+            // `tenantId` stays null, so EVERYTHING this event should have done is
+            // skipped — reactivation from suspended, the recurring affiliate
+            // commission, the renewal donation receipt, the campaign credit — and
+            // the handler still returns 200, so Stripe never redelivers it.
+            captureMoneyPathError(subErr, {
+              step: 'invoice-payment-succeeded-subscription-load',
+              level: 'error',
+              eventId: event.id,
+              eventType: event.type,
+              ids: { subscriptionId: invoiceSubId, invoiceId: invoice.id },
+            });
           }
         }
         if (tenantId) {
@@ -1473,6 +1605,23 @@ export async function POST(request: NextRequest) {
                     }
                   } catch (transferErr) {
                     console.error('Affiliate recurring transfer failed:', transferErr);
+                    // `error`, not `warning`: this transfer carries NO idempotency
+                    // key, so a caught error (a timeout in particular) does not
+                    // reliably mean the money stayed put — the commission is
+                    // recorded `pending` either way and the keyed retry sweep would
+                    // then send a second, differently-keyed transfer.
+                    captureMoneyPathError(transferErr, {
+                      step: 'recurring-affiliate-transfer',
+                      level: 'error',
+                      tenantId,
+                      eventId: event.id,
+                      eventType: event.type,
+                      ids: {
+                        subscriptionId: invoiceSubId,
+                        invoiceId: invoice.id,
+                        referrerId,
+                      },
+                    });
                   }
                   await adminDb.collection('affiliate_commissions').add({
                     referrerId, tenantId,
@@ -1498,6 +1647,18 @@ export async function POST(request: NextRequest) {
               }
             } catch (subErr) {
               console.error('Failed to check subscription for affiliate commission:', subErr);
+              // Wraps the whole recurring-commission block, transfer included: the
+              // affiliate may have been PAID above and then had the commission-doc
+              // write or the earnings-counter update fail, leaving money moved with
+              // no record of it. Returns 200, so nothing retries.
+              captureMoneyPathError(subErr, {
+                step: 'recurring-affiliate-commission',
+                level: 'error',
+                tenantId,
+                eventId: event.id,
+                eventType: event.type,
+                ids: { subscriptionId: invoiceSubId, invoiceId: invoice.id },
+              });
             }
           }
 
@@ -1566,7 +1727,19 @@ export async function POST(request: NextRequest) {
                 .limit(1).get();
               if (!tenantSnap.empty) tenantId = tenantSnap.docs[0].id;
             }
-          } catch (e) { /* charge lookup failed */ }
+          } catch (e) {
+            /* charge lookup failed */
+            // Was completely silent — no log, so invisible even in Vercel logs. The
+            // tenant is never marked `disputed`, so a chargeback against them goes
+            // unrecorded and the handler still returns 200.
+            captureMoneyPathError(e, {
+              step: 'dispute-charge-lookup',
+              level: 'error',
+              eventId: event.id,
+              eventType: event.type,
+              ids: { disputeId: dispute.id, chargeId: (dispute as any).charge as string },
+            });
+          }
         }
         if (tenantId) {
           await adminDb.collection('tenants').doc(tenantId).update({
@@ -1598,6 +1771,16 @@ export async function POST(request: NextRequest) {
             console.log(`❌ Transfer failed for referrer ${referrerId}: $${(commissionAmount / 100).toFixed(2)}`);
           } catch (err) {
             console.error('Error handling transfer.failed:', err);
+            // A payout bounced and the ledger never learned: the commission can
+            // still read `paid` and `affiliatePendingPayouts` stays inflated for
+            // money that never arrived. Returns 200, so nothing retries.
+            captureMoneyPathError(err, {
+              step: 'transfer-failed-reconcile',
+              level: 'error',
+              eventId: event.id,
+              eventType: event.type,
+              ids: { transferId: transfer.id, referrerId },
+            });
           }
         }
         break;
@@ -1666,6 +1849,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ received: true });
   } catch (error: any) {
     console.error('Webhook handler error:', error?.message || error);
+    // Stripe retries on the 500 below, but a webhook that keeps failing is exactly
+    // what should page someone — and this is the only report for the whole
+    // uninstrumented middle of the handler (receipt/invoice writes, CRM linkage,
+    // campaign credits, tenant provisioning), all of which throw straight to here.
+    // Grouping is left to the default stack-trace fingerprint, so a redelivered
+    // event adds events to one issue instead of opening a new one per retry.
+    captureMoneyPathError(error, {
+      step: 'stripe-webhook-handler',
+      level: 'error',
+      eventId: event.id,
+      eventType: event.type,
+    });
     if (markerWritten) {
       // Undo the idempotency marker so Stripe's retry re-processes this event.
       // Without this, a mid-processing failure leaves the event marked "done" and

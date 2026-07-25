@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server';
 import Stripe from 'stripe';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireAuth } from '@/lib/api-auth';
+import { captureMoneyPathError } from '@/lib/money-path-sentry';
 import { PLAN_PRICES, AI_ASSISTANT_MONTHLY } from '@/lib/stripe-config';
 import { AI_TELEGRAM_ASSISTANT_ENABLED } from '@/utils/plan-features';
 
@@ -125,6 +126,16 @@ export async function POST(request: NextRequest) {
         }
       } catch (resolveErr) {
         console.warn('Failed to resolve affiliate code, using as-is:', resolveErr);
+        // The unresolved code goes into the subscription metadata as `referrerId`,
+        // where the webhook will treat it as a user id and fail to credit anyone —
+        // so this checkout's commission is lost for good. Nothing retries a
+        // checkout session that was already created.
+        captureMoneyPathError(resolveErr, {
+          step: 'checkout-resolve-affiliate-code',
+          level: 'error',
+          tenantId,
+          ids: { affiliateCode: referrerId, plan, billing },
+        });
       }
     }
 
@@ -242,6 +253,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ url: session.url });
   } catch (error: any) {
     console.error('Stripe checkout error:', error?.message || error);
+    // No session means the customer cannot pay at all — the top of the money path.
+    captureMoneyPathError(error, { step: 'stripe-checkout', level: 'error' });
     return NextResponse.json({ error: error?.message || 'Failed to create checkout session' }, { status: 500 });
   }
 }

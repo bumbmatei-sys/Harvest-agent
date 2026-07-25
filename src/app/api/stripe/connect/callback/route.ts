@@ -4,6 +4,7 @@ import Stripe from 'stripe';
 import { adminDb } from '@/lib/firebase-admin';
 import { deriveConnectStatus } from '@/lib/stripe-connect-status';
 import { resolveReturnBaseUrl } from '@/lib/connect-return-url';
+import { captureMoneyPathError } from '@/lib/money-path-sentry';
 
 export const dynamic = 'force-dynamic';
 
@@ -80,6 +81,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL(`/?section=payment&stripe_connect=${status}`, tenantBaseUrl));
   } catch (error: any) {
     console.error('Stripe Connect callback error:', error?.message || error);
+    // The admin finished Stripe onboarding but neither the tenant's
+    // stripeConnectStatus nor any linked user's affiliateConnectStatus was
+    // persisted: the tenant still can't take donations and affiliate payouts stay
+    // pending, while the only signal is an `?error=` query param on a redirect.
+    captureMoneyPathError(error, { step: 'stripe-connect-callback', level: 'error' });
     // tenantId may not be resolved here → stay on the apex.
     return NextResponse.redirect(new URL('/?error=connect_callback_failed', apexUrl));
   }
