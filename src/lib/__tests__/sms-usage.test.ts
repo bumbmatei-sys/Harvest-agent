@@ -92,11 +92,14 @@ beforeEach(() => {
 
 describe('the four SMS allotments', () => {
   it('pins the per-tier segment allotments so they cannot drift silently', async () => {
+    // All four are signed off by Matei. Changing one of these numbers must be a
+    // deliberate act with the same sign-off, not a passing edit — a wrong cap
+    // either blocks a paying tenant's messages or uncaps their Twilio bill.
     const { PLAN_LIMITS } = await import('../planLimits');
-    expect(PLAN_LIMITS.plus.smsSegmentsPerMonth).toBe(250);    // UNCONFIRMED — draft
-    expect(PLAN_LIMITS.pro.smsSegmentsPerMonth).toBe(500);     // UNCONFIRMED — draft
-    expect(PLAN_LIMITS.max.smsSegmentsPerMonth).toBe(2_000);   // UNCONFIRMED — draft
-    expect(PLAN_LIMITS.ultra.smsSegmentsPerMonth).toBe(4_000); // confirmed by Matei 2026-07-25
+    expect(PLAN_LIMITS.plus.smsSegmentsPerMonth).toBe(250);
+    expect(PLAN_LIMITS.pro.smsSegmentsPerMonth).toBe(500);
+    expect(PLAN_LIMITS.max.smsSegmentsPerMonth).toBe(2_000);
+    expect(PLAN_LIMITS.ultra.smsSegmentsPerMonth).toBe(4_000);
   });
 
   it('leaves no tier unmetered', async () => {

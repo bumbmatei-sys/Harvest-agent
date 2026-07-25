@@ -51,22 +51,21 @@ export interface PlanLimits {
 // proposal (plus ≈ 750 pages, ultra ≈ 45,000 pages @ ~660 embed tokens/page) —
 // left tunable on purpose; they are NOT locked.
 //
-// SMS segments:
-//   • ultra — 4,000/mo is CONFIRMED (set by Matei, 2026-07-25). At the verified
-//     US rate (~$0.0079 + ~$0.003 carrier surcharge ≈ $0.0109/segment) that
-//     ceiling costs ~$44/mo, 9.4% of the $479 plan.
-//   • plus / pro / max — TUNE THESE. 250 / 500 / 2,000 are drafts from the
-//     roadmap conversation and are NOT signed off. Confirm before relying on
-//     them commercially.
+// SMS segments — all four CONFIRMED by Matei (ultra 2026-07-25; plus / pro /
+// max signed off at merge). At the verified US rate (~$0.0079 + ~$0.003 carrier
+// surcharge ≈ $0.0109/segment) the ultra ceiling costs ~$44/mo, 9.4% of the
+// $479 plan. Unlike the ingest numbers above, these are LOCKED — change them
+// only with the same sign-off, and update the pinning test in
+// __tests__/sms-usage.test.ts alongside.
 // A segment cap bounds VOLUME, not SPEND — the price per segment varies ~10× by
 // country (UK ~$0.04, Brazil ~$0.075, where 4,000 segments would be ~$160 and
 // ~$300). That is why sends are restricted to US destinations; see
 // sms-destination.ts.
 export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
-  plus:  { queryTokensPerMonth: 2_000_000,   ingestTokensTotal: 500_000,    smsSegmentsPerMonth: 250 },   // UNCONFIRMED
-  pro:   { queryTokensPerMonth: 10_000_000,  ingestTokensTotal: 2_000_000,  smsSegmentsPerMonth: 500 },   // UNCONFIRMED
-  max:   { queryTokensPerMonth: 50_000_000,  ingestTokensTotal: 10_000_000, smsSegmentsPerMonth: 2_000 }, // UNCONFIRMED
-  ultra: { queryTokensPerMonth: 150_000_000, ingestTokensTotal: 30_000_000, smsSegmentsPerMonth: 4_000 }, // confirmed 2026-07-25
+  plus:  { queryTokensPerMonth: 2_000_000,   ingestTokensTotal: 500_000,    smsSegmentsPerMonth: 250 },
+  pro:   { queryTokensPerMonth: 10_000_000,  ingestTokensTotal: 2_000_000,  smsSegmentsPerMonth: 500 },
+  max:   { queryTokensPerMonth: 50_000_000,  ingestTokensTotal: 10_000_000, smsSegmentsPerMonth: 2_000 },
+  ultra: { queryTokensPerMonth: 150_000_000, ingestTokensTotal: 30_000_000, smsSegmentsPerMonth: 4_000 },
 };
 
 /** Fallback tier when a tenant's plan is missing/unknown — the most restrictive,
