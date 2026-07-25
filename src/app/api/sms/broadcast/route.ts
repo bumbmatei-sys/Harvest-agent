@@ -83,18 +83,28 @@ export async function POST(request: NextRequest) {
   // metered PER RECIPIENT — each sendSms call reserves and settles its own
   // segments. Refuse up front when the tenant is already at cap, so an admin
   // gets an upgrade CTA instead of a broadcast that delivers nothing.
+  //
+  // This preflight is a COURTESY (a clean 403 with an upgrade CTA instead of a
+  // broadcast that delivers nothing), not the enforcement — reserveSmsSegment
+  // inside sendSms is authoritative and runs per recipient regardless. So a
+  // Firestore hiccup reading the snapshot must not 500 the whole request: fail
+  // OPEN here and let the per-send gate do the real work.
   if (meterTenantId) {
-    const usage = await getSmsUsageSnapshot(meterTenantId);
-    if (usage.smsSegmentsCap !== null && usage.smsSegmentsUsed >= usage.smsSegmentsCap) {
-      return NextResponse.json(
-        {
-          error: SMS_CAP_MESSAGE,
-          code: 'sms_cap_reached',
-          used: usage.smsSegmentsUsed,
-          cap: usage.smsSegmentsCap,
-        },
-        { status: 403 },
-      );
+    try {
+      const usage = await getSmsUsageSnapshot(meterTenantId);
+      if (usage.smsSegmentsCap !== null && usage.smsSegmentsUsed >= usage.smsSegmentsCap) {
+        return NextResponse.json(
+          {
+            error: SMS_CAP_MESSAGE,
+            code: 'sms_cap_reached',
+            used: usage.smsSegmentsUsed,
+            cap: usage.smsSegmentsCap,
+          },
+          { status: 403 },
+        );
+      }
+    } catch (e) {
+      console.error('SMS usage preflight read failed — falling back to per-send enforcement:', e);
     }
   }
 
@@ -147,9 +157,14 @@ export async function POST(request: NextRequest) {
       status = 'failed';
     }
 
+    // `errorCode` keeps holding the human-readable message — that is what it has
+    // always held here and in smsLogs, and historical rows are full of messages,
+    // so redefining it would make old and new rows mean different things. The
+    // machine-readable code goes in its own field instead of being dropped.
     await broadcastRef.collection('logs').add({
       phone: c.phone, status,
       errorCode: result.error || null,
+      code: result.ok ? null : result.code ?? null,
       segments: result.ok ? result.segments ?? null : null,
       sentAt: new Date().toISOString(),
     }).catch(() => {});

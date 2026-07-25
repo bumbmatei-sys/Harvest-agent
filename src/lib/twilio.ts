@@ -130,9 +130,24 @@ export async function sendSms(
 
   // 2. Per-tenant monthly segment cap. Super admins / non-tenant callers pass
   //    tenantId: null and are not metered.
+  //
+  //    The reserve runs a Firestore transaction, which can throw. It MUST NOT
+  //    escape: sendSms's contract is that it always returns a SendSmsResult, and
+  //    callers depend on it — sendAutomatedSms would skip its smsLogs write (the
+  //    silent drop this whole path is built to avoid), the test route would 500
+  //    instead of answering, and a broadcast would abort mid-flight without
+  //    writing its history doc. Fail CLOSED: if the allotment cannot be
+  //    verified, do not send. An unmetered send is exactly the unbounded bill
+  //    this cap exists to prevent, and #213 fails closed on the same call.
   const tenantId = meter.tenantId;
   if (tenantId) {
-    const gate = await reserveSmsSegment(tenantId);
+    let gate;
+    try {
+      gate = await reserveSmsSegment(tenantId);
+    } catch (e) {
+      console.error('SMS segment reservation failed:', e);
+      return { ok: false, error: 'Could not verify your SMS allotment — please try again.', code: 'send_failed' };
+    }
     if (!gate.allowed) {
       return { ok: false, error: SMS_CAP_MESSAGE, code: 'sms_cap_reached', used: gate.used, cap: gate.cap };
     }
@@ -208,7 +223,10 @@ export async function sendAutomatedSms(
       trigger: triggerKey,
       phone: to,
       status: result.ok ? 'delivered' : statusForCode(result.code),
+      // errorCode keeps its long-standing meaning (the human-readable message);
+      // the machine-readable code gets its own field rather than being dropped.
       errorCode: result.error || null,
+      code: result.ok ? null : result.code ?? null,
       segments: result.ok ? result.segments ?? null : null,
       sentAt: new Date().toISOString(),
     });

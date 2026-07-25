@@ -200,6 +200,34 @@ describe('POST /api/sms/broadcast — per-recipient segment metering', () => {
     expect(mockSendSms).toHaveBeenCalledTimes(3); // everyone else still got it
   });
 
+  it('a failed preflight usage read does NOT 500 the broadcast — per-send gate still enforces', async () => {
+    mockUsageSnapshot.mockRejectedValue(new Error('firestore down'));
+    withRecipients(3);
+
+    const res = await POST(makeRequest({ recipientGroup: 'all_members', message: 'Hello' }));
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ delivered: 3 });
+    expect(mockSendSms).toHaveBeenCalledTimes(3); // reserveSmsSegment is authoritative
+  });
+
+  it('records the machine-readable code on a per-recipient log, not just the message', async () => {
+    withRecipients(1);
+    mockSendSms.mockResolvedValue({
+      ok: false, code: 'non_us_destination', error: 'SMS is currently available for US numbers only.',
+    });
+
+    await POST(makeRequest({ recipientGroup: 'all_members', message: 'Hello' }));
+
+    expect(mockLogAdd).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: 'blocked',
+        code: 'non_us_destination',
+        errorCode: 'SMS is currently available for US numbers only.',
+      }),
+    );
+  });
+
   it('a super admin is not metered — sendSms is called with a null tenant', async () => {
     mockRequireAdmin.mockResolvedValue({ uid: 'super1', tenantId: null, isSuperAdmin: true });
 

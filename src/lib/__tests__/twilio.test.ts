@@ -282,6 +282,56 @@ describe('sendSms — cap enforcement and real segment metering', () => {
   });
 });
 
+describe('sendSms — a metering outage never escapes the funnel', () => {
+  it('returns a structured result instead of throwing when the reserve fails', async () => {
+    mockReserve.mockRejectedValue(new Error('firestore transaction failed'));
+    const fetchMock = stubFetch(true, { sid: 'SM1' });
+
+    const r = await sendSms(CFG, US, 'hi', { tenantId: 't1' });
+
+    expect(r.ok).toBe(false);
+    expect(r.code).toBe('send_failed');
+    // Fails CLOSED — an unverifiable allotment must not become an unmetered send.
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('sendAutomatedSms still LOGS when the reserve fails — never a silent drop', async () => {
+    withConfig({ pledge_confirmation: { enabled: true, text: 'Thanks {name}' } });
+    mockReserve.mockRejectedValue(new Error('firestore transaction failed'));
+    stubFetch(true, { sid: 'SM1' });
+
+    await sendAutomatedSms('t1', 'pledge_confirmation', US, { name: 'Ada' });
+
+    // The throw used to escape sendSms, so this write was never reached.
+    expect(mockSmsLogAdd).toHaveBeenCalledTimes(1);
+    expect(mockSmsLogAdd.mock.calls[0][0].status).toBe('failed');
+  });
+});
+
+describe('sendAutomatedSms — logs the machine-readable code alongside the message', () => {
+  it('keeps errorCode as the message and records the code separately', async () => {
+    withConfig({ pledge_confirmation: { enabled: true, text: 'Thanks {name}' } });
+    stubFetch(true, { sid: 'SM1' });
+
+    await sendAutomatedSms('t1', 'pledge_confirmation', UK, { name: 'Ada' });
+
+    const logged = mockSmsLogAdd.mock.calls[0][0];
+    expect(logged.code).toBe('non_us_destination');
+    expect(logged.errorCode).toMatch(/US numbers only/i);
+  });
+
+  it('leaves both null on a successful send', async () => {
+    withConfig({ pledge_confirmation: { enabled: true, text: 'Thanks {name}' } });
+    stubFetch(true, { sid: 'SM1', num_segments: '1' });
+
+    await sendAutomatedSms('t1', 'pledge_confirmation', US, { name: 'Ada' });
+
+    const logged = mockSmsLogAdd.mock.calls[0][0];
+    expect(logged.code).toBeNull();
+    expect(logged.errorCode).toBeNull();
+  });
+});
+
 describe('sendSms — super-admin bypass', () => {
   it('never meters a null tenant (no tenants/null usage write) but still sends', async () => {
     const fetchMock = stubFetch(true, { sid: 'SM9', num_segments: '2' });
