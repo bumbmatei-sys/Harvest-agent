@@ -28,6 +28,7 @@
     "@excalidraw/excalidraw": "^0.18.1",
     "@google/genai": "^1.48.0",
     "@marsidev/react-turnstile": "^1.5.3",
+    "@sentry/nextjs": "^10.68.0",
     "@tailwindcss/typography": "^0.5.19",
     "@tanstack/react-query": "^5.101.1",
     "@tanstack/react-query-devtools": "^5.101.1",

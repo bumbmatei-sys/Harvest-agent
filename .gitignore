@@ -12,3 +12,11 @@ service-account.json
 .next/
 functions/lib/
 *.tsbuildinfo
+
+# Sentry: holds an auth token when written by the CLI/wizard — never commit.
+# (.env.sentry-build-plugin is already covered by the .env* rule above.)
+.sentryclirc
+# Service-worker source maps, emitted by next-pwa now that Sentry enables
+# source-map generation. Build artifacts, like public/sw.js itself.
+public/sw.js.map
+public/workbox-*.js.map
