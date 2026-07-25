@@ -70,13 +70,23 @@ function withRecipients(n: number) {
   });
 }
 
+/** The tenant has no credentials of its own and falls back to HARVEST'S Twilio
+ * account. Impossible today (no platform account exists); this is the state the
+ * day those env vars land, and the cap binds only here. */
+function withPlatformCredentials() {
+  mockGetTwilioConfig.mockResolvedValue({
+    accountSid: 'ACplatform', authToken: 'ptok', fromNumber: '+18005550000', source: 'platform',
+  });
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   mockRequireAdmin.mockResolvedValue({ uid: 'admin1', tenantId: 't1', isSuperAdmin: false });
-  mockGetTwilioConfig.mockResolvedValue({ accountSid: 'AC1', authToken: 'tok', fromNumber: '+12125550000' });
+  // Today's tenant: its own Twilio credentials → every send is BYO.
+  mockGetTwilioConfig.mockResolvedValue({ accountSid: 'AC1', authToken: 'tok', fromNumber: '+12125550000', source: 'byo' });
   mockSendSms.mockResolvedValue({ ok: true, sid: 'SM1', segments: 1 });
   mockUsageSnapshot.mockResolvedValue({
-    plan: 'plus', month: '2026-07', smsSegmentsUsed: 0, smsSegmentsCap: 250,
+    plan: 'plus', month: '2026-07', smsSegmentsUsed: 0, smsSegmentsByoUsed: 0, smsSegmentsCap: 250,
   });
   withRecipients(1);
 });
@@ -143,13 +153,16 @@ describe('POST /api/sms/broadcast — per-recipient segment metering', () => {
 
     expect(mockSendSms).toHaveBeenCalledTimes(5);
     for (const call of mockSendSms.mock.calls) {
-      expect(call[3]).toEqual({ tenantId: 't1' }); // billed per send, server-resolved
+      // Billed per send, server-resolved, and declaring the account the
+      // credentials it was handed actually belong to.
+      expect(call[3]).toEqual({ tenantId: 't1', source: 'byo' });
     }
   });
 
-  it('refuses the whole broadcast with an upgrade CTA when already at cap', async () => {
+  it('refuses the whole PLATFORM broadcast with an upgrade CTA when already at cap', async () => {
+    withPlatformCredentials();
     mockUsageSnapshot.mockResolvedValue({
-      plan: 'plus', month: '2026-07', smsSegmentsUsed: 250, smsSegmentsCap: 250,
+      plan: 'plus', month: '2026-07', smsSegmentsUsed: 250, smsSegmentsByoUsed: 0, smsSegmentsCap: 250,
     });
     withRecipients(5);
 
@@ -159,6 +172,23 @@ describe('POST /api/sms/broadcast — per-recipient segment metering', () => {
     expect(await res.json()).toMatchObject({ code: 'sms_cap_reached', used: 250, cap: 250 });
     expect(mockSendSms).not.toHaveBeenCalled();
     expect(mockDocSet).not.toHaveBeenCalled();
+  });
+
+  it('a BYO broadcast is NOT refused at the nominal cap — it is the church\'s own Twilio bill', async () => {
+    // Same numbers as the platform case above; the only difference is whose
+    // account the credentials belong to.
+    mockUsageSnapshot.mockResolvedValue({
+      plan: 'plus', month: '2026-07', smsSegmentsUsed: 250, smsSegmentsByoUsed: 4_000, smsSegmentsCap: 250,
+    });
+    withRecipients(5);
+
+    const res = await POST(makeRequest({ recipientGroup: 'all_members', message: 'Hello' }));
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ delivered: 5 });
+    // The courtesy preflight is not even read for a BYO sender.
+    expect(mockUsageSnapshot).not.toHaveBeenCalled();
+    expect(mockSendSms).toHaveBeenCalledTimes(5);
   });
 
   it('crossing the cap MID-SEND sends partially and reports it precisely', async () => {
@@ -235,6 +265,6 @@ describe('POST /api/sms/broadcast — per-recipient segment metering', () => {
 
     // No pre-flight usage read, and no tenant to bill → no tenants/null write.
     expect(mockUsageSnapshot).not.toHaveBeenCalled();
-    expect(mockSendSms.mock.calls[0][3]).toEqual({ tenantId: null });
+    expect(mockSendSms.mock.calls[0][3]).toEqual({ tenantId: null, source: 'byo' });
   });
 });

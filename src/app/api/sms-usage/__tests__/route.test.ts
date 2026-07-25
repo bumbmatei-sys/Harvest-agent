@@ -1,13 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 
-const { mockRequireAuth, mockGetSmsUsageSnapshot } = vi.hoisted(() => ({
+const { mockRequireAuth, mockGetSmsUsageSnapshot, mockGetSource } = vi.hoisted(() => ({
   mockRequireAuth: vi.fn(),
   mockGetSmsUsageSnapshot: vi.fn(),
+  mockGetSource: vi.fn(),
 }));
 
 vi.mock('@/lib/api-auth', () => ({ requireAuth: mockRequireAuth }));
 vi.mock('@/lib/sms-usage', () => ({ getSmsUsageSnapshot: mockGetSmsUsageSnapshot }));
+vi.mock('@/lib/twilio', () => ({ getSmsCredentialSource: mockGetSource }));
 
 const { GET } = await import('../route');
 
@@ -20,7 +22,12 @@ function mockUser(overrides: object = {}) {
   return { uid: 'u1', email: 'a@b.c', tenantId: 'tenant1', isAdmin: true, isSuperAdmin: false, ...overrides };
 }
 
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => {
+  vi.clearAllMocks();
+  // Default to the platform account so the pre-existing meter cases below still
+  // describe a tenant a cap actually applies to.
+  mockGetSource.mockResolvedValue('platform');
+});
 
 describe('GET /api/sms-usage', () => {
   it('returns 401 when unauthenticated', async () => {
@@ -46,7 +53,7 @@ describe('GET /api/sms-usage', () => {
   it("returns the caller's OWN tenant snapshot, resolved from the token", async () => {
     mockRequireAuth.mockResolvedValue(mockUser({ tenantId: 'tenant1' }));
     mockGetSmsUsageSnapshot.mockResolvedValue({
-      plan: 'ultra', month: '2026-07', smsSegmentsUsed: 1_234, smsSegmentsCap: 4_000,
+      plan: 'ultra', month: '2026-07', smsSegmentsUsed: 1_234, smsSegmentsByoUsed: 0, smsSegmentsCap: 4_000,
     });
 
     const body = await (await GET(makeReq())).json();
@@ -61,9 +68,40 @@ describe('GET /api/sms-usage', () => {
   it('reports an unmetered tier (null cap) as not metered rather than a 0-limit meter', async () => {
     mockRequireAuth.mockResolvedValue(mockUser({ tenantId: 'tenant1' }));
     mockGetSmsUsageSnapshot.mockResolvedValue({
-      plan: 'plus', month: '2026-07', smsSegmentsUsed: 5, smsSegmentsCap: null,
+      plan: 'plus', month: '2026-07', smsSegmentsUsed: 5, smsSegmentsByoUsed: 0, smsSegmentsCap: null,
     });
     expect((await (await GET(makeReq())).json()).metered).toBe(false);
+  });
+
+  // ── BYO: their own volume, and NO limit they aren't subject to ─────────────
+  it('reports a BYO tenant as UNMETERED with their own volume and a null cap', async () => {
+    mockRequireAuth.mockResolvedValue(mockUser({ tenantId: 'tenant1' }));
+    mockGetSource.mockResolvedValue('byo');
+    mockGetSmsUsageSnapshot.mockResolvedValue({
+      plan: 'plus', month: '2026-07', smsSegmentsUsed: 0, smsSegmentsByoUsed: 812, smsSegmentsCap: 250,
+    });
+
+    const body = await (await GET(makeReq())).json();
+
+    // 812 is way past the plus allotment of 250 — and still uncapped, because
+    // Twilio bills the church for it directly.
+    expect(body).toEqual({
+      metered: false, source: 'byo', plan: 'plus', month: '2026-07',
+      smsSegmentsUsed: 812, smsSegmentsCap: null,
+    });
+  });
+
+  it('reports a tenant with no Twilio at all as source: null — nothing to show', async () => {
+    mockRequireAuth.mockResolvedValue(mockUser({ tenantId: 'tenant1' }));
+    mockGetSource.mockResolvedValue(null);
+    mockGetSmsUsageSnapshot.mockResolvedValue({
+      plan: 'plus', month: '2026-07', smsSegmentsUsed: 0, smsSegmentsByoUsed: 0, smsSegmentsCap: 250,
+    });
+
+    const body = await (await GET(makeReq())).json();
+
+    expect(body.metered).toBe(false);
+    expect(body.source).toBeNull();
   });
 
   it('returns 500 (not a bogus 0 usage) when the snapshot read fails', async () => {

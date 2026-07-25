@@ -8,6 +8,15 @@ import { monthKey, monthlyUsageTtl } from '@/lib/rag-usage';
 //
 // One per-tenant limit, a monthly FLOW measured in TWILIO SEGMENTS:
 //   Doc: tenants/{tenantId}/usage/{YYYY-MM}   field: `smsSegments`
+//
+// TWO COUNTERS, ONE CAP. `smsSegments` counts ONLY segments sent on HARVEST'S
+// own Twilio account, and it is the single field the cap is checked against —
+// it means "how much of the allotment Harvest is paying for has been used".
+// Segments a tenant sends on their OWN credentials go to `smsSegmentsByo`, are
+// never gated, and exist purely so an admin can see their own volume. Keeping
+// them apart is what stops a church's BYO traffic from silently eating a
+// platform allotment it was never billed against (and vice-versa) if it ever
+// switches between the two.
 // That is the SAME month doc the RAG query counter uses (field `queryTokens`),
 // with the same `expiresAt` TTL — one usage subcollection, one rules block, one
 // TTL policy, no reset job. Every access is a DIRECT `.doc()` get, so NO
@@ -44,6 +53,12 @@ function monthRef(tenantId: string, month: string) {
 /** Read `smsSegments` off a month-doc snapshot. Missing doc / missing field → 0. */
 function readSegments(snap: { exists: boolean; data: () => any }): number {
   return (snap.exists ? snap.data()?.smsSegments : 0) ?? 0;
+}
+
+/** Read `smsSegmentsByo` — segments sent on the tenant's OWN Twilio account.
+ * Never consulted by a gate. Missing doc / missing field → 0. */
+function readByoSegments(snap: { exists: boolean; data: () => any }): number {
+  return (snap.exists ? snap.data()?.smsSegmentsByo : 0) ?? 0;
 }
 
 /** Resolve a tenant's monthly segment cap. Missing/unknown plan → 'plus' (the
@@ -130,6 +145,32 @@ export async function settleSmsSegments(
 }
 
 /**
+ * Record a DELIVERED send that went out on the TENANT'S OWN Twilio account.
+ *
+ * Visibility only. It writes a separate field (`smsSegmentsByo`), is never read
+ * by any gate, and has no reserve/refund half — nothing is checked beforehand
+ * and there is no allotment to give back, because Twilio bills the tenant
+ * directly. A delivered message counts as at least 1, matching settle's rule
+ * that a delivered message is never counted as free.
+ */
+export async function recordByoSegments(
+  tenantId: string,
+  actualSegments: number,
+  date: Date = new Date(),
+): Promise<void> {
+  const n = Math.max(1, Math.floor(actualSegments) || 0);
+  const month = monthKey(date);
+  await monthRef(tenantId, month).set(
+    {
+      smsSegmentsByo: FieldValue.increment(n),
+      updatedAt: FieldValue.serverTimestamp(),
+      expiresAt: monthlyUsageTtl(month),
+    },
+    { merge: true },
+  );
+}
+
+/**
  * Give the reserved segment back when the send did not happen (Twilio error,
  * network failure). A transient provider failure must never permanently eat a
  * tenant's allotment. Clamped at 0; best-effort — a failed refund is logged,
@@ -153,7 +194,12 @@ export async function refundSmsSegment(tenantId: string, date: Date = new Date()
 export interface SmsUsageSnapshot {
   plan: string;
   month: string;
+  /** Segments sent on HARVEST'S account this month — what the cap is checked
+   * against. Zero for a tenant sending on their own credentials. */
   smsSegmentsUsed: number;
+  /** Segments sent on the tenant's OWN account this month. Informational; no
+   * cap applies to it. */
+  smsSegmentsByoUsed: number;
   /** null when the tier is unmetered. */
   smsSegmentsCap: number | null;
 }
@@ -173,6 +219,7 @@ export async function getSmsUsageSnapshot(
     plan,
     month,
     smsSegmentsUsed: readSegments(monthSnap),
+    smsSegmentsByoUsed: readByoSegments(monthSnap),
     smsSegmentsCap: getPlanLimits(plan).smsSegmentsPerMonth,
   };
 }

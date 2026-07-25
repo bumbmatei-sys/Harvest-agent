@@ -1,19 +1,33 @@
 import { adminDb } from './firebase-admin';
 import { checkDestination } from './sms-destination';
-import { reserveSmsSegment, settleSmsSegments, refundSmsSegment } from './sms-usage';
+import { reserveSmsSegment, settleSmsSegments, refundSmsSegment, recordByoSegments } from './sms-usage';
+import { getPlatformTwilioConfig } from './twilio-platform';
 
 /**
- * Twilio helpers. Credentials are stored per-tenant (admin-only) at
- * tenants/{tenantId}/integrations/twilio and are only ever read server-side —
+ * Twilio helpers. A tenant's OWN credentials are stored per-tenant (admin-only)
+ * at tenants/{tenantId}/integrations/twilio and are only ever read server-side —
  * the auth token is never returned to the client.
  *
  * `sendSms` is the SINGLE outbound funnel. Every send path in the app goes
  * through it — sendAutomatedSms (checkin, pledge, event_registration), the
  * broadcast route, the settings test-send, and the Text-to-Give reply — so the
- * US-only destination gate and the per-tenant segment cap live INSIDE it and
- * cannot be bypassed by adding a caller. Nothing else may POST to
- * /Messages.json or return a TwiML <Message>; both bill segments, and only this
- * function meters them.
+ * US-only destination gate and the segment cap live INSIDE it and cannot be
+ * bypassed by adding a caller. Nothing else may POST to /Messages.json or return
+ * a TwiML <Message>; both bill segments, and only this function meters them.
+ *
+ * TWO ACCOUNTS, TWO RULES. A send goes out either on HARVEST'S account
+ * (`source: 'platform'` — Harvest pays Twilio) or on the TENANT'S OWN account
+ * (`source: 'byo'` — Twilio bills the church directly):
+ *   • the segment CAP is a Harvest cost control, so it binds on platform sends
+ *     ONLY. Capping a BYO send would limit a church spending its own money on
+ *     its own credentials, which protects nobody.
+ *   • the US-only DESTINATION GATE applies to BOTH. It protects the SENDER from
+ *     international per-segment rates (UK ≈ $0.04, BR ≈ $0.075 vs US ≈ $0.0109)
+ *     and is a product policy — "US only for now; another country means BYOK" —
+ *     not a Harvest cost control.
+ * Today there is no platform account (see twilio-platform.ts), so every send
+ * resolves to 'byo' and nothing is capped — which is right, because Harvest is
+ * paying for none of it.
  */
 
 export interface TwilioConfig {
@@ -23,14 +37,57 @@ export interface TwilioConfig {
   templates?: Record<string, { enabled: boolean; text: string }>;
 }
 
+/** Whose Twilio account a send goes out on — and therefore who pays for it. */
+export type SmsCredentialSource = 'platform' | 'byo';
+
+/** Credentials plus the account they belong to. The source is derived HERE, in
+ * the one place credentials are resolved, so it can never disagree with the
+ * `cfg` a caller then hands to sendSms. */
+export interface ResolvedTwilioConfig extends TwilioConfig {
+  source: SmsCredentialSource;
+}
+
 const TWILIO_API = 'https://api.twilio.com/2010-04-01';
 
-export async function getTwilioConfig(tenantId: string): Promise<TwilioConfig | null> {
+/**
+ * Decide which account a tenant sends on, from an ALREADY-READ
+ * integrations/twilio document. Tenant credentials win; otherwise fall back to
+ * Harvest's platform account (see twilio-platform.ts — today it does not exist,
+ * so this returns null and nothing can be sent).
+ *
+ * Exported so sms/incoming — which reads that same document for its
+ * Text-to-Give config — resolves identically instead of hand-rolling the check.
+ * One resolver, one answer, no way for the credentials and the declared source
+ * to drift apart.
+ *
+ * `templates` are tenant CONTENT, not credentials, so they survive either way.
+ */
+export function resolveTwilioConfig(d: Partial<TwilioConfig> | undefined): ResolvedTwilioConfig | null {
+  if (d?.accountSid && d?.authToken && d?.fromNumber) {
+    return {
+      accountSid: d.accountSid,
+      authToken: d.authToken,
+      fromNumber: d.fromNumber,
+      templates: d.templates,
+      source: 'byo',
+    };
+  }
+  const platform = getPlatformTwilioConfig();
+  return platform ? { ...platform, templates: d?.templates, source: 'platform' } : null;
+}
+
+export async function getTwilioConfig(tenantId: string): Promise<ResolvedTwilioConfig | null> {
   const snap = await adminDb.collection('tenants').doc(tenantId).collection('integrations').doc('twilio').get();
-  if (!snap.exists) return null;
-  const d = snap.data() as Partial<TwilioConfig> | undefined;
-  if (!d?.accountSid || !d?.authToken || !d?.fromNumber) return null;
-  return { accountSid: d.accountSid, authToken: d.authToken, fromNumber: d.fromNumber, templates: d.templates };
+  return resolveTwilioConfig(snap.exists ? (snap.data() as Partial<TwilioConfig> | undefined) : undefined);
+}
+
+/** Which account this tenant's sends would go out on right now, or null when
+ * neither is available (nothing can be sent). Returns no credentials — it is for
+ * surfaces like /api/sms-usage that must know whether the cap applies without
+ * touching the auth token. */
+export async function getSmsCredentialSource(tenantId: string): Promise<SmsCredentialSource | null> {
+  const cfg = await getTwilioConfig(tenantId);
+  return cfg?.source ?? null;
 }
 
 function authHeader(sid: string, token: string): string {
@@ -75,12 +132,27 @@ export interface SendSmsResult {
   cap?: number | null;
 }
 
-/** Who to bill this send to. Required so no call site can silently skip
- * metering. `tenantId: null` = deliberately unmetered (super admin, whose
- * tenantId is null — a `tenants/null/usage/...` write would be a bug). The
- * destination gate still applies. */
+/** Who to bill this send to, and WHOSE Twilio account it goes out on. BOTH
+ * fields are required so no call site can silently skip metering or silently
+ * escape the cap — the property #229 built this shape for is unchanged, it just
+ * carries one more fact now.
+ *
+ * `tenantId: null` = deliberately unmetered (super admin, whose tenantId is
+ * null — a `tenants/null/usage/...` write would be a bug).
+ *
+ * `source` says which account paid: 'platform' (Harvest's — the cap binds) or
+ * 'byo' (the tenant's own credentials — Twilio bills them directly, so the cap
+ * does NOT bind; usage is still recorded for the admin's own visibility). It is
+ * DECLARED by the caller rather than inferred from `cfg` inside sendSms:
+ * inference would be a guess about credentials sendSms did not resolve, and a
+ * future call site could get it wrong invisibly. Callers get it from
+ * `getTwilioConfig`/`resolveTwilioConfig`, which derive it where the credentials
+ * are chosen, so `cfg` and `meter.source` cannot disagree.
+ *
+ * The US-only destination gate is independent of both fields and always applies. */
 export interface SmsMeter {
   tenantId: string | null;
+  source: SmsCredentialSource;
 }
 
 /**
@@ -105,11 +177,15 @@ function parseNumSegments(data: any): number {
  *
  * Order is deliberate: DESTINATION → CAP → Twilio → settle.
  *   1. Reject a non-US destination BEFORE anything else, so a rejected send
- *      consumes no allotment and costs nothing.
- *   2. Atomically reserve one segment against the tenant's monthly cap. At cap,
- *      return before the Twilio call — nothing is sent and nothing is billed.
- *   3. Send, then settle the counter with Twilio's real `num_segments`.
- *   4. On a failed send, refund the reservation.
+ *      consumes no allotment and costs nothing. Applies to every send, on
+ *      either account.
+ *   2. PLATFORM SENDS ONLY: atomically reserve one segment against the tenant's
+ *      monthly cap. At cap, return before the Twilio call — nothing is sent and
+ *      nothing is billed. A BYO send skips this entirely; it is the church's own
+ *      Twilio account and their own bill.
+ *   3. Send, then settle the counter with Twilio's real `num_segments`. A BYO
+ *      send records its segments too (visibility only, never a limit).
+ *   4. On a failed platform send, refund the reservation.
  */
 export async function sendSms(
   cfg: { accountSid: string; authToken: string; fromNumber: string },
@@ -128,8 +204,12 @@ export async function sendSms(
     };
   }
 
-  // 2. Per-tenant monthly segment cap. Super admins / non-tenant callers pass
-  //    tenantId: null and are not metered.
+  // 2. Monthly segment cap — PLATFORM SENDS ONLY. The cap exists so one tenant
+  //    cannot run up an unbounded bill on HARVEST'S Twilio account; a BYO send
+  //    is on the tenant's own credentials and Twilio invoices them directly, so
+  //    there is no Harvest money to protect and no reason to stop the send.
+  //    Super admins / non-tenant callers pass tenantId: null and are not metered
+  //    on either account.
   //
   //    The reserve runs a Firestore transaction, which can throw. It MUST NOT
   //    escape: sendSms's contract is that it always returns a SendSmsResult, and
@@ -140,7 +220,10 @@ export async function sendSms(
   //    verified, do not send. An unmetered send is exactly the unbounded bill
   //    this cap exists to prevent, and #213 fails closed on the same call.
   const tenantId = meter.tenantId;
-  if (tenantId) {
+  // `capped` gates the reserve/settle/refund triad; `tenantId` alone still gates
+  // every usage write, so a null tenant never touches tenants/null/usage.
+  const capped = tenantId !== null && meter.source === 'platform';
+  if (tenantId && capped) {
     let gate;
     try {
       gate = await reserveSmsSegment(tenantId);
@@ -165,7 +248,9 @@ export async function sendSms(
     });
     const data = await resp.json().catch(() => ({}));
     if (!resp.ok) {
-      if (tenantId) await refundSmsSegment(tenantId);
+      // Only a platform send reserved anything, so only a platform send can have
+      // something to give back. A BYO send records nothing until it succeeds.
+      if (tenantId && capped) await refundSmsSegment(tenantId);
       return { ok: false, error: data?.message || `Twilio error ${resp.status}`, code: 'twilio_error' };
     }
 
@@ -173,17 +258,23 @@ export async function sendSms(
     //    path) leaves the reserved 1 standing rather than billing the send as
     //    free. Metering is best-effort: a Firestore hiccup must not turn a
     //    delivered message into a reported failure.
+    //
+    //    A BYO send is still COUNTED — into its own field, never against the
+    //    cap — because the admin's usage surface is the only place a church can
+    //    see its own SMS volume, and losing that would be a regression for the
+    //    people this change is meant to stop penalising.
     const segments = parseNumSegments(data);
     if (tenantId) {
       try {
-        await settleSmsSegments(tenantId, segments);
+        if (capped) await settleSmsSegments(tenantId, segments);
+        else await recordByoSegments(tenantId, segments);
       } catch (e) {
         console.error('SMS segment metering failed:', e);
       }
     }
     return { ok: true, sid: data?.sid, segments: Math.max(1, segments) };
   } catch (e: any) {
-    if (tenantId) await refundSmsSegment(tenantId);
+    if (tenantId && capped) await refundSmsSegment(tenantId);
     return { ok: false, error: e?.message || 'Send failed', code: 'send_failed' };
   }
 }
@@ -199,7 +290,9 @@ export function renderTemplate(text: string, vars: Record<string, string>): stri
  *
  * `tenantId` is the billing tenant: these triggers only ever fire from a public
  * form submission that already resolved its tenant server-side, so the send is
- * always metered. A blocked send (non-US member, or the monthly cap reached) is
+ * always counted, and it declares the source of the very `cfg` it sends with —
+ * capped on Harvest's account, counted-only on the tenant's own.
+ * A blocked send (non-US member, or the monthly cap reached) is
  * recorded with a distinct status and the reason — smsLogs is the surface where
  * an admin finds out why a member never got their text, so it must never look
  * like a silent drop.
@@ -218,7 +311,7 @@ export async function sendAutomatedSms(
     if (!tpl?.enabled || !tpl.text) return;
 
     const body = renderTemplate(tpl.text, vars);
-    const result = await sendSms(cfg, to, body, { tenantId });
+    const result = await sendSms(cfg, to, body, { tenantId, source: cfg.source });
     await adminDb.collection('tenants').doc(tenantId).collection('smsLogs').add({
       trigger: triggerKey,
       phone: to,

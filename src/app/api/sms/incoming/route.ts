@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
-import { sendSms } from '@/lib/twilio';
+import { sendSms, resolveTwilioConfig, type ResolvedTwilioConfig } from '@/lib/twilio';
 import { captureHandledError } from '@/lib/money-path-sentry';
 
 export const dynamic = 'force-dynamic';
@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
 
     let tenantId: string | null = null;
     let t2gConfig: any = null;
-    let twilioCfg: { accountSid: string; authToken: string; fromNumber: string } | null = null;
+    let twilioCfg: ResolvedTwilioConfig | null = null;
 
     if (indexSnap.exists) {
       tenantId = indexSnap.data()?.tenantId || null;
@@ -41,9 +41,12 @@ export async function POST(request: NextRequest) {
       if (cfgSnap.exists) {
         const d = cfgSnap.data() || {};
         t2gConfig = d.text2give || null;
-        if (d.accountSid && d.authToken && d.fromNumber) {
-          twilioCfg = { accountSid: d.accountSid, authToken: d.authToken, fromNumber: d.fromNumber };
-        }
+        // This route already has the integrations doc in hand, so it resolves
+        // through the SHARED resolver rather than re-implementing the check —
+        // that is what guarantees the credentials it sends with and the source
+        // it declares below are the same decision, and it will pick up the
+        // platform fallback for free the day that account exists.
+        twilioCfg = resolveTwilioConfig(d);
       }
     }
 
@@ -81,7 +84,7 @@ export async function POST(request: NextRequest) {
       return twimlResponse('');
     }
 
-    const result = await sendSms(twilioCfg, from, reply, { tenantId });
+    const result = await sendSms(twilioCfg, from, reply, { tenantId, source: twilioCfg.source });
     await logInbound(
       tenantId!,
       from,
