@@ -619,8 +619,9 @@ async function incrementCampaignRaised(opts: {
  * path would otherwise mistake for a plan change and cancel + replace the tenant's
  * real subscription. Idempotent via the caller's webhook_events marker.
  *
- * NOTE: recurring monthly charges (invoice.payment_succeeded) are not yet linked to
- * the CRM — only this first payment is. See the PR notes (roadmap 4a).
+ * NOTE: this covers only the FIRST payment. Every later month arrives as
+ * invoice.payment_succeeded and is recorded by recordPartnershipRenewalDonation
+ * below, which mirrors the receipt + CRM writes here.
  */
 async function finalizePartnershipSubscription(
   session: Stripe.Checkout.Session,
@@ -691,6 +692,130 @@ async function finalizePartnershipSubscription(
   // which skips billing_reason 'subscription_create' so this opening month is not
   // double-counted. No-op when meta.campaignId is absent (general partnership).
   await incrementCampaignRaised({ campaignId: meta.campaignId, tenantId, amountDollars });
+}
+
+/**
+ * Record a monthly-partnership RENEWAL as a real donation.
+ *
+ * `finalizePartnershipSubscription` above only runs from checkout.session.completed —
+ * the FIRST payment of a subscription. Every later month arrives as
+ * invoice.payment_succeeded with billing_reason 'subscription_cycle', which used to
+ * write only the affiliate commission and the campaign credit. So a $50/mo partner's
+ * annual giving statement — which aggregates `tenants/{t}/invoices` where
+ * `type === 'donation_receipt'` and carries the ministry's EIN — showed $50 instead of
+ * $600, their `totalDonated` froze after month one, and their CRM timeline held a
+ * single entry. This closes that gap (the "roadmap 4a" note above).
+ *
+ * UNITS — the two writes below are DELIBERATELY in different units, same as the
+ * one-time-gift path:
+ *   • the `invoices` donation receipt stays in CENTS (`invoice.amount_paid`) — the
+ *     accounting subsystem (giving-statements + QuickBooks) reads `amount` as cents;
+ *   • `linkDonationToCRM` takes DOLLARS (`invoice.amount_paid / 100`) — totalDonated
+ *     and the activity amount are canonically dollars (BUG 2), so $50 reads as $50.
+ *   A $50 renewal therefore writes `amount: 5000` and increments totalDonated by `50`.
+ *
+ * Donor identity comes ONLY from the signature-verified SUBSCRIPTION metadata — the
+ * same `donorUserId` / `donorEmail` / `donorName` keys finalizePartnershipSubscription
+ * reads — never from the invoice's customer fields. Without a donor email we log and
+ * return rather than guess who gave (and a receipt has no one to be addressed to).
+ *
+ * IDEMPOTENCY: `webhook_events/{event.id}` dedups an identical redelivery, but it is
+ * deliberately UNDONE when the handler throws, so a failure later in the request
+ * re-enters here — and `linkDonationToCRM` uses `FieldValue.increment`, so re-entry
+ * would double-count `totalDonated` and duplicate the tax line. Mirroring the
+ * affiliate block's `stripeInvoiceId` dedup, we look for a `donation_receipt` already
+ * carrying this invoice id in `relatedId` and skip the WHOLE block — receipt, CRM
+ * link, activity — when one exists. The receipt is written FIRST so it *is* that
+ * marker: if a later step fails, the retry skips (an undercount at worst) instead of
+ * crediting the donor twice.
+ */
+async function recordPartnershipRenewalDonation(opts: {
+  invoice: Stripe.Invoice;
+  subMeta: Record<string, string>;
+  tenantId: string;
+}): Promise<void> {
+  const { invoice, subMeta, tenantId } = opts;
+  const invoiceId = invoice.id;
+  if (!invoiceId) {
+    console.warn('partnership renewal: invoice has no id — cannot dedup, not recording');
+    return;
+  }
+
+  // VERIFIED subscription metadata only. donorEmail is required: it addresses the
+  // receipt AND is the key giving-statements aggregates donors by, and the receipt
+  // doubles as this block's idempotency marker — without it there is nothing to
+  // dedup against on a retry, so we record nothing rather than risk double-counting.
+  const donorUserId = subMeta.donorUserId || '';
+  const donorEmail = (subMeta.donorEmail || '').trim();
+  if (!donorEmail) {
+    console.warn(`partnership renewal ${invoiceId}: subscription metadata carries no donorEmail — not recording (refusing to guess the donor)`);
+    return;
+  }
+
+  const amountCents = invoice.amount_paid || 0;
+  if (!(amountCents > 0)) {
+    console.log(`partnership renewal ${invoiceId}: $0 invoice — nothing to record`);
+    return;
+  }
+
+  const invoicesColl = adminDb.collection('tenants').doc(tenantId).collection('invoices');
+
+  // Idempotency gate for the whole block. Single equality filter so no composite
+  // index is needed (the giving-statements reader avoids composite queries too);
+  // `type` is filtered in memory.
+  const existingSnap = await invoicesColl.where('relatedId', '==', invoiceId).limit(10).get();
+  if (existingSnap.docs.some(d => d.data()?.type === 'donation_receipt')) {
+    console.log(`⚠️ Renewal invoice ${invoiceId} already recorded — skipping receipt + totalDonated credit`);
+    return;
+  }
+
+  const currency = invoice.currency || 'usd';
+  const nowIso = new Date().toISOString();
+
+  const tenantSnap = await adminDb.collection('tenants').doc(tenantId).get();
+  const churchName = tenantSnap.data()?.name
+    || tenantSnap.data()?.displayName
+    || subMeta.donationChurchName
+    || '';
+
+  // Receipt name, resolved exactly as the first payment resolves it: metadata name →
+  // the donor's own users-doc displayName → their email.
+  let donorDisplayName = '';
+  if (donorUserId) {
+    const donorUserSnap = await adminDb.collection('users').doc(donorUserId).get();
+    const du = donorUserSnap.data() || {};
+    donorDisplayName = du.displayName || du.name || '';
+  }
+  const recipientName = (subMeta.donorName || '').trim() || donorDisplayName || donorEmail;
+
+  // ── Tax line: CENTS. Written first — it is the idempotency marker. `relatedId` is
+  // the INVOICE id (not the subscription id) so each month is its own distinct,
+  // dedup-able receipt; statements aggregate per-doc `amount`, so twelve monthly
+  // receipts total $600 for the year. ──
+  const receiptNumber = `R-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+  const invoiceRef = await invoicesColl.add({
+    type: 'donation_receipt', recipientName, recipientEmail: donorEmail,
+    amount: amountCents, currency, description: 'Monthly partnership donation',
+    relatedId: invoiceId, receiptNumber, issuedAt: nowIso,
+    tenantName: churchName, pdfUrl: null, status: 'pending',
+  });
+
+  // ── CRM: DOLLARS. Same helper the first payment and one-time gifts use — donor
+  // contact upsert, totalDonated increment, lastDonationAt, 'donation' activity.
+  // Runs immediately after the marker so a mid-request death can't strand it. ──
+  await linkDonationToCRM({
+    tenantId, donorUserId, donorEmail, donorName: subMeta.donorName || '',
+    amountDollars: amountCents / 100, nowIso,
+  });
+
+  // Best-effort thank-you + PDF receipt (never throws — see issueDonationReceipt).
+  await issueDonationReceipt({
+    tenantId, recipientName, donorEmail, amountCents, currency,
+    receiptNumber, tenantName: churchName, issuedAt: nowIso,
+    description: 'Monthly partnership donation', invoiceRef,
+  });
+
+  console.log(`🧾 Partnership renewal recorded for ${donorEmail}: receipt ${receiptNumber} ($${(amountCents / 100).toFixed(2)}, invoice ${invoiceId})`);
 }
 
 export async function POST(request: NextRequest) {
@@ -1383,16 +1508,28 @@ export async function POST(request: NextRequest) {
           // here — the two are DISTINCT events (different event.id), so the
           // webhook_events marker cannot dedup across them; this guard is what stops
           // the opening month from counting twice.
-          if (
+          const isPartnershipRenewal =
             subMeta.type === 'partnership' &&
-            subMeta.campaignId &&
-            (invoice as any).billing_reason !== 'subscription_create'
-          ) {
+            (invoice as any).billing_reason !== 'subscription_create';
+
+          if (isPartnershipRenewal && subMeta.campaignId) {
             await incrementCampaignRaised({
               campaignId: subMeta.campaignId,
               tenantId: subMeta.tenantId,
               amountDollars: (invoice.amount_paid || 0) / 100,
             });
+          }
+
+          // Record the renewal as an actual donation: the `donation_receipt` tax line
+          // (CENTS) plus the donor's totalDonated / timeline entry (DOLLARS). Same
+          // renewal gate as the campaign credit above — partnership subscriptions
+          // only, opening month excluded — but deliberately NOT narrowed to
+          // campaign-designated gifts: a general monthly partnership (campaignId '')
+          // belongs on the annual giving statement just as much as a campaign one,
+          // and it is the common case. A church's own plan-renewal invoice carries no
+          // `type: 'partnership'` metadata, so it never reaches here.
+          if (isPartnershipRenewal) {
+            await recordPartnershipRenewalDonation({ invoice, subMeta, tenantId });
           }
         }
         break;
