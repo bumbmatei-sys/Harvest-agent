@@ -7,9 +7,12 @@ import AdminCourseEditor, { Course } from './AdminCourseEditor';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { getTenantScope } from '../utils/tenant-scope';
 import { sortByTime } from '../utils/query-helpers';
+import { getPlanFeatures } from '../utils/plan-features';
+import { useTenant } from '@/contexts/TenantContext';
 import { AdminPageHeader, AdminPrimaryButton, AdminSearchBar, AdminCard, AdminBadge, statusTone } from './admin/AdminUI';
 
 const AdminCourses: React.FC = () => {
+  const { tenantPlan } = useTenant();
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -19,6 +22,11 @@ const AdminCourses: React.FC = () => {
 
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Unknown/loading plan falls back to 'plus' (maxCourses: 2) — fail closed on the cap.
+  const maxCourses = getPlanFeatures(tenantPlan ?? 'plus').maxCourses;
+  const atLimit = maxCourses !== -1 && courses.length >= maxCourses;
+  const limitMessage = `Your plan includes up to ${maxCourses} course${maxCourses === 1 ? '' : 's'}. Upgrade to add more.`;
 
   useEffect(() => {
     let unsubscribe: (() => void) | null = null;
@@ -48,7 +56,15 @@ const AdminCourses: React.FC = () => {
     (course.author?.toLowerCase() || '').includes(searchQuery.toLowerCase())
   );
 
-  const handleNewCourse = () => { setEditingCourse(null); setIsEditorOpen(true); };
+  const handleNewCourse = () => {
+    if (loading) return; // course count not known yet — can't decide the cap
+    if (atLimit) {
+      setErrorMessage(limitMessage);
+      setTimeout(() => setErrorMessage(null), 5000);
+      return;
+    }
+    setEditingCourse(null); setIsEditorOpen(true);
+  };
   const handleEditCourse = (course: Course) => { setEditingCourse(course); setIsEditorOpen(true); };
 
   const handleDeleteCourse = async (id: string) => {
@@ -86,7 +102,7 @@ const AdminCourses: React.FC = () => {
       <AdminPageHeader
         eyebrow="Discipleship"
         title={`${courses.length} course${courses.length === 1 ? '' : 's'}`}
-        action={<AdminPrimaryButton onClick={handleNewCourse} icon={<Plus size={16} />}>New course</AdminPrimaryButton>}
+        action={<AdminPrimaryButton onClick={handleNewCourse} icon={<Plus size={16} />} disabled={atLimit} title={atLimit ? limitMessage : undefined}>New course</AdminPrimaryButton>}
       />
 
       <AdminSearchBar value={searchQuery} onChange={setSearchQuery} placeholder="Search by title or author…" />

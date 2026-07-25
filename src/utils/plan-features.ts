@@ -16,12 +16,13 @@ export interface PlanFeatures {
   /**
    * Max number of courses (-1 = unlimited).
    *
-   * ADVERTISED BUT NOT ENFORCED. This number is display-only — it is shown in
-   * the plan comparison (PlanUpgradeSection), the settings summary
-   * (AdminSettings) and /api/plans, but nothing in the course editor or
-   * firestore.rules stops a tenant from creating more. Deliberately left
-   * unenforced for now. `maxChurches` is the fail-closed pattern to mirror if
-   * this is ever worth enforcing.
+   * Enforced client-side only, mirroring `maxChurches`: AdminCourses gates the
+   * "New course" button (fail closed on an unknown/loading plan — falls back
+   * to 'plus'). This is bypassable by anyone crafting a Firestore write
+   * directly, since firestore.rules does not enforce it — rules-level
+   * enforcement is a separate hardening task, not done here. Blocks new
+   * creation only; a tenant already over the limit (e.g. after a downgrade)
+   * keeps their existing courses.
    */
   maxCourses: number;
   /** Max number of admin accounts (-1 = unlimited) */
