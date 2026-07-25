@@ -9,6 +9,7 @@ import { setCustomClaims } from '@/lib/set-custom-claims';
 import { issueDonationReceipt } from '@/lib/donation-receipt';
 import { affiliateSweepIdempotencyKey } from '@/lib/affiliate-payout';
 import { captureMoneyPathError } from '@/lib/money-path-sentry';
+import { isRetryableWebhookError, isValidFirestoreDocId } from '@/lib/webhook-retry';
 import { NON_TENANT_SUBDOMAINS } from '@/utils/non-tenant-subdomains';
 import { Resend } from 'resend';
 import QRCode from 'qrcode';
@@ -1607,7 +1608,24 @@ export async function POST(request: NextRequest) {
             try {
               const subscription = await stripe.subscriptions.retrieve(invoiceSubId);
               const referrerId = subscription.metadata?.referrerId;
-              if (referrerId) {
+              if (referrerId && !isValidFirestoreDocId(referrerId)) {
+                // TERMINAL by construction, and screened out here so it never
+                // reaches the catch below. `adminDb.collection('users').doc(id)`
+                // throws synchronously on a malformed id, and metadata is only as
+                // well-formed as whatever wrote it. Retrying that would redeliver
+                // an event that fails identically every time — and each early
+                // return would also re-skip the campaign credit and the renewal
+                // receipt below, which are otherwise recorded on this delivery.
+                console.error(`Affiliate recurring commission: subscription ${invoiceSubId} carries a malformed referrerId; skipping commission`);
+                captureMoneyPathError(new Error('Malformed referrerId in subscription metadata'), {
+                  step: 'recurring-affiliate-commission-referrer-id',
+                  level: 'error',
+                  tenantId,
+                  eventId: event.id,
+                  eventType: event.type,
+                  ids: { subscriptionId: invoiceSubId, invoiceId: invoice.id },
+                });
+              } else if (referrerId) {
                 const existingCommission = await adminDb.collection('affiliate_commissions')
                   .where('stripeInvoiceId', '==', invoice.id)
                   .limit(1)
@@ -1636,10 +1654,11 @@ export async function POST(request: NextRequest) {
                   //     re-attempt gets the ORIGINAL transfer handed back.
                   //
                   // (b) A paid transfer with no record. The row used to be written
-                  //     AFTER the transfer, and a failure there throws past this
-                  //     block to `catch (subErr)` below — which swallows it and
-                  //     returns 200, leaving the marker intact. Money gone, no
-                  //     commission doc, no counter, and nothing to retry from.
+                  //     AFTER the transfer, and a failure there threw past this
+                  //     block to `catch (subErr)` below — which at the time
+                  //     swallowed it and returned 200 with the marker intact.
+                  //     Money gone, no commission doc, no counter, nothing to
+                  //     retry from.
                   //     Writing first makes an unrecorded payment unreachable: if
                   //     this commit fails, nothing has been paid and the block
                   //     leaves no trace at all.
@@ -1670,9 +1689,11 @@ export async function POST(request: NextRequest) {
                   });
                   // Deliberately NOT caught here: nothing has been paid yet and the
                   // batch is atomic, so a failure leaves zero trace. It surfaces to
-                  // `catch (subErr)` exactly as the old doc-write did — but now the
-                  // worst case is a renewal commission that was never recorded and
-                  // never paid, instead of one that was paid and never recorded.
+                  // `catch (subErr)` exactly as the old doc-write did — but the
+                  // worst case there is now a renewal commission that was never
+                  // recorded and never paid, instead of one that was paid and never
+                  // recorded, and a transient failure of this commit is retried on
+                  // Stripe's redelivery rather than lost.
                   // The `stripeInvoiceId` written here is also what makes the dedup
                   // guard above work on a redelivery: the row is already queryable
                   // before the transfer, so a second delivery skips the whole block.
@@ -1747,19 +1768,56 @@ export async function POST(request: NextRequest) {
                 }
               }
             } catch (subErr) {
-              console.error('Failed to check subscription for affiliate commission:', subErr);
-              // Wraps the whole recurring-commission block, transfer included: the
-              // affiliate may have been PAID above and then had the commission-doc
-              // write or the earnings-counter update fail, leaving money moved with
-              // no record of it. Returns 200, so nothing retries.
+              // Nothing has been PAID when we land here: since #224 the transfer
+              // and its follow-up write have their own `catch (transferErr)`, so
+              // the only failures that reach this catch are the subscription
+              // reload, the invoice dedup query, and the record-first batch — all
+              // of which happen BEFORE any money moves. The loss is therefore a
+              // commission that was never recorded and never paid.
+              //
+              // That loss used to be permanent: this catch returned 200 with the
+              // `webhook_events` marker intact, so even a manual Stripe redelivery
+              // was dropped by the duplicate guard. A TRANSIENT failure now undoes
+              // the marker and 5xxs — exactly the pattern the outer catch uses —
+              // so Stripe redelivers and the commission is recorded on the retry
+              // (the invoice-scoped dedup query keeps that to exactly once).
+              //
+              // A TERMINAL failure deliberately keeps the old 200. Retrying it
+              // cannot record the commission, and the early return would re-skip
+              // the campaign credit and renewal receipt below on every attempt —
+              // so the poison event would cost MORE than the lost commission.
+              const retryable = isRetryableWebhookError(subErr);
+              console.error(
+                `Failed to check subscription for affiliate commission (${retryable ? 'retryable — will 500 for redelivery' : 'terminal — reported, not retried'}):`,
+                subErr,
+              );
               captureMoneyPathError(subErr, {
+                // `warning` when Stripe will redeliver (recoverable), `error` when
+                // nothing will retry it and a human has to record the commission —
+                // the exact distinction MoneyPathLevel documents.
                 step: 'recurring-affiliate-commission',
-                level: 'error',
+                level: retryable ? 'warning' : 'error',
                 tenantId,
                 eventId: event.id,
                 eventType: event.type,
                 ids: { subscriptionId: invoiceSubId, invoiceId: invoice.id },
               });
+              if (retryable) {
+                if (markerWritten) {
+                  // Load-bearing: without this the redelivery is dropped by the
+                  // duplicate guard at the top of the handler and the 500 buys
+                  // nothing. Only ever a marker THIS invocation wrote.
+                  await eventRef.delete().catch(() => { /* best effort */ });
+                }
+                // Returning here — rather than finishing the case — is what keeps
+                // the retry safe: `incrementCampaignRaised` below is a bare
+                // `FieldValue.increment` with no per-invoice dedup, so it must not
+                // run on a delivery that is going to be redelivered.
+                return NextResponse.json(
+                  { error: 'Recurring affiliate commission failed; will retry' },
+                  { status: 500 },
+                );
+              }
             }
           }
 
