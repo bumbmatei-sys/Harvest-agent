@@ -2,6 +2,13 @@
 import React, { useState, useEffect } from 'react';
 import { authFetch } from '../../utils/auth-fetch';
 
+/** Whose account, whose bill — stated where the credentials are entered, not
+ * discovered from an invoice. These are the church's OWN Twilio credentials, so
+ * no Harvest plan allotment applies to what they send. Kept as a constant rather
+ * than inline JSX so the apostrophes stay readable (and unescaped). */
+export const BYO_CREDENTIALS_NOTE =
+  "These are your own Twilio credentials: messages sent with them go out on your Twilio account, so Twilio bills you directly and your Harvest plan's monthly SMS allotment doesn't apply. SMS can only be sent to US numbers.";
+
 export const SmsSection: React.FC = () => {
   const [accountSid, setAccountSid] = useState('');
   const [authToken, setAuthToken] = useState('');
@@ -63,14 +70,7 @@ export const SmsSection: React.FC = () => {
     <div className="space-y-6" style={{ paddingBottom: 120 }}>
       <p className="text-gray-600">Connect Twilio to send SMS broadcasts and automated messages to your congregation.</p>
 
-      {/* Whose account, whose bill — stated where the credentials are entered,
-          not discovered from an invoice. These are the church's own Twilio
-          credentials, so no Harvest plan allotment applies to what they send. */}
-      <p className="text-sm text-gray-500">
-        These are your own Twilio credentials: messages sent with them go out on your Twilio account,
-        so Twilio bills you directly and your Harvest plan's monthly SMS allotment doesn't apply.
-        SMS can only be sent to US numbers.
-      </p>
+      <p className="text-sm text-gray-500">{BYO_CREDENTIALS_NOTE}</p>
 
       <div className="bg-white rounded-2xl border border-gray-100 p-6 space-y-4">
         <div>
