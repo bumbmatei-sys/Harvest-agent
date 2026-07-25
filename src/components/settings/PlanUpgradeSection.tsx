@@ -29,11 +29,11 @@ interface PlanUpgradeSectionProps {
 // Plan tiers in ascending order — used to determine upgrade vs downgrade.
 const PLAN_ORDER: TenantPlan[] = ['plus', 'pro', 'max', 'ultra'];
 
-const PLANS: { id: TenantPlan; name: string; monthlyPrice: string; yearlyPrice: string; yearlyPromo: string; yearlyOriginal: string; icon: any; color: string; popular?: boolean; comingSoon: string[] }[] = [
-  { id: 'plus', name: 'Individual', monthlyPrice: '$59/mo', yearlyPrice: '$590/yr', yearlyPromo: '$590', yearlyOriginal: '$708', icon: Zap, color: '#6366f1', comingSoon: [] },
-  { id: 'pro', name: 'Small Team', monthlyPrice: '$119/mo', yearlyPrice: '$1,190/yr', yearlyPromo: '$1,190', yearlyOriginal: '$1,428', icon: Crown, color: '#d4a017', comingSoon: [] },
-  { id: 'max', name: 'Community', monthlyPrice: '$299/mo', yearlyPrice: '$2,990/yr', yearlyPromo: '$2,990', yearlyOriginal: '$3,588', icon: Star, color: '#8b5cf6', popular: true, comingSoon: [] },
-  { id: 'ultra', name: 'Ministry', monthlyPrice: '$479/mo', yearlyPrice: '$4,790/yr', yearlyPromo: '$4,790', yearlyOriginal: '$5,748', icon: Building2, color: '#b45309', comingSoon: [] },
+const PLANS: { id: TenantPlan; name: string; monthlyPrice: string; yearlyPrice: string; icon: any; color: string; popular?: boolean; comingSoon: string[] }[] = [
+  { id: 'plus', name: 'Individual', monthlyPrice: '$59/mo', yearlyPrice: '$590/yr', icon: Zap, color: '#6366f1', comingSoon: [] },
+  { id: 'pro', name: 'Small Team', monthlyPrice: '$119/mo', yearlyPrice: '$1,190/yr', icon: Crown, color: '#d4a017', comingSoon: [] },
+  { id: 'max', name: 'Community', monthlyPrice: '$299/mo', yearlyPrice: '$2,990/yr', icon: Star, color: '#8b5cf6', popular: true, comingSoon: [] },
+  { id: 'ultra', name: 'Ministry', monthlyPrice: '$479/mo', yearlyPrice: '$4,790/yr', icon: Building2, color: '#b45309', comingSoon: [] },
 ];
 
 // Keyed lookup so we can resolve plan metadata by id (icon/color/popular).
@@ -216,7 +216,9 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
           const name = PLAN_DISPLAY_NAMES[planId];
           const monthlyPrice = formatPlanPrice(planId, 'monthly');
           const displayPrice = formatPlanPrice(planId, billingPeriod);
-          const yearlyOriginalUsd = `$${(PLAN_PRICING[planId].monthlyUsd * 12).toLocaleString()}/yr`;
+          // Stripe charges monthly × 10 for annual (pay 10 months, get 12), same math as the
+          // marketing site's Pricing.tsx — mirrored here so the two never show different numbers.
+          const yearlyMonthlyEquivalent = Math.round((PLAN_PRICING[planId].monthlyUsd * 10) / 12);
           const isCurrent = planId === currentPlan;
           const isDowngrade = PLAN_ORDER.indexOf(planId) < PLAN_ORDER.indexOf(currentPlan ?? 'plus');
 
@@ -243,8 +245,8 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
                   <meta.icon size={24} style={{ color: meta.color }} />
                 </div>
                 <h3 className="font-display text-lg font-bold text-gray-900">{name}</h3>
-                {billingPeriod === 'yearly' && yearlyOriginalUsd && (
-                  <p className="text-sm text-gray-400 line-through">{yearlyOriginalUsd}</p>
+                {billingPeriod === 'yearly' && (
+                  <p className="text-sm text-gray-400">${yearlyMonthlyEquivalent}/mo billed annually</p>
                 )}
                 <p className="text-2xl font-bold text-gray-900 mt-1">
                   {billingPeriod === 'monthly' ? plan.monthlyPrice : plan.yearlyPrice}
