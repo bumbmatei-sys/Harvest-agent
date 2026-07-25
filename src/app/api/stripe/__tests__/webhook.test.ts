@@ -820,6 +820,9 @@ describe('flat 15% affiliate commission', () => {
         destination: 'acct_ref',
         metadata: expect.objectContaining({ type: 'affiliate_commission_recurring' }),
       }),
+      // Keyed off the commission row minted before the transfer — the same key the
+      // sweep and the hourly cron derive, so no retry path can double-pay.
+      expect.objectContaining({ idempotencyKey: affiliateSweepIdempotencyKey('auto-id') }),
     );
   });
 
@@ -839,6 +842,7 @@ describe('flat 15% affiliate commission', () => {
     expect(res.status).toBe(200);
     expect(mockTransfersCreate).toHaveBeenCalledWith(
       expect.objectContaining({ amount: 5235 }), // round(34900 * 0.15)
+      expect.objectContaining({ idempotencyKey: affiliateSweepIdempotencyKey('auto-id') }),
     );
   });
 

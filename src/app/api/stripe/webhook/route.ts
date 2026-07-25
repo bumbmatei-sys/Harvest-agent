@@ -1616,10 +1616,72 @@ export async function POST(request: NextRequest) {
                   console.log('⚠️ Commission already exists for invoice', invoice.id);
                 } else {
                   const commissionAmount = Math.round((invoice.amount_paid || 0) * AFFILIATE_RATE);
+                  const plan = subscription.metadata?.plan || 'unknown';
+                  const referrerRef = adminDb.collection('users').doc(referrerId);
+
+                  // ── Step 1: RECORD, then pay. ─────────────────────────────
+                  // Same money-path invariant #223 established on the initial
+                  // path: the row lands BEFORE any money moves, and the transfer
+                  // is keyed off that row's id. Two defects closed at once.
+                  //
+                  // (a) No idempotency key at all. The transfer used to be sent
+                  //     bare, so a request that SUCCEEDED at Stripe and then timed
+                  //     out on the response left the catch below banking a
+                  //     `pending` row — indistinguishable from a genuinely unpaid
+                  //     one — which the sweep re-sent under `aff_sweep_*`. A
+                  //     different key is a brand-new request to Stripe: two real
+                  //     transfers for one renewal. Now this path, the
+                  //     account.updated sweep and the hourly cron all derive the
+                  //     SAME affiliateSweepIdempotencyKey from this doc id, so any
+                  //     re-attempt gets the ORIGINAL transfer handed back.
+                  //
+                  // (b) A paid transfer with no record. The row used to be written
+                  //     AFTER the transfer, and a failure there throws past this
+                  //     block to `catch (subErr)` below — which swallows it and
+                  //     returns 200, leaving the marker intact. Money gone, no
+                  //     commission doc, no counter, and nothing to retry from.
+                  //     Writing first makes an unrecorded payment unreachable: if
+                  //     this commit fails, nothing has been paid and the block
+                  //     leaves no trace at all.
+                  //
+                  // The row + the counter bump are ONE batch so they cannot
+                  // desync: a `pending` row always has a matching
+                  // `affiliatePendingPayouts`, which is what lets the sweep's later
+                  // `increment(-commission)` land on a balance that contains it.
+                  // `affiliateEarnings` counts the renewal once, here at earn time.
+                  // `affiliateReferralCount` is deliberately NOT touched — a
+                  // renewal is more money from an existing referral, not a new one.
+                  const commissionRef = adminDb.collection('affiliate_commissions').doc();
+                  const recordBatch = adminDb.batch();
+                  recordBatch.set(commissionRef, {
+                    referrerId, tenantId, plan,
+                    amount: invoice.amount_paid || 0,
+                    commission: commissionAmount,
+                    status: 'pending',
+                    type: 'recurring',
+                    stripeSubscriptionId: invoiceSubId,
+                    stripeInvoiceId: invoice.id,
+                    createdAt: new Date().toISOString(),
+                  });
+                  recordBatch.update(referrerRef, {
+                    affiliateEarnings: FieldValue.increment(commissionAmount),
+                    affiliatePendingPayouts: FieldValue.increment(commissionAmount),
+                    updatedAt: new Date().toISOString(),
+                  });
+                  // Deliberately NOT caught here: nothing has been paid yet and the
+                  // batch is atomic, so a failure leaves zero trace. It surfaces to
+                  // `catch (subErr)` exactly as the old doc-write did — but now the
+                  // worst case is a renewal commission that was never recorded and
+                  // never paid, instead of one that was paid and never recorded.
+                  // The `stripeInvoiceId` written here is also what makes the dedup
+                  // guard above work on a redelivery: the row is already queryable
+                  // before the transfer, so a second delivery skips the whole block.
+                  await recordBatch.commit();
+
+                  // ── Step 2: pay it. ───────────────────────────────────────
                   let commissionStatus = 'pending';
-                  let stripeTransferId: string | undefined;
                   try {
-                    const referrerDoc = await adminDb.collection('users').doc(referrerId).get();
+                    const referrerDoc = await referrerRef.get();
                     const connectAccountId = referrerDoc.data()?.affiliateStripeAccountId;
                     const connectStatus = referrerDoc.data()?.affiliateConnectStatus;
                     if (connectAccountId && connectStatus === 'active' && commissionAmount > 0) {
@@ -1627,21 +1689,49 @@ export async function POST(request: NextRequest) {
                         amount: commissionAmount,
                         currency: 'usd',
                         destination: connectAccountId,
-                        metadata: { referrerId, tenantId, plan: subscription.metadata?.plan || 'unknown', type: 'affiliate_commission_recurring' },
+                        metadata: { referrerId, tenantId, plan, type: 'affiliate_commission_recurring' },
+                      }, {
+                        idempotencyKey: affiliateSweepIdempotencyKey(commissionRef.id),
                       });
+
+                      // Flip to `paid` and take the amount back out of the pending
+                      // counter in ONE batch — the same pairing the sweep commits,
+                      // so status and counter can never disagree. If this write
+                      // fails the row stays `pending` with its counter intact and
+                      // the sweep re-attempts under the identical key: Stripe hands
+                      // back THIS transfer and the flip happens then.
+                      const payBatch = adminDb.batch();
+                      payBatch.update(commissionRef, {
+                        status: 'paid',
+                        stripeTransferId: transfer.id,
+                        paidAt: new Date().toISOString(),
+                      });
+                      payBatch.update(referrerRef, {
+                        affiliatePendingPayouts: FieldValue.increment(-commissionAmount),
+                        updatedAt: new Date().toISOString(),
+                      });
+                      await payBatch.commit();
+                      // Assigned only AFTER the write that records it, so the log
+                      // line below reflects what is actually in Firestore.
                       commissionStatus = 'paid';
-                      stripeTransferId = transfer.id;
                     }
+                    // No `else`: Connect isn't active (or the commission is $0), so
+                    // there is nowhere to pay to. The row is already banked
+                    // `pending` above and the sweep pays it at activation.
                   } catch (transferErr) {
                     console.error('Affiliate recurring transfer failed:', transferErr);
-                    // `error`, not `warning`: this transfer carries NO idempotency
-                    // key, so a caught error (a timeout in particular) does not
-                    // reliably mean the money stayed put — the commission is
-                    // recorded `pending` either way and the keyed retry sweep would
-                    // then send a second, differently-keyed transfer.
+                    // `warning`, not `error`: the old ambiguity is gone. This
+                    // transfer used to carry NO idempotency key, so a caught error
+                    // — a response timeout in particular — did not reliably mean
+                    // the money stayed put, and the keyed retry sweep would then
+                    // send a second, differently-keyed transfer. Now the row is
+                    // durable before the transfer and every path keys off its id,
+                    // so landing here means the payout is merely late: the sweep or
+                    // the hourly cron re-attempts under the same key, and if the
+                    // money did go out Stripe returns that same transfer.
                     captureMoneyPathError(transferErr, {
                       step: 'recurring-affiliate-transfer',
-                      level: 'error',
+                      level: 'warning',
                       tenantId,
                       eventId: event.id,
                       eventType: event.type,
@@ -1649,28 +1739,10 @@ export async function POST(request: NextRequest) {
                         subscriptionId: invoiceSubId,
                         invoiceId: invoice.id,
                         referrerId,
+                        commissionId: commissionRef.id,
                       },
                     });
                   }
-                  await adminDb.collection('affiliate_commissions').add({
-                    referrerId, tenantId,
-                    plan: subscription.metadata?.plan || 'unknown',
-                    amount: invoice.amount_paid || 0,
-                    commission: commissionAmount,
-                    status: commissionStatus,
-                    type: 'recurring',
-                    stripeSubscriptionId: invoiceSubId,
-                    stripeInvoiceId: invoice.id,
-                    ...(stripeTransferId ? { stripeTransferId } : {}),
-                    createdAt: new Date().toISOString(),
-                  });
-                  await adminDb.collection('users').doc(referrerId).update({
-                    affiliateEarnings: FieldValue.increment(commissionAmount),
-                    affiliatePendingPayouts: commissionStatus === 'paid'
-                      ? FieldValue.increment(0)
-                      : FieldValue.increment(commissionAmount),
-                    updatedAt: new Date().toISOString(),
-                  });
                   console.log(`💰 Recurring affiliate commission ${commissionStatus} for referrer ${referrerId}: $${(commissionAmount / 100).toFixed(2)}`);
                 }
               }
