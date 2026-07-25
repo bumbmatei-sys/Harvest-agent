@@ -7,6 +7,7 @@ import { Resend } from 'resend';
 import { adminDb } from '@/lib/firebase-admin';
 import { verifyAuth } from '@/lib/api-auth';
 import { PLATFORM_FEE_MAP } from '@/lib/stripe-config';
+import { sendAutomatedSms } from '@/lib/twilio';
 
 export const dynamic = 'force-dynamic';
 
@@ -299,6 +300,26 @@ export async function POST(request: NextRequest) {
           : d,
       );
       await eventRef.set({ discountCodes: nextCodes }, { merge: true }).catch(() => {});
+    }
+
+    // ── Automated SMS confirmation (best-effort) ──
+    // Same convention as checkin/submit and pledge/submit: sendAutomatedSms owns
+    // the per-trigger enabled flag, the tenant's template text and the smsLogs
+    // record, so there is deliberately NO extra enable check here (that would
+    // double-gate the trigger). It never throws, so a Twilio outage can't fail
+    // or delay the registration response beyond the call itself.
+    // Only for a CONFIRMED seat — the template says "you're registered", which
+    // would be false for a waitlist entry. Paid tickets are confirmed by the
+    // Stripe webhook, not here, so they don't reach this branch.
+    if (phone && !waitlisted) {
+      const eventDate = event.startDate?.toDate
+        ? event.startDate.toDate().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+        : '';
+      await sendAutomatedSms(tenantId, 'event_registration', phone, {
+        name: firstName,
+        event: event.title || 'the event',
+        date: eventDate,
+      });
     }
 
     // ── Confirmation email (best-effort) ──

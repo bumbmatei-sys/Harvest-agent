@@ -35,7 +35,7 @@ import Profile from './Profile';
 import MyAccountMenu from './MyAccountMenu';
 import BillingAndPayments from './BillingAndPayments';
 import { AdminScreenHeader, AdminHeaderContext, AdminHeaderOverride } from './AdminScreenHeader';
-import { getPlanFeatures } from '../utils/plan-features';
+import { getPlanFeatures, hasBrandingAccess } from '../utils/plan-features';
 import { db, auth } from '../firebase';
 import { signOut } from 'firebase/auth';
 import { collection, query, where, onSnapshot, limit } from 'firebase/firestore';
@@ -272,8 +272,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
   // Branding tab/page entitlement — keyed off the branding-family feature flags
   // (matches the old Settings branding gate). Used both in allTabs and the render
   // guard so direct navigation to /admin/branding is gated like every other tab.
+  // The OR chain lives in hasBrandingAccess (plan-features) so the per-tier
+  // visibility is asserted in one place; it dropped the retired customBackground
+  // flag without changing which tiers see the tab.
   const canBranding = !!((platformOverride || !isTenantAdmin ||
-    (features && (features.customBranding || features.customBackground || features.customDomain))) && (hasFullAccess || perms.manageBranding));
+    (features && hasBrandingAccess(features))) && (hasFullAccess || perms.manageBranding));
 
   // Settings tab entitlement — a manageSettings admin (or full access / super
   // admin) can reach the integrations/config screen. Branding lives in its own

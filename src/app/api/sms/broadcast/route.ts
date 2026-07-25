@@ -53,24 +53,26 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Message body is required.' }, { status: 400 });
   }
 
+  // Scheduling is NOT supported. This used to write a `status: 'scheduled'`
+  // broadcast doc and return success, but nothing ever processed that
+  // collection — there is no cron and no worker, and the only other reader is
+  // the admin's own history list. The message was never sent while the UI
+  // reported it as scheduled. Reject explicitly rather than silently ignoring
+  // the field, so an API caller can't believe a send was booked. The schedule
+  // picker is gone from AdminSms; build a processor before re-adding either.
+  if (body.scheduledAt) {
+    return NextResponse.json(
+      { error: 'Scheduled broadcasts are not supported — send now instead.' },
+      { status: 400 },
+    );
+  }
+
   const cfg = await getTwilioConfig(tenantId);
   if (!cfg) {
     return NextResponse.json({ error: 'Twilio is not configured.' }, { status: 400 });
   }
 
   const broadcastRef = adminDb.collection('tenants').doc(tenantId).collection('smsBroadcasts').doc();
-
-  // Scheduled: persist for a future cron to process; don't send now.
-  if (body.scheduledAt) {
-    await broadcastRef.set({
-      message, recipientGroup: group, tag: body.tag || null,
-      recipientCount: recipients.length,
-      scheduledAt: body.scheduledAt, sentAt: null,
-      delivered: 0, failed: 0, status: 'scheduled',
-      createdBy: uid, createdAt: new Date().toISOString(),
-    });
-    return NextResponse.json({ scheduled: true, recipientCount: recipients.length });
-  }
 
   // Send now.
   let delivered = 0;

@@ -13,7 +13,16 @@ export interface PlanFeatures {
   churchDirectory: boolean;
   /** Max number of churches (0 = hidden, -1 = unlimited) */
   maxChurches: number;
-  /** Max number of courses (-1 = unlimited) */
+  /**
+   * Max number of courses (-1 = unlimited).
+   *
+   * ADVERTISED BUT NOT ENFORCED. This number is display-only — it is shown in
+   * the plan comparison (PlanUpgradeSection), the settings summary
+   * (AdminSettings) and /api/plans, but nothing in the course editor or
+   * firestore.rules stops a tenant from creating more. Deliberately left
+   * unenforced for now. `maxChurches` is the fail-closed pattern to mirror if
+   * this is ever worth enforcing.
+   */
   maxCourses: number;
   /** Max number of admin accounts (-1 = unlimited) */
   maxAdmins: number;
@@ -21,8 +30,12 @@ export interface PlanFeatures {
   customDomain: boolean;
   /** Allow custom branding — logo, colors, ministry name (Community / max+) */
   customBranding: boolean;
-  /** Allow custom auth-page background image (Community / max+) */
-  customBackground: boolean;
+  // `customBackground` ("custom auth-page background image") was removed: no
+  // background uploader was ever built anywhere in the app, so the flag sold a
+  // capability that does not exist. It was true on exactly the tiers where
+  // customBranding is true (max, ultra), so dropping it from the Branding-tab
+  // gate (see hasBrandingAccess below) changed no tier's access. Don't re-add
+  // it as a plan flag unless an uploader ships with it.
   /** Newsletter (manual + Mailchimp) — Small Team / pro+ */
   newsletterAutomation: boolean;
   /** AI-generated newsletter from Instagram (Community / max+) */
@@ -91,7 +104,6 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     maxAdmins: 1,
     customDomain: false,
     customBranding: false,
-    customBackground: false,
     newsletterAutomation: false,
     automatedNewsletter: false,
     smsAutomation: false,
@@ -127,7 +139,6 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     maxAdmins: 5,
     customDomain: false,
     customBranding: false,
-    customBackground: false,
     newsletterAutomation: true,
     automatedNewsletter: false,
     smsAutomation: false,
@@ -163,7 +174,6 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     maxAdmins: 10,
     customDomain: false,
     customBranding: true,
-    customBackground: true,
     newsletterAutomation: true,
     automatedNewsletter: true,
     smsAutomation: false,
@@ -199,7 +209,6 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     maxAdmins: -1,
     customDomain: true,
     customBranding: true,
-    customBackground: true,
     newsletterAutomation: true,
     automatedNewsletter: true,
     smsAutomation: true,
@@ -299,6 +308,21 @@ export function hasFeature(plan: TenantPlan, feature: keyof PlanFeatures): boole
   if (typeof value === 'number') return value !== 0;
   if (typeof value === 'string') return value.length > 0; // 'included' | 'addon'
   return false;
+}
+
+/**
+ * Branding-family entitlement — does this plan's feature set unlock the admin
+ * Branding tab/page? Extracted from AdminDashboard so the OR chain has exactly
+ * one definition and can be asserted per tier in plan-features.test.ts.
+ *
+ * `customBackground` used to be a third term here. It was true on precisely the
+ * tiers where `customBranding` is true (Community/max and Ministry/ultra), so
+ * removing it left every tier's Branding access unchanged:
+ *   Individual (plus) hidden · Small Team (pro) hidden · Community (max) shown ·
+ *   Ministry (ultra) shown.
+ */
+export function hasBrandingAccess(features: PlanFeatures): boolean {
+  return features.customBranding || features.customDomain;
 }
 
 /** Format a plan price as a display string, e.g. "$59/mo" */
