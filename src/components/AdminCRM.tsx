@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   Plus, Search, Edit2, Trash2, Users, Mail, Phone,
   MessageSquare, DollarSign, PhoneCall, Calendar, Clock, ChevronRight, MapPin,
-  List, LayoutGrid, Heart, Award
+  List, LayoutGrid, Heart, Award, AlertTriangle
 } from 'lucide-react';
 import {
   collection, addDoc, deleteDoc, setDoc,
@@ -19,10 +19,9 @@ import { useAdminHeader, HeaderActionButton } from './AdminScreenHeader';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAppStore } from '../store/useAppStore';
 import {
-  useContactsWithUsers, useContactActivities, useContactOnboardingAnswers,
+  useContactsWithUsers, useContactActivities,
   type Contact, type ContactActivity, type PipelineStage,
 } from '../hooks/queries/useCRMQueries';
-import { useTenant as useTenantDoc } from '../hooks/queries/useTenantQueries';
 import { PLATFORM_TENANT_ID } from '../utils/tenant-scope';
 
 const TYPE_LABELS: Record<Contact['type'], string> = {
@@ -246,17 +245,19 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
     return () => setHeaderAction(null);
   }, [setHeaderAction, crmSubView]);
 
-  // React Query for contact activities
-  const { data: activities = [] } = useContactActivities(tenantId, selected?.id);
-
-  // Tenant onboarding questions via React Query
-  const { data: tenantData } = useTenantDoc(tenantId);
-  const onboardingQuestions = tenantData?.config?.onboardingQuestions
-    ? [...tenantData.config.onboardingQuestions].sort((a, b) => a.order - b.order)
-    : [];
-
-  // Onboarding answers — fetched via React Query when a contact is selected
-  const { data: onboardingAnswers = null, isLoading: loadingAnswers } = useContactOnboardingAnswers(selected?.email);
+  // Contact timeline (server-side read — see useContactActivities).
+  //
+  // `activitiesFailed` is load-bearing: this used to destructure `data = []`
+  // and nothing else, so a REJECTED read rendered byte-for-byte identically to
+  // "no activities" and hid the bug for weeks. Every branch below that shows a
+  // count or an empty state must check it first.
+  const {
+    data: activities = [],
+    isLoading: activitiesLoading,
+    isError: activitiesFailed,
+    error: activitiesError,
+    refetch: refetchActivities,
+  } = useContactActivities(tenantId, selected?.id);
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -646,7 +647,15 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
           <span className="bg-[color-mix(in_srgb,var(--brand-color)_12%,white)] text-gold text-xs font-semibold px-3 py-1.5 rounded-full">
             {selected.lastDonationAt ? `Last gift ${fmtDate(selected.lastDonationAt)}` : 'No donations yet'}
           </span>
-          <span className="bg-[color-mix(in_srgb,var(--brand-color)_12%,white)] text-gold text-xs font-semibold px-3 py-1.5 rounded-full">{activities.length} {activities.length === 1 ? 'activity' : 'activities'}</span>
+          {/* Never render "0 activities" off a failed read — that is the lie the
+              silent `= []` default used to tell. */}
+          {activitiesFailed ? (
+            <span className="bg-red-50 text-red-600 text-xs font-semibold px-3 py-1.5 rounded-full">Activity count unavailable</span>
+          ) : (
+            <span className="bg-[color-mix(in_srgb,var(--brand-color)_12%,white)] text-gold text-xs font-semibold px-3 py-1.5 rounded-full">
+              {activitiesLoading ? 'Loading activities…' : `${activities.length} ${activities.length === 1 ? 'activity' : 'activities'}`}
+            </span>
+          )}
         </div>
 
         {/* Contact info card */}
@@ -723,7 +732,28 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
           </button>
         </div>
 
-        {activities.length === 0 ? (
+        {activitiesFailed ? (
+          // A failed load is NOT an empty timeline. Distinct copy, distinct
+          // colour, and a retry — never the "add the first one" nudge, which
+          // would invite an admin to duplicate activities they cannot see.
+          <div className="bg-red-50 rounded-2xl border border-red-200 shadow-sm p-8 text-center text-red-700">
+            <AlertTriangle size={28} className="mx-auto mb-2 opacity-60" />
+            <p className="text-sm font-display font-semibold">Couldn&apos;t load activities</p>
+            <p className="text-xs mt-1 text-red-600">
+              {(activitiesError as Error | null)?.message || 'The timeline could not be read.'}
+            </p>
+            <button
+              onClick={() => refetchActivities()}
+              className="mt-3 px-3 py-1.5 rounded-xl text-xs font-semibold border border-red-300 text-red-700 hover:bg-red-100"
+            >
+              Try again
+            </button>
+          </div>
+        ) : activitiesLoading ? (
+          <div className="bg-white rounded-2xl border border-[#EDEBE8] shadow-sm p-8 flex justify-center">
+            <div className="w-6 h-6 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--brand-color, #B8962E)', borderTopColor: 'transparent' }} />
+          </div>
+        ) : activities.length === 0 ? (
           <div className="bg-white rounded-2xl border border-[#EDEBE8] shadow-sm p-8 text-center text-[color:var(--text-faint)]">
             <Clock size={28} className="mx-auto mb-2 opacity-30" />
             <p className="text-sm font-display">No activities recorded yet — add the first one</p>
@@ -753,31 +783,13 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
           </div>
         )}
 
-        {/* Onboarding Responses */}
-        <div className="mt-6">
-          <h3 className="text-xs font-bold text-[color:var(--text-faint)] uppercase tracking-wider mb-3">Onboarding Responses</h3>
-          {loadingAnswers ? (
-            <div className="flex justify-center py-6">
-              <div className="w-6 h-6 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--brand-color, #B8962E)', borderTopColor: 'transparent' }} />
-            </div>
-          ) : !onboardingAnswers || Object.keys(onboardingAnswers).length === 0 ? (
-            <div className="bg-white rounded-2xl border border-[#EDEBE8] shadow-sm p-6 text-center text-[color:var(--text-faint)] text-sm font-display">
-              No onboarding responses yet.
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {(onboardingQuestions.length > 0
-                ? onboardingQuestions.filter(q => onboardingAnswers[q.id])
-                : Object.keys(onboardingAnswers).map(id => ({ id, label: id.replace(/_/g, ' '), order: 0 }))
-              ).map(q => (
-                <div key={q.id} className="bg-[#F7F6F3] rounded-xl p-4">
-                  <p className="text-[10px] font-bold text-[color:var(--text-faint)] uppercase tracking-wider">{q.label}</p>
-                  <p className="text-sm text-[color:var(--text-body)] mt-0.5">{onboardingAnswers[q.id]}</p>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        {/* The "Onboarding Responses" section was removed. Onboarding writes the
+            standard questions as TOP-LEVEL user fields (displayName, country,
+            city, phone, acceptedJesus) and only writes `onboardingAnswers` when
+            a tenant has CUSTOM questions — deliberately, so the map isn't
+            polluted with blanks. For every tenant without custom questions the
+            field is absent, so this was a guaranteed empty box. The data still
+            ships in the users CSV (AnalyticsAndRoles). Nothing lost. */}
 
         {showAddActivity && (
           <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center bg-black/50 p-4">
