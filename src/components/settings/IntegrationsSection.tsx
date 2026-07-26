@@ -19,6 +19,12 @@ const IntegrationsSection: React.FC = () => {
   // so promoting one to tenant-wide would be exactly the wrong affordance.
   const [gmailStatus, setGmailStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected');
   const [gmailLoading, setGmailLoading] = useState(false);
+  // The address Gmail will send from. Declared by the admin rather than read
+  // from the account — Harvest holds no scope that can read a Google profile.
+  const [gmailSender, setGmailSender] = useState<string | null>(null);
+  const [gmailSenderDraft, setGmailSenderDraft] = useState('');
+  const [editingGmailSender, setEditingGmailSender] = useState(false);
+  const [gmailSenderError, setGmailSenderError] = useState<string | null>(null);
 
   const [loaded, setLoaded] = useState(false);
   const pollingRef = useRef<{ intervals: NodeJS.Timeout[]; timeouts: NodeJS.Timeout[] }>({ intervals: [], timeouts: [] });
@@ -70,7 +76,17 @@ const IntegrationsSection: React.FC = () => {
       if (gmResp.ok) {
         const gmData = await gmResp.json();
         if (gmData.connected) setGmailStatus('connected');
+        setGmailSender(gmData.senderEmail || null);
       }
+
+      // Prefill the sending address with the Harvest login so confirming it is
+      // one click. It is only a prefill: an admin who authorises a different
+      // Google account must be able to say so, which is the whole point of
+      // asking rather than assuming.
+      try {
+        const { auth } = await import('../../firebase');
+        if (auth.currentUser?.email) setGmailSenderDraft(auth.currentUser.email);
+      } catch { /* prefill is a convenience, not a requirement */ }
     } catch (e) {
       console.error('Failed to load integrations:', e);
     }
@@ -188,11 +204,17 @@ const IntegrationsSection: React.FC = () => {
   const handleGmailConnect = async () => {
     const tid = await getTenantId();
     if (!tid) return;
+    const senderEmail = gmailSenderDraft.trim();
+    if (!senderEmail) {
+      setGmailSenderError('Enter the Gmail address you want to send from.');
+      return;
+    }
+    setGmailSenderError(null);
     setGmailLoading(true);
     try {
       const resp = await authFetch('/api/composio/gmail/connect', {
         method: 'POST',
-        body: JSON.stringify({ tenantId: tid }),
+        body: JSON.stringify({ tenantId: tid, senderEmail }),
       });
       const data = await resp.json();
       if (data.redirectUrl) {
@@ -204,6 +226,7 @@ const IntegrationsSection: React.FC = () => {
             const statusData = await statusResp.json();
             if (statusData.connected) {
               setGmailStatus('connected');
+              setGmailSender(statusData.senderEmail || null);
               clearInterval(pollInterval);
             }
           } catch { /* keep polling */ }
@@ -222,11 +245,36 @@ const IntegrationsSection: React.FC = () => {
     }
   };
 
+  const handleGmailSenderSave = async () => {
+    const senderEmail = gmailSenderDraft.trim();
+    setGmailSenderError(null);
+    try {
+      const resp = await authFetch('/api/composio/gmail/address', {
+        method: 'POST',
+        body: JSON.stringify({ senderEmail }),
+      });
+      const data = await resp.json().catch(() => null);
+      if (!resp.ok || !data?.senderEmail) {
+        setGmailSenderError(data?.error || 'Could not save that address.');
+        return;
+      }
+      setGmailSender(data.senderEmail);
+      setEditingGmailSender(false);
+    } catch (e) {
+      console.error('Gmail sending-address update error:', e);
+      setGmailSenderError('Could not save that address.');
+    }
+  };
+
   const handleGmailDisconnect = async () => {
     setGmailLoading(true);
     try {
       await authFetch('/api/composio/gmail/disconnect', { method: 'POST' });
       setGmailStatus('disconnected');
+      // Disconnect clears the stored address server-side; drop it here too so
+      // the card cannot keep naming an account that is no longer linked.
+      setGmailSender(null);
+      setEditingGmailSender(false);
     } catch (e) {
       console.error('Gmail disconnect error:', e);
       alert('Failed to disconnect Gmail.');
@@ -378,7 +426,11 @@ const IntegrationsSection: React.FC = () => {
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-gray-900">Gmail</p>
             {gmailStatus === 'connected' ? (
-              <p className="text-xs text-green-600">Connected — you can email contacts from the CRM</p>
+              <p className="text-xs text-green-600">
+                {gmailSender
+                  ? `Connected — sending as ${gmailSender}`
+                  : 'Connected — confirm your sending address below before emailing'}
+              </p>
             ) : gmailStatus === 'connecting' ? (
               <p className="text-xs text-yellow-600">Waiting for authorization...</p>
             ) : (
@@ -390,6 +442,55 @@ const IntegrationsSection: React.FC = () => {
             <p className="text-[11px] text-gray-400 mt-0.5">
               Send-only access. Harvest can never read your inbox.
             </p>
+
+            {/* The sending address. Asked for rather than detected: Harvest holds
+                no scope that can read which Google account was authorised, so an
+                admin with two accounts is the one who has to say. */}
+            {gmailStatus === 'connected' && !editingGmailSender ? (
+              <button
+                type="button"
+                onClick={() => { setGmailSenderDraft(gmailSender || gmailSenderDraft); setEditingGmailSender(true); }}
+                className="text-[11px] text-gold underline mt-1"
+              >
+                {gmailSender ? 'Change sending address' : 'Set sending address'}
+              </button>
+            ) : (
+              <div className="mt-2">
+                <label htmlFor="gmail-sender" className="block text-[11px] text-gray-500 mb-1">
+                  Send from this Gmail address
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    id="gmail-sender"
+                    type="email"
+                    value={gmailSenderDraft}
+                    onChange={(e) => setGmailSenderDraft(e.target.value)}
+                    placeholder="you@yourchurch.org"
+                    className="flex-1 min-w-0 px-2 py-1 border border-gray-200 rounded-lg text-xs"
+                  />
+                  {gmailStatus === 'connected' && (
+                    <>
+                      <button type="button" onClick={handleGmailSenderSave}
+                        className="px-3 py-1 bg-gold text-white rounded-lg text-xs font-medium">
+                        Save
+                      </button>
+                      <button type="button" onClick={() => { setEditingGmailSender(false); setGmailSenderError(null); }}
+                        className="px-3 py-1 border border-gray-200 text-gray-600 rounded-lg text-xs">
+                        Cancel
+                      </button>
+                    </>
+                  )}
+                </div>
+                {gmailSenderError && (
+                  <p className="text-[11px] text-red-600 mt-1">{gmailSenderError}</p>
+                )}
+                {gmailStatus !== 'connected' && (
+                  <p className="text-[11px] text-gray-400 mt-1">
+                    Must be the account you authorise. You can change it later.
+                  </p>
+                )}
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-2">
             {gmailStatus === 'connected' ? (

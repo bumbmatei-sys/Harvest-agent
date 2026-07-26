@@ -64,6 +64,7 @@ beforeEach(() => {
   docStore.set(`contacts/${CONTACT_ID}`, { tenantId: 'bumb', email: 'member@example.com', firstName: 'Ada' });
   docStore.set('tenants/bumb/integrations/admin-a_gmail', {
     status: 'active', connectedAccountId: 'ca_admin_a', connectedBy: 'admin-a',
+    senderEmail: 'admin-a@church.org',
   });
   mockExecute.mockResolvedValue({ successful: true, data: { id: 'msg_1' } });
   mockAdd.mockResolvedValue({ id: 'act_1' });
@@ -220,6 +221,7 @@ describe('POST /api/crm/send-email', () => {
     mockRequireAdmin.mockResolvedValue(mockUser({ uid: 'admin-b' }));
     docStore.set('tenants/bumb/integrations/admin-b_gmail', {
       status: 'active', connectedAccountId: 'ca_admin_b', connectedBy: 'admin-b',
+      senderEmail: 'admin-b@church.org',
     });
 
     await POST(makeReq(VALID_BODY));
@@ -282,5 +284,81 @@ describe('POST /api/crm/send-email', () => {
     const res = await POST(makeReq(VALID_BODY));
     expect(res.status).toBe(403);
     expect(mockExecute).not.toHaveBeenCalled();
+  });
+
+  // ── The sender address ────────────────────────────────────────────────────
+  // Composio resolves the sender itself ONLY when `from_email` is absent, and
+  // that resolution is a Gmail profile lookup Google gates behind a mailbox
+  // scope this integration will never hold. Passing the address explicitly is
+  // what keeps the send inside a send-only grant.
+  describe('sender address', () => {
+    it('passes the stored address as from_email so no profile lookup happens', async () => {
+      mockRequireAdmin.mockResolvedValue(mockUser());
+      const res = await POST(makeReq(VALID_BODY));
+
+      expect(res.status).toBe(200);
+      expect(mockExecute).toHaveBeenCalledWith(
+        'GMAIL_SEND_EMAIL',
+        expect.objectContaining({ from_email: 'admin-a@church.org' }),
+        'ca_admin_a', 'bumb', 'admin-a',
+      );
+    });
+
+    it('uses each admin\'s OWN stored address', async () => {
+      mockRequireAdmin.mockResolvedValue(mockUser({ uid: 'admin-b' }));
+      docStore.set('tenants/bumb/integrations/admin-b_gmail', {
+        status: 'active', connectedAccountId: 'ca_admin_b', senderEmail: 'admin-b@church.org',
+      });
+
+      await POST(makeReq(VALID_BODY));
+
+      expect(mockExecute.mock.calls[0][1]).toMatchObject({ from_email: 'admin-b@church.org' });
+      // Admin A's address must never appear on admin B's message.
+      expect(JSON.stringify(mockExecute.mock.calls[0])).not.toContain('admin-a@church.org');
+    });
+
+    it('IGNORES a request-supplied from_email — it comes from the integration doc', async () => {
+      mockRequireAdmin.mockResolvedValue(mockUser());
+
+      await POST(makeReq({
+        ...VALID_BODY,
+        from_email: 'treasurer@church.org',
+        senderEmail: 'treasurer@church.org',
+      }));
+
+      expect(mockExecute.mock.calls[0][1]).toMatchObject({ from_email: 'admin-a@church.org' });
+      expect(JSON.stringify(mockExecute.mock.calls[0])).not.toContain('treasurer@church.org');
+    });
+
+    it('refuses with an actionable error — not a 502 — when no address is recorded', async () => {
+      // Every connection made before the address was captured is in this state.
+      mockRequireAdmin.mockResolvedValue(mockUser());
+      docStore.set('tenants/bumb/integrations/admin-a_gmail', {
+        status: 'active', connectedAccountId: 'ca_admin_a', // no senderEmail
+      });
+
+      const res = await POST(makeReq(VALID_BODY));
+
+      expect(res.status).toBe(409);
+      expect(res.status).not.toBe(502);
+      const body = await res.json();
+      expect(body.code).toBe('no_sender_address');
+      expect(body.error).toMatch(/settings/i);
+      // Nothing attempted, so nothing to log.
+      expect(mockExecute).not.toHaveBeenCalled();
+      expect(mockAdd).not.toHaveBeenCalled();
+    });
+
+    it('treats a blank stored address as no address', async () => {
+      mockRequireAdmin.mockResolvedValue(mockUser());
+      docStore.set('tenants/bumb/integrations/admin-a_gmail', {
+        status: 'active', connectedAccountId: 'ca_admin_a', senderEmail: '   ',
+      });
+
+      const res = await POST(makeReq(VALID_BODY));
+      expect(res.status).toBe(409);
+      expect((await res.json()).code).toBe('no_sender_address');
+      expect(mockExecute).not.toHaveBeenCalled();
+    });
   });
 });

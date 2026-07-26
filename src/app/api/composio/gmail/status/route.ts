@@ -49,6 +49,10 @@ export async function GET(request: NextRequest) {
       connected: data.status === 'active',
       status: data.status || 'unknown',
       scopes: data.scopes || [],
+      // The address this connection sends from. Also what the Settings card
+      // shows, which is why "Connected" can finally name an account: an admin
+      // with two Google accounts could not otherwise tell which one they linked.
+      senderEmail: data.senderEmail || null,
       connectedAt: data.connectedAt || null,
     });
   } catch (error) {

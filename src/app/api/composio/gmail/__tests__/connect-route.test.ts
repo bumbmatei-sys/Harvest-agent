@@ -204,4 +204,54 @@ describe('POST /api/composio/gmail/connect', () => {
     expect(res.status).toBe(500);
     expect(mockInitiate).not.toHaveBeenCalled();
   });
+
+  // ── The sending address, captured before the redirect ─────────────────────
+  describe('sending address', () => {
+    function makeReqWith(body: object): NextRequest {
+      return new NextRequest('https://example.com/api/composio/gmail/connect', {
+        method: 'POST',
+        headers: { authorization: 'Bearer token', 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+    }
+
+    it('stores the address the admin confirmed in Settings', async () => {
+      mockRequireAdmin.mockResolvedValue(mockUser());
+      await POST(makeReqWith({ senderEmail: 'Personal@Gmail.com' }));
+
+      // Normalised on the way in, so Settings cannot show two casings of one
+      // address as two accounts.
+      expect(txSet.mock.calls[0][1]).toMatchObject({ senderEmail: 'personal@gmail.com' });
+    });
+
+    it('falls back to the verified token email when the client sends none', async () => {
+      mockRequireAdmin.mockResolvedValue(mockUser());
+      await POST(makeReq());
+      expect(txSet.mock.calls[0][1]).toMatchObject({ senderEmail: 'a@church.org' });
+    });
+
+    it('falls back rather than storing a malformed address', async () => {
+      mockRequireAdmin.mockResolvedValue(mockUser());
+      await POST(makeReqWith({ senderEmail: 'a@church.org\nBcc: evil@attacker.test' }));
+
+      expect(txSet.mock.calls[0][1]).toMatchObject({ senderEmail: 'a@church.org' });
+      expect(JSON.stringify(txSet.mock.calls[0][1])).not.toContain('attacker.test');
+    });
+
+    it('records no address at all when neither source yields one', async () => {
+      // The send route then refuses with a fixable instruction rather than
+      // handing Composio a connection it cannot send from.
+      mockRequireAdmin.mockResolvedValue(mockUser({ email: undefined }));
+      await POST(makeReqWith({}));
+      expect(txSet.mock.calls[0][1].senderEmail).toBeUndefined();
+    });
+
+    it('keeps each admin\'s address on their own doc', async () => {
+      mockRequireAdmin.mockResolvedValue(mockUser({ uid: 'admin-b', email: 'b@church.org' }));
+      await POST(makeReqWith({ senderEmail: 'b-personal@gmail.com' }));
+
+      expect(txSet.mock.calls[0][0].path).toBe('tenants/bumb/integrations/admin-b_gmail');
+      expect(txSet.mock.calls[0][1]).toMatchObject({ senderEmail: 'b-personal@gmail.com' });
+    });
+  });
 });
