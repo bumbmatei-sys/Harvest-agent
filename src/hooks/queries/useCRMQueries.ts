@@ -3,7 +3,7 @@ import { collection, query, where, getDocs, getDoc, doc, limit } from 'firebase/
 import { db } from '../../firebase';
 import type { DateLike } from '../../utils/format-date';
 import { sortByString } from '../../utils/query-helpers';
-import { PLATFORM_TENANT_ID, getTenantScope } from '../../utils/tenant-scope';
+import { PLATFORM_TENANT_ID, getTenantScope, isSuperAdmin } from '../../utils/tenant-scope';
 import { authFetch } from '../../utils/auth-fetch';
 import { captureHandledError } from '../../lib/money-path-sentry';
 
@@ -64,35 +64,80 @@ export interface ContactActivity {
   tenantId?: string;
 }
 
+/**
+ * Thrown when the CRM is asked to read contacts with no tenant in context and no
+ * super-admin standing to justify a platform-wide scan. Named so the UI (and the
+ * tests) can tell "we could not work out who you are" apart from a Firestore
+ * failure.
+ */
+export const NO_TENANT_SCOPE_MESSAGE =
+  'Could not determine which church to load contacts for. Reload the page, and if this keeps happening sign out and back in.';
+
+/**
+ * Fetch the CRM `contacts` rows for the caller, applying the tenant scoping that
+ * BOTH contact hooks share.
+ *
+ * Extracted into one module-local helper (the #192 shared-leaf-module precedent)
+ * because the two hooks previously carried this branch verbatim and could drift.
+ *
+ * The unscoped scan is gated on ACTUAL super-admin standing, not on a `tenantId`
+ * proxy. That distinction is the whole bug: `tenantId` arrives null both for a
+ * super admin on the apex domain (for whom the scan is correct) and for a tenant
+ * admin whose tenant never resolved (for whom it is a guaranteed
+ * permission-denied). Firestore rules gate `contacts` reads on
+ * `isTenantAdmin(resource.data.tenantId)`, and rules are not filters: a list
+ * query that constrains nothing about `resource.data.tenantId` proves nothing,
+ * so the WHOLE query is rejected. That rejection then rendered as "this church
+ * has no contacts" — the same shape that hid the empty activity timeline for
+ * weeks (#236).
+ *
+ * So there are exactly three outcomes, and a tenant admin can no longer fall
+ * into the first:
+ *   1. genuine super admin, no (or platform) tenant → unscoped platform scan
+ *   2. any real tenant id                           → scoped query, unchanged
+ *   3. no tenant and no super-admin standing        → THROW; this is a fault,
+ *      not an empty state, and must reach react-query so the UI can say so
+ *
+ * `isSuperAdmin()` reads `auth.currentUser`, which is safe here: both hooks are
+ * `enabled` only once `isAuthReady` is true, i.e. after `onAuthStateChanged` has
+ * fired. The same assumption already backs `getTenantScope()` below and
+ * `getWriteTenantScope()` in tenant-scope.ts.
+ */
+const fetchContactRows = async (tenantId: string | null | undefined): Promise<Contact[]> => {
+  if ((!tenantId || tenantId === PLATFORM_TENANT_ID) && isSuperAdmin()) {
+    // Platform / super-admin CRM. The platform's own contacts can carry
+    // tenantId: 'harvest', null, '', OR no tenantId field at all (legacy rows
+    // written before multi-tenancy). Firestore can't match a missing field and
+    // an equality query can't union all those, so — as a super admin who may
+    // read the whole collection — fetch and keep only the platform-owned rows,
+    // dropping any that belong to a *named* tenant (no cross-tenant leakage).
+    // NOTE: at larger scale, replace this scan with a one-time migration that
+    // stamps every legacy/null contact with tenantId 'harvest'.
+    const snap = await getDocs(query(collection(db, 'contacts'), limit(1000)));
+    return snap.docs
+      .map(d => ({ id: d.id, stage: 'new', ...d.data() }) as Contact)
+      .filter(c => c.tenantId == null || c.tenantId === '' || c.tenantId === PLATFORM_TENANT_ID);
+  }
+
+  // Not a super admin and no tenant to scope by. Falling through to the scan
+  // would be rejected wholesale; returning [] would report that rejection as an
+  // empty CRM. Neither. Fail loudly.
+  if (!tenantId) throw new Error(NO_TENANT_SCOPE_MESSAGE);
+
+  // Scoped read. Note a non-super-admin whose tenant genuinely IS the platform
+  // tenant lands here rather than on the scan: the equality constraint is what
+  // the rule needs, and it is the only query they are allowed to run.
+  const snap = await getDocs(
+    query(collection(db, 'contacts'), where('tenantId', '==', tenantId), limit(500)),
+  );
+  return snap.docs.map(d => ({ id: d.id, stage: 'new', ...d.data() }) as Contact);
+};
+
 export const useContacts = (tenantId: string | null | undefined, isAuthReady = true) =>
   useQuery({
     queryKey: ['contacts', tenantId],
-    queryFn: async (): Promise<Contact[]> => {
-      let rows: Contact[];
-      // This unscoped/legacy-merge branch is platform-context only: a tenant
-      // subdomain passes its own tenantId (never PLATFORM_TENANT_ID), so it always
-      // takes the scoped query below — no cross-tenant leakage on a subdomain.
-      if (!tenantId || tenantId === PLATFORM_TENANT_ID) {
-        // Platform / super-admin CRM. The platform's own contacts can carry
-        // tenantId: 'harvest', null, '', OR no tenantId field at all (legacy rows
-        // written before multi-tenancy). Firestore can't match a missing field and
-        // an equality query can't union all those, so — as a super admin who may
-        // read the whole collection — fetch and keep only the platform-owned rows,
-        // dropping any that belong to a *named* tenant (no cross-tenant leakage).
-        // NOTE: at larger scale, replace this scan with a one-time migration that
-        // stamps every legacy/null contact with tenantId 'harvest'.
-        const snap = await getDocs(query(collection(db, 'contacts'), limit(1000)));
-        rows = snap.docs
-          .map(d => ({ id: d.id, stage: 'new', ...d.data() }) as Contact)
-          .filter(c => c.tenantId == null || c.tenantId === '' || c.tenantId === PLATFORM_TENANT_ID);
-      } else {
-        const snap = await getDocs(
-          query(collection(db, 'contacts'), where('tenantId', '==', tenantId), limit(500))
-        );
-        rows = snap.docs.map(d => ({ id: d.id, stage: 'new', ...d.data() }) as Contact);
-      }
-      return sortByString(rows, 'lastName', 'asc');
-    },
+    queryFn: async (): Promise<Contact[]> =>
+      sortByString(await fetchContactRows(tenantId), 'lastName', 'asc'),
     enabled: isAuthReady && tenantId !== undefined,
     staleTime: 1000 * 60 * 5,
   });
@@ -198,22 +243,19 @@ export const useContactsWithUsers = (tenantId: string | null | undefined, isAuth
     // Shares the ['contacts', tenantId] prefix so existing invalidations refresh it.
     queryKey: ['contacts', tenantId, 'with-users'],
     queryFn: async (): Promise<Contact[]> => {
-      // 1) Real CRM contacts (same scoping as useContacts).
-      let contactRows: Contact[];
-      if (!tenantId || tenantId === PLATFORM_TENANT_ID) {
-        const snap = await getDocs(query(collection(db, 'contacts'), limit(1000)));
-        contactRows = snap.docs
-          .map(d => ({ id: d.id, stage: 'new', ...d.data() }) as Contact)
-          .filter(c => c.tenantId == null || c.tenantId === '' || c.tenantId === PLATFORM_TENANT_ID);
-      } else {
-        const snap = await getDocs(
-          query(collection(db, 'contacts'), where('tenantId', '==', tenantId), limit(500)),
-        );
-        contactRows = snap.docs.map(d => ({ id: d.id, stage: 'new', ...d.data() }) as Contact);
-      }
+      // 1) Real CRM contacts — the shared, super-admin-gated scoping helper.
+      const contactRows = await fetchContactRows(tenantId);
 
       // 2) App members from `users`, scoped like the Analytics tab.
-      let userDocs: Awaited<ReturnType<typeof getDocs>>['docs'] = [];
+      //
+      // NOT swallowed. This used to `catch { console.error }` and leave `userDocs`
+      // empty, so a rejected or failed members read produced a merged list that
+      // was simply SHORTER — indistinguishable from a church whose members happen
+      // not to be in the app. An admin cannot see that half their people are
+      // missing, which is the same silent-truncation class as the empty timeline
+      // (#236). A partial list is worse than a visible error: let it through to
+      // react-query.
+      let userDocs: Awaited<ReturnType<typeof getDocs>>['docs'];
       try {
         const scope = await getTenantScope();
         const usersQ = scope
@@ -222,6 +264,7 @@ export const useContactsWithUsers = (tenantId: string | null | undefined, isAuth
         userDocs = (await getDocs(usersQ)).docs;
       } catch (e) {
         console.error('[CRM] failed to load app members from users:', e);
+        throw e;
       }
 
       // Merge, folding each app member into their existing contact so a person in
