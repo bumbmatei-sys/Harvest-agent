@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { setCustomClaims } from '@/lib/set-custom-claims';
 import { adminAuth, adminDb } from '@/lib/firebase-admin';
+import { isSuperAdminEmail } from '@/utils/super-admins';
 
 /**
  * POST /api/auth/migrate-claims
@@ -17,15 +18,10 @@ export async function POST(request: NextRequest) {
     const idToken = authHeader.split('Bearer ')[1];
     const decodedToken = await adminAuth.verifyIdToken(idToken);
 
-    // Allow super admin claim OR matching super admin email (for bootstrapping)
-    const superAdminEmails = ['bumbmatei@proton.me', 'bumbmatei@zohomail.eu'];
-    const envEmails = process.env.SUPER_ADMIN_EMAILS;
-    if (envEmails) {
-      for (const e of envEmails.split(',').map((s) => s.trim().toLowerCase()).filter(Boolean)) {
-        if (!superAdminEmails.includes(e)) superAdminEmails.push(e);
-      }
-    }
-    if (!decodedToken.superAdmin && !superAdminEmails.includes((decodedToken.email || '').toLowerCase())) {
+    // Allow super admin claim OR matching super admin email (for bootstrapping).
+    // Uses the shared list rather than a local copy so this route can't diverge
+    // from api-auth, the client, and firestore.rules.
+    if (!decodedToken.superAdmin && !isSuperAdminEmail(decodedToken.email)) {
       return NextResponse.json({ error: 'Super admin only' }, { status: 403 });
     }
 

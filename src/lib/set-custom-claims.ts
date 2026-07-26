@@ -1,4 +1,5 @@
 import { adminAuth, adminDb } from './firebase-admin';
+import { isSuperAdminEmail } from '@/utils/super-admins';
 
 /**
  * Set custom claims on a Firebase Auth user for Firestore security rules.
@@ -22,6 +23,13 @@ export async function setCustomClaims(uid: string) {
     const role = userData.role || 'user';
     const tenantId = userData.tenantId || null;
 
+    // Fetch the Auth record BEFORE building claims. Two reasons: the super-admin
+    // check below must key off the AUTHORITATIVE email, which lives on the Auth
+    // record — users/{uid}.email is only a copy and can go stale — and the
+    // existing claims are needed for the "did anything change?" guard below.
+    const existingUser = await adminAuth.getUser(uid);
+    const existingClaims = existingUser.customClaims || {};
+
     const claims: Record<string, any> = {};
 
     // Set tenantId if user belongs to a tenant
@@ -42,9 +50,18 @@ export async function setCustomClaims(uid: string) {
       claims.admin = true;
     }
 
-    // Get existing claims to avoid unnecessary token revocation
-    const existingUser = await adminAuth.getUser(uid);
-    const existingClaims = existingUser.customClaims || {};
+    // Platform owners are ALSO identified by email — that is the second leg of
+    // isSuperAdmin() in firestore.rules. Minting the claim here is what keeps the
+    // two legs of that rule in agreement: without it a listed owner whose users
+    // doc says role 'user' passes the rules' email check while carrying no
+    // superAdmin claim at all, so every claim-based isAdmin()/isSuperAdmin() check
+    // (API routes, Cloud Functions) disagrees with the rules for the same account.
+    // Scope is exactly SUPER_ADMIN_EMAILS — the same frozen list the rules mirror.
+    // admin is set alongside it because a super admin failing isAdmin() is absurd.
+    if (isSuperAdminEmail(existingUser.email)) {
+      claims.admin = true;
+      claims.superAdmin = true;
+    }
 
     // Only update if claims actually changed — check ALL claim keys, not just new ones
     const allKeys = ['tenantId', 'admin', 'superAdmin'];
