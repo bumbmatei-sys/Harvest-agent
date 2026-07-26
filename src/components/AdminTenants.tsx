@@ -2,11 +2,13 @@
 import React, { useState, useEffect } from 'react';
 import { db, auth } from '../firebase';
 import { collection, onSnapshot, limit } from 'firebase/firestore';
-import { Building2, Plus, Search, Edit2, Trash2, Pause, Play, X } from 'lucide-react';
+import { Building2, Plus, Search, Edit2, Trash2, Pause, Play, X, BarChart3 } from 'lucide-react';
 import { Tenant, TenantPlan, TenantStatus } from '../types/tenant.types';
 import { createTenant, updateTenant, isSubdomainAvailable } from '../utils/tenant.utils';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { AdminPageHeader, AdminPrimaryButton, AdminSearchBar } from './admin/AdminUI';
+import TenantUsagePanel from './admin/TenantUsagePanel';
+import AdminAffiliates from './AdminAffiliates';
 
 const PLAN_LABELS: Record<TenantPlan, string> = {
   plus: 'Plus',
@@ -78,6 +80,12 @@ const AdminTenants: React.FC = () => {
   // list), fetched when the confirmation opens so the copy shows real numbers.
   const [dryRun, setDryRun] = useState<DeletePreview | null>(null);
   const [dryRunLoading, setDryRunLoading] = useState(false);
+  // Which tenant's consumption detail is expanded. Same one-at-a-time row
+  // expansion as the delete confirmation below it — not a new UI idiom.
+  const [usageOpenId, setUsageOpenId] = useState<string | null>(null);
+  // The platform section carries two super-admin views behind the same gate:
+  // the tenant list (with per-tenant usage) and the affiliate overview.
+  const [section, setSection] = useState<'tenants' | 'affiliates'>('tenants');
 
   useEffect(() => {
     const q = collection(db, 'tenants');
@@ -171,6 +179,7 @@ const AdminTenants: React.FC = () => {
   // Open the delete confirmation and fetch a dry-run preview so the warning shows
   // real counts (user ACCOUNTS + content) before the irreversible action.
   const openDeleteConfirm = async (tenant: Tenant) => {
+    setUsageOpenId(null);
     setDeleteConfirmId(tenant.id);
     setDeleteError('');
     setDryRun(null);
@@ -235,6 +244,42 @@ const AdminTenants: React.FC = () => {
     );
   }
 
+  // Segmented control between the two super-admin views in this section.
+  const sectionTabs = (
+    <div className="inline-flex items-center gap-1 p-1 bg-stone-100 rounded-xl">
+      <button
+        onClick={() => setSection('tenants')}
+        className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+          section === 'tenants' ? 'bg-white shadow-sm text-earth' : 'text-[color:var(--text-faint)]'
+        }`}
+      >
+        Tenants
+      </button>
+      <button
+        onClick={() => setSection('affiliates')}
+        className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+          section === 'affiliates' ? 'bg-white shadow-sm text-earth' : 'text-[color:var(--text-faint)]'
+        }`}
+      >
+        Affiliates
+      </button>
+    </div>
+  );
+
+  if (section === 'affiliates') {
+    return (
+      <div className="w-full max-w-6xl mx-auto space-y-6">
+        <AdminPageHeader
+          eyebrow="Super-admin"
+          title="Affiliates"
+          subtitle="Read-only. Commission figures are shown exactly as stored, never recomputed."
+        />
+        {sectionTabs}
+        <AdminAffiliates />
+      </div>
+    );
+  }
+
   return (
     <div className="w-full max-w-6xl mx-auto space-y-6">
       <AdminPageHeader
@@ -242,6 +287,7 @@ const AdminTenants: React.FC = () => {
         title="Tenants"
         action={<AdminPrimaryButton onClick={openCreate} icon={<span className="text-[15px] leading-none">+</span>}>Add tenant</AdminPrimaryButton>}
       />
+      {sectionTabs}
       <AdminSearchBar value={searchTerm} onChange={setSearchTerm} placeholder="Search tenants…" />
 
       {/* Tenant List */}
@@ -281,6 +327,18 @@ const AdminTenants: React.FC = () => {
 
                 <div className="flex items-center gap-2 shrink-0">
                   <button
+                    onClick={() => {
+                      // One expansion at a time: usage and the delete
+                      // confirmation both anchor to the bottom of the card.
+                      if (deleteConfirmId === tenant.id) closeDeleteConfirm();
+                      setUsageOpenId(usageOpenId === tenant.id ? null : tenant.id);
+                    }}
+                    className={`p-2 rounded-lg transition-colors ${usageOpenId === tenant.id ? 'bg-stone-100' : 'hover:bg-stone-100'}`}
+                    title="Usage"
+                  >
+                    <BarChart3 size={16} className="text-warm-brown" />
+                  </button>
+                  <button
                     onClick={() => handleToggleStatus(tenant)}
                     className="p-2 rounded-lg hover:bg-stone-100 transition-colors"
                     title={tenant.status === 'active' ? 'Suspend' : 'Activate'}
@@ -308,6 +366,16 @@ const AdminTenants: React.FC = () => {
                   </button>
                 </div>
               </div>
+
+              {/* Per-tenant consumption detail — a row expansion in the same
+                  place, and the same shape, as the delete confirmation below.
+                  Read-only, and mounted only while open so no usage request
+                  fires for a tenant nobody asked about. */}
+              {usageOpenId === tenant.id && (
+                <div className="mt-4 pt-4 border-t border-stone-100 bg-stone-50/60 -mx-5 -mb-5 px-5 py-4 rounded-b-2xl">
+                  <TenantUsagePanel tenantId={tenant.id} />
+                </div>
+              )}
 
               {/* Destructive-delete confirmation — deletion also destroys user
                   ACCOUNTS (Firebase Auth) and all tenant content, so spell that
