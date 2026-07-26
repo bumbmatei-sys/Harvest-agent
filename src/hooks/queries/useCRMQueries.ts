@@ -2,8 +2,10 @@ import { useQuery } from '@tanstack/react-query';
 import { collection, query, where, getDocs, getDoc, doc, limit } from 'firebase/firestore';
 import { db } from '../../firebase';
 import type { DateLike } from '../../utils/format-date';
-import { sortByString, sortByTime } from '../../utils/query-helpers';
+import { sortByString } from '../../utils/query-helpers';
 import { PLATFORM_TENANT_ID, getTenantScope } from '../../utils/tenant-scope';
+import { authFetch } from '../../utils/auth-fetch';
+import { captureHandledError } from '../../lib/money-path-sentry';
 
 /** CRM pipeline stages, from first contact through to deeply-invested leader. */
 export type PipelineStage =
@@ -249,6 +251,24 @@ export const useContact = (tenantId: string | null | undefined, contactId: strin
     staleTime: 1000 * 60 * 5,
   });
 
+/**
+ * Contact timeline. Reads go through /api/crm/contact-activities (Admin SDK),
+ * NOT Firestore directly.
+ *
+ * The obvious client query — `where('contactId','==',id)` plus an in-memory
+ * tenant filter, the house single-field pattern — is rejected outright by the
+ * top-level `contactActivities` rule, which gates reads on
+ * `isTenantAdmin(resource.data.tenantId)`. Rules are not filters: for a `list`
+ * Firestore evaluates the rule against the query's POTENTIAL result set, and a
+ * query that constrains only `contactId` proves nothing about
+ * `resource.data.tenantId`, so the whole query fails with permission-denied.
+ * The timeline was empty for weeks because that rejection was indistinguishable
+ * from "no activities". See tests/rules/crm-activities.rules.test.ts.
+ *
+ * `tenantId` is kept in the query KEY only — the route resolves the real tenant
+ * from the caller's token, never from the client. Failures are NOT swallowed:
+ * this throws so React Query reports `isError` and the UI can say so.
+ */
 export const useContactActivities = (
   tenantId: string | null | undefined,
   contactId: string | null | undefined,
@@ -257,30 +277,27 @@ export const useContactActivities = (
     queryKey: ['contactActivities', tenantId, contactId],
     queryFn: async (): Promise<ContactActivity[]> => {
       if (!contactId) return [];
-      const q = query(
-        collection(db, 'contactActivities'),
-        where('contactId', '==', contactId),
-        limit(200),
-      );
-      const snap = await getDocs(q);
-      let rows = snap.docs.map(d => ({ id: d.id, ...d.data() }) as ContactActivity);
-      if (tenantId) rows = rows.filter(r => r.tenantId === tenantId);
-      return sortByTime(rows, 'createdAt', 'desc');
+      try {
+        const res = await authFetch(
+          `/api/crm/contact-activities?contactId=${encodeURIComponent(contactId)}`,
+        );
+        if (!res.ok) {
+          const body = await res.json().catch(() => null);
+          throw new Error(
+            (body as { error?: string } | null)?.error || `Failed to load activities (${res.status})`,
+          );
+        }
+        const body = (await res.json()) as { activities?: ContactActivity[] };
+        return body.activities ?? [];
+      } catch (e) {
+        captureHandledError(e, {
+          step: 'crm-contact-activities-load',
+          tenantId,
+          ids: { contactId },
+        });
+        throw e;
+      }
     },
     enabled: !!contactId,
     staleTime: 1000 * 60 * 2,
-  });
-
-export const useContactOnboardingAnswers = (email: string | null | undefined) =>
-  useQuery({
-    queryKey: ['contactOnboardingAnswers', email],
-    queryFn: async (): Promise<Record<string, string> | null> => {
-      if (!email) return null;
-      const q = query(collection(db, 'users'), where('email', '==', email), limit(1));
-      const snap = await getDocs(q);
-      if (snap.empty) return null;
-      return (snap.docs[0].data().onboardingAnswers as Record<string, string>) ?? null;
-    },
-    enabled: !!email,
-    staleTime: 1000 * 60 * 10,
   });
