@@ -100,6 +100,32 @@ export async function requireAdmin(request: NextRequest): Promise<AuthenticatedU
 }
 
 /**
+ * Require PLATFORM-OWNER (super admin) status. Returns 403 for everyone else,
+ * including ordinary tenant admins.
+ *
+ * This is deliberately NOT requireAdmin. requireAdmin passes on
+ * `isAdmin || isSuperAdmin`, and `isAdmin` is true for every church admin —
+ * verifyAuth even falls back to the users/{uid} role so a freshly-provisioned
+ * owner passes without the token claim. That is right for tenant-scoped routes,
+ * which then re-scope the read to the caller's OWN tenant. It is wrong for any
+ * route whose response spans tenants: there is no second scoping step left to
+ * save it, so `isAdmin` alone would hand one church's admin every other
+ * church's consumption and every affiliate's earnings.
+ *
+ * Use this for CROSS-TENANT reads. It is the only gate on the super-admin
+ * usage/affiliate routes, so it must never widen to `isAdmin`.
+ */
+export async function requireSuperAdmin(request: NextRequest): Promise<AuthenticatedUser | NextResponse> {
+  const userOrResponse = await requireAuth(request);
+  if (userOrResponse instanceof NextResponse) return userOrResponse;
+
+  if (!userOrResponse.isSuperAdmin) {
+    return NextResponse.json({ error: 'Super admin access required' }, { status: 403 });
+  }
+  return userOrResponse;
+}
+
+/**
  * Require tenant membership. Returns 403 if user doesn't belong to the tenant.
  */
 export async function requireTenantMember(
