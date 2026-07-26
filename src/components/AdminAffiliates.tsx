@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useState } from 'react';
 import { auth } from '../firebase';
-import { Link2, ChevronDown, ChevronRight, AlertTriangle } from 'lucide-react';
+import { Link2, ChevronDown, ChevronRight, AlertTriangle, ArrowDownWideNarrow, ArrowUpNarrowWide } from 'lucide-react';
 import { AdminSearchBar } from './admin/AdminUI';
 
 /**
@@ -26,6 +26,28 @@ import { AdminSearchBar } from './admin/AdminUI';
 
 interface StatusBucket { count: number; commission: number }
 
+/** The sales fold restricted to one period. Row-derived only — see `Affiliate`
+ * for the counters that deliberately have no windowed form. */
+interface WindowTotals {
+  revenueBrought: number;
+  commission: number;
+  harvestKept: number;
+  plansSold: number;
+  recurringPayments: number;
+  rows: number;
+}
+
+type WindowKey = 'today' | 'd7' | 'd30' | 'all';
+
+/** Periods to rank affiliates over. `all` is the lifetime view the section
+ * opens on; the dated windows are UTC calendar days (see the route). */
+const WINDOWS: { key: WindowKey; label: string; noun: string }[] = [
+  { key: 'today', label: 'Today', noun: 'today' },
+  { key: 'd7', label: '7 days', noun: 'in the last 7 days' },
+  { key: 'd30', label: '30 days', noun: 'in the last 30 days' },
+  { key: 'all', label: 'All time', noun: 'all time' },
+];
+
 interface Affiliate {
   userId: string;
   email: string | null;
@@ -43,6 +65,8 @@ interface Affiliate {
   connect: { accountId: string | null; status: string | null; payoutReady: boolean };
   convertedReferrals: number;
   commissionRates: { rate: number; count: number }[];
+  windows: Record<WindowKey, WindowTotals>;
+  undatedRows: number;
   transfers: { commissionId: string; commission: number; stripeTransferId: string | null; paidAt: string | null }[];
   recentCommissions: {
     id: string; tenantId: string | null; plan: string | null; type: string | null;
@@ -78,11 +102,16 @@ function ConnectBadge({ connect }: { connect: Affiliate['connect'] }) {
   );
 }
 
-function Cell({ label, value, tone = '' }: { label: string; value: React.ReactNode; tone?: string }) {
+function Cell({ label, value, tone = '', note }: {
+  label: string; value: React.ReactNode; tone?: string; note?: string;
+}) {
   return (
     <div className="min-w-[110px]">
       <p className="text-[10.5px] font-semibold uppercase tracking-[0.1em] text-[color:var(--text-faint)]">{label}</p>
       <p className={`text-sm font-semibold mt-0.5 ${tone || 'text-earth'}`}>{value}</p>
+      {/* Marks a figure whose period differs from the selected one — the
+          user-doc counters have no history to window, so they stay lifetime. */}
+      {note && <p className="text-[10px] text-[color:var(--text-faint)] leading-tight">{note}</p>}
     </div>
   );
 }
@@ -94,6 +123,12 @@ const AdminAffiliates: React.FC = () => {
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [expanded, setExpanded] = useState<string | null>(null);
+  // Which period the sales figures — and the ranking — are computed over. All
+  // four arrive in one response, so switching is instant and needs no refetch.
+  const [windowKey, setWindowKey] = useState<WindowKey>('all');
+  // Who sold the most, or who sold the least. 'least' keeps zero-sellers in the
+  // list; that is the point of asking for it.
+  const [order, setOrder] = useState<'most' | 'least'>('most');
 
   useEffect(() => {
     let cancelled = false;
@@ -117,12 +152,24 @@ const AdminAffiliates: React.FC = () => {
   }, []);
 
   const term = search.trim().toLowerCase();
-  const filtered = term
+  const searched = term
     ? affiliates.filter(a =>
         (a.email || '').toLowerCase().includes(term) ||
         (a.name || '').toLowerCase().includes(term) ||
         (a.affiliateCode || '').toLowerCase().includes(term))
     : affiliates;
+
+  const win = (a: Affiliate): WindowTotals => a.windows[windowKey];
+  const period = WINDOWS.find(w => w.key === windowKey)!;
+
+  // Rank on plans sold IN THE SELECTED PERIOD, breaking ties on the revenue
+  // brought in that same period so two affiliates on one sale each don't order
+  // arbitrarily. Sort a copy — `affiliates` is the fetched response.
+  const filtered = [...searched].sort((a, b) => {
+    const dir = order === 'most' ? 1 : -1;
+    return dir * (win(b).plansSold - win(a).plansSold)
+      || dir * (win(b).revenueBrought - win(a).revenueBrought);
+  });
 
   if (loading) {
     return (
@@ -140,6 +187,41 @@ const AdminAffiliates: React.FC = () => {
     <div className="space-y-4">
       <AdminSearchBar value={search} onChange={setSearch} placeholder="Search affiliates…" />
 
+      {/* Period + ranking. The period drives BOTH the sales figures on each card
+          and the order of the list, so "who sold the most in the last 7 days" is
+          one control, not two that could disagree. */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="inline-flex items-center gap-1 p-1 bg-stone-100 rounded-xl">
+          {WINDOWS.map(w => (
+            <button
+              key={w.key}
+              onClick={() => setWindowKey(w.key)}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+                windowKey === w.key ? 'bg-white shadow-sm text-earth' : 'text-[color:var(--text-faint)]'
+              }`}
+            >
+              {w.label}
+            </button>
+          ))}
+        </div>
+
+        <button
+          onClick={() => setOrder(order === 'most' ? 'least' : 'most')}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-stone-200 bg-white text-xs font-semibold text-earth hover:bg-stone-50 transition-colors"
+          title="Switch between most and fewest plans sold"
+        >
+          {order === 'most'
+            ? <ArrowDownWideNarrow size={14} className="text-warm-brown" />
+            : <ArrowUpNarrowWide size={14} className="text-warm-brown" />}
+          {order === 'most' ? 'Most plans sold' : 'Fewest plans sold'}
+        </button>
+
+        <p className="text-xs text-[color:var(--text-faint)]">
+          Sales figures {period.noun}
+          {windowKey !== 'all' && ' · earnings counters stay lifetime'}
+        </p>
+      </div>
+
       {truncated && (
         <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
           Showing the first 500 affiliates — this list is a prefix, not the whole programme.
@@ -149,8 +231,12 @@ const AdminAffiliates: React.FC = () => {
       {filtered.length === 0 ? (
         <div className="text-center py-16 bg-white rounded-2xl border border-stone-200">
           <Link2 size={40} className="mx-auto text-stone-300 mb-4" />
-          <p className="text-warm-brown font-medium font-display">No affiliates yet</p>
-          <p className="text-[color:var(--text-faint)] text-sm mt-1">Nobody has generated a referral link.</p>
+          <p className="text-warm-brown font-medium font-display">
+            {term ? 'No affiliates match that search' : 'No affiliates yet'}
+          </p>
+          <p className="text-[color:var(--text-faint)] text-sm mt-1">
+            {term ? 'Try a different name, email or code.' : 'Nobody has generated a referral link.'}
+          </p>
         </div>
       ) : (
         <div className="grid gap-4">
@@ -158,6 +244,8 @@ const AdminAffiliates: React.FC = () => {
             const open = expanded === a.userId;
             const reason = a.pendingReason ? PENDING_REASON[a.pendingReason] : null;
             const offRate = a.commissionRates.some(r => r.rate !== 0.15);
+            const w = win(a);
+            const lifetimeView = windowKey === 'all';
             return (
               <div key={a.userId} className="bg-white rounded-2xl border border-stone-200 p-5">
                 <div className="flex items-start justify-between gap-3">
@@ -182,23 +270,51 @@ const AdminAffiliates: React.FC = () => {
                   </div>
                 </div>
 
+                {/* Row-derived figures follow the selected period; the user-doc
+                    counters cannot be windowed and say so rather than silently
+                    reporting a lifetime number under a 7-day heading. */}
                 <div className="flex flex-wrap gap-x-6 gap-y-3 mt-4">
-                  <Cell label="Revenue brought" value={usd(a.revenueBrought)} />
-                  <Cell label="Plans sold" value={a.plansSold} />
-                  <Cell label="They earned" value={usd(a.earned)} />
+                  <Cell label="Revenue brought" value={usd(w.revenueBrought)} />
+                  <Cell label="Plans sold" value={w.plansSold} />
+                  <Cell
+                    label={lifetimeView ? 'They earned' : 'They earned (period)'}
+                    value={usd(lifetimeView ? a.earned : w.commission)}
+                    note={lifetimeView ? undefined : `lifetime ${usd(a.earned)}`}
+                  />
                   <Cell
                     label="Owed but unpaid"
                     value={usd(a.owedUnpaid)}
                     tone={a.owedUnpaid > 0 && reason?.stuck ? 'text-red-600' : undefined}
+                    note={lifetimeView ? undefined : 'lifetime'}
                   />
-                  <Cell label="Harvest kept" value={usd(a.harvestKept)} />
+                  <Cell label="Harvest kept" value={usd(w.harvestKept)} />
                   {/* CONVERTED referrals — a trial in progress is not counted, and
                       this is the same number the affiliate sees on their own
-                      dashboard. Calling it "signups" would contradict both. */}
-                  <Cell label="Converted referrals" value={a.convertedReferrals} />
+                      dashboard. Calling it "signups" would contradict both. It is
+                      a running counter, so it has no per-period form either. */}
+                  <Cell
+                    label="Converted referrals"
+                    value={a.convertedReferrals}
+                    note={lifetimeView ? undefined : 'lifetime'}
+                  />
                 </div>
 
+                {!lifetimeView && a.undatedRows > 0 && (
+                  <p className="text-xs text-amber-700 mt-2">
+                    {a.undatedRows} commission row{a.undatedRows === 1 ? '' : 's'} carry no date and are
+                    excluded from every period — they appear only under All time.
+                  </p>
+                )}
+
+                {/* Payout state is a property of the account, not of a period —
+                    a commission pending since January is still pending today —
+                    so these stay lifetime and are labelled as such. */}
                 <div className="flex flex-wrap items-center gap-2 mt-4 text-[11px]">
+                  {!lifetimeView && (
+                    <span className="text-[10.5px] font-semibold uppercase tracking-[0.1em] text-[color:var(--text-faint)]">
+                      Payouts · lifetime
+                    </span>
+                  )}
                   <span className="px-2 py-0.5 rounded-full font-semibold bg-green-100 text-green-700">
                     paid {a.payoutStatus.paid.count} · {usd(a.payoutStatus.paid.commission)}
                   </span>

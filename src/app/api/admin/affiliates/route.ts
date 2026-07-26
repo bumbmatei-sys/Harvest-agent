@@ -23,6 +23,14 @@ export const dynamic = 'force-dynamic';
  * Payouts stay owned by the webhook, the account.updated sweep and the retry
  * cron (lib/affiliate-payout.ts).
  *
+ * Each affiliate also carries a `windows` block — the same sales fold restricted
+ * to today / the last 7 days / the last 30 days / all time — so the view can
+ * answer "who sold the most (or the least) this week" by ranking on a period
+ * rather than on lifetime totals. All four are folded in ONE pass over the same
+ * scan, so switching period costs no request and the four can never disagree
+ * about when "now" was. See the WindowTotals comment for what deliberately
+ * cannot be windowed.
+ *
  * ── Three things that make these numbers lie if you get them wrong ──────────
  *
  * 1. THE STORED `commission` FIELD IS THE TRUTH. Never recompute it as 15% of
@@ -79,6 +87,56 @@ function emptyBucket(): StatusBucket {
   return { count: 0, commission: 0 };
 }
 
+// ── Time windows ─────────────────────────────────────────────────────────────
+// "Who sold the most in the last 7 days" needs the sales figures re-folded over
+// a date range, so all four windows are computed in the SAME pass and returned
+// together. The client switches between them without a refetch, which also
+// means the four windows can never disagree about when "now" was.
+//
+// Boundaries are UTC CALENDAR DAY starts, not rolling 24h offsets: `today` is
+// since 00:00 UTC today, `d7` is that day plus the previous 6, `d30` that day
+// plus the previous 29. Whole days nest cleanly (today ⊆ d7 ⊆ d30 ⊆ all) and
+// the answer doesn't shift under you between two requests in the same day.
+// Commission `createdAt` is written as an ISO-8601 UTC string, so a plain
+// string comparison against an ISO cutoff is the correct ordering — no parsing.
+export type WindowKey = 'today' | 'd7' | 'd30' | 'all';
+const WINDOW_KEYS: WindowKey[] = ['today', 'd7', 'd30', 'all'];
+
+/** Start-of-day UTC, `daysAgo` days back, as an ISO string. */
+function utcDayStart(now: Date, daysAgo: number): string {
+  const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  d.setUTCDate(d.getUTCDate() - daysAgo);
+  return d.toISOString();
+}
+
+function windowCutoffs(now: Date): Record<WindowKey, string | null> {
+  return {
+    today: utcDayStart(now, 0),
+    d7: utcDayStart(now, 6),
+    d30: utcDayStart(now, 29),
+    all: null, // no lower bound
+  };
+}
+
+/** The per-window sales fold. Every figure here is derived from commission
+ * ROWS, so it can be restricted to a date range. The user-doc counters
+ * (affiliateEarnings / affiliatePendingPayouts / affiliateReferralCount) are
+ * lifetime running totals with no history behind them — they CANNOT be
+ * windowed, are never placed in here, and stay labelled lifetime in the UI. */
+interface WindowTotals {
+  revenueBrought: number;
+  commission: number;
+  harvestKept: number;
+  plansSold: number;
+  recurringPayments: number;
+  /** Commission rows that fell in this window, whatever their status. */
+  rows: number;
+}
+
+function emptyWindow(): WindowTotals {
+  return { revenueBrought: 0, commission: 0, harvestKept: 0, plansSold: 0, recurringPayments: 0, rows: 0 };
+}
+
 export async function GET(request: NextRequest) {
   const userOrErr = await requireSuperAdmin(request);
   if (userOrErr instanceof Response) return userOrErr;
@@ -93,12 +151,14 @@ export async function GET(request: NextRequest) {
       adminDb.collection('users').orderBy('affiliateCode').limit(AFFILIATE_LIMIT).get(),
     ]);
 
+    const cutoffs = windowCutoffs(new Date());
+
     interface Acc {
-      revenueBrought: number;
-      commissionTotal: number;
-      harvestKept: number;
-      plansSold: number;
-      recurringPayments: number;
+      windows: Record<WindowKey, WindowTotals>;
+      /** Rows carrying no `createdAt`. They count toward `all` but cannot be
+       * placed in any dated window — reported rather than silently dropped, so
+       * a windowed total that is smaller than expected has a visible reason. */
+      undatedRows: number;
       byStatus: Record<string, StatusBucket>;
       rates: Map<string, number>;
       transfers: { commissionId: string; commission: number; stripeTransferId: string | null; paidAt: string | null }[];
@@ -113,8 +173,8 @@ export async function GET(request: NextRequest) {
       let a = byReferrer.get(id);
       if (!a) {
         a = {
-          revenueBrought: 0, commissionTotal: 0, harvestKept: 0,
-          plansSold: 0, recurringPayments: 0,
+          windows: { today: emptyWindow(), d7: emptyWindow(), d30: emptyWindow(), all: emptyWindow() },
+          undatedRows: 0,
           byStatus: {}, rates: new Map(), transfers: [], rows: [],
         };
         byReferrer.set(id, a);
@@ -132,16 +192,25 @@ export async function GET(request: NextRequest) {
       // READ, never recompute. See trap 1 above.
       const commission = Number(c.commission) || 0;
       const status: string = c.status || 'unknown';
+      const createdAt: string | null = c.createdAt || null;
+      if (!createdAt) acc.undatedRows += 1;
 
-      acc.revenueBrought += amount;
-      acc.commissionTotal += commission;
-      // What Harvest kept out of the money the affiliate brought in. Uses the
-      // STORED commission, so the 20% legacy row correctly leaves less behind
-      // than a 15% row on the same amount.
-      acc.harvestKept += amount - commission;
-
-      if (c.type === 'initial') acc.plansSold += 1;
-      if (c.type === 'recurring') acc.recurringPayments += 1;
+      // Fold this row into every window it falls inside. `all` always takes it;
+      // a dated window takes it only when the row is at or after that cutoff.
+      for (const key of WINDOW_KEYS) {
+        const cutoff = cutoffs[key];
+        if (cutoff !== null && !(createdAt && createdAt >= cutoff)) continue;
+        const w = acc.windows[key];
+        w.revenueBrought += amount;
+        w.commission += commission;
+        // What Harvest kept out of the money the affiliate brought in. Uses the
+        // STORED commission, so the 20% legacy row correctly leaves less behind
+        // than a 15% row on the same amount.
+        w.harvestKept += amount - commission;
+        if (c.type === 'initial') w.plansSold += 1;
+        if (c.type === 'recurring') w.recurringPayments += 1;
+        w.rows += 1;
+      }
 
       const bucket = (acc.byStatus[status] ||= emptyBucket());
       bucket.count += 1;
@@ -216,27 +285,43 @@ export async function GET(request: NextRequest) {
         .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
         .slice(0, ROWS_PER_AFFILIATE);
 
+      const all = acc?.windows.all || emptyWindow();
+
       return {
         userId: uid,
         email: u.email || null,
         name: u.displayName || u.name || null,
         affiliateCode: u.affiliateCode || null,
 
-        // ── The table ──────────────────────────────────────────────────────
+        // ── The table (lifetime) ───────────────────────────────────────────
         /** Gross customer money these referrals generated (sum of `amount`). */
-        revenueBrought: acc?.revenueBrought || 0,
+        revenueBrought: all.revenueBrought,
         /** Count of `type: 'initial'` rows — a plan sold. Renewals are separate. */
-        plansSold: acc?.plansSold || 0,
+        plansSold: all.plansSold,
         /** Renewal commissions on top of those sales. */
-        recurringPayments: acc?.recurringPayments || 0,
+        recurringPayments: all.recurringPayments,
         /** Lifetime earnings as the counter holds them (what the affiliate sees). */
         earned: u.affiliateEarnings || 0,
         /** Banked but not yet transferred out. */
         owedUnpaid: u.affiliatePendingPayouts || 0,
         /** revenueBrought − commissions, from STORED commission values. */
-        harvestKept: acc?.harvestKept || 0,
+        harvestKept: all.harvestKept,
         /** Sum of stored `commission` across their rows — cross-checks `earned`. */
-        commissionFromRows: acc?.commissionTotal || 0,
+        commissionFromRows: all.commission,
+
+        /** The SAME sales fold restricted to today / the last 7 days / the last
+         * 30 days / all time, so the view can rank by who sold most (or least)
+         * in a period without a second request. `windows.all` is identical to
+         * the lifetime fields above, by construction.
+         *
+         * Only ROW-DERIVED figures appear here. `earned`, `owedUnpaid` and
+         * `convertedReferrals` are running counters on the user doc with no
+         * history behind them — there is no honest way to window them, so they
+         * are deliberately absent and stay labelled lifetime in the UI. */
+        windows: acc?.windows || { today: emptyWindow(), d7: emptyWindow(), d30: emptyWindow(), all: emptyWindow() },
+        /** Rows with no `createdAt`: counted in `all`, absent from every dated
+         * window. Surfaced so a short windowed total has a visible cause. */
+        undatedRows: acc?.undatedRows || 0,
 
         payoutStatus: {
           paid: byStatus.paid || emptyBucket(),
@@ -275,6 +360,9 @@ export async function GET(request: NextRequest) {
        * read as a complete one. */
       truncated: codedUserSnap.size >= AFFILIATE_LIMIT,
       commissionRowsScanned: commissionSnap.size,
+      /** The exact lower bound of each window (`all` is unbounded), so the view
+       * can state the period it is actually showing instead of implying one. */
+      windowCutoffs: cutoffs,
     });
   } catch (e) {
     console.error('admin affiliates error:', e);

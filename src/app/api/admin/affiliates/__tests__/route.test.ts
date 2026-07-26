@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { NextRequest } from 'next/server';
 
 const { mockRequireSuperAdmin, mockCollection, mockGetAll } = vi.hoisted(() => ({
@@ -240,5 +240,130 @@ describe('GET /api/admin/affiliates — the numbers', () => {
     expect(body.affiliates).toEqual([]);
     expect(body.commissionRowsScanned).toBe(0);
     expect(body.truncated).toBe(false);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Time windows: "who sold the most today / in 7 days / in 30 days".
+// Clock is pinned so the UTC calendar-day cutoffs are exact rather than
+// whatever the test machine's date happens to be.
+// ─────────────────────────────────────────────────────────────────────────────
+const NOW = new Date('2026-07-26T09:30:00.000Z');
+
+/** One affiliate, four sales, one per bucket: today, inside 7d, inside 30d,
+ * and older than 30d. Every window's expected plansSold is therefore known. */
+const DATED = [
+  snap('w1', {
+    referrerId: 'seller', tenantId: 'ta', plan: 'pro', type: 'initial', status: 'paid',
+    amount: 11900, commission: 1785, createdAt: '2026-07-26T02:00:00.000Z',   // today (UTC)
+  }),
+  snap('w2', {
+    referrerId: 'seller', tenantId: 'tb', plan: 'pro', type: 'initial', status: 'paid',
+    amount: 11900, commission: 1785, createdAt: '2026-07-22T12:00:00.000Z',   // within 7d
+  }),
+  snap('w3', {
+    referrerId: 'seller', tenantId: 'tc', plan: 'max', type: 'initial', status: 'pending',
+    amount: 29900, commission: 4485, createdAt: '2026-07-05T12:00:00.000Z',   // within 30d
+  }),
+  snap('w4', {
+    referrerId: 'seller', tenantId: 'td', plan: 'max', type: 'initial', status: 'paid',
+    amount: 29900, commission: 4485, createdAt: '2026-01-01T12:00:00.000Z',   // older
+  }),
+  // A renewal, not a sale: must never inflate plansSold in any window.
+  snap('w5', {
+    referrerId: 'seller', tenantId: 'ta', plan: 'pro', type: 'recurring', status: 'paid',
+    amount: 11900, commission: 1785, createdAt: '2026-07-26T03:00:00.000Z',
+  }),
+  // No createdAt at all: counts toward all-time, belongs to no dated window.
+  snap('w6', {
+    referrerId: 'seller', tenantId: 'te', plan: 'pro', type: 'initial', status: 'pending',
+    amount: 11900, commission: 1785,
+  }),
+];
+
+describe('GET /api/admin/affiliates — time windows', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+    mockRequireSuperAdmin.mockResolvedValue(superAdmin);
+    wireDb(DATED, { seller: { email: 'seller@example.com', affiliateCode: 'sss11111' } });
+  });
+  afterEach(() => vi.useRealTimers());
+
+  it('reports UTC calendar-day cutoffs for each window', async () => {
+    const body = await (await GET(makeReq())).json();
+    expect(body.windowCutoffs).toEqual({
+      today: '2026-07-26T00:00:00.000Z',
+      d7: '2026-07-20T00:00:00.000Z',   // today plus the previous 6 days
+      d30: '2026-06-27T00:00:00.000Z',  // today plus the previous 29 days
+      all: null,
+    });
+  });
+
+  it('counts plans sold per window, nesting today ⊆ 7d ⊆ 30d ⊆ all', async () => {
+    const body = await (await GET(makeReq())).json();
+    const s = byId(body, 'seller');
+    expect(s.windows.today.plansSold).toBe(1);
+    expect(s.windows.d7.plansSold).toBe(2);
+    expect(s.windows.d30.plansSold).toBe(3);
+    expect(s.windows.all.plansSold).toBe(5);  // + the January sale + the undated one
+  });
+
+  it('keeps renewals out of plansSold while still counting them', async () => {
+    const body = await (await GET(makeReq())).json();
+    const s = byId(body, 'seller');
+    expect(s.windows.today.recurringPayments).toBe(1);
+    expect(s.windows.today.plansSold).toBe(1);
+    expect(s.windows.today.rows).toBe(2);
+  });
+
+  it('windows revenue and Harvest\'s share alongside the sale counts', async () => {
+    const body = await (await GET(makeReq())).json();
+    const s = byId(body, 'seller');
+    // Today = one $119 sale + one $119 renewal.
+    expect(s.windows.today.revenueBrought).toBe(11900 * 2);
+    expect(s.windows.today.commission).toBe(1785 * 2);
+    expect(s.windows.today.harvestKept).toBe((11900 - 1785) * 2);
+  });
+
+  it('windows.all is identical to the lifetime fields', async () => {
+    const body = await (await GET(makeReq())).json();
+    const s = byId(body, 'seller');
+    expect(s.windows.all.revenueBrought).toBe(s.revenueBrought);
+    expect(s.windows.all.plansSold).toBe(s.plansSold);
+    expect(s.windows.all.harvestKept).toBe(s.harvestKept);
+    expect(s.windows.all.commission).toBe(s.commissionFromRows);
+  });
+
+  it('reports undated rows instead of silently dropping them from windows', async () => {
+    const body = await (await GET(makeReq())).json();
+    const s = byId(body, 'seller');
+    expect(s.undatedRows).toBe(1);
+    // Present in all-time, absent from every dated window.
+    expect(s.windows.all.rows - s.windows.d30.rows).toBe(2); // the January row + the undated one
+  });
+
+  it('ranks correctly for both most and fewest sold in a window', async () => {
+    // Two affiliates: `seller` sold twice in the last 7 days, `quiet` once today.
+    wireDb(
+      [...DATED, snap('q1', {
+        referrerId: 'quiet', tenantId: 'tz', plan: 'pro', type: 'initial', status: 'paid',
+        amount: 11900, commission: 1785, createdAt: '2026-07-26T01:00:00.000Z',
+      })],
+      { seller: { affiliateCode: 's' }, quiet: { affiliateCode: 'q' }, idle: { affiliateCode: 'i' } },
+    );
+    const body = await (await GET(makeReq())).json();
+    const plansIn = (id: string, k: string) => byId(body, id).windows[k].plansSold;
+
+    // Today they are level; over 7 days `seller` is ahead. The view sorts on
+    // these numbers, so this is the ranking it produces.
+    expect(plansIn('seller', 'today')).toBe(1);
+    expect(plansIn('quiet', 'today')).toBe(1);
+    expect(plansIn('seller', 'd7')).toBe(2);
+    expect(plansIn('quiet', 'd7')).toBe(1);
+    // An affiliate with a link and no sales stays rankable at the bottom (or the
+    // top, ordering by fewest) rather than dropping out of the list.
+    expect(plansIn('idle', 'd7')).toBe(0);
+    expect(byId(body, 'idle').windows.all.plansSold).toBe(0);
   });
 });
