@@ -8,6 +8,7 @@ import {
   getAuthConfig,
 } from '@/lib/composio-client';
 import { assertSendOnlyGmailScopes, GmailScopeError } from '@/lib/gmail-scopes';
+import { normalizeSenderEmail } from '@/lib/gmail-sender';
 import { adminDb } from '@/lib/firebase-admin';
 import { captureHandledError } from '@/lib/money-path-sentry';
 
@@ -22,6 +23,24 @@ export async function POST(request: NextRequest) {
     if (!tenantId) {
       return NextResponse.json({ error: 'No tenant associated with this user' }, { status: 400 });
     }
+
+    // ── Which address this admin will send from ─────────────────────────────
+    // Settings asks for it and sends it here, prefilled with the Harvest login
+    // so confirming is one click. Reading it from the body is safe HERE in a way
+    // it would never be on the send route: this writes only to the caller's OWN
+    // `{uid}_gmail` doc, keyed by the uid on the verified token, so an admin can
+    // only ever name their own sending address.
+    //
+    // A body that omits it (or supplies something that is not a bare address)
+    // falls back to the token's email rather than refusing — a connection with a
+    // guessed address is fixable from Settings, whereas no connection at all is
+    // not. Either way the value is this admin's own identity, never another's.
+    let senderEmail: string | null = null;
+    try {
+      const payload = await request.json();
+      senderEmail = normalizeSenderEmail((payload as { senderEmail?: unknown })?.senderEmail);
+    } catch { /* no body, or not JSON — fall through to the token email */ }
+    senderEmail = senderEmail ?? normalizeSenderEmail(userOrResponse.email);
 
     const tenantDoc = await adminDb.collection('tenants').doc(tenantId).get();
     if (!tenantDoc.exists) {
@@ -130,6 +149,11 @@ export async function POST(request: NextRequest) {
         // Recorded so the granted scopes are auditable from Firestore alone,
         // without a round-trip to Composio.
         scopes: approvedScopes,
+        // Passed as `from_email` on every send so Composio never has to look the
+        // address up itself — the lookup it would otherwise do needs a mailbox
+        // scope. Omitted rather than written as null when unknown, so the send
+        // route's "no address recorded" branch stays a single check.
+        ...(senderEmail ? { senderEmail } : {}),
         initiatedAt: new Date().toISOString(),
       });
     });

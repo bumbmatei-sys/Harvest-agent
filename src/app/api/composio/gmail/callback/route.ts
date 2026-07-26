@@ -59,9 +59,11 @@ export async function GET(request: NextRequest) {
     // NOTE: unlike the Mailchimp callback, nothing is fetched from the account
     // here. Reading the connected address would mean GMAIL_GET_PROFILE, which
     // Google gates behind gmail.metadata/readonly/modify — mailbox scopes this
-    // integration deliberately does not hold. Displaying which address is
-    // connected is not worth widening the grant, so the card shows "Connected"
-    // without an address and mail goes out from the account's primary address.
+    // integration deliberately does not hold, and never will.
+    //
+    // The address is therefore not discovered, it is DECLARED: the admin confirms
+    // it in Settings at connect time and it is already on this doc. `merge: true`
+    // below is what preserves it — this write must not clobber `senderEmail`.
     await integrationRef.set({
       connectedAccountId,
       connectedAt: new Date().toISOString(),

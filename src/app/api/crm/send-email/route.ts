@@ -4,6 +4,7 @@ import { requireAdmin } from '@/lib/api-auth';
 import { executeComposioAction } from '@/lib/composio-client';
 import { adminDb } from '@/lib/firebase-admin';
 import { captureHandledError } from '@/lib/money-path-sentry';
+import { NO_SENDER_ADDRESS_MESSAGE } from '@/lib/gmail-sender';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,6 +31,10 @@ const MAX_BODY = 50_000;
  *   • The recipient is read from the contact document, NOT from the body.
  *     Accepting a `to` address would turn a church's Gmail account into an open
  *     relay driven through Harvest.
+ *   • The SENDER is read from the admin's own integration doc, NOT from the
+ *     body. It is written at connect time under `{uid}_gmail` and can only be
+ *     changed by that same admin. A caller-supplied `from_email` would let one
+ *     admin put another admin's address on a message.
  *
  * Only `subject` and `body` are taken from the caller.
  *
@@ -121,13 +126,29 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // ── Sender address: recorded at connect time, never taken from the body ──
+    // Composio only resolves the sender itself when `from_email` is absent, and
+    // that resolution needs a mailbox scope Harvest deliberately does not hold
+    // (see src/lib/gmail-sender.ts). Sending without this value therefore fails
+    // at Composio with an opaque 403, so refuse here instead: the admin gets a
+    // fixable instruction rather than a 502, and no message is attempted.
+    const senderEmail = typeof integration.senderEmail === 'string'
+      ? integration.senderEmail.trim()
+      : '';
+    if (!senderEmail) {
+      return NextResponse.json(
+        { error: NO_SENDER_ADDRESS_MESSAGE, code: 'no_sender_address' },
+        { status: 409 }
+      );
+    }
+
     // ── Send ────────────────────────────────────────────────────────────────
     // executeComposioAction throws when Composio reports `successful: false`,
     // so a tool-level failure lands in the catch below and never reaches the
     // activity write.
     await executeComposioAction(
       'GMAIL_SEND_EMAIL',
-      { recipient_email: to, subject, body, is_html: false },
+      { recipient_email: to, subject, body, is_html: false, from_email: senderEmail },
       integration.connectedAccountId,
       senderTenantId,
       user.uid
