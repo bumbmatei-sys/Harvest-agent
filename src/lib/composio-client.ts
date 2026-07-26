@@ -227,6 +227,51 @@ export async function getConnectionStatus(
 }
 
 /**
+ * Read an auth config (the `ac_...` blueprint a connection is minted from).
+ *
+ * Only the fields needed to *audit* a config are surfaced — never `credentials`
+ * wholesale, which carries the OAuth client secret on a custom config. The one
+ * field lifted out of it is `scopes`, which is not a secret and is the entire
+ * point of the read: `src/lib/gmail-scopes.ts` uses it to prove, before any
+ * consent screen is shown, that a Gmail connection cannot read a mailbox.
+ *
+ * `isComposioManaged` distinguishes Composio's shared OAuth app (whose consent
+ * screen names *Composio*) from a Harvest-owned Google OAuth client.
+ *
+ * @param authConfigId - The Composio auth config id (`ac_...`)
+ */
+export async function getAuthConfig(
+  authConfigId: string
+): Promise<{
+  id: string;
+  toolkitSlug: string;
+  isComposioManaged: boolean;
+  /** null when Composio did not report scopes at all — NOT the same as "none". */
+  scopes: string[] | null;
+}> {
+  const composio = getComposio();
+  const cfg = await composio.authConfigs.get(authConfigId);
+
+  // `credentials.scopes` is typed as `string | string[] | undefined` on both the
+  // managed and custom create/update schemas. A string is space- or
+  // comma-delimited depending on how it was entered in the dashboard.
+  const raw = (cfg.credentials as Record<string, unknown> | undefined)?.scopes;
+  let scopes: string[] | null = null;
+  if (Array.isArray(raw)) {
+    scopes = raw.map(s => String(s).trim()).filter(Boolean);
+  } else if (typeof raw === 'string') {
+    scopes = raw.split(/[\s,]+/).map(s => s.trim()).filter(Boolean);
+  }
+
+  return {
+    id: cfg.id,
+    toolkitSlug: cfg.toolkit?.slug ?? '',
+    isComposioManaged: cfg.isComposioManaged === true,
+    scopes,
+  };
+}
+
+/**
  * Delete/disconnect a connected account.
  * @param connectedAccountId - The connected account id to delete
  */

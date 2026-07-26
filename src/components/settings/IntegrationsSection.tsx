@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Instagram, Mail, Star } from 'lucide-react';
+import { Instagram, Mail, Star, Send } from 'lucide-react';
 import { authFetch } from '../../utils/auth-fetch';
 
 const IntegrationsSection: React.FC = () => {
@@ -13,6 +13,12 @@ const IntegrationsSection: React.FC = () => {
   const [mailchimpAccount, setMailchimpAccount] = useState<string | null>(null);
   const [isPrimaryMailchimp, setIsPrimaryMailchimp] = useState(false);
   const [mailchimpLoading, setMailchimpLoading] = useState(false);
+
+  // Gmail is strictly per-admin — there is no "Primary" concept. Two admins in
+  // one church each connect their own account and neither can send as the other,
+  // so promoting one to tenant-wide would be exactly the wrong affordance.
+  const [gmailStatus, setGmailStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected');
+  const [gmailLoading, setGmailLoading] = useState(false);
 
   const [loaded, setLoaded] = useState(false);
   const pollingRef = useRef<{ intervals: NodeJS.Timeout[]; timeouts: NodeJS.Timeout[] }>({ intervals: [], timeouts: [] });
@@ -37,9 +43,10 @@ const IntegrationsSection: React.FC = () => {
   const loadIntegrations = useCallback(async () => {
     if (loaded) return;
     try {
-      const [igResp, mcResp] = await Promise.all([
+      const [igResp, mcResp, gmResp] = await Promise.all([
         authFetch('/api/composio/instagram/status'),
         authFetch('/api/composio/mailchimp/status'),
+        authFetch('/api/composio/gmail/status'),
       ]);
 
       if (igResp.ok) {
@@ -58,6 +65,11 @@ const IntegrationsSection: React.FC = () => {
           setMailchimpAccount(mcData.email || null);
         }
         setIsPrimaryMailchimp(mcData.isPrimary || false);
+      }
+
+      if (gmResp.ok) {
+        const gmData = await gmResp.json();
+        if (gmData.connected) setGmailStatus('connected');
       }
     } catch (e) {
       console.error('Failed to load integrations:', e);
@@ -170,6 +182,56 @@ const IntegrationsSection: React.FC = () => {
       alert('Failed to connect Mailchimp. Please try again.');
     } finally {
       setMailchimpLoading(false);
+    }
+  };
+
+  const handleGmailConnect = async () => {
+    const tid = await getTenantId();
+    if (!tid) return;
+    setGmailLoading(true);
+    try {
+      const resp = await authFetch('/api/composio/gmail/connect', {
+        method: 'POST',
+        body: JSON.stringify({ tenantId: tid }),
+      });
+      const data = await resp.json();
+      if (data.redirectUrl) {
+        setGmailStatus('connecting');
+        window.open(data.redirectUrl, '_blank');
+        const pollInterval = setInterval(async () => {
+          try {
+            const statusResp = await authFetch('/api/composio/gmail/status');
+            const statusData = await statusResp.json();
+            if (statusData.connected) {
+              setGmailStatus('connected');
+              clearInterval(pollInterval);
+            }
+          } catch { /* keep polling */ }
+        }, 3000);
+        const pollTimeout = setTimeout(() => clearInterval(pollInterval), 120000);
+        pollingRef.current.intervals.push(pollInterval);
+        pollingRef.current.timeouts.push(pollTimeout);
+      } else {
+        alert(data.error || 'Failed to initiate Gmail connection');
+      }
+    } catch (e) {
+      console.error('Gmail connect error:', e);
+      alert('Failed to connect Gmail. Please try again.');
+    } finally {
+      setGmailLoading(false);
+    }
+  };
+
+  const handleGmailDisconnect = async () => {
+    setGmailLoading(true);
+    try {
+      await authFetch('/api/composio/gmail/disconnect', { method: 'POST' });
+      setGmailStatus('disconnected');
+    } catch (e) {
+      console.error('Gmail disconnect error:', e);
+      alert('Failed to disconnect Gmail.');
+    } finally {
+      setGmailLoading(false);
     }
   };
 
@@ -303,6 +365,47 @@ const IntegrationsSection: React.FC = () => {
                     Connecting...
                   </span>
                 ) : mailchimpStatus === 'connecting' ? 'Waiting...' : 'Connect'}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Gmail Card */}
+      <div className="bg-gray-50 rounded-xl p-4">
+        <div className="flex items-center gap-4">
+          <Send size={20} className="text-gray-400" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-gray-900">Gmail</p>
+            {gmailStatus === 'connected' ? (
+              <p className="text-xs text-green-600">Connected — you can email contacts from the CRM</p>
+            ) : gmailStatus === 'connecting' ? (
+              <p className="text-xs text-yellow-600">Waiting for authorization...</p>
+            ) : (
+              <p className="text-xs text-gray-500">Email a CRM contact from your own Gmail account</p>
+            )}
+            {/* Say plainly what is being granted. Harvest asks for send-only
+                access and cannot open, search or read the mailbox — the connect
+                route refuses to start OAuth on any wider scope. */}
+            <p className="text-[11px] text-gray-400 mt-0.5">
+              Send-only access. Harvest can never read your inbox.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            {gmailStatus === 'connected' ? (
+              <button onClick={handleGmailDisconnect} disabled={gmailLoading}
+                className="px-4 py-2 border border-red-200 text-red-600 rounded-lg text-sm font-medium hover:bg-red-50 transition-colors disabled:opacity-50">
+                {gmailLoading ? 'Disconnecting...' : 'Disconnect'}
+              </button>
+            ) : (
+              <button onClick={handleGmailConnect} disabled={gmailLoading || gmailStatus === 'connecting'}
+                className="px-4 py-2 bg-gold text-white rounded-lg text-sm font-medium hover:bg-gold transition-colors disabled:opacity-50">
+                {gmailLoading ? (
+                  <span className="flex items-center gap-2">
+                    <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Connecting...
+                  </span>
+                ) : gmailStatus === 'connecting' ? 'Waiting...' : 'Connect'}
               </button>
             )}
           </div>

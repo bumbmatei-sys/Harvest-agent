@@ -1,9 +1,10 @@
 "use client";
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Plus, Search, Edit2, Trash2, Users, Mail, Phone,
   MessageSquare, DollarSign, PhoneCall, Calendar, Clock, ChevronRight, MapPin,
-  List, LayoutGrid, Heart, Award, AlertTriangle
+  List, LayoutGrid, Heart, Award, AlertTriangle, Send
 } from 'lucide-react';
 import {
   collection, addDoc, deleteDoc, setDoc,
@@ -14,6 +15,7 @@ import { toSafeDate, type DateLike } from '../utils/format-date';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { sortByTime, sortByString } from '../utils/query-helpers';
 import { notifyError } from '../utils/notify';
+import { authFetch } from '../utils/auth-fetch';
 import AnalyticsAndRoles, { Permission } from './AnalyticsAndRoles';
 import { useAdminHeader, HeaderActionButton } from './AdminScreenHeader';
 import { useQueryClient } from '@tanstack/react-query';
@@ -185,6 +187,7 @@ interface AdminCRMProps {
 
 const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermissions, initialContactId, onItemConsumed }) => {
   const { setHeaderAction, setHeaderOverride } = useAdminHeader();
+  const navigate = useNavigate();
   const scrollRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
   const { currentTenantId: tenantId, isAuthReady } = useAppStore();
@@ -203,6 +206,15 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
   const [showAddActivity, setShowAddActivity] = useState(false);
   const [actForm, setActForm] = useState({ type: 'note' as ContactActivity['type'], description: '', amount: '' });
   const [savingAct, setSavingAct] = useState(false);
+  // Email compose. `gmailConnected` is tri-state: null while the status is still
+  // unknown, so the UI renders neither a send button nor a "connect" prompt off
+  // an unanswered question. `emailError` is what keeps a failed send from
+  // looking like a success — see sendEmail below.
+  const [gmailConnected, setGmailConnected] = useState<boolean | null>(null);
+  const [showCompose, setShowCompose] = useState(false);
+  const [emailForm, setEmailForm] = useState({ subject: '', body: '' });
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [emailError, setEmailError] = useState<string | null>(null);
   // Sub-view entitlements. Contacts = manageCRM, Analytics = analytics, Roles =
   // manageAdmins (full access / super admin see all three). The CRM drawer entry
   // shows when the admin has ANY of these, so default to one they can actually view.
@@ -408,6 +420,77 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
       setActForm({ type: 'note', description: '', amount: '' });
     } catch (e) { notifyError('Failed to add activity', e); }
     finally { setSavingAct(false); }
+  };
+
+  // Is the *calling admin's own* Gmail connected? The route keys on the uid in
+  // the token, so this answers for this admin only — a colleague's connection
+  // never unlocks the button here. Asked once per mount; a network failure
+  // leaves it `false`, which shows the connect prompt rather than a send button
+  // that would error.
+  useEffect(() => {
+    let cancelled = false;
+    if (!isAuthReady) return;
+    (async () => {
+      try {
+        const res = await authFetch('/api/composio/gmail/status');
+        const data = res.ok ? await res.json() : null;
+        if (!cancelled) setGmailConnected(!!data?.connected);
+      } catch {
+        if (!cancelled) setGmailConnected(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [isAuthReady]);
+
+  const openCompose = () => {
+    setEmailForm({ subject: '', body: '' });
+    setEmailError(null);
+    setShowCompose(true);
+  };
+
+  /**
+   * Send, then log. Both happen server-side in one request so the timeline
+   * entry cannot exist for an email that never went out.
+   *
+   * On failure the modal STAYS OPEN with the composed text intact and the real
+   * error shown. Closing the modal — or clearing the fields — on a failed send
+   * is the exact bug that has bitten four times here: an admin believes they
+   * replied to a member when nothing was delivered.
+   */
+  const sendEmail = async () => {
+    if (!selected || !emailForm.subject.trim() || !emailForm.body.trim()) return;
+    setSendingEmail(true);
+    setEmailError(null);
+    try {
+      const res = await authFetch('/api/crm/send-email', {
+        method: 'POST',
+        body: JSON.stringify({
+          contactId: selected.id,
+          subject: emailForm.subject.trim(),
+          body: emailForm.body.trim(),
+        }),
+      });
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok || !data?.sent) {
+        if (data?.code === 'not_connected') setGmailConnected(false);
+        // Throwing here (rather than returning) keeps every failure on one path.
+        throw new Error(data?.error || `The email could not be sent (${res.status}).`);
+      }
+
+      // Sent. The activity was written server-side unless `logged` says
+      // otherwise — surface that instead of pretending the timeline is complete.
+      await queryClient.invalidateQueries({ queryKey: ['contactActivities', tenantId, selected.id] });
+      setShowCompose(false);
+      setEmailForm({ subject: '', body: '' });
+      if (data.logged === false && data.warning) notifyError('Email sent', new Error(data.warning));
+    } catch (e) {
+      const message = (e as Error)?.message || 'The email could not be sent.';
+      console.error('Failed to send email:', e);
+      setEmailError(message);
+    } finally {
+      setSendingEmail(false);
+    }
   };
 
   if (loading) {
@@ -723,13 +806,35 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
         {/* Activity Timeline */}
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-xs font-bold text-[color:var(--text-faint)] uppercase tracking-wider">Activity Timeline</h3>
-          <button
-            onClick={() => setShowAddActivity(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-white"
-            style={{ backgroundColor: 'var(--brand-color, #B8962E)' }}
-          >
-            <Plus size={12} /> Add Activity
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Email action. Three distinct states, and never a button that is
+                known to fail: no address on the contact → nothing at all;
+                Gmail not connected → a link to Settings; connected → send.
+                While `gmailConnected` is still null neither is rendered. */}
+            {selected.email && gmailConnected === true && (
+              <button
+                onClick={openCompose}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border border-[#EDEBE8] text-warm-brown hover:bg-stone-100"
+              >
+                <Send size={12} /> Email
+              </button>
+            )}
+            {selected.email && gmailConnected === false && (
+              <button
+                onClick={() => navigate('/admin/settings')}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border border-[#EDEBE8] text-[color:var(--text-faint)] hover:bg-stone-100"
+              >
+                <Send size={12} /> Connect your email
+              </button>
+            )}
+            <button
+              onClick={() => setShowAddActivity(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-white"
+              style={{ backgroundColor: 'var(--brand-color, #B8962E)' }}
+            >
+              <Plus size={12} /> Add Activity
+            </button>
+          </div>
         </div>
 
         {activitiesFailed ? (
@@ -833,6 +938,71 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
                   className="w-full py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
                   style={{ backgroundColor: 'var(--brand-color, #B8962E)' }}>
                   {savingAct ? 'Saving...' : 'Add'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showCompose && (
+          <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center bg-black/50 p-4">
+            <div className="bg-white rounded-3xl w-full max-w-md">
+              <div className="p-5 border-b border-[#EDEBE8]"><h3 className="font-bold text-earth font-display">Send Email</h3></div>
+              <div className="p-5 space-y-4">
+                <div>
+                  <label className="text-xs font-semibold text-warm-brown mb-1 block">To</label>
+                  {/* Read-only on purpose. The server resolves the recipient
+                      from the contact document and ignores any address in the
+                      request, so an editable field here would be a lie. */}
+                  <div className="bg-[#F7F6F3] rounded-xl px-3 py-2.5 text-sm text-[color:var(--text-body)] truncate">
+                    {selected.email}
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-warm-brown mb-1 block">Subject *</label>
+                  <input
+                    value={emailForm.subject}
+                    onChange={e => setEmailForm({ ...emailForm, subject: e.target.value })}
+                    className="w-full rounded-xl border border-[#EDEBE8] px-3 py-2.5 text-sm focus:border-gold focus:outline-none"
+                    placeholder="Subject line"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-warm-brown mb-1 block">Message *</label>
+                  <div className="bg-[#F7F6F3] rounded-xl p-3">
+                    <textarea
+                      value={emailForm.body}
+                      onChange={e => setEmailForm({ ...emailForm, body: e.target.value })}
+                      rows={6}
+                      className="border-0 focus:outline-none text-sm text-[color:var(--text-body)] resize-none w-full bg-transparent"
+                      placeholder="Write your message..."
+                    />
+                  </div>
+                </div>
+                {/* A failed send is loud, and the text above is still there. */}
+                {emailError && (
+                  <div className="flex gap-2 rounded-xl border border-red-200 bg-red-50 p-3">
+                    <AlertTriangle size={14} className="text-red-500 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-xs font-semibold text-red-700">Not sent</p>
+                      <p className="text-xs text-red-600 mt-0.5">{emailError}</p>
+                      <p className="text-[11px] text-red-500 mt-1">Your message has been kept — you can try again.</p>
+                    </div>
+                  </div>
+                )}
+                <p className="text-[11px] text-[color:var(--text-faint)]">
+                  Sends from your connected Gmail account and is added to this contact&apos;s timeline.
+                </p>
+              </div>
+              <div className="p-5 border-t border-[#EDEBE8] space-y-2">
+                <button onClick={() => setShowCompose(false)} disabled={sendingEmail}
+                  className="w-full py-2.5 rounded-xl border border-[#EDEBE8] text-sm font-semibold text-warm-brown disabled:opacity-50">
+                  Cancel
+                </button>
+                <button onClick={sendEmail} disabled={sendingEmail || !emailForm.subject.trim() || !emailForm.body.trim()}
+                  className="w-full py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
+                  style={{ backgroundColor: 'var(--brand-color, #B8962E)' }}>
+                  {sendingEmail ? 'Sending...' : 'Send'}
                 </button>
               </div>
             </div>
