@@ -86,6 +86,115 @@ describe('setCustomClaims', () => {
     });
   });
 
+  // ─── Email-based super admin (THE-45) ────────────────────────────────────
+  // firestore.rules' isSuperAdmin() passes on EITHER the superAdmin claim or a
+  // listed email. The claim used to be minted only from role === 'super_admin',
+  // so a listed owner with role 'user' passed the rules' email leg while holding
+  // no claim — every claim-based check disagreed with the rules for that account.
+  describe('email-based super admin', () => {
+    for (const email of ['bumbmatei@proton.me', 'bumbmatei@zohomail.eu']) {
+      it(`mints superAdmin AND admin for ${email} regardless of users-doc role`, async () => {
+        // The live case: role 'user', tenantId null — exactly what
+        // bumbmatei@zohomail.eu's doc looked like while it had full access.
+        mockGetDoc.mockResolvedValue({
+          exists: true,
+          data: () => ({ role: 'user', tenantId: null }),
+        });
+        mockGetUser.mockResolvedValue({ email, customClaims: {} });
+
+        await setCustomClaims('user123');
+
+        expect(mockSetCustomUserClaims).toHaveBeenCalledWith('user123', {
+          admin: true,
+          superAdmin: true,
+        });
+      });
+    }
+
+    it('mints superAdmin for a listed email in mixed case (emails are compared lowercased)', async () => {
+      mockGetDoc.mockResolvedValue({
+        exists: true,
+        data: () => ({ role: 'user' }),
+      });
+      mockGetUser.mockResolvedValue({ email: 'BumbMatei@Proton.ME', customClaims: {} });
+
+      await setCustomClaims('user123');
+
+      expect(mockSetCustomUserClaims).toHaveBeenCalledWith('user123', {
+        admin: true,
+        superAdmin: true,
+      });
+    });
+
+    it.each([
+      ['an ordinary user', 'someone@example.com'],
+      ['a lookalike domain', 'bumbmatei@proton.me.evil.com'],
+      ['a listed email with surrounding whitespace', ' bumbmatei@proton.me '],
+      ['a listed local-part on another domain', 'bumbmatei@gmail.com'],
+      ['an empty email', ''],
+      ['a missing email', undefined],
+    ])('does NOT mint superAdmin for %s', async (_label, email) => {
+      mockGetDoc.mockResolvedValue({
+        exists: true,
+        data: () => ({ role: 'user', tenantId: 't1' }),
+      });
+      mockGetUser.mockResolvedValue({ email, customClaims: {} });
+
+      await setCustomClaims('user123');
+
+      expect(mockSetCustomUserClaims).toHaveBeenCalledWith('user123', { tenantId: 't1' });
+    });
+
+    it('reads the AUTH email, not the users-doc email copy (doc stale, auth super admin)', async () => {
+      // users/{uid}.email is a copy that can go stale. The Auth record is
+      // authoritative, and it is what firestore.rules sees in the token.
+      mockGetDoc.mockResolvedValue({
+        exists: true,
+        data: () => ({ role: 'user', email: 'stale-old-address@example.com' }),
+      });
+      mockGetUser.mockResolvedValue({ email: 'bumbmatei@proton.me', customClaims: {} });
+
+      await setCustomClaims('user123');
+
+      expect(mockSetCustomUserClaims).toHaveBeenCalledWith('user123', {
+        admin: true,
+        superAdmin: true,
+      });
+    });
+
+    it('reads the AUTH email, not the users-doc email copy (doc super admin, auth ordinary)', async () => {
+      // The inverse: a users doc claiming a super-admin email must NOT grant the
+      // claim when the Auth record — the only thing the token reflects — differs.
+      mockGetDoc.mockResolvedValue({
+        exists: true,
+        data: () => ({ role: 'user', tenantId: 't1', email: 'bumbmatei@proton.me' }),
+      });
+      mockGetUser.mockResolvedValue({ email: 'someone-else@example.com', customClaims: {} });
+
+      await setCustomClaims('user123');
+
+      expect(mockSetCustomUserClaims).toHaveBeenCalledWith('user123', { tenantId: 't1' });
+    });
+
+    it('does not re-write when the email-derived claims are already present', async () => {
+      // The "claims unchanged → no write" guard must survive the new grant, or
+      // every migrate-claims run would revoke both owners' tokens for nothing.
+      mockGetDoc.mockResolvedValue({
+        exists: true,
+        data: () => ({ role: 'user', tenantId: null }),
+      });
+      mockGetUser.mockResolvedValue({
+        email: 'bumbmatei@proton.me',
+        customClaims: { admin: true, superAdmin: true },
+      });
+
+      await setCustomClaims('user123');
+
+      expect(mockSetCustomUserClaims).not.toHaveBeenCalled();
+      expect(mockUpdate).not.toHaveBeenCalled();
+    });
+  });
+
   it('handles missing user doc gracefully', async () => {
     mockGetDoc.mockResolvedValue({ exists: false });
     await setCustomClaims('user123');
