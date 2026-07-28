@@ -57,7 +57,7 @@ export interface PlanFeatures {
   accountingTools: boolean;
   /** Tax receipt generation */
   taxReceipt: boolean;
-  /** Community groups (Rocket.Chat integration) */
+  /** Community groups — private channels + DMs (Community / max+) */
   communityGroups: boolean;
   /** Custom forms → CRM pipeline (Ministry only) */
   customForms: boolean;
@@ -190,7 +190,7 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     crm: true,
     accountingTools: false,
     taxReceipt: true,
-    communityGroups: false,
+    communityGroups: true,
     customForms: true,
     checkInSystem: true,
     livestream: true,
@@ -332,6 +332,77 @@ export function hasFeature(plan: TenantPlan, feature: keyof PlanFeatures): boole
   if (typeof value === 'string') return value.length > 0; // 'included' | 'addon'
   return false;
 }
+
+// ─── Feature gates & minimum plan (derived) ───────────────────────────────────
+
+/** Plan tiers cheapest → most expensive. Upgrade order; do not reorder. */
+export const PLAN_ORDER: readonly TenantPlan[] = ['plus', 'pro', 'max', 'ultra'] as const;
+
+/**
+ * Gate keys used by `usePlanGate` and the upgrade screens. These are the
+ * snake_case names threaded through UI call sites (e.g.
+ * `<PlanUpgradeScreen featureKey="community_chat" />`); `FEATURE_MAP` translates
+ * them to the camelCase `PlanFeatures` cells they actually gate on.
+ */
+export type FeatureKey =
+  | 'fundraising'
+  | 'event_registration'
+  | 'docs'
+  | 'crm'
+  | 'accounting'
+  | 'community_chat'
+  | 'tax_receipts';
+
+export const FEATURE_MAP: Record<FeatureKey, keyof PlanFeatures> = {
+  fundraising: 'fundraising',
+  event_registration: 'eventRegistration',
+  docs: 'docs',
+  crm: 'crm',
+  accounting: 'accountingTools',
+  community_chat: 'communityGroups',
+  tax_receipts: 'taxReceipt',
+};
+
+/**
+ * Cheapest plan that unlocks `feature`, or `null` if no plan does.
+ *
+ * DERIVED from `PLAN_FEATURES` — walk `PLAN_ORDER` and return the first tier
+ * whose cell is truthy. This replaced two hand-maintained literal maps
+ * (`FEATURE_MIN_PLAN` in usePlanGate.ts and `FEATURE_MIN_PLAN_NAME` in
+ * PlanUpgradeScreen.tsx) that had silently drifted from the matrix: both listed
+ * `crm` and `tax_receipts` as Ministry when Community (max) has had them for
+ * some time, so upgrade screens told an Individual or Small Team admin to buy
+ * the $479 plan when $299 already unlocked the feature. Deriving makes that
+ * class of drift structurally impossible — do not reintroduce a literal map.
+ *
+ * Truthiness matches `hasFeature`: numeric cells count as unlocked when non-zero.
+ */
+export function getFeatureMinPlan(feature: FeatureKey): TenantPlan | null {
+  const key = FEATURE_MAP[feature];
+  if (!key) return null;
+  return PLAN_ORDER.find((plan) => hasFeature(plan, key)) ?? null;
+}
+
+/**
+ * Display name of the cheapest plan that unlocks `feature` (e.g. 'Community').
+ * Falls back to the top tier's name if nothing unlocks it, so upgrade copy can
+ * never render an empty plan name.
+ */
+export function getFeatureMinPlanName(feature: FeatureKey): string {
+  const plan = getFeatureMinPlan(feature);
+  return plan ? PLAN_DISPLAY_NAMES[plan] : PLAN_DISPLAY_NAMES.ultra;
+}
+
+/**
+ * Every gate key → the display name of its minimum plan, derived once at module
+ * load. The single source both `usePlanGate` and `PlanUpgradeScreen` read, so
+ * the two surfaces can never disagree. Frozen: it is derived state, not config.
+ */
+export const FEATURE_MIN_PLAN: Readonly<Record<FeatureKey, string>> = Object.freeze(
+  Object.fromEntries(
+    (Object.keys(FEATURE_MAP) as FeatureKey[]).map((k) => [k, getFeatureMinPlanName(k)])
+  ) as Record<FeatureKey, string>
+);
 
 /**
  * Branding-family entitlement — does this plan's feature set unlock the admin

@@ -8,6 +8,11 @@ import {
   PLAN_DONATION_RETENTION,
   AI_ASSISTANT_ADDON_PRICING,
   formatPlanPrice,
+  getFeatureMinPlan,
+  FEATURE_MIN_PLAN,
+  FEATURE_MAP,
+  PLAN_ORDER,
+  type FeatureKey,
 } from '../plan-features';
 // The rate actually charged. Importing stripe-config is safe HERE and only here:
 // tests run server-side, where its STRIPE_PRICE_* env reads resolve. Today they
@@ -303,5 +308,96 @@ describe('PLAN_DONATION_RETENTION', () => {
     PLANS.forEach((plan) => {
       expect(getPlanFeatures(plan).donationRetention).toBe(PLAN_DONATION_RETENTION[plan]);
     });
+  });
+});
+
+describe('communityGroups tier', () => {
+  // Community Groups is sold on Community and above. The marketing site has
+  // advertised it on Community for some time while the app gated it to Ministry;
+  // this matrix is the side that moved. Ministry-only features (accounting, SMS,
+  // text-to-give, custom domain) are unaffected — see the guard below.
+  it('is unlocked on Community (max)', () => {
+    expect(getPlanFeatures('max').communityGroups).toBe(true);
+  });
+
+  it('stays unlocked on Ministry (ultra)', () => {
+    expect(getPlanFeatures('ultra').communityGroups).toBe(true);
+  });
+
+  it('stays locked on Individual (plus) and Small Team (pro)', () => {
+    expect(getPlanFeatures('plus').communityGroups).toBe(false);
+    expect(getPlanFeatures('pro').communityGroups).toBe(false);
+  });
+
+  it('did not drag any other feature onto Community', () => {
+    // Only communityGroups changed tier. These stay Ministry-only.
+    const f = getPlanFeatures('max');
+    expect(f.accountingTools).toBe(false);
+    expect(f.smsAutomation).toBe(false);
+    expect(f.textToGive).toBe(false);
+    expect(f.customDomain).toBe(false);
+    expect(f.churchDirectory).toBe(false);
+  });
+});
+
+describe('getFeatureMinPlan / FEATURE_MIN_PLAN (derived)', () => {
+  // These labels drive the upgrade screens — the exact surface where someone
+  // decides what to buy — so a label naming a pricier plan than the matrix
+  // requires is a direct over-sell. They used to be two hand-maintained literal
+  // maps and had drifted; now they are derived from PLAN_FEATURES.
+  it('returns the cheapest plan that unlocks the feature', () => {
+    expect(getFeatureMinPlan('fundraising')).toBe('plus');
+    expect(getFeatureMinPlan('event_registration')).toBe('max');
+    expect(getFeatureMinPlan('docs')).toBe('max');
+    expect(getFeatureMinPlan('accounting')).toBe('ultra');
+  });
+
+  it('puts CRM on Community, not Ministry', () => {
+    // Was 'Ministry' in both literal maps while max.crm has been true —
+    // pointing a locked-out admin at $479 when $299 already unlocks it.
+    expect(getFeatureMinPlan('crm')).toBe('max');
+    expect(FEATURE_MIN_PLAN.crm).toBe('Community');
+  });
+
+  it('puts tax receipts on Community, not Ministry', () => {
+    // Same pre-existing bug as CRM, and a separate one — max.taxReceipt is true.
+    expect(getFeatureMinPlan('tax_receipts')).toBe('max');
+    expect(FEATURE_MIN_PLAN.tax_receipts).toBe('Community');
+  });
+
+  it('puts Community Groups on Community', () => {
+    expect(getFeatureMinPlan('community_chat')).toBe('max');
+    expect(FEATURE_MIN_PLAN.community_chat).toBe('Community');
+  });
+
+  it('agrees with the feature matrix for every gate key', () => {
+    (Object.keys(FEATURE_MAP) as FeatureKey[]).forEach((key) => {
+      const minPlan = getFeatureMinPlan(key);
+      expect(minPlan, `no plan unlocks ${key}`).not.toBeNull();
+      // Unlocked at the named tier...
+      expect(hasFeature(minPlan!, FEATURE_MAP[key])).toBe(true);
+      // ...and locked on every cheaper tier.
+      PLAN_ORDER.slice(0, PLAN_ORDER.indexOf(minPlan!)).forEach((cheaper) => {
+        expect(
+          hasFeature(cheaper, FEATURE_MAP[key]),
+          `${key} unlocked on ${cheaper}, cheaper than the advertised ${minPlan}`
+        ).toBe(false);
+      });
+      expect(FEATURE_MIN_PLAN[key]).toBe(getPlanDisplayName(minPlan!));
+    });
+  });
+
+  it('never advertises a pricier plan than the matrix requires', () => {
+    (Object.keys(FEATURE_MAP) as FeatureKey[]).forEach((key) => {
+      const advertised = PLAN_ORDER.findIndex(
+        (p) => getPlanDisplayName(p) === FEATURE_MIN_PLAN[key]
+      );
+      const actual = PLAN_ORDER.findIndex((p) => hasFeature(p, FEATURE_MAP[key]));
+      expect(advertised, `${key} advertises a tier above what it needs`).toBe(actual);
+    });
+  });
+
+  it('is frozen — it is derived state, not config to edit', () => {
+    expect(Object.isFrozen(FEATURE_MIN_PLAN)).toBe(true);
   });
 });

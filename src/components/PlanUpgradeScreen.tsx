@@ -1,23 +1,26 @@
 "use client";
 import React from 'react';
 import { Lock } from 'lucide-react';
+import {
+  FEATURE_MIN_PLAN,
+  PLAN_ORDER,
+  PLAN_DISPLAY_NAMES,
+  formatPlanPrice,
+} from '../utils/plan-features';
 
-const PLANS = [
-  { key: 'plus',  name: 'Individual', price: '$59/mo'  },
-  { key: 'pro',   name: 'Small Team', price: '$119/mo' },
-  { key: 'max',   name: 'Community',  price: '$299/mo' },
-  { key: 'ultra', name: 'Ministry',   price: '$479/mo' },
-];
+// Both the tier ladder and the minimum-plan labels are derived from the feature
+// matrix in plan-features.ts. This screen used to carry hand-written copies of
+// each; the label copy had drifted (crm and tax_receipts said Ministry when
+// Community already unlocks them), overselling the $479 plan on the exact screen
+// where someone decides what to buy. Do not reintroduce literals here.
+const PLANS = PLAN_ORDER.map((key) => ({
+  key,
+  name: PLAN_DISPLAY_NAMES[key],
+  price: formatPlanPrice(key, 'monthly'),
+}));
 
-export const FEATURE_MIN_PLAN_NAME: Record<string, string> = {
-  fundraising:        'Individual',
-  event_registration: 'Community',
-  docs:               'Community',
-  crm:                'Ministry',
-  accounting:         'Ministry',
-  community_chat:     'Ministry',
-  tax_receipts:       'Ministry',
-};
+/** @deprecated Alias of `FEATURE_MIN_PLAN` in plan-features.ts — import that instead. */
+export const FEATURE_MIN_PLAN_NAME: Readonly<Record<string, string>> = FEATURE_MIN_PLAN;
 
 interface PlanUpgradeScreenProps {
   featureName: string;

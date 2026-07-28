@@ -151,7 +151,7 @@ This table is a summary — when they disagree, the code is right and this file 
 |-------|-------------|----------|------|-----|---------------|-----------|-----|------------|------------------|
 | plus  | Individual  | $59/mo   | ✅   | ❌  | ❌            | ❌        | ❌  | ❌         | ❌               |
 | pro   | Small Team  | $119/mo  | ✅   | ✅  | ❌            | ❌        | ❌  | ❌         | ❌               |
-| max   | Community   | $299/mo  | ✅   | ✅  | ❌            | ✅        | ✅  | ❌         | ❌               |
+| max   | Community   | $299/mo  | ✅   | ✅  | ❌            | ✅        | ✅  | ❌         | ✅               |
 | ultra | Ministry    | $479/mo  | ✅   | ✅  | ✅            | ✅        | ✅  | ✅         | ✅               |
 
 The "AI Assistant" column was removed: the Telegram add-on is retired (#214, THE-13).
@@ -160,8 +160,13 @@ backend routes, Stripe wiring and the `aiAssistant` plan flag are left intact so
 feature can be restored by flipping that one boolean.
 
 Community (max) is the tier most often described wrongly: it **does** get CRM, Tax
-Receipts, Custom Forms, Check-In, Livestream and Pledge Campaigns. It does **not**
-get Accounting Tools, Community Groups, SMS or Text-to-Give — those stay Ministry.
+Receipts, Community Groups, Custom Forms, Check-In, Livestream and Pledge Campaigns.
+It does **not** get Accounting Tools, SMS or Text-to-Give — those stay Ministry.
+
+Minimum-plan labels on upgrade screens are **derived** from this matrix
+(`getFeatureMinPlan` / `FEATURE_MIN_PLAN` in `plan-features.ts`), not hand-written.
+Flipping a cell in `PLAN_FEATURES` moves the upgrade copy with it — never put a
+literal plan name in a gate message.
 
 Map note: All plans show their own church location(s) on the map. The global multi-church discovery directory (browsing all tenants' churches) is Ministry only (`churchDirectory` feature flag).
 
@@ -259,12 +264,15 @@ Tokens live in `src/app/globals.css` (`:root`) and `tailwind.config.ts`.
   money, which is why fee/retention correctness is cheap to fix now and expensive later.
 - Plans: Individual ($59), Small Team ($119), Community ($299), Ministry ($479)
 - No enterprise plan — Ministry is the top tier
-- **1145 tests / 103 files** passing (`npm test`), plus **306 Firestore rules tests**
+- **1175 tests / 104 files** passing (`npm test`), plus **306 Firestore rules tests**
   under `tests/rules/` that run separately (`npm run test:rules`, needs the emulator)
 - AI Assistant (Telegram bot) **retired** (#214) — dormant code intact
-- Newsletter live · Community Groups live (Ministry)
+- Newsletter live · Community Groups live on **Community (max)** and above
 - CRM and Tax Receipts live on **Community (max)** and above; **Accounting is Ministry
-  only**
+  only**. Upgrade-screen labels for all three are derived from the matrix — the old
+  hand-written maps said Ministry for CRM and Tax Receipts and oversold the $479 tier
+- Community Groups is gated **client-side only** — no Firestore-rules or server check
+  keys off the `communityGroups` flag (rules scope channels/DMs by roster, not by plan)
 - CRM outbound email sends through **Composio Gmail** (`GMAIL_SEND_EMAIL`), per-admin
   connected account, with an explicit `from_email` so send-only grants work
 - **Sentry** live (client, server, edge; source maps uploaded and then deleted)

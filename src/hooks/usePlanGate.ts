@@ -1,43 +1,24 @@
 "use client";
 import { useTenantOptional } from '../contexts/TenantContext';
-import { getPlanFeatures, PlanFeatures } from '../utils/plan-features';
+import {
+  getPlanFeatures,
+  FEATURE_MAP,
+  FEATURE_MIN_PLAN,
+  PLAN_DISPLAY_NAMES,
+  type FeatureKey,
+} from '../utils/plan-features';
 import { hasPlatformOverride } from '../utils/tenant-scope';
 
-type FeatureKey =
-  | 'fundraising'
-  | 'event_registration'
-  | 'docs'
-  | 'crm'
-  | 'accounting'
-  | 'community_chat'
-  | 'tax_receipts';
+// The gate vocabulary (`FeatureKey`/`FEATURE_MAP`) and the minimum-plan labels
+// now live beside the feature matrix in plan-features.ts, where the labels are
+// DERIVED from `PLAN_FEATURES` rather than hand-maintained. Re-exported here so
+// existing importers of this module keep working — but new code should import
+// from plan-features directly.
+export type { FeatureKey };
+export { FEATURE_MIN_PLAN };
 
-const FEATURE_MAP: Record<FeatureKey, keyof PlanFeatures> = {
-  fundraising: 'fundraising',
-  event_registration: 'eventRegistration',
-  docs: 'docs',
-  crm: 'crm',
-  accounting: 'accountingTools',
-  community_chat: 'communityGroups',
-  tax_receipts: 'taxReceipt',
-};
-
-export const PLAN_NAMES: Record<string, string> = {
-  plus: 'Individual',
-  pro: 'Small Team',
-  max: 'Community',
-  ultra: 'Ministry',
-};
-
-export const FEATURE_MIN_PLAN: Record<FeatureKey, string> = {
-  fundraising: 'Individual',
-  event_registration: 'Community',
-  docs: 'Community',
-  crm: 'Ministry',
-  accounting: 'Ministry',
-  community_chat: 'Ministry',
-  tax_receipts: 'Ministry',
-};
+/** @deprecated Alias of `PLAN_DISPLAY_NAMES` in plan-features.ts — import that instead. */
+export const PLAN_NAMES: Record<string, string> = PLAN_DISPLAY_NAMES;
 
 export function usePlanGate(feature: FeatureKey): boolean {
   const ctx = useTenantOptional();
