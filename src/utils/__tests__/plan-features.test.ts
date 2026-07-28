@@ -9,6 +9,14 @@ import {
   AI_ASSISTANT_ADDON_PRICING,
   formatPlanPrice,
 } from '../plan-features';
+// The rate actually charged. Importing stripe-config is safe HERE and only here:
+// tests run server-side, where its STRIPE_PRICE_* env reads resolve. Today they
+// resolve via the `?? 'price_...'` fallbacks; once B1 (#207) removes those and
+// makes the module throw on a missing var, its own src/test/setup.ts stubs all
+// nine — verified by running this import against #207 with every var unset.
+// Do NOT copy this import into plan-features.ts itself: that module is pulled
+// into ~20 client components and would take the browser bundle down under B1.
+import { PLATFORM_FEE_MAP } from '@/lib/stripe-config';
 
 describe('getPlanFeatures', () => {
   it('returns correct features for plus plan', () => {
@@ -248,16 +256,51 @@ describe('AI_ASSISTANT_ADDON_PRICING', () => {
 });
 
 describe('PLAN_DONATION_RETENTION', () => {
-  // Source of truth: theharvest.site pricing "Donation Retention" row.
-  it('matches the marketing site retention tiers (90/95/100/100)', () => {
-    expect(PLAN_DONATION_RETENTION.plus).toBe(90);
-    expect(PLAN_DONATION_RETENTION.pro).toBe(95);
-    expect(PLAN_DONATION_RETENTION.max).toBe(100);
-    expect(PLAN_DONATION_RETENTION.ultra).toBe(100);
+  // What the ministry is TOLD it keeps must equal what Stripe actually leaves
+  // behind after the platform application fee. `donationRetention` is a
+  // hand-maintained mirror of PLATFORM_FEE_MAP (plan-features.ts cannot import
+  // stripe-config.ts — it is pulled into ~20 client components, and that module
+  // reads server-only STRIPE_PRICE_* env vars at load). Nothing enforces the
+  // mirror structurally, so it is enforced here.
+  //
+  // This caught a real overstatement: Community (max) advertised 100% retention
+  // while a 2.5% fee was being deducted, and Individual (plus) advertised 90%
+  // while only 5% was taken. See THE-51.
+  const PLANS = ['plus', 'pro', 'max', 'ultra'] as const;
+
+  it.each(PLANS)(
+    'retention for "%s" equals 100 - PLATFORM_FEE_MAP fee (the rate actually charged)',
+    (plan) => {
+      const feePct = PLATFORM_FEE_MAP[plan] * 100;
+      expect(getPlanFeatures(plan).donationRetention).toBe(100 - feePct);
+    }
+  );
+
+  it('matches the fee schedule exactly (95 / 95 / 97.5 / 100)', () => {
+    expect(PLAN_DONATION_RETENTION.plus).toBe(95); // 5% fee
+    expect(PLAN_DONATION_RETENTION.pro).toBe(95); // 5% fee
+    expect(PLAN_DONATION_RETENTION.max).toBe(97.5); // 2.5% fee
+    expect(PLAN_DONATION_RETENTION.ultra).toBe(100); // no fee
+  });
+
+  it('keeps Community (max) as a non-integer 97.5 — never rounded to 97 or 100', () => {
+    expect(PLAN_DONATION_RETENTION.max).toBe(97.5);
+    expect(Number.isInteger(PLAN_DONATION_RETENTION.max)).toBe(false);
+    // The comparison table renders this as `${v}%` (PlanUpgradeSection.tsx) and
+    // /api/plans serves it raw as JSON. Both must survive the fraction intact.
+    expect(`${PLAN_DONATION_RETENTION.max}%`).toBe('97.5%');
+    expect(JSON.parse(JSON.stringify({ v: PLAN_DONATION_RETENTION.max })).v).toBe(97.5);
+  });
+
+  it('never advertises more than the fee schedule allows', () => {
+    PLANS.forEach((plan) => {
+      const actualRetention = 100 - PLATFORM_FEE_MAP[plan] * 100;
+      expect(getPlanFeatures(plan).donationRetention).toBeLessThanOrEqual(actualRetention);
+    });
   });
 
   it('stays in sync with the donationRetention field in the feature matrix', () => {
-    (['plus', 'pro', 'max', 'ultra'] as const).forEach((plan) => {
+    PLANS.forEach((plan) => {
       expect(getPlanFeatures(plan).donationRetention).toBe(PLAN_DONATION_RETENTION[plan]);
     });
   });

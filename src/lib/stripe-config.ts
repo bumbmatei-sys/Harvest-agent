@@ -35,6 +35,14 @@ export const AI_ASSISTANT_SETUP = process.env.STRIPE_PRICE_AI_SETUP ?? 'price_1T
  * tenant's connected account via a destination charge (donations AND paid event
  * tickets). Single source of truth so the two money paths can never charge a
  * different platform fee for the same plan. A missing plan defaults to 0.
+ *
+ * ALSO MIRRORED BY HAND in `PLAN_FEATURES[plan].donationRetention` /
+ * `PLAN_DONATION_RETENTION` (src/utils/plan-features.ts), which is the number
+ * shown to customers as `100 - fee * 100`. That module cannot import this one —
+ * it is pulled into ~20 client components and this module reads server-only
+ * `STRIPE_PRICE_*` env vars at load. `plan-features.test.ts` asserts the two
+ * agree, so changing a fee here fails CI until the retention value is updated
+ * to match.
  */
 export const PLATFORM_FEE_MAP: Record<string, number> = {
   plus: 0.05,
