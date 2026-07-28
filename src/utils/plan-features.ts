@@ -79,7 +79,12 @@ export interface PlanFeatures {
   textToGive: boolean;
   /** Installable Progressive Web App (mobile app) — all plans */
   pwaApp: boolean;
-  /** Percentage of donation payments the ministry retains after platform fee */
+  /**
+   * Percentage of donation payments the ministry retains after platform fee.
+   * Mirrors `PLATFORM_FEE_MAP` (src/lib/stripe-config.ts) by hand as
+   * `100 - fee * 100`; a test enforces the match. See PLAN_DONATION_RETENTION
+   * below before changing this. May be fractional (max is 97.5).
+   */
   donationRetention: number;
 }
 
@@ -126,7 +131,7 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     pledgeCampaigns: false,
     textToGive: false,
     pwaApp: true,
-    donationRetention: 90,
+    donationRetention: 95,
   },
   // Small Team
   pro: {
@@ -196,7 +201,7 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     pledgeCampaigns: true,
     textToGive: false,
     pwaApp: true,
-    donationRetention: 100,
+    donationRetention: 97.5,
   },
   // Ministry (top plan)
   ultra: {
@@ -247,8 +252,25 @@ export const PLAN_PRICING: Record<TenantPlan, { monthlyUsd: number; yearlyUsd: n
 
 /**
  * Percentage of donation payments the ministry retains after platform fee.
- * Source of truth: theharvest.site pricing table "Donations Retained" row.
- * Derived from the feature matrix so the two can never drift apart.
+ *
+ * These numbers are a HAND-MAINTAINED MIRROR of `PLATFORM_FEE_MAP` in
+ * `src/lib/stripe-config.ts`, which is the rate actually charged:
+ *
+ *     donationRetention === 100 - PLATFORM_FEE_MAP[plan] * 100
+ *
+ * They are NOT derived from it in code, and deliberately so:
+ * `stripe-config.ts` reads server-only `STRIPE_PRICE_*` env vars at module
+ * load, while `plan-features.ts` is imported by ~20 client components. Importing
+ * it here would drag those env reads into the browser bundle. Keep the mirror
+ * manual; do not "simplify" it into an import.
+ *
+ * Because nothing enforces this structurally, `__tests__/plan-features.test.ts`
+ * asserts the identity above for every plan. Never edit these values or the
+ * `donationRetention` cells in the feature matrix independently of
+ * `PLATFORM_FEE_MAP` — change the fee, change both, and let the test confirm it.
+ *
+ * Note `max` is 97.5, not an integer: a 2.5% fee. Anything formatting these must
+ * not round or truncate.
  */
 export const PLAN_DONATION_RETENTION: Record<TenantPlan, number> = {
   plus:  PLAN_FEATURES.plus.donationRetention,
