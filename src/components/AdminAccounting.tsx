@@ -12,7 +12,13 @@ import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { useTenantOptional } from '../contexts/TenantContext';
 import { authFetch } from '../utils/auth-fetch';
 import { openStatementPdf } from '../utils/open-statement-pdf';
+import { FEATURE_MIN_PLAN } from '../utils/plan-features';
 import AdminGivingStatements from './AdminGivingStatements';
+
+// Derived from the feature matrix, not written out. Both strings below used to
+// hard-code "Ministry" while `taxReceipt` has been true on Community (max) —
+// telling a locked-out admin to buy the $479 tier when $299 unlocks it.
+const TAX_RECEIPTS_MIN_PLAN = FEATURE_MIN_PLAN.tax_receipts;
 
 interface Invoice {
   id: string;
@@ -538,7 +544,7 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
           <h3 className="hidden lg:block font-display text-xl font-normal text-earth">Tax Receipts</h3>
           {!isTaxReceiptsEnabled && (
             <span className="text-xs text-wheat-600 bg-wheat-50 px-2 py-0.5 rounded-full font-semibold flex items-center gap-1">
-              <Lock size={10} /> Ministry plan required
+              <Lock size={10} /> {TAX_RECEIPTS_MIN_PLAN} plan required
             </span>
           )}
         </div>
@@ -582,7 +588,7 @@ const AdminAccounting: React.FC<AdminAccountingProps> = ({ canManageAccounting =
           <div className="bg-wheat-50 rounded-2xl border border-wheat-100 p-4 flex items-start gap-3">
             <Lock size={18} className="text-wheat-500 flex-shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm font-semibold text-wheat-700">Tax receipt generation requires the Ministry plan</p>
+              <p className="text-sm font-semibold text-wheat-700">Tax receipt generation requires the {TAX_RECEIPTS_MIN_PLAN} plan</p>
               <p className="text-xs text-wheat-600 mt-0.5">Upgrade to generate and email year-end tax receipts to all donors.</p>
             </div>
           </div>
