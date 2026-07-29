@@ -217,7 +217,7 @@ const FirstRunSetup: React.FC<FirstRunSetupProps> = ({ tenantId, onFinished }) =
           </>
         )}
 
-        {/* Custom domain — only for plans that include it (Ministry / ultra).
+        {/* Custom domain — only for plans that include it (Community / max+).
             Renders the shared DomainSection (its own titled card — it self-labels
             "Web Address" / "Custom domain"); gated on features.customDomain
             exactly as before. */}

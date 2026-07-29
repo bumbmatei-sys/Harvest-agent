@@ -27,7 +27,7 @@ export interface PlanFeatures {
   maxCourses: number;
   /** Max number of admin accounts (-1 = unlimited) */
   maxAdmins: number;
-  /** Allow custom domain (Ministry / ultra only) */
+  /** Allow custom domain (Community / max+) */
   customDomain: boolean;
   /** Allow custom branding — logo, colors, ministry name (Community / max+) */
   customBranding: boolean;
@@ -59,17 +59,17 @@ export interface PlanFeatures {
   taxReceipt: boolean;
   /** Community groups — private channels + DMs (Community / max+) */
   communityGroups: boolean;
-  /** Custom forms → CRM pipeline (Ministry only) */
+  /** Custom forms → CRM pipeline (Community / max+) */
   customForms: boolean;
-  /** Check-in system with QR attendance (Ministry only) */
+  /** Check-in system with QR attendance (Community / max+) */
   checkInSystem: boolean;
-  /** Livestream + live giving (Ministry only) */
+  /** Livestream + live giving (Community / max+) */
   livestream: boolean;
   /** Sermon notes shared to livestream (viewer read-only panel) */
   sermonNotes: boolean;
   /** AI-generated SEO blog articles on schedule from Knowledge Base */
   automatedBlog: boolean;
-  /** Annual giving statements (year-end tax summaries) — Ministry only */
+  /** Annual giving statements (year-end tax summaries) — Community / max+ */
   givingStatements: boolean;
   /** Public event calendar page — all plans (it's public-facing) */
   publicCalendar: boolean;
@@ -178,7 +178,7 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     maxChurches: 1,
     maxCourses: -1,
     maxAdmins: 10,
-    customDomain: false,
+    customDomain: true,
     customBranding: true,
     newsletterAutomation: true,
     automatedNewsletter: true,
@@ -380,6 +380,21 @@ export const FEATURE_MAP: Record<FeatureKey, keyof PlanFeatures> = {
 export function getFeatureMinPlan(feature: FeatureKey): TenantPlan | null {
   const key = FEATURE_MAP[feature];
   if (!key) return null;
+  return getMinPlanForFeatureCell(key);
+}
+
+/**
+ * Cheapest plan whose matrix cell `key` is truthy, or `null` if none is.
+ *
+ * Same derivation as `getFeatureMinPlan`, but keyed on the raw `PlanFeatures`
+ * cell rather than a `FeatureKey` gate name. Not every cell has a `FeatureKey`
+ * — those exist only for features fronted by `usePlanGate`/`PlanUpgradeScreen`
+ * — so this is the way to derive a minimum-plan label for the rest (e.g.
+ * `customDomain`, which is gated by a boolean prop, not a gate key). Use it
+ * instead of writing a plan name into UI copy by hand: hardcoded names are
+ * exactly what drifted in #242.
+ */
+export function getMinPlanForFeatureCell(key: keyof PlanFeatures): TenantPlan | null {
   return PLAN_ORDER.find((plan) => hasFeature(plan, key)) ?? null;
 }
 

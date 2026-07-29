@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Globe, CheckCircle2, Clock, XCircle } from 'lucide-react';
 import { authFetch } from '../../utils/auth-fetch';
+import { getMinPlanForFeatureCell, PLAN_DISPLAY_NAMES } from '../../utils/plan-features';
 
 interface DomainSectionProps {
   hasCustomDomain: boolean;
@@ -10,10 +11,30 @@ interface DomainSectionProps {
 
 type DomainStatus = 'pending' | 'verified' | 'failed' | null;
 
+/**
+ * A DNS challenge record as returned by Vercel in the `verification` array of
+ * /api/domains/provision (both POST and GET). `domain` is the record NAME.
+ */
+interface VerificationRecord {
+  type?: string;
+  domain?: string;
+  value?: string;
+  reason?: string;
+}
+
+/**
+ * Plan name shown in the locked state, derived from the feature matrix rather
+ * than written by hand — so it follows `customDomain` if it ever moves tier
+ * again. Falls back to the top tier's name if nothing unlocks it.
+ */
+const CUSTOM_DOMAIN_MIN_PLAN =
+  PLAN_DISPLAY_NAMES[getMinPlanForFeatureCell('customDomain') ?? 'ultra'];
+
 export const DomainSection: React.FC<DomainSectionProps> = ({ hasCustomDomain, onUpgrade }) => {
   const [subdomain, setSubdomain] = useState('');
   const [customDomain, setCustomDomain] = useState('');
   const [status, setStatus] = useState<DomainStatus>(null);
+  const [verification, setVerification] = useState<VerificationRecord[]>([]);
   const [domainSaving, setDomainSaving] = useState(false);
   const [domainSaved, setDomainSaved] = useState(false);
   const [checking, setChecking] = useState(false);
@@ -75,6 +96,9 @@ export const DomainSection: React.FC<DomainSectionProps> = ({ hasCustomDomain, o
           if (resp.ok) {
             const data = await resp.json();
             setStatus((data.status as DomainStatus) || 'pending');
+            // The DNS records the admin must add come from Vercel via the API —
+            // they differ for a subdomain (CNAME) and a root domain (A).
+            setVerification(Array.isArray(data.verification) ? data.verification : []);
             provisioned = true;
           } else if (resp.status !== 501) {
             const data = await resp.json().catch(() => ({}));
@@ -140,6 +164,7 @@ export const DomainSection: React.FC<DomainSectionProps> = ({ hasCustomDomain, o
       if (resp.ok) {
         const data = await resp.json();
         setStatus((data.status as DomainStatus) || 'pending');
+        setVerification(Array.isArray(data.verification) ? data.verification : []);
       } else if (resp.status === 501) {
         alert('Domain verification is not configured on the server yet.');
       } else {
@@ -202,7 +227,7 @@ export const DomainSection: React.FC<DomainSectionProps> = ({ hasCustomDomain, o
           To change your subdomain, please contact support. Subdomain changes require migration and may affect your existing links.
         </p>
 
-        {/* Custom Domain (Ministry only) */}
+        {/* Custom Domain (Community / max+) */}
         {hasCustomDomain ? (
           <div className="mt-5 pt-5 border-t border-stone-200">
             <div className="flex items-center justify-between mb-2">
@@ -216,34 +241,63 @@ export const DomainSection: React.FC<DomainSectionProps> = ({ hasCustomDomain, o
                   type="text"
                   value={customDomain}
                   onChange={(e) => setCustomDomain(e.target.value)}
-                  placeholder="e.g. ministry.yourchurch.org"
+                  placeholder="e.g. app.church.org"
                   className="w-full px-4 py-2.5 border border-stone-200 rounded-brand text-sm text-earth focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent"
                 />
                 <p className="text-xs text-[color:var(--text-faint)] mt-1.5">
-                  Enter your custom domain, then point a CNAME record at <span className="font-mono">theharvest.app</span>.
+                  Use your root domain (<span className="font-mono">church.org</span>) or a subdomain
+                  of it (<span className="font-mono">app.church.org</span>,{' '}
+                  <span className="font-mono">give.church.org</span>). Connecting a subdomain leaves
+                  your existing website on <span className="font-mono">church.org</span> exactly where
+                  it is — nothing about it changes.
                 </p>
               </div>
             </div>
 
-            {/* DNS Instructions */}
+            {/* DNS Instructions — rendered from the records the API returns, never
+                hardcoded. The correct record depends on what was entered: a
+                subdomain (app.church.org) verifies with a CNAME, a root domain
+                (church.org) with an A record. This block used to print one fixed
+                CNAME for everyone, so anyone on the other shape followed the wrong
+                instruction and verification then silently never completed. */}
             <div className="mt-4 pt-4 border-t border-stone-200">
               <p className="text-sm font-medium text-earth mb-3">DNS Configuration</p>
               <div className="bg-stone-100 rounded-brand p-4">
-                <p className="text-xs text-warm-brown mb-2">Add the following CNAME record to your DNS provider:</p>
-                <div className="font-mono text-sm bg-white rounded-lg p-3 border border-stone-200">
-                  <div className="flex justify-between">
-                    <span className="text-[color:var(--text-faint)]">Type:</span>
-                    <span className="text-earth">CNAME</span>
-                  </div>
-                  <div className="flex justify-between mt-1">
-                    <span className="text-[color:var(--text-faint)]">Name:</span>
-                    <span className="text-earth">{customDomain || 'your-domain.com'}</span>
-                  </div>
-                  <div className="flex justify-between mt-1">
-                    <span className="text-[color:var(--text-faint)]">Value:</span>
-                    <span className="text-earth">theharvest.app</span>
-                  </div>
-                </div>
+                {verification.length > 0 ? (
+                  <>
+                    <p className="text-xs text-warm-brown mb-2">
+                      Add {verification.length === 1 ? 'this record' : 'these records'} at your DNS provider:
+                    </p>
+                    <div className="space-y-2">
+                      {verification.map((record, i) => (
+                        <div
+                          key={`${record.type ?? ''}-${record.domain ?? ''}-${i}`}
+                          className="font-mono text-sm bg-white rounded-lg p-3 border border-stone-200"
+                        >
+                          <div className="flex justify-between gap-3">
+                            <span className="text-[color:var(--text-faint)] shrink-0">Type:</span>
+                            <span className="text-earth break-all text-right">{(record.type || '').toUpperCase()}</span>
+                          </div>
+                          <div className="flex justify-between gap-3 mt-1">
+                            <span className="text-[color:var(--text-faint)] shrink-0">Name:</span>
+                            <span className="text-earth break-all text-right">{record.domain}</span>
+                          </div>
+                          <div className="flex justify-between gap-3 mt-1">
+                            <span className="text-[color:var(--text-faint)] shrink-0">Value:</span>
+                            <span className="text-earth break-all text-right">{record.value}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-xs text-warm-brown">
+                    Save your domain to get the exact DNS records for your provider. They depend on
+                    what you connect: a subdomain such as <span className="font-mono">app.church.org</span>{' '}
+                    uses a CNAME, while a root domain such as <span className="font-mono">church.org</span>{' '}
+                    uses an A record.
+                  </p>
+                )}
                 <p className="text-xs text-[color:var(--text-faint)] mt-2">
                   DNS changes can take up to 48 hours to propagate. Use &quot;Check Status&quot; to refresh verification.
                 </p>
@@ -274,8 +328,8 @@ export const DomainSection: React.FC<DomainSectionProps> = ({ hasCustomDomain, o
           <div className="mt-5 pt-5 border-t border-stone-200">
             <label className="block text-sm font-medium text-earth mb-2">Custom domain</label>
             <p className="text-sm text-warm-brown mb-4">
-              Custom domains are available on the <strong>Ministry</strong> plan.
-              Upgrade to use your own domain name.
+              Custom domains are available on the <strong>{CUSTOM_DOMAIN_MIN_PLAN}</strong> plan and
+              above. Upgrade to use your own domain name.
             </p>
             <button
               onClick={onUpgrade}
