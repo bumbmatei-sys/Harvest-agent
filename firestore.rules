@@ -317,12 +317,27 @@ service cloud.firestore {
     // FILTERS: a rule that reads `resource.data` forces every query to constrain
     // that field. Because `resource.data` is absent here, ANY query shape is
     // accepted — an unfiltered catalogue list, `where('category','==',…)`,
-    // `orderBy(...)`. Had these
-    // lived on /courses behind a flag, the belongsToTenant(resource.data.tenantId)
-    // read there would reject every query that did not constrain tenantId — the
-    // silent, total failure that hid CRM activities for weeks (#236, again #239).
+    // `orderBy(...)`, pagination. Had these lived on /courses behind a flag, the
+    // belongsToTenant(resource.data.tenantId) read there would reject every query
+    // that did not constrain tenantId — the silent, total failure that hid CRM
+    // activities for weeks (#236, again #239).
     // Writes are super-admin only; the /courses rule is untouched.
-
+    //
+    // ⚠️ THIS FIELD-FREE PROPERTY IS LOAD-BEARING. It is what makes every future
+    // query against the catalogue — search, category filter, ordering,
+    // pagination — impossible to get silently wrong. Do not add a
+    // `resource.data` condition here for ANY reason without accepting that every
+    // client query must then constrain that same field, forever, or render empty
+    // with no error.
+    //
+    // A `status == 'published'` read was written and then reverted, deliberately.
+    // What it protected was a half-written course of Harvest's OWN content being
+    // visible to someone querying Firestore directly: no security boundary, no
+    // privacy, no tenant data. Trading a permanent structural guarantee for that
+    // is the wrong trade. Draft courses are hidden by adoptableCourses() in
+    // src/utils/course-adoption.ts — ONE filtering mechanism, in JS — and
+    // /api/courses/adopt independently refuses to adopt an unpublished course,
+    // which is where it actually matters.
     match /libraryCourses/{courseId} {
       allow read: if isAuthenticated();
       allow write: if isSuperAdmin();
@@ -512,12 +527,25 @@ service cloud.firestore {
       // "edits reach every adopter".
       //
       // Members read (adopted courses appear in the member course list, like
-      // tenant `forms`/`events`); writing requires the SAME permission as
-      // creating a course, createCourses — adopting a course is how a tenant
-      // adds a course, so it must not need a permission of its own.
+      // tenant `forms`/`events`). WRITES ARE SERVER-ONLY — the certificates
+      // shape — and go through /api/courses/adopt (Admin SDK), which holds the
+      // same createCourses permission check the client rule used to.
+      //
+      // Why the route rather than the rule: an adoption record is a POINTER,
+      // and only a server can verify a pointer points somewhere real. Rules
+      // cannot read across into libraryCourses, so a client write could invent
+      // any libraryCourseId, disagree with its own doc id, aim at an
+      // unpublished draft, or dangle at a deleted course — and the rule would
+      // have to accept all of it. The route validates the target exists and is
+      // published, and stamps adoptedBy from the verified caller.
+      //
+      // It ALSO checks the plan cap, but do not read that as a watertight cap:
+      // a tenant's own courses are still created by a direct client write to
+      // /courses, capped only by a disabled button in AdminCourses (as since
+      // #228). Adoption is enforced; creation is not. No regression either way.
       match /adoptedCourses/{libraryCourseId} {
         allow read: if belongsToTenant(tenantId);
-        allow write: if hasPermission('createCourses', tenantId);
+        allow write: if false; // server-only (Admin SDK) — /api/courses/adopt
       }
 
       match /contacts/{contactId} {

@@ -142,7 +142,8 @@ export default function CoursePage({
         // adopter with nothing to re-sync. Both reads below are UNFILTERED,
         // which is the opposite of the /courses read above: adoptedCourses gets
         // its tenant from the PATH, and libraryCourses docs carry no tenantId
-        // at all, so a where('tenantId', …) would match nothing.
+        // and no field-referencing read rule, so any query shape is accepted.
+        // Drafts are excluded in JS by adoptableCourses() a few lines down.
         let adoptedLibrary: LibraryCourse[] = [];
         if (tenantId) {
           const adoptedSnap = await getDocs(collection(db, "tenants", tenantId, "adoptedCourses"));

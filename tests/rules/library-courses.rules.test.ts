@@ -2,9 +2,9 @@ import { describe, it, beforeAll, afterAll } from 'vitest';
 import { assertSucceeds, assertFails } from '@firebase/rules-unit-testing';
 import {
   getEnv, seedBase, seedDoc, seedAdmin, teardownEnv,
-  member, adminB, fullAdmin, superAdmin, asUid,
+  member, adminB, fullAdmin, superAdmin, owner, asUid,
   permsOnly, permsAllBut,
-  TENANT_A, TENANT_B, FULL_ADMIN_UID, MEMBER_UID,
+  TENANT_A, TENANT_B, FULL_ADMIN_UID, MEMBER_UID, OWNER_UID, SUPER_ADMIN_UID,
 } from './helpers';
 
 /**
@@ -87,7 +87,10 @@ describe('platform course library', () => {
       it(`a tenant admin can LIST ${col} UNFILTERED (rules are not filters)`, async () => {
         // THE regression test. The read rule must not reference resource.data:
         // if it does, this unfiltered list is rejected outright even though a
-        // single-doc get still succeeds, and the catalogue renders empty.
+        // single-doc get still succeeds, and the catalogue renders empty with
+        // no error. This is the property that makes every future catalogue
+        // query — search, category filter, ordering, pagination — impossible to
+        // get silently wrong.
         const db = (await fullAdmin()).firestore();
         await assertSucceeds(db.collection(col).get());
       });
@@ -129,6 +132,30 @@ describe('platform course library', () => {
       await assertSucceeds(db.collection('libraryCourses').where('category', '==', 'Discipleship').get());
       await assertSucceeds(db.collection('libraryCourses').where('status', '==', 'published').get());
       await assertSucceeds(db.collection('libraryCourses').orderBy('title').get());
+    });
+  });
+
+  // ── Drafts are NOT hidden by the rules, on purpose ──────────────────
+  describe('draft library courses', () => {
+    it('a draft IS readable through the rules — hiding it is a client-side concern', async () => {
+      // Deliberate. A `status == 'published'` read rule would force every client
+      // query to constrain `status` forever (rules are not filters) to protect a
+      // half-written course of Harvest's OWN content — no security boundary, no
+      // privacy, no tenant data. adoptableCourses() filters drafts in JS, and
+      // /api/courses/adopt refuses to adopt one, which is where it matters.
+      const db = (await fullAdmin()).firestore();
+      await assertSucceeds(db.doc('libraryCourses/lib-course-2').get());
+    });
+
+    it('an UNAUTHENTICATED user still cannot read a draft', async () => {
+      const e = await getEnv();
+      const db = e.unauthenticatedContext().firestore();
+      await assertFails(db.doc('libraryCourses/lib-course-2').get());
+    });
+
+    it('a tenant admin still CANNOT write a draft (or anything) in the catalogue', async () => {
+      const db = (await fullAdmin()).firestore();
+      await assertFails(db.doc('libraryCourses/lib-course-2').update({ status: 'published' }));
     });
   });
 
@@ -205,14 +232,37 @@ describe('platform course library', () => {
       await assertFails(db.collection(`tenants/${TENANT_A}/adoptedCourses`).get());
     });
 
-    it('a tenant-A admin can adopt (create), restage (update) and un-adopt (delete) in their OWN tenant', async () => {
+    // ── Writes are SERVER-ONLY now ────────────────────────────────────
+    // Adoption moved to /api/courses/adopt (Admin SDK). The rule is the
+    // certificates shape, `allow write: if false`, because only a server can
+    // verify the pointer targets a real, PUBLISHED library course — rules
+    // cannot read across into libraryCourses to check. A client write could
+    // otherwise invent an id, disagree with its own doc id, aim at a draft, or
+    // dangle at a deleted course, and the rule would have to accept all of it.
+    it('a full-access tenant admin CANNOT write their own adoption records', async () => {
       const db = (await fullAdmin()).firestore();
       const ref = db.doc(`tenants/${TENANT_A}/adoptedCourses/lib-course-2`);
-      await assertSucceeds(ref.set({
+      await assertFails(ref.set({
         libraryCourseId: 'lib-course-2', adoptedAt: '2026-02-01T00:00:00.000Z', adoptedBy: FULL_ADMIN_UID,
       }));
-      await assertSucceeds(ref.update({ status: 'draft' }));
-      await assertSucceeds(ref.delete());
+      await assertFails(db.doc(`tenants/${TENANT_A}/adoptedCourses/lib-course-1`).update({ status: 'draft' }));
+      await assertFails(db.doc(`tenants/${TENANT_A}/adoptedCourses/lib-course-1`).delete());
+    });
+
+    it('the tenant OWNER cannot write one either — nobody can from a client', async () => {
+      const db = (await owner()).firestore();
+      await assertFails(db.doc(`tenants/${TENANT_A}/adoptedCourses/lib-course-2`).set({
+        libraryCourseId: 'lib-course-2', adoptedAt: '2026-02-01T00:00:00.000Z', adoptedBy: OWNER_UID,
+      }));
+    });
+
+    it('not even a SUPER ADMIN can write one from a client', async () => {
+      // The certificates precedent: server-only means server-only. The Admin
+      // SDK bypasses rules, so the route is unaffected.
+      const db = (await superAdmin()).firestore();
+      await assertFails(db.doc(`tenants/${TENANT_A}/adoptedCourses/lib-course-2`).set({
+        libraryCourseId: 'lib-course-2', adoptedAt: '2026-02-01T00:00:00.000Z', adoptedBy: SUPER_ADMIN_UID,
+      }));
     });
 
     it('a tenant-A admin CANNOT write into tenant-B adoptions', async () => {
@@ -220,14 +270,7 @@ describe('platform course library', () => {
       await assertFails(db.doc(`tenants/${TENANT_B}/adoptedCourses/lib-course-2`).set({
         libraryCourseId: 'lib-course-2', adoptedAt: '2026-02-01T00:00:00.000Z', adoptedBy: FULL_ADMIN_UID,
       }));
-      await assertFails(db.doc(`tenants/${TENANT_B}/adoptedCourses/lib-course-1`).update({ status: 'draft' }));
       await assertFails(db.doc(`tenants/${TENANT_B}/adoptedCourses/lib-course-1`).delete());
-    });
-
-    it('a tenant-B admin CANNOT write into tenant-A adoptions', async () => {
-      const db = (await adminB()).firestore();
-      await assertFails(db.doc(`tenants/${TENANT_A}/adoptedCourses/lib-course-1`).update({ status: 'draft' }));
-      await assertFails(db.doc(`tenants/${TENANT_A}/adoptedCourses/lib-course-1`).delete());
     });
 
     it('a plain member CANNOT adopt', async () => {
@@ -237,19 +280,25 @@ describe('platform course library', () => {
       }));
     });
 
-    it('a limited admin holding ONLY createCourses can adopt', async () => {
+    it('holding createCourses does NOT restore the client write path', async () => {
+      // It used to be sufficient; the permission now gates the ROUTE instead.
       const db = (await asUid('courses-admin-uid')).firestore();
-      await assertSucceeds(db.doc(`tenants/${TENANT_A}/adoptedCourses/lib-course-2`).set({
+      await assertFails(db.doc(`tenants/${TENANT_A}/adoptedCourses/lib-course-2`).set({
         libraryCourseId: 'lib-course-2', adoptedAt: '2026-02-01T00:00:00.000Z', adoptedBy: 'courses-admin-uid',
       }));
-      await assertSucceeds(db.doc(`tenants/${TENANT_A}/adoptedCourses/lib-course-2`).delete());
     });
 
-    it('an admin holding every flag EXCEPT createCourses CANNOT adopt', async () => {
+    it('an admin holding every flag EXCEPT createCourses also cannot adopt', async () => {
       const db = (await asUid('no-courses-admin-uid')).firestore();
       await assertFails(db.doc(`tenants/${TENANT_A}/adoptedCourses/lib-course-2`).set({
         libraryCourseId: 'lib-course-2', adoptedAt: '2026-02-01T00:00:00.000Z', adoptedBy: 'no-courses-admin-uid',
       }));
+    });
+
+    it('members can still READ adoptions — only writes moved server-side', async () => {
+      const db = (await member()).firestore();
+      await assertSucceeds(db.collection(`tenants/${TENANT_A}/adoptedCourses`).get());
+      await assertSucceeds(db.doc(`tenants/${TENANT_A}/adoptedCourses/lib-course-1`).get());
     });
 
     it('adopting does NOT grant library write access (the pointer is one-way)', async () => {

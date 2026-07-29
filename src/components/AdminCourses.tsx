@@ -1,8 +1,9 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, GraduationCap, Library, Check } from 'lucide-react';
-import { collection, onSnapshot, query, where, deleteDoc, doc, getDoc, setDoc, limit } from 'firebase/firestore';
-import { db, auth } from '../firebase';
+import { collection, onSnapshot, query, where, deleteDoc, doc, getDoc, limit } from 'firebase/firestore';
+import { db } from '../firebase';
+import { authFetch } from '../utils/auth-fetch';
 import AdminCourseEditor, { Course } from './AdminCourseEditor';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { getTenantScope } from '../utils/tenant-scope';
@@ -10,8 +11,7 @@ import { sortByTime } from '../utils/query-helpers';
 import { useTenant } from '@/contexts/TenantContext';
 import { LIBRARY_COURSE_COLLECTIONS } from '../utils/library-authoring';
 import {
-  resolveCourseLimit, isAtCourseLimit, courseLimitMessage,
-  buildAdoptionRecord, adoptableCourses,
+  resolveCourseLimit, isAtCourseLimit, courseLimitMessage, adoptableCourses,
 } from '../utils/course-adoption';
 import type { AdoptedCourse, LibraryCourse } from '../types/course.types';
 import { AdminPageHeader, AdminPrimaryButton, AdminSearchBar, AdminCard, AdminBadge, statusTone } from './admin/AdminUI';
@@ -39,10 +39,12 @@ const AdminCourses: React.FC = () => {
   // ADOPTED COURSES COUNT: a church on Individual (2 slots) that adopts two
   // library courses cannot also create one of their own. Deliberate founder call.
   //
-  // ⚠️ This cap is CLIENT-SIDE ONLY, as it always has been — nothing server-side
-  // or in the rules counts documents, so a direct SDK write still bypasses it.
-  // Server enforcement (POST /api/courses/adopt + adoptedCourses tightened to
-  // server-only writes) is the immediate follow-up and replaces these checks.
+  // For ADOPTION this is now presentation only — /api/courses/adopt re-checks the
+  // same cap server-side against the plan on the tenant doc and returns 403, and
+  // adoptedCourses is no longer client-writable at all. For a tenant's OWN
+  // courses the disabled button below is still the only check, exactly as it has
+  // been since #228: creation goes straight to /courses from the client. Adoption
+  // is enforced; creation is not.
   const maxCourses = resolveCourseLimit(tenantPlan);
   const adoptedIds = new Set(adopted.map((a) => a.libraryCourseId));
   const atLimit = isAtCourseLimit(courses.length, adopted.length, maxCourses);
@@ -75,10 +77,14 @@ const AdminCourses: React.FC = () => {
   //
   // Both reads are deliberately UNFILTERED, and that is the opposite of the
   // /courses read above. libraryCourses docs carry no tenantId and their read
-  // rule references no document field, so a where('tenantId', …) would match
-  // nothing; adoptedCourses is a subcollection whose tenant comes from the PATH,
-  // so it needs no filter either. Getting this backwards fails silently — an
-  // empty list, not an error.
+  // rule references no document field at all, so no filter is required — or
+  // possible to get wrong. adoptedCourses is a subcollection whose tenant comes
+  // from the PATH, so it needs no filter either.
+  //
+  // Draft courses are excluded in JS by adoptableCourses() below, deliberately
+  // as the single mechanism: a `status` filter here would duplicate that in a
+  // second place, and pushing it into the read rule was considered and rejected
+  // (see the libraryCourses comment in firestore.rules).
   useEffect(() => {
     const unsubLibrary = onSnapshot(
       query(collection(db, LIBRARY_COURSE_COLLECTIONS.courses), limit(200)),
@@ -125,8 +131,9 @@ const AdminCourses: React.FC = () => {
   };
   const handleEditCourse = (course: Course) => { setEditingCourse(course); setIsEditorOpen(true); };
 
-  // Only published catalogue entries are browsable or adoptable. Enforced
-  // client-side for now; the follow-up rules change makes it a read rule too.
+  // Draft courses are neither browsable nor adoptable. This is the ONE place
+  // that filter lives on the read path; /api/courses/adopt independently refuses
+  // to adopt an unpublished course, which is the check that actually matters.
   const visibleLibrary = adoptableCourses(libraryCourses).filter(course =>
     (course.title?.toLowerCase() || '').includes(searchQuery.toLowerCase())
   );
@@ -143,15 +150,21 @@ const AdminCourses: React.FC = () => {
     try {
       const tenantId = await getTenantScope();
       if (!tenantId) throw new Error('No tenant scope');
-      // A POINTER, never a copy: the doc id is the library course id and the
-      // body carries no course content, so edits to the library course reach
-      // every adopter with nothing to re-sync.
-      await setDoc(
-        doc(db, 'tenants', tenantId, 'adoptedCourses', libraryCourse.id),
-        buildAdoptionRecord(libraryCourse.id, auth.currentUser?.uid ?? '', new Date().toISOString()),
-      );
+      // adoptedCourses is server-only now (allow write: if false). The route
+      // writes the POINTER after verifying the target exists and is published —
+      // a check no Firestore rule can make, since rules cannot read across
+      // collections. The listener above picks the new doc up.
+      const res = await authFetch('/api/courses/adopt', {
+        method: 'POST',
+        body: JSON.stringify({ tenantId, libraryCourseId: libraryCourse.id }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setErrorMessage(body?.error || 'Failed to adopt this course. Please try again.');
+        setTimeout(() => setErrorMessage(null), 5000);
+      }
     } catch (error) {
-      try { handleFirestoreError(error, OperationType.WRITE, 'adoptedCourses'); } catch (e) { console.error(e); }
+      console.error(error);
       setErrorMessage('Failed to adopt this course. Please try again.');
       setTimeout(() => setErrorMessage(null), 3000);
     } finally {
@@ -166,9 +179,17 @@ const AdminCourses: React.FC = () => {
     try {
       const tenantId = await getTenantScope();
       if (!tenantId) throw new Error('No tenant scope');
-      await deleteDoc(doc(db, 'tenants', tenantId, 'adoptedCourses', libraryCourseId));
+      const res = await authFetch('/api/courses/adopt', {
+        method: 'DELETE',
+        body: JSON.stringify({ tenantId, libraryCourseId }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setErrorMessage(body?.error || 'Failed to remove this course. Please try again.');
+        setTimeout(() => setErrorMessage(null), 5000);
+      }
     } catch (error) {
-      try { handleFirestoreError(error, OperationType.DELETE, 'adoptedCourses'); } catch (e) { console.error(e); }
+      console.error(error);
       setErrorMessage('Failed to remove this course. Please try again.');
       setTimeout(() => setErrorMessage(null), 3000);
     } finally {
