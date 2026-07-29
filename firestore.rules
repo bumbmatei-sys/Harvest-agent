@@ -297,6 +297,51 @@ service cloud.firestore {
       allow delete: if isAuthenticated() && hasPermission('createCourses', resource.data.tenantId);
     }
 
+    // ─── Platform course library (shared catalogue) ──────────────────
+
+    // A SHARED CATALOGUE, NOT TENANT DATA — the cross-tenant read below is
+    // deliberate. Super admins author these courses once on the platform; every
+    // tenant may browse them and adopt them free of charge on every tier.
+    // Adoption stores a POINTER (tenants/{t}/adoptedCourses), never a copy, so
+    // an edit here reaches every church that adopted the course.
+    //
+    // DO NOT "fix" this into a tenant-scoped read. Titles, descriptions, author
+    // names/bios/photos and YouTube ids in these three collections are readable
+    // by EVERY authenticated user of EVERY tenant, on purpose: this is
+    // platform-owned content published for all of them, the exact opposite of
+    // the per-tenant `authors`/`categories` rules further down, whose bios and
+    // photos belong to one church and must never cross tenants. Nothing here
+    // carries a `tenantId`, so there is no isolation boundary to breach.
+    //
+    // The read rule deliberately references NO document field. RULES ARE NOT
+    // FILTERS: a rule that reads `resource.data` forces every query to constrain
+    // that field. Because `resource.data` is absent here, ANY query shape is
+    // accepted — an unfiltered catalogue list, `where('category','==',…)`,
+    // `orderBy(...)`. Had these
+    // lived on /courses behind a flag, the belongsToTenant(resource.data.tenantId)
+    // read there would reject every query that did not constrain tenantId — the
+    // silent, total failure that hid CRM activities for weeks (#236, again #239).
+    // Writes are super-admin only; the /courses rule is untouched.
+
+    match /libraryCourses/{courseId} {
+      allow read: if isAuthenticated();
+      allow write: if isSuperAdmin();
+    }
+
+    // Platform-owned authors for library courses. Required, not optional:
+    // Course.authorIds resolves against a collection of author docs, and the
+    // tenant-scoped /authors is unreadable across tenants — without this
+    // parallel collection every adopted course would render authorless.
+    match /libraryAuthors/{authorId} {
+      allow read: if isAuthenticated();
+      allow write: if isSuperAdmin();
+    }
+
+    match /libraryCategories/{catId} {
+      allow read: if isAuthenticated();
+      allow write: if isSuperAdmin();
+    }
+
     // ─── Course completion certificates (server-owned) ───────────────
     // A certificate is a TRUST ARTIFACT: it must be un-fakeable. Issuance is
     // server-only — /api/certificate (Admin SDK) independently recomputes
@@ -450,6 +495,30 @@ service cloud.firestore {
       // NOTE: a tenants/{t}/campaigns block used to live here, but fundraising
       // campaigns are the TOP-LEVEL /campaigns collection — no code references
       // this subcollection, so the dead allow was removed. Default deny applies.
+
+      // Adopted library courses — the tenant's half of the shared catalogue.
+      // Adoption is PER-TENANT STATE (which churches took which course, when,
+      // and whether they've published it to their members), so it lives on the
+      // tenant, not in the library: a top-level collection with a `tenantId`
+      // field would be governed by resource.data again and reintroduce the
+      // query-shape trap the library collections were built to avoid. Here the
+      // tenant comes from the PATH, so no read rule touches document data and
+      // an unfiltered subcollection list is always accepted.
+      //
+      // Doc id IS the libraryCourses doc id, which makes adopt idempotent and
+      // un-adopt a plain delete. The doc holds the pointer plus adoption
+      // metadata ONLY — never a copy of the course's title, levels or lessons.
+      // Denormalising content here would silently fork the catalogue and undo
+      // "edits reach every adopter".
+      //
+      // Members read (adopted courses appear in the member course list, like
+      // tenant `forms`/`events`); writing requires the SAME permission as
+      // creating a course, createCourses — adopting a course is how a tenant
+      // adds a course, so it must not need a permission of its own.
+      match /adoptedCourses/{libraryCourseId} {
+        allow read: if belongsToTenant(tenantId);
+        allow write: if hasPermission('createCourses', tenantId);
+      }
 
       match /contacts/{contactId} {
         allow read: if isTenantAdmin(tenantId);

@@ -76,3 +76,76 @@ export interface Course {
   issueCertificate?: boolean;
   requireQuiz?: boolean;
 }
+
+// ─── Platform course library ──────────────────────────────────────────
+// Super-admin-authored courses in /libraryCourses, browsable and adoptable by
+// every tenant on every tier. A library course IS a Course — same Level /
+// Section / Lesson / Author shapes, same authorIds resolution, same player —
+// so these extend the interfaces above instead of forking parallel ones.
+
+export type CourseStatus = "draft" | "published";
+
+/**
+ * A course in the shared catalogue (/libraryCourses).
+ *
+ * Adds three fields a tenant Course does not carry, all optional so every
+ * existing Course consumer accepts a LibraryCourse unchanged:
+ *  - `status`     authoring state. The catalogue is public to all tenants the
+ *                 moment a doc exists, so a super admin needs to draft a course
+ *                 without every church seeing it half-written. (Tenant courses
+ *                 carry the same field on the Firestore doc; it lives on
+ *                 AdminCourseEditor's local Course type, not this one.)
+ *  - `createdAt`  ISO timestamps for catalogue ordering and "new this month".
+ *  - `updatedAt`  Also the adopter-facing signal that a shared course changed.
+ *
+ * `authorIds` resolves against `libraryAuthors`, NOT the tenant-scoped
+ * `authors` collection — see LibraryAuthor.
+ *
+ * Deliberately absent: `tenantId`. Library courses are platform-owned; adding
+ * one would put them back under a resource.data-based read rule.
+ */
+export interface LibraryCourse extends Course {
+  status?: CourseStatus;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+/**
+ * A platform-owned author (/libraryAuthors) — the same shape as Author, so the
+ * existing `authors.find(a => a.id === id)` lookups in CourseOverview /
+ * CourseCard / CourseLibrary work on it with no change. It exists as a separate
+ * collection because the tenant-scoped /authors is unreadable across tenants:
+ * a library course's authorIds could never resolve there.
+ */
+export type LibraryAuthor = Author;
+
+/** A category in the shared catalogue (/libraryCategories). */
+export interface LibraryCategory {
+  id: string;
+  name: string;
+}
+
+/**
+ * A tenant's adoption of a library course
+ * (tenants/{tenantId}/adoptedCourses/{libraryCourseId}).
+ *
+ * A POINTER plus adoption metadata — never a copy of the course. `id` equals
+ * the libraryCourses doc id, so adopting twice is idempotent and un-adopting is
+ * a delete. Edits to the library course reach every adopter because nothing
+ * about its content is duplicated here.
+ */
+export interface AdoptedCourse {
+  /** Doc id — identical to `libraryCourseId`, kept for symmetry with Course.id. */
+  id: string;
+  libraryCourseId: string;
+  /** ISO timestamp. */
+  adoptedAt: string;
+  /** uid of the admin who adopted it. */
+  adoptedBy: string;
+  /**
+   * The ADOPTING tenant's publish state, independent of the library course's
+   * own `status`: a church may adopt a course and stage it before showing it to
+   * members. Absent means published.
+   */
+  status?: CourseStatus;
+}
