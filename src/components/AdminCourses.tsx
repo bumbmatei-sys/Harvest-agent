@@ -1,14 +1,19 @@
 "use client";
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, GraduationCap } from 'lucide-react';
-import { collection, onSnapshot, query, where, deleteDoc, doc, getDoc, limit } from 'firebase/firestore';
-import { db } from '../firebase';
+import { Plus, Edit2, Trash2, GraduationCap, Library, Check } from 'lucide-react';
+import { collection, onSnapshot, query, where, deleteDoc, doc, getDoc, setDoc, limit } from 'firebase/firestore';
+import { db, auth } from '../firebase';
 import AdminCourseEditor, { Course } from './AdminCourseEditor';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { getTenantScope } from '../utils/tenant-scope';
 import { sortByTime } from '../utils/query-helpers';
-import { getPlanFeatures } from '../utils/plan-features';
 import { useTenant } from '@/contexts/TenantContext';
+import { LIBRARY_COURSE_COLLECTIONS } from '../utils/library-authoring';
+import {
+  resolveCourseLimit, isAtCourseLimit, courseLimitMessage,
+  buildAdoptionRecord, adoptableCourses,
+} from '../utils/course-adoption';
+import type { AdoptedCourse, LibraryCourse } from '../types/course.types';
 import { AdminPageHeader, AdminPrimaryButton, AdminSearchBar, AdminCard, AdminBadge, statusTone } from './admin/AdminUI';
 
 const AdminCourses: React.FC = () => {
@@ -17,6 +22,13 @@ const AdminCourses: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Browse-and-adopt lives here rather than in its own tab: the plan cap is
+  // computed on this screen and only makes sense with both lists in one place.
+  const [view, setView] = useState<'own' | 'library'>('own');
+  const [libraryCourses, setLibraryCourses] = useState<LibraryCourse[]>([]);
+  const [adopted, setAdopted] = useState<AdoptedCourse[]>([]);
+  const [adoptingId, setAdoptingId] = useState<string | null>(null);
+
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
 
@@ -24,9 +36,17 @@ const AdminCourses: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Unknown/loading plan falls back to 'plus' (maxCourses: 2) — fail closed on the cap.
-  const maxCourses = getPlanFeatures(tenantPlan ?? 'plus').maxCourses;
-  const atLimit = maxCourses !== -1 && courses.length >= maxCourses;
-  const limitMessage = `Your plan includes up to ${maxCourses} course${maxCourses === 1 ? '' : 's'}. Upgrade to add more.`;
+  // ADOPTED COURSES COUNT: a church on Individual (2 slots) that adopts two
+  // library courses cannot also create one of their own. Deliberate founder call.
+  //
+  // ⚠️ This cap is CLIENT-SIDE ONLY, as it always has been — nothing server-side
+  // or in the rules counts documents, so a direct SDK write still bypasses it.
+  // Server enforcement (POST /api/courses/adopt + adoptedCourses tightened to
+  // server-only writes) is the immediate follow-up and replaces these checks.
+  const maxCourses = resolveCourseLimit(tenantPlan);
+  const adoptedIds = new Set(adopted.map((a) => a.libraryCourseId));
+  const atLimit = isAtCourseLimit(courses.length, adopted.length, maxCourses);
+  const limitMessage = courseLimitMessage(maxCourses);
 
   useEffect(() => {
     let unsubscribe: (() => void) | null = null;
@@ -51,6 +71,44 @@ const AdminCourses: React.FC = () => {
     return () => { if (unsubscribe) unsubscribe(); };
   }, []);
 
+  // Catalogue + this tenant's adoptions.
+  //
+  // Both reads are deliberately UNFILTERED, and that is the opposite of the
+  // /courses read above. libraryCourses docs carry no tenantId and their read
+  // rule references no document field, so a where('tenantId', …) would match
+  // nothing; adoptedCourses is a subcollection whose tenant comes from the PATH,
+  // so it needs no filter either. Getting this backwards fails silently — an
+  // empty list, not an error.
+  useEffect(() => {
+    const unsubLibrary = onSnapshot(
+      query(collection(db, LIBRARY_COURSE_COLLECTIONS.courses), limit(200)),
+      (snap) => {
+        const fetched = snap.docs.map((d) => ({ id: d.id, ...d.data() })) as LibraryCourse[];
+        setLibraryCourses(sortByTime(fetched, 'createdAt', 'desc'));
+      },
+      (error) => {
+        try { handleFirestoreError(error, OperationType.GET, LIBRARY_COURSE_COLLECTIONS.courses); } catch (e) { console.error(e); }
+      },
+    );
+
+    let unsubAdopted: (() => void) | null = null;
+    (async () => {
+      const tenantId = await getTenantScope();
+      if (!tenantId) return; // platform context — no tenant to hold adoptions
+      unsubAdopted = onSnapshot(
+        collection(db, 'tenants', tenantId, 'adoptedCourses'),
+        (snap) => {
+          setAdopted(snap.docs.map((d) => ({ id: d.id, ...d.data() })) as AdoptedCourse[]);
+        },
+        (error) => {
+          try { handleFirestoreError(error, OperationType.GET, `tenants/${tenantId}/adoptedCourses`); } catch (e) { console.error(e); }
+        },
+      );
+    })();
+
+    return () => { unsubLibrary(); if (unsubAdopted) unsubAdopted(); };
+  }, []);
+
   const filteredCourses = courses.filter(course =>
     (course.title?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
     (course.author?.toLowerCase() || '').includes(searchQuery.toLowerCase())
@@ -66,6 +124,57 @@ const AdminCourses: React.FC = () => {
     setEditingCourse(null); setIsEditorOpen(true);
   };
   const handleEditCourse = (course: Course) => { setEditingCourse(course); setIsEditorOpen(true); };
+
+  // Only published catalogue entries are browsable or adoptable. Enforced
+  // client-side for now; the follow-up rules change makes it a read rule too.
+  const visibleLibrary = adoptableCourses(libraryCourses).filter(course =>
+    (course.title?.toLowerCase() || '').includes(searchQuery.toLowerCase())
+  );
+
+  const handleAdopt = async (libraryCourse: LibraryCourse) => {
+    if (loading) return;                       // counts not known — can't decide the cap
+    if (adoptedIds.has(libraryCourse.id)) return;
+    if (atLimit) {
+      setErrorMessage(limitMessage);
+      setTimeout(() => setErrorMessage(null), 5000);
+      return;
+    }
+    setAdoptingId(libraryCourse.id);
+    try {
+      const tenantId = await getTenantScope();
+      if (!tenantId) throw new Error('No tenant scope');
+      // A POINTER, never a copy: the doc id is the library course id and the
+      // body carries no course content, so edits to the library course reach
+      // every adopter with nothing to re-sync.
+      await setDoc(
+        doc(db, 'tenants', tenantId, 'adoptedCourses', libraryCourse.id),
+        buildAdoptionRecord(libraryCourse.id, auth.currentUser?.uid ?? '', new Date().toISOString()),
+      );
+    } catch (error) {
+      try { handleFirestoreError(error, OperationType.WRITE, 'adoptedCourses'); } catch (e) { console.error(e); }
+      setErrorMessage('Failed to adopt this course. Please try again.');
+      setTimeout(() => setErrorMessage(null), 3000);
+    } finally {
+      setAdoptingId(null);
+    }
+  };
+
+  // Un-adopt is a plain delete of the pointer. Members lose the course; their
+  // progress records are retained, so re-adopting restores their place.
+  const handleUnadopt = async (libraryCourseId: string) => {
+    setAdoptingId(libraryCourseId);
+    try {
+      const tenantId = await getTenantScope();
+      if (!tenantId) throw new Error('No tenant scope');
+      await deleteDoc(doc(db, 'tenants', tenantId, 'adoptedCourses', libraryCourseId));
+    } catch (error) {
+      try { handleFirestoreError(error, OperationType.DELETE, 'adoptedCourses'); } catch (e) { console.error(e); }
+      setErrorMessage('Failed to remove this course. Please try again.');
+      setTimeout(() => setErrorMessage(null), 3000);
+    } finally {
+      setAdoptingId(null);
+    }
+  };
 
   const handleDeleteCourse = async (id: string) => {
     try {
@@ -101,11 +210,119 @@ const AdminCourses: React.FC = () => {
 
       <AdminPageHeader
         eyebrow="Discipleship"
-        title={`${courses.length} course${courses.length === 1 ? '' : 's'}`}
-        action={<AdminPrimaryButton onClick={handleNewCourse} icon={<Plus size={16} />} disabled={atLimit} title={atLimit ? limitMessage : undefined}>New course</AdminPrimaryButton>}
+        title={
+          maxCourses === -1
+            ? `${courses.length + adopted.length} course${courses.length + adopted.length === 1 ? '' : 's'}`
+            : `${courses.length + adopted.length} of ${maxCourses} course${maxCourses === 1 ? '' : 's'} used`
+        }
+        action={
+          view === 'own'
+            ? <AdminPrimaryButton onClick={handleNewCourse} icon={<Plus size={16} />} disabled={atLimit} title={atLimit ? limitMessage : undefined}>New course</AdminPrimaryButton>
+            : undefined
+        }
       />
 
-      <AdminSearchBar value={searchQuery} onChange={setSearchQuery} placeholder="Search by title or author…" />
+      {/* Own courses vs the platform library. The count above spans BOTH — an
+          adopted course occupies a plan slot exactly like one you authored. */}
+      <div className="flex items-center gap-1 border-b border-stone-200">
+        {([
+          { key: 'own', label: `Your courses (${courses.length})` },
+          { key: 'library', label: `Library (${adopted.length} adopted)` },
+        ] as const).map((t) => (
+          <button
+            key={t.key}
+            onClick={() => setView(t.key)}
+            className={`px-4 py-2.5 text-sm font-semibold -mb-px border-b-2 transition-colors ${
+              view === t.key
+                ? 'border-gold text-earth'
+                : 'border-transparent text-warm-brown hover:text-earth'
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {atLimit && (
+        <div className="bg-[var(--surface-gold)] text-earth rounded-brand p-3.5 text-sm border border-stone-200">
+          {limitMessage}
+        </div>
+      )}
+
+      <AdminSearchBar value={searchQuery} onChange={setSearchQuery} placeholder={view === 'own' ? 'Search by title or author…' : 'Search the library…'} />
+
+      {view === 'library' && (
+        <div className="space-y-3">
+          <p className="text-sm text-warm-brown">
+            Courses published by Harvest, free on every plan. Adopting one adds it to your
+            church&apos;s courses — you keep it in step automatically, because the course stays
+            with its author and any edits reach you. Adopted courses count towards your plan.
+          </p>
+          {visibleLibrary.length === 0 ? (
+            <AdminCard className="px-6 py-14 text-center">
+              <div className="flex flex-col items-center justify-center gap-1.5">
+                <Library size={30} className="text-stone-300 mb-1" />
+                <p className="font-display text-base text-earth">Nothing in the library yet</p>
+                <p className="text-sm text-warm-brown">Published courses will appear here.</p>
+              </div>
+            </AdminCard>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {visibleLibrary.map((course) => {
+                const isAdopted = adoptedIds.has(course.id);
+                const busy = adoptingId === course.id;
+                const blocked = !isAdopted && atLimit;
+                const lessonCount = (course.levels || []).reduce(
+                  (sum, lv) => sum + (lv.sections || []).reduce((n, sec) => n + (sec.lessons?.length || 0), 0),
+                  0,
+                );
+                return (
+                  <AdminCard key={course.id} className="p-4 flex flex-col gap-3">
+                    <div className="flex items-start gap-3">
+                      <div className="w-[68px] h-[52px] rounded-brand bg-[var(--surface-gold)] text-gold flex items-center justify-center shrink-0 overflow-hidden">
+                        {course.thumbnail
+                          ? <img src={course.thumbnail} alt="" className="w-full h-full object-cover" />
+                          : <Library size={20} />}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-semibold text-earth line-clamp-1">{course.title}</span>
+                          {isAdopted && <AdminBadge tone="gold">Adopted</AdminBadge>}
+                        </div>
+                        <p className="text-xs text-[color:var(--text-faint)] mt-1 line-clamp-2">{course.description}</p>
+                        <p className="text-xs text-warm-brown mt-1">
+                          {[course.category, lessonCount ? `${lessonCount} lesson${lessonCount === 1 ? '' : 's'}` : null].filter(Boolean).join(' · ')}
+                        </p>
+                      </div>
+                    </div>
+                    {isAdopted ? (
+                      <button
+                        onClick={() => handleUnadopt(course.id)}
+                        disabled={busy}
+                        className="self-start px-3 py-1.5 rounded-brand text-sm font-medium text-warm-brown hover:text-[#C4553B] hover:bg-[#F7E7E2] transition-colors disabled:opacity-50"
+                      >
+                        {busy ? 'Removing…' : 'Remove from your courses'}
+                      </button>
+                    ) : (
+                      <AdminPrimaryButton
+                        onClick={() => handleAdopt(course)}
+                        icon={busy ? undefined : <Check size={16} />}
+                        disabled={busy || blocked}
+                        title={blocked ? limitMessage : undefined}
+                        className="self-start"
+                      >
+                        {busy ? 'Adopting…' : 'Adopt'}
+                      </AdminPrimaryButton>
+                    )}
+                  </AdminCard>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {view === 'own' && (<>
 
       {/* Mobile list — mockup course-card library: thumbnail (cover, else GraduationCap
           on gold tint), title + status pill, and an author · lesson-count meta line.
@@ -233,6 +450,7 @@ const AdminCourses: React.FC = () => {
           </table>
         </div>
       </AdminCard>
+      </>)}
 
       {/* Delete Confirmation Modal */}
       {deleteConfirmId && (
