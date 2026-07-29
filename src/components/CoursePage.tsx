@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { doc, getDoc, updateDoc, getDocs, collection, query, where } from "firebase/firestore";
 import { db, auth } from "../firebase";
-import { Course, Lesson, Author, QuizAttempt } from "../types/course.types";
+import { Course, Lesson, Author, QuizAttempt, LibraryCourse, AdoptedCourse } from "../types/course.types";
 import { getAllLessons } from "../utils/course.utils";
 import { CourseLibrary } from "../components/course/CourseLibrary";
 import { CourseOverview } from "../components/course/CourseOverview";
@@ -10,6 +10,10 @@ import { LessonView } from "../components/course/LessonView";
 import { AuthorProfile } from "../components/course/AuthorProfile";
 import { OperationType, handleFirestoreError } from "../utils/firestore-errors";
 import { getTenantScope } from "../utils/tenant-scope";
+import { LIBRARY_COURSE_COLLECTIONS } from "../utils/library-authoring";
+import {
+  adoptableCourses, mergeCoursesForMembers, mergeAuthors, mergeCategories,
+} from "../utils/course-adoption";
 
 export default function CoursePage({
   onOpenCourse,
@@ -79,7 +83,18 @@ export default function CoursePage({
         authorsSnap.forEach((d) => {
           fetchedAuthors.push({ id: d.id, ...d.data() } as Author);
         });
-        setAuthors(fetchedAuthors);
+
+        // Adopted library courses resolve authorIds against libraryAuthors, not
+        // the tenant-scoped authors above. Every consumer looks an author up
+        // with an in-memory .find() over ONE array, so merging the two pools is
+        // all a merged lookup needs — no per-id fetch, and no change to the
+        // tenant-scoped /authors rule. This read is UNFILTERED by design.
+        const libAuthorsSnap = await getDocs(collection(db, LIBRARY_COURSE_COLLECTIONS.authors));
+        const libAuthors: Author[] = [];
+        libAuthorsSnap.forEach((d) => {
+          libAuthors.push({ id: d.id, ...d.data() } as Author);
+        });
+        setAuthors(mergeAuthors(fetchedAuthors, libAuthors));
       } catch (error) {
         try { handleFirestoreError(error, OperationType.GET, "authors"); } catch (e) { console.error(e); }
       }
@@ -95,7 +110,12 @@ export default function CoursePage({
         catsSnap.forEach((d) => {
           fetchedCats.push(d.data().name);
         });
-        setCategories(fetchedCats);
+        // Library categories too — an adopted course's category must be
+        // filterable. Unfiltered read, same as libraryAuthors above.
+        const libCatsSnap = await getDocs(collection(db, LIBRARY_COURSE_COLLECTIONS.categories));
+        const libCats: string[] = [];
+        libCatsSnap.forEach((d) => { libCats.push(d.data().name); });
+        setCategories(mergeCategories(fetchedCats, libCats));
       } catch (error) {
         try { handleFirestoreError(error, OperationType.GET, "categories"); } catch (e) { console.error(e); }
       }
@@ -116,10 +136,36 @@ export default function CoursePage({
           if (d.data().status !== "published") return;
           fetchedCourses.push({ id: d.id, ...d.data() } as Course);
         });
-        setCourses(fetchedCourses);
+
+        // Adopted library courses. Adoption stores a POINTER, so the content is
+        // read live from libraryCourses — an edit by the platform reaches every
+        // adopter with nothing to re-sync. Both reads below are UNFILTERED,
+        // which is the opposite of the /courses read above: adoptedCourses gets
+        // its tenant from the PATH, and libraryCourses docs carry no tenantId
+        // at all, so a where('tenantId', …) would match nothing.
+        let adoptedLibrary: LibraryCourse[] = [];
+        if (tenantId) {
+          const adoptedSnap = await getDocs(collection(db, "tenants", tenantId, "adoptedCourses"));
+          const adoptedIds = new Set(
+            adoptedSnap.docs.map((d) => ((d.data() as AdoptedCourse).libraryCourseId ?? d.id)),
+          );
+          if (adoptedIds.size > 0) {
+            const librarySnap = await getDocs(collection(db, LIBRARY_COURSE_COLLECTIONS.courses));
+            const all = librarySnap.docs
+              .filter((d) => adoptedIds.has(d.id))
+              .map((d) => ({ id: d.id, ...d.data() }) as LibraryCourse);
+            // Unpublished catalogue entries never reach members.
+            adoptedLibrary = adoptableCourses(all);
+          }
+        }
+
+        // The tenant's OWN featured course wins: a library course must never
+        // outrank a church's own content on the church's own screen.
+        const allCourses = mergeCoursesForMembers(fetchedCourses, adoptedLibrary);
+        setCourses(allCourses);
 
         if (initialCourseId) {
-          const course = fetchedCourses.find((c) => c.id === initialCourseId);
+          const course = allCourses.find((c) => c.id === initialCourseId);
           if (course) {
             setSelectedCourse(course);
             if (initialLessonId) {
