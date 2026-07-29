@@ -30,7 +30,17 @@ let mockAdopted: Array<{ id: string; libraryCourseId: string }> = [];
 // Records the collection paths and every where() field, so the query SHAPES can
 // be asserted directly — /courses must stay tenant-filtered while the library
 // and adoption reads must stay unfiltered.
-const calls = vi.hoisted(() => ({ paths: [] as string[], wheres: [] as string[], writes: [] as any[] }));
+const calls = vi.hoisted(() => ({ paths: [] as string[], wheres: [] as string[], writes: [] as any[], fetches: [] as any[] }));
+
+// Adoption is server-only now: adoptedCourses is `allow write: if false`, so the
+// screen calls /api/courses/adopt instead of writing Firestore directly.
+const mockAuthFetch = vi.hoisted(() => vi.fn(async () => ({ ok: true, json: async () => ({ ok: true }) })));
+vi.mock('../../utils/auth-fetch', () => ({
+  authFetch: (url: string, options: any) => {
+    calls.fetches.push({ url, method: options?.method, body: JSON.parse(options?.body || '{}') });
+    return mockAuthFetch();
+  },
+}));
 
 vi.mock('firebase/firestore', () => ({
   collection: (_db: unknown, ...seg: string[]) => ({ __path: seg.join('/') }),
@@ -94,6 +104,7 @@ describe('AdminCourses — maxCourses enforcement', () => {
     calls.paths = [];
     calls.wheres = [];
     calls.writes = [];
+    calls.fetches = [];
   });
 
   afterEach(() => {
@@ -202,6 +213,8 @@ describe('AdminCourses — library adoption', () => {
     calls.paths = [];
     calls.wheres = [];
     calls.writes = [];
+    calls.fetches = [];
+    mockAuthFetch.mockResolvedValue({ ok: true, json: async () => ({ ok: true }) } as any);
   });
 
   afterEach(() => {
@@ -251,7 +264,7 @@ describe('AdminCourses — library adoption', () => {
       for (const b of buttons) expect(b.disabled).toBe(true);
 
       await act(async () => { buttons[0].click(); });
-      expect(calls.writes.filter((w) => w.op === 'set')).toHaveLength(0);
+      expect(calls.fetches).toHaveLength(0);
     });
 
     it('allows adopting under the cap, and -1 never blocks', async () => {
@@ -282,35 +295,65 @@ describe('AdminCourses — library adoption', () => {
       expect(calls.paths).toContain('tenants/tenant-1/adoptedCourses');
     });
 
-    it('keeps the /courses read tenant-filtered', async () => {
+    it('sends exactly the filters each rule requires — no more, no fewer', async () => {
       await mount();
       expect(calls.paths).toContain('courses');
-      // Exactly ONE where() in the whole screen: the tenantId filter on /courses.
-      // The library and adoption reads must add none — their rules reference no
-      // document field, so a filter there would silently match nothing.
-      expect(calls.wheres).toEqual(['tenantId']);
+      // Three reads, three DIFFERENT required shapes:
+      //  • /courses        tenantId  — rule reads resource.data.tenantId
+      //  • /libraryCourses status    — rule reads resource.data.status
+      //  • adoptedCourses  none      — tenant comes from the PATH
+      // Dropping either filter, or adding one to the adoption read, empties the
+      // corresponding list silently rather than erroring.
+      expect([...calls.wheres].sort()).toEqual(['status', 'tenantId']);
     });
   });
 
   describe('adopting', () => {
-    it('writes a pointer with no course content to the tenant subcollection', async () => {
+    it('goes through the server route, never a direct Firestore write', async () => {
+      // adoptedCourses is `allow write: if false` — a direct setDoc would now be
+      // rejected by the rules, so the screen must not attempt one.
       tenantCtx.tenantPlan = 'pro';
       mockLibrary = makeLibrary(1);
       await mount();
       await act(async () => { libraryTab().click(); });
       await act(async () => { adoptButtons()[0].click(); });
 
-      const write = calls.writes.find((w) => w.op === 'set');
-      expect(write).toBeDefined();
-      expect(write.path).toBe('tenants/tenant-1/adoptedCourses/lib-0');
-      expect(write.data.libraryCourseId).toBe('lib-0');
-      expect(write.data.adoptedBy).toBe('admin-uid');
-      for (const key of ['title', 'levels', 'description', 'thumbnail']) {
-        expect(key in write.data).toBe(false);
+      expect(calls.writes.filter((w) => w.op === 'set')).toHaveLength(0);
+      expect(calls.fetches).toHaveLength(1);
+      expect(calls.fetches[0].url).toBe('/api/courses/adopt');
+      expect(calls.fetches[0].method).toBe('POST');
+      expect(calls.fetches[0].body).toEqual({ tenantId: 'tenant-1', libraryCourseId: 'lib-0' });
+    });
+
+    it('sends no course content to the route — the server derives it', async () => {
+      tenantCtx.tenantPlan = 'pro';
+      mockLibrary = makeLibrary(1);
+      await mount();
+      await act(async () => { libraryTab().click(); });
+      await act(async () => { adoptButtons()[0].click(); });
+
+      for (const key of ['title', 'levels', 'description', 'thumbnail', 'adoptedBy']) {
+        expect(key in calls.fetches[0].body).toBe(false);
       }
     });
 
-    it('un-adopting deletes the pointer', async () => {
+    it('surfaces the server 403 message when the cap is hit server-side', async () => {
+      // The client cap is presentation; the route is the authority. If they ever
+      // disagree (e.g. a stale plan in context), the server message is shown.
+      tenantCtx.tenantPlan = 'pro';
+      mockLibrary = makeLibrary(1);
+      mockAuthFetch.mockResolvedValue({
+        ok: false,
+        json: async () => ({ error: 'Your plan includes up to 5 courses (including adopted library courses). Upgrade to add more.' }),
+      } as any);
+      await mount();
+      await act(async () => { libraryTab().click(); });
+      await act(async () => { adoptButtons()[0].click(); });
+
+      expect(container.textContent).toMatch(/plan includes up to 5 courses/i);
+    });
+
+    it('un-adopting calls DELETE on the route', async () => {
       tenantCtx.tenantPlan = 'pro';
       mockLibrary = makeLibrary(1);
       mockAdopted = [{ id: 'lib-0', libraryCourseId: 'lib-0' }];
@@ -323,8 +366,12 @@ describe('AdminCourses — library adoption', () => {
       expect(remove).toBeDefined();
 
       await act(async () => { remove.click(); });
-      expect(calls.writes.find((w) => w.op === 'delete')?.path)
-        .toBe('tenants/tenant-1/adoptedCourses/lib-0');
+      expect(calls.writes.filter((w) => w.op === 'delete')).toHaveLength(0);
+      expect(calls.fetches[0]).toEqual({
+        url: '/api/courses/adopt',
+        method: 'DELETE',
+        body: { tenantId: 'tenant-1', libraryCourseId: 'lib-0' },
+      });
     });
   });
 

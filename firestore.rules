@@ -323,8 +323,30 @@ service cloud.firestore {
     // silent, total failure that hid CRM activities for weeks (#236, again #239).
     // Writes are super-admin only; the /courses rule is untouched.
 
+    // DRAFT VISIBILITY — and the query-shape cost of it, stated plainly.
+    //
+    // This read references `resource.data.status`, which is a deliberate,
+    // eyes-open exception to the "no document field" note above. A super admin
+    // needs to author a course before the world sees it, and until this rule
+    // existed the only guard was a client-side filter — anyone with an SDK
+    // console could read every unpublished draft.
+    //
+    // THE COST: because the condition dereferences a field, a LIST query by a
+    // non-super-admin must now constrain that field, or Firestore rejects it
+    // outright. `where('status','==','published')` is REQUIRED on every tenant
+    // and member read of this collection (AdminCourses' browse view,
+    // CoursePage's adopted-course fetch). An unfiltered list still works for a
+    // super admin, because isSuperAdmin() short-circuits the whole condition
+    // true without touching resource.data — which is what keeps the authoring
+    // screen (AdminLibraryCourses) able to see drafts.
+    //
+    // `status == 'published'` is a single-field equality, so it needs no
+    // composite index; the catalogue is sorted client-side.
+    //
+    // libraryAuthors and libraryCategories below are deliberately NOT given the
+    // same treatment: they reference no field, so any query shape still works.
     match /libraryCourses/{courseId} {
-      allow read: if isAuthenticated();
+      allow read: if isSuperAdmin() || (isAuthenticated() && resource.data.get('status', '') == 'published');
       allow write: if isSuperAdmin();
     }
 
@@ -512,12 +534,25 @@ service cloud.firestore {
       // "edits reach every adopter".
       //
       // Members read (adopted courses appear in the member course list, like
-      // tenant `forms`/`events`); writing requires the SAME permission as
-      // creating a course, createCourses — adopting a course is how a tenant
-      // adds a course, so it must not need a permission of its own.
+      // tenant `forms`/`events`). WRITES ARE SERVER-ONLY — the certificates
+      // shape — and go through /api/courses/adopt (Admin SDK), which holds the
+      // same createCourses permission check the client rule used to.
+      //
+      // Why the route rather than the rule: an adoption record is a POINTER,
+      // and only a server can verify a pointer points somewhere real. Rules
+      // cannot read across into libraryCourses, so a client write could invent
+      // any libraryCourseId, disagree with its own doc id, aim at an
+      // unpublished draft, or dangle at a deleted course — and the rule would
+      // have to accept all of it. The route validates the target exists and is
+      // published, and stamps adoptedBy from the verified caller.
+      //
+      // It ALSO checks the plan cap, but do not read that as a watertight cap:
+      // a tenant's own courses are still created by a direct client write to
+      // /courses, capped only by a disabled button in AdminCourses (as since
+      // #228). Adoption is enforced; creation is not. No regression either way.
       match /adoptedCourses/{libraryCourseId} {
         allow read: if belongsToTenant(tenantId);
-        allow write: if hasPermission('createCourses', tenantId);
+        allow write: if false; // server-only (Admin SDK) — /api/courses/adopt
       }
 
       match /contacts/{contactId} {
