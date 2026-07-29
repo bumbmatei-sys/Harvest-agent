@@ -50,6 +50,14 @@ export interface Lesson {
   sources?: string;
   scripture?: string;
   quiz?: QuizQuestion[];
+  /**
+   * Private teaching notes. AdminCourseEditor has always written this field
+   * (its local Lesson declares it), so course documents carry it in Firestore —
+   * the canonical interface simply never declared it. Optional and additive:
+   * declaring it here means a LibraryCourse round-trips through the editor
+   * without the field being invisible to the type system.
+   */
+  teacherNote?: string;
 }
 
 export interface Section {
