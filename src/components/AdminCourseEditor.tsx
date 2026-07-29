@@ -7,6 +7,14 @@ import { ImageUpload } from './ImageUpload';
 import RichTextEditor from './RichTextEditor';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { getTenantScope, getWriteTenantScope } from '../utils/tenant-scope';
+// Platform course library (THE-54): the same builder authors the shared
+// catalogue when `library` is set. All the mode-dependent decisions —
+// which collections, and whether a tenantId is stamped at all — live in
+// library-authoring.ts so the "library docs carry no tenantId" invariant is
+// stated in one place and unit-tested.
+import {
+  collectionsFor, resolveWriteTenant, stampTenant, categoryDocIdFor,
+} from '../utils/library-authoring';
 // Reused, tenant-scoped AI Knowledge write path — the "Generate with AI" flow's
 // optional "add to AI Knowledge" checkbox feeds the video summary through this.
 import { ingestTextSource } from '../utils/rag-ingest';
@@ -160,7 +168,8 @@ const emptyCourse = (): Course => ({ title: "", description: "", category: "", t
 // Categories are keyed per-tenant (`${tenantId}__${name}`) so two tenants can
 // hold the same label without colliding on one shared doc. Courses reference a
 // category by its NAME (course.category is the label string), never by this id.
-const categoryDocId = (tenantId: string, name: string): string => `${tenantId}__${name}`;
+// Both key schemes (tenant prefix, and the library's tenant-free slug) now live
+// in categoryDocIdFor — see utils/library-authoring.ts.
 
 // ═══════════════════════════════════════════════
 // STYLE HELPERS
@@ -867,9 +876,18 @@ function CertificatePreview({ title, teacherName }: CertificatePreviewProps) {
 interface CourseBuilderProps {
  course?: Course | null;
  onClose: () => void;
+ /**
+  * Library mode (THE-54): author the PLATFORM catalogue instead of this
+  * tenant's courses. Reads and writes libraryCourses/libraryAuthors/
+  * libraryCategories, and stamps NO tenantId on anything. Super admins only —
+  * the Firestore rules gate the writes regardless of what the UI allows.
+  * Defaults false, so every existing call site keeps the tenant behaviour.
+  */
+ library?: boolean;
 }
 
-export default function CourseBuilder({ course: initialCourse, onClose }: CourseBuilderProps) {
+export default function CourseBuilder({ course: initialCourse, onClose, library = false }: CourseBuilderProps) {
+ const cols = collectionsFor(library);
  const [course, setCourse] = useState<Course>(initialCourse || emptyCourse());
  const [tab, setTab] = useState<"info" | "curriculum">("info");
  const [saving, setSaving] = useState<boolean>(false);
@@ -887,10 +905,17 @@ export default function CourseBuilder({ course: initialCourse, onClose }: Course
  // match, so the query MUST filter by tenantId — an unfiltered collection read
  // is rejected under the new rules. A super admin in platform context
  // (getTenantScope() === null) reads unscoped; the rule passes via isSuperAdmin().
- const tenantId = await getTenantScope();
+ //
+ // LIBRARY MODE is the opposite: libraryAuthors/libraryCategories carry no
+ // tenantId and their read rules reference no document field, so the query
+ // must be UNFILTERED. Adding a tenantId filter here would match nothing.
+ // Collections are derived INSIDE the effect from `library` so the dep array
+ // is the single primitive that actually drives this fetch.
+ const c = collectionsFor(library);
+ const tenantId = library ? null : await getTenantScope();
  const authorsSnap = tenantId
- ? await getDocs(query(collection(db, "authors"), where("tenantId", "==", tenantId)))
- : await getDocs(collection(db, "authors"));
+ ? await getDocs(query(collection(db, c.authors), where("tenantId", "==", tenantId)))
+ : await getDocs(collection(db, c.authors));
  const fetchedAuthors: Author[] = [];
  authorsSnap.forEach((doc) => {
  fetchedAuthors.push({ id: doc.id, ...doc.data() } as Author);
@@ -898,19 +923,19 @@ export default function CourseBuilder({ course: initialCourse, onClose }: Course
  setAuthorsLibrary(fetchedAuthors);
 
  const catsSnap = tenantId
- ? await getDocs(query(collection(db, "categories"), where("tenantId", "==", tenantId)))
- : await getDocs(collection(db, "categories"));
+ ? await getDocs(query(collection(db, c.categories), where("tenantId", "==", tenantId)))
+ : await getDocs(collection(db, c.categories));
  const fetchedCats: string[] = [];
  catsSnap.forEach((doc) => {
  fetchedCats.push(doc.data().name);
  });
  setCategories(fetchedCats);
  } catch (error) {
- try { handleFirestoreError(error, OperationType.GET, `courses`); } catch (e) { console.error(e); }
+ try { handleFirestoreError(error, OperationType.GET, c.courses); } catch (e) { console.error(e); }
  }
  };
  fetchData();
- }, []);
+ }, [library]);
 
  const dragLevel = useRef<number | null>(null);
  const handleUpdateCategories = async (newCats: string[]) => {
@@ -919,21 +944,26 @@ export default function CourseBuilder({ course: initialCourse, onClose }: Course
  // Categories carry a tenantId and are keyed per-tenant so two tenants can
  // reuse the same label. getWriteTenantScope() resolves the platform tenant
  // for a super admin on the apex so writes are never orphaned.
- const tenantId = await getWriteTenantScope();
- if (!tenantId) return; // no tenant scope → nothing we can legitimately write
+ //
+ // In LIBRARY MODE that platform-tenant fallback is precisely the trap:
+ // resolveWriteTenant returns null without ever calling getWriteTenantScope,
+ // so no 'harvest' tenantId can leak onto a catalogue document. Library
+ // category ids are a slug of the name, with no tenant prefix.
+ const tenantId = await resolveWriteTenant(library, getWriteTenantScope);
+ if (!library && !tenantId) return; // no tenant scope → nothing we can legitimately write
  // Find added categories
  const added = newCats.filter(c => !categories.includes(c));
  // Find removed categories
  const removed = categories.filter(c => !newCats.includes(c));
 
  for (const cat of added) {
- await setDoc(doc(db, "categories", categoryDocId(tenantId, cat)), { name: cat, tenantId });
+ await setDoc(doc(db, cols.categories, categoryDocIdFor(library, tenantId, cat)), stampTenant(library, { name: cat }, tenantId));
  }
  for (const cat of removed) {
- await deleteDoc(doc(db, "categories", categoryDocId(tenantId, cat)));
+ await deleteDoc(doc(db, cols.categories, categoryDocIdFor(library, tenantId, cat)));
  }
  } catch (e) {
- try { handleFirestoreError(e, OperationType.WRITE, `categories`); } catch (e) { console.error(e); }
+ try { handleFirestoreError(e, OperationType.WRITE, cols.categories); } catch (e) { console.error(e); }
  }
  };
  const dragOverLevel = useRef<number | null>(null);
@@ -944,13 +974,17 @@ export default function CourseBuilder({ course: initialCourse, onClose }: Course
  // Stamp the tenantId so the author is scoped to this tenant's library and
  // readable under the tenant-scoped rules. Keep it in state too, so a later
  // edit (updateLibraryAuthor overwrites the doc) never drops it.
- const tenantId = await getWriteTenantScope();
- const newAuthor: Author = { ...emptyAuthor(), tenantId: tenantId ?? undefined };
+ // In library mode stampTenant removes the key entirely — platform authors
+ // belong to no tenant.
+ const tenantId = await resolveWriteTenant(library, getWriteTenantScope);
+ // `?? undefined` is preserved from the original tenant behaviour and passed
+ // in explicitly — stampTenant assigns verbatim so it can't alter it.
+ const newAuthor: Author = stampTenant(library, { ...emptyAuthor() } as any, tenantId ?? undefined);
  setAuthorsLibrary((lib) => [...lib, newAuthor]);
  try {
- await setDoc(doc(db, "authors", newAuthor.id), newAuthor);
+ await setDoc(doc(db, cols.authors, newAuthor.id), newAuthor);
  } catch (e) {
- try { handleFirestoreError(e, OperationType.WRITE, `authors`); } catch (e) { console.error(e); }
+ try { handleFirestoreError(e, OperationType.WRITE, cols.authors); } catch (e) { console.error(e); }
  }
  };
 
@@ -959,11 +993,12 @@ export default function CourseBuilder({ course: initialCourse, onClose }: Course
  try {
  // setDoc fully overwrites — preserve the tenantId (fall back to the write
  // scope for any author that predates tenant stamping) so the isolation
- // field is never stripped on edit.
- const tenantId = a.tenantId ?? (await getWriteTenantScope()) ?? undefined;
- await setDoc(doc(db, "authors", a.id), { ...a, tenantId });
+ // field is never stripped on edit. Library mode has no tenantId to
+ // preserve, and resolveWriteTenant never consults tenant scope there.
+ const tenantId = library ? null : (a.tenantId ?? (await getWriteTenantScope()) ?? undefined);
+ await setDoc(doc(db, cols.authors, a.id), stampTenant(library, { ...a } as any, tenantId));
  } catch (e) {
- try { handleFirestoreError(e, OperationType.UPDATE, `authors`); } catch (e) { console.error(e); }
+ try { handleFirestoreError(e, OperationType.UPDATE, cols.authors); } catch (e) { console.error(e); }
  }
  };
 
@@ -972,9 +1007,9 @@ export default function CourseBuilder({ course: initialCourse, onClose }: Course
  setAuthorsLibrary((lib) => lib.filter((_, idx) => idx !== i));
  set("authorIds", course.authorIds.filter((id) => id !== removed));
  try {
- await deleteDoc(doc(db, "authors", removed));
+ await deleteDoc(doc(db, cols.authors, removed));
  } catch (e) {
- try { handleFirestoreError(e, OperationType.DELETE, `authors`); } catch (e) { console.error(e); }
+ try { handleFirestoreError(e, OperationType.DELETE, cols.authors); } catch (e) { console.error(e); }
  }
  };
 
@@ -1002,27 +1037,33 @@ export default function CourseBuilder({ course: initialCourse, onClose }: Course
    }
    console.log("SAVE →", payload);
    try {
-     const tenantId = await getTenantScope();
+     // Library mode has no tenant at all: skip the tenant-ownership check (there
+     // is no tenantId on a catalogue doc to mismatch) and never resolve a write
+     // scope. The Firestore rules gate these writes on isSuperAdmin().
+     const tenantId = library ? null : await getTenantScope();
      if (course.id) {
        if (tenantId) {
-         const docSnap = await getDoc(doc(db, "courses", course.id));
+         const docSnap = await getDoc(doc(db, cols.courses, course.id));
          if (docSnap.exists() && docSnap.data().tenantId && docSnap.data().tenantId !== tenantId) {
            console.error('Tenant mismatch');
            return;
          }
        }
-       await updateDoc(doc(db, "courses", course.id), payload as any);
+       await updateDoc(doc(db, cols.courses, course.id), payload as any);
      } else {
        // Platform-aware: a super admin on the apex persists the platform tenant
        // instead of null so the course is never orphaned. (The edit branch above
-       // keeps getTenantScope() for its ownership check.)
-       const docRef = await addDoc(collection(db, "courses"), { ...payload, tenantId: await getWriteTenantScope() });
+       // keeps getTenantScope() for its ownership check.) In library mode
+       // resolveWriteTenant returns null WITHOUT calling getWriteTenantScope,
+       // and stampTenant strips the key — a catalogue doc carries no tenantId.
+       const writeTenantId = await resolveWriteTenant(library, getWriteTenantScope);
+       const docRef = await addDoc(collection(db, cols.courses), stampTenant(library, { ...payload }, writeTenantId));
        setCourse(c => ({ ...c, id: docRef.id }));
      }
  setSaved(true);
  setTimeout(() => setSaved(false), 2500);
  } catch (e) {
- try { handleFirestoreError(e, OperationType.WRITE, `courses`); } catch (e) { console.error(e); }
+ try { handleFirestoreError(e, OperationType.WRITE, cols.courses); } catch (e) { console.error(e); }
  alert("Error saving course. Please try again.");
  } finally {
  setSaving(false);

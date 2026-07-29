@@ -1,13 +1,14 @@
 "use client";
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { LayoutDashboard, Church, FileText, BrainCircuit, Inbox, GraduationCap, ChevronLeft, ChevronRight, ChevronDown, Building2, Settings, MoreHorizontal, Mail, Heart, Users, MessageSquare, Receipt, CalendarCheck, ClipboardList, QrCode, Radio, ExternalLink, Link2, Palette, Bell, X } from 'lucide-react';
+import { LayoutDashboard, Church, FileText, BrainCircuit, Inbox, GraduationCap, ChevronLeft, ChevronRight, ChevronDown, Building2, Settings, MoreHorizontal, Mail, Heart, Users, MessageSquare, Receipt, CalendarCheck, ClipboardList, QrCode, Radio, ExternalLink, Link2, Palette, Bell, X, Library } from 'lucide-react';
 import AdminBlog from './AdminBlog';
 import PlatformInbox from './PlatformInbox';
 import AdminChurches from './AdminChurches';
 import AdminCourses from './AdminCourses';
 import AdminRAG from './AdminRAG';
 import AdminTenants from './AdminTenants';
+import AdminLibraryCourses from './AdminLibraryCourses';
 import AdminSettings from './AdminSettings';
 import AdminUpgradePage from './AdminUpgradePage';
 import AdminBranding from './AdminBranding';
@@ -366,6 +367,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
     (platformOverride || !isTenantAdmin || (features && features.communityGroups)) &&
       (hasFullAccess || perms.manageCommunity) &&
       { id: 'community', label: 'Community', icon: MessageSquare },
+    // Platform course library — super admin authors the shared catalogue that
+    // every tenant can adopt. Same super-admin-only gate as Tenants below.
+    isSuperAdmin && { id: 'library', label: 'Library', icon: Library },
     isSuperAdmin && { id: 'tenants', label: 'Tenants', icon: Building2 },
     // Admin Roles is no longer a standalone tab — it lives inside the CRM page
     // (Contacts · Analytics · Roles), so it's intentionally absent here.
@@ -796,6 +800,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
                   else if (type === 'campaign') navigate(`/admin/fundraising/${id}`);
                 }} /></div>
               : <PlanUpgradeScreen featureName="Community Groups" featureKey="community_chat" onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} />
+          ) : activeTab === 'library' ? (
+            <div className="p-4 lg:p-0"><AdminLibraryCourses /></div>
           ) : activeTab === 'tenants' ? (
             <div className="p-4 lg:p-0"><AdminTenants /></div>
           ) : activeTab === 'affiliate' ? (
