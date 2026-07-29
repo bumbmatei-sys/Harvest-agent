@@ -156,4 +156,19 @@ export interface AdoptedCourse {
    * members. Absent means published.
    */
   status?: CourseStatus;
+  /**
+   * PER-TENANT OVERRIDES — the only two fields a church controls on a course
+   * they did not author. Everything else stays platform-owned and read-only,
+   * which is the whole point of adoption being a pointer.
+   *
+   * ⚠️ OPTIONAL, AND ABSENT WHEN UNSET. "The tenant has not chosen" must stay
+   * distinguishable from "the tenant chose false": absent falls back to the
+   * library course's own value, false is an active opt-out. Do not give these
+   * defaults here — see resolveOverriddenFlag() in utils/course-adoption.ts.
+   *
+   * Written ONLY by PATCH /api/courses/adopt. adoptedCourses is
+   * `allow write: if false` (#247), so a client cannot set them directly.
+   */
+  requireQuiz?: boolean;
+  issueCertificate?: boolean;
 }

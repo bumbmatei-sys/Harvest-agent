@@ -1,12 +1,14 @@
 "use client";
 import React, { useState } from "react";
-import { Course, Lesson, Author, Level, QuizAttempt } from "../../types/course.types";
+import { Course, Lesson, Author, QuizAttempt, AdoptedCourse } from "../../types/course.types";
 import { getAllLessons, verifyCourseCompletion } from "../../utils/course.utils";
+import { applyCourseOverrides } from "../../utils/course-adoption";
 import { GOLD, GOLD_LIGHT, GREEN, GREEN_BG } from "../../utils/course.constants";
 import { sanitizeHtml, stripHtml } from "../../utils/sanitize";
 import { auth } from "../../firebase";
 import { usePublicShareUrl } from "../../utils/share-url";
 import ShareButton from "../ShareButton";
+import { CourseCurriculum } from "./CourseCurriculum";
 
 interface CourseOverviewProps {
   course: Course;
@@ -16,13 +18,24 @@ interface CourseOverviewProps {
   completed?: Set<string>;
   quizAttempts?: Record<string, QuizAttempt>;
   onSelectAuthor?: (author: Author) => void;
+  /**
+   * The adopting church's record for this course, when it is an adopted library
+   * course. Carries their requireQuiz / issueCertificate overrides.
+   */
+  adoption?: Pick<AdoptedCourse, 'requireQuiz' | 'issueCertificate'> | null;
 }
 
-export function CourseOverview({ course, authors, onBack, onStartLesson, completed, quizAttempts, onSelectAuthor }: CourseOverviewProps) {
+export function CourseOverview({ course: rawCourse, authors, onBack, onStartLesson, completed, quizAttempts, onSelectAuthor, adoption }: CourseOverviewProps) {
   const [activeTab, setActiveTab] = useState<"about" | "curriculum">("about");
-  const [expandedLevels, setExpandedLevels] = useState<Set<string>>(new Set(course.levels?.map((l) => l.id) || []));
   const [certLoading, setCertLoading] = useState(false);
   const [certError, setCertError] = useState<string | null>(null);
+
+  // THE COURSE AS THIS CHURCH RUNS IT. The platform's requireQuiz /
+  // issueCertificate are defaults; the adopting tenant's choice wins in both
+  // directions. Resolved through the same helper /api/certificate uses, so the
+  // Download button is offered on exactly the terms the server will honour —
+  // the whole reason this component recomputes completion at all.
+  const course = applyCourseOverrides(rawCourse, adoption);
   const shareUrl = usePublicShareUrl(`/courses/${course.id}`);
 
   const allLessons = getAllLessons(course);
@@ -78,18 +91,6 @@ export function CourseOverview({ course, authors, onBack, onStartLesson, complet
     ?.map((id) => authors.find((a) => a.id === id))
     .filter(Boolean) as Author[];
   const primaryAuthor = courseAuthors?.[0];
-
-  const toggleLevel = (id: string) => {
-    const next = new Set(expandedLevels);
-    if (next.has(id)) next.delete(id);
-    else next.add(id);
-    setExpandedLevels(next);
-  };
-
-  const getLessonNumber = (lessonId: string) => {
-    const idx = allLessons.findIndex((l) => l.id === lessonId);
-    return idx >= 0 ? idx + 1 : 0;
-  };
 
   return (
     <div className="max-w-[480px] lg:max-w-[720px] mx-auto pb-24 lg:pb-10">
@@ -192,89 +193,51 @@ export function CourseOverview({ course, authors, onBack, onStartLesson, complet
         {/* Curriculum tab */}
         {activeTab === "curriculum" && (
           <div className="py-5">
-            {course.levels?.map((level) => {
-              const levelLessons = level.sections?.flatMap((s) => s.lessons || []) || [];
-              const isExpanded = expandedLevels.has(level.id);
+            {/* Shared tree (see CourseCurriculum); the progress-aware row below
+                is this screen's own and is what makes it the member player. */}
+            <CourseCurriculum
+              levels={course.levels}
+              renderLesson={(lesson, num) => {
+                const isCompleted = completed?.has(lesson.id);
+                const isCurrent = nextLesson?.id === lesson.id;
 
-              return (
-                <div key={level.id}>
+                return (
                   <div
-                    className="flex items-center justify-between py-3.5 cursor-pointer"
-                    onClick={() => toggleLevel(level.id)}
+                    className="flex items-center gap-3 py-3 border-t border-stone-200 cursor-pointer hover:bg-stone-100 -mx-5 px-5 transition-colors"
+                    onClick={() => onStartLesson(course, lesson)}
                   >
-                    <div className="flex items-center gap-2.5">
-                      <span
-                        className="px-2.5 py-0.5 rounded-full text-[11px] font-bold"
-                        style={{ background: GOLD_LIGHT, color: GOLD }}
-                      >
-                        {level.title}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[13px] text-[color:var(--text-faint)] font-medium">{levelLessons.length} lessons</span>
-                      <svg
-                        width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#A89A87" strokeWidth="2" strokeLinecap="round"
-                        style={{ transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s" }}
-                      >
-                        <path d="m6 9 6 6 6-6" />
-                      </svg>
-                    </div>
-                  </div>
-
-                  {isExpanded && level.sections?.map((section) => (
-                    <div key={section.id}>
-                      {section.title && (
-                        <div className="text-xs font-bold text-[color:var(--text-faint)] uppercase tracking-wider pt-2 pb-1 pl-1">
-                          {section.title}
-                        </div>
+                    <div
+                      className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 border-[1.5px] ${
+                        isCompleted
+                          ? "border-field-500 bg-field-100 text-field-600"
+                          : isCurrent
+                          ? "border-wheat-600 bg-wheat-50 text-wheat-700"
+                          : "border-stone-200 bg-stone-100 text-warm-brown"
+                      }`}
+                    >
+                      {isCompleted ? (
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="m5 13 4 4L19 7" /></svg>
+                      ) : (
+                        num
                       )}
-                      {section.lessons?.map((lesson) => {
-                        const isCompleted = completed?.has(lesson.id);
-                        const isCurrent = nextLesson?.id === lesson.id;
-                        const num = getLessonNumber(lesson.id);
-
-                        return (
-                          <div
-                            key={lesson.id}
-                            className="flex items-center gap-3 py-3 border-t border-stone-200 cursor-pointer hover:bg-stone-100 -mx-5 px-5 transition-colors"
-                            onClick={() => onStartLesson(course, lesson)}
-                          >
-                            <div
-                              className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 border-[1.5px] ${
-                                isCompleted
-                                  ? "border-field-500 bg-field-100 text-field-600"
-                                  : isCurrent
-                                  ? "border-wheat-600 bg-wheat-50 text-wheat-700"
-                                  : "border-stone-200 bg-stone-100 text-warm-brown"
-                              }`}
-                            >
-                              {isCompleted ? (
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="m5 13 4 4L19 7" /></svg>
-                              ) : (
-                                num
-                              )}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className={`text-sm ${isCurrent ? "font-bold text-earth" : "font-semibold text-[color:var(--text-body)]"}`}>
-                                {lesson.title}
-                              </div>
-                              <div className="text-xs text-[color:var(--text-faint)] mt-0.5">
-                                {lesson.duration || "~"}{isCurrent ? " · Current" : ""}
-                              </div>
-                            </div>
-                            {isCurrent && (
-                              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none" className="text-gold">
-                                <polygon points="8,5 19,12 8,19" />
-                              </svg>
-                            )}
-                          </div>
-                        );
-                      })}
                     </div>
-                  ))}
-                </div>
-              );
-            })}
+                    <div className="flex-1 min-w-0">
+                      <div className={`text-sm ${isCurrent ? "font-bold text-earth" : "font-semibold text-[color:var(--text-body)]"}`}>
+                        {lesson.title}
+                      </div>
+                      <div className="text-xs text-[color:var(--text-faint)] mt-0.5">
+                        {lesson.duration || "~"}{isCurrent ? " · Current" : ""}
+                      </div>
+                    </div>
+                    {isCurrent && (
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none" className="text-gold">
+                        <polygon points="8,5 19,12 8,19" />
+                      </svg>
+                    )}
+                  </div>
+                );
+              }}
+            />
           </div>
         )}
       </div>

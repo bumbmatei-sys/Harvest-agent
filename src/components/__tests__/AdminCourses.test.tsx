@@ -31,7 +31,14 @@ vi.mock('@/contexts/TenantContext', () => ({
 
 let mockCourses: Array<{ id: string; title: string; author: string; status: string }> = [];
 let mockLibrary: Array<{ id: string; title: string; status: string }> = [];
+let mockLibraryAuthors: Array<{ id: string; name: string; bio?: string }> = [];
 let mockAdopted: Array<{ id: string; libraryCourseId: string }> = [];
+
+// The read-only preview embeds the same player LessonView uses; the real one
+// needs a live YouTube iframe API.
+vi.mock('react-player/youtube', () => ({
+  default: ({ url }: { url: string }) => <div data-testid="react-player" data-url={url} />,
+}));
 
 // Records the collection paths and every where() field, so the query SHAPES can
 // be asserted directly — /courses must stay tenant-filtered while the library
@@ -63,6 +70,7 @@ vi.mock('firebase/firestore', () => ({
     let rows: any[] = [];
     if (path === 'courses') rows = mockCourses;
     else if (path === 'libraryCourses') rows = mockLibrary;
+    else if (path === 'libraryAuthors') rows = mockLibraryAuthors;
     else if (path.includes('adoptedCourses')) rows = mockAdopted;
     onNext({ docs: rows.map((c) => ({ id: c.id, data: () => c })) });
     return () => {};
@@ -106,6 +114,7 @@ describe('AdminCourses — maxCourses enforcement', () => {
     tenantCtx.tenantPlan = undefined;
     mockCourses = [];
     mockLibrary = [];
+    mockLibraryAuthors = [];
     mockAdopted = [];
     calls.paths = [];
     calls.wheres = [];
@@ -217,6 +226,7 @@ describe('AdminCourses — library adoption', () => {
     tenantCtx.tenantPlan = undefined;
     mockCourses = [];
     mockLibrary = [];
+    mockLibraryAuthors = [];
     mockAdopted = [];
     calls.paths = [];
     calls.wheres = [];
@@ -439,6 +449,7 @@ describe('AdminCourses — adoption on the apex domain', () => {
     tenantCtx.tenantPlan = 'pro';
     mockCourses = [];
     mockLibrary = [];
+    mockLibraryAuthors = [];
     mockAdopted = [];
     calls.paths = [];
     calls.wheres = [];
@@ -541,6 +552,7 @@ describe('AdminCourses — library card description', () => {
     tenantCtx.tenantPlan = 'pro';
     mockCourses = [];
     mockLibrary = [];
+    mockLibraryAuthors = [];
     mockAdopted = [];
     calls.paths = [];
     calls.wheres = [];
@@ -601,6 +613,7 @@ describe('AdminCourses — adopted courses under "Your courses"', () => {
     tenantCtx.tenantPlan = 'pro';
     mockCourses = [];
     mockLibrary = [];
+    mockLibraryAuthors = [];
     mockAdopted = [];
     calls.paths = [];
     calls.wheres = [];
@@ -683,6 +696,7 @@ describe('AdminCourses — adopted courses under "Your courses"', () => {
     // The platform can delete a catalogue course; the adoption record survives
     // until someone un-adopts it.
     mockLibrary = [];
+    mockLibraryAuthors = [];
     mockAdopted = [{ id: 'gone', libraryCourseId: 'gone' }];
     await mount();
     expect(container.querySelectorAll('[title="Remove from your courses"]')).toHaveLength(0);
@@ -721,3 +735,256 @@ describe('AdminCourses — adopted courses under "Your courses"', () => {
     expect(container.textContent).not.toContain('Fasting');
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// The read-only catalogue preview, reached from the Library tab.
+//
+// Adopting a course to find out what is in it costs one of 2 or 5 plan slots.
+// The preview is how an admin sees the description, teacher and curriculum —
+// including the videos — before spending one.
+// ─────────────────────────────────────────────────────────────────────────────
+function previewCard(title: string): HTMLButtonElement {
+  const button = Array.from(container.querySelectorAll('button')).find(
+    (b) => (b.title || '') === `Preview ${title}`,
+  );
+  if (!button) throw new Error(`No preview affordance for "${title}"`);
+  return button as HTMLButtonElement;
+}
+
+function inPreview(): boolean {
+  return (container.textContent || '').includes('Library preview');
+}
+
+describe('AdminCourses — previewing a catalogue course', () => {
+  beforeEach(() => {
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    tenantCtx.tenantPlan = 'pro';
+    mockCourses = [];
+    mockLibrary = [];
+    mockLibraryAuthors = [];
+    mockAdopted = [];
+    calls.paths = [];
+    calls.wheres = [];
+    calls.writes = [];
+    calls.fetches = [];
+    scope.read = 'tenant-1';
+    scope.write = 'tenant-1';
+    mockAuthFetch.mockResolvedValue({ ok: true, json: async () => ({ ok: true }) } as any);
+  });
+
+  afterEach(() => {
+    act(() => { root?.unmount(); });
+    container.remove();
+  });
+
+  const RICH = {
+    id: 'lib-0', title: 'Foundations of Prayer', status: 'published',
+    description: '<p>A <strong>deep</strong> study.</p>',
+    category: 'Discipleship', authorIds: ['lib-auth-1'],
+    levels: [{ id: 'lv', title: 'Level 1', sections: [{ id: 's', title: 'Beginnings', lessons: [
+      { id: 'l1', title: 'Why We Pray', duration: '10 min', authorId: 'lib-auth-1', summary: '', youtubeId: 'abc12345678' },
+    ] }] }],
+  };
+
+  async function openPreview() {
+    mockLibrary = [RICH as any];
+    mockLibraryAuthors = [{ id: 'lib-auth-1', name: 'Dr Platform Teacher', bio: 'Thirty years.' }];
+    await mount();
+    await act(async () => { libraryTab().click(); });
+    await act(async () => { previewCard('Foundations of Prayer').click(); });
+  }
+
+  it('opens from the catalogue card and shows the course in detail', async () => {
+    await openPreview();
+    expect(inPreview()).toBe(true);
+    expect(container.textContent).toContain('Foundations of Prayer');
+    expect(container.textContent).toContain('A deep study.');   // formatted, not stripped
+    expect(container.textContent).toContain('Dr Platform Teacher');
+    expect(container.textContent).toContain('Thirty years.');   // the author's bio
+    expect(container.textContent).toContain('Level 1');
+    expect(container.textContent).toContain('Beginnings');
+    expect(container.textContent).toContain('Why We Pray');
+  });
+
+  it('reads libraryAuthors — a catalogue author never resolves in tenant /authors', async () => {
+    // Separate namespaces. This is the same trap #248 hit on the certificate's
+    // teacher name: looking a library author up in /authors finds nothing.
+    await openPreview();
+    expect(calls.paths).toContain('libraryAuthors');
+  });
+
+  it('OPENING A PREVIEW PERFORMS ZERO FIRESTORE WRITES', async () => {
+    // THE test that matters most. A preview must not create a single document —
+    // no progress, no completedLessons, no quiz attempt, no lastWatchedVideo.
+    // Removing the read-only guard fails here.
+    await openPreview();
+    await act(async () => {
+      const lesson = Array.from(container.querySelectorAll('button'))
+        .find((b) => (b.textContent || '').includes('Why We Pray')) as HTMLButtonElement;
+      lesson.click();
+    });
+
+    expect(calls.writes).toHaveLength(0);
+    expect(calls.fetches).toHaveLength(0);
+  });
+
+  it('does not count a preview against the plan cap', async () => {
+    // Looking is free; only adopting spends a slot.
+    tenantCtx.tenantPlan = 'plus'; // 2
+    mockCourses = makeCourses(1);
+    await openPreview();
+    await act(async () => { buttonInPreview('Back to the library')!.click(); });
+    // One own course, nothing adopted — the preview spent nothing.
+    expect(container.textContent).toContain('1 of 2 courses used');
+    const ownTab = Array.from(container.querySelectorAll('button'))
+      .find((b) => (b.textContent || '').startsWith('Your courses')) as HTMLButtonElement;
+    await act(async () => { ownTab.click(); });
+    expect(newCourseButton().disabled).toBe(false);
+  });
+
+  it('closes back to the library list', async () => {
+    await openPreview();
+    await act(async () => { buttonInPreview('Back to the library')!.click(); });
+    expect(inPreview()).toBe(false);
+    // Back on the Library tab, with the catalogue card and its Adopt button.
+    expect(container.textContent).toContain('Courses published by Harvest');
+    expect(adoptButtons()).toHaveLength(1);
+  });
+
+  it('falls back to the list if the catalogue course disappears while open', async () => {
+    // The platform can delete a course; a blank screen would be the wrong answer.
+    await openPreview();
+    expect(inPreview()).toBe(true);
+    mockLibrary = [];
+    mockLibraryAuthors = [];
+    await act(async () => { root.unmount(); });
+    await mount();
+    expect(inPreview()).toBe(false);
+  });
+
+  describe('adopting from the preview', () => {
+    it('posts the SAME payload as the catalogue card', async () => {
+      await openPreview();
+      await act(async () => { buttonInPreview('Adopt')!.click(); });
+
+      expect(calls.fetches).toHaveLength(1);
+      expect(calls.fetches[0]).toEqual({
+        url: '/api/courses/adopt',
+        method: 'POST',
+        body: { tenantId: 'tenant-1', libraryCourseId: 'lib-0' },
+      });
+      // Server-only collection: still never a direct Firestore write.
+      expect(calls.writes).toHaveLength(0);
+    });
+
+    it('sends no course content — the server derives it', async () => {
+      await openPreview();
+      await act(async () => { buttonInPreview('Adopt')!.click(); });
+      for (const key of ['title', 'levels', 'description', 'thumbnail', 'adoptedBy']) {
+        expect(key in calls.fetches[0].body).toBe(false);
+      }
+    });
+
+    it('resolves the tenant with the WRITE scope on the apex', async () => {
+      scope.read = null;
+      scope.write = 'harvest';
+      await openPreview();
+      await act(async () => { buttonInPreview('Adopt')!.click(); });
+      expect(calls.fetches[0].body).toEqual({ tenantId: 'harvest', libraryCourseId: 'lib-0' });
+    });
+
+    it('disables Adopt at the cap, with the same message the card shows', async () => {
+      tenantCtx.tenantPlan = 'plus';
+      mockCourses = makeCourses(2);
+      await openPreview();
+      const adopt = buttonInPreview('Adopt')!;
+      expect(adopt.disabled).toBe(true);
+      expect(adopt.title).toMatch(/plan includes up to 2 course/i);
+    });
+  });
+
+  describe("the church's own settings", () => {
+    it('are not offered for a course that has not been adopted', async () => {
+      await openPreview();
+      expect(container.textContent).not.toMatch(/your church's settings/i);
+    });
+
+    it('PATCH the route — never a direct Firestore write', async () => {
+      // adoptedCourses is `allow write: if false` (#247) and stays that way.
+      mockAdopted = [{ id: 'lib-0', libraryCourseId: 'lib-0' }];
+      await openPreview();
+
+      const toggle = container.querySelector('[aria-label="Issue a certificate"]') as HTMLButtonElement;
+      expect(toggle).not.toBeNull();
+      await act(async () => { toggle.click(); });
+
+      expect(calls.writes).toHaveLength(0);
+      expect(calls.fetches).toHaveLength(1);
+      expect(calls.fetches[0]).toEqual({
+        url: '/api/courses/adopt',
+        method: 'PATCH',
+        body: { tenantId: 'tenant-1', libraryCourseId: 'lib-0', issueCertificate: true },
+      });
+    });
+
+    it('send ONLY the one field being changed', async () => {
+      mockAdopted = [{ id: 'lib-0', libraryCourseId: 'lib-0' }];
+      await openPreview();
+      const toggle = container.querySelector('[aria-label="Issue a certificate"]') as HTMLButtonElement;
+      await act(async () => { toggle.click(); });
+      expect(Object.keys(calls.fetches[0].body).sort())
+        .toEqual(['issueCertificate', 'libraryCourseId', 'tenantId']);
+    });
+
+    it('offer NO edit control for anything else', async () => {
+      mockAdopted = [{ id: 'lib-0', libraryCourseId: 'lib-0' }];
+      await openPreview();
+      expect(container.querySelectorAll('[title="Edit"]')).toHaveLength(0);
+      const switches = Array.from(container.querySelectorAll('[role="switch"]'));
+      expect(switches.map((s) => s.getAttribute('aria-label')).sort())
+        .toEqual(['Issue a certificate', 'Require the quiz']);
+    });
+
+    it('requireQuiz is disabled on a course with no quizzes, and explains why', async () => {
+      // The route refuses it too (409); the UI simply does not offer a setting
+      // it knows would have no effect.
+      mockAdopted = [{ id: 'lib-0', libraryCourseId: 'lib-0' }];
+      await openPreview();
+      const toggle = container.querySelector('[aria-label="Require the quiz"]') as HTMLButtonElement;
+      expect(toggle.disabled).toBe(true);
+      expect(toggle.title).toMatch(/no quizzes/i);
+
+      await act(async () => { toggle.click(); });
+      expect(calls.fetches).toHaveLength(0);
+    });
+
+    it('surfaces the route error when a save is refused', async () => {
+      mockAdopted = [{ id: 'lib-0', libraryCourseId: 'lib-0' }];
+      mockAuthFetch.mockResolvedValue({
+        ok: false,
+        json: async () => ({ error: 'This course has no quizzes, so requiring one would have no effect.' }),
+      } as any);
+      await openPreview();
+      const toggle = container.querySelector('[aria-label="Issue a certificate"]') as HTMLButtonElement;
+      await act(async () => { toggle.click(); });
+      expect(container.textContent).toMatch(/no quizzes/i);
+    });
+  });
+
+  it('is reachable from the adopted row under "Your courses" too', async () => {
+    mockLibrary = [RICH as any];
+    mockAdopted = [{ id: 'lib-0', libraryCourseId: 'lib-0' }];
+    await mount();
+    // Default view is 'own' — no tab click.
+    await act(async () => { previewCard('Foundations of Prayer').click(); });
+    expect(inPreview()).toBe(true);
+    expect(container.textContent).toMatch(/your church's settings/i);
+  });
+});
+
+function buttonInPreview(text: string): HTMLButtonElement | undefined {
+  return Array.from(container.querySelectorAll('button')).find(
+    (b) => (b.textContent || '').trim().includes(text),
+  ) as HTMLButtonElement | undefined;
+}

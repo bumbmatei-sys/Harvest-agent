@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, GraduationCap, Library, Check } from 'lucide-react';
+import { Plus, Edit2, Trash2, GraduationCap, Library, Check, Eye } from 'lucide-react';
 import { collection, onSnapshot, query, where, deleteDoc, doc, getDoc, limit } from 'firebase/firestore';
 import { db } from '../firebase';
 import { authFetch } from '../utils/auth-fetch';
@@ -19,7 +19,8 @@ import {
   resolveCourseLimit, isAtCourseLimit, courseLimitMessage, adoptableCourses,
   adoptedLibraryCourses,
 } from '../utils/course-adoption';
-import type { AdoptedCourse, LibraryCourse } from '../types/course.types';
+import { CoursePreview } from './course/CoursePreview';
+import type { AdoptedCourse, Author, LibraryCourse } from '../types/course.types';
 import { AdminPageHeader, AdminPrimaryButton, AdminSearchBar, AdminCard, AdminBadge, statusTone } from './admin/AdminUI';
 
 /**
@@ -55,7 +56,7 @@ function describeAdoptionFailure(error: unknown, fallback: string): string {
  * with the operation and the real message intact so the cause is legible in the
  * console. Adding a client capture helper is its own change.
  */
-function reportAdoptionFailure(op: 'adopt' | 'unadopt', error: unknown): void {
+function reportAdoptionFailure(op: 'adopt' | 'unadopt' | 'override', error: unknown): void {
   const message = error instanceof Error ? error.message : String(error);
   console.error(`[courses:${op}] ${message}`, error);
 }
@@ -70,8 +71,15 @@ const AdminCourses: React.FC = () => {
   // computed on this screen and only makes sense with both lists in one place.
   const [view, setView] = useState<'own' | 'library'>('own');
   const [libraryCourses, setLibraryCourses] = useState<LibraryCourse[]>([]);
+  const [libraryAuthors, setLibraryAuthors] = useState<Author[]>([]);
   const [adopted, setAdopted] = useState<AdoptedCourse[]>([]);
   const [adoptingId, setAdoptingId] = useState<string | null>(null);
+
+  // Read-only catalogue preview. Holds an ID rather than a course object so the
+  // preview always re-renders from the live listener — the platform can publish
+  // an edit while it is open.
+  const [previewId, setPreviewId] = useState<string | null>(null);
+  const [overrideBusy, setOverrideBusy] = useState(false);
 
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
@@ -141,6 +149,21 @@ const AdminCourses: React.FC = () => {
       },
     );
 
+    // Authors for the preview. A library course's authorIds resolve against
+    // libraryAuthors, NOT the tenant-scoped /authors — the two are separate
+    // namespaces, and looking a catalogue author up in /authors finds nothing
+    // (the same trap #248 hit on the certificate's teacher name). Unfiltered,
+    // like every other catalogue read: these docs carry no tenantId.
+    const unsubAuthors = onSnapshot(
+      collection(db, LIBRARY_COURSE_COLLECTIONS.authors),
+      (snap) => {
+        setLibraryAuthors(snap.docs.map((d) => ({ id: d.id, ...d.data() })) as Author[]);
+      },
+      (error) => {
+        try { handleFirestoreError(error, OperationType.GET, LIBRARY_COURSE_COLLECTIONS.authors); } catch (e) { console.error(e); }
+      },
+    );
+
     let unsubAdopted: (() => void) | null = null;
     (async () => {
       // getWriteTenantScope, NOT getTenantScope. This read addresses a
@@ -161,7 +184,7 @@ const AdminCourses: React.FC = () => {
       );
     })();
 
-    return () => { unsubLibrary(); if (unsubAdopted) unsubAdopted(); };
+    return () => { unsubLibrary(); unsubAuthors(); if (unsubAdopted) unsubAdopted(); };
   }, []);
 
   const filteredCourses = courses.filter(course =>
@@ -265,6 +288,43 @@ const AdminCourses: React.FC = () => {
     }
   };
 
+  /**
+   * Set one of the two tenant-owned flags on an adopted course.
+   *
+   * Goes through the route for the same reason adoption does: adoptedCourses is
+   * `allow write: if false` (#247) and stays that way. The route — not this
+   * screen — is the authority on which keys are acceptable; the UI merely avoids
+   * offering one it knows will be refused.
+   */
+  const handleSetOverride = async (
+    libraryCourseId: string,
+    field: 'requireQuiz' | 'issueCertificate',
+    value: boolean,
+  ) => {
+    setOverrideBusy(true);
+    try {
+      // getWriteTenantScope, NOT getTenantScope — this is a MUTATION, and on the
+      // apex the read scope is null by design. Same resolver as handleAdopt.
+      const tenantId = await getWriteTenantScope();
+      if (!tenantId) throw new NoTenantScopeError();
+      const res = await authFetch('/api/courses/adopt', {
+        method: 'PATCH',
+        body: JSON.stringify({ tenantId, libraryCourseId, [field]: value }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setErrorMessage(body?.error || 'Failed to save this setting. Please try again.');
+        setTimeout(() => setErrorMessage(null), 6000);
+      }
+    } catch (error) {
+      reportAdoptionFailure('override', error);
+      setErrorMessage(describeAdoptionFailure(error, 'Failed to save this setting. Please try again.'));
+      setTimeout(() => setErrorMessage(null), 6000);
+    } finally {
+      setOverrideBusy(false);
+    }
+  };
+
   const handleDeleteCourse = async (id: string) => {
     try {
       const tenantId = await getTenantScope();
@@ -287,6 +347,38 @@ const AdminCourses: React.FC = () => {
   // The editor is a full in-shell screen; when open it replaces the list.
   if (isEditorOpen) {
     return <AdminCourseEditor course={editingCourse} onClose={() => setIsEditorOpen(false)} />;
+  }
+
+  // The read-only preview is a full in-shell screen too, resolved fresh from the
+  // live catalogue each render. A pointer that stops resolving (the platform
+  // deleted the course while it was open) falls back to the list rather than
+  // rendering a blank screen.
+  const previewCourse = previewId ? libraryCourses.find((c) => c.id === previewId) : undefined;
+  if (previewCourse) {
+    const previewAdoption = adopted.find((a) => a.libraryCourseId === previewCourse.id) ?? null;
+    const previewIsAdopted = Boolean(previewAdoption);
+    return (
+      <div className="w-full space-y-4">
+        {errorMessage && (
+          <div className="max-w-4xl mx-auto bg-red-50 text-red-600 p-3 rounded-brand text-sm font-medium border border-red-100">
+            {errorMessage}
+          </div>
+        )}
+        <CoursePreview
+          course={previewCourse}
+          authors={libraryAuthors}
+          onClose={() => setPreviewId(null)}
+          onAdopt={handleAdopt}
+          isAdopted={previewIsAdopted}
+          adoptBusy={adoptingId === previewCourse.id}
+          adoptBlocked={!previewIsAdopted && atLimit}
+          blockedReason={limitMessage}
+          adoption={previewAdoption}
+          onSetOverride={(field, value) => handleSetOverride(previewCourse.id, field, value)}
+          overrideBusy={overrideBusy}
+        />
+      </div>
+    );
   }
 
   return (
@@ -367,7 +459,15 @@ const AdminCourses: React.FC = () => {
                 );
                 return (
                   <AdminCard key={course.id} className="p-4 flex flex-col gap-3">
-                    <div className="flex items-start gap-3">
+                    {/* The card body opens the read-only preview. Adopting one of
+                        2 or 5 plan slots to find out what is inside a course was
+                        the only way to see its curriculum before this. */}
+                    <button
+                      type="button"
+                      onClick={() => setPreviewId(course.id)}
+                      className="flex items-start gap-3 text-left w-full"
+                      title={`Preview ${course.title}`}
+                    >
                       <div className="w-[68px] h-[52px] rounded-brand bg-[var(--surface-gold)] text-gold flex items-center justify-center shrink-0 overflow-hidden">
                         {course.thumbnail
                           ? <img src={course.thumbnail} alt="" className="w-full h-full object-cover" />
@@ -383,7 +483,7 @@ const AdminCourses: React.FC = () => {
                           {[course.category, lessonCount ? `${lessonCount} lesson${lessonCount === 1 ? '' : 's'}` : null].filter(Boolean).join(' · ')}
                         </p>
                       </div>
-                    </div>
+                    </button>
                     {isAdopted ? (
                       <button
                         onClick={() => handleUnadopt(course.id)}
@@ -475,15 +575,17 @@ const AdminCourses: React.FC = () => {
                 ? <img src={course.thumbnail} alt="" className="w-full h-full object-cover" />
                 : <Library size={20} />}
             </div>
-            <div className="flex-1 min-w-0">
+            {/* Opens the read-only preview, which is also where this church's
+                own two settings live. Still NO Edit: the content is not theirs. */}
+            <button onClick={() => setPreviewId(course.id)} className="flex-1 min-w-0 text-left" title={`Preview ${course.title}`}>
               <div className="flex items-center justify-between gap-2">
                 <span className="flex-1 min-w-0 text-sm font-semibold text-earth line-clamp-1">{course.title}</span>
                 <AdminBadge tone="gold" className="shrink-0">Adopted</AdminBadge>
               </div>
               <div className="text-xs text-[color:var(--text-faint)] mt-1 truncate">
-                From the Harvest library
+                From the Harvest library · View &amp; settings
               </div>
-            </div>
+            </button>
             <button
               onClick={() => handleUnadopt(course.id)}
               disabled={adoptingId === course.id}
@@ -580,6 +682,15 @@ const AdminCourses: React.FC = () => {
                   <td className="px-6 py-3.5"><AdminBadge tone={statusTone(course.status)}>{course.status}</AdminBadge></td>
                   <td className="px-6 py-3.5 text-right">
                     <div className="flex items-center justify-end gap-1">
+                      {/* View & settings, NOT Edit — the two tenant-owned flags
+                          only. #249 removed Edit deliberately. */}
+                      <button
+                        onClick={() => setPreviewId(course.id)}
+                        className="p-2 rounded-brand text-[color:var(--text-faint)] hover:text-gold hover:bg-stone-100 transition-colors"
+                        title="View & settings"
+                      >
+                        <Eye size={16} />
+                      </button>
                       <button
                         onClick={() => handleUnadopt(course.id)}
                         disabled={adoptingId === course.id}

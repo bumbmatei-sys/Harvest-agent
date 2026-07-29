@@ -11,6 +11,10 @@ import {
   mergeAuthors,
   mergeCategories,
   adoptedLibraryCourses,
+  resolveOverriddenFlag,
+  applyCourseOverrides,
+  courseHasQuiz,
+  TENANT_OVERRIDABLE_COURSE_FIELDS,
 } from '../course-adoption';
 import type { Course, LibraryCourse } from '../../types/course.types';
 
@@ -199,5 +203,156 @@ describe('course adoption', () => {
     it('returns nothing when the tenant has adopted nothing', () => {
       expect(adoptedLibraryCourses([], lib)).toEqual([]);
     });
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Per-tenant overrides.
+//
+// THE resolution rule, in one place, imported by /api/certificate,
+// CourseOverview and CoursePage. Three hand-maintained copies of one rule is how
+// the retention, super-admin and minimum-plan bugs happened this week, so these
+// pin the rule itself rather than any one consumer's use of it.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('per-tenant course overrides', () => {
+  describe('resolveOverriddenFlag — the tenant wins, in BOTH directions', () => {
+    it('falls back to the library course when the override is absent', () => {
+      expect(resolveOverriddenFlag(true, undefined)).toBe(true);
+      expect(resolveOverriddenFlag(false, undefined)).toBe(false);
+      expect(resolveOverriddenFlag(undefined, undefined)).toBe(false);
+    });
+
+    it('a tenant TRUE beats a platform FALSE', () => {
+      // The certificate carries the adopting church's name and logo (#248) and
+      // they are the ones teaching it — the platform's value is a default, not a
+      // restriction.
+      expect(resolveOverriddenFlag(false, true)).toBe(true);
+      expect(resolveOverriddenFlag(undefined, true)).toBe(true);
+    });
+
+    it('a tenant FALSE beats a platform TRUE — the same rule, the other way', () => {
+      expect(resolveOverriddenFlag(true, false)).toBe(false);
+    });
+
+    it('ABSENT is not FALSE — an unset override never silently opts a church out', () => {
+      // A `?? false` here would convert every un-configured adoption into an
+      // opt-out: a decision nobody made, invisible until a learner is refused a
+      // certificate they earned.
+      expect(resolveOverriddenFlag(true, undefined)).not.toBe(resolveOverriddenFlag(true, false));
+    });
+
+    it('treats a non-boolean (e.g. a null cleared field) as absent', () => {
+      expect(resolveOverriddenFlag(true, null as unknown as undefined)).toBe(true);
+      expect(resolveOverriddenFlag(false, null as unknown as undefined)).toBe(false);
+    });
+  });
+
+  describe('applyCourseOverrides — both fields, both directions', () => {
+    const platform = libCourse({
+      id: 'lib-1', issueCertificate: false, requireQuiz: true,
+    });
+
+    it('resolves issueCertificate in both directions', () => {
+      expect(applyCourseOverrides(platform, { issueCertificate: true }).issueCertificate).toBe(true);
+      expect(applyCourseOverrides(libCourse({ id: 'x', issueCertificate: true }), { issueCertificate: false }).issueCertificate).toBe(false);
+    });
+
+    it('resolves requireQuiz in both directions', () => {
+      expect(applyCourseOverrides(platform, { requireQuiz: false }).requireQuiz).toBe(false);
+      expect(applyCourseOverrides(libCourse({ id: 'x', requireQuiz: false }), { requireQuiz: true }).requireQuiz).toBe(true);
+    });
+
+    it('an override on one field leaves the other on the platform value', () => {
+      const out = applyCourseOverrides(platform, { issueCertificate: true });
+      expect(out.issueCertificate).toBe(true);
+      expect(out.requireQuiz).toBe(true); // untouched
+    });
+
+    it('no adoption record at all passes the course through unchanged', () => {
+      expect(applyCourseOverrides(platform, null)).toBe(platform);
+      expect(applyCourseOverrides(platform, undefined)).toBe(platform);
+    });
+
+    it('an empty adoption record resolves to the platform values', () => {
+      const out = applyCourseOverrides(platform, {});
+      expect(out.issueCertificate).toBe(false);
+      expect(out.requireQuiz).toBe(true);
+    });
+
+    it('NEVER touches platform-owned content', () => {
+      const rich = libCourse({
+        id: 'lib-2', title: 'Foundations', description: '<p>Deep.</p>',
+        category: 'Discipleship', thumbnail: 't.png', authorIds: ['a-1'],
+        levels: [{ id: 'lv', title: 'L', sections: [] }],
+      });
+      const out = applyCourseOverrides(rich, { issueCertificate: true, requireQuiz: true });
+      expect(out.title).toBe('Foundations');
+      expect(out.description).toBe('<p>Deep.</p>');
+      expect(out.category).toBe('Discipleship');
+      expect(out.thumbnail).toBe('t.png');
+      expect(out.authorIds).toEqual(['a-1']);
+      expect(out.levels).toBe(rich.levels);
+    });
+
+    it('does not mutate the course it is given', () => {
+      const before = { ...platform };
+      applyCourseOverrides(platform, { issueCertificate: true, requireQuiz: false });
+      expect(platform).toEqual(before);
+    });
+
+    it('is idempotent — applying the same record twice resolves the same', () => {
+      const once = applyCourseOverrides(platform, { issueCertificate: true });
+      const twice = applyCourseOverrides(once, { issueCertificate: true });
+      expect(twice.issueCertificate).toBe(once.issueCertificate);
+      expect(twice.requireQuiz).toBe(once.requireQuiz);
+    });
+
+    it('TWO TENANTS HOLD INDEPENDENT OVERRIDES on the same course', () => {
+      // The catalogue course is one document; the overrides live on each
+      // church's own adoption record, so one church opting out cannot reach
+      // another's members.
+      const churchA = applyCourseOverrides(platform, { issueCertificate: false });
+      const churchB = applyCourseOverrides(platform, { issueCertificate: true });
+      expect(churchA.issueCertificate).toBe(false);
+      expect(churchB.issueCertificate).toBe(true);
+      // And the shared platform document is untouched by either.
+      expect(platform.issueCertificate).toBe(false);
+    });
+  });
+
+  describe('courseHasQuiz', () => {
+    const withQuiz = (quiz: unknown) => libCourse({
+      id: 'q', levels: [{ id: 'lv', title: 'L', sections: [
+        { id: 's', title: 'S', lessons: [{ id: 'l1', title: 'L1', duration: '5', authorId: 'a', summary: '', ...(quiz ? { quiz } : {}) } as any] },
+      ] }],
+    });
+
+    it('is true when any lesson carries a non-empty quiz', () => {
+      expect(courseHasQuiz(withQuiz([{ id: 'q1', q: 'Q?', options: [] }]))).toBe(true);
+    });
+
+    it('is false when no lesson has one', () => {
+      expect(courseHasQuiz(withQuiz(null))).toBe(false);
+    });
+
+    it('is false for an EMPTY quiz array — an empty quiz is no quiz', () => {
+      expect(courseHasQuiz(withQuiz([]))).toBe(false);
+    });
+
+    it('tolerates a half-authored course with no levels/sections/lessons', () => {
+      // Runs against a raw Firestore document in the route, where any of these
+      // can be missing; getAllLessons() would throw on all three.
+      expect(courseHasQuiz(libCourse({ id: 'empty' }))).toBe(false);
+      expect(courseHasQuiz({ levels: undefined } as any)).toBe(false);
+      expect(courseHasQuiz({ levels: [{ id: 'lv', title: 'L' }] } as any)).toBe(false);
+      expect(courseHasQuiz({ levels: [{ id: 'lv', title: 'L', sections: [{ id: 's', title: 'S' }] }] } as any)).toBe(false);
+      expect(courseHasQuiz(null)).toBe(false);
+    });
+  });
+
+  it('the overridable field list is exactly the two, and nothing else', () => {
+    // The route's allow-list is built from this constant, so widening it here
+    // widens the server boundary. That must be a deliberate edit, not a drift.
+    expect([...TENANT_OVERRIDABLE_COURSE_FIELDS]).toEqual(['requireQuiz', 'issueCertificate']);
   });
 });

@@ -420,3 +420,162 @@ describe('POST /api/certificate — adopted library courses', () => {
     });
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Per-tenant overrides on an adopted library course.
+//
+// A church decides, for THEIR audience, whether the quiz is mandatory and
+// whether the course issues a certificate. The platform's values are defaults,
+// not restrictions: the certificate carries the adopting church's name and logo
+// (#248), and they are the ones teaching it.
+//
+// THIS IS A CERTIFICATE PATH. The route already fetched the adoption record to
+// check entitlement, so honouring the override costs an ordinary learner nothing.
+// ─────────────────────────────────────────────────────────────────────────────
+function adoptWith(overrides: any, tenantId = 'tenant-a', courseId = 'lib-course-1') {
+  store.adoptedCourses.set(`${tenantId}/${courseId}`, {
+    libraryCourseId: courseId, adoptedBy: 'admin-uid', adoptedAt: '2026-01-01T00:00:00.000Z',
+    ...overrides,
+  });
+}
+
+describe('POST /api/certificate — the adopting church\'s overrides', () => {
+  beforeEach(() => {
+    seedLibraryCourse();
+    completeLibraryCourse();
+  });
+
+  describe('issueCertificate', () => {
+    it('ISSUES when the platform says false and the tenant set true', async () => {
+      // Reverting the route to read issueCertificate off the course document
+      // makes this fail: it would 403 on the platform's false.
+      seedLibraryCourse({ issueCertificate: false });
+      adoptWith({ issueCertificate: true });
+      const res = await POST(makeReq({ courseId: 'lib-course-1' }));
+      expect(res.status).toBe(200);
+      expect(mockCertSet).toHaveBeenCalledTimes(1);
+    });
+
+    it('REFUSES when the platform says true and the tenant set false', async () => {
+      // The same rule the other way. A church that has opted out must not have
+      // certificates issued in their name.
+      seedLibraryCourse({ issueCertificate: true });
+      adoptWith({ issueCertificate: false });
+      const res = await POST(makeReq({ courseId: 'lib-course-1' }));
+      expect(res.status).toBe(403);
+      expect((await res.json()).error).toMatch(/does not issue certificates/i);
+      expect(mockFileSave).not.toHaveBeenCalled();
+    });
+
+    it('falls back to the platform value when the tenant has not chosen', async () => {
+      seedLibraryCourse({ issueCertificate: false });
+      adoptWith({});
+      expect((await POST(makeReq({ courseId: 'lib-course-1' }))).status).toBe(403);
+
+      seedLibraryCourse({ issueCertificate: true });
+      adoptWith({});
+      expect((await POST(makeReq({ courseId: 'lib-course-1' }))).status).toBe(200);
+    });
+
+    it('an ABSENT override is not the same as false', async () => {
+      seedLibraryCourse({ issueCertificate: true });
+      adoptWith({});                       // not chosen  -> platform true  -> issue
+      expect((await POST(makeReq({ courseId: 'lib-course-1' }))).status).toBe(200);
+      vi.clearAllMocks();
+      mockGetSignedUrl.mockResolvedValue(['https://signed.example/cert.pdf']);
+      adoptWith({ issueCertificate: false }); // chosen false -> refuse
+      expect((await POST(makeReq({ courseId: 'lib-course-1' }))).status).toBe(403);
+    });
+  });
+
+  describe('requireQuiz', () => {
+    it('REFUSES when the tenant set requireQuiz and the quiz was not passed', async () => {
+      // The platform left it false; the church requires it. Completion is
+      // recomputed against the church's rule, not Harvest's.
+      seedLibraryCourse({ requireQuiz: false });
+      adoptWith({ requireQuiz: true });
+      store.users.set('learner-1', {
+        displayName: 'Grace Learner', completedLessons: ['L1', 'L2'],
+        quizAttempts: { L2: { score: 0, total: 1, passed: false, answeredAt: 'x' } },
+      });
+      const res = await POST(makeReq({ courseId: 'lib-course-1' }));
+      expect(res.status).toBe(403);
+      expect((await res.json()).error).toBe('Course not completed');
+    });
+
+    it('ISSUES when the tenant set requireQuiz and the quiz WAS passed', async () => {
+      seedLibraryCourse({ requireQuiz: false });
+      adoptWith({ requireQuiz: true });
+      completeLibraryCourse(); // L2 quiz passed
+      expect((await POST(makeReq({ courseId: 'lib-course-1' }))).status).toBe(200);
+    });
+
+    it('ISSUES when the platform requires the quiz but the tenant turned it OFF', async () => {
+      // The other direction: a church that does not want the quiz gating their
+      // members gets completion on lesson progress alone.
+      seedLibraryCourse({ requireQuiz: true });
+      adoptWith({ requireQuiz: false });
+      store.users.set('learner-1', {
+        displayName: 'Grace Learner', completedLessons: ['L1', 'L2'],
+        quizAttempts: { L2: { score: 0, total: 1, passed: false, answeredAt: 'x' } },
+      });
+      expect((await POST(makeReq({ courseId: 'lib-course-1' }))).status).toBe(200);
+    });
+
+    it('a lying passed:true is STILL recomputed under a tenant override', async () => {
+      // The override changes whether the bar applies, never how it is measured.
+      seedLibraryCourse({ requireQuiz: false });
+      adoptWith({ requireQuiz: true });
+      store.users.set('learner-1', {
+        displayName: 'Grace Learner', completedLessons: ['L1', 'L2'],
+        quizAttempts: { L2: { score: 0, total: 1, passed: true, answeredAt: 'x' } },
+      });
+      expect((await POST(makeReq({ courseId: 'lib-course-1' }))).status).toBe(403);
+    });
+  });
+
+  describe('overrides are per-tenant and cannot leak', () => {
+    it("one church's opt-out does not affect another church's learners", async () => {
+      // TWO tenants, one catalogue course, independent adoption records.
+      seedLibraryCourse({ issueCertificate: true });
+      adoptWith({ issueCertificate: false }, 'tenant-a');
+      adoptWith({ issueCertificate: true }, 'tenant-b');
+
+      // Learner in tenant-a: their church opted out.
+      expect((await POST(makeReq({ courseId: 'lib-course-1' }))).status).toBe(403);
+
+      // Learner in tenant-b: unaffected.
+      mockRequireAuth.mockResolvedValue({
+        uid: 'learner-1', email: 'learner@example.com', tenantId: 'tenant-b', isAdmin: false, isSuperAdmin: false,
+      });
+      expect((await POST(makeReq({ courseId: 'lib-course-1' }))).status).toBe(200);
+    });
+
+    it('reads the override from the LEARNER\'s own tenant record', async () => {
+      seedLibraryCourse({ issueCertificate: false });
+      adoptWith({ issueCertificate: true }, 'tenant-b'); // a different church
+      adoptWith({}, 'tenant-a');                          // the learner's, unset
+      // tenant-b's opt-in must not reach tenant-a's learner.
+      expect((await POST(makeReq({ courseId: 'lib-course-1' }))).status).toBe(403);
+    });
+
+    it('a TENANT course is unaffected — no adoption record, no override', async () => {
+      store.users.set('learner-1', { displayName: 'Grace Learner', completedLessons: ALL, quizAttempts: { l2: passAttempt } });
+      seedCourse({ issueCertificate: true });
+      adoptWith({ issueCertificate: false }); // for the LIBRARY course, not this one
+      expect((await POST(makeReq({ courseId: 'course-1' }))).status).toBe(200);
+    });
+  });
+
+  it('a super admin sees the same answer the church\'s own members would', async () => {
+    // Super admins skip the entitlement check, but not the override — otherwise
+    // they would be issued a certificate their church's members are refused,
+    // which is exactly the cross-context disagreement this bug class produces.
+    seedLibraryCourse({ issueCertificate: true });
+    adoptWith({ issueCertificate: false });
+    mockRequireAuth.mockResolvedValue({
+      uid: 'learner-1', email: 'platform@test.com', tenantId: 'tenant-a', isAdmin: true, isSuperAdmin: true,
+    });
+    expect((await POST(makeReq({ courseId: 'lib-course-1' }))).status).toBe(403);
+  });
+});
