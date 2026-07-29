@@ -717,7 +717,17 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
       return;
     }
     try {
-      const tenantId = await getTenantScope();
+      // getWriteTenantScope, NOT getTenantScope — this is a CREATE. The read
+      // resolver returns null for a super admin on the apex ("all tenants",
+      // right for a read), which stamped `tenantId: null` on the comment.
+      //
+      // Scope of the harm, stated precisely: NO rule reads a comment's own
+      // tenantId (the read scopes off the parent post's, create validates
+      // authorId/content/keys only, delete is authorId-only), so a null here
+      // does not orphan the comment. It is simply wrong denormalised data that
+      // any future tenant-filtered query or export would silently miss.
+      // `|| null` is kept — the field's `string | null` contract is unchanged.
+      const tenantId = await getWriteTenantScope();
       // Resolve author from the user doc (mirrors the post path's #147 fix —
       // Auth displayName/photoURL are often blank; the real profile is on the doc).
       const userSnap = await getDoc(doc(db, 'users', user.uid));
@@ -776,8 +786,20 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
     if (!user || dmBusyId) return;
     setDmBusyId(comment.id);
     try {
-      const tenantIdDm = await getTenantScope();
-      if (!tenantIdDm) return;
+      // getWriteTenantScope, NOT getTenantScope: creating a DM thread is a WRITE,
+      // and the read resolver returns null for a super admin on the apex, so
+      // this aborted before getOrCreateDm was ever called — the button spun,
+      // stopped, and nothing happened. No error, no DM, no trace.
+      const tenantIdDm = await getWriteTenantScope();
+      if (!tenantIdDm) {
+        // The guard stays — a genuinely unresolvable tenant must not create a
+        // DM — but it no longer fails silently. Same setErrorMessage pattern the
+        // comment path in this file already uses.
+        console.error('[dm] No tenant scope: could not determine which church to message in.');
+        setErrorMessage("Couldn't start a message: no church selected. Open your church's own site and try there.");
+        setTimeout(() => setErrorMessage(null), 5000);
+        return;
+      }
       const adminRole = ['admin', 'church_admin', 'super_admin'].includes(currentUserRole) ? currentUserRole : 'admin';
       await getOrCreateDm(
         tenantIdDm,
