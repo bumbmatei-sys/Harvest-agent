@@ -12,6 +12,8 @@ import {
   FEATURE_MIN_PLAN,
   FEATURE_MAP,
   PLAN_ORDER,
+  PLAN_DISPLAY_NAMES,
+  getMinPlanForFeatureCell,
   type FeatureKey,
 } from '../plan-features';
 // The rate actually charged. Importing stripe-config is safe HERE and only here:
@@ -115,10 +117,13 @@ describe('hasFeature', () => {
     expect(hasFeature('ultra', 'customBranding')).toBe(true);
   });
 
-  it('customDomain is available on Ministry (ultra) only', () => {
+  // Moved from Ministry-only to Community and above: a white-label platform that
+  // cannot use the church's own domain is a weak $299 offer. Individual (plus) and
+  // Small Team (pro) stay locked.
+  it('customDomain is available on Community (max) and Ministry (ultra)', () => {
     expect(hasFeature('plus', 'customDomain')).toBe(false);
     expect(hasFeature('pro', 'customDomain')).toBe(false);
-    expect(hasFeature('max', 'customDomain')).toBe(false);
+    expect(hasFeature('max', 'customDomain')).toBe(true);
     expect(hasFeature('ultra', 'customDomain')).toBe(true);
   });
 
@@ -330,13 +335,17 @@ describe('communityGroups tier', () => {
   });
 
   it('did not drag any other feature onto Community', () => {
-    // Only communityGroups changed tier. These stay Ministry-only.
+    // These stay Ministry-only. `customDomain` is deliberately NOT in this list
+    // any more: it was moved to Community in its own change (see the
+    // "customDomain is available on Community (max) and Ministry (ultra)" test),
+    // which is exactly the kind of tier move this guard is meant to surface. It
+    // is asserted true below so the guard still pins every cell it used to.
     const f = getPlanFeatures('max');
     expect(f.accountingTools).toBe(false);
     expect(f.smsAutomation).toBe(false);
     expect(f.textToGive).toBe(false);
-    expect(f.customDomain).toBe(false);
     expect(f.churchDirectory).toBe(false);
+    expect(f.customDomain).toBe(true);
   });
 });
 
@@ -399,5 +408,59 @@ describe('getFeatureMinPlan / FEATURE_MIN_PLAN (derived)', () => {
 
   it('is frozen — it is derived state, not config to edit', () => {
     expect(Object.isFrozen(FEATURE_MIN_PLAN)).toBe(true);
+  });
+});
+
+// ─── Custom domain on Community (max) ────────────────────────────────────────
+//
+// Custom domains moved from Ministry-only to Community and above. A white-label
+// platform that cannot use the church's own domain is a weak $299 offer.
+//
+// These tests are the mutation guard for that move: reverting
+// `max.customDomain` to false in the matrix must fail here by name.
+
+describe('customDomain tier (Community / max and above)', () => {
+  it('is unlocked on Community (max)', () => {
+    expect(getPlanFeatures('max').customDomain).toBe(true);
+  });
+
+  it('stays locked on Individual (plus) and Small Team (pro)', () => {
+    expect(getPlanFeatures('plus').customDomain).toBe(false);
+    expect(getPlanFeatures('pro').customDomain).toBe(false);
+  });
+
+  it('remains unlocked on Ministry (ultra)', () => {
+    expect(getPlanFeatures('ultra').customDomain).toBe(true);
+  });
+
+  // The label the admin UI shows in the locked state. `customDomain` has NO
+  // FeatureKey — the gate-key union covers only features fronted by
+  // usePlanGate/PlanUpgradeScreen, and custom domain is gated by a boolean prop
+  // on DomainSection instead. So the label derives via getMinPlanForFeatureCell
+  // on the raw matrix cell rather than via FEATURE_MIN_PLAN. Deliberately not
+  // adding a FeatureKey just to get a label.
+  it('has no FeatureKey, and its minimum-plan label derives to Community', () => {
+    expect(Object.values(FEATURE_MAP)).not.toContain('customDomain');
+
+    const minPlan = getMinPlanForFeatureCell('customDomain');
+    expect(minPlan).toBe('max');
+    expect(PLAN_DISPLAY_NAMES[minPlan!]).toBe('Community');
+  });
+
+  it('getMinPlanForFeatureCell agrees with getFeatureMinPlan for every gate key', () => {
+    // The two share one derivation; this pins that they cannot diverge.
+    (Object.keys(FEATURE_MAP) as FeatureKey[]).forEach((key) => {
+      expect(getMinPlanForFeatureCell(FEATURE_MAP[key])).toBe(getFeatureMinPlan(key));
+    });
+  });
+
+  // Branding-tab access is `customBranding || customDomain`. Community already
+  // had customBranding, so granting customDomain must not change any tier's
+  // Branding access — the move is scoped to domain attachment only.
+  it('does not change Branding tab access for any tier', () => {
+    expect(hasBrandingAccess(getPlanFeatures('plus'))).toBe(false);
+    expect(hasBrandingAccess(getPlanFeatures('pro'))).toBe(false);
+    expect(hasBrandingAccess(getPlanFeatures('max'))).toBe(true);
+    expect(hasBrandingAccess(getPlanFeatures('ultra'))).toBe(true);
   });
 });

@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin } from '@/lib/api-auth';
+import { requireAdmin, type AuthenticatedUser } from '@/lib/api-auth';
 import { adminDb } from '@/lib/firebase-admin';
 import { PLATFORM_TENANT_ID } from '@/utils/tenant-scope';
+import { hasFeature } from '@/utils/plan-features';
+import type { TenantPlan } from '@/types/tenant.types';
 import { captureHandledError } from '@/lib/money-path-sentry';
 
 /**
@@ -14,8 +16,13 @@ import { captureHandledError } from '@/lib/money-path-sentry';
  *         as `config.customDomainVerified` + `config.customDomainStatus`.
  *
  * Requires VERCEL_API_TOKEN and VERCEL_PROJECT_ID env vars (set in Vercel).
- * Custom domains are a Ministry-plan feature; gating is enforced in the UI and
- * by Firestore rules — this route additionally requires an authenticated admin.
+ *
+ * Custom domains are a Community-plan (max) feature and above. The entitlement
+ * is enforced HERE, server-side, by `requireCustomDomainPlan` — not only in the
+ * UI. It previously was not: this comment used to claim gating was enforced "in
+ * the UI and by Firestore rules", but firestore.rules contains no `customDomain`
+ * reference at all, so an authenticated tenant admin on ANY plan could attach an
+ * arbitrary domain to the shared Vercel project by calling this route directly.
  */
 
 const VERCEL_API = 'https://api.vercel.com';
@@ -45,9 +52,52 @@ async function resolveTenantId(request: NextRequest, user: { tenantId: string | 
   return PLATFORM_TENANT_ID;
 }
 
+/**
+ * Plan entitlement gate for custom domains.
+ *
+ * Resolves the tenant's plan SERVER-SIDE from `tenants/{tenantId}.plan` — never
+ * from anything the client sends — and refuses with 403 unless that plan has
+ * `customDomain`. Mirrors the established pattern in
+ * `api/newsletter/generate/route.ts`: super admins bypass, and an absent/unknown
+ * plan falls back to 'plus' so the gate fails closed.
+ *
+ * Returns a NextResponse to return to the caller, or null when the caller is
+ * entitled and the handler should continue.
+ */
+async function requireCustomDomainPlan(
+  user: AuthenticatedUser,
+  tenantId: string
+): Promise<NextResponse | null> {
+  // Super admins operate across tenants (and on the platform tenant, which has
+  // no plan doc of its own) — preserve the bypass requireAdmin already grants.
+  if (user.isSuperAdmin) return null;
+
+  const tenantDoc = await adminDb.collection('tenants').doc(tenantId).get();
+  if (!tenantDoc.exists) {
+    return NextResponse.json({ error: 'Tenant not found' }, { status: 404 });
+  }
+
+  const plan = (tenantDoc.data()?.plan as TenantPlan) || 'plus';
+  if (!hasFeature(plan, 'customDomain')) {
+    return NextResponse.json(
+      { error: 'Custom domains require the Community plan or higher.' },
+      { status: 403 }
+    );
+  }
+  return null;
+}
+
 export async function POST(request: NextRequest) {
   const authResult = await requireAdmin(request);
   if (authResult instanceof NextResponse) return authResult;
+
+  const tenantId = await resolveTenantId(request, authResult);
+
+  // Entitlement before anything else: an unentitled tenant gets 403 whether or
+  // not Vercel is configured on this deployment, and no Vercel mutation or
+  // Firestore write can happen ahead of the check.
+  const planGate = await requireCustomDomainPlan(authResult, tenantId);
+  if (planGate) return planGate;
 
   const { token, projectId, teamId } = vercelConfig();
   if (!token || !projectId) {
@@ -68,8 +118,6 @@ export async function POST(request: NextRequest) {
   if (!domain || !domain.includes('.')) {
     return NextResponse.json({ error: 'A valid domain is required' }, { status: 400 });
   }
-
-  const tenantId = await resolveTenantId(request, authResult);
 
   // Ownership guard: never let one tenant claim a domain another tenant already owns.
   const existingClaim = await adminDb.collection('domains').doc(domain).get();
@@ -146,6 +194,13 @@ export async function GET(request: NextRequest) {
   const authResult = await requireAdmin(request);
   if (authResult instanceof NextResponse) return authResult;
 
+  const tenantId = await resolveTenantId(request, authResult);
+
+  // Same gate as POST — GET is separately reachable and also writes to the
+  // tenant doc (config.customDomainVerified / customDomainStatus below).
+  const planGate = await requireCustomDomainPlan(authResult, tenantId);
+  if (planGate) return planGate;
+
   const { token, projectId, teamId } = vercelConfig();
   if (!token || !projectId) {
     return NextResponse.json(
@@ -158,8 +213,6 @@ export async function GET(request: NextRequest) {
   if (!domain) {
     return NextResponse.json({ error: 'A domain query param is required' }, { status: 400 });
   }
-
-  const tenantId = await resolveTenantId(request, authResult);
 
   try {
     const resp = await fetch(

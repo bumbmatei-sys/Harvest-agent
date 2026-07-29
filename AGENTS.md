@@ -151,7 +151,7 @@ This table is a summary — when they disagree, the code is right and this file 
 |-------|-------------|----------|------|-----|---------------|-----------|-----|------------|------------------|
 | plus  | Individual  | $59/mo   | ✅   | ❌  | ❌            | ❌        | ❌  | ❌         | ❌               |
 | pro   | Small Team  | $119/mo  | ✅   | ✅  | ❌            | ❌        | ❌  | ❌         | ❌               |
-| max   | Community   | $299/mo  | ✅   | ✅  | ❌            | ✅        | ✅  | ❌         | ✅               |
+| max   | Community   | $299/mo  | ✅   | ✅  | ✅            | ✅        | ✅  | ❌         | ✅               |
 | ultra | Ministry    | $479/mo  | ✅   | ✅  | ✅            | ✅        | ✅  | ✅         | ✅               |
 
 The "AI Assistant" column was removed: the Telegram add-on is retired (#214, THE-13).
@@ -160,8 +160,15 @@ backend routes, Stripe wiring and the `aiAssistant` plan flag are left intact so
 feature can be restored by flipping that one boolean.
 
 Community (max) is the tier most often described wrongly: it **does** get CRM, Tax
-Receipts, Community Groups, Custom Forms, Check-In, Livestream and Pledge Campaigns.
-It does **not** get Accounting Tools, SMS or Text-to-Give — those stay Ministry.
+Receipts, Community Groups, Custom Forms, Check-In, Livestream, Pledge Campaigns and
+Custom Domain. It does **not** get Accounting Tools, SMS, Text-to-Give or the global
+Church Directory — those stay Ministry.
+
+Custom domains are entitled from Community up, and the entitlement is enforced
+server-side in `src/app/api/domains/provision/route.ts` (403 for a plan without
+`customDomain`, super admins bypass) — not in the UI alone. Note the marketing site
+does not yet advertise custom domains on Community: provisioning has not been proven
+end to end against a live Vercel plan, so the code ships ahead of the public promise.
 
 Minimum-plan labels on upgrade screens are **derived** from this matrix
 (`getFeatureMinPlan` / `FEATURE_MIN_PLAN` in `plan-features.ts`), not hand-written.
