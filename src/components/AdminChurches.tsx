@@ -6,7 +6,7 @@ import { Church, Search, Filter, Edit2, Trash2, Plus, CheckCircle, Clock, Dollar
 import ChurchEnrollment from './ChurchEnrollment';
 import { authFetch } from '../utils/auth-fetch';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
-import { getTenantScope } from '../utils/tenant-scope';
+import { getTenantScope, getWriteTenantScope } from '../utils/tenant-scope';
 import { sendPushNotification } from '../utils/send-notification';
 import { getPlanFeatures } from '../utils/plan-features';
 import { useTenant } from '@/contexts/TenantContext';
@@ -490,7 +490,9 @@ export default AdminChurches;
 
 // ─── Announcements Section (inline component) ────────────────────────
 
-const AnnouncementsSection: React.FC<{ churchId: string }> = ({ churchId }) => {
+// Exported for direct testing — it owns the announcement create path, which
+// must stamp a concrete tenantId (see the getWriteTenantScope note below).
+export const AnnouncementsSection: React.FC<{ churchId: string }> = ({ churchId }) => {
   const [announcements, setAnnouncements] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [newTitle, setNewTitle] = useState('');
@@ -516,7 +518,16 @@ const AnnouncementsSection: React.FC<{ churchId: string }> = ({ churchId }) => {
     if (!newTitle.trim() || !newContent.trim()) return;
     setSaving(true);
     try {
-      const tenantId = await getTenantScope();
+      // getWriteTenantScope, NOT getTenantScope — this is a CREATE. The read
+      // resolver returns null for a super admin on the apex ("all tenants",
+      // right for a read), which stamped `tenantId: null` here. The document is
+      // created and the UI looks fine, but the announcements update/delete rules
+      // gate on hasPermission('modifyChurches', resource.data.tenantId), and
+      // that never passes for a null tenant — so the church can never edit or
+      // delete its own announcement again. `|| null` is kept: getWriteTenantScope
+      // can still legitimately return null for a non-super-admin with no
+      // resolvable tenant, and the field's `string | null` contract is unchanged.
+      const tenantId = await getWriteTenantScope();
       await addDoc(collection(db, 'churches', churchId, 'announcements'), {
         title: newTitle.trim(),
         content: newContent.trim(),
