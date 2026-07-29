@@ -6,15 +6,58 @@ import { db } from '../firebase';
 import { authFetch } from '../utils/auth-fetch';
 import AdminCourseEditor, { Course } from './AdminCourseEditor';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
-import { getTenantScope } from '../utils/tenant-scope';
+import { getTenantScope, getWriteTenantScope } from '../utils/tenant-scope';
 import { sortByTime } from '../utils/query-helpers';
 import { useTenant } from '@/contexts/TenantContext';
 import { LIBRARY_COURSE_COLLECTIONS } from '../utils/library-authoring';
+// Course descriptions are HTML from the rich-text editor. This card is a
+// two-line clamped summary, so formatting is worthless here — and rendering
+// catalogue HTML with dangerouslySetInnerHTML would be a needless XSS surface
+// even though the author is a super admin. Existing helper, not a new one.
+import { stripHtml } from '../utils/stripHtml';
 import {
   resolveCourseLimit, isAtCourseLimit, courseLimitMessage, adoptableCourses,
 } from '../utils/course-adoption';
 import type { AdoptedCourse, LibraryCourse } from '../types/course.types';
 import { AdminPageHeader, AdminPrimaryButton, AdminSearchBar, AdminCard, AdminBadge, statusTone } from './admin/AdminUI';
+
+/**
+ * A tenant could not be resolved for a WRITE. Distinct from a generic failure
+ * because it is deterministic and reproducible — a configuration fault, not a
+ * transient one — so telling the user to "try again" is actively misleading.
+ */
+class NoTenantScopeError extends Error {
+  constructor() {
+    super('No tenant scope: could not determine which church to write to.');
+    this.name = 'NoTenantScopeError';
+  }
+}
+
+/** The message the user actually sees. Specific when we know why. */
+function describeAdoptionFailure(error: unknown, fallback: string): string {
+  if (error instanceof NoTenantScopeError) {
+    return 'Could not determine which church to use. Open your church\'s own site and try there.';
+  }
+  return fallback;
+}
+
+/**
+ * Do not swallow. The original catch here was `console.error(error)` plus a
+ * generic retry message, which turned a deterministic apex-super-admin failure
+ * into an unexplained one — invisible in Vercel logs and Sentry alike, because
+ * the request never left the browser.
+ *
+ * NOTE: there is no established client-side Sentry capture pattern in this
+ * codebase — `Sentry.captureException` appears in no component or util (the
+ * browser SDK IS initialised in instrumentation-client.ts, and
+ * money-path-sentry.ts is server-only). Rather than invent one here, this logs
+ * with the operation and the real message intact so the cause is legible in the
+ * console. Adding a client capture helper is its own change.
+ */
+function reportAdoptionFailure(op: 'adopt' | 'unadopt', error: unknown): void {
+  const message = error instanceof Error ? error.message : String(error);
+  console.error(`[courses:${op}] ${message}`, error);
+}
 
 const AdminCourses: React.FC = () => {
   const { tenantPlan } = useTenant();
@@ -99,8 +142,13 @@ const AdminCourses: React.FC = () => {
 
     let unsubAdopted: (() => void) | null = null;
     (async () => {
-      const tenantId = await getTenantScope();
-      if (!tenantId) return; // platform context — no tenant to hold adoptions
+      // getWriteTenantScope, NOT getTenantScope. This read addresses a
+      // tenant-scoped PATH, so it needs a concrete id — and getTenantScope()
+      // returns null for a super admin on the apex, which meant no listener at
+      // all: no "Adopted" badge, and adopted.length stuck at 0 so the plan cap
+      // undercounted. The adopt fix below is invisible without this one.
+      const tenantId = await getWriteTenantScope();
+      if (!tenantId) return; // genuinely no tenant to hold adoptions
       unsubAdopted = onSnapshot(
         collection(db, 'tenants', tenantId, 'adoptedCourses'),
         (snap) => {
@@ -148,8 +196,13 @@ const AdminCourses: React.FC = () => {
     }
     setAdoptingId(libraryCourse.id);
     try {
-      const tenantId = await getTenantScope();
-      if (!tenantId) throw new Error('No tenant scope');
+      // getWriteTenantScope, NOT getTenantScope — this is a MUTATION.
+      // getTenantScope() returns null by design for a super admin with no host
+      // scope (null means "all tenants", correct for a read), so on the apex
+      // the old code threw before the request ever left the browser: no Vercel
+      // log, no Sentry event, just "please try again", every time.
+      const tenantId = await getWriteTenantScope();
+      if (!tenantId) throw new NoTenantScopeError();
       // adoptedCourses is server-only now (allow write: if false). The route
       // writes the POINTER after verifying the target exists and is published —
       // a check no Firestore rule can make, since rules cannot read across
@@ -164,9 +217,9 @@ const AdminCourses: React.FC = () => {
         setTimeout(() => setErrorMessage(null), 5000);
       }
     } catch (error) {
-      console.error(error);
-      setErrorMessage('Failed to adopt this course. Please try again.');
-      setTimeout(() => setErrorMessage(null), 3000);
+      reportAdoptionFailure('adopt', error);
+      setErrorMessage(describeAdoptionFailure(error, 'Failed to adopt this course. Please try again.'));
+      setTimeout(() => setErrorMessage(null), 6000);
     } finally {
       setAdoptingId(null);
     }
@@ -177,8 +230,10 @@ const AdminCourses: React.FC = () => {
   const handleUnadopt = async (libraryCourseId: string) => {
     setAdoptingId(libraryCourseId);
     try {
-      const tenantId = await getTenantScope();
-      if (!tenantId) throw new Error('No tenant scope');
+      // Same mutation, same resolver — see handleAdopt. This had the identical
+      // apex bug: un-adopt failed for a super admin for exactly the same reason.
+      const tenantId = await getWriteTenantScope();
+      if (!tenantId) throw new NoTenantScopeError();
       const res = await authFetch('/api/courses/adopt', {
         method: 'DELETE',
         body: JSON.stringify({ tenantId, libraryCourseId }),
@@ -189,9 +244,9 @@ const AdminCourses: React.FC = () => {
         setTimeout(() => setErrorMessage(null), 5000);
       }
     } catch (error) {
-      console.error(error);
-      setErrorMessage('Failed to remove this course. Please try again.');
-      setTimeout(() => setErrorMessage(null), 3000);
+      reportAdoptionFailure('unadopt', error);
+      setErrorMessage(describeAdoptionFailure(error, 'Failed to remove this course. Please try again.'));
+      setTimeout(() => setErrorMessage(null), 6000);
     } finally {
       setAdoptingId(null);
     }
@@ -310,7 +365,7 @@ const AdminCourses: React.FC = () => {
                           <span className="text-sm font-semibold text-earth line-clamp-1">{course.title}</span>
                           {isAdopted && <AdminBadge tone="gold">Adopted</AdminBadge>}
                         </div>
-                        <p className="text-xs text-[color:var(--text-faint)] mt-1 line-clamp-2">{course.description}</p>
+                        <p className="text-xs text-[color:var(--text-faint)] mt-1 line-clamp-2">{stripHtml(course.description || '')}</p>
                         <p className="text-xs text-warm-brown mt-1">
                           {[course.category, lessonCount ? `${lessonCount} lesson${lessonCount === 1 ? '' : 's'}` : null].filter(Boolean).join(' · ')}
                         </p>

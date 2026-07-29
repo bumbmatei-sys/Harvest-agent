@@ -13,7 +13,13 @@ import AdminCourses from '../AdminCourses';
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 vi.mock('../../firebase', () => ({ db: {}, auth: { currentUser: { uid: 'admin-uid' } } }));
-vi.mock('../../utils/tenant-scope', () => ({ getTenantScope: async () => 'tenant-1' }));
+// Both resolvers, independently controllable — the whole apex bug is that they
+// differ for a super admin with no host scope.
+const scope = vi.hoisted(() => ({ read: 'tenant-1' as string | null, write: 'tenant-1' as string | null }));
+vi.mock('../../utils/tenant-scope', () => ({
+  getTenantScope: async () => scope.read,
+  getWriteTenantScope: async () => scope.write,
+}));
 vi.mock('../AdminCourseEditor', () => ({
   default: () => <div data-testid="course-editor" />,
 }));
@@ -105,6 +111,8 @@ describe('AdminCourses — maxCourses enforcement', () => {
     calls.wheres = [];
     calls.writes = [];
     calls.fetches = [];
+    scope.read = 'tenant-1';
+    scope.write = 'tenant-1';
   });
 
   afterEach(() => {
@@ -214,6 +222,8 @@ describe('AdminCourses — library adoption', () => {
     calls.wheres = [];
     calls.writes = [];
     calls.fetches = [];
+    scope.read = 'tenant-1';
+    scope.write = 'tenant-1';
     mockAuthFetch.mockResolvedValue({ ok: true, json: async () => ({ ok: true }) } as any);
   });
 
@@ -409,5 +419,168 @@ describe('AdminCourses — library adoption', () => {
 
     expect(container.querySelector('[data-testid="course-editor"]')).toBeNull();
     expect(container.querySelectorAll('[title="Edit"]')).toHaveLength(0);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Adoption on the APEX domain as a super admin.
+//
+// getTenantScope() returns null BY DESIGN for a super admin with no host scope —
+// null means "all tenants", which is right for a read and fatal for a write. The
+// old code threw before the request left the browser, so there was no Vercel log
+// and no Sentry event: just "Failed to adopt this course. Please try again.",
+// deterministically, forever. getWriteTenantScope() resolves the platform tenant
+// ('harvest') instead, which is exactly what it exists for.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('AdminCourses — adoption on the apex domain', () => {
+  beforeEach(() => {
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    tenantCtx.tenantPlan = 'pro';
+    mockCourses = [];
+    mockLibrary = [];
+    mockAdopted = [];
+    calls.paths = [];
+    calls.wheres = [];
+    calls.writes = [];
+    calls.fetches = [];
+    scope.read = 'tenant-1';
+    scope.write = 'tenant-1';
+    mockAuthFetch.mockResolvedValue({ ok: true, json: async () => ({ ok: true }) } as any);
+  });
+
+  afterEach(() => {
+    act(() => { root?.unmount(); });
+    container.remove();
+  });
+
+  /** Apex super admin: the read scope is null, the write scope is the platform tenant. */
+  function apexSuperAdmin() {
+    scope.read = null;
+    scope.write = 'harvest';
+  }
+
+  it('handleAdopt posts tenantId "harvest" when the read scope is null (apex super admin)', async () => {
+    // THE regression test for the reported bug. Reverting handleAdopt to
+    // getTenantScope() makes this fail: no fetch is issued at all.
+    apexSuperAdmin();
+    mockLibrary = makeLibrary(1);
+    await mount();
+    await act(async () => { libraryTab().click(); });
+    await act(async () => { adoptButtons()[0].click(); });
+
+    expect(calls.fetches).toHaveLength(1);
+    expect(calls.fetches[0].method).toBe('POST');
+    expect(calls.fetches[0].body).toEqual({ tenantId: 'harvest', libraryCourseId: 'lib-0' });
+  });
+
+  it('un-adopt resolves the tenant the same way on the apex', async () => {
+    apexSuperAdmin();
+    mockLibrary = makeLibrary(1);
+    mockAdopted = [{ id: 'lib-0', libraryCourseId: 'lib-0' }];
+    await mount();
+    await act(async () => { libraryTab().click(); });
+
+    const remove = Array.from(container.querySelectorAll('button')).find((b) =>
+      (b.textContent || '').includes('Remove from your courses')
+    ) as HTMLButtonElement;
+    await act(async () => { remove.click(); });
+
+    expect(calls.fetches[0]).toEqual({
+      url: '/api/courses/adopt',
+      method: 'DELETE',
+      body: { tenantId: 'harvest', libraryCourseId: 'lib-0' },
+    });
+  });
+
+  it('the adoption listener subscribes to the platform tenant on the apex', async () => {
+    // Without this the adopt fix is invisible: the write lands but nothing reads
+    // it back, so no "Adopted" badge and the plan cap undercounts.
+    apexSuperAdmin();
+    await mount();
+    expect(calls.paths).toContain('tenants/harvest/adoptedCourses');
+  });
+
+  it('a non-super-admin with no resolvable tenant does NOT post, and says why', async () => {
+    // Both resolvers null — a genuinely unresolvable tenant. Still the right
+    // outcome, but it must not masquerade as a transient failure.
+    scope.read = null;
+    scope.write = null;
+    mockLibrary = makeLibrary(1);
+    await mount();
+    await act(async () => { libraryTab().click(); });
+    await act(async () => { adoptButtons()[0].click(); });
+
+    expect(calls.fetches).toHaveLength(0);
+    expect(container.textContent).toMatch(/could not determine which church/i);
+    expect(container.textContent).not.toMatch(/please try again/i);
+  });
+
+  // NOTE: there is deliberately no un-adopt equivalent of the test above. With
+  // no resolvable tenant the adoption listener never subscribes, so `adopted` is
+  // empty and the UI shows "Adopt" rather than "Remove" — the un-adopt guard is
+  // unreachable through the interface. It shares describeAdoptionFailure with
+  // handleAdopt, which IS covered. Fabricating the state to reach it would test
+  // a situation that cannot occur.
+
+  it('an ordinary tenant admin on a subdomain is unaffected', async () => {
+    // getWriteTenantScope falls through to the host scope, so nothing changes
+    // for the overwhelmingly common case.
+    mockLibrary = makeLibrary(1);
+    await mount();
+    await act(async () => { libraryTab().click(); });
+    await act(async () => { adoptButtons()[0].click(); });
+    expect(calls.fetches[0].body).toEqual({ tenantId: 'tenant-1', libraryCourseId: 'lib-0' });
+  });
+});
+
+describe('AdminCourses — library card description', () => {
+  beforeEach(() => {
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    tenantCtx.tenantPlan = 'pro';
+    mockCourses = [];
+    mockLibrary = [];
+    mockAdopted = [];
+    calls.paths = [];
+    calls.wheres = [];
+    calls.writes = [];
+    calls.fetches = [];
+    scope.read = 'tenant-1';
+    scope.write = 'tenant-1';
+  });
+
+  afterEach(() => {
+    act(() => { root?.unmount(); });
+    container.remove();
+  });
+
+  it('renders the description as text, not raw HTML', async () => {
+    // Descriptions come from the rich-text editor, so `<p>Test</p>` was being
+    // shown literally on the card.
+    mockLibrary = [{ id: 'lib-0', title: 'Course', status: 'published', description: '<p>Test</p>' } as any];
+    await mount();
+    await act(async () => { libraryTab().click(); });
+
+    expect(container.textContent).toContain('Test');
+    expect(container.textContent).not.toContain('<p>');
+    expect(container.innerHTML).not.toContain('&lt;p&gt;');
+  });
+
+  it('flattens a multi-paragraph description to one line', async () => {
+    mockLibrary = [{
+      id: 'lib-0', title: 'Course', status: 'published',
+      description: '<p>First.</p><p>Second.</p>',
+    } as any];
+    await mount();
+    await act(async () => { libraryTab().click(); });
+    expect(container.textContent).toContain('First. Second.');
+  });
+
+  it('tolerates a missing description', async () => {
+    mockLibrary = [{ id: 'lib-0', title: 'Course', status: 'published' } as any];
+    await mount();
+    await act(async () => { libraryTab().click(); });
+    expect(container.textContent).toContain('Course');
   });
 });

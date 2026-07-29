@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { sanitizeHtml, isSafeUrl } from '../sanitize';
+import { sanitizeHtml, isSafeUrl, stripHtml } from '../sanitize';
 
 describe('sanitizeHtml', () => {
   it('returns content from safe HTML', () => {
@@ -62,5 +62,40 @@ describe('isSafeUrl', () => {
   it('is case-insensitive', () => {
     expect(isSafeUrl('JavaScript:alert(1)')).toBe(false);
     expect(isSafeUrl('HTTPS://example.com')).toBe(true);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// stripHtml — re-exported from sanitize.ts, used wherever rich-text content is
+// shown as a plain single-line summary (CourseOverview's meta line, and the
+// library course card in AdminCourses, which rendered raw `<p>Test</p>` before).
+// ─────────────────────────────────────────────────────────────────────────────
+describe('stripHtml', () => {
+  it('strips a simple tag wrapper', () => {
+    expect(stripHtml('<p>Test</p>')).toBe('Test');
+  });
+
+  it('strips nested tags and keeps the text', () => {
+    expect(stripHtml('<div><p>Hello <strong>there</strong></p></div>')).toBe('Hello there');
+  });
+
+  it('decodes the common entities the editor emits', () => {
+    expect(stripHtml('<p>Tom&#39;s &amp; Jerry&nbsp;show</p>')).toBe("Tom's & Jerry show");
+    expect(stripHtml('<p>&lt;not a tag&gt;</p>')).toBe('<not a tag>');
+    expect(stripHtml('<p>&quot;quoted&quot;</p>')).toBe('"quoted"');
+  });
+
+  it('collapses a multi-paragraph description to one clean line', () => {
+    expect(stripHtml('<p>First para.</p>\n\n<p>Second   para.</p>')).toBe('First para. Second para.');
+  });
+
+  it('handles empty and tag-only input', () => {
+    expect(stripHtml('')).toBe('');
+    expect(stripHtml('<p></p>')).toBe('');
+    expect(stripHtml(undefined as unknown as string)).toBe('');
+  });
+
+  it('leaves plain text untouched', () => {
+    expect(stripHtml('Already plain')).toBe('Already plain');
   });
 });
