@@ -9,6 +9,12 @@ const { store, mockRequireAuth, mockFileSave, mockGetSignedUrl, mockCertSet } = 
     authors: new Map<string, any>(),
     tenants: new Map<string, any>(),
     certificates: new Map<string, any>(),
+    // THE-54: the platform catalogue and the per-tenant adoption records.
+    // adoptedCourses is keyed `${tenantId}/${libraryCourseId}` since it is a
+    // subcollection under tenants/{tenantId}.
+    libraryCourses: new Map<string, any>(),
+    libraryAuthors: new Map<string, any>(),
+    adoptedCourses: new Map<string, any>(),
   } as Record<string, Map<string, any>>,
   mockRequireAuth: vi.fn(),
   mockFileSave: vi.fn(),
@@ -30,6 +36,8 @@ function docRef(coll: string, id: string): any {
       const prev = store[coll].get(id) || {};
       store[coll].set(id, opts?.merge ? { ...prev, ...data } : data);
     },
+    // Subcollection support — tenants/{tenantId}/adoptedCourses/{courseId}.
+    collection: (sub: string) => ({ doc: (subId: string) => docRef(sub, `${id}/${subId}`) }),
   };
 }
 
@@ -250,5 +258,165 @@ describe('POST /api/certificate — tenant branding gate', () => {
     expect(res.status).toBe(200);
     expect(fetchSpy).not.toHaveBeenCalled();
     vi.unstubAllGlobals();
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// THE-54 — certificates for ADOPTED platform library courses.
+//
+// Before this, /api/certificate read only /courses. An adopted library course
+// lives in /libraryCourses and is held via tenants/{t}/adoptedCourses, so every
+// request for one 404'd: the learner genuinely completed the course, the button
+// was there, and the certificate could never be issued.
+//
+// The entitlement is the ADOPTION RECORD, not the course's tenantId — a library
+// course has none, and the catalogue is readable by every authenticated user by
+// design, so without the adoption check any user of any church could certify any
+// catalogue course their church never took.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function seedLibraryCourse(over?: any) {
+  store.libraryCourses.set('lib-course-1', {
+    title: 'Foundations of Prayer', authorIds: ['lib-auth-1'],
+    status: 'published', issueCertificate: true, requireQuiz: false,
+    levels: [{ id: 'lv1', title: 'L1', sections: [
+      { id: 's1', title: 'A', lessons: [lesson('L1'), lesson('L2', true)] },
+    ] }],
+    ...over,
+  });
+  store.libraryAuthors.set('lib-auth-1', { name: 'Dr Platform Teacher' });
+}
+
+function adopt(tenantId = 'tenant-a', courseId = 'lib-course-1') {
+  store.adoptedCourses.set(`${tenantId}/${courseId}`, {
+    libraryCourseId: courseId, adoptedBy: 'admin-uid', adoptedAt: '2026-01-01T00:00:00.000Z',
+  });
+}
+
+/** Completion for the library course's own lesson ids. */
+function completeLibraryCourse() {
+  store.users.set('learner-1', {
+    displayName: 'Grace Learner',
+    completedLessons: ['L1', 'L2'],
+    quizAttempts: { L2: passAttempt },
+  });
+}
+
+describe('POST /api/certificate — adopted library courses', () => {
+  beforeEach(() => {
+    seedLibraryCourse();
+    completeLibraryCourse();
+    adopt();
+  });
+
+  it('issues a certificate for a completed, adopted library course', async () => {
+    const res = await POST(makeReq({ courseId: 'lib-course-1' }));
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.courseTitle).toBe('Foundations of Prayer');
+    expect(data.certificateId).toBe('learner-1_lib-course-1');
+  });
+
+  it('resolves the teacher name from libraryAuthors, not the tenant authors', async () => {
+    // The two are separate namespaces. Looking an adopted course's author up in
+    // `authors` finds nothing and the cert silently loses its teacher name.
+    store.authors.set('lib-auth-1', { name: 'WRONG — tenant author' });
+    await POST(makeReq({ courseId: 'lib-course-1' }));
+    const [, certData] = mockCertSet.mock.calls[0];
+    expect(certData.teacherName).toBe('Dr Platform Teacher');
+  });
+
+  it("stamps the ADOPTING church's tenant on the certificate, not the platform", async () => {
+    // A library course has no tenantId, so resolvedTenantId falls through to the
+    // learner's tenant — the church's name and logo, subject to their plan.
+    await POST(makeReq({ courseId: 'lib-course-1' }));
+    const [, certData] = mockCertSet.mock.calls[0];
+    expect(certData.tenantId).toBe('tenant-a');
+  });
+
+  it('still recomputes completion server-side and refuses when not met', async () => {
+    store.users.set('learner-1', { displayName: 'Grace Learner', completedLessons: ['L1'], quizAttempts: {} });
+    const res = await POST(makeReq({ courseId: 'lib-course-1' }));
+    expect(res.status).toBe(403);
+    expect((await res.json()).error).toBe('Course not completed');
+  });
+
+  it('honours issueCertificate: false on a library course', async () => {
+    seedLibraryCourse({ issueCertificate: false });
+    const res = await POST(makeReq({ courseId: 'lib-course-1' }));
+    expect(res.status).toBe(403);
+  });
+
+  it('is idempotent — the same cert number on a second request', async () => {
+    const first = await POST(makeReq({ courseId: 'lib-course-1' }));
+    const a = await first.json();
+    const second = await POST(makeReq({ courseId: 'lib-course-1' }));
+    const b = await second.json();
+    expect(b.certificateNumber).toBe(a.certificateNumber);
+  });
+
+  describe('adoption is the entitlement', () => {
+    it('403s when the learner\'s church has NOT adopted the course', async () => {
+      store.adoptedCourses.clear();
+      const res = await POST(makeReq({ courseId: 'lib-course-1' }));
+      expect(res.status).toBe(403);
+      expect(mockCertSet).not.toHaveBeenCalled();
+    });
+
+    it("403s when ANOTHER church adopted it but the learner's did not", async () => {
+      store.adoptedCourses.clear();
+      adopt('tenant-b');
+      const res = await POST(makeReq({ courseId: 'lib-course-1' }));
+      expect(res.status).toBe(403);
+    });
+
+    it('403s for a learner with no tenant at all', async () => {
+      mockRequireAuth.mockResolvedValue({
+        uid: 'learner-1', email: 'learner@example.com', tenantId: null, isAdmin: false, isSuperAdmin: false,
+      });
+      const res = await POST(makeReq({ courseId: 'lib-course-1' }));
+      expect(res.status).toBe(403);
+    });
+
+    it('a super admin is exempt from the adoption check', async () => {
+      store.adoptedCourses.clear();
+      mockRequireAuth.mockResolvedValue({
+        uid: 'learner-1', email: 'platform@test.com', tenantId: 'tenant-a', isAdmin: true, isSuperAdmin: true,
+      });
+      const res = await POST(makeReq({ courseId: 'lib-course-1' }));
+      expect(res.status).toBe(200);
+    });
+
+    it('un-adopting does NOT revoke an already-issued certificate', async () => {
+      // Progress and certificates are retained on un-adopt — the church loses
+      // the course, the learner keeps what they earned.
+      const issued = await POST(makeReq({ courseId: 'lib-course-1' }));
+      expect(issued.status).toBe(200);
+      expect(store.certificates.has('learner-1_lib-course-1')).toBe(true);
+
+      store.adoptedCourses.clear();
+      expect(store.certificates.get('learner-1_lib-course-1')).toBeDefined();
+    });
+  });
+
+  describe('tenant courses are unaffected', () => {
+    it('a tenant course still resolves from /courses and never consults the catalogue', async () => {
+      store.users.set('learner-1', { displayName: 'Grace Learner', completedLessons: ALL, quizAttempts: { l2: passAttempt } });
+      const res = await POST(makeReq({ courseId: 'course-1' }));
+      expect(res.status).toBe(200);
+      expect((await res.json()).courseTitle).toBe('Foundations of Faith');
+    });
+
+    it("a tenant course in ANOTHER tenant is still 403 — adoption cannot launder it", async () => {
+      seedCourse({ tenantId: 'tenant-b' });
+      store.users.set('learner-1', { displayName: 'Grace Learner', completedLessons: ALL, quizAttempts: { l2: passAttempt } });
+      const res = await POST(makeReq({ courseId: 'course-1' }));
+      expect(res.status).toBe(403);
+    });
+
+    it('an id in neither collection is still 404', async () => {
+      const res = await POST(makeReq({ courseId: 'no-such-course' }));
+      expect(res.status).toBe(404);
+    });
   });
 });

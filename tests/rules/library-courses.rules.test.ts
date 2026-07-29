@@ -2,7 +2,7 @@ import { describe, it, beforeAll, afterAll } from 'vitest';
 import { assertSucceeds, assertFails } from '@firebase/rules-unit-testing';
 import {
   getEnv, seedBase, seedDoc, seedAdmin, teardownEnv,
-  member, adminB, fullAdmin, superAdmin, owner, asUid,
+  member, member2, adminB, fullAdmin, superAdmin, owner, asUid,
   permsOnly, permsAllBut,
   TENANT_A, TENANT_B, FULL_ADMIN_UID, MEMBER_UID, OWNER_UID, SUPER_ADMIN_UID,
 } from './helpers';
@@ -206,6 +206,55 @@ describe('platform course library', () => {
   });
 
   // ── Adoption records: per-tenant, scoped by path ─────────────────────
+
+  // ── Progress on a SHARED course stays per-tenant ────────────────────
+  // The founder decision is "progress is per-tenant: same course, separate
+  // records per church". No new collection was needed to satisfy it, and that
+  // is worth pinning rather than assuming: course progress lives on
+  // users/{uid} (completedLessons / quizAttempts / lessonNotes, written by
+  // CoursePage), and a user belongs to exactly one tenant. So two churches that
+  // adopt the SAME library course — whose lesson ids are identical, since the
+  // course document is shared — still cannot see or touch each other's records,
+  // because the boundary is the user doc, not the course.
+  describe('progress on an adopted course is per-tenant', () => {
+    it('a member can record their own progress for a shared library lesson', async () => {
+      const db = (await member()).firestore();
+      await assertSucceeds(db.doc(`users/${MEMBER_UID}`).update({
+        completedLessons: ['shared-lesson-1'],
+        quizAttempts: { 'shared-lesson-1': { score: 1, total: 1, passed: true, answeredAt: '2026-01-01T00:00:00.000Z' } },
+      }));
+    });
+
+    it("a member of ANOTHER tenant cannot read this member's progress", async () => {
+      // Same course, same lesson ids, different church — and no visibility.
+      const db = (await adminB()).firestore();
+      await assertFails(db.doc(`users/${MEMBER_UID}`).get());
+    });
+
+    it("a member cannot write another member's progress, even in their own tenant", async () => {
+      const db = (await member2()).firestore();
+      await assertFails(db.doc(`users/${MEMBER_UID}`).update({ completedLessons: ['shared-lesson-1'] }));
+    });
+
+    it('a certificate is readable only by the learner who earned it', async () => {
+      // Certificates are server-issued (allow write: if false) and scoped to
+      // their own uid, so a shared course does not leak one church's completions
+      // to another. Adopted-course issuance is covered in the route's own tests.
+      await seedDoc(`certificates/${MEMBER_UID}_lib-course-1`, {
+        uid: MEMBER_UID, courseId: 'lib-course-1', tenantId: TENANT_A,
+      });
+      await assertSucceeds((await member()).firestore().doc(`certificates/${MEMBER_UID}_lib-course-1`).get());
+      await assertFails((await member2()).firestore().doc(`certificates/${MEMBER_UID}_lib-course-1`).get());
+      await assertFails((await adminB()).firestore().doc(`certificates/${MEMBER_UID}_lib-course-1`).get());
+    });
+
+    it('nobody may forge a certificate from a client, for a library course either', async () => {
+      const db = (await member()).firestore();
+      await assertFails(db.doc(`certificates/${MEMBER_UID}_lib-course-1`).set({
+        uid: MEMBER_UID, courseId: 'lib-course-1',
+      }));
+    });
+  });
 
   describe('adoption records', () => {
     it('a tenant-A member can read their own tenant adoptions, unfiltered', async () => {

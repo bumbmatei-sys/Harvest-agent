@@ -336,16 +336,48 @@ export async function POST(request: NextRequest) {
     }
 
     // ── Server-read the course (Admin SDK) ──────────────────────────────────
-    const courseSnap = await adminDb.collection('courses').doc(courseId).get();
+    // Two kinds of course can reach here, and until THE-54 only one existed:
+    //   • a TENANT course, /courses/{id}, carrying a tenantId; or
+    //   • a PLATFORM LIBRARY course, /libraryCourses/{id}, carrying none, which
+    //     a church holds by adopting it (tenants/{t}/adoptedCourses/{id}).
+    // Without the fallback below, every adopted course 404s here — completion
+    // is real, the button is there, and the certificate can never be issued.
+    let courseSnap = await adminDb.collection('courses').doc(courseId).get();
+    let isLibraryCourse = false;
+    if (!courseSnap.exists) {
+      const librarySnap = await adminDb.collection('libraryCourses').doc(courseId).get();
+      if (librarySnap.exists) {
+        courseSnap = librarySnap;
+        isLibraryCourse = true;
+      }
+    }
     if (!courseSnap.exists) {
       return NextResponse.json({ error: 'Course not found' }, { status: 404 });
     }
     const course = { id: courseSnap.id, ...(courseSnap.data() as any) } as Course & { tenantId?: string };
 
-    // Tenant isolation: a learner may only certify a course in their own tenant
-    // (courses are tenant-scoped). Super admins are exempt. Platform courses
-    // with no tenantId fall through.
-    if (!isSuperAdmin && course.tenantId && userTenantId && course.tenantId !== userTenantId) {
+    if (isLibraryCourse) {
+      // ADOPTION IS THE ENTITLEMENT. A library course carries no tenantId, so
+      // the tenant check below cannot bind — without this, ANY authenticated
+      // user of ANY church could certify ANY catalogue course their church
+      // never adopted, simply by knowing its id (the catalogue is readable by
+      // every authenticated user, by design). The adoption record is the proof
+      // the church actually holds this course.
+      if (!isSuperAdmin) {
+        if (!userTenantId) {
+          return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
+        const adoption = await adminDb
+          .collection('tenants').doc(userTenantId)
+          .collection('adoptedCourses').doc(courseId)
+          .get();
+        if (!adoption.exists) {
+          return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
+      }
+    } else if (!isSuperAdmin && course.tenantId && userTenantId && course.tenantId !== userTenantId) {
+      // Tenant isolation: a learner may only certify a course in their own
+      // tenant (tenant courses are tenant-scoped). Super admins are exempt.
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -381,17 +413,27 @@ export async function POST(request: NextRequest) {
       'Learner';
 
     // ── Teacher/author name (server-read from the course's first author) ────
+    // A library course's authorIds resolve against libraryAuthors, NOT the
+    // tenant-scoped authors collection — the two are separate namespaces, and
+    // looking an adopted course's author up in `authors` finds nothing, so the
+    // certificate silently loses its teacher name.
     let teacherName: string | undefined;
+    const authorsCollection = isLibraryCourse ? 'libraryAuthors' : 'authors';
     const firstAuthorId = Array.isArray(course.authorIds) ? course.authorIds[0] : undefined;
     if (firstAuthorId) {
       try {
-        const authorSnap = await adminDb.collection('authors').doc(firstAuthorId).get();
+        const authorSnap = await adminDb.collection(authorsCollection).doc(firstAuthorId).get();
         const an = authorSnap.exists ? (authorSnap.data() as any)?.name : undefined;
         if (typeof an === 'string' && an.trim()) teacherName = an.trim();
       } catch { /* author is optional on the cert */ }
     }
 
     // ── Tenant branding (plan-gated on customBranding) ──────────────────────
+    // For an ADOPTED library course this resolves to the LEARNER's tenant: a
+    // library course has no tenantId, so it falls through to userTenantId. That
+    // is the intended answer — the certificate carries the adopting church's
+    // name and logo (subject to their plan), not Harvest's, because the course
+    // is theirs to teach even though the content is the platform's.
     const resolvedTenantId = course.tenantId || userTenantId || PLATFORM_TENANT_ID;
     let ministryName = 'Harvest';
     let branded = false;
