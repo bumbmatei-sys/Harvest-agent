@@ -17,6 +17,7 @@ import { LIBRARY_COURSE_COLLECTIONS } from '../utils/library-authoring';
 import { stripHtml } from '../utils/stripHtml';
 import {
   resolveCourseLimit, isAtCourseLimit, courseLimitMessage, adoptableCourses,
+  adoptedLibraryCourses,
 } from '../utils/course-adoption';
 import type { AdoptedCourse, LibraryCourse } from '../types/course.types';
 import { AdminPageHeader, AdminPrimaryButton, AdminSearchBar, AdminCard, AdminBadge, statusTone } from './admin/AdminUI';
@@ -168,6 +169,18 @@ const AdminCourses: React.FC = () => {
     (course.author?.toLowerCase() || '').includes(searchQuery.toLowerCase())
   );
 
+  // Adopted library courses belong on "Your courses" too: they occupy a plan
+  // slot and members see them, so listing them only under Library made the tab
+  // that answers "what does this church have?" answer it wrongly.
+  //
+  // They are POINTERS, so they render read-only — no Edit (the tenant does not
+  // own the content; the platform edits it and the change reaches everyone) and
+  // the remove action un-adopts rather than deleting anything.
+  const myAdoptedCourses = adoptedLibraryCourses(adopted, libraryCourses).filter(course =>
+    (course.title?.toLowerCase() || '').includes(searchQuery.toLowerCase())
+  );
+  const ownTabCount = courses.length + adopted.length;
+
   const handleNewCourse = () => {
     if (loading) return; // course count not known yet — can't decide the cap
     if (atLimit) {
@@ -302,7 +315,7 @@ const AdminCourses: React.FC = () => {
           adopted course occupies a plan slot exactly like one you authored. */}
       <div className="flex items-center gap-1 border-b border-stone-200">
         {([
-          { key: 'own', label: `Your courses (${courses.length})` },
+          { key: 'own', label: `Your courses (${ownTabCount})` },
           { key: 'library', label: `Library (${adopted.length} adopted)` },
         ] as const).map((t) => (
           <button
@@ -410,11 +423,11 @@ const AdminCourses: React.FC = () => {
             <div className="w-4 h-4 border-2 border-gold border-t-transparent rounded-full animate-spin"></div>
             <span>Loading courses…</span>
           </div>
-        ) : filteredCourses.length === 0 ? (
+        ) : filteredCourses.length === 0 && myAdoptedCourses.length === 0 ? (
           <div className="px-3.5 py-14 flex flex-col items-center justify-center gap-1.5 text-center">
             <GraduationCap size={30} className="text-stone-300 mb-1" />
             <p className="font-display text-base text-earth">No courses found</p>
-            <p className="text-sm text-warm-brown">Get started by creating a new course.</p>
+            <p className="text-sm text-warm-brown">Get started by creating a new course, or adopt one from the library.</p>
           </div>
         ) : (
           filteredCourses.map((course, i) => {
@@ -453,6 +466,34 @@ const AdminCourses: React.FC = () => {
             );
           })
         )}
+        {/* Adopted library courses — read-only pointers. No Edit: the platform
+            owns the content and its edits reach every adopter. Remove un-adopts. */}
+        {myAdoptedCourses.map((course, i) => (
+          <div key={`adopted-${course.id}`} className={`flex items-center gap-3 px-3.5 py-3 ${(i || filteredCourses.length) ? 'border-t border-stone-200' : ''}`}>
+            <div className="w-[68px] h-[52px] rounded-brand bg-[var(--surface-gold)] text-gold flex items-center justify-center shrink-0 overflow-hidden">
+              {course.thumbnail
+                ? <img src={course.thumbnail} alt="" className="w-full h-full object-cover" />
+                : <Library size={20} />}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-2">
+                <span className="flex-1 min-w-0 text-sm font-semibold text-earth line-clamp-1">{course.title}</span>
+                <AdminBadge tone="gold" className="shrink-0">Adopted</AdminBadge>
+              </div>
+              <div className="text-xs text-[color:var(--text-faint)] mt-1 truncate">
+                From the Harvest library
+              </div>
+            </div>
+            <button
+              onClick={() => handleUnadopt(course.id)}
+              disabled={adoptingId === course.id}
+              className="p-2 rounded-brand text-[color:var(--text-faint)] hover:text-[#C4553B] hover:bg-[#F7E7E2] transition-colors shrink-0 disabled:opacity-50"
+              title="Remove from your courses"
+            >
+              <Trash2 size={16} />
+            </button>
+          </div>
+        ))}
       </div>
 
       {/* Desktop table — existing approved layout, unchanged (now lg-only). */}
@@ -477,13 +518,13 @@ const AdminCourses: React.FC = () => {
                     </div>
                   </td>
                 </tr>
-              ) : filteredCourses.length === 0 ? (
+              ) : filteredCourses.length === 0 && myAdoptedCourses.length === 0 ? (
                 <tr>
                   <td colSpan={4} className="px-6 py-14 text-center">
                     <div className="flex flex-col items-center justify-center gap-1.5">
                       <GraduationCap size={30} className="text-stone-300 mb-1" />
                       <p className="font-display text-base text-earth">No courses found</p>
-                      <p className="text-sm text-warm-brown">Get started by creating a new course.</p>
+                      <p className="text-sm text-warm-brown">Get started by creating a new course, or adopt one from the library.</p>
                     </div>
                   </td>
                 </tr>
@@ -522,6 +563,35 @@ const AdminCourses: React.FC = () => {
                   </tr>
                 ))
               )}
+              {/* Adopted library courses — read-only pointers (see the mobile
+                  list above). Rendered after the tenant's own, never editable. */}
+              {myAdoptedCourses.map((course) => (
+                <tr key={`adopted-${course.id}`} className="hover:bg-stone-100/60 transition-colors group">
+                  <td className="px-6 py-3.5">
+                    <div className="flex items-center gap-3">
+                      <span className="w-9 h-9 rounded-brand bg-[color-mix(in_srgb,var(--brand-color)_12%,white)] flex items-center justify-center shrink-0">
+                        <Library size={17} className="text-gold" />
+                      </span>
+                      <span className="text-sm font-semibold text-earth line-clamp-1">{course.title}</span>
+                      <AdminBadge tone="gold">Adopted</AdminBadge>
+                    </div>
+                  </td>
+                  <td className="px-6 py-3.5"><span className="text-sm text-warm-brown">Harvest library</span></td>
+                  <td className="px-6 py-3.5"><AdminBadge tone={statusTone(course.status)}>{course.status}</AdminBadge></td>
+                  <td className="px-6 py-3.5 text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      <button
+                        onClick={() => handleUnadopt(course.id)}
+                        disabled={adoptingId === course.id}
+                        className="p-2 rounded-brand text-[color:var(--text-faint)] hover:text-[#C4553B] hover:bg-[#F7E7E2] transition-colors disabled:opacity-50"
+                        title="Remove from your courses"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>

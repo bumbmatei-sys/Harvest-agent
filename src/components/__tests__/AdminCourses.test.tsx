@@ -584,3 +584,140 @@ describe('AdminCourses — library card description', () => {
     expect(container.textContent).toContain('Course');
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Adopted courses on the "Your courses" tab.
+//
+// They occupy a plan slot and members see them, so listing them only under
+// Library made the tab that answers "what does this church have?" answer it
+// wrongly. They render READ-ONLY: no Edit, because the tenant does not own the
+// content — the platform edits it and the change reaches every adopter — and the
+// remove action un-adopts the pointer rather than deleting anything.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('AdminCourses — adopted courses under "Your courses"', () => {
+  beforeEach(() => {
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    tenantCtx.tenantPlan = 'pro';
+    mockCourses = [];
+    mockLibrary = [];
+    mockAdopted = [];
+    calls.paths = [];
+    calls.wheres = [];
+    calls.writes = [];
+    calls.fetches = [];
+    scope.read = 'tenant-1';
+    scope.write = 'tenant-1';
+    mockAuthFetch.mockResolvedValue({ ok: true, json: async () => ({ ok: true }) } as any);
+  });
+
+  afterEach(() => {
+    act(() => { root?.unmount(); });
+    container.remove();
+  });
+
+  function seedOneAdopted(title = 'Foundations of Prayer') {
+    mockLibrary = [{ id: 'lib-0', title, status: 'published' } as any];
+    mockAdopted = [{ id: 'lib-0', libraryCourseId: 'lib-0' }];
+  }
+
+  it('lists an adopted course on the Your courses tab', async () => {
+    seedOneAdopted();
+    await mount();
+    // Default view is 'own' — no tab click.
+    expect(container.textContent).toContain('Foundations of Prayer');
+    expect(container.textContent).toContain('Adopted');
+  });
+
+  it('counts adopted courses in the Your courses tab label', async () => {
+    mockCourses = makeCourses(2);
+    seedOneAdopted();
+    await mount();
+    expect(container.textContent).toContain('Your courses (3)');
+  });
+
+  it('shows own courses AND adopted courses together', async () => {
+    mockCourses = makeCourses(1);
+    seedOneAdopted();
+    await mount();
+    expect(container.textContent).toContain('Course 0');
+    expect(container.textContent).toContain('Foundations of Prayer');
+  });
+
+  it('offers NO edit control for an adopted course', async () => {
+    // One own course → exactly one Edit control, belonging to it. The adopted
+    // row must not add a second: the tenant does not own that content.
+    mockCourses = makeCourses(1);
+    seedOneAdopted();
+    await mount();
+    expect(container.querySelectorAll('[title="Edit"]')).toHaveLength(1);
+  });
+
+  it('an adopted course with no own courses offers no edit control at all', async () => {
+    seedOneAdopted();
+    await mount();
+    expect(container.querySelectorAll('[title="Edit"]')).toHaveLength(0);
+  });
+
+  it('removing an adopted course un-adopts it — it does not delete anything', async () => {
+    // The distinction that matters: the tenant Delete button opens a destructive
+    // confirm for a course they own; this one calls the un-adopt route.
+    seedOneAdopted();
+    await mount();
+
+    const remove = container.querySelector('[title="Remove from your courses"]') as HTMLButtonElement;
+    expect(remove).not.toBeNull();
+    await act(async () => { remove.click(); });
+
+    expect(calls.fetches[0]).toEqual({
+      url: '/api/courses/adopt',
+      method: 'DELETE',
+      body: { tenantId: 'tenant-1', libraryCourseId: 'lib-0' },
+    });
+    // No Firestore delete, and no destructive confirm dialog.
+    expect(calls.writes.filter((w) => w.op === 'delete')).toHaveLength(0);
+    expect(container.textContent).not.toContain('Delete course');
+  });
+
+  it('a dangling adoption pointer is dropped, not rendered blank', async () => {
+    // The platform can delete a catalogue course; the adoption record survives
+    // until someone un-adopts it.
+    mockLibrary = [];
+    mockAdopted = [{ id: 'gone', libraryCourseId: 'gone' }];
+    await mount();
+    expect(container.querySelectorAll('[title="Remove from your courses"]')).toHaveLength(0);
+    expect(container.textContent).toContain('No courses found');
+  });
+
+  it('the empty state accounts for adopted courses', async () => {
+    seedOneAdopted();
+    await mount();
+    expect(container.textContent).not.toContain('No courses found');
+  });
+
+  it('search filters adopted courses too', async () => {
+    mockCourses = [];
+    mockLibrary = [
+      { id: 'lib-0', title: 'Prayer', status: 'published' } as any,
+      { id: 'lib-1', title: 'Fasting', status: 'published' } as any,
+    ];
+    mockAdopted = [
+      { id: 'lib-0', libraryCourseId: 'lib-0' },
+      { id: 'lib-1', libraryCourseId: 'lib-1' },
+    ];
+    await mount();
+    // ×2: the mobile and desktop lists both render in happy-dom, which applies
+    // no CSS media queries, so each row appears once per viewport variant.
+    expect(container.querySelectorAll('[title="Remove from your courses"]')).toHaveLength(4);
+
+    const search = container.querySelector('input') as HTMLInputElement;
+    await act(async () => {
+      const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')!.set!;
+      setter.call(search, 'Prayer');
+      search.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    expect(container.querySelectorAll('[title="Remove from your courses"]')).toHaveLength(2);
+    expect(container.textContent).toContain('Prayer');
+    expect(container.textContent).not.toContain('Fasting');
+  });
+});
