@@ -38,13 +38,6 @@ const LIBRARY_COLLECTIONS = [
   { col: 'libraryCategories', existingId: 'discipleship' },
 ] as const;
 
-// The two collections whose read rule references no document field, so any
-// query shape stays legal. libraryCourses is excluded — see the header.
-const FIELD_FREE_COLLECTIONS = [
-  { col: 'libraryAuthors', existingId: 'lib-author-1' },
-  { col: 'libraryCategories', existingId: 'discipleship' },
-] as const;
-
 // isSuperAdmin() (firestore.rules:15-19) admits the `superAdmin` token claim OR
 // either of two literal founder emails. All three paths must be able to author
 // the catalogue, or a super admin signed in without the claim propagated yet
@@ -90,17 +83,19 @@ describe('platform course library', () => {
   // ── Reads: the shared catalogue ──────────────────────────────────────
 
   describe('reads', () => {
-    for (const { col } of FIELD_FREE_COLLECTIONS) {
+    for (const { col } of LIBRARY_COLLECTIONS) {
       it(`a tenant admin can LIST ${col} UNFILTERED (rules are not filters)`, async () => {
-        // THE regression test for these two. Their read rule must not reference
-        // resource.data: if it does, this unfiltered list is rejected outright
-        // even though a single-doc get still succeeds, and the catalogue
-        // renders empty with no error.
+        // THE regression test. The read rule must not reference resource.data:
+        // if it does, this unfiltered list is rejected outright even though a
+        // single-doc get still succeeds, and the catalogue renders empty with
+        // no error. This is the property that makes every future catalogue
+        // query — search, category filter, ordering, pagination — impossible to
+        // get silently wrong.
         const db = (await fullAdmin()).firestore();
         await assertSucceeds(db.collection(col).get());
       });
 
-      it(`a plain member can list ${col}`, async () => {
+      it(`a plain member can list and get ${col}`, async () => {
         const db = (await member()).firestore();
         await assertSucceeds(db.collection(col).get());
       });
@@ -109,9 +104,7 @@ describe('platform course library', () => {
         const db = (await adminB()).firestore();
         await assertSucceeds(db.collection(col).get());
       });
-    }
 
-    for (const { col } of LIBRARY_COLLECTIONS) {
       it(`an UNAUTHENTICATED user CANNOT read ${col}`, async () => {
         const e = await getEnv();
         const db = e.unauthenticatedContext().firestore();
@@ -119,7 +112,7 @@ describe('platform course library', () => {
       });
     }
 
-    it('a tenant admin can get a single PUBLISHED library course, author and category', async () => {
+    it('a tenant admin can get a single library course, author and category', async () => {
       const db = (await fullAdmin()).firestore();
       await assertSucceeds(db.doc('libraryCourses/lib-course-1').get());
       await assertSucceeds(db.doc('libraryAuthors/lib-author-1').get());
@@ -134,73 +127,35 @@ describe('platform course library', () => {
       await assertFails(db.doc('libraryCategories/discipleship').get());
     });
 
-    it('the catalogue accepts a category filter alongside the required status filter', async () => {
+    it('the catalogue accepts filtered and ordered queries too (no field is referenced)', async () => {
       const db = (await member()).firestore();
-      await assertSucceeds(
-        db.collection('libraryCourses')
-          .where('status', '==', 'published')
-          .where('category', '==', 'Discipleship')
-          .get(),
-      );
+      await assertSucceeds(db.collection('libraryCourses').where('category', '==', 'Discipleship').get());
+      await assertSucceeds(db.collection('libraryCourses').where('status', '==', 'published').get());
+      await assertSucceeds(db.collection('libraryCourses').orderBy('title').get());
     });
   });
 
-  // ── Draft visibility, and the query-shape cost of it ────────────────
-  describe('libraryCourses draft visibility', () => {
-    it('a tenant admin CANNOT list libraryCourses unfiltered (the cost of the status rule)', async () => {
-      // Deliberate behaviour change. The read rule dereferences
-      // resource.data.status, so an unconstrained list is rejected outright for
-      // any non-super-admin. AdminCourses and CoursePage therefore MUST send
-      // where('status','==','published') — without it the browse view silently
-      // renders empty.
+  // ── Drafts are NOT hidden by the rules, on purpose ──────────────────
+  describe('draft library courses', () => {
+    it('a draft IS readable through the rules — hiding it is a client-side concern', async () => {
+      // Deliberate. A `status == 'published'` read rule would force every client
+      // query to constrain `status` forever (rules are not filters) to protect a
+      // half-written course of Harvest's OWN content — no security boundary, no
+      // privacy, no tenant data. adoptableCourses() filters drafts in JS, and
+      // /api/courses/adopt refuses to adopt one, which is where it matters.
       const db = (await fullAdmin()).firestore();
-      await assertFails(db.collection('libraryCourses').get());
-    });
-
-    it('a plain member CANNOT list libraryCourses unfiltered either', async () => {
-      const db = (await member()).firestore();
-      await assertFails(db.collection('libraryCourses').get());
-    });
-
-    it("a tenant admin CAN list libraryCourses filtered to published — the client's query", async () => {
-      const db = (await fullAdmin()).firestore();
-      await assertSucceeds(db.collection('libraryCourses').where('status', '==', 'published').get());
-    });
-
-    it('a plain member CAN list libraryCourses filtered to published', async () => {
-      const db = (await member()).firestore();
-      await assertSucceeds(db.collection('libraryCourses').where('status', '==', 'published').get());
-    });
-
-    it("an admin of ANOTHER tenant CAN list published courses (shared catalogue)", async () => {
-      const db = (await adminB()).firestore();
-      await assertSucceeds(db.collection('libraryCourses').where('status', '==', 'published').get());
-    });
-
-    it('a tenant admin CANNOT get an unpublished draft', async () => {
-      // The whole point: before this rule, a draft was readable by anyone with
-      // an SDK console and only a client-side filter hid it.
-      const db = (await fullAdmin()).firestore();
-      await assertFails(db.doc('libraryCourses/lib-course-2').get());
-    });
-
-    it('a plain member CANNOT get an unpublished draft', async () => {
-      const db = (await member()).firestore();
-      await assertFails(db.doc('libraryCourses/lib-course-2').get());
-    });
-
-    it('a tenant admin CANNOT list drafts by asking for them', async () => {
-      const db = (await fullAdmin()).firestore();
-      await assertFails(db.collection('libraryCourses').where('status', '==', 'draft').get());
-    });
-
-    it('a SUPER ADMIN can still list unfiltered and read drafts (the authoring screen)', async () => {
-      // isSuperAdmin() short-circuits the condition true without touching
-      // resource.data, so AdminLibraryCourses keeps working unchanged.
-      const db = (await superAdmin()).firestore();
-      await assertSucceeds(db.collection('libraryCourses').get());
       await assertSucceeds(db.doc('libraryCourses/lib-course-2').get());
-      await assertSucceeds(db.collection('libraryCourses').where('status', '==', 'draft').get());
+    });
+
+    it('an UNAUTHENTICATED user still cannot read a draft', async () => {
+      const e = await getEnv();
+      const db = e.unauthenticatedContext().firestore();
+      await assertFails(db.doc('libraryCourses/lib-course-2').get());
+    });
+
+    it('a tenant admin still CANNOT write a draft (or anything) in the catalogue', async () => {
+      const db = (await fullAdmin()).firestore();
+      await assertFails(db.doc('libraryCourses/lib-course-2').update({ status: 'published' }));
     });
   });
 

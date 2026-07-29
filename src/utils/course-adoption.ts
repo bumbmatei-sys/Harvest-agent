@@ -79,11 +79,20 @@ export function buildAdoptionRecord(
 /**
  * A library course is visible to tenants only once published.
  *
- * Enforced client-side here as an interim measure: the current libraryCourses
- * read rule is `allow read: if isAuthenticated()`, which does not filter by
- * status. The follow-up rules change tightens it to
- * `isSuperAdmin() || (isAuthenticated() && resource.data.status == 'published')`,
- * at which point this becomes belt-and-braces rather than the only guard.
+ * THIS IS THE SINGLE FILTERING MECHANISM on the read path, deliberately. The
+ * libraryCourses read rule is `allow read: if isAuthenticated()` and references
+ * no document field — the property that makes every catalogue query (search,
+ * category filter, ordering, pagination) impossible to get silently wrong.
+ *
+ * A `status == 'published'` read rule was written and reverted: it would have
+ * forced every client query to constrain `status` forever, and what it bought
+ * was hiding a half-written course of Harvest's OWN content from someone
+ * querying Firestore directly — no security boundary, no privacy, no tenant
+ * data. See the libraryCourses comment in firestore.rules.
+ *
+ * Where draft status actually matters — adoption — it IS enforced server-side:
+ * /api/courses/adopt refuses to adopt an unpublished course, a check no rule
+ * could make anyway since rules cannot read across collections.
  */
 export function isPubliclyVisible(course: Pick<LibraryCourse, 'status'>): boolean {
   return course.status === 'published';

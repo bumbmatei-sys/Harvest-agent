@@ -317,36 +317,29 @@ service cloud.firestore {
     // FILTERS: a rule that reads `resource.data` forces every query to constrain
     // that field. Because `resource.data` is absent here, ANY query shape is
     // accepted — an unfiltered catalogue list, `where('category','==',…)`,
-    // `orderBy(...)`. Had these
-    // lived on /courses behind a flag, the belongsToTenant(resource.data.tenantId)
-    // read there would reject every query that did not constrain tenantId — the
-    // silent, total failure that hid CRM activities for weeks (#236, again #239).
+    // `orderBy(...)`, pagination. Had these lived on /courses behind a flag, the
+    // belongsToTenant(resource.data.tenantId) read there would reject every query
+    // that did not constrain tenantId — the silent, total failure that hid CRM
+    // activities for weeks (#236, again #239).
     // Writes are super-admin only; the /courses rule is untouched.
-
-    // DRAFT VISIBILITY — and the query-shape cost of it, stated plainly.
     //
-    // This read references `resource.data.status`, which is a deliberate,
-    // eyes-open exception to the "no document field" note above. A super admin
-    // needs to author a course before the world sees it, and until this rule
-    // existed the only guard was a client-side filter — anyone with an SDK
-    // console could read every unpublished draft.
+    // ⚠️ THIS FIELD-FREE PROPERTY IS LOAD-BEARING. It is what makes every future
+    // query against the catalogue — search, category filter, ordering,
+    // pagination — impossible to get silently wrong. Do not add a
+    // `resource.data` condition here for ANY reason without accepting that every
+    // client query must then constrain that same field, forever, or render empty
+    // with no error.
     //
-    // THE COST: because the condition dereferences a field, a LIST query by a
-    // non-super-admin must now constrain that field, or Firestore rejects it
-    // outright. `where('status','==','published')` is REQUIRED on every tenant
-    // and member read of this collection (AdminCourses' browse view,
-    // CoursePage's adopted-course fetch). An unfiltered list still works for a
-    // super admin, because isSuperAdmin() short-circuits the whole condition
-    // true without touching resource.data — which is what keeps the authoring
-    // screen (AdminLibraryCourses) able to see drafts.
-    //
-    // `status == 'published'` is a single-field equality, so it needs no
-    // composite index; the catalogue is sorted client-side.
-    //
-    // libraryAuthors and libraryCategories below are deliberately NOT given the
-    // same treatment: they reference no field, so any query shape still works.
+    // A `status == 'published'` read was written and then reverted, deliberately.
+    // What it protected was a half-written course of Harvest's OWN content being
+    // visible to someone querying Firestore directly: no security boundary, no
+    // privacy, no tenant data. Trading a permanent structural guarantee for that
+    // is the wrong trade. Draft courses are hidden by adoptableCourses() in
+    // src/utils/course-adoption.ts — ONE filtering mechanism, in JS — and
+    // /api/courses/adopt independently refuses to adopt an unpublished course,
+    // which is where it actually matters.
     match /libraryCourses/{courseId} {
-      allow read: if isSuperAdmin() || (isAuthenticated() && resource.data.get('status', '') == 'published');
+      allow read: if isAuthenticated();
       allow write: if isSuperAdmin();
     }
 

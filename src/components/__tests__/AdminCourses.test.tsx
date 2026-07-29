@@ -295,16 +295,23 @@ describe('AdminCourses — library adoption', () => {
       expect(calls.paths).toContain('tenants/tenant-1/adoptedCourses');
     });
 
-    it('sends exactly the filters each rule requires — no more, no fewer', async () => {
+    it('keeps the /courses read tenant-filtered and the library reads unfiltered', async () => {
       await mount();
       expect(calls.paths).toContain('courses');
-      // Three reads, three DIFFERENT required shapes:
-      //  • /courses        tenantId  — rule reads resource.data.tenantId
-      //  • /libraryCourses status    — rule reads resource.data.status
-      //  • adoptedCourses  none      — tenant comes from the PATH
-      // Dropping either filter, or adding one to the adoption read, empties the
-      // corresponding list silently rather than erroring.
-      expect([...calls.wheres].sort()).toEqual(['status', 'tenantId']);
+      // Exactly ONE where() in the whole screen: the tenantId filter on
+      // /courses, whose rule dereferences resource.data.tenantId. The
+      // libraryCourses and adoptedCourses rules reference no document field, so
+      // adding a filter there would be pointless and removing the tenantId one
+      // would empty the tenant list silently rather than erroring.
+      expect(calls.wheres).toEqual(['tenantId']);
+    });
+
+    it('does NOT filter the catalogue by status — drafts are excluded in JS', async () => {
+      // One filtering mechanism, not two. A status filter here would duplicate
+      // adoptableCourses() and re-couple the query shape to a document field.
+      mockLibrary = makeLibrary(1);
+      await mount();
+      expect(calls.wheres).not.toContain('status');
     });
   });
 

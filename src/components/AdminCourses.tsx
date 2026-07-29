@@ -75,19 +75,19 @@ const AdminCourses: React.FC = () => {
 
   // Catalogue + this tenant's adoptions.
   //
-  // Three different query shapes on one screen, and they do NOT agree:
-  //  • /courses            MUST filter tenantId  (rule reads resource.data.tenantId)
-  //  • /libraryCourses     MUST filter status    (rule reads resource.data.status)
-  //  • adoptedCourses      MUST NOT filter       (tenant comes from the PATH)
+  // Both reads are deliberately UNFILTERED, and that is the opposite of the
+  // /courses read above. libraryCourses docs carry no tenantId and their read
+  // rule references no document field at all, so no filter is required — or
+  // possible to get wrong. adoptedCourses is a subcollection whose tenant comes
+  // from the PATH, so it needs no filter either.
   //
-  // The status filter is not decoration: the libraryCourses read rule is
-  // `isSuperAdmin() || (isAuthenticated() && resource.data.status == 'published')`,
-  // so for a tenant admin an UNFILTERED list is rejected outright. Removing this
-  // where() empties the browse view for every non-super-admin — silently, with
-  // no error. Single-field equality, so no composite index; sort client-side.
+  // Draft courses are excluded in JS by adoptableCourses() below, deliberately
+  // as the single mechanism: a `status` filter here would duplicate that in a
+  // second place, and pushing it into the read rule was considered and rejected
+  // (see the libraryCourses comment in firestore.rules).
   useEffect(() => {
     const unsubLibrary = onSnapshot(
-      query(collection(db, LIBRARY_COURSE_COLLECTIONS.courses), where('status', '==', 'published'), limit(200)),
+      query(collection(db, LIBRARY_COURSE_COLLECTIONS.courses), limit(200)),
       (snap) => {
         const fetched = snap.docs.map((d) => ({ id: d.id, ...d.data() })) as LibraryCourse[];
         setLibraryCourses(sortByTime(fetched, 'createdAt', 'desc'));
@@ -131,9 +131,9 @@ const AdminCourses: React.FC = () => {
   };
   const handleEditCourse = (course: Course) => { setEditingCourse(course); setIsEditorOpen(true); };
 
-  // Belt and braces: the query above already constrains status, and the read
-  // rule enforces it server-side. This keeps the guarantee visible at the point
-  // of use and holds if the query is ever widened.
+  // Draft courses are neither browsable nor adoptable. This is the ONE place
+  // that filter lives on the read path; /api/courses/adopt independently refuses
+  // to adopt an unpublished course, which is the check that actually matters.
   const visibleLibrary = adoptableCourses(libraryCourses).filter(course =>
     (course.title?.toLowerCase() || '').includes(searchQuery.toLowerCase())
   );

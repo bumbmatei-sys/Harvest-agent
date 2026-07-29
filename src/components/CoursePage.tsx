@@ -139,11 +139,11 @@ export default function CoursePage({
 
         // Adopted library courses. Adoption stores a POINTER, so the content is
         // read live from libraryCourses — an edit by the platform reaches every
-        // adopter with nothing to re-sync. The two reads below use DIFFERENT
-        // shapes: adoptedCourses takes its tenant from the PATH and must not be
-        // filtered, while libraryCourses must be filtered by status (its read
-        // rule dereferences resource.data.status). Neither takes a tenantId
-        // filter — catalogue docs carry no tenantId at all.
+        // adopter with nothing to re-sync. Both reads below are UNFILTERED,
+        // which is the opposite of the /courses read above: adoptedCourses gets
+        // its tenant from the PATH, and libraryCourses docs carry no tenantId
+        // and no field-referencing read rule, so any query shape is accepted.
+        // Drafts are excluded in JS by adoptableCourses() a few lines down.
         let adoptedLibrary: LibraryCourse[] = [];
         if (tenantId) {
           const adoptedSnap = await getDocs(collection(db, "tenants", tenantId, "adoptedCourses"));
@@ -151,12 +151,7 @@ export default function CoursePage({
             adoptedSnap.docs.map((d) => ((d.data() as AdoptedCourse).libraryCourseId ?? d.id)),
           );
           if (adoptedIds.size > 0) {
-            // MUST filter status: the libraryCourses read rule dereferences
-            // resource.data.status, so an unfiltered list is rejected for any
-            // non-super-admin. Single-field equality — no composite index.
-            const librarySnap = await getDocs(
-              query(collection(db, LIBRARY_COURSE_COLLECTIONS.courses), where("status", "==", "published")),
-            );
+            const librarySnap = await getDocs(collection(db, LIBRARY_COURSE_COLLECTIONS.courses));
             const all = librarySnap.docs
               .filter((d) => adoptedIds.has(d.id))
               .map((d) => ({ id: d.id, ...d.data() }) as LibraryCourse);
