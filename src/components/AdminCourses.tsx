@@ -6,15 +6,59 @@ import { db } from '../firebase';
 import { authFetch } from '../utils/auth-fetch';
 import AdminCourseEditor, { Course } from './AdminCourseEditor';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
-import { getTenantScope } from '../utils/tenant-scope';
+import { getTenantScope, getWriteTenantScope } from '../utils/tenant-scope';
 import { sortByTime } from '../utils/query-helpers';
 import { useTenant } from '@/contexts/TenantContext';
 import { LIBRARY_COURSE_COLLECTIONS } from '../utils/library-authoring';
+// Course descriptions are HTML from the rich-text editor. This card is a
+// two-line clamped summary, so formatting is worthless here — and rendering
+// catalogue HTML with dangerouslySetInnerHTML would be a needless XSS surface
+// even though the author is a super admin. Existing helper, not a new one.
+import { stripHtml } from '../utils/stripHtml';
 import {
   resolveCourseLimit, isAtCourseLimit, courseLimitMessage, adoptableCourses,
+  adoptedLibraryCourses,
 } from '../utils/course-adoption';
 import type { AdoptedCourse, LibraryCourse } from '../types/course.types';
 import { AdminPageHeader, AdminPrimaryButton, AdminSearchBar, AdminCard, AdminBadge, statusTone } from './admin/AdminUI';
+
+/**
+ * A tenant could not be resolved for a WRITE. Distinct from a generic failure
+ * because it is deterministic and reproducible — a configuration fault, not a
+ * transient one — so telling the user to "try again" is actively misleading.
+ */
+class NoTenantScopeError extends Error {
+  constructor() {
+    super('No tenant scope: could not determine which church to write to.');
+    this.name = 'NoTenantScopeError';
+  }
+}
+
+/** The message the user actually sees. Specific when we know why. */
+function describeAdoptionFailure(error: unknown, fallback: string): string {
+  if (error instanceof NoTenantScopeError) {
+    return 'Could not determine which church to use. Open your church\'s own site and try there.';
+  }
+  return fallback;
+}
+
+/**
+ * Do not swallow. The original catch here was `console.error(error)` plus a
+ * generic retry message, which turned a deterministic apex-super-admin failure
+ * into an unexplained one — invisible in Vercel logs and Sentry alike, because
+ * the request never left the browser.
+ *
+ * NOTE: there is no established client-side Sentry capture pattern in this
+ * codebase — `Sentry.captureException` appears in no component or util (the
+ * browser SDK IS initialised in instrumentation-client.ts, and
+ * money-path-sentry.ts is server-only). Rather than invent one here, this logs
+ * with the operation and the real message intact so the cause is legible in the
+ * console. Adding a client capture helper is its own change.
+ */
+function reportAdoptionFailure(op: 'adopt' | 'unadopt', error: unknown): void {
+  const message = error instanceof Error ? error.message : String(error);
+  console.error(`[courses:${op}] ${message}`, error);
+}
 
 const AdminCourses: React.FC = () => {
   const { tenantPlan } = useTenant();
@@ -99,8 +143,13 @@ const AdminCourses: React.FC = () => {
 
     let unsubAdopted: (() => void) | null = null;
     (async () => {
-      const tenantId = await getTenantScope();
-      if (!tenantId) return; // platform context — no tenant to hold adoptions
+      // getWriteTenantScope, NOT getTenantScope. This read addresses a
+      // tenant-scoped PATH, so it needs a concrete id — and getTenantScope()
+      // returns null for a super admin on the apex, which meant no listener at
+      // all: no "Adopted" badge, and adopted.length stuck at 0 so the plan cap
+      // undercounted. The adopt fix below is invisible without this one.
+      const tenantId = await getWriteTenantScope();
+      if (!tenantId) return; // genuinely no tenant to hold adoptions
       unsubAdopted = onSnapshot(
         collection(db, 'tenants', tenantId, 'adoptedCourses'),
         (snap) => {
@@ -119,6 +168,18 @@ const AdminCourses: React.FC = () => {
     (course.title?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
     (course.author?.toLowerCase() || '').includes(searchQuery.toLowerCase())
   );
+
+  // Adopted library courses belong on "Your courses" too: they occupy a plan
+  // slot and members see them, so listing them only under Library made the tab
+  // that answers "what does this church have?" answer it wrongly.
+  //
+  // They are POINTERS, so they render read-only — no Edit (the tenant does not
+  // own the content; the platform edits it and the change reaches everyone) and
+  // the remove action un-adopts rather than deleting anything.
+  const myAdoptedCourses = adoptedLibraryCourses(adopted, libraryCourses).filter(course =>
+    (course.title?.toLowerCase() || '').includes(searchQuery.toLowerCase())
+  );
+  const ownTabCount = courses.length + adopted.length;
 
   const handleNewCourse = () => {
     if (loading) return; // course count not known yet — can't decide the cap
@@ -148,8 +209,13 @@ const AdminCourses: React.FC = () => {
     }
     setAdoptingId(libraryCourse.id);
     try {
-      const tenantId = await getTenantScope();
-      if (!tenantId) throw new Error('No tenant scope');
+      // getWriteTenantScope, NOT getTenantScope — this is a MUTATION.
+      // getTenantScope() returns null by design for a super admin with no host
+      // scope (null means "all tenants", correct for a read), so on the apex
+      // the old code threw before the request ever left the browser: no Vercel
+      // log, no Sentry event, just "please try again", every time.
+      const tenantId = await getWriteTenantScope();
+      if (!tenantId) throw new NoTenantScopeError();
       // adoptedCourses is server-only now (allow write: if false). The route
       // writes the POINTER after verifying the target exists and is published —
       // a check no Firestore rule can make, since rules cannot read across
@@ -164,9 +230,9 @@ const AdminCourses: React.FC = () => {
         setTimeout(() => setErrorMessage(null), 5000);
       }
     } catch (error) {
-      console.error(error);
-      setErrorMessage('Failed to adopt this course. Please try again.');
-      setTimeout(() => setErrorMessage(null), 3000);
+      reportAdoptionFailure('adopt', error);
+      setErrorMessage(describeAdoptionFailure(error, 'Failed to adopt this course. Please try again.'));
+      setTimeout(() => setErrorMessage(null), 6000);
     } finally {
       setAdoptingId(null);
     }
@@ -177,8 +243,10 @@ const AdminCourses: React.FC = () => {
   const handleUnadopt = async (libraryCourseId: string) => {
     setAdoptingId(libraryCourseId);
     try {
-      const tenantId = await getTenantScope();
-      if (!tenantId) throw new Error('No tenant scope');
+      // Same mutation, same resolver — see handleAdopt. This had the identical
+      // apex bug: un-adopt failed for a super admin for exactly the same reason.
+      const tenantId = await getWriteTenantScope();
+      if (!tenantId) throw new NoTenantScopeError();
       const res = await authFetch('/api/courses/adopt', {
         method: 'DELETE',
         body: JSON.stringify({ tenantId, libraryCourseId }),
@@ -189,9 +257,9 @@ const AdminCourses: React.FC = () => {
         setTimeout(() => setErrorMessage(null), 5000);
       }
     } catch (error) {
-      console.error(error);
-      setErrorMessage('Failed to remove this course. Please try again.');
-      setTimeout(() => setErrorMessage(null), 3000);
+      reportAdoptionFailure('unadopt', error);
+      setErrorMessage(describeAdoptionFailure(error, 'Failed to remove this course. Please try again.'));
+      setTimeout(() => setErrorMessage(null), 6000);
     } finally {
       setAdoptingId(null);
     }
@@ -247,7 +315,7 @@ const AdminCourses: React.FC = () => {
           adopted course occupies a plan slot exactly like one you authored. */}
       <div className="flex items-center gap-1 border-b border-stone-200">
         {([
-          { key: 'own', label: `Your courses (${courses.length})` },
+          { key: 'own', label: `Your courses (${ownTabCount})` },
           { key: 'library', label: `Library (${adopted.length} adopted)` },
         ] as const).map((t) => (
           <button
@@ -310,7 +378,7 @@ const AdminCourses: React.FC = () => {
                           <span className="text-sm font-semibold text-earth line-clamp-1">{course.title}</span>
                           {isAdopted && <AdminBadge tone="gold">Adopted</AdminBadge>}
                         </div>
-                        <p className="text-xs text-[color:var(--text-faint)] mt-1 line-clamp-2">{course.description}</p>
+                        <p className="text-xs text-[color:var(--text-faint)] mt-1 line-clamp-2">{stripHtml(course.description || '')}</p>
                         <p className="text-xs text-warm-brown mt-1">
                           {[course.category, lessonCount ? `${lessonCount} lesson${lessonCount === 1 ? '' : 's'}` : null].filter(Boolean).join(' · ')}
                         </p>
@@ -355,11 +423,11 @@ const AdminCourses: React.FC = () => {
             <div className="w-4 h-4 border-2 border-gold border-t-transparent rounded-full animate-spin"></div>
             <span>Loading courses…</span>
           </div>
-        ) : filteredCourses.length === 0 ? (
+        ) : filteredCourses.length === 0 && myAdoptedCourses.length === 0 ? (
           <div className="px-3.5 py-14 flex flex-col items-center justify-center gap-1.5 text-center">
             <GraduationCap size={30} className="text-stone-300 mb-1" />
             <p className="font-display text-base text-earth">No courses found</p>
-            <p className="text-sm text-warm-brown">Get started by creating a new course.</p>
+            <p className="text-sm text-warm-brown">Get started by creating a new course, or adopt one from the library.</p>
           </div>
         ) : (
           filteredCourses.map((course, i) => {
@@ -398,6 +466,34 @@ const AdminCourses: React.FC = () => {
             );
           })
         )}
+        {/* Adopted library courses — read-only pointers. No Edit: the platform
+            owns the content and its edits reach every adopter. Remove un-adopts. */}
+        {myAdoptedCourses.map((course, i) => (
+          <div key={`adopted-${course.id}`} className={`flex items-center gap-3 px-3.5 py-3 ${(i || filteredCourses.length) ? 'border-t border-stone-200' : ''}`}>
+            <div className="w-[68px] h-[52px] rounded-brand bg-[var(--surface-gold)] text-gold flex items-center justify-center shrink-0 overflow-hidden">
+              {course.thumbnail
+                ? <img src={course.thumbnail} alt="" className="w-full h-full object-cover" />
+                : <Library size={20} />}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-2">
+                <span className="flex-1 min-w-0 text-sm font-semibold text-earth line-clamp-1">{course.title}</span>
+                <AdminBadge tone="gold" className="shrink-0">Adopted</AdminBadge>
+              </div>
+              <div className="text-xs text-[color:var(--text-faint)] mt-1 truncate">
+                From the Harvest library
+              </div>
+            </div>
+            <button
+              onClick={() => handleUnadopt(course.id)}
+              disabled={adoptingId === course.id}
+              className="p-2 rounded-brand text-[color:var(--text-faint)] hover:text-[#C4553B] hover:bg-[#F7E7E2] transition-colors shrink-0 disabled:opacity-50"
+              title="Remove from your courses"
+            >
+              <Trash2 size={16} />
+            </button>
+          </div>
+        ))}
       </div>
 
       {/* Desktop table — existing approved layout, unchanged (now lg-only). */}
@@ -422,13 +518,13 @@ const AdminCourses: React.FC = () => {
                     </div>
                   </td>
                 </tr>
-              ) : filteredCourses.length === 0 ? (
+              ) : filteredCourses.length === 0 && myAdoptedCourses.length === 0 ? (
                 <tr>
                   <td colSpan={4} className="px-6 py-14 text-center">
                     <div className="flex flex-col items-center justify-center gap-1.5">
                       <GraduationCap size={30} className="text-stone-300 mb-1" />
                       <p className="font-display text-base text-earth">No courses found</p>
-                      <p className="text-sm text-warm-brown">Get started by creating a new course.</p>
+                      <p className="text-sm text-warm-brown">Get started by creating a new course, or adopt one from the library.</p>
                     </div>
                   </td>
                 </tr>
@@ -467,6 +563,35 @@ const AdminCourses: React.FC = () => {
                   </tr>
                 ))
               )}
+              {/* Adopted library courses — read-only pointers (see the mobile
+                  list above). Rendered after the tenant's own, never editable. */}
+              {myAdoptedCourses.map((course) => (
+                <tr key={`adopted-${course.id}`} className="hover:bg-stone-100/60 transition-colors group">
+                  <td className="px-6 py-3.5">
+                    <div className="flex items-center gap-3">
+                      <span className="w-9 h-9 rounded-brand bg-[color-mix(in_srgb,var(--brand-color)_12%,white)] flex items-center justify-center shrink-0">
+                        <Library size={17} className="text-gold" />
+                      </span>
+                      <span className="text-sm font-semibold text-earth line-clamp-1">{course.title}</span>
+                      <AdminBadge tone="gold">Adopted</AdminBadge>
+                    </div>
+                  </td>
+                  <td className="px-6 py-3.5"><span className="text-sm text-warm-brown">Harvest library</span></td>
+                  <td className="px-6 py-3.5"><AdminBadge tone={statusTone(course.status)}>{course.status}</AdminBadge></td>
+                  <td className="px-6 py-3.5 text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      <button
+                        onClick={() => handleUnadopt(course.id)}
+                        disabled={adoptingId === course.id}
+                        className="p-2 rounded-brand text-[color:var(--text-faint)] hover:text-[#C4553B] hover:bg-[#F7E7E2] transition-colors disabled:opacity-50"
+                        title="Remove from your courses"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>

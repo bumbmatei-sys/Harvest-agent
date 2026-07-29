@@ -10,6 +10,7 @@ import {
   mergeCoursesForMembers,
   mergeAuthors,
   mergeCategories,
+  adoptedLibraryCourses,
 } from '../course-adoption';
 import type { Course, LibraryCourse } from '../../types/course.types';
 
@@ -170,6 +171,33 @@ describe('course adoption', () => {
     it('appends library categories without duplicating shared labels', () => {
       expect(mergeCategories(['All', 'Discipleship'], ['Discipleship', 'Prayer']))
         .toEqual(['All', 'Discipleship', 'Prayer']);
+    });
+  });
+
+  describe('adoptedLibraryCourses — the admin "Your courses" list', () => {
+    const lib = [libCourse({ id: 'a', title: 'A' }), libCourse({ id: 'b', title: 'B' })];
+
+    it('resolves adoption pointers to catalogue courses', () => {
+      const out = adoptedLibraryCourses([{ libraryCourseId: 'b' }, { libraryCourseId: 'a' }], lib);
+      expect(out.map((c) => c.id)).toEqual(['b', 'a']);
+    });
+
+    it('drops a pointer that no longer resolves rather than rendering a blank', () => {
+      // The platform can delete a catalogue course; the adoption record survives
+      // until someone un-adopts it.
+      const out = adoptedLibraryCourses([{ libraryCourseId: 'gone' }, { libraryCourseId: 'a' }], lib);
+      expect(out.map((c) => c.id)).toEqual(['a']);
+    });
+
+    it('does NOT filter by status — a slot is spent even once unpublished', () => {
+      // Members stop seeing it (CoursePage filters), but the church still holds
+      // the pointer, so hiding it from their admin would make the count wrong.
+      const withDraft = [libCourse({ id: 'd', status: 'draft' })];
+      expect(adoptedLibraryCourses([{ libraryCourseId: 'd' }], withDraft).map((c) => c.id)).toEqual(['d']);
+    });
+
+    it('returns nothing when the tenant has adopted nothing', () => {
+      expect(adoptedLibraryCourses([], lib)).toEqual([]);
     });
   });
 });

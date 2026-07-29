@@ -149,3 +149,31 @@ export function mergeCategories(tenantCategories: string[], libraryCategories: s
   for (const c of libraryCategories) if (!out.includes(c)) out.push(c);
   return out;
 }
+
+/**
+ * The library courses a tenant currently holds, resolved from their adoption
+ * records against the catalogue.
+ *
+ * Used by the admin course list so adopted courses appear under "Your courses"
+ * alongside the tenant's own — they occupy a plan slot and members see them, so
+ * hiding them on the tab that shows what the church has was misleading.
+ *
+ * A pointer that no longer resolves is DROPPED rather than rendered as a blank
+ * row: the platform can delete a catalogue course, which leaves the adoption
+ * record dangling until someone un-adopts it.
+ *
+ * Status is deliberately NOT filtered here. If the platform unpublishes a course
+ * a church already adopted, the church still holds the pointer and its admin
+ * should see that — members stop seeing the course (CoursePage filters), but the
+ * slot is still spent, so silently hiding it from the admin would make the
+ * course count look wrong.
+ */
+export function adoptedLibraryCourses(
+  adopted: Pick<AdoptedCourse, 'libraryCourseId'>[],
+  libraryCourses: LibraryCourse[],
+): LibraryCourse[] {
+  const byId = new Map(libraryCourses.map((c) => [c.id, c]));
+  return adopted
+    .map((a) => byId.get(a.libraryCourseId))
+    .filter((c): c is LibraryCourse => Boolean(c));
+}
