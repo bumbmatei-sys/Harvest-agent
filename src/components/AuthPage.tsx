@@ -490,7 +490,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
           {/* Logo mark */}
           <div className="mb-5 flex justify-center">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={logoSrc} alt={`${appName} logo`} className="h-12 w-auto object-contain" />
+            <img src={logoSrc} alt={`${appName} logo`} className="logo-plate h-12 w-auto object-contain" />
           </div>
 
           {/* Card */}

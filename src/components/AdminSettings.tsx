@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect } from 'react';
-import { Crown, Settings2, Bot, Plug, AlertTriangle, Check, FileText, MessageSquare, SlidersHorizontal, ChevronRight, DollarSign, CreditCard } from 'lucide-react';
+import { Crown, Settings2, Bot, Plug, AlertTriangle, Check, FileText, MessageSquare, SlidersHorizontal, ChevronRight, DollarSign, CreditCard, Palette } from 'lucide-react';
 import { TenantPlan } from '../types/tenant.types';
 import { getPlanFeatures, AI_TELEGRAM_ASSISTANT_ENABLED } from '../utils/plan-features';
 import { hasPlatformOverride } from '../utils/tenant-scope';
@@ -11,6 +11,7 @@ import GivingStatementsSection from './settings/GivingStatementsSection';
 import SmsSection from './settings/SmsSection';
 import AiAssistantSection from './settings/AiAssistantSection';
 import IntegrationsSection from './settings/IntegrationsSection';
+import ThemeToggle from './ThemeToggle';
 
 interface AdminSettingsProps {
   onBack: () => void;
@@ -108,6 +109,25 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
   // donations AND affiliate payouts (it also remains inside Fundraising).
   // Icons are neutral gray (no rainbow), rendered at 18px.
   const sections = [
+    {
+      // Appearance is ungated — the theme is a per-user display preference, not
+      // a plan feature, so it carries no `hidden` condition. Placed first
+      // because it is the one section every admin can act on regardless of plan.
+      id: 'appearance',
+      label: 'Appearance',
+      icon: <Palette size={18} />,
+      content: (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-semibold text-strong">Colour theme</p>
+            <p className="text-sm text-muted mt-0.5">
+              Applies to your account on this device. System follows your device setting.
+            </p>
+          </div>
+          <ThemeToggle />
+        </div>
+      ),
+    },
     {
       id: 'payments',
       label: 'Payments (Connect Stripe)',

@@ -437,7 +437,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
             <img
               src={displayLogo}
               alt={displayName}
-              className="w-9 h-9 object-contain shrink-0"
+              className="logo-plate w-9 h-9 object-contain shrink-0"
             />
             {!isSidebarCollapsed && (
               <span className="font-display text-[19px] font-semibold tracking-[-0.01em] text-earth truncate">

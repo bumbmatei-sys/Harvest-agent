@@ -6,6 +6,7 @@ import { Inter, Fraunces, Newsreader } from 'next/font/google';
 import './globals.css';
 import { cn } from "@/lib/utils";
 import { getTenantFromHost } from '@/lib/server-tenant';
+import { deriveOnDarkAccent } from '@/lib/theme';
 import ReferralTracker from '@/components/ReferralTracker';
 import { Toaster } from '@/components/ui/sonner';
 
@@ -147,8 +148,17 @@ export default async function RootLayout({
             --brand-color feeds MainApp's spinner + active accents. Unlayered, so it
             overrides the @layer base default in globals.css. Only a validated hex is
             interpolated (brandColorValid), so there is no injection surface. */}
+        {/* --brand-color-on-dark is derived here, server-side, from the hex the
+            tenant ALREADY stores — nothing new is persisted, so this needs no
+            change to how branding is saved. An arbitrary tenant colour can
+            vanish on a dark ground (deep navy is 1.01:1 on #1A1612); this
+            lightens it toward cream by the minimum that clears AA, so a colour
+            that already works comes back untouched — Harvest gold is 6.77:1 and
+            is not altered at all. CSS has no contrast function, so a blunt
+            fixed color-mix would have been the only pure-CSS option, and it
+            would have washed gold out to a pale #E2C99B. */}
         {brandColorValid && (
-          <style dangerouslySetInnerHTML={{ __html: `:root{--brand-color:${brandColor};--color-primary:${brandColor};}` }} />
+          <style dangerouslySetInnerHTML={{ __html: `:root{--brand-color:${brandColor};--color-primary:${brandColor};--brand-color-on-dark:${deriveOnDarkAccent(brandColor)};}` }} />
         )}
         <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block" rel="stylesheet" />
       </head>

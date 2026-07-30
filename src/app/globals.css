@@ -83,6 +83,13 @@
  --border-subtle:   var(--stone-100);  /* hairlines, = border-stone-100 */
  --border-strong:   var(--stone-300);  /* emphasis border, = border-stone-300 */
  --text-strong:     var(--earth);      /* headings/emphasis, = text-earth */
+
+ /* Stage 3: the accent's on-dark variant. Harvest gold already clears AA on
+    the dark ground (6.77:1), so the default is the accent itself, untouched.
+    A white-label tenant whose colour would vanish on dark gets a corrected
+    value injected per-request from layout.tsx (deriveOnDarkAccent). Unused
+    in the light theme — declared here only so the var always resolves. */
+ --brand-color-on-dark: var(--brand-color);
  }
 
  /* ── Theming stage 2: where stage 3's dark palette goes ──────────────────
@@ -110,8 +117,90 @@
     matching `darkMode` variant in tailwind.config.ts. */
  .dark,
  [data-theme="dark"] {
-   /* stage 3 */
+   /* Warm dark grey anchored on --warm-dark #1A1612. A cool/neutral grey was
+      rejected: Harvest's light neutrals are warm, and mixing warm light with
+      cool dark makes the gold read differently between themes. Documented
+      alternative if this reads flat in practice: --navy-900 #0C1526.
+
+      Every value below is contrast-verified, not eyeballed — see the ratios
+      asserted in src/__tests__/theming-stage3.test.ts. */
+   color-scheme: dark;
+
+   /* ── Neutral ramp ────────────────────────────────────────────────────
+      NOTE --surface-raised INVERTS DIRECTION: in light it is whiter than the
+      ground, in dark it must be LIGHTER than a dark ground, not brighter in
+      absolute terms. --surface-sunken stays recessive, i.e. darker. */
+   --surface:         #1A1612;   /* page ground = --warm-dark */
+   --surface-raised:  #221D18;   /* cards/panels — lighter than the ground */
+   --surface-sunken:  #120F0C;   /* recessed fills — darker than the ground */
+
+   --border-subtle:   #2A2420;
+   --border-default:  #332C26;
+   --border-strong:   #463D35;
+
+   /* Warm text ramp, hue preserved by mixing warm-brown toward cream. Every
+      step clears AA (4.5:1) against all three surfaces above, and the ramp is
+      monotonic so the visual hierarchy survives the inversion. */
+   --text-strong:     #FAF8F5;   /* = --cream          15.76:1 on raised */
+   --text-heading:    #FAF8F5;
+   --text-body:       #D1C7BA;   /*                    10.02:1 on raised */
+   --text-muted:      #B5A692;   /*                     7.03:1 on raised */
+   --text-faint:      #998469;   /*                     4.66:1 on raised */
+
+   /* ── The two surfaces a mechanical inversion misses ──────────────────
+      Neither belongs to the neutral ramp, which is exactly why they'd be
+      forgotten. */
+
+   /* --surface-night is the navy "dark hero band". On a dark page a dark band
+      has almost no contrast and the section visually disappears, so in dark
+      mode it goes LIGHTER than the ground rather than darker — it keeps its
+      navy identity while still reading as a distinct band. */
+   --surface-night:  #16233D;
+
+   /* --surface-gold is a LIGHT wheat tint (icon discs, active pills). Left
+      alone it becomes a glaring bright block on a dark ground. A low-opacity
+      mix of the (already contrast-corrected) accent keeps it tenant-aware
+      instead of pinning it to a fixed hex. */
+   --surface-gold:   color-mix(in srgb, var(--brand-color-on-dark, var(--brand-color)) 16%, transparent);
+
+   /* Fixed-alpha gold reads much weaker against a dark ground, so lift it. */
+   --border-gold:    color-mix(in srgb, var(--brand-color-on-dark, var(--brand-color)) 52%, transparent);
+
+   /* ── Elevation ───────────────────────────────────────────────────────
+      Warm-tinted drop shadows are nearly invisible on a dark ground — they
+      are not "subtle" there, they are absent. Rather than leave tokens that
+      silently do nothing, each becomes a hairline top highlight plus a deeper
+      black shadow, which is how elevation actually reads on dark. */
+   --ds-sh-sm: 0 1px 0 0 rgba(250, 248, 245, 0.04) inset, 0 1px 2px rgba(0, 0, 0, 0.40);
+   --ds-sh-md: 0 1px 0 0 rgba(250, 248, 245, 0.05) inset, 0 4px 12px rgba(0, 0, 0, 0.45);
+   --ds-sh-lg: 0 1px 0 0 rgba(250, 248, 245, 0.06) inset, 0 8px 24px rgba(0, 0, 0, 0.55);
+
+   /* The gold CTA halo needs the corrected accent, or a dark tenant colour
+      produces a glow nobody can see. */
+   --glow-gold: 0 10px 30px -8px color-mix(in srgb, var(--brand-color-on-dark, var(--brand-color)) 46%, transparent);
  }
+}
+
+/* ── Theming stage 3: tenant logos are images and do not invert ───────────
+   A tenant uploads a wordmark with dark text on transparent, or one with a
+   baked-in white background. On a dark ground the first disappears and the
+   second sits in a bright box. This surfaces as a customer complaint, not a
+   failing test.
+
+   A light plate is used rather than a second dark-mode upload: it needs no new
+   upload flow, no extra storage, and no migration for tenants who already
+   uploaded one — and it works for the Harvest default logo too, which is the
+   fallback when a tenant has no logo at all.
+
+   No-op in the light theme. The plate is drawn with background + a box-shadow
+   ring rather than padding, so it never shifts layout. */
+@layer components {
+  [data-theme="dark"] .logo-plate,
+  .dark .logo-plate {
+    background: var(--cream);
+    border-radius: 6px;
+    box-shadow: 0 0 0 3px var(--cream);
+  }
 }
 
 /* Desktop density: the app is mobile-first at a 16px root. On desktop the
