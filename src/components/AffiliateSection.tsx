@@ -154,7 +154,7 @@ export default function AffiliateSection() {
         <h2 className="font-display text-[1.75rem] lg:text-[2rem] leading-[1.1] font-light tracking-[-0.02em] text-earth">Affiliate Program</h2>
         <p className="text-sm text-warm-brown mt-2 max-w-xl">
           Share your link and earn commission on every subscription you refer — for the
-          first {windowMonths} months after each church signs up.
+          first {windowMonths} months after each ministry signs up.
         </p>
       </div>
 
@@ -281,7 +281,7 @@ export default function AffiliateSection() {
         </div>
         <p className="text-[10px] text-[color:var(--text-faint)] pt-1 border-t border-stone-200">
           You earn commission every month for the first {windowMonths} months after a
-          church signs up, then that referral&rsquo;s commission ends. If they cancel
+          ministry signs up, then that referral&rsquo;s commission ends. If they cancel
           sooner, commission stops sooner.
         </p>
         <p className="text-[10px] text-[color:var(--text-faint)]">
