@@ -494,7 +494,7 @@ describe('PLAN_PRICING (repriced)', () => {
     plus:  { monthlyUsd: 49,  yearlyUsd: 490  },
     pro:   { monthlyUsd: 99,  yearlyUsd: 990  },
     max:   { monthlyUsd: 199, yearlyUsd: 1990 },
-    ultra: { monthlyUsd: 349, yearlyUsd: 3490 },
+    ultra: { monthlyUsd: 299, yearlyUsd: 2990 },
   } as const;
 
   it.each(Object.keys(EXPECTED) as (keyof typeof EXPECTED)[])(
@@ -504,8 +504,8 @@ describe('PLAN_PRICING (repriced)', () => {
     }
   );
 
-  it('prices the four tiers at 49 / 99 / 199 / 349 per month', () => {
-    expect(PLAN_ORDER.map((p) => PLAN_PRICING[p].monthlyUsd)).toEqual([49, 99, 199, 349]);
+  it('prices the four tiers at 49 / 99 / 199 / 299 per month', () => {
+    expect(PLAN_ORDER.map((p) => PLAN_PRICING[p].monthlyUsd)).toEqual([49, 99, 199, 299]);
   });
 
   it('bills annual as monthly × 10 (pay ten months, get twelve) on every tier', () => {
@@ -519,8 +519,9 @@ describe('PLAN_PRICING (repriced)', () => {
     expect(formatPlanPrice('plus', 'monthly')).toBe('$49/mo');
     expect(formatPlanPrice('pro', 'monthly')).toBe('$99/mo');
     expect(formatPlanPrice('max', 'monthly')).toBe('$199/mo');
-    expect(formatPlanPrice('ultra', 'monthly')).toBe('$349/mo');
+    expect(formatPlanPrice('ultra', 'monthly')).toBe('$299/mo');
     expect(formatPlanPrice('max', 'yearly')).toBe('$1,990/yr');
+    expect(formatPlanPrice('ultra', 'yearly')).toBe('$2,990/yr');
   });
 
   it('leaves the retired AI Assistant add-on at $200 — not swept up in the repricing', () => {

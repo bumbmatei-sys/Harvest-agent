@@ -251,7 +251,7 @@ export const PLAN_PRICING: Record<TenantPlan, { monthlyUsd: number; yearlyUsd: n
   plus:  { monthlyUsd: 49,   yearlyUsd: 490  },
   pro:   { monthlyUsd: 99,   yearlyUsd: 990  },
   max:   { monthlyUsd: 199,  yearlyUsd: 1990 },
-  ultra: { monthlyUsd: 349,  yearlyUsd: 3490 },
+  ultra: { monthlyUsd: 299,  yearlyUsd: 2990 },
 };
 
 /**

@@ -152,9 +152,9 @@ This table is a summary — when they disagree, the code is right and this file 
 | plus  | Individual  | $49/mo   | ✅   | ❌  | ❌            | ❌        | ❌  | ❌    | ❌       | ❌         | ❌           | ❌         | ❌               |
 | pro   | Small Team  | $99/mo   | ✅   | ✅  | ❌            | ❌        | ✅  | ✅    | ✅       | ✅         | ✅           | ❌         | ❌               |
 | max   | Community   | $199/mo  | ✅   | ✅  | ✅            | ✅        | ✅  | ✅    | ✅       | ✅         | ✅           | ❌         | ✅               |
-| ultra | Ministry    | $349/mo  | ✅   | ✅  | ✅            | ✅        | ✅  | ✅    | ✅       | ✅         | ✅           | ✅         | ✅               |
+| ultra | Ministry    | $299/mo  | ✅   | ✅  | ✅            | ✅        | ✅  | ✅    | ✅       | ✅         | ✅           | ✅         | ✅               |
 
-Annual billing is monthly × 10 (pay ten months, get twelve): $490 / $990 / $1,990 / $3,490.
+Annual billing is monthly × 10 (pay ten months, get twelve): $490 / $990 / $1,990 / $2,990.
 
 Five features — **Check-In, Livestream, Sermon Notes, Notes/Docs and CRM** — moved
 down from Community (max) to **Small Team (pro)**. The move is visibility only: no
@@ -281,7 +281,7 @@ Tokens live in `src/app/globals.css` (`:root`) and `tailwind.config.ts`.
 ## Current Status (as of last commits)
 - **No paying customers yet. Stripe is not live.** Nothing in production is taking real
   money, which is why fee/retention correctness is cheap to fix now and expensive later.
-- Plans: Individual ($49), Small Team ($99), Community ($199), Ministry ($349)
+- Plans: Individual ($49), Small Team ($99), Community ($199), Ministry ($299)
 - No enterprise plan — Ministry is the top tier
 - **1508 tests + 1 todo / 114 files** passing (`npm test`), plus **363 Firestore rules tests**
   under `tests/rules/` that run separately (`npm run test:rules`, needs the emulator)
