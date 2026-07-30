@@ -489,13 +489,24 @@ Friendly neighbor, not a corporate chatbot. Short. Helpful. Human.`;
  <div style={{ fontFamily: "var(--font-sans), system-ui, sans-serif", background: BG, height: "100%", width: "100%", display: "flex", position: "relative", overflow: "hidden" }}>
  <style>{`
  :root {
- --chat-bg: #FAF8F5;
- --chat-card: #FFFFFF;
- --chat-text: #2D2519;
- --chat-text2: #8B7355;
- --chat-border: #E8E2D9;
- --chat-gold-light: color-mix(in srgb, var(--brand-color, #C9963A) 12%, white);
- --chat-gold-btn: linear-gradient(135deg, var(--brand-color, #C9963A), color-mix(in srgb, var(--brand-color, #C9963A) 82%, #ffffff));
+ /* Pointed at the semantic ramp rather than fixed hexes. Every value below is
+    byte-identical to the hex it replaced in the light theme, and because the
+    ramp is already themed these inherit dark mode with no dark block at all.
+
+    This <style> injects an UNLAYERED :root, so it outranks globals.css's
+    @layer base regardless of specificity -- adding --chat-* overrides to the
+    .dark block there would have been silently overridden by this rule. Making
+    the values reference the ramp is what actually works. */
+ --chat-bg: var(--surface);              /* was #FAF8F5 */
+ --chat-card: var(--surface-raised);     /* was #FFFFFF */
+ --chat-text: var(--text-strong);        /* was #2D2519 */
+ --chat-text2: var(--text-muted);        /* was #8B7355 */
+ --chat-border: var(--border-default);   /* was #E8E2D9 */
+ /* The gold blends toward the card rather than a hard white: identical in
+    light (--surface-raised is #FFFFFF) and correctly dark-tinted in dark,
+    instead of a bright wash. Gold itself stays tenant-driven. */
+ --chat-gold-light: color-mix(in srgb, var(--brand-color, #C9963A) 12%, var(--surface-raised));
+ --chat-gold-btn: linear-gradient(135deg, var(--brand-color, #C9963A), color-mix(in srgb, var(--brand-color, #C9963A) 82%, var(--surface-raised)));
  }
  * { box-sizing: border-box; margin: 0; padding: 0; }
  ::-webkit-scrollbar { width: 0; }
