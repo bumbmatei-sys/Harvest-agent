@@ -21,11 +21,11 @@ import { MAX_PDF_UPLOAD_BYTES, limitMb } from '../utils/upload-limits';
 const GOLD = "var(--brand-color, #C9963A)";
 const GOLD_LIGHT = "color-mix(in srgb, var(--brand-color, #C9963A) 12%, white)";
 const GOLD_BTN = "linear-gradient(135deg, var(--brand-color, #C9963A), color-mix(in srgb, var(--brand-color, #C9963A) 82%, #ffffff))";
-const BG = "#FAF8F5";
-const CARD = "#FFFFFF";
-const TEXT = "#2D2519";
-const TEXT2 = "#8B7355";
-const BORDER = "#E8E2D9";
+const BG = "var(--surface)";
+const CARD = "var(--surface-raised)";
+const TEXT = "var(--text-strong)";
+const TEXT2 = "var(--text-muted)";
+const BORDER = "var(--border-default)";
 const GREEN = "#27AE60";
 const GREEN_BG = "#EAFAF1";
 const RED = "#E74C3C";
@@ -34,7 +34,7 @@ const RED_BG = "#FDECEA";
 const uid = () => Math.random().toString(36).slice(2, 9);
 
 // Debranded, muted warm badge palette — labels differentiate types (no emoji/bright colors)
-const STONE_100 = "#F3EEE7";
+const STONE_100 = "var(--surface-sunken)";
 const TYPE_META: Record<string, any> = {
  text: { label:"Text" },
  txt: { label:"TXT" },

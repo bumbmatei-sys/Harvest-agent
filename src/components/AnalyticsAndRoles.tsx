@@ -22,11 +22,11 @@ const GOLD_BTN = "linear-gradient(135deg, var(--brand-color, #C9963A), color-mix
 // every accent derives from the tenant's --brand-color).
 const GOLD_SOFT = "color-mix(in srgb, var(--brand-color, #C9963A) 12%, white)";
 const GOLD_GLOW = "0 4px 14px color-mix(in srgb, var(--brand-color, #C9963A) 35%, transparent)";
-const BG = "#FAF8F5";
-const CARD = "#FFFFFF";
+const BG = "var(--surface)";
+const CARD = "var(--surface-raised)";
 const TEXT = "#111111";
 const TEXT2 = "#888888";
-const BORDER = "#E8E2D9";
+const BORDER = "var(--border-default)";
 const GREEN = "#16A34A";
 const GREEN_BG = "#F0FDF4";
 const RED = "#E74C3C";
