@@ -13,7 +13,7 @@ Read this before writing anything.
 > bug in this codebase has lived in that second category — a rejected Firestore query
 > rendering as "No activities" (#236), lost editor saves (#233, #234), members silently
 > dropped from a merge (#239), and a plan advertising 100% donation retention while
-> 2.5% was deducted (THE-51).
+> a fee was actually deducted (THE-51).
 
 When a read can fail, make the failure visible: surface an error state, keep the
 distinction between "empty" and "could not load", and let the write throw rather than
@@ -147,12 +147,19 @@ src/
 Source of truth: `src/utils/plan-features.ts` (`PLAN_PRICING` + the `PLAN_FEATURES` matrix).
 This table is a summary — when they disagree, the code is right and this file is stale.
 
-| Plan  | Display Name | Price    | Blog | AI  | Custom Domain | Event Reg | CRM | Accounting | Community Groups |
-|-------|-------------|----------|------|-----|---------------|-----------|-----|------------|------------------|
-| plus  | Individual  | $59/mo   | ✅   | ❌  | ❌            | ❌        | ❌  | ❌         | ❌               |
-| pro   | Small Team  | $119/mo  | ✅   | ✅  | ❌            | ❌        | ❌  | ❌         | ❌               |
-| max   | Community   | $299/mo  | ✅   | ✅  | ✅            | ✅        | ✅  | ❌         | ✅               |
-| ultra | Ministry    | $479/mo  | ✅   | ✅  | ✅            | ✅        | ✅  | ✅         | ✅               |
+| Plan  | Display Name | Price    | Blog | AI  | Custom Domain | Event Reg | CRM | Notes | Check-In | Livestream | Sermon Notes | Accounting | Community Groups |
+|-------|-------------|----------|------|-----|---------------|-----------|-----|-------|----------|------------|--------------|------------|------------------|
+| plus  | Individual  | $49/mo   | ✅   | ❌  | ❌            | ❌        | ❌  | ❌    | ❌       | ❌         | ❌           | ❌         | ❌               |
+| pro   | Small Team  | $99/mo   | ✅   | ✅  | ❌            | ❌        | ✅  | ✅    | ✅       | ✅         | ✅           | ❌         | ❌               |
+| max   | Community   | $199/mo  | ✅   | ✅  | ✅            | ✅        | ✅  | ✅    | ✅       | ✅         | ✅           | ❌         | ✅               |
+| ultra | Ministry    | $349/mo  | ✅   | ✅  | ✅            | ✅        | ✅  | ✅    | ✅       | ✅         | ✅           | ✅         | ✅               |
+
+Annual billing is monthly × 10 (pay ten months, get twelve): $490 / $990 / $1,990 / $3,490.
+
+Five features — **Check-In, Livestream, Sermon Notes, Notes/Docs and CRM** — moved
+down from Community (max) to **Small Team (pro)**. The move is visibility only: no
+Firestore rule, API route, query or cap keys off those cells (CRM's `contacts` /
+`contactActivities` rules scope on the `manageCRM` permission, not on plan).
 
 The "AI Assistant" column was removed: the Telegram add-on is retired (#214, THE-13).
 `AI_TELEGRAM_ASSISTANT_ENABLED = false` hides every customer-facing surface; the
@@ -162,7 +169,11 @@ feature can be restored by flipping that one boolean.
 Community (max) is the tier most often described wrongly: it **does** get CRM, Tax
 Receipts, Community Groups, Custom Forms, Check-In, Livestream, Pledge Campaigns and
 Custom Domain. It does **not** get Accounting Tools, SMS, Text-to-Give or the global
-Church Directory — those stay Ministry.
+Church Directory — those stay Ministry. Note that CRM, Check-In and Livestream are no
+longer *exclusive* to Community: Small Team (pro) has them too. What Community adds
+over Small Team is Custom Domain, Custom Branding, Event Registration, Tax Receipts,
+Giving Statements, Custom Forms, Automated Blog/Newsletter, Pledge Campaigns and
+Community Groups.
 
 Custom domains are entitled from Community up, and the entitlement is enforced
 server-side in `src/app/api/domains/provision/route.ts` (403 for a plan without
@@ -184,13 +195,14 @@ account — donations AND paid event tickets. `PLATFORM_FEE_MAP`
 
 | Plan | Platform fee | Ministry retains |
 |------|--------------|------------------|
-| Individual (plus) | 5%   | **95%**   |
-| Small Team (pro)  | 5%   | **95%**   |
-| Community (max)   | 2.5% | **97.5%** |
+| Individual (plus) | 1.5% | **98.5%** |
+| Small Team (pro)  | 1.5% | **98.5%** |
+| Community (max)   | 1%   | **99%**   |
 | Ministry (ultra)  | 0%   | **100%**  |
 
-Community is **97.5%, not 100%** — a non-integer, and the number this file and the
-app both got wrong before (THE-51). `PLAN_FEATURES.*.donationRetention` mirrors
+Individual and Small Team are **98.5%, not 98 or 99** — non-integers, and this
+fraction is the class of number this file and the app both got wrong before
+(THE-51; Community was the fractional tier then, at 97.5). `PLAN_FEATURES.*.donationRetention` mirrors
 `PLATFORM_FEE_MAP` **by hand**: `plan-features.ts` is imported by ~20 client
 components and cannot import `stripe-config.ts`, which reads server-only
 `STRIPE_PRICE_*` vars at module load. `plan-features.test.ts` asserts the identity
@@ -269,15 +281,16 @@ Tokens live in `src/app/globals.css` (`:root`) and `tailwind.config.ts`.
 ## Current Status (as of last commits)
 - **No paying customers yet. Stripe is not live.** Nothing in production is taking real
   money, which is why fee/retention correctness is cheap to fix now and expensive later.
-- Plans: Individual ($59), Small Team ($119), Community ($299), Ministry ($479)
+- Plans: Individual ($49), Small Team ($99), Community ($199), Ministry ($349)
 - No enterprise plan — Ministry is the top tier
-- **1175 tests / 104 files** passing (`npm test`), plus **306 Firestore rules tests**
+- **1508 tests + 1 todo / 114 files** passing (`npm test`), plus **363 Firestore rules tests**
   under `tests/rules/` that run separately (`npm run test:rules`, needs the emulator)
 - AI Assistant (Telegram bot) **retired** (#214) — dormant code intact
 - Newsletter live · Community Groups live on **Community (max)** and above
-- CRM and Tax Receipts live on **Community (max)** and above; **Accounting is Ministry
-  only**. Upgrade-screen labels for all three are derived from the matrix — the old
-  hand-written maps said Ministry for CRM and Tax Receipts and oversold the $479 tier
+- CRM, Notes, Check-In, Livestream and Sermon Notes live on **Small Team (pro)** and
+  above; Tax Receipts on **Community (max)** and above; **Accounting is Ministry
+  only**. Upgrade-screen labels are derived from the matrix — the old hand-written
+  maps said Ministry for CRM and Tax Receipts and oversold the top tier
 - Community Groups is gated **client-side only** — no Firestore-rules or server check
   keys off the `communityGroups` flag (rules scope channels/DMs by roster, not by plan)
 - CRM outbound email sends through **Composio Gmail** (`GMAIL_SEND_EMAIL`), per-admin

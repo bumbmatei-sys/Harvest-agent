@@ -350,7 +350,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
       (hasFullAccess || perms.manageForms) &&
       { id: 'forms', label: 'Forms', icon: ClipboardList },
     // Check-In System (QR attendance) — the QR Code generator is now a sub-tab
-    // inside this screen. Check-In is Community (max) and above (checkInSystem), so the nav
+    // inside this screen. Check-In is Small Team (pro) and above (checkInSystem), so the nav
     // entry itself is gated by plan, same pattern as livestream/SMS below.
     (platformOverride || !isTenantAdmin || (features && features.checkInSystem)) &&
       (hasFullAccess || perms.manageCheckin || perms.manageQR) &&
