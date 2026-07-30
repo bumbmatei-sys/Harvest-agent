@@ -405,7 +405,7 @@ const AdminCourses: React.FC = () => {
 
       {/* Own courses vs the platform library. The count above spans BOTH — an
           adopted course occupies a plan slot exactly like one you authored. */}
-      <div className="flex items-center gap-1 border-b border-stone-200">
+      <div className="flex items-center gap-1 border-b border-line">
         {([
           { key: 'own', label: `Your courses (${ownTabCount})` },
           { key: 'library', label: `Library (${adopted.length} adopted)` },
@@ -415,8 +415,8 @@ const AdminCourses: React.FC = () => {
             onClick={() => setView(t.key)}
             className={`px-4 py-2.5 text-sm font-semibold -mb-px border-b-2 transition-colors ${
               view === t.key
-                ? 'border-gold text-earth'
-                : 'border-transparent text-warm-brown hover:text-earth'
+                ? 'border-gold text-strong'
+                : 'border-transparent text-muted hover:text-strong'
             }`}
           >
             {t.label}
@@ -425,7 +425,7 @@ const AdminCourses: React.FC = () => {
       </div>
 
       {atLimit && (
-        <div className="bg-[var(--surface-gold)] text-earth rounded-brand p-3.5 text-sm border border-stone-200">
+        <div className="bg-[var(--surface-gold)] text-strong rounded-brand p-3.5 text-sm border border-line">
           {limitMessage}
         </div>
       )}
@@ -434,7 +434,7 @@ const AdminCourses: React.FC = () => {
 
       {view === 'library' && (
         <div className="space-y-3">
-          <p className="text-sm text-warm-brown">
+          <p className="text-sm text-muted">
             Courses published by Harvest, free on every plan. Adopting one adds it to your
             church&apos;s courses — you keep it in step automatically, because the course stays
             with its author and any edits reach you. Adopted courses count towards your plan.
@@ -443,8 +443,8 @@ const AdminCourses: React.FC = () => {
             <AdminCard className="px-6 py-14 text-center">
               <div className="flex flex-col items-center justify-center gap-1.5">
                 <Library size={30} className="text-stone-300 mb-1" />
-                <p className="font-display text-base text-earth">Nothing in the library yet</p>
-                <p className="text-sm text-warm-brown">Published courses will appear here.</p>
+                <p className="font-display text-base text-strong">Nothing in the library yet</p>
+                <p className="text-sm text-muted">Published courses will appear here.</p>
               </div>
             </AdminCard>
           ) : (
@@ -475,11 +475,11 @@ const AdminCourses: React.FC = () => {
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
-                          <span className="text-sm font-semibold text-earth line-clamp-1">{course.title}</span>
+                          <span className="text-sm font-semibold text-strong line-clamp-1">{course.title}</span>
                           {isAdopted && <AdminBadge tone="gold">Adopted</AdminBadge>}
                         </div>
-                        <p className="text-xs text-[color:var(--text-faint)] mt-1 line-clamp-2">{stripHtml(course.description || '')}</p>
-                        <p className="text-xs text-warm-brown mt-1">
+                        <p className="text-xs text-faint mt-1 line-clamp-2">{stripHtml(course.description || '')}</p>
+                        <p className="text-xs text-muted mt-1">
                           {[course.category, lessonCount ? `${lessonCount} lesson${lessonCount === 1 ? '' : 's'}` : null].filter(Boolean).join(' · ')}
                         </p>
                       </div>
@@ -488,7 +488,7 @@ const AdminCourses: React.FC = () => {
                       <button
                         onClick={() => handleUnadopt(course.id)}
                         disabled={busy}
-                        className="self-start px-3 py-1.5 rounded-brand text-sm font-medium text-warm-brown hover:text-[#C4553B] hover:bg-[#F7E7E2] transition-colors disabled:opacity-50"
+                        className="self-start px-3 py-1.5 rounded-brand text-sm font-medium text-muted hover:text-[#C4553B] hover:bg-[#F7E7E2] transition-colors disabled:opacity-50"
                       >
                         {busy ? 'Removing…' : 'Remove from your courses'}
                       </button>
@@ -517,17 +517,17 @@ const AdminCourses: React.FC = () => {
           on gold tint), title + status pill, and an author · lesson-count meta line.
           Same loading / filteredCourses data and the same handleEditCourse (tap = open
           the builder) / setDeleteConfirmId handlers as the desktop table below. */}
-      <div className="lg:hidden bg-white rounded-brand-xl border border-stone-200 shadow-[var(--ds-sh-sm)] overflow-hidden">
+      <div className="lg:hidden bg-surface-raised rounded-brand-xl border border-line shadow-[var(--ds-sh-sm)] overflow-hidden">
         {loading ? (
-          <div className="px-3.5 py-10 flex items-center justify-center gap-2 text-warm-brown">
+          <div className="px-3.5 py-10 flex items-center justify-center gap-2 text-muted">
             <div className="w-4 h-4 border-2 border-gold border-t-transparent rounded-full animate-spin"></div>
             <span>Loading courses…</span>
           </div>
         ) : filteredCourses.length === 0 && myAdoptedCourses.length === 0 ? (
           <div className="px-3.5 py-14 flex flex-col items-center justify-center gap-1.5 text-center">
             <GraduationCap size={30} className="text-stone-300 mb-1" />
-            <p className="font-display text-base text-earth">No courses found</p>
-            <p className="text-sm text-warm-brown">Get started by creating a new course, or adopt one from the library.</p>
+            <p className="font-display text-base text-strong">No courses found</p>
+            <p className="text-sm text-muted">Get started by creating a new course, or adopt one from the library.</p>
           </div>
         ) : (
           filteredCourses.map((course, i) => {
@@ -539,7 +539,7 @@ const AdminCourses: React.FC = () => {
               .filter(Boolean)
               .join(' · ');
             return (
-              <div key={course.id} className={`flex items-center gap-3 px-3.5 py-3 ${i ? 'border-t border-stone-200' : ''}`}>
+              <div key={course.id} className={`flex items-center gap-3 px-3.5 py-3 ${i ? 'border-t border-line' : ''}`}>
                 <div className="w-[68px] h-[52px] rounded-brand bg-[var(--surface-gold)] text-gold flex items-center justify-center shrink-0 overflow-hidden">
                   {course.thumbnail
                     ? <img src={course.thumbnail} alt="" className="w-full h-full object-cover" />
@@ -547,17 +547,17 @@ const AdminCourses: React.FC = () => {
                 </div>
                 <button onClick={() => handleEditCourse(course)} className="flex-1 min-w-0 text-left">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="flex-1 min-w-0 text-sm font-semibold text-earth line-clamp-1">{course.title}</span>
+                    <span className="flex-1 min-w-0 text-sm font-semibold text-strong line-clamp-1">{course.title}</span>
                     <AdminBadge tone={statusTone(course.status)} className="shrink-0">{course.status}</AdminBadge>
                   </div>
                   <div className="flex items-center gap-1.5 mt-1">
                     {(course as any).featured && <AdminBadge tone="gold">Featured</AdminBadge>}
-                    {meta && <span className="text-xs text-[color:var(--text-faint)] truncate">{meta}</span>}
+                    {meta && <span className="text-xs text-faint truncate">{meta}</span>}
                   </div>
                 </button>
                 <button
                   onClick={() => setDeleteConfirmId(course.id || null)}
-                  className="p-2 rounded-brand text-[color:var(--text-faint)] hover:text-[#C4553B] hover:bg-[#F7E7E2] transition-colors shrink-0"
+                  className="p-2 rounded-brand text-faint hover:text-[#C4553B] hover:bg-[#F7E7E2] transition-colors shrink-0"
                   title="Delete"
                 >
                   <Trash2 size={16} />
@@ -569,7 +569,7 @@ const AdminCourses: React.FC = () => {
         {/* Adopted library courses — read-only pointers. No Edit: the platform
             owns the content and its edits reach every adopter. Remove un-adopts. */}
         {myAdoptedCourses.map((course, i) => (
-          <div key={`adopted-${course.id}`} className={`flex items-center gap-3 px-3.5 py-3 ${(i || filteredCourses.length) ? 'border-t border-stone-200' : ''}`}>
+          <div key={`adopted-${course.id}`} className={`flex items-center gap-3 px-3.5 py-3 ${(i || filteredCourses.length) ? 'border-t border-line' : ''}`}>
             <div className="w-[68px] h-[52px] rounded-brand bg-[var(--surface-gold)] text-gold flex items-center justify-center shrink-0 overflow-hidden">
               {course.thumbnail
                 ? <img src={course.thumbnail} alt="" className="w-full h-full object-cover" />
@@ -579,17 +579,17 @@ const AdminCourses: React.FC = () => {
                 own two settings live. Still NO Edit: the content is not theirs. */}
             <button onClick={() => setPreviewId(course.id)} className="flex-1 min-w-0 text-left" title={`Preview ${course.title}`}>
               <div className="flex items-center justify-between gap-2">
-                <span className="flex-1 min-w-0 text-sm font-semibold text-earth line-clamp-1">{course.title}</span>
+                <span className="flex-1 min-w-0 text-sm font-semibold text-strong line-clamp-1">{course.title}</span>
                 <AdminBadge tone="gold" className="shrink-0">Adopted</AdminBadge>
               </div>
-              <div className="text-xs text-[color:var(--text-faint)] mt-1 truncate">
+              <div className="text-xs text-faint mt-1 truncate">
                 From the Harvest library · View &amp; settings
               </div>
             </button>
             <button
               onClick={() => handleUnadopt(course.id)}
               disabled={adoptingId === course.id}
-              className="p-2 rounded-brand text-[color:var(--text-faint)] hover:text-[#C4553B] hover:bg-[#F7E7E2] transition-colors shrink-0 disabled:opacity-50"
+              className="p-2 rounded-brand text-faint hover:text-[#C4553B] hover:bg-[#F7E7E2] transition-colors shrink-0 disabled:opacity-50"
               title="Remove from your courses"
             >
               <Trash2 size={16} />
@@ -603,7 +603,7 @@ const AdminCourses: React.FC = () => {
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-stone-200">
+              <tr className="border-b border-line">
                 <th className="px-6 py-4 text-[11px] font-semibold text-gold uppercase tracking-[0.12em]">Title</th>
                 <th className="px-6 py-4 text-[11px] font-semibold text-gold uppercase tracking-[0.12em]">Author</th>
                 <th className="px-6 py-4 text-[11px] font-semibold text-gold uppercase tracking-[0.12em]">Status</th>
@@ -613,7 +613,7 @@ const AdminCourses: React.FC = () => {
             <tbody className="divide-y divide-stone-200">
               {loading ? (
                 <tr>
-                  <td colSpan={4} className="px-6 py-10 text-center text-warm-brown">
+                  <td colSpan={4} className="px-6 py-10 text-center text-muted">
                     <div className="flex items-center justify-center gap-2">
                       <div className="w-4 h-4 border-2 border-gold border-t-transparent rounded-full animate-spin"></div>
                       <span>Loading courses…</span>
@@ -625,8 +625,8 @@ const AdminCourses: React.FC = () => {
                   <td colSpan={4} className="px-6 py-14 text-center">
                     <div className="flex flex-col items-center justify-center gap-1.5">
                       <GraduationCap size={30} className="text-stone-300 mb-1" />
-                      <p className="font-display text-base text-earth">No courses found</p>
-                      <p className="text-sm text-warm-brown">Get started by creating a new course, or adopt one from the library.</p>
+                      <p className="font-display text-base text-strong">No courses found</p>
+                      <p className="text-sm text-muted">Get started by creating a new course, or adopt one from the library.</p>
                     </div>
                   </td>
                 </tr>
@@ -638,24 +638,24 @@ const AdminCourses: React.FC = () => {
                         <span className="w-9 h-9 rounded-brand bg-[color-mix(in_srgb,var(--brand-color)_12%,white)] flex items-center justify-center shrink-0">
                           <GraduationCap size={17} className="text-gold" />
                         </span>
-                        <span className="text-sm font-semibold text-earth line-clamp-1">{course.title}</span>
+                        <span className="text-sm font-semibold text-strong line-clamp-1">{course.title}</span>
                         {(course as any).featured && <AdminBadge tone="gold">Featured</AdminBadge>}
                       </div>
                     </td>
-                    <td className="px-6 py-3.5"><span className="text-sm text-warm-brown">{course.author}</span></td>
+                    <td className="px-6 py-3.5"><span className="text-sm text-muted">{course.author}</span></td>
                     <td className="px-6 py-3.5"><AdminBadge tone={statusTone(course.status)}>{course.status}</AdminBadge></td>
                     <td className="px-6 py-3.5 text-right">
                       <div className="flex items-center justify-end gap-1">
                         <button
                           onClick={() => handleEditCourse(course)}
-                          className="p-2 rounded-brand text-[color:var(--text-faint)] hover:text-gold hover:bg-stone-100 transition-colors"
+                          className="p-2 rounded-brand text-faint hover:text-gold hover:bg-surface-sunken transition-colors"
                           title="Edit"
                         >
                           <Edit2 size={16} />
                         </button>
                         <button
                           onClick={() => setDeleteConfirmId(course.id || null)}
-                          className="p-2 rounded-brand text-[color:var(--text-faint)] hover:text-[#C4553B] hover:bg-[#F7E7E2] transition-colors"
+                          className="p-2 rounded-brand text-faint hover:text-[#C4553B] hover:bg-[#F7E7E2] transition-colors"
                           title="Delete"
                         >
                           <Trash2 size={16} />
@@ -674,11 +674,11 @@ const AdminCourses: React.FC = () => {
                       <span className="w-9 h-9 rounded-brand bg-[color-mix(in_srgb,var(--brand-color)_12%,white)] flex items-center justify-center shrink-0">
                         <Library size={17} className="text-gold" />
                       </span>
-                      <span className="text-sm font-semibold text-earth line-clamp-1">{course.title}</span>
+                      <span className="text-sm font-semibold text-strong line-clamp-1">{course.title}</span>
                       <AdminBadge tone="gold">Adopted</AdminBadge>
                     </div>
                   </td>
-                  <td className="px-6 py-3.5"><span className="text-sm text-warm-brown">Harvest library</span></td>
+                  <td className="px-6 py-3.5"><span className="text-sm text-muted">Harvest library</span></td>
                   <td className="px-6 py-3.5"><AdminBadge tone={statusTone(course.status)}>{course.status}</AdminBadge></td>
                   <td className="px-6 py-3.5 text-right">
                     <div className="flex items-center justify-end gap-1">
@@ -686,7 +686,7 @@ const AdminCourses: React.FC = () => {
                           only. #249 removed Edit deliberately. */}
                       <button
                         onClick={() => setPreviewId(course.id)}
-                        className="p-2 rounded-brand text-[color:var(--text-faint)] hover:text-gold hover:bg-stone-100 transition-colors"
+                        className="p-2 rounded-brand text-faint hover:text-gold hover:bg-surface-sunken transition-colors"
                         title="View & settings"
                       >
                         <Eye size={16} />
@@ -694,7 +694,7 @@ const AdminCourses: React.FC = () => {
                       <button
                         onClick={() => handleUnadopt(course.id)}
                         disabled={adoptingId === course.id}
-                        className="p-2 rounded-brand text-[color:var(--text-faint)] hover:text-[#C4553B] hover:bg-[#F7E7E2] transition-colors disabled:opacity-50"
+                        className="p-2 rounded-brand text-faint hover:text-[#C4553B] hover:bg-[#F7E7E2] transition-colors disabled:opacity-50"
                         title="Remove from your courses"
                       >
                         <Trash2 size={16} />
@@ -712,11 +712,11 @@ const AdminCourses: React.FC = () => {
       {/* Delete Confirmation Modal */}
       {deleteConfirmId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white rounded-brand-lg shadow-xl max-w-sm w-full p-6 border border-stone-200">
-            <h3 className="font-display text-xl font-semibold text-earth mb-2">Delete course</h3>
-            <p className="text-warm-brown mb-6 text-sm">Are you sure you want to delete this course? This action cannot be undone.</p>
+          <div className="bg-surface-raised rounded-brand-lg shadow-xl max-w-sm w-full p-6 border border-line">
+            <h3 className="font-display text-xl font-semibold text-strong mb-2">Delete course</h3>
+            <p className="text-muted mb-6 text-sm">Are you sure you want to delete this course? This action cannot be undone.</p>
             <div className="flex justify-end gap-3">
-              <button onClick={() => setDeleteConfirmId(null)} className="px-4 py-2 text-warm-brown hover:bg-stone-100 rounded-brand font-medium transition-colors">Cancel</button>
+              <button onClick={() => setDeleteConfirmId(null)} className="px-4 py-2 text-muted hover:bg-surface-sunken rounded-brand font-medium transition-colors">Cancel</button>
               <button onClick={() => handleDeleteCourse(deleteConfirmId)} className="px-4 py-2 bg-[#C4553B] hover:opacity-90 text-white rounded-brand font-medium transition-opacity">Delete</button>
             </div>
           </div>

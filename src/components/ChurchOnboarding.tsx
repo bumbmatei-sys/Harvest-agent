@@ -153,7 +153,7 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ signupPlan }) => {
       </div>
 
       {/* Card */}
-      <div className="rounded-brand-xl border border-stone-200 bg-white px-6 py-8 shadow-[var(--ds-sh-md)] sm:px-9">
+      <div className="rounded-brand-xl border border-line bg-surface-raised px-6 py-8 shadow-[var(--ds-sh-md)] sm:px-9">
         {error && (
           <div className="mb-6 flex items-start gap-2 rounded-lg border px-3.5 py-3 text-sm" style={{ background: '#FBEEEA', borderColor: '#EBD0C7', color: '#B0432B' }}>
             <AlertCircle size={18} className="mt-0.5 shrink-0" />
@@ -178,7 +178,7 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ signupPlan }) => {
             Ministry name
           </label>
           <div
-            className="flex items-center gap-2.5 rounded-lg bg-white transition-all"
+            className="flex items-center gap-2.5 rounded-lg bg-surface-raised transition-all"
             style={{ height: 48, padding: '0 14px', border: `1px solid ${focus ? BRAND : 'var(--stone-200, #E8E2D9)'}`, boxShadow: focus ? `0 0 0 3px color-mix(in srgb, ${BRAND} 16%, transparent)` : 'none' }}
           >
             <span className="flex shrink-0" style={{ color: 'var(--text-muted, #8B7355)' }}><Church size={16} /></span>

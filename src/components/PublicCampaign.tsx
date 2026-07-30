@@ -96,7 +96,7 @@ const PublicCampaign: React.FC<PublicCampaignProps> = ({ tenantId, tenantName, l
 
   return (
     <Shell logo={logo} tenantName={tenantName} primaryColor={primaryColor}>
-      <div className="bg-white rounded-[14px] shadow-sm border border-gray-100 overflow-hidden">
+      <div className="bg-surface-raised rounded-[14px] shadow-sm border border-gray-100 overflow-hidden">
         {campaign.coverImage && (
           <div className="relative bg-gray-100">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -143,7 +143,7 @@ const PublicCampaign: React.FC<PublicCampaignProps> = ({ tenantId, tenantName, l
                   key={amt}
                   type="button"
                   onClick={() => { setSelectedAmount(amt); setCustomAmount(''); }}
-                  className={`py-2.5 rounded-xl text-sm font-bold border-2 transition-all ${selectedAmount === amt ? 'text-white border-transparent' : 'text-gray-800 border-gray-200 bg-white'}`}
+                  className={`py-2.5 rounded-xl text-sm font-bold border-2 transition-all ${selectedAmount === amt ? 'text-white border-transparent' : 'text-gray-800 border-gray-200 bg-surface-raised'}`}
                   style={selectedAmount === amt ? { backgroundColor: primaryColor, borderColor: primaryColor } : {}}
                 >
                   ${amt}

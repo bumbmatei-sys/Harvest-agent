@@ -76,7 +76,7 @@ export default async function CoursePublicPage({
   const backLabel = tenant ? `Back to ${tenant.name}` : 'Back to Harvest';
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-surface-raised">
       {/* Minimal header */}
       <header className="border-b border-gray-100">
         <div className="max-w-2xl mx-auto px-4 py-4">

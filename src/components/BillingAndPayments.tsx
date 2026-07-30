@@ -45,16 +45,16 @@ const STATUS_STYLES: Record<string, string> = {
   paid: 'bg-green-100 text-green-700',
   past_due: 'bg-amber-100 text-amber-700',
   open: 'bg-amber-100 text-amber-700',
-  cancelled: 'bg-stone-100 text-warm-brown',
-  canceled: 'bg-stone-100 text-warm-brown',
-  void: 'bg-stone-100 text-warm-brown',
-  draft: 'bg-stone-100 text-warm-brown',
+  cancelled: 'bg-surface-sunken text-muted',
+  canceled: 'bg-surface-sunken text-muted',
+  void: 'bg-surface-sunken text-muted',
+  draft: 'bg-surface-sunken text-muted',
   uncollectible: 'bg-red-100 text-red-700',
 };
 
 const statusPill = (status?: string | null) => {
   const s = (status || 'unknown').toLowerCase();
-  return STATUS_STYLES[s] || 'bg-stone-100 text-warm-brown';
+  return STATUS_STYLES[s] || 'bg-surface-sunken text-muted';
 };
 
 /**
@@ -143,43 +143,43 @@ const BillingAndPayments: React.FC<BillingAndPaymentsProps> = ({ currentPlan, te
 
       {/* 1 + 2: Current plan / status / next billing */}
       <div className="grid sm:grid-cols-2 gap-3">
-        <div className="bg-white rounded-2xl p-4 border border-stone-200 shadow-sm">
+        <div className="bg-surface-raised rounded-2xl p-4 border border-line shadow-sm">
           <div className="flex items-center gap-2 mb-2">
             <CreditCard size={16} style={{ color: GOLD }} />
-            <span className="text-xs text-warm-brown font-medium">Current Plan</span>
+            <span className="text-xs text-muted font-medium">Current Plan</span>
           </div>
-          <div className="text-2xl font-bold text-earth">{planLabel}</div>
+          <div className="text-2xl font-bold text-strong">{planLabel}</div>
           {status && (
             <span className={`inline-block mt-2 text-[10px] font-semibold px-2 py-0.5 rounded-full ${statusPill(status)}`}>
               {status}
             </span>
           )}
         </div>
-        <div className="bg-white rounded-2xl p-4 border border-stone-200 shadow-sm">
+        <div className="bg-surface-raised rounded-2xl p-4 border border-line shadow-sm">
           <div className="flex items-center gap-2 mb-2">
             <CalendarClock size={16} style={{ color: GOLD }} />
-            <span className="text-xs text-warm-brown font-medium">
+            <span className="text-xs text-muted font-medium">
               {subscription?.cancelAtPeriodEnd ? 'Access Until' : 'Next Billing'}
             </span>
           </div>
           {subscription?.currentPeriodEnd ? (
             <>
-              <div className="text-2xl font-bold text-earth">{fmtDate(subscription.currentPeriodEnd)}</div>
+              <div className="text-2xl font-bold text-strong">{fmtDate(subscription.currentPeriodEnd)}</div>
               {!subscription.cancelAtPeriodEnd && subscription.nextAmount != null && (
-                <p className="text-sm text-warm-brown mt-1">{fmtMoney(subscription.nextAmount, subscription.currency)}</p>
+                <p className="text-sm text-muted mt-1">{fmtMoney(subscription.nextAmount, subscription.currency)}</p>
               )}
               {subscription.cancelAtPeriodEnd && (
                 <p className="text-sm text-amber-600 mt-1">Cancels at period end</p>
               )}
             </>
           ) : (
-            <div className="text-sm text-[color:var(--text-faint)]">No active subscription</div>
+            <div className="text-sm text-faint">No active subscription</div>
           )}
         </div>
       </div>
 
       {/* 3: Upgrade / Cancel — reuses PlanUpgradeSection; upgrade UI hidden on Ministry */}
-      <div className="bg-white rounded-2xl p-5 border border-stone-200 shadow-sm">
+      <div className="bg-surface-raised rounded-2xl p-5 border border-line shadow-sm">
         <PlanUpgradeSection
           currentPlan={planId}
           tenantId={tenantId}
@@ -190,29 +190,29 @@ const BillingAndPayments: React.FC<BillingAndPaymentsProps> = ({ currentPlan, te
 
       {/* 4: Payment history — links to Stripe's own hosted invoice PDFs */}
       <div>
-        <h3 className="text-sm font-bold text-[color:var(--text-body)] mb-3 font-display">Payment History</h3>
+        <h3 className="text-sm font-bold text-body mb-3 font-display">Payment History</h3>
         {invoices.length === 0 ? (
-          <div className="text-center py-12 text-[color:var(--text-faint)] bg-white rounded-2xl border border-stone-200">
+          <div className="text-center py-12 text-faint bg-surface-raised rounded-2xl border border-line">
             <FileText size={36} className="mx-auto mb-2 opacity-30" />
             <p className="text-sm">No payments yet.</p>
           </div>
         ) : (
-          <div className="bg-white rounded-2xl border border-stone-200 shadow-sm overflow-hidden">
+          <div className="bg-surface-raised rounded-2xl border border-line shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-stone-200">
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-warm-brown uppercase tracking-wider">Date</th>
-                    <th className="px-4 py-3 text-right text-xs font-semibold text-warm-brown uppercase tracking-wider">Amount</th>
-                    <th className="px-4 py-3 text-center text-xs font-semibold text-warm-brown uppercase tracking-wider">Status</th>
-                    <th className="px-4 py-3 text-right text-xs font-semibold text-warm-brown uppercase tracking-wider">Invoice</th>
+                  <tr className="border-b border-line">
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-muted uppercase tracking-wider">Date</th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-muted uppercase tracking-wider">Amount</th>
+                    <th className="px-4 py-3 text-center text-xs font-semibold text-muted uppercase tracking-wider">Status</th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-muted uppercase tracking-wider">Invoice</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
                   {invoices.map((inv) => (
-                    <tr key={inv.id} className="hover:bg-stone-100 transition-colors">
-                      <td className="px-4 py-3 text-warm-brown whitespace-nowrap">{fmtDate(inv.date)}</td>
-                      <td className="px-4 py-3 text-right font-semibold text-earth">{fmtMoney(inv.amount, inv.currency)}</td>
+                    <tr key={inv.id} className="hover:bg-surface-sunken transition-colors">
+                      <td className="px-4 py-3 text-muted whitespace-nowrap">{fmtDate(inv.date)}</td>
+                      <td className="px-4 py-3 text-right font-semibold text-strong">{fmtMoney(inv.amount, inv.currency)}</td>
                       <td className="px-4 py-3 text-center">
                         <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${statusPill(inv.status)}`}>
                           {inv.status || 'unknown'}
@@ -243,9 +243,9 @@ const BillingAndPayments: React.FC<BillingAndPaymentsProps> = ({ currentPlan, te
       </div>
 
       {/* 5: Generate consolidated billing-summary PDF (pdf-lib, admin-facing) */}
-      <div className="bg-white rounded-2xl p-5 border border-stone-200 shadow-sm">
-        <h3 className="text-sm font-bold text-[color:var(--text-body)] mb-1 font-display">Billing Statement</h3>
-        <p className="text-sm text-warm-brown mb-4">
+      <div className="bg-surface-raised rounded-2xl p-5 border border-line shadow-sm">
+        <h3 className="text-sm font-bold text-body mb-1 font-display">Billing Statement</h3>
+        <p className="text-sm text-muted mb-4">
           Download a consolidated PDF summary of your plan and all subscription payments.
         </p>
         <button

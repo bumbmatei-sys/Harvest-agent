@@ -29,8 +29,8 @@ interface AdminBlogPostEditorProps {
   categories: string[];
 }
 
-const fieldLabel = 'block text-xs font-semibold text-[color:var(--text-body)] mb-1.5';
-const fieldInput = 'w-full px-3 py-2.5 bg-white border border-stone-200 rounded-brand text-sm text-earth outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent transition-all';
+const fieldLabel = 'block text-xs font-semibold text-body mb-1.5';
+const fieldInput = 'w-full px-3 py-2.5 bg-surface-raised border border-line rounded-brand text-sm text-strong outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent transition-all';
 
 const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose, categories }) => {
   const [title, setTitle] = useState(post?.title || '');
@@ -163,10 +163,10 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
             value={title}
             onChange={(e) => { setTitle(e.target.value); setError(''); }}
             placeholder="Post title"
-            className="w-full px-6 pt-6 pb-5 font-display text-[1.9rem] font-normal text-earth placeholder:text-stone-300 border-none outline-none bg-transparent leading-tight"
+            className="w-full px-6 pt-6 pb-5 font-display text-[1.9rem] font-normal text-strong placeholder:text-stone-300 border-none outline-none bg-transparent leading-tight"
             autoFocus
           />
-          <div className="border-t border-stone-200 px-6 py-5">
+          <div className="border-t border-line px-6 py-5">
             <RichTextEditor
               content={content}
               onChange={(c) => { setContent(c); setError(''); }}
@@ -209,7 +209,7 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
                   )}
                   <button
                     onClick={() => setIsAddingCategory(true)}
-                    className="px-2.5 rounded-brand text-warm-brown hover:bg-stone-100 transition-colors"
+                    className="px-2.5 rounded-brand text-muted hover:bg-surface-sunken transition-colors"
                     title="New category"
                   >
                     <Plus size={16} />
@@ -226,7 +226,7 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
                     autoFocus
                   />
                   <button onClick={handleAddCategory} disabled={!newCategory.trim()} className="px-3 py-2 rounded-brand text-white text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: 'var(--brand-color, #C9963A)' }}>Add</button>
-                  <button onClick={() => { setIsAddingCategory(false); setNewCategory(''); }} className="p-2 rounded-brand text-warm-brown hover:bg-stone-100 transition-colors"><X size={16} /></button>
+                  <button onClick={() => { setIsAddingCategory(false); setNewCategory(''); }} className="p-2 rounded-brand text-muted hover:bg-surface-sunken transition-colors"><X size={16} /></button>
                 </div>
               )}
             </div>
@@ -236,7 +236,7 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
               {tags.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 mb-2">
                   {tags.map(tag => (
-                    <span key={tag} className="inline-flex items-center gap-1 px-2.5 py-1 bg-stone-100 text-[color:var(--text-body)] rounded-full text-xs">
+                    <span key={tag} className="inline-flex items-center gap-1 px-2.5 py-1 bg-surface-sunken text-body rounded-full text-xs">
                       {tag}
                       <button onClick={() => removeTag(tag)} className="hover:text-[#C4553B] transition-colors"><X size={12} /></button>
                     </span>
@@ -247,7 +247,7 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
             </div>
 
             <div>
-              <label className={fieldLabel}>Schedule <span className="font-normal text-[color:var(--text-faint)] normal-case">(optional)</span></label>
+              <label className={fieldLabel}>Schedule <span className="font-normal text-faint normal-case">(optional)</span></label>
               <input type="datetime-local" value={scheduledDate} onChange={(e) => setScheduledDate(e.target.value)} className={fieldInput} />
             </div>
           </AdminCard>

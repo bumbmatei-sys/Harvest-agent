@@ -58,17 +58,17 @@ export function QuizPanel({ quiz, attempt, onSubmit }: QuizPanelProps) {
   if (mode === "result" && !hasLocalAnswers && attempt) {
     return (
       <div className="py-5">
-        <div className={`rounded-lg border p-4 mb-4 ${attempt.passed ? "bg-field-100 border-field-500" : "bg-stone-50 border-stone-200"}`}>
-          <div className={`text-sm font-bold ${attempt.passed ? "text-field-600" : "text-earth"}`}>
+        <div className={`rounded-lg border p-4 mb-4 ${attempt.passed ? "bg-field-100 border-field-500" : "bg-stone-50 border-line"}`}>
+          <div className={`text-sm font-bold ${attempt.passed ? "text-field-600" : "text-strong"}`}>
             {attempt.passed ? "Passed ✓" : "Not passed yet"}
           </div>
-          <div className="text-xs text-[color:var(--text-faint)] mt-0.5">
+          <div className="text-xs text-faint mt-0.5">
             Last attempt: {attempt.score} / {attempt.total} correct
           </div>
         </div>
         <button
           onClick={handleRetry}
-          className="w-full py-3 rounded-lg bg-stone-100 border border-stone-200 text-warm-brown text-[13px] font-semibold cursor-pointer hover:bg-stone-200 transition-colors"
+          className="w-full py-3 rounded-lg bg-surface-sunken border border-line text-muted text-[13px] font-semibold cursor-pointer hover:bg-stone-200 transition-colors"
         >
           Retake Quiz
         </button>
@@ -79,11 +79,11 @@ export function QuizPanel({ quiz, attempt, onSubmit }: QuizPanelProps) {
   return (
     <div className="py-5">
       {mode === "result" && (
-        <div className={`rounded-lg border p-4 mb-4 ${isQuizPassing(score, quiz.length) ? "bg-field-100 border-field-500" : "bg-stone-50 border-stone-200"}`}>
-          <div className={`text-sm font-bold ${isQuizPassing(score, quiz.length) ? "text-field-600" : "text-earth"}`}>
+        <div className={`rounded-lg border p-4 mb-4 ${isQuizPassing(score, quiz.length) ? "bg-field-100 border-field-500" : "bg-stone-50 border-line"}`}>
+          <div className={`text-sm font-bold ${isQuizPassing(score, quiz.length) ? "text-field-600" : "text-strong"}`}>
             {score} / {quiz.length} correct
           </div>
-          <div className="text-xs text-[color:var(--text-faint)] mt-0.5">
+          <div className="text-xs text-faint mt-0.5">
             {isQuizPassing(score, quiz.length) ? "Nice work!" : "Give it another try — you've got this."}
           </div>
         </div>
@@ -92,18 +92,18 @@ export function QuizPanel({ quiz, attempt, onSubmit }: QuizPanelProps) {
       <div className="space-y-5">
         {quiz.map((question, qi) => (
           <div key={question.id}>
-            <div className="text-sm font-bold text-earth mb-2.5">{qi + 1}. {question.q}</div>
+            <div className="text-sm font-bold text-strong mb-2.5">{qi + 1}. {question.q}</div>
             <div className="space-y-2">
               {question.options.map((option) => {
                 const isSelected = selected[question.id] === option.id;
-                let optionClass = "border-stone-200 hover:bg-stone-50";
+                let optionClass = "border-line hover:bg-stone-50";
                 if (mode === "result") {
                   if (option.correct) {
                     optionClass = "border-field-500 bg-field-100 text-field-600";
                   } else if (isSelected) {
                     optionClass = "border-red-500 bg-red-50 text-red-600";
                   } else {
-                    optionClass = "border-stone-200 opacity-60";
+                    optionClass = "border-line opacity-60";
                   }
                 } else if (isSelected) {
                   optionClass = "border-gold bg-[#FBF3E4]";
@@ -135,14 +135,14 @@ export function QuizPanel({ quiz, attempt, onSubmit }: QuizPanelProps) {
               onClick={handleSubmit}
               disabled={!allAnswered}
               className={`w-full py-3.5 rounded-lg text-sm font-bold transition-all ${
-                allAnswered ? "text-white cursor-pointer" : "bg-stone-100 text-[color:var(--text-faint)] cursor-not-allowed"
+                allAnswered ? "text-white cursor-pointer" : "bg-surface-sunken text-faint cursor-not-allowed"
               }`}
               style={allAnswered ? { background: GOLD } : undefined}
             >
               Submit Quiz
             </button>
             {!allAnswered && (
-              <div className="text-xs text-center text-[color:var(--text-faint)] mt-2">
+              <div className="text-xs text-center text-faint mt-2">
                 Answer all {quiz.length} questions to submit
               </div>
             )}
@@ -150,7 +150,7 @@ export function QuizPanel({ quiz, attempt, onSubmit }: QuizPanelProps) {
         ) : (
           <button
             onClick={handleRetry}
-            className="w-full py-3 rounded-lg bg-stone-100 border border-stone-200 text-warm-brown text-[13px] font-semibold cursor-pointer hover:bg-stone-200 transition-colors"
+            className="w-full py-3 rounded-lg bg-surface-sunken border border-line text-muted text-[13px] font-semibold cursor-pointer hover:bg-stone-200 transition-colors"
           >
             Retry Quiz
           </button>

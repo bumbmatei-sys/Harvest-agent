@@ -79,7 +79,7 @@ export const GivingStatementsSection: React.FC = () => {
         These details appear on the annual giving statements (tax receipts) you send to donors.
       </p>
 
-      <div className="bg-white rounded-2xl border border-gray-100 p-6 space-y-4">
+      <div className="bg-surface-raised rounded-2xl border border-gray-100 p-6 space-y-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Ministry EIN (Tax ID)</label>
           <input

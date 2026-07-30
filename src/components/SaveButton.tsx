@@ -45,7 +45,7 @@ const SaveButton: React.FC<SaveButtonProps> = ({ entry, variant = 'pill', classN
         aria-label={saved ? 'Remove from saved' : 'Save'}
         aria-pressed={saved}
         title={saved ? 'Saved' : 'Save'}
-        className={`inline-flex items-center justify-center w-9 h-9 rounded-full transition-colors hover:bg-stone-100 ${className || ''}`}
+        className={`inline-flex items-center justify-center w-9 h-9 rounded-full transition-colors hover:bg-surface-sunken ${className || ''}`}
         style={{ color: 'var(--brand-color, #B8962E)' }}
       >
         <Bookmark size={18} strokeWidth={2.5} fill={saved ? 'currentColor' : 'none'} />

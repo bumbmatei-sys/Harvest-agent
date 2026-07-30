@@ -101,9 +101,9 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ contacts, stages, onOpenConta
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full" style={{ backgroundColor: stage.color }} />
-                <span className="text-xs font-bold text-[color:var(--text-body)]">{stage.label}</span>
+                <span className="text-xs font-bold text-body">{stage.label}</span>
               </div>
-              <span className="text-[10px] font-semibold text-[color:var(--text-faint)] bg-stone-100 px-1.5 py-0.5 rounded-full">
+              <span className="text-[10px] font-semibold text-faint bg-surface-sunken px-1.5 py-0.5 rounded-full">
                 {stageContacts.length}
               </span>
             </div>
@@ -114,7 +114,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ contacts, stages, onOpenConta
                 <div
                   key={c.id}
                   onClick={() => onOpenContact(c)}
-                  className="bg-white rounded-xl border border-[#EDEBE8] p-3 cursor-pointer hover:shadow-sm hover:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] transition-all"
+                  className="bg-surface-raised rounded-xl border border-[#EDEBE8] p-3 cursor-pointer hover:shadow-sm hover:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] transition-all"
                 >
                   {/* Avatar + name */}
                   <div className="flex items-center gap-2 mb-2">
@@ -125,10 +125,10 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ contacts, stages, onOpenConta
                       {(c.firstName?.[0] || c.lastName?.[0] || '?').toUpperCase()}
                     </div>
                     <div className="min-w-0">
-                      <p className="text-xs font-bold text-earth truncate">
+                      <p className="text-xs font-bold text-strong truncate">
                         {[c.firstName, c.lastName].filter(Boolean).join(' ') || 'Unnamed'}
                       </p>
-                      <p className="text-[10px] text-[color:var(--text-faint)] truncate">{c.email}</p>
+                      <p className="text-[10px] text-faint truncate">{c.email}</p>
                     </div>
                   </div>
 
@@ -165,7 +165,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ contacts, stages, onOpenConta
 
               {stageContacts.length === 0 && (
                 <div className="rounded-xl border-2 border-dashed border-[#EDEBE8] p-4 text-center">
-                  <p className="text-[10px] text-[color:var(--text-faint)]">No contacts</p>
+                  <p className="text-[10px] text-faint">No contacts</p>
                 </div>
               )}
             </div>
@@ -542,12 +542,12 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
   // pill is shown only to admins entitled to that sub-view (Roles lives here
   // rather than as its own top-level tab).
   const subTabBar = (
-    <div className="flex gap-1 bg-stone-100 rounded-xl p-1 mb-5 w-fit">
+    <div className="flex gap-1 bg-surface-sunken rounded-xl p-1 mb-5 w-fit">
       {canViewContacts && (
         <button
           onClick={() => setCrmSubView('contacts')}
           className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
-            crmSubView === 'contacts' ? 'bg-white shadow-sm text-earth' : 'text-[color:var(--text-faint)]'
+            crmSubView === 'contacts' ? 'bg-surface-raised shadow-sm text-strong' : 'text-faint'
           }`}
         >
           Contacts
@@ -557,7 +557,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
         <button
           onClick={() => { setCrmSubView('analytics'); setView('list'); setSelected(null); }}
           className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
-            crmSubView === 'analytics' ? 'bg-white shadow-sm text-earth' : 'text-[color:var(--text-faint)]'
+            crmSubView === 'analytics' ? 'bg-surface-raised shadow-sm text-strong' : 'text-faint'
           }`}
         >
           Analytics
@@ -567,7 +567,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
         <button
           onClick={() => { setCrmSubView('roles'); setView('list'); setSelected(null); }}
           className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
-            crmSubView === 'roles' ? 'bg-white shadow-sm text-earth' : 'text-[color:var(--text-faint)]'
+            crmSubView === 'roles' ? 'bg-surface-raised shadow-sm text-strong' : 'text-faint'
           }`}
         >
           Roles
@@ -587,7 +587,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
             mode="analytics"
           />
         ) : (
-          <div className="text-center py-16 text-[color:var(--text-faint)]">
+          <div className="text-center py-16 text-faint">
             <p className="text-sm">Analytics unavailable.</p>
           </div>
         )}
@@ -606,7 +606,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
             mode="roles"
           />
         ) : (
-          <div className="text-center py-16 text-[color:var(--text-faint)]">
+          <div className="text-center py-16 text-faint">
             <p className="text-sm">You don&apos;t have access to manage roles.</p>
           </div>
         )}
@@ -618,30 +618,30 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
     return (
       <div ref={scrollRef} className="max-w-2xl mx-auto">
         {subTabBar}
-        <div className="bg-white rounded-2xl border border-[#EDEBE8] shadow-sm p-6 space-y-5">
+        <div className="bg-surface-raised rounded-2xl border border-[#EDEBE8] shadow-sm p-6 space-y-5">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-xs font-semibold text-warm-brown mb-1 block">First Name *</label>
+              <label className="text-xs font-semibold text-muted mb-1 block">First Name *</label>
               <input value={form.firstName} onChange={e => setForm({ ...form, firstName: e.target.value })}
                 className="w-full rounded-xl border border-[#EDEBE8] px-3 py-2.5 text-sm focus:border-gold focus:outline-none" placeholder="First name" />
             </div>
             <div>
-              <label className="text-xs font-semibold text-warm-brown mb-1 block">Last Name</label>
+              <label className="text-xs font-semibold text-muted mb-1 block">Last Name</label>
               <input value={form.lastName} onChange={e => setForm({ ...form, lastName: e.target.value })}
                 className="w-full rounded-xl border border-[#EDEBE8] px-3 py-2.5 text-sm focus:border-gold focus:outline-none" placeholder="Last name" />
             </div>
           </div>
           <div>
-            <label className="text-xs font-semibold text-warm-brown mb-1 block">Type</label>
+            <label className="text-xs font-semibold text-muted mb-1 block">Type</label>
             <select value={form.type} onChange={e => setForm({ ...form, type: e.target.value as Contact['type'] })}
-              className="w-full rounded-xl border border-[#EDEBE8] px-3 py-2.5 text-sm focus:border-gold focus:outline-none bg-white">
+              className="w-full rounded-xl border border-[#EDEBE8] px-3 py-2.5 text-sm focus:border-gold focus:outline-none bg-surface-raised">
               <option value="member">Member</option>
               <option value="donor">Donor</option>
               <option value="both">Donor & Member</option>
             </select>
           </div>
           <div>
-            <label className="text-xs font-semibold text-warm-brown mb-2 block">Pipeline Stage</label>
+            <label className="text-xs font-semibold text-muted mb-2 block">Pipeline Stage</label>
             <div className="flex gap-1.5 flex-wrap">
               {STAGES.map(s => (
                 <button
@@ -661,47 +661,47 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-xs font-semibold text-warm-brown mb-1 block">Email</label>
+              <label className="text-xs font-semibold text-muted mb-1 block">Email</label>
               <input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })}
                 className="w-full rounded-xl border border-[#EDEBE8] px-3 py-2.5 text-sm focus:border-gold focus:outline-none" placeholder="email@example.com" />
             </div>
             <div>
-              <label className="text-xs font-semibold text-warm-brown mb-1 block">Phone</label>
+              <label className="text-xs font-semibold text-muted mb-1 block">Phone</label>
               <input type="tel" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })}
                 className="w-full rounded-xl border border-[#EDEBE8] px-3 py-2.5 text-sm focus:border-gold focus:outline-none" placeholder="+1 555 000 0000" />
             </div>
           </div>
-          <p className="text-xs font-bold text-[color:var(--text-faint)] uppercase tracking-wider mt-2 mb-3">Address</p>
+          <p className="text-xs font-bold text-faint uppercase tracking-wider mt-2 mb-3">Address</p>
           <div>
-            <label className="text-xs font-semibold text-warm-brown mb-1 block">Street Address</label>
+            <label className="text-xs font-semibold text-muted mb-1 block">Street Address</label>
             <input value={form.address.street || ''} onChange={e => setForm({ ...form, address: { ...form.address, street: e.target.value } })}
               className="w-full rounded-xl border border-[#EDEBE8] px-3 py-2.5 text-sm focus:border-gold focus:outline-none" placeholder="123 Main St" />
           </div>
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="text-xs font-semibold text-warm-brown mb-1 block">City</label>
+              <label className="text-xs font-semibold text-muted mb-1 block">City</label>
               <input value={form.address.city || ''} onChange={e => setForm({ ...form, address: { ...form.address, city: e.target.value } })}
                 className="w-full rounded-xl border border-[#EDEBE8] px-3 py-2.5 text-sm focus:border-gold focus:outline-none" />
             </div>
             <div>
-              <label className="text-xs font-semibold text-warm-brown mb-1 block">State</label>
+              <label className="text-xs font-semibold text-muted mb-1 block">State</label>
               <input value={form.address.state || ''} onChange={e => setForm({ ...form, address: { ...form.address, state: e.target.value } })}
                 className="w-full rounded-xl border border-[#EDEBE8] px-3 py-2.5 text-sm focus:border-gold focus:outline-none" />
             </div>
             <div>
-              <label className="text-xs font-semibold text-warm-brown mb-1 block">ZIP</label>
+              <label className="text-xs font-semibold text-muted mb-1 block">ZIP</label>
               <input value={form.address.zip || ''} onChange={e => setForm({ ...form, address: { ...form.address, zip: e.target.value } })}
                 className="w-full rounded-xl border border-[#EDEBE8] px-3 py-2.5 text-sm focus:border-gold focus:outline-none" />
             </div>
           </div>
           <div>
-            <label className="text-xs font-semibold text-warm-brown mb-1 block">Notes</label>
+            <label className="text-xs font-semibold text-muted mb-1 block">Notes</label>
             <textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })}
               rows={3} className="w-full rounded-xl border border-[#EDEBE8] px-3 py-2.5 text-sm focus:border-gold focus:outline-none resize-none"
               placeholder="Any notes about this contact..." />
           </div>
           <div className="space-y-2 pt-2">
-            <button onClick={() => setView(isEditing ? 'detail' : 'list')} className="w-full py-3 rounded-xl border border-[#EDEBE8] text-sm font-semibold text-warm-brown">Cancel</button>
+            <button onClick={() => setView(isEditing ? 'detail' : 'list')} className="w-full py-3 rounded-xl border border-[#EDEBE8] text-sm font-semibold text-muted">Cancel</button>
             <button onClick={handleSave} disabled={saving || !form.firstName.trim()}
               className="w-full py-3 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
               style={{ backgroundColor: 'var(--brand-color, #B8962E)' }}>
@@ -730,12 +730,12 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
               )}
             </div>
             <div className="min-w-0">
-              <h2 className="text-2xl font-black text-earth leading-tight truncate">{selected.firstName} {selected.lastName}</h2>
+              <h2 className="text-2xl font-black text-strong leading-tight truncate">{selected.firstName} {selected.lastName}</h2>
               <div className="flex items-center gap-2 mt-1 flex-wrap">
                 <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${TYPE_COLORS[selected.type]}`}>
                   {TYPE_LABELS[selected.type]}
                 </span>
-                {selected.memberSince && <span className="text-xs text-[color:var(--text-faint)]">· Member since {fmtDate(selected.memberSince)}</span>}
+                {selected.memberSince && <span className="text-xs text-faint">· Member since {fmtDate(selected.memberSince)}</span>}
               </div>
               {/* Stage selector in detail view */}
               <div className="flex gap-1.5 flex-wrap mt-2">
@@ -756,8 +756,8 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
             </div>
           </div>
           <div className="flex gap-2 flex-shrink-0">
-            <button onClick={() => openEdit(selected)} className="p-2 rounded-xl border border-[#EDEBE8] hover:bg-stone-100">
-              <Edit2 size={14} className="text-warm-brown" />
+            <button onClick={() => openEdit(selected)} className="p-2 rounded-xl border border-[#EDEBE8] hover:bg-surface-sunken">
+              <Edit2 size={14} className="text-muted" />
             </button>
             <button onClick={() => setDeleteId(selected.id)} className="p-2 rounded-xl border border-[#EDEBE8] hover:bg-red-50">
               <Trash2 size={14} className="text-red-400" />
@@ -783,30 +783,30 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
         </div>
 
         {/* Contact info card */}
-        <div className="bg-white rounded-2xl border border-[#EDEBE8] shadow-sm p-4 mb-4">
+        <div className="bg-surface-raised rounded-2xl border border-[#EDEBE8] shadow-sm p-4 mb-4">
           <div className="grid grid-cols-2 gap-3">
             {selected.email && (
               <div className="flex items-center gap-2">
-                <Mail size={14} className="text-[color:var(--text-faint)] flex-shrink-0" />
-                <span className="text-sm text-[color:var(--text-body)] truncate">{selected.email}</span>
+                <Mail size={14} className="text-faint flex-shrink-0" />
+                <span className="text-sm text-body truncate">{selected.email}</span>
               </div>
             )}
             {selected.phone && (
               <div className="flex items-center gap-2">
-                <Phone size={14} className="text-[color:var(--text-faint)] flex-shrink-0" />
-                <span className="text-sm text-[color:var(--text-body)] truncate">{selected.phone}</span>
+                <Phone size={14} className="text-faint flex-shrink-0" />
+                <span className="text-sm text-body truncate">{selected.phone}</span>
               </div>
             )}
             {selected.address?.street && (
               <div className="flex items-center gap-2">
-                <MapPin size={14} className="text-[color:var(--text-faint)] flex-shrink-0" />
-                <span className="text-sm text-[color:var(--text-body)] truncate">{selected.address.street}</span>
+                <MapPin size={14} className="text-faint flex-shrink-0" />
+                <span className="text-sm text-body truncate">{selected.address.street}</span>
               </div>
             )}
             {selected.address?.city && (
               <div className="flex items-center gap-2">
-                <MapPin size={14} className="text-[color:var(--text-faint)] flex-shrink-0" />
-                <span className="text-sm text-[color:var(--text-body)] truncate">
+                <MapPin size={14} className="text-faint flex-shrink-0" />
+                <span className="text-sm text-body truncate">
                   {[selected.address.city, selected.address.state].filter(Boolean).join(', ')}
                 </span>
               </div>
@@ -815,12 +815,12 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
           {selected.tags && selected.tags.length > 0 && (
             <div className="mt-3 pt-3 border-t border-[#EDEBE8] flex flex-wrap gap-1.5">
               {selected.tags.map(tag => (
-                <span key={tag} className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-stone-100 text-warm-brown">{tag}</span>
+                <span key={tag} className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-surface-sunken text-muted">{tag}</span>
               ))}
             </div>
           )}
           <div className="border-t border-[#EDEBE8] pt-3 mt-3">
-            <label className="text-xs font-bold text-[color:var(--text-faint)] uppercase tracking-wider mb-1 block">Admin Notes</label>
+            <label className="text-xs font-bold text-faint uppercase tracking-wider mb-1 block">Admin Notes</label>
             <textarea
               defaultValue={selected.notes || ''}
               onBlur={async (e) => {
@@ -838,7 +838,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
                 }
               }}
               rows={3}
-              className="border-0 focus:outline-none text-sm text-[color:var(--text-body)] resize-none w-full bg-transparent leading-relaxed"
+              className="border-0 focus:outline-none text-sm text-body resize-none w-full bg-transparent leading-relaxed"
               placeholder="Add notes about this contact..."
             />
           </div>
@@ -846,7 +846,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
 
         {/* Activity Timeline */}
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-xs font-bold text-[color:var(--text-faint)] uppercase tracking-wider">Activity Timeline</h3>
+          <h3 className="text-xs font-bold text-faint uppercase tracking-wider">Activity Timeline</h3>
           <div className="flex items-center gap-2">
             {/* Email action. Three distinct states, and never a button that is
                 known to fail: no address on the contact → nothing at all;
@@ -855,7 +855,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
             {selected.email && gmailConnected === true && (
               <button
                 onClick={openCompose}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border border-[#EDEBE8] text-warm-brown hover:bg-stone-100"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border border-[#EDEBE8] text-muted hover:bg-surface-sunken"
               >
                 <Send size={12} /> Email
               </button>
@@ -863,7 +863,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
             {selected.email && gmailConnected === false && (
               <button
                 onClick={() => navigate('/admin/settings')}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border border-[#EDEBE8] text-[color:var(--text-faint)] hover:bg-stone-100"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border border-[#EDEBE8] text-faint hover:bg-surface-sunken"
               >
                 <Send size={12} /> Connect your email
               </button>
@@ -896,11 +896,11 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
             </button>
           </div>
         ) : activitiesLoading ? (
-          <div className="bg-white rounded-2xl border border-[#EDEBE8] shadow-sm p-8 flex justify-center">
+          <div className="bg-surface-raised rounded-2xl border border-[#EDEBE8] shadow-sm p-8 flex justify-center">
             <div className="w-6 h-6 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--brand-color, #B8962E)', borderTopColor: 'transparent' }} />
           </div>
         ) : activities.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-[#EDEBE8] shadow-sm p-8 text-center text-[color:var(--text-faint)]">
+          <div className="bg-surface-raised rounded-2xl border border-[#EDEBE8] shadow-sm p-8 text-center text-faint">
             <Clock size={28} className="mx-auto mb-2 opacity-30" />
             <p className="text-sm font-display">No activities recorded yet — add the first one</p>
           </div>
@@ -916,13 +916,13 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
                 </div>
                 <div>
                   <div className="flex items-center gap-2 mb-0.5">
-                    <span className="text-xs font-bold text-warm-brown capitalize">{act.type}</span>
+                    <span className="text-xs font-bold text-muted capitalize">{act.type}</span>
                     {act.amount && (
                       <span className="text-xs font-bold" style={{ color: 'var(--brand-color, #B8962E)' }}>{fmt(act.amount)}</span>
                     )}
-                    <span className="text-[10px] text-[color:var(--text-faint)] ml-auto">{fmtDate(act.createdAt)}</span>
+                    <span className="text-[10px] text-faint ml-auto">{fmtDate(act.createdAt)}</span>
                   </div>
-                  <p className="text-sm text-[color:var(--text-body)]">{act.description}</p>
+                  <p className="text-sm text-body">{act.description}</p>
                 </div>
               </div>
             ))}
@@ -939,17 +939,17 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
 
         {showAddActivity && (
           <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center bg-black/50 p-4">
-            <div className="bg-white rounded-3xl w-full max-w-md">
-              <div className="p-5 border-b border-[#EDEBE8]"><h3 className="font-bold text-earth font-display">Add Activity</h3></div>
+            <div className="bg-surface-raised rounded-3xl w-full max-w-md">
+              <div className="p-5 border-b border-[#EDEBE8]"><h3 className="font-bold text-strong font-display">Add Activity</h3></div>
               <div className="p-5 space-y-4">
                 <div>
-                  <label className="text-xs font-semibold text-warm-brown mb-2 block">Type</label>
+                  <label className="text-xs font-semibold text-muted mb-2 block">Type</label>
                   <div className="flex gap-2 overflow-x-auto pb-1">
                     {(['note', 'donation', 'email', 'call', 'meeting'] as ContactActivity['type'][]).map(t => (
                       <button
                         key={t}
                         onClick={() => setActForm({ ...actForm, type: t })}
-                        className={`px-3 py-1.5 rounded-full text-xs font-semibold capitalize whitespace-nowrap transition-colors ${actForm.type === t ? 'text-white' : 'bg-stone-100 text-warm-brown'}`}
+                        className={`px-3 py-1.5 rounded-full text-xs font-semibold capitalize whitespace-nowrap transition-colors ${actForm.type === t ? 'text-white' : 'bg-surface-sunken text-muted'}`}
                         style={actForm.type === t ? { backgroundColor: 'var(--brand-color, #B8962E)' } : undefined}
                       >
                         {t}
@@ -959,22 +959,22 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
                 </div>
                 {actForm.type === 'donation' && (
                   <div>
-                    <label className="text-xs font-semibold text-warm-brown mb-1 block">Amount ($)</label>
+                    <label className="text-xs font-semibold text-muted mb-1 block">Amount ($)</label>
                     <input type="number" min={0} value={actForm.amount} onChange={e => setActForm({ ...actForm, amount: e.target.value })}
                       className="w-full rounded-xl border border-[#EDEBE8] px-3 py-2.5 text-sm focus:border-gold focus:outline-none" placeholder="0.00" />
                   </div>
                 )}
                 <div>
-                  <label className="text-xs font-semibold text-warm-brown mb-1 block">Description *</label>
+                  <label className="text-xs font-semibold text-muted mb-1 block">Description *</label>
                   <div className="bg-[#F7F6F3] rounded-xl p-3">
                     <textarea value={actForm.description} onChange={e => setActForm({ ...actForm, description: e.target.value })}
-                      rows={3} className="border-0 focus:outline-none text-sm text-[color:var(--text-body)] resize-none w-full bg-transparent"
+                      rows={3} className="border-0 focus:outline-none text-sm text-body resize-none w-full bg-transparent"
                       placeholder="What happened?" />
                   </div>
                 </div>
               </div>
               <div className="p-5 border-t border-[#EDEBE8] space-y-2">
-                <button onClick={() => setShowAddActivity(false)} className="w-full py-2.5 rounded-xl border border-[#EDEBE8] text-sm font-semibold text-warm-brown">Cancel</button>
+                <button onClick={() => setShowAddActivity(false)} className="w-full py-2.5 rounded-xl border border-[#EDEBE8] text-sm font-semibold text-muted">Cancel</button>
                 <button onClick={addActivity} disabled={savingAct || !actForm.description.trim()}
                   className="w-full py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
                   style={{ backgroundColor: 'var(--brand-color, #B8962E)' }}>
@@ -987,20 +987,20 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
 
         {showCompose && (
           <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center bg-black/50 p-4">
-            <div className="bg-white rounded-3xl w-full max-w-md">
-              <div className="p-5 border-b border-[#EDEBE8]"><h3 className="font-bold text-earth font-display">Send Email</h3></div>
+            <div className="bg-surface-raised rounded-3xl w-full max-w-md">
+              <div className="p-5 border-b border-[#EDEBE8]"><h3 className="font-bold text-strong font-display">Send Email</h3></div>
               <div className="p-5 space-y-4">
                 <div>
-                  <label className="text-xs font-semibold text-warm-brown mb-1 block">To</label>
+                  <label className="text-xs font-semibold text-muted mb-1 block">To</label>
                   {/* Read-only on purpose. The server resolves the recipient
                       from the contact document and ignores any address in the
                       request, so an editable field here would be a lie. */}
-                  <div className="bg-[#F7F6F3] rounded-xl px-3 py-2.5 text-sm text-[color:var(--text-body)] truncate">
+                  <div className="bg-[#F7F6F3] rounded-xl px-3 py-2.5 text-sm text-body truncate">
                     {selected.email}
                   </div>
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-warm-brown mb-1 block">Subject *</label>
+                  <label className="text-xs font-semibold text-muted mb-1 block">Subject *</label>
                   <input
                     value={emailForm.subject}
                     onChange={e => setEmailForm({ ...emailForm, subject: e.target.value })}
@@ -1009,13 +1009,13 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-warm-brown mb-1 block">Message *</label>
+                  <label className="text-xs font-semibold text-muted mb-1 block">Message *</label>
                   <div className="bg-[#F7F6F3] rounded-xl p-3">
                     <textarea
                       value={emailForm.body}
                       onChange={e => setEmailForm({ ...emailForm, body: e.target.value })}
                       rows={6}
-                      className="border-0 focus:outline-none text-sm text-[color:var(--text-body)] resize-none w-full bg-transparent"
+                      className="border-0 focus:outline-none text-sm text-body resize-none w-full bg-transparent"
                       placeholder="Write your message..."
                     />
                   </div>
@@ -1031,13 +1031,13 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
                     </div>
                   </div>
                 )}
-                <p className="text-[11px] text-[color:var(--text-faint)]">
+                <p className="text-[11px] text-faint">
                   Sends from your connected Gmail account and is added to this contact&apos;s timeline.
                 </p>
               </div>
               <div className="p-5 border-t border-[#EDEBE8] space-y-2">
                 <button onClick={() => setShowCompose(false)} disabled={sendingEmail}
-                  className="w-full py-2.5 rounded-xl border border-[#EDEBE8] text-sm font-semibold text-warm-brown disabled:opacity-50">
+                  className="w-full py-2.5 rounded-xl border border-[#EDEBE8] text-sm font-semibold text-muted disabled:opacity-50">
                   Cancel
                 </button>
                 <button onClick={sendEmail} disabled={sendingEmail || !emailForm.subject.trim() || !emailForm.body.trim()}
@@ -1052,11 +1052,11 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
 
         {deleteId && (
           <div className="fixed inset-0 z-[210] flex items-center justify-center bg-black/50 p-4">
-            <div className="bg-white rounded-3xl p-6 w-full max-w-sm text-center">
-              <p className="font-bold text-earth mb-2 font-display">Delete contact?</p>
-              <p className="text-sm text-warm-brown mb-5">This cannot be undone.</p>
+            <div className="bg-surface-raised rounded-3xl p-6 w-full max-w-sm text-center">
+              <p className="font-bold text-strong mb-2 font-display">Delete contact?</p>
+              <p className="text-sm text-muted mb-5">This cannot be undone.</p>
               <div className="flex gap-3">
-                <button onClick={() => setDeleteId(null)} className="flex-1 py-2.5 rounded-xl border border-[#EDEBE8] text-sm font-semibold text-warm-brown">Cancel</button>
+                <button onClick={() => setDeleteId(null)} className="flex-1 py-2.5 rounded-xl border border-[#EDEBE8] text-sm font-semibold text-muted">Cancel</button>
                 <button onClick={confirmDelete} className="flex-1 py-2.5 rounded-xl bg-red-500 text-white text-sm font-semibold">Delete</button>
               </div>
             </div>
@@ -1085,12 +1085,12 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
       {/* Stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {stats.map(s => (
-          <div key={s.label} className="bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] p-5">
+          <div key={s.label} className="bg-surface-raised rounded-brand-lg border border-line shadow-[var(--ds-sh-sm)] p-5">
             <div className="flex items-start justify-between">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--text-faint)]">{s.label}</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-faint">{s.label}</p>
               <span className="text-stone-300">{s.icon}</span>
             </div>
-            <p className="font-display text-[2rem] font-light text-earth mt-2 leading-none">{s.value}</p>
+            <p className="font-display text-[2rem] font-light text-strong mt-2 leading-none">{s.value}</p>
           </div>
         ))}
       </div>
@@ -1098,31 +1098,31 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
       {/* Search + filters + view toggle + add */}
       <div className="flex items-center gap-3 mb-6 flex-wrap">
         <div className="relative flex-1 min-w-[220px]">
-          <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-[color:var(--text-faint)]" />
+          <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-faint" />
           <input value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Search by name or email…"
-            className="w-full bg-white pl-11 pr-4 py-3 text-sm border border-stone-200 rounded-brand-lg text-earth placeholder:text-[color:var(--text-faint)] focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent" />
+            className="w-full bg-surface-raised pl-11 pr-4 py-3 text-sm border border-line rounded-brand-lg text-strong placeholder:text-faint focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent" />
         </div>
         {/* Type filter segmented */}
-        <div className="flex gap-0.5 bg-stone-100 rounded-lg p-1 shrink-0">
+        <div className="flex gap-0.5 bg-surface-sunken rounded-lg p-1 shrink-0">
           {([['all', 'All'], ['member', 'Members'], ['donor', 'Donors']] as ['all' | Contact['type'], string][]).map(([val, label]) => (
             <button
               key={val}
               onClick={() => setFilter(val)}
-              className={`px-3.5 py-1.5 rounded-md text-xs font-semibold transition-colors ${filter === val ? 'bg-white shadow-sm text-earth' : 'text-[color:var(--text-faint)]'}`}
+              className={`px-3.5 py-1.5 rounded-md text-xs font-semibold transition-colors ${filter === val ? 'bg-surface-raised shadow-sm text-strong' : 'text-faint'}`}
             >
               {label}
             </button>
           ))}
         </div>
         {/* List / Pipeline view toggle */}
-        <div className="flex gap-0.5 bg-stone-100 rounded-lg p-1 shrink-0">
+        <div className="flex gap-0.5 bg-surface-sunken rounded-lg p-1 shrink-0">
           <button onClick={() => setListMode('list')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${listMode === 'list' ? 'bg-white shadow-sm text-earth' : 'text-[color:var(--text-faint)]'}`}>
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${listMode === 'list' ? 'bg-surface-raised shadow-sm text-strong' : 'text-faint'}`}>
             <List size={13} /> List
           </button>
           <button onClick={() => setListMode('kanban')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${listMode === 'kanban' ? 'bg-white shadow-sm text-earth' : 'text-[color:var(--text-faint)]'}`}>
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${listMode === 'kanban' ? 'bg-surface-raised shadow-sm text-strong' : 'text-faint'}`}>
             <LayoutGrid size={13} /> Pipeline
           </button>
         </div>
@@ -1143,7 +1143,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
           onStageChange={handleStageChange}
         />
       ) : filtered.length === 0 ? (
-        <div className="text-center py-16 text-[color:var(--text-faint)]">
+        <div className="text-center py-16 text-faint">
           <Users size={40} className="mx-auto mb-3 opacity-30" />
           <p className="font-medium font-display">{search || filter !== 'all' ? 'No contacts match' : 'No contacts yet'}</p>
           {!search && filter === 'all' && <p className="text-sm mt-1">Add your first donor or member</p>}
@@ -1155,14 +1155,14 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
               donor→gold, both→field via TYPE_COLORS), the pipeline stage dot +
               label, and total given in field-green. Same `filtered` data and the
               same openDetail handler as the desktop table below. */}
-          <div className="lg:hidden bg-white rounded-brand-xl border border-stone-200 shadow-[var(--ds-sh-sm)] overflow-hidden">
+          <div className="lg:hidden bg-surface-raised rounded-brand-xl border border-line shadow-[var(--ds-sh-sm)] overflow-hidden">
             {filtered.map((c, i) => {
               const stage = STAGES.find(s => s.id === (c.stage || 'new')) || STAGES[0];
               return (
                 <button
                   key={c.id}
                   onClick={() => openDetail(c)}
-                  className={`w-full flex items-center gap-3 px-3.5 py-3 text-left transition-colors hover:bg-wheat-50 ${i ? 'border-t border-stone-200' : ''}`}
+                  className={`w-full flex items-center gap-3 px-3.5 py-3 text-left transition-colors hover:bg-wheat-50 ${i ? 'border-t border-line' : ''}`}
                 >
                   <span className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0 overflow-hidden" style={{ backgroundColor: 'var(--brand-color, #C9963A)' }}>
                     {c.photoURL ? (
@@ -1172,12 +1172,12 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
                     )}
                   </span>
                   <span className="flex-1 min-w-0">
-                    <span className="block text-sm font-semibold text-earth truncate">{c.firstName} {c.lastName}</span>
-                    {c.email && <span className="block text-xs text-[color:var(--text-faint)] truncate">{c.email}</span>}
+                    <span className="block text-sm font-semibold text-strong truncate">{c.firstName} {c.lastName}</span>
+                    {c.email && <span className="block text-xs text-faint truncate">{c.email}</span>}
                   </span>
                   <span className="flex flex-col items-end gap-1 shrink-0">
                     <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${TYPE_COLORS[c.type]}`}>{TYPE_LABELS[c.type]}</span>
-                    <span className="flex items-center gap-1.5 text-[11px] font-semibold text-warm-brown">
+                    <span className="flex items-center gap-1.5 text-[11px] font-semibold text-muted">
                       <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: stage.color }} />
                       {stage.label}
                     </span>
@@ -1189,11 +1189,11 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
           </div>
 
           {/* Desktop table — existing approved layout, unchanged (now lg-only). */}
-          <div className="hidden lg:block bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] overflow-hidden">
+          <div className="hidden lg:block bg-surface-raised rounded-brand-lg border border-line shadow-[var(--ds-sh-sm)] overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse min-w-[720px]">
               <thead>
-                <tr className="border-b border-stone-200">
+                <tr className="border-b border-line">
                   <th className="px-6 py-4 text-[11px] font-semibold text-gold uppercase tracking-[0.12em]">Contact</th>
                   <th className="px-6 py-4 text-[11px] font-semibold text-gold uppercase tracking-[0.12em]">Type</th>
                   <th className="px-6 py-4 text-[11px] font-semibold text-gold uppercase tracking-[0.12em]">Stage</th>
@@ -1216,8 +1216,8 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
                             )}
                           </div>
                           <div className="min-w-0">
-                            <p className="text-sm font-semibold text-earth truncate">{c.firstName} {c.lastName}</p>
-                            {c.email && <p className="text-xs text-[color:var(--text-faint)] truncate">{c.email}</p>}
+                            <p className="text-sm font-semibold text-strong truncate">{c.firstName} {c.lastName}</p>
+                            {c.email && <p className="text-xs text-faint truncate">{c.email}</p>}
                           </div>
                         </div>
                       </td>
@@ -1225,16 +1225,16 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${TYPE_COLORS[c.type]}`}>{TYPE_LABELS[c.type]}</span>
                       </td>
                       <td className="px-6 py-3.5">
-                        <span className="inline-flex items-center gap-1.5 text-sm text-warm-brown">
+                        <span className="inline-flex items-center gap-1.5 text-sm text-muted">
                           <span className="w-2 h-2 rounded-full" style={{ backgroundColor: stage.color }} />
                           {stage.label}
                         </span>
                       </td>
                       <td className="px-6 py-3.5 text-right">
-                        <span className={`text-sm font-semibold ${c.totalDonated > 0 ? 'text-earth' : 'text-stone-300'}`}>{c.totalDonated > 0 ? fmt(c.totalDonated) : '—'}</span>
+                        <span className={`text-sm font-semibold ${c.totalDonated > 0 ? 'text-strong' : 'text-stone-300'}`}>{c.totalDonated > 0 ? fmt(c.totalDonated) : '—'}</span>
                       </td>
                       <td className="px-6 py-3.5 text-right">
-                        <span className="text-sm text-[color:var(--text-faint)]">{c.lastDonationAt ? fmtDate(c.lastDonationAt) : '—'}</span>
+                        <span className="text-sm text-faint">{c.lastDonationAt ? fmtDate(c.lastDonationAt) : '—'}</span>
                       </td>
                     </tr>
                   );
@@ -1248,11 +1248,11 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
 
       {deleteId && (
         <div className="fixed inset-0 z-[210] flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-3xl p-6 w-full max-w-sm text-center">
-            <p className="font-bold text-earth mb-2 font-display">Delete contact?</p>
-            <p className="text-sm text-warm-brown mb-5">This cannot be undone.</p>
+          <div className="bg-surface-raised rounded-3xl p-6 w-full max-w-sm text-center">
+            <p className="font-bold text-strong mb-2 font-display">Delete contact?</p>
+            <p className="text-sm text-muted mb-5">This cannot be undone.</p>
             <div className="flex gap-3">
-              <button onClick={() => setDeleteId(null)} className="flex-1 py-2.5 rounded-xl border border-[#EDEBE8] text-sm font-semibold text-warm-brown">Cancel</button>
+              <button onClick={() => setDeleteId(null)} className="flex-1 py-2.5 rounded-xl border border-[#EDEBE8] text-sm font-semibold text-muted">Cancel</button>
               <button onClick={confirmDelete} className="flex-1 py-2.5 rounded-xl bg-red-500 text-white text-sm font-semibold">Delete</button>
             </div>
           </div>

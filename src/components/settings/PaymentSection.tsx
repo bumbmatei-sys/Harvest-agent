@@ -68,7 +68,7 @@ const PaymentSection: React.FC = () => {
       </p>
 
       {/* Stripe Connect */}
-      <div className="bg-white rounded-2xl border border-gray-100 p-6">
+      <div className="bg-surface-raised rounded-2xl border border-gray-100 p-6">
         <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">Stripe Connect</h3>
         {stripeConnectStatus === 'active' ? (
           <div className="space-y-4">

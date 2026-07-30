@@ -75,7 +75,7 @@ const IconInput: React.FC<
   const border = invalid ? 'var(--brand-danger, #C4553B)' : focus ? brandColor : FIELD_BORDER;
   return (
     <div
-      className="flex items-center gap-2.5 rounded-lg bg-white transition-all"
+      className="flex items-center gap-2.5 rounded-lg bg-surface-raised transition-all"
       style={{ height: 48, padding: '0 14px', border: `1px solid ${border}`, boxShadow: focus ? `0 0 0 3px color-mix(in srgb, ${brandColor} 16%, transparent)` : 'none' }}
     >
       {icon && <span className="flex shrink-0" style={{ color: 'var(--text-muted, #8B7355)' }}>{icon}</span>}
@@ -104,7 +104,7 @@ const PasswordInput: React.FC<{
   const border = focus ? brandColor : FIELD_BORDER;
   return (
     <div
-      className="flex items-center gap-2.5 rounded-lg bg-white transition-all"
+      className="flex items-center gap-2.5 rounded-lg bg-surface-raised transition-all"
       style={{ height: 48, padding: '0 14px', border: `1px solid ${border}`, boxShadow: focus ? `0 0 0 3px color-mix(in srgb, ${brandColor} 16%, transparent)` : 'none' }}
     >
       <span className="flex shrink-0" style={{ color: 'var(--text-muted, #8B7355)' }}><Lock size={16} /></span>
@@ -144,7 +144,7 @@ const ToggleSwitch: React.FC<{ checked: boolean; onChange: (v: boolean) => void;
     style={{ width: 42, height: 24, padding: 2, background: checked ? color : 'var(--stone-300, #D6CCBE)' }}
   >
     <span
-      className="block rounded-full bg-white transition-transform"
+      className="block rounded-full bg-surface-raised transition-transform"
       style={{ width: 20, height: 20, transform: checked ? 'translateX(18px)' : 'translateX(0)', boxShadow: '0 1px 2px rgba(45,37,25,0.2)' }}
     />
   </button>
@@ -494,7 +494,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
           </div>
 
           {/* Card */}
-          <div className="rounded-brand-xl border border-stone-200 bg-white px-6 py-8 shadow-[var(--ds-sh-md)] sm:px-9 sm:py-9">
+          <div className="rounded-brand-xl border border-line bg-surface-raised px-6 py-8 shadow-[var(--ds-sh-md)] sm:px-9 sm:py-9">
             <Eyebrow color={brandColor}>{eyebrowText}</Eyebrow>
             <div className="mt-3"><Display size={30}>{titleText}</Display></div>
             <p className="mt-2.5 text-[13px] leading-relaxed" style={{ color: 'var(--text-body, #4A4038)' }}>{subText}</p>
@@ -550,7 +550,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
                 <button
                   onClick={handleGoogleSignIn}
                   disabled={loading}
-                  className="flex h-12 w-full items-center justify-center gap-2.5 rounded-lg border bg-white text-sm font-semibold transition-colors hover:bg-stone-100 disabled:opacity-50"
+                  className="flex h-12 w-full items-center justify-center gap-2.5 rounded-lg border bg-surface-raised text-sm font-semibold transition-colors hover:bg-surface-sunken disabled:opacity-50"
                   style={{ borderColor: 'var(--stone-300, #D6CCBE)', color: 'var(--text-heading, #2D2519)' }}
                 >
                   <GoogleIcon /> {isLogin ? 'Continue with Google' : 'Sign up with Google'}
@@ -706,8 +706,8 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
 
       {legalModalContent && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="flex max-h-[80vh] w-full max-w-2xl flex-col overflow-hidden rounded-brand-xl bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-stone-200 bg-stone-100 p-6">
+          <div className="flex max-h-[80vh] w-full max-w-2xl flex-col overflow-hidden rounded-brand-xl bg-surface-raised shadow-2xl">
+            <div className="flex items-center justify-between border-b border-line bg-surface-sunken p-6">
               <h3 className="font-display text-2xl font-semibold" style={{ color: 'var(--text-heading, #2D2519)' }}>
                 {legalModalContent === 'terms' ? 'Terms of Use' : 'Privacy Policy'}
               </h3>
@@ -732,7 +732,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
                 </>
               )}
             </div>
-            <div className="flex justify-end border-t border-stone-200 bg-stone-100 p-6">
+            <div className="flex justify-end border-t border-line bg-surface-sunken p-6">
               <button
                 onClick={() => setLegalModalContent(null)}
                 className="rounded-lg px-6 py-2.5 font-semibold text-white transition-opacity hover:opacity-90"

@@ -16,7 +16,7 @@ const AdminBranding: React.FC<AdminBrandingProps> = ({ currentFeatures, onUpgrad
     <div className="max-w-2xl mx-auto space-y-6">
       <div>
         <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-gold mb-1.5">Platform</p>
-        <h2 className="font-display text-[1.75rem] lg:text-[2rem] leading-[1.1] font-light tracking-[-0.02em] text-earth">Branding</h2>
+        <h2 className="font-display text-[1.75rem] lg:text-[2rem] leading-[1.1] font-light tracking-[-0.02em] text-strong">Branding</h2>
       </div>
       <BrandingSection
         currentFeatures={currentFeatures ?? undefined}

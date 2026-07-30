@@ -49,7 +49,7 @@ export const SectionTitle: React.FC<{
       style={{ width: 4, height: size + 1, background: 'var(--brand-color)' }}
     />
     <Tag
-      className="font-display font-light m-0 tracking-[-0.02em] text-earth"
+      className="font-display font-light m-0 tracking-[-0.02em] text-strong"
       style={{ fontSize: size }}
     >
       {children}
@@ -129,7 +129,7 @@ export const Stat: React.FC<{ value: React.ReactNode; label: string; className?:
   className = '',
 }) => (
   <div className={className}>
-    <div className="font-display font-light text-earth tracking-[-0.02em] leading-none text-[clamp(1.75rem,3vw,2.5rem)]">
+    <div className="font-display font-light text-strong tracking-[-0.02em] leading-none text-[clamp(1.75rem,3vw,2.5rem)]">
       {value}
     </div>
     <div className="mt-1 text-[10px] font-bold uppercase tracking-[0.12em]" style={{ color: 'var(--text-faint)' }}>

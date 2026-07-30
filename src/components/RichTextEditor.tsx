@@ -97,7 +97,7 @@ const ImageUploadModal = ({
   return (
     <div className="fixed inset-0 z-[10000] flex items-end sm:items-center justify-center bg-black/40" onClick={onClose}>
       <div
-        className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md p-5 pb-8 sm:pb-5 space-y-4 shadow-2xl"
+        className="bg-surface-raised rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md p-5 pb-8 sm:pb-5 space-y-4 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between">
@@ -280,7 +280,7 @@ const SlashCommandList = ({
   return (
     <div
       ref={containerRef}
-      className="bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden max-h-[320px] overflow-y-auto w-72"
+      className="bg-surface-raised rounded-xl shadow-xl border border-gray-200 overflow-hidden max-h-[320px] overflow-y-auto w-72"
     >
       <div className="p-1.5">
         {items.map((item, index) => (
@@ -523,7 +523,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
   }, [editor]);
 
   return (
-    <div className="bg-white rounded-xl overflow-hidden">
+    <div className="bg-surface-raised rounded-xl overflow-hidden">
       {/* Bubble menu: appears when text is selected */}
       {editor && (
         <BubbleMenu
@@ -544,7 +544,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
                   if (e.key === 'Escape') { setShowLinkInput(false); }
                 }}
                 placeholder="https://..."
-                className="w-40 sm:w-56 px-2.5 py-1.5 text-sm bg-white text-gray-900 border-0 rounded-lg focus:ring-2 focus:ring-gold outline-none"
+                className="w-40 sm:w-56 px-2.5 py-1.5 text-sm bg-surface-raised text-gray-900 border-0 rounded-lg focus:ring-2 focus:ring-gold outline-none"
               />
               <button
                 onMouseDown={(e) => { e.preventDefault(); applyLink(); }}

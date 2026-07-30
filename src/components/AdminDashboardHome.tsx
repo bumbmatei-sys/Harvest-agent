@@ -129,13 +129,13 @@ const AdminDashboardHome: React.FC<AdminDashboardHomeProps> = ({ tenantId, tenan
   if (state === 'loading') {
     return (
       <div className="w-full max-w-6xl mx-auto space-y-6 p-4 lg:p-0">
-        <div className="h-9 w-72 bg-stone-100 rounded animate-pulse" />
+        <div className="h-9 w-72 bg-surface-sunken rounded animate-pulse" />
         <div className={`grid grid-cols-2 ${statColsClass} gap-4`}>
           {[0, 1, 2, 3].map((i) => (
-            <div key={i} className="h-28 bg-stone-100 rounded-brand-lg animate-pulse" />
+            <div key={i} className="h-28 bg-surface-sunken rounded-brand-lg animate-pulse" />
           ))}
         </div>
-        <div className="h-64 bg-stone-100 rounded-brand-lg animate-pulse" />
+        <div className="h-64 bg-surface-sunken rounded-brand-lg animate-pulse" />
       </div>
     );
   }
@@ -145,14 +145,14 @@ const AdminDashboardHome: React.FC<AdminDashboardHomeProps> = ({ tenantId, tenan
       {/* Greeting hero */}
       <div>
         <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-gold mb-2">
-          {ministryLabel} <span className="text-[color:var(--text-faint)]">·</span> {today}
+          {ministryLabel} <span className="text-faint">·</span> {today}
         </p>
-        <h1 className="font-display text-[2rem] lg:text-[2.4rem] leading-[1.1] font-light tracking-[-0.02em] text-earth">
+        <h1 className="font-display text-[2rem] lg:text-[2.4rem] leading-[1.1] font-light tracking-[-0.02em] text-strong">
           {greeting()}, {adminName}.
         </h1>
-        <p className="text-[15px] text-warm-brown mt-2">
+        <p className="text-[15px] text-muted mt-2">
           {newThisWeek > 0
-            ? <>Your ministry gained <span className="font-semibold text-earth">{newThisWeek} new member{newThisWeek === 1 ? '' : 's'}</span> this week.</>
+            ? <>Your ministry gained <span className="font-semibold text-strong">{newThisWeek} new member{newThisWeek === 1 ? '' : 's'}</span> this week.</>
             : <>Here&apos;s your ministry at a glance.</>}
         </p>
       </div>
@@ -165,7 +165,7 @@ const AdminDashboardHome: React.FC<AdminDashboardHomeProps> = ({ tenantId, tenan
             <button
               key={s.label}
               onClick={() => onNavigate(s.tab)}
-              className="bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] p-4 lg:p-5 text-left hover:border-[color-mix(in_srgb,var(--brand-color)_40%,var(--stone-200,#E8E2D9))] transition-colors group"
+              className="bg-surface-raised rounded-brand-lg border border-line shadow-[var(--ds-sh-sm)] p-4 lg:p-5 text-left hover:border-[color-mix(in_srgb,var(--brand-color)_40%,var(--stone-200,#E8E2D9))] transition-colors group"
             >
               {/* Mockup stat card: gold icon disc, serif value, label below. */}
               <div className="flex items-center justify-between mb-3">
@@ -173,18 +173,18 @@ const AdminDashboardHome: React.FC<AdminDashboardHomeProps> = ({ tenantId, tenan
                   <Icon size={17} />
                 </span>
               </div>
-              <div className="font-display text-[1.9rem] lg:text-[2.1rem] leading-none font-light text-earth">
+              <div className="font-display text-[1.9rem] lg:text-[2.1rem] leading-none font-light text-strong">
                 {s.value.toLocaleString()}
               </div>
-              <div className="text-[11.5px] text-warm-brown mt-1.5">{s.label}</div>
+              <div className="text-[11.5px] text-muted mt-1.5">{s.label}</div>
             </button>
           );
         })}
       </div>
 
       {/* Recent Members */}
-      <div className="bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-stone-200">
+      <div className="bg-surface-raised rounded-brand-lg border border-line shadow-[var(--ds-sh-sm)] overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-line">
           <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gold">Recent Members</h3>
           <button
             onClick={() => onNavigate('crm')}
@@ -195,20 +195,20 @@ const AdminDashboardHome: React.FC<AdminDashboardHomeProps> = ({ tenantId, tenan
         </div>
         <div className="px-5">
           {recentMembers.length === 0 ? (
-            <p className="text-sm text-warm-brown py-6">No members yet.</p>
+            <p className="text-sm text-muted py-6">No members yet.</p>
           ) : (
             recentMembers.map((m) => {
               const isNew = m.createdAt != null && m.createdAt >= cutoff;
               return (
-                <div key={m.id} className="flex items-center gap-3 py-3 border-b border-stone-200 last:border-0">
-                  <div className="w-9 h-9 rounded-full bg-stone-100 flex items-center justify-center text-xs font-bold text-warm-brown shrink-0">
+                <div key={m.id} className="flex items-center gap-3 py-3 border-b border-line last:border-0">
+                  <div className="w-9 h-9 rounded-full bg-surface-sunken flex items-center justify-center text-xs font-bold text-muted shrink-0">
                     {initials(m.name)}
                   </div>
-                  <span className="text-sm font-semibold text-earth flex-1 truncate">{m.name}</span>
+                  <span className="text-sm font-semibold text-strong flex-1 truncate">{m.name}</span>
                   {isNew && (
                     <span className="text-[10px] font-bold uppercase tracking-wide text-sky-700 bg-sky-100 rounded-full px-2 py-0.5 shrink-0">New</span>
                   )}
-                  <span className="text-xs text-[color:var(--text-faint)] shrink-0 w-14 text-right">{joinedLabel(m.createdAt)}</span>
+                  <span className="text-xs text-faint shrink-0 w-14 text-right">{joinedLabel(m.createdAt)}</span>
                 </div>
               );
             })
@@ -224,7 +224,7 @@ const AdminDashboardHome: React.FC<AdminDashboardHomeProps> = ({ tenantId, tenan
             <button
               key={a.label}
               onClick={() => onNavigate(a.tab)}
-              className="px-4 py-2 rounded-brand border border-stone-200 bg-white text-[13px] font-semibold text-earth hover:bg-stone-100 hover:border-[color-mix(in_srgb,var(--brand-color)_40%,var(--stone-200,#E8E2D9))] transition-colors"
+              className="px-4 py-2 rounded-brand border border-line bg-surface-raised text-[13px] font-semibold text-strong hover:bg-surface-sunken hover:border-[color-mix(in_srgb,var(--brand-color)_40%,var(--stone-200,#E8E2D9))] transition-colors"
             >
               {a.label}
             </button>

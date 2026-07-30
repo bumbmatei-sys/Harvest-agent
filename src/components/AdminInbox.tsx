@@ -88,7 +88,7 @@ const AdminInbox = () => {
  case 'feature': return <Lightbulb size={20} className="text-navy-500" />;
  case 'prayer': return <HeartHandshake size={20} className="text-wheat-600" />;
  case 'enrollment': return <Church size={20} className="text-gold" />;
- default: return <Mail size={20} className="text-warm-brown" />;
+ default: return <Mail size={20} className="text-muted" />;
  }
  };
 
@@ -135,7 +135,7 @@ const AdminInbox = () => {
  className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
  filterType === type
  ? 'bg-gold text-white'
- : 'bg-white text-warm-brown border border-stone-200 hover:border-gold :border-gold'
+ : 'bg-surface-raised text-muted border border-line hover:border-gold :border-gold'
  }`}
  >
  {type === 'church_suggestion' ? 'Church Suggestion' : type.charAt(0).toUpperCase() + type.slice(1)}
@@ -145,12 +145,12 @@ const AdminInbox = () => {
  </div>
  
  {submissions.length === 0 ? (
- <div className="flex flex-col items-center justify-center py-12 text-[color:var(--text-faint)] bg-white rounded-2xl border border-stone-200 ">
+ <div className="flex flex-col items-center justify-center py-12 text-faint bg-surface-raised rounded-2xl border border-line ">
  <Inbox size={48} className="mb-4 opacity-50" />
  <p className="font-display text-lg font-medium">No submissions yet.</p>
  </div>
  ) : filteredSubmissions.length === 0 ? (
- <div className="flex flex-col items-center justify-center py-12 text-[color:var(--text-faint)] bg-white rounded-2xl border border-stone-200 ">
+ <div className="flex flex-col items-center justify-center py-12 text-faint bg-surface-raised rounded-2xl border border-line ">
  <Inbox size={48} className="mb-4 opacity-50" />
  <p className="font-display text-lg font-medium">No submissions found.</p>
  </div>
@@ -166,7 +166,7 @@ const AdminInbox = () => {
      entries and the same Delete / Mark resolved·pending actions. Reuses
      getIconForType, getTitleForType, formatDate, toggleExpand, handleDelete,
      handleStatusChange, setDeleteConfirmId — no wiring changed. */}
- <div className={`lg:hidden bg-white rounded-brand-xl shadow-[var(--ds-sh-sm)] overflow-hidden border ${isPending ? 'border-[color-mix(in_srgb,var(--brand-color)_30%,transparent)]' : 'border-stone-200'}`}>
+ <div className={`lg:hidden bg-surface-raised rounded-brand-xl shadow-[var(--ds-sh-sm)] overflow-hidden border ${isPending ? 'border-[color-mix(in_srgb,var(--brand-color)_30%,transparent)]' : 'border-line'}`}>
  <button
  onClick={() => toggleExpand(sub.id)}
  className="w-full flex items-start gap-3 p-3.5 text-left"
@@ -176,40 +176,40 @@ const AdminInbox = () => {
  </span>
  <span className="flex-1 min-w-0">
  <span className="flex items-center justify-between gap-2">
- <span className={`min-w-0 truncate text-[13px] font-bold ${isPending ? 'text-earth' : 'text-warm-brown'}`}>{getTitleForType(sub.type)}</span>
- <span className="shrink-0 text-[11px] text-[color:var(--text-faint)]">{formatDate(sub.createdAt)}</span>
+ <span className={`min-w-0 truncate text-[13px] font-bold ${isPending ? 'text-strong' : 'text-muted'}`}>{getTitleForType(sub.type)}</span>
+ <span className="shrink-0 text-[11px] text-faint">{formatDate(sub.createdAt)}</span>
  </span>
- <span className="block truncate text-xs text-warm-brown mt-0.5">{sub.data.name || sub.data.churchName || sub.data.title || 'Anonymous'}</span>
+ <span className="block truncate text-xs text-muted mt-0.5">{sub.data.name || sub.data.churchName || sub.data.title || 'Anonymous'}</span>
  </span>
  <span className="flex items-center gap-2 shrink-0">
  {isPending && <span className="w-2 h-2 rounded-full bg-gold" />}
- {isExpanded ? <ChevronUp size={16} className="text-[color:var(--text-faint)]" /> : <ChevronDown size={16} className="text-[color:var(--text-faint)]" />}
+ {isExpanded ? <ChevronUp size={16} className="text-faint" /> : <ChevronDown size={16} className="text-faint" />}
  </span>
  </button>
  {isExpanded && (
- <div className="p-3.5 border-t border-stone-200 bg-[var(--surface-sunken)]">
+ <div className="p-3.5 border-t border-line bg-[var(--surface-sunken)]">
  <div className="space-y-3 mb-3.5">
  {Object.entries(sub.data).map(([key, value]) => {
  if (!value) return null;
  return (
  <div key={key}>
- <span className="block text-[10px] font-bold text-[color:var(--text-faint)] tracking-wider uppercase mb-1">
+ <span className="block text-[10px] font-bold text-faint tracking-wider uppercase mb-1">
  {key.replace(/([A-Z])/g, ' $1').trim()}
  </span>
- <p className="text-sm text-earth whitespace-pre-wrap leading-relaxed">
+ <p className="text-sm text-strong whitespace-pre-wrap leading-relaxed">
  {String(value)}
  </p>
  </div>
  );
  })}
  </div>
- <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-stone-200">
+ <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-line">
  {deleteConfirmId === sub.id ? (
  <div className="flex items-center gap-2">
- <span className="text-xs text-warm-brown">Are you sure?</span>
+ <span className="text-xs text-muted">Are you sure?</span>
  <button
  onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(null); }}
- className="px-3 py-1.5 text-xs font-semibold text-warm-brown bg-stone-100 hover:bg-stone-200 rounded-lg transition-colors"
+ className="px-3 py-1.5 text-xs font-semibold text-muted bg-surface-sunken hover:bg-stone-200 rounded-lg transition-colors"
  >
  Cancel
  </button>
@@ -240,7 +240,7 @@ const AdminInbox = () => {
  ) : (
  <button
  onClick={(e) => { e.stopPropagation(); handleStatusChange(sub.id, 'pending'); }}
- className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-warm-brown bg-stone-100 hover:bg-stone-200 rounded-lg transition-colors"
+ className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-muted bg-surface-sunken hover:bg-stone-200 rounded-lg transition-colors"
  >
  <Clock size={14} />
  Mark Pending
@@ -252,26 +252,26 @@ const AdminInbox = () => {
  </div>
 
  {/* Desktop card — existing approved layout, unchanged (now lg-only). */}
- <div className={`hidden lg:block bg-white rounded-2xl shadow-sm border ${isPending ? 'border-[color-mix(in_srgb,var(--brand-color)_30%,transparent)] ' : 'border-stone-200 '} overflow-hidden transition-all duration-300`}>
+ <div className={`hidden lg:block bg-surface-raised rounded-2xl shadow-sm border ${isPending ? 'border-[color-mix(in_srgb,var(--brand-color)_30%,transparent)] ' : 'border-line '} overflow-hidden transition-all duration-300`}>
  <div 
  onClick={() => toggleExpand(sub.id)}
- className="p-4 flex items-start gap-4 cursor-pointer hover:bg-stone-100 :bg-gray-800/50 transition-colors"
+ className="p-4 flex items-start gap-4 cursor-pointer hover:bg-surface-sunken :bg-gray-800/50 transition-colors"
  >
  <div className="mt-1">
  {getIconForType(sub.type)}
  </div>
  <div className="flex-1 min-w-0">
  <div className="flex items-center justify-between gap-2 mb-1">
- <h3 className={`text-sm font-bold truncate ${isPending ? 'text-earth ' : 'text-warm-brown '}`}>
+ <h3 className={`text-sm font-bold truncate ${isPending ? 'text-strong ' : 'text-muted '}`}>
  {getTitleForType(sub.type)}
  </h3>
- <span className="text-xs text-[color:var(--text-faint)] whitespace-nowrap flex items-center gap-1">
+ <span className="text-xs text-faint whitespace-nowrap flex items-center gap-1">
  <Clock size={12} />
  {formatDate(sub.createdAt)}
  </span>
  </div>
  
- <p className="text-sm text-warm-brown truncate">
+ <p className="text-sm text-muted truncate">
  {sub.data.name || sub.data.churchName || sub.data.title || 'Anonymous'}
  </p>
  </div>
@@ -280,21 +280,21 @@ const AdminInbox = () => {
  {isPending && (
  <span className="w-2 h-2 rounded-full bg-gold"></span>
  )}
- {isExpanded ? <ChevronUp size={20} className="text-[color:var(--text-faint)]" /> : <ChevronDown size={20} className="text-[color:var(--text-faint)]" />}
+ {isExpanded ? <ChevronUp size={20} className="text-faint" /> : <ChevronDown size={20} className="text-faint" />}
  </div>
  </div>
 
  {isExpanded && (
- <div className="p-4 border-t border-stone-200 bg-stone-100/50 animate-in slide-in-from-top-2 duration-200">
+ <div className="p-4 border-t border-line bg-stone-100/50 animate-in slide-in-from-top-2 duration-200">
  <div className="space-y-3 mb-6">
  {Object.entries(sub.data).map(([key, value]) => {
  if (!value) return null;
  return (
  <div key={key}>
- <span className="text-[10px] font-bold text-[color:var(--text-faint)] tracking-wider uppercase block mb-1">
+ <span className="text-[10px] font-bold text-faint tracking-wider uppercase block mb-1">
  {key.replace(/([A-Z])/g, ' $1').trim()}
  </span>
- <p className="text-sm text-earth whitespace-pre-wrap">
+ <p className="text-sm text-strong whitespace-pre-wrap">
  {String(value)}
  </p>
  </div>
@@ -302,13 +302,13 @@ const AdminInbox = () => {
  })}
  </div>
 
- <div className="flex items-center justify-end gap-3 pt-4 border-t border-stone-200 ">
+ <div className="flex items-center justify-end gap-3 pt-4 border-t border-line ">
  {deleteConfirmId === sub.id ? (
  <div className="flex items-center gap-2">
- <span className="text-sm text-warm-brown ">Are you sure?</span>
+ <span className="text-sm text-muted ">Are you sure?</span>
  <button
  onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(null); }}
- className="px-3 py-1.5 text-sm font-medium text-warm-brown bg-stone-100 hover:bg-stone-200 :bg-gray-700 rounded-lg transition-colors"
+ className="px-3 py-1.5 text-sm font-medium text-muted bg-surface-sunken hover:bg-stone-200 :bg-gray-700 rounded-lg transition-colors"
  >
  Cancel
  </button>
@@ -340,7 +340,7 @@ const AdminInbox = () => {
  ) : (
  <button
  onClick={(e) => { e.stopPropagation(); handleStatusChange(sub.id, 'pending'); }}
- className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-warm-brown bg-stone-100 hover:bg-stone-200 :bg-gray-700 rounded-lg transition-colors"
+ className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-muted bg-surface-sunken hover:bg-stone-200 :bg-gray-700 rounded-lg transition-colors"
  >
  <Clock size={16} />
  Mark Pending

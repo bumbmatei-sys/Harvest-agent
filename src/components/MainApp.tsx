@@ -367,7 +367,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
         } ${
           isActive
             ? 'lg:bg-[color-mix(in_srgb,var(--brand-color)_16%,white)]'
-            : 'text-[color:var(--text-faint)] hover:text-warm-brown lg:text-warm-brown lg:hover:text-earth lg:hover:bg-stone-100'
+            : 'text-faint hover:text-muted lg:text-muted lg:hover:text-strong lg:hover:bg-surface-sunken'
         }`}
         style={isActive ? { color: 'var(--brand-color, #e6b325)' } : undefined}
         title={isSidebarCollapsed ? label : undefined}
@@ -426,11 +426,11 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
   }
 
   return (
-    <div className="flex flex-col lg:flex-row h-screen bg-cream lg:bg-[var(--ds-page-bg)] font-sans overflow-hidden transition-colors duration-300">
+    <div className="flex flex-col lg:flex-row h-screen bg-surface lg:bg-[var(--ds-page-bg)] font-sans overflow-hidden transition-colors duration-300">
       <ReferralTracker />
       
       {/* Side/Bottom Navigation */}
-      <div className={`bg-white border-t lg:border-t-0 lg:border-r border-stone-200 flex justify-center lg:justify-start py-2 lg:py-5 px-2 lg:px-3 pb-safe lg:pb-0 fixed lg:relative bottom-0 lg:bottom-auto w-full ${isSidebarCollapsed ? 'lg:w-[72px]' : 'lg:w-[224px]'} lg:h-screen z-[100] shadow-[0_-4px_20px_rgba(0,0,0,0.05)] lg:shadow-[2px_0_10px_rgba(0,0,0,0.02)] transition-all duration-300 ${!isNavVisible || activeBottomTab === 'map' ? 'max-lg:translate-y-full' : 'max-lg:translate-y-0'}`}>
+      <div className={`bg-surface-raised border-t lg:border-t-0 lg:border-r border-line flex justify-center lg:justify-start py-2 lg:py-5 px-2 lg:px-3 pb-safe lg:pb-0 fixed lg:relative bottom-0 lg:bottom-auto w-full ${isSidebarCollapsed ? 'lg:w-[72px]' : 'lg:w-[224px]'} lg:h-screen z-[100] shadow-[0_-4px_20px_rgba(0,0,0,0.05)] lg:shadow-[2px_0_10px_rgba(0,0,0,0.02)] transition-all duration-300 ${!isNavVisible || activeBottomTab === 'map' ? 'max-lg:translate-y-full' : 'max-lg:translate-y-0'}`}>
         <div className={`flex lg:flex-col justify-around lg:justify-start items-center lg:items-stretch w-full lg:max-w-none lg:gap-2 ${isSidebarCollapsed ? 'lg:items-center' : ''}`}>
           {/* Desktop Logo */}
           <div className={`hidden lg:flex items-center mb-6 shrink-0 ${isSidebarCollapsed ? 'justify-center px-0 w-full' : 'gap-2.5 px-3'}`}>
@@ -440,7 +440,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
               className="logo-plate w-9 h-9 object-contain shrink-0"
             />
             {!isSidebarCollapsed && (
-              <span className="font-display text-[19px] font-semibold tracking-[-0.01em] text-earth truncate">
+              <span className="font-display text-[19px] font-semibold tracking-[-0.01em] text-strong truncate">
                 {displayName}
                 {/* The signature gold period belongs to the "Harvest." lockup only;
                     white-label tenants show their own name without it. */}
@@ -467,7 +467,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
               {isSidebarCollapsed ? (
                 groupIndex > 0 && <div className="lg:mx-3 lg:mb-2 lg:border-t lg:border-gray-100" />
               ) : (
-                <div className="lg:px-4 lg:mb-2 lg:text-[10px] lg:font-bold lg:tracking-[0.14em] lg:text-[color:var(--text-faint)] lg:uppercase">
+                <div className="lg:px-4 lg:mb-2 lg:text-[10px] lg:font-bold lg:tracking-[0.14em] lg:text-faint lg:uppercase">
                   {group.label}
                 </div>
               )}{/* group */}
@@ -483,7 +483,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
           <div className="hidden lg:flex flex-1 items-end pb-5 mt-auto">
             <button
                onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-               className={`flex items-center gap-3 w-full h-11 rounded-xl transition-all px-3 shrink-0 text-warm-brown hover:text-earth hover:bg-stone-100 ${isSidebarCollapsed ? 'justify-center' : 'justify-start'}`}
+               className={`flex items-center gap-3 w-full h-11 rounded-xl transition-all px-3 shrink-0 text-muted hover:text-strong hover:bg-surface-sunken ${isSidebarCollapsed ? 'justify-center' : 'justify-start'}`}
                title={isSidebarCollapsed ? "Expand" : "Collapse"}
             >
                {isSidebarCollapsed ? <ChevronRight size={20} strokeWidth={2} /> : <ChevronLeft size={20} strokeWidth={2} />}
@@ -494,19 +494,19 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
       </div>
 
       {/* Main Container */}
-      <div className="flex-1 flex flex-col h-screen relative bg-cream lg:bg-[var(--ds-page-bg)] overflow-hidden min-w-0">
+      <div className="flex-1 flex flex-col h-screen relative bg-surface lg:bg-[var(--ds-page-bg)] overflow-hidden min-w-0">
         {/* Desktop top bar: page title + date (hard-left), profile avatar (hard-right) — Phase 1.6/1.7, lg:-only.
             Full-bleed padded row (not the centered content container) so the title hugs the content area's
             left edge and the avatar sits in the far top-right corner, per #104 feedback. */}
-        <div className="hidden lg:block bg-white border-b border-stone-200 flex-shrink-0">
+        <div className="hidden lg:block bg-surface-raised border-b border-line flex-shrink-0">
           <div className="flex items-center justify-between py-3 px-6 xl:px-8">
             <div>
-              <h1 className="font-display text-lg font-normal tracking-[-0.01em] text-earth">{desktopTitle}</h1>
-              {showDesktopDate && <p className="text-xs text-[color:var(--text-faint)] mt-0.5">{desktopDate}</p>}
+              <h1 className="font-display text-lg font-normal tracking-[-0.01em] text-strong">{desktopTitle}</h1>
+              {showDesktopDate && <p className="text-xs text-faint mt-0.5">{desktopDate}</p>}
             </div>
             <button
               onClick={() => setActiveBottomTab('profile')}
-              className="flex items-center justify-center w-9 h-9 rounded-full overflow-hidden bg-stone-100 text-sm font-bold text-warm-brown shrink-0 hover:opacity-90 transition-opacity"
+              className="flex items-center justify-center w-9 h-9 rounded-full overflow-hidden bg-surface-sunken text-sm font-bold text-muted shrink-0 hover:opacity-90 transition-opacity"
               title="My Profile"
             >
               {currentUser?.photoURL ? (
@@ -520,7 +520,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
 
         {/* Top Navigation (only visible when Home is active; mobile only — desktop nav lives in the sidebar) */}
         {activeBottomTab === 'home' && (
-          <div className="bg-white pt-3 pb-0 px-4 border-b border-stone-200 z-10 flex-shrink-0 transition-colors duration-300 lg:hidden">
+          <div className="bg-surface-raised pt-3 pb-0 px-4 border-b border-line z-10 flex-shrink-0 transition-colors duration-300 lg:hidden">
             <DesktopContainer>
             <div ref={topTabsRef} className="flex overflow-x-auto gap-6 pb-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] snap-x scroll-smooth w-full">
               {topTabs.map((tab) => (
@@ -529,7 +529,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
                   data-tab-id={tab.id}
                   onClick={() => handleTopTabClick(tab.id)}
                   className={`whitespace-nowrap pb-3 font-bold text-[13px] transition-colors relative snap-start ${
-                    activeTopTab === tab.id ? '' : 'text-warm-brown'
+                    activeTopTab === tab.id ? '' : 'text-muted'
                   }`}
                   style={activeTopTab === tab.id ? { color: 'var(--brand-color, #e6b325)' } : undefined}
                 >

@@ -280,10 +280,10 @@ const CanvasEditor: React.FC<CanvasEditorProps> = ({ canvasId, canvasName: initi
   // Loading state
   if (loading) {
     return (
-      <div className="fixed inset-0 z-[9999] bg-white flex items-center justify-center">
+      <div className="fixed inset-0 z-[9999] bg-surface-raised flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="w-8 h-8 animate-spin text-gold" />
-          <span className="text-sm text-warm-brown">Loading canvas...</span>
+          <span className="text-sm text-muted">Loading canvas...</span>
         </div>
       </div>
     );
@@ -292,10 +292,10 @@ const CanvasEditor: React.FC<CanvasEditorProps> = ({ canvasId, canvasName: initi
   // Error state
   if (error) {
     return (
-      <div className="fixed inset-0 z-[9999] bg-white flex items-center justify-center">
+      <div className="fixed inset-0 z-[9999] bg-surface-raised flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <AlertCircle className="w-10 h-10 text-red-400" />
-          <span className="text-sm text-warm-brown">{error}</span>
+          <span className="text-sm text-muted">{error}</span>
           <button onClick={handleBack} className="text-sm text-gold hover:underline">Go back</button>
         </div>
       </div>
@@ -303,19 +303,19 @@ const CanvasEditor: React.FC<CanvasEditorProps> = ({ canvasId, canvasName: initi
   }
 
   return (
-    <div className="fixed inset-0 z-[9999] bg-white flex flex-col excalidraw-canvas-container">
+    <div className="fixed inset-0 z-[9999] bg-surface-raised flex flex-col excalidraw-canvas-container">
       {/* Our floating toolbar — sits above Excalidraw, below safe area */}
       <div className="absolute top-0 left-0 right-0 z-[10000] flex items-center justify-between px-3 py-2 canvas-top-bar"
            style={{ paddingTop: `max(env(safe-area-inset-top, 0px), 8px)` }}>
         <div className="flex items-center gap-2">
           <button
             onClick={handleBack}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-white/90 backdrop-blur-sm rounded-lg shadow-sm border border-stone-200 hover:bg-stone-100 transition-colors text-xs font-medium text-[color:var(--text-body)] cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-white/90 backdrop-blur-sm rounded-lg shadow-sm border border-line hover:bg-surface-sunken transition-colors text-xs font-medium text-body cursor-pointer"
           >
             <ArrowLeft size={16} />
             <span>Back</span>
           </button>
-          <span className="text-xs font-semibold text-earth truncate max-w-[160px]">
+          <span className="text-xs font-semibold text-strong truncate max-w-[160px]">
             {initialName}
           </span>
         </div>
@@ -323,7 +323,7 @@ const CanvasEditor: React.FC<CanvasEditorProps> = ({ canvasId, canvasName: initi
           saveStatus === 'saved' ? 'text-green-600' :
           saveStatus === 'saving' ? 'text-blue-500' :
           saveStatus === 'error' ? 'text-red-500' :
-          'text-[color:var(--text-faint)]'
+          'text-faint'
         }`}>
           {saveStatus === 'saving' && <Loader2 size={10} className="animate-spin" />}
           {saveStatus === 'saved' && <Check size={10} />}

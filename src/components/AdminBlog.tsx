@@ -227,7 +227,7 @@ const AdminBlog: React.FC = () => {
  {canAutomate && (
  <button
  onClick={() => setShowAutomation(true)}
- className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-brand border border-stone-200 bg-white text-[13px] font-semibold text-earth hover:bg-stone-100 transition-colors"
+ className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-brand border border-line bg-surface-raised text-[13px] font-semibold text-strong hover:bg-surface-sunken transition-colors"
  >
  <Sparkles size={15} className="text-gold" /> Automate
  </button>
@@ -243,13 +243,13 @@ const AdminBlog: React.FC = () => {
  <select
  value={selectedCategory}
  onChange={(e) => setSelectedCategory(e.target.value)}
- className="w-full pl-4 pr-10 py-3 bg-white border border-stone-200 rounded-brand-lg text-sm text-earth appearance-none outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent transition-all"
+ className="w-full pl-4 pr-10 py-3 bg-surface-raised border border-line rounded-brand-lg text-sm text-strong appearance-none outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent transition-all"
  >
  {filterCategories.map(category => (
  <option key={category} value={category}>{category === 'All' ? 'All categories' : category}</option>
  ))}
  </select>
- <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-[color:var(--text-faint)] pointer-events-none" />
+ <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-faint pointer-events-none" />
  </div>
  </div>
 
@@ -257,40 +257,40 @@ const AdminBlog: React.FC = () => {
  {/* Mobile list — mockup card list: thumb/icon disc, title (+AI), category
      chip · date, status pill. Same filteredPosts data and the same
      handleEditPost / setDeleteConfirmId handlers as the desktop table. */}
- <div className="lg:hidden bg-white rounded-brand-xl border border-stone-200 shadow-[var(--ds-sh-sm)] overflow-hidden">
+ <div className="lg:hidden bg-surface-raised rounded-brand-xl border border-line shadow-[var(--ds-sh-sm)] overflow-hidden">
  {loading ? (
- <div className="px-3.5 py-10 flex items-center justify-center gap-2 text-warm-brown">
+ <div className="px-3.5 py-10 flex items-center justify-center gap-2 text-muted">
  <div className="w-4 h-4 border-2 border-gold border-t-transparent rounded-full animate-spin"></div>
  <span>Loading posts…</span>
  </div>
  ) : filteredPosts.length === 0 ? (
  <div className="px-3.5 py-14 flex flex-col items-center justify-center gap-1.5 text-center">
  <FileText size={30} className="text-stone-300 mb-1" />
- <p className="text-base text-earth font-display">No posts found</p>
- <p className="text-sm text-warm-brown">Get started by creating a new blog post.</p>
+ <p className="text-base text-strong font-display">No posts found</p>
+ <p className="text-sm text-muted">Get started by creating a new blog post.</p>
  </div>
  ) : (
  filteredPosts.map((post, i) => (
- <div key={post.id} className={`flex items-center gap-3 px-3.5 py-3 ${i ? 'border-t border-stone-200' : ''}`}>
- <div className="w-11 h-11 rounded-brand bg-[var(--surface-gold)] flex items-center justify-center text-warm-brown shrink-0 overflow-hidden">
+ <div key={post.id} className={`flex items-center gap-3 px-3.5 py-3 ${i ? 'border-t border-line' : ''}`}>
+ <div className="w-11 h-11 rounded-brand bg-[var(--surface-gold)] flex items-center justify-center text-muted shrink-0 overflow-hidden">
  {post.featuredImage
  ? <img src={post.featuredImage} alt="" className="w-full h-full object-cover" />
  : <FileText size={17} />}
  </div>
  <div className="flex-1 min-w-0">
  <div className="flex items-center gap-1.5">
- <span className="text-sm font-semibold text-earth leading-snug line-clamp-1">{post.title}</span>
+ <span className="text-sm font-semibold text-strong leading-snug line-clamp-1">{post.title}</span>
  {post.isAiGenerated && <AdminBadge tone="gold">AI</AdminBadge>}
  </div>
  <div className="flex items-center gap-2 mt-1">
- <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-stone-100 text-warm-brown text-[11px] font-medium">{post.category}</span>
- <span className="text-[11px] text-[color:var(--text-faint)] whitespace-nowrap">{formatDate(post.createdAt)}</span>
+ <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-surface-sunken text-muted text-[11px] font-medium">{post.category}</span>
+ <span className="text-[11px] text-faint whitespace-nowrap">{formatDate(post.createdAt)}</span>
  </div>
  </div>
  <AdminBadge tone={statusTone(post.status)} className="shrink-0">{post.status}</AdminBadge>
  <div className="flex items-center shrink-0">
- <button onClick={() => handleEditPost(post)} className="p-2 rounded-brand text-[color:var(--text-faint)] hover:text-gold hover:bg-stone-100 transition-colors" title="Edit"><Edit2 size={15} /></button>
- <button onClick={() => setDeleteConfirmId(post.id)} className="p-2 rounded-brand text-[color:var(--text-faint)] hover:text-[#C4553B] hover:bg-[#F7E7E2] transition-colors" title="Delete"><Trash2 size={15} /></button>
+ <button onClick={() => handleEditPost(post)} className="p-2 rounded-brand text-faint hover:text-gold hover:bg-surface-sunken transition-colors" title="Edit"><Edit2 size={15} /></button>
+ <button onClick={() => setDeleteConfirmId(post.id)} className="p-2 rounded-brand text-faint hover:text-[#C4553B] hover:bg-[#F7E7E2] transition-colors" title="Delete"><Trash2 size={15} /></button>
  </div>
  </div>
  ))
@@ -302,7 +302,7 @@ const AdminBlog: React.FC = () => {
  <div className="overflow-x-auto">
  <table className="w-full text-left border-collapse">
  <thead>
- <tr className="border-b border-stone-200">
+ <tr className="border-b border-line">
  <th className="px-6 py-4 text-[11px] font-semibold text-gold uppercase tracking-[0.12em]">Title</th>
  <th className="px-6 py-4 text-[11px] font-semibold text-gold uppercase tracking-[0.12em]">Category</th>
  <th className="px-6 py-4 text-[11px] font-semibold text-gold uppercase tracking-[0.12em]">Status</th>
@@ -313,7 +313,7 @@ const AdminBlog: React.FC = () => {
  <tbody className="divide-y divide-stone-200">
  {loading ? (
  <tr>
- <td colSpan={5} className="px-6 py-10 text-center text-warm-brown">
+ <td colSpan={5} className="px-6 py-10 text-center text-muted">
  <div className="flex items-center justify-center gap-2">
  <div className="w-4 h-4 border-2 border-gold border-t-transparent rounded-full animate-spin"></div>
  <span>Loading posts…</span>
@@ -325,8 +325,8 @@ const AdminBlog: React.FC = () => {
  <td colSpan={5} className="px-6 py-14 text-center">
  <div className="flex flex-col items-center justify-center gap-1.5">
  <FileText size={30} className="text-stone-300 mb-1" />
- <p className="text-base text-earth font-display">No posts found</p>
- <p className="text-sm text-warm-brown">Get started by creating a new blog post.</p>
+ <p className="text-base text-strong font-display">No posts found</p>
+ <p className="text-sm text-muted">Get started by creating a new blog post.</p>
  </div>
  </td>
  </tr>
@@ -335,17 +335,17 @@ const AdminBlog: React.FC = () => {
  <tr key={post.id} className="hover:bg-stone-100/60 transition-colors group">
  <td className="px-6 py-3.5">
  <div className="flex items-center gap-2">
- <span className="text-sm font-semibold text-earth line-clamp-1">{post.title}</span>
+ <span className="text-sm font-semibold text-strong line-clamp-1">{post.title}</span>
  {post.isAiGenerated && <AdminBadge tone="gold">AI</AdminBadge>}
  </div>
  </td>
- <td className="px-6 py-3.5"><span className="text-sm text-warm-brown">{post.category}</span></td>
+ <td className="px-6 py-3.5"><span className="text-sm text-muted">{post.category}</span></td>
  <td className="px-6 py-3.5"><AdminBadge tone={statusTone(post.status)}>{post.status}</AdminBadge></td>
- <td className="px-6 py-3.5"><span className="text-sm text-warm-brown whitespace-nowrap">{formatDate(post.createdAt)}</span></td>
+ <td className="px-6 py-3.5"><span className="text-sm text-muted whitespace-nowrap">{formatDate(post.createdAt)}</span></td>
  <td className="px-6 py-3.5 text-right">
  <div className="flex items-center justify-end gap-1">
- <button onClick={() => handleEditPost(post)} className="p-2 rounded-brand text-[color:var(--text-faint)] hover:text-gold hover:bg-stone-100 transition-colors" title="Edit"><Edit2 size={16} /></button>
- <button onClick={() => setDeleteConfirmId(post.id)} className="p-2 rounded-brand text-[color:var(--text-faint)] hover:text-[#C4553B] hover:bg-[#F7E7E2] transition-colors" title="Delete"><Trash2 size={16} /></button>
+ <button onClick={() => handleEditPost(post)} className="p-2 rounded-brand text-faint hover:text-gold hover:bg-surface-sunken transition-colors" title="Edit"><Edit2 size={16} /></button>
+ <button onClick={() => setDeleteConfirmId(post.id)} className="p-2 rounded-brand text-faint hover:text-[#C4553B] hover:bg-[#F7E7E2] transition-colors" title="Delete"><Trash2 size={16} /></button>
  </div>
  </td>
  </tr>
@@ -360,15 +360,15 @@ const AdminBlog: React.FC = () => {
  {/* Delete Confirmation Modal */}
  {deleteConfirmId && (
  <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
- <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 border border-stone-200 ">
- <h3 className="text-xl font-bold text-earth mb-2 font-display">Delete Post</h3>
- <p className="text-warm-brown mb-6">
+ <div className="bg-surface-raised rounded-2xl shadow-xl max-w-sm w-full p-6 border border-line ">
+ <h3 className="text-xl font-bold text-strong mb-2 font-display">Delete Post</h3>
+ <p className="text-muted mb-6">
  Are you sure you want to delete this blog post? This action cannot be undone.
  </p>
  <div className="flex justify-end gap-3">
  <button
  onClick={() => setDeleteConfirmId(null)}
- className="px-4 py-2 text-warm-brown hover:bg-stone-100 :bg-warm-dark rounded-xl font-medium transition-colors"
+ className="px-4 py-2 text-muted hover:bg-surface-sunken :bg-warm-dark rounded-xl font-medium transition-colors"
  >
  Cancel
  </button>
@@ -386,39 +386,39 @@ const AdminBlog: React.FC = () => {
  {/* Automated Blog Settings */}
  {showAutomation && (
  <div className="fixed inset-0 z-[200] bg-black/50 flex items-end">
- <div className="bg-white rounded-t-3xl w-full max-w-lg mx-auto p-6 space-y-5"
+ <div className="bg-surface-raised rounded-t-3xl w-full max-w-lg mx-auto p-6 space-y-5"
  style={{ paddingBottom: 'calc(24px + env(safe-area-inset-bottom))' }}>
 
  {/* Header */}
  <div className="flex items-center justify-between">
  <div>
- <h3 className="font-black text-earth font-display">Automated Blog</h3>
- <p className="text-xs text-[color:var(--text-faint)] mt-0.5">
+ <h3 className="font-black text-strong font-display">Automated Blog</h3>
+ <p className="text-xs text-faint mt-0.5">
  AI generates SEO articles from your Knowledge Base
  </p>
  </div>
  <button onClick={() => setShowAutomation(false)}>
- <X size={20} className="text-[color:var(--text-faint)]" />
+ <X size={20} className="text-faint" />
  </button>
  </div>
 
  {/* Enable toggle */}
- <div className="flex items-center justify-between py-3 border-b border-stone-200">
+ <div className="flex items-center justify-between py-3 border-b border-line">
  <div>
- <p className="text-sm font-semibold text-[color:var(--text-body)]">Auto-publish articles</p>
- <p className="text-xs text-[color:var(--text-faint)]">Posts directly to your blog</p>
+ <p className="text-sm font-semibold text-body">Auto-publish articles</p>
+ <p className="text-xs text-faint">Posts directly to your blog</p>
  </div>
  <button
  onClick={() => setAutomation(a => ({ ...a, enabled: !a.enabled }))}
  className={`w-12 h-6 rounded-full transition-colors relative ${automation.enabled ? 'bg-gold' : 'bg-stone-200'}`}
  >
- <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all ${automation.enabled ? 'left-7' : 'left-1'}`} />
+ <span className={`absolute top-1 w-4 h-4 bg-surface-raised rounded-full shadow transition-all ${automation.enabled ? 'left-7' : 'left-1'}`} />
  </button>
  </div>
 
  {/* Frequency */}
  <div>
- <label className="text-xs font-bold text-[color:var(--text-faint)] uppercase tracking-wider mb-2 block">
+ <label className="text-xs font-bold text-faint uppercase tracking-wider mb-2 block">
  Frequency
  </label>
  <div className="grid grid-cols-2 gap-2">
@@ -428,7 +428,7 @@ const AdminBlog: React.FC = () => {
  className={`py-2.5 rounded-xl text-sm font-semibold capitalize border transition-colors ${
  automation.frequency === f
  ? 'text-white border-transparent'
- : 'text-warm-brown border-stone-200 bg-white'
+ : 'text-muted border-line bg-surface-raised'
  }`}
  style={automation.frequency === f ? { backgroundColor: GOLD } : {}}
  >
@@ -441,7 +441,7 @@ const AdminBlog: React.FC = () => {
  {/* Day of week (shown for weekly/biweekly) */}
  {(automation.frequency === 'weekly' || automation.frequency === 'biweekly') && (
  <div>
- <label className="text-xs font-bold text-[color:var(--text-faint)] uppercase tracking-wider mb-2 block">
+ <label className="text-xs font-bold text-faint uppercase tracking-wider mb-2 block">
  Day to post
  </label>
  <div className="flex gap-1.5 flex-wrap">
@@ -451,7 +451,7 @@ const AdminBlog: React.FC = () => {
  className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
  automation.dayOfWeek === i
  ? 'text-white border-transparent'
- : 'text-warm-brown border-stone-200'
+ : 'text-muted border-line'
  }`}
  style={automation.dayOfWeek === i ? { backgroundColor: GOLD } : {}}
  >
@@ -464,38 +464,38 @@ const AdminBlog: React.FC = () => {
 
  {/* Hour to post */}
  <div>
- <label className="text-xs font-bold text-[color:var(--text-faint)] uppercase tracking-wider mb-2 block">
- Time to post <span className="font-normal normal-case text-[color:var(--text-faint)]">— times shown for {automation.timezone} (your detected timezone)</span>
+ <label className="text-xs font-bold text-faint uppercase tracking-wider mb-2 block">
+ Time to post <span className="font-normal normal-case text-faint">— times shown for {automation.timezone} (your detected timezone)</span>
  </label>
  <div className="relative">
  <select
  value={automation.hour}
  onChange={e => setAutomation(a => ({ ...a, hour: Number(e.target.value) }))}
- className="w-full pl-4 pr-10 py-2.5 bg-white border border-stone-200 rounded-xl text-sm text-earth appearance-none outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent transition-all"
+ className="w-full pl-4 pr-10 py-2.5 bg-surface-raised border border-line rounded-xl text-sm text-strong appearance-none outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent transition-all"
  >
  {Array.from({ length: 24 }, (_, h) => (
  <option key={h} value={h}>{String(h).padStart(2, '0')}:00</option>
  ))}
  </select>
- <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-[color:var(--text-faint)] pointer-events-none" />
+ <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-faint pointer-events-none" />
  </div>
- <p className="text-xs text-[color:var(--text-faint)] mt-1">
+ <p className="text-xs text-faint mt-1">
  Choose the hour in your timezone ({automation.timezone}). Posts generate around this time when the daily job runs — not to the exact minute.
  </p>
  </div>
 
  {/* Topic hint */}
  <div>
- <label className="text-xs font-bold text-[color:var(--text-faint)] uppercase tracking-wider mb-2 block">
+ <label className="text-xs font-bold text-faint uppercase tracking-wider mb-2 block">
  Topic focus <span className="font-normal normal-case">(optional)</span>
  </label>
  <input
  value={automation.topicHint}
  onChange={e => setAutomation(a => ({ ...a, topicHint: e.target.value }))}
  placeholder="e.g. discipleship, faith, church growth"
- className="w-full border border-stone-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold"
+ className="w-full border border-line rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold"
  />
- <p className="text-xs text-[color:var(--text-faint)] mt-1">
+ <p className="text-xs text-faint mt-1">
  Guides the AI when choosing what to write about from your Knowledge Base.
  </p>
  </div>
@@ -507,7 +507,7 @@ const AdminBlog: React.FC = () => {
  {automation.totalGenerated} article{automation.totalGenerated !== 1 ? 's' : ''} generated
  </span>
  {automation.nextScheduledAt && !isNaN(new Date(automation.nextScheduledAt as any).getTime()) && (
- <span className="text-xs text-warm-brown">
+ <span className="text-xs text-muted">
  Next: {new Date(automation.nextScheduledAt as any).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
  </span>
  )}
@@ -519,7 +519,7 @@ const AdminBlog: React.FC = () => {
  <button
  onClick={handleGenerateNow}
  disabled={generatingNow}
- className="flex-1 py-3 rounded-xl text-sm font-semibold border border-stone-200 text-[color:var(--text-body)] disabled:opacity-50"
+ className="flex-1 py-3 rounded-xl text-sm font-semibold border border-line text-body disabled:opacity-50"
  >
  {generatingNow ? 'Generating…' : '⚡ Generate Now'}
  </button>

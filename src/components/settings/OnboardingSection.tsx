@@ -156,13 +156,13 @@ const OnboardingSection: React.FC = () => {
 
       {/* Questions List */}
       {onboardingQuestions.length === 0 && (
-        <div className="bg-white rounded-xl border border-gray-100 p-8 text-center">
+        <div className="bg-surface-raised rounded-xl border border-gray-100 p-8 text-center">
           <p className="text-xs text-gray-400">No custom questions yet. Click &quot;Add Question&quot; to create one.</p>
         </div>
       )}
 
       {onboardingQuestions.map((q, index) => (
-        <div key={q.id} className="bg-white rounded-xl border border-gray-100 p-4 flex items-start gap-4">
+        <div key={q.id} className="bg-surface-raised rounded-xl border border-gray-100 p-4 flex items-start gap-4">
           <div className="flex flex-col gap-1 pt-1">
             <button onClick={() => moveQuestion(index, 'up')} disabled={index === 0} className="text-gray-400 hover:text-gray-600 disabled:opacity-30 text-xs">▲</button>
             <button onClick={() => moveQuestion(index, 'down')} disabled={index === onboardingQuestions.length - 1} className="text-gray-400 hover:text-gray-600 disabled:opacity-30 text-xs">▼</button>
@@ -207,7 +207,7 @@ const OnboardingSection: React.FC = () => {
       {/* Question Editor Modal */}
       {showQuestionModal && editingQuestion && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[200] p-4">
-          <div className="bg-white rounded-xl p-4 max-w-md w-full space-y-4">
+          <div className="bg-surface-raised rounded-xl p-4 max-w-md w-full space-y-4">
             <h3 className="font-display text-sm font-semibold text-gray-900">
               {onboardingQuestions.find(q => q.id === editingQuestion.id) ? 'Edit Question' : 'Add Question'}
             </h3>
@@ -255,7 +255,7 @@ const OnboardingSection: React.FC = () => {
                 onClick={() => setEditingQuestion({ ...editingQuestion, required: !editingQuestion.required })}
                 className={`w-10 h-6 rounded-full relative transition-colors ${editingQuestion.required ? 'bg-gold' : 'bg-gray-200'}`}
               >
-                <div className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-all ${editingQuestion.required ? 'left-5' : 'left-1'}`} />
+                <div className={`absolute top-1 w-4 h-4 rounded-full bg-surface-raised shadow transition-all ${editingQuestion.required ? 'left-5' : 'left-1'}`} />
               </button>
             </div>
 

@@ -174,7 +174,7 @@ const FirstRunSetup: React.FC<FirstRunSetupProps> = ({ tenantId, onFinished }) =
         )}
 
         {/* Subdomain claim */}
-        <div className="mt-8 rounded-brand-lg border border-stone-200 bg-white p-5 shadow-[var(--ds-sh-sm)]">
+        <div className="mt-8 rounded-brand-lg border border-line bg-surface-raised p-5 shadow-[var(--ds-sh-sm)]">
           <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.14em]" style={{ color: 'var(--text-muted, #8B7355)' }}>Your web address</h3>
           <div className="flex items-stretch">
             <input

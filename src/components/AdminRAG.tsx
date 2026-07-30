@@ -535,14 +535,14 @@ export default function AdminRAG() {
  {/* Mobile segmented control — the add|sources tab modes styled as the mockup's
      segmented control (stone track, white/gold active pill). Same tab/setTab state. */}
  <div className="lg:hidden px-5 pt-3">
- <div className="flex bg-stone-100 rounded-full p-1">
+ <div className="flex bg-surface-sunken rounded-full p-1">
  <button
  onClick={()=>setTab("add")}
- className={`flex-1 rounded-full py-2 text-[13px] font-semibold transition-colors ${tab==="add" ? "bg-white text-gold shadow-[var(--ds-sh-sm)]" : "text-warm-brown"}`}
+ className={`flex-1 rounded-full py-2 text-[13px] font-semibold transition-colors ${tab==="add" ? "bg-surface-raised text-gold shadow-[var(--ds-sh-sm)]" : "text-muted"}`}
  >Add Knowledge</button>
  <button
  onClick={()=>setTab("sources")}
- className={`flex-1 rounded-full py-2 text-[13px] font-semibold transition-colors ${tab==="sources" ? "bg-white text-gold shadow-[var(--ds-sh-sm)]" : "text-warm-brown"}`}
+ className={`flex-1 rounded-full py-2 text-[13px] font-semibold transition-colors ${tab==="sources" ? "bg-surface-raised text-gold shadow-[var(--ds-sh-sm)]" : "text-muted"}`}
  >Sources ({sources.length})</button>
  </div>
  </div>
@@ -572,16 +572,16 @@ export default function AdminRAG() {
  <div className="lg:hidden flex flex-col gap-3.5">
 
  {/* Paste text */}
- <div className="bg-white rounded-brand-xl border border-stone-200 shadow-[var(--ds-sh-sm)] p-4 flex flex-col gap-3">
+ <div className="bg-surface-raised rounded-brand-xl border border-line shadow-[var(--ds-sh-sm)] p-4 flex flex-col gap-3">
  <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-gold">Paste text</div>
  <input value={pasteTitle} onChange={e=>setPasteTitle(e.target.value)}
  placeholder="Source title (optional)"
- className="w-full rounded-brand border border-stone-200 bg-cream px-3.5 py-2.5 text-[14px] text-earth" />
+ className="w-full rounded-brand border border-line bg-surface px-3.5 py-2.5 text-[14px] text-strong" />
  <textarea value={pasteText} onChange={e=>setPasteText(e.target.value)}
  placeholder="Paste sermons, commentary, study notes — anything the AI should know…"
- className="w-full min-h-[150px] rounded-brand border border-stone-200 bg-cream px-3.5 py-2.5 text-[14px] leading-relaxed text-earth resize-y" />
+ className="w-full min-h-[150px] rounded-brand border border-line bg-surface px-3.5 py-2.5 text-[14px] leading-relaxed text-strong resize-y" />
  {pasteText.trim() && (
- <div className="text-[12px] text-warm-brown">
+ <div className="text-[12px] text-muted">
  ~{pasteText.trim().split(/\s+/).length} words · ~{chunkText(pasteText).length} chunks
  </div>
  )}
@@ -593,16 +593,16 @@ export default function AdminRAG() {
  </div>
 
  {/* Upload files */}
- <div className="bg-white rounded-brand-xl border border-stone-200 shadow-[var(--ds-sh-sm)] p-4 flex flex-col gap-3">
+ <div className="bg-surface-raised rounded-brand-xl border border-line shadow-[var(--ds-sh-sm)] p-4 flex flex-col gap-3">
  <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-gold">Upload files</div>
  <div onClick={()=>fileInputRef.current?.click()}
  onDragOver={e=>{e.preventDefault();setDragOver(true);}}
  onDragLeave={()=>setDragOver(false)}
  onDrop={handleDrop}
- className={`flex flex-col items-center justify-center gap-2 rounded-brand-lg border-2 border-dashed px-5 py-10 text-center cursor-pointer transition-colors ${dragOver ? "border-gold bg-[var(--surface-gold)]" : "border-stone-200 bg-stone-100"}`}>
- <Upload size={26} strokeWidth={1.5} className={dragOver ? "text-gold" : "text-warm-brown"} />
- <div className="text-[14px] font-semibold text-earth">Drop files or tap to browse</div>
- <div className="text-[12px] text-warm-brown tracking-wide">TXT · PDF · CSV</div>
+ className={`flex flex-col items-center justify-center gap-2 rounded-brand-lg border-2 border-dashed px-5 py-10 text-center cursor-pointer transition-colors ${dragOver ? "border-gold bg-[var(--surface-gold)]" : "border-line bg-surface-sunken"}`}>
+ <Upload size={26} strokeWidth={1.5} className={dragOver ? "text-gold" : "text-muted"} />
+ <div className="text-[14px] font-semibold text-strong">Drop files or tap to browse</div>
+ <div className="text-[12px] text-muted tracking-wide">TXT · PDF · CSV</div>
  </div>
  </div>
 
@@ -743,27 +743,27 @@ export default function AdminRAG() {
      setDeleteTarget handler as the desktop table below. */}
  <div className="lg:hidden">
  {filtered.length === 0 ? (
- <div className="bg-white rounded-brand-xl border border-stone-200 shadow-[var(--ds-sh-sm)] px-5 py-14 text-center">
+ <div className="bg-surface-raised rounded-brand-xl border border-line shadow-[var(--ds-sh-sm)] px-5 py-14 text-center">
  <div className="w-[52px] h-[52px] rounded-full bg-[var(--surface-gold)] text-gold flex items-center justify-center mx-auto mb-3.5">
  <Database size={22} strokeWidth={1.5} />
  </div>
- <div className="font-semibold text-earth mb-1.5">
+ <div className="font-semibold text-strong mb-1.5">
  {sources.length === 0 ? "No knowledge added yet" : "No sources match your search"}
  </div>
- <div className="text-[13px] text-warm-brown">
+ <div className="text-[13px] text-muted">
  {sources.length === 0 ? "Go to \"Add Knowledge\" to get started." : "Try a different search or filter."}
  </div>
  </div>
  ) : (
- <div className="bg-white rounded-brand-xl border border-stone-200 shadow-[var(--ds-sh-sm)] overflow-hidden">
+ <div className="bg-surface-raised rounded-brand-xl border border-line shadow-[var(--ds-sh-sm)] overflow-hidden">
  {filtered.map((source, i) => (
- <div key={source.id} className={`flex items-center gap-3 px-3.5 py-3 ${i ? "border-t border-stone-200" : ""}`}>
+ <div key={source.id} className={`flex items-center gap-3 px-3.5 py-3 ${i ? "border-t border-line" : ""}`}>
  <div className="w-[34px] h-[34px] rounded-[9px] bg-[var(--surface-gold)] text-gold flex items-center justify-center shrink-0">
  <Sparkles size={15} />
  </div>
  <div className="flex-1 min-w-0">
- <div className="text-[13.5px] font-semibold text-earth truncate" title={source.title || "Untitled"}>{source.title || "Untitled"}</div>
- <div className="text-[11.5px] text-[color:var(--text-faint)] truncate">
+ <div className="text-[13.5px] font-semibold text-strong truncate" title={source.title || "Untitled"}>{source.title || "Untitled"}</div>
+ <div className="text-[11.5px] text-faint truncate">
  {source.chunks} chunks{source.addedAt instanceof Date ? ` · ${source.addedAt.toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})}` : ""}
  </div>
  </div>
@@ -785,7 +785,7 @@ export default function AdminRAG() {
  <button
  onClick={()=>setDeleteTarget(source)}
  title="Delete source"
- className="shrink-0 w-8 h-8 flex items-center justify-center rounded-brand text-[color:var(--text-faint)] hover:text-[#C4553B] hover:bg-[#F7E7E2] transition-colors"
+ className="shrink-0 w-8 h-8 flex items-center justify-center rounded-brand text-faint hover:text-[#C4553B] hover:bg-[#F7E7E2] transition-colors"
  >
  <Trash2 size={15} strokeWidth={1.75} />
  </button>

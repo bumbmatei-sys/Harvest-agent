@@ -101,13 +101,13 @@ const DonationHistory: React.FC<DonationHistoryProps> = ({ onBack }) => {
   const years = Object.keys(totals.byYear).sort((a, b) => Number(b) - Number(a));
 
   return (
-    <div className="flex flex-col min-h-full h-full bg-cream overflow-y-auto">
-      <div className="sticky top-0 z-10 bg-white border-b border-stone-200">
+    <div className="flex flex-col min-h-full h-full bg-surface overflow-y-auto">
+      <div className="sticky top-0 z-10 bg-surface-raised border-b border-line">
         <div className="flex items-center gap-3 px-4 py-4 lg:max-w-[760px] lg:mx-auto">
-          <button onClick={onBack} className="p-1.5 rounded-lg hover:bg-stone-100">
-            <ArrowLeft size={18} className="text-warm-brown" />
+          <button onClick={onBack} className="p-1.5 rounded-lg hover:bg-surface-sunken">
+            <ArrowLeft size={18} className="text-muted" />
           </button>
-          <h2 className="font-display text-lg font-normal tracking-[-0.01em] text-earth">Donation History</h2>
+          <h2 className="font-display text-lg font-normal tracking-[-0.01em] text-strong">Donation History</h2>
         </div>
       </div>
 
@@ -118,12 +118,12 @@ const DonationHistory: React.FC<DonationHistoryProps> = ({ onBack }) => {
               style={{ borderColor: BRAND, borderTopColor: 'transparent' }} />
           </div>
         ) : error ? (
-          <div className="text-center py-16 text-[color:var(--text-faint)]">
+          <div className="text-center py-16 text-faint">
             <Receipt size={40} className="mx-auto mb-3 opacity-30" />
             <p className="font-medium">{error}</p>
           </div>
         ) : receipts.length === 0 ? (
-          <div className="text-center py-16 text-[color:var(--text-faint)]">
+          <div className="text-center py-16 text-faint">
             <HeartHandshake size={40} className="mx-auto mb-3 opacity-30" />
             <p className="font-medium">No donations yet</p>
             <p className="text-sm mt-1">Your giving receipts will show up here.</p>
@@ -131,8 +131,8 @@ const DonationHistory: React.FC<DonationHistoryProps> = ({ onBack }) => {
         ) : (
           <div className="space-y-4">
             {/* Lifetime + per-year totals summary. */}
-            <div className="bg-white rounded-3xl shadow-sm border border-stone-200 p-5">
-              <p className="text-[10px] font-bold text-[color:var(--text-faint)] tracking-wider uppercase">
+            <div className="bg-surface-raised rounded-3xl shadow-sm border border-line p-5">
+              <p className="text-[10px] font-bold text-faint tracking-wider uppercase">
                 Total given
               </p>
               <p className="font-display text-3xl font-light tracking-[-0.01em] mt-1" style={{ color: BRAND }}>
@@ -142,8 +142,8 @@ const DonationHistory: React.FC<DonationHistoryProps> = ({ onBack }) => {
                 <div className="flex flex-wrap gap-2 mt-4">
                   {years.map((y) => (
                     <div key={y} className="rounded-xl bg-wheat-50 border border-wheat-100 px-3 py-1.5">
-                      <span className="text-xs font-semibold text-warm-brown">{y}</span>
-                      <span className="text-xs font-bold text-earth ml-2">{formatCents(totals.byYear[y])}</span>
+                      <span className="text-xs font-semibold text-muted">{y}</span>
+                      <span className="text-xs font-bold text-strong ml-2">{formatCents(totals.byYear[y])}</span>
                     </div>
                   ))}
                 </div>
@@ -157,35 +157,35 @@ const DonationHistory: React.FC<DonationHistoryProps> = ({ onBack }) => {
             )}
 
             {/* Receipt list. */}
-            <div className="bg-white rounded-3xl shadow-sm border border-stone-200 overflow-hidden">
+            <div className="bg-surface-raised rounded-3xl shadow-sm border border-line overflow-hidden">
               {receipts.map((r, i) => (
                 <div key={r.id}>
-                  {i > 0 && <div className="h-px bg-stone-100 mx-4" />}
+                  {i > 0 && <div className="h-px bg-surface-sunken mx-4" />}
                   <div className="flex items-center justify-between gap-3 p-4">
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 bg-wheat-100">
                         <HeartHandshake size={16} className="text-wheat-600" />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-bold text-earth truncate">{r.description}</p>
-                        <p className="text-xs text-warm-brown truncate">
+                        <p className="text-sm font-bold text-strong truncate">{r.description}</p>
+                        <p className="text-xs text-muted truncate">
                           {fmtDate(r.date)}
                           {r.tenantName ? ` · ${r.tenantName}` : ''}
                         </p>
                         {r.receiptNumber && (
-                          <p className="text-[10px] text-[color:var(--text-faint)] truncate">{r.receiptNumber}</p>
+                          <p className="text-[10px] text-faint truncate">{r.receiptNumber}</p>
                         )}
                       </div>
                     </div>
                     <div className="flex items-center gap-3 shrink-0">
                       {/* amountCents is CENTS — formatCents divides by 100. */}
-                      <span className="text-sm font-bold text-earth">{formatCents(r.amountCents)}</span>
+                      <span className="text-sm font-bold text-strong">{formatCents(r.amountCents)}</span>
                       {r.hasPdf && (
                         <button
                           onClick={() => handleDownload(r)}
                           disabled={downloadingId === r.id}
                           aria-label={`Download receipt ${r.receiptNumber || ''}`.trim()}
-                          className="w-9 h-9 rounded-full flex items-center justify-center border border-stone-200 hover:bg-stone-100 transition-colors disabled:opacity-50"
+                          className="w-9 h-9 rounded-full flex items-center justify-center border border-line hover:bg-surface-sunken transition-colors disabled:opacity-50"
                           style={{ color: BRAND }}
                         >
                           {downloadingId === r.id

@@ -297,18 +297,18 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
  return (
  <>
  <div className="flex items-center mb-4">
- <button onClick={() => resetPasswordFlow()} className="mr-2 text-warm-brown">
+ <button onClick={() => resetPasswordFlow()} className="mr-2 text-muted">
  <ArrowLeft size={20} />
  </button>
- <h3 className="text-lg font-bold text-earth font-display">Verify Password</h3>
+ <h3 className="text-lg font-bold text-strong font-display">Verify Password</h3>
  </div>
- <p className="text-sm text-warm-brown mb-4">Please enter your current password to continue.</p>
+ <p className="text-sm text-muted mb-4">Please enter your current password to continue.</p>
  <input
  type="password"
  placeholder="Current Password"
  value={currentPassword}
  onChange={(e) => setCurrentPassword(e.target.value)}
- className="w-full bg-stone-100 rounded-xl px-4 py-3 text-earth font-medium focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_20%,transparent)] mb-4"
+ className="w-full bg-surface-sunken rounded-xl px-4 py-3 text-strong font-medium focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_20%,transparent)] mb-4"
  />
  {passwordMessage && (
  <p className="text-sm mb-4 text-red-600">{passwordMessage}</p>
@@ -337,24 +337,24 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
  return (
  <>
  <div className="flex items-center mb-4">
- <button onClick={() => setPasswordFlowState('current')} className="mr-2 text-warm-brown">
+ <button onClick={() => setPasswordFlowState('current')} className="mr-2 text-muted">
  <ArrowLeft size={20} />
  </button>
- <h3 className="text-lg font-bold text-earth font-display">New Password</h3>
+ <h3 className="text-lg font-bold text-strong font-display">New Password</h3>
  </div>
  <input
  type="password"
  placeholder="New Password"
  value={newPassword}
  onChange={(e) => setNewPassword(e.target.value)}
- className="w-full bg-stone-100 rounded-xl px-4 py-3 text-earth font-medium focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_20%,transparent)] mb-3"
+ className="w-full bg-surface-sunken rounded-xl px-4 py-3 text-strong font-medium focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_20%,transparent)] mb-3"
  />
  <input
  type="password"
  placeholder="Confirm New Password"
  value={confirmNewPassword}
  onChange={(e) => setConfirmNewPassword(e.target.value)}
- className="w-full bg-stone-100 rounded-xl px-4 py-3 text-earth font-medium focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_20%,transparent)] mb-4"
+ className="w-full bg-surface-sunken rounded-xl px-4 py-3 text-strong font-medium focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_20%,transparent)] mb-4"
  />
  {passwordMessage && (
  <p className={`text-sm mb-4 ${passwordMessage.includes('success') ? 'text-green-600' : 'text-red-600'}`}>
@@ -374,17 +374,17 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
  return (
  <>
  <div className="flex items-center mb-4">
- <button onClick={() => setPasswordFlowState('current')} className="mr-2 text-warm-brown">
+ <button onClick={() => setPasswordFlowState('current')} className="mr-2 text-muted">
  <ArrowLeft size={20} />
  </button>
- <h3 className="text-lg font-bold text-earth font-display">Reset Password</h3>
+ <h3 className="text-lg font-bold text-strong font-display">Reset Password</h3>
  </div>
- <p className="text-sm text-warm-brown mb-4">We will send a password reset link to your email address.</p>
+ <p className="text-sm text-muted mb-4">We will send a password reset link to your email address.</p>
  <input
  type="email"
  value={email}
  readOnly
- className="w-full bg-stone-100 rounded-xl px-4 py-3 text-warm-brown font-medium mb-4 cursor-not-allowed"
+ className="w-full bg-surface-sunken rounded-xl px-4 py-3 text-muted font-medium mb-4 cursor-not-allowed"
  />
  {passwordMessage && (
  <p className={`text-sm mb-4 ${passwordMessage.includes('sent') ? 'text-green-600' : 'text-red-600'}`}>
@@ -406,13 +406,13 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
  };
 
  return (
- <div className="fixed inset-0 z-50 flex flex-col bg-cream animate-in slide-in-from-bottom-full duration-300">
+ <div className="fixed inset-0 z-50 flex flex-col bg-surface animate-in slide-in-from-bottom-full duration-300">
  {/* Header — mobile */}
- <div className="flex items-center justify-between px-4 py-4 bg-cream lg:hidden">
- <button onClick={onClose} className="p-2 -ml-2 text-warm-brown">
+ <div className="flex items-center justify-between px-4 py-4 bg-surface lg:hidden">
+ <button onClick={onClose} className="p-2 -ml-2 text-muted">
  <X size={24} />
  </button>
- <h2 className="text-lg font-bold text-earth font-display">Profile</h2>
+ <h2 className="text-lg font-bold text-strong font-display">Profile</h2>
  <button
  onClick={handleSave}
  disabled={isSaving}
@@ -424,11 +424,11 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
  {/* Header — desktop page (Edit profile + Cancel / Save changes) */}
  <div className="hidden lg:flex items-center justify-between px-8 pt-6 pb-4 max-w-5xl mx-auto w-full">
  <div>
- <h2 className="text-2xl font-bold text-earth font-display">Edit profile</h2>
- <p className="text-sm text-warm-brown mt-0.5">Update your details</p>
+ <h2 className="text-2xl font-bold text-strong font-display">Edit profile</h2>
+ <p className="text-sm text-muted mt-0.5">Update your details</p>
  </div>
  <div className="flex items-center gap-3">
- <button onClick={onClose} className="px-5 py-2.5 rounded-xl text-sm font-semibold text-[color:var(--text-body)] border border-stone-200 hover:bg-stone-100 transition-colors">Cancel</button>
+ <button onClick={onClose} className="px-5 py-2.5 rounded-xl text-sm font-semibold text-body border border-line hover:bg-surface-sunken transition-colors">Cancel</button>
  <button onClick={handleSave} disabled={isSaving} className="px-5 py-2.5 rounded-xl text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50" style={{ backgroundColor: 'var(--brand-color, #C9963A)' }}>{isSaving ? 'Saving…' : 'Save changes'}</button>
  </div>
  </div>
@@ -436,13 +436,13 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
  <div className="flex-1 overflow-y-auto p-4 lg:px-8 lg:pb-10">
  <div className="lg:max-w-5xl lg:mx-auto lg:grid lg:grid-cols-[300px_1fr] lg:gap-6 lg:items-start">
  {/* Profile Photo — left-column card on desktop */}
- <div className="flex flex-col items-center mt-2 mb-8 lg:mt-0 lg:mb-0 lg:bg-white lg:border lg:border-stone-200 lg:rounded-3xl lg:p-6 lg:sticky lg:top-4">
+ <div className="flex flex-col items-center mt-2 mb-8 lg:mt-0 lg:mb-0 lg:bg-surface-raised lg:border lg:border-line lg:rounded-3xl lg:p-6 lg:sticky lg:top-4">
  <div className="relative">
  <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-white shadow-sm bg-stone-200 relative">
  {profilePic ? (
  <Image src={profilePic} alt="Profile" fill sizes="128px" className="object-cover" />
  ) : (
- <div className="w-full h-full flex items-center justify-center text-[color:var(--text-faint)] text-4xl font-bold">
+ <div className="w-full h-full flex items-center justify-center text-faint text-4xl font-bold">
  {name.charAt(0) || 'U'}
  </div>
  )}
@@ -461,29 +461,29 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
  onChange={handleFileChange}
  />
  </div>
- <button onClick={handlePhotoClick} className="mt-3 text-sm font-medium text-warm-brown">
+ <button onClick={handlePhotoClick} className="mt-3 text-sm font-medium text-muted">
  Change Photo
  </button>
  </div>
 
  {/* Form Card */}
- <div className="bg-white rounded-3xl p-2 shadow-sm border border-stone-200">
+ <div className="bg-surface-raised rounded-3xl p-2 shadow-sm border border-line">
  {/* Full Name */}
  <div className="p-4 pb-2">
- <label className="text-[10px] font-bold text-[color:var(--text-faint)] tracking-wider uppercase mb-2 block">
+ <label className="text-[10px] font-bold text-faint tracking-wider uppercase mb-2 block">
  Full Name
  </label>
  <input
  type="text"
  value={name}
  onChange={(e) => setName(e.target.value)}
- className="w-full bg-stone-100 rounded-2xl px-4 py-4 text-earth font-bold focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_20%,transparent)]"
+ className="w-full bg-surface-sunken rounded-2xl px-4 py-4 text-strong font-bold focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_20%,transparent)]"
  />
  </div>
 
  {/* Country */}
  <div className="p-4 pb-2 relative z-50">
- <label className="text-[10px] font-bold text-[color:var(--text-faint)] tracking-wider uppercase mb-2 block">
+ <label className="text-[10px] font-bold text-faint tracking-wider uppercase mb-2 block">
  Country
  </label>
  <CountrySelect
@@ -496,33 +496,33 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
 
  {/* City */}
  <div className="p-4 pb-2 relative z-40">
- <label className="text-[10px] font-bold text-[color:var(--text-faint)] tracking-wider uppercase mb-2 block">
+ <label className="text-[10px] font-bold text-faint tracking-wider uppercase mb-2 block">
  City
  </label>
  <input
  type="text"
  value={city}
  onChange={(e) => setCity(e.target.value)}
- className="w-full bg-stone-100 rounded-2xl px-4 py-4 text-earth font-bold focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_20%,transparent)]"
+ className="w-full bg-surface-sunken rounded-2xl px-4 py-4 text-strong font-bold focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_20%,transparent)]"
  />
  </div>
 
  {/* Phone */}
  <div className="p-4 pb-2 relative z-30">
- <label className="text-[10px] font-bold text-[color:var(--text-faint)] tracking-wider uppercase mb-2 block">
+ <label className="text-[10px] font-bold text-faint tracking-wider uppercase mb-2 block">
  Phone Number
  </label>
  <input
  type="tel"
  value={phone}
  onChange={(e) => setPhone(e.target.value)}
- className="w-full bg-stone-100 rounded-2xl px-4 py-4 text-earth font-bold focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_20%,transparent)]"
+ className="w-full bg-surface-sunken rounded-2xl px-4 py-4 text-strong font-bold focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_20%,transparent)]"
  />
  </div>
 
  
         <div className="p-4 pt-2 relative z-30">
-          <label className="text-[10px] font-bold text-[color:var(--text-faint)] tracking-wider uppercase mb-2 block">
+          <label className="text-[10px] font-bold text-faint tracking-wider uppercase mb-2 block">
             Have you accepted Jesus?
           </label>
           <div className="flex gap-4">
@@ -536,7 +536,7 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
                 className="peer sr-only"
                 required
               />
-              <div className="w-full bg-stone-100 rounded-2xl px-4 py-4 text-center text-earth font-bold peer-checked:bg-[color-mix(in_srgb,var(--brand-color)_10%,transparent)] peer-checked:text-gold peer-checked:ring-2 peer-checked:ring-[color-mix(in_srgb,var(--brand-color)_30%,transparent)] transition-all">
+              <div className="w-full bg-surface-sunken rounded-2xl px-4 py-4 text-center text-strong font-bold peer-checked:bg-[color-mix(in_srgb,var(--brand-color)_10%,transparent)] peer-checked:text-gold peer-checked:ring-2 peer-checked:ring-[color-mix(in_srgb,var(--brand-color)_30%,transparent)] transition-all">
                 Yes
               </div>
             </label>
@@ -550,7 +550,7 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
                 className="peer sr-only"
                 required
               />
-              <div className="w-full bg-stone-100 rounded-2xl px-4 py-4 text-center text-earth font-bold peer-checked:bg-stone-200 peer-checked:ring-2 peer-checked:ring-gray-300 transition-all">
+              <div className="w-full bg-surface-sunken rounded-2xl px-4 py-4 text-center text-strong font-bold peer-checked:bg-stone-200 peer-checked:ring-2 peer-checked:ring-gray-300 transition-all">
                 No
               </div>
             </label>
@@ -559,14 +559,14 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
 
         {/* Email (Read Only) */}
  <div className="p-4 pt-2">
- <label className="text-[10px] font-bold text-[color:var(--text-faint)] tracking-wider uppercase mb-2 block">
+ <label className="text-[10px] font-bold text-faint tracking-wider uppercase mb-2 block">
  Email Address
  </label>
  <input
  type="email"
  value={email}
  readOnly
- className="w-full bg-stone-100 rounded-2xl px-4 py-4 text-warm-brown font-medium focus:outline-none cursor-not-allowed"
+ className="w-full bg-surface-sunken rounded-2xl px-4 py-4 text-muted font-medium focus:outline-none cursor-not-allowed"
  />
  </div>
 
@@ -575,19 +575,19 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
  {isEmailAuth && (
  <button 
  onClick={() => setPasswordFlowState('current')}
- className="w-full flex items-center justify-between p-4 bg-cream rounded-2xl hover:bg-stone-100 transition-colors"
+ className="w-full flex items-center justify-between p-4 bg-surface rounded-2xl hover:bg-surface-sunken transition-colors"
  >
- <span className="text-sm font-bold text-earth">Change Password</span>
- <ChevronRight size={18} className="text-[color:var(--text-faint)]" />
+ <span className="text-sm font-bold text-strong">Change Password</span>
+ <ChevronRight size={18} className="text-faint" />
  </button>
  )}
 
  <button
    onClick={() => setShowCancelPartnershipConfirm(true)}
-   className="w-full flex items-center justify-between p-4 bg-cream rounded-2xl hover:bg-stone-100 transition-colors"
+   className="w-full flex items-center justify-between p-4 bg-surface rounded-2xl hover:bg-surface-sunken transition-colors"
  >
-   <span className="text-sm font-bold text-earth">Cancel Partnership</span>
-   <ChevronRight size={18} className="text-[color:var(--text-faint)]" />
+   <span className="text-sm font-bold text-strong">Cancel Partnership</span>
+   <ChevronRight size={18} className="text-faint" />
  </button>
 
  {showCancelPartnershipConfirm && (
@@ -603,7 +603,7 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
      <div className="flex gap-2">
        <button
          onClick={() => setShowCancelPartnershipConfirm(false)}
-         className="flex-1 py-2 bg-white text-[color:var(--text-body)] rounded-xl font-medium border border-stone-200"
+         className="flex-1 py-2 bg-surface-raised text-body rounded-xl font-medium border border-line"
        >
          Keep
        </button>
@@ -628,7 +628,7 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
  <div className="flex gap-2">
  <button 
  onClick={() => setShowDeleteConfirm(false)}
- className="flex-1 py-2 bg-white text-[color:var(--text-body)] rounded-xl font-medium border border-stone-200"
+ className="flex-1 py-2 bg-surface-raised text-body rounded-xl font-medium border border-line"
  >
  Cancel
  </button>
@@ -656,10 +656,10 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
  {/* Change Password Modal */}
  {passwordFlowState !== 'idle' && (
  <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
- <div className="bg-white rounded-3xl p-6 w-full max-w-sm relative">
+ <div className="bg-surface-raised rounded-3xl p-6 w-full max-w-sm relative">
  <button 
  onClick={resetPasswordFlow} 
- className="absolute top-4 right-4 text-[color:var(--text-faint)] hover:text-warm-brown"
+ className="absolute top-4 right-4 text-faint hover:text-muted"
  >
  <X size={20} />
  </button>

@@ -100,34 +100,34 @@ export const BrandingSection: React.FC<BrandingSectionProps> = ({ afterName }) =
 
   return (
     <div className="space-y-6" style={{ paddingBottom: 120 }}>
-      <p className="text-sm text-warm-brown">Customize your ministry&apos;s name, logo, and brand color. Changes apply across your entire app.</p>
+      <p className="text-sm text-muted">Customize your ministry&apos;s name, logo, and brand color. Changes apply across your entire app.</p>
 
       {/* Ministry Name */}
-      <div className="bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] p-5">
+      <div className="bg-surface-raised rounded-brand-lg border border-line shadow-[var(--ds-sh-sm)] p-5">
         <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gold mb-3">Ministry Name</h3>
-        <label className="block text-sm font-medium text-earth mb-2">Display Name</label>
+        <label className="block text-sm font-medium text-strong mb-2">Display Name</label>
         <input
           type="text"
           value={ministryName}
           onChange={(e) => setMinistryName(e.target.value)}
           placeholder="e.g. Grace Community Church"
-          className="w-full px-4 py-2.5 border border-stone-200 rounded-brand text-sm text-earth focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent"
+          className="w-full px-4 py-2.5 border border-line rounded-brand text-sm text-strong focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent"
         />
-        <p className="text-xs text-[color:var(--text-faint)] mt-1.5">Shown in your app header, login page, and emails for your white-label site.</p>
+        <p className="text-xs text-faint mt-1.5">Shown in your app header, login page, and emails for your white-label site.</p>
       </div>
 
       {afterName}
 
       {/* Logo Upload */}
-      <div className="bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] p-5">
+      <div className="bg-surface-raised rounded-brand-lg border border-line shadow-[var(--ds-sh-sm)] p-5">
         <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gold mb-3">Logo</h3>
         <div className="flex items-start gap-6">
-          <div className="w-24 h-24 rounded-brand bg-stone-100 flex items-center justify-center overflow-hidden border border-stone-200 shrink-0">
+          <div className="w-24 h-24 rounded-brand bg-surface-sunken flex items-center justify-center overflow-hidden border border-line shrink-0">
             {brandingLogo ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={brandingLogo} alt="Logo" className="w-full h-full object-contain" />
             ) : (
-              <span className="text-[color:var(--text-faint)] text-sm">No logo</span>
+              <span className="text-faint text-sm">No logo</span>
             )}
           </div>
           <div className="flex-1 min-w-0">
@@ -141,15 +141,15 @@ export const BrandingSection: React.FC<BrandingSectionProps> = ({ afterName }) =
       </div>
 
       {/* App Icon (square) */}
-      <div className="bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] p-5">
+      <div className="bg-surface-raised rounded-brand-lg border border-line shadow-[var(--ds-sh-sm)] p-5">
         <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gold mb-3">App Icon (square)</h3>
         <div className="flex items-start gap-6">
-          <div className="w-24 h-24 rounded-brand bg-stone-100 flex items-center justify-center overflow-hidden border border-stone-200 shrink-0">
+          <div className="w-24 h-24 rounded-brand bg-surface-sunken flex items-center justify-center overflow-hidden border border-line shrink-0">
             {squareIcon ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={squareIcon} alt="App icon" className="w-full h-full object-contain" />
             ) : (
-              <span className="text-[color:var(--text-faint)] text-sm">No icon</span>
+              <span className="text-faint text-sm">No icon</span>
             )}
           </div>
           <div className="flex-1 min-w-0">
@@ -159,13 +159,13 @@ export const BrandingSection: React.FC<BrandingSectionProps> = ({ afterName }) =
               placeholder="Or paste a square icon URL (PNG, JPG)"
               squarePad
             />
-            <p className="text-xs text-[color:var(--text-faint)] mt-1.5">Used for the phone home-screen install icon. Your icon will be centered on a square canvas for the app icon.</p>
+            <p className="text-xs text-faint mt-1.5">Used for the phone home-screen install icon. Your icon will be centered on a square canvas for the app icon.</p>
           </div>
         </div>
       </div>
 
       {/* Brand Color */}
-      <div className="bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] p-5">
+      <div className="bg-surface-raised rounded-brand-lg border border-line shadow-[var(--ds-sh-sm)] p-5">
         <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gold mb-3">Brand Color</h3>
         <div className="flex items-center gap-6">
           <div className="relative">
@@ -173,25 +173,25 @@ export const BrandingSection: React.FC<BrandingSectionProps> = ({ afterName }) =
               type="color"
               value={brandingColor}
               onChange={(e) => handleColorChange(e.target.value)}
-              className="w-16 h-16 rounded-brand cursor-pointer border-2 border-stone-200 p-1"
+              className="w-16 h-16 rounded-brand cursor-pointer border-2 border-line p-1"
             />
           </div>
           <div className="flex-1">
-            <label className="block text-sm font-medium text-earth mb-2">Primary Color</label>
+            <label className="block text-sm font-medium text-strong mb-2">Primary Color</label>
             <input
               type="text"
               value={brandingColor}
               onChange={(e) => handleColorChange(e.target.value)}
               placeholder="#B8962E"
-              className="w-full px-4 py-2.5 border border-stone-200 rounded-brand text-sm font-mono text-earth focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent"
+              className="w-full px-4 py-2.5 border border-line rounded-brand text-sm font-mono text-strong focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent"
             />
-            <p className="text-xs text-[color:var(--text-faint)] mt-1.5">Used for buttons, accents, and highlights throughout your app</p>
+            <p className="text-xs text-faint mt-1.5">Used for buttons, accents, and highlights throughout your app</p>
           </div>
         </div>
 
         {/* Color Preview */}
-        <div className="mt-4 pt-4 border-t border-stone-200">
-          <p className="text-sm font-medium text-earth mb-3">Preview</p>
+        <div className="mt-4 pt-4 border-t border-line">
+          <p className="text-sm font-medium text-strong mb-3">Preview</p>
           <div className="flex items-center gap-3">
             <button
               className="px-4 py-2 rounded-brand text-white text-sm font-medium"
@@ -201,7 +201,7 @@ export const BrandingSection: React.FC<BrandingSectionProps> = ({ afterName }) =
             </button>
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full" style={{ backgroundColor: brandingColor }} />
-              <span className="text-sm text-warm-brown">Active indicator</span>
+              <span className="text-sm text-muted">Active indicator</span>
             </div>
           </div>
         </div>

@@ -133,13 +133,13 @@ const AttachmentCard: React.FC<{ attachment: MessageAttachment; tenantId?: strin
     ? `https://${tenantId}.theharvest.app/form/${attachment.id}`
     : null;
   return (
-    <div className="mt-1.5 bg-white border border-stone-200 rounded-xl overflow-hidden shadow-sm" style={{ maxWidth: 210 }}>
+    <div className="mt-1.5 bg-surface-raised border border-line rounded-xl overflow-hidden shadow-sm" style={{ maxWidth: 210 }}>
       <div className={`flex items-start gap-2 p-3 ${formUrl ? 'pb-2' : ''}`}>
         <span className="text-lg leading-none flex-shrink-0">{icon}</span>
         <div className="flex-1 min-w-0">
-          <p className="text-[10px] font-bold uppercase tracking-wide text-[color:var(--text-faint)] mb-0.5">{label}</p>
-          <p className="text-xs font-semibold text-earth truncate leading-tight">{attachment.title}</p>
-          <p className="text-[10px] text-[color:var(--text-faint)] truncate mt-0.5">{attachment.subtitle}</p>
+          <p className="text-[10px] font-bold uppercase tracking-wide text-faint mb-0.5">{label}</p>
+          <p className="text-xs font-semibold text-strong truncate leading-tight">{attachment.title}</p>
+          <p className="text-[10px] text-faint truncate mt-0.5">{attachment.subtitle}</p>
         </div>
       </div>
       {formUrl && (
@@ -201,18 +201,18 @@ const FormPicker: React.FC<{
   return (
     <div className="fixed inset-0 z-[300] flex items-end">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative w-full bg-white rounded-t-2xl max-h-[70vh] flex flex-col">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-stone-200 flex-shrink-0">
-          <h3 className="font-bold text-earth text-sm font-display">Attach a Form</h3>
-          <button onClick={onClose}><X size={18} className="text-[color:var(--text-faint)]" /></button>
+      <div className="relative w-full bg-surface-raised rounded-t-2xl max-h-[70vh] flex flex-col">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-line flex-shrink-0">
+          <h3 className="font-bold text-strong text-sm font-display">Attach a Form</h3>
+          <button onClick={onClose}><X size={18} className="text-faint" /></button>
         </div>
         <div className="relative mx-4 mt-3 mb-2 flex-shrink-0">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[color:var(--text-faint)]" />
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-faint" />
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Search forms..."
-            className="w-full pl-8 pr-3 py-2 text-sm border border-stone-200 rounded-xl focus:outline-none focus:border-gold"
+            className="w-full pl-8 pr-3 py-2 text-sm border border-line rounded-xl focus:outline-none focus:border-gold"
           />
         </div>
         <div className="overflow-y-auto flex-1">
@@ -221,19 +221,19 @@ const FormPicker: React.FC<{
               <div className="w-6 h-6 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--brand-color, #B8962E)', borderTopColor: 'transparent' }} />
             </div>
           ) : filtered.length === 0 ? (
-            <p className="text-center py-10 text-sm text-[color:var(--text-faint)]">{search ? 'Nothing found' : 'No active forms yet'}</p>
+            <p className="text-center py-10 text-sm text-faint">{search ? 'Nothing found' : 'No active forms yet'}</p>
           ) : filtered.map(item => {
             const sel = isSelected(item.id);
             return (
               <button
                 key={item.id}
                 onClick={() => onToggle(item)}
-                className={`w-full flex items-center gap-3 px-5 py-3 text-left transition-colors ${sel ? 'bg-wheat-50' : 'hover:bg-stone-100'}`}
+                className={`w-full flex items-center gap-3 px-5 py-3 text-left transition-colors ${sel ? 'bg-wheat-50' : 'hover:bg-surface-sunken'}`}
               >
                 <span className="text-xl flex-shrink-0">📝</span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-earth truncate">{item.title}</p>
-                  <p className="text-xs text-[color:var(--text-faint)] truncate">{item.subtitle}</p>
+                  <p className="text-sm font-semibold text-strong truncate">{item.title}</p>
+                  <p className="text-xs text-faint truncate">{item.subtitle}</p>
                 </div>
                 {sel && (
                   <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: 'var(--brand-color, #B8962E)' }}>
@@ -247,7 +247,7 @@ const FormPicker: React.FC<{
           })}
         </div>
         {selected.length > 0 && (
-          <div className="p-4 border-t border-stone-200 flex-shrink-0">
+          <div className="p-4 border-t border-line flex-shrink-0">
             <button
               onClick={onClose}
               className="w-full py-2.5 rounded-xl text-sm font-semibold text-white"
@@ -334,7 +334,7 @@ const DmThread: React.FC<{
 
   return (
     <div className="flex flex-col h-full bg-[#F7F6F3]">
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-[#EDEBE8] bg-white">
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-[#EDEBE8] bg-surface-raised">
         <button onClick={onBack} className="p-1 -ml-1">
           <ArrowLeft size={22} style={{ color: 'var(--brand-color, #B8962E)' }} />
         </button>
@@ -343,8 +343,8 @@ const DmThread: React.FC<{
           {otherName.charAt(0).toUpperCase()}
         </div>
         <div className="flex-1 min-w-0">
-          <p className="font-bold text-earth text-sm">{otherName}</p>
-          <p className="text-[10px] text-[color:var(--text-faint)]">Direct Message</p>
+          <p className="font-bold text-strong text-sm">{otherName}</p>
+          <p className="text-[10px] text-faint">Direct Message</p>
         </div>
       </div>
 
@@ -353,7 +353,7 @@ const DmThread: React.FC<{
           down instead of the composer staying pinned above the bottom nav. */}
       <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-3">
         {messages.length === 0 && (
-          <div className="text-center py-12 text-[color:var(--text-faint)]">
+          <div className="text-center py-12 text-faint">
             <MessageSquare size={32} className="mx-auto mb-2 opacity-30" />
             <p className="text-sm">No messages yet</p>
           </div>
@@ -390,12 +390,12 @@ const DmThread: React.FC<{
                       <div className="w-8 flex-shrink-0" />
                     )}
                     <div className="flex flex-col items-start max-w-[78%]">
-                      {isFirst && <span className="text-[10px] font-semibold text-[color:var(--text-faint)] mb-0.5 ml-1">{group.senderName}</span>}
+                      {isFirst && <span className="text-[10px] font-semibold text-faint mb-0.5 ml-1">{group.senderName}</span>}
                       {m.content && (
-                        <div className="bg-[#F0EDE8] text-[color:var(--text-body)] rounded-2xl rounded-bl-sm px-3.5 py-2.5 text-sm break-words">{m.content}</div>
+                        <div className="bg-[#F0EDE8] text-body rounded-2xl rounded-bl-sm px-3.5 py-2.5 text-sm break-words">{m.content}</div>
                       )}
                       {m.attachments?.map((a, i) => <AttachmentCard key={i} attachment={a} tenantId={tenantId} />)}
-                      <span className="text-[10px] text-[color:var(--text-faint)] mt-0.5">{fmtTime(m.createdAt)}</span>
+                      <span className="text-[10px] text-faint mt-0.5">{fmtTime(m.createdAt)}</span>
                     </div>
                   </div>
                 );
@@ -410,7 +410,7 @@ const DmThread: React.FC<{
           content wrapper's bottom padding already clear the home indicator, so
           the composer only needs a small pad — adding the safe-area inset again
           here double-stacks and leaves a dead gap. Standalone still needs it. */}
-      <div className="bg-white border-t border-[#EDEBE8] flex-shrink-0 px-4 pt-3" style={{ paddingBottom: embedded ? '8px' : 'calc(env(safe-area-inset-bottom) + 8px)' }}>
+      <div className="bg-surface-raised border-t border-[#EDEBE8] flex-shrink-0 px-4 pt-3" style={{ paddingBottom: embedded ? '8px' : 'calc(env(safe-area-inset-bottom) + 8px)' }}>
         {attachments.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-2">
             {attachments.map((a, i) => (
@@ -430,14 +430,14 @@ const DmThread: React.FC<{
             className="flex-shrink-0 p-1 rounded-lg hover:bg-[#EDEBE8] transition-colors"
             aria-label="Attach a form"
           >
-            <Paperclip size={16} className="text-[color:var(--text-faint)]" />
+            <Paperclip size={16} className="text-faint" />
           </button>
           <input
             value={text}
             onChange={e => setText(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), send())}
             placeholder="Type a message..."
-            className="flex-1 bg-transparent outline-none text-sm text-earth placeholder-[color:var(--text-faint)]"
+            className="flex-1 bg-transparent outline-none text-sm text-strong placeholder-[color:var(--text-faint)]"
           />
           <button
             onClick={send}
@@ -515,7 +515,7 @@ const ChannelView: React.FC<{
 
   return (
     <div className="flex flex-col h-full bg-[#F7F6F3]">
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-[#EDEBE8] bg-white flex-shrink-0">
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-[#EDEBE8] bg-surface-raised flex-shrink-0">
         <button onClick={onBack} className="p-1 -ml-1 flex-shrink-0" aria-label="Back">
           <ArrowLeft size={22} style={{ color: 'var(--brand-color, #B8962E)' }} />
         </button>
@@ -524,14 +524,14 @@ const ChannelView: React.FC<{
           <Hash size={16} style={{ color: 'var(--brand-color, #B8962E)' }} />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="font-bold text-earth text-sm truncate">#{channel.name}</p>
-          {channel.description && <p className="text-xs text-[color:var(--text-faint)] truncate">{channel.description}</p>}
+          <p className="font-bold text-strong text-sm truncate">#{channel.name}</p>
+          {channel.description && <p className="text-xs text-faint truncate">{channel.description}</p>}
         </div>
       </div>
 
       <div className="flex-1 min-h-0 overflow-y-auto px-4 pt-4 pb-4 space-y-3">
         {messages.length === 0 && (
-          <div className="text-center py-12 text-[color:var(--text-faint)]">
+          <div className="text-center py-12 text-faint">
             <Megaphone size={32} className="mx-auto mb-2 opacity-30" />
             <p className="text-sm">No messages yet</p>
           </div>
@@ -546,22 +546,22 @@ const ChannelView: React.FC<{
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-baseline gap-2 mb-1">
-                  <span className="text-sm font-semibold text-earth">{group.senderName || 'Member'}</span>
+                  <span className="text-sm font-semibold text-strong">{group.senderName || 'Member'}</span>
                   <RoleBadge role={group.senderRole} />
-                  <span className="text-[10px] text-[color:var(--text-faint)]">{fmtTime(group.messages[0].createdAt)}</span>
+                  <span className="text-[10px] text-faint">{fmtTime(group.messages[0].createdAt)}</span>
                 </div>
                 <div className="space-y-1">
                   {group.messages.map(m => (
                     <div key={m.id} className="group flex items-end gap-2">
                       <div className="max-w-[78%]">
                         {m.content && (
-                          <p className="bg-white border border-[#EDEBE8] rounded-2xl rounded-tl-sm px-3 py-2 text-sm text-[color:var(--text-body)] shadow-sm break-words">
+                          <p className="bg-surface-raised border border-[#EDEBE8] rounded-2xl rounded-tl-sm px-3 py-2 text-sm text-body shadow-sm break-words">
                             {m.content}
                           </p>
                         )}
                         {m.attachments?.map((a, i) => <AttachmentCard key={i} attachment={a} tenantId={tenantId} />)}
                       </div>
-                      <span className="text-[10px] text-[color:var(--text-faint)] opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 mb-1">{fmtTime(m.createdAt)}</span>
+                      <span className="text-[10px] text-faint opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 mb-1">{fmtTime(m.createdAt)}</span>
                     </div>
                   ))}
                 </div>
@@ -576,14 +576,14 @@ const ChannelView: React.FC<{
           content wrapper's bottom padding already clear the home indicator, so
           the composer only needs a small pad — adding the safe-area inset again
           here double-stacks and leaves a dead gap. Standalone still needs it. */}
-      <div className="bg-white border-t border-[#EDEBE8] flex-shrink-0 px-4 pt-3" style={{ paddingBottom: embedded ? '8px' : 'calc(env(safe-area-inset-bottom) + 8px)' }}>
+      <div className="bg-surface-raised border-t border-[#EDEBE8] flex-shrink-0 px-4 pt-3" style={{ paddingBottom: embedded ? '8px' : 'calc(env(safe-area-inset-bottom) + 8px)' }}>
         <div className="flex gap-2 items-center bg-[#F7F6F3] rounded-2xl px-3 py-2.5 border border-[#EDEBE8] focus-within:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] transition-colors">
           <input
             value={text}
             onChange={e => setText(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), send())}
             placeholder={`Message #${channel.name}`}
-            className="flex-1 bg-transparent outline-none text-sm text-earth placeholder-[color:var(--text-faint)]"
+            className="flex-1 bg-transparent outline-none text-sm text-strong placeholder-[color:var(--text-faint)]"
           />
           <button
             onClick={send}
@@ -763,13 +763,13 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false })
   if (loading) {
     return (
       <div className="flex flex-col min-h-full bg-[#F7F6F3]">
-        <div className="flex items-center gap-3 px-4 py-4 bg-white border-b border-[#EDEBE8]">
+        <div className="flex items-center gap-3 px-4 py-4 bg-surface-raised border-b border-[#EDEBE8]">
           {!embedded && (
             <button onClick={onBack} className="p-1 -ml-1" aria-label="Back">
               <ArrowLeft size={22} style={{ color: 'var(--brand-color, #B8962E)' }} />
             </button>
           )}
-          <h2 className="text-lg font-black text-earth font-display">Messages</h2>
+          <h2 className="text-lg font-black text-strong font-display">Messages</h2>
         </div>
         <div className="flex items-center justify-center h-40">
           <div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin"
@@ -797,18 +797,18 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false })
       {/* Desktop-only list header + collapse toggle (always shown on lg, even when
           the member can't start DMs). */}
       <div className="hidden lg:flex items-center justify-between px-4 pt-3.5 pb-1 lg:flex-shrink-0">
-        <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-[color:var(--text-faint)]">Conversations</span>
-        <button onClick={() => setListCollapsed(true)} title="Collapse" className="w-8 h-8 rounded-lg flex items-center justify-center text-[color:var(--text-faint)] hover:bg-stone-100">
+        <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-faint">Conversations</span>
+        <button onClick={() => setListCollapsed(true)} title="Collapse" className="w-8 h-8 rounded-lg flex items-center justify-center text-faint hover:bg-surface-sunken">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
         </button>
       </div>
-      <div className="flex items-center gap-3 px-4 py-4 bg-white border-b border-[#EDEBE8] lg:hidden">
+      <div className="flex items-center gap-3 px-4 py-4 bg-surface-raised border-b border-[#EDEBE8] lg:hidden">
         {!embedded && (
           <button onClick={onBack} className="p-1 -ml-1" aria-label="Back">
             <ArrowLeft size={22} style={{ color: 'var(--brand-color, #B8962E)' }} />
           </button>
         )}
-        <h2 className="text-lg font-black text-earth font-display">Messages</h2>
+        <h2 className="text-lg font-black text-strong font-display">Messages</h2>
         {canStartDm && (
           <button
             onClick={openNewMessage}
@@ -831,12 +831,12 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false })
 
       <div className="flex-1 p-4 lg:overflow-y-auto lg:min-h-0">
         {dms.length === 0 && channels.length === 0 ? (
-          <div className="text-center py-16 text-[color:var(--text-faint)]">
+          <div className="text-center py-16 text-faint">
             <MessageSquare size={40} className="mx-auto mb-3 opacity-30" />
             <p className="font-medium">No messages yet</p>
             <p className="text-sm mt-1">
               {canStartDm
-                ? <>Tap <span className="font-semibold text-warm-brown">New Message</span> to start a conversation.</>
+                ? <>Tap <span className="font-semibold text-muted">New Message</span> to start a conversation.</>
                 : 'Your admin will reach out here.'}
             </p>
           </div>
@@ -844,46 +844,46 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false })
           <>
             {channels.length > 0 && (
               <div className="mb-5">
-                <p className="text-xs font-bold text-[color:var(--text-faint)] uppercase tracking-wider mb-2">Channels</p>
+                <p className="text-xs font-bold text-faint uppercase tracking-wider mb-2">Channels</p>
                 <div className="space-y-2">
                   {channels.map(ch => (
                     <button
                       key={ch.id}
                       onClick={() => setOpenChannel(ch)}
-                      className="w-full bg-white rounded-2xl border border-[#EDEBE8] px-4 py-3.5 flex items-center gap-3 hover:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] hover:shadow-sm transition-all text-left"
+                      className="w-full bg-surface-raised rounded-2xl border border-[#EDEBE8] px-4 py-3.5 flex items-center gap-3 hover:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] hover:shadow-sm transition-all text-left"
                     >
                       <div className="w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center lg:bg-[color-mix(in_srgb,var(--brand-color)_12%,white)]">
                         <Hash size={18} style={{ color: 'var(--brand-color, #B8962E)' }} />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-bold text-earth truncate">#{ch.name}</p>
-                        <p className="text-xs text-[color:var(--text-faint)] truncate">{ch.lastMessage || ch.description || 'No messages yet'}</p>
+                        <p className="text-sm font-bold text-strong truncate">#{ch.name}</p>
+                        <p className="text-xs text-faint truncate">{ch.lastMessage || ch.description || 'No messages yet'}</p>
                       </div>
-                      {ch.lastMessageAt && <span className="text-[10px] text-[color:var(--text-faint)] flex-shrink-0">{fmtTime(ch.lastMessageAt)}</span>}
+                      {ch.lastMessageAt && <span className="text-[10px] text-faint flex-shrink-0">{fmtTime(ch.lastMessageAt)}</span>}
                     </button>
                   ))}
                 </div>
               </div>
             )}
             {dms.length > 0 && (
-              <p className="text-xs font-bold text-[color:var(--text-faint)] uppercase tracking-wider mb-2">Direct Messages</p>
+              <p className="text-xs font-bold text-faint uppercase tracking-wider mb-2">Direct Messages</p>
             )}
             <div className="space-y-2">
             {dms.map(dm => (
               <button
                 key={dm.id}
                 onClick={() => setOpenDm(dm)}
-                className="w-full bg-white rounded-2xl border border-[#EDEBE8] px-4 py-3.5 flex items-center gap-3 hover:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] hover:shadow-sm transition-all text-left"
+                className="w-full bg-surface-raised rounded-2xl border border-[#EDEBE8] px-4 py-3.5 flex items-center gap-3 hover:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] hover:shadow-sm transition-all text-left"
               >
                 <div className="w-11 h-11 rounded-full flex-shrink-0 flex items-center justify-center text-sm font-bold text-white"
                   style={{ backgroundColor: 'var(--brand-color, #B8962E)' }}>
                   {getOtherName(dm).charAt(0).toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-earth truncate">{getOtherName(dm)}</p>
-                  {dm.lastMessage && <p className="text-xs text-[color:var(--text-faint)] truncate">{dm.lastMessage}</p>}
+                  <p className="text-sm font-bold text-strong truncate">{getOtherName(dm)}</p>
+                  {dm.lastMessage && <p className="text-xs text-faint truncate">{dm.lastMessage}</p>}
                 </div>
-                {dm.lastMessageAt && <span className="text-[10px] text-[color:var(--text-faint)] flex-shrink-0">{fmtTime(dm.lastMessageAt)}</span>}
+                {dm.lastMessageAt && <span className="text-[10px] text-faint flex-shrink-0">{fmtTime(dm.lastMessageAt)}</span>}
               </button>
             ))}
             </div>
@@ -896,12 +896,12 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false })
       <div className={`${hasOpen ? 'flex' : 'hidden lg:flex'} relative flex-col h-full lg:flex-1 min-w-0`}>
         {/* Desktop-only handle to re-open the collapsed conversation list. */}
         {listCollapsed && (
-          <button onClick={() => setListCollapsed(false)} title="Show conversations" className="hidden lg:flex absolute left-0 top-1/2 -translate-y-1/2 z-20 w-6 h-16 items-center justify-center rounded-r-lg bg-white border border-l-0 border-[#EDEBE8] text-warm-brown hover:bg-stone-100">
+          <button onClick={() => setListCollapsed(false)} title="Show conversations" className="hidden lg:flex absolute left-0 top-1/2 -translate-y-1/2 z-20 w-6 h-16 items-center justify-center rounded-r-lg bg-surface-raised border border-l-0 border-[#EDEBE8] text-muted hover:bg-surface-sunken">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
           </button>
         )}
         {selectedThread || (
-          <div className="hidden lg:flex flex-1 items-center justify-center text-[color:var(--text-faint)]">
+          <div className="hidden lg:flex flex-1 items-center justify-center text-faint">
             <div className="text-center px-6">
               <MessageSquare size={40} className="mx-auto mb-3 opacity-30" />
               <p className="font-medium">Select a conversation</p>
@@ -914,18 +914,18 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false })
       {showNewMessage && (
         <div className="fixed inset-0 z-[300] flex items-end">
           <div className="absolute inset-0 bg-black/50" onClick={() => setShowNewMessage(false)} />
-          <div className="relative w-full bg-white rounded-t-2xl max-h-[70vh] flex flex-col">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-stone-200 flex-shrink-0">
-              <h3 className="font-bold text-earth text-sm font-display">New Message</h3>
-              <button onClick={() => setShowNewMessage(false)}><X size={18} className="text-[color:var(--text-faint)]" /></button>
+          <div className="relative w-full bg-surface-raised rounded-t-2xl max-h-[70vh] flex flex-col">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-line flex-shrink-0">
+              <h3 className="font-bold text-strong text-sm font-display">New Message</h3>
+              <button onClick={() => setShowNewMessage(false)}><X size={18} className="text-faint" /></button>
             </div>
             <div className="relative mx-4 mt-3 mb-2 flex-shrink-0">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[color:var(--text-faint)]" />
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-faint" />
               <input
                 value={adminSearch}
                 onChange={e => setAdminSearch(e.target.value)}
                 placeholder="Search admins..."
-                className="w-full pl-8 pr-3 py-2 text-sm border border-stone-200 rounded-xl focus:outline-none focus:border-gold"
+                className="w-full pl-8 pr-3 py-2 text-sm border border-line rounded-xl focus:outline-none focus:border-gold"
               />
             </div>
             <div className="overflow-y-auto flex-1">
@@ -934,13 +934,13 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false })
                   <div className="w-6 h-6 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--brand-color, #B8962E)', borderTopColor: 'transparent' }} />
                 </div>
               ) : filteredAdmins.length === 0 ? (
-                <p className="text-center py-10 text-sm text-[color:var(--text-faint)] px-6">{adminSearch ? 'Nothing found' : 'No admins available to message yet.'}</p>
+                <p className="text-center py-10 text-sm text-faint px-6">{adminSearch ? 'Nothing found' : 'No admins available to message yet.'}</p>
               ) : filteredAdmins.map(a => (
                 <button
                   key={a.id}
                   onClick={() => startDm(a)}
                   disabled={!!creating}
-                  className="w-full flex items-center gap-3 px-5 py-3 text-left hover:bg-stone-100 disabled:opacity-50 transition-colors"
+                  className="w-full flex items-center gap-3 px-5 py-3 text-left hover:bg-surface-sunken disabled:opacity-50 transition-colors"
                 >
                   {a.photoURL ? (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -951,8 +951,8 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false })
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-earth truncate">{a.displayName}</p>
-                    <p className="text-xs text-[color:var(--text-faint)] truncate">{a.role === 'super_admin' ? 'Super Admin' : a.role === 'church_admin' ? 'Church Admin' : 'Admin'}</p>
+                    <p className="text-sm font-semibold text-strong truncate">{a.displayName}</p>
+                    <p className="text-xs text-faint truncate">{a.role === 'super_admin' ? 'Super Admin' : a.role === 'church_admin' ? 'Church Admin' : 'Admin'}</p>
                   </div>
                   {creating === a.id && (
                     <div className="w-4 h-4 border-2 border-t-transparent rounded-full animate-spin flex-shrink-0" style={{ borderColor: 'var(--brand-color, #B8962E)', borderTopColor: 'transparent' }} />

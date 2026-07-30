@@ -153,7 +153,7 @@ const PostPurchaseWizard: React.FC<PostPurchaseWizardProps> = ({ tenantId, onCom
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-lg max-w-md w-full p-8">
+      <div className="bg-surface-raised rounded-2xl shadow-lg max-w-md w-full p-8">
         {/* Progress dots */}
         <div className="flex items-center justify-center gap-2 mb-8">
           {steps.map((s, i) => (

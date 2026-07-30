@@ -228,11 +228,11 @@ const AdminCheckin: React.FC<AdminCheckinProps> = ({ canCheckin = true, canQR = 
   // Native pill segmented control (matches the CRM Contacts/Analytics toggle).
   // Only shown when the admin can reach BOTH sub-tabs.
   const subTabBar = showBothSubTabs ? (
-    <div className="flex gap-1 bg-stone-100 rounded-xl p-1 mb-6 w-fit mx-auto">
+    <div className="flex gap-1 bg-surface-sunken rounded-xl p-1 mb-6 w-fit mx-auto">
       <button
         onClick={() => setTab('checkin')}
         className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
-          activeSubTab === 'checkin' ? 'bg-white shadow-sm text-earth' : 'text-[color:var(--text-faint)]'
+          activeSubTab === 'checkin' ? 'bg-surface-raised shadow-sm text-strong' : 'text-faint'
         }`}
       >
         Check-In
@@ -240,7 +240,7 @@ const AdminCheckin: React.FC<AdminCheckinProps> = ({ canCheckin = true, canQR = 
       <button
         onClick={() => setTab('qr')}
         className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
-          activeSubTab === 'qr' ? 'bg-white shadow-sm text-earth' : 'text-[color:var(--text-faint)]'
+          activeSubTab === 'qr' ? 'bg-surface-raised shadow-sm text-strong' : 'text-faint'
         }`}
       >
         QR Codes
@@ -253,7 +253,7 @@ const AdminCheckin: React.FC<AdminCheckinProps> = ({ canCheckin = true, canQR = 
   // rather than dropping them into a generator they aren't permitted to use.
   if (activeSubTab === 'none') {
     return (
-      <div className="max-w-2xl mx-auto text-center py-16 text-[color:var(--text-faint)]">
+      <div className="max-w-2xl mx-auto text-center py-16 text-faint">
         <p className="text-sm">You don&apos;t have access to Check-In or QR Codes.</p>
       </div>
     );
@@ -279,22 +279,22 @@ const AdminCheckin: React.FC<AdminCheckinProps> = ({ canCheckin = true, canQR = 
           title="New session"
           subtitle="Generate a QR code attendees can scan to check in."
         />
-        <div className="bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] p-5 space-y-4">
+        <div className="bg-surface-raised rounded-brand-lg border border-line shadow-[var(--ds-sh-sm)] p-5 space-y-4">
           <div>
-            <label className="block text-sm font-medium text-[color:var(--text-body)] mb-1.5">Session Name</label>
-            <input value={name} onChange={e => setName(e.target.value)} placeholder="Sunday Service — June 29" className="w-full px-4 py-2.5 border border-stone-200 rounded-xl text-sm focus:outline-none focus:border-gold" />
+            <label className="block text-sm font-medium text-body mb-1.5">Session Name</label>
+            <input value={name} onChange={e => setName(e.target.value)} placeholder="Sunday Service — June 29" className="w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:outline-none focus:border-gold" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-[color:var(--text-body)] mb-1.5">Date &amp; Time</label>
-            <input type="datetime-local" value={date} onChange={e => setDate(e.target.value)} className="w-full px-4 py-2.5 border border-stone-200 rounded-xl text-sm focus:outline-none focus:border-gold" />
+            <label className="block text-sm font-medium text-body mb-1.5">Date &amp; Time</label>
+            <input type="datetime-local" value={date} onChange={e => setDate(e.target.value)} className="w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:outline-none focus:border-gold" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-[color:var(--text-body)] mb-1.5">Location <span className="text-[color:var(--text-faint)] font-normal">(optional)</span></label>
-            <input value={location} onChange={e => setLocation(e.target.value)} placeholder="Main Auditorium" className="w-full px-4 py-2.5 border border-stone-200 rounded-xl text-sm focus:outline-none focus:border-gold" />
+            <label className="block text-sm font-medium text-body mb-1.5">Location <span className="text-faint font-normal">(optional)</span></label>
+            <input value={location} onChange={e => setLocation(e.target.value)} placeholder="Main Auditorium" className="w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:outline-none focus:border-gold" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-[color:var(--text-body)] mb-1.5">Linked Event <span className="text-[color:var(--text-faint)] font-normal">(optional)</span></label>
-            <select value={linkedEventId} onChange={e => setLinkedEventId(e.target.value)} className="w-full px-4 py-2.5 border border-stone-200 rounded-xl text-sm focus:outline-none focus:border-gold bg-white">
+            <label className="block text-sm font-medium text-body mb-1.5">Linked Event <span className="text-faint font-normal">(optional)</span></label>
+            <select value={linkedEventId} onChange={e => setLinkedEventId(e.target.value)} className="w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:outline-none focus:border-gold bg-surface-raised">
               <option value="">No linked event</option>
               {events.map(ev => <option key={ev.id} value={ev.id}>{ev.title}</option>)}
             </select>
@@ -323,20 +323,20 @@ const AdminCheckin: React.FC<AdminCheckinProps> = ({ canCheckin = true, canQR = 
         />
         <div className="grid md:grid-cols-2 gap-4">
           {/* QR + actions */}
-          <div className="bg-white rounded-2xl border border-stone-200 p-5 text-center">
+          <div className="bg-surface-raised rounded-2xl border border-line p-5 text-center">
             {qrDataUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={qrDataUrl} alt="Check-in QR code" className="w-56 h-56 mx-auto" />
             ) : (
               <div className="w-56 h-56 mx-auto flex items-center justify-center text-stone-300"><QrCode size={48} /></div>
             )}
-            <p className="text-xs text-[color:var(--text-faint)] mt-2 break-all">{checkinUrl(selected.id)}</p>
+            <p className="text-xs text-faint mt-2 break-all">{checkinUrl(selected.id)}</p>
             <div className="flex items-center justify-center gap-2 mt-3 flex-wrap">
-              <button onClick={() => copyLink(selected.id)} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium border border-stone-200 text-[color:var(--text-body)] hover:bg-stone-100">
+              <button onClick={() => copyLink(selected.id)} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium border border-line text-body hover:bg-surface-sunken">
                 <Link2 size={14} /> {copied ? 'Copied!' : 'Copy Link'}
               </button>
               {qrDataUrl && (
-                <a href={qrDataUrl} download={`${selected.name.replace(/[^a-z0-9]/gi, '_')}_qr.png`} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium border border-stone-200 text-[color:var(--text-body)] hover:bg-stone-100">
+                <a href={qrDataUrl} download={`${selected.name.replace(/[^a-z0-9]/gi, '_')}_qr.png`} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium border border-line text-body hover:bg-surface-sunken">
                   <Download size={14} /> QR
                 </a>
               )}
@@ -344,22 +344,22 @@ const AdminCheckin: React.FC<AdminCheckinProps> = ({ canCheckin = true, canQR = 
           </div>
 
           {/* Counter + manual + close */}
-          <div className="bg-white rounded-2xl border border-stone-200 p-5">
+          <div className="bg-surface-raised rounded-2xl border border-line p-5">
             <div className="flex items-center gap-2 mb-1">
               <Users size={18} style={{ color: GOLD }} />
-              <span className="font-display text-4xl font-light text-earth">{attendees.length}</span>
-              <span className="text-sm text-warm-brown">checked in</span>
+              <span className="font-display text-4xl font-light text-strong">{attendees.length}</span>
+              <span className="text-sm text-muted">checked in</span>
             </div>
             <AdminBadge tone={status === 'Closed' ? 'stone' : status === 'Upcoming' ? 'sky' : 'green'}>{status}</AdminBadge>
 
             {status !== 'Closed' && (
               <div className="mt-4 space-y-2">
-                <p className="text-xs font-semibold text-warm-brown uppercase tracking-wide">Manual Check-In</p>
+                <p className="text-xs font-semibold text-muted uppercase tracking-wide">Manual Check-In</p>
                 <div className="flex gap-2">
-                  <input value={mFirst} onChange={e => setMFirst(e.target.value)} placeholder="First" className="flex-1 min-w-0 px-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:border-gold" />
-                  <input value={mLast} onChange={e => setMLast(e.target.value)} placeholder="Last" className="flex-1 min-w-0 px-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:border-gold" />
+                  <input value={mFirst} onChange={e => setMFirst(e.target.value)} placeholder="First" className="flex-1 min-w-0 px-3 py-2 border border-line rounded-lg text-sm focus:outline-none focus:border-gold" />
+                  <input value={mLast} onChange={e => setMLast(e.target.value)} placeholder="Last" className="flex-1 min-w-0 px-3 py-2 border border-line rounded-lg text-sm focus:outline-none focus:border-gold" />
                 </div>
-                <input value={mEmail} onChange={e => setMEmail(e.target.value)} placeholder="Email (optional)" className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:border-gold" />
+                <input value={mEmail} onChange={e => setMEmail(e.target.value)} placeholder="Email (optional)" className="w-full px-3 py-2 border border-line rounded-lg text-sm focus:outline-none focus:border-gold" />
                 <button onClick={manualCheckIn} disabled={mAdding || !mFirst.trim()} className="w-full py-2 rounded-lg text-white text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: GOLD }}>
                   {mAdding ? 'Adding…' : 'Check In'}
                 </button>
@@ -367,7 +367,7 @@ const AdminCheckin: React.FC<AdminCheckinProps> = ({ canCheckin = true, canQR = 
             )}
 
             <div className="flex items-center gap-2 mt-4 flex-wrap">
-              <button onClick={exportCsv} disabled={attendees.length === 0} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium border border-stone-200 text-[color:var(--text-body)] hover:bg-stone-100 disabled:opacity-50">
+              <button onClick={exportCsv} disabled={attendees.length === 0} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium border border-line text-body hover:bg-surface-sunken disabled:opacity-50">
                 <Download size={14} /> Export CSV
               </button>
               {status !== 'Closed' && (
@@ -380,10 +380,10 @@ const AdminCheckin: React.FC<AdminCheckinProps> = ({ canCheckin = true, canQR = 
         </div>
 
         {/* Live list */}
-        <div className="bg-white rounded-2xl border border-stone-200 mt-4 overflow-hidden">
-          <div className="px-4 py-3 border-b border-stone-200"><h3 className="text-sm font-bold text-[color:var(--text-body)] font-display">Checked In</h3></div>
+        <div className="bg-surface-raised rounded-2xl border border-line mt-4 overflow-hidden">
+          <div className="px-4 py-3 border-b border-line"><h3 className="text-sm font-bold text-body font-display">Checked In</h3></div>
           {attendees.length === 0 ? (
-            <p className="text-center py-10 text-[color:var(--text-faint)] text-sm font-display">No one checked in yet.</p>
+            <p className="text-center py-10 text-faint text-sm font-display">No one checked in yet.</p>
           ) : (
             <div className="divide-y divide-stone-200">
               {attendees.map(a => (
@@ -392,11 +392,11 @@ const AdminCheckin: React.FC<AdminCheckinProps> = ({ canCheckin = true, canQR = 
                     {(a.firstName?.[0] || '?').toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-earth truncate">{a.firstName} {a.lastName}</div>
-                    {a.email && <div className="text-xs text-[color:var(--text-faint)] truncate">{a.email}</div>}
+                    <div className="text-sm font-medium text-strong truncate">{a.firstName} {a.lastName}</div>
+                    {a.email && <div className="text-xs text-faint truncate">{a.email}</div>}
                   </div>
                   {a.crmContactId && <CheckCircle2 size={14} className="text-field-500 shrink-0" />}
-                  <span className="text-xs text-[color:var(--text-faint)] shrink-0">{fmtTime(a.checkedInAt)}</span>
+                  <span className="text-xs text-faint shrink-0">{fmtTime(a.checkedInAt)}</span>
                 </div>
               ))}
             </div>
@@ -420,7 +420,7 @@ const AdminCheckin: React.FC<AdminCheckinProps> = ({ canCheckin = true, canQR = 
     <div className="max-w-3xl mx-auto" style={{ paddingBottom: 120 }}>
       {subTabBar}
       <div className="flex items-start justify-between gap-4 mb-6">
-        <p className="text-sm text-warm-brown leading-relaxed max-w-lg">
+        <p className="text-sm text-muted leading-relaxed max-w-lg">
           Create a session, then show its QR code. People scan it to check in — you&apos;ll see them appear live, and can export to CSV anytime.
         </p>
         <AdminPrimaryButton onClick={startCreate} icon={<Plus size={16} />} className="shrink-0">New session</AdminPrimaryButton>
@@ -428,8 +428,8 @@ const AdminCheckin: React.FC<AdminCheckinProps> = ({ canCheckin = true, canQR = 
       {sessions.length === 0 ? (
         <AdminCard className="text-center py-16 px-6">
           <QrCode size={38} className="mx-auto mb-3 text-stone-300" />
-          <p className="font-display text-lg text-earth">No check-in sessions yet</p>
-          <p className="text-sm text-warm-brown mt-1">Create a session and share its QR code for attendees to scan.</p>
+          <p className="font-display text-lg text-strong">No check-in sessions yet</p>
+          <p className="text-sm text-muted mt-1">Create a session and share its QR code for attendees to scan.</p>
           <div className="mt-5"><AdminPrimaryButton onClick={startCreate} icon={<Plus size={16} />}>New session</AdminPrimaryButton></div>
         </AdminCard>
       ) : (
@@ -442,11 +442,11 @@ const AdminCheckin: React.FC<AdminCheckinProps> = ({ canCheckin = true, canQR = 
                     pill (Active→field/green, Upcoming→wheat/gold, Closed→neutral), and a
                     QR + instructions row for Active sessions. Same session data and the
                     same handlers as the desktop card (open detail, copyLink, deleteSession). */}
-                <div className="lg:hidden bg-white rounded-brand-xl border border-stone-200 shadow-[var(--ds-sh-sm)] p-4">
+                <div className="lg:hidden bg-surface-raised rounded-brand-xl border border-line shadow-[var(--ds-sh-sm)] p-4">
                   <div className="flex items-center justify-between gap-3">
                     <button onClick={() => { setSelected(s); setView('detail'); }} className="min-w-0 text-left">
-                      <div className="text-[15px] font-semibold text-earth truncate">{s.name}</div>
-                      <div className="text-xs text-warm-brown mt-0.5">{s.attendeeCount || 0} checked in</div>
+                      <div className="text-[15px] font-semibold text-strong truncate">{s.name}</div>
+                      <div className="text-xs text-muted mt-0.5">{s.attendeeCount || 0} checked in</div>
                     </button>
                     <span
                       className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold shrink-0 ${
@@ -454,23 +454,23 @@ const AdminCheckin: React.FC<AdminCheckinProps> = ({ canCheckin = true, canQR = 
                           ? 'bg-field-100 text-field-700'
                           : status === 'Upcoming'
                             ? 'bg-wheat-100 text-wheat-700'
-                            : 'bg-stone-100 text-warm-brown'
+                            : 'bg-surface-sunken text-muted'
                       }`}
                     >
                       {status}
                     </span>
                   </div>
                   {status === 'Active' && (
-                    <div className="flex items-center gap-3 mt-3.5 pt-3.5 border-t border-stone-200">
-                      <div className="w-16 h-16 shrink-0 rounded-xl bg-white border border-stone-200 shadow-[var(--ds-sh-sm)] flex items-center justify-center">
-                        <QrCode size={34} className="text-earth" />
+                    <div className="flex items-center gap-3 mt-3.5 pt-3.5 border-t border-line">
+                      <div className="w-16 h-16 shrink-0 rounded-xl bg-surface-raised border border-line shadow-[var(--ds-sh-sm)] flex items-center justify-center">
+                        <QrCode size={34} className="text-strong" />
                       </div>
-                      <p className="text-xs text-warm-brown leading-relaxed">Scan at the door to check in. Live count updates automatically.</p>
+                      <p className="text-xs text-muted leading-relaxed">Scan at the door to check in. Live count updates automatically.</p>
                     </div>
                   )}
-                  <div className="flex items-center gap-4 mt-3.5 pt-3.5 border-t border-stone-200">
-                    <button onClick={() => { setSelected(s); setView('detail'); }} className="flex items-center gap-1.5 text-xs font-semibold text-warm-brown hover:text-gold transition-colors"><QrCode size={13} /> Open</button>
-                    <button onClick={() => copyLink(s.id)} className="flex items-center gap-1.5 text-xs font-semibold text-warm-brown hover:text-gold transition-colors"><Link2 size={13} /> Copy link</button>
+                  <div className="flex items-center gap-4 mt-3.5 pt-3.5 border-t border-line">
+                    <button onClick={() => { setSelected(s); setView('detail'); }} className="flex items-center gap-1.5 text-xs font-semibold text-muted hover:text-gold transition-colors"><QrCode size={13} /> Open</button>
+                    <button onClick={() => copyLink(s.id)} className="flex items-center gap-1.5 text-xs font-semibold text-muted hover:text-gold transition-colors"><Link2 size={13} /> Copy link</button>
                     <button onClick={() => deleteSession(s)} className="flex items-center gap-1.5 text-xs font-semibold text-[#C4553B] hover:opacity-80 transition-opacity ml-auto"><Trash2 size={13} /> Delete</button>
                   </div>
                 </div>
@@ -479,20 +479,20 @@ const AdminCheckin: React.FC<AdminCheckinProps> = ({ canCheckin = true, canQR = 
                 <AdminCard className="p-5 hidden lg:block">
                   <div className="flex items-start justify-between gap-3">
                     <button onClick={() => { setSelected(s); setView('detail'); }} className="flex-1 min-w-0 text-left group">
-                      <div className="font-semibold text-earth truncate group-hover:text-gold transition-colors">{s.name}</div>
-                      <div className="text-xs text-[color:var(--text-faint)] mt-1">
+                      <div className="font-semibold text-strong truncate group-hover:text-gold transition-colors">{s.name}</div>
+                      <div className="text-xs text-faint mt-1">
                         {s.date && new Date(s.date).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
                         {s.location && ` · ${s.location}`}
                       </div>
                     </button>
                     <div className="flex flex-col items-end gap-1.5 shrink-0">
                       <AdminBadge tone={status === 'Closed' ? 'stone' : status === 'Upcoming' ? 'sky' : 'green'}>{status}</AdminBadge>
-                      <span className="font-display text-lg font-light text-earth leading-none">{s.attendeeCount || 0}</span>
+                      <span className="font-display text-lg font-light text-strong leading-none">{s.attendeeCount || 0}</span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-4 mt-4 pt-4 border-t border-stone-200">
-                    <button onClick={() => { setSelected(s); setView('detail'); }} className="flex items-center gap-1.5 text-xs font-semibold text-warm-brown hover:text-gold transition-colors"><QrCode size={13} /> Open</button>
-                    <button onClick={() => copyLink(s.id)} className="flex items-center gap-1.5 text-xs font-semibold text-warm-brown hover:text-gold transition-colors"><Link2 size={13} /> Copy link</button>
+                  <div className="flex items-center gap-4 mt-4 pt-4 border-t border-line">
+                    <button onClick={() => { setSelected(s); setView('detail'); }} className="flex items-center gap-1.5 text-xs font-semibold text-muted hover:text-gold transition-colors"><QrCode size={13} /> Open</button>
+                    <button onClick={() => copyLink(s.id)} className="flex items-center gap-1.5 text-xs font-semibold text-muted hover:text-gold transition-colors"><Link2 size={13} /> Copy link</button>
                     <button onClick={() => deleteSession(s)} className="flex items-center gap-1.5 text-xs font-semibold text-[#C4553B] hover:opacity-80 transition-opacity ml-auto"><Trash2 size={13} /> Delete</button>
                   </div>
                 </AdminCard>

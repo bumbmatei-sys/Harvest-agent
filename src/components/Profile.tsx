@@ -313,7 +313,7 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
  };
 
  return (
- <div className="flex flex-col min-h-full bg-cream lg:bg-transparent transition-colors duration-300">
+ <div className="flex flex-col min-h-full bg-surface lg:bg-transparent transition-colors duration-300">
  {/* Branded navy header card — Harvest Member App design: navy→gold wash + film
      grain, gold avatar disc (photo or initial), Fraunces name, member-since chip.
      Mobile only; desktop uses the white profile card in the grid below. */}
@@ -355,7 +355,7 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
  <div className="px-4 mt-6 relative z-10 space-y-6 lg:mt-0 lg:px-8 lg:pt-6 lg:max-w-[1280px] lg:mx-auto lg:grid lg:grid-cols-[320px_1fr] lg:gap-8 lg:items-start lg:space-y-0">
  {/* Desktop profile card — left column */}
  <div className="hidden lg:block">
- <div className="bg-white rounded-3xl border p-6 text-center lg:sticky lg:top-4" style={{ borderColor: 'var(--ds-border)' }}>
+ <div className="bg-surface-raised rounded-3xl border p-6 text-center lg:sticky lg:top-4" style={{ borderColor: 'var(--ds-border)' }}>
  <label htmlFor="profile-pic-upload" className="cursor-pointer group block">
  <div className="w-24 h-24 rounded-full mx-auto mb-3 overflow-hidden flex items-center justify-center" style={{ background: 'var(--surface-gold)' }}>
  {profilePic ? (
@@ -366,7 +366,7 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
  </div>
  <span className="text-[12px] font-semibold group-hover:underline" style={{ color: 'var(--brand-color, #C9963A)' }}>Change photo</span>
  </label>
- <h2 className="text-xl font-light text-earth font-display mt-3 tracking-[-0.01em]">{userName}</h2>
+ <h2 className="text-xl font-light text-strong font-display mt-3 tracking-[-0.01em]">{userName}</h2>
  <div className="inline-flex items-center gap-1.5 mt-2 px-3 py-1 rounded-full text-[11px] font-bold" style={{ background: 'var(--surface-gold)', color: 'var(--wheat-700)' }}>
  <BadgeCheck size={13} /> Member since 2026
  </div>
@@ -378,8 +378,8 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
 
  {/* Account Settings */}
  <div>
- <h4 className="text-[10px] font-bold text-[color:var(--text-faint)] tracking-wider uppercase mb-3 ml-2">Account Settings</h4>
- <div className="bg-white rounded-3xl shadow-sm border border-stone-200 overflow-hidden transition-colors duration-300">
+ <h4 className="text-[10px] font-bold text-faint tracking-wider uppercase mb-3 ml-2">Account Settings</h4>
+ <div className="bg-surface-raised rounded-3xl shadow-sm border border-line overflow-hidden transition-colors duration-300">
  {isAdmin && (
  <>
  <SettingItem 
@@ -388,7 +388,7 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
  label="Admin Dashboard" 
  onClick={() => onNavigate('admin')}
  />
- <div className="h-px bg-stone-100 mx-4"></div>
+ <div className="h-px bg-surface-sunken mx-4"></div>
  </>
  )}
  <SettingItem 
@@ -399,7 +399,7 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
  />
  {hasChurches && (
  <>
- <div className="h-px bg-stone-100 mx-4"></div>
+ <div className="h-px bg-surface-sunken mx-4"></div>
  <SettingItem
  icon={<Church size={16} className="text-field-600" />}
  iconBg="bg-field-100"
@@ -416,7 +416,7 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
  )}
  {/* "Partner with Us" removed here — the Partnership card below is the single
      home for giving (Give again / Partner CTA + Donation History). */}
- <div className="h-px bg-stone-100 mx-4"></div>
+ <div className="h-px bg-surface-sunken mx-4"></div>
  <ToggleSettingItem
  icon={<Bell size={16} className="text-sky-600" />}
  iconBg="bg-sky-100"
@@ -433,7 +433,7 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
      tickets — no admin-specific logic and no cross-user leakage. */}
  {/* Always shown — UserEvents scopes to the current user's own registrations
      and handles a missing tenant gracefully (empty state). */}
- <div className="h-px bg-stone-100 mx-4"></div>
+ <div className="h-px bg-surface-sunken mx-4"></div>
  <SettingItem
  icon={<CalendarCheck size={16} className="text-field-600" />}
  iconBg="bg-field-100"
@@ -441,7 +441,7 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
  onClick={() => setShowMyEvents(true)}
  />
  {/* Saved — bookmarked articles, lessons, posts and verses (private to the user). */}
- <div className="h-px bg-stone-100 mx-4"></div>
+ <div className="h-px bg-surface-sunken mx-4"></div>
  <SettingItem
  icon={<Bookmark size={16} className="text-sky-600" />}
  iconBg="bg-sky-100"
@@ -452,7 +452,7 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
      mobile-first and this Profile list is the mobile settings surface, so
      the toggle has to be reachable here and not only in admin settings
      (which most members never see). */}
- <div className="h-px bg-stone-100 mx-4"></div>
+ <div className="h-px bg-surface-sunken mx-4"></div>
  <div className="flex items-center gap-3 px-4 py-3">
  <div className="w-8 h-8 rounded-lg bg-sky-100 flex items-center justify-center shrink-0">
  <Palette size={16} className="text-sky-600" />
@@ -465,8 +465,8 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
 
  {/* Partnership */}
  <div>
- <h4 className="text-[10px] font-bold text-[color:var(--text-faint)] tracking-wider uppercase mb-3 ml-2">Partnership</h4>
- <div className="bg-white rounded-3xl shadow-sm border border-stone-200 overflow-hidden p-4">
+ <h4 className="text-[10px] font-bold text-faint tracking-wider uppercase mb-3 ml-2">Partnership</h4>
+ <div className="bg-surface-raised rounded-3xl shadow-sm border border-line overflow-hidden p-4">
  {donationSubscriptionId ? (
  <div>
  <div className="flex items-center gap-3 mb-3">
@@ -474,12 +474,12 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
  <HeartHandshake size={16} className="text-wheat-600" />
  </div>
  <div>
- <p className="text-sm font-bold text-earth">
+ <p className="text-sm font-bold text-strong">
  {/* donationAmount is stored in DOLLARS (BUG 2) — display it directly. */}
  ${donationAmount ? donationAmount.toFixed(0) : '—'} / month
  </p>
  {donationChurchName && (
- <p className="text-xs text-warm-brown">{donationChurchName}</p>
+ <p className="text-xs text-muted">{donationChurchName}</p>
  )}
  </div>
  </div>
@@ -491,7 +491,7 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
  <div className="flex gap-2">
  <button
  onClick={() => setShowCancelConfirm(false)}
- className="flex-1 py-2 bg-white text-[color:var(--text-body)] rounded-xl font-medium text-sm border border-stone-200"
+ className="flex-1 py-2 bg-surface-raised text-body rounded-xl font-medium text-sm border border-line"
  >
  Keep
  </button>
@@ -521,9 +521,9 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
  <HeartHandshake size={16} className="text-wheat-600" />
  </div>
  <div className="flex-1">
- <p className="text-sm font-bold text-earth">Donor</p>
+ <p className="text-sm font-bold text-strong">Donor</p>
  {/* totalDonated is stored in DOLLARS (BUG 2) — display it directly. */}
- <p className="text-xs text-warm-brown">${totalDonated.toFixed(0)} given</p>
+ <p className="text-xs text-muted">${totalDonated.toFixed(0)} given</p>
  </div>
  <button
  onClick={onGoToPartner}
@@ -535,7 +535,7 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
  </div>
  ) : (
  <div className="text-center py-2">
- <p className="text-sm text-warm-brown">You don&apos;t have an active partnership</p>
+ <p className="text-sm text-muted">You don&apos;t have an active partnership</p>
  <button
  onClick={onGoToPartner}
  className="mt-2 text-sm font-bold text-gold"
@@ -548,7 +548,7 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
  {/* Donation History — the member's own receipts + giving totals, private to
      them. Placed under Partnership (per the founder), reusing SettingItem/card
      styling. Always shown; the view renders an empty state for non-donors. */}
- <div className="bg-white rounded-3xl shadow-sm border border-stone-200 overflow-hidden mt-3">
+ <div className="bg-surface-raised rounded-3xl shadow-sm border border-line overflow-hidden mt-3">
  <SettingItem
  icon={<Receipt size={16} className="text-wheat-600" />}
  iconBg="bg-wheat-100"
@@ -560,22 +560,22 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
 
  {/* Support & Info */}
  <div>
- <h4 className="text-[10px] font-bold text-[color:var(--text-faint)] tracking-wider uppercase mb-3 ml-2">Support & Info</h4>
- <div className="bg-white rounded-3xl shadow-sm border border-stone-200 overflow-hidden transition-colors duration-300">
+ <h4 className="text-[10px] font-bold text-faint tracking-wider uppercase mb-3 ml-2">Support & Info</h4>
+ <div className="bg-surface-raised rounded-3xl shadow-sm border border-line overflow-hidden transition-colors duration-300">
  <SettingItem 
  icon={<HelpCircle size={16} className="text-wheat-600" />} 
  iconBg="bg-wheat-100" 
  label="Contact Us"
  onClick={() => setIsContactOpen(true)}
  />
- <div className="h-px bg-stone-100 mx-4"></div>
+ <div className="h-px bg-surface-sunken mx-4"></div>
  <SettingItem
  icon={<FileQuestion size={16} className="text-field-600" />}
  iconBg="bg-field-100" 
  label="FAQ" 
  onClick={() => setIsFAQOpen(true)}
  />
- <div className="h-px bg-stone-100 mx-4"></div>
+ <div className="h-px bg-surface-sunken mx-4"></div>
  <SettingItem
  icon={<ShieldCheck size={16} className="text-sky-600" />}
  iconBg="bg-sky-100"
@@ -584,7 +584,7 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
  />
  {isAdmin && (
  <>
- <div className="h-px bg-stone-100 mx-4"></div>
+ <div className="h-px bg-surface-sunken mx-4"></div>
  <SettingItem
  icon={<Map size={16} className="text-navy-600" />}
  iconBg="bg-navy-500/10"
@@ -635,13 +635,13 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
 
  {isNoHomeChurchModalOpen && (
  <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
- <div className="bg-white rounded-2xl w-full max-w-sm overflow-hidden shadow-xl animate-fadeUp">
+ <div className="bg-surface-raised rounded-2xl w-full max-w-sm overflow-hidden shadow-xl animate-fadeUp">
  <div className="p-6 text-center">
- <div className="w-16 h-16 bg-stone-100 rounded-full flex items-center justify-center mx-auto mb-4">
- <Church size={32} className="text-[color:var(--text-faint)]" />
+ <div className="w-16 h-16 bg-surface-sunken rounded-full flex items-center justify-center mx-auto mb-4">
+ <Church size={32} className="text-faint" />
  </div>
- <h3 className="text-xl font-bold text-earth mb-2 font-display">No Home Church</h3>
- <p className="text-warm-brown mb-6 text-sm">
+ <h3 className="text-xl font-bold text-strong mb-2 font-display">No Home Church</h3>
+ <p className="text-muted mb-6 text-sm">
  You have no churches selected. Add a church to stay connected with your local community.
  </p>
  <div className="flex flex-col gap-3">
@@ -656,7 +656,7 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
  </button>
  <button
  onClick={() => setIsNoHomeChurchModalOpen(false)}
- className="w-full py-3 bg-stone-100 text-[color:var(--text-body)] font-bold rounded-xl hover:bg-stone-200 transition-colors"
+ className="w-full py-3 bg-surface-sunken text-body font-bold rounded-xl hover:bg-stone-200 transition-colors"
  >
  Cancel
  </button>
@@ -693,12 +693,12 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
 };
 
 const SettingItem = ({ icon, iconBg, label, onClick, badge }: { icon: React.ReactNode, iconBg: string, label: string, onClick?: () => void, badge?: number }) => (
- <button onClick={onClick} className="w-full flex items-center justify-between p-3.5 hover:bg-stone-100 transition-colors">
+ <button onClick={onClick} className="w-full flex items-center justify-between p-3.5 hover:bg-surface-sunken transition-colors">
  <div className="flex items-center gap-3">
  <div className={`w-7 h-7 rounded-full flex items-center justify-center ${iconBg}`}>
  {icon}
  </div>
- <span className="text-[13px] font-medium text-[color:var(--text-body)]">{label}</span>
+ <span className="text-[13px] font-medium text-body">{label}</span>
  </div>
  <div className="flex items-center gap-2">
  {badge !== undefined && badge > 0 && (
@@ -706,7 +706,7 @@ const SettingItem = ({ icon, iconBg, label, onClick, badge }: { icon: React.Reac
  {badge > 99 ? '99+' : badge}
  </span>
  )}
- <ChevronRight size={16} className="text-[color:var(--text-faint)]" />
+ <ChevronRight size={16} className="text-faint" />
  </div>
  </button>
 );
@@ -718,9 +718,9 @@ const ToggleSettingItem = ({ icon, iconBg, label, sublabel, checked, onChange }:
  {icon}
  </div>
  <div className="min-w-0">
- <span className="block text-[13px] font-medium text-[color:var(--text-body)]">{label}</span>
+ <span className="block text-[13px] font-medium text-body">{label}</span>
  {sublabel && (
- <span className="block text-[11px] text-[color:var(--text-faint)] truncate">{sublabel}</span>
+ <span className="block text-[11px] text-faint truncate">{sublabel}</span>
  )}
  </div>
  </div>
@@ -734,7 +734,7 @@ const ToggleSettingItem = ({ icon, iconBg, label, sublabel, checked, onChange }:
  style={{ background: checked ? 'var(--brand-color, #C9963A)' : '#D6CCBE' }}
  >
  <span
- className="inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform"
+ className="inline-block h-5 w-5 transform rounded-full bg-surface-raised shadow transition-transform"
  style={{ transform: checked ? 'translateX(21px)' : 'translateX(2px)' }}
  />
  </button>

@@ -43,19 +43,19 @@ export function CourseLibrary({ courses, authors, categories, onSelectCourse, co
     <div className="max-w-[480px] mx-auto px-4 pt-5 pb-24 lg:max-w-none lg:px-8 lg:pt-6">
       {/* Header — desktop only; the mobile screen opens straight into search
           to match the member mockup (the tab bar supplies the section label). */}
-      <h1 className="hidden lg:block text-[28px] font-light tracking-[-0.02em] text-earth mb-5 font-display">Courses</h1>
+      <h1 className="hidden lg:block text-[28px] font-light tracking-[-0.02em] text-strong mb-5 font-display">Courses</h1>
 
       {/* Search */}
       <div className="relative mb-5">
         <div className="absolute inset-y-0 left-0 pl-3 lg:pl-4 flex items-center pointer-events-none">
-          <Search size={16} className="text-[color:var(--text-faint)]" />
+          <Search size={16} className="text-faint" />
         </div>
         <input
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search courses..."
-          className="w-full pl-9 lg:pl-11 pr-3 py-1.5 lg:py-2.5 bg-white border border-stone-200 rounded-lg lg:rounded-xl text-sm text-earth focus:ring-2 focus:ring-gold focus:border-transparent outline-none transition-all"
+          className="w-full pl-9 lg:pl-11 pr-3 py-1.5 lg:py-2.5 bg-surface-raised border border-line rounded-lg lg:rounded-xl text-sm text-strong focus:ring-2 focus:ring-gold focus:border-transparent outline-none transition-all"
         />
       </div>
 
@@ -68,7 +68,7 @@ export function CourseLibrary({ courses, authors, categories, onSelectCourse, co
             className={`px-3 py-1 lg:px-[15px] lg:py-[7px] rounded-full text-xs lg:text-[12.5px] font-medium lg:font-semibold whitespace-nowrap transition-colors ${
               activeCategory === cat
                 ? "bg-gold text-white"
-                : "bg-white text-warm-brown lg:text-[color:var(--text-body)] border border-stone-200 lg:border-stone-300 hover:border-gold"
+                : "bg-surface-raised text-muted lg:text-body border border-line lg:border-line-strong hover:border-gold"
             }`}
           >
             {cat}
@@ -141,7 +141,7 @@ export function CourseLibrary({ courses, authors, categories, onSelectCourse, co
       {/* Continue learning */}
       {continueLearning.length > 0 && (
         <div className="mb-7">
-          <span className="lg:hidden block text-[11px] font-bold uppercase tracking-[0.14em] text-[color:var(--text-faint)] mb-4">Continue Learning</span>
+          <span className="lg:hidden block text-[11px] font-bold uppercase tracking-[0.14em] text-faint mb-4">Continue Learning</span>
           <h2 className="hidden lg:block text-lg font-bold tracking-tight mb-4 font-display">Continue Learning</h2>
           <div className="lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-5">
           {continueLearning.map((course) => (
@@ -158,14 +158,14 @@ export function CourseLibrary({ courses, authors, categories, onSelectCourse, co
       )}
 
       {/* All courses */}
-      <span className="lg:hidden block text-[11px] font-bold uppercase tracking-[0.14em] text-[color:var(--text-faint)] mb-4">
+      <span className="lg:hidden block text-[11px] font-bold uppercase tracking-[0.14em] text-faint mb-4">
         {continueLearning.length > 0 ? "All Courses" : "Courses"}
       </span>
       <h2 className="hidden lg:block text-lg font-bold tracking-tight mb-4 font-display">
         {continueLearning.length > 0 ? "All Courses" : "Courses"}
       </h2>
       {allCourses.length === 0 ? (
-        <div className="text-center py-16 text-[color:var(--text-faint)]">
+        <div className="text-center py-16 text-faint">
           <svg className="mx-auto mb-3 text-stone-300" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
             <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20" />
           </svg>

@@ -183,7 +183,7 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
         <button
           onClick={() => setBillingPeriod('monthly')}
           className={`px-5 py-2 rounded-xl text-sm font-semibold transition-all ${
-            billingPeriod === 'monthly' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+            billingPeriod === 'monthly' ? 'bg-surface-raised text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
           }`}
         >
           Monthly
@@ -191,7 +191,7 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
         <button
           onClick={() => setBillingPeriod('yearly')}
           className={`px-5 py-2 rounded-xl text-sm font-semibold transition-all relative ${
-            billingPeriod === 'yearly' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+            billingPeriod === 'yearly' ? 'bg-surface-raised text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
           }`}
         >
           Yearly
@@ -230,7 +230,7 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
           return (
             <div
               key={planId}
-              className={`relative bg-white rounded-2xl border-2 p-5 transition-all min-w-[280px] max-w-[320px] flex-shrink-0 snap-center ${
+              className={`relative bg-surface-raised rounded-2xl border-2 p-5 transition-all min-w-[280px] max-w-[320px] flex-shrink-0 snap-center ${
                 isCurrent ? 'border-gold shadow-lg' : 'border-gray-100 hover:border-gray-200'
               }`}
             >
@@ -343,7 +343,7 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
       </div>
 
       {/* Full Feature Comparison Table */}
-      <div className="bg-white rounded-2xl border border-gray-100 p-6 mt-6">
+      <div className="bg-surface-raised rounded-2xl border border-gray-100 p-6 mt-6">
         <h3 className="font-display text-lg font-bold text-gray-900 mb-4">Full Feature Comparison</h3>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">

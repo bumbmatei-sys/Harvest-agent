@@ -66,18 +66,18 @@ const EmbedPicker: React.FC<{
       aria-label={TITLES[type]}
     >
       <div
-        className="bg-white w-full sm:max-w-md rounded-2xl shadow-xl max-h-[75vh] flex flex-col"
+        className="bg-surface-raised w-full sm:max-w-md rounded-2xl shadow-xl max-h-[75vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center gap-2 px-4 py-3 border-b border-stone-200">
+        <div className="flex items-center gap-2 px-4 py-3 border-b border-line">
           <Icon size={18} className="text-gold" />
-          <h3 className="font-bold text-earth text-base flex-1 font-display">{TITLES[type]}</h3>
-          <button onClick={onClose} aria-label="Close" className="p-1 text-warm-brown hover:bg-stone-100 rounded-full transition-colors">
+          <h3 className="font-bold text-strong text-base flex-1 font-display">{TITLES[type]}</h3>
+          <button onClick={onClose} aria-label="Close" className="p-1 text-muted hover:bg-surface-sunken rounded-full transition-colors">
             <X size={20} />
           </button>
         </div>
 
-        <div className="p-3 border-b border-stone-200">
+        <div className="p-3 border-b border-line">
           <div className="relative">
             <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
             <input
@@ -85,7 +85,7 @@ const EmbedPicker: React.FC<{
               onChange={(e) => setQ(e.target.value)}
               autoFocus
               placeholder="Search…"
-              className="w-full pl-9 pr-3 py-2 bg-stone-100 border border-stone-200 rounded-xl text-sm text-earth focus:ring-1 focus:ring-gold outline-none"
+              className="w-full pl-9 pr-3 py-2 bg-surface-sunken border border-line rounded-xl text-sm text-strong focus:ring-1 focus:ring-gold outline-none"
             />
           </div>
         </div>
@@ -96,7 +96,7 @@ const EmbedPicker: React.FC<{
               <div className="w-6 h-6 border-2 border-gold border-t-transparent rounded-full animate-spin" />
             </div>
           ) : filtered.length === 0 ? (
-            <p className="text-center text-sm text-warm-brown py-10">
+            <p className="text-center text-sm text-muted py-10">
               {items.length === 0 ? 'Nothing to attach yet.' : 'No matches.'}
             </p>
           ) : (
@@ -105,9 +105,9 @@ const EmbedPicker: React.FC<{
                 key={item.id}
                 type="button"
                 onClick={() => onPick(item.id)}
-                className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-stone-100 transition-colors text-left"
+                className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-surface-sunken transition-colors text-left"
               >
-                <div className="w-12 h-12 rounded-lg overflow-hidden bg-stone-100 shrink-0 relative flex items-center justify-center">
+                <div className="w-12 h-12 rounded-lg overflow-hidden bg-surface-sunken shrink-0 relative flex items-center justify-center">
                   {item.image ? (
                     <Image src={item.image} alt="" fill sizes="48px" className="object-cover" referrerPolicy="no-referrer" />
                   ) : (
@@ -115,8 +115,8 @@ const EmbedPicker: React.FC<{
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-earth truncate">{item.title}</p>
-                  {item.subtitle && <p className="text-xs text-warm-brown truncate">{item.subtitle}</p>}
+                  <p className="text-sm font-semibold text-strong truncate">{item.title}</p>
+                  {item.subtitle && <p className="text-xs text-muted truncate">{item.subtitle}</p>}
                 </div>
               </button>
             ))

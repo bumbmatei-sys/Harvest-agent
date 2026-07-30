@@ -20,8 +20,8 @@ const LiveNowBanner: React.FC<LiveNowBannerProps> = ({ tenantId, onOpen }) => {
       style={{ backgroundColor: 'var(--brand-color, #B8962E)' }}
     >
       <span className="relative flex h-3 w-3 shrink-0">
-        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
-        <span className="relative inline-flex rounded-full h-3 w-3 bg-white" />
+        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-surface-raised opacity-75" />
+        <span className="relative inline-flex rounded-full h-3 w-3 bg-surface-raised" />
       </span>
       <span className="font-bold text-sm">Live Now</span>
       <span className="text-sm/5 opacity-90 truncate flex-1">{title}</span>

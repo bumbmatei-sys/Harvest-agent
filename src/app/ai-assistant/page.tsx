@@ -162,7 +162,7 @@ export default function AiAssistantPage() {
         )}
 
         {state === 'check-email' && (
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 text-center">
+          <div className="bg-surface-raised rounded-2xl shadow-sm border border-gray-100 p-6 text-center">
             <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <svg className="w-6 h-6 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -174,7 +174,7 @@ export default function AiAssistantPage() {
         )}
 
         {state === 'connected' && (
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+          <div className="bg-surface-raised rounded-2xl shadow-sm border border-gray-100 p-6">
             <div className="flex items-center gap-3 mb-6 p-3 bg-green-50 rounded-xl">
               <div className="w-2 h-2 bg-green-500 rounded-full" />
               <div>
@@ -206,7 +206,7 @@ export default function AiAssistantPage() {
         )}
 
         {state === 'not-connected' && uid && (
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+          <div className="bg-surface-raised rounded-2xl shadow-sm border border-gray-100 p-6">
             <div className="flex items-center gap-3 mb-6 p-3 bg-amber-50 rounded-xl">
               <div className="w-2 h-2 bg-amber-400 rounded-full" />
               <p className="text-sm text-amber-700">Not connected to Telegram yet</p>
@@ -229,7 +229,7 @@ export default function AiAssistantPage() {
         )}
 
         {state === 'expired' && (
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+          <div className="bg-surface-raised rounded-2xl shadow-sm border border-gray-100 p-6">
             <div className="p-3 bg-red-50 rounded-xl mb-4">
               <p className="text-sm text-red-700 font-medium">Link expired</p>
             </div>
@@ -260,7 +260,7 @@ export default function AiAssistantPage() {
         )}
 
         {state === 'error' && (
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 text-center">
+          <div className="bg-surface-raised rounded-2xl shadow-sm border border-gray-100 p-6 text-center">
             <p className="text-sm text-red-600 mb-2">Something went wrong</p>
             <p className="text-xs text-gray-400">{errorMsg}</p>
           </div>

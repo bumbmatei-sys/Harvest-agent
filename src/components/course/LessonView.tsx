@@ -76,15 +76,15 @@ export function LessonView({ course, lesson, authors, onBack, onComplete, comple
   return (
     <div className="max-w-[480px] lg:max-w-[760px] mx-auto pb-24 lg:pb-10">
       {/* Header */}
-      <div className="flex items-center gap-3 px-5 lg:px-0 py-4 bg-white lg:bg-transparent border-b border-stone-200 lg:border-b-0">
+      <div className="flex items-center gap-3 px-5 lg:px-0 py-4 bg-surface-raised lg:bg-transparent border-b border-line lg:border-b-0">
         <button
           onClick={onBack}
-          className="w-8 h-8 rounded-full bg-stone-100 border-none flex items-center justify-center cursor-pointer flex-shrink-0"
+          className="w-8 h-8 rounded-full bg-surface-sunken border-none flex items-center justify-center cursor-pointer flex-shrink-0"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="m15 18-6-6 6-6" /></svg>
         </button>
         <div className="flex-1 min-w-0">
-          <div className="text-[11px] text-[color:var(--text-faint)] font-semibold uppercase tracking-wider">{course.title}</div>
+          <div className="text-[11px] text-faint font-semibold uppercase tracking-wider">{course.title}</div>
           <div className="text-[15px] font-bold truncate font-display">{lesson.title}</div>
         </div>
         <SaveButton
@@ -117,8 +117,8 @@ export function LessonView({ course, lesson, authors, onBack, onComplete, comple
             }}
           />
         ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center text-warm-brown">
-            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="mb-2 text-warm-brown">
+          <div className="w-full h-full flex flex-col items-center justify-center text-muted">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="mb-2 text-muted">
               <rect x="2" y="3" width="20" height="14" rx="2" /><path d="m8 21 4-4 4 4" />
             </svg>
             <span className="text-sm font-medium">No video content</span>
@@ -128,19 +128,19 @@ export function LessonView({ course, lesson, authors, onBack, onComplete, comple
 
       {/* Content */}
       <div className="px-5">
-        <div className="text-xs text-[color:var(--text-faint)] font-semibold uppercase tracking-wider mt-5 mb-1">
+        <div className="text-xs text-faint font-semibold uppercase tracking-wider mt-5 mb-1">
           Lesson {lessonNumber} of {allLessons.length}
         </div>
-        <div className="text-[22px] font-light text-earth tracking-tight lg:tracking-[-0.02em] mb-4 font-display">{lesson.title}</div>
+        <div className="text-[22px] font-light text-strong tracking-tight lg:tracking-[-0.02em] mb-4 font-display">{lesson.title}</div>
 
         {/* Tabs */}
-        <div className="flex border-b border-stone-200 -mx-5 px-5 mb-4">
+        <div className="flex border-b border-line -mx-5 px-5 mb-4">
           {tabs.map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
               className={`py-3 mr-5 text-[13px] font-semibold capitalize cursor-pointer border-b-2 transition-colors ${
-                activeTab === tab ? "text-earth border-gold" : "text-[color:var(--text-faint)] border-transparent hover:text-warm-brown"
+                activeTab === tab ? "text-strong border-gold" : "text-faint border-transparent hover:text-muted"
               }`}
             >
               {tab}
@@ -152,17 +152,17 @@ export function LessonView({ course, lesson, authors, onBack, onComplete, comple
         {activeTab === "outline" && (lesson.summary || (lesson.outline && lesson.outline.length > 0)) && (
           <div>
             {lesson.summary && (
-              <p className="text-[15px] leading-8 text-warm-brown mb-4">{lesson.summary}</p>
+              <p className="text-[15px] leading-8 text-muted mb-4">{lesson.summary}</p>
             )}
             {lesson.outline && lesson.outline.length > 0 && (
               <div>
                 {lesson.outline.map((item, idx) => (
-                  <div key={item.id || idx} className="flex gap-3.5 py-3.5 border-b border-stone-200">
+                  <div key={item.id || idx} className="flex gap-3.5 py-3.5 border-b border-line">
                     <div className="text-xs font-semibold w-[42px] flex-shrink-0 pt-0.5" style={{ color: GOLD }}>
                       {item.text?.match(/\d+:\d+/)?.[0] || `${idx * 3}:00`}
                     </div>
-                    <div className="text-sm text-warm-brown leading-6">
-                      <strong className="text-earth font-semibold">{item.title}</strong>
+                    <div className="text-sm text-muted leading-6">
+                      <strong className="text-strong font-semibold">{item.title}</strong>
                       {item.text ? ` — ${item.text}` : ""}
                     </div>
                   </div>
@@ -180,7 +180,7 @@ export function LessonView({ course, lesson, authors, onBack, onComplete, comple
               onChange={(e) => { setNoteDraft(e.target.value); setNoteSaved(false); }}
               placeholder="Write your notes for this lesson…"
               rows={8}
-              className="w-full min-h-[160px] rounded-lg border border-stone-200 p-3.5 text-sm leading-6 text-warm-brown placeholder:text-[color:var(--text-faint)] focus:outline-none focus:ring-2 focus:ring-wheat-500/40 resize-y"
+              className="w-full min-h-[160px] rounded-lg border border-line p-3.5 text-sm leading-6 text-muted placeholder:text-faint focus:outline-none focus:ring-2 focus:ring-wheat-500/40 resize-y"
             />
             <div className="flex items-center justify-between mt-2.5">
               <span className={`text-xs font-semibold text-field-600 transition-opacity ${noteSaved ? "opacity-100" : "opacity-0"}`}>
@@ -188,7 +188,7 @@ export function LessonView({ course, lesson, authors, onBack, onComplete, comple
               </span>
               <button
                 onClick={() => { onSaveNote(lesson.id, noteDraft); setNoteSaved(true); }}
-                className="py-2.5 px-5 rounded-lg bg-stone-100 border border-stone-200 text-warm-brown text-[13px] font-semibold cursor-pointer hover:bg-stone-200 transition-colors"
+                className="py-2.5 px-5 rounded-lg bg-surface-sunken border border-line text-muted text-[13px] font-semibold cursor-pointer hover:bg-stone-200 transition-colors"
               >
                 Save
               </button>
@@ -200,11 +200,11 @@ export function LessonView({ course, lesson, authors, onBack, onComplete, comple
         {activeTab === "resources" && (
           <div className="py-5">
             {lesson.sources ? (
-              <div className="prose max-w-none text-sm leading-7 text-warm-brown">
+              <div className="prose max-w-none text-sm leading-7 text-muted">
                 <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(lesson.sources) }} />
               </div>
             ) : (
-              <p className="text-sm text-[color:var(--text-faint)]">No additional resources.</p>
+              <p className="text-sm text-faint">No additional resources.</p>
             )}
           </div>
         )}
@@ -221,19 +221,19 @@ export function LessonView({ course, lesson, authors, onBack, onComplete, comple
         {/* Author link */}
         {author && onSelectAuthor && (
           <div
-            className="flex items-center gap-3 py-4 border-t border-stone-200 mt-2 cursor-pointer"
+            className="flex items-center gap-3 py-4 border-t border-line mt-2 cursor-pointer"
             onClick={() => onSelectAuthor(author)}
           >
             {author.picture ? (
               <img src={author.picture} alt={author.name} className="w-9 h-9 rounded-full object-cover" />
             ) : (
-              <div className="w-9 h-9 rounded-full bg-stone-100 flex items-center justify-center text-xs font-bold text-[color:var(--text-faint)]">
+              <div className="w-9 h-9 rounded-full bg-surface-sunken flex items-center justify-center text-xs font-bold text-faint">
                 {author.name?.charAt(0)}
               </div>
             )}
             <div className="flex-1">
               <div className="text-sm font-bold">{author.name}</div>
-              <div className="text-xs text-[color:var(--text-faint)]">{author.title || "Instructor"}</div>
+              <div className="text-xs text-faint">{author.title || "Instructor"}</div>
             </div>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A89A87" strokeWidth="2"><path d="m9 18 6-6-6-6" /></svg>
           </div>
@@ -248,7 +248,7 @@ export function LessonView({ course, lesson, authors, onBack, onComplete, comple
             disabled={completionBlocked}
             className={`lg:hidden w-full py-3.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 border transition-all ${
               completionBlocked
-                ? "bg-stone-100 text-[color:var(--text-faint)] border-stone-200 cursor-not-allowed"
+                ? "bg-surface-sunken text-faint border-line cursor-not-allowed"
                 : isCompleted
                 ? "bg-field-500 text-white border-field-500 cursor-pointer"
                 : "bg-field-100 text-field-700 border-field-500 cursor-pointer"
@@ -263,7 +263,7 @@ export function LessonView({ course, lesson, authors, onBack, onComplete, comple
             disabled={completionBlocked}
             className={`hidden lg:flex w-full py-3.5 rounded-lg text-sm font-bold items-center justify-center transition-all ${
               completionBlocked
-                ? "bg-stone-100 text-[color:var(--text-faint)] border border-stone-200 cursor-not-allowed"
+                ? "bg-surface-sunken text-faint border border-line cursor-not-allowed"
                 : isCompleted
                 ? "border cursor-pointer"
                 : "text-white cursor-pointer"
@@ -283,12 +283,12 @@ export function LessonView({ course, lesson, authors, onBack, onComplete, comple
           {completionBlocked ? (
             <button
               onClick={() => setActiveTab("quiz")}
-              className="w-full text-center text-xs font-semibold text-[color:var(--text-faint)] hover:text-warm-brown cursor-pointer underline decoration-dotted -mt-1"
+              className="w-full text-center text-xs font-semibold text-faint hover:text-muted cursor-pointer underline decoration-dotted -mt-1"
             >
               Pass the quiz to complete this lesson
             </button>
           ) : nextBlocked ? (
-            <p className="w-full text-center text-xs font-semibold text-[color:var(--text-faint)] -mt-1">
+            <p className="w-full text-center text-xs font-semibold text-faint -mt-1">
               Complete this lesson to continue
             </p>
           ) : null}
@@ -297,7 +297,7 @@ export function LessonView({ course, lesson, authors, onBack, onComplete, comple
             {prevLesson && (
               <button
                 onClick={() => onSelectLesson(prevLesson)}
-                className="flex-1 py-3 rounded-lg bg-stone-100 border border-stone-200 text-warm-brown text-[13px] font-semibold cursor-pointer flex items-center justify-center gap-1.5 hover:bg-stone-100 transition-colors"
+                className="flex-1 py-3 rounded-lg bg-surface-sunken border border-line text-muted text-[13px] font-semibold cursor-pointer flex items-center justify-center gap-1.5 hover:bg-surface-sunken transition-colors"
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="m15 18-6-6 6-6" /></svg>
                 Previous
@@ -309,7 +309,7 @@ export function LessonView({ course, lesson, authors, onBack, onComplete, comple
                 disabled={nextBlocked}
                 className={`flex-1 py-3 rounded-lg text-[13px] font-semibold flex items-center justify-center gap-1.5 transition-colors ${
                   nextBlocked
-                    ? "bg-stone-100 text-[color:var(--text-faint)] border border-stone-200 cursor-not-allowed"
+                    ? "bg-surface-sunken text-faint border border-line cursor-not-allowed"
                     : "text-white cursor-pointer"
                 }`}
                 style={nextBlocked ? undefined : { background: GOLD }}
@@ -325,7 +325,7 @@ export function LessonView({ course, lesson, authors, onBack, onComplete, comple
                 disabled={nextBlocked}
                 className={`flex-1 py-3 rounded-lg text-[13px] font-semibold flex items-center justify-center gap-1.5 transition-colors ${
                   nextBlocked
-                    ? "bg-stone-100 text-[color:var(--text-faint)] border border-stone-200 cursor-not-allowed"
+                    ? "bg-surface-sunken text-faint border border-line cursor-not-allowed"
                     : "text-white cursor-pointer"
                 }`}
                 style={nextBlocked ? undefined : { background: GOLD }}
