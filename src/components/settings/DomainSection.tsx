@@ -204,47 +204,60 @@ export const DomainSection: React.FC<DomainSectionProps> = ({ hasCustomDomain, o
   };
 
   return (
+    // ── Theming stage 2: first converted surface (the template for the rest) ──
+    // Every neutral surface/border/body-text utility below is a semantic token,
+    // so this section inverts with the theme. Each swap is colour-identical to
+    // what it replaced, so the light theme is byte-for-byte unchanged.
+    //
+    // Two things are deliberately NOT converted, and both are the convention:
+    //   • `text-white` on the two `bg-gold` buttons — that white is contrast
+    //     against the brand accent, not a neutral. It must stay white on a gold
+    //     button in either theme, so tokenising it would be the bug.
+    //   • `bg-stone-200` on the `.theharvest.app` suffix chip — a real gap, not
+    //     an oversight: a stone-200 *fill* has no semantic token (stone-200 is
+    //     spoken for as --border-default). Left hardcoded rather than inventing
+    //     vocabulary here; flagged in the PR body for stage 3 to name.
     <div>
       {/* Web Address */}
-      <div className="bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] p-5">
+      <div className="bg-surface-raised rounded-brand-lg border border-line shadow-[var(--ds-sh-sm)] p-5">
         <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gold mb-2">Web Address</h3>
-        <p className="text-sm text-warm-brown mb-4">
-          Manage your ministry&apos;s web address. Your subdomain is <strong className="text-earth">{subdomain}.theharvest.app</strong>.
+        <p className="text-sm text-muted mb-4">
+          Manage your ministry&apos;s web address. Your subdomain is <strong className="text-strong">{subdomain}.theharvest.app</strong>.
         </p>
 
         {/* Subdomain (read-only) */}
-        <label className="block text-sm font-medium text-earth mb-2">Subdomain</label>
+        <label className="block text-sm font-medium text-strong mb-2">Subdomain</label>
         <div className="flex items-center">
           <input
             type="text"
             value={subdomain}
             disabled
-            className="w-full px-4 py-2.5 border border-stone-200 rounded-l-brand text-sm bg-stone-100 text-warm-brown cursor-not-allowed"
+            className="w-full px-4 py-2.5 border border-line rounded-l-brand text-sm bg-surface-sunken text-muted cursor-not-allowed"
           />
-          <span className="px-4 py-2.5 border border-l-0 border-stone-200 rounded-r-brand text-sm text-[color:var(--text-faint)] bg-stone-200 whitespace-nowrap">.theharvest.app</span>
+          <span className="px-4 py-2.5 border border-l-0 border-line rounded-r-brand text-sm text-faint bg-stone-200 whitespace-nowrap">.theharvest.app</span>
         </div>
-        <p className="text-xs text-[color:var(--text-faint)] mt-2">
+        <p className="text-xs text-faint mt-2">
           To change your subdomain, please contact support. Subdomain changes require migration and may affect your existing links.
         </p>
 
         {/* Custom Domain (Community / max+) */}
         {hasCustomDomain ? (
-          <div className="mt-5 pt-5 border-t border-stone-200">
+          <div className="mt-5 pt-5 border-t border-line">
             <div className="flex items-center justify-between mb-2">
-              <label className="block text-sm font-medium text-earth">Custom domain</label>
+              <label className="block text-sm font-medium text-strong">Custom domain</label>
               {statusBadge()}
             </div>
             <div className="flex items-center gap-3">
-              <Globe size={18} className="text-[color:var(--text-faint)] shrink-0" />
+              <Globe size={18} className="text-faint shrink-0" />
               <div className="flex-1">
                 <input
                   type="text"
                   value={customDomain}
                   onChange={(e) => setCustomDomain(e.target.value)}
                   placeholder="e.g. app.church.org"
-                  className="w-full px-4 py-2.5 border border-stone-200 rounded-brand text-sm text-earth focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent"
+                  className="w-full px-4 py-2.5 border border-line rounded-brand text-sm text-strong focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent"
                 />
-                <p className="text-xs text-[color:var(--text-faint)] mt-1.5">
+                <p className="text-xs text-faint mt-1.5">
                   Use your root domain (<span className="font-mono">church.org</span>) or a subdomain
                   of it (<span className="font-mono">app.church.org</span>,{' '}
                   <span className="font-mono">give.church.org</span>). Connecting a subdomain leaves
@@ -260,45 +273,45 @@ export const DomainSection: React.FC<DomainSectionProps> = ({ hasCustomDomain, o
                 (church.org) with an A record. This block used to print one fixed
                 CNAME for everyone, so anyone on the other shape followed the wrong
                 instruction and verification then silently never completed. */}
-            <div className="mt-4 pt-4 border-t border-stone-200">
-              <p className="text-sm font-medium text-earth mb-3">DNS Configuration</p>
-              <div className="bg-stone-100 rounded-brand p-4">
+            <div className="mt-4 pt-4 border-t border-line">
+              <p className="text-sm font-medium text-strong mb-3">DNS Configuration</p>
+              <div className="bg-surface-sunken rounded-brand p-4">
                 {verification.length > 0 ? (
                   <>
-                    <p className="text-xs text-warm-brown mb-2">
+                    <p className="text-xs text-muted mb-2">
                       Add {verification.length === 1 ? 'this record' : 'these records'} at your DNS provider:
                     </p>
                     <div className="space-y-2">
                       {verification.map((record, i) => (
                         <div
                           key={`${record.type ?? ''}-${record.domain ?? ''}-${i}`}
-                          className="font-mono text-sm bg-white rounded-lg p-3 border border-stone-200"
+                          className="font-mono text-sm bg-surface-raised rounded-lg p-3 border border-line"
                         >
                           <div className="flex justify-between gap-3">
-                            <span className="text-[color:var(--text-faint)] shrink-0">Type:</span>
-                            <span className="text-earth break-all text-right">{(record.type || '').toUpperCase()}</span>
+                            <span className="text-faint shrink-0">Type:</span>
+                            <span className="text-strong break-all text-right">{(record.type || '').toUpperCase()}</span>
                           </div>
                           <div className="flex justify-between gap-3 mt-1">
-                            <span className="text-[color:var(--text-faint)] shrink-0">Name:</span>
-                            <span className="text-earth break-all text-right">{record.domain}</span>
+                            <span className="text-faint shrink-0">Name:</span>
+                            <span className="text-strong break-all text-right">{record.domain}</span>
                           </div>
                           <div className="flex justify-between gap-3 mt-1">
-                            <span className="text-[color:var(--text-faint)] shrink-0">Value:</span>
-                            <span className="text-earth break-all text-right">{record.value}</span>
+                            <span className="text-faint shrink-0">Value:</span>
+                            <span className="text-strong break-all text-right">{record.value}</span>
                           </div>
                         </div>
                       ))}
                     </div>
                   </>
                 ) : (
-                  <p className="text-xs text-warm-brown">
+                  <p className="text-xs text-muted">
                     Save your domain to get the exact DNS records for your provider. They depend on
                     what you connect: a subdomain such as <span className="font-mono">app.church.org</span>{' '}
                     uses a CNAME, while a root domain such as <span className="font-mono">church.org</span>{' '}
                     uses an A record.
                   </p>
                 )}
-                <p className="text-xs text-[color:var(--text-faint)] mt-2">
+                <p className="text-xs text-faint mt-2">
                   DNS changes can take up to 48 hours to propagate. Use &quot;Check Status&quot; to refresh verification.
                 </p>
               </div>
@@ -315,7 +328,7 @@ export const DomainSection: React.FC<DomainSectionProps> = ({ hasCustomDomain, o
               <button
                 onClick={handleCheckStatus}
                 disabled={checking || !customDomain.trim()}
-                className="px-5 py-2.5 border border-stone-200 text-earth rounded-brand text-sm font-semibold hover:bg-stone-100 transition-colors disabled:opacity-50"
+                className="px-5 py-2.5 border border-line text-strong rounded-brand text-sm font-semibold hover:bg-surface-sunken transition-colors disabled:opacity-50"
               >
                 {checking ? 'Checking...' : 'Check Status'}
               </button>
@@ -325,9 +338,9 @@ export const DomainSection: React.FC<DomainSectionProps> = ({ hasCustomDomain, o
             </div>
           </div>
         ) : (
-          <div className="mt-5 pt-5 border-t border-stone-200">
-            <label className="block text-sm font-medium text-earth mb-2">Custom domain</label>
-            <p className="text-sm text-warm-brown mb-4">
+          <div className="mt-5 pt-5 border-t border-line">
+            <label className="block text-sm font-medium text-strong mb-2">Custom domain</label>
+            <p className="text-sm text-muted mb-4">
               Custom domains are available on the <strong>{CUSTOM_DOMAIN_MIN_PLAN}</strong> plan and
               above. Upgrade to use your own domain name.
             </p>

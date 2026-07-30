@@ -110,6 +110,37 @@ export default async function RootLayout({
     <html lang="en" className={cn("scroll-smooth font-sans", inter.variable, fraunces.variable, newsreader.variable)} suppressHydrationWarning>
       <head>
         {/* apple-touch-icon / icon are emitted dynamically via generateMetadata() */}
+        {/* ── Theming stage 2: resolve the theme BEFORE first paint ──────────
+            A plain inline <script> (not next/script, which defers) in <head>
+            executes synchronously before the body renders, so <html> is already
+            stamped when the first pixel lands — no flash of the wrong theme.
+            This is the same pre-paint slot the tenant brand colour below uses.
+
+            The SPA shape doesn't get in the way: the catch-all page is
+            ssr:false, but <html> belongs to THIS server layout, so the theme is
+            stamped without App.tsx or its BrowserRouter being involved at all.
+
+            Both a class and an attribute are set. React never rendered
+            data-theme, so it is left alone during hydration; the class is the
+            compatibility hook for anything looking for `.dark`. <html> already
+            carries suppressHydrationWarning for the tenant-branding case, which
+            covers the class the same way.
+
+            Reads a preference; it does not write one — the toggle that persists
+            a choice is deliberately not part of this PR.
+
+            Degrades safe under skipWaiting:false, where a stale bundle can pair
+            old CSS with new JS: old CSS + new JS stamps an attribute no rule
+            matches, new CSS + old JS stamps nothing. Both land on the light
+            theme, which is the only theme that exists today anyway. The
+            try/catch keeps a blocked localStorage (private mode, sandboxed
+            iframe) from throwing before the app ever boots. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var s=localStorage.getItem('harvest-theme');var t=(s==='light'||s==='dark')?s:(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');var e=document.documentElement;e.setAttribute('data-theme',t);e.classList.toggle('dark',t==='dark');}catch(_){}})();`,
+          }}
+        />
+
         {/* White-label tenant brand color, injected before body paint so the first
             paint (loading spinner included) is already tenant-colored — no Harvest
             gold flash. --color-primary feeds the App shell spinner (border-primary);
