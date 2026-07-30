@@ -189,18 +189,33 @@ describe('the theme mechanism exists and is inert with only the light theme defi
     expect(layout).toMatch(/try\{[\s\S]*catch/);
   });
 
-  it('no dark rule declares any custom property yet — so nothing renders differently', () => {
+  /**
+   * RETIRED ASSERTION — recorded rather than deleted.
+   *
+   * This used to assert that no dark rule declared any custom property, i.e.
+   * that the stage 2 mechanism was inert. It was written to fail the moment a
+   * palette landed, and in stage 3 it did exactly that (19 offenders). That is
+   * the guard working, not a regression: its premise — "stage 3 is out of scope
+   * for this PR" — expired when stage 3 shipped.
+   *
+   * What replaces it is the invariant that outlives inertness: the dark theme
+   * may override the neutral ramp, but it must NEVER override --brand-color.
+   * Tenant branding drives the accent only; deriving neutrals from an arbitrary
+   * tenant hex is how white-label dark themes become unreadable. Palette
+   * correctness itself is asserted in theming-stage3.test.ts.
+   */
+  it('no dark rule overrides --brand-color — tenant branding drives the accent only', () => {
     const root = postcss.parse(globalsCss);
     const offenders: string[] = [];
     root.walkRules((rule) => {
       if (!/(^|[\s,])(\.dark|\[data-theme="dark"\])/.test(rule.selector)) return;
       rule.walkDecls((decl) => {
-        if (decl.prop.startsWith('--') || decl.prop === 'color-scheme') {
+        if (decl.prop === '--brand-color' || decl.prop === '--color-primary') {
           offenders.push(`${rule.selector} { ${decl.prop} }`);
         }
       });
     });
-    expect(offenders, 'a dark palette landed — stage 3 is out of scope for this PR').toEqual([]);
+    expect(offenders, 'the dark theme is overriding tenant branding').toEqual([]);
   });
 
   it('nothing in the app renders a dark-variant utility today', () => {
