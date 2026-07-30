@@ -283,7 +283,7 @@ Tokens live in `src/app/globals.css` (`:root`) and `tailwind.config.ts`.
   money, which is why fee/retention correctness is cheap to fix now and expensive later.
 - Plans: Individual ($49), Small Team ($99), Community ($199), Ministry ($349)
 - No enterprise plan — Ministry is the top tier
-- **1175 tests / 104 files** passing (`npm test`), plus **306 Firestore rules tests**
+- **1508 tests + 1 todo / 114 files** passing (`npm test`), plus **363 Firestore rules tests**
   under `tests/rules/` that run separately (`npm run test:rules`, needs the emulator)
 - AI Assistant (Telegram bot) **retired** (#214) — dormant code intact
 - Newsletter live · Community Groups live on **Community (max)** and above
