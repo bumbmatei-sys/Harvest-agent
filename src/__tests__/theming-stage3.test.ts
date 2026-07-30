@@ -61,7 +61,7 @@ describe('every themed token has a counterpart in both themes', () => {
   // The tokens the theme is responsible for inverting.
   const THEMED = [
     '--surface', '--surface-raised', '--surface-sunken',
-    '--surface-night', '--surface-gold',
+    '--surface-night', '--surface-gold', '--surface-chip',
     '--border-subtle', '--border-default', '--border-strong', '--border-gold',
     '--text-strong', '--text-heading', '--text-body', '--text-muted', '--text-faint',
     '--ds-sh-sm', '--ds-sh-md', '--ds-sh-lg', '--glow-gold',
