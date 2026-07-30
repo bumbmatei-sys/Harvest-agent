@@ -1,6 +1,23 @@
 import type { Config } from "tailwindcss";
 
 const config: Config = {
+  // ── Theming stage 2: the theme mechanism ────────────────────────────────
+  // Without this key Tailwind 3 defaults to `media`, so `dark:` utilities key
+  // off the OS setting only — which can never agree with a CSS-variable theme
+  // switched by an attribute. Both selectors are accepted deliberately:
+  //   • `.dark`               — what third-party/shadcn components look for.
+  //   • `[data-theme="dark"]` — what the CSS variable overrides key off, and
+  //                             the one React never renders, so it survives
+  //                             hydration untouched (see src/app/layout.tsx).
+  // `:where()` keeps specificity at 0 so a dark override never out-ranks a
+  // more specific light rule by accident.
+  // NOTE: this is mechanism only. No dark palette is defined yet, so neither
+  // selector changes a single pixel today — see the empty stage-3 block in
+  // src/app/globals.css.
+  darkMode: ['variant', [
+    '&:where(.dark, .dark *)',
+    '&:where([data-theme="dark"], [data-theme="dark"] *)',
+  ]],
   content: [
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
@@ -53,12 +70,34 @@ const config: Config = {
         surface: {
           DEFAULT: "var(--surface)",
           raised: "var(--surface-raised)",
+          // Completes the surface scale rather than adding vocabulary:
+          // --surface-sunken already exists (globals.css) but had no utility,
+          // so bg-stone-100 — the largest unmapped surface in the audit
+          // (392 uses / 74 files) — had nowhere to convert to.
+          sunken: "var(--surface-sunken)",
         },
         line: {
           DEFAULT: "var(--border-default)",
           subtle: "var(--border-subtle)",
           strong: "var(--border-strong)",
         },
+      },
+      // ── Theming stage 2: semantic TEXT tokens ───────────────────────────
+      // Deliberately under `textColor`, not `colors`. Putting strong/muted/faint
+      // in `colors` would also mint bg-*, border-*, ring-* etc. for them — and
+      // `border-strong` would then resolve to --text-strong (earth #2D2519)
+      // while the existing `border-line-strong` resolves to --border-strong
+      // (stone-300 #D6CCBE). Two different colours behind near-identical class
+      // names is precisely the ambiguity the `line` naming was chosen to avoid.
+      // These are text roles, so scoping them to textColor makes the wrong
+      // utility unspellable instead of merely discouraged.
+      // No key collision: `strong`/`muted`/`faint` are absent from `colors`, and
+      // Tailwind's text-* fontSize scale (text-sm/-lg/…) shares the namespace
+      // but has no entry of these names.
+      textColor: {
+        strong: "var(--text-strong)", // = text-earth
+        muted: "var(--text-muted)",   // = text-warm-brown
+        faint: "var(--text-faint)",   // = text-[color:var(--text-faint)]
       },
       borderRadius: {
         // Brand corner radii (lg 12 / xl 16 / 2xl 24).

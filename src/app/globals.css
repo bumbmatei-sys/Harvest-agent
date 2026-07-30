@@ -84,6 +84,34 @@
  --border-strong:   var(--stone-300);  /* emphasis border, = border-stone-300 */
  --text-strong:     var(--earth);      /* headings/emphasis, = text-earth */
  }
+
+ /* ── Theming stage 2: where stage 3's dark palette goes ──────────────────
+    INTENTIONALLY EMPTY. This PR ships the mechanism, not the theme, so the
+    app has exactly one theme and both selectors below are inert — stamping
+    either on <html> changes nothing today. That is asserted by a test.
+
+    Stage 3 fills this block by overriding ONLY the neutral ramp:
+      --surface, --surface-raised, --surface-sunken,
+      --border-default, --border-subtle, --border-strong,
+      --text-strong, --text-body, --text-muted, --text-faint
+    plus `color-scheme: dark` (kept out until the palette lands — setting it
+    now would restyle scrollbars and form controls, i.e. a visual change).
+
+    🔒 Do NOT override --brand-color here. Tenant branding drives the accent
+    only; the neutral ramp stays a fixed, contrast-checked scale in both
+    themes. Deriving neutrals from an arbitrary tenant hex is how white-label
+    dark themes become unreadable. --brand-color is injected unlayered from
+    layout.tsx and must keep winning.
+
+    Palette decided (see PR body): warm dark grey anchored on --warm-dark
+    #1A1612; fallback --navy-900 #0C1526, already proven to carry gold.
+
+    Both selectors are listed so the theme survives either switch — see the
+    matching `darkMode` variant in tailwind.config.ts. */
+ .dark,
+ [data-theme="dark"] {
+   /* stage 3 */
+ }
 }
 
 /* Desktop density: the app is mobile-first at a 16px root. On desktop the
