@@ -101,14 +101,14 @@ export const BYO_BILLING_NOTE =
 const ByoSmsVolume: React.FC<{ usage: SmsUsage }> = ({ usage }) => {
   const used = usage.smsSegmentsUsed ?? 0;
   return (
-    <div className="bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] p-4 mb-4">
+    <div className="bg-surface-raised rounded-brand-lg border border-line shadow-[var(--ds-sh-sm)] p-4 mb-4">
       <div className="flex items-baseline justify-between gap-3 mb-1.5">
         <span className="text-xs font-semibold uppercase tracking-[0.14em]" style={{ color: GOLD }}>Your Twilio account</span>
-        <span className="text-xs font-bold text-earth">
+        <span className="text-xs font-bold text-strong">
           {used.toLocaleString('en-US')} segment{used === 1 ? '' : 's'} this month
         </span>
       </div>
-      <p className="text-[11px] text-[color:var(--text-faint)]">{BYO_BILLING_NOTE}</p>
+      <p className="text-[11px] text-faint">{BYO_BILLING_NOTE}</p>
     </div>
   );
 };
@@ -121,21 +121,21 @@ const SmsUsageMeter: React.FC<{ usage: SmsUsage; onUpgrade: () => void }> = ({ u
   const warn = pct >= 80 && !over;
 
   return (
-    <div className="bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] p-4 mb-4">
+    <div className="bg-surface-raised rounded-brand-lg border border-line shadow-[var(--ds-sh-sm)] p-4 mb-4">
       <div className="flex items-baseline justify-between gap-3 mb-1.5">
         <span className="text-xs font-semibold uppercase tracking-[0.14em]" style={{ color: GOLD }}>Plan usage</span>
-        <span className={`text-xs font-bold ${over ? 'text-red-600' : 'text-earth'}`}>
+        <span className={`text-xs font-bold ${over ? 'text-red-600' : 'text-strong'}`}>
           {used.toLocaleString('en-US')} / {cap.toLocaleString('en-US')} segments
         </span>
       </div>
-      <div className="h-1.5 rounded-full bg-stone-100 overflow-hidden">
+      <div className="h-1.5 rounded-full bg-surface-sunken overflow-hidden">
         <div
           className="h-full rounded-full transition-all"
           style={{ width: `${pct}%`, background: over ? '#DC2626' : warn ? '#E67E22' : GOLD }}
         />
       </div>
       {/* SEGMENTS, not messages — stated wherever the number is shown. */}
-      <p className="text-[11px] text-[color:var(--text-faint)] mt-1.5">
+      <p className="text-[11px] text-faint mt-1.5">
         {segmentUnitNote(cap)}
       </p>
       {warn && (
@@ -310,9 +310,9 @@ const AdminSms: React.FC = () => {
 
   return (
     <div className="max-w-2xl mx-auto" style={{ paddingBottom: 120 }}>
-      <div className="flex gap-1 bg-stone-100 rounded-xl p-1 mb-6 w-fit mx-auto">
-        <button onClick={() => setTab('broadcast')} className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${tab === 'broadcast' ? 'bg-white shadow-sm text-earth' : 'text-[color:var(--text-faint)]'}`}>Broadcasts</button>
-        <button onClick={() => setTab('automated')} className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${tab === 'automated' ? 'bg-white shadow-sm text-earth' : 'text-[color:var(--text-faint)]'}`}>Automated</button>
+      <div className="flex gap-1 bg-surface-sunken rounded-xl p-1 mb-6 w-fit mx-auto">
+        <button onClick={() => setTab('broadcast')} className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${tab === 'broadcast' ? 'bg-surface-raised shadow-sm text-strong' : 'text-faint'}`}>Broadcasts</button>
+        <button onClick={() => setTab('automated')} className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${tab === 'automated' ? 'bg-surface-raised shadow-sm text-strong' : 'text-faint'}`}>Automated</button>
       </div>
 
       {usage?.metered
@@ -321,25 +321,25 @@ const AdminSms: React.FC = () => {
 
       {tab === 'broadcast' ? (
         <>
-          <div className="bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] p-5 space-y-3">
+          <div className="bg-surface-raised rounded-brand-lg border border-line shadow-[var(--ds-sh-sm)] p-5 space-y-3">
             <div>
-              <label className="block text-sm font-medium text-[color:var(--text-body)] mb-1.5">Recipients</label>
-              <select value={group} onChange={e => setGroup(e.target.value as Group)} className="w-full px-4 py-2.5 border border-stone-200 rounded-xl text-sm bg-white focus:outline-none focus:border-gold">
+              <label className="block text-sm font-medium text-body mb-1.5">Recipients</label>
+              <select value={group} onChange={e => setGroup(e.target.value as Group)} className="w-full px-4 py-2.5 border border-line rounded-xl text-sm bg-surface-raised focus:outline-none focus:border-gold">
                 <option value="all_members">All Members</option>
                 <option value="all_donors">All Donors</option>
                 <option value="tag">Custom Tag</option>
               </select>
             </div>
             {group === 'tag' && (
-              <input value={tag} onChange={e => setTag(e.target.value)} placeholder="Tag name" className="w-full px-4 py-2.5 border border-stone-200 rounded-xl text-sm focus:outline-none focus:border-gold" />
+              <input value={tag} onChange={e => setTag(e.target.value)} placeholder="Tag name" className="w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:outline-none focus:border-gold" />
             )}
-            <p className="text-xs text-warm-brown">Will send to <strong>{recipientCount ?? '…'}</strong> contact(s) with a phone number.</p>
+            <p className="text-xs text-muted">Will send to <strong>{recipientCount ?? '…'}</strong> contact(s) with a phone number.</p>
             {/* The US-only limit is stated up front, not discovered from a
                 skipped-recipient count after the fact. */}
-            <p className="text-[11px] text-[color:var(--text-faint)]">SMS is currently available for US numbers only — contacts with a non-US number are skipped and reported.</p>
+            <p className="text-[11px] text-faint">SMS is currently available for US numbers only — contacts with a non-US number are skipped and reported.</p>
             <div>
-              <textarea value={message} onChange={e => setMessage(e.target.value)} placeholder="Your message…" rows={4} className="w-full px-4 py-2.5 border border-stone-200 rounded-xl text-sm focus:outline-none focus:border-gold" />
-              <div className="flex justify-between text-xs text-[color:var(--text-faint)] mt-1">
+              <textarea value={message} onChange={e => setMessage(e.target.value)} placeholder="Your message…" rows={4} className="w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:outline-none focus:border-gold" />
+              <div className="flex justify-between text-xs text-faint mt-1">
                 <span>{message.length} chars</span>
                 <span>
                   ~{segments} segment{segments > 1 ? 's' : ''} per recipient
@@ -362,21 +362,21 @@ const AdminSms: React.FC = () => {
 
           <AdminSectionLabel className="mt-8 mb-3 block">Sent History</AdminSectionLabel>
           {history.length === 0 ? (
-            <div className="text-center py-10 text-[color:var(--text-faint)]"><MessageSquare size={36} className="mx-auto mb-2 opacity-30" /><p className="text-sm">No broadcasts yet</p></div>
+            <div className="text-center py-10 text-faint"><MessageSquare size={36} className="mx-auto mb-2 opacity-30" /><p className="text-sm">No broadcasts yet</p></div>
           ) : (
             <>
               {/* Mobile history — mockup list card: gold SMS disc, message + meta
                   sub, status pill. Same `history` data, fmtDate, statusTone/AdminBadge
                   as the desktop list below — no wiring changed. */}
-              <div className="lg:hidden bg-white rounded-brand-xl border border-stone-200 shadow-[var(--ds-sh-sm)] overflow-hidden">
+              <div className="lg:hidden bg-surface-raised rounded-brand-xl border border-line shadow-[var(--ds-sh-sm)] overflow-hidden">
                 {history.map((b, i) => (
-                  <div key={b.id} className={`flex items-start gap-3 px-3.5 py-3 ${i ? 'border-t border-stone-200' : ''}`}>
+                  <div key={b.id} className={`flex items-start gap-3 px-3.5 py-3 ${i ? 'border-t border-line' : ''}`}>
                     <div className="w-[38px] h-[38px] rounded-[10px] bg-[var(--surface-gold)] text-gold flex items-center justify-center shrink-0">
                       <MessageSquare size={16} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="text-[13.5px] font-semibold text-earth leading-snug line-clamp-2">{b.message}</div>
-                      <div className="text-[11.5px] text-[color:var(--text-faint)] mt-1">
+                      <div className="text-[13.5px] font-semibold text-strong leading-snug line-clamp-2">{b.message}</div>
+                      <div className="text-[11.5px] text-faint mt-1">
                         {fmtDate(b.createdAt)} · {b.recipientCount} recipients
                         {b.status === 'sent' && ` · ${b.delivered || 0} delivered, ${b.failed || 0} failed`}
                         {b.status === 'scheduled' && ` · for ${fmtDate(b.scheduledAt || undefined)}`}
@@ -388,14 +388,14 @@ const AdminSms: React.FC = () => {
               </div>
 
               {/* Desktop history — existing approved layout, unchanged (now lg-only). */}
-            <div className="hidden lg:block bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] divide-y divide-stone-200">
+            <div className="hidden lg:block bg-surface-raised rounded-brand-lg border border-line shadow-[var(--ds-sh-sm)] divide-y divide-stone-200">
               {history.map(b => (
                 <div key={b.id} className="px-5 py-4">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-sm text-earth flex-1">{b.message}</span>
+                    <span className="text-sm text-strong flex-1">{b.message}</span>
                     <AdminBadge tone={statusTone(b.status)}>{b.status}</AdminBadge>
                   </div>
-                  <div className="text-xs text-[color:var(--text-faint)] mt-1.5">
+                  <div className="text-xs text-faint mt-1.5">
                     {fmtDate(b.createdAt)} · {b.recipientCount} recipients
                     {b.status === 'sent' && ` · ${b.delivered || 0} delivered, ${b.failed || 0} failed`}
                     {b.status === 'scheduled' && ` · for ${fmtDate(b.scheduledAt || undefined)}`}
@@ -408,16 +408,16 @@ const AdminSms: React.FC = () => {
         </>
       ) : (
         <div className="space-y-3">
-          <p className="text-sm text-warm-brown">Toggle automated SMS and edit each message. Use placeholders like <code className="bg-stone-100 px-1 rounded">{'{name}'}</code>.</p>
+          <p className="text-sm text-muted">Toggle automated SMS and edit each message. Use placeholders like <code className="bg-surface-sunken px-1 rounded">{'{name}'}</code>.</p>
           {TRIGGERS.map(t => {
             const tpl = templates[t.key] || { enabled: false, text: '' };
             return (
-              <div key={t.key} className="bg-white rounded-2xl border border-stone-200 p-4">
+              <div key={t.key} className="bg-surface-raised rounded-2xl border border-line p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-semibold text-[color:var(--text-body)]">{t.label}</span>
+                  <span className="text-sm font-semibold text-body">{t.label}</span>
                   <label className="relative inline-flex items-center cursor-pointer">
                     <input type="checkbox" className="sr-only peer" checked={!!tpl.enabled} onChange={e => setTpl(t.key, { enabled: e.target.checked })} />
-                    <div className="w-10 h-6 bg-stone-200 peer-checked:bg-gold rounded-full peer transition-colors after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-4" />
+                    <div className="w-10 h-6 bg-stone-200 peer-checked:bg-gold rounded-full peer transition-colors after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-surface-raised after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-4" />
                   </label>
                 </div>
                 <textarea
@@ -425,7 +425,7 @@ const AdminSms: React.FC = () => {
                   onChange={e => setTpl(t.key, { text: e.target.value })}
                   placeholder={t.placeholder}
                   rows={2}
-                  className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:border-gold"
+                  className="w-full px-3 py-2 border border-line rounded-lg text-sm focus:outline-none focus:border-gold"
                 />
               </div>
             );
@@ -436,36 +436,36 @@ const AdminSms: React.FC = () => {
           {tplSaved && <span className="text-sm text-field-600 font-medium ml-2">✓ Saved</span>}
 
           {/* ── Text-to-Give ── */}
-          <div className="bg-white rounded-2xl border border-stone-200 p-4 mt-6">
+          <div className="bg-surface-raised rounded-2xl border border-line p-4 mt-6">
             <div className="flex items-center justify-between mb-1">
-              <span className="font-display text-sm font-bold text-[color:var(--text-body)] flex items-center gap-1.5"><Gift size={15} style={{ color: GOLD }} /> Text-to-Give</span>
+              <span className="font-display text-sm font-bold text-body flex items-center gap-1.5"><Gift size={15} style={{ color: GOLD }} /> Text-to-Give</span>
               <label className="relative inline-flex items-center cursor-pointer">
                 <input type="checkbox" className="sr-only peer" checked={t2g.enabled} onChange={e => setT2g({ ...t2g, enabled: e.target.checked })} />
-                <div className="w-10 h-6 bg-stone-200 peer-checked:bg-gold rounded-full peer transition-colors after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-4" />
+                <div className="w-10 h-6 bg-stone-200 peer-checked:bg-gold rounded-full peer transition-colors after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-surface-raised after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-4" />
               </label>
             </div>
-            <p className="text-xs text-[color:var(--text-faint)] mb-3">People text a keyword to your Twilio number and instantly receive a link to your giving page.</p>
+            <p className="text-xs text-faint mb-3">People text a keyword to your Twilio number and instantly receive a link to your giving page.</p>
 
             {t2g.enabled && (
               <div className="space-y-3">
                 <div>
-                  <label className="block text-xs font-semibold text-[color:var(--text-body)] mb-1">Keyword</label>
+                  <label className="block text-xs font-semibold text-body mb-1">Keyword</label>
                   <input value={t2g.keyword} onChange={e => setT2g({ ...t2g, keyword: e.target.value.toUpperCase() })}
-                    placeholder="GIVE" className="w-full px-3 py-2 border border-stone-200 rounded-xl text-sm font-mono focus:outline-none focus:border-gold" />
-                  <p className="text-[11px] text-[color:var(--text-faint)] mt-1">People text this word to receive a giving link.</p>
+                    placeholder="GIVE" className="w-full px-3 py-2 border border-line rounded-xl text-sm font-mono focus:outline-none focus:border-gold" />
+                  <p className="text-[11px] text-faint mt-1">People text this word to receive a giving link.</p>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-[color:var(--text-body)] mb-1">Reply Message</label>
+                  <label className="block text-xs font-semibold text-body mb-1">Reply Message</label>
                   <textarea value={t2g.responseTemplate} onChange={e => setT2g({ ...t2g, responseTemplate: e.target.value })}
                     rows={2} placeholder="Thank you! Give here: {link}"
-                    className="w-full px-3 py-2 border border-stone-200 rounded-xl text-sm focus:outline-none focus:border-gold resize-none" />
-                  <p className="text-[11px] text-[color:var(--text-faint)] mt-1"><code className="bg-stone-100 px-1 rounded">{'{link}'}</code> will be replaced with your giving page URL.</p>
-                  <p className="text-[11px] text-[color:var(--text-faint)] mt-1">Preview link: <span className="font-mono">https://{tenantId || 'your-ministry'}.theharvest.app/?giving=1</span></p>
+                    className="w-full px-3 py-2 border border-line rounded-xl text-sm focus:outline-none focus:border-gold resize-none" />
+                  <p className="text-[11px] text-faint mt-1"><code className="bg-surface-sunken px-1 rounded">{'{link}'}</code> will be replaced with your giving page URL.</p>
+                  <p className="text-[11px] text-faint mt-1">Preview link: <span className="font-mono">https://{tenantId || 'your-ministry'}.theharvest.app/?giving=1</span></p>
                 </div>
-                <div className="bg-stone-100 border border-stone-200 rounded-xl p-3">
-                  <p className="text-[11px] text-warm-brown mb-1">Add this URL to your Twilio phone number as the inbound SMS webhook:</p>
-                  <p className="text-xs font-mono text-[color:var(--text-body)] break-all">https://theharvest.app/api/sms/incoming</p>
-                  <p className="text-[11px] text-[color:var(--text-faint)] mt-1">(Method: HTTP POST)</p>
+                <div className="bg-surface-sunken border border-line rounded-xl p-3">
+                  <p className="text-[11px] text-muted mb-1">Add this URL to your Twilio phone number as the inbound SMS webhook:</p>
+                  <p className="text-xs font-mono text-body break-all">https://theharvest.app/api/sms/incoming</p>
+                  <p className="text-[11px] text-faint mt-1">(Method: HTTP POST)</p>
                 </div>
                 <div className="flex items-center gap-3">
                   <button onClick={saveT2g} disabled={savingT2g} className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-white text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: GOLD }}>
@@ -476,7 +476,7 @@ const AdminSms: React.FC = () => {
               </div>
             )}
             {!t2g.enabled && (
-              <button onClick={saveT2g} disabled={savingT2g} className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border border-stone-200 text-warm-brown disabled:opacity-50">
+              <button onClick={saveT2g} disabled={savingT2g} className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border border-line text-muted disabled:opacity-50">
                 <Save size={14} /> {savingT2g ? 'Saving…' : 'Save'}
               </button>
             )}

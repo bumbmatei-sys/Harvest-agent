@@ -178,14 +178,14 @@ const AdminChurches: React.FC = () => {
 
   if (isAdding || editingChurch) {
     return (
-      <div className="bg-white rounded-2xl shadow-sm border border-stone-200 overflow-hidden">
-        <div className="p-4 border-b border-stone-200 flex justify-between items-center">
-          <h2 className="text-xl font-bold text-earth font-display">
+      <div className="bg-surface-raised rounded-2xl shadow-sm border border-line overflow-hidden">
+        <div className="p-4 border-b border-line flex justify-between items-center">
+          <h2 className="text-xl font-bold text-strong font-display">
             {isAdding ? 'Add Church' : 'Edit Church'}
           </h2>
           <button 
             onClick={() => { setIsAdding(false); setEditingChurch(null); }}
-            className="text-warm-brown hover:text-[color:var(--text-body)]"
+            className="text-muted hover:text-body"
           >
             Cancel
           </button>
@@ -226,22 +226,22 @@ const AdminChurches: React.FC = () => {
       {/* Add Church Billing Confirmation Modal */}
       {showBillingConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-xl">
+          <div className="bg-surface-raised rounded-2xl p-6 max-w-md w-full shadow-xl">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded-full bg-wheat-100 flex items-center justify-center">
                 <DollarSign size={20} className="text-wheat-600" />
               </div>
-              <h3 className="text-xl font-bold text-earth font-display">Adding a New Church</h3>
+              <h3 className="text-xl font-bold text-strong font-display">Adding a New Church</h3>
             </div>
-            <p className="text-warm-brown mb-6">
+            <p className="text-muted mb-6">
               Each additional church added to your organization will increase your monthly plan by{' '}
-              <span className="font-semibold text-earth">$10/mo</span>. This will be charged
+              <span className="font-semibold text-strong">$10/mo</span>. This will be charged
               automatically to your payment method on file.
             </p>
             <div className="flex justify-end gap-3">
               <button
                 onClick={() => setShowBillingConfirm(false)}
-                className="px-4 py-2 text-warm-brown hover:bg-stone-100 rounded-xl transition-colors font-medium"
+                className="px-4 py-2 text-muted hover:bg-surface-sunken rounded-xl transition-colors font-medium"
               >
                 Cancel
               </button>
@@ -260,33 +260,33 @@ const AdminChurches: React.FC = () => {
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-2.5">
         <div className="relative flex-1 min-w-[240px]">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[color:var(--text-faint)]" size={18} />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-faint" size={18} />
           <input
             type="text"
             placeholder="Search churches…"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-11 pr-4 py-3 bg-white border border-stone-200 rounded-brand-lg text-sm text-earth placeholder:text-[color:var(--text-faint)] focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent outline-none transition-all"
+            className="w-full pl-11 pr-4 py-3 bg-surface-raised border border-line rounded-brand-lg text-sm text-strong placeholder:text-faint focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent outline-none transition-all"
           />
         </div>
         
         <button
           onClick={() => openFilterPopup('city')}
-          className={`px-3 py-1.5 text-sm rounded-full border transition-colors ${cityFilter ? 'bg-gold text-white border-gold' : 'bg-white text-[color:var(--text-body)] border-stone-200 hover:border-gold'}`}
+          className={`px-3 py-1.5 text-sm rounded-full border transition-colors ${cityFilter ? 'bg-gold text-white border-gold' : 'bg-surface-raised text-body border-line hover:border-gold'}`}
         >
           {cityFilter ? `City: ${cityFilter}` : 'City'}
         </button>
 
         <button
           onClick={() => openFilterPopup('pastor')}
-          className={`px-3 py-1.5 text-sm rounded-full border transition-colors ${pastorFilter ? 'bg-gold text-white border-gold' : 'bg-white text-[color:var(--text-body)] border-stone-200 hover:border-gold'}`}
+          className={`px-3 py-1.5 text-sm rounded-full border transition-colors ${pastorFilter ? 'bg-gold text-white border-gold' : 'bg-surface-raised text-body border-line hover:border-gold'}`}
         >
           {pastorFilter ? `Pastor: ${pastorFilter}` : 'Pastor'}
         </button>
 
         <button
           onClick={() => openFilterPopup('country')}
-          className={`px-3 py-1.5 text-sm rounded-full border transition-colors ${countryFilter ? 'bg-gold text-white border-gold' : 'bg-white text-[color:var(--text-body)] border-stone-200 hover:border-gold'}`}
+          className={`px-3 py-1.5 text-sm rounded-full border transition-colors ${countryFilter ? 'bg-gold text-white border-gold' : 'bg-surface-raised text-body border-line hover:border-gold'}`}
         >
           {countryFilter ? `Country: ${countryFilter}` : 'Country'}
         </button>
@@ -300,30 +300,30 @@ const AdminChurches: React.FC = () => {
             <div className="w-8 h-8 border-4 border-[color-mix(in_srgb,var(--brand-color)_30%,transparent)] border-t-gold rounded-full animate-spin"></div>
           </div>
         ) : filteredChurches.length === 0 ? (
-          <div className="bg-white rounded-brand-xl border border-stone-200 shadow-[var(--ds-sh-sm)] p-8 text-center text-warm-brown">
+          <div className="bg-surface-raised rounded-brand-xl border border-line shadow-[var(--ds-sh-sm)] p-8 text-center text-muted">
             <Church size={48} className="mx-auto mb-4 opacity-20" />
             <p className="font-display">No churches found matching your filters.</p>
           </div>
         ) : (
-          <div className="bg-white rounded-brand-xl border border-stone-200 shadow-[var(--ds-sh-sm)] overflow-hidden">
+          <div className="bg-surface-raised rounded-brand-xl border border-line shadow-[var(--ds-sh-sm)] overflow-hidden">
             {filteredChurches.map((church) => (
               <div
                 key={church.id}
-                className="flex items-center gap-3 px-3.5 py-3 border-t border-stone-200 first:border-t-0"
+                className="flex items-center gap-3 px-3.5 py-3 border-t border-line first:border-t-0"
               >
                 <div className="w-[38px] h-[38px] rounded-[10px] bg-[var(--surface-gold)] text-gold flex items-center justify-center shrink-0">
                   <Church size={17} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-[13.5px] font-semibold text-earth truncate">{church.name}</div>
-                  <div className="text-[11.5px] text-[color:var(--text-faint)] truncate">
+                  <div className="text-[13.5px] font-semibold text-strong truncate">{church.name}</div>
+                  <div className="text-[11.5px] text-faint truncate">
                     {[church.city && `${church.city}${church.country ? `, ${church.country}` : ''}`, church.pastorName].filter(Boolean).join(' · ')}
                   </div>
                 </div>
                 <div className="flex items-center gap-0.5 shrink-0">
                   <button
                     onClick={() => setEditingChurch(church)}
-                    className="p-1.5 rounded-lg text-[color:var(--text-faint)] hover:bg-stone-100 transition-colors"
+                    className="p-1.5 rounded-lg text-faint hover:bg-surface-sunken transition-colors"
                     title="Edit"
                   >
                     <Edit2 size={15} />
@@ -343,11 +343,11 @@ const AdminChurches: React.FC = () => {
       </div>
 
       {/* Spreadsheet / Table */}
-      <div className="hidden lg:block bg-white rounded-2xl shadow-sm border border-stone-200 overflow-hidden">
+      <div className="hidden lg:block bg-surface-raised rounded-2xl shadow-sm border border-line overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-stone-200">
+              <tr className="border-b border-line">
                 <th className="px-4 py-3.5 text-[11px] font-semibold text-gold uppercase tracking-[0.12em]">Name</th>
                 <th className="px-4 py-3.5 text-[11px] font-semibold text-gold uppercase tracking-[0.12em]">City</th>
                 <th className="px-4 py-3.5 text-[11px] font-semibold text-gold uppercase tracking-[0.12em]">Pastor</th>
@@ -365,22 +365,22 @@ const AdminChurches: React.FC = () => {
                 </tr>
               ) : filteredChurches.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="p-8 text-center text-warm-brown">
+                  <td colSpan={4} className="p-8 text-center text-muted">
                     <Church size={48} className="mx-auto mb-4 opacity-20" />
                     <p className="font-display">No churches found matching your filters.</p>
                   </td>
                 </tr>
               ) : (
                 filteredChurches.map((church) => (
-                  <tr key={church.id} className="border-b border-stone-200 hover:bg-stone-100/60 transition-colors">
+                  <tr key={church.id} className="border-b border-line hover:bg-stone-100/60 transition-colors">
                     <td className="p-4">
-                      <div className="font-semibold text-earth">{church.name}</div>
-                      <div className="text-xs text-warm-brown">{church.denomination}</div>
+                      <div className="font-semibold text-strong">{church.name}</div>
+                      <div className="text-xs text-muted">{church.denomination}</div>
                     </td>
-                    <td className="p-4 text-[color:var(--text-body)]">
+                    <td className="p-4 text-body">
                       {church.city}{church.country ? `, ${church.country}` : ''}
                     </td>
-                    <td className="p-4 text-[color:var(--text-body)]">{church.pastorName}</td>
+                    <td className="p-4 text-body">{church.pastorName}</td>
                     <td className="p-4 text-right">
                       <div className="flex items-center justify-end gap-2">
                         <button
@@ -410,9 +410,9 @@ const AdminChurches: React.FC = () => {
       {/* Delete Confirmation Modal */}
       {deleteConfirmId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-xl">
-            <h3 className="text-xl font-bold text-earth mb-2 font-display">Delete Church</h3>
-            <p className="text-warm-brown mb-6">
+          <div className="bg-surface-raised rounded-2xl p-6 max-w-md w-full shadow-xl">
+            <h3 className="text-xl font-bold text-strong mb-2 font-display">Delete Church</h3>
+            <p className="text-muted mb-6">
               Are you sure you want to delete this church? This action cannot be undone.
               {isMinistry && churches.find(c => c.id === deleteConfirmId)?.stripeSubscriptionItemId && (
                 <span className="block text-sm text-field-700 mt-1">
@@ -423,7 +423,7 @@ const AdminChurches: React.FC = () => {
             <div className="flex justify-end gap-3">
               <button
                 onClick={() => setDeleteConfirmId(null)}
-                className="px-4 py-2 text-warm-brown hover:bg-stone-100 rounded-xl transition-colors font-medium"
+                className="px-4 py-2 text-muted hover:bg-surface-sunken rounded-xl transition-colors font-medium"
               >
                 Cancel
               </button>
@@ -441,8 +441,8 @@ const AdminChurches: React.FC = () => {
       {/* Filter Popup Modal */}
       {activeFilterPopup && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-6">
-            <h3 className="text-lg font-bold text-earth mb-4 capitalize font-display">
+          <div className="bg-surface-raised rounded-xl shadow-xl w-full max-w-sm p-6">
+            <h3 className="text-lg font-bold text-strong mb-4 capitalize font-display">
               Filter by {activeFilterPopup}
             </h3>
             <input
@@ -454,7 +454,7 @@ const AdminChurches: React.FC = () => {
               onKeyDown={(e) => {
                 if (e.key === 'Enter') applyFilter();
               }}
-              className="w-full px-4 py-2 rounded-lg border border-stone-200 bg-stone-100 text-earth focus:outline-none focus:border-gold mb-6"
+              className="w-full px-4 py-2 rounded-lg border border-line bg-surface-sunken text-strong focus:outline-none focus:border-gold mb-6"
             />
             <div className="flex justify-end gap-3">
               <button
@@ -462,13 +462,13 @@ const AdminChurches: React.FC = () => {
                   setTempFilterValue('');
                   applyFilter('');
                 }}
-                className="px-4 py-2 text-sm font-medium text-warm-brown hover:text-earth"
+                className="px-4 py-2 text-sm font-medium text-muted hover:text-strong"
               >
                 Clear
               </button>
               <button
                 onClick={() => setActiveFilterPopup(null)}
-                className="px-4 py-2 text-sm font-medium text-warm-brown hover:text-earth"
+                className="px-4 py-2 text-sm font-medium text-muted hover:text-strong"
               >
                 Cancel
               </button>
@@ -569,27 +569,27 @@ export const AnnouncementsSection: React.FC<{ churchId: string }> = ({ churchId 
   };
 
   return (
-    <div className="border-t border-stone-200 p-4">
-      <h3 className="text-lg font-bold text-earth mb-4 flex items-center gap-2 font-display">
+    <div className="border-t border-line p-4">
+      <h3 className="text-lg font-bold text-strong mb-4 flex items-center gap-2 font-display">
         <Megaphone size={18} className="text-gold" />
         Announcements
       </h3>
 
       {/* Create Form */}
-      <div className="bg-stone-100 rounded-xl p-4 mb-4">
+      <div className="bg-surface-sunken rounded-xl p-4 mb-4">
         <input
           type="text"
           placeholder="Announcement title"
           value={newTitle}
           onChange={(e) => setNewTitle(e.target.value)}
-          className="w-full px-3 py-2 rounded-lg border border-stone-200 bg-white text-sm mb-2 focus:outline-none focus:border-gold"
+          className="w-full px-3 py-2 rounded-lg border border-line bg-surface-raised text-sm mb-2 focus:outline-none focus:border-gold"
         />
         <textarea
           placeholder="Announcement content"
           value={newContent}
           onChange={(e) => setNewContent(e.target.value)}
           rows={3}
-          className="w-full px-3 py-2 rounded-lg border border-stone-200 bg-white text-sm mb-2 focus:outline-none focus:border-gold resize-none"
+          className="w-full px-3 py-2 rounded-lg border border-line bg-surface-raised text-sm mb-2 focus:outline-none focus:border-gold resize-none"
         />
         <button
           onClick={handleCreate}
@@ -607,24 +607,24 @@ export const AnnouncementsSection: React.FC<{ churchId: string }> = ({ churchId 
           <div className="w-6 h-6 border-4 border-[color-mix(in_srgb,var(--brand-color)_30%,transparent)] border-t-gold rounded-full animate-spin"></div>
         </div>
       ) : announcements.length === 0 ? (
-        <p className="text-sm text-warm-brown text-center py-4 font-display">No announcements yet</p>
+        <p className="text-sm text-muted text-center py-4 font-display">No announcements yet</p>
       ) : (
         <div className="space-y-3">
           {announcements.map((a) => (
-            <div key={a.id} className="bg-stone-100 rounded-xl p-4">
+            <div key={a.id} className="bg-surface-sunken rounded-xl p-4">
               {editingId === a.id ? (
                 <div>
                   <input
                     type="text"
                     value={editTitle}
                     onChange={(e) => setEditTitle(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg border border-stone-200 bg-white text-sm mb-2 focus:outline-none focus:border-gold"
+                    className="w-full px-3 py-2 rounded-lg border border-line bg-surface-raised text-sm mb-2 focus:outline-none focus:border-gold"
                   />
                   <textarea
                     value={editContent}
                     onChange={(e) => setEditContent(e.target.value)}
                     rows={3}
-                    className="w-full px-3 py-2 rounded-lg border border-stone-200 bg-white text-sm mb-2 focus:outline-none focus:border-gold resize-none"
+                    className="w-full px-3 py-2 rounded-lg border border-line bg-surface-raised text-sm mb-2 focus:outline-none focus:border-gold resize-none"
                   />
                   <div className="flex gap-2">
                     <button
@@ -635,7 +635,7 @@ export const AnnouncementsSection: React.FC<{ churchId: string }> = ({ churchId 
                     </button>
                     <button
                       onClick={() => setEditingId(null)}
-                      className="flex items-center gap-1 bg-stone-200 text-[color:var(--text-body)] px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-stone-300"
+                      className="flex items-center gap-1 bg-stone-200 text-body px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-stone-300"
                     >
                       <X size={12} /> Cancel
                     </button>
@@ -643,10 +643,10 @@ export const AnnouncementsSection: React.FC<{ churchId: string }> = ({ churchId 
                 </div>
               ) : (
                 <div>
-                  <h4 className="font-bold text-earth text-sm">{a.title}</h4>
-                  <p className="text-xs text-warm-brown mt-1 whitespace-pre-wrap">{a.content}</p>
+                  <h4 className="font-bold text-strong text-sm">{a.title}</h4>
+                  <p className="text-xs text-muted mt-1 whitespace-pre-wrap">{a.content}</p>
                   {a.createdAt && (
-                    <p className="text-xs text-[color:var(--text-faint)] mt-2">
+                    <p className="text-xs text-faint mt-2">
                       {new Date(a.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                     </p>
                   )}

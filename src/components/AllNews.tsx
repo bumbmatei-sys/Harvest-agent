@@ -484,15 +484,15 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages }) => {
   });
 
   return (
-    <div className="flex flex-col h-screen bg-cream ">
-      <div className="sticky top-0 z-20 bg-white/80 backdrop-blur-md border-b border-stone-200 px-4 py-3 flex items-center gap-3 lg:max-w-2xl lg:mx-auto w-full">
+    <div className="flex flex-col h-screen bg-surface ">
+      <div className="sticky top-0 z-20 bg-white/80 backdrop-blur-md border-b border-line px-4 py-3 flex items-center gap-3 lg:max-w-2xl lg:mx-auto w-full">
         <button 
           onClick={onBack}
-          className="p-2 -ml-2 text-warm-brown hover:bg-stone-100 :bg-gray-800 rounded-full transition-colors"
+          className="p-2 -ml-2 text-muted hover:bg-surface-sunken :bg-gray-800 rounded-full transition-colors"
         >
           <ArrowLeft size={20} />
         </button>
-        <span className="font-medium text-earth truncate font-display">News & Updates</span>
+        <span className="font-medium text-strong truncate font-display">News & Updates</span>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-24 lg:max-w-2xl lg:mx-auto w-full">
@@ -506,10 +506,10 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages }) => {
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gold"></div>
           </div>
         ) : posts.length === 0 ? (
-          <div className="text-center py-12 text-warm-brown">No news yet.</div>
+          <div className="text-center py-12 text-muted">No news yet.</div>
         ) : (
           posts.map((post, index) => (
-            <div key={post.id} className="bg-white rounded-2xl p-4 shadow-sm border border-stone-200 ">
+            <div key={post.id} className="bg-surface-raised rounded-2xl p-4 shadow-sm border border-line ">
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-earth text-white flex items-center justify-center font-bold overflow-hidden relative">
@@ -521,14 +521,14 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages }) => {
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <div className="font-bold text-earth text-sm">{post.authorName}</div>
+                      <div className="font-bold text-strong text-sm">{post.authorName}</div>
                       {post.isPinned && (
                         <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-gold bg-[color-mix(in_srgb,var(--brand-color)_15%,white)] px-2 py-0.5 rounded-full">
                           Pinned
                         </span>
                       )}
                     </div>
-                    <div className="text-xs text-warm-brown">{formatDate(post.createdAt)}</div>
+                    <div className="text-xs text-muted">{formatDate(post.createdAt)}</div>
                   </div>
                 </div>
                 <KebabMenu
@@ -539,7 +539,7 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages }) => {
                 />
               </div>
 
-              <div className="text-[color:var(--text-body)] text-sm whitespace-pre-wrap mb-3">
+              <div className="text-body text-sm whitespace-pre-wrap mb-3">
                 {post.content}
               </div>
 
@@ -573,7 +573,7 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages }) => {
                         className={`w-full relative overflow-hidden rounded-xl border p-3 text-left transition-all ${
                           isMyVote 
                             ? 'border-gold bg-[color-mix(in_srgb,var(--brand-color)_15%,white)] ' 
-                            : 'border-stone-200 hover:border-gold :border-gold'
+                            : 'border-line hover:border-gold :border-gold'
                         }`}
                       >
                         {hasVoted && (
@@ -583,11 +583,11 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages }) => {
                           />
                         )}
                         <div className="relative flex justify-between items-center z-10">
-                          <span className={`text-sm font-medium ${isMyVote ? 'text-gold ' : 'text-[color:var(--text-body)] '}`}>
+                          <span className={`text-sm font-medium ${isMyVote ? 'text-gold ' : 'text-body '}`}>
                             {option.text}
                           </span>
                           {hasVoted && (
-                            <span className="text-xs font-bold text-warm-brown ">
+                            <span className="text-xs font-bold text-muted ">
                               {percentage}%
                             </span>
                           )}
@@ -595,20 +595,20 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages }) => {
                       </button>
                     );
                   })}
-                  <div className="text-xs text-warm-brown text-right mt-1">
+                  <div className="text-xs text-muted text-right mt-1">
                     {post.pollOptions.reduce((sum, opt) => sum + opt.votes.length, 0)} votes
                   </div>
                 </div>
               )}
 
               {post.type === 'event' && post.eventDetails && (
-                <div className="bg-stone-100 rounded-xl p-4 mb-3 border border-stone-200 flex flex-col items-center text-center">
-                  <div className="bg-white border border-stone-200 rounded-lg p-2 mb-3 min-w-[80px]">
+                <div className="bg-surface-sunken rounded-xl p-4 mb-3 border border-line flex flex-col items-center text-center">
+                  <div className="bg-surface-raised border border-line rounded-lg p-2 mb-3 min-w-[80px]">
                     <div className="text-red-500 text-xs font-bold uppercase">{new Date(post.eventDetails.date).toLocaleString('default', { month: 'short' })}</div>
-                    <div className="text-xl font-bold text-earth ">{new Date(post.eventDetails.date).getDate()}</div>
+                    <div className="text-xl font-bold text-strong ">{new Date(post.eventDetails.date).getDate()}</div>
                   </div>
-                  <h4 className="font-bold text-earth text-lg mb-2">{post.eventDetails.title}</h4>
-                  <div className="flex flex-col gap-1 text-sm text-warm-brown mb-4">
+                  <h4 className="font-bold text-strong text-lg mb-2">{post.eventDetails.title}</h4>
+                  <div className="flex flex-col gap-1 text-sm text-muted mb-4">
                     <div className="flex items-center justify-center gap-1.5">
                       <CalendarIcon size={14} />
                       <span>{post.eventDetails.time}</span>
@@ -618,7 +618,7 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages }) => {
                       <span>{post.eventDetails.location}</span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 mb-4 text-xs text-warm-brown">
+                  <div className="flex items-center gap-2 mb-4 text-xs text-muted">
                     <span>{post.eventDetails.attendees.length} Participating</span>
                   </div>
                   {auth.currentUser && (
@@ -640,13 +640,13 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages }) => {
                 </div>
               )}
 
-              <div className="flex items-center gap-4 pt-3 border-t border-stone-200 ">
+              <div className="flex items-center gap-4 pt-3 border-t border-line ">
                 <button 
                   onClick={() => handleLike(post.id, post.likes)}
                   className={`flex items-center gap-1.5 text-xs transition-colors ${
                     auth.currentUser && post.likes.includes(auth.currentUser.uid)
                       ? 'text-gold'
-                      : 'text-warm-brown hover:text-gold'
+                      : 'text-muted hover:text-gold'
                   }`}
                 >
                   <ThumbsUp size={16} className={auth.currentUser && post.likes.includes(auth.currentUser.uid) ? 'fill-current' : ''} />
@@ -655,7 +655,7 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages }) => {
                 <button
                   onClick={() => toggleComments(post.id)}
                   className={`flex items-center gap-1.5 text-xs transition-colors ${
-                    commentsOpen[post.id] ? 'text-gold' : 'text-warm-brown hover:text-gold'
+                    commentsOpen[post.id] ? 'text-gold' : 'text-muted hover:text-gold'
                   }`}
                 >
                   <MessageSquare size={16} />
@@ -665,10 +665,10 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages }) => {
 
               {/* Comments Section */}
               {commentsOpen[post.id] && (
-                <div className="mt-3 pt-3 border-t border-stone-200 space-y-3">
+                <div className="mt-3 pt-3 border-t border-line space-y-3">
                   {postComments[post.id]?.map(comment => (
                     <div key={comment.id} className="flex items-start gap-2.5">
-                      <div className="w-7 h-7 rounded-full bg-stone-200 overflow-hidden flex items-center justify-center text-xs font-bold text-warm-brown flex-shrink-0 relative">
+                      <div className="w-7 h-7 rounded-full bg-stone-200 overflow-hidden flex items-center justify-center text-xs font-bold text-muted flex-shrink-0 relative">
                         {comment.authorPhoto ? (
                           <Image src={comment.authorPhoto} alt={comment.authorName} fill sizes="28px" className="object-cover" referrerPolicy="no-referrer" />
                         ) : (
@@ -677,8 +677,8 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages }) => {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className="text-xs font-bold text-earth">{comment.authorName}</span>
-                          <span className="text-[10px] text-[color:var(--text-faint)]">
+                          <span className="text-xs font-bold text-strong">{comment.authorName}</span>
+                          <span className="text-[10px] text-faint">
                             {new Date(comment.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                           </span>
                           <div className="ml-auto">
@@ -700,16 +700,16 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages }) => {
                             />
                           </div>
                         </div>
-                        <p className="text-xs text-[color:var(--text-body)] whitespace-pre-wrap">{comment.content}</p>
+                        <p className="text-xs text-body whitespace-pre-wrap">{comment.content}</p>
                       </div>
                     </div>
                   ))}
                   {postComments[post.id]?.length === 0 && (
-                    <p className="text-xs text-[color:var(--text-faint)] text-center py-1">No comments yet</p>
+                    <p className="text-xs text-faint text-center py-1">No comments yet</p>
                   )}
                   {auth.currentUser && (
                     <div className="flex items-center gap-2 pt-2">
-                      <div className="w-7 h-7 rounded-full bg-stone-200 overflow-hidden flex items-center justify-center text-xs font-bold text-warm-brown flex-shrink-0 relative">
+                      <div className="w-7 h-7 rounded-full bg-stone-200 overflow-hidden flex items-center justify-center text-xs font-bold text-muted flex-shrink-0 relative">
                         {auth.currentUser.photoURL ? (
                           <Image src={auth.currentUser.photoURL} alt="You" fill sizes="28px" className="object-cover" referrerPolicy="no-referrer" />
                         ) : (
@@ -723,7 +723,7 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages }) => {
                         onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleComment(post.id); } }}
                         placeholder="Write a comment..."
                         maxLength={280}
-                        className="flex-1 px-3 py-1.5 bg-stone-100 border border-stone-200 rounded-full text-xs text-earth focus:ring-1 focus:ring-gold outline-none"
+                        className="flex-1 px-3 py-1.5 bg-surface-sunken border border-line rounded-full text-xs text-strong focus:ring-1 focus:ring-gold outline-none"
                       />
                       <button
                         onClick={() => handleComment(post.id)}
@@ -744,15 +744,15 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages }) => {
       {/* Delete Post Confirmation Modal */}
       {deletePostId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 border border-stone-200">
-            <h3 className="text-xl font-bold text-earth mb-2 font-display">Delete Post</h3>
-            <p className="text-warm-brown mb-6">
+          <div className="bg-surface-raised rounded-2xl shadow-xl max-w-sm w-full p-6 border border-line">
+            <h3 className="text-xl font-bold text-strong mb-2 font-display">Delete Post</h3>
+            <p className="text-muted mb-6">
               Are you sure you want to delete this post? This action cannot be undone.
             </p>
             <div className="flex justify-end gap-3">
               <button
                 onClick={() => setDeletePostId(null)}
-                className="px-4 py-2 text-warm-brown hover:bg-stone-100 rounded-xl font-medium transition-colors"
+                className="px-4 py-2 text-muted hover:bg-surface-sunken rounded-xl font-medium transition-colors"
               >
                 Cancel
               </button>
@@ -770,30 +770,30 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages }) => {
       {/* Event Attendance Modal */}
       {attendingPostId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl">
-            <h3 className="text-xl font-bold text-earth mb-4 font-display">Join Event</h3>
-            <p className="text-sm text-warm-brown mb-4">
+          <div className="bg-surface-raised rounded-2xl p-6 w-full max-w-md shadow-xl">
+            <h3 className="text-xl font-bold text-strong mb-4 font-display">Join Event</h3>
+            <p className="text-sm text-muted mb-4">
               Please provide your details to receive more information about this event.
             </p>
             
             <div className="space-y-4 mb-6">
               <div>
-                <label className="block text-sm font-medium text-[color:var(--text-body)] mb-1">Full Name</label>
+                <label className="block text-sm font-medium text-body mb-1">Full Name</label>
                 <input
                   type="text"
                   value={attendeeName}
                   onChange={(e) => setAttendeeName(e.target.value)}
-                  className="w-full px-4 py-2 bg-stone-100 border border-stone-200 rounded-xl text-earth focus:ring-2 focus:ring-gold outline-none"
+                  className="w-full px-4 py-2 bg-surface-sunken border border-line rounded-xl text-strong focus:ring-2 focus:ring-gold outline-none"
                   placeholder="John Doe"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-[color:var(--text-body)] mb-1">Email Address</label>
+                <label className="block text-sm font-medium text-body mb-1">Email Address</label>
                 <input
                   type="email"
                   value={attendeeEmail}
                   onChange={(e) => setAttendeeEmail(e.target.value)}
-                  className="w-full px-4 py-2 bg-stone-100 border border-stone-200 rounded-xl text-earth focus:ring-2 focus:ring-gold outline-none"
+                  className="w-full px-4 py-2 bg-surface-sunken border border-line rounded-xl text-strong focus:ring-2 focus:ring-gold outline-none"
                   placeholder="john@example.com"
                 />
               </div>
@@ -806,7 +806,7 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages }) => {
                   setAttendeeName('');
                   setAttendeeEmail('');
                 }}
-                className="flex-1 px-4 py-2 border border-stone-200 text-[color:var(--text-body)] rounded-xl font-medium hover:bg-stone-100 :bg-gray-800 transition-colors"
+                className="flex-1 px-4 py-2 border border-line text-body rounded-xl font-medium hover:bg-surface-sunken :bg-gray-800 transition-colors"
               >
                 Cancel
               </button>

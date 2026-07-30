@@ -220,17 +220,17 @@ const AdminLivestream: React.FC = () => {
   const pastStreamsBlock = pastSessions.filter(s => s.endedAt).length > 0 && (
     <div>
       <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gold mb-3">Past Streams</p>
-      <div className="bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] divide-y divide-stone-200">
+      <div className="bg-surface-raised rounded-brand-lg border border-line shadow-[var(--ds-sh-sm)] divide-y divide-stone-200">
         {pastSessions.filter(s => s.endedAt).map(s => (
           <div key={s.id} className="flex items-center gap-3 px-5 py-3.5">
             <span className="w-8 h-8 rounded-brand bg-[color-mix(in_srgb,var(--brand-color)_10%,white)] flex items-center justify-center shrink-0">
               <Video size={15} className="text-gold" />
             </span>
             <div className="flex-1 min-w-0">
-              <div className="text-sm font-semibold text-earth truncate">{s.title}</div>
-              <div className="text-xs text-[color:var(--text-faint)]">{fmtDate(s.startedAt)}</div>
+              <div className="text-sm font-semibold text-strong truncate">{s.title}</div>
+              <div className="text-xs text-faint">{fmtDate(s.startedAt)}</div>
             </div>
-            <div className="text-xs text-warm-brown text-right shrink-0 space-y-0.5">
+            <div className="text-xs text-muted text-right shrink-0 space-y-0.5">
               <div className="flex items-center gap-1 justify-end"><Eye size={12} /> {s.peakViewers || 0}</div>
               <div className="flex items-center gap-1 justify-end"><HandHeart size={12} /> {s.prayerCount || 0}</div>
             </div>
@@ -241,21 +241,21 @@ const AdminLivestream: React.FC = () => {
   );
 
   const prayerCard = (
-    <div className="bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] overflow-hidden">
-      <div className="px-5 py-4 border-b border-stone-200 flex items-center justify-between">
-        <h3 className="font-display text-base font-semibold text-earth">Prayer requests</h3>
-        <span className="text-xs text-[color:var(--text-faint)]">{activePrayers.length} active</span>
+    <div className="bg-surface-raised rounded-brand-lg border border-line shadow-[var(--ds-sh-sm)] overflow-hidden">
+      <div className="px-5 py-4 border-b border-line flex items-center justify-between">
+        <h3 className="font-display text-base font-semibold text-strong">Prayer requests</h3>
+        <span className="text-xs text-faint">{activePrayers.length} active</span>
       </div>
       {activePrayers.length === 0 ? (
-        <p className="text-center py-12 text-[color:var(--text-faint)] text-sm">No active prayer requests.</p>
+        <p className="text-center py-12 text-faint text-sm">No active prayer requests.</p>
       ) : (
         <div className="divide-y divide-stone-200">
           {activePrayers.map(p => (
             <div key={p.id} className="flex items-start gap-3 px-5 py-4">
               <div className="flex-1 min-w-0">
-                <div className="text-sm font-semibold text-earth">{p.name}</div>
-                <div className="text-sm text-warm-brown mt-0.5">{p.prayerText}</div>
-                <div className="text-xs text-[color:var(--text-faint)] mt-1">{fmtDate(p.submittedAt)}</div>
+                <div className="text-sm font-semibold text-strong">{p.name}</div>
+                <div className="text-sm text-muted mt-0.5">{p.prayerText}</div>
+                <div className="text-xs text-faint mt-1">{fmtDate(p.submittedAt)}</div>
               </div>
               <button onClick={() => markPrayed(p.id)} className="flex items-center gap-1 text-xs font-semibold text-[#40562F] hover:bg-[color-mix(in_srgb,#6E8E52_14%,white)] rounded-lg px-2 py-1 shrink-0 transition-colors">
                 <Check size={14} /> Prayed
@@ -268,23 +268,23 @@ const AdminLivestream: React.FC = () => {
   );
 
   const commentsCard = (
-    <div className="bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] overflow-hidden">
-      <div className="px-5 py-4 border-b border-stone-200 flex items-center justify-between">
-        <h3 className="font-display text-base font-semibold text-earth flex items-center gap-2">
+    <div className="bg-surface-raised rounded-brand-lg border border-line shadow-[var(--ds-sh-sm)] overflow-hidden">
+      <div className="px-5 py-4 border-b border-line flex items-center justify-between">
+        <h3 className="font-display text-base font-semibold text-strong flex items-center gap-2">
           <MessageCircle size={16} className="text-gold" /> Live comments
         </h3>
-        <span className="text-xs text-[color:var(--text-faint)]">{comments.length}</span>
+        <span className="text-xs text-faint">{comments.length}</span>
       </div>
       {comments.length === 0 ? (
-        <p className="text-center py-12 text-[color:var(--text-faint)] text-sm">No comments yet.</p>
+        <p className="text-center py-12 text-faint text-sm">No comments yet.</p>
       ) : (
         <div className="divide-y divide-stone-200 max-h-[28rem] overflow-y-auto">
           {comments.map(c => (
             <div key={c.id} className="flex items-start gap-3 px-5 py-3.5">
               <div className="flex-1 min-w-0">
-                <div className="text-sm font-semibold text-earth">{c.name}</div>
-                <div className="text-sm text-warm-brown mt-0.5 break-words">{c.text}</div>
-                <div className="text-xs text-[color:var(--text-faint)] mt-1">{fmtDate(c.createdAt)}</div>
+                <div className="text-sm font-semibold text-strong">{c.name}</div>
+                <div className="text-sm text-muted mt-0.5 break-words">{c.text}</div>
+                <div className="text-xs text-faint mt-1">{fmtDate(c.createdAt)}</div>
               </div>
               <button
                 onClick={() => deleteComment(c.id)}
@@ -316,19 +316,19 @@ const AdminLivestream: React.FC = () => {
               </span>
             </div>
             <div className="px-0.5">
-              <h2 className="font-display text-xl font-light text-earth tracking-[-0.01em] truncate">{current.title}</h2>
-              <p className="text-xs text-[color:var(--text-faint)] mt-1">Live since {fmtDate(current.startedAt || null)} · Video ID: {current.youtubeVideoId}</p>
+              <h2 className="font-display text-xl font-light text-strong tracking-[-0.01em] truncate">{current.title}</h2>
+              <p className="text-xs text-faint mt-1">Live since {fmtDate(current.startedAt || null)} · Video ID: {current.youtubeVideoId}</p>
             </div>
             <div className="grid grid-cols-2 gap-2.5">
-              <div className="bg-white rounded-brand-xl border border-stone-200 shadow-[var(--ds-sh-sm)] p-3.5">
+              <div className="bg-surface-raised rounded-brand-xl border border-line shadow-[var(--ds-sh-sm)] p-3.5">
                 <span className="w-7 h-7 rounded-lg bg-[var(--surface-gold)] text-gold flex items-center justify-center mb-2"><Eye size={14} /></span>
-                <div className="font-display text-[1.375rem] font-normal leading-none tracking-[-0.02em] text-earth">{Math.max(0, current.viewerCount || 0)}</div>
-                <div className="text-[11px] text-warm-brown mt-1">Watching now</div>
+                <div className="font-display text-[1.375rem] font-normal leading-none tracking-[-0.02em] text-strong">{Math.max(0, current.viewerCount || 0)}</div>
+                <div className="text-[11px] text-muted mt-1">Watching now</div>
               </div>
-              <div className="bg-white rounded-brand-xl border border-stone-200 shadow-[var(--ds-sh-sm)] p-3.5">
+              <div className="bg-surface-raised rounded-brand-xl border border-line shadow-[var(--ds-sh-sm)] p-3.5">
                 <span className="w-7 h-7 rounded-lg bg-[var(--surface-gold)] text-gold flex items-center justify-center mb-2"><HandHeart size={14} /></span>
-                <div className="font-display text-[1.375rem] font-normal leading-none tracking-[-0.02em] text-earth">{current.prayerCount || 0}</div>
-                <div className="text-[11px] text-warm-brown mt-1">Prayers</div>
+                <div className="font-display text-[1.375rem] font-normal leading-none tracking-[-0.02em] text-strong">{current.prayerCount || 0}</div>
+                <div className="text-[11px] text-muted mt-1">Prayers</div>
               </div>
             </div>
             <button onClick={endStream} className="w-full py-3 rounded-brand text-sm font-bold text-[#C4553B] bg-[#F7E7E2] hover:opacity-90 transition-opacity">
@@ -343,12 +343,12 @@ const AdminLivestream: React.FC = () => {
         <div className="hidden lg:grid lg:grid-cols-[1fr_360px] gap-6 items-start">
           {/* Left: stream info + past streams */}
           <div className="space-y-6">
-            <div className="bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] p-6">
+            <div className="bg-surface-raised rounded-brand-lg border border-line shadow-[var(--ds-sh-sm)] p-6">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="mb-2">{liveBadge}</div>
-                  <h2 className="font-display text-2xl font-light text-earth tracking-[-0.01em] truncate">{current.title}</h2>
-                  <p className="text-xs text-[color:var(--text-faint)] mt-1.5">
+                  <h2 className="font-display text-2xl font-light text-strong tracking-[-0.01em] truncate">{current.title}</h2>
+                  <p className="text-xs text-faint mt-1.5">
                     Live since {fmtDate(current.startedAt || null)} · Video ID: {current.youtubeVideoId}
                   </p>
                 </div>
@@ -357,13 +357,13 @@ const AdminLivestream: React.FC = () => {
                 </button>
               </div>
               <div className="grid grid-cols-2 gap-4 mt-5">
-                <div className="rounded-brand border border-stone-200 p-4">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[color:var(--text-faint)] flex items-center gap-1.5"><Eye size={13} /> Watching now</p>
-                  <p className="font-display text-4xl font-light text-earth mt-1.5 leading-none">{Math.max(0, current.viewerCount || 0)}</p>
+                <div className="rounded-brand border border-line p-4">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-faint flex items-center gap-1.5"><Eye size={13} /> Watching now</p>
+                  <p className="font-display text-4xl font-light text-strong mt-1.5 leading-none">{Math.max(0, current.viewerCount || 0)}</p>
                 </div>
-                <div className="rounded-brand border border-stone-200 p-4">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[color:var(--text-faint)] flex items-center gap-1.5"><HandHeart size={13} /> Prayers</p>
-                  <p className="font-display text-4xl font-light text-earth mt-1.5 leading-none">{current.prayerCount || 0}</p>
+                <div className="rounded-brand border border-line p-4">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-faint flex items-center gap-1.5"><HandHeart size={13} /> Prayers</p>
+                  <p className="font-display text-4xl font-light text-strong mt-1.5 leading-none">{current.prayerCount || 0}</p>
                 </div>
               </div>
             </div>
@@ -380,19 +380,19 @@ const AdminLivestream: React.FC = () => {
       ) : (
         <div className="max-w-2xl mx-auto space-y-6">
           {/* Go Live form */}
-          <div className="bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] p-6">
+          <div className="bg-surface-raised rounded-brand-lg border border-line shadow-[var(--ds-sh-sm)] p-6">
             <div className="flex items-center gap-2 mb-4">
               <Radio size={18} style={{ color: GOLD }} />
-              <h3 className="font-display text-lg font-semibold text-earth">Go Live</h3>
+              <h3 className="font-display text-lg font-semibold text-strong">Go Live</h3>
             </div>
             <div className="space-y-3">
               <div>
-                <label className="block text-sm font-medium text-earth mb-1.5">YouTube Live URL or Video ID</label>
-                <input value={urlInput} onChange={e => setUrlInput(e.target.value)} placeholder="https://youtube.com/watch?v=… or dQw4w9WgXcQ" className="w-full px-4 py-2.5 border border-stone-200 rounded-brand text-sm text-earth focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent" />
+                <label className="block text-sm font-medium text-strong mb-1.5">YouTube Live URL or Video ID</label>
+                <input value={urlInput} onChange={e => setUrlInput(e.target.value)} placeholder="https://youtube.com/watch?v=… or dQw4w9WgXcQ" className="w-full px-4 py-2.5 border border-line rounded-brand text-sm text-strong focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-earth mb-1.5">Title</label>
-                <input value={titleInput} onChange={e => setTitleInput(e.target.value)} placeholder="Sunday Service — June 29" className="w-full px-4 py-2.5 border border-stone-200 rounded-brand text-sm text-earth focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent" />
+                <label className="block text-sm font-medium text-strong mb-1.5">Title</label>
+                <input value={titleInput} onChange={e => setTitleInput(e.target.value)} placeholder="Sunday Service — June 29" className="w-full px-4 py-2.5 border border-line rounded-brand text-sm text-strong focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent" />
               </div>
               <button onClick={startStream} disabled={starting} className="w-full py-2.5 rounded-brand text-white text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: GOLD }}>
                 {starting ? 'Starting…' : 'Start Stream'}

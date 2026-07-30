@@ -936,15 +936,15 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
       {/* Admin announcement composer — text + up to 3 images + embed + poll + pin.
           Admin-only (posts are announcements); members read/like/comment only. */}
       {canCompose && auth.currentUser && (
-        <div className="bg-white rounded-2xl shadow-sm border border-stone-200 p-4 lg:rounded-[var(--ds-radius-card)] lg:border-[color:var(--ds-border)] lg:shadow-[var(--ds-sh-sm)]">
+        <div className="bg-surface-raised rounded-2xl shadow-sm border border-line p-4 lg:rounded-[var(--ds-radius-card)] lg:border-[color:var(--ds-border)] lg:shadow-[var(--ds-sh-sm)]">
           {/* Post / Poll switch (ported from AdminPosts). Hidden while editing so
               an existing post's type isn't accidentally flipped. */}
           {!editingPostId && (
-            <div className="flex gap-1 bg-stone-100 rounded-xl p-1 mb-3 w-fit">
+            <div className="flex gap-1 bg-surface-sunken rounded-xl p-1 mb-3 w-fit">
               <button
                 type="button"
                 onClick={() => setComposerMode('post')}
-                className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${composerMode === 'post' ? 'bg-white shadow-sm text-earth' : 'text-[color:var(--text-faint)]'}`}
+                className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${composerMode === 'post' ? 'bg-surface-raised shadow-sm text-strong' : 'text-faint'}`}
               >
                 Post
               </button>
@@ -958,14 +958,14 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
                   setComposerEmbed(null);
                   setAttachMenuOpen(false);
                 }}
-                className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${composerMode === 'poll' ? 'bg-white shadow-sm text-earth' : 'text-[color:var(--text-faint)]'}`}
+                className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${composerMode === 'poll' ? 'bg-surface-raised shadow-sm text-strong' : 'text-faint'}`}
               >
                 Poll
               </button>
             </div>
           )}
           <div className="flex items-start gap-3">
-            <div className="w-9 h-9 rounded-full bg-stone-200 overflow-hidden flex items-center justify-center text-sm font-bold text-warm-brown flex-shrink-0 relative">
+            <div className="w-9 h-9 rounded-full bg-stone-200 overflow-hidden flex items-center justify-center text-sm font-bold text-muted flex-shrink-0 relative">
               {auth.currentUser.photoURL ? (
                 <Image src={auth.currentUser.photoURL} alt="You" fill sizes="36px" className="object-cover" referrerPolicy="no-referrer" />
               ) : (
@@ -977,7 +977,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
               onChange={(e) => setComposerText(e.target.value)}
               placeholder={composerMode === 'poll' ? 'Ask a question…' : editingPostId ? 'Edit your post…' : 'Share an update with the community…'}
               rows={2}
-              className="flex-1 min-w-0 bg-transparent border-none focus:ring-0 resize-none text-earth placeholder-[color:var(--text-faint)] text-sm p-0 pt-1.5 outline-none"
+              className="flex-1 min-w-0 bg-transparent border-none focus:ring-0 resize-none text-strong placeholder-[color:var(--text-faint)] text-sm p-0 pt-1.5 outline-none"
             />
           </div>
 
@@ -991,14 +991,14 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
                     value={option.text}
                     onChange={(e) => setPollOptions(prev => prev.map((o, i) => i === index ? { ...o, text: e.target.value } : o))}
                     placeholder={`Option ${index + 1}`}
-                    className="flex-1 px-3 py-2 bg-stone-100 border border-stone-200 rounded-lg text-sm text-earth focus:ring-1 focus:ring-gold outline-none"
+                    className="flex-1 px-3 py-2 bg-surface-sunken border border-line rounded-lg text-sm text-strong focus:ring-1 focus:ring-gold outline-none"
                   />
                   {pollOptions.length > 2 && (
                     <button
                       type="button"
                       onClick={() => setPollOptions(prev => prev.filter(o => o.id !== option.id))}
                       aria-label={`Remove option ${index + 1}`}
-                      className="p-2 text-[color:var(--text-faint)] hover:text-red-500 transition-colors"
+                      className="p-2 text-faint hover:text-red-500 transition-colors"
                     >
                       <X size={16} />
                     </button>
@@ -1021,7 +1021,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
           {composerMode === 'post' && composerImages.length > 0 && (
             <div className="flex flex-wrap gap-2 mt-3 pl-12">
               {composerImages.map((url, i) => (
-                <div key={i} className="relative w-20 h-20 rounded-lg overflow-hidden bg-stone-100 border border-stone-200">
+                <div key={i} className="relative w-20 h-20 rounded-lg overflow-hidden bg-surface-sunken border border-line">
                   <Image src={url} alt={`Attachment ${i + 1}`} fill sizes="80px" className="object-cover" referrerPolicy="no-referrer" />
                   <button
                     type="button"
@@ -1057,7 +1057,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
             </div>
           )}
 
-          <div className="flex items-center justify-between mt-3 pt-3 border-t border-stone-200 pl-12">
+          <div className="flex items-center justify-between mt-3 pt-3 border-t border-line pl-12">
             <div className="flex items-center gap-1">
               {/* Paperclip "add" menu — image + blog / fundraising / event embeds (post mode only). */}
               {composerMode === 'post' && (
@@ -1068,21 +1068,21 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
                     aria-label="Add attachment"
                     aria-haspopup="menu"
                     aria-expanded={attachMenuOpen}
-                    className="p-2 -ml-2 text-warm-brown hover:text-gold hover:bg-stone-100 rounded-full transition-colors"
+                    className="p-2 -ml-2 text-muted hover:text-gold hover:bg-surface-sunken rounded-full transition-colors"
                   >
                     <Paperclip size={18} />
                   </button>
                   {attachMenuOpen && (
                     <div
                       role="menu"
-                      className="absolute left-0 bottom-full mb-1 min-w-[160px] bg-white rounded-xl border border-stone-200 shadow-[0_8px_30px_rgba(0,0,0,0.12)] overflow-hidden z-20"
+                      className="absolute left-0 bottom-full mb-1 min-w-[160px] bg-surface-raised rounded-xl border border-line shadow-[0_8px_30px_rgba(0,0,0,0.12)] overflow-hidden z-20"
                     >
                       <button
                         type="button"
                         role="menuitem"
                         disabled={!canPostImages}
                         onClick={() => { setShowImageAttach(true); setAttachMenuOpen(false); }}
-                        className="w-full text-left px-4 py-2.5 text-sm font-medium text-[color:var(--text-body)] hover:bg-stone-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full text-left px-4 py-2.5 text-sm font-medium text-body hover:bg-surface-sunken transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {canPostImages ? 'Add image' : 'Max 3 images'}
                       </button>
@@ -1090,7 +1090,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
                         type="button"
                         role="menuitem"
                         onClick={() => { setEmbedPicker('blog'); setAttachMenuOpen(false); }}
-                        className="w-full text-left px-4 py-2.5 text-sm font-medium text-[color:var(--text-body)] hover:bg-stone-100 transition-colors"
+                        className="w-full text-left px-4 py-2.5 text-sm font-medium text-body hover:bg-surface-sunken transition-colors"
                       >
                         Add blog article
                       </button>
@@ -1098,7 +1098,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
                         type="button"
                         role="menuitem"
                         onClick={() => { setEmbedPicker('fundraising'); setAttachMenuOpen(false); }}
-                        className="w-full text-left px-4 py-2.5 text-sm font-medium text-[color:var(--text-body)] hover:bg-stone-100 transition-colors"
+                        className="w-full text-left px-4 py-2.5 text-sm font-medium text-body hover:bg-surface-sunken transition-colors"
                       >
                         Add fundraising
                       </button>
@@ -1106,7 +1106,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
                         type="button"
                         role="menuitem"
                         onClick={() => { setEmbedPicker('event'); setAttachMenuOpen(false); }}
-                        className="w-full text-left px-4 py-2.5 text-sm font-medium text-[color:var(--text-body)] hover:bg-stone-100 transition-colors"
+                        className="w-full text-left px-4 py-2.5 text-sm font-medium text-body hover:bg-surface-sunken transition-colors"
                       >
                         Add event
                       </button>
@@ -1121,7 +1121,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
                 onClick={() => setComposerPinned(p => !p)}
                 aria-pressed={composerPinned}
                 aria-label={composerPinned ? 'Unpin from top' : 'Pin to top'}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium transition-colors ${composerPinned ? 'bg-[color-mix(in_srgb,var(--brand-color)_15%,white)] text-gold' : 'text-warm-brown hover:bg-stone-100'}`}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium transition-colors ${composerPinned ? 'bg-[color-mix(in_srgb,var(--brand-color)_15%,white)] text-gold' : 'text-muted hover:bg-surface-sunken'}`}
               >
                 <Pin size={15} className={composerPinned ? 'fill-current' : ''} />
                 {composerPinned ? 'Pinned' : 'Pin'}
@@ -1133,7 +1133,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
                 <button
                   type="button"
                   onClick={resetComposer}
-                  className="px-4 py-1.5 text-sm font-medium text-warm-brown hover:bg-stone-100 rounded-lg transition-colors"
+                  className="px-4 py-1.5 text-sm font-medium text-muted hover:bg-surface-sunken rounded-lg transition-colors"
                 >
                   Cancel
                 </button>
@@ -1157,7 +1157,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
 
       {/* Pinned events from AdminEvents system */}
       {adminEvents.filter(e => e.pinned).map(event => (
-        <div key={event.id} className="bg-white rounded-2xl shadow-sm border border-[color-mix(in_srgb,var(--brand-color)_30%,transparent)] overflow-hidden lg:rounded-[var(--ds-radius-card)] lg:border-[color:var(--border-gold)] lg:shadow-[var(--ds-sh-sm)]">
+        <div key={event.id} className="bg-surface-raised rounded-2xl shadow-sm border border-[color-mix(in_srgb,var(--brand-color)_30%,transparent)] overflow-hidden lg:rounded-[var(--ds-radius-card)] lg:border-[color:var(--border-gold)] lg:shadow-[var(--ds-sh-sm)]">
           {/* Hero band — cover photo, else navy→gold gradient — with the Pinned Event chip overlaid (mobile + desktop) */}
           <div className="relative h-36 lg:h-[150px]">
             {event.coverImage ? (
@@ -1168,9 +1168,9 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
             <span className="absolute top-3 left-3 z-10 inline-flex items-center text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full" style={{ background: 'var(--surface-gold)', color: 'var(--wheat-700)' }}>Pinned Event</span>
           </div>
           <div className="p-4 lg:p-[18px]">
-            <h3 className="font-bold text-earth text-base lg:text-[17px] mb-1">{event.title}</h3>
-            {event.description ? <p className="text-sm lg:text-xs text-warm-brown line-clamp-2 mb-3">{event.description}</p> : null}
-            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-warm-brown mb-3">
+            <h3 className="font-bold text-strong text-base lg:text-[17px] mb-1">{event.title}</h3>
+            {event.description ? <p className="text-sm lg:text-xs text-muted line-clamp-2 mb-3">{event.description}</p> : null}
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted mb-3">
               {event.startDate && <span className="flex items-center gap-1"><CalendarIcon size={12} />{fmtEventDate(event.startDate)}</span>}
               {event.isOnline
                 ? <span className="flex items-center gap-1"><Globe size={12} />Online</span>
@@ -1189,7 +1189,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
       ))}
 
       <div className="flex items-center justify-between px-1 mb-2">
-        <h2 className="flex items-center text-[19px] lg:text-lg font-light tracking-[-0.02em] text-earth font-display">
+        <h2 className="flex items-center text-[19px] lg:text-lg font-light tracking-[-0.02em] text-strong font-display">
           <span className="block w-1 h-[18px] lg:h-5 rounded-full bg-gold mr-2.5 shrink-0" aria-hidden="true" />
           News &amp; Updates
         </h2>
@@ -1204,13 +1204,13 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
       </div>
 
       {posts.length === 0 ? (
-        <div className="text-center py-12 text-warm-brown">No news yet.</div>
+        <div className="text-center py-12 text-muted">No news yet.</div>
       ) : (
         posts.map((post, index) => (
-          <div key={post.id} className="bg-white rounded-2xl shadow-sm border border-stone-200 p-4 lg:rounded-[var(--ds-radius-card)] lg:border-[color:var(--ds-border)] lg:shadow-[var(--ds-sh-sm)]">
+          <div key={post.id} className="bg-surface-raised rounded-2xl shadow-sm border border-line p-4 lg:rounded-[var(--ds-radius-card)] lg:border-[color:var(--ds-border)] lg:shadow-[var(--ds-sh-sm)]">
             <div className="flex justify-between items-start mb-3">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-stone-200 overflow-hidden flex items-center justify-center font-bold text-warm-brown relative">
+                <div className="w-10 h-10 rounded-full bg-stone-200 overflow-hidden flex items-center justify-center font-bold text-muted relative">
                   {post.authorPhoto ? (
                     <Image src={post.authorPhoto} alt={post.authorName} fill sizes="40px" className="object-cover" referrerPolicy="no-referrer" />
                   ) : (
@@ -1219,14 +1219,14 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h4 className="font-bold text-earth text-sm">{post.authorName}</h4>
+                    <h4 className="font-bold text-strong text-sm">{post.authorName}</h4>
                     {post.isPinned && (
                       <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-gold bg-[color-mix(in_srgb,var(--brand-color)_15%,white)] px-2 py-0.5 rounded-full">
                         Pinned
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-warm-brown">{formatDate(post.createdAt)}</p>
+                  <p className="text-xs text-muted">{formatDate(post.createdAt)}</p>
                 </div>
               </div>
               <KebabMenu
@@ -1243,7 +1243,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
               />
             </div>
 
-            <p className="text-[color:var(--text-body)] text-sm lg:text-[13px] whitespace-pre-wrap mb-3">
+            <p className="text-body text-sm lg:text-[13px] whitespace-pre-wrap mb-3">
               {post.content}
             </p>
 
@@ -1277,7 +1277,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
                       className={`relative w-full h-10 border rounded-lg overflow-hidden flex items-center px-3 transition-colors ${
                         userVotedThis 
                           ? 'border-gold bg-[color-mix(in_srgb,var(--brand-color)_8%,white)] '
-                          : 'border-stone-200 bg-stone-100 hover:border-gold'
+                          : 'border-line bg-surface-sunken hover:border-gold'
                       }`}
                     >
                       {hasVoted && (
@@ -1286,30 +1286,30 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
                           style={{ width: `${percentage}%` }}
                         />
                       )}
-                      <div className="relative z-10 flex justify-between w-full text-sm font-medium text-[color:var(--text-body)] ">
+                      <div className="relative z-10 flex justify-between w-full text-sm font-medium text-body ">
                         <span className="flex items-center gap-2">
                           {option.text}
                           {userVotedThis && <Check size={14} className="text-gold" />}
                         </span>
-                        {hasVoted && <span className="text-warm-brown">{percentage}%</span>}
+                        {hasVoted && <span className="text-muted">{percentage}%</span>}
                       </div>
                     </button>
                   );
                 })}
-                <div className="text-right text-xs text-warm-brown">
+                <div className="text-right text-xs text-muted">
                   {post.pollOptions.reduce((acc, o) => acc + o.votes.length, 0)} votes total
                 </div>
               </div>
             )}
 
             {post.type === 'event' && post.eventDetails && (
-              <div className="bg-stone-100 rounded-xl p-4 mb-3 border border-stone-200 flex flex-col items-center text-center">
-                <div className="bg-white border border-stone-200 rounded-lg p-2 mb-3 min-w-[80px]">
+              <div className="bg-surface-sunken rounded-xl p-4 mb-3 border border-line flex flex-col items-center text-center">
+                <div className="bg-surface-raised border border-line rounded-lg p-2 mb-3 min-w-[80px]">
                   <div className="text-gold text-xs font-bold uppercase">{new Date(post.eventDetails.date).toLocaleString('default', { month: 'short' })}</div>
-                  <div className="text-xl font-bold text-earth ">{new Date(post.eventDetails.date).getDate()}</div>
+                  <div className="text-xl font-bold text-strong ">{new Date(post.eventDetails.date).getDate()}</div>
                 </div>
-                <h4 className="font-bold text-earth text-lg mb-2">{post.eventDetails.title}</h4>
-                <div className="flex flex-col gap-1 text-sm text-warm-brown mb-4">
+                <h4 className="font-bold text-strong text-lg mb-2">{post.eventDetails.title}</h4>
+                <div className="flex flex-col gap-1 text-sm text-muted mb-4">
                   <div className="flex items-center justify-center gap-1.5">
                     <CalendarIcon size={14} />
                     <span>{post.eventDetails.time}</span>
@@ -1319,7 +1319,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
                     <span>{post.eventDetails.location}</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 mb-4 text-xs text-warm-brown">
+                <div className="flex items-center gap-2 mb-4 text-xs text-muted">
                   <span>{post.eventDetails.attendees.length} Participating</span>
                 </div>
                 {auth.currentUser && (
@@ -1341,13 +1341,13 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
               </div>
             )}
 
-            <div className="flex items-center gap-4 pt-3 border-t border-stone-200 ">
+            <div className="flex items-center gap-4 pt-3 border-t border-line ">
               <button 
                 onClick={() => handleLike(post.id, post.likes)}
                 className={`flex items-center gap-1.5 text-xs transition-colors ${
                   auth.currentUser && post.likes.includes(auth.currentUser.uid)
                     ? 'text-gold'
-                    : 'text-warm-brown hover:text-gold'
+                    : 'text-muted hover:text-gold'
                 }`}
               >
                 <ThumbsUp size={16} className={auth.currentUser && post.likes.includes(auth.currentUser.uid) ? 'fill-current' : ''} />
@@ -1356,7 +1356,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
               <button
                 onClick={() => toggleComments(post.id)}
                 className={`flex items-center gap-1.5 text-xs transition-colors ${
-                  commentsOpen[post.id] ? 'text-gold' : 'text-warm-brown hover:text-gold'
+                  commentsOpen[post.id] ? 'text-gold' : 'text-muted hover:text-gold'
                 }`}
               >
                 <MessageSquare size={16} />
@@ -1382,10 +1382,10 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
 
             {/* Comments Section */}
             {commentsOpen[post.id] && (
-              <div className="mt-3 pt-3 border-t border-stone-200 space-y-3">
+              <div className="mt-3 pt-3 border-t border-line space-y-3">
                 {postComments[post.id]?.map(comment => (
                   <div key={comment.id} className="flex items-start gap-2.5">
-                    <div className="w-7 h-7 rounded-full bg-stone-200 overflow-hidden flex items-center justify-center text-xs font-bold text-warm-brown flex-shrink-0 relative">
+                    <div className="w-7 h-7 rounded-full bg-stone-200 overflow-hidden flex items-center justify-center text-xs font-bold text-muted flex-shrink-0 relative">
                       {comment.authorPhoto ? (
                         <Image src={comment.authorPhoto} alt={comment.authorName} fill sizes="28px" className="object-cover" referrerPolicy="no-referrer" />
                       ) : (
@@ -1394,8 +1394,8 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-earth">{comment.authorName}</span>
-                        <span className="text-[10px] text-[color:var(--text-faint)]">
+                        <span className="text-xs font-bold text-strong">{comment.authorName}</span>
+                        <span className="text-[10px] text-faint">
                           {new Date(comment.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                         </span>
                         <div className="ml-auto">
@@ -1417,16 +1417,16 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
                           />
                         </div>
                       </div>
-                      <p className="text-xs text-[color:var(--text-body)] whitespace-pre-wrap">{comment.content}</p>
+                      <p className="text-xs text-body whitespace-pre-wrap">{comment.content}</p>
                     </div>
                   </div>
                 ))}
                 {postComments[post.id]?.length === 0 && (
-                  <p className="text-xs text-[color:var(--text-faint)] text-center py-1">No comments yet</p>
+                  <p className="text-xs text-faint text-center py-1">No comments yet</p>
                 )}
                 {auth.currentUser && (
                   <div className="flex items-center gap-2 pt-2">
-                    <div className="w-7 h-7 rounded-full bg-stone-200 overflow-hidden flex items-center justify-center text-xs font-bold text-warm-brown flex-shrink-0 relative">
+                    <div className="w-7 h-7 rounded-full bg-stone-200 overflow-hidden flex items-center justify-center text-xs font-bold text-muted flex-shrink-0 relative">
                       {auth.currentUser.photoURL ? (
                         <Image src={auth.currentUser.photoURL} alt="You" fill sizes="28px" className="object-cover" referrerPolicy="no-referrer" />
                       ) : (
@@ -1440,7 +1440,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
                       onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleComment(post.id); } }}
                       placeholder="Write a comment..."
                       maxLength={280}
-                      className="flex-1 px-3 py-1.5 bg-stone-100 border border-stone-200 rounded-full text-xs text-earth focus:ring-1 focus:ring-gold outline-none"
+                      className="flex-1 px-3 py-1.5 bg-surface-sunken border border-line rounded-full text-xs text-strong focus:ring-1 focus:ring-gold outline-none"
                     />
                     <button
                       onClick={() => handleComment(post.id)}
@@ -1460,22 +1460,22 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
       {/* Upcoming Events (non-pinned) — mobile only; desktop shows the compact rail version instead */}
       {adminEvents.filter(e => !e.pinned).length > 0 && (
         <div className="mt-4 lg:hidden">
-          <h2 className="flex items-center text-[19px] font-light tracking-[-0.02em] text-earth px-1 mb-3 font-display">
+          <h2 className="flex items-center text-[19px] font-light tracking-[-0.02em] text-strong px-1 mb-3 font-display">
             <span className="block w-1 h-[18px] rounded-full bg-gold mr-2.5 shrink-0" aria-hidden="true" />
             Upcoming Events
           </h2>
           <div className="space-y-3">
             {adminEvents.filter(e => !e.pinned).map(event => (
-              <div key={event.id} className="bg-white rounded-2xl shadow-sm border border-stone-200 overflow-hidden lg:rounded-[var(--ds-radius-card)] lg:shadow-[var(--ds-sh-sm)]">
+              <div key={event.id} className="bg-surface-raised rounded-2xl shadow-sm border border-line overflow-hidden lg:rounded-[var(--ds-radius-card)] lg:shadow-[var(--ds-sh-sm)]">
                 {event.coverImage && (
-                  <div className="relative h-32 bg-stone-100">
+                  <div className="relative h-32 bg-surface-sunken">
                     <Image src={event.coverImage} alt={event.title} fill sizes="(max-width:768px) 100vw, 800px" className="object-cover" referrerPolicy="no-referrer" />
                   </div>
                 )}
                 <div className="p-4 lg:p-5">
-                  <h3 className="font-bold text-earth text-base mb-1">{event.title}</h3>
-                  {event.description ? <p className="text-sm text-warm-brown line-clamp-2 mb-3">{event.description}</p> : null}
-                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-warm-brown mb-3">
+                  <h3 className="font-bold text-strong text-base mb-1">{event.title}</h3>
+                  {event.description ? <p className="text-sm text-muted line-clamp-2 mb-3">{event.description}</p> : null}
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted mb-3">
                     {event.startDate && <span className="flex items-center gap-1"><CalendarIcon size={12} />{fmtEventDate(event.startDate)}</span>}
                     {event.isOnline
                       ? <span className="flex items-center gap-1"><Globe size={12} />Online</span>
@@ -1500,7 +1500,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
       {articles.length > 0 && (
         <div className="mt-8 lg:hidden">
           <div className="flex items-center justify-between px-1 mb-4">
-            <h2 className="flex items-center text-[19px] font-light tracking-[-0.02em] text-earth font-display">
+            <h2 className="flex items-center text-[19px] font-light tracking-[-0.02em] text-strong font-display">
               <span className="block w-1 h-[18px] rounded-full bg-gold mr-2.5 shrink-0" aria-hidden="true" />
               Latest Articles
             </h2>
@@ -1510,10 +1510,10 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
               <article 
                 key={post.id} 
                 onClick={() => onOpenArticle(post)}
-                className="bg-white rounded-xl shadow-sm border border-stone-200 overflow-hidden flex flex-row items-center gap-3 p-2.5 sm:p-3 transition-transform hover:scale-[1.02] duration-300 cursor-pointer lg:rounded-[var(--ds-radius-card)] lg:shadow-[var(--ds-sh-sm)]"
+                className="bg-surface-raised rounded-xl shadow-sm border border-line overflow-hidden flex flex-row items-center gap-3 p-2.5 sm:p-3 transition-transform hover:scale-[1.02] duration-300 cursor-pointer lg:rounded-[var(--ds-radius-card)] lg:shadow-[var(--ds-sh-sm)]"
               >
                 {post.featuredImage ? (
-                  <div className="w-16 h-16 sm:w-20 sm:h-20 flex-shrink-0 overflow-hidden rounded-lg bg-stone-100 relative">
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 flex-shrink-0 overflow-hidden rounded-lg bg-surface-sunken relative">
                     <Image 
                       src={post.featuredImage} 
                       alt={post.title} 
@@ -1525,18 +1525,18 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
                     />
                   </div>
                 ) : (
-                  <div className="w-16 h-16 sm:w-20 sm:h-20 flex-shrink-0 bg-stone-100 flex items-center justify-center rounded-lg">
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 flex-shrink-0 bg-surface-sunken flex items-center justify-center rounded-lg">
                     <FileText size={20} className="text-stone-300 " />
                   </div>
                 )}
                 
                 <div className="flex flex-col flex-1 min-w-0 py-1">
-                  <h3 className="text-base sm:text-lg font-bold text-earth mb-1.5 line-clamp-2 leading-tight">
+                  <h3 className="text-base sm:text-lg font-bold text-strong mb-1.5 line-clamp-2 leading-tight">
                     {post.title}
                   </h3>
                   
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-warm-brown mb-2">
-                    <span className="px-2 py-0.5 bg-stone-100 text-warm-brown font-medium rounded uppercase tracking-wider">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-muted mb-2">
+                    <span className="px-2 py-0.5 bg-surface-sunken text-muted font-medium rounded uppercase tracking-wider">
                       {post.category}
                     </span>
                     <div className="flex items-center gap-1">
@@ -1548,13 +1548,13 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
                   {post.tags && post.tags.length > 0 && (
                     <div className="flex flex-wrap gap-1.5 mt-auto">
                       {post.tags.slice(0, 3).map(tag => (
-                        <span key={tag} className="flex items-center gap-1 text-[10px] sm:text-xs text-warm-brown bg-stone-100 px-1.5 py-0.5 rounded">
+                        <span key={tag} className="flex items-center gap-1 text-[10px] sm:text-xs text-muted bg-surface-sunken px-1.5 py-0.5 rounded">
                           <Tag size={10} />
                           {tag}
                         </span>
                       ))}
                       {post.tags.length > 3 && (
-                        <span className="text-[10px] sm:text-xs text-[color:var(--text-faint)]">+{post.tags.length - 3}</span>
+                        <span className="text-[10px] sm:text-xs text-faint">+{post.tags.length - 3}</span>
                       )}
                     </div>
                   )}
@@ -1577,8 +1577,8 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
               <span className="relative inline-flex rounded-full h-3 w-3" style={{ backgroundColor: 'var(--brand-color, #e6b325)' }} />
             </span>
             <span className="flex-1 min-w-0">
-              <span className="block font-bold text-sm text-earth">Live Now</span>
-              <span className="block text-xs text-warm-brown truncate">{liveTitle}</span>
+              <span className="block font-bold text-sm text-strong">Live Now</span>
+              <span className="block text-xs text-muted truncate">{liveTitle}</span>
             </span>
             <span className="text-xs font-semibold text-white rounded-full px-2.5 py-1 shrink-0" style={{ backgroundColor: 'var(--brand-color, #e6b325)' }}>
               Watch
@@ -1589,7 +1589,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
 
       {upcomingRailEvents.length > 0 && (
         <DesktopCard elevation="sm" className="p-4">
-          <h3 className="flex items-center gap-2 font-bold text-earth text-sm mb-3 font-display">
+          <h3 className="flex items-center gap-2 font-bold text-strong text-sm mb-3 font-display">
             <span className="w-0.5 h-3.5 rounded-full bg-gold shrink-0" aria-hidden="true" />
             Upcoming Events
           </h3>
@@ -1604,16 +1604,16 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
                   {event.startDate ? (
                     <>
                       <div className="text-[9px] font-bold uppercase text-gold">{event.startDate.toDate().toLocaleString('default', { month: 'short' })}</div>
-                      <div className="text-sm font-bold text-earth leading-none mt-0.5">{event.startDate.toDate().getDate()}</div>
+                      <div className="text-sm font-bold text-strong leading-none mt-0.5">{event.startDate.toDate().getDate()}</div>
                     </>
                   ) : (
                     <CalendarIcon size={14} className="text-stone-300 mx-auto" />
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-earth truncate group-hover:text-gold transition-colors">{event.title}</p>
+                  <p className="text-sm font-semibold text-strong truncate group-hover:text-gold transition-colors">{event.title}</p>
                   {(event.isOnline || event.location) && (
-                    <p className="text-xs text-warm-brown truncate flex items-center gap-1 mt-0.5">
+                    <p className="text-xs text-muted truncate flex items-center gap-1 mt-0.5">
                       {event.isOnline ? <Globe size={10} className="shrink-0" /> : <MapPin size={10} className="shrink-0" />}
                       {event.isOnline ? 'Online' : event.location}
                     </p>
@@ -1627,7 +1627,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
 
       {articles.length > 0 && (
         <DesktopCard elevation="sm" className="p-4">
-          <h3 className="flex items-center gap-2 font-bold text-earth text-sm mb-3 font-display">
+          <h3 className="flex items-center gap-2 font-bold text-strong text-sm mb-3 font-display">
             <span className="w-0.5 h-3.5 rounded-full bg-gold shrink-0" aria-hidden="true" />
             Latest Articles
           </h3>
@@ -1639,17 +1639,17 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
                 className="w-full flex items-start gap-3 text-left group"
               >
                 {post.featuredImage ? (
-                  <div className="w-11 h-11 rounded-lg overflow-hidden bg-stone-100 shrink-0 relative">
+                  <div className="w-11 h-11 rounded-lg overflow-hidden bg-surface-sunken shrink-0 relative">
                     <Image src={post.featuredImage} alt={post.title} fill sizes="44px" className="object-cover" referrerPolicy="no-referrer" />
                   </div>
                 ) : (
-                  <div className="w-11 h-11 rounded-lg bg-stone-100 shrink-0 flex items-center justify-center">
+                  <div className="w-11 h-11 rounded-lg bg-surface-sunken shrink-0 flex items-center justify-center">
                     <FileText size={16} className="text-stone-300" />
                   </div>
                 )}
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-earth line-clamp-2 group-hover:text-gold transition-colors">{post.title}</p>
-                  <p className="text-xs text-warm-brown mt-0.5">{formatArticleDate(post.publishedAt || post.createdAt)}</p>
+                  <p className="text-sm font-semibold text-strong line-clamp-2 group-hover:text-gold transition-colors">{post.title}</p>
+                  <p className="text-xs text-muted mt-0.5">{formatArticleDate(post.publishedAt || post.createdAt)}</p>
                 </div>
               </button>
             ))}
@@ -1661,8 +1661,8 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
         <div className="w-11 h-11 mx-auto rounded-full flex items-center justify-center mb-3" style={{ backgroundColor: 'color-mix(in srgb, var(--brand-color) 12%, white)' }}>
           <HeartHandshake size={20} className="text-gold" />
         </div>
-        <h3 className="font-bold text-earth text-sm mb-1 font-display">Partner with Us</h3>
-        <p className="text-xs text-warm-brown mb-3 leading-relaxed">Your generosity keeps this ministry moving forward.</p>
+        <h3 className="font-bold text-strong text-sm mb-1 font-display">Partner with Us</h3>
+        <p className="text-xs text-muted mb-3 leading-relaxed">Your generosity keeps this ministry moving forward.</p>
         <button
           onClick={onGoToPartner}
           className="w-full py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
@@ -1678,10 +1678,10 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
     <div className="w-full space-y-4 pb-8">
       {/* Desktop greeting hero — Phase 1.6, lg:-only, real user data (no fake stats) */}
       <div className="hidden lg:block">
-        <h1 className="font-display text-[2.4rem] leading-[1.12] font-light tracking-[-0.02em] text-earth">
+        <h1 className="font-display text-[2.4rem] leading-[1.12] font-light tracking-[-0.02em] text-strong">
           {firstName ? `Good ${timeOfDay}, ${firstName}` : 'Welcome'}
         </h1>
-        <p className="text-[15px] text-warm-brown mt-1.5">Here&apos;s what&apos;s happening this week.</p>
+        <p className="text-[15px] text-muted mt-1.5">Here&apos;s what&apos;s happening this week.</p>
       </div>
 
       {errorMessage && (
@@ -1715,15 +1715,15 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
       {/* Delete Post Confirmation Modal */}
       {deletePostId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 border border-stone-200">
-            <h3 className="text-xl font-bold text-earth mb-2 font-display">Delete Post</h3>
-            <p className="text-warm-brown mb-6">
+          <div className="bg-surface-raised rounded-2xl shadow-xl max-w-sm w-full p-6 border border-line">
+            <h3 className="text-xl font-bold text-strong mb-2 font-display">Delete Post</h3>
+            <p className="text-muted mb-6">
               Are you sure you want to delete this post? This action cannot be undone.
             </p>
             <div className="flex justify-end gap-3">
               <button
                 onClick={() => setDeletePostId(null)}
-                className="px-4 py-2 text-warm-brown hover:bg-stone-100 rounded-xl font-medium transition-colors"
+                className="px-4 py-2 text-muted hover:bg-surface-sunken rounded-xl font-medium transition-colors"
               >
                 Cancel
               </button>
@@ -1741,30 +1741,30 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
       {/* Event Attendance Modal */}
       {attendingPostId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl">
-            <h3 className="text-xl font-bold text-earth mb-4 font-display">Join Event</h3>
-            <p className="text-sm text-warm-brown mb-4">
+          <div className="bg-surface-raised rounded-2xl p-6 w-full max-w-md shadow-xl">
+            <h3 className="text-xl font-bold text-strong mb-4 font-display">Join Event</h3>
+            <p className="text-sm text-muted mb-4">
               Please provide your details to receive more information about this event.
             </p>
             
             <div className="space-y-4 mb-6">
               <div>
-                <label className="block text-sm font-medium text-[color:var(--text-body)] mb-1">Full Name</label>
+                <label className="block text-sm font-medium text-body mb-1">Full Name</label>
                 <input
                   type="text"
                   value={attendeeName}
                   onChange={(e) => setAttendeeName(e.target.value)}
-                  className="w-full px-4 py-2 bg-stone-100 border border-stone-200 rounded-xl text-earth focus:ring-2 focus:ring-gold outline-none"
+                  className="w-full px-4 py-2 bg-surface-sunken border border-line rounded-xl text-strong focus:ring-2 focus:ring-gold outline-none"
                   placeholder="John Doe"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-[color:var(--text-body)] mb-1">Email Address</label>
+                <label className="block text-sm font-medium text-body mb-1">Email Address</label>
                 <input
                   type="email"
                   value={attendeeEmail}
                   onChange={(e) => setAttendeeEmail(e.target.value)}
-                  className="w-full px-4 py-2 bg-stone-100 border border-stone-200 rounded-xl text-earth focus:ring-2 focus:ring-gold outline-none"
+                  className="w-full px-4 py-2 bg-surface-sunken border border-line rounded-xl text-strong focus:ring-2 focus:ring-gold outline-none"
                   placeholder="john@example.com"
                 />
               </div>
@@ -1777,7 +1777,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
                   setAttendeeName('');
                   setAttendeeEmail('');
                 }}
-                className="flex-1 px-4 py-2 border border-stone-200 text-[color:var(--text-body)] rounded-xl font-medium hover:bg-stone-100 transition-colors"
+                className="flex-1 px-4 py-2 border border-line text-body rounded-xl font-medium hover:bg-surface-sunken transition-colors"
               >
                 Cancel
               </button>

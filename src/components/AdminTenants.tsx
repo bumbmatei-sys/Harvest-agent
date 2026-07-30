@@ -246,11 +246,11 @@ const AdminTenants: React.FC = () => {
 
   // Segmented control between the two super-admin views in this section.
   const sectionTabs = (
-    <div className="inline-flex items-center gap-1 p-1 bg-stone-100 rounded-xl">
+    <div className="inline-flex items-center gap-1 p-1 bg-surface-sunken rounded-xl">
       <button
         onClick={() => setSection('tenants')}
         className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
-          section === 'tenants' ? 'bg-white shadow-sm text-earth' : 'text-[color:var(--text-faint)]'
+          section === 'tenants' ? 'bg-surface-raised shadow-sm text-strong' : 'text-faint'
         }`}
       >
         Tenants
@@ -258,7 +258,7 @@ const AdminTenants: React.FC = () => {
       <button
         onClick={() => setSection('affiliates')}
         className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
-          section === 'affiliates' ? 'bg-white shadow-sm text-earth' : 'text-[color:var(--text-faint)]'
+          section === 'affiliates' ? 'bg-surface-raised shadow-sm text-strong' : 'text-faint'
         }`}
       >
         Affiliates
@@ -292,19 +292,19 @@ const AdminTenants: React.FC = () => {
 
       {/* Tenant List */}
       {filtered.length === 0 ? (
-        <div className="text-center py-16 bg-white rounded-2xl border border-stone-200">
+        <div className="text-center py-16 bg-surface-raised rounded-2xl border border-line">
           <Building2 size={48} className="mx-auto text-stone-300 mb-4" />
-          <p className="text-warm-brown font-medium font-display">No tenants yet</p>
-          <p className="text-[color:var(--text-faint)] text-sm mt-1">Create your first church tenant to get started.</p>
+          <p className="text-muted font-medium font-display">No tenants yet</p>
+          <p className="text-faint text-sm mt-1">Create your first church tenant to get started.</p>
         </div>
       ) : (
         <div className="grid gap-4">
           {filtered.map(tenant => (
-            <div key={tenant.id} className="bg-white rounded-2xl border border-stone-200 p-5 hover:shadow-md transition-shadow">
+            <div key={tenant.id} className="bg-surface-raised rounded-2xl border border-line p-5 hover:shadow-md transition-shadow">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-3 mb-1">
-                    <h3 className="font-display text-lg font-semibold text-earth truncate">{tenant.name}</h3>
+                    <h3 className="font-display text-lg font-semibold text-strong truncate">{tenant.name}</h3>
                     <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${PLAN_COLORS[tenant.plan]}`}>
                       {PLAN_LABELS[tenant.plan]}
                     </span>
@@ -312,8 +312,8 @@ const AdminTenants: React.FC = () => {
                       {tenant.status}
                     </span>
                   </div>
-                  <p className="text-sm text-warm-brown">
-                    <span className="font-mono text-warm-brown">{tenant.subdomain}</span>.theharvest.app
+                  <p className="text-sm text-muted">
+                    <span className="font-mono text-muted">{tenant.subdomain}</span>.theharvest.app
                   </p>
                   {tenant.config?.customDomain && (
                     <p className="text-sm text-blue-600 font-medium mt-0.5">
@@ -321,7 +321,7 @@ const AdminTenants: React.FC = () => {
                     </p>
                   )}
                   {tenant.adminEmails?.length > 0 && (
-                    <p className="text-xs text-[color:var(--text-faint)] mt-1">Admin: {tenant.adminEmails[0]}</p>
+                    <p className="text-xs text-faint mt-1">Admin: {tenant.adminEmails[0]}</p>
                   )}
                 </div>
 
@@ -333,28 +333,28 @@ const AdminTenants: React.FC = () => {
                       if (deleteConfirmId === tenant.id) closeDeleteConfirm();
                       setUsageOpenId(usageOpenId === tenant.id ? null : tenant.id);
                     }}
-                    className={`p-2 rounded-lg transition-colors ${usageOpenId === tenant.id ? 'bg-stone-100' : 'hover:bg-stone-100'}`}
+                    className={`p-2 rounded-lg transition-colors ${usageOpenId === tenant.id ? 'bg-surface-sunken' : 'hover:bg-surface-sunken'}`}
                     title="Usage"
                   >
-                    <BarChart3 size={16} className="text-warm-brown" />
+                    <BarChart3 size={16} className="text-muted" />
                   </button>
                   <button
                     onClick={() => handleToggleStatus(tenant)}
-                    className="p-2 rounded-lg hover:bg-stone-100 transition-colors"
+                    className="p-2 rounded-lg hover:bg-surface-sunken transition-colors"
                     title={tenant.status === 'active' ? 'Suspend' : 'Activate'}
                   >
                     {tenant.status === 'active' ? (
-                      <Pause size={16} className="text-warm-brown" />
+                      <Pause size={16} className="text-muted" />
                     ) : (
                       <Play size={16} className="text-green-500" />
                     )}
                   </button>
                   <button
                     onClick={() => openEdit(tenant)}
-                    className="p-2 rounded-lg hover:bg-stone-100 transition-colors"
+                    className="p-2 rounded-lg hover:bg-surface-sunken transition-colors"
                     title="Edit"
                   >
-                    <Edit2 size={16} className="text-warm-brown" />
+                    <Edit2 size={16} className="text-muted" />
                   </button>
                   <button
                     onClick={() => openDeleteConfirm(tenant)}
@@ -362,7 +362,7 @@ const AdminTenants: React.FC = () => {
                     className="p-2 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50"
                     title="Delete"
                   >
-                    <Trash2 size={16} className="text-[color:var(--text-faint)] hover:text-red-500" />
+                    <Trash2 size={16} className="text-faint hover:text-red-500" />
                   </button>
                 </div>
               </div>
@@ -372,7 +372,7 @@ const AdminTenants: React.FC = () => {
                   Read-only, and mounted only while open so no usage request
                   fires for a tenant nobody asked about. */}
               {usageOpenId === tenant.id && (
-                <div className="mt-4 pt-4 border-t border-stone-100 bg-stone-50/60 -mx-5 -mb-5 px-5 py-4 rounded-b-2xl">
+                <div className="mt-4 pt-4 border-t border-line-subtle bg-stone-50/60 -mx-5 -mb-5 px-5 py-4 rounded-b-2xl">
                   <TenantUsagePanel tenantId={tenant.id} />
                 </div>
               )}
@@ -397,15 +397,15 @@ const AdminTenants: React.FC = () => {
                           {' '}(including their sign-in). This cannot be undone.
                         </p>
                         {dryRunLoading ? (
-                          <p className="text-xs text-warm-brown mt-1">Counting what will be deleted…</p>
+                          <p className="text-xs text-muted mt-1">Counting what will be deleted…</p>
                         ) : dryRun ? (
-                          <p className="text-xs text-warm-brown mt-1">
+                          <p className="text-xs text-muted mt-1">
                             {userCount} user account{userCount === 1 ? '' : 's'} and {contentCount} content item
                             {contentCount === 1 ? '' : 's'} across {Object.keys(dryRun.deleted).length - 1} collections
                             will be removed.
                           </p>
                         ) : (
-                          <p className="text-xs text-warm-brown mt-1">
+                          <p className="text-xs text-muted mt-1">
                             Preview unavailable — proceeding will still delete everything above.
                           </p>
                         )}
@@ -429,7 +429,7 @@ const AdminTenants: React.FC = () => {
                           <button
                             onClick={closeDeleteConfirm}
                             disabled={deletingId === tenant.id}
-                            className="px-3 py-1.5 rounded-lg hover:bg-stone-100 text-warm-brown text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="px-3 py-1.5 rounded-lg hover:bg-surface-sunken text-muted text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             Cancel
                           </button>
@@ -457,12 +457,12 @@ const AdminTenants: React.FC = () => {
       {/* Create/Edit Modal */}
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90dvh] flex flex-col overflow-hidden">
-            <div className="p-6 border-b border-stone-200 flex justify-between items-center">
-              <h3 className="text-xl font-bold text-earth font-display">
+          <div className="bg-surface-raised rounded-2xl shadow-2xl w-full max-w-lg max-h-[90dvh] flex flex-col overflow-hidden">
+            <div className="p-6 border-b border-line flex justify-between items-center">
+              <h3 className="text-xl font-bold text-strong font-display">
                 {editingId ? 'Edit Tenant' : 'New Tenant'}
               </h3>
-              <button onClick={() => setShowForm(false)} className="text-[color:var(--text-faint)] hover:text-warm-brown">
+              <button onClick={() => setShowForm(false)} className="text-faint hover:text-muted">
                 <X size={20} />
               </button>
             </div>
@@ -475,48 +475,48 @@ const AdminTenants: React.FC = () => {
               )}
 
               <div>
-                <label className="block text-sm font-semibold text-[color:var(--text-body)] mb-1">Church / Ministry Name</label>
+                <label className="block text-sm font-semibold text-body mb-1">Church / Ministry Name</label>
                 <input
                   type="text"
                   value={form.name}
                   onChange={e => setForm({ ...form, name: e.target.value })}
-                  className="w-full px-4 py-2.5 border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-gold focus:border-gold outline-none"
+                  className="w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:ring-2 focus:ring-gold focus:border-gold outline-none"
                   placeholder="Grace Community Church"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-[color:var(--text-body)] mb-1">Subdomain</label>
+                <label className="block text-sm font-semibold text-body mb-1">Subdomain</label>
                 <div className="flex items-center gap-0">
                   <input
                     type="text"
                     value={form.subdomain}
                     onChange={e => setForm({ ...form, subdomain: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') })}
                     disabled={!!editingId}
-                    className={`flex-1 px-4 py-2.5 border border-stone-200 rounded-l-xl text-sm focus:ring-2 focus:ring-gold focus:border-gold outline-none font-mono ${editingId ? 'bg-stone-100 text-[color:var(--text-faint)]' : ''}`}
+                    className={`flex-1 px-4 py-2.5 border border-line rounded-l-xl text-sm focus:ring-2 focus:ring-gold focus:border-gold outline-none font-mono ${editingId ? 'bg-surface-sunken text-faint' : ''}`}
                     placeholder="gracechurch"
                   />
-                  <span className="px-3 py-2.5 bg-stone-100 border border-l-0 border-stone-200 rounded-r-xl text-sm text-warm-brown">
+                  <span className="px-3 py-2.5 bg-surface-sunken border border-l-0 border-line rounded-r-xl text-sm text-muted">
                     .theharvest.app
                   </span>
                 </div>
-                {editingId && <p className="text-xs text-[color:var(--text-faint)] mt-1">Subdomain cannot be changed after creation.</p>}
+                {editingId && <p className="text-xs text-faint mt-1">Subdomain cannot be changed after creation.</p>}
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-[color:var(--text-body)] mb-1">Plan</label>
+                <label className="block text-sm font-semibold text-body mb-1">Plan</label>
                 {editingId ? (
                   <>
-                    <div className="w-full px-4 py-2.5 border border-stone-200 rounded-xl text-sm bg-stone-100 text-[color:var(--text-faint)]">
+                    <div className="w-full px-4 py-2.5 border border-line rounded-xl text-sm bg-surface-sunken text-faint">
                       {PLAN_DISPLAY[form.plan]}
                     </div>
-                    <p className="text-xs text-[color:var(--text-faint)] mt-1">Plan changes are managed through the tenant&apos;s own billing.</p>
+                    <p className="text-xs text-faint mt-1">Plan changes are managed through the tenant&apos;s own billing.</p>
                   </>
                 ) : (
                   <select
                     value={form.plan}
                     onChange={e => setForm({ ...form, plan: e.target.value as TenantPlan })}
-                    className="w-full px-4 py-2.5 border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-gold focus:border-gold outline-none bg-white"
+                    className="w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:ring-2 focus:ring-gold focus:border-gold outline-none bg-surface-raised"
                   >
                     <option value="plus">Individual — $49/mo</option>
                     <option value="pro">Small Team — $99/mo</option>
@@ -528,35 +528,35 @@ const AdminTenants: React.FC = () => {
 
               {(form.plan === 'max' || form.plan === 'ultra') && (
                 <div>
-                  <label className="block text-sm font-semibold text-[color:var(--text-body)] mb-1">Custom Domain</label>
+                  <label className="block text-sm font-semibold text-body mb-1">Custom Domain</label>
                   <input
                     type="text"
                     value={form.customDomain}
                     onChange={e => setForm({ ...form, customDomain: e.target.value })}
-                    className="w-full px-4 py-2.5 border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-gold focus:border-gold outline-none"
+                    className="w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:ring-2 focus:ring-gold focus:border-gold outline-none"
                     placeholder="yourchurch.com"
                   />
-                  <p className="text-xs text-[color:var(--text-faint)] mt-1">The church&apos;s own domain. DNS must point to Vercel.</p>
+                  <p className="text-xs text-faint mt-1">The church&apos;s own domain. DNS must point to Vercel.</p>
                 </div>
               )}
 
               <div>
-                <label className="block text-sm font-semibold text-[color:var(--text-body)] mb-1">Admin Email</label>
+                <label className="block text-sm font-semibold text-body mb-1">Admin Email</label>
                 <input
                   type="email"
                   value={form.adminEmail}
                   onChange={e => setForm({ ...form, adminEmail: e.target.value })}
-                  className="w-full px-4 py-2.5 border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-gold focus:border-gold outline-none"
+                  className="w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:ring-2 focus:ring-gold focus:border-gold outline-none"
                   placeholder="pastor@church.com"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-[color:var(--text-body)] mb-1">Description (optional)</label>
+                <label className="block text-sm font-semibold text-body mb-1">Description (optional)</label>
                 <textarea
                   value={form.description}
                   onChange={e => setForm({ ...form, description: e.target.value })}
-                  className="w-full px-4 py-2.5 border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-gold focus:border-gold outline-none resize-none"
+                  className="w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:ring-2 focus:ring-gold focus:border-gold outline-none resize-none"
                   rows={3}
                   placeholder="A brief description of the ministry..."
                 />
@@ -564,12 +564,12 @@ const AdminTenants: React.FC = () => {
             </div>
 
             <div
-              className="px-6 pt-6 border-t border-stone-200 flex justify-end gap-3"
+              className="px-6 pt-6 border-t border-line flex justify-end gap-3"
               style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}
             >
               <button
                 onClick={() => setShowForm(false)}
-                className="px-4 py-2 text-sm font-medium text-warm-brown hover:text-earth transition-colors"
+                className="px-4 py-2 text-sm font-medium text-muted hover:text-strong transition-colors"
               >
                 Cancel
               </button>

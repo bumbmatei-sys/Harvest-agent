@@ -462,14 +462,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
       <button
         key={tab.id}
         onClick={() => go(tab.id)}
-        className="w-full flex items-center gap-3 px-[15px] py-3 transition-colors text-left hover:bg-stone-50 active:bg-stone-100"
+        className="w-full flex items-center gap-3 px-[15px] py-3 transition-colors text-left hover:bg-stone-50 active:bg-surface-sunken"
         style={{ backgroundColor: isActive ? 'color-mix(in srgb, var(--brand-color, #C9963A) 10%, transparent)' : undefined }}
       >
-        <span className="w-[30px] h-[30px] shrink-0 rounded-lg bg-stone-100 flex items-center justify-center">
+        <span className="w-[30px] h-[30px] shrink-0 rounded-lg bg-surface-sunken flex items-center justify-center">
           <Icon size={16} className="text-gold" />
         </span>
         <span
-          className="text-sm font-medium flex-1 text-earth"
+          className="text-sm font-medium flex-1 text-strong"
           style={isActive ? { color: 'var(--brand-color, #C9963A)' } : undefined}
         >
           {tab.label}
@@ -479,7 +479,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
-        <ChevronRight size={16} className="text-[color:var(--text-faint)] shrink-0" />
+        <ChevronRight size={16} className="text-faint shrink-0" />
       </button>
     );
   };
@@ -503,7 +503,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
         } ${
           isActive
             ? 'lg:bg-[color-mix(in_srgb,var(--brand-color)_16%,white)]'
-            : 'text-warm-brown hover:text-earth lg:hover:bg-stone-100'
+            : 'text-muted hover:text-strong lg:hover:bg-surface-sunken'
         }`}
         style={isActive ? { color: 'var(--brand-color, #C9963A)' } : undefined}
         title={isSidebarCollapsed ? tab.label : undefined}
@@ -523,15 +523,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
   };
 
   if (isLoading) {
-    return <div className="flex items-center justify-center h-screen bg-cream"><div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--brand-color, #C9963A)', borderTopColor: 'transparent' }}></div></div>;
+    return <div className="flex items-center justify-center h-screen bg-surface"><div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--brand-color, #C9963A)', borderTopColor: 'transparent' }}></div></div>;
   }
 
   return (
     <AdminHeaderContext.Provider value={headerApi}>
-    <div className="flex flex-col lg:flex-row h-[100dvh] bg-cream lg:bg-cream font-sans overflow-hidden transition-colors duration-300">
+    <div className="flex flex-col lg:flex-row h-[100dvh] bg-surface lg:bg-surface font-sans overflow-hidden transition-colors duration-300">
 
       {/* Side/Bottom Navigation */}
-      <div className={`bg-white border-t lg:border-t-0 lg:border-r border-stone-200 lg:border-stone-200 flex justify-center lg:justify-start py-2 lg:py-6 px-2 lg:px-4 pb-safe lg:pb-0 fixed lg:relative bottom-0 lg:bottom-auto w-full ${isSidebarCollapsed ? 'lg:w-[88px]' : 'lg:w-64'} lg:h-screen z-[100] shadow-[0_-4px_20px_rgba(0,0,0,0.05)] lg:shadow-[2px_0_10px_rgba(0,0,0,0.02)] transition-all duration-300`}>
+      <div className={`bg-surface-raised border-t lg:border-t-0 lg:border-r border-line lg:border-line flex justify-center lg:justify-start py-2 lg:py-6 px-2 lg:px-4 pb-safe lg:pb-0 fixed lg:relative bottom-0 lg:bottom-auto w-full ${isSidebarCollapsed ? 'lg:w-[88px]' : 'lg:w-64'} lg:h-screen z-[100] shadow-[0_-4px_20px_rgba(0,0,0,0.05)] lg:shadow-[2px_0_10px_rgba(0,0,0,0.02)] transition-all duration-300`}>
         <div className={`flex lg:flex-col justify-around lg:justify-start items-center lg:items-stretch w-full lg:max-w-none lg:gap-2 ${isSidebarCollapsed ? 'lg:items-center' : ''}`}>
           {/* Desktop Logo — the member-app entry point on desktop (the More-drawer
               "Go to User App" row is mobile-only). Routes through handleViewApp so
@@ -546,7 +546,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
               className="w-9 h-9 object-contain shrink-0"
             />
             {!isSidebarCollapsed && (
-              <span className="font-display text-[19px] font-semibold tracking-[-0.01em] text-earth truncate">
+              <span className="font-display text-[19px] font-semibold tracking-[-0.01em] text-strong truncate">
                 {isWhiteLabel ? tenantName : 'Harvest'}
                 {/* Signature gold period belongs to the Harvest lockup only. */}
                 {!isWhiteLabel && <span style={{ color: 'var(--brand-color, #C9963A)' }}>.</span>}
@@ -564,7 +564,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
                   key={tab.id}
                   onClick={() => go(tab.id)}
                   className={`flex flex-col items-center justify-center gap-1 w-16 h-12 rounded-xl transition-all relative ${
-                    isActive ? '' : 'text-[color:var(--text-faint)]'
+                    isActive ? '' : 'text-faint'
                   }`}
                   style={isActive ? { color: 'var(--brand-color, #C9963A)' } : undefined}
                 >
@@ -579,7 +579,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
             <button
               onClick={() => setShowMoreSheet(!showMoreSheet)}
               className={`flex flex-col items-center justify-center gap-1 w-16 h-12 rounded-xl transition-all ${
-                showMoreSheet ? '' : 'text-[color:var(--text-faint)]'
+                showMoreSheet ? '' : 'text-faint'
               }`}
               style={showMoreSheet ? { color: 'var(--brand-color, #C9963A)' } : undefined}
             >
@@ -603,14 +603,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
               return (
                 <div key={group.label} className="lg:mt-4">
                   {isSidebarCollapsed ? (
-                    <div className="mx-2 mb-1 border-t border-stone-200" />
+                    <div className="mx-2 mb-1 border-t border-line" />
                   ) : (
                     <button
                       onClick={() => toggleGroup(group.label)}
                       className="w-full flex items-center justify-between px-3 mb-1 hover:opacity-80 transition-opacity"
                     >
-                      <span className="text-[10px] font-bold tracking-[0.14em] text-[color:var(--text-faint)] uppercase">{group.label}</span>
-                      <ChevronDown size={13} className={`text-[color:var(--text-faint)] transition-transform ${collapsed ? '' : 'rotate-180'}`} />
+                      <span className="text-[10px] font-bold tracking-[0.14em] text-faint uppercase">{group.label}</span>
+                      <ChevronDown size={13} className={`text-faint transition-transform ${collapsed ? '' : 'rotate-180'}`} />
                     </button>
                   )}
                   {!collapsed && <div className="flex flex-col gap-0.5">{items.map(renderDesktopTab)}</div>}
@@ -624,10 +624,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
           </div>
 
           {/* Collapse Button (Bottom) */}
-          <div className="hidden lg:flex items-end pb-1 pt-3 mt-auto border-t border-stone-200 shrink-0">
+          <div className="hidden lg:flex items-end pb-1 pt-3 mt-auto border-t border-line shrink-0">
             <button
                onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-               className={`flex items-center gap-3 w-full h-11 rounded-xl transition-all px-3 shrink-0 text-warm-brown hover:text-earth hover:bg-stone-100 ${isSidebarCollapsed ? 'justify-center' : 'justify-start'}`}
+               className={`flex items-center gap-3 w-full h-11 rounded-xl transition-all px-3 shrink-0 text-muted hover:text-strong hover:bg-surface-sunken ${isSidebarCollapsed ? 'justify-center' : 'justify-start'}`}
                title={isSidebarCollapsed ? "Expand" : "Collapse"}
             >
                {isSidebarCollapsed ? <ChevronRight size={20} strokeWidth={2} /> : <ChevronLeft size={20} strokeWidth={2} />}
@@ -638,16 +638,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
       </div>
 
       {/* Main Container */}
-      <div className="flex-1 flex flex-col h-[100dvh] relative bg-cream lg:bg-cream overflow-hidden min-w-0">
+      <div className="flex-1 flex flex-col h-[100dvh] relative bg-surface lg:bg-surface overflow-hidden min-w-0">
         {/* Desktop branded top bar — Open member app · centered page title ·
             search / notifications / account. Matches the admin mockup. */}
-        <div className="hidden lg:flex bg-white border-b border-stone-200 h-14 items-center px-6 xl:px-8 z-10 w-full shrink-0">
+        <div className="hidden lg:flex bg-surface-raised border-b border-line h-14 items-center px-6 xl:px-8 z-10 w-full shrink-0">
           {/* Left: back (when a sub-view overrides the header, e.g. an open chat
               thread) — otherwise the "Open member app" shortcut. */}
           {headerOverride?.onBack ? (
             <button
               onClick={headerOverride.onBack}
-              className="flex items-center gap-1.5 text-[13px] font-semibold text-earth hover:opacity-70 transition-opacity shrink-0"
+              className="flex items-center gap-1.5 text-[13px] font-semibold text-strong hover:opacity-70 transition-opacity shrink-0"
               aria-label="Back"
             >
               <ChevronLeft size={20} strokeWidth={2.5} className="text-gold" />
@@ -656,18 +656,18 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
           ) : (
             <button
               onClick={handleViewApp}
-              className="flex items-center gap-2 rounded-full border border-stone-200 bg-white pl-1.5 pr-3 py-1.5 text-[13px] font-semibold text-earth hover:bg-stone-100 transition-colors shrink-0"
+              className="flex items-center gap-2 rounded-full border border-line bg-surface-raised pl-1.5 pr-3 py-1.5 text-[13px] font-semibold text-strong hover:bg-surface-sunken transition-colors shrink-0"
             >
               <span className="w-6 h-6 rounded-md bg-[color-mix(in_srgb,var(--brand-color)_14%,white)] flex items-center justify-center shrink-0">
                 <img src={displayLogo} alt="" className="w-4 h-4 object-contain" />
               </span>
               Open member app
-              <ExternalLink size={13} className="text-warm-brown" />
+              <ExternalLink size={13} className="text-muted" />
             </button>
           )}
 
           {/* Center: active screen title */}
-          <h1 className="flex-1 text-center font-display text-xl font-normal tracking-[-0.01em] text-earth truncate px-4">
+          <h1 className="flex-1 text-center font-display text-xl font-normal tracking-[-0.01em] text-strong truncate px-4">
             {headerOverride?.title ?? headerTitle}
           </h1>
 
@@ -679,7 +679,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
             {showInbox && (
               <button
                 onClick={() => go('inbox')}
-                className="w-9 h-9 rounded-full flex items-center justify-center text-warm-brown hover:text-earth hover:bg-stone-100 transition-colors relative"
+                className="w-9 h-9 rounded-full flex items-center justify-center text-muted hover:text-strong hover:bg-surface-sunken transition-colors relative"
                 style={activeTab === 'inbox' ? { color: 'var(--brand-color, #C9963A)' } : undefined}
                 title="Platform Inbox"
                 aria-label="Platform Inbox"
@@ -843,7 +843,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
               }}
             />
           ) : (
-            <div className="flex flex-col items-center justify-center h-full text-[color:var(--text-faint)]">
+            <div className="flex flex-col items-center justify-center h-full text-faint">
               <p className="text-lg font-medium">{allTabs.find(t => t.id === activeTab)?.label || 'Inbox'} coming soon.</p>
             </div>
           )}
@@ -858,12 +858,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
               onClick={() => setShowMoreSheet(false)}
             />
             <div
-              className="fixed bottom-0 left-0 right-0 bg-cream rounded-t-[22px] z-[102] lg:hidden shadow-[0_-12px_44px_rgba(0,0,0,0.28)] max-h-[84vh] flex flex-col"
+              className="fixed bottom-0 left-0 right-0 bg-surface rounded-t-[22px] z-[102] lg:hidden shadow-[0_-12px_44px_rgba(0,0,0,0.28)] max-h-[84vh] flex flex-col"
               style={{ animation: 'slideUp 0.25s ease-out' }}
             >
               <div className="w-9 h-1 bg-stone-300 rounded-full mx-auto mt-3 mb-1 shrink-0" />
               <div className="flex items-center justify-between px-[18px] pt-1.5 pb-3 shrink-0">
-                <h3 className="font-display font-light text-[22px] leading-none tracking-[-0.02em] text-earth">More</h3>
+                <h3 className="font-display font-light text-[22px] leading-none tracking-[-0.02em] text-strong">More</h3>
               </div>
               <div className="overflow-y-auto px-[18px] pb-6">
 
@@ -875,10 +875,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
                   if (groupTabs.length === 0) return null;
                   return (
                     <div key={group.label} className="mb-4">
-                      <p className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-warm-brown px-1 pb-1.5">
+                      <p className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-muted px-1 pb-1.5">
                         {group.label}
                       </p>
-                      <div className="bg-white rounded-brand-xl border border-stone-200 overflow-hidden divide-y divide-stone-200">
+                      <div className="bg-surface-raised rounded-brand-xl border border-line overflow-hidden divide-y divide-stone-200">
                         {groupTabs.map(renderMoreRow)}
                       </div>
                     </div>
@@ -895,10 +895,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
                   if (leftover.length === 0) return null;
                   return (
                     <div className="mb-4">
-                      <p className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-warm-brown px-1 pb-1.5">
+                      <p className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-muted px-1 pb-1.5">
                         OTHER
                       </p>
-                      <div className="bg-white rounded-brand-xl border border-stone-200 overflow-hidden divide-y divide-stone-200">
+                      <div className="bg-surface-raised rounded-brand-xl border border-line overflow-hidden divide-y divide-stone-200">
                         {leftover.map(renderMoreRow)}
                       </div>
                     </div>
@@ -948,16 +948,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
           admin never navigates away. A slim top bar provides the close affordance;
           Profile's own sub-modals (fixed inset-0) cover it while open. */}
       {showProfile && (
-        <div className="fixed inset-0 z-[200] bg-cream flex flex-col">
-          <div className="flex items-center gap-1 h-12 px-3 bg-white border-b border-stone-200 shrink-0">
+        <div className="fixed inset-0 z-[200] bg-surface flex flex-col">
+          <div className="flex items-center gap-1 h-12 px-3 bg-surface-raised border-b border-line shrink-0">
             <button
               onClick={() => setShowProfile(false)}
               aria-label="Close profile"
-              className="p-1.5 -ml-1 text-earth hover:text-earth transition-colors"
+              className="p-1.5 -ml-1 text-strong hover:text-strong transition-colors"
             >
               <X size={22} />
             </button>
-            <span className="text-sm font-bold text-earth">My Profile</span>
+            <span className="text-sm font-bold text-strong">My Profile</span>
           </div>
           <div className="flex-1 overflow-y-auto">
             <Profile
@@ -972,16 +972,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
       {/* Billing & Payments — owner-only overlay (the item is hidden for non-owners
           and the /api/billing/* routes enforce the same owner gate server-side). */}
       {showBilling && isOwner && (
-        <div className="fixed inset-0 z-[200] bg-cream flex flex-col">
-          <div className="flex items-center gap-1 h-12 px-3 bg-white border-b border-stone-200 shrink-0">
+        <div className="fixed inset-0 z-[200] bg-surface flex flex-col">
+          <div className="flex items-center gap-1 h-12 px-3 bg-surface-raised border-b border-line shrink-0">
             <button
               onClick={() => setShowBilling(false)}
               aria-label="Close billing"
-              className="p-1.5 -ml-1 text-earth hover:text-earth transition-colors"
+              className="p-1.5 -ml-1 text-strong hover:text-strong transition-colors"
             >
               <X size={22} />
             </button>
-            <span className="text-sm font-bold text-earth">Billing &amp; Payments</span>
+            <span className="text-sm font-bold text-strong">Billing &amp; Payments</span>
           </div>
           <div className="flex-1 overflow-y-auto p-4 lg:p-6">
             <BillingAndPayments

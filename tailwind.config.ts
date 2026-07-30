@@ -96,6 +96,7 @@ const config: Config = {
       // but has no entry of these names.
       textColor: {
         strong: "var(--text-strong)", // = text-earth
+        body: "var(--text-body)",     // = text-[color:var(--text-body)]
         muted: "var(--text-muted)",   // = text-warm-brown
         faint: "var(--text-faint)",   // = text-[color:var(--text-faint)]
       },
