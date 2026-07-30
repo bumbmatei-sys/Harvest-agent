@@ -213,7 +213,7 @@ export const DomainSection: React.FC<DomainSectionProps> = ({ hasCustomDomain, o
     //   • `text-white` on the two `bg-gold` buttons — that white is contrast
     //     against the brand accent, not a neutral. It must stay white on a gold
     //     button in either theme, so tokenising it would be the bug.
-    //   • `bg-stone-200` on the `.theharvest.app` suffix chip — a real gap, not
+    //   • `bg-surface-chip` on the `.theharvest.app` suffix chip — a real gap, not
     //     an oversight: a stone-200 *fill* has no semantic token (stone-200 is
     //     spoken for as --border-default). Left hardcoded rather than inventing
     //     vocabulary here; flagged in the PR body for stage 3 to name.
@@ -234,7 +234,7 @@ export const DomainSection: React.FC<DomainSectionProps> = ({ hasCustomDomain, o
             disabled
             className="w-full px-4 py-2.5 border border-line rounded-l-brand text-sm bg-surface-sunken text-muted cursor-not-allowed"
           />
-          <span className="px-4 py-2.5 border border-l-0 border-line rounded-r-brand text-sm text-faint bg-stone-200 whitespace-nowrap">.theharvest.app</span>
+          <span className="px-4 py-2.5 border border-l-0 border-line rounded-r-brand text-sm text-faint bg-surface-chip whitespace-nowrap">.theharvest.app</span>
         </div>
         <p className="text-xs text-faint mt-2">
           To change your subdomain, please contact support. Subdomain changes require migration and may affect your existing links.

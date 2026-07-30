@@ -68,7 +68,7 @@ export function QuizPanel({ quiz, attempt, onSubmit }: QuizPanelProps) {
         </div>
         <button
           onClick={handleRetry}
-          className="w-full py-3 rounded-lg bg-surface-sunken border border-line text-muted text-[13px] font-semibold cursor-pointer hover:bg-stone-200 transition-colors"
+          className="w-full py-3 rounded-lg bg-surface-sunken border border-line text-muted text-[13px] font-semibold cursor-pointer hover:bg-surface-chip transition-colors"
         >
           Retake Quiz
         </button>
@@ -150,7 +150,7 @@ export function QuizPanel({ quiz, attempt, onSubmit }: QuizPanelProps) {
         ) : (
           <button
             onClick={handleRetry}
-            className="w-full py-3 rounded-lg bg-surface-sunken border border-line text-muted text-[13px] font-semibold cursor-pointer hover:bg-stone-200 transition-colors"
+            className="w-full py-3 rounded-lg bg-surface-sunken border border-line text-muted text-[13px] font-semibold cursor-pointer hover:bg-surface-chip transition-colors"
           >
             Retry Quiz
           </button>

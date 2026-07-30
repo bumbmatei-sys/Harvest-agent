@@ -35,7 +35,7 @@ const fmtCents = (cents: number) => (cents > 0 ? `$${(cents / 100).toFixed(2)}` 
 /** Small pill toggle matching the existing online-event toggle style. */
 const Toggle: React.FC<{ on: boolean; onClick: () => void }> = ({ on, onClick }) => (
   <button onClick={onClick} className="transition-colors shrink-0" aria-pressed={on}>
-    <div className={`w-10 h-5 rounded-full transition-colors flex items-center px-0.5 ${on ? 'bg-gold' : 'bg-stone-200'}`}>
+    <div className={`w-10 h-5 rounded-full transition-colors flex items-center px-0.5 ${on ? 'bg-gold' : 'bg-surface-chip'}`}>
       <div className={`w-4 h-4 rounded-full bg-surface-raised shadow transition-transform ${on ? 'translate-x-5' : ''}`} />
     </div>
   </button>
@@ -430,7 +430,7 @@ const AdminEvents: React.FC = () => {
               <div className="flex items-center justify-between mb-3">
                 <label className="text-xs font-semibold text-body">Online Event</label>
                 <button onClick={() => setForm({ ...form, isOnline: !form.isOnline })} className="transition-colors">
-                  <div className={`w-10 h-5 rounded-full transition-colors flex items-center px-0.5 ${form.isOnline ? 'bg-gold' : 'bg-stone-200'}`}>
+                  <div className={`w-10 h-5 rounded-full transition-colors flex items-center px-0.5 ${form.isOnline ? 'bg-gold' : 'bg-surface-chip'}`}>
                     <div className={`w-4 h-4 rounded-full bg-surface-raised shadow transition-transform ${form.isOnline ? 'translate-x-5' : ''}`} />
                   </div>
                 </button>

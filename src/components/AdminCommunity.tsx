@@ -229,7 +229,7 @@ const AttachmentCard: React.FC<{ attachment: MessageAttachment; onOpen?: () => v
   const icon = attachment.type === 'doc' ? '📄' : attachment.type === 'contact' ? '👤' : attachment.type === 'form' ? '📝' : '🎯';
   const label = attachment.type === 'doc' ? 'Open Doc' : attachment.type === 'contact' ? 'View Contact' : attachment.type === 'form' ? 'Open Form' : 'View Campaign';
   return (
-    <div className="mt-1.5 bg-surface-raised border border-[#E8E2D9] rounded-2xl overflow-hidden shadow-sm" style={{ maxWidth: 224 }}>
+    <div className="mt-1.5 bg-surface-raised border border-line rounded-2xl overflow-hidden shadow-sm" style={{ maxWidth: 224 }}>
       <div className="flex items-start gap-2 p-3 pb-2">
         <span className="text-lg leading-none flex-shrink-0">{icon}</span>
         <div className="flex-1 min-w-0">
@@ -238,7 +238,7 @@ const AttachmentCard: React.FC<{ attachment: MessageAttachment; onOpen?: () => v
         </div>
       </div>
       <div className="px-3 pb-3">
-        <div className="h-px bg-[#E8E2D9] mb-2" />
+        <div className="h-px bg-surface-chip mb-2" />
         <button
           onClick={onOpen}
           disabled={!onOpen}
@@ -490,7 +490,7 @@ const ChannelMembersSheet: React.FC<{
     <div className="fixed inset-0 z-[300] flex items-end">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
       <div className="relative w-full bg-surface-raised rounded-t-3xl max-h-[75vh] flex flex-col">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[#E8E2D9] flex-shrink-0">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-line flex-shrink-0">
           <h3 className="font-display font-bold text-strong text-sm">Channel Members</h3>
           <button onClick={onClose}><X size={18} className="text-faint" /></button>
         </div>
@@ -521,7 +521,7 @@ const ChannelMembersSheet: React.FC<{
         </div>
 
         {/* Add members */}
-        <div className="px-4 pt-3 pb-2 border-t border-[#E8E2D9] flex-shrink-0">
+        <div className="px-4 pt-3 pb-2 border-t border-line flex-shrink-0">
           <p className="text-xs font-bold text-faint uppercase tracking-wider mb-2 px-1">Add Members</p>
           <div className="relative">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-faint" />
@@ -553,7 +553,7 @@ const ChannelMembersSheet: React.FC<{
             </button>
           ))}
         </div>
-        <div className="p-4 border-t border-[#E8E2D9] flex-shrink-0">
+        <div className="p-4 border-t border-line flex-shrink-0">
           <button
             onClick={onClose}
             className="w-full py-2.5 rounded-xl text-sm font-semibold text-white"
@@ -656,7 +656,7 @@ const ChannelThread: React.FC<{
                   <div key={m.id} className="group flex items-end gap-2">
                     <div className="max-w-[78%]">
                       {m.content && (
-                        <p className="bg-surface-raised border border-[#E8E2D9] rounded-2xl rounded-tl-sm px-3 py-2 text-sm text-body shadow-sm break-words">
+                        <p className="bg-surface-raised border border-line rounded-2xl rounded-tl-sm px-3 py-2 text-sm text-body shadow-sm break-words">
                           {m.content}
                         </p>
                       )}
@@ -685,7 +685,7 @@ const ChannelThread: React.FC<{
       {/* Always embedded in the admin dashboard, so the fixed bottom nav's
           safe-area padding + the content wrapper's bottom inset already clear
           the home indicator; an extra safe-area inset here would double-stack. */}
-      <div className="bg-surface-raised border-t border-[#E8E2D9] flex-shrink-0 px-4 pt-3" style={{ paddingBottom: '8px' }}>
+      <div className="bg-surface-raised border-t border-line flex-shrink-0 px-4 pt-3" style={{ paddingBottom: '8px' }}>
         {attachments.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-2">
             {attachments.map((a, i) => (
@@ -699,10 +699,10 @@ const ChannelThread: React.FC<{
             ))}
           </div>
         )}
-        <div className="flex gap-2 items-center bg-[#F7F6F3] rounded-2xl px-3 py-2.5 border border-[#E8E2D9] focus-within:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] transition-colors">
+        <div className="flex gap-2 items-center bg-[#F7F6F3] rounded-2xl px-3 py-2.5 border border-line focus-within:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] transition-colors">
           <button
             onClick={() => setShowPicker(true)}
-            className="flex-shrink-0 p-1 rounded-lg hover:bg-[#E8E2D9] transition-colors"
+            className="flex-shrink-0 p-1 rounded-lg hover:bg-surface-chip transition-colors"
           >
             <Paperclip size={16} className="text-faint" />
           </button>
@@ -879,7 +879,7 @@ const DmThread: React.FC<{
       {/* Always embedded in the admin dashboard, so the fixed bottom nav's
           safe-area padding + the content wrapper's bottom inset already clear
           the home indicator; an extra safe-area inset here would double-stack. */}
-      <div className="bg-surface-raised border-t border-[#E8E2D9] flex-shrink-0 px-4 pt-3" style={{ paddingBottom: '8px' }}>
+      <div className="bg-surface-raised border-t border-line flex-shrink-0 px-4 pt-3" style={{ paddingBottom: '8px' }}>
         {attachments.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-2">
             {attachments.map((a, i) => (
@@ -893,10 +893,10 @@ const DmThread: React.FC<{
             ))}
           </div>
         )}
-        <div className="flex gap-2 items-center bg-[#F7F6F3] rounded-2xl px-3 py-2.5 border border-[#E8E2D9] focus-within:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] transition-colors">
+        <div className="flex gap-2 items-center bg-[#F7F6F3] rounded-2xl px-3 py-2.5 border border-line focus-within:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] transition-colors">
           <button
             onClick={() => setShowPicker(true)}
-            className="flex-shrink-0 p-1 rounded-lg hover:bg-[#E8E2D9] transition-colors"
+            className="flex-shrink-0 p-1 rounded-lg hover:bg-surface-chip transition-colors"
           >
             <Paperclip size={16} className="text-faint" />
           </button>
@@ -1308,7 +1308,7 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
                 <button
                   key={ch.id}
                   onClick={() => setOpenChannel(ch)}
-                  className={`w-full rounded-2xl lg:rounded-brand px-4 py-3 border flex items-center gap-3 transition-all text-left ${active ? 'bg-[color-mix(in_srgb,var(--brand-color)_9%,white)] border-[color-mix(in_srgb,var(--brand-color)_45%,transparent)]' : 'bg-surface-raised border-[#E8E2D9] hover:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] hover:shadow-sm'}`}
+                  className={`w-full rounded-2xl lg:rounded-brand px-4 py-3 border flex items-center gap-3 transition-all text-left ${active ? 'bg-[color-mix(in_srgb,var(--brand-color)_9%,white)] border-[color-mix(in_srgb,var(--brand-color)_45%,transparent)]' : 'bg-surface-raised border-line hover:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] hover:shadow-sm'}`}
                 >
                   <div className="relative flex-shrink-0">
                     <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'var(--brand-color, #B8962E)1A' }}>
@@ -1376,7 +1376,7 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
                 <button
                   key={dm.id}
                   onClick={() => setOpenAdminDm(dm)}
-                  className="w-full bg-surface-raised rounded-2xl px-4 py-3.5 border border-[#E8E2D9] flex items-center gap-3 hover:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] hover:shadow-sm transition-all text-left"
+                  className="w-full bg-surface-raised rounded-2xl px-4 py-3.5 border border-line flex items-center gap-3 hover:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] hover:shadow-sm transition-all text-left"
                 >
                   <div className="w-11 h-11 rounded-full flex-shrink-0 flex items-center justify-center text-sm font-bold text-white"
                     style={{ backgroundColor: 'var(--brand-color, #B8962E)' }}>
@@ -1439,7 +1439,7 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
                 <button
                   key={dm.id}
                   onClick={() => setOpenMemberDm(dm)}
-                  className="w-full bg-surface-raised rounded-2xl px-4 py-3.5 border border-[#E8E2D9] flex items-center gap-3 hover:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] hover:shadow-sm transition-all text-left"
+                  className="w-full bg-surface-raised rounded-2xl px-4 py-3.5 border border-line flex items-center gap-3 hover:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] hover:shadow-sm transition-all text-left"
                 >
                   <div className="w-11 h-11 rounded-full flex-shrink-0 flex items-center justify-center text-sm font-bold text-white bg-sky-500">
                     {getOtherName(dm).charAt(0).toUpperCase()}
@@ -1508,7 +1508,7 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
       {showNewChannel && (
         <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center bg-black/50 p-4">
           <div className="bg-surface-raised rounded-3xl w-full max-w-md">
-            <div className="p-5 border-b border-[#E8E2D9] flex items-center justify-between">
+            <div className="p-5 border-b border-line flex items-center justify-between">
               <h3 className="font-display font-bold text-strong">New Channel</h3>
               <button onClick={() => setShowNewChannel(false)}><X size={18} className="text-faint" /></button>
             </div>
@@ -1518,7 +1518,7 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
                 <input
                   value={newChannelName}
                   onChange={e => setNewChannelName(e.target.value)}
-                  className="w-full rounded-xl border border-[#E8E2D9] px-3 py-2.5 text-sm focus:border-gold focus:outline-none"
+                  className="w-full rounded-xl border border-line px-3 py-2.5 text-sm focus:border-gold focus:outline-none"
                   placeholder="e.g. announcements"
                 />
               </div>
@@ -1527,7 +1527,7 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
                 <input
                   value={newChannelDesc}
                   onChange={e => setNewChannelDesc(e.target.value)}
-                  className="w-full rounded-xl border border-[#E8E2D9] px-3 py-2.5 text-sm focus:border-gold focus:outline-none"
+                  className="w-full rounded-xl border border-line px-3 py-2.5 text-sm focus:border-gold focus:outline-none"
                   placeholder="What is this channel about?"
                 />
               </div>
@@ -1542,10 +1542,10 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
                     value={channelMemberSearch}
                     onChange={e => setChannelMemberSearch(e.target.value)}
                     placeholder="Search users by name or email..."
-                    className="w-full pl-8 pr-3 py-2 text-sm rounded-xl border border-[#E8E2D9] focus:border-gold focus:outline-none"
+                    className="w-full pl-8 pr-3 py-2 text-sm rounded-xl border border-line focus:border-gold focus:outline-none"
                   />
                 </div>
-                <div className="max-h-44 overflow-y-auto border border-[#E8E2D9] rounded-xl divide-y divide-[#E8E2D9]">
+                <div className="max-h-44 overflow-y-auto border border-line rounded-xl divide-y divide-[#E8E2D9]">
                   {(() => {
                     const pool = channelPool
                       .filter(u => u.id !== currentUser?.uid)
@@ -1573,7 +1573,7 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
                             <p className="text-xs text-faint truncate">{u.email}</p>
                             {membershipBadge(u.id)}
                           </div>
-                          <div className={`w-5 h-5 rounded-md border flex items-center justify-center flex-shrink-0 ${checked ? 'border-transparent' : 'border-[#E8E2D9]'}`}
+                          <div className={`w-5 h-5 rounded-md border flex items-center justify-center flex-shrink-0 ${checked ? 'border-transparent' : 'border-line'}`}
                             style={checked ? { backgroundColor: 'var(--brand-color, #B8962E)' } : undefined}>
                             {checked && (
                               <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
@@ -1586,8 +1586,8 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
                 </div>
               </div>
             </div>
-            <div className="p-5 border-t border-[#E8E2D9] flex gap-3">
-              <button onClick={() => setShowNewChannel(false)} className="flex-1 py-2.5 rounded-xl border border-[#E8E2D9] text-sm font-semibold text-muted">Cancel</button>
+            <div className="p-5 border-t border-line flex gap-3">
+              <button onClick={() => setShowNewChannel(false)} className="flex-1 py-2.5 rounded-xl border border-line text-sm font-semibold text-muted">Cancel</button>
               <button onClick={createChannel} disabled={savingChannel || !newChannelName.trim()}
                 className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
                 style={{ backgroundColor: 'var(--brand-color, #B8962E)' }}>

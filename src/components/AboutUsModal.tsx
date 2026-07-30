@@ -96,7 +96,7 @@ const AboutUsModal: React.FC<AboutUsModalProps> = ({ isOpen, onClose, onOpenPart
  </p>
  
  <div className="bg-surface rounded-2xl p-4 flex items-center gap-4">
- <div className="w-14 h-14 rounded-full overflow-hidden bg-stone-200 flex-shrink-0 relative">
+ <div className="w-14 h-14 rounded-full overflow-hidden bg-surface-chip flex-shrink-0 relative">
  {mateiPic ? (
  <Image src={mateiPic} alt="Matei Bumb" fill className="object-cover" sizes="56px" />
  ) : (

@@ -234,7 +234,7 @@ const CampaignWidget: React.FC<CampaignWidgetProps> = ({ onDonate }) => {
                 <span className="font-bold text-strong">{fmt(campaign.raised)} raised</span>
                 <span className="text-muted">of {fmt(campaign.goal)}</span>
               </div>
-              <div className="h-3 bg-stone-200 rounded-full overflow-hidden mb-1">
+              <div className="h-3 bg-surface-chip rounded-full overflow-hidden mb-1">
                 <div className="h-full rounded-full" style={{ width: `${percentage}%`, backgroundColor: 'var(--brand-color, #e6b325)' }} />
               </div>
               <div className="text-right text-xs font-bold" style={{ color: 'var(--brand-color, #e6b325)' }}>{percentage}%</div>

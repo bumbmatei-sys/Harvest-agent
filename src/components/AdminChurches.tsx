@@ -635,7 +635,7 @@ export const AnnouncementsSection: React.FC<{ churchId: string }> = ({ churchId 
                     </button>
                     <button
                       onClick={() => setEditingId(null)}
-                      className="flex items-center gap-1 bg-stone-200 text-body px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-stone-300"
+                      className="flex items-center gap-1 bg-surface-chip text-body px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-stone-300"
                     >
                       <X size={12} /> Cancel
                     </button>

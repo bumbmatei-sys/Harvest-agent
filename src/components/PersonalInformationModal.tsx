@@ -438,7 +438,7 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
  {/* Profile Photo — left-column card on desktop */}
  <div className="flex flex-col items-center mt-2 mb-8 lg:mt-0 lg:mb-0 lg:bg-surface-raised lg:border lg:border-line lg:rounded-3xl lg:p-6 lg:sticky lg:top-4">
  <div className="relative">
- <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-white shadow-sm bg-stone-200 relative">
+ <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-white shadow-sm bg-surface-chip relative">
  {profilePic ? (
  <Image src={profilePic} alt="Profile" fill sizes="128px" className="object-cover" />
  ) : (
@@ -550,7 +550,7 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
                 className="peer sr-only"
                 required
               />
-              <div className="w-full bg-surface-sunken rounded-2xl px-4 py-4 text-center text-strong font-bold peer-checked:bg-stone-200 peer-checked:ring-2 peer-checked:ring-gray-300 transition-all">
+              <div className="w-full bg-surface-sunken rounded-2xl px-4 py-4 text-center text-strong font-bold peer-checked:bg-surface-chip peer-checked:ring-2 peer-checked:ring-gray-300 transition-all">
                 No
               </div>
             </label>

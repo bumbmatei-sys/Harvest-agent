@@ -75,6 +75,7 @@ const config: Config = {
           // so bg-stone-100 — the largest unmapped surface in the audit
           // (392 uses / 74 files) — had nowhere to convert to.
           sunken: "var(--surface-sunken)",
+          chip: "var(--surface-chip)",
         },
         line: {
           DEFAULT: "var(--border-default)",

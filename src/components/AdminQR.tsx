@@ -136,7 +136,7 @@ const AdminQR: React.FC = () => {
           const active = qrType === opt.key;
           return (
             <button key={opt.key} onClick={() => changeType(opt.key)}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-semibold transition-colors ${active ? 'text-white' : 'text-muted bg-surface-sunken hover:bg-stone-200'}`}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-semibold transition-colors ${active ? 'text-white' : 'text-muted bg-surface-sunken hover:bg-surface-chip'}`}
               style={active ? { backgroundColor: GOLD } : undefined}>
               <Icon size={13} /> {opt.label}
             </button>

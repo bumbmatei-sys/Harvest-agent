@@ -39,8 +39,15 @@
     copy reads warm rather than cool-gray. */
  --text-heading: #2D2519;  /* earth */
  --text-body:    #4A4038;  /* warm dark-brown for running copy */
- --text-muted:   #8B7355;  /* warm brown — secondary */
- --text-faint:   #A89A87;  /* quiet taupe — eyebrows, timestamps */
+ /* Darkened to clear WCAG AA. Was #8B7355 at 4.23:1 on --surface, i.e. below
+    the 4.5 floor on the live light theme. Darkened along the warm-brown ->
+    earth axis so the hue is unchanged; now 6.62:1. */
+ --text-muted:   #68563F;  /* warm brown — secondary */
+ /* Was #A89A87 at 2.59:1 — the worst pair in the app, and it carries
+    timestamps and eyebrows everywhere. Now 4.98:1. Kept a visible step
+    lighter than --text-muted (4.98 vs 6.62) so the hierarchy survives;
+    AA is a floor, so 'faint' cannot be as faint as it was. */
+ --text-faint:   #766A5A;  /* quiet taupe — eyebrows, timestamps */
 
  /* Desktop (lg:+) structural tokens. Every consumer is `lg:`-scoped so these
     only affect desktop; mobile surfaces are untouched. Retargeted to the
@@ -83,6 +90,13 @@
  --border-subtle:   var(--stone-100);  /* hairlines, = border-stone-100 */
  --border-strong:   var(--stone-300);  /* emphasis border, = border-stone-300 */
  --text-strong:     var(--earth);      /* headings/emphasis, = text-earth */
+ /* Stage 2 left a vocabulary gap: stone-200 is used both as a BORDER (spoken
+    for by --border-default) and as a small opaque FILL — suffix pills, count
+    chips, meta badges. The fill had no token, so those 38 uses stayed
+    hardcoded and render as a bright chip on a dark ground. --surface-chip
+    names the fill role; identical to --border-default in light, distinct in
+    dark, which is exactly why they need separate tokens. */
+ --surface-chip:    var(--stone-200);   /* opaque chip/pill fill, = bg-stone-200 */
 
  /* Stage 3: the accent's on-dark variant. Harvest gold already clears AA on
     the dark ground (6.77:1), so the default is the accent itself, untouched.
@@ -137,6 +151,9 @@
    --border-subtle:   #2A2420;
    --border-default:  #332C26;
    --border-strong:   #463D35;
+   /* A chip must read as raised ON the raised surface, so it sits a step above
+      --surface-raised rather than tracking --border-default. */
+   --surface-chip:    #2E2822;
 
    /* Warm text ramp, hue preserved by mixing warm-brown toward cream. Every
       step clears AA (4.5:1) against all three surfaces above, and the ramp is

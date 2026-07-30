@@ -375,7 +375,7 @@ function VerseActionSheet({ verseAction, translation, highlighted, onHighlight, 
       <div className="hidden lg:block">
         <div onClick={onClose} className="fixed inset-0 bg-black/40 z-[70]" />
         <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] bg-surface-raised rounded-t-[20px] z-[80] shadow-[0_-8px_32px_rgba(0,0,0,0.15)]">
-          <div className="flex justify-center pt-2.5"><div className="w-9 h-1 bg-stone-200 rounded-full" /></div>
+          <div className="flex justify-center pt-2.5"><div className="w-9 h-1 bg-surface-chip rounded-full" /></div>
           <div className="px-5 py-3 border-b border-line">
             <div className="text-[11px] font-bold text-gold uppercase tracking-wider mb-1">{ref}</div>
             <div className="text-sm text-muted leading-relaxed" style={{ fontFamily: "'Crimson Pro', Georgia, serif" }}>{verse.text}</div>

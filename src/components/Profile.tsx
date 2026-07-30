@@ -656,7 +656,7 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
  </button>
  <button
  onClick={() => setIsNoHomeChurchModalOpen(false)}
- className="w-full py-3 bg-surface-sunken text-body font-bold rounded-xl hover:bg-stone-200 transition-colors"
+ className="w-full py-3 bg-surface-sunken text-body font-bold rounded-xl hover:bg-surface-chip transition-colors"
  >
  Cancel
  </button>

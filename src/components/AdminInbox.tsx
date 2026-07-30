@@ -209,7 +209,7 @@ const AdminInbox = () => {
  <span className="text-xs text-muted">Are you sure?</span>
  <button
  onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(null); }}
- className="px-3 py-1.5 text-xs font-semibold text-muted bg-surface-sunken hover:bg-stone-200 rounded-lg transition-colors"
+ className="px-3 py-1.5 text-xs font-semibold text-muted bg-surface-sunken hover:bg-surface-chip rounded-lg transition-colors"
  >
  Cancel
  </button>
@@ -240,7 +240,7 @@ const AdminInbox = () => {
  ) : (
  <button
  onClick={(e) => { e.stopPropagation(); handleStatusChange(sub.id, 'pending'); }}
- className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-muted bg-surface-sunken hover:bg-stone-200 rounded-lg transition-colors"
+ className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-muted bg-surface-sunken hover:bg-surface-chip rounded-lg transition-colors"
  >
  <Clock size={14} />
  Mark Pending
@@ -308,7 +308,7 @@ const AdminInbox = () => {
  <span className="text-sm text-muted ">Are you sure?</span>
  <button
  onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(null); }}
- className="px-3 py-1.5 text-sm font-medium text-muted bg-surface-sunken hover:bg-stone-200 :bg-gray-700 rounded-lg transition-colors"
+ className="px-3 py-1.5 text-sm font-medium text-muted bg-surface-sunken hover:bg-surface-chip :bg-gray-700 rounded-lg transition-colors"
  >
  Cancel
  </button>
@@ -340,7 +340,7 @@ const AdminInbox = () => {
  ) : (
  <button
  onClick={(e) => { e.stopPropagation(); handleStatusChange(sub.id, 'pending'); }}
- className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-muted bg-surface-sunken hover:bg-stone-200 :bg-gray-700 rounded-lg transition-colors"
+ className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-muted bg-surface-sunken hover:bg-surface-chip :bg-gray-700 rounded-lg transition-colors"
  >
  <Clock size={16} />
  Mark Pending

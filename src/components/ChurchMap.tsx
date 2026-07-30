@@ -4,6 +4,7 @@ import Image from 'next/image';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { getPlaceholderImage } from '@/utils/placeholder';
+import { useResolvedTheme } from '@/lib/use-resolved-theme';
 import L from 'leaflet';
 import { ArrowLeft, LocateFixed, Map as MapIcon, List, Navigation, Home, CheckCircle, ChevronLeft } from 'lucide-react';
 import { collection, query, where, getDocs } from 'firebase/firestore';
@@ -171,6 +172,9 @@ const MapReady = ({ onReady }: { onReady: (map: L.Map) => void }) => {
 };
 
 const ChurchMap: React.FC<ChurchMapProps> = ({ onBack, onMapInteraction }) => {
+ // Tiles are images, not CSS, so they cannot react to a variable changing —
+ // the basemap has to be swapped in JS when the theme flips.
+ const mapTheme = useResolvedTheme();
  const [churches, setChurches] = useState<Church[]>([]);
  const [viewMode, setViewMode] = useState<'map' | 'list'>('map');
  const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
@@ -288,8 +292,20 @@ const ChurchMap: React.FC<ChurchMapProps> = ({ onBack, onMapInteraction }) => {
  zoomControl={false}
  attributionControl={false}
  >
+ {/* CARTO publishes dark_all alongside light_all on the same CDN — same
+     terms, no API key, no paid tier and no extra request, so the dark map
+     costs nothing beyond this URL.
+
+     `key` is what makes it follow a theme TOGGLE rather than only the initial
+     load: react-leaflet creates the underlying L.TileLayer once on mount and
+     does not re-issue tiles when the url prop changes, so the layer has to be
+     remounted. Without this the map stays light until a full reload.
+
+     Markers are unaffected — they are gold divIcons drawn from --brand-color,
+     which reads correctly on both basemaps. */}
  <TileLayer
- url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+ key={mapTheme}
+ url={`https://{s}.basemaps.cartocdn.com/${mapTheme === 'dark' ? 'dark_all' : 'light_all'}/{z}/{x}/{y}{r}.png`}
  />
  <MapReady onReady={setMapRef} />
  <MapEvents onInteraction={onMapInteraction} />
@@ -372,7 +388,7 @@ const ChurchMap: React.FC<ChurchMapProps> = ({ onBack, onMapInteraction }) => {
  : 'border border-line '
  }`}
  >
- <div className="w-20 h-20 rounded-xl bg-stone-200 flex-shrink-0 overflow-hidden relative">
+ <div className="w-20 h-20 rounded-xl bg-surface-chip flex-shrink-0 overflow-hidden relative">
  {/* Placeholder image for church */}
  <Image 
  src={church.imageUrl || getPlaceholderImage(church.id, 200, 200)} 

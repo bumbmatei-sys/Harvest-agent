@@ -256,7 +256,7 @@ const PlatformInbox = () => {
  <span className="text-sm text-muted ">Are you sure?</span>
  <button
  onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(null); }}
- className="px-3 py-1.5 text-sm font-medium text-muted bg-surface-sunken hover:bg-stone-200 :bg-gray-700 rounded-lg transition-colors"
+ className="px-3 py-1.5 text-sm font-medium text-muted bg-surface-sunken hover:bg-surface-chip :bg-gray-700 rounded-lg transition-colors"
  >
  Cancel
  </button>
@@ -288,7 +288,7 @@ const PlatformInbox = () => {
  ) : (
  <button
  onClick={(e) => { e.stopPropagation(); handleStatusChange(r.id, 'pending'); }}
- className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-muted bg-surface-sunken hover:bg-stone-200 :bg-gray-700 rounded-lg transition-colors"
+ className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-muted bg-surface-sunken hover:bg-surface-chip :bg-gray-700 rounded-lg transition-colors"
  >
  <Clock size={16} />
  Mark Unread

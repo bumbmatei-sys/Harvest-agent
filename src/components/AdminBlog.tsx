@@ -410,7 +410,7 @@ const AdminBlog: React.FC = () => {
  </div>
  <button
  onClick={() => setAutomation(a => ({ ...a, enabled: !a.enabled }))}
- className={`w-12 h-6 rounded-full transition-colors relative ${automation.enabled ? 'bg-gold' : 'bg-stone-200'}`}
+ className={`w-12 h-6 rounded-full transition-colors relative ${automation.enabled ? 'bg-gold' : 'bg-surface-chip'}`}
  >
  <span className={`absolute top-1 w-4 h-4 bg-surface-raised rounded-full shadow transition-all ${automation.enabled ? 'left-7' : 'left-1'}`} />
  </button>

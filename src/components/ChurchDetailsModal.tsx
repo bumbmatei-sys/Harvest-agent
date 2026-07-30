@@ -197,7 +197,7 @@ const ChurchDetailsModal: React.FC<ChurchDetailsModalProps> = ({
                <div className="flex items-center gap-2 flex-shrink-0 ml-2">
                  <button 
                    onClick={() => handleCopy(church.contactEmail!, 'email')}
-                   className="w-10 h-10 rounded-xl bg-surface-sunken flex items-center justify-center text-muted hover:bg-stone-200 transition-colors"
+                   className="w-10 h-10 rounded-xl bg-surface-sunken flex items-center justify-center text-muted hover:bg-surface-chip transition-colors"
                  >
                    {copiedEmail ? <CheckCircle2 size={18} className="text-green-500" /> : <Copy size={18} />}
                  </button>
@@ -214,7 +214,7 @@ const ChurchDetailsModal: React.FC<ChurchDetailsModalProps> = ({
                <div className="flex items-center gap-2 flex-shrink-0 ml-2">
                  <button 
                    onClick={() => handleCopy(church.contactPhone!, 'phone')}
-                   className="w-10 h-10 rounded-xl bg-surface-sunken flex items-center justify-center text-muted hover:bg-stone-200 transition-colors"
+                   className="w-10 h-10 rounded-xl bg-surface-sunken flex items-center justify-center text-muted hover:bg-surface-chip transition-colors"
                  >
                    {copiedPhone ? <CheckCircle2 size={18} className="text-green-500" /> : <Copy size={18} />}
                  </button>
@@ -252,7 +252,7 @@ const ChurchDetailsModal: React.FC<ChurchDetailsModalProps> = ({
                href={church.website}
                target="_blank"
                rel="noopener noreferrer"
-               className="w-12 h-12 rounded-full bg-[#f1f5f9] flex items-center justify-center text-[#0f172a] hover:bg-stone-200 transition-colors"
+               className="w-12 h-12 rounded-full bg-[#f1f5f9] flex items-center justify-center text-[#0f172a] hover:bg-surface-chip transition-colors"
              >
                <Globe size={24} />
              </a>
