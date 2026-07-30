@@ -62,7 +62,7 @@ export const DesktopCard: React.FC<DesktopCardProps> = ({
   ...props
 }) => (
   <div
-    className={`lg:bg-white lg:rounded-[var(--ds-radius-card)] lg:border ${ELEVATION_CLASS[elevation]} ${className}`}
+    className={`lg:bg-surface-raised lg:rounded-[var(--ds-radius-card)] lg:border ${ELEVATION_CLASS[elevation]} ${className}`}
     style={{ borderColor: 'var(--ds-border)', ...style }}
     {...props}
   >

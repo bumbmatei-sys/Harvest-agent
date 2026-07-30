@@ -127,29 +127,29 @@ const AdminGivingStatements: React.FC = () => {
     if (s === 'sent') return <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-field-100 text-field-700">Sent</span>;
     if (s === 'generated') return <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-sky-100 text-sky-700">Generated (not sent)</span>;
     if (s === 'failed') return <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-100 text-red-600">Failed</span>;
-    return <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-stone-100 text-warm-brown">{s}</span>;
+    return <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-surface-sunken text-muted">{s}</span>;
   };
 
   return (
     <div className="max-w-2xl mx-auto" style={{ paddingBottom: 120 }}>
       {/* Section A — Configuration */}
       {showConfig && (
-        <div className="bg-white rounded-2xl border border-stone-200 p-5 mb-4 space-y-3">
-          <h3 className="font-display text-sm font-bold text-[color:var(--text-body)]">Statement Settings</h3>
+        <div className="bg-surface-raised rounded-2xl border border-line p-5 mb-4 space-y-3">
+          <h3 className="font-display text-sm font-bold text-body">Statement Settings</h3>
           <div>
-            <label className="block text-xs font-semibold text-[color:var(--text-body)] mb-1">EIN / Registration Number</label>
+            <label className="block text-xs font-semibold text-body mb-1">EIN / Registration Number</label>
             <input value={config.ein} onChange={e => setConfig({ ...config, ein: e.target.value })}
-              className="w-full px-3 py-2 border border-stone-200 rounded-xl text-sm focus:outline-none focus:border-gold" />
+              className="w-full px-3 py-2 border border-line rounded-xl text-sm focus:outline-none focus:border-gold" />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-[color:var(--text-body)] mb-1">Organization Address</label>
+            <label className="block text-xs font-semibold text-body mb-1">Organization Address</label>
             <textarea value={config.address} onChange={e => setConfig({ ...config, address: e.target.value })} rows={2}
-              className="w-full px-3 py-2 border border-stone-200 rounded-xl text-sm focus:outline-none focus:border-gold resize-none" />
+              className="w-full px-3 py-2 border border-line rounded-xl text-sm focus:outline-none focus:border-gold resize-none" />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-[color:var(--text-body)] mb-1">Country</label>
+            <label className="block text-xs font-semibold text-body mb-1">Country</label>
             <select value={config.country} onChange={e => setConfig({ ...config, country: e.target.value })}
-              className="w-full px-3 py-2 border border-stone-200 rounded-xl text-sm bg-white focus:outline-none focus:border-gold">
+              className="w-full px-3 py-2 border border-line rounded-xl text-sm bg-surface-raised focus:outline-none focus:border-gold">
               <option value="US">United States</option>
               <option value="CA">Canada</option>
               <option value="AU">Australia</option>
@@ -158,10 +158,10 @@ const AdminGivingStatements: React.FC = () => {
             </select>
           </div>
           <div>
-            <label className="block text-xs font-semibold text-[color:var(--text-body)] mb-1">Custom Footer</label>
+            <label className="block text-xs font-semibold text-body mb-1">Custom Footer</label>
             <textarea value={config.footer} onChange={e => setConfig({ ...config, footer: e.target.value })} rows={2}
               placeholder="No goods or services were provided..."
-              className="w-full px-3 py-2 border border-stone-200 rounded-xl text-sm focus:outline-none focus:border-gold resize-none" />
+              className="w-full px-3 py-2 border border-line rounded-xl text-sm focus:outline-none focus:border-gold resize-none" />
           </div>
           <div className="flex items-center gap-3">
             <button onClick={saveConfig} disabled={savingConfig}
@@ -174,25 +174,25 @@ const AdminGivingStatements: React.FC = () => {
       )}
 
       {/* Section B — Generate */}
-      <div className="bg-white rounded-2xl border border-stone-200 p-5 mb-4 space-y-3">
-        <h3 className="font-display text-sm font-bold text-[color:var(--text-body)] flex items-center gap-1.5"><Receipt size={15} /> Generate Statements</h3>
+      <div className="bg-surface-raised rounded-2xl border border-line p-5 mb-4 space-y-3">
+        <h3 className="font-display text-sm font-bold text-body flex items-center gap-1.5"><Receipt size={15} /> Generate Statements</h3>
         <div>
-          <label className="block text-xs font-semibold text-[color:var(--text-body)] mb-1">Tax Year</label>
+          <label className="block text-xs font-semibold text-body mb-1">Tax Year</label>
           <select value={year} onChange={e => setYear(Number(e.target.value))}
-            className="w-full px-3 py-2 border border-stone-200 rounded-xl text-sm bg-white focus:outline-none focus:border-gold">
+            className="w-full px-3 py-2 border border-line rounded-xl text-sm bg-surface-raised focus:outline-none focus:border-gold">
             {years.map(y => <option key={y} value={y}>{y}</option>)}
           </select>
         </div>
         <div className="flex items-center justify-between">
-          <span className="text-sm text-[color:var(--text-body)]">Single donor only</span>
+          <span className="text-sm text-body">Single donor only</span>
           <label className="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" className="sr-only peer" checked={singleDonor} onChange={e => setSingleDonor(e.target.checked)} />
-            <div className="w-10 h-6 bg-stone-200 peer-checked:bg-gold rounded-full peer transition-colors after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-4" />
+            <div className="w-10 h-6 bg-stone-200 peer-checked:bg-gold rounded-full peer transition-colors after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-surface-raised after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-4" />
           </label>
         </div>
         {singleDonor && (
           <input value={donorEmail} onChange={e => setDonorEmail(e.target.value)} placeholder="donor@email.com" type="email"
-            className="w-full px-3 py-2 border border-stone-200 rounded-xl text-sm focus:outline-none focus:border-gold" />
+            className="w-full px-3 py-2 border border-line rounded-xl text-sm focus:outline-none focus:border-gold" />
         )}
         <button onClick={generate} disabled={generating || (singleDonor && !donorEmail.trim())}
           className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-white text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: GOLD }}>
@@ -204,7 +204,7 @@ const AdminGivingStatements: React.FC = () => {
             results.isError
               ? 'bg-red-50 text-red-600'
               : results.generated === 0 && results.message
-                ? 'bg-stone-100 text-warm-brown'
+                ? 'bg-surface-sunken text-muted'
                 : results.message
                   ? 'bg-wheat-50 text-wheat-700'
                   : 'bg-field-100 text-field-700'
@@ -218,14 +218,14 @@ const AdminGivingStatements: React.FC = () => {
 
       {/* Section C — History */}
       <div className="flex items-center justify-between mb-3">
-        <h3 className="font-display text-sm font-bold text-[color:var(--text-body)]">Statement History — {year}</h3>
-        <button onClick={loadStatuses} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border border-stone-200 text-warm-brown hover:bg-stone-100">
+        <h3 className="font-display text-sm font-bold text-body">Statement History — {year}</h3>
+        <button onClick={loadStatuses} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border border-line text-muted hover:bg-surface-sunken">
           <RefreshCw size={13} className={loadingStatuses ? 'animate-spin' : ''} /> Refresh
         </button>
       </div>
 
       {statuses.length === 0 ? (
-        <div className="text-center py-12 text-[color:var(--text-faint)]">
+        <div className="text-center py-12 text-faint">
           <Receipt size={36} className="mx-auto mb-2 opacity-30" />
           <p className="text-sm">{loadingStatuses ? 'Loading…' : `No statements generated for ${year} yet.`}</p>
         </div>
@@ -239,10 +239,10 @@ const AdminGivingStatements: React.FC = () => {
               { label: 'Statements', value: String(statuses.length), icon: <Receipt size={14} /> },
               { label: `Total · ${year}`, value: fmtMoney(statuses.reduce((sum, s) => sum + (s.totalAmount || 0), 0)), icon: <DollarSign size={14} /> },
             ].map(s => (
-              <div key={s.label} className="bg-white rounded-brand-xl border border-stone-200 shadow-[var(--ds-sh-sm)] p-3.5">
+              <div key={s.label} className="bg-surface-raised rounded-brand-xl border border-line shadow-[var(--ds-sh-sm)] p-3.5">
                 <div className="w-7 h-7 rounded-lg bg-[var(--surface-gold)] text-gold flex items-center justify-center mb-2">{s.icon}</div>
-                <div className="font-display text-[1.375rem] font-normal leading-none tracking-[-0.02em] text-earth">{s.value}</div>
-                <div className="text-[11px] text-warm-brown mt-1">{s.label}</div>
+                <div className="font-display text-[1.375rem] font-normal leading-none tracking-[-0.02em] text-strong">{s.value}</div>
+                <div className="text-[11px] text-muted mt-1">{s.label}</div>
               </div>
             ))}
           </div>
@@ -250,21 +250,21 @@ const AdminGivingStatements: React.FC = () => {
           {/* Mobile history — mockup list card: gold receipt disc, donor + status,
               email·total sub (money in field-green), PDF action. Same `statuses`,
               statusBadge, fmtMoney, openStatementPdf as the desktop list below. */}
-          <div className="lg:hidden bg-white rounded-brand-xl border border-stone-200 shadow-[var(--ds-sh-sm)] overflow-hidden">
+          <div className="lg:hidden bg-surface-raised rounded-brand-xl border border-line shadow-[var(--ds-sh-sm)] overflow-hidden">
             {statuses.map((s, i) => (
-              <div key={s.id} className={`flex items-center gap-3 px-3.5 py-3 ${i ? 'border-t border-stone-200' : ''}`}>
+              <div key={s.id} className={`flex items-center gap-3 px-3.5 py-3 ${i ? 'border-t border-line' : ''}`}>
                 <div className="w-[38px] h-[38px] rounded-[10px] bg-[var(--surface-gold)] text-gold flex items-center justify-center shrink-0">
                   <Receipt size={16} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 min-w-0">
-                    <p className="text-[13.5px] font-semibold text-earth truncate">{s.donorName || s.donorEmail}</p>
+                    <p className="text-[13.5px] font-semibold text-strong truncate">{s.donorName || s.donorEmail}</p>
                     <span className="shrink-0">{statusBadge(s.status)}</span>
                   </div>
-                  <p className="text-[11.5px] text-[color:var(--text-faint)] truncate">{s.donorEmail} · <span className="font-semibold text-field-700">{fmtMoney(s.totalAmount)}</span></p>
+                  <p className="text-[11.5px] text-faint truncate">{s.donorEmail} · <span className="font-semibold text-field-700">{fmtMoney(s.totalAmount)}</span></p>
                 </div>
                 {s.pdfPath && (
-                  <button onClick={() => openStatementPdf(s.pdfPath)} className="flex items-center gap-1 text-xs font-semibold text-warm-brown hover:text-earth shrink-0">
+                  <button onClick={() => openStatementPdf(s.pdfPath)} className="flex items-center gap-1 text-xs font-semibold text-muted hover:text-strong shrink-0">
                     <FileText size={13} /> PDF
                   </button>
                 )}
@@ -273,18 +273,18 @@ const AdminGivingStatements: React.FC = () => {
           </div>
 
           {/* Desktop history — existing approved layout, unchanged (now lg-only). */}
-        <div className="hidden lg:block bg-white rounded-2xl border border-stone-200 divide-y divide-stone-200">
+        <div className="hidden lg:block bg-surface-raised rounded-2xl border border-line divide-y divide-stone-200">
           {statuses.map(s => (
             <div key={s.id} className="px-4 py-3 flex items-center gap-3">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <p className="text-sm font-semibold text-earth truncate">{s.donorName || s.donorEmail}</p>
+                  <p className="text-sm font-semibold text-strong truncate">{s.donorName || s.donorEmail}</p>
                   {statusBadge(s.status)}
                 </div>
-                <p className="text-xs text-[color:var(--text-faint)] truncate">{s.donorEmail} · {fmtMoney(s.totalAmount)}</p>
+                <p className="text-xs text-faint truncate">{s.donorEmail} · {fmtMoney(s.totalAmount)}</p>
               </div>
               {s.pdfPath && (
-                <button onClick={() => openStatementPdf(s.pdfPath)} className="flex items-center gap-1 text-xs font-semibold text-warm-brown hover:text-earth shrink-0">
+                <button onClick={() => openStatementPdf(s.pdfPath)} className="flex items-center gap-1 text-xs font-semibold text-muted hover:text-strong shrink-0">
                   <FileText size={13} /> PDF
                 </button>
               )}

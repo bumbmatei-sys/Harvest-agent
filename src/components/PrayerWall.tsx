@@ -190,14 +190,14 @@ const PrayerWall: React.FC = () => {
 
  {/* Header — Fraunces title on desktop; the auto-clear note shows on both. */}
  <div className="flex items-baseline justify-between">
- <h1 className="hidden lg:block text-[26px] font-light tracking-[-0.02em] text-earth font-display">Prayer wall</h1>
- <span className="text-[13px] text-[color:var(--text-faint)] ml-auto">Requests auto-clear after 30 days</span>
+ <h1 className="hidden lg:block text-[26px] font-light tracking-[-0.02em] text-strong font-display">Prayer wall</h1>
+ <span className="text-[13px] text-faint ml-auto">Requests auto-clear after 30 days</span>
  </div>
 
  {/* Share bar (mockup): avatar + inline input + Post — mobile & desktop. */}
- <div className="flex items-center gap-3 bg-white rounded-2xl border p-3" style={{ borderColor: 'var(--ds-border)' }}>
- <div className="w-10 h-10 rounded-full bg-stone-100 flex items-center justify-center text-sm font-bold text-warm-brown shrink-0">{(name || 'A').charAt(0).toUpperCase()}</div>
- <input value={request} onChange={(e) => setRequest(e.target.value.slice(0, 200))} onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit(); }} placeholder="Share a prayer request with the community…" className="flex-1 bg-transparent outline-none text-sm text-[color:var(--text-body)] placeholder:text-[color:var(--text-faint)]" />
+ <div className="flex items-center gap-3 bg-surface-raised rounded-2xl border p-3" style={{ borderColor: 'var(--ds-border)' }}>
+ <div className="w-10 h-10 rounded-full bg-surface-sunken flex items-center justify-center text-sm font-bold text-muted shrink-0">{(name || 'A').charAt(0).toUpperCase()}</div>
+ <input value={request} onChange={(e) => setRequest(e.target.value.slice(0, 200))} onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit(); }} placeholder="Share a prayer request with the community…" className="flex-1 bg-transparent outline-none text-sm text-body placeholder:text-faint" />
  <button onClick={handleSubmit} disabled={submitting || !request.trim()} className="px-5 py-2.5 rounded-xl text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50 shrink-0" style={{ backgroundColor: 'var(--brand-color, #C9963A)' }}>{submitting ? 'Posting…' : 'Post'}</button>
  </div>
 
@@ -207,13 +207,13 @@ const PrayerWall: React.FC = () => {
  <select
  value={filter}
  onChange={(e) => setFilter(e.target.value as RangeFilter)}
- className="appearance-none bg-white border border-stone-200 rounded-xl pl-4 pr-9 py-2 text-sm font-medium text-[color:var(--text-body)] cursor-pointer focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_20%,transparent)]"
+ className="appearance-none bg-surface-raised border border-line rounded-xl pl-4 pr-9 py-2 text-sm font-medium text-body cursor-pointer focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_20%,transparent)]"
  >
  {FILTERS.map((f) => (
  <option key={f.id} value={f.id}>{f.label}</option>
  ))}
  </select>
- <svg className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-[color:var(--text-faint)]" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m6 9 6 6 6-6" /></svg>
+ <svg className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-faint" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m6 9 6 6 6-6" /></svg>
  </div>
  </div>
 
@@ -223,7 +223,7 @@ const PrayerWall: React.FC = () => {
  <div className="w-8 h-8 border-4 border-gold border-t-transparent rounded-full animate-spin"></div>
  </div>
  ) : visible.length === 0 ? (
- <div className="text-center py-12 text-[color:var(--text-faint)] bg-white rounded-2xl border border-stone-200">
+ <div className="text-center py-12 text-faint bg-surface-raised rounded-2xl border border-line">
  <p className="text-sm font-medium">No prayer requests {filter === 'today' ? 'today' : 'in this range'} yet.</p>
  <p className="text-xs mt-1">Be the first to share one.</p>
  </div>
@@ -233,21 +233,21 @@ const PrayerWall: React.FC = () => {
  const prayed = !!uid && (p.prayedBy || []).includes(uid);
  const canDelete = (!!uid && p.authorId === uid) || isAdmin;
  return (
- <div key={p.id} className="bg-white rounded-2xl border border-stone-200 p-4">
+ <div key={p.id} className="bg-surface-raised rounded-2xl border border-line p-4">
  <div className="flex items-center justify-between mb-2">
  <div className="flex items-center gap-2 min-w-0">
- <div className="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center text-xs font-bold text-warm-brown shrink-0">
+ <div className="w-8 h-8 rounded-full bg-surface-sunken flex items-center justify-center text-xs font-bold text-muted shrink-0">
  {(p.authorName || 'A').charAt(0).toUpperCase()}
  </div>
  <div className="min-w-0">
- <p className="text-sm font-bold text-earth truncate">{p.authorName || 'Anonymous'}</p>
- <p className="text-[11px] text-[color:var(--text-faint)]">{relativeTime(p.createdAt)}</p>
+ <p className="text-sm font-bold text-strong truncate">{p.authorName || 'Anonymous'}</p>
+ <p className="text-[11px] text-faint">{relativeTime(p.createdAt)}</p>
  </div>
  </div>
  {canDelete && (
  <button
  onClick={() => handleDelete(p)}
- className="text-[color:var(--text-faint)] hover:text-red-500 transition-colors p-1 shrink-0"
+ className="text-faint hover:text-red-500 transition-colors p-1 shrink-0"
  aria-label="Delete prayer request"
  >
  <Trash2 size={15} />
@@ -255,13 +255,13 @@ const PrayerWall: React.FC = () => {
  )}
  </div>
 
- <p className="text-sm text-[color:var(--text-body)] whitespace-pre-wrap mb-3">{p.request}</p>
+ <p className="text-sm text-body whitespace-pre-wrap mb-3">{p.request}</p>
 
- <div className="flex items-center pt-2 border-t border-stone-100">
+ <div className="flex items-center pt-2 border-t border-line-subtle">
  <button
  onClick={() => handlePray(p)}
  className={`flex items-center gap-1.5 text-xs font-semibold rounded-full px-3 py-1.5 transition-colors ${
- prayed ? 'bg-[color-mix(in_srgb,var(--brand-color)_15%,white)]' : 'bg-stone-100 hover:bg-stone-100'
+ prayed ? 'bg-[color-mix(in_srgb,var(--brand-color)_15%,white)]' : 'bg-surface-sunken hover:bg-surface-sunken'
  }`}
  style={prayed ? { color: 'var(--brand-color, #d4a017)' } : { color: 'var(--text-muted)' }}
  aria-pressed={prayed}

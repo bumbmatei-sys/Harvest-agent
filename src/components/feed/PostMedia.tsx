@@ -110,7 +110,7 @@ export const ImageLightbox: React.FC<{ images: string[]; index: number; onClose:
           {images.map((_, i) => (
             <span
               key={i}
-              className={`h-1.5 rounded-full transition-all ${i === current ? 'w-5 bg-white' : 'w-1.5 bg-white/40'}`}
+              className={`h-1.5 rounded-full transition-all ${i === current ? 'w-5 bg-surface-raised' : 'w-1.5 bg-white/40'}`}
             />
           ))}
         </div>
@@ -131,7 +131,7 @@ export const PostImageGrid: React.FC<{ images: string[]; priority?: boolean; onO
       key={i}
       type="button"
       onClick={() => onOpen(i)}
-      className={`relative bg-stone-100 overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-gold ${extra}`}
+      className={`relative bg-surface-sunken overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-gold ${extra}`}
       aria-label={`Open image ${i + 1}`}
     >
       <Image src={src} alt={`Post image ${i + 1}`} fill sizes="(max-width: 768px) 100vw, 800px" priority={priority && i === 0} className="object-cover" referrerPolicy="no-referrer" />

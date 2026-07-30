@@ -61,18 +61,18 @@ function PreviewLesson({ lesson, num }: { lesson: Lesson; num: number }) {
     || (lesson.youtubeId ? `https://www.youtube.com/watch?v=${lesson.youtubeId}` : "");
 
   return (
-    <div className="border-t border-stone-200">
+    <div className="border-t border-line">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         className="w-full flex items-center gap-3 py-3 text-left hover:bg-stone-100/60 transition-colors"
       >
-        <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 border-[1.5px] border-stone-200 bg-stone-100 text-warm-brown">
+        <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 border-[1.5px] border-line bg-surface-sunken text-muted">
           {num}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-semibold text-[color:var(--text-body)]">{lesson.title}</div>
-          <div className="text-xs text-[color:var(--text-faint)] mt-0.5">{lesson.duration || "~"}</div>
+          <div className="text-sm font-semibold text-body">{lesson.title}</div>
+          <div className="text-xs text-faint mt-0.5">{lesson.duration || "~"}</div>
         </div>
         {videoUrl && (
           <PlayCircle
@@ -101,10 +101,10 @@ function PreviewLesson({ lesson, num }: { lesson: Lesson; num: number }) {
               />
             </div>
           ) : (
-            <p className="text-xs text-[color:var(--text-faint)] py-2">No video for this lesson.</p>
+            <p className="text-xs text-faint py-2">No video for this lesson.</p>
           )}
           {lesson.summary && (
-            <p className="text-sm text-warm-brown leading-6 mt-3">{lesson.summary}</p>
+            <p className="text-sm text-muted leading-6 mt-3">{lesson.summary}</p>
           )}
         </div>
       )}
@@ -138,13 +138,13 @@ function OverrideToggle({
         } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
       >
         <span
-          className="absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all"
+          className="absolute top-0.5 w-5 h-5 rounded-full bg-surface-raised transition-all"
           style={{ left: checked ? '1.125rem' : '0.125rem' }}
         />
       </button>
       <div className="min-w-0">
-        <div className="text-sm font-semibold text-earth">{label}</div>
-        <p className="text-xs text-warm-brown mt-0.5">{disabled && disabledReason ? disabledReason : description}</p>
+        <div className="text-sm font-semibold text-strong">{label}</div>
+        <p className="text-xs text-muted mt-0.5">{disabled && disabledReason ? disabledReason : description}</p>
       </div>
     </div>
   );
@@ -176,7 +176,7 @@ export function CoursePreview({
       <div className="flex items-center gap-3">
         <button
           onClick={onClose}
-          className="p-2 -ml-2 rounded-brand text-warm-brown hover:text-earth hover:bg-stone-100 transition-colors"
+          className="p-2 -ml-2 rounded-brand text-muted hover:text-strong hover:bg-surface-sunken transition-colors"
           title="Back to the library"
           aria-label="Back to the library"
         >
@@ -184,7 +184,7 @@ export function CoursePreview({
         </button>
         <div className="min-w-0 flex-1">
           <div className="text-[11px] font-semibold text-gold uppercase tracking-[0.12em]">Library preview</div>
-          <h2 className="font-display text-xl text-earth truncate">{course.title}</h2>
+          <h2 className="font-display text-xl text-strong truncate">{course.title}</h2>
         </div>
         {isAdopted ? (
           <AdminBadge tone="gold">Adopted</AdminBadge>
@@ -209,11 +209,11 @@ export function CoursePreview({
               : <Library size={24} />}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-sm text-warm-brown">
+            <p className="text-sm text-muted">
               {[course.category, lessonCount ? `${lessonCount} lesson${lessonCount === 1 ? '' : 's'}` : null]
                 .filter(Boolean).join(' · ')}
             </p>
-            <p className="text-xs text-[color:var(--text-faint)] mt-1.5">
+            <p className="text-xs text-faint mt-1.5">
               Published by Harvest. The content is read-only — Harvest keeps it up to date and
               every change reaches your church automatically.
             </p>
@@ -224,22 +224,22 @@ export function CoursePreview({
             the rich-text formatting is wanted; the two-line catalogue card is
             where a flattened summary belongs. Same call CourseOverview makes. */}
         <div>
-          <h3 className="text-base font-bold mb-2 font-display text-earth">About this course</h3>
+          <h3 className="text-base font-bold mb-2 font-display text-strong">About this course</h3>
           {course.description ? (
             <div
-              className="prose max-w-none text-sm leading-7 text-warm-brown"
+              className="prose max-w-none text-sm leading-7 text-muted"
               data-testid="preview-description"
               dangerouslySetInnerHTML={{ __html: sanitizeHtml(course.description) }}
             />
           ) : (
-            <p className="text-sm leading-7 text-warm-brown">No description available.</p>
+            <p className="text-sm leading-7 text-muted">No description available.</p>
           )}
         </div>
 
         {/* Authors — name AND bio, resolved from libraryAuthors by the caller. */}
         {courseAuthors.length > 0 && (
           <div>
-            <h3 className="text-base font-bold mb-2 font-display text-earth">
+            <h3 className="text-base font-bold mb-2 font-display text-strong">
               {courseAuthors.length === 1 ? 'Teacher' : 'Teachers'}
             </h3>
             <div className="space-y-3">
@@ -248,14 +248,14 @@ export function CoursePreview({
                   {author.picture ? (
                     <img src={author.picture} alt={author.name} className="w-10 h-10 rounded-full object-cover shrink-0" />
                   ) : (
-                    <div className="w-10 h-10 rounded-full bg-stone-100 flex items-center justify-center text-sm font-bold text-[color:var(--text-faint)] shrink-0">
+                    <div className="w-10 h-10 rounded-full bg-surface-sunken flex items-center justify-center text-sm font-bold text-faint shrink-0">
                       {author.name?.charAt(0) || '?'}
                     </div>
                   )}
                   <div className="min-w-0">
-                    <div className="text-sm font-semibold text-earth">{author.name}</div>
-                    <div className="text-xs text-[color:var(--text-faint)]">{author.title || 'Instructor'}</div>
-                    {author.bio && <p className="text-sm text-warm-brown leading-6 mt-1">{author.bio}</p>}
+                    <div className="text-sm font-semibold text-strong">{author.name}</div>
+                    <div className="text-xs text-faint">{author.title || 'Instructor'}</div>
+                    {author.bio && <p className="text-sm text-muted leading-6 mt-1">{author.bio}</p>}
                   </div>
                 </div>
               ))}
@@ -265,12 +265,12 @@ export function CoursePreview({
 
         {/* Curriculum — shared tree, preview row (expands to the video). */}
         <div>
-          <h3 className="text-base font-bold mb-1 font-display text-earth">Curriculum</h3>
-          <p className="text-xs text-[color:var(--text-faint)] mb-1">
+          <h3 className="text-base font-bold mb-1 font-display text-strong">Curriculum</h3>
+          <p className="text-xs text-faint mb-1">
             Open a lesson to watch it. Nothing here is recorded against your account.
           </p>
           {lessonCount === 0 ? (
-            <p className="text-sm text-warm-brown py-2">This course has no lessons yet.</p>
+            <p className="text-sm text-muted py-2">This course has no lessons yet.</p>
           ) : (
             <CourseCurriculum
               levels={course.levels}
@@ -286,8 +286,8 @@ export function CoursePreview({
           because the tenant does not own the content. */}
       {isAdopted && onSetOverride && (
         <AdminCard className="p-5">
-          <h3 className="text-base font-bold font-display text-earth">Your church&apos;s settings</h3>
-          <p className="text-xs text-warm-brown mt-1">
+          <h3 className="text-base font-bold font-display text-strong">Your church&apos;s settings</h3>
+          <p className="text-xs text-muted mt-1">
             These two are yours to decide for your own members. They do not affect any other
             church that has adopted this course, and Harvest&apos;s own value is only the default.
           </p>

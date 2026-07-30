@@ -50,7 +50,7 @@ const SavedItems: React.FC<SavedItemsProps> = ({ onBack, onOpenBlog, onOpenLesso
   ) => (
     <div
       key={key}
-      className="flex items-start gap-3 bg-white rounded-2xl border border-stone-200 p-3.5"
+      className="flex items-start gap-3 bg-surface-raised rounded-2xl border border-line p-3.5"
     >
       <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ background: 'color-mix(in srgb, var(--brand-color, #B8962E) 12%, white)' }}>
         <Icon size={16} style={{ color: BRAND }} />
@@ -64,13 +64,13 @@ const SavedItems: React.FC<SavedItemsProps> = ({ onBack, onOpenBlog, onOpenLesso
         {body}
       </button>
       <div className="flex items-center gap-1 shrink-0">
-        {onClick && <ChevronRight size={16} className="text-[color:var(--text-faint)] mt-0.5" />}
+        {onClick && <ChevronRight size={16} className="text-faint mt-0.5" />}
         <button
           type="button"
           onClick={() => removeSave(key)}
           aria-label="Remove from saved"
           title="Remove"
-          className="p-1.5 rounded-lg text-[color:var(--text-faint)] hover:text-red-500 hover:bg-red-50 transition-colors"
+          className="p-1.5 rounded-lg text-faint hover:text-red-500 hover:bg-red-50 transition-colors"
         >
           <Trash2 size={15} />
         </button>
@@ -84,8 +84,8 @@ const SavedItems: React.FC<SavedItemsProps> = ({ onBack, onOpenBlog, onOpenLesso
         const e = entry as SavedBlog;
         return rowShell(keyForEntry(e), Icon, () => onOpenBlog(e.id), (
           <>
-            <div className="text-[14px] font-bold text-earth line-clamp-2">{e.title}</div>
-            {e.snippet && <div className="text-xs text-warm-brown line-clamp-2 mt-0.5">{e.snippet}</div>}
+            <div className="text-[14px] font-bold text-strong line-clamp-2">{e.title}</div>
+            {e.snippet && <div className="text-xs text-muted line-clamp-2 mt-0.5">{e.snippet}</div>}
           </>
         ));
       }
@@ -93,8 +93,8 @@ const SavedItems: React.FC<SavedItemsProps> = ({ onBack, onOpenBlog, onOpenLesso
         const e = entry as SavedLesson;
         return rowShell(keyForEntry(e), Icon, () => onOpenLesson(e.courseId, e.lessonId), (
           <>
-            <div className="text-[14px] font-bold text-earth line-clamp-2">{e.title}</div>
-            {e.courseTitle && <div className="text-xs text-warm-brown line-clamp-1 mt-0.5">{e.courseTitle}</div>}
+            <div className="text-[14px] font-bold text-strong line-clamp-2">{e.title}</div>
+            {e.courseTitle && <div className="text-xs text-muted line-clamp-1 mt-0.5">{e.courseTitle}</div>}
           </>
         ));
       }
@@ -102,10 +102,10 @@ const SavedItems: React.FC<SavedItemsProps> = ({ onBack, onOpenBlog, onOpenLesso
         const e = entry as SavedPost;
         return rowShell(keyForEntry(e), Icon, () => onOpenPost(e.id), (
           <>
-            <div className="text-[14px] font-bold text-earth line-clamp-1">
+            <div className="text-[14px] font-bold text-strong line-clamp-1">
               {e.authorName ? `${e.authorName}'s post` : 'Community post'}
             </div>
-            {e.snippet && <div className="text-xs text-warm-brown line-clamp-2 mt-0.5">{e.snippet}</div>}
+            {e.snippet && <div className="text-xs text-muted line-clamp-2 mt-0.5">{e.snippet}</div>}
           </>
         ));
       }
@@ -118,7 +118,7 @@ const SavedItems: React.FC<SavedItemsProps> = ({ onBack, onOpenBlog, onOpenLesso
             <div className="text-[11px] font-bold uppercase tracking-wider mb-1" style={{ color: BRAND }}>
               {e.reference} · {e.translation}
             </div>
-            <div className="text-[13px] leading-relaxed text-earth" style={{ fontFamily: "'Crimson Pro', Georgia, serif" }}>
+            <div className="text-[13px] leading-relaxed text-strong" style={{ fontFamily: "'Crimson Pro', Georgia, serif" }}>
               {e.text}
             </div>
           </>
@@ -129,12 +129,12 @@ const SavedItems: React.FC<SavedItemsProps> = ({ onBack, onOpenBlog, onOpenLesso
 
   return (
     <div className="flex flex-col min-h-full h-full bg-[#F7F6F3] overflow-y-auto">
-      <div className="sticky top-0 z-10 bg-white border-b border-gray-100">
+      <div className="sticky top-0 z-10 bg-surface-raised border-b border-gray-100">
         <div className="flex items-center gap-3 px-4 py-4 lg:max-w-[760px] lg:mx-auto">
           <button onClick={onBack} className="p-1.5 rounded-lg hover:bg-gray-100">
             <ArrowLeft size={18} className="text-gray-600" />
           </button>
-          <h2 className="font-display text-lg font-normal tracking-[-0.01em] text-earth">Saved</h2>
+          <h2 className="font-display text-lg font-normal tracking-[-0.01em] text-strong">Saved</h2>
         </div>
       </div>
 
@@ -147,7 +147,7 @@ const SavedItems: React.FC<SavedItemsProps> = ({ onBack, onOpenBlog, onOpenLesso
         ) : entries.length === 0 ? (
           <div className="text-center py-16 text-gray-400">
             <Bookmark size={40} className="mx-auto mb-3 opacity-30" />
-            <p className="font-medium text-earth">Nothing saved yet</p>
+            <p className="font-medium text-strong">Nothing saved yet</p>
             <p className="text-sm mt-1">Bookmark articles, lessons, posts and verses to find them here.</p>
           </div>
         ) : (
@@ -156,11 +156,11 @@ const SavedItems: React.FC<SavedItemsProps> = ({ onBack, onOpenBlog, onOpenLesso
               const items = byType(type);
               return (
                 <div key={type}>
-                  <h4 className="text-[10px] font-bold text-[color:var(--text-faint)] tracking-wider uppercase mb-3 ml-1">
+                  <h4 className="text-[10px] font-bold text-faint tracking-wider uppercase mb-3 ml-1">
                     {label}
                   </h4>
                   {items.length === 0 ? (
-                    <p className="text-sm text-[color:var(--text-faint)] ml-1">{empty}</p>
+                    <p className="text-sm text-faint ml-1">{empty}</p>
                   ) : (
                     <div className="space-y-2.5">
                       {items.map((entry) => renderRow(entry, Icon))}

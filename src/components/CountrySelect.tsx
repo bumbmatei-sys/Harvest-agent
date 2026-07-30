@@ -35,7 +35,7 @@ const CountrySelect: React.FC<CountrySelectProps> = ({ value, onChange, classNam
  <button
  type="button"
  onClick={() => setIsOpen(!isOpen)}
- className={`w-full flex items-center justify-between px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all ${buttonClassName}`}
+ className={`w-full flex items-center justify-between px-4 py-3 bg-surface-raised border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all ${buttonClassName}`}
  >
  <span className={value ? 'text-gray-900 ' : 'text-gray-400'}>
  {value || 'Select Country'}
@@ -44,7 +44,7 @@ const CountrySelect: React.FC<CountrySelectProps> = ({ value, onChange, classNam
  </button>
 
  {isOpen && (
- <div className="absolute z-50 w-full mt-2 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden flex flex-col max-h-64">
+ <div className="absolute z-50 w-full mt-2 bg-surface-raised border border-gray-200 rounded-xl shadow-xl overflow-hidden flex flex-col max-h-64">
  <div className="p-2 border-b border-gray-100 ">
  <input
  type="text"

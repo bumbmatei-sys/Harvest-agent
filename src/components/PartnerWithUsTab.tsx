@@ -70,23 +70,23 @@ const PartnerWithUsTab: React.FC = () => {
         <div className="w-16 h-16 bg-[var(--surface-gold)] rounded-full flex items-center justify-center mb-4">
           <HeartHandshake size={32} className="text-gold" />
         </div>
-        <h2 className="text-[26px] font-light text-earth mb-1 font-display lg:text-[28px]">Give</h2>
+        <h2 className="text-[26px] font-light text-strong mb-1 font-display lg:text-[28px]">Give</h2>
         {tenantName && (
           <p className="text-gold font-semibold text-sm mb-2">{tenantName}</p>
         )}
-        <p className="text-warm-brown text-sm leading-relaxed">
+        <p className="text-muted text-sm leading-relaxed">
           Your partnership keeps this platform free for the new believer and scalable for the nations.
         </p>
       </div>
 
       {/* One-Time / Monthly Toggle */}
-      <div className="bg-stone-100 rounded-xl p-1 flex mb-8 border border-stone-200">
+      <div className="bg-surface-sunken rounded-xl p-1 flex mb-8 border border-line">
         <button
           onClick={() => setDonationType('one-time')}
           className={`flex-1 py-3 rounded-lg text-sm font-bold transition-colors ${
             donationType === 'one-time'
               ? 'bg-gold text-white'
-              : 'text-[color:var(--text-muted)] hover:bg-white'
+              : 'text-muted hover:bg-surface-raised'
           }`}
         >
           One-Time
@@ -96,7 +96,7 @@ const PartnerWithUsTab: React.FC = () => {
           className={`flex-1 py-3 rounded-lg text-sm font-bold transition-colors flex items-center justify-center gap-2 ${
             donationType === 'monthly'
               ? 'bg-gold text-white'
-              : 'text-[color:var(--text-muted)] hover:bg-white'
+              : 'text-muted hover:bg-surface-raised'
           }`}
         >
           Monthly <Heart size={14} className={donationType === 'monthly' ? 'fill-white' : 'fill-[color:var(--text-muted)]'} />
@@ -105,7 +105,7 @@ const PartnerWithUsTab: React.FC = () => {
 
       {/* Select Amount */}
       <div className="mb-8">
-        <h3 className="text-[11px] font-bold text-[color:var(--text-faint)] tracking-wider uppercase mb-3">
+        <h3 className="text-[11px] font-bold text-faint tracking-wider uppercase mb-3">
           Select Amount
         </h3>
         <div className="grid grid-cols-4 gap-3 mb-4">
@@ -116,27 +116,27 @@ const PartnerWithUsTab: React.FC = () => {
               className={`py-3 rounded-xl text-sm font-bold transition-colors border ${
                 amount === preset
                   ? 'bg-[var(--surface-gold)] border-gold text-[color:var(--wheat-700)]'
-                  : 'bg-white border-stone-200 text-earth'
+                  : 'bg-surface-raised border-line text-strong'
               }`}
             >
               ${preset}
             </button>
           ))}
         </div>
-        <div className="bg-stone-100 rounded-xl p-4 flex items-center border border-stone-200">
-          <span className="text-[color:var(--text-faint)] font-bold mr-2">$</span>
+        <div className="bg-surface-sunken rounded-xl p-4 flex items-center border border-line">
+          <span className="text-faint font-bold mr-2">$</span>
           <input
             type="number"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
-            className="bg-transparent font-bold text-earth w-full focus:outline-none text-lg"
+            className="bg-transparent font-bold text-strong w-full focus:outline-none text-lg"
             placeholder="Other Amount"
           />
         </div>
       </div>
 
       {/* Security Info */}
-      <div className="flex items-center justify-center gap-2 text-[color:var(--text-faint)] mb-4">
+      <div className="flex items-center justify-center gap-2 text-faint mb-4">
         <Lock size={14} />
         <span className="text-xs font-medium">Secure, encrypted payment via Stripe</span>
         <ShieldCheck size={14} className="ml-2" />
@@ -175,24 +175,24 @@ const PartnerWithUsTab: React.FC = () => {
           byte-identical. */}
       <div className="hidden lg:block">
         <DesktopCard elevation="sm" className="lg:p-6 lg:sticky lg:top-4">
-          <div className="text-[11px] font-bold text-[color:var(--text-faint)] tracking-[0.14em] uppercase mb-2">Your gift</div>
-          <div className="text-[40px] leading-none font-light tracking-[-0.02em] text-earth font-display">
+          <div className="text-[11px] font-bold text-faint tracking-[0.14em] uppercase mb-2">Your gift</div>
+          <div className="text-[40px] leading-none font-light tracking-[-0.02em] text-strong font-display">
             ${amount || '0'}
-            {donationType === 'monthly' && <span className="text-base font-medium text-warm-brown"> /mo</span>}
+            {donationType === 'monthly' && <span className="text-base font-medium text-muted"> /mo</span>}
           </div>
-          <div className="mt-5 border-t border-b border-stone-200">
+          <div className="mt-5 border-t border-b border-line">
             <div className="flex items-center justify-between py-2.5 text-sm">
-              <span className="text-warm-brown">Frequency</span>
-              <b className="text-earth font-semibold">{donationType === 'monthly' ? 'Monthly' : 'One-time'}</b>
+              <span className="text-muted">Frequency</span>
+              <b className="text-strong font-semibold">{donationType === 'monthly' ? 'Monthly' : 'One-time'}</b>
             </div>
             <div className="flex items-center justify-between py-2.5 text-sm">
-              <span className="text-warm-brown">Total charge</span>
-              <b className="text-earth font-semibold">${amount || '0'}{donationType === 'monthly' ? '/mo' : ''}</b>
+              <span className="text-muted">Total charge</span>
+              <b className="text-strong font-semibold">${amount || '0'}{donationType === 'monthly' ? '/mo' : ''}</b>
             </div>
           </div>
           <div className="flex items-start gap-2.5 mt-5 p-3.5 rounded-xl bg-[var(--surface-gold)]">
             <Heart size={16} className="text-gold shrink-0 mt-0.5" />
-            <p className="text-[13px] text-warm-brown leading-snug m-0">
+            <p className="text-[13px] text-muted leading-snug m-0">
               Thank you for partnering with {tenantName || 'us'}. Your generosity fuels the mission.
             </p>
           </div>

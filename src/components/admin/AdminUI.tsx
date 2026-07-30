@@ -27,10 +27,10 @@ export const AdminPageHeader: React.FC<{
       {eyebrow && (
         <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-gold mb-1.5">{eyebrow}</p>
       )}
-      <h2 className="font-display text-[1.75rem] lg:text-[2rem] leading-[1.1] font-light tracking-[-0.02em] text-earth">
+      <h2 className="font-display text-[1.75rem] lg:text-[2rem] leading-[1.1] font-light tracking-[-0.02em] text-strong">
         {title}
       </h2>
-      {subtitle && <p className="text-sm text-warm-brown mt-1.5">{subtitle}</p>}
+      {subtitle && <p className="text-sm text-muted mt-1.5">{subtitle}</p>}
     </div>
     {action && <div className="shrink-0 pt-1">{action}</div>}
   </div>
@@ -55,7 +55,7 @@ export const AdminSecondaryButton: React.FC<React.ButtonHTMLAttributes<HTMLButto
 }) => (
   <button
     {...props}
-    className={`inline-flex items-center gap-1.5 px-4 py-2.5 rounded-brand border border-stone-200 bg-white text-[13px] font-semibold text-earth transition-colors hover:bg-stone-100 disabled:opacity-40 ${className}`}
+    className={`inline-flex items-center gap-1.5 px-4 py-2.5 rounded-brand border border-line bg-surface-raised text-[13px] font-semibold text-strong transition-colors hover:bg-surface-sunken disabled:opacity-40 ${className}`}
   >
     {children}
   </button>
@@ -69,13 +69,13 @@ export const AdminSearchBar: React.FC<{
   className?: string;
 }> = ({ value, onChange, placeholder = 'Search…', className = '' }) => (
   <div className={`relative ${className}`}>
-    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[color:var(--text-faint)]" size={18} />
+    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-faint" size={18} />
     <input
       type="text"
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
-      className="w-full pl-11 pr-4 py-3 bg-white border border-stone-200 rounded-brand-lg text-sm text-earth placeholder:text-[color:var(--text-faint)] focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent outline-none transition-all"
+      className="w-full pl-11 pr-4 py-3 bg-surface-raised border border-line rounded-brand-lg text-sm text-strong placeholder:text-faint focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent outline-none transition-all"
     />
   </div>
 );
@@ -84,7 +84,7 @@ export const AdminSearchBar: React.FC<{
 export const AdminCard: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({ children, className = '', ...props }) => (
   <div
     {...props}
-    className={`bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] overflow-hidden ${className}`}
+    className={`bg-surface-raised rounded-brand-lg border border-line shadow-[var(--ds-sh-sm)] overflow-hidden ${className}`}
   >
     {children}
   </div>
@@ -100,7 +100,7 @@ const BADGE_TONES: Record<BadgeTone, string> = {
   green: 'bg-[color-mix(in_srgb,#6E8E52_16%,white)] text-[#40562F]',
   gold: 'bg-[color-mix(in_srgb,var(--brand-color)_16%,white)] text-[color-mix(in_srgb,var(--brand-color)_78%,black)]',
   sky: 'bg-sky-100 text-sky-700',
-  stone: 'bg-stone-100 text-warm-brown',
+  stone: 'bg-surface-sunken text-muted',
   red: 'bg-[#F7E7E2] text-[#A23C28]',
 };
 
@@ -150,10 +150,10 @@ export const AdminEditorHeader: React.FC<{
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
           {backLabel}
         </button>
-        <h1 className="font-display text-[1.75rem] lg:text-[2rem] leading-[1.1] font-light tracking-[-0.02em] text-earth truncate">
+        <h1 className="font-display text-[1.75rem] lg:text-[2rem] leading-[1.1] font-light tracking-[-0.02em] text-strong truncate">
           {title}
         </h1>
-        {subtitle && <p className="text-sm text-warm-brown mt-1.5">{subtitle}</p>}
+        {subtitle && <p className="text-sm text-muted mt-1.5">{subtitle}</p>}
       </div>
       {actions && <div className="shrink-0 flex items-center gap-2.5 pt-1">{actions}</div>}
     </div>

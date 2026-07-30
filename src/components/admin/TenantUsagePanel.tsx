@@ -47,12 +47,12 @@ function Meter({ label, used, limit }: { label: string; used: number; limit: num
   return (
     <div className="flex-1 min-w-[180px]">
       <div className="flex justify-between items-baseline gap-2">
-        <span className="text-[11.5px] font-semibold text-warm-brown">{label}</span>
-        <span className={`text-[11.5px] font-bold ${over ? 'text-red-600' : 'text-earth'}`}>
+        <span className="text-[11.5px] font-semibold text-muted">{label}</span>
+        <span className={`text-[11.5px] font-bold ${over ? 'text-red-600' : 'text-strong'}`}>
           {formatTokens(used)} / {formatTokens(limit)}
         </span>
       </div>
-      <div className="h-1.5 rounded-full bg-stone-100 overflow-hidden mt-1.5">
+      <div className="h-1.5 rounded-full bg-surface-sunken overflow-hidden mt-1.5">
         <div
           className="h-full rounded-full transition-all"
           style={{
@@ -61,7 +61,7 @@ function Meter({ label, used, limit }: { label: string; used: number; limit: num
           }}
         />
       </div>
-      <span className="text-[10.5px] text-[color:var(--text-faint)]">{pct}% of plan</span>
+      <span className="text-[10.5px] text-faint">{pct}% of plan</span>
     </div>
   );
 }
@@ -69,9 +69,9 @@ function Meter({ label, used, limit }: { label: string; used: number; limit: num
 function Stat({ label, value, hint }: { label: string; value: React.ReactNode; hint?: React.ReactNode }) {
   return (
     <div className="flex-1 min-w-[140px]">
-      <p className="text-[11.5px] font-semibold text-warm-brown">{label}</p>
-      <p className="text-lg font-semibold text-earth leading-tight mt-0.5">{value}</p>
-      {hint && <p className="text-[10.5px] text-[color:var(--text-faint)] mt-0.5">{hint}</p>}
+      <p className="text-[11.5px] font-semibold text-muted">{label}</p>
+      <p className="text-lg font-semibold text-strong leading-tight mt-0.5">{value}</p>
+      {hint && <p className="text-[10.5px] text-faint mt-0.5">{hint}</p>}
     </div>
   );
 }
@@ -106,7 +106,7 @@ const TenantUsagePanel: React.FC<{ tenantId: string }> = ({ tenantId }) => {
   }, [tenantId]);
 
   if (loading) {
-    return <p className="text-xs text-warm-brown">Loading usage…</p>;
+    return <p className="text-xs text-muted">Loading usage…</p>;
   }
   if (error || !usage) {
     return <p className="text-xs text-red-600">Usage unavailable — {error || 'no data'}.</p>;

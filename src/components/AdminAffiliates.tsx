@@ -90,7 +90,7 @@ const PENDING_REASON: Record<string, { label: string; stuck: boolean }> = {
 
 function ConnectBadge({ connect }: { connect: Affiliate['connect'] }) {
   if (!connect.accountId) {
-    return <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-stone-100 text-warm-brown">Not connected</span>;
+    return <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-surface-sunken text-muted">Not connected</span>;
   }
   if (connect.payoutReady) {
     return <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-green-100 text-green-700">Connected</span>;
@@ -107,11 +107,11 @@ function Cell({ label, value, tone = '', note }: {
 }) {
   return (
     <div className="min-w-[110px]">
-      <p className="text-[10.5px] font-semibold uppercase tracking-[0.1em] text-[color:var(--text-faint)]">{label}</p>
-      <p className={`text-sm font-semibold mt-0.5 ${tone || 'text-earth'}`}>{value}</p>
+      <p className="text-[10.5px] font-semibold uppercase tracking-[0.1em] text-faint">{label}</p>
+      <p className={`text-sm font-semibold mt-0.5 ${tone || 'text-strong'}`}>{value}</p>
       {/* Marks a figure whose period differs from the selected one — the
           user-doc counters have no history to window, so they stay lifetime. */}
-      {note && <p className="text-[10px] text-[color:var(--text-faint)] leading-tight">{note}</p>}
+      {note && <p className="text-[10px] text-faint leading-tight">{note}</p>}
     </div>
   );
 }
@@ -191,13 +191,13 @@ const AdminAffiliates: React.FC = () => {
           and the order of the list, so "who sold the most in the last 7 days" is
           one control, not two that could disagree. */}
       <div className="flex flex-wrap items-center gap-3">
-        <div className="inline-flex items-center gap-1 p-1 bg-stone-100 rounded-xl">
+        <div className="inline-flex items-center gap-1 p-1 bg-surface-sunken rounded-xl">
           {WINDOWS.map(w => (
             <button
               key={w.key}
               onClick={() => setWindowKey(w.key)}
               className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
-                windowKey === w.key ? 'bg-white shadow-sm text-earth' : 'text-[color:var(--text-faint)]'
+                windowKey === w.key ? 'bg-surface-raised shadow-sm text-strong' : 'text-faint'
               }`}
             >
               {w.label}
@@ -207,16 +207,16 @@ const AdminAffiliates: React.FC = () => {
 
         <button
           onClick={() => setOrder(order === 'most' ? 'least' : 'most')}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-stone-200 bg-white text-xs font-semibold text-earth hover:bg-stone-50 transition-colors"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-line bg-surface-raised text-xs font-semibold text-strong hover:bg-stone-50 transition-colors"
           title="Switch between most and fewest plans sold"
         >
           {order === 'most'
-            ? <ArrowDownWideNarrow size={14} className="text-warm-brown" />
-            : <ArrowUpNarrowWide size={14} className="text-warm-brown" />}
+            ? <ArrowDownWideNarrow size={14} className="text-muted" />
+            : <ArrowUpNarrowWide size={14} className="text-muted" />}
           {order === 'most' ? 'Most plans sold' : 'Fewest plans sold'}
         </button>
 
-        <p className="text-xs text-[color:var(--text-faint)]">
+        <p className="text-xs text-faint">
           Sales figures {period.noun}
           {windowKey !== 'all' && ' · earnings counters stay lifetime'}
         </p>
@@ -229,12 +229,12 @@ const AdminAffiliates: React.FC = () => {
       )}
 
       {filtered.length === 0 ? (
-        <div className="text-center py-16 bg-white rounded-2xl border border-stone-200">
+        <div className="text-center py-16 bg-surface-raised rounded-2xl border border-line">
           <Link2 size={40} className="mx-auto text-stone-300 mb-4" />
-          <p className="text-warm-brown font-medium font-display">
+          <p className="text-muted font-medium font-display">
             {term ? 'No affiliates match that search' : 'No affiliates yet'}
           </p>
-          <p className="text-[color:var(--text-faint)] text-sm mt-1">
+          <p className="text-faint text-sm mt-1">
             {term ? 'Try a different name, email or code.' : 'Nobody has generated a referral link.'}
           </p>
         </div>
@@ -247,13 +247,13 @@ const AdminAffiliates: React.FC = () => {
             const w = win(a);
             const lifetimeView = windowKey === 'all';
             return (
-              <div key={a.userId} className="bg-white rounded-2xl border border-stone-200 p-5">
+              <div key={a.userId} className="bg-surface-raised rounded-2xl border border-line p-5">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <h3 className="font-display text-base font-semibold text-earth truncate">
+                    <h3 className="font-display text-base font-semibold text-strong truncate">
                       {a.name || a.email || a.userId}
                     </h3>
-                    <p className="text-xs text-warm-brown mt-0.5">
+                    <p className="text-xs text-muted mt-0.5">
                       {a.email && <span>{a.email} · </span>}
                       {a.affiliateCode ? <span className="font-mono">{a.affiliateCode}</span> : <span>no referral code</span>}
                     </p>
@@ -262,10 +262,10 @@ const AdminAffiliates: React.FC = () => {
                     <ConnectBadge connect={a.connect} />
                     <button
                       onClick={() => setExpanded(open ? null : a.userId)}
-                      className="p-1.5 rounded-lg hover:bg-stone-100 transition-colors"
+                      className="p-1.5 rounded-lg hover:bg-surface-sunken transition-colors"
                       title={open ? 'Hide detail' : 'Show detail'}
                     >
-                      {open ? <ChevronDown size={16} className="text-warm-brown" /> : <ChevronRight size={16} className="text-warm-brown" />}
+                      {open ? <ChevronDown size={16} className="text-muted" /> : <ChevronRight size={16} className="text-muted" />}
                     </button>
                   </div>
                 </div>
@@ -311,7 +311,7 @@ const AdminAffiliates: React.FC = () => {
                     so these stay lifetime and are labelled as such. */}
                 <div className="flex flex-wrap items-center gap-2 mt-4 text-[11px]">
                   {!lifetimeView && (
-                    <span className="text-[10.5px] font-semibold uppercase tracking-[0.1em] text-[color:var(--text-faint)]">
+                    <span className="text-[10.5px] font-semibold uppercase tracking-[0.1em] text-faint">
                       Payouts · lifetime
                     </span>
                   )}
@@ -326,13 +326,13 @@ const AdminAffiliates: React.FC = () => {
                       failed {a.payoutStatus.failed.count} · {usd(a.payoutStatus.failed.commission)}
                     </span>
                   )}
-                  <span className="px-2 py-0.5 rounded-full font-semibold bg-stone-100 text-warm-brown">
+                  <span className="px-2 py-0.5 rounded-full font-semibold bg-surface-sunken text-muted">
                     cancelled {a.payoutStatus.cancelled.count}
                   </span>
                 </div>
 
                 {reason && (
-                  <p className={`flex items-start gap-1.5 text-xs mt-2 ${reason.stuck ? 'text-red-600' : 'text-warm-brown'}`}>
+                  <p className={`flex items-start gap-1.5 text-xs mt-2 ${reason.stuck ? 'text-red-600' : 'text-muted'}`}>
                     {reason.stuck && <AlertTriangle size={13} className="mt-0.5 shrink-0" />}
                     <span>{reason.label}</span>
                   </p>
@@ -347,18 +347,18 @@ const AdminAffiliates: React.FC = () => {
                 )}
 
                 {open && (
-                  <div className="mt-4 pt-4 border-t border-stone-100 space-y-4">
+                  <div className="mt-4 pt-4 border-t border-line-subtle space-y-4">
                     <div>
                       <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gold mb-2">
                         Transfers that actually fired ({a.transfers.length})
                       </p>
                       {a.transfers.length === 0 ? (
-                        <p className="text-xs text-[color:var(--text-faint)]">No money has moved for this affiliate.</p>
+                        <p className="text-xs text-faint">No money has moved for this affiliate.</p>
                       ) : (
                         <ul className="space-y-1">
                           {a.transfers.map(t => (
-                            <li key={t.commissionId} className="text-xs text-warm-brown">
-                              <span className="font-semibold text-earth">{usd(t.commission)}</span>
+                            <li key={t.commissionId} className="text-xs text-muted">
+                              <span className="font-semibold text-strong">{usd(t.commission)}</span>
                               {t.paidAt && <span> · {t.paidAt.slice(0, 10)}</span>}
                               {t.stripeTransferId && <span className="font-mono"> · {t.stripeTransferId}</span>}
                             </li>
@@ -374,7 +374,7 @@ const AdminAffiliates: React.FC = () => {
                       <div className="overflow-x-auto">
                         <table className="w-full text-xs">
                           <thead>
-                            <tr className="text-left text-[color:var(--text-faint)]">
+                            <tr className="text-left text-faint">
                               <th className="py-1 pr-3 font-semibold">Date</th>
                               <th className="py-1 pr-3 font-semibold">Tenant</th>
                               <th className="py-1 pr-3 font-semibold">Plan</th>
@@ -387,14 +387,14 @@ const AdminAffiliates: React.FC = () => {
                           </thead>
                           <tbody>
                             {a.recentCommissions.map(c => (
-                              <tr key={c.id} className="border-t border-stone-100 text-warm-brown">
+                              <tr key={c.id} className="border-t border-line-subtle text-muted">
                                 <td className="py-1 pr-3">{(c.createdAt || '').slice(0, 10) || '—'}</td>
                                 <td className="py-1 pr-3 font-mono">{c.tenantId || '—'}</td>
                                 <td className="py-1 pr-3">{c.plan || '—'}</td>
                                 <td className="py-1 pr-3">{c.type || '—'}</td>
                                 <td className="py-1 pr-3">{c.status || '—'}</td>
                                 <td className="py-1 pr-3 text-right">{usd(c.amount)}</td>
-                                <td className="py-1 pr-3 text-right text-earth font-semibold">{usd(c.commission)}</td>
+                                <td className="py-1 pr-3 text-right text-strong font-semibold">{usd(c.commission)}</td>
                                 <td className="py-1 text-right">
                                   {c.amount > 0 ? `${((c.commission / c.amount) * 100).toFixed(0)}%` : '—'}
                                 </td>

@@ -163,13 +163,13 @@ const UserEvents: React.FC<UserEventsProps> = ({ onBack }) => {
   }, []);
 
   return (
-    <div className="flex flex-col min-h-full h-full bg-cream overflow-y-auto">
-      <div className="sticky top-0 z-10 bg-white border-b border-stone-200">
+    <div className="flex flex-col min-h-full h-full bg-surface overflow-y-auto">
+      <div className="sticky top-0 z-10 bg-surface-raised border-b border-line">
         <div className="flex items-center gap-3 px-4 py-4 lg:max-w-[760px] lg:mx-auto">
-          <button onClick={onBack} className="p-1.5 rounded-lg hover:bg-stone-100">
-            <ArrowLeft size={18} className="text-warm-brown" />
+          <button onClick={onBack} className="p-1.5 rounded-lg hover:bg-surface-sunken">
+            <ArrowLeft size={18} className="text-muted" />
           </button>
-          <h2 className="font-display text-lg font-normal tracking-[-0.01em] text-earth">My Events</h2>
+          <h2 className="font-display text-lg font-normal tracking-[-0.01em] text-strong">My Events</h2>
         </div>
       </div>
 
@@ -180,12 +180,12 @@ const UserEvents: React.FC<UserEventsProps> = ({ onBack }) => {
               style={{ borderColor: BRAND, borderTopColor: 'transparent' }} />
           </div>
         ) : error ? (
-          <div className="text-center py-16 text-[color:var(--text-faint)]">
+          <div className="text-center py-16 text-faint">
             <CalendarCheck size={40} className="mx-auto mb-3 opacity-30" />
             <p className="font-medium">{error}</p>
           </div>
         ) : rows.length === 0 ? (
-          <div className="text-center py-16 text-[color:var(--text-faint)]">
+          <div className="text-center py-16 text-faint">
             <CalendarCheck size={40} className="mx-auto mb-3 opacity-30" />
             <p className="font-medium">No upcoming events</p>
             <p className="text-sm mt-1">Events you can join will show up here.</p>
@@ -200,14 +200,14 @@ const UserEvents: React.FC<UserEventsProps> = ({ onBack }) => {
                   key={r.id}
                   className={`rounded-2xl p-4 shadow-sm transition-colors ${
                     ticketed
-                      ? 'bg-white ring-2'
-                      : 'bg-white border border-stone-200'
+                      ? 'bg-surface-raised ring-2'
+                      : 'bg-surface-raised border border-line'
                   }`}
                   style={ticketed ? ({ '--tw-ring-color': BRAND } as React.CSSProperties) : undefined}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <h3 className="font-bold text-earth text-sm">{r.title}</h3>
+                      <h3 className="font-bold text-strong text-sm">{r.title}</h3>
                       {ticketed && (
                         <span className={`inline-block mt-1 text-[10px] font-semibold px-2 py-0.5 rounded-full ${statusLabel(r.ticket!).cls}`}>
                           {statusLabel(r.ticket!).text}
@@ -223,16 +223,16 @@ const UserEvents: React.FC<UserEventsProps> = ({ onBack }) => {
                   </div>
 
                   <div className="space-y-1.5 mt-3">
-                    <div className="flex items-center gap-2 text-xs text-warm-brown">
+                    <div className="flex items-center gap-2 text-xs text-muted">
                       <Clock size={12} style={{ color: BRAND }} />
                       {fmtDate(r.startMillis)}{time ? ` · ${time}` : ''}
                     </div>
                     {r.isOnline ? (
-                      <div className="flex items-center gap-2 text-xs text-warm-brown">
+                      <div className="flex items-center gap-2 text-xs text-muted">
                         <Globe size={12} style={{ color: BRAND }} /> Online event
                       </div>
                     ) : r.location ? (
-                      <div className="flex items-center gap-2 text-xs text-warm-brown">
+                      <div className="flex items-center gap-2 text-xs text-muted">
                         <MapPin size={12} style={{ color: BRAND }} /> {r.location}
                       </div>
                     ) : null}
@@ -300,13 +300,13 @@ const TicketModal: React.FC<{ row: EventRow; onClose: () => void }> = ({ row, on
   return (
     <div className="fixed inset-0 z-[400] bg-black/60 flex items-center justify-center p-4" onClick={onClose}>
       <div
-        className="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-xl"
+        className="bg-surface-raised rounded-3xl w-full max-w-sm overflow-hidden shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-5 py-4 border-b border-stone-200">
-          <h3 className="font-display text-base font-bold text-earth truncate pr-2">{row.title}</h3>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-stone-100 shrink-0">
-            <X size={18} className="text-warm-brown" />
+        <div className="flex items-center justify-between px-5 py-4 border-b border-line">
+          <h3 className="font-display text-base font-bold text-strong truncate pr-2">{row.title}</h3>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-surface-sunken shrink-0">
+            <X size={18} className="text-muted" />
           </button>
         </div>
 
@@ -321,20 +321,20 @@ const TicketModal: React.FC<{ row: EventRow; onClose: () => void }> = ({ row, on
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={qr} alt="Ticket QR code" className="w-60 h-60 max-w-full mx-auto rounded-xl" />
               ) : qrError ? (
-                <div className="w-60 h-60 mx-auto rounded-xl bg-stone-100 flex items-center justify-center text-sm text-[color:var(--text-faint)]">
+                <div className="w-60 h-60 mx-auto rounded-xl bg-surface-sunken flex items-center justify-center text-sm text-faint">
                   Couldn&apos;t render the QR — use the code below.
                 </div>
               ) : (
-                <div className="w-60 h-60 mx-auto rounded-xl bg-stone-100 flex items-center justify-center">
+                <div className="w-60 h-60 mx-auto rounded-xl bg-surface-sunken flex items-center justify-center">
                   <div className="w-7 h-7 border-4 border-t-transparent rounded-full animate-spin"
                     style={{ borderColor: BRAND, borderTopColor: 'transparent' }} />
                 </div>
               )}
-              <p className="text-xs text-[color:var(--text-faint)] mt-4">Ticket code</p>
-              <p className="text-2xl font-mono font-bold tracking-widest text-earth">{t.ticketCode}</p>
+              <p className="text-xs text-faint mt-4">Ticket code</p>
+              <p className="text-2xl font-mono font-bold tracking-widest text-strong">{t.ticketCode}</p>
             </>
           ) : (
-            <div className="py-8 text-sm text-warm-brown">
+            <div className="py-8 text-sm text-muted">
               {t.status === 'waitlisted'
                 ? "You're on the waitlist — a ticket code will be issued if a spot opens up."
                 : 'No ticket code is available for this registration yet.'}
@@ -342,9 +342,9 @@ const TicketModal: React.FC<{ row: EventRow; onClose: () => void }> = ({ row, on
           )}
 
           {t.ticketTypeName && (
-            <p className="text-sm text-warm-brown mt-3">{t.ticketTypeName}</p>
+            <p className="text-sm text-muted mt-3">{t.ticketTypeName}</p>
           )}
-          <p className="text-xs text-[color:var(--text-faint)] mt-4">Present this at the door — no email needed.</p>
+          <p className="text-xs text-faint mt-4">Present this at the door — no email needed.</p>
         </div>
       </div>
     </div>

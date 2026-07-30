@@ -173,11 +173,11 @@ export const FeedEmbedCard: React.FC<{ embed: PostEmbed; tenantId: string | null
   const { status, data } = useResolvedEmbed(embed, tenantId);
 
   if (status === 'loading') {
-    return <div className="mb-3 h-[76px] rounded-xl bg-stone-100 border border-stone-200 animate-pulse" />;
+    return <div className="mb-3 h-[76px] rounded-xl bg-surface-sunken border border-line animate-pulse" />;
   }
   if (status === 'missing' || !data) {
     return (
-      <div className="mb-3 flex items-center gap-2 rounded-xl border border-stone-200 bg-stone-50 px-3 py-2.5 text-xs text-warm-brown">
+      <div className="mb-3 flex items-center gap-2 rounded-xl border border-line bg-stone-50 px-3 py-2.5 text-xs text-muted">
         <FileText size={14} className="text-stone-400 shrink-0" />
         This attachment is no longer available.
       </div>
@@ -189,14 +189,14 @@ export const FeedEmbedCard: React.FC<{ embed: PostEmbed; tenantId: string | null
   return (
     <a
       href={data.href}
-      className="group mb-3 flex overflow-hidden rounded-xl border border-stone-200 bg-white transition-colors hover:border-gold focus:outline-none focus-visible:ring-2 focus-visible:ring-gold"
+      className="group mb-3 flex overflow-hidden rounded-xl border border-line bg-surface-raised transition-colors hover:border-gold focus:outline-none focus-visible:ring-2 focus-visible:ring-gold"
     >
       {data.image ? (
-        <div className="relative w-24 sm:w-28 shrink-0 bg-stone-100">
+        <div className="relative w-24 sm:w-28 shrink-0 bg-surface-sunken">
           <Image src={data.image} alt="" fill sizes="112px" className="object-cover" referrerPolicy="no-referrer" />
         </div>
       ) : (
-        <div className="w-24 sm:w-28 shrink-0 bg-stone-100 flex items-center justify-center">
+        <div className="w-24 sm:w-28 shrink-0 bg-surface-sunken flex items-center justify-center">
           <Icon size={22} className="text-stone-300" />
         </div>
       )}
@@ -204,31 +204,31 @@ export const FeedEmbedCard: React.FC<{ embed: PostEmbed; tenantId: string | null
         <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-gold">
           <Icon size={11} /> {label}
         </span>
-        <h5 className="font-bold text-earth text-sm leading-snug line-clamp-2 mt-1 group-hover:text-gold transition-colors">
+        <h5 className="font-bold text-strong text-sm leading-snug line-clamp-2 mt-1 group-hover:text-gold transition-colors">
           {data.title}
         </h5>
 
         {data.type === 'blog' && data.excerpt && (
-          <p className="text-xs text-warm-brown line-clamp-2 mt-1">{data.excerpt}</p>
+          <p className="text-xs text-muted line-clamp-2 mt-1">{data.excerpt}</p>
         )}
 
         {data.type === 'fundraising' && (
           <div className="mt-2">
-            <div className="h-1.5 bg-stone-100 rounded-full overflow-hidden">
+            <div className="h-1.5 bg-surface-sunken rounded-full overflow-hidden">
               <div
                 className="h-full rounded-full transition-[width] duration-700"
                 style={{ width: `${data.percentage}%`, backgroundColor: 'var(--brand-color, #e6b325)' }}
               />
             </div>
-            <div className="flex justify-between text-[11px] text-warm-brown mt-1">
-              <span className="font-semibold text-[color:var(--text-body)]">{fmtMoney(data.raised || 0)}</span>
+            <div className="flex justify-between text-[11px] text-muted mt-1">
+              <span className="font-semibold text-body">{fmtMoney(data.raised || 0)}</span>
               <span>of {fmtMoney(data.goal || 0)}</span>
             </div>
           </div>
         )}
 
         {data.type === 'event' && (
-          <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-warm-brown mt-1.5">
+          <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted mt-1.5">
             {data.dateLabel && (
               <span className="flex items-center gap-1">
                 <CalendarIcon size={12} />
@@ -261,8 +261,8 @@ export const EmbedComposerChip: React.FC<{ embed: PostEmbed; tenantId: string | 
   const { Icon, label } = TYPE_META[embed.type];
 
   return (
-    <div className="relative flex items-center gap-3 rounded-xl border border-stone-200 bg-stone-50 p-2.5 pr-9">
-      <div className="w-11 h-11 rounded-lg overflow-hidden bg-stone-100 shrink-0 relative flex items-center justify-center">
+    <div className="relative flex items-center gap-3 rounded-xl border border-line bg-stone-50 p-2.5 pr-9">
+      <div className="w-11 h-11 rounded-lg overflow-hidden bg-surface-sunken shrink-0 relative flex items-center justify-center">
         {data?.image ? (
           <Image src={data.image} alt="" fill sizes="44px" className="object-cover" referrerPolicy="no-referrer" />
         ) : (
@@ -273,7 +273,7 @@ export const EmbedComposerChip: React.FC<{ embed: PostEmbed; tenantId: string | 
         <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-gold">
           <Icon size={10} /> {label}
         </span>
-        <p className="text-sm font-semibold text-earth truncate">
+        <p className="text-sm font-semibold text-strong truncate">
           {status === 'loading' ? 'Loading…' : status === 'missing' ? 'Unavailable' : data?.title}
         </p>
       </div>

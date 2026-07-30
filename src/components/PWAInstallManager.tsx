@@ -145,7 +145,7 @@ export default function PWAInstallManager() {
         initial={{ y: 100, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         exit={{ y: 100, opacity: 0 }}
-        className="fixed bottom-24 left-4 right-4 z-[100] md:bottom-8 md:max-w-sm md:left-1/2 md:-translate-x-1/2 bg-white rounded-2xl shadow-2xl border border-gray-100 p-4"
+        className="fixed bottom-24 left-4 right-4 z-[100] md:bottom-8 md:max-w-sm md:left-1/2 md:-translate-x-1/2 bg-surface-raised rounded-2xl shadow-2xl border border-gray-100 p-4"
       >
         <button 
           onClick={dismissPrompt}

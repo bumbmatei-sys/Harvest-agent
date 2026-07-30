@@ -129,7 +129,7 @@ export default async function PublicPostPage({
           )}
         </div>
 
-        <article className="bg-white rounded-[14px] shadow-sm border border-gray-100 p-6">
+        <article className="bg-surface-raised rounded-[14px] shadow-sm border border-gray-100 p-6">
           {/* Author */}
           <div className="flex items-center gap-3 mb-4">
             {authorPhoto ? (
@@ -184,7 +184,7 @@ export default async function PublicPostPage({
 
         {/* Sign-in CTA — a plain link, NOT an interactive like/comment control.
             The app root shows the auth screen to logged-out visitors. */}
-        <div className="bg-white rounded-[14px] shadow-sm border border-gray-100 p-5 mt-4 text-center">
+        <div className="bg-surface-raised rounded-[14px] shadow-sm border border-gray-100 p-5 mt-4 text-center">
           <p className="text-sm text-gray-500 mb-3">Sign in to join the conversation</p>
           <a
             href="/"

@@ -139,7 +139,7 @@ export default function AffiliateSection() {
     return (
       <div className="space-y-3">
         {[1,2,3].map(i => (
-          <div key={i} className="h-12 bg-stone-100 rounded-xl animate-pulse" />
+          <div key={i} className="h-12 bg-surface-sunken rounded-xl animate-pulse" />
         ))}
       </div>
     );
@@ -151,8 +151,8 @@ export default function AffiliateSection() {
       {/* Header */}
       <div>
         <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-gold mb-1.5">Grow</p>
-        <h2 className="font-display text-[1.75rem] lg:text-[2rem] leading-[1.1] font-light tracking-[-0.02em] text-earth">Affiliate Program</h2>
-        <p className="text-sm text-warm-brown mt-2 max-w-xl">
+        <h2 className="font-display text-[1.75rem] lg:text-[2rem] leading-[1.1] font-light tracking-[-0.02em] text-strong">Affiliate Program</h2>
+        <p className="text-sm text-muted mt-2 max-w-xl">
           Share your link and earn commission on every subscription you refer — for the
           first {windowMonths} months after each ministry signs up.
         </p>
@@ -167,7 +167,7 @@ export default function AffiliateSection() {
             {fmt(status?.thisMonthEarnings || 0)}
           </p>
           {(status?.thisMonthPending || 0) > 0 && (
-            <p className="text-xs text-warm-brown mt-1.5">
+            <p className="text-xs text-muted mt-1.5">
               {fmt(status?.thisMonthPending || 0)} pending payout
             </p>
           )}
@@ -177,26 +177,26 @@ export default function AffiliateSection() {
 
       {/* Stats row — 3-across at every breakpoint. */}
       <div className="grid grid-cols-3 gap-4">
-        <div className="bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] p-5 text-center">
-          <p className="font-display text-[1.75rem] leading-none font-light text-earth">{status?.referralCount || 0}</p>
-          <p className="text-xs text-warm-brown mt-1.5">Referrals</p>
+        <div className="bg-surface-raised rounded-brand-lg border border-line shadow-[var(--ds-sh-sm)] p-5 text-center">
+          <p className="font-display text-[1.75rem] leading-none font-light text-strong">{status?.referralCount || 0}</p>
+          <p className="text-xs text-muted mt-1.5">Referrals</p>
         </div>
-        <div className="bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] p-5 text-center">
+        <div className="bg-surface-raised rounded-brand-lg border border-line shadow-[var(--ds-sh-sm)] p-5 text-center">
           <p className="font-display text-[1.75rem] leading-none font-light" style={{ color: GOLD }}>{fmt(status?.recurringEarnings || 0)}</p>
-          <p className="text-xs text-warm-brown mt-1.5">Recurring</p>
+          <p className="text-xs text-muted mt-1.5">Recurring</p>
         </div>
-        <div className="bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] p-5 text-center">
-          <p className="font-display text-[1.75rem] leading-none font-light text-earth">{fmt(status?.totalEarnings || 0)}</p>
-          <p className="text-xs text-warm-brown mt-1.5">Lifetime</p>
+        <div className="bg-surface-raised rounded-brand-lg border border-line shadow-[var(--ds-sh-sm)] p-5 text-center">
+          <p className="font-display text-[1.75rem] leading-none font-light text-strong">{fmt(status?.totalEarnings || 0)}</p>
+          <p className="text-xs text-muted mt-1.5">Lifetime</p>
         </div>
       </div>
 
       {/* Referral Link */}
       <div>
         <p className="text-[11px] font-semibold text-gold uppercase tracking-[0.14em] mb-2">Your Referral Link</p>
-        <div className="bg-white rounded-2xl border border-stone-200 px-4 py-3 flex items-center gap-3">
+        <div className="bg-surface-raised rounded-2xl border border-line px-4 py-3 flex items-center gap-3">
           <Share2 size={16} style={{ color: GOLD }} className="flex-shrink-0" />
-          <span className="flex-1 text-sm text-[color:var(--text-body)] truncate font-mono">
+          <span className="flex-1 text-sm text-body truncate font-mono">
             {status?.affiliateCode
               ? `theharvest.site/pricing?ref=${status.affiliateCode}`
               : 'Generating your link…'}
@@ -232,7 +232,7 @@ export default function AffiliateSection() {
           <button
             onClick={handleSetupPayouts}
             disabled={onboarding}
-            className="text-xs text-[color:var(--text-faint)] hover:text-warm-brown flex items-center gap-1"
+            className="text-xs text-faint hover:text-muted flex items-center gap-1"
           >
             <ExternalLink size={12} /> Manage
           </button>
@@ -246,22 +246,22 @@ export default function AffiliateSection() {
           <p className="text-[11px] font-semibold text-gold uppercase tracking-[0.14em] mb-2">
             Commission Windows
           </p>
-          <div className="bg-white rounded-2xl border border-stone-200 divide-y divide-stone-200">
+          <div className="bg-surface-raised rounded-2xl border border-line divide-y divide-stone-200">
             {referralWindows.map(w => (
               <div key={w.tenantId} className="px-4 py-3 flex items-center justify-between gap-3">
-                <span className="text-sm text-earth truncate font-mono">{w.tenantId}</span>
+                <span className="text-sm text-strong truncate font-mono">{w.tenantId}</span>
                 {w.windowEndsAt === null ? (
-                  <span className="text-xs text-[color:var(--text-faint)] flex-shrink-0">
+                  <span className="text-xs text-faint flex-shrink-0">
                     Window dates unavailable
                   </span>
                 ) : w.expired ? (
-                  <span className="text-xs text-[color:var(--text-faint)] flex-shrink-0">
+                  <span className="text-xs text-faint flex-shrink-0">
                     Ended {fmtDate(w.windowEndsAt)}
                   </span>
                 ) : (
                   <span className="text-xs font-semibold flex-shrink-0" style={{ color: GOLD }}>
                     {w.daysRemaining} {w.daysRemaining === 1 ? 'day' : 'days'} left
-                    <span className="font-normal text-[color:var(--text-faint)]">
+                    <span className="font-normal text-faint">
                       {' '}· ends {fmtDate(w.windowEndsAt)}
                     </span>
                   </span>
@@ -273,18 +273,18 @@ export default function AffiliateSection() {
       )}
 
       {/* Commission info — one flat rate for every referral, every plan. */}
-      <div className="bg-white rounded-2xl border border-stone-200 p-4 space-y-2">
+      <div className="bg-surface-raised rounded-2xl border border-line p-4 space-y-2">
         <p className="text-[11px] font-semibold text-gold uppercase tracking-[0.14em] pb-1">Commission Rate</p>
         <div className="flex items-center justify-between">
-          <span className="text-sm text-warm-brown">All plans</span>
+          <span className="text-sm text-muted">All plans</span>
           <span className="text-sm font-bold" style={{ color: GOLD }}>15% for {windowMonths} months</span>
         </div>
-        <p className="text-[10px] text-[color:var(--text-faint)] pt-1 border-t border-stone-200">
+        <p className="text-[10px] text-faint pt-1 border-t border-line">
           You earn commission every month for the first {windowMonths} months after a
           ministry signs up, then that referral&rsquo;s commission ends. If they cancel
           sooner, commission stops sooner.
         </p>
-        <p className="text-[10px] text-[color:var(--text-faint)]">
+        <p className="text-[10px] text-faint">
           Commissions transfer to your Stripe account automatically — instantly when a
           referral pays if your payouts are already connected, or as soon as you finish
           connecting Stripe for anything you earned beforehand. When the money reaches

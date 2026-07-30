@@ -174,7 +174,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
       icon: <AlertTriangle size={18} />,
       content: (
         <div>
-          <p className="text-warm-brown text-sm mb-4">Cancel your subscription. Your ministry will remain active until the end of the current billing period.</p>
+          <p className="text-muted text-sm mb-4">Cancel your subscription. Your ministry will remain active until the end of the current billing period.</p>
           <button
             onClick={() => setShowCancelConfirm(true)}
             className="px-4 py-2 border border-red-200 text-red-600 rounded-lg text-sm font-medium hover:bg-red-50 transition-colors"
@@ -198,7 +198,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
           mobile settings surface starts at the plan card, per the mockup. */}
       <div className="hidden lg:block">
         <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-gold mb-1.5">Platform</p>
-        <h2 className="font-display text-[1.75rem] lg:text-[2rem] leading-[1.1] font-light tracking-[-0.02em] text-earth">Settings</h2>
+        <h2 className="font-display text-[1.75rem] lg:text-[2rem] leading-[1.1] font-light tracking-[-0.02em] text-strong">Settings</h2>
       </div>
 
       {/* Stripe status banners */}
@@ -246,29 +246,29 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
 
       {/* Current Plan Summary */}
       {currentPlan ? (
-        <div className="bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] p-4 flex items-center gap-4">
+        <div className="bg-surface-raised rounded-brand-lg border border-line shadow-[var(--ds-sh-sm)] p-4 flex items-center gap-4">
           <span className="w-11 h-11 rounded-brand bg-[color-mix(in_srgb,var(--brand-color)_12%,white)] flex items-center justify-center shrink-0">
             <DollarSign size={20} className="text-gold" />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-earth">{currentPlanData?.name || 'Current'} plan</p>
-            <p className="text-xs text-warm-brown">{planSummary}</p>
+            <p className="text-sm font-semibold text-strong">{currentPlanData?.name || 'Current'} plan</p>
+            <p className="text-xs text-muted">{planSummary}</p>
           </div>
           <button
             onClick={handleManageSubscription}
-            className="shrink-0 px-4 py-2 rounded-brand border border-stone-200 bg-white text-[13px] font-semibold text-earth hover:bg-stone-100 transition-colors"
+            className="shrink-0 px-4 py-2 rounded-brand border border-line bg-surface-raised text-[13px] font-semibold text-strong hover:bg-surface-sunken transition-colors"
           >
             Manage
           </button>
         </div>
       ) : (
-        <div className="bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] p-4 flex items-center gap-4">
+        <div className="bg-surface-raised rounded-brand-lg border border-line shadow-[var(--ds-sh-sm)] p-4 flex items-center gap-4">
           <span className="w-11 h-11 rounded-brand bg-[color-mix(in_srgb,var(--brand-color)_12%,white)] flex items-center justify-center shrink-0">
             <Crown size={20} className="text-gold" />
           </span>
           <div>
-            <p className="text-sm font-semibold text-earth">Super Admin</p>
-            <p className="text-xs text-warm-brown">Platform-wide access — manage all tenants</p>
+            <p className="text-sm font-semibold text-strong">Super Admin</p>
+            <p className="text-xs text-muted">Platform-wide access — manage all tenants</p>
           </div>
         </div>
       )}
@@ -280,32 +280,32 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
       {onCustomizeNav && (
         <button
           onClick={onCustomizeNav}
-          className="w-full flex items-center gap-3 px-5 py-4 bg-white rounded-brand border border-stone-200 shadow-[var(--ds-sh-sm)] hover:bg-stone-100/60 transition-colors text-left"
+          className="w-full flex items-center gap-3 px-5 py-4 bg-surface-raised rounded-brand border border-line shadow-[var(--ds-sh-sm)] hover:bg-stone-100/60 transition-colors text-left"
         >
           <SlidersHorizontal size={18} className="text-gold shrink-0" />
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-earth">Customize Navigation</p>
-            <p className="text-xs text-[color:var(--text-faint)]">Rearrange your bottom bar &amp; More drawer</p>
+            <p className="text-sm font-semibold text-strong">Customize Navigation</p>
+            <p className="text-xs text-faint">Rearrange your bottom bar &amp; More drawer</p>
           </div>
-          <ChevronRight size={16} className="text-[color:var(--text-faint)]" />
+          <ChevronRight size={16} className="text-faint" />
         </button>
       )}
 
       {/* Cancel Confirmation Modal */}
       {showCancelConfirm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[200] p-4">
-          <div className="bg-white rounded-xl p-6 max-w-md w-full">
+          <div className="bg-surface-raised rounded-xl p-6 max-w-md w-full">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center">
                 <AlertTriangle size={20} className="text-red-500" />
               </div>
-              <h3 className="text-lg font-bold text-earth font-display">Cancel Subscription?</h3>
+              <h3 className="text-lg font-bold text-strong font-display">Cancel Subscription?</h3>
             </div>
-            <p className="text-warm-brown text-sm mb-6">
+            <p className="text-muted text-sm mb-6">
               Your ministry will remain active until the end of the current billing period. After that, all data will be preserved but your ministry will be suspended.
             </p>
             <div className="flex gap-3 justify-end">
-              <button onClick={() => setShowCancelConfirm(false)} className="px-4 py-2 text-warm-brown rounded-xl text-sm font-medium hover:bg-stone-100 transition-colors">
+              <button onClick={() => setShowCancelConfirm(false)} className="px-4 py-2 text-muted rounded-xl text-sm font-medium hover:bg-surface-sunken transition-colors">
                 Keep Plan
               </button>
               <button onClick={() => { handleManageSubscription(); setShowCancelConfirm(false); }} className="px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-semibold hover:bg-red-700 transition-colors">

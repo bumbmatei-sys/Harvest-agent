@@ -53,13 +53,13 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({ tenantId, tenantName, l
         <div className="flex items-center justify-between mb-5">
           <h1 className="font-display text-2xl font-bold text-gray-900">{tenantName} Events</h1>
           <a href="/calendar/ical" target="_blank" rel="noreferrer"
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 shrink-0">
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border border-gray-200 bg-surface-raised text-gray-700 hover:bg-gray-50 shrink-0">
             <CalendarPlus size={14} /> Subscribe
           </a>
         </div>
 
         {events.length === 0 ? (
-          <div className="bg-white rounded-[14px] shadow-sm border border-gray-100 p-12 text-center">
+          <div className="bg-surface-raised rounded-[14px] shadow-sm border border-gray-100 p-12 text-center">
             <CalendarOff size={40} className="mx-auto mb-3 text-gray-300" />
             <p className="text-gray-500 font-medium">No upcoming events.</p>
             <p className="text-sm text-gray-400 mt-1">Check back soon.</p>
@@ -69,7 +69,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({ tenantId, tenantName, l
             {events.map((ev) => {
               const when = fmtDateTime(ev.startDate);
               return (
-                <div key={ev.id} className="bg-white rounded-[14px] shadow-sm border border-gray-100 overflow-hidden">
+                <div key={ev.id} className="bg-surface-raised rounded-[14px] shadow-sm border border-gray-100 overflow-hidden">
                   {ev.coverImage && (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={ev.coverImage} alt={ev.title} className="w-full h-40 object-cover" />

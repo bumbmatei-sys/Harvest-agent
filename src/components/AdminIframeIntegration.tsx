@@ -88,31 +88,31 @@ const AdminIframeIntegration: React.FC<AdminIframeIntegrationProps> = ({
   if (!url || configuring) {
     return (
       <div className="max-w-lg mx-auto">
-        <div className="bg-white rounded-2xl border border-stone-200 shadow-sm overflow-hidden">
-          <div className="p-6 border-b border-stone-200">
+        <div className="bg-surface-raised rounded-2xl border border-line shadow-sm overflow-hidden">
+          <div className="p-6 border-b border-line">
             <div className="flex items-center gap-4 mb-4">
-              <div className="w-14 h-14 rounded-2xl bg-stone-100 flex items-center justify-center text-2xl flex-shrink-0 border border-stone-200">
+              <div className="w-14 h-14 rounded-2xl bg-surface-sunken flex items-center justify-center text-2xl flex-shrink-0 border border-line">
                 {icon}
               </div>
               <div>
-                <h2 className="font-display text-lg font-bold text-earth">{displayName}</h2>
-                <p className="text-sm text-warm-brown mt-0.5">{description}</p>
+                <h2 className="font-display text-lg font-bold text-strong">{displayName}</h2>
+                <p className="text-sm text-muted mt-0.5">{description}</p>
               </div>
             </div>
           </div>
           <div className="p-6">
-            <label className="text-xs font-semibold text-[color:var(--text-body)] mb-2 block">{displayName} URL</label>
+            <label className="text-xs font-semibold text-body mb-2 block">{displayName} URL</label>
             <input
               value={inputUrl}
               onChange={(e) => setInputUrl(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSave()}
               placeholder={urlPlaceholder}
-              className="w-full border border-stone-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold mb-2"
+              className="w-full border border-line rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold mb-2"
             />
-            <p className="text-xs text-[color:var(--text-faint)] mb-5">{urlHelp}</p>
+            <p className="text-xs text-faint mb-5">{urlHelp}</p>
             <div className="flex gap-3">
               {configuring && (
-                <button onClick={() => setConfiguring(false)} className="flex-1 py-2.5 rounded-xl border border-stone-200 text-sm font-semibold text-warm-brown hover:bg-stone-100">
+                <button onClick={() => setConfiguring(false)} className="flex-1 py-2.5 rounded-xl border border-line text-sm font-semibold text-muted hover:bg-surface-sunken">
                   Cancel
                 </button>
               )}
@@ -138,23 +138,23 @@ const AdminIframeIntegration: React.FC<AdminIframeIntegrationProps> = ({
       {/* Toolbar */}
       <div className="flex items-center justify-between mb-3 px-1">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-bold text-[color:var(--text-body)]">{displayName}</span>
+          <span className="text-sm font-bold text-body">{displayName}</span>
           <span className="text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded-full font-semibold">Connected</span>
         </div>
         <div className="flex items-center gap-2">
           <a href={url} target="_blank" rel="noopener noreferrer"
-            className="flex items-center gap-1.5 text-xs text-warm-brown hover:text-[color:var(--text-body)] px-3 py-1.5 rounded-lg border border-stone-200 hover:bg-stone-100 transition-colors">
+            className="flex items-center gap-1.5 text-xs text-muted hover:text-body px-3 py-1.5 rounded-lg border border-line hover:bg-surface-sunken transition-colors">
             <ExternalLink size={12} /> Open in new tab
           </a>
           <button onClick={() => setConfiguring(true)}
-            className="p-1.5 rounded-lg border border-stone-200 hover:bg-stone-100 transition-colors text-[color:var(--text-faint)] hover:text-warm-brown">
+            className="p-1.5 rounded-lg border border-line hover:bg-surface-sunken transition-colors text-faint hover:text-muted">
             <Settings2 size={14} />
           </button>
         </div>
       </div>
 
       {/* iframe — fills remaining admin content area */}
-      <div className="flex-1 rounded-2xl overflow-hidden border border-stone-200 shadow-sm bg-white" style={{ minHeight: 500 }}>
+      <div className="flex-1 rounded-2xl overflow-hidden border border-line shadow-sm bg-surface-raised" style={{ minHeight: 500 }}>
         <iframe
           src={url}
           title={displayName}

@@ -81,16 +81,16 @@ export function AuthorProfile({ author, onBack, courses, onSelectCourse }: Autho
         )}
 
         <div className="text-2xl font-extrabold tracking-tight mb-1 font-display">{author.name}</div>
-        <div className="text-sm text-warm-brown font-medium mb-4">{author.title || "Instructor"}</div>
+        <div className="text-sm text-muted font-medium mb-4">{author.title || "Instructor"}</div>
 
         <div className="flex justify-center gap-8">
           <div className="text-center">
             <div className="text-xl font-extrabold">{authorCourses.length}</div>
-            <div className="text-[11px] text-[color:var(--text-faint)] font-semibold uppercase tracking-wider">Courses</div>
+            <div className="text-[11px] text-faint font-semibold uppercase tracking-wider">Courses</div>
           </div>
           <div className="text-center">
             <div className="text-xl font-extrabold">{totalLessons}</div>
-            <div className="text-[11px] text-[color:var(--text-faint)] font-semibold uppercase tracking-wider">Lessons</div>
+            <div className="text-[11px] text-faint font-semibold uppercase tracking-wider">Lessons</div>
           </div>
         </div>
       </div>
@@ -98,7 +98,7 @@ export function AuthorProfile({ author, onBack, courses, onSelectCourse }: Autho
       <div className="px-5">
         {/* Bio */}
         {author.bio && (
-          <div className="prose max-w-none text-sm leading-7 text-warm-brown py-5 border-b border-stone-200">
+          <div className="prose max-w-none text-sm leading-7 text-muted py-5 border-b border-line">
             <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(author.bio) }} />
           </div>
         )}
@@ -116,10 +116,10 @@ export function AuthorProfile({ author, onBack, courses, onSelectCourse }: Autho
               return (
                 <div
                   key={course.id}
-                  className="flex gap-3 p-3 border border-stone-200 rounded-xl mb-2.5 cursor-pointer hover:shadow-md transition-all"
+                  className="flex gap-3 p-3 border border-line rounded-xl mb-2.5 cursor-pointer hover:shadow-md transition-all"
                   onClick={() => onSelectCourse?.(course)}
                 >
-                  <div className="w-20 h-[60px] rounded-lg overflow-hidden flex-shrink-0 bg-stone-100">
+                  <div className="w-20 h-[60px] rounded-lg overflow-hidden flex-shrink-0 bg-surface-sunken">
                     {course.thumbnail ? (
                       <img src={course.thumbnail} alt={course.title} className="w-full h-full object-cover" />
                     ) : (
@@ -130,7 +130,7 @@ export function AuthorProfile({ author, onBack, courses, onSelectCourse }: Autho
                   </div>
                   <div className="flex-1 flex flex-col justify-center">
                     <div className="text-sm font-bold mb-0.5">{course.title}</div>
-                    <div className="text-xs text-[color:var(--text-faint)]">{lessonCount} lessons</div>
+                    <div className="text-xs text-faint">{lessonCount} lessons</div>
                   </div>
                 </div>
               );
@@ -147,7 +147,7 @@ export function AuthorProfile({ author, onBack, courses, onSelectCourse }: Autho
                 href={link.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-10 h-10 rounded-full bg-stone-100 border border-stone-200 flex items-center justify-center cursor-pointer transition-all hover:bg-earth hover:text-white hover:border-earth text-warm-brown"
+                className="w-10 h-10 rounded-full bg-surface-sunken border border-line flex items-center justify-center cursor-pointer transition-all hover:bg-earth hover:text-white hover:border-earth text-muted"
                 title={link.platform}
               >
                 <SocialIcon platform={link.platform} />

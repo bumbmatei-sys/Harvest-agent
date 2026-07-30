@@ -169,7 +169,7 @@ const AiAssistantSection: React.FC<AiAssistantSectionProps> = ({ currentPlan, em
             <button
               onClick={handleManageBilling}
               disabled={portalLoading}
-              className="px-3 py-1.5 border border-gray-200 bg-white text-gray-700 rounded-lg text-xs font-medium hover:bg-gray-100 transition-colors disabled:opacity-50 flex-shrink-0"
+              className="px-3 py-1.5 border border-gray-200 bg-surface-raised text-gray-700 rounded-lg text-xs font-medium hover:bg-gray-100 transition-colors disabled:opacity-50 flex-shrink-0"
             >
               {portalLoading ? 'Opening...' : 'Manage billing'}
             </button>

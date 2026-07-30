@@ -113,7 +113,7 @@ const LocationButton = ({ map, setUserLocation }: { map: L.Map; setUserLocation:
  e.stopPropagation();
  locateUser();
  }}
- className="bg-white p-3 rounded-full shadow-md text-[color:var(--text-body)] hover:text-gold transition-colors"
+ className="bg-surface-raised p-3 rounded-full shadow-md text-body hover:text-gold transition-colors"
  >
  <LocateFixed size={24} />
  </button>
@@ -254,18 +254,18 @@ const ChurchMap: React.FC<ChurchMapProps> = ({ onBack, onMapInteraction }) => {
  };
 
  return (
- <div className="relative w-full h-full bg-cream flex flex-col">
+ <div className="relative w-full h-full bg-surface flex flex-col">
  {/* Top Controls */}
  <div className="lg:hidden absolute top-4 left-4 right-4 z-[1000] flex justify-between items-center pointer-events-none">
  <button 
  onClick={onBack}
- className="pointer-events-auto bg-white p-3 rounded-full shadow-md text-[color:var(--text-body)] hover:text-gold transition-colors"
+ className="pointer-events-auto bg-surface-raised p-3 rounded-full shadow-md text-body hover:text-gold transition-colors"
  >
  <ArrowLeft size={24} />
  </button>
 
  {viewMode === 'list' && (
- <h2 className="text-xl font-bold text-earth pointer-events-auto font-display">
+ <h2 className="text-xl font-bold text-strong pointer-events-auto font-display">
  Churches near you
  </h2>
  )}
@@ -273,7 +273,7 @@ const ChurchMap: React.FC<ChurchMapProps> = ({ onBack, onMapInteraction }) => {
  <div className="flex flex-col gap-2 pointer-events-auto lg:hidden">
  <button 
  onClick={() => setViewMode(viewMode === 'map' ? 'list' : 'map')}
- className="bg-white p-3 rounded-full shadow-md text-[color:var(--text-body)] hover:text-gold transition-colors flex items-center justify-center"
+ className="bg-surface-raised p-3 rounded-full shadow-md text-body hover:text-gold transition-colors flex items-center justify-center"
  >
  {viewMode === 'map' ? <List size={24} /> : <MapIcon size={24} />}
  </button>
@@ -324,7 +324,7 @@ const ChurchMap: React.FC<ChurchMapProps> = ({ onBack, onMapInteraction }) => {
  {listCollapsed && (
  <button
  onClick={() => setListCollapsed(false)}
- className="hidden lg:flex absolute top-6 left-6 z-[1000] items-center gap-2 bg-white pl-3 pr-4 py-2.5 rounded-full shadow-md text-[color:var(--text-body)] hover:text-gold transition-colors"
+ className="hidden lg:flex absolute top-6 left-6 z-[1000] items-center gap-2 bg-surface-raised pl-3 pr-4 py-2.5 rounded-full shadow-md text-body hover:text-gold transition-colors"
  title="Show church list"
  aria-label="Show church list"
  >
@@ -334,13 +334,13 @@ const ChurchMap: React.FC<ChurchMapProps> = ({ onBack, onMapInteraction }) => {
  )}
 
  {/* Church list — full-screen overlay on mobile (list mode); fixed left panel on desktop */}
- <div className={`${viewMode === 'list' ? 'block' : 'hidden'} ${listCollapsed ? 'lg:hidden' : 'lg:block'} absolute inset-0 lg:inset-y-0 lg:left-0 lg:right-auto lg:w-[380px] bg-white overflow-y-auto pt-24 lg:pt-6 px-4 pb-6 z-[500] lg:shadow-[4px_0_16px_rgba(0,0,0,0.06)]`}>
+ <div className={`${viewMode === 'list' ? 'block' : 'hidden'} ${listCollapsed ? 'lg:hidden' : 'lg:block'} absolute inset-0 lg:inset-y-0 lg:left-0 lg:right-auto lg:w-[380px] bg-surface-raised overflow-y-auto pt-24 lg:pt-6 px-4 pb-6 z-[500] lg:shadow-[4px_0_16px_rgba(0,0,0,0.06)]`}>
  <div className="w-full max-w-2xl mx-auto lg:max-w-none lg:mx-0">
- <div className="hidden lg:flex items-center justify-between sticky top-0 bg-white pb-3 mb-1 z-10">
- <h2 className="text-lg font-bold text-earth font-display">Churches near you</h2>
+ <div className="hidden lg:flex items-center justify-between sticky top-0 bg-surface-raised pb-3 mb-1 z-10">
+ <h2 className="text-lg font-bold text-strong font-display">Churches near you</h2>
  <button
  onClick={() => setListCollapsed(true)}
- className="w-8 h-8 -mr-1 rounded-lg flex items-center justify-center text-[color:var(--text-faint)] hover:text-[color:var(--text-body)] hover:bg-stone-100 transition-colors"
+ className="w-8 h-8 -mr-1 rounded-lg flex items-center justify-center text-faint hover:text-body hover:bg-surface-sunken transition-colors"
  title="Collapse list"
  aria-label="Collapse church list"
  >
@@ -366,10 +366,10 @@ const ChurchMap: React.FC<ChurchMapProps> = ({ onBack, onMapInteraction }) => {
  setSelectedChurchId(church.id);
  setIsChurchDetailsOpen(true);
  }}
- className={`bg-white rounded-2xl p-3 flex gap-3 shadow-sm transition-all duration-500 cursor-pointer ${
+ className={`bg-surface-raised rounded-2xl p-3 flex gap-3 shadow-sm transition-all duration-500 cursor-pointer ${
  isHighlighted 
  ? 'border-2 border-gold ring-4 ring-[color-mix(in_srgb,var(--brand-color)_20%,transparent)] scale-[1.02]' 
- : 'border border-stone-200 '
+ : 'border border-line '
  }`}
  >
  <div className="w-20 h-20 rounded-xl bg-stone-200 flex-shrink-0 overflow-hidden relative">
@@ -387,15 +387,15 @@ const ChurchMap: React.FC<ChurchMapProps> = ({ onBack, onMapInteraction }) => {
  <div className="flex-1 flex flex-col justify-between py-0.5">
  <div>
  <div className="flex justify-between items-start">
- <h3 className="font-bold text-base text-earth flex items-center gap-1 leading-tight">
+ <h3 className="font-bold text-base text-strong flex items-center gap-1 leading-tight">
  {church.name}
  <CheckCircle size={12} className="text-gold flex-shrink-0" />
  </h3>
- <span className="text-xs font-semibold text-[color:var(--text-faint)] whitespace-nowrap ml-2">
+ <span className="text-xs font-semibold text-faint whitespace-nowrap ml-2">
  {distanceStr}
  </span>
  </div>
- <p className="text-xs text-warm-brown mt-0.5 line-clamp-1">
+ <p className="text-xs text-muted mt-0.5 line-clamp-1">
  {church.street} {church.number && church.number !== '' ? church.number : ''}
  {church.street ? ', ' : ''}
  {church.city}, {church.country}
@@ -411,7 +411,7 @@ const ChurchMap: React.FC<ChurchMapProps> = ({ onBack, onMapInteraction }) => {
  className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors shadow-sm ${
  isHome 
  ? 'bg-gold text-white' 
- : 'bg-white text-warm-brown border border-stone-200 hover:bg-stone-100 :bg-gray-700'
+ : 'bg-surface-raised text-muted border border-line hover:bg-surface-sunken :bg-gray-700'
  }`}
  title={isHome ? 'Remove from Home Church' : 'Set as Home Church'}
  >
@@ -439,7 +439,7 @@ const ChurchMap: React.FC<ChurchMapProps> = ({ onBack, onMapInteraction }) => {
  
  {churches.length === 0 && (
  <div className="text-center py-12">
- <p className="text-warm-brown ">No verified churches found in your area.</p>
+ <p className="text-muted ">No verified churches found in your area.</p>
  </div>
  )}
  </div>

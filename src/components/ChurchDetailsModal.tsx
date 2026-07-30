@@ -93,16 +93,16 @@ const ChurchDetailsModal: React.FC<ChurchDetailsModalProps> = ({
  };
 
  const formatServices = (services: any[]) => {
- if (!services || services.length === 0) return <span className="text-warm-brown">No schedule available</span>;
+ if (!services || services.length === 0) return <span className="text-muted">No schedule available</span>;
  
  return (
  <div className="flex flex-col gap-3 mt-1">
  {services.map((service, idx) => (
  <div key={idx} className="flex flex-col">
- <span className="font-bold text-earth ">
+ <span className="font-bold text-strong ">
  {service.name || `${service.day} Service`}
  </span>
- <span className="text-sm font-medium text-warm-brown ">
+ <span className="text-sm font-medium text-muted ">
  {service.day}s at {service.time}
  </span>
  </div>
@@ -112,9 +112,9 @@ const ChurchDetailsModal: React.FC<ChurchDetailsModalProps> = ({
  };
 
  return (
- <div className={`fixed inset-0 z-[9999] ${fullPage ? 'bg-cream ' : 'flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm transition-opacity'}`}>
+ <div className={`fixed inset-0 z-[9999] ${fullPage ? 'bg-surface ' : 'flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm transition-opacity'}`}>
  <div 
- className={fullPage ? 'w-full h-full overflow-y-auto flex flex-col relative animate-fade-in' : 'bg-cream w-full sm:w-[500px] h-[90vh] sm:h-auto sm:max-h-[90vh] rounded-t-3xl sm:rounded-3xl overflow-y-auto flex flex-col relative animate-slide-up sm:animate-fade-in'}
+ className={fullPage ? 'w-full h-full overflow-y-auto flex flex-col relative animate-fade-in' : 'bg-surface w-full sm:w-[500px] h-[90vh] sm:h-auto sm:max-h-[90vh] rounded-t-3xl sm:rounded-3xl overflow-y-auto flex flex-col relative animate-slide-up sm:animate-fade-in'}
  >
  {/* Close Button */}
  <button 
@@ -157,47 +157,47 @@ const ChurchDetailsModal: React.FC<ChurchDetailsModalProps> = ({
 
  <div className="px-4 -mt-8 relative z-10 space-y-4">
        {/* Service Details Card */}
-       <div className="bg-white rounded-3xl p-6 shadow-sm border border-stone-200 ">
-         <h3 className="text-sm font-bold text-earth uppercase tracking-wider mb-6">Service Details</h3>
+       <div className="bg-surface-raised rounded-3xl p-6 shadow-sm border border-line ">
+         <h3 className="text-sm font-bold text-strong uppercase tracking-wider mb-6">Service Details</h3>
                 
          <div className="space-y-6">
            <div className="flex items-center gap-4">
-             <div className="w-12 h-12 rounded-full bg-stone-100 flex items-center justify-center flex-shrink-0 text-[#1e293b] ">
+             <div className="w-12 h-12 rounded-full bg-surface-sunken flex items-center justify-center flex-shrink-0 text-[#1e293b] ">
                <User size={24} />
              </div>
              <div>
-               <p className="text-sm text-warm-brown ">Lead Pastor:</p>
-               <p className="font-bold text-lg text-earth ">{church.pastorName || 'Not specified'}</p>
+               <p className="text-sm text-muted ">Lead Pastor:</p>
+               <p className="font-bold text-lg text-strong ">{church.pastorName || 'Not specified'}</p>
              </div>
            </div>
 
            <div className="flex items-start gap-4">
-             <div className="w-12 h-12 rounded-full bg-stone-100 flex items-center justify-center flex-shrink-0 text-[#1e293b] ">
+             <div className="w-12 h-12 rounded-full bg-surface-sunken flex items-center justify-center flex-shrink-0 text-[#1e293b] ">
                <Clock size={24} />
              </div>
              <div className="flex-1">
-               <p className="text-sm text-warm-brown mb-1">Service Schedule:</p>
-               <div className="text-base text-earth ">{formatServices(church.services || [])}</div>
+               <p className="text-sm text-muted mb-1">Service Schedule:</p>
+               <div className="text-base text-strong ">{formatServices(church.services || [])}</div>
              </div>
            </div>
          </div>
        </div>
 
        {/* Connect Card */}
-       <div className="bg-white rounded-3xl p-6 shadow-sm border border-stone-200 ">
-         <h3 className="text-sm font-bold text-earth uppercase tracking-wider mb-6">Connect</h3>
+       <div className="bg-surface-raised rounded-3xl p-6 shadow-sm border border-line ">
+         <h3 className="text-sm font-bold text-strong uppercase tracking-wider mb-6">Connect</h3>
                 
          <div className="space-y-4">
            {church.contactEmail && (
-             <div className="flex items-center justify-between py-3 border-b border-stone-200 last:border-0">
+             <div className="flex items-center justify-between py-3 border-b border-line last:border-0">
                <div className="flex items-center gap-4 overflow-hidden">
-                 <Mail size={24} className="text-[color:var(--text-faint)] flex-shrink-0" />
-                 <span className="text-base text-[color:var(--text-body)] truncate">{church.contactEmail}</span>
+                 <Mail size={24} className="text-faint flex-shrink-0" />
+                 <span className="text-base text-body truncate">{church.contactEmail}</span>
                </div>
                <div className="flex items-center gap-2 flex-shrink-0 ml-2">
                  <button 
                    onClick={() => handleCopy(church.contactEmail!, 'email')}
-                   className="w-10 h-10 rounded-xl bg-stone-100 flex items-center justify-center text-warm-brown hover:bg-stone-200 transition-colors"
+                   className="w-10 h-10 rounded-xl bg-surface-sunken flex items-center justify-center text-muted hover:bg-stone-200 transition-colors"
                  >
                    {copiedEmail ? <CheckCircle2 size={18} className="text-green-500" /> : <Copy size={18} />}
                  </button>
@@ -206,15 +206,15 @@ const ChurchDetailsModal: React.FC<ChurchDetailsModalProps> = ({
            )}
 
            {church.contactPhone && (
-             <div className="flex items-center justify-between py-3 border-b border-stone-200 last:border-0">
+             <div className="flex items-center justify-between py-3 border-b border-line last:border-0">
                <div className="flex items-center gap-4 overflow-hidden">
-                 <Phone size={24} className="text-[color:var(--text-faint)] flex-shrink-0" />
-                 <span className="text-base text-[color:var(--text-body)] truncate">{church.contactPhone}</span>
+                 <Phone size={24} className="text-faint flex-shrink-0" />
+                 <span className="text-base text-body truncate">{church.contactPhone}</span>
                </div>
                <div className="flex items-center gap-2 flex-shrink-0 ml-2">
                  <button 
                    onClick={() => handleCopy(church.contactPhone!, 'phone')}
-                   className="w-10 h-10 rounded-xl bg-stone-100 flex items-center justify-center text-warm-brown hover:bg-stone-200 transition-colors"
+                   className="w-10 h-10 rounded-xl bg-surface-sunken flex items-center justify-center text-muted hover:bg-stone-200 transition-colors"
                  >
                    {copiedPhone ? <CheckCircle2 size={18} className="text-green-500" /> : <Copy size={18} />}
                  </button>
@@ -225,7 +225,7 @@ const ChurchDetailsModal: React.FC<ChurchDetailsModalProps> = ({
        </div>
 
        {/* Action Buttons Card */}
-       <div className="bg-white rounded-3xl p-4 shadow-sm border border-stone-200 flex items-center justify-between">
+       <div className="bg-surface-raised rounded-3xl p-4 shadow-sm border border-line flex items-center justify-between">
          <div className="flex items-center gap-4">
            {church.facebook && (
              <a 
@@ -285,7 +285,7 @@ const ChurchDetailsModal: React.FC<ChurchDetailsModalProps> = ({
  </div>
  ) : (
  <div className="flex-1 flex items-center justify-center min-h-[400px]">
- <p className="text-warm-brown">Church not found.</p>
+ <p className="text-muted">Church not found.</p>
  </div>
  )}
  </div>

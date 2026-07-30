@@ -92,8 +92,8 @@ const NewsletterCampaigns: React.FC<NewsletterCampaignsProps> = ({ tenantId, onC
         <div className="bg-[color-mix(in_srgb,var(--brand-color)_7%,white)] border border-[color-mix(in_srgb,var(--brand-color)_22%,transparent)] rounded-brand-lg p-5 flex items-start gap-3">
           <AlertCircle size={18} className="text-gold shrink-0 mt-0.5" />
           <div>
-            <p className="text-sm font-semibold text-earth">Couldn&apos;t load your campaign history right now</p>
-            <p className="text-xs text-warm-brown mt-0.5">Your newsletters are safe — the campaign feed just isn&apos;t reachable at the moment. You can still create and send a newsletter.</p>
+            <p className="text-sm font-semibold text-strong">Couldn&apos;t load your campaign history right now</p>
+            <p className="text-xs text-muted mt-0.5">Your newsletters are safe — the campaign feed just isn&apos;t reachable at the moment. You can still create and send a newsletter.</p>
           </div>
         </div>
       </div>
@@ -110,12 +110,12 @@ const NewsletterCampaigns: React.FC<NewsletterCampaignsProps> = ({ tenantId, onC
           title="Keep your community engaged"
           action={<AdminPrimaryButton onClick={onCreateNew} icon={<Plus size={16} />}>New newsletter</AdminPrimaryButton>}
         />
-        <div className="bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] p-12 text-center">
+        <div className="bg-surface-raised rounded-brand-lg border border-line shadow-[var(--ds-sh-sm)] p-12 text-center">
           <div className="w-16 h-16 mx-auto rounded-brand-lg bg-[color-mix(in_srgb,var(--brand-color)_10%,transparent)] flex items-center justify-center mb-4">
             <Mail size={28} className="text-gold" />
           </div>
-          <h3 className="font-display text-lg font-semibold text-earth mb-2">No newsletters yet</h3>
-          <p className="text-sm text-warm-brown mb-6 max-w-md mx-auto">
+          <h3 className="font-display text-lg font-semibold text-strong mb-2">No newsletters yet</h3>
+          <p className="text-sm text-muted mb-6 max-w-md mx-auto">
             Create and send newsletters to keep your community engaged.
           </p>
           <AdminPrimaryButton onClick={onCreateNew} icon={<Plus size={16} />}>Create your first newsletter</AdminPrimaryButton>
@@ -137,15 +137,15 @@ const NewsletterCampaigns: React.FC<NewsletterCampaignsProps> = ({ tenantId, onC
           {/* Mobile — mockup list card: gold mail disc, subject + date/posts sub,
               status pill. Same localNewsletters data, statusBadge, formatDate as
               the desktop cards below. */}
-          <div className="lg:hidden bg-white rounded-brand-xl border border-stone-200 shadow-[var(--ds-sh-sm)] overflow-hidden">
+          <div className="lg:hidden bg-surface-raised rounded-brand-xl border border-line shadow-[var(--ds-sh-sm)] overflow-hidden">
             {localNewsletters.map((nl, i) => (
-              <div key={nl.newsletterId} className={`flex items-center gap-3 px-3.5 py-3 ${i ? 'border-t border-stone-200' : ''}`}>
+              <div key={nl.newsletterId} className={`flex items-center gap-3 px-3.5 py-3 ${i ? 'border-t border-line' : ''}`}>
                 <div className="w-[38px] h-[38px] rounded-[10px] bg-[var(--surface-gold)] text-gold flex items-center justify-center shrink-0">
                   <Mail size={16} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-[13.5px] font-semibold text-earth truncate">{nl.subject || 'Untitled'}</div>
-                  <div className="flex items-center gap-2 mt-0.5 text-[11.5px] text-[color:var(--text-faint)]">
+                  <div className="text-[13.5px] font-semibold text-strong truncate">{nl.subject || 'Untitled'}</div>
+                  <div className="flex items-center gap-2 mt-0.5 text-[11.5px] text-faint">
                     <span>{nl.status === 'sent' ? formatDate(nl.send_time) : formatDate(nl.created_at)}</span>
                     {nl.posts_used > 0 && <span className="flex items-center gap-1"><Users size={11} /> {nl.posts_used} posts</span>}
                   </div>
@@ -158,25 +158,25 @@ const NewsletterCampaigns: React.FC<NewsletterCampaignsProps> = ({ tenantId, onC
           {/* Desktop — existing approved layout, unchanged (now lg-only). */}
           <div className="hidden lg:block space-y-3">
             {localNewsletters.map((nl) => (
-              <div key={nl.newsletterId} className="bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] p-5 flex items-center gap-4">
+              <div key={nl.newsletterId} className="bg-surface-raised rounded-brand-lg border border-line shadow-[var(--ds-sh-sm)] p-5 flex items-center gap-4">
                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
                   nl.status === 'sent' ? 'bg-green-50' :
-                  nl.status === 'scheduled' ? 'bg-blue-50' : 'bg-stone-100'
+                  nl.status === 'scheduled' ? 'bg-blue-50' : 'bg-surface-sunken'
                 }`}>
                   <Mail size={18} className={
                     nl.status === 'sent' ? 'text-green-600' :
-                    nl.status === 'scheduled' ? 'text-blue-600' : 'text-[color:var(--text-faint)]'
+                    nl.status === 'scheduled' ? 'text-blue-600' : 'text-faint'
                   } />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-earth truncate">{nl.subject || 'Untitled'}</p>
+                  <p className="text-sm font-bold text-strong truncate">{nl.subject || 'Untitled'}</p>
                   <div className="flex items-center gap-3 mt-1 flex-wrap">
                     {statusBadge(nl.status)}
-                    <span className="text-xs text-[color:var(--text-faint)]">
+                    <span className="text-xs text-faint">
                       {nl.status === 'sent' ? formatDate(nl.send_time) : formatDate(nl.created_at)}
                     </span>
                     {nl.posts_used > 0 && (
-                      <span className="flex items-center gap-1 text-xs text-[color:var(--text-faint)]">
+                      <span className="flex items-center gap-1 text-xs text-faint">
                         <Users size={12} /> {nl.posts_used} posts
                       </span>
                     )}
@@ -194,15 +194,15 @@ const NewsletterCampaigns: React.FC<NewsletterCampaignsProps> = ({ tenantId, onC
           {/* Mobile — mockup list card: gold mail disc, subject + date/opens/sent
               sub, status pill. Same mailchimpCampaigns data, statusBadge, formatDate
               as the desktop cards below. */}
-          <div className="lg:hidden bg-white rounded-brand-xl border border-stone-200 shadow-[var(--ds-sh-sm)] overflow-hidden">
+          <div className="lg:hidden bg-surface-raised rounded-brand-xl border border-line shadow-[var(--ds-sh-sm)] overflow-hidden">
             {mailchimpCampaigns.map((c, i) => (
-              <div key={c.id} className={`flex items-center gap-3 px-3.5 py-3 ${i ? 'border-t border-stone-200' : ''}`}>
+              <div key={c.id} className={`flex items-center gap-3 px-3.5 py-3 ${i ? 'border-t border-line' : ''}`}>
                 <div className="w-[38px] h-[38px] rounded-[10px] bg-[var(--surface-gold)] text-gold flex items-center justify-center shrink-0">
                   <Mail size={16} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-[13.5px] font-semibold text-earth truncate">{c.subject}</div>
-                  <div className="flex items-center gap-2 mt-0.5 text-[11.5px] text-[color:var(--text-faint)]">
+                  <div className="text-[13.5px] font-semibold text-strong truncate">{c.subject}</div>
+                  <div className="flex items-center gap-2 mt-0.5 text-[11.5px] text-faint">
                     <span>{formatDate(c.send_time || c.created_at)}</span>
                     {c.open_rate != null && <span>{Math.round(c.open_rate * 100)}% opens</span>}
                     {c.emails_sent > 0 && <span className="flex items-center gap-1"><Users size={11} /> {c.emails_sent}</span>}
@@ -216,22 +216,22 @@ const NewsletterCampaigns: React.FC<NewsletterCampaignsProps> = ({ tenantId, onC
           {/* Desktop — existing approved layout, unchanged (now lg-only). */}
           <div className="hidden lg:block space-y-3">
             {mailchimpCampaigns.map((c) => (
-              <div key={c.id} className="bg-white rounded-brand-lg border border-stone-200 shadow-[var(--ds-sh-sm)] p-5 flex items-center gap-4">
+              <div key={c.id} className="bg-surface-raised rounded-brand-lg border border-line shadow-[var(--ds-sh-sm)] p-5 flex items-center gap-4">
                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                  c.status === 'sent' ? 'bg-green-50' : 'bg-stone-100'
+                  c.status === 'sent' ? 'bg-green-50' : 'bg-surface-sunken'
                 }`}>
-                  <Mail size={18} className={c.status === 'sent' ? 'text-green-600' : 'text-[color:var(--text-faint)]'} />
+                  <Mail size={18} className={c.status === 'sent' ? 'text-green-600' : 'text-faint'} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-earth truncate">{c.subject}</p>
+                  <p className="text-sm font-bold text-strong truncate">{c.subject}</p>
                   <div className="flex items-center gap-3 mt-1 flex-wrap">
                     {statusBadge(c.status)}
-                    <span className="text-xs text-[color:var(--text-faint)]">{formatDate(c.send_time || c.created_at)}</span>
+                    <span className="text-xs text-faint">{formatDate(c.send_time || c.created_at)}</span>
                     {c.open_rate != null && (
-                      <span className="text-xs text-[color:var(--text-faint)]">{Math.round(c.open_rate * 100)}% opens</span>
+                      <span className="text-xs text-faint">{Math.round(c.open_rate * 100)}% opens</span>
                     )}
                     {c.emails_sent > 0 && (
-                      <span className="flex items-center gap-1 text-xs text-[color:var(--text-faint)]">
+                      <span className="flex items-center gap-1 text-xs text-faint">
                         <Users size={12} /> {c.emails_sent}
                       </span>
                     )}

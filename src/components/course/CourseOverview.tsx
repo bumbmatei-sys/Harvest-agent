@@ -127,48 +127,48 @@ export function CourseOverview({ course: rawCourse, authors, onBack, onStartLess
         {/* Author strip */}
         {primaryAuthor && (
           <div
-            className="flex items-center gap-3 py-4 border-b border-stone-200 cursor-pointer"
+            className="flex items-center gap-3 py-4 border-b border-line cursor-pointer"
             onClick={() => onSelectAuthor?.(primaryAuthor)}
           >
             {primaryAuthor.picture ? (
               <img src={primaryAuthor.picture} alt={primaryAuthor.name} className="w-10 h-10 rounded-full object-cover border-2" style={{ borderColor: GOLD_LIGHT }} />
             ) : (
-              <div className="w-10 h-10 rounded-full bg-stone-100 flex items-center justify-center text-sm font-bold text-[color:var(--text-faint)]">
+              <div className="w-10 h-10 rounded-full bg-surface-sunken flex items-center justify-center text-sm font-bold text-faint">
                 {primaryAuthor.name?.charAt(0) || "?"}
               </div>
             )}
             <div className="flex-1 min-w-0">
               <div className="text-sm font-bold">{primaryAuthor.name}</div>
-              <div className="text-xs text-[color:var(--text-faint)]">{primaryAuthor.title || "Instructor"}</div>
+              <div className="text-xs text-faint">{primaryAuthor.title || "Instructor"}</div>
             </div>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A89A87" strokeWidth="2" strokeLinecap="round"><path d="m9 18 6-6-6-6" /></svg>
           </div>
         )}
 
         {/* Stats row */}
-        <div className="flex py-4 border-b border-stone-200">
-          <div className="flex-1 text-center border-r border-stone-200">
+        <div className="flex py-4 border-b border-line">
+          <div className="flex-1 text-center border-r border-line">
             <div className="text-lg font-display font-normal lg:font-sans lg:font-extrabold">{totalLessons}</div>
-            <div className="text-[11px] text-[color:var(--text-faint)] font-semibold uppercase tracking-wider">Lessons</div>
+            <div className="text-[11px] text-faint font-semibold uppercase tracking-wider">Lessons</div>
           </div>
-          <div className="flex-1 text-center border-r border-stone-200">
+          <div className="flex-1 text-center border-r border-line">
             <div className="text-lg font-display font-normal lg:font-sans lg:font-extrabold">{durationStr}</div>
-            <div className="text-[11px] text-[color:var(--text-faint)] font-semibold uppercase tracking-wider">Duration</div>
+            <div className="text-[11px] text-faint font-semibold uppercase tracking-wider">Duration</div>
           </div>
           <div className="flex-1 text-center">
             <div className="text-lg font-display font-normal lg:font-sans lg:font-extrabold">{completedCount}/{totalLessons}</div>
-            <div className="text-[11px] text-[color:var(--text-faint)] font-semibold uppercase tracking-wider">Complete</div>
+            <div className="text-[11px] text-faint font-semibold uppercase tracking-wider">Complete</div>
           </div>
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-stone-200 -mx-5 px-5">
+        <div className="flex border-b border-line -mx-5 px-5">
           {(["about", "curriculum"] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
               className={`py-3.5 mr-6 text-sm font-semibold capitalize cursor-pointer border-b-2 transition-colors ${
-                activeTab === tab ? "text-earth border-gold" : "text-[color:var(--text-faint)] border-transparent hover:text-warm-brown"
+                activeTab === tab ? "text-strong border-gold" : "text-faint border-transparent hover:text-muted"
               }`}
             >
               {tab}
@@ -181,11 +181,11 @@ export function CourseOverview({ course: rawCourse, authors, onBack, onStartLess
           <div className="py-5">
             <h3 className="text-base font-bold mb-2.5 font-display">About This Course</h3>
             {course.description ? (
-              <div className="prose max-w-none text-sm leading-7 text-warm-brown">
+              <div className="prose max-w-none text-sm leading-7 text-muted">
                 <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(course.description) }} />
               </div>
             ) : (
-              <p className="text-sm leading-7 text-warm-brown">No description available.</p>
+              <p className="text-sm leading-7 text-muted">No description available.</p>
             )}
           </div>
         )}
@@ -203,7 +203,7 @@ export function CourseOverview({ course: rawCourse, authors, onBack, onStartLess
 
                 return (
                   <div
-                    className="flex items-center gap-3 py-3 border-t border-stone-200 cursor-pointer hover:bg-stone-100 -mx-5 px-5 transition-colors"
+                    className="flex items-center gap-3 py-3 border-t border-line cursor-pointer hover:bg-surface-sunken -mx-5 px-5 transition-colors"
                     onClick={() => onStartLesson(course, lesson)}
                   >
                     <div
@@ -212,7 +212,7 @@ export function CourseOverview({ course: rawCourse, authors, onBack, onStartLess
                           ? "border-field-500 bg-field-100 text-field-600"
                           : isCurrent
                           ? "border-wheat-600 bg-wheat-50 text-wheat-700"
-                          : "border-stone-200 bg-stone-100 text-warm-brown"
+                          : "border-line bg-surface-sunken text-muted"
                       }`}
                     >
                       {isCompleted ? (
@@ -222,10 +222,10 @@ export function CourseOverview({ course: rawCourse, authors, onBack, onStartLess
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className={`text-sm ${isCurrent ? "font-bold text-earth" : "font-semibold text-[color:var(--text-body)]"}`}>
+                      <div className={`text-sm ${isCurrent ? "font-bold text-strong" : "font-semibold text-body"}`}>
                         {lesson.title}
                       </div>
-                      <div className="text-xs text-[color:var(--text-faint)] mt-0.5">
+                      <div className="text-xs text-faint mt-0.5">
                         {lesson.duration || "~"}{isCurrent ? " · Current" : ""}
                       </div>
                     </div>
@@ -245,7 +245,7 @@ export function CourseOverview({ course: rawCourse, authors, onBack, onStartLess
       {/* CTA — fixed action bar on mobile; on desktop it sits inline at the
           bottom of the 720px column (a viewport-wide fixed bar would overlap
           the desktop shell). */}
-      <div className="fixed lg:static bottom-0 left-0 right-0 bg-white lg:bg-transparent border-t border-stone-200 lg:border-t-0 px-5 lg:px-5 py-4 lg:py-0 lg:mt-4 z-50" style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}>
+      <div className="fixed lg:static bottom-0 left-0 right-0 bg-surface-raised lg:bg-transparent border-t border-line lg:border-t-0 px-5 lg:px-5 py-4 lg:py-0 lg:mt-4 z-50" style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}>
         {certEligible ? (
           <>
             <button

@@ -123,7 +123,7 @@ export default async function BlogPostPage({
   };
 
   return (
-    <div className="min-h-screen bg-white" style={brandColorVars}>
+    <div className="min-h-screen bg-surface-raised" style={brandColorVars}>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

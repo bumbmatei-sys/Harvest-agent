@@ -153,15 +153,15 @@ export function ImageUpload({ value, onChange, className = '', rounded = false, 
 
       {isUploading ? (
         /* ── Uploading ── */
-        <div className="flex items-center gap-3 w-full px-3 py-2.5 border border-gray-200 rounded-xl bg-white">
-          <div className="w-10 h-10 rounded-lg bg-white border border-gray-200 flex items-center justify-center text-gold shrink-0">
+        <div className="flex items-center gap-3 w-full px-3 py-2.5 border border-gray-200 rounded-xl bg-surface-raised">
+          <div className="w-10 h-10 rounded-lg bg-surface-raised border border-gray-200 flex items-center justify-center text-gold shrink-0">
             <Loader2 size={20} className="animate-spin" />
           </div>
           <span className="text-sm font-medium text-gray-600">Uploading…</span>
         </div>
       ) : value ? (
         /* ── Filled: compact thumbnail ── */
-        <div className="flex items-center gap-3 w-full p-2 border border-gray-200 rounded-xl bg-white">
+        <div className="flex items-center gap-3 w-full p-2 border border-gray-200 rounded-xl bg-surface-raised">
           <Image
             src={value}
             alt="Preview"
@@ -198,9 +198,9 @@ export function ImageUpload({ value, onChange, className = '', rounded = false, 
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="flex items-center gap-3 w-full px-3 py-2.5 border border-dashed border-gray-300 rounded-xl bg-gray-50 hover:border-gold hover:bg-white transition-colors text-left"
+          className="flex items-center gap-3 w-full px-3 py-2.5 border border-dashed border-gray-300 rounded-xl bg-gray-50 hover:border-gold hover:bg-surface-raised transition-colors text-left"
         >
-          <div className="w-10 h-10 rounded-lg bg-white border border-gray-200 flex items-center justify-center text-gray-400 shrink-0">
+          <div className="w-10 h-10 rounded-lg bg-surface-raised border border-gray-200 flex items-center justify-center text-gray-400 shrink-0">
             <ImageIcon size={20} />
           </div>
           <div className="min-w-0">

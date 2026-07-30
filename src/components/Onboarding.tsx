@@ -49,7 +49,7 @@ const ObInput: React.FC<{ icon?: React.ReactNode } & React.InputHTMLAttributes<H
   const [focus, setFocus] = useState(false);
   return (
     <div
-      className="flex items-center gap-2.5 rounded-lg bg-white transition-all"
+      className="flex items-center gap-2.5 rounded-lg bg-surface-raised transition-all"
       style={{ height: 48, padding: '0 14px', border: `1px solid ${focus ? GOLD : 'var(--stone-200, #E8E2D9)'}`, boxShadow: focus ? `0 0 0 3px color-mix(in srgb, ${GOLD} 16%, transparent)` : 'none' }}
     >
       {icon && <span className="flex shrink-0" style={{ color: 'var(--text-muted, #8B7355)' }}>{icon}</span>}
@@ -65,7 +65,7 @@ const ObInput: React.FC<{ icon?: React.ReactNode } & React.InputHTMLAttributes<H
 };
 
 const fieldLabel = 'mb-1.5 block text-xs font-semibold';
-const cardClass = 'rounded-brand-xl border border-stone-200 bg-white shadow-[var(--ds-sh-md)]';
+const cardClass = 'rounded-brand-xl border border-line bg-surface-raised shadow-[var(--ds-sh-md)]';
 // Soft brand-tinted disc background for step icons (tenant-aware).
 const goldDisc = { background: 'color-mix(in srgb, var(--brand-color, #C9963A) 13%, white)', color: GOLD } as React.CSSProperties;
 
@@ -350,7 +350,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
 
   // Branded field styling for textarea / select (icon inputs use <ObInput/>).
   const brandFieldClass =
-    'w-full rounded-lg bg-white px-3.5 py-3 outline-none transition-all placeholder:text-[#A89A87]';
+    'w-full rounded-lg bg-surface-raised px-3.5 py-3 outline-none transition-all placeholder:text-[#A89A87]';
   const focusHandlers = {
     onFocus: (e: React.FocusEvent<HTMLElement>) => { e.currentTarget.style.borderColor = GOLD; e.currentTarget.style.boxShadow = `0 0 0 3px color-mix(in srgb, ${GOLD} 16%, transparent)`; },
     onBlur: (e: React.FocusEvent<HTMLElement>) => { e.currentTarget.style.borderColor = 'var(--stone-200, #E8E2D9)'; e.currentTarget.style.boxShadow = 'none'; },
@@ -594,7 +594,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
         return (
           <div className="space-y-4">
             <button type="button" onClick={handleUseGPS} disabled={gpsLoading}
-              className="flex h-11 w-full items-center justify-center gap-2 rounded-lg border bg-white text-sm font-semibold transition-colors hover:bg-stone-100 disabled:opacity-50"
+              className="flex h-11 w-full items-center justify-center gap-2 rounded-lg border bg-surface-raised text-sm font-semibold transition-colors hover:bg-surface-sunken disabled:opacity-50"
               style={{ borderColor: 'var(--stone-300, #D6CCBE)', color: 'var(--text-heading, #2D2519)' }}>
               <MapPin size={15} />
               {gpsLoading ? 'Detecting your location…' : 'Use my current location'}
@@ -625,11 +625,11 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
           <div className="flex gap-3.5">
             <label className="flex-1 cursor-pointer">
               <input type="radio" name="acceptedJesus" value="yes" checked={acceptedJesus === 'yes'} onChange={e => setAcceptedJesus(e.target.value)} className="peer sr-only" />
-              <div className="w-full rounded-brand-lg border-2 border-stone-300 bg-white px-4 py-6 text-center font-display text-[22px] font-light transition-all peer-checked:bg-[color-mix(in_srgb,var(--brand-color)_12%,white)] peer-checked:border-[var(--brand-color)] peer-checked:text-[var(--brand-color)]" style={{ letterSpacing: '-0.02em', color: 'var(--text-heading, #2D2519)' }}>Yes</div>
+              <div className="w-full rounded-brand-lg border-2 border-line-strong bg-surface-raised px-4 py-6 text-center font-display text-[22px] font-light transition-all peer-checked:bg-[color-mix(in_srgb,var(--brand-color)_12%,white)] peer-checked:border-[var(--brand-color)] peer-checked:text-[var(--brand-color)]" style={{ letterSpacing: '-0.02em', color: 'var(--text-heading, #2D2519)' }}>Yes</div>
             </label>
             <label className="flex-1 cursor-pointer">
               <input type="radio" name="acceptedJesus" value="no" checked={acceptedJesus === 'no'} onChange={e => setAcceptedJesus(e.target.value)} className="peer sr-only" />
-              <div className="w-full rounded-brand-lg border-2 border-stone-300 bg-white px-4 py-6 text-center font-display text-[22px] font-light transition-all peer-checked:bg-[color-mix(in_srgb,var(--brand-color)_12%,white)] peer-checked:border-[var(--brand-color)] peer-checked:text-[var(--brand-color)]" style={{ letterSpacing: '-0.02em', color: 'var(--text-heading, #2D2519)' }}>Not yet</div>
+              <div className="w-full rounded-brand-lg border-2 border-line-strong bg-surface-raised px-4 py-6 text-center font-display text-[22px] font-light transition-all peer-checked:bg-[color-mix(in_srgb,var(--brand-color)_12%,white)] peer-checked:border-[var(--brand-color)] peer-checked:text-[var(--brand-color)]" style={{ letterSpacing: '-0.02em', color: 'var(--text-heading, #2D2519)' }}>Not yet</div>
             </label>
           </div>
         );
@@ -678,7 +678,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
               <label key={opt} className="min-w-[100px] flex-1 cursor-pointer">
                 <input type="radio" name={`custom_${question.id}`} value={opt} checked={value === opt}
                   onChange={e => setCustomAnswers(p => ({ ...p, [question.id]: e.target.value }))} className="peer sr-only" />
-                <div className="w-full rounded-lg border border-stone-300 bg-white px-4 py-3 text-center text-sm font-semibold transition-all peer-checked:bg-[color-mix(in_srgb,var(--brand-color)_12%,white)] peer-checked:border-[var(--brand-color)] peer-checked:text-[var(--brand-color)]" style={{ color: 'var(--text-heading, #2D2519)' }}>
+                <div className="w-full rounded-lg border border-line-strong bg-surface-raised px-4 py-3 text-center text-sm font-semibold transition-all peer-checked:bg-[color-mix(in_srgb,var(--brand-color)_12%,white)] peer-checked:border-[var(--brand-color)] peer-checked:text-[var(--brand-color)]" style={{ color: 'var(--text-heading, #2D2519)' }}>
                   {opt}
                 </div>
               </label>

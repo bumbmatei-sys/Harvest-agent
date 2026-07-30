@@ -315,14 +315,14 @@ export default function CoursePage({
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-white">
+      <div className="flex items-center justify-center h-screen bg-surface-raised">
         <div className="w-8 h-8 border-4 border-gold border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className={`max-w-4xl lg:max-w-none w-full mx-auto ${onBack ? "bg-cream min-h-screen" : ""}`}
+    <div className={`max-w-4xl lg:max-w-none w-full mx-auto ${onBack ? "bg-surface min-h-screen" : ""}`}
       style={onBack ? {} : { minHeight: "calc(100vh - 120px)" }}
     >
       {screen === "library" && (

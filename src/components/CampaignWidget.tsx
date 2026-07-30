@@ -204,19 +204,19 @@ const CampaignWidget: React.FC<CampaignWidgetProps> = ({ onDonate }) => {
 
       {/* Campaign Detail / Donation Modal */}
       {showDetail && (
-        <div className="fixed inset-0 z-[300] flex flex-col bg-white overflow-y-auto">
+        <div className="fixed inset-0 z-[300] flex flex-col bg-surface-raised overflow-y-auto">
           {/* Header */}
-          <div className="flex items-center gap-3 px-4 py-3 border-b border-stone-200 sticky top-0 bg-white z-10">
+          <div className="flex items-center gap-3 px-4 py-3 border-b border-line sticky top-0 bg-surface-raised z-10">
             <button onClick={() => setShowDetail(false)} className="p-1">
               <ChevronLeft size={24} color="var(--brand-color, #B8962E)" strokeWidth={2.5} />
             </button>
-            <h2 className="text-base font-bold text-earth flex-1 truncate font-display">{campaign.title}</h2>
+            <h2 className="text-base font-bold text-strong flex-1 truncate font-display">{campaign.title}</h2>
             <ShareButton url={shareUrl} title={campaign.title} />
           </div>
 
           {/* Cover Image */}
           {campaign.coverImage && (
-            <div className="relative h-52 bg-stone-100 flex-shrink-0 lg:max-w-2xl lg:mx-auto w-full">
+            <div className="relative h-52 bg-surface-sunken flex-shrink-0 lg:max-w-2xl lg:mx-auto w-full">
               <Image src={campaign.coverImage} alt={campaign.title} fill sizes="100vw" className="object-cover" referrerPolicy="no-referrer" />
               {daysLeft !== null && (
                 <div className="absolute top-3 right-3 flex items-center gap-1.5 bg-black/60 text-white text-xs font-semibold px-2.5 py-1 rounded-full backdrop-blur-sm">
@@ -229,10 +229,10 @@ const CampaignWidget: React.FC<CampaignWidgetProps> = ({ onDonate }) => {
 
           <div className="p-4 space-y-5 pb-10 lg:max-w-2xl lg:mx-auto w-full">
             {/* Progress */}
-            <div className="bg-stone-100 rounded-2xl p-4">
+            <div className="bg-surface-sunken rounded-2xl p-4">
               <div className="flex justify-between items-baseline mb-2 text-sm">
-                <span className="font-bold text-earth">{fmt(campaign.raised)} raised</span>
-                <span className="text-warm-brown">of {fmt(campaign.goal)}</span>
+                <span className="font-bold text-strong">{fmt(campaign.raised)} raised</span>
+                <span className="text-muted">of {fmt(campaign.goal)}</span>
               </div>
               <div className="h-3 bg-stone-200 rounded-full overflow-hidden mb-1">
                 <div className="h-full rounded-full" style={{ width: `${percentage}%`, backgroundColor: 'var(--brand-color, #e6b325)' }} />
@@ -241,18 +241,18 @@ const CampaignWidget: React.FC<CampaignWidgetProps> = ({ onDonate }) => {
             </div>
 
             {/* Description */}
-            <p className="text-sm text-warm-brown leading-relaxed">{campaign.description}</p>
+            <p className="text-sm text-muted leading-relaxed">{campaign.description}</p>
 
             {/* Amount Selection */}
             <div>
-              <p className="text-sm font-bold text-earth mb-3">Select Amount</p>
+              <p className="text-sm font-bold text-strong mb-3">Select Amount</p>
               <div className="grid grid-cols-4 gap-2 mb-3">
                 {AMOUNT_PRESETS.map(amt => (
                   <button
                     key={amt}
                     onClick={() => { setSelectedAmount(amt); setCustomAmount(''); }}
                     className={`py-2.5 rounded-xl text-sm font-bold border-2 transition-all ${
-                      selectedAmount === amt ? 'text-white border-transparent' : 'text-[color:var(--text-body)] border-stone-200 bg-white'
+                      selectedAmount === amt ? 'text-white border-transparent' : 'text-body border-line bg-surface-raised'
                     }`}
                     style={selectedAmount === amt ? { backgroundColor: 'var(--brand-color, #e6b325)', borderColor: 'var(--brand-color, #e6b325)' } : {}}
                   >
@@ -266,25 +266,25 @@ const CampaignWidget: React.FC<CampaignWidgetProps> = ({ onDonate }) => {
                 value={customAmount}
                 onChange={e => { setCustomAmount(e.target.value); setSelectedAmount(null); }}
                 placeholder="Custom amount ($)"
-                className="w-full border border-stone-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold"
+                className="w-full border border-line rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold"
               />
             </div>
 
             {/* Donor Info */}
             <div className="space-y-3">
-              <p className="text-sm font-bold text-earth">Your Information</p>
+              <p className="text-sm font-bold text-strong">Your Information</p>
               <input
                 value={donorName}
                 onChange={e => setDonorName(e.target.value)}
                 placeholder="Your name"
-                className="w-full border border-stone-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold"
+                className="w-full border border-line rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold"
               />
               <input
                 type="email"
                 value={donorEmail}
                 onChange={e => setDonorEmail(e.target.value)}
                 placeholder="Your email *"
-                className="w-full border border-stone-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold"
+                className="w-full border border-line rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-gold"
               />
             </div>
 

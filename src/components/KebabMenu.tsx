@@ -50,7 +50,7 @@ const KebabMenu: React.FC<KebabMenuProps> = ({ items, size = 16, ariaLabel = 'Mo
         aria-label={ariaLabel}
         aria-haspopup="menu"
         aria-expanded={open}
-        className="p-1.5 -m-1.5 text-[color:var(--text-faint)] hover:text-warm-brown hover:bg-stone-100 rounded-full transition-colors"
+        className="p-1.5 -m-1.5 text-faint hover:text-muted hover:bg-surface-sunken rounded-full transition-colors"
       >
         <MoreVertical size={size} />
       </button>
@@ -59,7 +59,7 @@ const KebabMenu: React.FC<KebabMenuProps> = ({ items, size = 16, ariaLabel = 'Mo
         <div
           role="menu"
           aria-label={ariaLabel}
-          className="absolute right-0 top-full mt-1 min-w-[170px] max-w-[calc(100vw-2rem)] bg-white rounded-xl border border-stone-200 shadow-[0_8px_30px_rgba(0,0,0,0.12)] overflow-hidden z-20"
+          className="absolute right-0 top-full mt-1 min-w-[170px] max-w-[calc(100vw-2rem)] bg-surface-raised rounded-xl border border-line shadow-[0_8px_30px_rgba(0,0,0,0.12)] overflow-hidden z-20"
         >
           {items.map((item, i) => (
             <button
@@ -69,7 +69,7 @@ const KebabMenu: React.FC<KebabMenuProps> = ({ items, size = 16, ariaLabel = 'Mo
               disabled={item.disabled}
               onClick={(e) => { e.stopPropagation(); setOpen(false); item.onClick(); }}
               className={`w-full text-left px-4 py-2.5 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                item.danger ? 'text-red-600 hover:bg-red-50' : 'text-[color:var(--text-body)] hover:bg-stone-100'
+                item.danger ? 'text-red-600 hover:bg-red-50' : 'text-body hover:bg-surface-sunken'
               }`}
             >
               {item.label}

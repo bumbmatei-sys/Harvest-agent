@@ -35,7 +35,7 @@ function initialsOf(name?: string | null, email?: string | null): string {
 const Avatar: React.FC<{ photoURL?: string | null; name?: string | null; email?: string | null; className?: string }> = ({
   photoURL, name, email, className,
 }) => (
-  <div className={`rounded-full overflow-hidden shrink-0 flex items-center justify-center bg-stone-100 ${className || ''}`}>
+  <div className={`rounded-full overflow-hidden shrink-0 flex items-center justify-center bg-surface-sunken ${className || ''}`}>
     {photoURL ? (
       // eslint-disable-next-line @next/next/no-img-element
       <img src={photoURL} alt="Profile" className="w-full h-full object-cover" />
@@ -82,7 +82,7 @@ const MyAccountMenu: React.FC<MyAccountMenuProps> = ({
         aria-label="My account"
         aria-haspopup="menu"
         aria-expanded={open}
-        className="w-9 h-9 rounded-full overflow-hidden border border-stone-200 shadow-sm shrink-0 hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color,#B8962E)_35%,transparent)]"
+        className="w-9 h-9 rounded-full overflow-hidden border border-line shadow-sm shrink-0 hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color,#B8962E)_35%,transparent)]"
       >
         <Avatar photoURL={photoURL} name={displayName} email={email} className="w-full h-full" />
       </button>
@@ -91,14 +91,14 @@ const MyAccountMenu: React.FC<MyAccountMenuProps> = ({
         <div
           role="menu"
           aria-label="Account menu"
-          className="absolute right-0 top-11 z-[130] w-60 bg-white rounded-2xl border border-stone-200 shadow-[0_8px_30px_rgba(0,0,0,0.12)] overflow-hidden"
+          className="absolute right-0 top-11 z-[130] w-60 bg-surface-raised rounded-2xl border border-line shadow-[0_8px_30px_rgba(0,0,0,0.12)] overflow-hidden"
         >
           {/* Identity header */}
           <div className="px-4 py-3 border-b border-gray-50 flex items-center gap-3">
             <Avatar photoURL={photoURL} name={displayName} email={email} className="w-9 h-9" />
             <div className="min-w-0">
-              <p className="text-sm font-semibold text-earth truncate">{displayName || 'Admin'}</p>
-              {email && <p className="text-xs text-[color:var(--text-faint)] truncate">{email}</p>}
+              <p className="text-sm font-semibold text-strong truncate">{displayName || 'Admin'}</p>
+              {email && <p className="text-xs text-faint truncate">{email}</p>}
             </div>
           </div>
 
@@ -106,20 +106,20 @@ const MyAccountMenu: React.FC<MyAccountMenuProps> = ({
             <button
               role="menuitem"
               onClick={() => run(onOpenProfile)}
-              className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-stone-100 transition-colors"
+              className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-surface-sunken transition-colors"
             >
-              <User size={16} className="text-warm-brown" />
-              <span className="text-sm font-medium text-[color:var(--text-body)]">My Profile</span>
+              <User size={16} className="text-muted" />
+              <span className="text-sm font-medium text-body">My Profile</span>
             </button>
 
             {onOpenSettings && (
               <button
                 role="menuitem"
                 onClick={() => run(onOpenSettings)}
-                className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-stone-100 transition-colors"
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-surface-sunken transition-colors"
               >
-                <Settings size={16} className="text-warm-brown" />
-                <span className="text-sm font-medium text-[color:var(--text-body)]">Settings</span>
+                <Settings size={16} className="text-muted" />
+                <span className="text-sm font-medium text-body">Settings</span>
               </button>
             )}
 
@@ -127,10 +127,10 @@ const MyAccountMenu: React.FC<MyAccountMenuProps> = ({
               <button
                 role="menuitem"
                 onClick={() => run(onOpenBilling)}
-                className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-stone-100 transition-colors"
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-surface-sunken transition-colors"
               >
-                <CreditCard size={16} className="text-warm-brown" />
-                <span className="text-sm font-medium text-[color:var(--text-body)]">Billing &amp; Payments</span>
+                <CreditCard size={16} className="text-muted" />
+                <span className="text-sm font-medium text-body">Billing &amp; Payments</span>
               </button>
             )}
 
@@ -140,7 +140,7 @@ const MyAccountMenu: React.FC<MyAccountMenuProps> = ({
             <button
               role="menuitem"
               onClick={() => run(onGoToUserApp)}
-              className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-stone-100 transition-colors lg:hidden"
+              className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-surface-sunken transition-colors lg:hidden"
             >
               <ExternalLink size={16} style={{ color: GOLD }} />
               <span className="text-sm font-semibold" style={{ color: GOLD }}>Go to User App</span>

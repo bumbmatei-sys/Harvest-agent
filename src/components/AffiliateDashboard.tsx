@@ -38,7 +38,7 @@ const AffiliateDashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--cream, #FAF8F5)' }}>
-      <header className="flex items-center justify-between border-b border-stone-200 bg-white px-5 py-3.5 sm:px-8">
+      <header className="flex items-center justify-between border-b border-line bg-surface-raised px-5 py-3.5 sm:px-8">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={HARVEST_LOGO} alt="Harvest affiliate" className="h-8 w-auto object-contain" />
         <div className="flex items-center gap-3">
@@ -49,7 +49,7 @@ const AffiliateDashboard: React.FC = () => {
           )}
           <button
             onClick={handleSignOut}
-            className="flex items-center gap-1.5 rounded-lg border border-stone-200 bg-white px-3 py-1.5 text-sm font-semibold transition-colors hover:bg-stone-100"
+            className="flex items-center gap-1.5 rounded-lg border border-line bg-surface-raised px-3 py-1.5 text-sm font-semibold transition-colors hover:bg-surface-sunken"
             style={{ color: 'var(--text-body, #4A4038)' }}
           >
             <LogOut size={15} /> Sign out
