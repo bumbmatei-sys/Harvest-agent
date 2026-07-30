@@ -76,6 +76,109 @@ export function buildAdoptionRecord(
   return { id: libraryCourseId, libraryCourseId, adoptedBy, adoptedAt };
 }
 
+// ─── Per-tenant overrides ────────────────────────────────────────────────────
+
+/**
+ * The ONLY two fields an adopting tenant may set for themselves.
+ *
+ * Everything else about a library course — title, description, author,
+ * curriculum, lessons, videos — stays platform-owned and read-only. That is the
+ * whole point of adoption being a POINTER: the platform edits once and the
+ * change reaches every adopter. These two are different in kind, because they
+ * are not content at all: they are decisions about how a church runs the course
+ * for *their* audience.
+ *
+ * Exported so the route's allow-list and the UI cannot drift apart, and so
+ * "which keys are accepted" has exactly one definition. The route rejects any
+ * body key outside this list — the boundary must be enforced server-side, not
+ * merely hidden in the UI.
+ */
+export const TENANT_OVERRIDABLE_COURSE_FIELDS = ['requireQuiz', 'issueCertificate'] as const;
+
+export type TenantOverridableCourseField = typeof TENANT_OVERRIDABLE_COURSE_FIELDS[number];
+
+/** The subset of an adoption record a tenant controls. Absent ⇒ not chosen. */
+export type CourseOverrides = Partial<Record<TenantOverridableCourseField, boolean>>;
+
+/**
+ * Resolve one effective flag from the platform's value and the tenant's.
+ *
+ * 🔴 THE TENANT WINS, IN BOTH DIRECTIONS.
+ *
+ * The platform's value is a DEFAULT, not a restriction. A church that sets
+ * `issueCertificate: true` on a course the platform left false gets
+ * certificates; a church that sets `false` on a course the platform marked true
+ * does not. Same for `requireQuiz`. The reasoning is the same one #248 settled
+ * for branding: the certificate carries the ADOPTING church's name and logo, and
+ * they are the ones actually teaching the course — so the decision about what
+ * their learners must do, and what they walk away with, is theirs.
+ *
+ * ABSENT IS NOT FALSE. The override is stored only when the tenant has actually
+ * chosen, so "not chosen" (fall back to the platform's value) stays
+ * distinguishable from "chose false". A `?? false` here would silently convert
+ * every un-configured adoption into an opt-out — the exact shape of default that
+ * hides a decision nobody made.
+ */
+export function resolveOverriddenFlag(
+  libraryValue: boolean | undefined,
+  overrideValue: boolean | undefined,
+): boolean {
+  if (typeof overrideValue === 'boolean') return overrideValue;
+  return libraryValue === true;
+}
+
+/**
+ * THE one resolver. Returns the course as the adopting tenant's learners should
+ * actually experience it: platform content untouched, the two tenant-owned flags
+ * resolved.
+ *
+ * Returning a Course rather than a pair of booleans is deliberate — it is what
+ * makes the three consumers agree without any of them having to remember to ask.
+ * `verifyCourseCompletion` reads `course.requireQuiz` internally, and LessonView
+ * reads it directly; hand the resolved course in and both are correct with no
+ * signature change and no second copy of the precedence rule. Three
+ * hand-maintained copies of one rule is how the retention, super-admin and
+ * minimum-plan bugs happened.
+ *
+ * A tenant course (no adoption record) passes through unchanged, so this is safe
+ * to apply unconditionally. It is also idempotent for a given adoption record:
+ * applying it twice resolves to the same values.
+ */
+export function applyCourseOverrides<T extends Course>(
+  course: T,
+  adoption: CourseOverrides | null | undefined,
+): T {
+  if (!adoption) return course;
+  return {
+    ...course,
+    requireQuiz: resolveOverriddenFlag(course.requireQuiz, adoption.requireQuiz),
+    issueCertificate: resolveOverriddenFlag(course.issueCertificate, adoption.issueCertificate),
+  };
+}
+
+/**
+ * Whether any lesson in the course actually carries a quiz.
+ *
+ * Guards `requireQuiz: true` on a course that has none. Note what this does and
+ * does NOT prevent in this codebase: `verifyCourseCompletion` only inspects
+ * lessons that HAVE a quiz, and LessonView's gate is `hasQuiz && requireQuiz` —
+ * so a quiz-less course does not become uncompletable. The setting is not a dead
+ * end; it is a LIE. An admin toggles "learners must pass the quiz", believes it,
+ * and nothing whatsoever changes. That is the silent-failure shape this codebase
+ * keeps producing, so the route refuses it and the toggle is disabled with a
+ * reason rather than accepting a setting with no effect.
+ */
+export function courseHasQuiz(course: Pick<Course, 'levels'> | null | undefined): boolean {
+  // Walked defensively rather than through getAllLessons(): this runs against a
+  // raw Firestore document in the route, where a course mid-authoring can be
+  // missing `levels` or `sections` entirely, and getAllLessons() assumes both.
+  return (course?.levels ?? []).some((level) =>
+    (level?.sections ?? []).some((section) =>
+      (section?.lessons ?? []).some((l) => Array.isArray(l?.quiz) && l.quiz.length > 0),
+    ),
+  );
+}
+
 /**
  * A library course is visible to tenants only once published.
  *

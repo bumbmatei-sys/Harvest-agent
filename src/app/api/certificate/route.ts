@@ -10,6 +10,7 @@ import { adminDb, getReceiptsBucket } from '@/lib/firebase-admin';
 import { PLATFORM_TENANT_ID } from '@/utils/tenant-scope';
 import { getPlanFeatures } from '@/utils/plan-features';
 import { verifyCourseCompletion } from '@/utils/course.utils';
+import { applyCourseOverrides, type CourseOverrides } from '@/utils/course-adoption';
 import type { Course, QuizAttempt } from '@/types/course.types';
 import type { TenantPlan } from '@/types/tenant.types';
 import { captureHandledError } from '@/lib/money-path-sentry';
@@ -356,6 +357,11 @@ export async function POST(request: NextRequest) {
     }
     const course = { id: courseSnap.id, ...(courseSnap.data() as any) } as Course & { tenantId?: string };
 
+    // The adopting church's own settings for this course, when there are any.
+    // Read ONCE and used for two things: the entitlement check below, and the
+    // per-tenant overrides applied a few lines further down.
+    let adoptionOverrides: CourseOverrides | null = null;
+
     if (isLibraryCourse) {
       // ADOPTION IS THE ENTITLEMENT. A library course carries no tenantId, so
       // the tenant check below cannot bind — without this, ANY authenticated
@@ -363,17 +369,27 @@ export async function POST(request: NextRequest) {
       // never adopted, simply by knowing its id (the catalogue is readable by
       // every authenticated user, by design). The adoption record is the proof
       // the church actually holds this course.
-      if (!isSuperAdmin) {
-        if (!userTenantId) {
-          return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-        }
+      //
+      // The SAME document carries the tenant's requireQuiz / issueCertificate
+      // overrides, so honouring them costs a non-super-admin nothing: the read
+      // was already happening. A super admin previously skipped it entirely
+      // (they are exempt from the entitlement check), so for them — and only
+      // them — this is ONE additional document read. That is the right trade:
+      // the alternative is a super admin being issued a certificate the church's
+      // own members would be refused, which is precisely the cross-context
+      // disagreement this class of bug keeps producing.
+      if (userTenantId) {
         const adoption = await adminDb
           .collection('tenants').doc(userTenantId)
           .collection('adoptedCourses').doc(courseId)
           .get();
         if (!adoption.exists) {
-          return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+          if (!isSuperAdmin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        } else {
+          adoptionOverrides = (adoption.data() as CourseOverrides) ?? null;
         }
+      } else if (!isSuperAdmin) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
       }
     } else if (!isSuperAdmin && course.tenantId && userTenantId && course.tenantId !== userTenantId) {
       // Tenant isolation: a learner may only certify a course in their own
@@ -381,7 +397,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    if (course.issueCertificate !== true) {
+    // ── Apply the adopting church's overrides ───────────────────────────────
+    // From here on `effectiveCourse` is the course AS THIS CHURCH RUNS IT. The
+    // platform's values are defaults; the tenant's choice wins in both
+    // directions (see resolveOverriddenFlag). Both consumers below — the
+    // issueCertificate gate and verifyCourseCompletion's requireQuiz gate — read
+    // it off the course object, so resolving once here is what keeps this route,
+    // CourseOverview and the member player from disagreeing about whether a
+    // learner has earned anything.
+    const effectiveCourse = applyCourseOverrides(course, adoptionOverrides);
+
+    if (effectiveCourse.issueCertificate !== true) {
       return NextResponse.json({ error: 'This course does not issue certificates' }, { status: 403 });
     }
 
@@ -393,7 +419,7 @@ export async function POST(request: NextRequest) {
       userData.quizAttempts && typeof userData.quizAttempts === 'object' ? userData.quizAttempts : {};
 
     // ── Recompute completion server-side; refuse if not genuinely met ───────
-    const result = verifyCourseCompletion(course, completedLessons, quizAttempts);
+    const result = verifyCourseCompletion(effectiveCourse, completedLessons, quizAttempts);
     if (!result.complete) {
       return NextResponse.json(
         {

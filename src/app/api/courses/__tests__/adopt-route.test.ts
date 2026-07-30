@@ -37,7 +37,7 @@ vi.mock('@/lib/money-path-sentry', () => ({ captureHandledError: h.capture }));
 vi.mock('@/lib/firebase-admin', () => {
   const adoptionRef = (path: string) => ({
     get: async () => h.adoptionDoc,
-    set: async (data: unknown) => { h.writes.push({ path, data }); },
+    set: async (data: unknown, opts?: unknown) => { h.writes.push({ path, data, opts }); },
     delete: async () => { h.deletes.push(path); },
   });
   const adminDb = {
@@ -67,7 +67,7 @@ vi.mock('@/lib/firebase-admin', () => {
   return { adminDb };
 });
 
-const { POST, DELETE } = await import('../adopt/route');
+const { POST, PATCH, DELETE } = await import('../adopt/route');
 
 function req(body: unknown, method = 'POST'): NextRequest {
   return new NextRequest('https://example.com/api/courses/adopt', {
@@ -278,5 +278,249 @@ describe('DELETE /api/courses/adopt', () => {
     const res = await DELETE(req({ tenantId: 'tenant-a', libraryCourseId: 'a/b' }, 'DELETE'));
     expect(res.status).toBe(400);
     expect(h.deletes).toHaveLength(0);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PATCH — the adopting church's own two settings.
+//
+// The whole reason this is a route and not a rules change: adoptedCourses is
+// `allow write: if false` (#247) and must stay that way. A rule permissive
+// enough to let two booleans through is permissive enough to let a tenant
+// rewrite libraryCourseId or adoptedBy, because rules cannot express "these two
+// keys and no others" against an arbitrary merge. The allow-list below IS that
+// expression, server-side, in one place. firestore.rules is untouched.
+// ─────────────────────────────────────────────────────────────────────────────
+const QUIZ_LESSON = {
+  id: 'l1', title: 'L1', duration: '5', authorId: 'a', summary: '',
+  quiz: [{ id: 'q1', q: 'Q?', options: [{ id: 'a', text: 'A', correct: true }] }],
+};
+const withQuizzes = {
+  status: 'published',
+  levels: [{ id: 'lv', title: 'L', sections: [{ id: 's', title: 'S', lessons: [QUIZ_LESSON] }] }],
+};
+const withoutQuizzes = {
+  status: 'published',
+  levels: [{ id: 'lv', title: 'L', sections: [{ id: 's', title: 'S', lessons: [{ id: 'l1', title: 'L1', duration: '5', authorId: 'a', summary: '' }] }] }],
+};
+
+describe('PATCH /api/courses/adopt — per-tenant overrides', () => {
+  beforeEach(() => {
+    // Adopted by default: the entitlement path is exercised explicitly below.
+    h.adoptionDoc = { exists: true } as any;
+    h.libraryDoc = { exists: true, data: () => withQuizzes };
+  });
+
+  describe('the allowed-keys boundary', () => {
+    it('accepts issueCertificate', async () => {
+      const res = await PATCH(req({ ...GOOD, issueCertificate: true }, 'PATCH'));
+      expect(res.status).toBe(200);
+      expect(h.writes[0].data).toEqual({ issueCertificate: true });
+    });
+
+    it('accepts requireQuiz', async () => {
+      const res = await PATCH(req({ ...GOOD, requireQuiz: true }, 'PATCH'));
+      expect(res.status).toBe(200);
+      expect(h.writes[0].data).toEqual({ requireQuiz: true });
+    });
+
+    it('REJECTS any other key — the boundary that keeps the course platform-owned', async () => {
+      // THE boundary test. Removing the allow-list makes this fail.
+      const res = await PATCH(req({ ...GOOD, title: 'Our own title' }, 'PATCH'));
+      expect(res.status).toBe(400);
+      expect(await res.json()).toMatchObject({ code: 'field_not_overridable', rejected: ['title'] });
+      expect(h.writes).toHaveLength(0);
+    });
+
+    it('rejects every content field a tenant might try to claim', async () => {
+      for (const key of ['title', 'description', 'levels', 'thumbnail', 'authorIds', 'category', 'status']) {
+        h.writes = [];
+        // Paired with a VALID override so the request cannot be refused merely
+        // for being empty — the rejection has to come from the allow-list.
+        const res = await PATCH(req({ ...GOOD, issueCertificate: true, [key]: 'x' }, 'PATCH'));
+        expect(res.status, `${key} must be refused`).toBe(400);
+        expect((await res.json()).code, `${key} must be refused BY THE ALLOW-LIST`).toBe('field_not_overridable');
+        expect(h.writes).toHaveLength(0);
+      }
+    });
+
+    it('rejects adoption metadata a tenant must not rewrite', async () => {
+      for (const key of ['adoptedBy', 'adoptedAt', 'libraryCourseId2', 'tenantId2']) {
+        h.writes = [];
+        const res = await PATCH(req({ ...GOOD, issueCertificate: true, [key]: 'forged' }, 'PATCH'));
+        expect(res.status, `${key} must be refused`).toBe(400);
+        expect((await res.json()).code, `${key} must be refused BY THE ALLOW-LIST`).toBe('field_not_overridable');
+        expect(h.writes).toHaveLength(0);
+      }
+    });
+
+    it('rejects rather than silently dropping — a caller must learn it failed', async () => {
+      // A filter-based allow-list would answer 200 while ignoring the field, and
+      // the admin would believe they had changed something.
+      const res = await PATCH(req({ ...GOOD, issueCertificate: true, title: 'x' }, 'PATCH'));
+      expect(res.status).toBe(400);
+      expect(h.writes).toHaveLength(0);
+    });
+
+    it('names every rejected key, not just the first', async () => {
+      const res = await PATCH(req({ ...GOOD, title: 'x', levels: [] }, 'PATCH'));
+      expect((await res.json()).rejected).toEqual(['title', 'levels']);
+    });
+
+    it('rejects a non-boolean value for an allowed key', async () => {
+      expect((await PATCH(req({ ...GOOD, requireQuiz: 'yes' }, 'PATCH'))).status).toBe(400);
+      expect((await PATCH(req({ ...GOOD, issueCertificate: 1 }, 'PATCH'))).status).toBe(400);
+      expect(h.writes).toHaveLength(0);
+    });
+
+    it('400s when no override is supplied at all', async () => {
+      expect((await PATCH(req(GOOD, 'PATCH'))).status).toBe(400);
+    });
+  });
+
+  describe('authorisation and entitlement', () => {
+    it('requires the SAME createCourses permission — no new permission', async () => {
+      await PATCH(req({ ...GOOD, issueCertificate: true }, 'PATCH'));
+      expect(h.requireTenantPermission).toHaveBeenCalledWith(expect.anything(), 'tenant-a', 'createCourses');
+    });
+
+    it('propagates a permission failure verbatim', async () => {
+      h.requireTenantPermission.mockResolvedValue(
+        NextResponse.json({ error: "Missing 'createCourses' permission" }, { status: 403 }),
+      );
+      const res = await PATCH(req({ ...GOOD, issueCertificate: true }, 'PATCH'));
+      expect(res.status).toBe(403);
+      expect(h.writes).toHaveLength(0);
+    });
+
+    it('authorises BEFORE reporting anything about the body', async () => {
+      // An unauthorised caller must not learn which keys the route would accept.
+      h.requireTenantPermission.mockResolvedValue(
+        NextResponse.json({ error: 'Tenant admin access required' }, { status: 403 }),
+      );
+      const res = await PATCH(req({ ...GOOD, title: 'probe' }, 'PATCH'));
+      expect(res.status).toBe(403);
+      expect(await res.json()).not.toMatchObject({ code: 'field_not_overridable' });
+    });
+
+    it('REFUSES an override for a course the tenant has not adopted', async () => {
+      // Matches the entitlement model #248 established: the adoption record is
+      // the proof the church actually holds this course.
+      h.adoptionDoc = { exists: false } as any;
+      const res = await PATCH(req({ ...GOOD, issueCertificate: true }, 'PATCH'));
+      expect(res.status).toBe(404);
+      expect(await res.json()).toMatchObject({ code: 'not_adopted' });
+      expect(h.writes).toHaveLength(0);
+    });
+
+    it('resolves the tenant server-side and never trusts a client plan', async () => {
+      const res = await PATCH(req({ ...GOOD, issueCertificate: true, plan: 'ultra' }, 'PATCH'));
+      // `plan` is not an allowed key, so it is refused outright rather than read.
+      expect(res.status).toBe(400);
+      expect((await res.json()).code).toBe('field_not_overridable');
+      expect(h.writes).toHaveLength(0);
+    });
+
+    it('validates ids the same way as POST/DELETE', async () => {
+      expect((await PATCH(req({ tenantId: 'tenant-a', libraryCourseId: 'a/b', requireQuiz: true }, 'PATCH'))).status).toBe(400);
+      expect((await PATCH(req({ libraryCourseId: 'lib-1', requireQuiz: true }, 'PATCH'))).status).toBe(400);
+      expect(h.writes).toHaveLength(0);
+    });
+  });
+
+  describe('requireQuiz on a course with no quizzes', () => {
+    it('is REFUSED — the setting would have no effect at all', async () => {
+      // Note precisely what this prevents in THIS codebase. It is NOT an
+      // unreachable-completion dead end: verifyCourseCompletion only inspects
+      // lessons that HAVE a quiz, and LessonView's gate is
+      // `hasQuiz && requireQuiz`, so learners are never stranded. It is a LIE —
+      // the admin turns the setting on, believes members must pass a quiz, and
+      // nothing whatsoever changes.
+      h.libraryDoc = { exists: true, data: () => withoutQuizzes };
+      const res = await PATCH(req({ ...GOOD, requireQuiz: true }, 'PATCH'));
+      expect(res.status).toBe(409);
+      expect(await res.json()).toMatchObject({ code: 'course_has_no_quiz' });
+      expect(h.writes).toHaveLength(0);
+    });
+
+    it('is allowed when at least one lesson carries a quiz', async () => {
+      h.libraryDoc = { exists: true, data: () => withQuizzes };
+      expect((await PATCH(req({ ...GOOD, requireQuiz: true }, 'PATCH'))).status).toBe(200);
+    });
+
+    it('treats an EMPTY quiz array as no quiz', async () => {
+      h.libraryDoc = {
+        exists: true,
+        data: () => ({ status: 'published', levels: [{ id: 'lv', title: 'L', sections: [{ id: 's', title: 'S', lessons: [{ ...QUIZ_LESSON, quiz: [] }] }] }] }),
+      };
+      expect((await PATCH(req({ ...GOOD, requireQuiz: true }, 'PATCH'))).status).toBe(409);
+    });
+
+    it('turning requireQuiz OFF is always allowed, quizzes or not', async () => {
+      h.libraryDoc = { exists: true, data: () => withoutQuizzes };
+      const res = await PATCH(req({ ...GOOD, requireQuiz: false }, 'PATCH'));
+      expect(res.status).toBe(200);
+      expect(h.writes[0].data).toEqual({ requireQuiz: false });
+    });
+
+    it('does not consult the catalogue when only issueCertificate changes', async () => {
+      // No reason to spend a read on a check that cannot apply.
+      h.libraryDoc = { exists: false, data: () => ({}) };
+      expect((await PATCH(req({ ...GOOD, issueCertificate: true }, 'PATCH'))).status).toBe(200);
+    });
+  });
+
+  describe('what gets written', () => {
+    it('merges, so one toggle never clears the other or the pointer', async () => {
+      await PATCH(req({ ...GOOD, issueCertificate: true }, 'PATCH'));
+      expect(h.writes[0].opts).toMatchObject({ merge: true });
+      expect(h.writes[0].path).toBe('tenants/tenant-a/adoptedCourses/lib-1');
+      expect('libraryCourseId' in h.writes[0].data).toBe(false);
+      expect('adoptedBy' in h.writes[0].data).toBe(false);
+    });
+
+    it('writes ONLY the field supplied — an absent field stays absent', async () => {
+      // This is what preserves "not chosen" as distinct from "chose false".
+      await PATCH(req({ ...GOOD, requireQuiz: true }, 'PATCH'));
+      expect(Object.keys(h.writes[0].data)).toEqual(['requireQuiz']);
+    });
+
+    it('writes both when both are supplied', async () => {
+      await PATCH(req({ ...GOOD, requireQuiz: true, issueCertificate: false }, 'PATCH'));
+      expect(h.writes[0].data).toEqual({ requireQuiz: true, issueCertificate: false });
+    });
+
+    it('stores false as an ACTIVE opt-out, not as an absent field', async () => {
+      await PATCH(req({ ...GOOD, issueCertificate: false }, 'PATCH'));
+      expect(h.writes[0].data).toEqual({ issueCertificate: false });
+    });
+
+    it('null clears the override back to the platform default', async () => {
+      const res = await PATCH(req({ ...GOOD, issueCertificate: null }, 'PATCH'));
+      expect(res.status).toBe(200);
+      expect(h.writes[0].data).toEqual({ issueCertificate: null });
+    });
+
+    it('writes to the tenant in the body, so two churches cannot collide', async () => {
+      h.requireTenantPermission.mockResolvedValue({ ...USER, tenantId: 'tenant-b' });
+      await PATCH(req({ tenantId: 'tenant-b', libraryCourseId: 'lib-1', issueCertificate: true }, 'PATCH'));
+      expect(h.writes[0].path).toBe('tenants/tenant-b/adoptedCourses/lib-1');
+    });
+  });
+
+  it('400s on an invalid JSON body', async () => {
+    const bad = new NextRequest('https://example.com/api/courses/adopt', {
+      method: 'PATCH',
+      headers: { authorization: 'Bearer token', 'content-type': 'application/json' },
+      body: 'not json',
+    });
+    expect((await PATCH(bad)).status).toBe(400);
+  });
+
+  it('500s and reports to Sentry on an unexpected failure', async () => {
+    h.requireTenantPermission.mockRejectedValue(new Error('boom'));
+    const res = await PATCH(req({ ...GOOD, issueCertificate: true }, 'PATCH'));
+    expect(res.status).toBe(500);
+    expect(h.capture).toHaveBeenCalled();
   });
 });

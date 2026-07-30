@@ -9,10 +9,11 @@ import { CourseOverview } from "../components/course/CourseOverview";
 import { LessonView } from "../components/course/LessonView";
 import { AuthorProfile } from "../components/course/AuthorProfile";
 import { OperationType, handleFirestoreError } from "../utils/firestore-errors";
-import { getTenantScope } from "../utils/tenant-scope";
+import { getTenantScope, getWriteTenantScope } from "../utils/tenant-scope";
 import { LIBRARY_COURSE_COLLECTIONS } from "../utils/library-authoring";
 import {
   adoptableCourses, mergeCoursesForMembers, mergeAuthors, mergeCategories,
+  applyCourseOverrides,
 } from "../utils/course-adoption";
 
 export default function CoursePage({
@@ -38,6 +39,10 @@ export default function CoursePage({
   const [lessonNotes, setLessonNotes] = useState<Record<string, string>>({});
 
   const [courses, setCourses] = useState<Course[]>([]);
+  // This church's adoption records, keyed by library course id. Held so
+  // CourseOverview can resolve the same overrides itself and stay correct on its
+  // own terms rather than relying on its caller having remembered.
+  const [adoptions, setAdoptions] = useState<Map<string, AdoptedCourse>>(new Map());
   const [authors, setAuthors] = useState<Author[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -131,6 +136,18 @@ export default function CoursePage({
         const coursesSnap = tenantId
           ? await getDocs(query(collection(db, "courses"), where("tenantId", "==", tenantId)))
           : await getDocs(collection(db, "courses"));
+
+        // TWO DIFFERENT SCOPES, and the difference is the whole bug. The read
+        // above is FIELD-FILTERED, so null correctly means "every tenant" for a
+        // super admin on the apex. The adopted read below addresses a
+        // tenant-scoped PATH — tenants/{id}/adoptedCourses — which null cannot
+        // build, so it was skipped entirely and every adopted course vanished
+        // from the member app. It never errored: it rendered as "this church has
+        // no library courses". getWriteTenantScope() resolves the platform
+        // tenant instead of null, exactly as AdminCourses' adoption listener
+        // does (#249) — the two screens must agree on WHICH tenant holds the
+        // adoptions, or the admin sees a course the members cannot.
+        const pathScope = await getWriteTenantScope();
         const fetchedCourses: Course[] = [];
         coursesSnap.forEach((d) => {
           if (d.data().status !== "published") return;
@@ -145,19 +162,32 @@ export default function CoursePage({
         // and no field-referencing read rule, so any query shape is accepted.
         // Drafts are excluded in JS by adoptableCourses() a few lines down.
         let adoptedLibrary: LibraryCourse[] = [];
-        if (tenantId) {
-          const adoptedSnap = await getDocs(collection(db, "tenants", tenantId, "adoptedCourses"));
-          const adoptedIds = new Set(
-            adoptedSnap.docs.map((d) => ((d.data() as AdoptedCourse).libraryCourseId ?? d.id)),
-          );
-          if (adoptedIds.size > 0) {
+        if (pathScope) {
+          const adoptedSnap = await getDocs(collection(db, "tenants", pathScope, "adoptedCourses"));
+          // Keyed by library course id: the record carries this church's own
+          // requireQuiz / issueCertificate, which must reach the course object.
+          const adoptions = new Map<string, AdoptedCourse>();
+          adoptedSnap.docs.forEach((d) => {
+            const record = { id: d.id, ...d.data() } as AdoptedCourse;
+            adoptions.set(record.libraryCourseId ?? d.id, record);
+          });
+          if (adoptions.size > 0) {
             const librarySnap = await getDocs(collection(db, LIBRARY_COURSE_COLLECTIONS.courses));
             const all = librarySnap.docs
-              .filter((d) => adoptedIds.has(d.id))
-              .map((d) => ({ id: d.id, ...d.data() }) as LibraryCourse);
+              .filter((d) => adoptions.has(d.id))
+              .map((d) => ({ id: d.id, ...d.data() }) as LibraryCourse)
+              // THE COURSE AS THIS CHURCH RUNS IT. Resolved here, at the one
+              // place the member app composes its course list, so every
+              // downstream consumer is consistent for free: CourseOverview's
+              // certificate affordance, LessonView's quiz gate, and
+              // verifyCourseCompletion (which reads course.requireQuiz
+              // internally) all see the effective values with no signature
+              // change and no second copy of the precedence rule.
+              .map((c) => applyCourseOverrides(c, adoptions.get(c.id)));
             // Unpublished catalogue entries never reach members.
             adoptedLibrary = adoptableCourses(all);
           }
+          setAdoptions(adoptions);
         }
 
         // The tenant's OWN featured course wins: a library course must never
@@ -307,6 +337,7 @@ export default function CoursePage({
       {screen === "overview" && selectedCourse && (
         <CourseOverview
           course={selectedCourse}
+          adoption={adoptions.get(selectedCourse.id) ?? null}
           authors={authors}
           onBack={onBack || (() => setScreen("library"))}
           onStartLesson={goToLesson}
