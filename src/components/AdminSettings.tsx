@@ -305,7 +305,7 @@ const PLANS_DISPLAY = [
   { id: 'plus'  as TenantPlan, name: 'Individual', monthlyPrice: '$49/mo',  icon: Crown, color: '#6366f1' },
   { id: 'pro'   as TenantPlan, name: 'Small Team', monthlyPrice: '$99/mo',  icon: Crown, color: '#d4a017' },
   { id: 'max'   as TenantPlan, name: 'Community',  monthlyPrice: '$199/mo', icon: Crown, color: '#8b5cf6' },
-  { id: 'ultra' as TenantPlan, name: 'Ministry',   monthlyPrice: '$349/mo', icon: Crown, color: '#b45309' },
+  { id: 'ultra' as TenantPlan, name: 'Ministry',   monthlyPrice: '$299/mo', icon: Crown, color: '#b45309' },
 ];
 
 export default AdminSettings;

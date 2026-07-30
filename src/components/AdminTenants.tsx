@@ -20,10 +20,10 @@ const PLAN_LABELS: Record<TenantPlan, string> = {
 // Marketing labels with price, shown in the (read-only) edit view. Intentionally
 // different from PLAN_LABELS — these match what customers see in checkout.
 const PLAN_DISPLAY: Record<TenantPlan, string> = {
-  plus: 'Individual — $59/mo',
-  pro: 'Small Team — $119/mo',
-  max: 'Community — $299/mo',
-  ultra: 'Ministry — $479/mo',
+  plus: 'Individual — $49/mo',
+  pro: 'Small Team — $99/mo',
+  max: 'Community — $199/mo',
+  ultra: 'Ministry — $299/mo',
 };
 
 const PLAN_COLORS: Record<TenantPlan, string> = {
@@ -518,10 +518,10 @@ const AdminTenants: React.FC = () => {
                     onChange={e => setForm({ ...form, plan: e.target.value as TenantPlan })}
                     className="w-full px-4 py-2.5 border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-gold focus:border-gold outline-none bg-white"
                   >
-                    <option value="plus">Individual — $59/mo</option>
-                    <option value="pro">Small Team — $119/mo</option>
-                    <option value="max">Community — $299/mo</option>
-                    <option value="ultra">Ministry — $479/mo</option>
+                    <option value="plus">Individual — $49/mo</option>
+                    <option value="pro">Small Team — $99/mo</option>
+                    <option value="max">Community — $199/mo</option>
+                    <option value="ultra">Ministry — $299/mo</option>
                   </select>
                 )}
               </div>
