@@ -1731,23 +1731,23 @@ export async function POST(request: NextRequest) {
                   // It is keyed off the INVOICE PERIOD, never the delivery time: a
                   // month-11 invoice that is dunned, retried or redelivered in month 14
                   // is still a month-11 invoice and still pays.
-                  const window = evaluateAffiliateCommissionWindow({ subscription, invoice });
+                  const commissionWindow = evaluateAffiliateCommissionWindow({ subscription, invoice });
 
-                  if (window.failSafe) {
+                  if (commissionWindow.failSafe) {
                     // We could not prove the referral is inside its window, so we PAID.
                     // That direction is deliberate — see the module header — but it must
                     // never be quiet: a systematically unresolvable anchor means every
                     // referral is being paid past 12 months, and the only way anyone
                     // finds out is this log.
                     console.warn(
-                      `⚠️ Affiliate window UNRESOLVED (${window.reason}) for invoice ${invoice.id} ` +
-                      `(sub ${invoiceSubId}, referrer ${referrerId}, anchor source ${window.anchorSource}, ` +
-                      `period source ${window.periodStartSource}) — PAYING the commission by fail-safe ` +
+                      `⚠️ Affiliate window UNRESOLVED (${commissionWindow.reason}) for invoice ${invoice.id} ` +
+                      `(sub ${invoiceSubId}, referrer ${referrerId}, anchor source ${commissionWindow.anchorSource}, ` +
+                      `period source ${commissionWindow.periodStartSource}) — PAYING the commission by fail-safe ` +
                       `rather than withholding it. Investigate: this should not be reachable for a ` +
                       `normally-created Stripe subscription.`,
                     );
                     captureMoneyPathError(
-                      new Error(`Affiliate 12-month window unresolved: ${window.reason}`),
+                      new Error(`Affiliate 12-month window unresolved: ${commissionWindow.reason}`),
                       {
                         step: 'recurring-affiliate-commission-window-unresolved',
                         level: 'warning',
@@ -1758,14 +1758,14 @@ export async function POST(request: NextRequest) {
                           subscriptionId: invoiceSubId,
                           invoiceId: invoice.id,
                           referrerId,
-                          anchorSource: window.anchorSource,
-                          periodStartSource: window.periodStartSource,
+                          anchorSource: commissionWindow.anchorSource,
+                          periodStartSource: commissionWindow.periodStartSource,
                         },
                       },
                     );
                   }
 
-                  if (!window.within) {
+                  if (!commissionWindow.within) {
                     // EXPIRY IS EXPLICIT, NOT INCIDENTAL. #250 twice fixed a path that
                     // decided not to act and then fell through to a bare `return`,
                     // leaving nobody able to tell "we decided no" from "we crashed".
@@ -1793,20 +1793,20 @@ export async function POST(request: NextRequest) {
                       stripeSubscriptionId: invoiceSubId,
                       stripeInvoiceId: invoice.id,
                       createdAt: skippedAtIso,
-                      skippedReason: window.reason,
+                      skippedReason: commissionWindow.reason,
                       uncommissionedAmount: invoice.amount_paid || 0,
                       commissionWindowMonths: AFFILIATE_COMMISSION_WINDOW_MONTHS,
-                      commissionWindowAnchorAt: window.anchorAt,
-                      commissionWindowEndsAt: window.windowEndsAt,
-                      invoicePeriodStartAt: window.periodStartAt,
+                      commissionWindowAnchorAt: commissionWindow.anchorAt,
+                      commissionWindowEndsAt: commissionWindow.windowEndsAt,
+                      invoicePeriodStartAt: commissionWindow.periodStartAt,
                     });
                     // Expected, correct behaviour for a referral past 12 months — so no
                     // Sentry. The durable row above plus this line are the record.
                     console.log(
                       `⏳ Affiliate commission SKIPPED for referrer ${referrerId}: referral ${tenantId} ` +
                       `is past its ${AFFILIATE_COMMISSION_WINDOW_MONTHS}-month window ` +
-                      `(signup ${window.anchorAt}, window ended ${window.windowEndsAt}, ` +
-                      `invoice period started ${window.periodStartAt}). ` +
+                      `(signup ${commissionWindow.anchorAt}, window ended ${commissionWindow.windowEndsAt}, ` +
+                      `invoice period started ${commissionWindow.periodStartAt}). ` +
                       `Invoice ${invoice.id} paid $${((invoice.amount_paid || 0) / 100).toFixed(2)}, commission $0.00.`,
                     );
                   } else {
@@ -1864,9 +1864,9 @@ export async function POST(request: NextRequest) {
                     // `subscription.start_date` stays the source of truth: the gate
                     // re-derives the anchor on every invoice and never reads these back.
                     commissionWindowMonths: AFFILIATE_COMMISSION_WINDOW_MONTHS,
-                    commissionWindowAnchorAt: window.anchorAt,
-                    commissionWindowEndsAt: window.windowEndsAt,
-                    invoicePeriodStartAt: window.periodStartAt,
+                    commissionWindowAnchorAt: commissionWindow.anchorAt,
+                    commissionWindowEndsAt: commissionWindow.windowEndsAt,
+                    invoicePeriodStartAt: commissionWindow.periodStartAt,
                   });
                   recordBatch.update(referrerRef, {
                     affiliateEarnings: FieldValue.increment(commissionAmount),
