@@ -45,9 +45,9 @@ export const AI_ASSISTANT_SETUP = process.env.STRIPE_PRICE_AI_SETUP ?? 'price_1T
  * to match.
  */
 export const PLATFORM_FEE_MAP: Record<string, number> = {
-  plus: 0.05,
-  pro: 0.05,
-  max: 0.025,
+  plus: 0.015,
+  pro: 0.015,
+  max: 0.01,
   ultra: 0,
 };
 
