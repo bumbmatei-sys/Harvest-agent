@@ -285,7 +285,7 @@ const AdminInbox = () => {
  </div>
 
  {isExpanded && (
- <div className="p-4 border-t border-line bg-stone-100/50 animate-in slide-in-from-top-2 duration-200">
+ <div className="p-4 border-t border-line bg-[color-mix(in_srgb,var(--surface-sunken)_50%,transparent)] animate-in slide-in-from-top-2 duration-200">
  <div className="space-y-3 mb-6">
  {Object.entries(sub.data).map(([key, value]) => {
  if (!value) return null;

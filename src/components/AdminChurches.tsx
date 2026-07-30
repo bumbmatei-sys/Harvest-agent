@@ -372,7 +372,7 @@ const AdminChurches: React.FC = () => {
                 </tr>
               ) : (
                 filteredChurches.map((church) => (
-                  <tr key={church.id} className="border-b border-line hover:bg-stone-100/60 transition-colors">
+                  <tr key={church.id} className="border-b border-line hover:bg-[color-mix(in_srgb,var(--surface-sunken)_60%,transparent)] transition-colors">
                     <td className="p-4">
                       <div className="font-semibold text-strong">{church.name}</div>
                       <div className="text-xs text-muted">{church.denomination}</div>

@@ -332,7 +332,7 @@ const AdminBlog: React.FC = () => {
  </tr>
  ) : (
  filteredPosts.map((post) => (
- <tr key={post.id} className="hover:bg-stone-100/60 transition-colors group">
+ <tr key={post.id} className="hover:bg-[color-mix(in_srgb,var(--surface-sunken)_60%,transparent)] transition-colors group">
  <td className="px-6 py-3.5">
  <div className="flex items-center gap-2">
  <span className="text-sm font-semibold text-strong line-clamp-1">{post.title}</span>

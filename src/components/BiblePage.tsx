@@ -620,7 +620,7 @@ export default function BiblePage() {
                       <button onClick={() => setExpandedBook(isExpanded ? null : b.id)}
                         className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-left transition-colors ${active ? "" : "hover:bg-surface-sunken"}`}
                         style={active ? { background: GOLD_LIGHT } : undefined}>
-                        <span className="text-[13.5px]" style={active ? { color: GOLD, fontWeight: 600 } : { color: "#4A4038" }}>{b.name}</span>
+                        <span className="text-[13.5px]" style={active ? { color: GOLD, fontWeight: 600 } : { color: "var(--text-body)" }}>{b.name}</span>
                         <span className="text-[11px] text-faint">{b.chapters} ch</span>
                       </button>
                       {isExpanded && (

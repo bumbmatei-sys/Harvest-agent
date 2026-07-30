@@ -65,7 +65,7 @@ function PreviewLesson({ lesson, num }: { lesson: Lesson; num: number }) {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center gap-3 py-3 text-left hover:bg-stone-100/60 transition-colors"
+        className="w-full flex items-center gap-3 py-3 text-left hover:bg-[color-mix(in_srgb,var(--surface-sunken)_60%,transparent)] transition-colors"
       >
         <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 border-[1.5px] border-line bg-surface-sunken text-muted">
           {num}

@@ -97,6 +97,13 @@
     names the fill role; identical to --border-default in light, distinct in
     dark, which is exactly why they need separate tokens. */
  --surface-chip:    var(--stone-200);   /* opaque chip/pill fill, = bg-stone-200 */
+ /* Two near-neutrals that predate the ramp and sit 2-3/255 per channel off it
+    (#EDEBE8 vs --stone-100, #F7F6F3 vs --cream) -- imperceptible, but the light
+    value is preserved EXACTLY rather than converged, because converging is a
+    design decision and this is a theming fix. Converging them onto the ramp
+    later would delete both tokens and is a one-line follow-up. */
+ --border-hairline: #EDEBE8;            /* was border-[#EDEBE8], 47 uses */
+ --surface-tint:    #F7F6F3;            /* was bg-[#F7F6F3], 26 uses */
 
  /* Stage 3: the accent's on-dark variant. Harvest gold already clears AA on
     the dark ground (6.77:1), so the default is the accent itself, untouched.
@@ -154,6 +161,10 @@
    /* A chip must read as raised ON the raised surface, so it sits a step above
       --surface-raised rather than tracking --border-default. */
    --surface-chip:    #2E2822;
+   /* Track their nearest ramp neighbours in dark -- there is no reason to carry
+      the light theme's off-by-2 accident into a new theme. */
+   --border-hairline: #2A2420;   /* = --border-subtle */
+   --surface-tint:    #1A1612;   /* = --surface */
 
    /* Warm text ramp, hue preserved by mixing warm-brown toward cream. Every
       step clears AA (4.5:1) against all three surfaces above, and the ramp is

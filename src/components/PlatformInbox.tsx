@@ -245,7 +245,7 @@ const PlatformInbox = () => {
  </div>
 
  {isExpanded && (
- <div className="p-4 border-t border-gray-50 bg-stone-100/50 animate-in slide-in-from-top-2 duration-200">
+ <div className="p-4 border-t border-gray-50 bg-[color-mix(in_srgb,var(--surface-sunken)_50%,transparent)] animate-in slide-in-from-top-2 duration-200">
  <div className="mb-6">
  {renderBody(r)}
  </div>

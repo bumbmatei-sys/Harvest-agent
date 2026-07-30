@@ -216,7 +216,7 @@ const RoleBadge: React.FC<{ role?: string }> = ({ role }) => {
   return (
     <span
       className="text-[9px] font-bold px-1.5 py-0.5 rounded-full leading-none"
-      style={isAdmin ? { backgroundColor: 'color-mix(in srgb, var(--brand-color, #B8962E) 12%, white)', color: 'var(--brand-color, #B8962E)' } : { backgroundColor: '#F3EEE7', color: '#8B7355' }}
+      style={isAdmin ? { backgroundColor: 'color-mix(in srgb, var(--brand-color, #B8962E) 12%, white)', color: 'var(--brand-color, #B8962E)' } : { backgroundColor: 'var(--surface-sunken)', color: 'var(--text-muted)' }}
     >
       {isAdmin ? 'Admin' : 'User'}
     </span>
@@ -699,7 +699,7 @@ const ChannelThread: React.FC<{
             ))}
           </div>
         )}
-        <div className="flex gap-2 items-center bg-[#F7F6F3] rounded-2xl px-3 py-2.5 border border-line focus-within:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] transition-colors">
+        <div className="flex gap-2 items-center bg-surface-tint rounded-2xl px-3 py-2.5 border border-line focus-within:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] transition-colors">
           <button
             onClick={() => setShowPicker(true)}
             className="flex-shrink-0 p-1 rounded-lg hover:bg-surface-chip transition-colors"
@@ -893,7 +893,7 @@ const DmThread: React.FC<{
             ))}
           </div>
         )}
-        <div className="flex gap-2 items-center bg-[#F7F6F3] rounded-2xl px-3 py-2.5 border border-line focus-within:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] transition-colors">
+        <div className="flex gap-2 items-center bg-surface-tint rounded-2xl px-3 py-2.5 border border-line focus-within:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] transition-colors">
           <button
             onClick={() => setShowPicker(true)}
             className="flex-shrink-0 p-1 rounded-lg hover:bg-surface-chip transition-colors"

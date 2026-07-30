@@ -31,7 +31,7 @@ const EditorToolbar: React.FC<{ editor: ReturnType<typeof useEditor> }> = ({ edi
     </button>
   );
   return (
-    <div className="flex items-center gap-0.5 px-4 py-2 border-b border-line bg-stone-100/60 flex-wrap">
+    <div className="flex items-center gap-0.5 px-4 py-2 border-b border-line bg-[color-mix(in_srgb,var(--surface-sunken)_60%,transparent)] flex-wrap">
       {btn(editor.isActive('bold'), () => editor.chain().focus().toggleBold().run(), 'B')}
       {btn(editor.isActive('italic'), () => editor.chain().focus().toggleItalic().run(), 'I')}
       {btn(editor.isActive('underline'), () => editor.chain().focus().toggleUnderline().run(), 'U')}

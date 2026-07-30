@@ -667,13 +667,13 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
  )}
 
  {showMyEvents && (
- <div className="fixed inset-0 z-[300] bg-[#F7F6F3]">
+ <div className="fixed inset-0 z-[300] bg-surface-tint">
  <UserEvents onBack={() => setShowMyEvents(false)} />
  </div>
  )}
 
  {showSaved && (
- <div className="fixed inset-0 z-[300] bg-[#F7F6F3]">
+ <div className="fixed inset-0 z-[300] bg-surface-tint">
  <SavedItems
  onBack={() => setShowSaved(false)}
  onOpenBlog={(id) => { setShowSaved(false); onOpenSavedBlog?.(id); }}
@@ -684,7 +684,7 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
  )}
 
  {showDonationHistory && (
- <div className="fixed inset-0 z-[300] bg-[#F7F6F3]">
+ <div className="fixed inset-0 z-[300] bg-surface-tint">
  <DonationHistory onBack={() => setShowDonationHistory(false)} />
  </div>
  )}

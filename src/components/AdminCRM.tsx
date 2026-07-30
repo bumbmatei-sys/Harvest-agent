@@ -56,7 +56,7 @@ const emptyContact = {
 
 // Pipeline stage definitions: ordered left→right on the kanban board.
 const STAGES: { id: PipelineStage; label: string; color: string; bg: string }[] = [
-  { id: 'new',       label: 'New',       color: '#8B7355', bg: '#F3EEE7' },
+  { id: 'new',       label: 'New',       color: 'var(--text-muted)', bg: '#F3EEE7' },
   { id: 'connected', label: 'Connected', color: '#3B82F6', bg: '#EFF6FF' },
   { id: 'active',    label: 'Active',    color: '#8B5CF6', bg: '#F5F3FF' },
   { id: 'giving',    label: 'Giving',    color: '#B8962E', bg: '#FBF3E4' },
@@ -114,7 +114,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ contacts, stages, onOpenConta
                 <div
                   key={c.id}
                   onClick={() => onOpenContact(c)}
-                  className="bg-surface-raised rounded-xl border border-[#EDEBE8] p-3 cursor-pointer hover:shadow-sm hover:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] transition-all"
+                  className="bg-surface-raised rounded-xl border border-line-hairline p-3 cursor-pointer hover:shadow-sm hover:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] transition-all"
                 >
                   {/* Avatar + name */}
                   <div className="flex items-center gap-2 mb-2">
@@ -164,7 +164,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ contacts, stages, onOpenConta
               ))}
 
               {stageContacts.length === 0 && (
-                <div className="rounded-xl border-2 border-dashed border-[#EDEBE8] p-4 text-center">
+                <div className="rounded-xl border-2 border-dashed border-line-hairline p-4 text-center">
                   <p className="text-[10px] text-faint">No contacts</p>
                 </div>
               )}
@@ -618,23 +618,23 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
     return (
       <div ref={scrollRef} className="max-w-2xl mx-auto">
         {subTabBar}
-        <div className="bg-surface-raised rounded-2xl border border-[#EDEBE8] shadow-sm p-6 space-y-5">
+        <div className="bg-surface-raised rounded-2xl border border-line-hairline shadow-sm p-6 space-y-5">
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="text-xs font-semibold text-muted mb-1 block">First Name *</label>
               <input value={form.firstName} onChange={e => setForm({ ...form, firstName: e.target.value })}
-                className="w-full rounded-xl border border-[#EDEBE8] px-3 py-2.5 text-sm focus:border-gold focus:outline-none" placeholder="First name" />
+                className="w-full rounded-xl border border-line-hairline px-3 py-2.5 text-sm focus:border-gold focus:outline-none" placeholder="First name" />
             </div>
             <div>
               <label className="text-xs font-semibold text-muted mb-1 block">Last Name</label>
               <input value={form.lastName} onChange={e => setForm({ ...form, lastName: e.target.value })}
-                className="w-full rounded-xl border border-[#EDEBE8] px-3 py-2.5 text-sm focus:border-gold focus:outline-none" placeholder="Last name" />
+                className="w-full rounded-xl border border-line-hairline px-3 py-2.5 text-sm focus:border-gold focus:outline-none" placeholder="Last name" />
             </div>
           </div>
           <div>
             <label className="text-xs font-semibold text-muted mb-1 block">Type</label>
             <select value={form.type} onChange={e => setForm({ ...form, type: e.target.value as Contact['type'] })}
-              className="w-full rounded-xl border border-[#EDEBE8] px-3 py-2.5 text-sm focus:border-gold focus:outline-none bg-surface-raised">
+              className="w-full rounded-xl border border-line-hairline px-3 py-2.5 text-sm focus:border-gold focus:outline-none bg-surface-raised">
               <option value="member">Member</option>
               <option value="donor">Donor</option>
               <option value="both">Donor & Member</option>
@@ -663,45 +663,45 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
             <div>
               <label className="text-xs font-semibold text-muted mb-1 block">Email</label>
               <input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })}
-                className="w-full rounded-xl border border-[#EDEBE8] px-3 py-2.5 text-sm focus:border-gold focus:outline-none" placeholder="email@example.com" />
+                className="w-full rounded-xl border border-line-hairline px-3 py-2.5 text-sm focus:border-gold focus:outline-none" placeholder="email@example.com" />
             </div>
             <div>
               <label className="text-xs font-semibold text-muted mb-1 block">Phone</label>
               <input type="tel" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })}
-                className="w-full rounded-xl border border-[#EDEBE8] px-3 py-2.5 text-sm focus:border-gold focus:outline-none" placeholder="+1 555 000 0000" />
+                className="w-full rounded-xl border border-line-hairline px-3 py-2.5 text-sm focus:border-gold focus:outline-none" placeholder="+1 555 000 0000" />
             </div>
           </div>
           <p className="text-xs font-bold text-faint uppercase tracking-wider mt-2 mb-3">Address</p>
           <div>
             <label className="text-xs font-semibold text-muted mb-1 block">Street Address</label>
             <input value={form.address.street || ''} onChange={e => setForm({ ...form, address: { ...form.address, street: e.target.value } })}
-              className="w-full rounded-xl border border-[#EDEBE8] px-3 py-2.5 text-sm focus:border-gold focus:outline-none" placeholder="123 Main St" />
+              className="w-full rounded-xl border border-line-hairline px-3 py-2.5 text-sm focus:border-gold focus:outline-none" placeholder="123 Main St" />
           </div>
           <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="text-xs font-semibold text-muted mb-1 block">City</label>
               <input value={form.address.city || ''} onChange={e => setForm({ ...form, address: { ...form.address, city: e.target.value } })}
-                className="w-full rounded-xl border border-[#EDEBE8] px-3 py-2.5 text-sm focus:border-gold focus:outline-none" />
+                className="w-full rounded-xl border border-line-hairline px-3 py-2.5 text-sm focus:border-gold focus:outline-none" />
             </div>
             <div>
               <label className="text-xs font-semibold text-muted mb-1 block">State</label>
               <input value={form.address.state || ''} onChange={e => setForm({ ...form, address: { ...form.address, state: e.target.value } })}
-                className="w-full rounded-xl border border-[#EDEBE8] px-3 py-2.5 text-sm focus:border-gold focus:outline-none" />
+                className="w-full rounded-xl border border-line-hairline px-3 py-2.5 text-sm focus:border-gold focus:outline-none" />
             </div>
             <div>
               <label className="text-xs font-semibold text-muted mb-1 block">ZIP</label>
               <input value={form.address.zip || ''} onChange={e => setForm({ ...form, address: { ...form.address, zip: e.target.value } })}
-                className="w-full rounded-xl border border-[#EDEBE8] px-3 py-2.5 text-sm focus:border-gold focus:outline-none" />
+                className="w-full rounded-xl border border-line-hairline px-3 py-2.5 text-sm focus:border-gold focus:outline-none" />
             </div>
           </div>
           <div>
             <label className="text-xs font-semibold text-muted mb-1 block">Notes</label>
             <textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })}
-              rows={3} className="w-full rounded-xl border border-[#EDEBE8] px-3 py-2.5 text-sm focus:border-gold focus:outline-none resize-none"
+              rows={3} className="w-full rounded-xl border border-line-hairline px-3 py-2.5 text-sm focus:border-gold focus:outline-none resize-none"
               placeholder="Any notes about this contact..." />
           </div>
           <div className="space-y-2 pt-2">
-            <button onClick={() => setView(isEditing ? 'detail' : 'list')} className="w-full py-3 rounded-xl border border-[#EDEBE8] text-sm font-semibold text-muted">Cancel</button>
+            <button onClick={() => setView(isEditing ? 'detail' : 'list')} className="w-full py-3 rounded-xl border border-line-hairline text-sm font-semibold text-muted">Cancel</button>
             <button onClick={handleSave} disabled={saving || !form.firstName.trim()}
               className="w-full py-3 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
               style={{ backgroundColor: 'var(--brand-color, #B8962E)' }}>
@@ -756,10 +756,10 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
             </div>
           </div>
           <div className="flex gap-2 flex-shrink-0">
-            <button onClick={() => openEdit(selected)} className="p-2 rounded-xl border border-[#EDEBE8] hover:bg-surface-sunken">
+            <button onClick={() => openEdit(selected)} className="p-2 rounded-xl border border-line-hairline hover:bg-surface-sunken">
               <Edit2 size={14} className="text-muted" />
             </button>
-            <button onClick={() => setDeleteId(selected.id)} className="p-2 rounded-xl border border-[#EDEBE8] hover:bg-red-50">
+            <button onClick={() => setDeleteId(selected.id)} className="p-2 rounded-xl border border-line-hairline hover:bg-red-50">
               <Trash2 size={14} className="text-red-400" />
             </button>
           </div>
@@ -783,7 +783,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
         </div>
 
         {/* Contact info card */}
-        <div className="bg-surface-raised rounded-2xl border border-[#EDEBE8] shadow-sm p-4 mb-4">
+        <div className="bg-surface-raised rounded-2xl border border-line-hairline shadow-sm p-4 mb-4">
           <div className="grid grid-cols-2 gap-3">
             {selected.email && (
               <div className="flex items-center gap-2">
@@ -813,13 +813,13 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
             )}
           </div>
           {selected.tags && selected.tags.length > 0 && (
-            <div className="mt-3 pt-3 border-t border-[#EDEBE8] flex flex-wrap gap-1.5">
+            <div className="mt-3 pt-3 border-t border-line-hairline flex flex-wrap gap-1.5">
               {selected.tags.map(tag => (
                 <span key={tag} className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-surface-sunken text-muted">{tag}</span>
               ))}
             </div>
           )}
-          <div className="border-t border-[#EDEBE8] pt-3 mt-3">
+          <div className="border-t border-line-hairline pt-3 mt-3">
             <label className="text-xs font-bold text-faint uppercase tracking-wider mb-1 block">Admin Notes</label>
             <textarea
               defaultValue={selected.notes || ''}
@@ -855,7 +855,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
             {selected.email && gmailConnected === true && (
               <button
                 onClick={openCompose}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border border-[#EDEBE8] text-muted hover:bg-surface-sunken"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border border-line-hairline text-muted hover:bg-surface-sunken"
               >
                 <Send size={12} /> Email
               </button>
@@ -863,7 +863,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
             {selected.email && gmailConnected === false && (
               <button
                 onClick={() => navigate('/admin/settings')}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border border-[#EDEBE8] text-faint hover:bg-surface-sunken"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border border-line-hairline text-faint hover:bg-surface-sunken"
               >
                 <Send size={12} /> Connect your email
               </button>
@@ -896,16 +896,16 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
             </button>
           </div>
         ) : activitiesLoading ? (
-          <div className="bg-surface-raised rounded-2xl border border-[#EDEBE8] shadow-sm p-8 flex justify-center">
+          <div className="bg-surface-raised rounded-2xl border border-line-hairline shadow-sm p-8 flex justify-center">
             <div className="w-6 h-6 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--brand-color, #B8962E)', borderTopColor: 'transparent' }} />
           </div>
         ) : activities.length === 0 ? (
-          <div className="bg-surface-raised rounded-2xl border border-[#EDEBE8] shadow-sm p-8 text-center text-faint">
+          <div className="bg-surface-raised rounded-2xl border border-line-hairline shadow-sm p-8 text-center text-faint">
             <Clock size={28} className="mx-auto mb-2 opacity-30" />
             <p className="text-sm font-display">No activities recorded yet — add the first one</p>
           </div>
         ) : (
-          <div className="relative pl-6 ml-1 border-l-2 border-[#EDEBE8] space-y-5">
+          <div className="relative pl-6 ml-1 border-l-2 border-line-hairline space-y-5">
             {activities.map(act => (
               <div key={act.id} className="relative">
                 <div className="absolute -left-[25px] top-1 w-4 h-4 rounded-full border-2 border-white flex items-center justify-center"
@@ -940,7 +940,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
         {showAddActivity && (
           <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center bg-black/50 p-4">
             <div className="bg-surface-raised rounded-3xl w-full max-w-md">
-              <div className="p-5 border-b border-[#EDEBE8]"><h3 className="font-bold text-strong font-display">Add Activity</h3></div>
+              <div className="p-5 border-b border-line-hairline"><h3 className="font-bold text-strong font-display">Add Activity</h3></div>
               <div className="p-5 space-y-4">
                 <div>
                   <label className="text-xs font-semibold text-muted mb-2 block">Type</label>
@@ -961,20 +961,20 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
                   <div>
                     <label className="text-xs font-semibold text-muted mb-1 block">Amount ($)</label>
                     <input type="number" min={0} value={actForm.amount} onChange={e => setActForm({ ...actForm, amount: e.target.value })}
-                      className="w-full rounded-xl border border-[#EDEBE8] px-3 py-2.5 text-sm focus:border-gold focus:outline-none" placeholder="0.00" />
+                      className="w-full rounded-xl border border-line-hairline px-3 py-2.5 text-sm focus:border-gold focus:outline-none" placeholder="0.00" />
                   </div>
                 )}
                 <div>
                   <label className="text-xs font-semibold text-muted mb-1 block">Description *</label>
-                  <div className="bg-[#F7F6F3] rounded-xl p-3">
+                  <div className="bg-surface-tint rounded-xl p-3">
                     <textarea value={actForm.description} onChange={e => setActForm({ ...actForm, description: e.target.value })}
                       rows={3} className="border-0 focus:outline-none text-sm text-body resize-none w-full bg-transparent"
                       placeholder="What happened?" />
                   </div>
                 </div>
               </div>
-              <div className="p-5 border-t border-[#EDEBE8] space-y-2">
-                <button onClick={() => setShowAddActivity(false)} className="w-full py-2.5 rounded-xl border border-[#EDEBE8] text-sm font-semibold text-muted">Cancel</button>
+              <div className="p-5 border-t border-line-hairline space-y-2">
+                <button onClick={() => setShowAddActivity(false)} className="w-full py-2.5 rounded-xl border border-line-hairline text-sm font-semibold text-muted">Cancel</button>
                 <button onClick={addActivity} disabled={savingAct || !actForm.description.trim()}
                   className="w-full py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
                   style={{ backgroundColor: 'var(--brand-color, #B8962E)' }}>
@@ -988,14 +988,14 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
         {showCompose && (
           <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center bg-black/50 p-4">
             <div className="bg-surface-raised rounded-3xl w-full max-w-md">
-              <div className="p-5 border-b border-[#EDEBE8]"><h3 className="font-bold text-strong font-display">Send Email</h3></div>
+              <div className="p-5 border-b border-line-hairline"><h3 className="font-bold text-strong font-display">Send Email</h3></div>
               <div className="p-5 space-y-4">
                 <div>
                   <label className="text-xs font-semibold text-muted mb-1 block">To</label>
                   {/* Read-only on purpose. The server resolves the recipient
                       from the contact document and ignores any address in the
                       request, so an editable field here would be a lie. */}
-                  <div className="bg-[#F7F6F3] rounded-xl px-3 py-2.5 text-sm text-body truncate">
+                  <div className="bg-surface-tint rounded-xl px-3 py-2.5 text-sm text-body truncate">
                     {selected.email}
                   </div>
                 </div>
@@ -1004,13 +1004,13 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
                   <input
                     value={emailForm.subject}
                     onChange={e => setEmailForm({ ...emailForm, subject: e.target.value })}
-                    className="w-full rounded-xl border border-[#EDEBE8] px-3 py-2.5 text-sm focus:border-gold focus:outline-none"
+                    className="w-full rounded-xl border border-line-hairline px-3 py-2.5 text-sm focus:border-gold focus:outline-none"
                     placeholder="Subject line"
                   />
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-muted mb-1 block">Message *</label>
-                  <div className="bg-[#F7F6F3] rounded-xl p-3">
+                  <div className="bg-surface-tint rounded-xl p-3">
                     <textarea
                       value={emailForm.body}
                       onChange={e => setEmailForm({ ...emailForm, body: e.target.value })}
@@ -1035,9 +1035,9 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
                   Sends from your connected Gmail account and is added to this contact&apos;s timeline.
                 </p>
               </div>
-              <div className="p-5 border-t border-[#EDEBE8] space-y-2">
+              <div className="p-5 border-t border-line-hairline space-y-2">
                 <button onClick={() => setShowCompose(false)} disabled={sendingEmail}
-                  className="w-full py-2.5 rounded-xl border border-[#EDEBE8] text-sm font-semibold text-muted disabled:opacity-50">
+                  className="w-full py-2.5 rounded-xl border border-line-hairline text-sm font-semibold text-muted disabled:opacity-50">
                   Cancel
                 </button>
                 <button onClick={sendEmail} disabled={sendingEmail || !emailForm.subject.trim() || !emailForm.body.trim()}
@@ -1056,7 +1056,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
               <p className="font-bold text-strong mb-2 font-display">Delete contact?</p>
               <p className="text-sm text-muted mb-5">This cannot be undone.</p>
               <div className="flex gap-3">
-                <button onClick={() => setDeleteId(null)} className="flex-1 py-2.5 rounded-xl border border-[#EDEBE8] text-sm font-semibold text-muted">Cancel</button>
+                <button onClick={() => setDeleteId(null)} className="flex-1 py-2.5 rounded-xl border border-line-hairline text-sm font-semibold text-muted">Cancel</button>
                 <button onClick={confirmDelete} className="flex-1 py-2.5 rounded-xl bg-red-500 text-white text-sm font-semibold">Delete</button>
               </div>
             </div>
@@ -1205,7 +1205,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
                 {filtered.map(c => {
                   const stage = STAGES.find(s => s.id === (c.stage || 'new')) || STAGES[0];
                   return (
-                    <tr key={c.id} onClick={() => openDetail(c)} className="hover:bg-stone-100/60 transition-colors cursor-pointer">
+                    <tr key={c.id} onClick={() => openDetail(c)} className="hover:bg-[color-mix(in_srgb,var(--surface-sunken)_60%,transparent)] transition-colors cursor-pointer">
                       <td className="px-6 py-3.5">
                         <div className="flex items-center gap-3">
                           <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0 overflow-hidden" style={{ backgroundColor: 'var(--brand-color, #C9963A)' }}>
@@ -1252,7 +1252,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
             <p className="font-bold text-strong mb-2 font-display">Delete contact?</p>
             <p className="text-sm text-muted mb-5">This cannot be undone.</p>
             <div className="flex gap-3">
-              <button onClick={() => setDeleteId(null)} className="flex-1 py-2.5 rounded-xl border border-[#EDEBE8] text-sm font-semibold text-muted">Cancel</button>
+              <button onClick={() => setDeleteId(null)} className="flex-1 py-2.5 rounded-xl border border-line-hairline text-sm font-semibold text-muted">Cancel</button>
               <button onClick={confirmDelete} className="flex-1 py-2.5 rounded-xl bg-red-500 text-white text-sm font-semibold">Delete</button>
             </div>
           </div>

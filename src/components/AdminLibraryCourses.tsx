@@ -185,7 +185,7 @@ const AdminLibraryCourses: React.FC = () => {
                 </tr>
               ) : (
                 filteredCourses.map((course) => (
-                  <tr key={course.id} className="hover:bg-stone-100/60 transition-colors group">
+                  <tr key={course.id} className="hover:bg-[color-mix(in_srgb,var(--surface-sunken)_60%,transparent)] transition-colors group">
                     <td className="px-6 py-3.5">
                       <div className="flex items-center gap-3">
                         <span className="w-9 h-9 rounded-brand bg-[color-mix(in_srgb,var(--brand-color)_12%,white)] flex items-center justify-center shrink-0">

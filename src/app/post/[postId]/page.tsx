@@ -115,7 +115,7 @@ export default async function PublicPostPage({
   const initials = authorName.trim().slice(0, 1).toUpperCase() || '•';
 
   return (
-    <div className="min-h-screen bg-[#F7F6F3] py-10 px-4">
+    <div className="min-h-screen bg-surface-tint py-10 px-4">
       <div className="max-w-xl mx-auto">
         {/* Tenant branding — never leak Harvest branding on a white-label host. */}
         <div className="text-center mb-6">

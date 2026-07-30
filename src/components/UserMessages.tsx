@@ -74,7 +74,7 @@ const RoleBadge: React.FC<{ role?: string }> = ({ role }) => {
   return (
     <span
       className="text-[9px] font-bold px-1.5 py-0.5 rounded-full leading-none"
-      style={isAdmin ? { backgroundColor: 'color-mix(in srgb, var(--brand-color, #B8962E) 12%, white)', color: 'var(--brand-color, #B8962E)' } : { backgroundColor: '#F3EEE7', color: '#8B7355' }}
+      style={isAdmin ? { backgroundColor: 'color-mix(in srgb, var(--brand-color, #B8962E) 12%, white)', color: 'var(--brand-color, #B8962E)' } : { backgroundColor: 'var(--surface-sunken)', color: 'var(--text-muted)' }}
     >
       {isAdmin ? 'Admin' : 'User'}
     </span>
@@ -333,8 +333,8 @@ const DmThread: React.FC<{
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#F7F6F3]">
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-[#EDEBE8] bg-surface-raised">
+    <div className="flex flex-col h-full bg-surface-tint">
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-line-hairline bg-surface-raised">
         <button onClick={onBack} className="p-1 -ml-1">
           <ArrowLeft size={22} style={{ color: 'var(--brand-color, #B8962E)' }} />
         </button>
@@ -410,7 +410,7 @@ const DmThread: React.FC<{
           content wrapper's bottom padding already clear the home indicator, so
           the composer only needs a small pad — adding the safe-area inset again
           here double-stacks and leaves a dead gap. Standalone still needs it. */}
-      <div className="bg-surface-raised border-t border-[#EDEBE8] flex-shrink-0 px-4 pt-3" style={{ paddingBottom: embedded ? '8px' : 'calc(env(safe-area-inset-bottom) + 8px)' }}>
+      <div className="bg-surface-raised border-t border-line-hairline flex-shrink-0 px-4 pt-3" style={{ paddingBottom: embedded ? '8px' : 'calc(env(safe-area-inset-bottom) + 8px)' }}>
         {attachments.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-2">
             {attachments.map((a, i) => (
@@ -424,10 +424,10 @@ const DmThread: React.FC<{
             ))}
           </div>
         )}
-        <div className="flex gap-2 items-center bg-[#F7F6F3] rounded-2xl px-3 py-2.5 border border-[#EDEBE8] focus-within:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] transition-colors">
+        <div className="flex gap-2 items-center bg-surface-tint rounded-2xl px-3 py-2.5 border border-line-hairline focus-within:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] transition-colors">
           <button
             onClick={() => setShowPicker(true)}
-            className="flex-shrink-0 p-1 rounded-lg hover:bg-[#EDEBE8] transition-colors"
+            className="flex-shrink-0 p-1 rounded-lg hover:bg-[var(--border-hairline)] transition-colors"
             aria-label="Attach a form"
           >
             <Paperclip size={16} className="text-faint" />
@@ -514,8 +514,8 @@ const ChannelView: React.FC<{
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#F7F6F3]">
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-[#EDEBE8] bg-surface-raised flex-shrink-0">
+    <div className="flex flex-col h-full bg-surface-tint">
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-line-hairline bg-surface-raised flex-shrink-0">
         <button onClick={onBack} className="p-1 -ml-1 flex-shrink-0" aria-label="Back">
           <ArrowLeft size={22} style={{ color: 'var(--brand-color, #B8962E)' }} />
         </button>
@@ -555,7 +555,7 @@ const ChannelView: React.FC<{
                     <div key={m.id} className="group flex items-end gap-2">
                       <div className="max-w-[78%]">
                         {m.content && (
-                          <p className="bg-surface-raised border border-[#EDEBE8] rounded-2xl rounded-tl-sm px-3 py-2 text-sm text-body shadow-sm break-words">
+                          <p className="bg-surface-raised border border-line-hairline rounded-2xl rounded-tl-sm px-3 py-2 text-sm text-body shadow-sm break-words">
                             {m.content}
                           </p>
                         )}
@@ -576,8 +576,8 @@ const ChannelView: React.FC<{
           content wrapper's bottom padding already clear the home indicator, so
           the composer only needs a small pad — adding the safe-area inset again
           here double-stacks and leaves a dead gap. Standalone still needs it. */}
-      <div className="bg-surface-raised border-t border-[#EDEBE8] flex-shrink-0 px-4 pt-3" style={{ paddingBottom: embedded ? '8px' : 'calc(env(safe-area-inset-bottom) + 8px)' }}>
-        <div className="flex gap-2 items-center bg-[#F7F6F3] rounded-2xl px-3 py-2.5 border border-[#EDEBE8] focus-within:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] transition-colors">
+      <div className="bg-surface-raised border-t border-line-hairline flex-shrink-0 px-4 pt-3" style={{ paddingBottom: embedded ? '8px' : 'calc(env(safe-area-inset-bottom) + 8px)' }}>
+        <div className="flex gap-2 items-center bg-surface-tint rounded-2xl px-3 py-2.5 border border-line-hairline focus-within:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] transition-colors">
           <input
             value={text}
             onChange={e => setText(e.target.value)}
@@ -762,8 +762,8 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false })
 
   if (loading) {
     return (
-      <div className="flex flex-col min-h-full bg-[#F7F6F3]">
-        <div className="flex items-center gap-3 px-4 py-4 bg-surface-raised border-b border-[#EDEBE8]">
+      <div className="flex flex-col min-h-full bg-surface-tint">
+        <div className="flex items-center gap-3 px-4 py-4 bg-surface-raised border-b border-line-hairline">
           {!embedded && (
             <button onClick={onBack} className="p-1 -ml-1" aria-label="Back">
               <ArrowLeft size={22} style={{ color: 'var(--brand-color, #B8962E)' }} />
@@ -789,11 +789,11 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false })
   const hasOpen = !!selectedThread;
 
   return (
-    <div className="flex flex-col lg:flex-row h-full bg-[#F7F6F3]">
+    <div className="flex flex-col lg:flex-row h-full bg-surface-tint">
       {/* LEFT: conversation list — the whole view on mobile (hidden while a thread
           is open); a 360px rail on desktop that can be collapsed (like the Bible
           book nav and Ask Harvest history rail). */}
-      <div className={`${hasOpen ? 'hidden lg:flex' : 'flex'} ${listCollapsed ? 'lg:hidden' : ''} flex-col min-h-full lg:min-h-0 lg:h-full lg:w-[360px] lg:flex-shrink-0 lg:border-r lg:border-[#EDEBE8]`}>
+      <div className={`${hasOpen ? 'hidden lg:flex' : 'flex'} ${listCollapsed ? 'lg:hidden' : ''} flex-col min-h-full lg:min-h-0 lg:h-full lg:w-[360px] lg:flex-shrink-0 lg:border-r lg:border-line-hairline`}>
       {/* Desktop-only list header + collapse toggle (always shown on lg, even when
           the member can't start DMs). */}
       <div className="hidden lg:flex items-center justify-between px-4 pt-3.5 pb-1 lg:flex-shrink-0">
@@ -802,7 +802,7 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false })
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
         </button>
       </div>
-      <div className="flex items-center gap-3 px-4 py-4 bg-surface-raised border-b border-[#EDEBE8] lg:hidden">
+      <div className="flex items-center gap-3 px-4 py-4 bg-surface-raised border-b border-line-hairline lg:hidden">
         {!embedded && (
           <button onClick={onBack} className="p-1 -ml-1" aria-label="Back">
             <ArrowLeft size={22} style={{ color: 'var(--brand-color, #B8962E)' }} />
@@ -850,7 +850,7 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false })
                     <button
                       key={ch.id}
                       onClick={() => setOpenChannel(ch)}
-                      className="w-full bg-surface-raised rounded-2xl border border-[#EDEBE8] px-4 py-3.5 flex items-center gap-3 hover:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] hover:shadow-sm transition-all text-left"
+                      className="w-full bg-surface-raised rounded-2xl border border-line-hairline px-4 py-3.5 flex items-center gap-3 hover:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] hover:shadow-sm transition-all text-left"
                     >
                       <div className="w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center lg:bg-[color-mix(in_srgb,var(--brand-color)_12%,white)]">
                         <Hash size={18} style={{ color: 'var(--brand-color, #B8962E)' }} />
@@ -873,7 +873,7 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false })
               <button
                 key={dm.id}
                 onClick={() => setOpenDm(dm)}
-                className="w-full bg-surface-raised rounded-2xl border border-[#EDEBE8] px-4 py-3.5 flex items-center gap-3 hover:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] hover:shadow-sm transition-all text-left"
+                className="w-full bg-surface-raised rounded-2xl border border-line-hairline px-4 py-3.5 flex items-center gap-3 hover:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] hover:shadow-sm transition-all text-left"
               >
                 <div className="w-11 h-11 rounded-full flex-shrink-0 flex items-center justify-center text-sm font-bold text-white"
                   style={{ backgroundColor: 'var(--brand-color, #B8962E)' }}>
@@ -896,7 +896,7 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false })
       <div className={`${hasOpen ? 'flex' : 'hidden lg:flex'} relative flex-col h-full lg:flex-1 min-w-0`}>
         {/* Desktop-only handle to re-open the collapsed conversation list. */}
         {listCollapsed && (
-          <button onClick={() => setListCollapsed(false)} title="Show conversations" className="hidden lg:flex absolute left-0 top-1/2 -translate-y-1/2 z-20 w-6 h-16 items-center justify-center rounded-r-lg bg-surface-raised border border-l-0 border-[#EDEBE8] text-muted hover:bg-surface-sunken">
+          <button onClick={() => setListCollapsed(false)} title="Show conversations" className="hidden lg:flex absolute left-0 top-1/2 -translate-y-1/2 z-20 w-6 h-16 items-center justify-center rounded-r-lg bg-surface-raised border border-l-0 border-line-hairline text-muted hover:bg-surface-sunken">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
           </button>
         )}
