@@ -63,26 +63,26 @@ describe('PlanUpgradeSection yearly pricing copy', () => {
   it('derives the yearly monthly-equivalent copy from PLAN_PRICING for Community (max)', () => {
     mount();
     clickButtonWithText('Yearly');
-    // max: monthlyUsd 299 -> Math.round(299 * 10 / 12) = 249
-    expect(container.textContent).toContain('$249/mo billed annually');
-    // The real annual total (from PLAN_PRICING.max.yearlyUsd) is unchanged.
-    expect(container.textContent).toContain('$2,990/yr');
+    // max: monthlyUsd 199 -> Math.round(199 * 10 / 12) = 166
+    expect(container.textContent).toContain('$166/mo billed annually');
+    // The real annual total comes from PLAN_PRICING.max.yearlyUsd.
+    expect(container.textContent).toContain('$1,990/yr');
   });
 
   it('derives the yearly monthly-equivalent copy from PLAN_PRICING for Individual (plus)', () => {
     mount();
     clickButtonWithText('Yearly');
-    // plus: monthlyUsd 59 -> Math.round(59 * 10 / 12) = 49
-    expect(container.textContent).toContain('$49/mo billed annually');
-    expect(container.textContent).toContain('$590/yr');
+    // plus: monthlyUsd 49 -> Math.round(49 * 10 / 12) = 41
+    expect(container.textContent).toContain('$41/mo billed annually');
+    expect(container.textContent).toContain('$490/yr');
   });
 
   it('leaves the monthly view unchanged', () => {
     mount();
     // Monthly is the default tab; assert the monthly prices render and no
     // yearly-only copy (old strikethrough or new annotation) leaks in.
-    expect(container.textContent).toContain('$59/mo');
-    expect(container.textContent).toContain('$299/mo');
+    expect(container.textContent).toContain('$49/mo');
+    expect(container.textContent).toContain('$199/mo');
     expect(container.textContent).not.toContain('billed annually');
     expect(container.querySelectorAll('.line-through').length).toBe(0);
 

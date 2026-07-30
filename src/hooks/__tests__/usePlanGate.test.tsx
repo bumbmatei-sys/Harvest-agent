@@ -97,12 +97,16 @@ describe('usePlanGate — context edge cases', () => {
 });
 
 describe('FEATURE_MIN_PLAN — minimum plan labels', () => {
-  // Each of the three corrections below gets its own assertion: `crm` and
+  // Each of the corrections below gets its own assertion: `crm` and
   // `tax_receipts` were already wrong before the Community Groups move (both
   // said Ministry while Community has had them), and must not be covered only
   // incidentally by the community_chat test.
-  it('names Community as the minimum plan for CRM', () => {
-    expect(FEATURE_MIN_PLAN.crm).toBe('Community');
+  //
+  // `crm` and `docs` then moved a second time, down to Small Team (pro), in the
+  // repricing. The labels below are derived from PLAN_FEATURES, so that move
+  // propagated with no code change — these expectations are what proves it.
+  it('names Small Team as the minimum plan for CRM', () => {
+    expect(FEATURE_MIN_PLAN.crm).toBe('Small Team');
   });
 
   it('names Community as the minimum plan for tax receipts', () => {
@@ -121,9 +125,9 @@ describe('FEATURE_MIN_PLAN — minimum plan labels', () => {
     expect(FEATURE_MIN_PLAN.fundraising).toBe('Individual');
   });
 
-  it('names Community for event registration and docs', () => {
+  it('names Community for event registration and Small Team for docs', () => {
     expect(FEATURE_MIN_PLAN.event_registration).toBe('Community');
-    expect(FEATURE_MIN_PLAN.docs).toBe('Community');
+    expect(FEATURE_MIN_PLAN.docs).toBe('Small Team');
   });
 
   it('covers every gate key', () => {

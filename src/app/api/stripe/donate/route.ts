@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
 
     // Monthly (subscription): Stripe Checkout subscriptions take a PERCENT fee
     // (application_fee_percent), not a fixed amount — application_fee_amount is only
-    // valid on one-time PaymentIntents. feePercent is a decimal (0.15) → ×100 = 15.
+    // valid on one-time PaymentIntents. feePercent is a decimal (0.015) → ×100 = 1.5.
     const subParams = {
       mode: 'subscription' as const,
       line_items: [

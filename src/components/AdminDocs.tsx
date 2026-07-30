@@ -366,7 +366,7 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
   const { currentTenantId, isAuthReady, tenantPlan, isSuperAdmin } = useAppStore();
   const tenantId = currentTenantId || (isSuperAdmin ? PLATFORM_TENANT_ID : null);
 
-  // "Share to Livestream" is a Community (max) and above feature. Platform-context super
+  // "Share to Livestream" is a Small Team (pro) and above feature. Platform-context super
   // admins (apex) always get it; on a tenant subdomain it's gated by the
   // tenant's plan, even for a super admin.
   const canShareToLivestream = hasPlatformOverride() || (tenantPlan ? getPlanFeatures(tenantPlan).sermonNotes : false);

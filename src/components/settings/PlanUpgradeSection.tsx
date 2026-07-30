@@ -29,11 +29,17 @@ interface PlanUpgradeSectionProps {
 // Plan tiers in ascending order — used to determine upgrade vs downgrade.
 const PLAN_ORDER: TenantPlan[] = ['plus', 'pro', 'max', 'ultra'];
 
-const PLANS: { id: TenantPlan; name: string; monthlyPrice: string; yearlyPrice: string; icon: any; color: string; popular?: boolean; comingSoon: string[] }[] = [
-  { id: 'plus', name: 'Individual', monthlyPrice: '$59/mo', yearlyPrice: '$590/yr', icon: Zap, color: '#6366f1', comingSoon: [] },
-  { id: 'pro', name: 'Small Team', monthlyPrice: '$119/mo', yearlyPrice: '$1,190/yr', icon: Crown, color: '#d4a017', comingSoon: [] },
-  { id: 'max', name: 'Community', monthlyPrice: '$299/mo', yearlyPrice: '$2,990/yr', icon: Star, color: '#8b5cf6', popular: true, comingSoon: [] },
-  { id: 'ultra', name: 'Ministry', monthlyPrice: '$479/mo', yearlyPrice: '$4,790/yr', icon: Building2, color: '#b45309', comingSoon: [] },
+// Presentation only — icon, colour, "Popular" badge. Prices are NOT listed here:
+// this table used to carry `monthlyPrice`/`yearlyPrice` literals ('$59/mo',
+// '$2,990/yr') that the card actually rendered while `formatPlanPrice` sat
+// imported and unused two lines above it, so a repricing in PLAN_PRICING left
+// the in-app comparison showing the old numbers. The card now renders
+// formatPlanPrice(planId, billingPeriod). Do not reintroduce price literals.
+const PLANS: { id: TenantPlan; name: string; icon: any; color: string; popular?: boolean; comingSoon: string[] }[] = [
+  { id: 'plus', name: 'Individual', icon: Zap, color: '#6366f1', comingSoon: [] },
+  { id: 'pro', name: 'Small Team', icon: Crown, color: '#d4a017', comingSoon: [] },
+  { id: 'max', name: 'Community', icon: Star, color: '#8b5cf6', popular: true, comingSoon: [] },
+  { id: 'ultra', name: 'Ministry', icon: Building2, color: '#b45309', comingSoon: [] },
 ];
 
 // Keyed lookup so we can resolve plan metadata by id (icon/color/popular).
@@ -214,7 +220,6 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
           const plan = meta;
           const features = getPlanFeatures(planId);
           const name = PLAN_DISPLAY_NAMES[planId];
-          const monthlyPrice = formatPlanPrice(planId, 'monthly');
           const displayPrice = formatPlanPrice(planId, billingPeriod);
           // Stripe charges monthly × 10 for annual (pay 10 months, get 12), same math as the
           // marketing site's Pricing.tsx — mirrored here so the two never show different numbers.
@@ -249,7 +254,7 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
                   <p className="text-sm text-gray-400">${yearlyMonthlyEquivalent}/mo billed annually</p>
                 )}
                 <p className="text-2xl font-bold text-gray-900 mt-1">
-                  {billingPeriod === 'monthly' ? plan.monthlyPrice : plan.yearlyPrice}
+                  {displayPrice}
                 </p>
                 {billingPeriod === 'yearly' && (
                   <p className="text-xs text-green-600 font-medium mt-1">Save 2 months</p>

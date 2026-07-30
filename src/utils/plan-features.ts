@@ -49,9 +49,9 @@ export interface PlanFeatures {
   fundraising: boolean;
   /** Event registration integration */
   eventRegistration: boolean;
-  /** Docs / TipTap notes integration */
+  /** Docs / TipTap notes integration (Small Team / pro+) */
   docs: boolean;
-  /** CRM for donors and members */
+  /** CRM for donors and members (Small Team / pro+) */
   crm: boolean;
   /** Accounting tools integration */
   accountingTools: boolean;
@@ -61,9 +61,9 @@ export interface PlanFeatures {
   communityGroups: boolean;
   /** Custom forms → CRM pipeline (Community / max+) */
   customForms: boolean;
-  /** Check-in system with QR attendance (Community / max+) */
+  /** Check-in system with QR attendance (Small Team / pro+) */
   checkInSystem: boolean;
-  /** Livestream + live giving (Community / max+) */
+  /** Livestream + live giving (Small Team / pro+) */
   livestream: boolean;
   /** Sermon notes shared to livestream (viewer read-only panel) */
   sermonNotes: boolean;
@@ -83,7 +83,7 @@ export interface PlanFeatures {
    * Percentage of donation payments the ministry retains after platform fee.
    * Mirrors `PLATFORM_FEE_MAP` (src/lib/stripe-config.ts) by hand as
    * `100 - fee * 100`; a test enforces the match. See PLAN_DONATION_RETENTION
-   * below before changing this. May be fractional (max is 97.5).
+   * below before changing this. May be fractional (plus and pro are 98.5).
    */
   donationRetention: number;
 }
@@ -131,7 +131,7 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     pledgeCampaigns: false,
     textToGive: false,
     pwaApp: true,
-    donationRetention: 95,
+    donationRetention: 98.5,
   },
   // Small Team
   pro: {
@@ -151,22 +151,26 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     aiAssistant: 0,
     fundraising: true,
     eventRegistration: false,
-    docs: false,
-    crm: false,
+    // Moved down from Community (max) in the repricing: Small Team now carries
+    // Notes/Docs, CRM, Check-In, Livestream and Sermon Notes. Visibility only —
+    // no rule, route or query keys off these cells (CRM's Firestore rules scope
+    // on the `manageCRM` permission, not on plan).
+    docs: true,
+    crm: true,
     accountingTools: false,
     taxReceipt: false,
     communityGroups: false,
     customForms: false,
-    checkInSystem: false,
-    livestream: false,
-    sermonNotes: false,
+    checkInSystem: true,
+    livestream: true,
+    sermonNotes: true,
     automatedBlog: false,
     givingStatements: false,
     publicCalendar: true,
     pledgeCampaigns: false,
     textToGive: false,
     pwaApp: true,
-    donationRetention: 95,
+    donationRetention: 98.5,
   },
   // Community
   max: {
@@ -201,7 +205,7 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     pledgeCampaigns: true,
     textToGive: false,
     pwaApp: true,
-    donationRetention: 97.5,
+    donationRetention: 99,
   },
   // Ministry (top plan)
   ultra: {
@@ -244,10 +248,10 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
 
 /** Base plan pricing in USD. */
 export const PLAN_PRICING: Record<TenantPlan, { monthlyUsd: number; yearlyUsd: number }> = {
-  plus:  { monthlyUsd: 59,   yearlyUsd: 590  },
-  pro:   { monthlyUsd: 119,  yearlyUsd: 1190 },
-  max:   { monthlyUsd: 299,  yearlyUsd: 2990 },
-  ultra: { monthlyUsd: 479,  yearlyUsd: 4790 },
+  plus:  { monthlyUsd: 49,   yearlyUsd: 490  },
+  pro:   { monthlyUsd: 99,   yearlyUsd: 990  },
+  max:   { monthlyUsd: 199,  yearlyUsd: 1990 },
+  ultra: { monthlyUsd: 349,  yearlyUsd: 3490 },
 };
 
 /**
@@ -269,8 +273,10 @@ export const PLAN_PRICING: Record<TenantPlan, { monthlyUsd: number; yearlyUsd: n
  * `donationRetention` cells in the feature matrix independently of
  * `PLATFORM_FEE_MAP` — change the fee, change both, and let the test confirm it.
  *
- * Note `max` is 97.5, not an integer: a 2.5% fee. Anything formatting these must
- * not round or truncate.
+ * Note `plus` and `pro` are 98.5, not integers: a 1.5% fee. Anything formatting
+ * these must not round or truncate. (`max` was the fractional one before the
+ * repricing at 97.5; it is now a flat 99 off a 1% fee, so the non-integer guard
+ * in the tests is anchored on plus/pro.)
  */
 export const PLAN_DONATION_RETENTION: Record<TenantPlan, number> = {
   plus:  PLAN_FEATURES.plus.donationRetention,
@@ -372,8 +378,10 @@ export const FEATURE_MAP: Record<FeatureKey, keyof PlanFeatures> = {
  * PlanUpgradeScreen.tsx) that had silently drifted from the matrix: both listed
  * `crm` and `tax_receipts` as Ministry when Community (max) has had them for
  * some time, so upgrade screens told an Individual or Small Team admin to buy
- * the $479 plan when $299 already unlocked the feature. Deriving makes that
- * class of drift structurally impossible — do not reintroduce a literal map.
+ * the top plan when the tier below already unlocked the feature. Deriving makes
+ * that class of drift structurally impossible — do not reintroduce a literal
+ * map. (The repricing moved `crm` and `docs` down again, to Small Team; the
+ * labels followed with no edit here, which is the point.)
  *
  * Truthiness matches `hasFeature`: numeric cells count as unlocked when non-zero.
  */
@@ -434,7 +442,7 @@ export function hasBrandingAccess(features: PlanFeatures): boolean {
   return features.customBranding || features.customDomain;
 }
 
-/** Format a plan price as a display string, e.g. "$59/mo" */
+/** Format a plan price as a display string, e.g. "$49/mo" */
 export function formatPlanPrice(plan: TenantPlan, billing: 'monthly' | 'yearly'): string {
   const pricing = PLAN_PRICING[plan];
   if (!pricing) return 'Custom';
