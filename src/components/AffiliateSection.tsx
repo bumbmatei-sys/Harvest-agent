@@ -18,6 +18,23 @@ interface AffiliateStatus {
   thisMonthEarnings: number;
   thisMonthPending: number;
   recurringEarnings: number;
+  commissionWindowMonths: number;
+  referralWindows: ReferralWindow[];
+  activeReferralWindows: number;
+  expiredReferralWindows: number;
+  nextWindowEndsAt: string | null;
+}
+
+/**
+ * How much of a referral's 12-month commission window is left. `windowEndsAt: null`
+ * means unknown (rows that predate the stamped field) — shown as such, never as
+ * expired, so the UI can't imply an affiliate stopped earning when it doesn't know.
+ */
+interface ReferralWindow {
+  tenantId: string;
+  windowEndsAt: string | null;
+  daysRemaining: number | null;
+  expired: boolean;
 }
 
 export default function AffiliateSection() {
@@ -111,6 +128,13 @@ export default function AffiliateSection() {
   const payoutsConnected = status?.stripeConnectAccountId &&
     status?.affiliateConnectStatus === 'active';
 
+  // Default to 12 only so the copy reads correctly before the fetch resolves; the
+  // server is the authority on the window length.
+  const windowMonths = status?.commissionWindowMonths ?? 12;
+  const referralWindows = status?.referralWindows ?? [];
+  const fmtDate = (iso: string) =>
+    new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+
   if (loading) {
     return (
       <div className="space-y-3">
@@ -129,7 +153,8 @@ export default function AffiliateSection() {
         <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-gold mb-1.5">Grow</p>
         <h2 className="font-display text-[1.75rem] lg:text-[2rem] leading-[1.1] font-light tracking-[-0.02em] text-earth">Affiliate Program</h2>
         <p className="text-sm text-warm-brown mt-2 max-w-xl">
-          Share your link and earn commission on every subscription you refer — for as long as they stay subscribed.
+          Share your link and earn commission on every subscription you refer — for the
+          first {windowMonths} months after each ministry signs up.
         </p>
       </div>
 
@@ -214,16 +239,50 @@ export default function AffiliateSection() {
         </div>
       )}
 
+      {/* Commission windows — the 12-month clock, per referral. An affiliate who
+          cannot see the clock will read a closed window as being underpaid. */}
+      {referralWindows.length > 0 && (
+        <div>
+          <p className="text-[11px] font-semibold text-gold uppercase tracking-[0.14em] mb-2">
+            Commission Windows
+          </p>
+          <div className="bg-white rounded-2xl border border-stone-200 divide-y divide-stone-200">
+            {referralWindows.map(w => (
+              <div key={w.tenantId} className="px-4 py-3 flex items-center justify-between gap-3">
+                <span className="text-sm text-earth truncate font-mono">{w.tenantId}</span>
+                {w.windowEndsAt === null ? (
+                  <span className="text-xs text-[color:var(--text-faint)] flex-shrink-0">
+                    Window dates unavailable
+                  </span>
+                ) : w.expired ? (
+                  <span className="text-xs text-[color:var(--text-faint)] flex-shrink-0">
+                    Ended {fmtDate(w.windowEndsAt)}
+                  </span>
+                ) : (
+                  <span className="text-xs font-semibold flex-shrink-0" style={{ color: GOLD }}>
+                    {w.daysRemaining} {w.daysRemaining === 1 ? 'day' : 'days'} left
+                    <span className="font-normal text-[color:var(--text-faint)]">
+                      {' '}· ends {fmtDate(w.windowEndsAt)}
+                    </span>
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Commission info — one flat rate for every referral, every plan. */}
       <div className="bg-white rounded-2xl border border-stone-200 p-4 space-y-2">
         <p className="text-[11px] font-semibold text-gold uppercase tracking-[0.14em] pb-1">Commission Rate</p>
         <div className="flex items-center justify-between">
           <span className="text-sm text-warm-brown">All plans</span>
-          <span className="text-sm font-bold" style={{ color: GOLD }}>15% recurring</span>
+          <span className="text-sm font-bold" style={{ color: GOLD }}>15% for {windowMonths} months</span>
         </div>
         <p className="text-[10px] text-[color:var(--text-faint)] pt-1 border-t border-stone-200">
-          You earn commission every month for as long as your referral stays subscribed.
-          If they cancel, commission stops.
+          You earn commission every month for the first {windowMonths} months after a
+          ministry signs up, then that referral&rsquo;s commission ends. If they cancel
+          sooner, commission stops sooner.
         </p>
         <p className="text-[10px] text-[color:var(--text-faint)]">
           Commissions transfer to your Stripe account automatically — instantly when a

@@ -8,6 +8,11 @@ import { PLAN_PRICES, getPlanFromPriceId } from '@/lib/stripe-config';
 import { setCustomClaims } from '@/lib/set-custom-claims';
 import { issueDonationReceipt } from '@/lib/donation-receipt';
 import { affiliateSweepIdempotencyKey } from '@/lib/affiliate-payout';
+import {
+  AFFILIATE_COMMISSION_WINDOW_MONTHS,
+  affiliateWindowEndIso,
+  evaluateAffiliateCommissionWindow,
+} from '@/lib/affiliate-commission-window';
 import { captureMoneyPathError } from '@/lib/money-path-sentry';
 import { isRetryableWebhookError, isValidFirestoreDocId } from '@/lib/webhook-retry';
 import { NON_TENANT_SUBDOMAINS } from '@/utils/non-tenant-subdomains';
@@ -23,6 +28,12 @@ export const dynamic = 'force-dynamic';
  * referrer's own plan, or whether the referrer is an affiliate vs a church admin.
  * Commission still stops when the referred tenant cancels — that is driven by
  * whether Stripe charges an invoice at all, not by any rate lookup here.
+ *
+ * Commission also stops 12 MONTHS AFTER THE REFERRED CHURCH'S SIGNUP, which IS
+ * enforced here — see `@/lib/affiliate-commission-window` for the rule and the
+ * recurring-commission block below for the single place it is applied. The rate is
+ * unaffected: the window gates whether a commission row is created at all, and
+ * never touches a stored `commission` amount.
  */
 const AFFILIATE_RATE = 0.15;
 
@@ -39,6 +50,16 @@ const AFFILIATE_RATE = 0.15;
  *      redelivered webhook skip the whole block once the row exists; and
  *   2. the shared idempotency key, which collapses any attempt that gets past (1)
  *      — the sweep and the cron legitimately do — onto the original transfer.
+ *
+ * THE 12-MONTH WINDOW DOES NOT GATE THIS PATH, deliberately. This commission is
+ * created by the checkout that starts the subscription, so its period IS the signup
+ * anchor — zero months have elapsed and the window cannot have closed. Adding a
+ * gate here would buy nothing and would introduce a way to silently kill the
+ * highest-value payout in the system, which is the failure mode the window logic
+ * exists to avoid. The row still RECORDS its window (`commissionWindowAnchorAt` /
+ * `commissionWindowEndsAt`) so the affiliate can see the clock from day one; those
+ * fields are informational, and the gate on the recurring path always re-derives
+ * the anchor from Stripe rather than trusting them.
  */
 async function processInitialAffiliateCommission(opts: {
   stripe: Stripe;
@@ -100,6 +121,11 @@ async function processInitialAffiliateCommission(opts: {
   // commission once here, at earn time, and is never touched again — sweeping
   // pending→paid moves already-earned money, it is not new earnings.
   const commissionRef = adminDb.collection('affiliate_commissions').doc();
+  // This checkout IS the referral's signup, so the row's own creation instant is the
+  // window anchor — no Stripe round-trip, and nothing that can fail. The recurring
+  // path re-derives the anchor from `subscription.start_date`; the two agree to
+  // within webhook latency, and only the recurring path's value ever gates anything.
+  const createdAtIso = new Date().toISOString();
   const recordBatch = adminDb.batch();
   recordBatch.set(commissionRef, {
     referrerId, tenantId, plan,
@@ -108,7 +134,9 @@ async function processInitialAffiliateCommission(opts: {
     status: 'pending',
     type: 'initial',
     stripeSubscriptionId: subscriptionId,
-    createdAt: new Date().toISOString(),
+    createdAt: createdAtIso,
+    commissionWindowAnchorAt: createdAtIso,
+    commissionWindowEndsAt: affiliateWindowEndIso(Date.parse(createdAtIso)),
   });
   recordBatch.update(referrerRef, {
     affiliateEarnings: FieldValue.increment(commissionAmount),
@@ -1691,8 +1719,98 @@ export async function POST(request: NextRequest) {
                 if (!existingCommission.empty) {
                   console.log('⚠️ Commission already exists for invoice', invoice.id);
                 } else {
-                  const commissionAmount = Math.round((invoice.amount_paid || 0) * AFFILIATE_RATE);
                   const plan = subscription.metadata?.plan || 'unknown';
+
+                  // ── Step 0: is this referral still inside its 12-month window? ──
+                  // The founder rule is 15% for the first 12 months from the referred
+                  // church's SIGNUP, not forever. The whole rule — the anchor, the
+                  // calendar-month arithmetic, the boundary, and the fail-safe — lives
+                  // in ONE module so this is the only place it is applied and there is
+                  // no second copy to drift. See @/lib/affiliate-commission-window.
+                  //
+                  // It is keyed off the INVOICE PERIOD, never the delivery time: a
+                  // month-11 invoice that is dunned, retried or redelivered in month 14
+                  // is still a month-11 invoice and still pays.
+                  const commissionWindow = evaluateAffiliateCommissionWindow({ subscription, invoice });
+
+                  if (commissionWindow.failSafe) {
+                    // We could not prove the referral is inside its window, so we PAID.
+                    // That direction is deliberate — see the module header — but it must
+                    // never be quiet: a systematically unresolvable anchor means every
+                    // referral is being paid past 12 months, and the only way anyone
+                    // finds out is this log.
+                    console.warn(
+                      `⚠️ Affiliate window UNRESOLVED (${commissionWindow.reason}) for invoice ${invoice.id} ` +
+                      `(sub ${invoiceSubId}, referrer ${referrerId}, anchor source ${commissionWindow.anchorSource}, ` +
+                      `period source ${commissionWindow.periodStartSource}) — PAYING the commission by fail-safe ` +
+                      `rather than withholding it. Investigate: this should not be reachable for a ` +
+                      `normally-created Stripe subscription.`,
+                    );
+                    captureMoneyPathError(
+                      new Error(`Affiliate 12-month window unresolved: ${commissionWindow.reason}`),
+                      {
+                        step: 'recurring-affiliate-commission-window-unresolved',
+                        level: 'warning',
+                        tenantId,
+                        eventId: event.id,
+                        eventType: event.type,
+                        ids: {
+                          subscriptionId: invoiceSubId,
+                          invoiceId: invoice.id,
+                          referrerId,
+                          anchorSource: commissionWindow.anchorSource,
+                          periodStartSource: commissionWindow.periodStartSource,
+                        },
+                      },
+                    );
+                  }
+
+                  if (!commissionWindow.within) {
+                    // EXPIRY IS EXPLICIT, NOT INCIDENTAL. #250 twice fixed a path that
+                    // decided not to act and then fell through to a bare `return`,
+                    // leaving nobody able to tell "we decided no" from "we crashed".
+                    // So the skip gets a durable row of its own: zero commission,
+                    // `status: 'cancelled'` (the codebase's existing zero-commission
+                    // marker status, which keeps it out of the sweep's and the hourly
+                    // cron's `pending` queries), and the numbers the decision was made
+                    // from. It carries `stripeInvoiceId`, so the dedup guard above
+                    // makes a redelivery of this same invoice a no-op — replaying an
+                    // out-of-window invoice creates nothing at all.
+                    //
+                    // `amount` is 0 on purpose. The admin rollup folds `amount` into
+                    // revenueBrought/harvestKept, and an uncommissioned invoice is not
+                    // affiliate-attributed revenue; the real figure is preserved beside
+                    // it as `uncommissionedAmount` for the audit trail.
+                    const skippedAtIso = new Date().toISOString();
+                    await adminDb.collection('affiliate_commissions').add({
+                      referrerId,
+                      tenantId,
+                      plan,
+                      amount: 0,
+                      commission: 0,
+                      status: 'cancelled',
+                      type: 'expired',
+                      stripeSubscriptionId: invoiceSubId,
+                      stripeInvoiceId: invoice.id,
+                      createdAt: skippedAtIso,
+                      skippedReason: commissionWindow.reason,
+                      uncommissionedAmount: invoice.amount_paid || 0,
+                      commissionWindowMonths: AFFILIATE_COMMISSION_WINDOW_MONTHS,
+                      commissionWindowAnchorAt: commissionWindow.anchorAt,
+                      commissionWindowEndsAt: commissionWindow.windowEndsAt,
+                      invoicePeriodStartAt: commissionWindow.periodStartAt,
+                    });
+                    // Expected, correct behaviour for a referral past 12 months — so no
+                    // Sentry. The durable row above plus this line are the record.
+                    console.log(
+                      `⏳ Affiliate commission SKIPPED for referrer ${referrerId}: referral ${tenantId} ` +
+                      `is past its ${AFFILIATE_COMMISSION_WINDOW_MONTHS}-month window ` +
+                      `(signup ${commissionWindow.anchorAt}, window ended ${commissionWindow.windowEndsAt}, ` +
+                      `invoice period started ${commissionWindow.periodStartAt}). ` +
+                      `Invoice ${invoice.id} paid $${((invoice.amount_paid || 0) / 100).toFixed(2)}, commission $0.00.`,
+                    );
+                  } else {
+                  const commissionAmount = Math.round((invoice.amount_paid || 0) * AFFILIATE_RATE);
                   const referrerRef = adminDb.collection('users').doc(referrerId);
 
                   // ── Step 1: RECORD, then pay. ─────────────────────────────
@@ -1739,6 +1857,16 @@ export async function POST(request: NextRequest) {
                     stripeSubscriptionId: invoiceSubId,
                     stripeInvoiceId: invoice.id,
                     createdAt: new Date().toISOString(),
+                    // What the window gate actually decided, recorded on the row it
+                    // allowed. This is what /api/affiliate/status reports back to the
+                    // affiliate, so the clock they see is the clock that was applied —
+                    // not a second calculation that could disagree with it. Stripe's
+                    // `subscription.start_date` stays the source of truth: the gate
+                    // re-derives the anchor on every invoice and never reads these back.
+                    commissionWindowMonths: AFFILIATE_COMMISSION_WINDOW_MONTHS,
+                    commissionWindowAnchorAt: commissionWindow.anchorAt,
+                    commissionWindowEndsAt: commissionWindow.windowEndsAt,
+                    invoicePeriodStartAt: commissionWindow.periodStartAt,
                   });
                   recordBatch.update(referrerRef, {
                     affiliateEarnings: FieldValue.increment(commissionAmount),
@@ -1823,6 +1951,7 @@ export async function POST(request: NextRequest) {
                     });
                   }
                   console.log(`💰 Recurring affiliate commission ${commissionStatus} for referrer ${referrerId}: $${(commissionAmount / 100).toFixed(2)}`);
+                  }
                 }
               }
             } catch (subErr) {

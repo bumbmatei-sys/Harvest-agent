@@ -4,6 +4,10 @@ import { randomBytes } from 'crypto';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireAuth } from '@/lib/api-auth';
 import { captureHandledError } from '@/lib/money-path-sentry';
+import {
+  AFFILIATE_COMMISSION_WINDOW_MONTHS,
+  affiliateWindowRemaining,
+} from '@/lib/affiliate-commission-window';
 
 export const dynamic = 'force-dynamic';
 
@@ -50,6 +54,19 @@ export async function GET(request: NextRequest) {
     let thisMonthEarnings = 0; // paid + pending this month — matches Lifetime's basis
     let thisMonthPending = 0;  // of that, not yet paid out (Connect wasn't active when earned)
     let recurringEarnings = 0; // recurring commissions in the trailing 30 days (active referrals)
+    // The 12-month commission window, per referral. An affiliate who cannot see the
+    // clock has no way to tell "my window closed" from "I am being underpaid", so
+    // the remaining window is surfaced rather than left implicit. These are read
+    // STRAIGHT off the commission rows the webhook stamped at creation time, so what
+    // the affiliate sees is the cutoff that was actually applied — not a second
+    // calculation here that could drift from the gate.
+    const windowByTenant = new Map<string, { windowEndsAt: string | null; latestRowAt: string }>();
+    let referralWindows: Array<{
+      tenantId: string;
+      windowEndsAt: string | null;
+      daysRemaining: number | null;
+      expired: boolean;
+    }> = [];
     try {
       const now = new Date();
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
@@ -62,6 +79,25 @@ export async function GET(request: NextRequest) {
         const c = d.data();
         const commission = c.commission || 0;
         const createdAt = c.createdAt || '';
+
+        // Window bookkeeping runs over EVERY row, before the earnings filters below
+        // skip the zero-commission ones. The `type: 'expired'` marker the webhook
+        // writes when it withholds a commission is exactly such a row, and it is the
+        // most authoritative statement of a closed window there is — dropping it here
+        // would hide the clock precisely when the affiliate most needs to see it.
+        const rowTenantId: string = c.tenantId || '';
+        if (rowTenantId) {
+          const prior = windowByTenant.get(rowTenantId);
+          // Last writer wins by row age, so a re-derived anchor on a later invoice
+          // supersedes an earlier one instead of the map depending on scan order.
+          if (!prior || createdAt >= prior.latestRowAt) {
+            windowByTenant.set(rowTenantId, {
+              windowEndsAt: c.commissionWindowEndsAt || prior?.windowEndsAt || null,
+              latestRowAt: createdAt,
+            });
+          }
+        }
+
         // 'cancelled' rows are zero-commission markers; paid/pending/failed each
         // represent money the affiliate earned (Lifetime counts them the same way),
         // so "This Month" must include pending — a commission written before the
@@ -78,6 +114,18 @@ export async function GET(request: NextRequest) {
           recurringEarnings += commission;
         }
       }
+
+      // Soonest-to-close first: the one the affiliate needs to act on.
+      referralWindows = [...windowByTenant.entries()]
+        .map(([tenantId, v]) => ({ tenantId, ...affiliateWindowRemaining(v.windowEndsAt, now.getTime()) }))
+        .sort((a, b) => {
+          // A null window (a referral whose rows predate this field) sorts last —
+          // it is unknown, not urgent.
+          if (a.windowEndsAt === b.windowEndsAt) return a.tenantId < b.tenantId ? -1 : 1;
+          if (!a.windowEndsAt) return 1;
+          if (!b.windowEndsAt) return -1;
+          return a.windowEndsAt < b.windowEndsAt ? -1 : 1;
+        });
     } catch (monthErr) {
       // The response is still a 200 — with thisMonthEarnings/recurringEarnings
       // left at ZERO. An affiliate who earned this month is shown $0 and has no
@@ -102,6 +150,17 @@ export async function GET(request: NextRequest) {
       thisMonthEarnings,
       thisMonthPending,
       recurringEarnings,
+      // ── The 12-month commission window ──────────────────────────────────────
+      // `commissionWindowMonths` states the rule; `referralWindows` states where
+      // each individual referral stands against it. `windowEndsAt: null` means this
+      // referral's rows carry no stamped window (they predate the field) — reported
+      // as unknown rather than guessed at, and never as expired.
+      commissionWindowMonths: AFFILIATE_COMMISSION_WINDOW_MONTHS,
+      referralWindows,
+      activeReferralWindows: referralWindows.filter(w => !w.expired).length,
+      expiredReferralWindows: referralWindows.filter(w => w.expired).length,
+      // The next window to close, for a one-line summary in the UI.
+      nextWindowEndsAt: referralWindows.find(w => !w.expired && w.windowEndsAt)?.windowEndsAt || null,
     });
   } catch (error: any) {
     console.error('Affiliate status error:', error?.message || error);

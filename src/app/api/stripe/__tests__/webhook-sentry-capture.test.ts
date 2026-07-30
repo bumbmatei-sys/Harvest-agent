@@ -352,11 +352,18 @@ describe('invoice.payment_succeeded subscription load failure', () => {
 // ── No capture when nothing failed ───────────────────────────────────────────
 describe('successful events are not reported', () => {
   it('captures nothing on a clean invoice.payment_succeeded with a paid commission', async () => {
+    // `start_date` / `period_start` are what a real Stripe subscription and invoice
+    // always carry, and the 12-month affiliate window reads them. Without them the
+    // window cannot be resolved, which is an anomaly the webhook now reports on
+    // purpose (it pays by fail-safe rather than silently withholding) — so a
+    // genuinely CLEAN event has to supply them. A month-1 period keeps this inside
+    // the window and exercises the real comparison instead of the fail-safe.
+    const nowSecs = Math.floor(Date.now() / 1000);
     mockConstructEvent.mockReturnValue({
       id: 'evt_inv_3', type: 'invoice.payment_succeeded',
-      data: { object: { id: 'in_3', amount_paid: 10000, currency: 'usd', subscription: 'sub_3', billing_reason: 'subscription_cycle' } },
+      data: { object: { id: 'in_3', amount_paid: 10000, currency: 'usd', subscription: 'sub_3', billing_reason: 'subscription_cycle', period_start: nowSecs } },
     });
-    mockSubRetrieve.mockResolvedValue({ id: 'sub_3', metadata: { tenantId: 't1', referrerId: 'ref1', plan: 'pro' } });
+    mockSubRetrieve.mockResolvedValue({ id: 'sub_3', start_date: nowSecs, metadata: { tenantId: 't1', referrerId: 'ref1', plan: 'pro' } });
     mockDocGet
       .mockResolvedValueOnce({ exists: false })
       .mockResolvedValueOnce({ exists: true, data: () => ({ status: 'active' }) })
