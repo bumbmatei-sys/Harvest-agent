@@ -375,7 +375,7 @@ function VerseActionSheet({ verseAction, translation, highlighted, onHighlight, 
       <div className="hidden lg:block">
         <div onClick={onClose} className="fixed inset-0 bg-black/40 z-[70]" />
         <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] bg-surface-raised rounded-t-[20px] z-[80] shadow-[0_-8px_32px_rgba(0,0,0,0.15)]">
-          <div className="flex justify-center pt-2.5"><div className="w-9 h-1 bg-stone-200 rounded-full" /></div>
+          <div className="flex justify-center pt-2.5"><div className="w-9 h-1 bg-surface-chip rounded-full" /></div>
           <div className="px-5 py-3 border-b border-line">
             <div className="text-[11px] font-bold text-gold uppercase tracking-wider mb-1">{ref}</div>
             <div className="text-sm text-muted leading-relaxed" style={{ fontFamily: "'Crimson Pro', Georgia, serif" }}>{verse.text}</div>
@@ -620,7 +620,7 @@ export default function BiblePage() {
                       <button onClick={() => setExpandedBook(isExpanded ? null : b.id)}
                         className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-left transition-colors ${active ? "" : "hover:bg-surface-sunken"}`}
                         style={active ? { background: GOLD_LIGHT } : undefined}>
-                        <span className="text-[13.5px]" style={active ? { color: GOLD, fontWeight: 600 } : { color: "#4A4038" }}>{b.name}</span>
+                        <span className="text-[13.5px]" style={active ? { color: GOLD, fontWeight: 600 } : { color: "var(--text-body)" }}>{b.name}</span>
                         <span className="text-[11px] text-faint">{b.chapters} ch</span>
                       </button>
                       {isExpanded && (

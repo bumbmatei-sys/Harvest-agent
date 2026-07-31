@@ -16,7 +16,7 @@ const fmt = (n: number) =>
 // Module-scope so its identity is stable across renders (a render-time nested
 // component would remount the whole subtree on every keystroke → focus loss).
 const Shell: React.FC<{ logo: string | null; tenantName: string; primaryColor: string; children: React.ReactNode }> = ({ logo, tenantName, primaryColor, children }) => (
-  <div className="min-h-screen bg-[#F7F6F3] py-10 px-4">
+  <div className="min-h-screen bg-surface-tint py-10 px-4">
     <div className="max-w-xl mx-auto">
       <div className="text-center mb-6">
         {logo ? (

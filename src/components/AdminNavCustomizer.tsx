@@ -74,7 +74,7 @@ const SortableNavItem: React.FC<SortableNavItemProps> = ({ item, isBeingDragged 
         <GripVertical size={20} />
       </div>
 
-      <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-[#F7F6F3] flex-shrink-0">
+      <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-surface-tint flex-shrink-0">
         <Icon size={18} style={{ color: 'var(--brand-color, #d4a017)' }} />
       </div>
 
@@ -225,7 +225,7 @@ const AdminNavCustomizer: React.FC<AdminNavCustomizerProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[300] bg-[#F7F6F3] flex flex-col">
+    <div className="fixed inset-0 z-[300] bg-surface-tint flex flex-col">
       {/* ─── Header ─────────────────────────────────────────────────── */}
       <div className="bg-surface-raised px-4 py-3 flex items-center justify-between shadow-sm border-b border-line flex-shrink-0">
         <button
@@ -316,7 +316,7 @@ const AdminNavCustomizer: React.FC<AdminNavCustomizerProps> = ({
             {activeItem && (
               <div className="flex items-center gap-3 bg-surface-raised rounded-[14px] p-3 border border-line shadow-2xl opacity-95 select-none">
                 <GripVertical size={20} className="text-stone-300" />
-                <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-[#F7F6F3] flex-shrink-0">
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-surface-tint flex-shrink-0">
                   <activeItem.icon size={18} style={{ color: 'var(--brand-color, #d4a017)' }} />
                 </div>
                 <span className="text-sm font-semibold text-body">{activeItem.label}</span>

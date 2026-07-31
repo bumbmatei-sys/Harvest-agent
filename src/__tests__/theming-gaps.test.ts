@@ -95,3 +95,29 @@ describe('no semantic token anywhere in src carries an opacity modifier', () => 
     expect(offenders, 'variable-backed colours cannot take an opacity modifier').toEqual([]);
   });
 });
+
+describe('the map basemap follows a theme change, not only initial load', () => {
+  const map = readFileSync(path.join(SRC, 'components/ChurchMap.tsx'), 'utf8');
+  const hook = readFileSync(path.join(SRC, 'lib/use-resolved-theme.ts'), 'utf8');
+
+  it('swaps CARTO light_all / dark_all off the resolved theme', () => {
+    expect(map).toContain('useResolvedTheme');
+    expect(map).toContain('dark_all');
+    expect(map).toContain('light_all');
+  });
+
+  it('remounts the TileLayer so a toggle re-issues tiles', () => {
+    // react-leaflet builds the underlying L.TileLayer once on mount and does
+    // not re-request tiles when `url` changes, so without a theme-bound key the
+    // map stays light until a full reload -- i.e. it would pass a
+    // "works on load" check and still be broken on toggle.
+    expect(map).toMatch(/key=\{mapTheme\}/);
+  });
+
+  it('the hook observes the attribute rather than reading storage once', () => {
+    // The toggle stamps <html> directly, outside React, so only a
+    // MutationObserver hears about it.
+    expect(hook).toContain('MutationObserver');
+    expect(hook).toContain("attributeFilter: ['data-theme', 'class']");
+  });
+});

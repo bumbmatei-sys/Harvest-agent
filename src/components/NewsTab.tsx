@@ -965,7 +965,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
             </div>
           )}
           <div className="flex items-start gap-3">
-            <div className="w-9 h-9 rounded-full bg-stone-200 overflow-hidden flex items-center justify-center text-sm font-bold text-muted flex-shrink-0 relative">
+            <div className="w-9 h-9 rounded-full bg-surface-chip overflow-hidden flex items-center justify-center text-sm font-bold text-muted flex-shrink-0 relative">
               {auth.currentUser.photoURL ? (
                 <Image src={auth.currentUser.photoURL} alt="You" fill sizes="36px" className="object-cover" referrerPolicy="no-referrer" />
               ) : (
@@ -1210,7 +1210,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
           <div key={post.id} className="bg-surface-raised rounded-2xl shadow-sm border border-line p-4 lg:rounded-[var(--ds-radius-card)] lg:border-[color:var(--ds-border)] lg:shadow-[var(--ds-sh-sm)]">
             <div className="flex justify-between items-start mb-3">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-stone-200 overflow-hidden flex items-center justify-center font-bold text-muted relative">
+                <div className="w-10 h-10 rounded-full bg-surface-chip overflow-hidden flex items-center justify-center font-bold text-muted relative">
                   {post.authorPhoto ? (
                     <Image src={post.authorPhoto} alt={post.authorName} fill sizes="40px" className="object-cover" referrerPolicy="no-referrer" />
                   ) : (
@@ -1385,7 +1385,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
               <div className="mt-3 pt-3 border-t border-line space-y-3">
                 {postComments[post.id]?.map(comment => (
                   <div key={comment.id} className="flex items-start gap-2.5">
-                    <div className="w-7 h-7 rounded-full bg-stone-200 overflow-hidden flex items-center justify-center text-xs font-bold text-muted flex-shrink-0 relative">
+                    <div className="w-7 h-7 rounded-full bg-surface-chip overflow-hidden flex items-center justify-center text-xs font-bold text-muted flex-shrink-0 relative">
                       {comment.authorPhoto ? (
                         <Image src={comment.authorPhoto} alt={comment.authorName} fill sizes="28px" className="object-cover" referrerPolicy="no-referrer" />
                       ) : (
@@ -1426,7 +1426,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
                 )}
                 {auth.currentUser && (
                   <div className="flex items-center gap-2 pt-2">
-                    <div className="w-7 h-7 rounded-full bg-stone-200 overflow-hidden flex items-center justify-center text-xs font-bold text-muted flex-shrink-0 relative">
+                    <div className="w-7 h-7 rounded-full bg-surface-chip overflow-hidden flex items-center justify-center text-xs font-bold text-muted flex-shrink-0 relative">
                       {auth.currentUser.photoURL ? (
                         <Image src={auth.currentUser.photoURL} alt="You" fill sizes="28px" className="object-cover" referrerPolicy="no-referrer" />
                       ) : (

@@ -128,7 +128,7 @@ const SavedItems: React.FC<SavedItemsProps> = ({ onBack, onOpenBlog, onOpenLesso
   };
 
   return (
-    <div className="flex flex-col min-h-full h-full bg-[#F7F6F3] overflow-y-auto">
+    <div className="flex flex-col min-h-full h-full bg-surface-tint overflow-y-auto">
       <div className="sticky top-0 z-10 bg-surface-raised border-b border-gray-100">
         <div className="flex items-center gap-3 px-4 py-4 lg:max-w-[760px] lg:mx-auto">
           <button onClick={onBack} className="p-1.5 rounded-lg hover:bg-gray-100">

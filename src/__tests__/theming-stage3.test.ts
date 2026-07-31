@@ -61,7 +61,7 @@ describe('every themed token has a counterpart in both themes', () => {
   // The tokens the theme is responsible for inverting.
   const THEMED = [
     '--surface', '--surface-raised', '--surface-sunken',
-    '--surface-night', '--surface-gold',
+    '--surface-night', '--surface-gold', '--surface-chip',
     '--border-subtle', '--border-default', '--border-strong', '--border-gold',
     '--text-strong', '--text-heading', '--text-body', '--text-muted', '--text-faint',
     '--ds-sh-sm', '--ds-sh-md', '--ds-sh-lg', '--glow-gold',
@@ -108,29 +108,42 @@ describe('WCAG AA contrast in both themes', () => {
     expect(ratios).toEqual([...ratios].sort((a, b) => b - a));
   });
 
-  it('reports the light theme ratios (pre-existing, not introduced here)', () => {
-    // The light theme already ships below AA for muted/faint. This is asserted
-    // as a FACT rather than a pass so the numbers are visible and a future
-    // light-theme fix has something to update, but it is deliberately not a
-    // failure — this PR must not touch the light theme.
+  // The light theme used to ship BELOW AA for muted (4.23:1) and faint
+  // (2.59:1). That is now fixed, so this assertion is inverted: both themes
+  // are held to the same floor rather than dark being the only compliant one.
+  it.each([
+    ['--text-strong'], ['--text-muted'], ['--text-faint'],
+  ])('light: %s clears AA on every light surface', (text) => {
+    for (const surface of ['--surface', '--surface-raised', '--surface-sunken']) {
+      const ratio = contrastRatio(resolve(text, lightVars), resolve(surface, lightVars));
+      expect(
+        ratio,
+        `${text} on ${surface} is ${ratio.toFixed(2)}:1, needs ${AA_CONTRAST}:1`,
+      ).toBeGreaterThanOrEqual(AA_CONTRAST);
+    }
+  });
+
+  it('the light text ramp stays monotonic after the AA fix', () => {
     const g = resolve('--surface', lightVars);
-    expect(contrastRatio(resolve('--text-strong', lightVars), g)).toBeGreaterThanOrEqual(AA_CONTRAST);
-    expect(contrastRatio(resolve('--text-muted', lightVars), g)).toBeLessThan(AA_CONTRAST);
+    const ratios = (['--text-strong', '--text-muted', '--text-faint'] as const).map((t) =>
+      contrastRatio(resolve(t, lightVars), g),
+    );
+    expect(ratios).toEqual([...ratios].sort((a, b) => b - a));
   });
 });
 
 /**
  * TEST 3 — the light theme is untouched.
  */
-describe('the light theme is unchanged by this PR', () => {
+describe('the light theme ramp values are pinned', () => {
   it.each([
     ['--surface', '#FAF8F5'],
     ['--surface-raised', '#FFFFFF'],
     ['--surface-sunken', '#F3EEE7'],
     ['--border-default', '#E8E2D9'],
     ['--text-strong', '#2D2519'],
-    ['--text-muted', '#8B7355'],
-    ['--text-faint', '#A89A87'],
+    ['--text-muted', '#68563F'],
+    ['--text-faint', '#766A5A'],
   ])('%s is still %s', (token, expected) => {
     expect(resolve(token, lightVars).toUpperCase()).toBe(expected);
   });

@@ -332,7 +332,7 @@ const AdminBlog: React.FC = () => {
  </tr>
  ) : (
  filteredPosts.map((post) => (
- <tr key={post.id} className="hover:bg-stone-100/60 transition-colors group">
+ <tr key={post.id} className="hover:bg-[color-mix(in_srgb,var(--surface-sunken)_60%,transparent)] transition-colors group">
  <td className="px-6 py-3.5">
  <div className="flex items-center gap-2">
  <span className="text-sm font-semibold text-strong line-clamp-1">{post.title}</span>
@@ -410,7 +410,7 @@ const AdminBlog: React.FC = () => {
  </div>
  <button
  onClick={() => setAutomation(a => ({ ...a, enabled: !a.enabled }))}
- className={`w-12 h-6 rounded-full transition-colors relative ${automation.enabled ? 'bg-gold' : 'bg-stone-200'}`}
+ className={`w-12 h-6 rounded-full transition-colors relative ${automation.enabled ? 'bg-gold' : 'bg-surface-chip'}`}
  >
  <span className={`absolute top-1 w-4 h-4 bg-surface-raised rounded-full shadow transition-all ${automation.enabled ? 'left-7' : 'left-1'}`} />
  </button>

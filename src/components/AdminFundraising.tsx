@@ -425,7 +425,7 @@ const AdminFundraising: React.FC<AdminFundraisingProps> = ({ initialCampaignId, 
       <div className="bg-surface-raised rounded-brand-lg border border-line shadow-[var(--ds-sh-sm)] overflow-hidden">
         <button
           onClick={() => setShowPayment((v) => !v)}
-          className="w-full flex items-center gap-4 px-5 py-4 hover:bg-stone-100/60 transition-colors text-left"
+          className="w-full flex items-center gap-4 px-5 py-4 hover:bg-[color-mix(in_srgb,var(--surface-sunken)_60%,transparent)] transition-colors text-left"
         >
           <span className="w-11 h-11 rounded-brand bg-[color-mix(in_srgb,var(--brand-color)_12%,white)] flex items-center justify-center shrink-0">
             <DollarSign size={20} className="text-gold" />

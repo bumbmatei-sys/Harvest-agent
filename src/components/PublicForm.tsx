@@ -79,7 +79,7 @@ const PublicForm: React.FC<PublicFormProps> = ({
 
   if (submitted) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#F7F6F3] p-6">
+      <div className="min-h-screen flex items-center justify-center bg-surface-tint p-6">
         <div className="bg-surface-raised rounded-[14px] shadow-sm border border-gray-100 p-8 max-w-md text-center">
           <CheckCircle2 size={48} className="mx-auto mb-4" style={{ color: primaryColor }} />
           <h1 className="font-display text-xl font-bold text-gray-900 mb-2">{successMessage}</h1>
@@ -90,7 +90,7 @@ const PublicForm: React.FC<PublicFormProps> = ({
   }
 
   return (
-    <div className="min-h-screen bg-[#F7F6F3] py-10 px-4">
+    <div className="min-h-screen bg-surface-tint py-10 px-4">
       <div className="max-w-xl mx-auto">
         <div className="text-center mb-6">
           {logo ? (

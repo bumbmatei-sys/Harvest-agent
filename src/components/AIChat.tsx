@@ -210,7 +210,7 @@ function HistoryPanel({ history, activeId, onSelect, onNewChat, onClose, onDelet
  {/* New Chat Button */}
  <div style={{ padding: "12px 16px", borderBottom: `1px solid ${BORDER}` }}>
  <button onClick={onNewChat}
- style={{ width: "100%", background: GOLD_BTN, border: "none", color: "#fff", fontWeight: 700, padding: "11px", borderRadius: 12, cursor: "pointer", fontSize: 14, fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, boxShadow: "0 2px 8px color-mix(in srgb, var(--brand-color, #C9963A) 35%, transparent)" }}>
+ style={{ width: "100%", background: GOLD_BTN, border: "none", color: "var(--surface-raised)", fontWeight: 700, padding: "11px", borderRadius: 12, cursor: "pointer", fontSize: 14, fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, boxShadow: "0 2px 8px color-mix(in srgb, var(--brand-color, #C9963A) 35%, transparent)" }}>
  <span style={{ fontSize: 18 }}>✦</span> New Chat
  </button>
  </div>
@@ -583,7 +583,7 @@ Friendly neighbor, not a corporate chatbot. Short. Helpful. Human.`;
  </div>
  <div style={{ padding: "12px 16px", borderBottom: `1px solid ${BORDER}` }}>
  <button onClick={startNewChat}
- style={{ width: "100%", background: GOLD_BTN, border: "none", color: "#fff", fontWeight: 700, padding: "11px", borderRadius: 12, cursor: "pointer", fontSize: 14, fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, boxShadow: "0 2px 8px color-mix(in srgb, var(--brand-color, #C9963A) 35%, transparent)" }}>
+ style={{ width: "100%", background: GOLD_BTN, border: "none", color: "var(--surface-raised)", fontWeight: 700, padding: "11px", borderRadius: 12, cursor: "pointer", fontSize: 14, fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, boxShadow: "0 2px 8px color-mix(in srgb, var(--brand-color, #C9963A) 35%, transparent)" }}>
  <span style={{ fontSize: 18 }}>✦</span> New Chat
  </button>
  </div>

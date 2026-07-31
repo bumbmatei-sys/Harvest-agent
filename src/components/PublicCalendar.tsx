@@ -39,7 +39,7 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({ tenantId, tenantName, l
   const eventUrl = (id: string) => `https://${tenantId}.theharvest.app/event/${id}`;
 
   return (
-    <div className="min-h-screen bg-[#F7F6F3] py-10 px-4">
+    <div className="min-h-screen bg-surface-tint py-10 px-4">
       <div className="max-w-2xl mx-auto">
         <div className="text-center mb-6">
           {logo ? (

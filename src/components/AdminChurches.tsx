@@ -372,7 +372,7 @@ const AdminChurches: React.FC = () => {
                 </tr>
               ) : (
                 filteredChurches.map((church) => (
-                  <tr key={church.id} className="border-b border-line hover:bg-stone-100/60 transition-colors">
+                  <tr key={church.id} className="border-b border-line hover:bg-[color-mix(in_srgb,var(--surface-sunken)_60%,transparent)] transition-colors">
                     <td className="p-4">
                       <div className="font-semibold text-strong">{church.name}</div>
                       <div className="text-xs text-muted">{church.denomination}</div>
@@ -635,7 +635,7 @@ export const AnnouncementsSection: React.FC<{ churchId: string }> = ({ churchId 
                     </button>
                     <button
                       onClick={() => setEditingId(null)}
-                      className="flex items-center gap-1 bg-stone-200 text-body px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-stone-300"
+                      className="flex items-center gap-1 bg-surface-chip text-body px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-stone-300"
                     >
                       <X size={12} /> Cancel
                     </button>

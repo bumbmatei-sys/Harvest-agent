@@ -117,8 +117,12 @@ describe('text tokens are wired into Tailwind and resolve to the right CSS varia
   it('those variables are defined in globals.css', () => {
     expect(vars['--text-strong']).toBe('var(--earth)');
     expect(resolveColour('var(--text-strong)', vars)).toBe('#2D2519');
-    expect(resolveColour('var(--text-muted)', vars)).toBe('#8B7355');
-    expect(resolveColour('var(--text-faint)', vars)).toBe('#A89A87');
+    // Updated deliberately by the light-theme AA fix. --text-muted was #8B7355
+    // (4.23:1 on --surface) and --text-faint was #A89A87 (2.59:1); both shipped
+    // below the 4.5 floor. They are now 6.62:1 and 4.98:1. The hue is unchanged
+    // -- each was darkened along the warm-brown -> earth axis.
+    expect(resolveColour('var(--text-muted)', vars)).toBe('#68563F');
+    expect(resolveColour('var(--text-faint)', vars)).toBe('#766A5A');
   });
 
   it('does not also mint bg-strong / border-strong (which would collide in meaning)', async () => {
@@ -142,7 +146,13 @@ describe('zero visual change in the light theme', () => {
     ['bg-stone-100', 'background-color', 'bg-surface-sunken'],
     ['border-stone-200', 'border-color', 'border-line'],
     ['text-earth', 'color', 'text-strong'],
-    ['text-warm-brown', 'color', 'text-muted'],
+    // ['text-warm-brown', 'color', 'text-muted'] was here and is deliberately
+    // gone. It asserted the token renders identically to the hardcoded utility
+    // it replaced -- true when the swap was pure vocabulary, and intentionally
+    // false now: the AA fix moved --text-muted to #68563F while Tailwind's
+    // `warm-brown` scale entry stays #8B7355. Keeping the pair would force the
+    // accessibility fix to be reverted. The token's own contrast is asserted in
+    // theming-stage3.test.ts, which is the check that actually matters.
   ];
 
   it.each(swaps)('%s and %s render the same colour', async (legacy, prop, token) => {

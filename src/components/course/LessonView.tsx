@@ -188,7 +188,7 @@ export function LessonView({ course, lesson, authors, onBack, onComplete, comple
               </span>
               <button
                 onClick={() => { onSaveNote(lesson.id, noteDraft); setNoteSaved(true); }}
-                className="py-2.5 px-5 rounded-lg bg-surface-sunken border border-line text-muted text-[13px] font-semibold cursor-pointer hover:bg-stone-200 transition-colors"
+                className="py-2.5 px-5 rounded-lg bg-surface-sunken border border-line text-muted text-[13px] font-semibold cursor-pointer hover:bg-surface-chip transition-colors"
               >
                 Save
               </button>

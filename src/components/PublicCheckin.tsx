@@ -49,7 +49,7 @@ const PublicCheckin: React.FC<PublicCheckinProps> = ({
   };
 
   const Shell: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-    <div className="min-h-screen bg-[#F7F6F3] flex items-center justify-center p-6">
+    <div className="min-h-screen bg-surface-tint flex items-center justify-center p-6">
       <div className="w-full max-w-md">
         <div className="text-center mb-6">
           {logo ? (

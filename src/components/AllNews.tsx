@@ -668,7 +668,7 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages }) => {
                 <div className="mt-3 pt-3 border-t border-line space-y-3">
                   {postComments[post.id]?.map(comment => (
                     <div key={comment.id} className="flex items-start gap-2.5">
-                      <div className="w-7 h-7 rounded-full bg-stone-200 overflow-hidden flex items-center justify-center text-xs font-bold text-muted flex-shrink-0 relative">
+                      <div className="w-7 h-7 rounded-full bg-surface-chip overflow-hidden flex items-center justify-center text-xs font-bold text-muted flex-shrink-0 relative">
                         {comment.authorPhoto ? (
                           <Image src={comment.authorPhoto} alt={comment.authorName} fill sizes="28px" className="object-cover" referrerPolicy="no-referrer" />
                         ) : (
@@ -709,7 +709,7 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages }) => {
                   )}
                   {auth.currentUser && (
                     <div className="flex items-center gap-2 pt-2">
-                      <div className="w-7 h-7 rounded-full bg-stone-200 overflow-hidden flex items-center justify-center text-xs font-bold text-muted flex-shrink-0 relative">
+                      <div className="w-7 h-7 rounded-full bg-surface-chip overflow-hidden flex items-center justify-center text-xs font-bold text-muted flex-shrink-0 relative">
                         {auth.currentUser.photoURL ? (
                           <Image src={auth.currentUser.photoURL} alt="You" fill sizes="28px" className="object-cover" referrerPolicy="no-referrer" />
                         ) : (

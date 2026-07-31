@@ -189,7 +189,7 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ signupPlan }) => {
               onKeyDown={(e) => { if (e.key === 'Enter' && canSubmit && !submitting) handleContinue(); }}
               onFocus={() => setFocus(true)}
               onBlur={() => setFocus(false)}
-              className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-[#A89A87]"
+              className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-faint"
               style={{ fontSize: 15, color: 'var(--text-heading, #2D2519)' }}
               placeholder="Grace Community Church"
               autoFocus
