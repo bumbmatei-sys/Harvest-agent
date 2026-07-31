@@ -110,6 +110,15 @@ export async function seedBase(): Promise<void> {
       name: 'Tenant B', ownerId: 'owner-b-uid', adminEmails: ['owner-b@test.com'],
       plan: 'ministry', status: 'active',
     });
+    // The rules read the roster from the server-only tenant_private mirror
+    // (dual-written in production since PR 1) — seed it to match the public
+    // docs, exactly like the backfill guarantees before the rules deploy.
+    await db.doc(`tenant_private/${TENANT_A}`).set({
+      adminEmails: [OWNER_EMAIL, ROSTER_ADMIN_EMAIL],
+    });
+    await db.doc(`tenant_private/${TENANT_B}`).set({
+      adminEmails: ['owner-b@test.com'],
+    });
     // Realistic owner shape: the Stripe webhook promotes the buyer with role
     // 'admin' and NO permissions map — the owner must pass every gate purely
     // via tenants/{t}.ownerId (+ adminEmails), never via permission flags.

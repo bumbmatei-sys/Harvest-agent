@@ -46,10 +46,18 @@ service cloud.firestore {
       );
     }
 
+    // The roster lives on the server-only tenant_private/{id} doc (allow read,
+    // write: if false) — a rules get() is not subject to security rules, so it
+    // can read a doc clients cannot. The public tenants/{id} doc stays world-
+    // readable for pre-auth subdomain resolution, without exposing the roster.
+    // Both exists() and get() point at the SAME doc, so this stays one
+    // document read per evaluation. A tenant missing its tenant_private doc
+    // has an empty roster — the backfill (scripts/backfill-tenant-private.mjs)
+    // must verify parity for every tenant BEFORE this rule deploys.
     function inTenantAdminEmails(tenantId) {
       return isAuthenticated() &&
-        exists(/databases/$(database)/documents/tenants/$(tenantId)) &&
-        tokenEmail() in get(/databases/$(database)/documents/tenants/$(tenantId)).data.get('adminEmails', []);
+        exists(/databases/$(database)/documents/tenant_private/$(tenantId)) &&
+        tokenEmail() in get(/databases/$(database)/documents/tenant_private/$(tenantId)).data.get('adminEmails', []);
     }
 
     function isTenantAdmin(tenantId) {
@@ -754,6 +762,16 @@ service cloud.firestore {
         allow read: if isTenantAdmin(tenantId);
         allow write: if hasPermission('manageSms', tenantId);
       }
+    }
+
+    // ─── Tenant private mirror ────────────────────────────────────────
+    // The adminEmails roster + Stripe identifiers moved here off the world-
+    // readable tenants/{id} doc. Server-only (Admin SDK), like the other
+    // `write: if false` surfaces: no client — not even a tenant admin or the
+    // owner — may read or write it. inTenantAdminEmails still reads it via
+    // get(), which security rules do not gate.
+    match /tenant_private/{tenantId} {
+      allow read, write: if false;
     }
 
     // ─── Docs & Doc Folders ───────────────────────────────────────────
