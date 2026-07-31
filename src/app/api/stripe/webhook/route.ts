@@ -15,6 +15,7 @@ import {
 } from '@/lib/affiliate-commission-window';
 import { captureMoneyPathError } from '@/lib/money-path-sentry';
 import { isRetryableWebhookError, isValidFirestoreDocId } from '@/lib/webhook-retry';
+import { tenantPrivateRef, pickTenantPrivateFields } from '@/lib/tenant-private';
 import { NON_TENANT_SUBDOMAINS } from '@/utils/non-tenant-subdomains';
 import { Resend } from 'resend';
 import QRCode from 'qrcode';
@@ -1178,7 +1179,7 @@ export async function POST(request: NextRequest) {
           }
 
           const now = new Date().toISOString();
-          await adminDb.collection('tenants').doc(newTenantId).set({
+          const newTenantData = {
             name: meta.ministryName || 'My Ministry',
             subdomain: newTenantId,
             plan: meta.plan,
@@ -1195,7 +1196,17 @@ export async function POST(request: NextRequest) {
             setupCompleted: false, // gates the first-run "Finish setup" screen
             createdAt: now,
             updatedAt: now,
+          };
+          // One batch: the public doc and its tenant_private mirror land (or
+          // fail) together — a partial write is how the two would diverge.
+          const newTenantBatch = adminDb.batch();
+          newTenantBatch.set(adminDb.collection('tenants').doc(newTenantId), newTenantData);
+          newTenantBatch.set(tenantPrivateRef(newTenantId), {
+            ...pickTenantPrivateFields(newTenantData),
+            createdAt: now,
+            updatedAt: now,
           });
+          await newTenantBatch.commit();
 
           // Tag the subscription with the new tenant id so later lifecycle
           // events (subscription.updated/deleted, invoice.*) resolve to it — the
@@ -1318,7 +1329,13 @@ export async function POST(request: NextRequest) {
                 updateData.addOnAiAssistantCode = generateAccessCode();
               }
 
-              await adminDb.collection('tenants').doc(tenantId).update(updateData);
+              const planChangeBatch = adminDb.batch();
+              planChangeBatch.update(adminDb.collection('tenants').doc(tenantId), updateData);
+              planChangeBatch.set(tenantPrivateRef(tenantId), {
+                ...pickTenantPrivateFields(updateData),
+                updatedAt: updateData.updatedAt,
+              }, { merge: true });
+              await planChangeBatch.commit();
 
               const referrerId = meta.referrerId;
               if (referrerId) {
@@ -1418,7 +1435,13 @@ export async function POST(request: NextRequest) {
           else if (subscription.status === 'past_due') updateData.status = 'past_due';
           else if (subscription.status === 'canceled') updateData.status = 'cancelled';
 
-          await adminDb.collection('tenants').doc(tenantId).update(updateData);
+          const subUpdatedBatch = adminDb.batch();
+          subUpdatedBatch.update(adminDb.collection('tenants').doc(tenantId), updateData);
+          subUpdatedBatch.set(tenantPrivateRef(tenantId), {
+            ...pickTenantPrivateFields(updateData),
+            updatedAt: updateData.updatedAt,
+          }, { merge: true });
+          await subUpdatedBatch.commit();
 
           if (plan) {
             const usersSnap = await adminDb.collection('users')
@@ -1556,12 +1579,19 @@ export async function POST(request: NextRequest) {
             console.log(`↩︎ Ignoring stale subscription deletion ${subscription.id} for tenant ${tenantId} (current ${delCurrentSubId})`);
             break;
           }
-          await adminDb.collection('tenants').doc(tenantId).update({
+          const downgradeNow = new Date().toISOString();
+          const downgradeBatch = adminDb.batch();
+          downgradeBatch.update(adminDb.collection('tenants').doc(tenantId), {
             plan: 'plus',
             status: 'cancelled',
             stripeSubscriptionId: null,
-            updatedAt: new Date().toISOString(),
+            updatedAt: downgradeNow,
           });
+          downgradeBatch.set(tenantPrivateRef(tenantId), {
+            stripeSubscriptionId: null,
+            updatedAt: downgradeNow,
+          }, { merge: true });
+          await downgradeBatch.commit();
 
           const usersSnap = await adminDb.collection('users')
             .where('tenantId', '==', tenantId)

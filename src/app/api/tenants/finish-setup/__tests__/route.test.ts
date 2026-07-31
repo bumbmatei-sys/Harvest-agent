@@ -88,4 +88,33 @@ describe('POST /api/tenants/finish-setup — subscription metadata merge on rena
       metadata: { tenantId: 'grace-church', plan: 'pro', billing: 'monthly', referrerId: 'refUser' },
     });
   });
+
+  it('moves the tenant_private mirror with the rename and deletes both old docs', async () => {
+    mockDocGet.mockResolvedValue({
+      exists: true,
+      data: () => ({
+        adminEmails: ['pastor@grace.org'],
+        setupCompleted: false,
+        stripeSubscriptionId: 'sub_ref',
+        stripeCustomerId: 'cus_1',
+        ministryName: 'Grace Church',
+      }),
+    });
+    mockSubsRetrieve.mockResolvedValue({ id: 'sub_ref', metadata: {} });
+
+    const res = await POST(makeRequest({ subdomain: 'grace-church' }));
+    expect(res.status).toBe(200);
+
+    // The private mirror at the NEW id is written from the same tenantData the
+    // rename copied — so it is correct even for tenants predating the dual-write.
+    expect(mockDocSet).toHaveBeenCalledWith(
+      expect.objectContaining({
+        adminEmails: ['pastor@grace.org'],
+        stripeSubscriptionId: 'sub_ref',
+        stripeCustomerId: 'cus_1',
+      }),
+    );
+    // Old tenant doc AND old tenant_private doc both deleted.
+    expect(mockDocDelete).toHaveBeenCalledTimes(2);
+  });
 });

@@ -6,6 +6,7 @@ import { requireAuth } from '@/lib/api-auth';
 import { captureMoneyPathError } from '@/lib/money-path-sentry';
 import { setCustomClaims } from '@/lib/set-custom-claims';
 import { NON_TENANT_SUBDOMAINS } from '@/utils/non-tenant-subdomains';
+import { tenantPrivateRef, pickTenantPrivateFields } from '@/lib/tenant-private';
 
 export const dynamic = 'force-dynamic';
 
@@ -123,6 +124,23 @@ export async function POST(request: NextRequest) {
       await desiredRef.set({ subdomain: desired, setupCompleted: true, updatedAt: now }, { merge: true });
     }
 
+    // Move the tenant_private mirror with the rename. Written from the SAME
+    // tenantData just copied above (not from tenant_private/{oldId}) so the new
+    // location is correct even for a tenant that predates the dual-write.
+    try {
+      await tenantPrivateRef(desired).set({ ...pickTenantPrivateFields(tenantData), updatedAt: now });
+    } catch (privErr) {
+      console.error('finish-setup: failed to move tenant_private doc:', privErr);
+      // The rename proceeds — the rules roster read still uses the public doc
+      // until PR 2, and the backfill/verify step catches a missing mirror.
+      captureMoneyPathError(privErr, {
+        step: 'finish-setup-move-tenant-private',
+        level: 'error',
+        tenantId: oldId,
+        ids: { desiredTenantId: desired },
+      });
+    }
+
     // Re-point every user on the old tenant (just the admin at this stage) + claims.
     const usersSnap = await adminDb.collection('users').where('tenantId', '==', oldId).get();
     if (!usersSnap.empty) {
@@ -186,6 +204,16 @@ export async function POST(request: NextRequest) {
 
     // Delete the old tenant doc LAST, so a crash earlier leaves the old (still
     // routable) doc intact rather than stranding the user with no tenant.
+    // The old tenant_private mirror goes with it (no-op if it never existed).
+    await tenantPrivateRef(oldId).delete().catch((privDelErr) => {
+      console.error('finish-setup: failed to delete old tenant_private doc:', privDelErr);
+      captureMoneyPathError(privDelErr, {
+        step: 'finish-setup-delete-old-tenant-private',
+        level: 'warning',
+        tenantId: oldId,
+        ids: { desiredTenantId: desired },
+      });
+    });
     await tenantRef.delete().catch((delErr) => {
       console.error('finish-setup: failed to delete old tenant doc:', delErr);
       // Deliberately non-fatal (see above), but it leaves a duplicate, still-routable

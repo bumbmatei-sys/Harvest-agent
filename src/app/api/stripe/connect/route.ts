@@ -5,6 +5,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { requireAuth } from '@/lib/api-auth';
 import { resolveReturnBaseUrl } from '@/lib/connect-return-url';
 import { captureMoneyPathError } from '@/lib/money-path-sentry';
+import { tenantPrivateRef } from '@/lib/tenant-private';
 
 export const dynamic = 'force-dynamic';
 
@@ -99,11 +100,15 @@ export async function POST(request: NextRequest) {
     });
 
     // Save the account ID and set status to pending
-    await adminDb.collection('tenants').doc(tenantId).update({
+    const now = new Date().toISOString();
+    const batch = adminDb.batch();
+    batch.update(adminDb.collection('tenants').doc(tenantId), {
       stripeConnectAccountId: account.id,
       stripeConnectStatus: 'pending',
-      updatedAt: new Date().toISOString(),
+      updatedAt: now,
     });
+    batch.set(tenantPrivateRef(tenantId), { stripeConnectAccountId: account.id, updatedAt: now }, { merge: true });
+    await batch.commit();
 
     // Mirror onto the connecting user so the SAME account also powers their
     // affiliate payouts. Status starts 'pending'; the connect callback and

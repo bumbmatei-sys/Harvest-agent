@@ -234,8 +234,16 @@ describe('checkout.session.completed', () => {
     const res = await POST(makeRequest());
     expect(res.status).toBe(200);
     expect(mockSubsCancel).toHaveBeenCalledWith('sub_old');
-    expect(mockDocUpdate).toHaveBeenCalledWith(
+    expect(mockBatchUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ __coll: 'tenants', id: 'tenant1' }),
       expect.objectContaining({ plan: 'pro', status: 'active', stripeSubscriptionId: 'sub_new' })
+    );
+    // Dual-write: the tenant_private mirror gets the same Stripe identifiers
+    // in the same batch.
+    expect(mockBatchSet).toHaveBeenCalledWith(
+      expect.objectContaining({ __coll: 'tenant_private', id: 'tenant1' }),
+      expect.objectContaining({ stripeSubscriptionId: 'sub_new', stripeCustomerId: 'cus_001' }),
+      { merge: true }
     );
   });
 
@@ -252,7 +260,8 @@ describe('checkout.session.completed', () => {
 
     const res = await POST(makeRequest());
     expect(res.status).toBe(200);
-    expect(mockDocUpdate).toHaveBeenCalledWith(
+    expect(mockBatchUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ __coll: 'tenants', id: 'tenant1' }),
       expect.objectContaining({ plan: 'ultra', addOnAiAssistantCode: 'CODE-1234' })
     );
   });
@@ -272,7 +281,8 @@ describe('checkout.session.completed', () => {
     expect(res.status).toBe(200);
 
     // Tenant doc created: active, gated for first-run, on the paid plan.
-    expect(mockDocSet).toHaveBeenCalledWith(
+    expect(mockBatchSet).toHaveBeenCalledWith(
+      expect.objectContaining({ __coll: 'tenants', id: 'grace-church' }),
       expect.objectContaining({
         subdomain: 'grace-church',
         plan: 'pro',
@@ -281,6 +291,18 @@ describe('checkout.session.completed', () => {
         adminEmails: ['pastor@grace.org'],
       })
     );
+    // Dual-write parity: the tenant_private mirror is written in the SAME batch
+    // and carries values identical to the public doc for every moved field.
+    const publicSet = mockBatchSet.mock.calls.find(
+      (c) => c[0].__coll === 'tenants' && c[0].id === 'grace-church'
+    );
+    const privateSet = mockBatchSet.mock.calls.find(
+      (c) => c[0].__coll === 'tenant_private' && c[0].id === 'grace-church'
+    );
+    expect(privateSet).toBeDefined();
+    for (const field of ['adminEmails', 'stripeCustomerId', 'stripeSubscriptionId', 'stripePriceId']) {
+      expect(privateSet![1][field]).toEqual(publicSet![1][field]);
+    }
     // Paying user promoted to admin and signup marker cleared.
     expect(mockDocUpdate).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -365,8 +387,14 @@ describe('customer.subscription.updated', () => {
 
     const res = await POST(makeRequest());
     expect(res.status).toBe(200);
-    expect(mockDocUpdate).toHaveBeenCalledWith(
+    expect(mockBatchUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ __coll: 'tenants', id: 'tenant1' }),
       expect.objectContaining({ plan: 'max', status: 'active' })
+    );
+    expect(mockBatchSet).toHaveBeenCalledWith(
+      expect.objectContaining({ __coll: 'tenant_private', id: 'tenant1' }),
+      expect.objectContaining({ stripeSubscriptionId: 'sub_001' }),
+      { merge: true }
     );
     expect(mockBatchCommit).toHaveBeenCalled();
   });
@@ -383,7 +411,8 @@ describe('customer.subscription.updated', () => {
 
     const res = await POST(makeRequest());
     expect(res.status).toBe(200);
-    expect(mockDocUpdate).toHaveBeenCalledWith(
+    expect(mockBatchUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ __coll: 'tenants', id: 'tenant1' }),
       expect.objectContaining({ status: 'past_due' })
     );
   });
@@ -422,8 +451,15 @@ describe('customer.subscription.deleted', () => {
 
     const res = await POST(makeRequest());
     expect(res.status).toBe(200);
-    expect(mockDocUpdate).toHaveBeenCalledWith(
+    expect(mockBatchUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ __coll: 'tenants', id: 'tenant1' }),
       expect.objectContaining({ plan: 'plus', status: 'cancelled', stripeSubscriptionId: null })
+    );
+    // Dual-write: the cleared subscription id reaches the mirror too.
+    expect(mockBatchSet).toHaveBeenCalledWith(
+      expect.objectContaining({ __coll: 'tenant_private', id: 'tenant1' }),
+      expect.objectContaining({ stripeSubscriptionId: null }),
+      { merge: true }
     );
   });
 
@@ -642,7 +678,8 @@ describe('plan-included AI Assistant (ultra owner)', () => {
 
     const res = await POST(makeRequest());
     expect(res.status).toBe(200);
-    expect(mockDocUpdate).toHaveBeenCalledWith(
+    expect(mockBatchUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ __coll: 'tenants', id: 'tenant1' }),
       expect.objectContaining({ plan: 'plus', status: 'cancelled' })
     );
     expect(mockDocUpdate).toHaveBeenCalledWith(
@@ -905,7 +942,8 @@ describe('initial affiliate commission — $0 trial guard', () => {
     expect(res.status).toBe(200);
 
     // The signup itself still succeeds — the trial tenant is created.
-    expect(mockDocSet).toHaveBeenCalledWith(
+    expect(mockBatchSet).toHaveBeenCalledWith(
+      expect.objectContaining({ __coll: 'tenants', id: 'grace-church' }),
       expect.objectContaining({ subdomain: 'grace-church', plan: 'pro', status: 'active' }),
     );
     // …but the $0 event pays/records nothing and never touches the referral count.
@@ -936,7 +974,8 @@ describe('initial affiliate commission — $0 trial guard', () => {
     expect(res.status).toBe(200);
 
     // The plan change itself is unaffected — the guard is scoped to the commission.
-    expect(mockDocUpdate).toHaveBeenCalledWith(
+    expect(mockBatchUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ __coll: 'tenants', id: 'tenant1' }),
       expect.objectContaining({ plan: 'max', status: 'active' }),
     );
     // No money moved, no commission doc, no referral-count bump for the $0 event.

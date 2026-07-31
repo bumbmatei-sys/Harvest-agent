@@ -6,6 +6,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { requireAuth } from '@/lib/api-auth';
 import { resolveReturnBaseUrl } from '@/lib/connect-return-url';
 import { captureHandledError, captureMoneyPathError } from '@/lib/money-path-sentry';
+import { tenantPrivateRef } from '@/lib/tenant-private';
 
 export const dynamic = 'force-dynamic';
 
@@ -86,11 +87,15 @@ export async function POST(request: NextRequest) {
           });
           accountId = account.id;
           connectStatus = 'pending';
-          await tenantRef.update({
+          const connectNow = new Date().toISOString();
+          const connectBatch = adminDb.batch();
+          connectBatch.update(tenantRef, {
             stripeConnectAccountId: accountId,
             stripeConnectStatus: 'pending',
-            updatedAt: new Date().toISOString(),
+            updatedAt: connectNow,
           });
+          connectBatch.set(tenantPrivateRef(tenantId), { stripeConnectAccountId: accountId, updatedAt: connectNow }, { merge: true });
+          await connectBatch.commit();
         }
         // Mirror onto the caller's user doc so their affiliate-payout path resolves
         // the SAME account (the payout path reads users/{uid}.affiliateStripeAccountId).
