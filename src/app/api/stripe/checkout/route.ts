@@ -5,6 +5,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { requireAuth } from '@/lib/api-auth';
 import { captureMoneyPathError } from '@/lib/money-path-sentry';
 import { PLAN_PRICES, AI_ASSISTANT_MONTHLY } from '@/lib/stripe-config';
+import { tenantPrivateRef } from '@/lib/tenant-private';
 import { AI_TELEGRAM_ASSISTANT_ENABLED } from '@/utils/plan-features';
 
 export const dynamic = 'force-dynamic';
@@ -232,10 +233,14 @@ export async function POST(request: NextRequest) {
         metadata: { tenantId, app: 'harvest' },
       },
       async (id) => {
-        await adminDb.collection('tenants').doc(tenantId).update({
+        const now = new Date().toISOString();
+        const batch = adminDb.batch();
+        batch.update(adminDb.collection('tenants').doc(tenantId), {
           stripeCustomerId: id,
-          updatedAt: new Date().toISOString(),
+          updatedAt: now,
         });
+        batch.set(tenantPrivateRef(tenantId), { stripeCustomerId: id, updatedAt: now }, { merge: true });
+        await batch.commit();
       },
     );
 

@@ -9,10 +9,13 @@ const { mockAccountsCreate, mockAccountLinksCreate } = vi.hoisted(() => ({
   mockAccountLinksCreate: vi.fn().mockResolvedValue({ url: 'https://connect.stripe/onboard' }),
 }));
 
-const { mockDocGet, mockDocSet, mockDocUpdate } = vi.hoisted(() => ({
+const { mockDocGet, mockDocSet, mockDocUpdate, mockBatchSet, mockBatchUpdate, mockBatchCommit } = vi.hoisted(() => ({
   mockDocGet: vi.fn(),
   mockDocSet: vi.fn().mockResolvedValue(undefined),
   mockDocUpdate: vi.fn().mockResolvedValue(undefined),
+  mockBatchSet: vi.fn(),
+  mockBatchUpdate: vi.fn(),
+  mockBatchCommit: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('stripe', () => ({
@@ -26,9 +29,18 @@ vi.mock('@/lib/api-auth', () => ({ requireAuth: mockRequireAuth }));
 
 vi.mock('@/lib/firebase-admin', () => ({
   adminDb: {
-    collection: vi.fn(() => ({
-      doc: vi.fn(() => ({ get: mockDocGet, set: mockDocSet, update: mockDocUpdate })),
+    // Refs carry their collection + id so batch assertions can tell WHICH doc a
+    // write targeted (the tenant doc vs its tenant_private dual-write mirror).
+    collection: vi.fn((name: string) => ({
+      doc: vi.fn((id?: string) => ({
+        __coll: name,
+        id,
+        get: mockDocGet,
+        set: mockDocSet,
+        update: mockDocUpdate,
+      })),
     })),
+    batch: vi.fn(() => ({ set: mockBatchSet, update: mockBatchUpdate, commit: mockBatchCommit })),
   },
 }));
 
@@ -62,8 +74,15 @@ describe('POST /api/stripe/connect — unified account mirror', () => {
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ url: 'https://connect.stripe/onboard' });
     // Canonical (donations) account persisted on the tenant…
-    expect(mockDocUpdate).toHaveBeenCalledWith(
+    expect(mockBatchUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ __coll: 'tenants', id: 'tenant1' }),
       expect.objectContaining({ stripeConnectAccountId: 'acct_new', stripeConnectStatus: 'pending' }),
+    );
+    // …dual-written to the tenant_private mirror in the same batch…
+    expect(mockBatchSet).toHaveBeenCalledWith(
+      expect.objectContaining({ __coll: 'tenant_private', id: 'tenant1' }),
+      expect.objectContaining({ stripeConnectAccountId: 'acct_new' }),
+      { merge: true },
     );
     // …and mirrored onto the connecting user's affiliate fields (same account).
     expect(mockDocSet).toHaveBeenCalledWith(
@@ -100,7 +119,8 @@ describe('POST /api/stripe/connect — unified account mirror', () => {
     const res = await POST(makeRequest({ tenantId: 'tenant1' }));
     expect(res.status).toBe(200);
     // Tenant still gets its donations account…
-    expect(mockDocUpdate).toHaveBeenCalledWith(
+    expect(mockBatchUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ __coll: 'tenants', id: 'tenant1' }),
       expect.objectContaining({ stripeConnectAccountId: 'acct_new' }),
     );
     // …but the caller's working affiliate account is left untouched (no clobber).

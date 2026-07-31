@@ -1,11 +1,27 @@
-import { db } from '../firebase';
+import { db, auth } from '../firebase';
 import {
-  collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc,
-  query, where, serverTimestamp
+  collection, doc, getDoc, getDocs, deleteDoc,
 } from 'firebase/firestore';
-import { Tenant, TenantPlan, TenantStatus, TenantConfig } from '../types/tenant.types';
+import { Tenant, TenantPlan, TenantConfig } from '../types/tenant.types';
 
 const TENANTS_COLLECTION = 'tenants';
+
+// Tenant create/update go through /api/tenants/save (Admin SDK) rather than
+// the client SDK: the adminEmails roster is dual-written to the server-only
+// tenant_private/{id} doc, which a client is not allowed to write, and the
+// two writes must land in one atomic batch.
+async function postTenantSave(body: Record<string, unknown>): Promise<string> {
+  const token = await auth.currentUser?.getIdToken();
+  if (!token) throw new Error('Not signed in.');
+  const res = await fetch('/api/tenants/save', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || 'Failed to save tenant.');
+  return data.id as string;
+}
 
 /**
  * Create a new tenant.
@@ -18,28 +34,13 @@ export async function createTenant(data: {
   adminEmails: string[];
   config?: TenantConfig;
 }): Promise<string> {
-  const id = data.subdomain.toLowerCase().trim();
-  const now = new Date().toISOString();
-
-  const config: Record<string, any> = {};
-  if (data.config?.logo) config.logo = data.config.logo;
-  if (data.config?.primaryColor) config.primaryColor = data.config.primaryColor;
-  if (data.config?.description) config.description = data.config.description;
-  if (data.config?.customDomain) config.customDomain = data.config.customDomain;
-
-  const tenantData = {
+  return postTenantSave({
     name: data.name,
-    subdomain: id,
+    subdomain: data.subdomain.toLowerCase().trim(),
     plan: data.plan,
-    status: 'active' as TenantStatus,
-    config,
     adminEmails: data.adminEmails,
-    createdAt: now,
-    updatedAt: now,
-  };
-
-  await setDoc(doc(db, TENANTS_COLLECTION, id), tenantData);
-  return id;
+    config: data.config,
+  });
 }
 
 /**
@@ -60,28 +61,20 @@ export async function getAllTenants(): Promise<Tenant[]> {
 }
 
 /**
- * Update a tenant's fields.
+ * Update a tenant's fields. (`plan` is intentionally not sent — the Stripe
+ * webhook is the source of truth for plan changes on live tenants.)
  */
 export async function updateTenant(
   id: string,
   data: Partial<Pick<Tenant, 'name' | 'plan' | 'status' | 'adminEmails'> & { config: Partial<TenantConfig> }>
 ): Promise<void> {
-  const ref = doc(db, TENANTS_COLLECTION, id);
-  const updateData: Record<string, any> = {
-    updatedAt: new Date().toISOString(),
-  };
-  if (data.name !== undefined) updateData.name = data.name;
-  if (data.plan !== undefined) updateData.plan = data.plan;
-  if (data.status !== undefined) updateData.status = data.status;
-  if (data.adminEmails !== undefined) updateData.adminEmails = data.adminEmails;
-  // Use dot notation for partial config updates to avoid overwriting existing fields
-  if (data.config) {
-    if (data.config.logo !== undefined) updateData['config.logo'] = data.config.logo;
-    if (data.config.primaryColor !== undefined) updateData['config.primaryColor'] = data.config.primaryColor;
-    if (data.config.description !== undefined) updateData['config.description'] = data.config.description;
-    if (data.config.customDomain !== undefined) updateData['config.customDomain'] = data.config.customDomain;
-  }
-  await updateDoc(ref, updateData);
+  await postTenantSave({
+    id,
+    name: data.name,
+    status: data.status,
+    adminEmails: data.adminEmails,
+    config: data.config,
+  });
 }
 
 /**

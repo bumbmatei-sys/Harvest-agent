@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/api-auth';
 import { adminDb, adminAuth } from '@/lib/firebase-admin';
 import { captureHandledError } from '@/lib/money-path-sentry';
+import { tenantPrivateRef } from '@/lib/tenant-private';
 
 /**
  * DELETE /api/tenants/delete?id=<tenantId>[&dryRun=true]
@@ -295,6 +296,15 @@ export async function DELETE(request: NextRequest) {
     } catch (e) {
       errors.push({ step: 'delete:tenant', message: errMsg(e) });
       captureHandledError(e, { step: 'tenant-delete-tenant-doc', tenantId });
+    }
+
+    // The tenant_private mirror is a TOP-LEVEL doc (tenant_private/{id}), so the
+    // recursiveDelete above never touches it — remove it explicitly.
+    try {
+      await tenantPrivateRef(tenantId).delete();
+    } catch (e) {
+      errors.push({ step: 'delete:tenant_private', message: errMsg(e) });
+      captureHandledError(e, { step: 'tenant-delete-tenant-private', tenantId });
     }
 
     return NextResponse.json(

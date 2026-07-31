@@ -27,14 +27,20 @@ async function main() {
   admin.initializeApp({ credential: loadCredential() });
   const db = admin.firestore();
   const ref = db.collection('tenants').doc(TENANT_ID);
+  // Dual-write target: the adminEmails roster also lives on the server-only
+  // tenant_private/{id} doc (see src/lib/tenant-private.ts). One batch, so the
+  // two locations can't diverge.
+  const privateRef = db.collection('tenant_private').doc(TENANT_ID);
 
   const snap = await ref.get();
+  const privateSnap = await privateRef.get();
   const now = admin.firestore.FieldValue.serverTimestamp();
 
+  const adminEmails = ['bumbmatei@proton.me', 'bumbmatei@zohomail.eu'];
   const data = {
     name: 'Harvest',
     subdomain: 'harvest',
-    adminEmails: ['bumbmatei@proton.me', 'bumbmatei@zohomail.eu'],
+    adminEmails,
     plan: 'ministry',
     status: 'active',
     updatedAt: now,
@@ -42,9 +48,17 @@ async function main() {
   if (!snap.exists) {
     data.createdAt = now;
   }
+  const privateData = { adminEmails, updatedAt: now };
+  if (!privateSnap.exists) {
+    privateData.createdAt = now;
+  }
 
-  await ref.set(data, { merge: true });
+  const batch = db.batch();
+  batch.set(ref, data, { merge: true });
+  batch.set(privateRef, privateData, { merge: true });
+  await batch.commit();
   console.log(`tenants/${TENANT_ID} ${snap.exists ? 'updated' : 'created'} successfully.`);
+  console.log(`tenant_private/${TENANT_ID} ${privateSnap.exists ? 'updated' : 'created'} successfully.`);
   process.exit(0);
 }
 
