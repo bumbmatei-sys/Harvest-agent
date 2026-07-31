@@ -349,7 +349,13 @@ export const addChurchBilling = functions.https.onCall(async (data, context) => 
   const tenantData = tenantDoc.data();
   if (!tenantData) throw new functions.https.HttpsError('not-found', 'Tenant not found');
 
-  const subscriptionId = tenantData?.stripeSubscriptionId;
+  // The Stripe identifiers live on the server-only tenant_private/{tenantId}
+  // doc, NOT the world-readable tenants doc (which carried a harvestable admin
+  // roster alongside them). The Admin SDK bypasses security rules, so this
+  // reads the private doc directly. Reading the public copy would bill against
+  // a STALE subscription id once the Next.js app stopped maintaining it.
+  const tenantPrivateDoc = await db.collection('tenant_private').doc(tenantId).get();
+  const subscriptionId = tenantPrivateDoc.data()?.stripeSubscriptionId;
   if (!subscriptionId) throw new functions.https.HttpsError('failed-precondition', 'Tenant has no active Stripe subscription');
 
   const subItem = await stripe.subscriptionItems.create({
