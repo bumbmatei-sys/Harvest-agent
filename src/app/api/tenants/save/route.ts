@@ -3,7 +3,7 @@ import type { NextRequest } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireSuperAdmin } from '@/lib/api-auth';
 import { captureHandledError } from '@/lib/money-path-sentry';
-import { tenantPrivateRef, pickTenantPrivateFields } from '@/lib/tenant-private';
+import { tenantPrivateRef } from '@/lib/tenant-private';
 
 export const dynamic = 'force-dynamic';
 
@@ -40,10 +40,11 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Tenant not found' }, { status: 404 });
       }
 
+      // The roster is written ONLY to the server-only tenant_private doc; the
+      // public doc carries the remaining (world-readable) fields.
       const updateData: Record<string, unknown> = { updatedAt: now };
       if (body.name !== undefined) updateData.name = body.name;
       if (body.status !== undefined) updateData.status = body.status;
-      if (body.adminEmails !== undefined) updateData.adminEmails = body.adminEmails;
       if (body.config) {
         for (const key of ['logo', 'primaryColor', 'description', 'customDomain'] as const) {
           if (body.config[key] !== undefined) updateData[`config.${key}`] = body.config[key];
@@ -52,9 +53,8 @@ export async function POST(request: NextRequest) {
 
       const batch = adminDb.batch();
       batch.update(ref, updateData);
-      const privateFields = pickTenantPrivateFields(updateData);
-      if (Object.keys(privateFields).length > 0) {
-        batch.set(tenantPrivateRef(id), { ...privateFields, updatedAt: now }, { merge: true });
+      if (body.adminEmails !== undefined) {
+        batch.set(tenantPrivateRef(id), { adminEmails: body.adminEmails, updatedAt: now }, { merge: true });
       }
       await batch.commit();
       return NextResponse.json({ id });
@@ -73,24 +73,22 @@ export async function POST(request: NextRequest) {
       if (body.config?.[key]) config[key] = body.config[key];
     }
 
-    const tenantData = {
+    // batch.create() keeps the old client-side availability check race-free:
+    // a concurrent claim of the same subdomain fails with ALREADY_EXISTS
+    // instead of clobbering the other tenant. The roster goes ONLY to the
+    // server-only tenant_private doc.
+    const batch = adminDb.batch();
+    batch.create(adminDb.collection('tenants').doc(id), {
       name,
       subdomain: id,
       plan: body.plan || 'plus',
       status: 'active',
       config,
-      adminEmails: Array.isArray(body.adminEmails) ? body.adminEmails : [],
       createdAt: now,
       updatedAt: now,
-    };
-
-    // batch.create() keeps the old client-side availability check race-free:
-    // a concurrent claim of the same subdomain fails with ALREADY_EXISTS
-    // instead of clobbering the other tenant.
-    const batch = adminDb.batch();
-    batch.create(adminDb.collection('tenants').doc(id), tenantData);
+    });
     batch.set(tenantPrivateRef(id), {
-      ...pickTenantPrivateFields(tenantData),
+      adminEmails: Array.isArray(body.adminEmails) ? body.adminEmails : [],
       createdAt: now,
       updatedAt: now,
     });

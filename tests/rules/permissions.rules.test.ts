@@ -542,11 +542,14 @@ describe('tenant doc update [manageBranding || manageSettings]', () => {
     await assertFails(db.doc(`tenants/${T}`).update({ name: 'Hijacked' }));
   });
 
-  it('billing/owner/roster fields stay locked even for a branding admin (and open to super admin)', async () => {
+  it('billing/owner fields stay locked even for a branding admin (and open to super admin)', async () => {
+    // The adminEmails roster and Stripe ids left the public doc entirely — the
+    // REAL roster is tenant_private (write: if false; see
+    // tenant-private.rules.test.ts), and the rules never read the public field
+    // again, so those keys also left this block list.
     const branding = (await asUid(holderUid('manageBranding'))).firestore();
     await assertFails(branding.doc(`tenants/${T}`).update({ plan: 'ultra' }));
     await assertFails(branding.doc(`tenants/${T}`).update({ ownerId: 'me' }));
-    await assertFails(branding.doc(`tenants/${T}`).update({ adminEmails: ['evil@x.com'] }));
     const sa = (await superAdmin()).firestore();
     await assertSucceeds(sa.doc(`tenants/${T}`).update({ plan: 'ultra' }));
   });

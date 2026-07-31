@@ -55,7 +55,7 @@ describe('POST /api/tenants/save — super-admin tenant create/update with dual-
     expect(mockBatchCommit).not.toHaveBeenCalled();
   });
 
-  it('creates public doc + tenant_private mirror in one batch, with identical roster', async () => {
+  it('creates the public doc WITHOUT the roster and the tenant_private doc WITH it, in one batch', async () => {
     const res = await POST(makeRequest({
       name: 'Grace', subdomain: 'Grace-Church', plan: 'pro',
       adminEmails: ['pastor@grace.org'], config: { description: 'A church' },
@@ -63,32 +63,31 @@ describe('POST /api/tenants/save — super-admin tenant create/update with dual-
     expect(res.status).toBe(200);
     expect((await res.json()).id).toBe('grace-church');
 
-    // Public doc created race-free (create(), not set()).
+    // Public doc created race-free (create(), not set()) — no roster on it.
     expect(mockBatchCreate).toHaveBeenCalledWith(
       expect.objectContaining({ __coll: 'tenants', id: 'grace-church' }),
       expect.objectContaining({
         name: 'Grace', subdomain: 'grace-church', plan: 'pro', status: 'active',
-        adminEmails: ['pastor@grace.org'],
       }),
     );
-    // Dual-write parity: the mirror carries the identical roster, same batch.
-    const publicCreate = mockBatchCreate.mock.calls[0];
+    expect(mockBatchCreate.mock.calls[0][1].adminEmails).toBeUndefined();
+    // The roster lands ONLY on the server-only tenant_private doc, same batch.
     const privateSet = mockBatchSet.mock.calls.find((c) => c[0].__coll === 'tenant_private');
     expect(privateSet).toBeDefined();
     expect(privateSet![0].id).toBe('grace-church');
-    expect(privateSet![1].adminEmails).toEqual(publicCreate[1].adminEmails);
+    expect(privateSet![1].adminEmails).toEqual(['pastor@grace.org']);
     expect(mockBatchCommit).toHaveBeenCalledTimes(1);
   });
 
-  it('updates adminEmails on both locations in one batch', async () => {
+  it('updates the roster on tenant_private only — never the public doc', async () => {
     mockDocGet.mockResolvedValue({ exists: true, data: () => ({ name: 'Grace' }) });
 
     const res = await POST(makeRequest({ id: 'grace-church', adminEmails: ['new@grace.org'] }));
     expect(res.status).toBe(200);
 
-    expect(mockBatchUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({ __coll: 'tenants', id: 'grace-church' }),
-      expect.objectContaining({ adminEmails: ['new@grace.org'] }),
+    expect(mockBatchUpdate).not.toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ adminEmails: expect.anything() }),
     );
     expect(mockBatchSet).toHaveBeenCalledWith(
       expect.objectContaining({ __coll: 'tenant_private', id: 'grace-church' }),

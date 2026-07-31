@@ -5,6 +5,7 @@ import { doc, onSnapshot } from 'firebase/firestore';
 import { Loader2, CreditCard } from 'lucide-react';
 import { auth, db } from '../firebase';
 import { isSuperAdminEmail } from '../utils/super-admins';
+import { checkRosterAdmin } from '../utils/tenant.utils';
 import { TenantPlan } from '../types/tenant.types';
 import FirstRunSetup from './FirstRunSetup';
 
@@ -78,13 +79,15 @@ const OnboardingGate: React.FC<{ children: React.ReactNode }> = ({ children }) =
           stopTenant();
           tenantUnsub = onSnapshot(doc(db, 'tenants', tId), (tSnap) => {
             const t = tSnap.exists() ? tSnap.data() : null;
-            const email = (user.email || '').toLowerCase();
-            const isAdminUser = ADMIN_ROLES.includes(role)
-              || (Array.isArray(t?.adminEmails) && t!.adminEmails.some((e: string) => (e || '').toLowerCase() === email));
             // Only a brand-new tenant (explicit false) gates first-run, and only
             // for its admin. Legacy tenants (no field) and members pass through.
-            if (t && t.setupCompleted === false && isAdminUser) setStatus('first-run');
-            else setStatus('ready');
+            if (!t || t.setupCompleted !== false) { setStatus('ready'); return; }
+            if (ADMIN_ROLES.includes(role)) { setStatus('first-run'); return; }
+            // Roster fallback: the adminEmails roster moved off the public
+            // tenant doc to the server-only tenant_private doc, so ask the API.
+            checkRosterAdmin(tId)
+              .then((isRoster) => setStatus(isRoster ? 'first-run' : 'ready'))
+              .catch(() => setStatus('ready'));
           }, () => setStatus('ready'));
         } else {
           stopTenant();

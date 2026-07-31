@@ -5,6 +5,7 @@ import Stripe from 'stripe';
 import QRCode from 'qrcode';
 import { Resend } from 'resend';
 import { adminDb } from '@/lib/firebase-admin';
+import { getTenantPrivate } from '@/lib/tenant-private';
 import { verifyAuth } from '@/lib/api-auth';
 import { PLATFORM_FEE_MAP } from '@/lib/stripe-config';
 import { sendAutomatedSms } from '@/lib/twilio';
@@ -167,12 +168,13 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Payments are not configured' }, { status: 500 });
       }
 
-      // Connect account + plan live on the tenant doc — the SAME fields donations
-      // use (see /api/stripe/donate). Missing account → fail cleanly; NEVER fall
-      // back to confirming a paid ticket for free.
+      // Plan lives on the tenant doc; the Connect account is on the server-only
+      // tenant_private doc — the SAME fields donations use (see /api/stripe/
+      // donate). Missing account → fail cleanly; NEVER fall back to confirming
+      // a paid ticket for free.
       const tenantSnap = await adminDb.collection('tenants').doc(tenantId).get();
       const tenantData = tenantSnap.data() || {};
-      const connectAccountId = tenantData.stripeConnectAccountId;
+      const connectAccountId = (await getTenantPrivate(tenantId)).stripeConnectAccountId;
       const plan = tenantData.plan || 'plus';
       if (!connectAccountId) {
         return NextResponse.json(

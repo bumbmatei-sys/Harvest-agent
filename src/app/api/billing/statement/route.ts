@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import Stripe from 'stripe';
 import { requireOwner } from '@/lib/api-auth';
+import { getTenantPrivate } from '@/lib/tenant-private';
 import { getPlanDisplayName } from '@/utils/plan-features';
 import type { TenantPlan } from '@/types/tenant.types';
 import { captureHandledError } from '@/lib/money-path-sentry';
@@ -150,8 +151,9 @@ export async function POST(request: NextRequest) {
     const planLabel = plan ? getPlanDisplayName(plan) : '—';
     const status = tenantData.status || 'active';
 
-    const customerId: string | undefined = tenantData.stripeCustomerId;
-    const subscriptionId: string | undefined = tenantData.stripeSubscriptionId;
+    const privData = await getTenantPrivate(ownerOrResponse.tenantId);
+    const customerId: string | undefined = privData.stripeCustomerId;
+    const subscriptionId: string | undefined = privData.stripeSubscriptionId;
 
     let currency = 'usd';
     let nextBillingDate: Date | null = null;

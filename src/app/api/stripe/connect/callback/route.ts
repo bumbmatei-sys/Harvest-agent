@@ -36,8 +36,10 @@ export async function GET(request: NextRequest) {
     // Determine status (shared with the account.updated webhook so they can't drift)
     const status = deriveConnectStatus(account);
 
-    // Find the tenant with this account ID and update status
-    const tenantsSnapshot = await adminDb.collection('tenants')
+    // Find the tenant with this account ID and update status. The account id
+    // lives on the server-only tenant_private doc (whose id IS the tenantId);
+    // the status stays on the public tenant doc.
+    const tenantsSnapshot = await adminDb.collection('tenant_private')
       .where('stripeConnectAccountId', '==', accountId)
       .limit(1)
       .get();
@@ -48,7 +50,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(new URL('/?error=connect_tenant_not_found', apexUrl));
     }
 
-    await tenantsSnapshot.docs[0].ref.update({
+    await adminDb.collection('tenants').doc(tenantsSnapshot.docs[0].id).update({
       stripeConnectStatus: status,
       updatedAt: new Date().toISOString(),
     });

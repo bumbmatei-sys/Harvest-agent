@@ -60,6 +60,11 @@ vi.mock('@/lib/firebase-admin', () => ({
   adminDb: { collection: vi.fn(() => makeCollRef()) },
 }));
 
+// The Connect account id moved to the server-only tenant_private doc — the
+// route reads it via getTenantPrivate (plan still comes from the tenant doc).
+const { mockGetTenantPrivate } = vi.hoisted(() => ({ mockGetTenantPrivate: vi.fn() }));
+vi.mock('@/lib/tenant-private', () => ({ getTenantPrivate: mockGetTenantPrivate }));
+
 // Identity link is resolved from the verified token, never the request body.
 vi.mock('@/lib/api-auth', () => ({ verifyAuth: mockVerifyAuth }));
 
@@ -103,6 +108,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   process.env.STRIPE_SECRET_KEY = 'sk_test_mock';
   delete process.env.RESEND_API_KEY;
+  mockGetTenantPrivate.mockResolvedValue({ stripeConnectAccountId: 'acct_T' });
   mockCollGet.mockResolvedValue({ docs: [] });
   // .add() returns a DocumentReference (has .id AND .delete() for rollback).
   mockAdd.mockResolvedValue({ id: 'pending1', delete: mockDocDelete });
@@ -189,9 +195,10 @@ describe('POST /api/event-registration/submit — paid tickets', () => {
   });
 
   it('returns a clean 400 (never a free confirmation) when the tenant has no Connect account', async () => {
+    mockGetTenantPrivate.mockResolvedValue({}); // no stripeConnectAccountId
     mockDocGet
       .mockResolvedValueOnce({ exists: true, data: () => PAID_EVENT }) // event
-      .mockResolvedValueOnce({ exists: true, data: () => ({ plan: 'plus' }) }); // tenant, no stripeConnectAccountId
+      .mockResolvedValueOnce({ exists: true, data: () => ({ plan: 'plus' }) }); // tenant
 
     const res = await POST(makeRequest(baseBody));
     expect(res.status).toBe(400);

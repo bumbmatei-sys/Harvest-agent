@@ -19,6 +19,17 @@ export interface TenantConfig {
   }[];
 }
 
+/**
+ * The world-readable tenants/{id} doc (`allow read: if true` — pre-auth
+ * subdomain resolution needs name/subdomain/branding before sign-in).
+ *
+ * The admin roster (adminEmails) and the Stripe identifiers
+ * (stripeCustomerId / stripeSubscriptionId / stripePriceId /
+ * stripeConnectAccountId) deliberately do NOT exist on this type: they live on
+ * the server-only tenant_private/{id} doc (src/lib/tenant-private.ts), which
+ * no client can read. Re-adding one of those fields here is how the roster
+ * leak happens again — don't.
+ */
 export interface Tenant {
   id: string;           // Firestore doc ID
   name: string;         // Church/ministry name
@@ -26,11 +37,10 @@ export interface Tenant {
   plan: TenantPlan;
   status: TenantStatus;
   config: TenantConfig;
-  adminEmails: string[]; // emails of church admins for this tenant
   /**
    * The plan owner (buyer) uid. Set by the Stripe webhook at tenant creation
    * (ownerId = paying user's uid) and immutable — the correct gate for owner-only
-   * surfaces like Billing & Payments.
+   * surfaces like Billing & Payments. (A uid, not PII — stays public.)
    */
   ownerId?: string;
   /**
@@ -42,13 +52,8 @@ export interface Tenant {
   setupCompleted?: boolean;
   createdAt: string;     // ISO date string
   updatedAt: string;     // ISO date string
-  // Stripe billing fields
-  stripeCustomerId?: string;
-  stripeSubscriptionId?: string;
-  stripePriceId?: string;
   // Add-on subscription IDs
   addOnAiAssistant?: string; // Stripe subscription ID for AI Assistant add-on
-  // Stripe Connect fields
-  stripeConnectAccountId?: string;
+  // Stripe Connect status (the account ID itself is on tenant_private)
   stripeConnectStatus?: 'pending' | 'active' | 'restricted';
 }

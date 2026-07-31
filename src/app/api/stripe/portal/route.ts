@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import Stripe from 'stripe';
 import { adminDb } from '@/lib/firebase-admin';
+import { getTenantPrivate } from '@/lib/tenant-private';
 import { requireAuth } from '@/lib/api-auth';
 
 export const dynamic = 'force-dynamic';
@@ -29,10 +30,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Access denied to this tenant' }, { status: 403 });
     }
 
-    // Get the Stripe customer ID from the tenant document
-    const tenantDoc = await adminDb.collection('tenants').doc(tenantId).get();
-    const tenantData = tenantDoc.data();
-    const customerId = tenantData?.stripeCustomerId;
+    // Get the Stripe customer ID from the server-only tenant_private doc
+    const customerId = (await getTenantPrivate(tenantId)).stripeCustomerId;
 
     if (!customerId) {
       return NextResponse.json({ error: 'No Stripe subscription found. Please subscribe first.' }, { status: 400 });

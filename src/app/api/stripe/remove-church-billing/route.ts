@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import Stripe from 'stripe';
 import { adminDb } from '@/lib/firebase-admin';
+import { getTenantPrivate } from '@/lib/tenant-private';
 import { requireAdmin } from '@/lib/api-auth';
 
 export const dynamic = 'force-dynamic';
@@ -44,8 +45,7 @@ export async function POST(request: NextRequest) {
         if (!userOrErr.tenantId) {
           return NextResponse.json({ error: 'Access denied' }, { status: 403 });
         }
-        const callerTenant = await adminDb.collection('tenants').doc(userOrErr.tenantId).get();
-        const subscriptionId = callerTenant.data()?.stripeSubscriptionId;
+        const subscriptionId = (await getTenantPrivate(userOrErr.tenantId)).stripeSubscriptionId;
         if (!subscriptionId) {
           return NextResponse.json({ error: 'Access denied' }, { status: 403 });
         }

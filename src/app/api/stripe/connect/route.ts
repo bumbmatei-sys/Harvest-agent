@@ -5,7 +5,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { requireAuth } from '@/lib/api-auth';
 import { resolveReturnBaseUrl } from '@/lib/connect-return-url';
 import { captureMoneyPathError } from '@/lib/money-path-sentry';
-import { tenantPrivateRef } from '@/lib/tenant-private';
+import { tenantPrivateRef, getTenantPrivate } from '@/lib/tenant-private';
 
 export const dynamic = 'force-dynamic';
 
@@ -66,24 +66,26 @@ export async function POST(request: NextRequest) {
         && connectingUser.affiliateStripeAccountId !== accountId
         && connectingUser.affiliateConnectStatus === 'active');
 
-    // Check if already connected
-    if (tenantData.stripeConnectAccountId) {
+    // Check if already connected — the account id lives on the server-only
+    // tenant_private doc (status stays on the public tenant doc).
+    const existingAccountId = (await getTenantPrivate(tenantId)).stripeConnectAccountId;
+    if (existingAccountId) {
       // Ensure the affiliate mirror points at the canonical account, even for
       // tenants connected before unification. Mirror the tenant's current status
       // too so a fully-onboarded account is immediately payout-ready for affiliate
       // commissions (account.updated may not fire again for an existing account).
-      if (mirrorSafe(tenantData.stripeConnectAccountId)) {
+      if (mirrorSafe(existingAccountId)) {
         await connectingUserRef.set({
-          affiliateStripeAccountId: tenantData.stripeConnectAccountId,
+          affiliateStripeAccountId: existingAccountId,
           ...(tenantData.stripeConnectStatus ? { affiliateConnectStatus: tenantData.stripeConnectStatus } : {}),
           updatedAt: new Date().toISOString(),
         }, { merge: true });
       }
       // Create a new account link for existing account
       const accountLink = await stripe.accountLinks.create({
-        account: tenantData.stripeConnectAccountId,
+        account: existingAccountId,
         refresh_url: `${baseUrl}/?section=payment`,
-        return_url: `${baseUrl}/api/stripe/connect/callback?account_id=${tenantData.stripeConnectAccountId}`,
+        return_url: `${baseUrl}/api/stripe/connect/callback?account_id=${existingAccountId}`,
         type: 'account_onboarding',
       });
       return NextResponse.json({ url: accountLink.url });
@@ -99,11 +101,11 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Save the account ID and set status to pending
+    // Save the account ID (server-only tenant_private) and set the public
+    // status to pending — one batch.
     const now = new Date().toISOString();
     const batch = adminDb.batch();
     batch.update(adminDb.collection('tenants').doc(tenantId), {
-      stripeConnectAccountId: account.id,
       stripeConnectStatus: 'pending',
       updatedAt: now,
     });

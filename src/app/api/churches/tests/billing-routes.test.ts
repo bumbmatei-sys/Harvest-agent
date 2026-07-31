@@ -19,6 +19,11 @@ vi.mock('stripe', () => ({
   },
 }));
 
+// The subscription id moved to the server-only tenant_private doc — the route
+// reads it via getTenantPrivate, not from the tenant doc queue below.
+const { mockGetTenantPrivate } = vi.hoisted(() => ({ mockGetTenantPrivate: vi.fn() }));
+vi.mock('@/lib/tenant-private', () => ({ getTenantPrivate: mockGetTenantPrivate }));
+
 const { POST: addBilling } = await import('@/app/api/churches/add-billing/route');
 const { POST: removeBilling } = await import('@/app/api/churches/remove-billing/route');
 
@@ -64,6 +69,7 @@ beforeEach(() => {
   mockGetDoc.mockReset();
   mockCollectionGet.mockReset();
   setChurchCount(0);
+  mockGetTenantPrivate.mockResolvedValue({ stripeSubscriptionId: 'sub_1' });
   mockSubItemCreate.mockResolvedValue({ id: 'si_new' });
   mockSubItemDel.mockResolvedValue({ id: 'si_deleted' });
   process.env.STRIPE_SECRET_KEY = 'sk_test_dummy';

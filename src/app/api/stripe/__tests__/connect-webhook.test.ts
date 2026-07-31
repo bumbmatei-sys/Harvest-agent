@@ -49,6 +49,10 @@ vi.mock('@/lib/firebase-admin', () => ({
         get: mockDocGet,
         set: mockDocSet,
         delete: mockDocDelete,
+        // The tenant status write goes through collection('tenants').doc(id)
+        // (the account-id query returns tenant_private docs, whose refs must
+        // not be written) — reuse mockTenantUpdate so assertions still see it.
+        update: mockTenantUpdate,
       })),
       where: vi.fn().mockReturnThis(),
       limit: vi.fn().mockReturnThis(),

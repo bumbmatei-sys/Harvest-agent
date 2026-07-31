@@ -38,6 +38,7 @@ import BillingAndPayments from './BillingAndPayments';
 import { AdminScreenHeader, AdminHeaderContext, AdminHeaderOverride } from './AdminScreenHeader';
 import { getPlanFeatures, hasBrandingAccess } from '../utils/plan-features';
 import { db, auth } from '../firebase';
+import { checkRosterAdmin } from '../utils/tenant.utils';
 import { signOut } from 'firebase/auth';
 import { collection, query, where, onSnapshot, limit } from 'firebase/firestore';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
@@ -237,12 +238,21 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
   // *features* are gated by the tenant's plan — so platformOverride is false.
   const platformOverride = hasPlatformOverride();
   // The church owner (tenant creator) is the user listed in the tenant's
-  // adminEmails. Build-on-payment gives that owner role 'admin' (so claims grant
-  // admin), while the legacy label was 'church_admin' — treat both as the full-
-  // access tenant owner so the creator truly owns their dashboard.
-  const ownerEmail = (auth.currentUser?.email || '').toLowerCase();
-  const isTenantOwnerEmail = Array.isArray((tenantData as any)?.adminEmails)
-    && (tenantData as any).adminEmails.some((e: string) => (e || '').toLowerCase() === ownerEmail);
+  // admin roster. Build-on-payment gives that owner role 'admin' (so claims
+  // grant admin), while the legacy label was 'church_admin' — treat both as
+  // the full-access tenant owner so the creator truly owns their dashboard.
+  // The roster moved off the public tenant doc to the server-only
+  // tenant_private doc, so membership is resolved via the API (defaults to
+  // false until it answers — same as before tenantData loaded).
+  const [isTenantOwnerEmail, setIsTenantOwnerEmail] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    if (!tenantId || !auth.currentUser) { setIsTenantOwnerEmail(false); return; }
+    checkRosterAdmin(tenantId).then((isRoster) => {
+      if (!cancelled) setIsTenantOwnerEmail(isRoster);
+    });
+    return () => { cancelled = true; };
+  }, [tenantId, isAuthReady]);
   const isChurchAdmin = userRole === 'church_admin' || isTenantOwnerEmail;
   const perms = userPermissions ?? {} as Permission;
   // The store `tenantPlan` is synced from the context plan by an effect in App.tsx,
