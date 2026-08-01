@@ -513,31 +513,6 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
     }
   };
 
-  if (loading) {
-    return <div className="flex items-center justify-center h-40"><div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--brand-color, #B8962E)', borderTopColor: 'transparent' }} /></div>;
-  }
-
-  // A failed contacts read is NOT an empty CRM. Distinct copy, distinct colour,
-  // and a retry — never the "add your first contact" empty state, which would
-  // invite an admin to re-enter people who are already there but unreadable.
-  if (contactsFailed) {
-    return (
-      <div className="bg-red-50 rounded-2xl border border-red-200 shadow-sm p-8 text-center text-red-700">
-        <AlertTriangle size={28} className="mx-auto mb-2 opacity-60" />
-        <p className="text-sm font-display font-semibold">Couldn&apos;t load contacts</p>
-        <p className="text-xs mt-1 text-red-600">
-          {(contactsError as Error | null)?.message || 'The contact list could not be read.'}
-        </p>
-        <button
-          onClick={() => refetchContacts()}
-          className="mt-3 px-3 py-1.5 rounded-xl text-xs font-semibold border border-red-300 text-red-700 hover:bg-red-100"
-        >
-          Try again
-        </button>
-      </div>
-    );
-  }
-
   // Pill segmented control for the Contacts / Analytics / Roles sub-views. Each
   // pill is shown only to admins entitled to that sub-view (Roles lives here
   // rather than as its own top-level tab).
@@ -610,6 +585,39 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
             <p className="text-sm">You don&apos;t have access to manage roles.</p>
           </div>
         )}
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div ref={scrollRef} className="max-w-3xl mx-auto">
+        {subTabBar}
+        <div className="flex items-center justify-center h-40"><div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--brand-color, #B8962E)', borderTopColor: 'transparent' }} /></div>
+      </div>
+    );
+  }
+
+  // A failed contacts read is NOT an empty CRM. Distinct copy, distinct colour,
+  // and a retry — never the "add your first contact" empty state, which would
+  // invite an admin to re-enter people who are already there but unreadable.
+  if (contactsFailed) {
+    return (
+      <div ref={scrollRef} className="max-w-3xl mx-auto">
+        {subTabBar}
+        <div className="bg-red-50 rounded-2xl border border-red-200 shadow-sm p-8 text-center text-red-700">
+          <AlertTriangle size={28} className="mx-auto mb-2 opacity-60" />
+          <p className="text-sm font-display font-semibold">Couldn&apos;t load contacts</p>
+          <p className="text-xs mt-1 text-red-600">
+            {(contactsError as Error | null)?.message || 'The contact list could not be read.'}
+          </p>
+          <button
+            onClick={() => refetchContacts()}
+            className="mt-3 px-3 py-1.5 rounded-xl text-xs font-semibold border border-red-300 text-red-700 hover:bg-red-100"
+          >
+            Try again
+          </button>
+        </div>
       </div>
     );
   }
