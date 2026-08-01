@@ -111,6 +111,51 @@
     value injected per-request from layout.tsx (deriveOnDarkAccent). Unused
     in the light theme — declared here only so the var always resolves. */
  --brand-color-on-dark: var(--brand-color);
+
+ /* ── Theming stage 4: the hue scales ────────────────────────────────────
+    Tailwind's red/green/amber/blue/yellow/purple/pink and the Harvest
+    sky/field/wheat scales were fixed hexes, so 771 uses of them did not theme:
+    a bg-red-50 error banner stayed a bright block on the dark ground, and
+    text-red-600 on it fell to 3.1:1.
+
+    Two separate namespaces, because one value cannot serve both roles. A mid
+    shade like red-600 is used BOTH as ink (75 uses) and as a solid button fill
+    (12 uses). Ink has to get LIGHTER on a dark ground; a solid danger button
+    has to stay saturated or it stops reading as a button. So:
+
+      --c-*    drives `colors` (bg/border/ring/divide). Only the TINT shades
+               (50/100/200) are themed; 300+ stay literal in the config, which
+               is what keeps solid buttons identical in both themes.
+      --ink-*  drives `textColor` only, and inverts across the whole ramp.
+
+    Channel triplets rather than hex, so `rgb(var(--x) / <alpha-value>)` keeps
+    the opacity modifier working -- bg-red-50/40 and bg-red-500/10 are live in
+    src, and a var holding a hex would silently emit nothing with `/NN`.
+
+    Dark values are derived, not eyeballed: tints are the family's 500 mixed
+    over --surface-raised at 8/14/22%, and each ink is the darkest entry in its
+    own scale that still clears AA against BOTH dark surfaces AND every tint of
+    its family. Worst pair in the system is 4.65:1. Asserted in
+    theming-stage4.test.ts, which recomputes rather than trusting these. */
+  --c-red-50: 254 242 242; --c-red-100: 254 226 226; --c-red-200: 254 202 202;
+  --ink-red-300: 252 165 165; --ink-red-400: 248 113 113; --ink-red-500: 239 68 68; --ink-red-600: 220 38 38; --ink-red-700: 185 28 28; --ink-red-800: 153 27 27;
+  --c-green-50: 240 253 244; --c-green-100: 220 252 231;
+  --ink-green-400: 74 222 128; --ink-green-500: 34 197 94; --ink-green-600: 22 163 74; --ink-green-700: 21 128 61; --ink-green-800: 22 101 52;
+  --c-amber-50: 255 251 235; --c-amber-100: 254 243 199; --c-amber-200: 253 230 138;
+  --ink-amber-500: 245 158 11; --ink-amber-600: 217 119 6; --ink-amber-700: 180 83 9; --ink-amber-800: 146 64 14;
+  --c-field-100: 234 240 226; --c-field-200: 201 216 179;
+  --ink-field-500: 110 142 82; --ink-field-600: 85 112 63; --ink-field-700: 64 86 47;
+  --c-wheat-50: 251 244 230; --c-wheat-100: 245 237 224; --c-wheat-200: 234 213 168;
+  --ink-wheat-500: 201 150 58; --ink-wheat-600: 181 134 47; --ink-wheat-700: 143 104 34;
+  --c-sky-100: 228 240 250;
+  --ink-sky-500: 79 151 214; --ink-sky-600: 58 120 181; --ink-sky-700: 44 92 140;
+  --c-blue-50: 239 246 255; --c-blue-100: 219 234 254;
+  --ink-blue-500: 59 130 246; --ink-blue-600: 37 99 235; --ink-blue-700: 29 78 216;
+  --c-yellow-50: 254 252 232; --c-yellow-100: 254 249 195;
+  --ink-yellow-500: 234 179 8; --ink-yellow-600: 202 138 4; --ink-yellow-700: 161 98 7; --ink-yellow-800: 133 77 14;
+  --c-purple-50: 250 245 255; --c-purple-100: 243 232 255;
+  --ink-purple-500: 168 85 247; --ink-purple-700: 126 34 206;
+  --ink-pink-500: 236 72 153;
  }
 
  /* ── Theming stage 2: where stage 3's dark palette goes ──────────────────
@@ -206,6 +251,30 @@
    /* The gold CTA halo needs the corrected accent, or a dark tenant colour
       produces a glow nobody can see. */
    --glow-gold: 0 10px 30px -8px color-mix(in srgb, var(--brand-color-on-dark, var(--brand-color)) 46%, transparent);
+
+   /* ── Stage 4: hue scales on dark ──────────────────────────────────────
+      Tints invert (light fill -> dark fill); inks invert the other way.
+      Solid fills at 300+ are deliberately absent: they keep their light value,
+      exactly as --brand-color does. */
+  --c-red-50: 50 32 28; --c-red-100: 63 34 30; --c-red-200: 79 38 34;
+  --ink-red-300: 248 113 113; --ink-red-400: 252 165 165; --ink-red-500: 254 202 202; --ink-red-600: 254 202 202; --ink-red-700: 254 226 226; --ink-red-800: 254 242 242;
+  --c-green-50: 34 42 30; --c-green-100: 34 53 34;
+  --ink-green-400: 34 197 94; --ink-green-500: 74 222 128; --ink-green-600: 134 239 172; --ink-green-700: 220 252 231; --ink-green-800: 240 253 244;
+  --c-amber-50: 51 39 23; --c-amber-100: 64 47 22; --c-amber-200: 80 57 21;
+  --ink-amber-500: 245 158 11; --ink-amber-600: 252 211 77; --ink-amber-700: 253 230 138; --ink-amber-800: 255 251 235;
+  --c-field-100: 45 45 32; --c-field-200: 51 54 37;
+  --ink-field-500: 140 169 110; --ink-field-600: 201 216 179; --ink-field-700: 234 240 226;
+  --c-wheat-50: 47 39 27; --c-wheat-100: 57 46 29; --c-wheat-200: 71 56 31;
+  --ink-wheat-500: 212 169 79; --ink-wheat-600: 234 213 168; --ink-wheat-700: 251 244 230;
+  --c-sky-100: 40 46 51;
+  --ink-sky-500: 107 168 221; --ink-sky-600: 191 220 242; --ink-sky-700: 228 240 250;
+  --c-blue-50: 36 37 42; --c-blue-100: 38 43 55;
+  --ink-blue-500: 96 165 250; --ink-blue-600: 191 219 254; --ink-blue-700: 239 246 255;
+  --c-yellow-50: 50 41 23; --c-yellow-100: 62 50 22;
+  --ink-yellow-500: 234 179 8; --ink-yellow-600: 253 224 71; --ink-yellow-700: 254 240 138; --ink-yellow-800: 254 252 232;
+  --c-purple-50: 45 33 42; --c-purple-100: 53 37 55;
+  --ink-purple-500: 192 132 252; --ink-purple-700: 250 245 255;
+  --ink-pink-500: 236 72 153;
  }
 }
 

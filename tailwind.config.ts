@@ -41,15 +41,21 @@ const config: Config = {
         // Fixed reference wheat-gold scale (tints/shades that shouldn't shift
         // with the tenant color — e.g. brand chrome). Live actions use `gold`.
         wheat: {
-          50: "#FBF4E6", 100: "#F5EDE0", 200: "#EAD5A8", 300: "#DCBB74",
-          400: "#D4A94F", 500: "#C9963A", 600: "#B5862F", 700: "#8F6822",
+          // 50/100/200 are TINT fills and theme; 300+ are solid and do not.
+          50: "rgb(var(--c-wheat-50) / <alpha-value>)",
+          100: "rgb(var(--c-wheat-100) / <alpha-value>)",
+          200: "rgb(var(--c-wheat-200) / <alpha-value>)",
+          300: "#DCBB74", 400: "#D4A94F", 500: "#C9963A", 600: "#B5862F", 700: "#8F6822",
         },
         sky: {
-          100: "#E4F0FA", 200: "#BFDCF2", 300: "#93C1E7", 400: "#6BA8DD",
+          100: "rgb(var(--c-sky-100) / <alpha-value>)",
+          200: "#BFDCF2", 300: "#93C1E7", 400: "#6BA8DD",
           500: "#4F97D6", 600: "#3A78B5", 700: "#2C5C8C",
         },
         field: {
-          100: "#EAF0E2", 200: "#C9D8B3", 300: "#A6C085", 400: "#8CA96E",
+          100: "rgb(var(--c-field-100) / <alpha-value>)",
+          200: "rgb(var(--c-field-200) / <alpha-value>)",
+          300: "#A6C085", 400: "#8CA96E",
           500: "#6E8E52", 600: "#55703F", 700: "#40562F",
         },
         // Warm neutrals — grounds & text.
@@ -78,6 +84,13 @@ const config: Config = {
           chip: "var(--surface-chip)",
           tint: "var(--surface-tint)",
         },
+        // Stage 4: TINT shades only -- see globals.css. 300+ stay Tailwind's.
+        red: { 50: "rgb(var(--c-red-50) / <alpha-value>)", 100: "rgb(var(--c-red-100) / <alpha-value>)", 200: "rgb(var(--c-red-200) / <alpha-value>)", },
+        green: { 50: "rgb(var(--c-green-50) / <alpha-value>)", 100: "rgb(var(--c-green-100) / <alpha-value>)", },
+        amber: { 50: "rgb(var(--c-amber-50) / <alpha-value>)", 100: "rgb(var(--c-amber-100) / <alpha-value>)", 200: "rgb(var(--c-amber-200) / <alpha-value>)", },
+        blue: { 50: "rgb(var(--c-blue-50) / <alpha-value>)", 100: "rgb(var(--c-blue-100) / <alpha-value>)", },
+        yellow: { 50: "rgb(var(--c-yellow-50) / <alpha-value>)", 100: "rgb(var(--c-yellow-100) / <alpha-value>)", },
+        purple: { 50: "rgb(var(--c-purple-50) / <alpha-value>)", 100: "rgb(var(--c-purple-100) / <alpha-value>)", },
         line: {
           DEFAULT: "var(--border-default)",
           subtle: "var(--border-subtle)",
@@ -98,6 +111,16 @@ const config: Config = {
       // Tailwind's text-* fontSize scale (text-sm/-lg/…) shares the namespace
       // but has no entry of these names.
       textColor: {
+        red: { 300: "rgb(var(--ink-red-300) / <alpha-value>)", 400: "rgb(var(--ink-red-400) / <alpha-value>)", 500: "rgb(var(--ink-red-500) / <alpha-value>)", 600: "rgb(var(--ink-red-600) / <alpha-value>)", 700: "rgb(var(--ink-red-700) / <alpha-value>)", 800: "rgb(var(--ink-red-800) / <alpha-value>)", },
+        green: { 400: "rgb(var(--ink-green-400) / <alpha-value>)", 500: "rgb(var(--ink-green-500) / <alpha-value>)", 600: "rgb(var(--ink-green-600) / <alpha-value>)", 700: "rgb(var(--ink-green-700) / <alpha-value>)", 800: "rgb(var(--ink-green-800) / <alpha-value>)", },
+        amber: { 500: "rgb(var(--ink-amber-500) / <alpha-value>)", 600: "rgb(var(--ink-amber-600) / <alpha-value>)", 700: "rgb(var(--ink-amber-700) / <alpha-value>)", 800: "rgb(var(--ink-amber-800) / <alpha-value>)", },
+        field: { 500: "rgb(var(--ink-field-500) / <alpha-value>)", 600: "rgb(var(--ink-field-600) / <alpha-value>)", 700: "rgb(var(--ink-field-700) / <alpha-value>)", },
+        wheat: { 500: "rgb(var(--ink-wheat-500) / <alpha-value>)", 600: "rgb(var(--ink-wheat-600) / <alpha-value>)", 700: "rgb(var(--ink-wheat-700) / <alpha-value>)", },
+        sky: { 500: "rgb(var(--ink-sky-500) / <alpha-value>)", 600: "rgb(var(--ink-sky-600) / <alpha-value>)", 700: "rgb(var(--ink-sky-700) / <alpha-value>)", },
+        blue: { 500: "rgb(var(--ink-blue-500) / <alpha-value>)", 600: "rgb(var(--ink-blue-600) / <alpha-value>)", 700: "rgb(var(--ink-blue-700) / <alpha-value>)", },
+        yellow: { 500: "rgb(var(--ink-yellow-500) / <alpha-value>)", 600: "rgb(var(--ink-yellow-600) / <alpha-value>)", 700: "rgb(var(--ink-yellow-700) / <alpha-value>)", 800: "rgb(var(--ink-yellow-800) / <alpha-value>)", },
+        purple: { 500: "rgb(var(--ink-purple-500) / <alpha-value>)", 700: "rgb(var(--ink-purple-700) / <alpha-value>)", },
+        pink: { 500: "rgb(var(--ink-pink-500) / <alpha-value>)", },
         strong: "var(--text-strong)", // = text-earth
         body: "var(--text-body)",     // = text-[color:var(--text-body)]
         muted: "var(--text-muted)",   // = text-warm-brown
