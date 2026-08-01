@@ -516,8 +516,8 @@ const AdminFundraising: React.FC<AdminFundraisingProps> = ({ initialCampaignId, 
                       <button onClick={() => openEdit(c)} className="p-1.5 rounded-brand hover:bg-surface-sunken transition-colors">
                         <Edit2 size={14} className="text-faint" />
                       </button>
-                      <button onClick={() => setDeleteId(c.id)} className="p-1.5 rounded-brand hover:bg-[#F7E7E2] transition-colors">
-                        <Trash2 size={14} className="text-[#C4553B]" />
+                      <button onClick={() => setDeleteId(c.id)} className="p-1.5 rounded-brand hover:bg-danger-tint transition-colors">
+                        <Trash2 size={14} className="text-danger" />
                       </button>
                     </div>
                   </div>
@@ -552,8 +552,8 @@ const AdminFundraising: React.FC<AdminFundraisingProps> = ({ initialCampaignId, 
                     <button onClick={() => openEdit(c)} className="p-2 rounded-brand hover:bg-surface-sunken transition-colors">
                       <Edit2 size={15} className="text-faint" />
                     </button>
-                    <button onClick={() => setDeleteId(c.id)} className="p-2 rounded-brand hover:bg-[#F7E7E2] transition-colors">
-                      <Trash2 size={15} className="text-[#C4553B]" />
+                    <button onClick={() => setDeleteId(c.id)} className="p-2 rounded-brand hover:bg-danger-tint transition-colors">
+                      <Trash2 size={15} className="text-danger" />
                     </button>
                   </div>
                 </div>

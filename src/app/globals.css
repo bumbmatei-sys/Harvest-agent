@@ -111,6 +111,13 @@
     value injected per-request from layout.tsx (deriveOnDarkAccent). Unused
     in the light theme — declared here only so the var always resolves. */
  --brand-color-on-dark: var(--brand-color);
+ /* Harvest's own danger pair was spelled as bare hex literals in 44 places
+    (text-[#C4553B] x23, bg-[#F7E7E2] x18, text-[#A23C28]) so it never themed,
+    and the near-black guard could not see it -- these are mid-tone and light.
+    Same fill/ink split as the hue scales: --brand-danger stays #C4553B in both
+    themes because bg-danger is a solid delete button, while the ink inverts. */
+ --c-danger-tint: 247 231 226;
+ --ink-danger: 196 85 59; --ink-danger-strong: 162 60 40;
 
  /* ── Theming stage 4: the hue scales ────────────────────────────────────
     Tailwind's red/green/amber/blue/yellow/purple/pink and the Harvest
@@ -251,6 +258,8 @@
    /* The gold CTA halo needs the corrected accent, or a dark tenant colour
       produces a glow nobody can see. */
    --glow-gold: 0 10px 30px -8px color-mix(in srgb, var(--brand-color-on-dark, var(--brand-color)) 46%, transparent);
+   --c-danger-tint: 57 37 29;
+   --ink-danger: 232 166 149; --ink-danger-strong: 240 191 178;
 
    /* ── Stage 4: hue scales on dark ──────────────────────────────────────
       Tints invert (light fill -> dark fill); inks invert the other way.
@@ -347,7 +356,7 @@
  font-family: var(--font-display), Georgia, serif !important;
  font-weight: 400 !important;
  letter-spacing: -0.01em;
- color: var(--earth, #2D2519);
+ color: var(--text-strong);
 }
 .ProseMirror p, .prose p {
  margin-top: 1.25em !important;
@@ -371,7 +380,7 @@
  margin-bottom: 0.5em !important;
 }
 .ProseMirror a, .prose a {
- color: #3b82f6 !important;
+ color: rgb(var(--ink-blue-500)) !important;
  text-decoration: underline !important;
 }
 .ProseMirror img, .prose img {
@@ -381,7 +390,7 @@
 }
 .ProseMirror blockquote, .prose blockquote {
  border-left-width: 0.25rem !important;
- border-left-color: #e5e7eb !important;
+ border-left-color: var(--border-default) !important;
  padding-left: 1em !important;
  font-style: italic !important;
  margin-top: 1.6em !important;
@@ -390,7 +399,7 @@
 
 /* Tiptap Placeholder */
 .ProseMirror p.is-editor-empty:first-child::before {
-  color: #adb5bd;
+  color: var(--text-faint);
   content: attr(data-placeholder);
   float: left;
   height: 0;
@@ -431,7 +440,7 @@
 
 /* Our floating toolbar bar at the top */
 .canvas-top-bar {
-  background: rgba(255, 255, 255, 0.85);
+  background: color-mix(in srgb, var(--surface-raised) 85%, transparent);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
 }

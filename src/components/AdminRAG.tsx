@@ -785,7 +785,7 @@ export default function AdminRAG() {
  <button
  onClick={()=>setDeleteTarget(source)}
  title="Delete source"
- className="shrink-0 w-8 h-8 flex items-center justify-center rounded-brand text-faint hover:text-[#C4553B] hover:bg-[#F7E7E2] transition-colors"
+ className="shrink-0 w-8 h-8 flex items-center justify-center rounded-brand text-faint hover:text-danger hover:bg-danger-tint transition-colors"
  >
  <Trash2 size={15} strokeWidth={1.75} />
  </button>

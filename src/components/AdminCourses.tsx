@@ -488,7 +488,7 @@ const AdminCourses: React.FC = () => {
                       <button
                         onClick={() => handleUnadopt(course.id)}
                         disabled={busy}
-                        className="self-start px-3 py-1.5 rounded-brand text-sm font-medium text-muted hover:text-[#C4553B] hover:bg-[#F7E7E2] transition-colors disabled:opacity-50"
+                        className="self-start px-3 py-1.5 rounded-brand text-sm font-medium text-muted hover:text-danger hover:bg-danger-tint transition-colors disabled:opacity-50"
                       >
                         {busy ? 'Removing…' : 'Remove from your courses'}
                       </button>
@@ -557,7 +557,7 @@ const AdminCourses: React.FC = () => {
                 </button>
                 <button
                   onClick={() => setDeleteConfirmId(course.id || null)}
-                  className="p-2 rounded-brand text-faint hover:text-[#C4553B] hover:bg-[#F7E7E2] transition-colors shrink-0"
+                  className="p-2 rounded-brand text-faint hover:text-danger hover:bg-danger-tint transition-colors shrink-0"
                   title="Delete"
                 >
                   <Trash2 size={16} />
@@ -589,7 +589,7 @@ const AdminCourses: React.FC = () => {
             <button
               onClick={() => handleUnadopt(course.id)}
               disabled={adoptingId === course.id}
-              className="p-2 rounded-brand text-faint hover:text-[#C4553B] hover:bg-[#F7E7E2] transition-colors shrink-0 disabled:opacity-50"
+              className="p-2 rounded-brand text-faint hover:text-danger hover:bg-danger-tint transition-colors shrink-0 disabled:opacity-50"
               title="Remove from your courses"
             >
               <Trash2 size={16} />
@@ -655,7 +655,7 @@ const AdminCourses: React.FC = () => {
                         </button>
                         <button
                           onClick={() => setDeleteConfirmId(course.id || null)}
-                          className="p-2 rounded-brand text-faint hover:text-[#C4553B] hover:bg-[#F7E7E2] transition-colors"
+                          className="p-2 rounded-brand text-faint hover:text-danger hover:bg-danger-tint transition-colors"
                           title="Delete"
                         >
                           <Trash2 size={16} />
@@ -694,7 +694,7 @@ const AdminCourses: React.FC = () => {
                       <button
                         onClick={() => handleUnadopt(course.id)}
                         disabled={adoptingId === course.id}
-                        className="p-2 rounded-brand text-faint hover:text-[#C4553B] hover:bg-[#F7E7E2] transition-colors disabled:opacity-50"
+                        className="p-2 rounded-brand text-faint hover:text-danger hover:bg-danger-tint transition-colors disabled:opacity-50"
                         title="Remove from your courses"
                       >
                         <Trash2 size={16} />
@@ -717,7 +717,7 @@ const AdminCourses: React.FC = () => {
             <p className="text-muted mb-6 text-sm">Are you sure you want to delete this course? This action cannot be undone.</p>
             <div className="flex justify-end gap-3">
               <button onClick={() => setDeleteConfirmId(null)} className="px-4 py-2 text-muted hover:bg-surface-sunken rounded-brand font-medium transition-colors">Cancel</button>
-              <button onClick={() => handleDeleteCourse(deleteConfirmId)} className="px-4 py-2 bg-[#C4553B] hover:opacity-90 text-white rounded-brand font-medium transition-opacity">Delete</button>
+              <button onClick={() => handleDeleteCourse(deleteConfirmId)} className="px-4 py-2 bg-danger hover:opacity-90 text-white rounded-brand font-medium transition-opacity">Delete</button>
             </div>
           </div>
         </div>

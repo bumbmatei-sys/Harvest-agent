@@ -140,6 +140,45 @@ describe('no near-black or default-palette colour is hardcoded where it must the
     expect(offenders, 'near-black hardcoded text is unreadable in dark mode').toEqual([]);
   });
 
+  // The near-black guard below only catches #00xxxx-#2fxxxx, so a MID-TONE or
+  // LIGHT brand colour written as a bare hex slipped straight past it — which is
+  // how text-[#C4553B] (brand danger) and bg-[#F7E7E2] (its tint) reached 44
+  // uses that never themed. Anything with a token behind it must spell the
+  // token, at any lightness.
+  it('finds no arbitrary hex that duplicates an existing token', () => {
+    const TOKENISED: Record<string, string> = {
+      '#C4553B': 'text-danger / bg-danger',
+      '#F7E7E2': 'bg-danger-tint',
+      '#A23C28': 'text-danger-strong',
+      '#40562F': 'text-field-700',
+      '#6E8E52': 'field-500',
+      '#FAF8F5': 'bg-surface / text-cream',
+      '#F3EEE7': 'bg-surface-sunken',
+      '#E8E2D9': 'bg-surface-chip / border-line',
+      '#D6CCBE': 'border-line-strong',
+      '#2D2519': 'text-strong',
+      '#8B7355': 'text-warm-brown',
+    };
+    const offenders: string[] = [];
+    for (const f of FILES) {
+      // Gradient stops (from-/via-/to-) are deliberately NOT checked. They are
+      // scrims laid over photos and video chrome — ChurchDetailsModal darkens a
+      // church photo with from-[#2D2519] so the caption over it stays legible —
+      // and they have to stay dark in BOTH themes. Theming one would turn the
+      // scrim cream in dark and the caption would vanish. Same reasoning that
+      // exempts the bg-white/NN scrims.
+      for (const m of readFileSync(f, 'utf8').matchAll(
+        /\b(?:bg|text|border|ring|divide)-\[(#[0-9a-fA-F]{6})\]/g,
+      )) {
+        const hex = m[1].toUpperCase();
+        if (hex in TOKENISED) {
+          offenders.push(`${path.relative(ROOT, f)}: ${m[0]} — use ${TOKENISED[hex]}`);
+        }
+      }
+    }
+    expect(offenders, 'a tokenised colour is hardcoded and will not theme').toEqual([]);
+  });
+
   // Tailwind's gray/slate/zinc/neutral scales are cool greys the Harvest brand
   // never defined. They stayed spellable because tailwind.config.ts extends
   // `colors` rather than replacing it, and 376 uses had accumulated: washed-out

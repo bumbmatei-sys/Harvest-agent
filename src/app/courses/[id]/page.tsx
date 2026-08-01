@@ -109,7 +109,7 @@ export default async function CoursePublicPage({
           </span>
         )}
 
-        <h1 className="font-display text-3xl font-black text-[#0b1121] mb-3 leading-tight">
+        <h1 className="font-display text-3xl font-black text-[#0b1121] dark:text-strong mb-3 leading-tight">
           {course.title}
         </h1>
 
@@ -136,7 +136,7 @@ export default async function CoursePublicPage({
             <p className="text-xs font-semibold uppercase tracking-wider text-faint mb-2">
               Preview
             </p>
-            <h2 className="font-bold text-[#0b1121] mb-3">{level.title}</h2>
+            <h2 className="font-bold text-[#0b1121] dark:text-strong mb-3">{level.title}</h2>
             <ul className="space-y-2.5">
               {level.sections.slice(0, 3).map(section => (
                 <li

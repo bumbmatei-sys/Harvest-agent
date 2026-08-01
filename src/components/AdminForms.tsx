@@ -458,7 +458,7 @@ const AdminForms: React.FC<AdminFormsProps> = () => {
                   <button onClick={() => openBuilder(form)} className="p-1.5 rounded-brand text-faint hover:text-gold hover:bg-surface-sunken transition-colors" title="Edit"><Edit2 size={15} /></button>
                   <button onClick={() => copy(formUrl(form.id), `link_${form.id}`)} className="p-1.5 rounded-brand text-faint hover:text-gold hover:bg-surface-sunken transition-colors" title={copied === `link_${form.id}` ? 'Copied!' : 'Copy link'}><Link2 size={15} /></button>
                   <a href={formUrl(form.id)} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-brand text-faint hover:text-gold hover:bg-surface-sunken transition-colors" title="Open"><ExternalLink size={15} /></a>
-                  <button onClick={() => handleDelete(form)} className="p-1.5 rounded-brand text-[#C4553B] hover:bg-[#F7E7E2] transition-colors ml-auto" title="Delete"><Trash2 size={15} /></button>
+                  <button onClick={() => handleDelete(form)} className="p-1.5 rounded-brand text-danger hover:bg-danger-tint transition-colors ml-auto" title="Delete"><Trash2 size={15} /></button>
                 </div>
               </div>
             ))}
@@ -491,7 +491,7 @@ const AdminForms: React.FC<AdminFormsProps> = () => {
                 <a href={formUrl(form.id)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-xs font-semibold text-muted hover:text-gold transition-colors">
                   <ExternalLink size={13} /> Open
                 </a>
-                <button onClick={() => handleDelete(form)} className="flex items-center gap-1.5 text-xs font-semibold text-[#C4553B] hover:opacity-80 transition-opacity ml-auto">
+                <button onClick={() => handleDelete(form)} className="flex items-center gap-1.5 text-xs font-semibold text-danger hover:opacity-80 transition-opacity ml-auto">
                   <Trash2 size={13} /> Delete
                 </button>
               </div>

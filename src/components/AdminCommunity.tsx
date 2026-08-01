@@ -852,7 +852,7 @@ const DmThread: React.FC<{
                     <div className="flex flex-col items-start max-w-[78%]">
                       {isFirst && <span className="text-[10px] font-semibold text-faint mb-0.5 ml-1">{group.senderName}</span>}
                       {m.content && (
-                        <div className="bg-[#F0EDE8] text-body rounded-2xl rounded-bl-sm px-3.5 py-2.5 text-sm break-words">{m.content}</div>
+                        <div className="bg-surface-sunken text-body rounded-2xl rounded-bl-sm px-3.5 py-2.5 text-sm break-words">{m.content}</div>
                       )}
                       {m.attachments?.map((a, i) => (
                         <AttachmentCard
@@ -1545,7 +1545,7 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
                     className="w-full pl-8 pr-3 py-2 text-sm rounded-xl border border-line focus:border-gold focus:outline-none"
                   />
                 </div>
-                <div className="max-h-44 overflow-y-auto border border-line rounded-xl divide-y divide-[#E8E2D9]">
+                <div className="max-h-44 overflow-y-auto border border-line rounded-xl divide-y divide-line">
                   {(() => {
                     const pool = channelPool
                       .filter(u => u.id !== currentUser?.uid)

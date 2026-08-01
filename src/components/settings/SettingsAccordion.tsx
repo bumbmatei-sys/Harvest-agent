@@ -39,8 +39,8 @@ const SettingsAccordion: React.FC<SettingsAccordionProps> = ({ sections, default
             onClick={() => toggle(section.id)}
             className="w-full flex items-center gap-3 px-5 py-4 hover:bg-[color-mix(in_srgb,var(--surface-sunken)_60%,transparent)] transition-colors text-left"
           >
-            <span className={`flex items-center shrink-0 ${section.danger ? 'text-[#C4553B]' : 'text-gold'}`}>{section.icon}</span>
-            <span className={`flex-1 text-sm font-semibold ${section.danger ? 'text-[#C4553B]' : 'text-strong'}`}>{section.label}</span>
+            <span className={`flex items-center shrink-0 ${section.danger ? 'text-danger' : 'text-gold'}`}>{section.icon}</span>
+            <span className={`flex-1 text-sm font-semibold ${section.danger ? 'text-danger' : 'text-strong'}`}>{section.label}</span>
             <ChevronDown
               size={16}
               className={`text-faint transition-transform ${expanded === section.id ? 'rotate-180' : ''}`}

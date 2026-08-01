@@ -36,7 +36,7 @@ const TYPE_LABELS: Record<Contact['type'], string> = {
 const TYPE_COLORS: Record<Contact['type'], string> = {
   donor: 'bg-[color-mix(in_srgb,var(--brand-color)_14%,white)] text-[color-mix(in_srgb,var(--brand-color)_80%,black)]',
   member: 'bg-sky-100 text-sky-700',
-  both: 'bg-[color-mix(in_srgb,#6E8E52_16%,white)] text-[#40562F]',
+  both: 'bg-[color-mix(in_srgb,#6E8E52_16%,white)] text-field-700',
 };
 
 const ACTIVITY_ICONS: Record<ContactActivity['type'], React.ReactNode> = {
@@ -147,14 +147,14 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ contacts, stages, onOpenConta
                   </div>
 
                   {/* Stage mover — tap to move to that stage */}
-                  <div className="flex gap-1 mt-2 pt-2 border-t border-[#F0EDE8]">
+                  <div className="flex gap-1 mt-2 pt-2 border-t border-line-subtle">
                     {stages.map(s => (
                       <button
                         key={s.id}
                         onClick={(e) => { e.stopPropagation(); onStageChange(c.id, s.id); }}
                         className="flex-1 h-1.5 rounded-full transition-colors"
                         style={{
-                          backgroundColor: (c.stage || 'new') === s.id ? s.color : '#E8E2D9',
+                          backgroundColor: (c.stage || 'new') === s.id ? s.color : 'var(--surface-chip)',
                         }}
                         title={s.label}
                       />
@@ -917,7 +917,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
             {activities.map(act => (
               <div key={act.id} className="relative">
                 <div className="absolute -left-[25px] top-1 w-4 h-4 rounded-full border-2 border-white flex items-center justify-center"
-                  style={{ backgroundColor: act.type === 'donation' ? 'var(--brand-color, #B8962E)' : '#E8E2D9' }}>
+                  style={{ backgroundColor: act.type === 'donation' ? 'var(--brand-color, #B8962E)' : 'var(--surface-chip)' }}>
                   <span className="text-white flex items-center justify-center" style={{ fontSize: 8 }}>
                     {ACTIVITY_ICONS[act.type]}
                   </span>

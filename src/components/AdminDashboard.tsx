@@ -871,7 +871,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
               className="fixed bottom-0 left-0 right-0 bg-surface rounded-t-[22px] z-[102] lg:hidden shadow-[0_-12px_44px_rgba(0,0,0,0.28)] max-h-[84vh] flex flex-col"
               style={{ animation: 'slideUp 0.25s ease-out' }}
             >
-              <div className="w-9 h-1 bg-stone-300 rounded-full mx-auto mt-3 mb-1 shrink-0" />
+              <div className="w-9 h-1 bg-line-strong rounded-full mx-auto mt-3 mb-1 shrink-0" />
               <div className="flex items-center justify-between px-[18px] pt-1.5 pb-3 shrink-0">
                 <h3 className="font-display font-light text-[22px] leading-none tracking-[-0.02em] text-strong">More</h3>
               </div>

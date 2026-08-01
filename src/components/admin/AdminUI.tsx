@@ -97,11 +97,11 @@ export const AdminSectionLabel: React.FC<{ children: React.ReactNode; className?
 
 type BadgeTone = 'green' | 'gold' | 'sky' | 'stone' | 'red';
 const BADGE_TONES: Record<BadgeTone, string> = {
-  green: 'bg-[color-mix(in_srgb,#6E8E52_16%,white)] text-[#40562F]',
+  green: 'bg-[color-mix(in_srgb,#6E8E52_16%,white)] text-field-700',
   gold: 'bg-[color-mix(in_srgb,var(--brand-color)_16%,white)] text-[color-mix(in_srgb,var(--brand-color)_78%,black)]',
   sky: 'bg-sky-100 text-sky-700',
   stone: 'bg-surface-sunken text-muted',
-  red: 'bg-[#F7E7E2] text-[#A23C28]',
+  red: 'bg-danger-tint text-danger-strong',
 };
 
 /** Small pill badge (status, tags). */

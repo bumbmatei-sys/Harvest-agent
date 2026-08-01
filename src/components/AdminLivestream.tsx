@@ -257,7 +257,7 @@ const AdminLivestream: React.FC = () => {
                 <div className="text-sm text-muted mt-0.5">{p.prayerText}</div>
                 <div className="text-xs text-faint mt-1">{fmtDate(p.submittedAt)}</div>
               </div>
-              <button onClick={() => markPrayed(p.id)} className="flex items-center gap-1 text-xs font-semibold text-[#40562F] hover:bg-[color-mix(in_srgb,#6E8E52_14%,white)] rounded-lg px-2 py-1 shrink-0 transition-colors">
+              <button onClick={() => markPrayed(p.id)} className="flex items-center gap-1 text-xs font-semibold text-field-700 hover:bg-[color-mix(in_srgb,#6E8E52_14%,white)] rounded-lg px-2 py-1 shrink-0 transition-colors">
                 <Check size={14} /> Prayed
               </button>
             </div>
@@ -289,7 +289,7 @@ const AdminLivestream: React.FC = () => {
               <button
                 onClick={() => deleteComment(c.id)}
                 aria-label="Delete comment"
-                className="flex items-center gap-1 text-xs font-semibold text-[#C4553B] hover:bg-[#F7E7E2] rounded-lg px-2 py-1 shrink-0 transition-colors"
+                className="flex items-center gap-1 text-xs font-semibold text-danger hover:bg-danger-tint rounded-lg px-2 py-1 shrink-0 transition-colors"
               >
                 <Trash2 size={14} />
               </button>
@@ -331,7 +331,7 @@ const AdminLivestream: React.FC = () => {
                 <div className="text-[11px] text-muted mt-1">Prayers</div>
               </div>
             </div>
-            <button onClick={endStream} className="w-full py-3 rounded-brand text-sm font-bold text-[#C4553B] bg-[#F7E7E2] hover:opacity-90 transition-opacity">
+            <button onClick={endStream} className="w-full py-3 rounded-brand text-sm font-bold text-danger bg-danger-tint hover:opacity-90 transition-opacity">
               End stream
             </button>
             {pastStreamsBlock}
@@ -352,7 +352,7 @@ const AdminLivestream: React.FC = () => {
                     Live since {fmtDate(current.startedAt || null)} · Video ID: {current.youtubeVideoId}
                   </p>
                 </div>
-                <button onClick={endStream} className="shrink-0 px-4 py-2 rounded-brand text-sm font-semibold text-[#C4553B] bg-[#F7E7E2] hover:opacity-90 transition-opacity">
+                <button onClick={endStream} className="shrink-0 px-4 py-2 rounded-brand text-sm font-semibold text-danger bg-danger-tint hover:opacity-90 transition-opacity">
                   End stream
                 </button>
               </div>

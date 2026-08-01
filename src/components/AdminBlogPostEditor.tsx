@@ -201,7 +201,7 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
                   {category && (
                     <button
                       onClick={() => { setAvailableCategories(availableCategories.filter(c => c !== category)); setCategory(''); }}
-                      className="px-2.5 rounded-brand text-[#C4553B] hover:bg-[#F7E7E2] transition-colors"
+                      className="px-2.5 rounded-brand text-danger hover:bg-danger-tint transition-colors"
                       title="Remove selected category"
                     >
                       <Trash2 size={16} />
@@ -238,7 +238,7 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
                   {tags.map(tag => (
                     <span key={tag} className="inline-flex items-center gap-1 px-2.5 py-1 bg-surface-sunken text-body rounded-full text-xs">
                       {tag}
-                      <button onClick={() => removeTag(tag)} className="hover:text-[#C4553B] transition-colors"><X size={12} /></button>
+                      <button onClick={() => removeTag(tag)} className="hover:text-danger transition-colors"><X size={12} /></button>
                     </span>
                   ))}
                 </div>

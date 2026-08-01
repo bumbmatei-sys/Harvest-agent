@@ -290,7 +290,7 @@ const AdminBlog: React.FC = () => {
  <AdminBadge tone={statusTone(post.status)} className="shrink-0">{post.status}</AdminBadge>
  <div className="flex items-center shrink-0">
  <button onClick={() => handleEditPost(post)} className="p-2 rounded-brand text-faint hover:text-gold hover:bg-surface-sunken transition-colors" title="Edit"><Edit2 size={15} /></button>
- <button onClick={() => setDeleteConfirmId(post.id)} className="p-2 rounded-brand text-faint hover:text-[#C4553B] hover:bg-[#F7E7E2] transition-colors" title="Delete"><Trash2 size={15} /></button>
+ <button onClick={() => setDeleteConfirmId(post.id)} className="p-2 rounded-brand text-faint hover:text-danger hover:bg-danger-tint transition-colors" title="Delete"><Trash2 size={15} /></button>
  </div>
  </div>
  ))
@@ -345,7 +345,7 @@ const AdminBlog: React.FC = () => {
  <td className="px-6 py-3.5 text-right">
  <div className="flex items-center justify-end gap-1">
  <button onClick={() => handleEditPost(post)} className="p-2 rounded-brand text-faint hover:text-gold hover:bg-surface-sunken transition-colors" title="Edit"><Edit2 size={16} /></button>
- <button onClick={() => setDeleteConfirmId(post.id)} className="p-2 rounded-brand text-faint hover:text-[#C4553B] hover:bg-[#F7E7E2] transition-colors" title="Delete"><Trash2 size={16} /></button>
+ <button onClick={() => setDeleteConfirmId(post.id)} className="p-2 rounded-brand text-faint hover:text-danger hover:bg-danger-tint transition-colors" title="Delete"><Trash2 size={16} /></button>
  </div>
  </td>
  </tr>

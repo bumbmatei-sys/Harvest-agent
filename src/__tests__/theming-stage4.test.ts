@@ -152,6 +152,70 @@ describe('dark hue values clear WCAG AA where they carry text', () => {
   });
 });
 
+describe("Harvest's own danger pair themes", () => {
+  // These were bare hex literals in 44 places, so they never themed AND the
+  // near-black guard could not see them (they are mid-tone and light).
+  const LIGHT_PIN: Record<string, string> = {
+    '--ink-danger': '#C4553B',
+    '--ink-danger-strong': '#A23C28',
+    '--c-danger-tint': '#F7E7E2',
+  };
+
+  it.each(Object.keys(LIGHT_PIN))('%s is unchanged in light', (token) => {
+    expect(triToHex(light[token])).toBe(LIGHT_PIN[token]);
+  });
+
+  it('--brand-danger itself does NOT invert — bg-danger is a solid button', () => {
+    expect(dark['--brand-danger'], 'inverting this makes the delete button unreadable').toBeUndefined();
+  });
+
+  it.each(['--ink-danger', '--ink-danger-strong'])('dark %s clears AA everywhere it lands', (token) => {
+    const ink = triToHex(dark[token]);
+    const grounds = { ...DARK_SURFACES, '--c-danger-tint': triToHex(dark['--c-danger-tint']) };
+    for (const [name, g] of Object.entries(grounds)) {
+      const r = contrastRatio(ink, g);
+      expect(r, `${token} on ${name} is ${r.toFixed(2)}:1`).toBeGreaterThanOrEqual(AA_CONTRAST);
+    }
+  });
+});
+
+describe('prose is driven by the ramp, not by Tailwind greys', () => {
+  // @tailwindcss/typography does `require('tailwindcss/colors')` directly, so
+  // its --tw-prose-* defaults are immune to anything in `colors`. Left alone
+  // they render blog/course/lesson bodies at gray-700 on the dark ground —
+  // ~1.5:1, and invisible to every class-based guard because no component
+  // spells the colour. This asserts the config override is still wired up.
+  it('every --tw-prose-* in the base .prose rule resolves to a token', async () => {
+    const postcssLib = (await import('postcss')).default;
+    const tw = (await import('tailwindcss')).default;
+    const base = (await import('../../tailwind.config')).default;
+    const out = await postcssLib([tw(base as never)]).process(readFileSync(GLOBALS, 'utf8'), {
+      from: GLOBALS,
+    });
+
+    // The declarations land in their own `.prose{...}` rule, separate from the
+    // `.prose{color:var(--tw-prose-body)}` one, so find the rule that DECLARES.
+    let declaring: Record<string, string> | null = null;
+    postcss.parse(out.css).walkRules((rule) => {
+      if (rule.selector !== '.prose') return;
+      const decls: Record<string, string> = {};
+      rule.walkDecls((d) => {
+        if (d.prop.startsWith('--tw-prose-')) decls[d.prop] = d.value.trim();
+      });
+      if (Object.keys(decls).length) declaring = decls;
+    });
+
+    expect(declaring, '.prose declares no --tw-prose-* at all').not.toBeNull();
+    const hardcoded = Object.entries(declaring!)
+      // *-shadows are consumed as rgb(var(--x) / 10%), so they hold a channel
+      // triplet rather than a colour and cannot be a var() reference.
+      .filter(([k]) => !k.endsWith('-shadows'))
+      .filter(([, v]) => !v.startsWith('var('))
+      .map(([k, v]) => `${k}: ${v}`);
+    expect(hardcoded, 'a prose colour bypasses the ramp and will not theme').toEqual([]);
+  });
+});
+
 describe('no hue tint escapes the token system', () => {
   function walk(dir: string, out: string[] = []): string[] {
     for (const e of readdirSync(dir)) {

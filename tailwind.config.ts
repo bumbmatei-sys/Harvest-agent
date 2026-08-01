@@ -91,6 +91,9 @@ const config: Config = {
         blue: { 50: "rgb(var(--c-blue-50) / <alpha-value>)", 100: "rgb(var(--c-blue-100) / <alpha-value>)", },
         yellow: { 50: "rgb(var(--c-yellow-50) / <alpha-value>)", 100: "rgb(var(--c-yellow-100) / <alpha-value>)", },
         purple: { 50: "rgb(var(--c-purple-50) / <alpha-value>)", 100: "rgb(var(--c-purple-100) / <alpha-value>)", },
+        // Harvest danger. DEFAULT does NOT invert (solid delete button);
+        // the ink counterparts under textColor do.
+        danger: { DEFAULT: "var(--brand-danger)", tint: "rgb(var(--c-danger-tint) / <alpha-value>)" },
         line: {
           DEFAULT: "var(--border-default)",
           subtle: "var(--border-subtle)",
@@ -111,6 +114,7 @@ const config: Config = {
       // Tailwind's text-* fontSize scale (text-sm/-lg/…) shares the namespace
       // but has no entry of these names.
       textColor: {
+        danger: { DEFAULT: "rgb(var(--ink-danger) / <alpha-value>)", strong: "rgb(var(--ink-danger-strong) / <alpha-value>)" },
         red: { 300: "rgb(var(--ink-red-300) / <alpha-value>)", 400: "rgb(var(--ink-red-400) / <alpha-value>)", 500: "rgb(var(--ink-red-500) / <alpha-value>)", 600: "rgb(var(--ink-red-600) / <alpha-value>)", 700: "rgb(var(--ink-red-700) / <alpha-value>)", 800: "rgb(var(--ink-red-800) / <alpha-value>)", },
         green: { 400: "rgb(var(--ink-green-400) / <alpha-value>)", 500: "rgb(var(--ink-green-500) / <alpha-value>)", 600: "rgb(var(--ink-green-600) / <alpha-value>)", 700: "rgb(var(--ink-green-700) / <alpha-value>)", 800: "rgb(var(--ink-green-800) / <alpha-value>)", },
         amber: { 500: "rgb(var(--ink-amber-500) / <alpha-value>)", 600: "rgb(var(--ink-amber-600) / <alpha-value>)", 700: "rgb(var(--ink-amber-700) / <alpha-value>)", 800: "rgb(var(--ink-amber-800) / <alpha-value>)", },
@@ -139,6 +143,66 @@ const config: Config = {
         sans: ["var(--font-sans)", "system-ui", "sans-serif"],
         display: ["var(--font-display)", "Georgia", "serif"],
         serif: ["var(--font-serif)", "Georgia", "serif"],
+      },
+      // ── Theming stage 4: `prose` ────────────────────────────────────────
+      // @tailwindcss/typography does `require('tailwindcss/colors')` directly,
+      // so its --tw-prose-* defaults are Tailwind's cool greys and are immune to
+      // anything in `colors` here. That left every blog, course and lesson body
+      // rendering gray-700 (#374151) on the dark ground at ~1.5:1 — the largest
+      // remaining dark-mode gap, and invisible to the class-based guards because
+      // no component spells the colour.
+      //
+      // Driving the variables off the ramp fixes all 10 prose call sites from
+      // one place and needs no `dark:prose-invert` sprinkled through the tree —
+      // prose-invert would only swap in a different set of hardcoded greys.
+      typography: {
+        DEFAULT: {
+          css: {
+            "--tw-prose-body": "var(--text-body)",
+            "--tw-prose-headings": "var(--text-strong)",
+            "--tw-prose-lead": "var(--text-muted)",
+            "--tw-prose-links": "var(--text-strong)",
+            "--tw-prose-bold": "var(--text-strong)",
+            "--tw-prose-counters": "var(--text-muted)",
+            "--tw-prose-bullets": "var(--border-strong)",
+            "--tw-prose-hr": "var(--border-default)",
+            "--tw-prose-quotes": "var(--text-strong)",
+            "--tw-prose-quote-borders": "var(--border-default)",
+            "--tw-prose-captions": "var(--text-muted)",
+            "--tw-prose-code": "var(--text-strong)",
+            "--tw-prose-pre-code": "var(--text-body)",
+            "--tw-prose-pre-bg": "var(--surface-sunken)",
+            "--tw-prose-th-borders": "var(--border-strong)",
+            "--tw-prose-td-borders": "var(--border-default)",
+            "--tw-prose-kbd": "var(--text-strong)",
+            // consumed as rgb(var(--x) / 10%), so this one is a channel triplet
+            // rather than a colour: earth #2D2519.
+            "--tw-prose-kbd-shadows": "45 37 25",
+
+            // `prose-invert` is NOT the dark theme. It is used once, by
+            // TipTapReadOnly inside LivestreamView, which is bg-[#0b1121] in
+            // BOTH themes — so these must stay light always and are pinned to
+            // fixed warm brand tokens, never to the inverting ramp.
+            "--tw-prose-invert-body": "var(--stone-200)",
+            "--tw-prose-invert-headings": "var(--cream)",
+            "--tw-prose-invert-lead": "var(--stone-300)",
+            "--tw-prose-invert-links": "var(--cream)",
+            "--tw-prose-invert-bold": "var(--cream)",
+            "--tw-prose-invert-counters": "var(--stone-300)",
+            "--tw-prose-invert-bullets": "var(--warm-brown)",
+            "--tw-prose-invert-hr": "var(--warm-brown)",
+            "--tw-prose-invert-quotes": "var(--cream)",
+            "--tw-prose-invert-quote-borders": "var(--warm-brown)",
+            "--tw-prose-invert-captions": "var(--stone-300)",
+            "--tw-prose-invert-code": "var(--cream)",
+            "--tw-prose-invert-pre-code": "var(--stone-200)",
+            "--tw-prose-invert-pre-bg": "var(--warm-dark)",
+            "--tw-prose-invert-th-borders": "var(--warm-brown)",
+            "--tw-prose-invert-td-borders": "var(--warm-brown)",
+            "--tw-prose-invert-kbd": "var(--cream)",
+            "--tw-prose-invert-kbd-shadows": "250 248 245",
+          },
+        },
       },
     },
   },

@@ -471,7 +471,7 @@ const AdminCheckin: React.FC<AdminCheckinProps> = ({ canCheckin = true, canQR = 
                   <div className="flex items-center gap-4 mt-3.5 pt-3.5 border-t border-line">
                     <button onClick={() => { setSelected(s); setView('detail'); }} className="flex items-center gap-1.5 text-xs font-semibold text-muted hover:text-gold transition-colors"><QrCode size={13} /> Open</button>
                     <button onClick={() => copyLink(s.id)} className="flex items-center gap-1.5 text-xs font-semibold text-muted hover:text-gold transition-colors"><Link2 size={13} /> Copy link</button>
-                    <button onClick={() => deleteSession(s)} className="flex items-center gap-1.5 text-xs font-semibold text-[#C4553B] hover:opacity-80 transition-opacity ml-auto"><Trash2 size={13} /> Delete</button>
+                    <button onClick={() => deleteSession(s)} className="flex items-center gap-1.5 text-xs font-semibold text-danger hover:opacity-80 transition-opacity ml-auto"><Trash2 size={13} /> Delete</button>
                   </div>
                 </div>
 
@@ -493,7 +493,7 @@ const AdminCheckin: React.FC<AdminCheckinProps> = ({ canCheckin = true, canQR = 
                   <div className="flex items-center gap-4 mt-4 pt-4 border-t border-line">
                     <button onClick={() => { setSelected(s); setView('detail'); }} className="flex items-center gap-1.5 text-xs font-semibold text-muted hover:text-gold transition-colors"><QrCode size={13} /> Open</button>
                     <button onClick={() => copyLink(s.id)} className="flex items-center gap-1.5 text-xs font-semibold text-muted hover:text-gold transition-colors"><Link2 size={13} /> Copy link</button>
-                    <button onClick={() => deleteSession(s)} className="flex items-center gap-1.5 text-xs font-semibold text-[#C4553B] hover:opacity-80 transition-opacity ml-auto"><Trash2 size={13} /> Delete</button>
+                    <button onClick={() => deleteSession(s)} className="flex items-center gap-1.5 text-xs font-semibold text-danger hover:opacity-80 transition-opacity ml-auto"><Trash2 size={13} /> Delete</button>
                   </div>
                 </AdminCard>
               </React.Fragment>

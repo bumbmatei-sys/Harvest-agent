@@ -134,7 +134,7 @@ function OverrideToggle({
         title={disabled ? disabledReason : undefined}
         onClick={() => onChange(!checked)}
         className={`mt-0.5 w-10 h-6 rounded-full shrink-0 transition-colors relative ${
-          checked ? 'bg-gold' : 'bg-stone-300'
+          checked ? 'bg-gold' : 'bg-line-strong'
         } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
       >
         <span

@@ -392,7 +392,7 @@ const DmThread: React.FC<{
                     <div className="flex flex-col items-start max-w-[78%]">
                       {isFirst && <span className="text-[10px] font-semibold text-faint mb-0.5 ml-1">{group.senderName}</span>}
                       {m.content && (
-                        <div className="bg-[#F0EDE8] text-body rounded-2xl rounded-bl-sm px-3.5 py-2.5 text-sm break-words">{m.content}</div>
+                        <div className="bg-surface-sunken text-body rounded-2xl rounded-bl-sm px-3.5 py-2.5 text-sm break-words">{m.content}</div>
                       )}
                       {m.attachments?.map((a, i) => <AttachmentCard key={i} attachment={a} tenantId={tenantId} />)}
                       <span className="text-[10px] text-faint mt-0.5">{fmtTime(m.createdAt)}</span>
