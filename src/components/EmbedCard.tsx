@@ -177,8 +177,8 @@ export const FeedEmbedCard: React.FC<{ embed: PostEmbed; tenantId: string | null
   }
   if (status === 'missing' || !data) {
     return (
-      <div className="mb-3 flex items-center gap-2 rounded-xl border border-line bg-stone-50 px-3 py-2.5 text-xs text-muted">
-        <FileText size={14} className="text-stone-400 shrink-0" />
+      <div className="mb-3 flex items-center gap-2 rounded-xl border border-line bg-surface-sunken px-3 py-2.5 text-xs text-muted">
+        <FileText size={14} className="text-faint shrink-0" />
         This attachment is no longer available.
       </div>
     );
@@ -261,12 +261,12 @@ export const EmbedComposerChip: React.FC<{ embed: PostEmbed; tenantId: string | 
   const { Icon, label } = TYPE_META[embed.type];
 
   return (
-    <div className="relative flex items-center gap-3 rounded-xl border border-line bg-stone-50 p-2.5 pr-9">
+    <div className="relative flex items-center gap-3 rounded-xl border border-line bg-surface-sunken p-2.5 pr-9">
       <div className="w-11 h-11 rounded-lg overflow-hidden bg-surface-sunken shrink-0 relative flex items-center justify-center">
         {data?.image ? (
           <Image src={data.image} alt="" fill sizes="44px" className="object-cover" referrerPolicy="no-referrer" />
         ) : (
-          <Icon size={18} className="text-stone-400" />
+          <Icon size={18} className="text-faint" />
         )}
       </div>
       <div className="min-w-0 flex-1">

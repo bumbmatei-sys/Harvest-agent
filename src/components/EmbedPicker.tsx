@@ -79,7 +79,7 @@ const EmbedPicker: React.FC<{
 
         <div className="p-3 border-b border-line">
           <div className="relative">
-            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-faint" />
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}

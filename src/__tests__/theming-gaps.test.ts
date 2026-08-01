@@ -121,3 +121,35 @@ describe('the map basemap follows a theme change, not only initial load', () => 
     expect(hook).toContain("attributeFilter: ['data-theme', 'class']");
   });
 });
+
+describe('no near-black or default-palette colour is hardcoded where it must theme', () => {
+  // A near-black arbitrary text colour is the worst class of theming bug: it is
+  // not merely inconsistent, it is UNREADABLE on a dark ground. layout.tsx's
+  // <body> carried one as the app-wide default, so it affected every screen
+  // that did not override it.
+  // #0b1121 is brand navy used as a heading on the public blog/course pages.
+  // Converting it would change the LIGHT theme (navy -> earth) on 3 headings,
+  // which is a design decision, so it is excluded and reported instead.
+  it('finds no near-black text-[#…] arbitrary value', () => {
+    const offenders: string[] = [];
+    for (const f of FILES) {
+      for (const m of readFileSync(f, 'utf8').matchAll(/text-\[#(?!0b1121)(?:0[0-9a-f]|1[0-9a-f]|2[0-9a-f])[0-9a-f]{4}\]/gi)) {
+        offenders.push(`${path.relative(ROOT, f)}: ${m[0]}`);
+      }
+    }
+    expect(offenders, 'near-black hardcoded text is unreadable in dark mode').toEqual([]);
+  });
+
+  // Tailwind's `stone` scale is EXTENDED, not replaced, so stone-50 and
+  // stone-400 still resolve to Tailwind's cool defaults (#FAFAF9 / #A8A29E) --
+  // off-palette in light and unthemed in dark. These were the visible ones.
+  it('finds no bg-stone-50 / text-stone-400 (Tailwind default cool greys)', () => {
+    const offenders: string[] = [];
+    for (const f of FILES) {
+      for (const m of readFileSync(f, 'utf8').matchAll(/\b(?:bg-stone-50|text-stone-400)\b(?!\d)/g)) {
+        offenders.push(`${path.relative(ROOT, f)}: ${m[0]}`);
+      }
+    }
+    expect(offenders, 'Tailwind default greys do not theme').toEqual([]);
+  });
+});

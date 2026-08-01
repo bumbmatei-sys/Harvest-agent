@@ -472,7 +472,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
       <button
         key={tab.id}
         onClick={() => go(tab.id)}
-        className="w-full flex items-center gap-3 px-[15px] py-3 transition-colors text-left hover:bg-stone-50 active:bg-surface-sunken"
+        className="w-full flex items-center gap-3 px-[15px] py-3 transition-colors text-left hover:bg-surface-sunken active:bg-surface-sunken"
         style={{ backgroundColor: isActive ? 'color-mix(in srgb, var(--brand-color, #C9963A) 10%, transparent)' : undefined }}
       >
         <span className="w-[30px] h-[30px] shrink-0 rounded-lg bg-surface-sunken flex items-center justify-center">

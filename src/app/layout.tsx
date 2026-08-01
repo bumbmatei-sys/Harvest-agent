@@ -166,7 +166,7 @@ export default async function RootLayout({
           instead of the Harvest default (see getServerTenantLogo in MainApp). Only
           set for white-label tenants; React escapes the attribute value. */}
       <body
-        className="bg-background-light text-[#1c1c1e] antialiased"
+        className="bg-background-light text-strong antialiased"
         data-tenant-logo={isWhiteLabel && brandLogo ? brandLogo : undefined}
       >
         {/* Capture ?ref=CODE on the FIRST public page load — before login/onboarding

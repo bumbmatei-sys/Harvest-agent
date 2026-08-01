@@ -388,7 +388,7 @@ const AdminTenants: React.FC = () => {
                   Read-only, and mounted only while open so no usage request
                   fires for a tenant nobody asked about. */}
               {usageOpenId === tenant.id && (
-                <div className="mt-4 pt-4 border-t border-line-subtle bg-stone-50/60 -mx-5 -mb-5 px-5 py-4 rounded-b-2xl">
+                <div className="mt-4 pt-4 border-t border-line-subtle bg-[color-mix(in_srgb,var(--surface-sunken)_60%,transparent)] -mx-5 -mb-5 px-5 py-4 rounded-b-2xl">
                   <TenantUsagePanel tenantId={tenant.id} />
                 </div>
               )}

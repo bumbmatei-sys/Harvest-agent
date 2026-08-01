@@ -162,7 +162,7 @@ const ChurchDetailsModal: React.FC<ChurchDetailsModalProps> = ({
                 
          <div className="space-y-6">
            <div className="flex items-center gap-4">
-             <div className="w-12 h-12 rounded-full bg-surface-sunken flex items-center justify-center flex-shrink-0 text-[#1e293b] ">
+             <div className="w-12 h-12 rounded-full bg-surface-sunken flex items-center justify-center flex-shrink-0 text-strong ">
                <User size={24} />
              </div>
              <div>
@@ -172,7 +172,7 @@ const ChurchDetailsModal: React.FC<ChurchDetailsModalProps> = ({
            </div>
 
            <div className="flex items-start gap-4">
-             <div className="w-12 h-12 rounded-full bg-surface-sunken flex items-center justify-center flex-shrink-0 text-[#1e293b] ">
+             <div className="w-12 h-12 rounded-full bg-surface-sunken flex items-center justify-center flex-shrink-0 text-strong ">
                <Clock size={24} />
              </div>
              <div className="flex-1">
@@ -252,7 +252,7 @@ const ChurchDetailsModal: React.FC<ChurchDetailsModalProps> = ({
                href={church.website}
                target="_blank"
                rel="noopener noreferrer"
-               className="w-12 h-12 rounded-full bg-[#f1f5f9] flex items-center justify-center text-[#0f172a] hover:bg-surface-chip transition-colors"
+               className="w-12 h-12 rounded-full bg-[#f1f5f9] flex items-center justify-center text-strong hover:bg-surface-chip transition-colors"
              >
                <Globe size={24} />
              </a>
