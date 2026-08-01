@@ -140,6 +140,30 @@ describe('no near-black or default-palette colour is hardcoded where it must the
     expect(offenders, 'near-black hardcoded text is unreadable in dark mode').toEqual([]);
   });
 
+  // Tailwind's gray/slate/zinc/neutral scales are cool greys the Harvest brand
+  // never defined. They stayed spellable because tailwind.config.ts extends
+  // `colors` rather than replacing it, and 376 uses had accumulated: washed-out
+  // headers and grey dividers in dark mode, off-palette in light, and 64 uses
+  // below WCAG AA on white (text-gray-400 was 2.54:1).
+  //
+  // This guard, not a config change, is what stops them coming back. Setting
+  // `extend.colors.gray = {}` does NOT work — extend deep-merges, so it is a
+  // no-op and gray-500 still resolves to #6b7280. Actually removing them needs a
+  // top-level `theme.colors`, which replaces the ENTIRE default palette and would
+  // require re-listing every hue the app uses plus white/black/transparent/
+  // current. A guard costs one test and cannot break the build.
+  it('finds no Tailwind default-neutral utility (gray/slate/zinc/neutral)', () => {
+    const offenders: string[] = [];
+    const neutral =
+      /\b(?:bg|text|border|ring|divide|from|via|to|placeholder|fill|stroke|outline|accent|caret|decoration|shadow)-(?:gray|slate|zinc|neutral)-\d{2,3}\b/g;
+    for (const f of FILES) {
+      for (const m of readFileSync(f, 'utf8').matchAll(neutral)) {
+        offenders.push(`${path.relative(ROOT, f)}: ${m[0]}`);
+      }
+    }
+    expect(offenders, 'cool greys are off-palette in light and do not theme in dark').toEqual([]);
+  });
+
   // remove-dark.js stripped dark classes with
   //   /dark:[a-zA-Z0-9\-\[\]\#\/\%]+/g
   // whose character class excludes `:`. On a two-level variant such as

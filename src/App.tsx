@@ -58,9 +58,9 @@ const TenantNotFound: React.FC<{ tenantId: string; message: string }> = ({ tenan
         </svg>
       </div>
       <h1 className="font-display text-2xl font-bold text-white mb-2">Organization Not Found</h1>
-      <p className="text-gray-400 mb-6">{message}</p>
-      <p className="text-sm text-gray-500 mb-6">
-        Subdomain: <code className="bg-gray-800 px-2 py-1 rounded">{tenantId}.theharvest.app</code>
+      <p className="text-stone-200 mb-6">{message}</p>
+      <p className="text-sm text-stone-300 mb-6">
+        Subdomain: <code className="bg-white/10 px-2 py-1 rounded">{tenantId}.theharvest.app</code>
       </p>
       <a
         href="https://theharvest.app"

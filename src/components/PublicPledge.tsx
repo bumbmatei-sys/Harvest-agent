@@ -41,7 +41,7 @@ const PublicPledge: React.FC<PublicPledgeProps> = ({ tenantId, tenantName, logo,
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
 
-  const inputCls = 'w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:border-transparent';
+  const inputCls = 'w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:outline-none focus:ring-2 focus:border-transparent';
   const ring = { '--tw-ring-color': primaryColor } as React.CSSProperties;
 
   const pct = campaign.goal > 0 ? Math.min(100, Math.round((campaign.raised / campaign.goal) * 100)) : 0;
@@ -81,10 +81,10 @@ const PublicPledge: React.FC<PublicPledgeProps> = ({ tenantId, tenantName, logo,
   if (done) {
     return (
       <Shell logo={logo} tenantName={tenantName} primaryColor={primaryColor}>
-        <div className="bg-surface-raised rounded-[14px] shadow-sm border border-gray-100 p-8 text-center">
+        <div className="bg-surface-raised rounded-[14px] shadow-sm border border-line-subtle p-8 text-center">
           <CheckCircle2 size={48} className="mx-auto mb-4" style={{ color: primaryColor }} />
-          <h1 className="font-display text-xl font-bold text-gray-900 mb-2">Thank you, {name}!</h1>
-          <p className="text-sm text-gray-500">Your pledge of {fmt(Number(amount))} has been recorded. We&apos;ll be in touch.</p>
+          <h1 className="font-display text-xl font-bold text-strong mb-2">Thank you, {name}!</h1>
+          <p className="text-sm text-muted">Your pledge of {fmt(Number(amount))} has been recorded. We&apos;ll be in touch.</p>
         </div>
       </Shell>
     );
@@ -92,17 +92,17 @@ const PublicPledge: React.FC<PublicPledgeProps> = ({ tenantId, tenantName, logo,
 
   return (
     <Shell logo={logo} tenantName={tenantName} primaryColor={primaryColor}>
-      <div className="bg-surface-raised rounded-[14px] shadow-sm border border-gray-100 p-6" style={{ paddingBottom: 24 }}>
-        <h1 className="font-display text-2xl font-bold text-gray-900 mb-2">{campaign.title}</h1>
-        {campaign.description && <p className="text-sm text-gray-500 mb-4 whitespace-pre-line">{campaign.description}</p>}
+      <div className="bg-surface-raised rounded-[14px] shadow-sm border border-line-subtle p-6" style={{ paddingBottom: 24 }}>
+        <h1 className="font-display text-2xl font-bold text-strong mb-2">{campaign.title}</h1>
+        {campaign.description && <p className="text-sm text-muted mb-4 whitespace-pre-line">{campaign.description}</p>}
 
         {campaign.goal > 0 && (
           <div className="mb-4">
-            <div className="flex items-baseline justify-between text-xs text-gray-500 mb-1.5">
-              <span className="font-semibold text-gray-800">{fmt(campaign.raised)} raised</span>
+            <div className="flex items-baseline justify-between text-xs text-muted mb-1.5">
+              <span className="font-semibold text-strong">{fmt(campaign.raised)} raised</span>
               <span>of {fmt(campaign.goal)}</span>
             </div>
-            <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+            <div className="h-2 bg-surface-sunken rounded-full overflow-hidden">
               <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: primaryColor }} />
             </div>
           </div>
@@ -116,26 +116,26 @@ const PublicPledge: React.FC<PublicPledgeProps> = ({ tenantId, tenantName, logo,
 
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Full Name<span className="text-red-500 ml-0.5">*</span></label>
+            <label className="block text-sm font-medium text-body mb-1.5">Full Name<span className="text-red-500 ml-0.5">*</span></label>
             <input className={inputCls} style={ring} value={name} onChange={(e) => setName(e.target.value)} />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Email<span className="text-red-500 ml-0.5">*</span></label>
+            <label className="block text-sm font-medium text-body mb-1.5">Email<span className="text-red-500 ml-0.5">*</span></label>
             <input type="email" className={inputCls} style={ring} value={email} onChange={(e) => setEmail(e.target.value)} />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Phone <span className="text-gray-400 font-normal">(optional)</span></label>
+            <label className="block text-sm font-medium text-body mb-1.5">Phone <span className="text-faint font-normal">(optional)</span></label>
             <input type="tel" className={inputCls} style={ring} value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="For pledge reminders" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Pledge Amount<span className="text-red-500 ml-0.5">*</span></label>
+            <label className="block text-sm font-medium text-body mb-1.5">Pledge Amount<span className="text-red-500 ml-0.5">*</span></label>
             <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-faint text-sm">$</span>
               <input type="number" min={0} className={`${inputCls} pl-7`} style={ring} value={amount} onChange={(e) => setAmount(e.target.value)} />
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Notes <span className="text-gray-400 font-normal">(optional)</span></label>
+            <label className="block text-sm font-medium text-body mb-1.5">Notes <span className="text-faint font-normal">(optional)</span></label>
             <textarea rows={3} className={`${inputCls} resize-none`} style={ring} value={notes} onChange={(e) => setNotes(e.target.value)} />
           </div>
         </div>

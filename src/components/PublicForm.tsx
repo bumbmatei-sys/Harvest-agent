@@ -74,16 +74,16 @@ const PublicForm: React.FC<PublicFormProps> = ({
   };
 
   const inputCls =
-    'w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:border-transparent';
+    'w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:outline-none focus:ring-2 focus:border-transparent';
   const ring = { '--tw-ring-color': primaryColor } as React.CSSProperties;
 
   if (submitted) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-surface-tint p-6">
-        <div className="bg-surface-raised rounded-[14px] shadow-sm border border-gray-100 p-8 max-w-md text-center">
+        <div className="bg-surface-raised rounded-[14px] shadow-sm border border-line-subtle p-8 max-w-md text-center">
           <CheckCircle2 size={48} className="mx-auto mb-4" style={{ color: primaryColor }} />
-          <h1 className="font-display text-xl font-bold text-gray-900 mb-2">{successMessage}</h1>
-          <p className="text-sm text-gray-400 mt-4">{tenantName}</p>
+          <h1 className="font-display text-xl font-bold text-strong mb-2">{successMessage}</h1>
+          <p className="text-sm text-faint mt-4">{tenantName}</p>
         </div>
       </div>
     );
@@ -101,14 +101,14 @@ const PublicForm: React.FC<PublicFormProps> = ({
           )}
         </div>
 
-        <form onSubmit={handleSubmit} className="bg-surface-raised rounded-[14px] shadow-sm border border-gray-100 p-6" style={{ paddingBottom: 120 }}>
-          <h1 className="font-display text-2xl font-bold text-gray-900 mb-1">{title}</h1>
-          {description && <p className="text-sm text-gray-500 mb-6">{description}</p>}
+        <form onSubmit={handleSubmit} className="bg-surface-raised rounded-[14px] shadow-sm border border-line-subtle p-6" style={{ paddingBottom: 120 }}>
+          <h1 className="font-display text-2xl font-bold text-strong mb-1">{title}</h1>
+          {description && <p className="text-sm text-muted mb-6">{description}</p>}
 
           <div className="space-y-5 mt-4">
             {fields.map((f) => (
               <div key={f.id}>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                <label className="block text-sm font-medium text-body mb-1.5">
                   {f.label}{f.required && <span className="text-red-500 ml-0.5">*</span>}
                 </label>
 
@@ -123,7 +123,7 @@ const PublicForm: React.FC<PublicFormProps> = ({
                 ) : f.type === 'radio' ? (
                   <div className="space-y-2">
                     {(f.options || []).map((o) => (
-                      <label key={o} className="flex items-center gap-2 text-sm text-gray-700">
+                      <label key={o} className="flex items-center gap-2 text-sm text-body">
                         <input type="radio" name={f.id} value={o} checked={answers[f.id] === o} onChange={() => setAnswer(f.id, o)} />
                         {o}
                       </label>
@@ -132,7 +132,7 @@ const PublicForm: React.FC<PublicFormProps> = ({
                 ) : f.type === 'checkbox' ? (
                   <div className="space-y-2">
                     {(f.options || []).map((o) => (
-                      <label key={o} className="flex items-center gap-2 text-sm text-gray-700">
+                      <label key={o} className="flex items-center gap-2 text-sm text-body">
                         <input type="checkbox" checked={Array.isArray(answers[f.id]) && answers[f.id].includes(o)} onChange={() => toggleCheckbox(f.id, o)} />
                         {o}
                       </label>

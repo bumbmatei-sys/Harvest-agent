@@ -315,17 +315,17 @@ const IntegrationsSection: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-gray-600">
+      <p className="text-sm text-body">
         Connect your social media and email marketing platforms to automate newsletter distribution.
       </p>
 
       {/* Instagram Card */}
-      <div className="bg-gray-50 rounded-xl p-4">
+      <div className="bg-surface-tint rounded-xl p-4">
         <div className="flex items-center gap-4">
-          <Instagram size={20} className="text-gray-400" />
+          <Instagram size={20} className="text-faint" />
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <p className="text-sm font-semibold text-gray-900">Instagram</p>
+              <p className="text-sm font-semibold text-strong">Instagram</p>
               {instagramStatus === 'connected' && isPrimaryInstagram && (
                 <span className="flex items-center gap-1 text-xs text-gold font-medium">
                   <Star size={11} fill="currentColor" /> Primary
@@ -337,7 +337,7 @@ const IntegrationsSection: React.FC = () => {
             ) : instagramStatus === 'connecting' ? (
               <p className="text-xs text-yellow-600">Waiting for authorization...</p>
             ) : (
-              <p className="text-xs text-gray-500">Auto-generate newsletters from your Instagram posts</p>
+              <p className="text-xs text-muted">Auto-generate newsletters from your Instagram posts</p>
             )}
           </div>
           <div className="flex items-center gap-2">
@@ -370,12 +370,12 @@ const IntegrationsSection: React.FC = () => {
       </div>
 
       {/* Mailchimp Card */}
-      <div className="bg-gray-50 rounded-xl p-4">
+      <div className="bg-surface-tint rounded-xl p-4">
         <div className="flex items-center gap-4">
-          <Mail size={20} className="text-gray-400" />
+          <Mail size={20} className="text-faint" />
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <p className="text-sm font-semibold text-gray-900">Mailchimp</p>
+              <p className="text-sm font-semibold text-strong">Mailchimp</p>
               {mailchimpStatus === 'connected' && isPrimaryMailchimp && (
                 <span className="flex items-center gap-1 text-xs text-gold font-medium">
                   <Star size={11} fill="currentColor" /> Primary
@@ -387,7 +387,7 @@ const IntegrationsSection: React.FC = () => {
             ) : mailchimpStatus === 'connecting' ? (
               <p className="text-xs text-yellow-600">Waiting for authorization...</p>
             ) : (
-              <p className="text-xs text-gray-500">Sync subscribers and send campaigns via Mailchimp</p>
+              <p className="text-xs text-muted">Sync subscribers and send campaigns via Mailchimp</p>
             )}
           </div>
           <div className="flex items-center gap-2">
@@ -420,11 +420,11 @@ const IntegrationsSection: React.FC = () => {
       </div>
 
       {/* Gmail Card */}
-      <div className="bg-gray-50 rounded-xl p-4">
+      <div className="bg-surface-tint rounded-xl p-4">
         <div className="flex items-center gap-4">
-          <Send size={20} className="text-gray-400" />
+          <Send size={20} className="text-faint" />
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-gray-900">Gmail</p>
+            <p className="text-sm font-semibold text-strong">Gmail</p>
             {gmailStatus === 'connected' ? (
               <p className="text-xs text-green-600">
                 {gmailSender
@@ -434,12 +434,12 @@ const IntegrationsSection: React.FC = () => {
             ) : gmailStatus === 'connecting' ? (
               <p className="text-xs text-yellow-600">Waiting for authorization...</p>
             ) : (
-              <p className="text-xs text-gray-500">Email a CRM contact from your own Gmail account</p>
+              <p className="text-xs text-muted">Email a CRM contact from your own Gmail account</p>
             )}
             {/* Say plainly what is being granted. Harvest asks for send-only
                 access and cannot open, search or read the mailbox — the connect
                 route refuses to start OAuth on any wider scope. */}
-            <p className="text-[11px] text-gray-400 mt-0.5">
+            <p className="text-[11px] text-faint mt-0.5">
               Send-only access. Harvest can never read your inbox.
             </p>
 
@@ -456,7 +456,7 @@ const IntegrationsSection: React.FC = () => {
               </button>
             ) : (
               <div className="mt-2">
-                <label htmlFor="gmail-sender" className="block text-[11px] text-gray-500 mb-1">
+                <label htmlFor="gmail-sender" className="block text-[11px] text-muted mb-1">
                   Send from this Gmail address
                 </label>
                 <div className="flex items-center gap-2">
@@ -466,7 +466,7 @@ const IntegrationsSection: React.FC = () => {
                     value={gmailSenderDraft}
                     onChange={(e) => setGmailSenderDraft(e.target.value)}
                     placeholder="you@yourchurch.org"
-                    className="flex-1 min-w-0 px-2 py-1 border border-gray-200 rounded-lg text-xs"
+                    className="flex-1 min-w-0 px-2 py-1 border border-line rounded-lg text-xs"
                   />
                   {gmailStatus === 'connected' && (
                     <>
@@ -475,7 +475,7 @@ const IntegrationsSection: React.FC = () => {
                         Save
                       </button>
                       <button type="button" onClick={() => { setEditingGmailSender(false); setGmailSenderError(null); }}
-                        className="px-3 py-1 border border-gray-200 text-gray-600 rounded-lg text-xs">
+                        className="px-3 py-1 border border-line text-body rounded-lg text-xs">
                         Cancel
                       </button>
                     </>
@@ -485,7 +485,7 @@ const IntegrationsSection: React.FC = () => {
                   <p className="text-[11px] text-red-600 mt-1">{gmailSenderError}</p>
                 )}
                 {gmailStatus !== 'connected' && (
-                  <p className="text-[11px] text-gray-400 mt-1">
+                  <p className="text-[11px] text-faint mt-1">
                     Must be the account you authorise. You can change it later.
                   </p>
                 )}
@@ -513,7 +513,7 @@ const IntegrationsSection: React.FC = () => {
         </div>
       </div>
 
-      <p className="text-xs text-gray-400">
+      <p className="text-xs text-faint">
         Powered by Composio — secure OAuth connections. Your credentials are never stored on our servers.
       </p>
     </div>

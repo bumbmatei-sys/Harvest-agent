@@ -550,7 +550,7 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
                 className="peer sr-only"
                 required
               />
-              <div className="w-full bg-surface-sunken rounded-2xl px-4 py-4 text-center text-strong font-bold peer-checked:bg-surface-chip peer-checked:ring-2 peer-checked:ring-gray-300 transition-all">
+              <div className="w-full bg-surface-sunken rounded-2xl px-4 py-4 text-center text-strong font-bold peer-checked:bg-surface-chip peer-checked:ring-2 peer-checked:ring-line-strong transition-all">
                 No
               </div>
             </label>

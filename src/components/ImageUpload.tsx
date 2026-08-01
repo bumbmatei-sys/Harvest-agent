@@ -153,15 +153,15 @@ export function ImageUpload({ value, onChange, className = '', rounded = false, 
 
       {isUploading ? (
         /* ── Uploading ── */
-        <div className="flex items-center gap-3 w-full px-3 py-2.5 border border-gray-200 rounded-xl bg-surface-raised">
-          <div className="w-10 h-10 rounded-lg bg-surface-raised border border-gray-200 flex items-center justify-center text-gold shrink-0">
+        <div className="flex items-center gap-3 w-full px-3 py-2.5 border border-line rounded-xl bg-surface-raised">
+          <div className="w-10 h-10 rounded-lg bg-surface-raised border border-line flex items-center justify-center text-gold shrink-0">
             <Loader2 size={20} className="animate-spin" />
           </div>
-          <span className="text-sm font-medium text-gray-600">Uploading…</span>
+          <span className="text-sm font-medium text-body">Uploading…</span>
         </div>
       ) : value ? (
         /* ── Filled: compact thumbnail ── */
-        <div className="flex items-center gap-3 w-full p-2 border border-gray-200 rounded-xl bg-surface-raised">
+        <div className="flex items-center gap-3 w-full p-2 border border-line rounded-xl bg-surface-raised">
           <Image
             src={value}
             alt="Preview"
@@ -171,14 +171,14 @@ export function ImageUpload({ value, onChange, className = '', rounded = false, 
             referrerPolicy="no-referrer"
           />
           <div className="flex-1 min-w-0">
-            <div className="text-sm font-medium text-gray-700 truncate">Image attached</div>
-            <div className="text-xs text-gray-400 truncate">Tap replace to change it</div>
+            <div className="text-sm font-medium text-body truncate">Image attached</div>
+            <div className="text-xs text-faint truncate">Tap replace to change it</div>
           </div>
           <div className="flex items-center gap-1 shrink-0">
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="w-[34px] h-[34px] flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 transition-colors"
+              className="w-[34px] h-[34px] flex items-center justify-center rounded-lg text-muted hover:bg-surface-sunken transition-colors"
               title="Replace image"
             >
               <RefreshCw size={16} />
@@ -186,7 +186,7 @@ export function ImageUpload({ value, onChange, className = '', rounded = false, 
             <button
               type="button"
               onClick={() => onChange('')}
-              className="w-[34px] h-[34px] flex items-center justify-center rounded-lg text-gray-500 hover:bg-red-50 hover:text-red-600 transition-colors"
+              className="w-[34px] h-[34px] flex items-center justify-center rounded-lg text-muted hover:bg-red-50 hover:text-red-600 transition-colors"
               title="Remove image"
             >
               <X size={16} />
@@ -198,14 +198,14 @@ export function ImageUpload({ value, onChange, className = '', rounded = false, 
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="flex items-center gap-3 w-full px-3 py-2.5 border border-dashed border-gray-300 rounded-xl bg-gray-50 hover:border-gold hover:bg-surface-raised transition-colors text-left"
+          className="flex items-center gap-3 w-full px-3 py-2.5 border border-dashed border-line-strong rounded-xl bg-surface-tint hover:border-gold hover:bg-surface-raised transition-colors text-left"
         >
-          <div className="w-10 h-10 rounded-lg bg-surface-raised border border-gray-200 flex items-center justify-center text-gray-400 shrink-0">
+          <div className="w-10 h-10 rounded-lg bg-surface-raised border border-line flex items-center justify-center text-faint shrink-0">
             <ImageIcon size={20} />
           </div>
           <div className="min-w-0">
-            <div className="text-sm font-medium text-gray-700">{label ?? 'Add image'}</div>
-            <div className="text-xs text-gray-400">PNG, JPG, GIF up to 4MB</div>
+            <div className="text-sm font-medium text-body">{label ?? 'Add image'}</div>
+            <div className="text-xs text-faint">PNG, JPG, GIF up to 4MB</div>
           </div>
         </button>
       )}

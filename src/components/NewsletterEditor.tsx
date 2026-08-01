@@ -357,14 +357,14 @@ const NewsletterEditor: React.FC<NewsletterEditorProps> = ({
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
                 placeholder="Enter your newsletter subject..."
-                className="w-full text-lg font-semibold text-strong placeholder-gray-300 border-0 focus:outline-none focus:ring-0 bg-transparent"
+                className="w-full text-lg font-semibold text-strong placeholder:text-faint border-0 focus:outline-none focus:ring-0 bg-transparent"
               />
               <div className="text-xs text-faint text-right mt-1">{subject.length}/150</div>
             </div>
 
             {/* TipTap editor */}
             <div className="bg-surface-raised rounded-2xl border border-line overflow-hidden">
-              <div className="flex items-center justify-between px-5 py-3 border-b border-gray-50">
+              <div className="flex items-center justify-between px-5 py-3 border-b border-line-subtle">
                 <span className="text-xs font-bold text-faint uppercase tracking-wider">Newsletter Content</span>
                 {canAutoGenerate && (
                   <button
@@ -403,7 +403,7 @@ const NewsletterEditor: React.FC<NewsletterEditorProps> = ({
                   <button
                     onClick={() => handleSend(scheduleDate)}
                     disabled={!scheduleDate || sending || !hasContent}
-                    className="flex items-center gap-2 px-5 py-2.5 bg-gray-800 text-white rounded-xl text-sm font-semibold hover:bg-gray-900 transition-colors disabled:opacity-50 cursor-pointer"
+                    className="flex items-center gap-2 px-5 py-2.5 bg-earth text-cream rounded-xl text-sm font-semibold hover:bg-warm-dark dark:bg-cream dark:text-earth dark:hover:bg-stone-200 transition-colors disabled:opacity-50 cursor-pointer"
                   >
                     <Clock size={15} />
                     Schedule
@@ -421,7 +421,7 @@ const NewsletterEditor: React.FC<NewsletterEditorProps> = ({
           {showPreview && (
             <div className="lg:sticky lg:top-6">
               <div className="bg-surface-raised rounded-2xl border border-line overflow-hidden">
-                <div className="px-5 py-3 border-b border-gray-50 flex items-center gap-2">
+                <div className="px-5 py-3 border-b border-line-subtle flex items-center gap-2">
                   <Eye size={14} className="text-faint" />
                   <span className="text-xs font-bold text-faint uppercase tracking-wider">Email Preview</span>
                 </div>

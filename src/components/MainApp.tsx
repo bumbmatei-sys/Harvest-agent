@@ -465,7 +465,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
           {desktopNavGroups.map((group, groupIndex) => (
             <div key={group.label} className={`hidden lg:flex lg:flex-col lg:w-full ${groupIndex > 0 ? 'lg:mt-5' : ''}`}>
               {isSidebarCollapsed ? (
-                groupIndex > 0 && <div className="lg:mx-3 lg:mb-2 lg:border-t lg:border-gray-100" />
+                groupIndex > 0 && <div className="lg:mx-3 lg:mb-2 lg:border-t lg:border-line-subtle" />
               ) : (
                 <div className="lg:px-4 lg:mb-2 lg:text-[10px] lg:font-bold lg:tracking-[0.14em] lg:text-faint lg:uppercase">
                   {group.label}
@@ -605,7 +605,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
                     <PrayerWall />
                   )}
                   {activeTopTab !== 'news' && activeTopTab !== 'partner' && activeTopTab !== 'blog' && activeTopTab !== 'courses' && activeTopTab !== 'messages' && activeTopTab !== 'prayer' && (
-                    <div className="flex flex-col items-center justify-center h-64 text-gray-400">
+                    <div className="flex flex-col items-center justify-center h-64 text-faint">
                       <p>{topTabs.find(t => t.id === activeTopTab)?.label} content coming soon.</p>
                     </div>
                   )}
@@ -642,7 +642,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
               <BiblePage />
              </div>
           ) : (
-            <div className="flex flex-col items-center justify-center h-full text-gray-400">
+            <div className="flex flex-col items-center justify-center h-full text-faint">
               <p>{bottomTabs.find(t => t.id === activeBottomTab)?.label} section coming soon.</p>
             </div>
           )}

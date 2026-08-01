@@ -142,7 +142,7 @@ export default function AiAssistantPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-surface-tint flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <div className="w-16 h-16 bg-amber-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
@@ -150,31 +150,31 @@ export default function AiAssistantPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
             </svg>
           </div>
-          <h1 className="font-display text-xl font-bold text-gray-900">Harvest AI Assistant</h1>
-          <p className="text-sm text-gray-500 mt-1">Your personal ministry assistant on Telegram</p>
+          <h1 className="font-display text-xl font-bold text-strong">Harvest AI Assistant</h1>
+          <p className="text-sm text-muted mt-1">Your personal ministry assistant on Telegram</p>
         </div>
 
         {(state === 'loading' || state === 'signing-in') && (
           <div className="text-center py-8">
             <div className="w-8 h-8 border-2 border-amber-200 border-t-amber-500 rounded-full animate-spin mx-auto mb-3" />
-            <p className="text-sm text-gray-500">{state === 'signing-in' ? 'Signing you in...' : 'Loading...'}</p>
+            <p className="text-sm text-muted">{state === 'signing-in' ? 'Signing you in...' : 'Loading...'}</p>
           </div>
         )}
 
         {state === 'check-email' && (
-          <div className="bg-surface-raised rounded-2xl shadow-sm border border-gray-100 p-6 text-center">
+          <div className="bg-surface-raised rounded-2xl shadow-sm border border-line-subtle p-6 text-center">
             <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <svg className="w-6 h-6 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
             </div>
-            <h3 className="font-display font-semibold text-gray-900 mb-2">Payment successful!</h3>
-            <p className="text-sm text-gray-500">Check your email for a link to activate your AI assistant. The email may take a minute to arrive.</p>
+            <h3 className="font-display font-semibold text-strong mb-2">Payment successful!</h3>
+            <p className="text-sm text-muted">Check your email for a link to activate your AI assistant. The email may take a minute to arrive.</p>
           </div>
         )}
 
         {state === 'connected' && (
-          <div className="bg-surface-raised rounded-2xl shadow-sm border border-gray-100 p-6">
+          <div className="bg-surface-raised rounded-2xl shadow-sm border border-line-subtle p-6">
             <div className="flex items-center gap-3 mb-6 p-3 bg-green-50 rounded-xl">
               <div className="w-2 h-2 bg-green-500 rounded-full" />
               <div>
@@ -193,11 +193,11 @@ export default function AiAssistantPage() {
             <button
               onClick={handleDisconnect}
               disabled={disconnectLoading}
-              className="w-full py-2 text-sm text-gray-500 hover:text-gray-700 transition-colors disabled:opacity-50"
+              className="w-full py-2 text-sm text-muted hover:text-body transition-colors disabled:opacity-50"
             >
               {disconnectLoading ? 'Disconnecting...' : 'Disconnect'}
             </button>
-            <div className="mt-4 pt-4 border-t border-gray-100 text-center">
+            <div className="mt-4 pt-4 border-t border-line-subtle text-center">
               <a href="https://billing.stripe.com/p/login" target="_blank" rel="noopener noreferrer" className="text-xs text-amber-500 hover:text-amber-600">
                 Manage Subscription &rarr;
               </a>
@@ -206,7 +206,7 @@ export default function AiAssistantPage() {
         )}
 
         {state === 'not-connected' && uid && (
-          <div className="bg-surface-raised rounded-2xl shadow-sm border border-gray-100 p-6">
+          <div className="bg-surface-raised rounded-2xl shadow-sm border border-line-subtle p-6">
             <div className="flex items-center gap-3 mb-6 p-3 bg-amber-50 rounded-xl">
               <div className="w-2 h-2 bg-amber-400 rounded-full" />
               <p className="text-sm text-amber-700">Not connected to Telegram yet</p>
@@ -219,8 +219,8 @@ export default function AiAssistantPage() {
             >
               Connect Telegram Bot
             </a>
-            <p className="text-xs text-gray-400 mt-2 text-center">Opens Telegram and activates your assistant automatically</p>
-            <div className="mt-4 pt-4 border-t border-gray-100 text-center">
+            <p className="text-xs text-faint mt-2 text-center">Opens Telegram and activates your assistant automatically</p>
+            <div className="mt-4 pt-4 border-t border-line-subtle text-center">
               <a href="https://billing.stripe.com/p/login" target="_blank" rel="noopener noreferrer" className="text-xs text-amber-500 hover:text-amber-600">
                 Manage Subscription &rarr;
               </a>
@@ -229,11 +229,11 @@ export default function AiAssistantPage() {
         )}
 
         {state === 'expired' && (
-          <div className="bg-surface-raised rounded-2xl shadow-sm border border-gray-100 p-6">
+          <div className="bg-surface-raised rounded-2xl shadow-sm border border-line-subtle p-6">
             <div className="p-3 bg-red-50 rounded-xl mb-4">
               <p className="text-sm text-red-700 font-medium">Link expired</p>
             </div>
-            <p className="text-sm text-gray-600 mb-4">Your access link has expired (valid for 1 hour). Enter your email to receive a new one.</p>
+            <p className="text-sm text-body mb-4">Your access link has expired (valid for 1 hour). Enter your email to receive a new one.</p>
             {resendSent ? (
               <div className="p-3 bg-green-50 rounded-xl text-sm text-green-700 text-center">
                 Check your email for a new link!
@@ -245,7 +245,7 @@ export default function AiAssistantPage() {
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                   placeholder="your@email.com"
-                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm mb-3 focus:outline-none focus:ring-2 focus:ring-amber-200"
+                  className="w-full border border-line rounded-xl px-4 py-2.5 text-sm mb-3 focus:outline-none focus:ring-2 focus:ring-amber-200"
                 />
                 <button
                   onClick={handleResendLink}
@@ -260,9 +260,9 @@ export default function AiAssistantPage() {
         )}
 
         {state === 'error' && (
-          <div className="bg-surface-raised rounded-2xl shadow-sm border border-gray-100 p-6 text-center">
+          <div className="bg-surface-raised rounded-2xl shadow-sm border border-line-subtle p-6 text-center">
             <p className="text-sm text-red-600 mb-2">Something went wrong</p>
-            <p className="text-xs text-gray-400">{errorMsg}</p>
+            <p className="text-xs text-faint">{errorMsg}</p>
           </div>
         )}
       </div>

@@ -42,9 +42,9 @@ export default async function PublicFormPage({
   if (data.active === false) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-surface-tint p-6">
-        <div className="bg-surface-raised rounded-2xl shadow-sm border border-gray-100 p-8 max-w-md text-center">
-          <h1 className="font-display text-lg font-bold text-gray-900 mb-2">{tenant.name}</h1>
-          <p className="text-gray-600">This form is no longer accepting responses.</p>
+        <div className="bg-surface-raised rounded-2xl shadow-sm border border-line-subtle p-8 max-w-md text-center">
+          <h1 className="font-display text-lg font-bold text-strong mb-2">{tenant.name}</h1>
+          <p className="text-body">This form is no longer accepting responses.</p>
         </div>
       </div>
     );

@@ -78,7 +78,7 @@ export default async function CoursePublicPage({
   return (
     <div className="min-h-screen bg-surface-raised">
       {/* Minimal header */}
-      <header className="border-b border-gray-100">
+      <header className="border-b border-line-subtle">
         <div className="max-w-2xl mx-auto px-4 py-4">
           <a
             href="/"
@@ -114,17 +114,17 @@ export default async function CoursePublicPage({
         </h1>
 
         {course.description && (
-          <p className="text-gray-600 text-base mb-6 leading-relaxed">
+          <p className="text-body text-base mb-6 leading-relaxed">
             {stripHtml(course.description)}
           </p>
         )}
 
         {/* Stats */}
-        <div className="flex items-center gap-4 text-sm text-gray-400 mb-8">
+        <div className="flex items-center gap-4 text-sm text-faint mb-8">
           <span>
             {levelCount} level{levelCount !== 1 ? 's' : ''}
           </span>
-          <span className="w-1 h-1 rounded-full bg-gray-300" />
+          <span className="w-1 h-1 rounded-full bg-line-strong" />
           <span>
             {lessonCount} lesson{lessonCount !== 1 ? 's' : ''}
           </span>
@@ -132,8 +132,8 @@ export default async function CoursePublicPage({
 
         {/* Level preview — first level only */}
         {(course.levels ?? []).slice(0, 1).map(level => (
-          <div key={level.id} className="mb-8 p-5 rounded-2xl bg-gray-50">
-            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">
+          <div key={level.id} className="mb-8 p-5 rounded-2xl bg-surface-tint">
+            <p className="text-xs font-semibold uppercase tracking-wider text-faint mb-2">
               Preview
             </p>
             <h2 className="font-bold text-[#0b1121] mb-3">{level.title}</h2>
@@ -141,19 +141,19 @@ export default async function CoursePublicPage({
               {level.sections.slice(0, 3).map(section => (
                 <li
                   key={section.id}
-                  className="flex items-center gap-2.5 text-sm text-gray-600"
+                  className="flex items-center gap-2.5 text-sm text-body"
                 >
                   <span className="w-1.5 h-1.5 rounded-full bg-[#D4AF37] flex-shrink-0" />
                   {section.title}
                   {section.lessons.length > 0 && (
-                    <span className="text-gray-400">
+                    <span className="text-faint">
                       · {section.lessons.length} lesson{section.lessons.length !== 1 ? 's' : ''}
                     </span>
                   )}
                 </li>
               ))}
               {level.sections.length > 3 && (
-                <li className="text-sm text-gray-400 pl-4">
+                <li className="text-sm text-faint pl-4">
                   +{level.sections.length - 3} more sections
                 </li>
               )}
@@ -169,7 +169,7 @@ export default async function CoursePublicPage({
           Start Learning
         </a>
 
-        <p className="text-center text-xs text-gray-400 mt-3">
+        <p className="text-center text-xs text-faint mt-3">
           Free to access · Opens in the {tenant?.name || 'Harvest'} app
         </p>
       </main>

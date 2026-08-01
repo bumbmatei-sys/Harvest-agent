@@ -94,7 +94,7 @@ const MyAccountMenu: React.FC<MyAccountMenuProps> = ({
           className="absolute right-0 top-11 z-[130] w-60 bg-surface-raised rounded-2xl border border-line shadow-[0_8px_30px_rgba(0,0,0,0.12)] overflow-hidden"
         >
           {/* Identity header */}
-          <div className="px-4 py-3 border-b border-gray-50 flex items-center gap-3">
+          <div className="px-4 py-3 border-b border-line-subtle flex items-center gap-3">
             <Avatar photoURL={photoURL} name={displayName} email={email} className="w-9 h-9" />
             <div className="min-w-0">
               <p className="text-sm font-semibold text-strong truncate">{displayName || 'Admin'}</p>
@@ -146,7 +146,7 @@ const MyAccountMenu: React.FC<MyAccountMenuProps> = ({
               <span className="text-sm font-semibold" style={{ color: GOLD }}>Go to User App</span>
             </button>
 
-            <div className="my-1 border-t border-gray-50" />
+            <div className="my-1 border-t border-line-subtle" />
 
             <button
               role="menuitem"

@@ -68,36 +68,36 @@ export const SmsSection: React.FC = () => {
 
   return (
     <div className="space-y-6" style={{ paddingBottom: 120 }}>
-      <p className="text-gray-600">Connect Twilio to send SMS broadcasts and automated messages to your congregation.</p>
+      <p className="text-body">Connect Twilio to send SMS broadcasts and automated messages to your congregation.</p>
 
-      <p className="text-sm text-gray-500">{BYO_CREDENTIALS_NOTE}</p>
+      <p className="text-sm text-muted">{BYO_CREDENTIALS_NOTE}</p>
 
-      <div className="bg-surface-raised rounded-2xl border border-gray-100 p-6 space-y-4">
+      <div className="bg-surface-raised rounded-2xl border border-line-subtle p-6 space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Account SID</label>
-          <input value={accountSid} onChange={e => setAccountSid(e.target.value)} placeholder="AC…" className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-mono focus:outline-none focus:ring-2 focus:ring-gold" />
+          <label className="block text-sm font-medium text-body mb-1.5">Account SID</label>
+          <input value={accountSid} onChange={e => setAccountSid(e.target.value)} placeholder="AC…" className="w-full px-4 py-2.5 border border-line rounded-xl text-sm font-mono focus:outline-none focus:ring-2 focus:ring-gold" />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Auth Token {configured && <span className="text-gray-400 font-normal">(leave blank to keep current)</span>}</label>
-          <input type="password" value={authToken} onChange={e => setAuthToken(e.target.value)} placeholder={configured ? '••••••••' : 'Your Twilio auth token'} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-gold" />
+          <label className="block text-sm font-medium text-body mb-1.5">Auth Token {configured && <span className="text-faint font-normal">(leave blank to keep current)</span>}</label>
+          <input type="password" value={authToken} onChange={e => setAuthToken(e.target.value)} placeholder={configured ? '••••••••' : 'Your Twilio auth token'} className="w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-gold" />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">From Number</label>
-          <input value={fromNumber} onChange={e => setFromNumber(e.target.value)} placeholder="+15551234567" className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-mono focus:outline-none focus:ring-2 focus:ring-gold" />
+          <label className="block text-sm font-medium text-body mb-1.5">From Number</label>
+          <input value={fromNumber} onChange={e => setFromNumber(e.target.value)} placeholder="+15551234567" className="w-full px-4 py-2.5 border border-line rounded-xl text-sm font-mono focus:outline-none focus:ring-2 focus:ring-gold" />
         </div>
         <button onClick={save} disabled={saving} className="px-6 py-2.5 bg-gold text-white rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-50">
           {saving ? 'Saving…' : 'Save Credentials'}
         </button>
       </div>
 
-      <div className="bg-surface-raised rounded-2xl border border-gray-100 p-6 space-y-3">
-        <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Test</h3>
-        <button onClick={() => test('connection')} disabled={busy === 'connection'} className="px-4 py-2 border border-gray-200 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50">
+      <div className="bg-surface-raised rounded-2xl border border-line-subtle p-6 space-y-3">
+        <h3 className="text-sm font-semibold text-muted uppercase tracking-wide">Test</h3>
+        <button onClick={() => test('connection')} disabled={busy === 'connection'} className="px-4 py-2 border border-line rounded-xl text-sm font-semibold text-body hover:bg-surface-tint disabled:opacity-50">
           {busy === 'connection' ? 'Checking…' : 'Test Connection'}
         </button>
         <div className="flex gap-2 pt-1">
-          <input value={testPhone} onChange={e => setTestPhone(e.target.value)} placeholder="+1555… (your phone)" className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-gold" />
-          <button onClick={() => test('sms')} disabled={busy === 'sms' || !testPhone.trim()} className="px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50 whitespace-nowrap">
+          <input value={testPhone} onChange={e => setTestPhone(e.target.value)} placeholder="+1555… (your phone)" className="flex-1 px-4 py-2.5 border border-line rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-gold" />
+          <button onClick={() => test('sms')} disabled={busy === 'sms' || !testPhone.trim()} className="px-4 py-2.5 border border-line rounded-xl text-sm font-semibold text-body hover:bg-surface-tint disabled:opacity-50 whitespace-nowrap">
             {busy === 'sms' ? 'Sending…' : 'Test SMS'}
           </button>
         </div>

@@ -101,8 +101,8 @@ const ImageUploadModal = ({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between">
-          <h3 className="font-display text-base font-bold text-gray-900">Add Image</h3>
-          <button onClick={onClose} className="p-1.5 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-700">
+          <h3 className="font-display text-base font-bold text-strong">Add Image</h3>
+          <button onClick={onClose} className="p-1.5 rounded-full hover:bg-surface-sunken text-faint hover:text-body">
             <X size={18} />
           </button>
         </div>
@@ -112,18 +112,18 @@ const ImageUploadModal = ({
         <div>
           <div
             onClick={() => !isUploading && fileInputRef.current?.click()}
-            className="w-full h-40 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 flex flex-col items-center justify-center text-gray-500 hover:bg-gray-100 hover:border-gold transition-colors cursor-pointer"
+            className="w-full h-40 rounded-xl border-2 border-dashed border-line-strong bg-surface-tint flex flex-col items-center justify-center text-muted hover:bg-surface-sunken hover:border-gold transition-colors cursor-pointer"
           >
             {isUploading ? (
               <>
                 <Loader2 size={28} className="animate-spin mb-2 text-gold" />
-                <span className="text-sm font-medium text-gray-600">Uploading...</span>
+                <span className="text-sm font-medium text-body">Uploading...</span>
               </>
             ) : (
               <>
                 <Upload size={28} className="mb-2" />
                 <span className="text-sm font-medium">Tap to upload</span>
-                <span className="text-xs text-gray-400 mt-1">PNG, JPG, GIF up to 4MB</span>
+                <span className="text-xs text-faint mt-1">PNG, JPG, GIF up to 4MB</span>
               </>
             )}
           </div>
@@ -274,13 +274,13 @@ const SlashCommandList = ({
   }, [selectedIndex]);
 
   if (items.length === 0) {
-    return <div className="p-3 text-sm text-gray-400">No commands found</div>;
+    return <div className="p-3 text-sm text-faint">No commands found</div>;
   }
 
   return (
     <div
       ref={containerRef}
-      className="bg-surface-raised rounded-xl shadow-xl border border-gray-200 overflow-hidden max-h-[320px] overflow-y-auto w-72"
+      className="bg-surface-raised rounded-xl shadow-xl border border-line overflow-hidden max-h-[320px] overflow-y-auto w-72"
     >
       <div className="p-1.5">
         {items.map((item, index) => (
@@ -292,22 +292,22 @@ const SlashCommandList = ({
             }}
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors ${
               index === selectedIndex
-                ? 'bg-[color-mix(in_srgb,var(--brand-color)_10%,transparent)] text-gray-900'
-                : 'text-gray-700 hover:bg-gray-50'
+                ? 'bg-[color-mix(in_srgb,var(--brand-color)_10%,transparent)] text-strong'
+                : 'text-body hover:bg-surface-tint'
             }`}
           >
             <div
               className={`flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg border ${
                 index === selectedIndex
                   ? 'border-gold bg-[color-mix(in_srgb,var(--brand-color)_5%,transparent)] text-gold'
-                  : 'border-gray-200 bg-gray-50 text-gray-500'
+                  : 'border-line bg-surface-tint text-muted'
               }`}
             >
               {item.icon}
             </div>
             <div className="flex-1 min-w-0">
               <div className="text-sm font-medium">{item.title}</div>
-              <div className="text-xs text-gray-400">{item.description}</div>
+              <div className="text-xs text-faint">{item.description}</div>
             </div>
           </button>
         ))}
@@ -529,7 +529,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
         <BubbleMenu
           editor={editor}
           tippyOptions={{ duration: 100, placement: 'top' }}
-          className="bg-gray-900 rounded-xl shadow-xl"
+          className="bg-warm-dark rounded-xl shadow-xl"
         >
           {showLinkInput ? (
             /* ── Inline link editor ── */
@@ -544,7 +544,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
                   if (e.key === 'Escape') { setShowLinkInput(false); }
                 }}
                 placeholder="https://..."
-                className="w-40 sm:w-56 px-2.5 py-1.5 text-sm bg-surface-raised text-gray-900 border-0 rounded-lg focus:ring-2 focus:ring-gold outline-none"
+                className="w-40 sm:w-56 px-2.5 py-1.5 text-sm bg-surface-raised text-strong border-0 rounded-lg focus:ring-2 focus:ring-gold outline-none"
               />
               <button
                 onMouseDown={(e) => { e.preventDefault(); applyLink(); }}
@@ -567,7 +567,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
               <button
                 onMouseDown={(e) => { e.preventDefault(); editor.chain().focus().toggleBold().run(); }}
                 className={`p-2 rounded-lg transition-colors ${
-                  editor.isActive('bold') ? 'bg-white/20 text-white' : 'text-gray-300 hover:text-white hover:bg-white/10'
+                  editor.isActive('bold') ? 'bg-white/20 text-white' : 'text-stone-300 hover:text-white hover:bg-white/10'
                 }`}
               >
                 <Bold size={16} />
@@ -575,7 +575,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
               <button
                 onMouseDown={(e) => { e.preventDefault(); editor.chain().focus().toggleItalic().run(); }}
                 className={`p-2 rounded-lg transition-colors ${
-                  editor.isActive('italic') ? 'bg-white/20 text-white' : 'text-gray-300 hover:text-white hover:bg-white/10'
+                  editor.isActive('italic') ? 'bg-white/20 text-white' : 'text-stone-300 hover:text-white hover:bg-white/10'
                 }`}
               >
                 <Italic size={16} />
@@ -583,7 +583,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
               <button
                 onMouseDown={(e) => { e.preventDefault(); editor.chain().focus().toggleUnderline().run(); }}
                 className={`p-2 rounded-lg transition-colors ${
-                  editor.isActive('underline') ? 'bg-white/20 text-white' : 'text-gray-300 hover:text-white hover:bg-white/10'
+                  editor.isActive('underline') ? 'bg-white/20 text-white' : 'text-stone-300 hover:text-white hover:bg-white/10'
                 }`}
               >
                 <UnderlineIcon size={16} />
@@ -591,7 +591,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
               <button
                 onMouseDown={(e) => { e.preventDefault(); editor.chain().focus().toggleStrike().run(); }}
                 className={`p-2 rounded-lg transition-colors ${
-                  editor.isActive('strike') ? 'bg-white/20 text-white' : 'text-gray-300 hover:text-white hover:bg-white/10'
+                  editor.isActive('strike') ? 'bg-white/20 text-white' : 'text-stone-300 hover:text-white hover:bg-white/10'
                 }`}
               >
                 <Strikethrough size={16} />
@@ -600,7 +600,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
               <button
                 onMouseDown={(e) => { e.preventDefault(); openLinkEditor(); }}
                 className={`p-2 rounded-lg transition-colors ${
-                  editor.isActive('link') ? 'bg-white/20 text-white' : 'text-gray-300 hover:text-white hover:bg-white/10'
+                  editor.isActive('link') ? 'bg-white/20 text-white' : 'text-stone-300 hover:text-white hover:bg-white/10'
                 }`}
               >
                 <LinkIcon size={16} />

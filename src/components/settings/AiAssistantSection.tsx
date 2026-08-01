@@ -131,8 +131,8 @@ const AiAssistantSection: React.FC<AiAssistantSectionProps> = ({ currentPlan, em
   if (!loaded) {
     return (
       <div className="mb-4">
-        <h4 className="font-display text-sm font-semibold text-gray-900 mb-1">AI Assistant</h4>
-        <div className="h-8 bg-gray-100 rounded animate-pulse" />
+        <h4 className="font-display text-sm font-semibold text-strong mb-1">AI Assistant</h4>
+        <div className="h-8 bg-surface-sunken rounded animate-pulse" />
       </div>
     );
   }
@@ -149,8 +149,8 @@ const AiAssistantSection: React.FC<AiAssistantSectionProps> = ({ currentPlan, em
 
   return (
     <div className="mb-4">
-      <h4 className="font-display text-sm font-semibold text-gray-900 mb-1">AI Assistant</h4>
-      <p className="text-sm text-gray-600 mb-3">
+      <h4 className="font-display text-sm font-semibold text-strong mb-1">AI Assistant</h4>
+      <p className="text-sm text-body mb-3">
         Your personal AI assistant on Telegram — available 24/7 for sermon prep, member care, and ministry guidance.
       </p>
 
@@ -164,12 +164,12 @@ const AiAssistantSection: React.FC<AiAssistantSectionProps> = ({ currentPlan, em
             <p className="text-sm font-medium text-amber-800">Included with your Ministry plan.</p>
           </div>
         ) : hasPurchased ? (
-          <div className="flex items-center justify-between gap-3 mb-3 p-3 bg-gray-50 rounded-xl border border-gray-100">
-            <p className="text-sm text-gray-700">AI Assistant — active, <span className="font-semibold">$200/mo</span></p>
+          <div className="flex items-center justify-between gap-3 mb-3 p-3 bg-surface-tint rounded-xl border border-line-subtle">
+            <p className="text-sm text-body">AI Assistant — active, <span className="font-semibold">$200/mo</span></p>
             <button
               onClick={handleManageBilling}
               disabled={portalLoading}
-              className="px-3 py-1.5 border border-gray-200 bg-surface-raised text-gray-700 rounded-lg text-xs font-medium hover:bg-gray-100 transition-colors disabled:opacity-50 flex-shrink-0"
+              className="px-3 py-1.5 border border-line bg-surface-raised text-body rounded-lg text-xs font-medium hover:bg-surface-sunken transition-colors disabled:opacity-50 flex-shrink-0"
             >
               {portalLoading ? 'Opening...' : 'Manage billing'}
             </button>
@@ -180,8 +180,8 @@ const AiAssistantSection: React.FC<AiAssistantSectionProps> = ({ currentPlan, em
       {!hasAssistant ? (
         <div>
           <div className="flex items-baseline gap-2 mb-3">
-            <span className="text-base font-semibold text-gray-900">$200</span>
-            <span className="text-sm text-gray-500">/mo per admin</span>
+            <span className="text-base font-semibold text-strong">$200</span>
+            <span className="text-sm text-muted">/mo per admin</span>
           </div>
           <button
             onClick={handleCheckout}
@@ -221,7 +221,7 @@ const AiAssistantSection: React.FC<AiAssistantSectionProps> = ({ currentPlan, em
           <button
             onClick={handleDisconnect}
             disabled={disconnectLoading}
-            className="w-full px-4 py-2 border border-gray-200 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
+            className="w-full px-4 py-2 border border-line text-body rounded-lg text-sm font-medium hover:bg-surface-tint transition-colors disabled:opacity-50"
           >
             {disconnectLoading ? 'Disconnecting...' : 'Disconnect Telegram'}
           </button>
@@ -241,7 +241,7 @@ const AiAssistantSection: React.FC<AiAssistantSectionProps> = ({ currentPlan, em
             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z" /></svg>
             Connect Telegram Bot
           </a>
-          <p className="text-xs text-gray-400 mt-2 text-center">Opens Telegram and activates your assistant automatically</p>
+          <p className="text-xs text-faint mt-2 text-center">Opens Telegram and activates your assistant automatically</p>
         </div>
       )}
     </div>

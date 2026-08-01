@@ -51,48 +51,48 @@ const PublicCalendar: React.FC<PublicCalendarProps> = ({ tenantId, tenantName, l
         </div>
 
         <div className="flex items-center justify-between mb-5">
-          <h1 className="font-display text-2xl font-bold text-gray-900">{tenantName} Events</h1>
+          <h1 className="font-display text-2xl font-bold text-strong">{tenantName} Events</h1>
           <a href="/calendar/ical" target="_blank" rel="noreferrer"
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border border-gray-200 bg-surface-raised text-gray-700 hover:bg-gray-50 shrink-0">
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border border-line bg-surface-raised text-body hover:bg-surface-tint shrink-0">
             <CalendarPlus size={14} /> Subscribe
           </a>
         </div>
 
         {events.length === 0 ? (
-          <div className="bg-surface-raised rounded-[14px] shadow-sm border border-gray-100 p-12 text-center">
-            <CalendarOff size={40} className="mx-auto mb-3 text-gray-300" />
-            <p className="text-gray-500 font-medium">No upcoming events.</p>
-            <p className="text-sm text-gray-400 mt-1">Check back soon.</p>
+          <div className="bg-surface-raised rounded-[14px] shadow-sm border border-line-subtle p-12 text-center">
+            <CalendarOff size={40} className="mx-auto mb-3 text-line-strong" />
+            <p className="text-muted font-medium">No upcoming events.</p>
+            <p className="text-sm text-faint mt-1">Check back soon.</p>
           </div>
         ) : (
           <div className="space-y-4">
             {events.map((ev) => {
               const when = fmtDateTime(ev.startDate);
               return (
-                <div key={ev.id} className="bg-surface-raised rounded-[14px] shadow-sm border border-gray-100 overflow-hidden">
+                <div key={ev.id} className="bg-surface-raised rounded-[14px] shadow-sm border border-line-subtle overflow-hidden">
                   {ev.coverImage && (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={ev.coverImage} alt={ev.title} className="w-full h-40 object-cover" />
                   )}
                   <div className="p-5">
-                    <h2 className="text-lg font-bold text-gray-900 mb-1.5">{ev.title}</h2>
+                    <h2 className="text-lg font-bold text-strong mb-1.5">{ev.title}</h2>
                     <div className="space-y-1 mb-2">
                       {when && (
-                        <p className="flex items-center gap-2 text-sm text-gray-600"><Calendar size={14} style={{ color: primaryColor }} /> {when}</p>
+                        <p className="flex items-center gap-2 text-sm text-body"><Calendar size={14} style={{ color: primaryColor }} /> {when}</p>
                       )}
                       {ev.isOnline ? (
-                        <p className="flex items-center gap-2 text-sm text-gray-600"><Globe size={14} style={{ color: primaryColor }} /> Online</p>
+                        <p className="flex items-center gap-2 text-sm text-body"><Globe size={14} style={{ color: primaryColor }} /> Online</p>
                       ) : ev.location ? (
-                        <p className="flex items-center gap-2 text-sm text-gray-600"><MapPin size={14} style={{ color: primaryColor }} /> {ev.location}</p>
+                        <p className="flex items-center gap-2 text-sm text-body"><MapPin size={14} style={{ color: primaryColor }} /> {ev.location}</p>
                       ) : null}
                     </div>
-                    {ev.description && <p className="text-sm text-gray-500 line-clamp-2 mb-3">{ev.description}</p>}
+                    {ev.description && <p className="text-sm text-muted line-clamp-2 mb-3">{ev.description}</p>}
                     <div className="flex items-center justify-between gap-3">
-                      <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${ev.price > 0 ? 'bg-gray-100 text-gray-600' : 'bg-green-100 text-green-700'}`}>
+                      <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${ev.price > 0 ? 'bg-surface-sunken text-body' : 'bg-green-100 text-green-700'}`}>
                         {ev.price > 0 ? `$${ev.price}` : 'Free'}
                       </span>
                       <a href={eventUrl(ev.id)}
-                        className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold ${ev.registrationEnabled ? 'text-white' : 'border border-gray-200 text-gray-700 hover:bg-gray-50'}`}
+                        className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold ${ev.registrationEnabled ? 'text-white' : 'border border-line text-body hover:bg-surface-tint'}`}
                         style={ev.registrationEnabled ? { backgroundColor: primaryColor } : undefined}>
                         {ev.registrationEnabled ? 'Register' : 'View Details'} <ArrowRight size={14} />
                       </a>

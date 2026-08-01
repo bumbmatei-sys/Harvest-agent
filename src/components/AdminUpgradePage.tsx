@@ -258,7 +258,7 @@ const AdminUpgradePage: React.FC<AdminUpgradePageProps> = ({ currentPlan, tenant
           className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-line text-sm font-medium text-body hover:bg-surface-sunken transition-colors disabled:opacity-50"
         >
           {portalLoading ? (
-            <><span className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" /> Opening portal…</>
+            <><span className="w-4 h-4 border-2 border-line-strong border-t-gray-600 rounded-full animate-spin" /> Opening portal…</>
           ) : (
             <>Open Billing Portal <ChevronRight size={15} /></>
           )}

@@ -208,7 +208,7 @@ const BillingAndPayments: React.FC<BillingAndPaymentsProps> = ({ currentPlan, te
                     <th className="px-4 py-3 text-right text-xs font-semibold text-muted uppercase tracking-wider">Invoice</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-50">
+                <tbody className="divide-y divide-line-subtle">
                   {invoices.map((inv) => (
                     <tr key={inv.id} className="hover:bg-surface-sunken transition-colors">
                       <td className="px-4 py-3 text-muted whitespace-nowrap">{fmtDate(inv.date)}</td>

@@ -38,7 +38,7 @@ const InputField = ({ placeholder, type = "text", name, value, onChange, require
  onChange={onChange}
  required={required}
  placeholder={placeholder}
- className="w-full bg-surface-sunken rounded-xl px-4 py-3 text-sm text-strong font-medium focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_20%,transparent)] mb-4 placeholder-gray-400 border border-transparent "
+ className="w-full bg-surface-sunken rounded-xl px-4 py-3 text-sm text-strong font-medium focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_20%,transparent)] mb-4 placeholder:text-faint border border-transparent "
  />
 );
 
@@ -50,7 +50,7 @@ const TextAreaField = ({ placeholder, name, value, onChange, required }: any) =>
  onChange={onChange}
  required={required}
  rows={4}
- className="w-full bg-surface-sunken rounded-xl px-4 py-3 text-sm text-strong font-medium focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_20%,transparent)] mb-4 placeholder-gray-400 resize-none border border-transparent "
+ className="w-full bg-surface-sunken rounded-xl px-4 py-3 text-sm text-strong font-medium focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_20%,transparent)] mb-4 placeholder:text-faint resize-none border border-transparent "
  />
 );
 
@@ -102,7 +102,7 @@ const AccordionItem = ({
  </button>
 
  {isOpen && (
- <div className="p-4 border-t border-gray-50 animate-in slide-in-from-top-2 duration-200">
+ <div className="p-4 border-t border-line-subtle animate-in slide-in-from-top-2 duration-200">
  {children}
  </div>
  )}

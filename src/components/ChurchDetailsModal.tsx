@@ -144,7 +144,7 @@ const ChurchDetailsModal: React.FC<ChurchDetailsModalProps> = ({
  
  <div className="absolute bottom-12 left-0 w-full p-6 text-white">
  <h2 className="text-5xl font-bold mb-2 italic font-display">{church.name}</h2>
- <div className="flex items-center gap-2 text-sm text-gray-200">
+ <div className="flex items-center gap-2 text-sm text-stone-200">
  <MapPin size={16} />
  <span>
  {church.street} {church.number && church.number !== '' ? church.number : ''}

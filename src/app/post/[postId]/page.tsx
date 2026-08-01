@@ -129,7 +129,7 @@ export default async function PublicPostPage({
           )}
         </div>
 
-        <article className="bg-surface-raised rounded-[14px] shadow-sm border border-gray-100 p-6">
+        <article className="bg-surface-raised rounded-[14px] shadow-sm border border-line-subtle p-6">
           {/* Author */}
           <div className="flex items-center gap-3 mb-4">
             {authorPhoto ? (
@@ -144,14 +144,14 @@ export default async function PublicPostPage({
               </div>
             )}
             <div className="min-w-0">
-              <div className="font-semibold text-gray-900 truncate">{authorName}</div>
-              {createdLabel && <div className="text-xs text-gray-400">{createdLabel}</div>}
+              <div className="font-semibold text-strong truncate">{authorName}</div>
+              {createdLabel && <div className="text-xs text-faint">{createdLabel}</div>}
             </div>
           </div>
 
           {/* Content (plain text, whitespace preserved) */}
           {content && (
-            <p className="text-[15px] text-gray-800 whitespace-pre-line leading-relaxed mb-4">{content}</p>
+            <p className="text-[15px] text-strong whitespace-pre-line leading-relaxed mb-4">{content}</p>
           )}
 
           {/* Image */}
@@ -160,13 +160,13 @@ export default async function PublicPostPage({
             <img
               src={imageUrl}
               alt=""
-              className="w-full rounded-xl border border-gray-100 mb-4 object-cover"
+              className="w-full rounded-xl border border-line-subtle mb-4 object-cover"
               referrerPolicy="no-referrer"
             />
           )}
 
           {/* Read-only engagement counts — no like/comment controls for logged-out visitors. */}
-          <div className="flex items-center gap-5 pt-4 border-t border-gray-100 text-sm text-gray-500">
+          <div className="flex items-center gap-5 pt-4 border-t border-line-subtle text-sm text-muted">
             <span className="inline-flex items-center gap-1.5">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
                 <path d="M12 21s-7.5-4.35-10-8.5C.5 9.5 1.5 6 5 6c2 0 3 1.5 3 1.5S9 6 11 6c.4 0 .7 0 1 .1.3-.1.6-.1 1-.1 2 0 3 1.5 3 1.5S20 6 19 6c3.5 0 4.5 3.5 3 6.5C19.5 16.65 12 21 12 21z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
@@ -184,8 +184,8 @@ export default async function PublicPostPage({
 
         {/* Sign-in CTA — a plain link, NOT an interactive like/comment control.
             The app root shows the auth screen to logged-out visitors. */}
-        <div className="bg-surface-raised rounded-[14px] shadow-sm border border-gray-100 p-5 mt-4 text-center">
-          <p className="text-sm text-gray-500 mb-3">Sign in to join the conversation</p>
+        <div className="bg-surface-raised rounded-[14px] shadow-sm border border-line-subtle p-5 mt-4 text-center">
+          <p className="text-sm text-muted mb-3">Sign in to join the conversation</p>
           <a
             href="/"
             className="inline-block px-6 py-2.5 rounded-xl text-white font-semibold transition-opacity hover:opacity-90"

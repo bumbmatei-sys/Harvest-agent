@@ -49,7 +49,7 @@ const PublicCampaign: React.FC<PublicCampaignProps> = ({ tenantId, tenantName, l
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const inputCls = 'w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:border-transparent';
+  const inputCls = 'w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:outline-none focus:ring-2 focus:border-transparent';
   const ring = { '--tw-ring-color': primaryColor } as React.CSSProperties;
 
   const pct = campaign.goal > 0 ? Math.min(100, Math.round((campaign.raised / campaign.goal) * 100)) : 0;
@@ -96,9 +96,9 @@ const PublicCampaign: React.FC<PublicCampaignProps> = ({ tenantId, tenantName, l
 
   return (
     <Shell logo={logo} tenantName={tenantName} primaryColor={primaryColor}>
-      <div className="bg-surface-raised rounded-[14px] shadow-sm border border-gray-100 overflow-hidden">
+      <div className="bg-surface-raised rounded-[14px] shadow-sm border border-line-subtle overflow-hidden">
         {campaign.coverImage && (
-          <div className="relative bg-gray-100">
+          <div className="relative bg-surface-sunken">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={campaign.coverImage} alt={campaign.title} className="w-full max-h-64 object-cover" referrerPolicy="no-referrer" />
             {daysLeft !== null && (
@@ -118,16 +118,16 @@ const PublicCampaign: React.FC<PublicCampaignProps> = ({ tenantId, tenantName, l
             </div>
           )}
 
-          <h1 className="font-display text-2xl font-bold text-gray-900 mb-2">{campaign.title}</h1>
-          {campaign.description && <p className="text-sm text-gray-500 mb-4 whitespace-pre-line">{campaign.description}</p>}
+          <h1 className="font-display text-2xl font-bold text-strong mb-2">{campaign.title}</h1>
+          {campaign.description && <p className="text-sm text-muted mb-4 whitespace-pre-line">{campaign.description}</p>}
 
           {campaign.goal > 0 && (
             <div className="mb-5">
-              <div className="flex items-baseline justify-between text-xs text-gray-500 mb-1.5">
-                <span className="font-semibold text-gray-800">{fmt(campaign.raised)} raised</span>
+              <div className="flex items-baseline justify-between text-xs text-muted mb-1.5">
+                <span className="font-semibold text-strong">{fmt(campaign.raised)} raised</span>
                 <span>of {fmt(campaign.goal)}</span>
               </div>
-              <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+              <div className="h-2 bg-surface-sunken rounded-full overflow-hidden">
                 <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: primaryColor }} />
               </div>
               <div className="text-right text-[11px] font-bold mt-1" style={{ color: primaryColor }}>{pct}%</div>
@@ -136,14 +136,14 @@ const PublicCampaign: React.FC<PublicCampaignProps> = ({ tenantId, tenantName, l
 
           {/* Donate — routes to Stripe Checkout (its own auth/payment). */}
           <div>
-            <p className="text-sm font-semibold text-gray-700 mb-2.5">Select an amount</p>
+            <p className="text-sm font-semibold text-body mb-2.5">Select an amount</p>
             <div className="grid grid-cols-4 gap-2 mb-3">
               {AMOUNT_PRESETS.map(amt => (
                 <button
                   key={amt}
                   type="button"
                   onClick={() => { setSelectedAmount(amt); setCustomAmount(''); }}
-                  className={`py-2.5 rounded-xl text-sm font-bold border-2 transition-all ${selectedAmount === amt ? 'text-white border-transparent' : 'text-gray-800 border-gray-200 bg-surface-raised'}`}
+                  className={`py-2.5 rounded-xl text-sm font-bold border-2 transition-all ${selectedAmount === amt ? 'text-white border-transparent' : 'text-strong border-line bg-surface-raised'}`}
                   style={selectedAmount === amt ? { backgroundColor: primaryColor, borderColor: primaryColor } : {}}
                 >
                   ${amt}
@@ -151,7 +151,7 @@ const PublicCampaign: React.FC<PublicCampaignProps> = ({ tenantId, tenantName, l
               ))}
             </div>
             <div className="relative mb-4">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-faint text-sm">$</span>
               <input
                 type="number"
                 min={1}
@@ -193,7 +193,7 @@ const PublicCampaign: React.FC<PublicCampaignProps> = ({ tenantId, tenantName, l
               {processing ? <Loader2 size={16} className="animate-spin" /> : <Heart size={15} strokeWidth={2.5} />}
               {processing ? 'Processing…' : `Donate${amount ? ` ${fmt(amount)}` : ''}`}
             </button>
-            <p className="text-[11px] text-gray-400 text-center mt-3">Secure payment powered by Stripe.</p>
+            <p className="text-[11px] text-faint text-center mt-3">Secure payment powered by Stripe.</p>
           </div>
         </div>
       </div>

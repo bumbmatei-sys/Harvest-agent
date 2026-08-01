@@ -74,7 +74,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ course, onBack }) => {
  <p className="text-sm text-muted ">Getting started with the basics</p>
  </div>
  </div>
- <div className="divide-y divide-gray-50 ">
+ <div className="divide-y divide-line-subtle ">
  {[1, 2, 3].map((lesson) => (
  <div key={lesson} className="p-4 flex items-center gap-4 hover:bg-surface-sunken transition-colors cursor-pointer group">
  <div className="w-8 h-8 rounded-full bg-surface-sunken flex items-center justify-center text-muted group-hover:bg-gold group-hover:text-white transition-colors">

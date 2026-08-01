@@ -129,10 +129,10 @@ const SavedItems: React.FC<SavedItemsProps> = ({ onBack, onOpenBlog, onOpenLesso
 
   return (
     <div className="flex flex-col min-h-full h-full bg-surface-tint overflow-y-auto">
-      <div className="sticky top-0 z-10 bg-surface-raised border-b border-gray-100">
+      <div className="sticky top-0 z-10 bg-surface-raised border-b border-line-subtle">
         <div className="flex items-center gap-3 px-4 py-4 lg:max-w-[760px] lg:mx-auto">
-          <button onClick={onBack} className="p-1.5 rounded-lg hover:bg-gray-100">
-            <ArrowLeft size={18} className="text-gray-600" />
+          <button onClick={onBack} className="p-1.5 rounded-lg hover:bg-surface-sunken">
+            <ArrowLeft size={18} className="text-body" />
           </button>
           <h2 className="font-display text-lg font-normal tracking-[-0.01em] text-strong">Saved</h2>
         </div>
@@ -145,7 +145,7 @@ const SavedItems: React.FC<SavedItemsProps> = ({ onBack, onOpenBlog, onOpenLesso
               style={{ borderColor: BRAND, borderTopColor: 'transparent' }} />
           </div>
         ) : entries.length === 0 ? (
-          <div className="text-center py-16 text-gray-400">
+          <div className="text-center py-16 text-faint">
             <Bookmark size={40} className="mx-auto mb-3 opacity-30" />
             <p className="font-medium text-strong">Nothing saved yet</p>
             <p className="text-sm mt-1">Bookmark articles, lessons, posts and verses to find them here.</p>

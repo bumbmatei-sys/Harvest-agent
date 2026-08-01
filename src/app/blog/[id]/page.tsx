@@ -129,7 +129,7 @@ export default async function BlogPostPage({
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       {/* Minimal header */}
-      <header className="border-b border-gray-100">
+      <header className="border-b border-line-subtle">
         <div className="max-w-2xl mx-auto px-4 py-4">
           <a
             href={appUrl}
@@ -172,7 +172,7 @@ export default async function BlogPostPage({
         {post.publishedAt && (
           <time
             dateTime={post.publishedAt}
-            className="block text-sm text-gray-400 mb-8"
+            className="block text-sm text-faint mb-8"
           >
             {new Date(post.publishedAt).toLocaleDateString('en-US', {
               year: 'numeric',
@@ -188,8 +188,8 @@ export default async function BlogPostPage({
         />
 
         {/* CTA to open full app */}
-        <div className="mt-12 pt-8 border-t border-gray-100 text-center">
-          <p className="text-gray-500 text-sm mb-4">
+        <div className="mt-12 pt-8 border-t border-line-subtle text-center">
+          <p className="text-muted text-sm mb-4">
             More from {tenant?.name || 'Harvest'}
           </p>
           <a

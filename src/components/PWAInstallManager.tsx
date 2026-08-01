@@ -145,36 +145,36 @@ export default function PWAInstallManager() {
         initial={{ y: 100, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         exit={{ y: 100, opacity: 0 }}
-        className="fixed bottom-24 left-4 right-4 z-[100] md:bottom-8 md:max-w-sm md:left-1/2 md:-translate-x-1/2 bg-surface-raised rounded-2xl shadow-2xl border border-gray-100 p-4"
+        className="fixed bottom-24 left-4 right-4 z-[100] md:bottom-8 md:max-w-sm md:left-1/2 md:-translate-x-1/2 bg-surface-raised rounded-2xl shadow-2xl border border-line-subtle p-4"
       >
         <button 
           onClick={dismissPrompt}
-          className="absolute top-2 right-2 p-1.5 bg-gray-50 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+          className="absolute top-2 right-2 p-1.5 bg-surface-tint text-faint hover:text-body hover:bg-surface-sunken rounded-full transition-colors"
           aria-label="Close"
         >
           <X size={16} />
         </button>
 
         <div className="flex items-start gap-4 pt-1 pr-6">
-          <div className="flex-shrink-0 w-12 h-12 bg-gray-50 rounded-xl flex items-center justify-center p-2 shadow-sm border border-gray-100">
+          <div className="flex-shrink-0 w-12 h-12 bg-surface-tint rounded-xl flex items-center justify-center p-2 shadow-sm border border-line-subtle">
             <img src="https://raw.githubusercontent.com/bumbmatei-sys/harvest-pics/main/fundal-alb.png" alt="App Icon" className="w-full h-full object-contain" />
           </div>
           
           <div className="flex-1">
-            <h3 className="font-bold text-gray-900 text-base mb-1 tracking-tight font-display">Install Harvest App</h3>
+            <h3 className="font-bold text-strong text-base mb-1 tracking-tight font-display">Install Harvest App</h3>
             
             {platform === 'ios' ? (
               // iOS never fires beforeinstallprompt — always the Share-sheet flow.
-              <div className="text-sm text-gray-600">
+              <div className="text-sm text-body">
                 <p className="mb-2 leading-snug">Get quick access from your home screen:</p>
                 <ol className="space-y-2 mt-2">
-                  <li className="flex items-center gap-2 bg-gray-50 p-2 rounded-lg">
-                    <span className="font-bold text-gray-400">1.</span>
+                  <li className="flex items-center gap-2 bg-surface-tint p-2 rounded-lg">
+                    <span className="font-bold text-faint">1.</span>
                     Tap <Share size={16} className="text-blue-500" /> Share
                   </li>
-                  <li className="flex items-center gap-2 bg-gray-50 p-2 rounded-lg">
-                    <span className="font-bold text-gray-400">2.</span>
-                    Select <PlusSquare size={16} className="text-gray-700" /> Add to Home Screen
+                  <li className="flex items-center gap-2 bg-surface-tint p-2 rounded-lg">
+                    <span className="font-bold text-faint">2.</span>
+                    Select <PlusSquare size={16} className="text-body" /> Add to Home Screen
                   </li>
                 </ol>
                 <div className="mt-3 flex justify-end">
@@ -187,7 +187,7 @@ export default function PWAInstallManager() {
                 </div>
               </div>
             ) : platform === 'android' ? (
-              <div className="text-sm text-gray-600">
+              <div className="text-sm text-body">
                 {deferredPrompt ? (
                   // Native install available → real one-tap button.
                   <>
@@ -204,13 +204,13 @@ export default function PWAInstallManager() {
                   <>
                     <p className="mb-3 leading-snug">Add Harvest to your home screen for faster access and offline use.</p>
                     <div className="space-y-2 mt-2">
-                      <div className="flex items-center gap-2 bg-gray-50 p-2 rounded-lg">
-                        <span className="font-bold text-gray-400">1.</span>
-                        Tap the menu <MoreVertical size={15} className="text-gray-700" /> in your browser
+                      <div className="flex items-center gap-2 bg-surface-tint p-2 rounded-lg">
+                        <span className="font-bold text-faint">1.</span>
+                        Tap the menu <MoreVertical size={15} className="text-body" /> in your browser
                       </div>
-                      <div className="flex items-start gap-2 bg-gray-50 p-2 rounded-lg">
-                        <span className="font-bold text-gray-400">2.</span>
-                        <span>Tap <strong className="font-semibold text-gray-800">Install app</strong> (or <strong className="font-semibold text-gray-800">Add to Home screen</strong>)</span>
+                      <div className="flex items-start gap-2 bg-surface-tint p-2 rounded-lg">
+                        <span className="font-bold text-faint">2.</span>
+                        <span>Tap <strong className="font-semibold text-strong">Install app</strong> (or <strong className="font-semibold text-strong">Add to Home screen</strong>)</span>
                       </div>
                     </div>
                     <div className="mt-3 flex justify-end">
@@ -224,7 +224,7 @@ export default function PWAInstallManager() {
                   </>
                 ) : (
                   // Still waiting for beforeinstallprompt — brief holding state.
-                  <div className="text-sm text-gray-500 py-2 text-center">Preparing install…</div>
+                  <div className="text-sm text-muted py-2 text-center">Preparing install…</div>
                 )}
               </div>
             ) : null}

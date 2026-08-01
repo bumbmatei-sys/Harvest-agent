@@ -63,13 +63,13 @@ const PaymentSection: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <p className="text-gray-600">
+      <p className="text-body">
         Connect your Stripe account to receive payments from your congregation for donations, tithes, and more.
       </p>
 
       {/* Stripe Connect */}
-      <div className="bg-surface-raised rounded-2xl border border-gray-100 p-6">
-        <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">Stripe Connect</h3>
+      <div className="bg-surface-raised rounded-2xl border border-line-subtle p-6">
+        <h3 className="text-sm font-semibold text-muted uppercase tracking-wide mb-4">Stripe Connect</h3>
         {stripeConnectStatus === 'active' ? (
           <div className="space-y-4">
             <div className="flex items-center gap-3">
@@ -78,7 +78,7 @@ const PaymentSection: React.FC = () => {
               </div>
               <div>
                 <p className="text-sm font-semibold text-green-800">Active</p>
-                <p className="text-xs text-gray-500">Your Stripe account is connected and ready to accept payments.</p>
+                <p className="text-xs text-muted">Your Stripe account is connected and ready to accept payments.</p>
               </div>
               <span className="ml-auto inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                 Active
@@ -88,7 +88,7 @@ const PaymentSection: React.FC = () => {
               href="https://dashboard.stripe.com"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-gray-900 text-white rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors"
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-earth text-cream rounded-xl text-sm font-semibold hover:bg-warm-dark dark:bg-cream dark:text-earth dark:hover:bg-stone-200 transition-colors"
             >
               Manage Stripe Dashboard
               <ChevronRight size={16} />
@@ -102,7 +102,7 @@ const PaymentSection: React.FC = () => {
               </div>
               <div>
                 <p className="text-sm font-semibold text-yellow-800">Pending</p>
-                <p className="text-xs text-gray-500">Your Stripe account setup is incomplete. Please finish onboarding.</p>
+                <p className="text-xs text-muted">Your Stripe account setup is incomplete. Please finish onboarding.</p>
               </div>
               <span className="ml-auto inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
                 Pending
@@ -124,7 +124,7 @@ const PaymentSection: React.FC = () => {
               </div>
               <div>
                 <p className="text-sm font-semibold text-red-800">Restricted</p>
-                <p className="text-xs text-gray-500">Your Stripe account has restrictions. Please update your information.</p>
+                <p className="text-xs text-muted">Your Stripe account has restrictions. Please update your information.</p>
               </div>
               <span className="ml-auto inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
                 Restricted
@@ -140,7 +140,7 @@ const PaymentSection: React.FC = () => {
           </div>
         ) : (
           <div className="space-y-4">
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-body">
               You haven&apos;t connected a Stripe account yet. Connect now to start receiving payments.
             </p>
             <button
@@ -160,7 +160,7 @@ const PaymentSection: React.FC = () => {
                 </>
               )}
             </button>
-            <p className="text-xs text-gray-400">Powered by Stripe Connect</p>
+            <p className="text-xs text-faint">Powered by Stripe Connect</p>
           </div>
         )}
       </div>

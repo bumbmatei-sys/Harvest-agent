@@ -139,11 +139,11 @@ const PostPurchaseWizard: React.FC<PostPurchaseWizardProps> = ({ tenantId, onCom
 
   if (polling) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-surface-tint">
         <div className="text-center space-y-4">
           <Loader2 size={40} className="mx-auto animate-spin" style={{ color: 'var(--brand-color, #d4a017)' }} />
-          <p className="text-gray-700 font-medium">Confirming your purchase…</p>
-          <p className="text-sm text-gray-400">This usually takes just a few seconds.</p>
+          <p className="text-body font-medium">Confirming your purchase…</p>
+          <p className="text-sm text-faint">This usually takes just a few seconds.</p>
         </div>
       </div>
     );
@@ -152,7 +152,7 @@ const PostPurchaseWizard: React.FC<PostPurchaseWizardProps> = ({ tenantId, onCom
   if (!plan || steps.length === 0) return null;
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-surface-tint flex items-center justify-center p-4">
       <div className="bg-surface-raised rounded-2xl shadow-lg max-w-md w-full p-8">
         {/* Progress dots */}
         <div className="flex items-center justify-center gap-2 mb-8">
@@ -161,7 +161,7 @@ const PostPurchaseWizard: React.FC<PostPurchaseWizardProps> = ({ tenantId, onCom
               key={s.id}
               className={`h-2 rounded-full transition-all duration-300 ${
                 i === currentStep ? 'w-6' :
-                completedSteps.has(s.id) ? 'w-2 bg-green-400' : 'w-2 bg-gray-200'
+                completedSteps.has(s.id) ? 'w-2 bg-green-400' : 'w-2 bg-surface-chip'
               }`}
               style={i === currentStep ? { width: '1.5rem', backgroundColor: 'var(--brand-color, #d4a017)' } : undefined}
             />
@@ -170,11 +170,11 @@ const PostPurchaseWizard: React.FC<PostPurchaseWizardProps> = ({ tenantId, onCom
 
         {/* Step content */}
         <div className="text-center space-y-4">
-          <div className="w-16 h-16 mx-auto rounded-2xl bg-gray-50 flex items-center justify-center">
+          <div className="w-16 h-16 mx-auto rounded-2xl bg-surface-tint flex items-center justify-center">
             {step.icon}
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 font-display">{step.title}</h2>
-          <p className="text-gray-500 text-sm leading-relaxed">{step.description}</p>
+          <h2 className="text-2xl font-bold text-strong font-display">{step.title}</h2>
+          <p className="text-muted text-sm leading-relaxed">{step.description}</p>
         </div>
 
         {/* Buttons */}
@@ -201,7 +201,7 @@ const PostPurchaseWizard: React.FC<PostPurchaseWizardProps> = ({ tenantId, onCom
               }}
               className={`w-full py-3 px-4 rounded-xl font-semibold text-sm transition-colors ${
                 step.action
-                  ? 'border border-gray-200 text-gray-500 hover:bg-gray-50'
+                  ? 'border border-line text-muted hover:bg-surface-tint'
                   : 'text-white hover:opacity-90'
               }`}
               style={!step.action ? { backgroundColor: 'var(--brand-color, #d4a017)' } : undefined}
