@@ -118,9 +118,13 @@ describe('POST /api/churches', () => {
 
 describe('Known security gaps (tracked)', () => {
   it.todo(
-    'KNOWN: stripeCustomerId, stripeSubscriptionId, addOnAiAssistantCode are on the public ' +
-    'tenant doc (allow read: if true). Fix requires moving these to tenants/{id}/private/billing ' +
-    'subcollection and updating all read/write sites. See comment in firestore.rules lines 193-205.'
+    'KNOWN (NARROWED): addOnAiAssistantCode is still on the public tenant doc ' +
+    '(allow read: if true) — /api/ai-assistant looks a tenant up BY this code to bind a ' +
+    'Telegram account to its paid assistant, so a world-readable copy is worth moving. ' +
+    'stripeCustomerId + stripeSubscriptionId (and adminEmails, the admin roster) were ' +
+    'RESOLVED: they now live on the server-only tenant_private/{id} doc ' +
+    '(allow read, write: if false) — see src/lib/tenant-private.ts, ' +
+    'tests/rules/tenant-private.rules.test.ts, and scripts/backfill-tenant-private.mjs.'
   );
 
   it(
