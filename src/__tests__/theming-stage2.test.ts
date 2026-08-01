@@ -228,15 +228,35 @@ describe('the theme mechanism exists and is inert with only the light theme defi
     expect(offenders, 'the dark theme is overriding tenant branding').toEqual([]);
   });
 
-  it('nothing in the app renders a dark-variant utility today', () => {
-    // The only dark: utility in the tree is on src/components/ui/avatar.tsx,
-    // which no file imports. If a rendered component starts using dark:, the
-    // "provably zero visual change" claim needs re-checking.
+  /**
+   * This guard has the same expired premise as the one above it. Stage 2 shipped
+   * the mechanism with no palette behind it, so the strongest true statement was
+   * "nothing renders a dark: utility at all". Stage 3 shipped the palette, and
+   * theming rendered components is now the entire point — so the old assertion
+   * fails on correct work rather than on a regression. CountrySelect's dropdown
+   * was the first component to trip it.
+   *
+   * What replaces it is the property the old guard was really protecting: a
+   * `dark:` utility must never reach the LIGHT theme. Every compiled rule that
+   * carries one has to be scoped by `.dark` or `[data-theme="dark"]` — both, since
+   * tailwind.config.ts registers both selectors. An unscoped one would repaint the
+   * light theme, which is exactly the regression "provably zero visual change" was
+   * written to rule out, and it survives however many components adopt `dark:`.
+   */
+  it('no dark: utility can reach the light theme', () => {
     const root = postcss.parse(globalsCss);
-    const darkVariantRules: string[] = [];
+    const unscoped: string[] = [];
     root.walkRules((rule) => {
-      if (rule.selector.includes('.dark\\:')) darkVariantRules.push(rule.selector);
+      const sel = rule.selector;
+      if (!sel.includes('.dark\\:')) return;
+      // Strip only the `.dark\:` utility-name prefix; whatever `.dark` or
+      // [data-theme="dark"] remains is a real scope, not part of a class name.
+      const scope = sel.replace(/\.dark\\:/g, '');
+      if (!/\.dark\b|\[data-theme=["']?dark["']?\]/.test(scope)) unscoped.push(sel);
     });
-    expect(darkVariantRules.every((s) => s.includes('mix-blend-lighten'))).toBe(true);
+    expect(
+      unscoped,
+      'a dark: utility emits an unscoped rule and would repaint the light theme',
+    ).toEqual([]);
   });
 });

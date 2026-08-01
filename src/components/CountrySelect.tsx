@@ -35,29 +35,29 @@ const CountrySelect: React.FC<CountrySelectProps> = ({ value, onChange, classNam
  <button
  type="button"
  onClick={() => setIsOpen(!isOpen)}
- className={`w-full flex items-center justify-between px-4 py-3 bg-surface-raised border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all ${buttonClassName}`}
+ className={`w-full flex items-center justify-between px-4 py-3 bg-surface-raised border border-gray-200 dark:border-line rounded-xl text-gray-900 dark:text-strong placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all ${buttonClassName}`}
  >
- <span className={value ? 'text-gray-900 ' : 'text-gray-400'}>
+ <span className={value ? 'text-gray-900 dark:text-strong ' : 'text-gray-400 dark:text-faint'}>
  {value || 'Select Country'}
  </span>
- <ChevronDown size={20} className={`text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+ <ChevronDown size={20} className={`text-gray-400 dark:text-faint transition-transform ${isOpen ? 'rotate-180' : ''}`} />
  </button>
 
  {isOpen && (
- <div className="absolute z-50 w-full mt-2 bg-surface-raised border border-gray-200 rounded-xl shadow-xl overflow-hidden flex flex-col max-h-64">
- <div className="p-2 border-b border-gray-100 ">
+ <div className="absolute z-50 w-full mt-2 bg-surface-raised border border-gray-200 dark:border-line rounded-xl shadow-xl overflow-hidden flex flex-col max-h-64">
+ <div className="p-2 border-b border-gray-100 dark:border-line-subtle ">
  <input
  type="text"
  placeholder="Search country..."
  value={search}
  onChange={(e) => setSearch(e.target.value)}
- className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
+ className="w-full px-3 py-2 bg-gray-50 dark:bg-surface-sunken border border-gray-200 dark:border-line rounded-lg text-gray-900 dark:text-strong placeholder-gray-400 dark:placeholder:text-faint focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
  onClick={(e) => e.stopPropagation()}
  />
  </div>
  <div className="overflow-y-auto flex-1 p-1">
  {filteredCountries.length === 0 ? (
- <div className="px-4 py-3 text-sm text-gray-400 text-center">No countries found</div>
+ <div className="px-4 py-3 text-sm text-gray-400 dark:text-faint text-center">No countries found</div>
  ) : (
  filteredCountries.map((country) => (
  <button
@@ -71,7 +71,7 @@ const CountrySelect: React.FC<CountrySelectProps> = ({ value, onChange, classNam
  className={`w-full flex items-center justify-between px-4 py-2.5 text-sm rounded-lg transition-colors ${
  value === country 
  ? 'bg-primary/10 text-primary font-medium' 
- : 'text-gray-700 hover:bg-gray-50 :bg-white/5 hover:text-gray-900 :text-white'
+ : 'text-gray-700 dark:text-body hover:bg-gray-50 dark:hover:bg-white/5 hover:text-gray-900 dark:hover:text-white'
  }`}
  >
  {country}
