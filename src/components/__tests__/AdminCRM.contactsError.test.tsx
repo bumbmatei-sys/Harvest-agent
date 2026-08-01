@@ -53,7 +53,9 @@ vi.mock('../AdminScreenHeader', () => ({
   useAdminHeader: () => ({ setHeaderAction: () => {}, setHeaderOverride: () => {} }),
   HeaderActionButton: () => null,
 }));
-vi.mock('../AnalyticsAndRoles', () => ({ default: () => null }));
+vi.mock('../AnalyticsAndRoles', () => ({
+  default: ({ mode }: { mode: string }) => <div data-testid="analytics-and-roles">{mode}</div>,
+}));
 vi.mock('../../hooks/queries/useCRMQueries', () => ({
   useContactsWithUsers: (...args: unknown[]) => {
     useContactsWithUsers(...args);
@@ -67,17 +69,20 @@ vi.mock('../../hooks/queries/useCRMQueries', () => ({
 let container: HTMLDivElement;
 let root: Root;
 
-async function mountCRM() {
+async function mountCRM(permissions: Record<string, boolean> = { fullAccess: true }) {
   await act(async () => {
     root = createRoot(container);
     root.render(
-      <AdminCRM currentUserRole="admin" currentUserPermissions={{ fullAccess: true } as never} />,
+      <AdminCRM currentUserRole="admin" currentUserPermissions={permissions as never} />,
     );
   });
   await act(async () => {
     await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
   });
 }
+
+const pillNamed = (name: string) =>
+  Array.from(container.querySelectorAll('button')).find(b => b.textContent?.trim() === name);
 
 /** The tenant id AdminCRM handed to the contacts hook on its first render. */
 const tenantPassedToHook = () => useContactsWithUsers.mock.calls[0][0];
@@ -166,5 +171,75 @@ describe('AdminCRM contacts error state', () => {
     expect(retry).toBeTruthy();
     await act(async () => { retry!.dispatchEvent(new MouseEvent('click', { bubbles: true })); });
     expect(refetch).toHaveBeenCalled();
+  });
+});
+
+/**
+ * THE-47: the contacts error/loading states used to `return` before the
+ * sub-view tab bar was even declared, so a failed (or loading) contacts read
+ * took Analytics and Roles down with it — including the Roles screen an admin
+ * would need to fix the very permissions problem that broke the contacts read.
+ */
+describe('AdminCRM sub-view tabs stay reachable during contacts loading/error (THE-47)', () => {
+  it('contacts query fails: the error card renders AND the Analytics and Roles pills are present and clickable', async () => {
+    store.currentTenantId = 'nations';
+    contactsResult.current = {
+      data: undefined as unknown as unknown[],
+      isLoading: false, isError: true, error: new Error('nope'), refetch: vi.fn(),
+    };
+    await mountCRM();
+
+    const text = container.textContent || '';
+    expect(text).toContain("Couldn't load contacts");
+
+    const analyticsPill = pillNamed('Analytics');
+    const rolesPill = pillNamed('Roles');
+    expect(analyticsPill).toBeTruthy();
+    expect(rolesPill).toBeTruthy();
+    expect(analyticsPill!.hasAttribute('disabled')).toBe(false);
+    expect(rolesPill!.hasAttribute('disabled')).toBe(false);
+  });
+
+  it('contacts query fails: clicking Roles renders AnalyticsAndRoles in roles mode, not the error card', async () => {
+    store.currentTenantId = 'nations';
+    contactsResult.current = {
+      data: undefined as unknown as unknown[],
+      isLoading: false, isError: true, error: new Error('nope'), refetch: vi.fn(),
+    };
+    await mountCRM();
+
+    const rolesPill = pillNamed('Roles')!;
+    await act(async () => { rolesPill.dispatchEvent(new MouseEvent('click', { bubbles: true })); });
+
+    const rendered = container.querySelector('[data-testid="analytics-and-roles"]');
+    expect(rendered).toBeTruthy();
+    expect(rendered!.textContent).toBe('roles');
+    expect(container.textContent || '').not.toContain("Couldn't load contacts");
+  });
+
+  it('contacts query loading: spinner shows and the pills remain', async () => {
+    store.currentTenantId = 'nations';
+    contactsResult.current = {
+      data: undefined as unknown as unknown[],
+      isLoading: true, isError: false, error: null, refetch: vi.fn(),
+    };
+    await mountCRM();
+
+    expect(container.querySelector('.animate-spin')).toBeTruthy();
+    expect(pillNamed('Analytics')).toBeTruthy();
+    expect(pillNamed('Roles')).toBeTruthy();
+  });
+
+  it('an admin without canViewAnalytics still does not see that pill while the contacts query is failing', async () => {
+    store.currentTenantId = 'nations';
+    contactsResult.current = {
+      data: undefined as unknown as unknown[],
+      isLoading: false, isError: true, error: new Error('nope'), refetch: vi.fn(),
+    };
+    // manageCRM (contacts) + manageAdmins (roles), but no analytics and no fullAccess.
+    await mountCRM({ manageCRM: true, manageAdmins: true });
+
+    expect(pillNamed('Analytics')).toBeUndefined();
+    expect(pillNamed('Roles')).toBeTruthy();
   });
 });
