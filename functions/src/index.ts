@@ -1,6 +1,5 @@
 import * as admin from 'firebase-admin';
 import * as functions from 'firebase-functions';
-import { Stripe } from 'stripe';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import { Resend } from 'resend';
 
@@ -321,87 +320,16 @@ export const generateAnnualReceipts = functions.https.onCall(async (data, contex
   return result;
 });
 
-// ─── 6. addChurchBilling ───────────────────────────────────────────────────────────
-export const addChurchBilling = functions.https.onCall(async (data, context) => {
-  if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Must be signed in');
-
-  const { tenantId, churchId, churchName } = data;
-  if (!tenantId || !churchId) throw new functions.https.HttpsError('invalid-argument', 'tenantId and churchId required');
-
-  const uid = context.auth.uid;
-  const email = context.auth.token.email || '';
-  const userDoc = await db.collection('users').doc(uid).get();
-  const userData = userDoc.data();
-
-  const isSuperAdmin = SUPER_ADMIN_EMAILS.includes(email)
-    || userData?.role === 'super_admin'
-    || context.auth.token.superAdmin === true;
-
-  if (!isSuperAdmin && userData?.tenantId !== tenantId) {
-    throw new functions.https.HttpsError('permission-denied', 'Access denied to this tenant');
-  }
-
-  const stripeKey = process.env.STRIPE_SECRET_KEY;
-  if (!stripeKey) throw new functions.https.HttpsError('failed-precondition', 'Stripe not configured');
-  const stripe = new Stripe(stripeKey);
-
-  const tenantDoc = await db.collection('tenants').doc(tenantId).get();
-  const tenantData = tenantDoc.data();
-  if (!tenantData) throw new functions.https.HttpsError('not-found', 'Tenant not found');
-
-  // The Stripe identifiers live on the server-only tenant_private/{tenantId}
-  // doc, NOT the world-readable tenants doc (which carried a harvestable admin
-  // roster alongside them). The Admin SDK bypasses security rules, so this
-  // reads the private doc directly. Reading the public copy would bill against
-  // a STALE subscription id once the Next.js app stopped maintaining it.
-  const tenantPrivateDoc = await db.collection('tenant_private').doc(tenantId).get();
-  const subscriptionId = tenantPrivateDoc.data()?.stripeSubscriptionId;
-  if (!subscriptionId) throw new functions.https.HttpsError('failed-precondition', 'Tenant has no active Stripe subscription');
-
-  const subItem = await stripe.subscriptionItems.create({
-    subscription: subscriptionId,
-    price_data: {
-      currency: 'usd',
-      unit_amount: 1000,
-      recurring: { interval: 'month' },
-      product_data: {
-        name: `Additional Church: ${churchName || churchId}`,
-        metadata: { tenantId, churchId, type: 'per_church' },
-      },
-    } as any,
-    metadata: { tenantId, churchId, type: 'per_church' },
-  });
-
-  await db.collection('churches').doc(churchId).update({
-    stripeSubscriptionItemId: subItem.id,
-    billingAmount: 1000,
-    billingAddedAt: admin.firestore.FieldValue.serverTimestamp(),
-  });
-
-  return { success: true, subscriptionItemId: subItem.id };
-});
-
-// ─── 7. removeChurchBilling ─────────────────────────────────────────────────────────
-export const removeChurchBilling = functions.firestore
-  .document('churches/{churchId}')
-  .onDelete(async (snap, context) => {
-    const churchData = snap.data();
-    if (!churchData) return;
-
-    const subscriptionItemId = churchData.stripeSubscriptionItemId;
-    if (!subscriptionItemId) return;
-
-    const stripeKey = process.env.STRIPE_SECRET_KEY;
-    if (!stripeKey) { console.error('removeChurchBilling: STRIPE_SECRET_KEY not configured'); return; }
-    const stripe = new Stripe(stripeKey);
-
-    try {
-      await stripe.subscriptionItems.del(subscriptionItemId);
-      console.log(`removeChurchBilling: Removed ${subscriptionItemId} for church ${context.params.churchId}`);
-    } catch (err: any) {
-      console.error(`removeChurchBilling: Failed to remove ${subscriptionItemId}:`, err?.message || err);
-    }
-  });
+// ─── 6-7. addChurchBilling / removeChurchBilling — RETIRED ──────────────────────────
+// Both were superseded by the Next.js routes that AdminChurches actually calls:
+// /api/churches/add-billing and /api/churches/remove-billing (authFetch, Admin SDK).
+// They were also non-functional here: neither declared `runWith({ secrets: [...] })`,
+// so the deployed functions had no STRIPE_SECRET_KEY and bailed at their first guard
+// (`addChurchBilling` threw 'Stripe not configured'; the `churches/{id}` onDelete
+// trigger logged and returned) before touching Stripe or Firestore. Nothing in the
+// client used the callable — the only httpsCallable is generateAnnualReceipts.
+// Removed so a dead HTTP trigger + Firestore trigger aren't left as surface area,
+// and so the retired code can't silently come alive if a secret is ever attached.
 
 // ─── 8. telegramWebhook ──────────────────────────────────────────────────────────────
 export const telegramWebhook = functions
