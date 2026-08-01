@@ -30,7 +30,7 @@ const PrivacyTermsModal: React.FC<PrivacyTermsModalProps> = ({ isOpen, onClose }
  className={`flex-1 py-3 text-sm font-bold rounded-xl transition-colors ${
  activeTab === 'privacy'
  ? 'bg-[color-mix(in_srgb,var(--brand-color)_12%,white)] text-gold'
- : 'text-muted hover:text-body :text-stone-300'
+ : 'text-muted hover:text-body'
  }`}
  >
  Privacy Policy
@@ -40,7 +40,7 @@ const PrivacyTermsModal: React.FC<PrivacyTermsModalProps> = ({ isOpen, onClose }
  className={`flex-1 py-3 text-sm font-bold rounded-xl transition-colors ${
  activeTab === 'terms'
  ? 'bg-[color-mix(in_srgb,var(--brand-color)_12%,white)] text-gold'
- : 'text-muted hover:text-body :text-stone-300'
+ : 'text-muted hover:text-body'
  }`}
  >
  Terms of Use
@@ -65,7 +65,7 @@ const PrivacyTermsModal: React.FC<PrivacyTermsModalProps> = ({ isOpen, onClose }
 
  <div>
  <h4 className="text-base font-bold text-strong mb-2">Information We Collect</h4>
- <ul className="space-y-3 list-disc pl-4 marker:text-stone-300 :text-muted">
+ <ul className="space-y-3 list-disc pl-4 marker:text-stone-300 dark:marker:text-muted">
  <li>
  <strong className="text-strong ">Account Information:</strong> Name, email address, and basic profile details provided during registration.
  </li>
@@ -83,7 +83,7 @@ const PrivacyTermsModal: React.FC<PrivacyTermsModalProps> = ({ isOpen, onClose }
 
  <div>
  <h4 className="text-base font-bold text-strong mb-2">How We Use Your Information</h4>
- <ul className="space-y-3 list-disc pl-4 marker:text-stone-300 :text-muted">
+ <ul className="space-y-3 list-disc pl-4 marker:text-stone-300 dark:marker:text-muted">
  <li>To facilitate your spiritual growth through personalized course tracking.</li>
  <li>To connect you with local partner ministries (such as CfaN or other registered churches).</li>
  <li>To improve the theological safety and helpfulness of our Shepherd AI.</li>

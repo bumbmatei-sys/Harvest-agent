@@ -161,7 +161,7 @@ const BlogTab: React.FC<BlogTabProps> = ({ onOpenArticle, initialPost, onBack, i
  setSelectedPost(null);
  }
  }}
- className="p-2 -ml-2 mr-2 text-muted hover:text-strong :text-white transition-colors rounded-full hover:bg-surface-sunken :bg-gray-800"
+ className="p-2 -ml-2 mr-2 text-muted hover:text-strong transition-colors rounded-full hover:bg-surface-sunken"
  >
  <ArrowLeft size={20} />
  </button>
@@ -310,7 +310,7 @@ const BlogTab: React.FC<BlogTabProps> = ({ onOpenArticle, initialPost, onBack, i
  className={`px-3 py-1 lg:px-[15px] lg:py-[7px] rounded-full text-xs lg:text-[12.5px] font-medium lg:font-semibold whitespace-nowrap transition-colors ${
  selectedCategory === category
  ? 'bg-gold text-white'
- : 'bg-surface-raised text-muted lg:text-body border border-line lg:border-line-strong hover:border-gold :border-gold'
+ : 'bg-surface-raised text-muted lg:text-body border border-line lg:border-line-strong hover:border-gold'
  }`}
  >
  {category}

@@ -485,7 +485,7 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages }) => {
       <div className="sticky top-0 z-20 bg-white/80 backdrop-blur-md border-b border-line px-4 py-3 flex items-center gap-3 lg:max-w-2xl lg:mx-auto w-full">
         <button 
           onClick={onBack}
-          className="p-2 -ml-2 text-muted hover:bg-surface-sunken :bg-gray-800 rounded-full transition-colors"
+          className="p-2 -ml-2 text-muted hover:bg-surface-sunken rounded-full transition-colors"
         >
           <ArrowLeft size={20} />
         </button>
@@ -570,7 +570,7 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages }) => {
                         className={`w-full relative overflow-hidden rounded-xl border p-3 text-left transition-all ${
                           isMyVote 
                             ? 'border-gold bg-[color-mix(in_srgb,var(--brand-color)_15%,white)] ' 
-                            : 'border-line hover:border-gold :border-gold'
+                            : 'border-line hover:border-gold'
                         }`}
                       >
                         {hasVoted && (
@@ -803,7 +803,7 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages }) => {
                   setAttendeeName('');
                   setAttendeeEmail('');
                 }}
-                className="flex-1 px-4 py-2 border border-line text-body rounded-xl font-medium hover:bg-surface-sunken :bg-gray-800 transition-colors"
+                className="flex-1 px-4 py-2 border border-line text-body rounded-xl font-medium hover:bg-surface-sunken transition-colors"
               >
                 Cancel
               </button>

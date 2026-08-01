@@ -174,7 +174,7 @@ const PlatformInbox = () => {
  className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
  filterType === type
  ? 'bg-gold text-white'
- : 'bg-surface-raised text-muted border border-line hover:border-gold :border-gold'
+ : 'bg-surface-raised text-muted border border-line hover:border-gold'
  }`}
  >
  {type.charAt(0).toUpperCase() + type.slice(1)}
@@ -202,7 +202,7 @@ const PlatformInbox = () => {
  <div key={r.id} className={`bg-surface-raised rounded-2xl shadow-sm border ${isPending ? 'border-[color-mix(in_srgb,var(--brand-color)_30%,transparent)] ' : 'border-line '} overflow-hidden transition-all duration-300`}>
  <div
  onClick={() => toggleExpand(r.id)}
- className="p-4 flex items-start gap-4 cursor-pointer hover:bg-surface-sunken :bg-gray-800/50 transition-colors"
+ className="p-4 flex items-start gap-4 cursor-pointer hover:bg-surface-sunken transition-colors"
  >
  <div className="mt-1">
  {getIconForType(r.type)}
@@ -256,7 +256,7 @@ const PlatformInbox = () => {
  <span className="text-sm text-muted ">Are you sure?</span>
  <button
  onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(null); }}
- className="px-3 py-1.5 text-sm font-medium text-muted bg-surface-sunken hover:bg-surface-chip :bg-gray-700 rounded-lg transition-colors"
+ className="px-3 py-1.5 text-sm font-medium text-muted bg-surface-sunken hover:bg-surface-chip rounded-lg transition-colors"
  >
  Cancel
  </button>
@@ -270,7 +270,7 @@ const PlatformInbox = () => {
  ) : (
  <button
  onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(r.id); }}
- className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 :bg-red-900/20 rounded-lg transition-colors"
+ className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors"
  >
  <Trash2 size={16} />
  Delete
@@ -280,7 +280,7 @@ const PlatformInbox = () => {
  {isPending ? (
  <button
  onClick={(e) => { e.stopPropagation(); handleStatusChange(r.id, 'resolved'); }}
- className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-green-600 bg-green-50 hover:bg-green-100 :bg-green-900/40 rounded-lg transition-colors"
+ className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-green-600 bg-green-50 hover:bg-green-100 rounded-lg transition-colors"
  >
  <CheckCircle size={16} />
  Mark Read
@@ -288,7 +288,7 @@ const PlatformInbox = () => {
  ) : (
  <button
  onClick={(e) => { e.stopPropagation(); handleStatusChange(r.id, 'pending'); }}
- className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-muted bg-surface-sunken hover:bg-surface-chip :bg-gray-700 rounded-lg transition-colors"
+ className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-muted bg-surface-sunken hover:bg-surface-chip rounded-lg transition-colors"
  >
  <Clock size={16} />
  Mark Unread

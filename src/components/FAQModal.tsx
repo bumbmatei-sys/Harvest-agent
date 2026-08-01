@@ -22,7 +22,7 @@ const FAQItem: React.FC<{
  <div className="bg-surface-raised rounded-2xl shadow-sm border border-line overflow-hidden mb-4 transition-all duration-300">
  <button 
  onClick={onToggle}
- className="w-full flex items-center justify-between p-5 text-left hover:bg-surface-sunken :bg-gray-800/50 transition-colors"
+ className="w-full flex items-center justify-between p-5 text-left hover:bg-surface-sunken transition-colors"
  >
  <h4 className="text-sm font-bold text-strong pr-4">{question}</h4>
  {isOpen ? (

@@ -140,6 +140,28 @@ describe('no near-black or default-palette colour is hardcoded where it must the
     expect(offenders, 'near-black hardcoded text is unreadable in dark mode').toEqual([]);
   });
 
+  // remove-dark.js stripped dark classes with
+  //   /dark:[a-zA-Z0-9\-\[\]\#\/\%]+/g
+  // whose character class excludes `:`. On a two-level variant such as
+  // dark:hover:bg-white/5 it matched only `dark:hover` and left `:bg-white/5`
+  // behind. A leading colon is an EMPTY variant name, so Tailwind emits no rule
+  // — the dark styling was deleted silently rather than disabled, with no error
+  // and no failing test. 29 of these survived across 11 files; CountrySelect's
+  // dropdown was the visible one. The script is gone, but the shape is cheap to
+  // assert and would otherwise come back the next time someone bulk-edits
+  // classes with a regex.
+  it('finds no empty-variant class fragment (a stripped `dark:` prefix)', () => {
+    const offenders: string[] = [];
+    const frag =
+      /(?<=[\s"'`])(:(?:bg|text|border|ring|placeholder|divide|from|to|via|shadow|outline|fill|stroke|accent|caret|decoration)-[A-Za-z0-9][\w./[\]#%-]*)/g;
+    for (const f of FILES) {
+      for (const m of readFileSync(f, 'utf8').matchAll(frag)) {
+        offenders.push(`${path.relative(ROOT, f)}: ${m[1]}`);
+      }
+    }
+    expect(offenders, 'an empty variant emits no CSS — this styling is silently dead').toEqual([]);
+  });
+
   // Tailwind's `stone` scale is EXTENDED, not replaced, so stone-50 and
   // stone-400 still resolve to Tailwind's cool defaults (#FAFAF9 / #A8A29E) --
   // off-palette in light and unthemed in dark. These were the visible ones.

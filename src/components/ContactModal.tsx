@@ -83,7 +83,7 @@ const AccordionItem = ({
  <div className="bg-surface-raised rounded-2xl shadow-sm border border-line overflow-hidden mb-4 transition-all duration-300">
  <button
  onClick={() => onToggle(id)}
- className="w-full flex items-center justify-between p-4 text-left hover:bg-surface-sunken :bg-gray-800/50 transition-colors"
+ className="w-full flex items-center justify-between p-4 text-left hover:bg-surface-sunken transition-colors"
  >
  <div className="flex items-center gap-4">
  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${iconBg}`}>

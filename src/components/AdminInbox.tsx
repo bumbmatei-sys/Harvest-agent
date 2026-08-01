@@ -135,7 +135,7 @@ const AdminInbox = () => {
  className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
  filterType === type
  ? 'bg-gold text-white'
- : 'bg-surface-raised text-muted border border-line hover:border-gold :border-gold'
+ : 'bg-surface-raised text-muted border border-line hover:border-gold'
  }`}
  >
  {type === 'church_suggestion' ? 'Church Suggestion' : type.charAt(0).toUpperCase() + type.slice(1)}
@@ -255,7 +255,7 @@ const AdminInbox = () => {
  <div className={`hidden lg:block bg-surface-raised rounded-2xl shadow-sm border ${isPending ? 'border-[color-mix(in_srgb,var(--brand-color)_30%,transparent)] ' : 'border-line '} overflow-hidden transition-all duration-300`}>
  <div 
  onClick={() => toggleExpand(sub.id)}
- className="p-4 flex items-start gap-4 cursor-pointer hover:bg-surface-sunken :bg-gray-800/50 transition-colors"
+ className="p-4 flex items-start gap-4 cursor-pointer hover:bg-surface-sunken transition-colors"
  >
  <div className="mt-1">
  {getIconForType(sub.type)}
@@ -308,7 +308,7 @@ const AdminInbox = () => {
  <span className="text-sm text-muted ">Are you sure?</span>
  <button
  onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(null); }}
- className="px-3 py-1.5 text-sm font-medium text-muted bg-surface-sunken hover:bg-surface-chip :bg-gray-700 rounded-lg transition-colors"
+ className="px-3 py-1.5 text-sm font-medium text-muted bg-surface-sunken hover:bg-surface-chip rounded-lg transition-colors"
  >
  Cancel
  </button>
@@ -322,7 +322,7 @@ const AdminInbox = () => {
  ) : (
  <button
  onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(sub.id); }}
- className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 :bg-red-900/20 rounded-lg transition-colors"
+ className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors"
  >
  <Trash2 size={16} />
  Delete
@@ -332,7 +332,7 @@ const AdminInbox = () => {
  {isPending ? (
  <button
  onClick={(e) => { e.stopPropagation(); handleStatusChange(sub.id, 'resolved'); }}
- className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-field-600 bg-field-100 hover:bg-field-200 :bg-green-900/40 rounded-lg transition-colors"
+ className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-field-600 bg-field-100 hover:bg-field-200 rounded-lg transition-colors"
  >
  <CheckCircle size={16} />
  Mark Resolved
@@ -340,7 +340,7 @@ const AdminInbox = () => {
  ) : (
  <button
  onClick={(e) => { e.stopPropagation(); handleStatusChange(sub.id, 'pending'); }}
- className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-muted bg-surface-sunken hover:bg-surface-chip :bg-gray-700 rounded-lg transition-colors"
+ className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-muted bg-surface-sunken hover:bg-surface-chip rounded-lg transition-colors"
  >
  <Clock size={16} />
  Mark Pending
