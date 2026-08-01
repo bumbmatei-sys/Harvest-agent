@@ -6,7 +6,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { requireAuth } from '@/lib/api-auth';
 import { resolveReturnBaseUrl } from '@/lib/connect-return-url';
 import { captureHandledError, captureMoneyPathError } from '@/lib/money-path-sentry';
-import { tenantPrivateRef } from '@/lib/tenant-private';
+import { tenantPrivateRef, getTenantPrivate } from '@/lib/tenant-private';
 
 export const dynamic = 'force-dynamic';
 
@@ -78,7 +78,9 @@ export async function POST(request: NextRequest) {
       const tenantSnap = await tenantRef.get();
       if (tenantSnap.exists) {
         const tData = tenantSnap.data()!;
-        let accountId: string | undefined = tData.stripeConnectAccountId;
+        // The Connect account id lives on the server-only tenant_private doc;
+        // its status stays on the public tenant doc.
+        let accountId: string | undefined = (await getTenantPrivate(tenantId)).stripeConnectAccountId;
         let connectStatus: string | undefined = tData.stripeConnectStatus;
         if (!accountId) {
           const account = await stripe.accounts.create({
@@ -90,7 +92,6 @@ export async function POST(request: NextRequest) {
           const connectNow = new Date().toISOString();
           const connectBatch = adminDb.batch();
           connectBatch.update(tenantRef, {
-            stripeConnectAccountId: accountId,
             stripeConnectStatus: 'pending',
             updatedAt: connectNow,
           });

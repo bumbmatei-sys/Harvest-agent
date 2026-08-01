@@ -15,7 +15,7 @@ import {
 } from '@/lib/affiliate-commission-window';
 import { captureMoneyPathError } from '@/lib/money-path-sentry';
 import { isRetryableWebhookError, isValidFirestoreDocId } from '@/lib/webhook-retry';
-import { tenantPrivateRef, pickTenantPrivateFields } from '@/lib/tenant-private';
+import { tenantPrivateRef, getTenantPrivate } from '@/lib/tenant-private';
 import { NON_TENANT_SUBDOMAINS } from '@/utils/non-tenant-subdomains';
 import { Resend } from 'resend';
 import QRCode from 'qrcode';
@@ -1179,30 +1179,30 @@ export async function POST(request: NextRequest) {
           }
 
           const now = new Date().toISOString();
-          const newTenantData = {
+          // The world-readable tenant doc carries only the pre-auth/public
+          // fields; the admin roster + Stripe identifiers live exclusively on
+          // the server-only tenant_private doc. One batch: both land (or fail)
+          // together.
+          const newTenantBatch = adminDb.batch();
+          newTenantBatch.set(adminDb.collection('tenants').doc(newTenantId), {
             name: meta.ministryName || 'My Ministry',
             subdomain: newTenantId,
             plan: meta.plan,
             status: 'active',
             config: {},
-            adminEmails: userEmail ? [userEmail] : [],
             ownerId: meta.userId,
             createdBy: meta.userId,
+            setupCompleted: false, // gates the first-run "Finish setup" screen
+            createdAt: now,
+            updatedAt: now,
+          });
+          newTenantBatch.set(tenantPrivateRef(newTenantId), {
+            adminEmails: userEmail ? [userEmail] : [],
             stripeCustomerId: session.customer as string,
             stripeSubscriptionId: subscriptionId,
             stripePriceId: meta.billing === 'yearly'
               ? getYearlyPriceId(meta.plan)
               : getMonthlyPriceId(meta.plan),
-            setupCompleted: false, // gates the first-run "Finish setup" screen
-            createdAt: now,
-            updatedAt: now,
-          };
-          // One batch: the public doc and its tenant_private mirror land (or
-          // fail) together — a partial write is how the two would diverge.
-          const newTenantBatch = adminDb.batch();
-          newTenantBatch.set(adminDb.collection('tenants').doc(newTenantId), newTenantData);
-          newTenantBatch.set(tenantPrivateRef(newTenantId), {
-            ...pickTenantPrivateFields(newTenantData),
             createdAt: now,
             updatedAt: now,
           });
@@ -1293,7 +1293,7 @@ export async function POST(request: NextRequest) {
             const plan = meta.plan;
             if (plan) {
               const tenantDoc = await adminDb.collection('tenants').doc(tenantId).get();
-              const oldSubId = tenantDoc.data()?.stripeSubscriptionId;
+              const oldSubId = (await getTenantPrivate(tenantId)).stripeSubscriptionId;
               if (oldSubId && oldSubId !== subscriptionId) {
                 try {
                   await stripe.subscriptions.cancel(oldSubId);
@@ -1314,15 +1314,11 @@ export async function POST(request: NextRequest) {
                 }
               }
 
+              const planChangeNow = new Date().toISOString();
               const updateData: Record<string, any> = {
                 plan,
                 status: 'active',
-                stripeSubscriptionId: subscriptionId,
-                stripeCustomerId: session.customer as string,
-                stripePriceId: meta.billing === 'yearly'
-                  ? getYearlyPriceId(plan)
-                  : getMonthlyPriceId(plan),
-                updatedAt: new Date().toISOString(),
+                updatedAt: planChangeNow,
               };
 
               if (plan === 'ultra' && !tenantDoc.data()?.addOnAiAssistantCode) {
@@ -1332,8 +1328,12 @@ export async function POST(request: NextRequest) {
               const planChangeBatch = adminDb.batch();
               planChangeBatch.update(adminDb.collection('tenants').doc(tenantId), updateData);
               planChangeBatch.set(tenantPrivateRef(tenantId), {
-                ...pickTenantPrivateFields(updateData),
-                updatedAt: updateData.updatedAt,
+                stripeSubscriptionId: subscriptionId,
+                stripeCustomerId: session.customer as string,
+                stripePriceId: meta.billing === 'yearly'
+                  ? getYearlyPriceId(plan)
+                  : getMonthlyPriceId(plan),
+                updatedAt: planChangeNow,
               }, { merge: true });
               await planChangeBatch.commit();
 
@@ -1414,15 +1414,17 @@ export async function POST(request: NextRequest) {
         if (tenantId) {
           // Ignore updates for a stale subscription (e.g. the old plan being cancelled
           // during an upgrade) — only the tenant's current subscription drives state.
+          // Stale-check against tenant_private (the subscription id's home);
+          // the public doc is still read for ownerId/createdBy below.
           const updTenantSnap = await adminDb.collection('tenants').doc(tenantId).get();
-          const updCurrentSubId = updTenantSnap.data()?.stripeSubscriptionId;
+          const updCurrentSubId = (await getTenantPrivate(tenantId)).stripeSubscriptionId;
           if (updCurrentSubId && updCurrentSubId !== subscription.id) {
             console.log(`↩︎ Ignoring stale subscription update ${subscription.id} for tenant ${tenantId} (current ${updCurrentSubId})`);
             break;
           }
+          const subUpdatedNow = new Date().toISOString();
           const updateData: Record<string, unknown> = {
-            stripeSubscriptionId: subscription.id,
-            updatedAt: new Date().toISOString(),
+            updatedAt: subUpdatedNow,
           };
 
           let plan = subscription.metadata?.plan || null;
@@ -1438,8 +1440,8 @@ export async function POST(request: NextRequest) {
           const subUpdatedBatch = adminDb.batch();
           subUpdatedBatch.update(adminDb.collection('tenants').doc(tenantId), updateData);
           subUpdatedBatch.set(tenantPrivateRef(tenantId), {
-            ...pickTenantPrivateFields(updateData),
-            updatedAt: updateData.updatedAt,
+            stripeSubscriptionId: subscription.id,
+            updatedAt: subUpdatedNow,
           }, { merge: true });
           await subUpdatedBatch.commit();
 
@@ -1573,8 +1575,10 @@ export async function POST(request: NextRequest) {
           // Only the tenant's CURRENT subscription ending should downgrade them.
           // During an upgrade we deliberately cancel the OLD subscription after moving
           // the tenant to the new one — that stale cancellation must NOT reset the plan.
+          // Stale-check against tenant_private (the subscription id's home);
+          // the public doc is still read for ownerId/createdBy below.
           const delTenantSnap = await adminDb.collection('tenants').doc(tenantId).get();
-          const delCurrentSubId = delTenantSnap.data()?.stripeSubscriptionId;
+          const delCurrentSubId = (await getTenantPrivate(tenantId)).stripeSubscriptionId;
           if (delCurrentSubId && delCurrentSubId !== subscription.id) {
             console.log(`↩︎ Ignoring stale subscription deletion ${subscription.id} for tenant ${tenantId} (current ${delCurrentSubId})`);
             break;
@@ -1584,7 +1588,6 @@ export async function POST(request: NextRequest) {
           downgradeBatch.update(adminDb.collection('tenants').doc(tenantId), {
             plan: 'plus',
             status: 'cancelled',
-            stripeSubscriptionId: null,
             updatedAt: downgradeNow,
           });
           downgradeBatch.set(tenantPrivateRef(tenantId), {
@@ -2087,7 +2090,8 @@ export async function POST(request: NextRequest) {
         const charge = event.data.object as Stripe.Charge;
         let tenantId = charge.metadata?.tenantId;
         if (!tenantId && charge.customer) {
-          const tenantSnap = await adminDb.collection('tenants')
+          // stripeCustomerId lives on tenant_private (doc id IS the tenantId).
+          const tenantSnap = await adminDb.collection('tenant_private')
             .where('stripeCustomerId', '==', charge.customer as string)
             .limit(1).get();
           if (!tenantSnap.empty) tenantId = tenantSnap.docs[0].id;
@@ -2109,7 +2113,8 @@ export async function POST(request: NextRequest) {
           try {
             const charge = await stripe.charges.retrieve((dispute as any).charge as string);
             if (charge.customer) {
-              const tenantSnap = await adminDb.collection('tenants')
+              // stripeCustomerId lives on tenant_private (doc id IS the tenantId).
+              const tenantSnap = await adminDb.collection('tenant_private')
                 .where('stripeCustomerId', '==', charge.customer as string)
                 .limit(1).get();
               if (!tenantSnap.empty) tenantId = tenantSnap.docs[0].id;

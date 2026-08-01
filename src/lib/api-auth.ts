@@ -4,6 +4,7 @@ import { adminAuth, adminDb } from './firebase-admin';
 // This module used to carry its own copy of the list plus a SUPER_ADMIN_EMAILS env
 // extension, which let the API's idea of a super admin drift from firestore.rules'.
 import { isSuperAdminEmail } from '@/utils/super-admins';
+import { getTenantPrivate } from '@/lib/tenant-private';
 
 export interface AuthenticatedUser {
   uid: string;
@@ -216,7 +217,10 @@ export async function requireTenantPermission(
 
   if (tenantData.ownerId === user.uid) return user;
 
-  const adminEmails: string[] = Array.isArray(tenantData.adminEmails) ? tenantData.adminEmails : [];
+  // The roster lives on the server-only tenant_private doc (mirrors the rules'
+  // inTenantAdminEmails, which get()s the same doc).
+  const privateData = await getTenantPrivate(tenantId);
+  const adminEmails: string[] = Array.isArray(privateData.adminEmails) ? privateData.adminEmails : [];
   const email = (user.email || '').toLowerCase();
   if (email && adminEmails.some((e) => (e || '').toLowerCase() === email)) {
     return user;

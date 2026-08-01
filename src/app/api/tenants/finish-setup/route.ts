@@ -6,7 +6,9 @@ import { requireAuth } from '@/lib/api-auth';
 import { captureMoneyPathError } from '@/lib/money-path-sentry';
 import { setCustomClaims } from '@/lib/set-custom-claims';
 import { NON_TENANT_SUBDOMAINS } from '@/utils/non-tenant-subdomains';
-import { tenantPrivateRef, pickTenantPrivateFields } from '@/lib/tenant-private';
+import {
+  tenantPrivateRef, getTenantPrivate, pickTenantPrivateFields, TENANT_PRIVATE_FIELDS,
+} from '@/lib/tenant-private';
 
 export const dynamic = 'force-dynamic';
 
@@ -56,9 +58,11 @@ export async function POST(request: NextRequest) {
     }
     const tenantData = tenantSnap.data() || {};
 
-    // Authorize: super admin, an admin claim, or listed in the tenant's adminEmails.
+    // Authorize: super admin, an admin claim, or listed in the tenant's admin
+    // roster (server-only tenant_private doc).
+    const privateData = await getTenantPrivate(oldId);
     const callerEmail = (caller.email || '').toLowerCase();
-    const adminEmails: string[] = Array.isArray(tenantData.adminEmails) ? tenantData.adminEmails : [];
+    const adminEmails: string[] = Array.isArray(privateData.adminEmails) ? privateData.adminEmails : [];
     const isOwner =
       caller.isSuperAdmin ||
       caller.isAdmin ||
@@ -94,16 +98,22 @@ export async function POST(request: NextRequest) {
     // exists but is OUR OWN in-progress rename (same subscription, retry after a
     // crash), resume instead of erroring.
     try {
+      // Strip any leftover private-doc fields from the public copy — a legacy
+      // tenant doc not yet scrubbed must not re-publish them at the new id.
+      const publicCopy: Record<string, unknown> = { ...tenantData };
+      for (const field of TENANT_PRIVATE_FIELDS) delete publicCopy[field];
       await desiredRef.create({
-        ...tenantData,
+        ...publicCopy,
         subdomain: desired,
         setupCompleted: true,
         updatedAt: now,
       });
     } catch (createErr: any) {
       const existing = await desiredRef.get();
+      // The subscription id lives on tenant_private now — compare there. (A
+      // half-applied rename wrote the private doc right after the create.)
       const ours = existing.exists
-        && existing.data()?.stripeSubscriptionId === tenantData.stripeSubscriptionId;
+        && (await getTenantPrivate(desired)).stripeSubscriptionId === privateData.stripeSubscriptionId;
       if (!ours) {
         // Only report when create() failed with NOTHING at the target: that is not
         // the ALREADY_EXISTS collision this catch exists for (a routine 409 on a
@@ -124,15 +134,15 @@ export async function POST(request: NextRequest) {
       await desiredRef.set({ subdomain: desired, setupCompleted: true, updatedAt: now }, { merge: true });
     }
 
-    // Move the tenant_private mirror with the rename. Written from the SAME
-    // tenantData just copied above (not from tenant_private/{oldId}) so the new
-    // location is correct even for a tenant that predates the dual-write.
+    // Move the tenant_private doc with the rename — it is now the ONLY home of
+    // the roster + Stripe ids, and the rules' roster get() targets the new id.
     try {
-      await tenantPrivateRef(desired).set({ ...pickTenantPrivateFields(tenantData), updatedAt: now });
+      await tenantPrivateRef(desired).set({ ...pickTenantPrivateFields(privateData), updatedAt: now });
     } catch (privErr) {
       console.error('finish-setup: failed to move tenant_private doc:', privErr);
-      // The rename proceeds — the rules roster read still uses the public doc
-      // until PR 2, and the backfill/verify step catches a missing mirror.
+      // Without the private doc at the new id the renamed tenant has an EMPTY
+      // roster (the rules' get() default) — its roster admins lose access until
+      // the backfill/verify script is re-run. Error-level for that reason.
       captureMoneyPathError(privErr, {
         step: 'finish-setup-move-tenant-private',
         level: 'error',
@@ -179,7 +189,7 @@ export async function POST(request: NextRequest) {
     // recurring affiliate-commission path keys off it), `plan`, or `billing`.
     // This is the new-church first-run rename, exactly where referrals live, so
     // a blind replace would silently stop the affiliate's recurring payout.
-    const subId = tenantData.stripeSubscriptionId;
+    const subId = privateData.stripeSubscriptionId;
     const stripeKey = process.env.STRIPE_SECRET_KEY;
     if (subId && stripeKey) {
       try {

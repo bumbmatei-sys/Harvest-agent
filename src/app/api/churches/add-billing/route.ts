@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import Stripe from 'stripe';
 import { adminDb } from '@/lib/firebase-admin';
+import { getTenantPrivate } from '@/lib/tenant-private';
 import { requireAdmin } from '@/lib/api-auth';
 import { captureMoneyPathError } from '@/lib/money-path-sentry';
 
@@ -68,7 +69,7 @@ export async function POST(request: NextRequest) {
     }
     const stripe = new Stripe(stripeKey);
 
-    const subscriptionId = tenantData?.stripeSubscriptionId;
+    const subscriptionId = (await getTenantPrivate(tenantId)).stripeSubscriptionId;
     if (!subscriptionId) {
       return NextResponse.json({ error: 'Tenant has no active Stripe subscription' }, { status: 400 });
     }

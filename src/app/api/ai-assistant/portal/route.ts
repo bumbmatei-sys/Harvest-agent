@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import Stripe from 'stripe';
 import { adminDb } from '@/lib/firebase-admin';
+import { getTenantPrivate } from '@/lib/tenant-private';
 import { requireAuth } from '@/lib/api-auth';
 
 export const dynamic = 'force-dynamic';
@@ -44,8 +45,7 @@ export async function POST(request: NextRequest) {
         const subCustomer = typeof sub.customer === 'string' ? sub.customer : sub.customer?.id;
         let tenantCustomerId: string | undefined;
         if (me?.tenantId) {
-          const tenantDoc = await adminDb.collection('tenants').doc(me.tenantId).get();
-          tenantCustomerId = tenantDoc.data()?.stripeCustomerId;
+          tenantCustomerId = (await getTenantPrivate(me.tenantId)).stripeCustomerId;
         }
         if (subCustomer && subCustomer !== tenantCustomerId) {
           customerId = subCustomer;

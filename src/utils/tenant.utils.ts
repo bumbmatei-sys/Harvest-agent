@@ -24,6 +24,23 @@ async function postTenantSave(body: Record<string, unknown>): Promise<string> {
 }
 
 /**
+ * "Is the current user on this tenant's admin roster?" The roster lives on
+ * the server-only tenant_private doc (clients can't read it), so the check
+ * goes through /api/tenants/roster-status. Returns false on any failure —
+ * callers treat the roster as a grant, never a denial.
+ */
+export async function checkRosterAdmin(tenantId: string): Promise<boolean> {
+  try {
+    const { authFetch } = await import('./auth-fetch');
+    const res = await authFetch(`/api/tenants/roster-status?tenantId=${encodeURIComponent(tenantId)}`);
+    if (!res.ok) return false;
+    return (await res.json()).isRosterAdmin === true;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Create a new tenant.
  * Returns the tenant ID (same as subdomain for easy lookup).
  */
@@ -66,7 +83,7 @@ export async function getAllTenants(): Promise<Tenant[]> {
  */
 export async function updateTenant(
   id: string,
-  data: Partial<Pick<Tenant, 'name' | 'plan' | 'status' | 'adminEmails'> & { config: Partial<TenantConfig> }>
+  data: Partial<Pick<Tenant, 'name' | 'plan' | 'status'>> & { adminEmails?: string[]; config?: Partial<TenantConfig> }
 ): Promise<void> {
   await postTenantSave({
     id,

@@ -33,6 +33,14 @@
  *   Dry run (default):  node scripts/backfill-tenant-private.mjs
  *   Apply:              node scripts/backfill-tenant-private.mjs --commit
  *   Verify parity:      node scripts/backfill-tenant-private.mjs --verify
+ *   Scrub public docs:  node scripts/backfill-tenant-private.mjs --scrub-public [--commit]
+ *
+ * SCRUB (PR 3, and ONLY after it): --scrub-public DELETES the five moved
+ * fields from every world-readable tenants/{id} doc — the step that actually
+ * removes the leaked roster from public view. Run it only after the PR that
+ * repoints every reader (rules AND server code) to tenant_private is deployed;
+ * scrubbing earlier reintroduces the lockout. It refuses to run unless
+ * --verify passes first (parity means nothing is lost by deleting).
  *
  * CREDENTIALS (keep the key OUTSIDE the repo, referenced by env var only):
  *   FIREBASE_SERVICE_ACCOUNT="$(cat /path/outside/repo/sa.json)" node scripts/backfill-tenant-private.mjs
@@ -40,10 +48,11 @@
  *   (Cloud Shell: ADC works out of the box.)
  */
 import { initializeApp, cert, applicationDefault } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
+import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 
 const COMMIT = process.argv.includes('--commit');
 const VERIFY = process.argv.includes('--verify');
+const SCRUB = process.argv.includes('--scrub-public');
 
 // Keep in sync with TENANT_PRIVATE_FIELDS in src/lib/tenant-private.ts.
 const MOVED_FIELDS = [
@@ -78,40 +87,79 @@ function fieldEqual(a, b) {
   return JSON.stringify(a === undefined ? null : a) === JSON.stringify(b === undefined ? null : b);
 }
 
+/** VERIFY as a reusable pass; returns true when every tenant is in parity. */
+async function verifyParity(tenantsSnap) {
+  let ok = 0;
+  const missing = [];
+  const mismatches = [];
+  for (const doc of tenantsSnap.docs) {
+    const tData = doc.data();
+    const privSnap = await db.collection('tenant_private').doc(doc.id).get();
+    if (!privSnap.exists) {
+      if (Object.keys(privatePayload(tData)).length === 0) { ok++; continue; }
+      missing.push(doc.id);
+      continue;
+    }
+    const pData = privSnap.data();
+    let bad = false;
+    for (const f of MOVED_FIELDS) {
+      // A field absent from the PUBLIC doc is fine post-scrub — the private doc
+      // is authoritative. Parity only requires: every public value matches.
+      if (tData[f] !== undefined && !fieldEqual(tData[f], pData[f])) {
+        bad = true;
+        mismatches.push(`${doc.id}.${f}: public=${JSON.stringify(tData[f])} private=${JSON.stringify(pData[f])}`);
+      }
+    }
+    if (!bad) ok++;
+  }
+  console.log(`\nVERIFY RESULT: ${ok}/${tenantsSnap.size} tenants in parity.`);
+  console.log(`MISSING: ${missing.length}${missing.length ? ' — ' + missing.join(', ') : ''}`);
+  console.log(`MISMATCH: ${mismatches.length}`);
+  for (const m of mismatches) console.log(`  ${m}`);
+  return missing.length === 0 && mismatches.length === 0;
+}
+
 async function main() {
   const tenantsSnap = await db.collection('tenants').get();
   console.log(`${tenantsSnap.size} tenant docs found.`);
 
-  if (VERIFY) {
-    // ── VERIFY: for every tenant, public fields and private doc match exactly ──
-    let ok = 0;
-    const missing = [];   // tenants with no tenant_private doc at all
-    const mismatches = []; // per-field differences
+  if (SCRUB) {
+    // ── SCRUB: delete the moved fields from the world-readable docs ─────────
+    // Refuses unless parity holds — deleting a public field that never made it
+    // to the private doc would destroy the only copy.
+    const parityOk = await verifyParity(tenantsSnap);
+    if (!parityOk) {
+      console.log('\n❌ NOT scrubbing: parity failed. Run --commit, then --verify, then retry.');
+      process.exit(1);
+    }
+    let scrubbed = 0;
+    let clean = 0;
+    const failed = [];
     for (const doc of tenantsSnap.docs) {
       const tData = doc.data();
-      const privSnap = await db.collection('tenant_private').doc(doc.id).get();
-      if (!privSnap.exists) {
-        // A tenant with NONE of the moved fields needs no mirror (nothing to
-        // protect and nothing the rules would read) — count it ok.
-        if (Object.keys(privatePayload(tData)).length === 0) { ok++; continue; }
-        missing.push(doc.id);
-        continue;
+      const stale = MOVED_FIELDS.filter((f) => tData[f] !== undefined);
+      if (stale.length === 0) { clean++; continue; }
+      if (!COMMIT) { scrubbed++; continue; }
+      try {
+        const deletes = Object.fromEntries(stale.map((f) => [f, FieldValue.delete()]));
+        await doc.ref.update({ ...deletes, updatedAt: new Date().toISOString() });
+        scrubbed++;
+      } catch (err) {
+        failed.push(`${doc.id}: ${err?.message || err}`);
       }
-      const pData = privSnap.data();
-      let bad = false;
-      for (const f of MOVED_FIELDS) {
-        if (!fieldEqual(tData[f], pData[f])) {
-          bad = true;
-          mismatches.push(`${doc.id}.${f}: public=${JSON.stringify(tData[f])} private=${JSON.stringify(pData[f])}`);
-        }
-      }
-      if (!bad) ok++;
     }
-    console.log(`\nVERIFY RESULT: ${ok}/${tenantsSnap.size} tenants in parity.`);
-    console.log(`MISSING: ${missing.length}${missing.length ? ' — ' + missing.join(', ') : ''}`);
-    console.log(`MISMATCH: ${mismatches.length}`);
-    for (const m of mismatches) console.log(`  ${m}`);
-    if (missing.length || mismatches.length) {
+    console.log(`\n${COMMIT ? 'SCRUBBED' : 'DRY RUN — would scrub'}: ${scrubbed} tenants`);
+    console.log(`already clean: ${clean}`);
+    console.log(`failed: ${failed.length}`);
+    for (const f of failed) console.log(`  ${f}`);
+    if (!COMMIT) console.log('\nRe-run with --scrub-public --commit to apply.');
+    process.exit(failed.length ? 1 : 0);
+  }
+
+  if (VERIFY) {
+    // ── VERIFY: for every tenant, public fields and private doc match exactly ──
+    const parityOk = await verifyParity(tenantsSnap);
+    if (!parityOk) {
       console.log('\n❌ NOT SAFE to merge the rules PR: an incomplete backfill is silent');
       console.log('   (missing roster ⇒ empty roster ⇒ every roster admin of that tenant locked out).');
       console.log('   Re-run with --commit, then --verify again.');

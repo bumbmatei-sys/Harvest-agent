@@ -86,6 +86,21 @@ const AdminTenants: React.FC = () => {
   // The platform section carries two super-admin views behind the same gate:
   // the tenant list (with per-tenant usage) and the affiliate overview.
   const [section, setSection] = useState<'tenants' | 'affiliates'>('tenants');
+  // Admin rosters, keyed by tenant id. The roster lives on the server-only
+  // tenant_private docs (not the public tenant doc), so it comes from the
+  // super-admin /api/tenants/rosters route rather than the snapshot below.
+  const [rosters, setRosters] = useState<Record<string, string[]>>({});
+
+  const loadRosters = async () => {
+    try {
+      const { authFetch } = await import('../utils/auth-fetch');
+      const res = await authFetch('/api/tenants/rosters');
+      if (res.ok) setRosters((await res.json()).rosters || {});
+    } catch (err) {
+      console.error('Failed to load tenant rosters:', err);
+    }
+  };
+  useEffect(() => { loadRosters(); }, []);
 
   useEffect(() => {
     const q = collection(db, 'tenants');
@@ -119,7 +134,7 @@ const AdminTenants: React.FC = () => {
       name: tenant.name,
       subdomain: tenant.subdomain,
       plan: tenant.plan,
-      adminEmail: tenant.adminEmails?.[0] || '',
+      adminEmail: rosters[tenant.id]?.[0] || '',
       description: tenant.config?.description || '',
       customDomain: tenant.config?.customDomain || '',
     });
@@ -160,6 +175,7 @@ const AdminTenants: React.FC = () => {
         });
       }
       setShowForm(false);
+      loadRosters(); // reflect the roster edit without a reload
     } catch (err: any) {
       setError(err.message || 'Failed to save tenant.');
     } finally {
@@ -320,8 +336,8 @@ const AdminTenants: React.FC = () => {
                       {tenant.config.customDomain}
                     </p>
                   )}
-                  {tenant.adminEmails?.length > 0 && (
-                    <p className="text-xs text-faint mt-1">Admin: {tenant.adminEmails[0]}</p>
+                  {(rosters[tenant.id]?.length ?? 0) > 0 && (
+                    <p className="text-xs text-faint mt-1">Admin: {rosters[tenant.id][0]}</p>
                   )}
                 </div>
 
@@ -383,7 +399,7 @@ const AdminTenants: React.FC = () => {
               {deleteConfirmId === tenant.id && (
                 <div className="mt-4 pt-4 border-t border-red-100 bg-red-50/40 -mx-5 -mb-5 px-5 pb-5 rounded-b-2xl">
                   {(() => {
-                    const userCount = dryRun?.deleted?.users ?? tenant.adminEmails?.length ?? 0;
+                    const userCount = dryRun?.deleted?.users ?? rosters[tenant.id]?.length ?? 0;
                     const contentCount = dryRun
                       ? Object.entries(dryRun.deleted)
                           .filter(([k]) => k !== 'users')

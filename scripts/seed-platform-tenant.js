@@ -37,10 +37,11 @@ async function main() {
   const now = admin.firestore.FieldValue.serverTimestamp();
 
   const adminEmails = ['bumbmatei@proton.me', 'bumbmatei@zohomail.eu'];
+  // The roster lives ONLY on the server-only tenant_private doc — never on the
+  // world-readable tenants doc.
   const data = {
     name: 'Harvest',
     subdomain: 'harvest',
-    adminEmails,
     plan: 'ministry',
     status: 'active',
     updatedAt: now,

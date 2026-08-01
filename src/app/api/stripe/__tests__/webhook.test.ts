@@ -86,6 +86,15 @@ vi.mock('@/lib/firebase-admin', () => ({
   adminAuth: { verifyIdToken: vi.fn(), getUser: mockGetUser },
 }));
 
+// The Stripe identifiers live on the server-only tenant_private doc — the
+// route reads them via getTenantPrivate and writes them via tenantPrivateRef.
+// Mocked at the module level so those reads never consume the mockDocGet queue.
+const { mockGetTenantPrivate } = vi.hoisted(() => ({ mockGetTenantPrivate: vi.fn() }));
+vi.mock('@/lib/tenant-private', () => ({
+  getTenantPrivate: mockGetTenantPrivate,
+  tenantPrivateRef: (id: string) => ({ __coll: 'tenant_private', id }),
+}));
+
 vi.mock('@/lib/set-custom-claims', () => ({
   setCustomClaims: vi.fn().mockResolvedValue(undefined),
 }));
@@ -145,6 +154,8 @@ beforeEach(() => {
   mockDocGet.mockResolvedValue({ exists: false });
   // Default: user collection empty
   mockCollGet.mockResolvedValue({ docs: [], empty: true, forEach: vi.fn() });
+  // Default: tenant_private empty (no current subscription recorded)
+  mockGetTenantPrivate.mockResolvedValue({});
 });
 
 // ── Signature validation ───────────────────────────────────────────────────
@@ -227,19 +238,24 @@ describe('checkout.session.completed', () => {
       metadata: { tenantId: 'tenant1', plan: 'pro', billing: 'monthly' },
       current_period_end: 1800000000,
     });
-    // Tenant has an old subscription
+    // Tenant has an old subscription (recorded on tenant_private)
+    mockGetTenantPrivate.mockResolvedValue({ stripeSubscriptionId: 'sub_old' });
     mockDocGet.mockResolvedValueOnce({ exists: false }) // webhook_events not duplicate
-                .mockResolvedValueOnce({ exists: true, data: () => ({ stripeSubscriptionId: 'sub_old', addOnAiAssistantCode: null }) }); // tenant doc
+                .mockResolvedValueOnce({ exists: true, data: () => ({ addOnAiAssistantCode: null }) }); // tenant doc
 
     const res = await POST(makeRequest());
     expect(res.status).toBe(200);
     expect(mockSubsCancel).toHaveBeenCalledWith('sub_old');
+    // Public doc: plan/status only. The Stripe identifiers land on
+    // tenant_private, in the same batch.
     expect(mockBatchUpdate).toHaveBeenCalledWith(
       expect.objectContaining({ __coll: 'tenants', id: 'tenant1' }),
-      expect.objectContaining({ plan: 'pro', status: 'active', stripeSubscriptionId: 'sub_new' })
+      expect.objectContaining({ plan: 'pro', status: 'active' })
     );
-    // Dual-write: the tenant_private mirror gets the same Stripe identifiers
-    // in the same batch.
+    expect(mockBatchUpdate).not.toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ stripeSubscriptionId: expect.anything() })
+    );
     expect(mockBatchSet).toHaveBeenCalledWith(
       expect.objectContaining({ __coll: 'tenant_private', id: 'tenant1' }),
       expect.objectContaining({ stripeSubscriptionId: 'sub_new', stripeCustomerId: 'cus_001' }),
@@ -280,7 +296,8 @@ describe('checkout.session.completed', () => {
     const res = await POST(makeRequest());
     expect(res.status).toBe(200);
 
-    // Tenant doc created: active, gated for first-run, on the paid plan.
+    // Public tenant doc created: active, gated for first-run, on the paid
+    // plan — and WITHOUT the roster or any Stripe identifier.
     expect(mockBatchSet).toHaveBeenCalledWith(
       expect.objectContaining({ __coll: 'tenants', id: 'grace-church' }),
       expect.objectContaining({
@@ -288,21 +305,24 @@ describe('checkout.session.completed', () => {
         plan: 'pro',
         status: 'active',
         setupCompleted: false,
-        adminEmails: ['pastor@grace.org'],
       })
     );
-    // Dual-write parity: the tenant_private mirror is written in the SAME batch
-    // and carries values identical to the public doc for every moved field.
     const publicSet = mockBatchSet.mock.calls.find(
       (c) => c[0].__coll === 'tenants' && c[0].id === 'grace-church'
     );
+    for (const field of ['adminEmails', 'stripeCustomerId', 'stripeSubscriptionId', 'stripePriceId']) {
+      expect(publicSet![1][field]).toBeUndefined();
+    }
+    // The roster + Stripe identifiers land on tenant_private, in the SAME batch.
     const privateSet = mockBatchSet.mock.calls.find(
       (c) => c[0].__coll === 'tenant_private' && c[0].id === 'grace-church'
     );
     expect(privateSet).toBeDefined();
-    for (const field of ['adminEmails', 'stripeCustomerId', 'stripeSubscriptionId', 'stripePriceId']) {
-      expect(privateSet![1][field]).toEqual(publicSet![1][field]);
-    }
+    expect(privateSet![1]).toEqual(expect.objectContaining({
+      adminEmails: ['pastor@grace.org'],
+      stripeCustomerId: 'cus_new',
+      stripeSubscriptionId: 'sub_new',
+    }));
     // Paying user promoted to admin and signup marker cleared.
     expect(mockDocUpdate).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -427,8 +447,9 @@ describe('customer.subscription.updated', () => {
       items: { data: [{ price: { id: 'price_plus_m' } }] },
     };
     mockConstructEvent.mockReturnValue(makeEvent('customer.subscription.updated', subscription));
-    // Tenant's current sub is sub_new, not the sub_old this event is for.
-    mockDocGet.mockResolvedValue({ exists: false, data: () => ({ stripeSubscriptionId: 'sub_new' }) });
+    // Tenant's current sub (on tenant_private) is sub_new, not this sub_old.
+    mockGetTenantPrivate.mockResolvedValue({ stripeSubscriptionId: 'sub_new' });
+    mockDocGet.mockResolvedValue({ exists: false, data: () => ({}) });
 
     const res = await POST(makeRequest());
     expect(res.status).toBe(200);
@@ -447,15 +468,16 @@ describe('customer.subscription.deleted', () => {
     };
     mockConstructEvent.mockReturnValue(makeEvent('customer.subscription.deleted', subscription));
     // The cancelled sub IS the tenant's current one → the downgrade should apply.
-    mockDocGet.mockResolvedValue({ exists: false, data: () => ({ stripeSubscriptionId: 'sub_001' }) });
+    mockGetTenantPrivate.mockResolvedValue({ stripeSubscriptionId: 'sub_001' });
+    mockDocGet.mockResolvedValue({ exists: false, data: () => ({}) });
 
     const res = await POST(makeRequest());
     expect(res.status).toBe(200);
     expect(mockBatchUpdate).toHaveBeenCalledWith(
       expect.objectContaining({ __coll: 'tenants', id: 'tenant1' }),
-      expect.objectContaining({ plan: 'plus', status: 'cancelled', stripeSubscriptionId: null })
+      expect.objectContaining({ plan: 'plus', status: 'cancelled' })
     );
-    // Dual-write: the cleared subscription id reaches the mirror too.
+    // The cleared subscription id lands on tenant_private, same batch.
     expect(mockBatchSet).toHaveBeenCalledWith(
       expect.objectContaining({ __coll: 'tenant_private', id: 'tenant1' }),
       expect.objectContaining({ stripeSubscriptionId: null }),

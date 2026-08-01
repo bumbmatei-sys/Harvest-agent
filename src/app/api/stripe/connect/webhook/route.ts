@@ -82,7 +82,9 @@ export async function POST(request: NextRequest) {
         // affiliate status-sync + sweep below dead code for exactly the standalone
         // affiliates it was meant to serve — a tenant-less affiliate never had a
         // tenant row to match, so the route returned before ever reaching them.
-        const tenantsSnapshot = await adminDb.collection('tenants')
+        // The account id lives on the server-only tenant_private doc (whose id
+        // IS the tenantId); the status stays on the public tenant doc.
+        const tenantsSnapshot = await adminDb.collection('tenant_private')
           .where('stripeConnectAccountId', '==', account.id)
           .limit(1)
           .get();
@@ -111,7 +113,7 @@ export async function POST(request: NextRequest) {
         // retries, and the idempotency marker undo makes that retry safe.
         const tenantDoc = tenantsSnapshot.empty ? null : tenantsSnapshot.docs[0];
         if (tenantDoc) {
-          await tenantDoc.ref.update({
+          await adminDb.collection('tenants').doc(tenantDoc.id).update({
             stripeConnectStatus: status,
             updatedAt: new Date().toISOString(),
           });

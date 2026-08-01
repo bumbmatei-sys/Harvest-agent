@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import Stripe from 'stripe';
 import { adminDb } from '@/lib/firebase-admin';
+import { getTenantPrivate } from '@/lib/tenant-private';
 import { PLATFORM_FEE_MAP as FEE_MAP } from '@/lib/stripe-config';
 import { verifyAuth } from '@/lib/api-auth';
 import { captureMoneyPathError } from '@/lib/money-path-sentry';
@@ -56,7 +57,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Tenant not found' }, { status: 404 });
     }
     const tenantData = tenantDoc.data()!;
-    const connectAccountId = tenantData.stripeConnectAccountId;
+    const connectAccountId = (await getTenantPrivate(tenantId)).stripeConnectAccountId;
     const plan = tenantData.plan || 'plus';
 
     if (!connectAccountId) {

@@ -39,6 +39,15 @@ export function tenantPrivateRef(tenantId: string) {
 }
 
 /**
+ * Read the private doc's data ({} when missing). Server-side only — clients
+ * can never read this collection; they go through an API route.
+ */
+export async function getTenantPrivate(tenantId: string): Promise<Record<string, any>> {
+  const snap = await tenantPrivateRef(tenantId).get();
+  return snap.exists ? (snap.data() as Record<string, any>) : {};
+}
+
+/**
  * The subset of `data` that belongs on the private doc — exactly the moved
  * fields, and only when the write actually carries them. Writers pass their
  * public-doc payload through this so the two locations can never disagree on

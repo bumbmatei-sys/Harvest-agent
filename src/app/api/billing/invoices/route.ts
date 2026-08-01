@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import Stripe from 'stripe';
 import { requireOwner } from '@/lib/api-auth';
+import { getTenantPrivate } from '@/lib/tenant-private';
 import { captureHandledError } from '@/lib/money-path-sentry';
 
 export const dynamic = 'force-dynamic';
@@ -36,8 +37,9 @@ export async function GET(request: NextRequest) {
     }
     const stripe = new Stripe(stripeKey);
 
-    const customerId: string | undefined = tenantData.stripeCustomerId;
-    const subscriptionId: string | undefined = tenantData.stripeSubscriptionId;
+    const privData = await getTenantPrivate(ownerOrResponse.tenantId);
+    const customerId: string | undefined = privData.stripeCustomerId;
+    const subscriptionId: string | undefined = privData.stripeSubscriptionId;
 
     // No customer yet (e.g. a legacy/free tenant) — nothing to bill against.
     if (!customerId) {

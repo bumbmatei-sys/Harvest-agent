@@ -8,6 +8,7 @@ import { getTenantScope, getWriteTenantScope } from '../utils/tenant-scope';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { sortByTime } from '../utils/query-helpers';
 import { isSuperAdminEmail } from '../utils/super-admins';
+import { checkRosterAdmin } from '../utils/tenant.utils';
 import { getOrCreateDm } from '../lib/dm';
 import KebabMenu from './KebabMenu';
 import { FeedEmbedCard, type PostEmbed } from './EmbedCard';
@@ -111,22 +112,18 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages }) => {
           // super admin, fullAccess/createPosts permission, or church_admin role always
           // qualify. A plain 'admin' role (the tenant owner's default right after
           // build-on-payment signup, before they've touched Roles) additionally
-          // qualifies via the tenant's adminEmails roster — the same owner check
+          // qualifies via the tenant's admin roster — the same owner check
           // AdminDashboard.tsx uses to show the Posts tab — so a fresh owner isn't
-          // hidden from moderating their own feed.
+          // hidden from moderating their own feed. The roster moved to the
+          // server-only tenant_private doc, so membership comes from the API.
           const role = data.role || 'user';
           const perms = data.permissions || {};
           setCurrentUserRole(role);
           const isSuper = role === 'super_admin' || isSuperAdminEmail(user.email);
           let manage = isSuper || role === 'church_admin' || perms.fullAccess === true || perms.createPosts === true;
           if (!manage && role === 'admin' && data.tenantId) {
-            const tenantDoc = await getDoc(doc(db, 'tenants', data.tenantId));
+            manage = await checkRosterAdmin(data.tenantId);
             if (cancelled) return;
-            if (tenantDoc.exists()) {
-              const adminEmails: string[] = tenantDoc.data().adminEmails || [];
-              const email = (user.email || '').toLowerCase();
-              manage = adminEmails.some((e: string) => (e || '').toLowerCase() === email);
-            }
           }
           setCanManage(manage);
         }

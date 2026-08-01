@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import Stripe from 'stripe';
 import { adminDb } from '@/lib/firebase-admin';
+import { getTenantPrivate } from '@/lib/tenant-private';
 import { requireAuth } from '@/lib/api-auth';
 import { captureMoneyPathError } from '@/lib/money-path-sentry';
 
@@ -38,7 +39,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Tenant not found' }, { status: 404 });
     }
     const tenantData = tenantDoc.data()!;
-    const subscriptionId = tenantData.stripeSubscriptionId;
+    const subscriptionId = (await getTenantPrivate(tenantId)).stripeSubscriptionId;
     const plan = tenantData.plan;
 
     if (!subscriptionId) {

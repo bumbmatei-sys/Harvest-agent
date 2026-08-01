@@ -27,6 +27,14 @@ vi.mock('stripe', () => ({
 
 vi.mock('@/lib/api-auth', () => ({ requireAuth: mockRequireAuth }));
 
+// The Connect account id lives on the server-only tenant_private doc; the
+// route reads it via getTenantPrivate and writes it via tenantPrivateRef.
+const { mockGetTenantPrivate } = vi.hoisted(() => ({ mockGetTenantPrivate: vi.fn() }));
+vi.mock('@/lib/tenant-private', () => ({
+  getTenantPrivate: mockGetTenantPrivate,
+  tenantPrivateRef: (id: string) => ({ __coll: 'tenant_private', id }),
+}));
+
 vi.mock('@/lib/firebase-admin', () => ({
   adminDb: {
     // Refs carry their collection + id so batch assertions can tell WHICH doc a
@@ -62,6 +70,7 @@ beforeEach(() => {
   process.env.STRIPE_SECRET_KEY = 'sk_test_mock';
   mockRequireAuth.mockResolvedValue({ uid: 'user1', email: 'a@b.co', tenantId: 'tenant1', isSuperAdmin: false });
   mockAccountLinksCreate.mockResolvedValue({ url: 'https://connect.stripe/onboard' });
+  mockGetTenantPrivate.mockResolvedValue({}); // default: tenant not yet connected
 });
 
 describe('POST /api/stripe/connect — unified account mirror', () => {
@@ -73,12 +82,16 @@ describe('POST /api/stripe/connect — unified account mirror', () => {
     const res = await POST(makeRequest({ tenantId: 'tenant1' }));
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ url: 'https://connect.stripe/onboard' });
-    // Canonical (donations) account persisted on the tenant…
+    // Canonical (donations) account id persisted ONLY on tenant_private; the
+    // public tenant doc carries just the status.
     expect(mockBatchUpdate).toHaveBeenCalledWith(
       expect.objectContaining({ __coll: 'tenants', id: 'tenant1' }),
-      expect.objectContaining({ stripeConnectAccountId: 'acct_new', stripeConnectStatus: 'pending' }),
+      expect.objectContaining({ stripeConnectStatus: 'pending' }),
     );
-    // …dual-written to the tenant_private mirror in the same batch…
+    expect(mockBatchUpdate).not.toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ stripeConnectAccountId: expect.anything() }),
+    );
     expect(mockBatchSet).toHaveBeenCalledWith(
       expect.objectContaining({ __coll: 'tenant_private', id: 'tenant1' }),
       expect.objectContaining({ stripeConnectAccountId: 'acct_new' }),
@@ -92,8 +105,9 @@ describe('POST /api/stripe/connect — unified account mirror', () => {
   });
 
   it('reuses the tenant account (no second account) and mirrors it onto the caller when already connected', async () => {
+    mockGetTenantPrivate.mockResolvedValue({ stripeConnectAccountId: 'acct_T' });
     mockDocGet
-      .mockResolvedValueOnce(snap({ stripeConnectAccountId: 'acct_T', stripeConnectStatus: 'active' })) // tenant
+      .mockResolvedValueOnce(snap({ stripeConnectStatus: 'active' })) // tenant (status only — the id is private)
       .mockResolvedValueOnce(snap({})); // connecting user
 
     const res = await POST(makeRequest({ tenantId: 'tenant1' }));
@@ -118,10 +132,11 @@ describe('POST /api/stripe/connect — unified account mirror', () => {
 
     const res = await POST(makeRequest({ tenantId: 'tenant1' }));
     expect(res.status).toBe(200);
-    // Tenant still gets its donations account…
-    expect(mockBatchUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({ __coll: 'tenants', id: 'tenant1' }),
+    // Tenant still gets its donations account (id on tenant_private)…
+    expect(mockBatchSet).toHaveBeenCalledWith(
+      expect.objectContaining({ __coll: 'tenant_private', id: 'tenant1' }),
       expect.objectContaining({ stripeConnectAccountId: 'acct_new' }),
+      { merge: true },
     );
     // …but the caller's working affiliate account is left untouched (no clobber).
     expect(mockDocSet).not.toHaveBeenCalled();
