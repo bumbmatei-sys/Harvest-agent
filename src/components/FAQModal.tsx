@@ -116,7 +116,7 @@ const FAQModal: React.FC<FAQModalProps> = ({ isOpen, onClose }) => {
 
  <div className="flex-1 overflow-y-auto p-4 pb-12">
  <div className="text-center mb-8 mt-4">
- <h2 className="text-2xl font-bold text-[#1a202c] mb-2 font-display">Frequently Asked Questions</h2>
+ <h2 className="text-2xl font-bold text-strong mb-2 font-display">Frequently Asked Questions</h2>
  <p className="text-muted text-sm">Everything you need to know about the Harvest App.</p>
  </div>
 

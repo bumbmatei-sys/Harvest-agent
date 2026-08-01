@@ -58,7 +58,7 @@ export function QuizPanel({ quiz, attempt, onSubmit }: QuizPanelProps) {
   if (mode === "result" && !hasLocalAnswers && attempt) {
     return (
       <div className="py-5">
-        <div className={`rounded-lg border p-4 mb-4 ${attempt.passed ? "bg-field-100 border-field-500" : "bg-stone-50 border-line"}`}>
+        <div className={`rounded-lg border p-4 mb-4 ${attempt.passed ? "bg-field-100 border-field-500" : "bg-surface-sunken border-line"}`}>
           <div className={`text-sm font-bold ${attempt.passed ? "text-field-600" : "text-strong"}`}>
             {attempt.passed ? "Passed ✓" : "Not passed yet"}
           </div>
@@ -79,7 +79,7 @@ export function QuizPanel({ quiz, attempt, onSubmit }: QuizPanelProps) {
   return (
     <div className="py-5">
       {mode === "result" && (
-        <div className={`rounded-lg border p-4 mb-4 ${isQuizPassing(score, quiz.length) ? "bg-field-100 border-field-500" : "bg-stone-50 border-line"}`}>
+        <div className={`rounded-lg border p-4 mb-4 ${isQuizPassing(score, quiz.length) ? "bg-field-100 border-field-500" : "bg-surface-sunken border-line"}`}>
           <div className={`text-sm font-bold ${isQuizPassing(score, quiz.length) ? "text-field-600" : "text-strong"}`}>
             {score} / {quiz.length} correct
           </div>
@@ -96,7 +96,7 @@ export function QuizPanel({ quiz, attempt, onSubmit }: QuizPanelProps) {
             <div className="space-y-2">
               {question.options.map((option) => {
                 const isSelected = selected[question.id] === option.id;
-                let optionClass = "border-line hover:bg-stone-50";
+                let optionClass = "border-line hover:bg-surface-sunken";
                 if (mode === "result") {
                   if (option.correct) {
                     optionClass = "border-field-500 bg-field-100 text-field-600";

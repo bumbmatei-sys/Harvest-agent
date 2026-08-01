@@ -207,7 +207,7 @@ const AdminAffiliates: React.FC = () => {
 
         <button
           onClick={() => setOrder(order === 'most' ? 'least' : 'most')}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-line bg-surface-raised text-xs font-semibold text-strong hover:bg-stone-50 transition-colors"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-line bg-surface-raised text-xs font-semibold text-strong hover:bg-surface-sunken transition-colors"
           title="Switch between most and fewest plans sold"
         >
           {order === 'most'
