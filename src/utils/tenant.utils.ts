@@ -23,21 +23,38 @@ async function postTenantSave(body: Record<string, unknown>): Promise<string> {
   return data.id as string;
 }
 
+/** Outcome of a roster lookup: the roster said yes, said no, or we failed to ask. */
+export type RosterAdminStatus = 'admin' | 'not-admin' | 'error';
+
 /**
- * "Is the current user on this tenant's admin roster?" The roster lives on
- * the server-only tenant_private doc (clients can't read it), so the check
- * goes through /api/tenants/roster-status. Returns false on any failure —
- * callers treat the roster as a grant, never a denial.
+ * "Is the current user on this tenant's admin roster?", three-state. The roster
+ * lives on the server-only tenant_private doc (clients can't read it), so the
+ * check goes through /api/tenants/roster-status.
+ *
+ * A caller that *gates UI* on the answer needs "we could not ask" kept separate
+ * from an authoritative "no" — collapsing the two is THE-64, where a roster-only
+ * tenant admin's nav was built from a not-yet-answered `false` and the dashboard
+ * bounced them back to /admin. Such callers should use this, not the boolean
+ * wrapper below, and should also treat "have not asked yet" as its own state.
  */
-export async function checkRosterAdmin(tenantId: string): Promise<boolean> {
+export async function checkRosterAdminStatus(tenantId: string): Promise<RosterAdminStatus> {
   try {
     const { authFetch } = await import('./auth-fetch');
     const res = await authFetch(`/api/tenants/roster-status?tenantId=${encodeURIComponent(tenantId)}`);
-    if (!res.ok) return false;
-    return (await res.json()).isRosterAdmin === true;
+    if (!res.ok) return 'error';
+    return (await res.json()).isRosterAdmin === true ? 'admin' : 'not-admin';
   } catch {
-    return false;
+    return 'error';
   }
+}
+
+/**
+ * Boolean form of the roster check. Returns false on any failure — callers
+ * treat the roster as a grant, never a denial, so a failed lookup costs the
+ * roster bonus but never removes access the user holds via role/permissions.
+ */
+export async function checkRosterAdmin(tenantId: string): Promise<boolean> {
+  return (await checkRosterAdminStatus(tenantId)) === 'admin';
 }
 
 /**
