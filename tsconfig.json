@@ -1,6 +1,12 @@
 {
   "compilerOptions": {
-    "target": "es5",
+    // es5 only ever applied to type checking: `noEmit` is on and Next
+    // transpiles with SWC against browserslist, so this never shaped the
+    // shipped bundle. Under es5, `tsc` rejected top-level `await` (TS1378)
+    // and every `for...of` over a Set/Map/matchAll (TS2802) — 134 errors
+    // that were purely an artifact of the setting. `lib` below is explicit,
+    // so raising the target does not change which APIs are in scope.
+    "target": "es2017",
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "skipLibCheck": true,
@@ -20,8 +26,32 @@
     ],
     "paths": {
       "@/*": ["./src/*"]
-    }
+    },
+    // Pin which packages are auto-loaded for their *globals*. Without this,
+    // TypeScript implicitly loads every directory under node_modules/@types,
+    // so any transitive dependency can inject one. A deprecated
+    // @types/minimatch stub (no .d.ts, falling back to an untyped
+    // minimatch@3) did exactly that and raised TS2688 — and because "cannot
+    // find type definition file" is a *global* diagnostic, `tsc` reported it
+    // and then skipped semantic checking entirely. The whole repo silently
+    // stopped being type checked while still exiting with a single
+    // believable-looking error. This list is what makes the number stable.
+    //
+    // It is an allow-list, but only for ambient globals: anything reached
+    // through an `import` (@types/leaflet, @types/qrcode, @types/d3, ...)
+    // still resolves normally and is unaffected.
+    "types": [
+      "node", // process, Buffer, __dirname, NodeJS.* — used across src/lib and API routes
+      "react", // the global JSX namespace that every .tsx file depends on
+      "react-dom" // paired with react; keeps the DOM renderer types in step
+    ]
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules"]
+  // functions/ is a separate Cloud Functions build with its own tsconfig
+  // (commonjs, es2020), its own package.json and its own node_modules. The
+  // "**/*.ts" include above was dragging it into this program, where it was
+  // checked against the wrong compiler options and without its dependencies
+  // installed — 11 errors that said nothing about this app. It is built and
+  // type checked by `npm run build` inside functions/.
+  "exclude": ["node_modules", "functions"]
 }
