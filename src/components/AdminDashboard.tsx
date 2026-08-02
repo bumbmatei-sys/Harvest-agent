@@ -38,7 +38,7 @@ import BillingAndPayments from './BillingAndPayments';
 import { AdminScreenHeader, AdminHeaderContext, AdminHeaderOverride } from './AdminScreenHeader';
 import { getPlanFeatures, hasBrandingAccess } from '../utils/plan-features';
 import { db, auth } from '../firebase';
-import { checkRosterAdmin } from '../utils/tenant.utils';
+import { checkRosterAdminStatus } from '../utils/tenant.utils';
 import { signOut } from 'firebase/auth';
 import { collection, query, where, onSnapshot, limit } from 'firebase/firestore';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
@@ -83,6 +83,13 @@ const DESKTOP_NAV_GROUPS: { label: string; ids: string[] }[] = [
   { label: 'BROADCASTING', ids: ['events', 'checkin', 'sms', 'livestream'] },
   { label: 'GROW', ids: ['affiliate', 'branding', 'tenants', 'inbox'] },
 ];
+
+// How long the nav will wait on the admin-roster lookup before giving up and
+// building itself from role/permission access alone. Only a user whose access
+// actually depends on the roster ever waits at all (see `rosterMatters`), and
+// the lookup normally answers in well under a second — this ceiling exists so a
+// hung request degrades to a reduced nav instead of a permanent skeleton.
+const ROSTER_LOOKUP_TIMEOUT_MS = 6000;
 
 interface AdminDashboardProps {
   onNavigate: (page: string) => void;
@@ -241,18 +248,56 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
   // admin roster. Build-on-payment gives that owner role 'admin' (so claims
   // grant admin), while the legacy label was 'church_admin' — treat both as
   // the full-access tenant owner so the creator truly owns their dashboard.
-  // The roster moved off the public tenant doc to the server-only
-  // tenant_private doc, so membership is resolved via the API (defaults to
-  // false until it answers — same as before tenantData loaded).
-  const [isTenantOwnerEmail, setIsTenantOwnerEmail] = useState(false);
+  //
+  // The roster moved off the public tenant doc to the server-only tenant_private
+  // doc, so membership is resolved via the API. It is deliberately THREE-state:
+  // 'unknown' (not asked / in flight) is NOT the same as 'not-admin'. A default
+  // of plain `false` is what broke THE-64 — it reads as a settled "no", so the
+  // nav was built without the roster's grant and the redirect at the bottom of
+  // this file bounced a roster-only admin back to /admin. 'unknown' is folded
+  // into `isLoading` below instead, but only for the users it can affect.
+  type RosterState = 'unknown' | 'admin' | 'not-admin';
+  const [rosterState, setRosterState] = useState<RosterState>('unknown');
+  // Which (tenant, user) pair the current answer belongs to. A resolved answer
+  // is only invalidated by a genuinely *different* tenant/user — never by a
+  // momentarily falsy one, which is the ordinary shape of a navigation blip.
+  const rosterKeyRef = useRef<string | null>(null);
   useEffect(() => {
     let cancelled = false;
-    if (!tenantId || !auth.currentUser) { setIsTenantOwnerEmail(false); return; }
-    checkRosterAdmin(tenantId).then((isRoster) => {
-      if (!cancelled) setIsTenantOwnerEmail(isRoster);
+    // No tenant or no signed-in user: there is nothing to ask about. Return
+    // WITHOUT touching rosterState — resetting here is THE-64's second defect,
+    // where a transient falsy tenantId revoked an already-good answer and
+    // collapsed the nav ("disappears for a while, then reappears").
+    const uid = auth.currentUser?.uid;
+    if (!tenantId || !uid) return;
+    const rosterKey = `${tenantId}|${uid}`;
+    if (rosterKeyRef.current !== rosterKey) {
+      // Genuinely a different tenant or a different user — the previous answer
+      // is about somebody else, so go back to 'unknown' and re-ask.
+      rosterKeyRef.current = rosterKey;
+      setRosterState('unknown');
+    }
+    // Bound the wait. checkRosterAdminStatus resolves on any HTTP/parse error,
+    // but a hung request would otherwise leave rosterState at 'unknown' forever
+    // and strand a roster-dependent admin on the loading skeleton.
+    const timer = setTimeout(() => {
+      if (cancelled) return;
+      console.warn(`[admin-nav] roster lookup for tenant "${tenantId}" timed out after ${ROSTER_LOOKUP_TIMEOUT_MS}ms — building the nav from role/permission access only.`);
+      setRosterState('not-admin');
+    }, ROSTER_LOOKUP_TIMEOUT_MS);
+    checkRosterAdminStatus(tenantId).then((status) => {
+      if (cancelled) return;
+      clearTimeout(timer);
+      if (status === 'error') {
+        // Fail closed, but never silently: THE-64 was invisible partly because
+        // a failed/undecided roster lookup produced no console or Sentry signal.
+        console.warn(`[admin-nav] roster lookup for tenant "${tenantId}" failed — building the nav from role/permission access only.`);
+      }
+      setRosterState(status === 'admin' ? 'admin' : 'not-admin');
     });
-    return () => { cancelled = true; };
+    return () => { cancelled = true; clearTimeout(timer); };
   }, [tenantId, isAuthReady]);
+  const isTenantOwnerEmail = rosterState === 'admin';
   const isChurchAdmin = userRole === 'church_admin' || isTenantOwnerEmail;
   const perms = userPermissions ?? {} as Permission;
   // The store `tenantPlan` is synced from the context plan by an effect in App.tsx,
@@ -273,7 +318,24 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
   // yields no plan — and platform/apex contexts have no tenant plan to wait on, so
   // this never hangs into an infinite skeleton.
   const isPlanReady = platformOverride || !isWhiteLabel || !tenantLoading;
-  const isLoading = !isAuthReady || userLoading || !isPlanReady;
+  // Roster readiness — scoped to the users the answer can actually change.
+  //
+  // The roster feeds exactly one thing: isChurchAdmin → hasFullAccess. It can
+  // only ever GRANT. So a user who already has full access without it — a super
+  // admin, the church_admin role, or an explicit fullAccess permission — has an
+  // identical nav whichever way the roster answers, and must NOT be made to wait
+  // on a fetch they do not need. `rosterMatters` is false for them and the gate
+  // is a no-op; only a user whose entitlement genuinely hangs on the roster
+  // (role 'admin', partial permissions, or none) sees the skeleton.
+  //
+  // It also cannot hang: with no tenant or no signed-in user nothing is ever
+  // asked, so `rosterMatters` is false rather than waiting on an answer that
+  // will never come; and when it is true the effect above always settles
+  // rosterState — on success, on error, or on the timeout.
+  const hasRosterIndependentAccess = isSuperAdmin || userRole === 'church_admin' || !!perms.fullAccess;
+  const rosterMatters = !hasRosterIndependentAccess && !!tenantId && !!auth.currentUser;
+  const isRosterReady = !rosterMatters || rosterState !== 'unknown';
+  const isLoading = !isAuthReady || userLoading || !isPlanReady || !isRosterReady;
 
   // My Account menu (top-right avatar). Owner identity gates Billing & Payments —
   // ownerId is the buyer uid set by the Stripe webhook at tenant creation.
