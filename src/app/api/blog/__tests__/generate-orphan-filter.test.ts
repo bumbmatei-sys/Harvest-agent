@@ -131,7 +131,10 @@ describe('generateAndSavePost — recency + orphan filtering', () => {
 
     await generateAndSavePost('tenant1', '');
 
-    const promptSent = JSON.parse(fetchMock.mock.calls[0][1].body).messages[0].content;
+    // fetchMock is vi.fn(async () => ...) with no declared parameters, so its
+    // mock.calls entries are typed as empty tuples — spell out the real arity.
+    const [, init] = (fetchMock.mock.calls as unknown as [string, { body: string }][])[0];
+    const promptSent = JSON.parse(init.body).messages[0].content;
     expect(promptSent).toContain('real recent ministry content');
     expect(promptSent).not.toContain('STALE dev-doc test content');
   });

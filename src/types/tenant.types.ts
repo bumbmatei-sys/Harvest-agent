@@ -3,6 +3,19 @@ export type TenantStatus = 'active' | 'suspended' | 'pending';
 
 export interface TenantConfig {
   logo?: string;        // URL to logo image
+  /**
+   * Square variant of the logo, preferred for the PWA manifest and
+   * "Add to Home Screen" slots where a rectangular wordmark crops badly.
+   * Read by app/layout.tsx and app/manifest.webmanifest/route.ts, both of
+   * which fall back to `logo`.
+   */
+  squareIcon?: string;
+  /**
+   * Legacy display name. Current tenants carry the name on the Tenant doc
+   * itself (`Tenant.name`); this is the older location and survives only as
+   * AdminDashboard's second fallback. Prefer `Tenant.name`.
+   */
+  name?: string;
   primaryColor?: string; // hex color, e.g. "#D4AF37"
   description?: string;
   customDomain?: string; // e.g. "yourchurch.com" (Ultra only)

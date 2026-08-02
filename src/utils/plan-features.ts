@@ -310,6 +310,21 @@ export function getPlanFeatures(plan: TenantPlan): PlanFeatures {
 }
 
 /**
+ * Coerce an untrusted plan value — a Firestore field, an API body, or a plan
+ * that is still loading — to a TenantPlan, failing closed to 'plus'.
+ *
+ * This is the same fallback getPlanFeatures() has always applied at runtime via
+ * `|| PLAN_FEATURES.plus`; callers just had no way to say so in the type system
+ * and were passing a bare `string`. PLAN_FEATURES is the source of truth for
+ * which ids are real, so adding a tier cannot leave this behind.
+ */
+export function toTenantPlan(plan: string | null | undefined): TenantPlan {
+  return plan && Object.prototype.hasOwnProperty.call(PLAN_FEATURES, plan)
+    ? (plan as TenantPlan)
+    : 'plus';
+}
+
+/**
  * Human-readable display names for each plan tier.
  * Internal IDs (plus/pro/max/ultra) stay the same.
  */
@@ -327,15 +342,18 @@ export function getPlanDisplayName(plan: TenantPlan): string {
 
 /**
  * Check if a specific feature is enabled for a plan.
- * For aiAssistant: returns true for both 'included' and 'addon' (it's always available).
- * Use `getPlanFeatures(plan).aiAssistant === 'included'` to check if it's bundled.
+ *
+ * `aiAssistant` used to be an 'included' | 'addon' string; it is now a count
+ * (0 = none, 1 = one, -1 = unlimited), so the number branch below covers it and
+ * every other PlanFeatures member is a boolean. The old string branch was
+ * unreachable — TypeScript narrowed its operand to `never` — and is gone.
+ * Use `getPlanFeatures(plan).aiAssistant` directly for the count.
  */
 export function hasFeature(plan: TenantPlan, feature: keyof PlanFeatures): boolean {
   const features = getPlanFeatures(plan);
   const value = features[feature];
   if (typeof value === 'boolean') return value;
   if (typeof value === 'number') return value !== 0;
-  if (typeof value === 'string') return value.length > 0; // 'included' | 'addon'
   return false;
 }
 

@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { X, Search, FileText, HeartHandshake, Calendar as CalendarIcon } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import type { EmbedType } from './EmbedCard';
 
 export interface PickerItem {
@@ -17,7 +18,9 @@ const TITLES: Record<EmbedType, string> = {
   event: 'Attach an event',
 };
 
-const ICONS: Record<EmbedType, React.ComponentType<{ size?: number; className?: string }>> = {
+// LucideIcon rather than a hand-written ComponentType: lucide types `size` as
+// string | number, which does not satisfy a `size?: number` prop contract.
+const ICONS: Record<EmbedType, LucideIcon> = {
   blog: FileText,
   fundraising: HeartHandshake,
   event: CalendarIcon,

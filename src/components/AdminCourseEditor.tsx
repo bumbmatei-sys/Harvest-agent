@@ -149,6 +149,11 @@ export interface Course {
  authorIds: string[];
  levels: Level[];
  author?: string; // For compatibility with AdminCourses list
+ // Persisted on the Firestore doc but never modelled here, so every read site
+ // (CourseDetails, CoursesTab, AdminCourses, AdminLibraryCourses) was reaching
+ // through an untyped hole. Optional because older docs predate both.
+ coverImage?: string; // full-bleed header art; falls back to a generated placeholder
+ createdAt?: string;  // ISO timestamp; the key sortByTime() orders the lists by
 }
 
 // ═══════════════════════════════════════════════
@@ -931,7 +936,10 @@ export default function CourseBuilder({ course: initialCourse, onClose, library 
  });
  setCategories(fetchedCats);
  } catch (error) {
- try { handleFirestoreError(error, OperationType.GET, c.courses); } catch (e) { console.error(e); }
+ // `c` is declared inside the try above, so it is out of scope here — this
+ // threw ReferenceError and swallowed the real Firestore error. `cols` is
+ // the same collectionsFor(library) value, resolved at component scope.
+ try { handleFirestoreError(error, OperationType.GET, cols.courses); } catch (e) { console.error(e); }
  }
  };
  fetchData();

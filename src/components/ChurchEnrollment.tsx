@@ -217,7 +217,11 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
                   newFormData.lng = place.geometry.location.lng().toString();
                 }
 
-                place.address_components?.forEach(component => {
+                // `place` is effectively untyped: react-google-autocomplete's props
+                // reference the google.maps namespace from @types/google.maps, which
+                // this project does not install, so the callback parameter gets no
+                // contextual type. Annotated with the two fields actually read below.
+                place.address_components?.forEach((component: { types: string[]; long_name: string }) => {
                   const types = component.types;
                   if (types.includes('street_number')) newFormData.number = component.long_name;
                   if (types.includes('route')) newFormData.street = component.long_name;

@@ -17,7 +17,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ course, onBack }) => {
  {/* Header Image */}
  <div className="relative h-64 sm:h-80 w-full flex-shrink-0">
  <Image 
- src={course.coverImage || getPlaceholderImage(course.id, 1200, 600)} 
+ src={course.coverImage || getPlaceholderImage(course.id ?? '', 1200, 600)} 
  alt={course.title}
  fill
  sizes="100vw"

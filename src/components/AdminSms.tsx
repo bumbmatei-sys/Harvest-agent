@@ -291,8 +291,12 @@ const AdminSms: React.FC = () => {
     }
   };
 
+  // Defaults live in their own object so they are spread rather than written as
+  // literal keys before `...t[key]`, which TS flags as overwritten (TS2783).
+  // Precedence is unchanged: defaults, then stored template, then the patch.
+  const TPL_DEFAULTS = { enabled: false, text: '' };
   const setTpl = (key: string, patch: Partial<{ enabled: boolean; text: string }>) =>
-    setTemplates(t => ({ ...t, [key]: { enabled: false, text: '', ...t[key], ...patch } }));
+    setTemplates(t => ({ ...t, [key]: { ...TPL_DEFAULTS, ...t[key], ...patch } }));
 
   const saveT2g = async () => {
     setSavingT2g(true);

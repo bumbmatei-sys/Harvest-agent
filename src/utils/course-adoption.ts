@@ -23,7 +23,7 @@
  * this module.
  */
 
-import { getPlanFeatures } from './plan-features';
+import { getPlanFeatures, toTenantPlan } from './plan-features';
 import type { AdoptedCourse, Course, LibraryCourse } from '../types/course.types';
 
 /** Unlimited sentinel used by plan-features' maxCourses. */
@@ -37,7 +37,7 @@ export const UNLIMITED = -1;
  * uses for maxChurches.
  */
 export function resolveCourseLimit(plan: string | null | undefined): number {
-  return getPlanFeatures(plan ?? 'plus').maxCourses;
+  return getPlanFeatures(toTenantPlan(plan)).maxCourses;
 }
 
 /**
