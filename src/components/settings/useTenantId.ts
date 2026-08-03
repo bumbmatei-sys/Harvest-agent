@@ -10,9 +10,13 @@ export async function getTenantId(): Promise<string | null> {
   try {
     const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
     if (userDoc.exists()) {
-      _cachedTenantId = userDoc.data().tenantId || null;
+      // Via a typed local: the cache slot is `string | null | undefined`
+      // (undefined = "not yet loaded"), which is wider than what this function
+      // returns. Assigning through `tenantId` keeps the return type honest.
+      const tenantId: string | null = userDoc.data().tenantId || null;
+      _cachedTenantId = tenantId;
       _cachedUid = auth.currentUser.uid;
-      return _cachedTenantId;
+      return tenantId;
     }
   } catch (e) {
     console.error('Failed to get tenantId:', e);

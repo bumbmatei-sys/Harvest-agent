@@ -31,6 +31,10 @@ export interface Contact {
     country?: string;
   };
   notes: string;
+  /** Free-form labels shown as chips on the contact card and round-tripped by
+   *  the edit form. Optional: contacts created before tagging have no field,
+   *  which is why every read site guards with `tags && tags.length`. */
+  tags?: string[];
   /** Member contacts synced from a user account carry their profile photo.
    *  Manually-added contacts have none and fall back to an initial. */
   photoURL?: string;

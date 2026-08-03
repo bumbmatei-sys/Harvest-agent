@@ -43,7 +43,9 @@ describe('generateAccessCode', () => {
     for (let i = 0; i < 100; i++) {
       // Only bytes[4..7] feed the returned suffix (see generateAccessCode);
       // encode i across bytes[6..7] so every draw maps to a distinct code.
-      spy.mockReturnValueOnce(Buffer.from([0, 0, 0, 0, 0, 0, Math.floor(i / 32), i % 32]));
+      // crypto.randomBytes is overloaded; the spy resolves to the callback form,
+      // whose return type is void. The sync form really does return a Buffer.
+      spy.mockReturnValueOnce(Buffer.from([0, 0, 0, 0, 0, 0, Math.floor(i / 32), i % 32]) as never);
       codes.add(generateAccessCode());
     }
     expect(codes.size).toBe(100);

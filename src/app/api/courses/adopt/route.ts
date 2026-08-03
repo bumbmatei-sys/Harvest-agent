@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireTenantPermission } from '@/lib/api-auth';
 import { captureHandledError } from '@/lib/money-path-sentry';
-import { getPlanFeatures } from '@/utils/plan-features';
+import { getPlanFeatures, toTenantPlan } from '@/utils/plan-features';
 import { LIBRARY_COURSE_COLLECTIONS } from '@/utils/library-authoring';
 import {
   UNLIMITED, isAtCourseLimit, courseHasQuiz,
@@ -111,7 +111,7 @@ export async function POST(request: NextRequest) {
     // tenant doc has no plan, matching AdminCourses' long-standing fallback.
     const tenantDoc = await adminDb.collection('tenants').doc(tenantId).get();
     const plan = (tenantDoc.data()?.plan as string | undefined) ?? 'plus';
-    const maxCourses = getPlanFeatures(plan ?? 'plus').maxCourses;
+    const maxCourses = getPlanFeatures(toTenantPlan(plan)).maxCourses;
 
     if (maxCourses !== UNLIMITED) {
       const [ownSnap, adoptedSnap] = await Promise.all([

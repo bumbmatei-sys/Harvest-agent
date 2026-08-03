@@ -454,8 +454,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
   // Mobile: 4 tabs in the bottom bar. If the admin has saved a custom order,
   // use it (filtered to still-permitted tabs). Otherwise default to first 4.
   // The More drawer keeps its OWN independent saved order (customMoreIds).
-  let primaryTabs;
-  let drawerTabs; // reorderable drawer tabs (excludes the fixed Inbox/Settings)
+  // Annotated rather than inferred: `drawerTabs` is read inside the closure on
+  // the customMoreIds path below, where TypeScript cannot resolve a type it is
+  // still inferring from later assignments.
+  let primaryTabs: typeof allTabs;
+  let drawerTabs: typeof allTabs; // reorderable drawer tabs (excludes the fixed Inbox/Settings)
   if (customPrimaryIds && customPrimaryIds.length > 0) {
     const orderedBar = customPrimaryIds
       .map((id) => allTabs.find((t) => t.id === id))
@@ -901,14 +904,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
               onCustomizeNav={() => setShowNavCustomizer(true)}
               onChangePlan={async (plan) => {
                 if (auth.currentUser) {
-                  const { updateDoc } = await import('firebase/firestore');
+                  const { updateDoc, doc } = await import('firebase/firestore');
                   await updateDoc(doc(db, 'users', auth.currentUser.uid), { plan });
                   window.location.reload();
                 }
               }}
               onCancelPlan={async () => {
                 if (auth.currentUser) {
-                  const { updateDoc } = await import('firebase/firestore');
+                  const { updateDoc, doc } = await import('firebase/firestore');
                   await updateDoc(doc(db, 'users', auth.currentUser.uid), { planStatus: 'cancelled' });
                   alert('Your subscription has been cancelled. It will remain active until the end of the billing period.');
                 }

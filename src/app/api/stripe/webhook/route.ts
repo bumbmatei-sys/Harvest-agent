@@ -1657,7 +1657,12 @@ export async function POST(request: NextRequest) {
 
       case 'invoice.payment_failed': {
         const invoice = event.data.object as Stripe.Invoice;
-        const invSubId = invoice.subscription as string | null;
+        // `subscription` is no longer on Stripe.Invoice: recent API versions moved
+        // it under `parent.subscription_details`. Webhook payload shape follows the
+        // endpoint's configured API version, not the SDK, so the flat field can
+        // still arrive. Read it off-type rather than restructuring the handler —
+        // behaviour is unchanged. See the PR notes on verifying the endpoint version.
+        const invSubId = (invoice as unknown as { subscription?: string | null }).subscription ?? null;
         if (invSubId) {
           try {
             const sub = await stripe.subscriptions.retrieve(invSubId);
@@ -1689,7 +1694,9 @@ export async function POST(request: NextRequest) {
 
       case 'invoice.payment_succeeded': {
         const invoice = event.data.object as Stripe.Invoice;
-        const invoiceSubId = invoice.subscription as string | null;
+        // See the note on invoice.payment_failed above — same off-type read, same
+        // behaviour, for the same removed-from-types `subscription` field.
+        const invoiceSubId = (invoice as unknown as { subscription?: string | null }).subscription ?? null;
         let tenantId: string | null = null;
         let subMeta: Record<string, string> = {};
         if (invoiceSubId) {
@@ -2144,7 +2151,15 @@ export async function POST(request: NextRequest) {
         break;
       }
 
-      case 'transfer.failed': {
+      // NOTE: Stripe's current event union has only transfer.created /
+      // transfer.reversed / transfer.updated — `transfer.failed` is not a real
+      // event type, so this branch has never fired and the reconciliation below
+      // (clearing affiliatePendingPayouts for a bounced payout) does not run.
+      // The cast keeps the label comparable without widening the switch, which
+      // would drop narrowing for every other case. Left in place deliberately:
+      // deleting it, or re-pointing it at transfer.reversed, is a money-path
+      // behaviour change and needs an owner's call, not a typecheck fix.
+      case 'transfer.failed' as Stripe.Event['type']: {
         const transfer = event.data.object as Stripe.Transfer;
         const referrerId = transfer.metadata?.referrerId;
         if (referrerId) {

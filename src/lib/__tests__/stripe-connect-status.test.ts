@@ -27,7 +27,8 @@ describe('deriveConnectStatus', () => {
       deriveConnectStatus(account({
         charges_enabled: false,
         payouts_enabled: false,
-        requirements: { currently_due: [] } as Stripe.Account.Requirements,
+        // Only currently_due is read; the rest of Requirements is irrelevant here.
+        requirements: { currently_due: [] } as unknown as Stripe.Account.Requirements,
       })),
     ).toBe('pending');
   });

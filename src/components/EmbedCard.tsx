@@ -4,6 +4,7 @@ import Image from 'next/image';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { FileText, HeartHandshake, Calendar as CalendarIcon, MapPin, Globe, X } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 
 // A post carries at most ONE embed — a lightweight reference (type + id), not a
 // copy of the referenced content. The title/image/progress are resolved from
@@ -35,7 +36,9 @@ export interface ResolvedEmbed {
 
 type ResolveStatus = 'loading' | 'ready' | 'missing';
 
-const TYPE_META: Record<EmbedType, { label: string; Icon: React.ComponentType<{ size?: number; className?: string }> }> = {
+// LucideIcon rather than a hand-written ComponentType: lucide types `size` as
+// string | number, which does not satisfy a `size?: number` prop contract.
+const TYPE_META: Record<EmbedType, { label: string; Icon: LucideIcon }> = {
   blog: { label: 'Article', Icon: FileText },
   fundraising: { label: 'Fundraiser', Icon: HeartHandshake },
   event: { label: 'Event', Icon: CalendarIcon },

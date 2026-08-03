@@ -85,7 +85,7 @@ const CoursesTab: React.FC<CoursesTabProps> = ({ onOpenCourse }) => {
  >
  <div className="relative h-48 w-full bg-surface-chip overflow-hidden">
  <Image 
- src={course.coverImage || getPlaceholderImage(course.id, 600, 400)} 
+ src={course.coverImage || getPlaceholderImage(course.id ?? '', 600, 400)} 
  alt={course.title}
  fill
  sizes="(max-width: 768px) 100vw, 50vw"

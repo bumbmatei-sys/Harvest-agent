@@ -164,7 +164,7 @@ describe('AdminCRM — email a contact', () => {
     await act(async () => { prompt!.click(); });
     expect(navigate).toHaveBeenCalledWith('/admin/settings');
     // The prompt navigates. It never attempts a send.
-    expect(authFetch.mock.calls.some(([u]: [string]) => u.includes('/api/crm/send-email'))).toBe(false);
+    expect(authFetch.mock.calls.some(([u]) => u.includes('/api/crm/send-email'))).toBe(false);
   });
 
   it('offers neither control while the connection status is still unknown', async () => {
@@ -193,7 +193,7 @@ describe('AdminCRM — email a contact', () => {
     await act(async () => { buttonByText('Send')!.click(); });
     await flush();
 
-    const sendCall = authFetch.mock.calls.find(([u]: [string]) => u.includes('/api/crm/send-email'));
+    const sendCall = authFetch.mock.calls.find(([u]) => u.includes('/api/crm/send-email'));
     expect(sendCall).toBeTruthy();
     expect(JSON.parse(sendCall![1].body)).toEqual({
       contactId: 'contact-1', subject: 'Welcome', body: 'Glad to see you Sunday.',

@@ -86,10 +86,10 @@ vi.mock('../../hooks/queries/useDocsQueries', () => ({
 
 /** Every write the component issued, in order. */
 const writes = () =>
-  updateDoc.mock.calls.map(([ref, payload]) => ({
-    id: (ref as { id: string }).id,
-    ...(payload as { title: string; content: string }),
-  }));
+  // vi.fn() with no declared signature types mock.calls as an array of empty
+  // tuples, so the destructure below needs the real arity spelled out.
+  (updateDoc.mock.calls as unknown as [{ id: string }, { title: string; content: string }][])
+    .map(([ref, payload]) => ({ id: ref.id, ...payload }));
 
 let container: HTMLDivElement;
 let root: Root;

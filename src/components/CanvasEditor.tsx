@@ -7,7 +7,9 @@ import { authFetch } from '../utils/auth-fetch';
 import { getTenantScope } from '../utils/tenant-scope';
 import { notifyError } from '../utils/notify';
 import dynamic from 'next/dynamic';
-import type { ExcalidrawElement } from '@excalidraw/excalidraw/types/types';
+// @excalidraw/excalidraw 0.18 exposes subpath types as "./*" -> dist/types/excalidraw/*.d.ts,
+// so the old "types/types" entry point no longer resolves. ExcalidrawElement now lives here.
+import type { ExcalidrawElement } from '@excalidraw/excalidraw/element/types';
 
 // Import Excalidraw CSS — CRITICAL: without this, the toolbar renders as raw unstyled elements
 import '@excalidraw/excalidraw/index.css';

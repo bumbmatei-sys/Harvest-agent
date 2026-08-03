@@ -83,7 +83,11 @@ export function stampTenant<T extends Record<string, unknown>>(
   isLibrary: boolean,
   data: T,
   tenantId: string | null | undefined,
-): T {
+  // Returning plain `T` hid the one field this function exists to write: callers
+  // (and the tests asserting the null-vs-undefined contract below) could not see
+  // `tenantId` at all. Optional because library mode deletes it. Still assignable
+  // to `T`, so no call site changes.
+): T & { tenantId?: string | null } {
   const next = { ...data } as Record<string, unknown>;
   if (isLibrary) {
     delete next.tenantId;

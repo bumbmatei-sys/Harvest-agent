@@ -17,6 +17,11 @@ jobs:
           node-version: 20
       - run: npm install
       - run: npm test
+      # This workflow duplicates test.yml — same `name: CI`, same "Test & Lint"
+      # job name — so both report a check by that name on every PR. The gate has
+      # to exist here too, or one of the two identically-named checks can go
+      # green without types ever being checked.
+      - run: npm run typecheck
       - run: npm run lint
 
   build:

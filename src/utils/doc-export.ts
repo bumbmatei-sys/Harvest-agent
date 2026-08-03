@@ -200,7 +200,10 @@ export async function exportToPDF(title: string, html: string): Promise<void> {
   }
 
   const bytes = await pdfDoc.save();
-  downloadBlob(new Blob([bytes], { type: 'application/pdf' }), `${title}.pdf`);
+  // pdf-lib returns Uint8Array<ArrayBufferLike>; the DOM lib now types BlobPart's
+  // view as ArrayBuffer-backed specifically, so the generic form no longer matches
+  // even though a Uint8Array is always a valid BlobPart at runtime.
+  downloadBlob(new Blob([bytes as BlobPart], { type: 'application/pdf' }), `${title}.pdf`);
 }
 
 export async function exportToDOCX(title: string, html: string): Promise<void> {

@@ -107,7 +107,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields: plan, billing' }, { status: 400 });
     }
 
-    const priceId = PLAN_PRICES[plan]?.[billing];
+    // `billing` arrives untyped from the request body, so it cannot index the
+    // { monthly, yearly } price record directly. Narrowing to the two real keys
+    // keeps the existing outcome: anything else falls through to the 400 below,
+    // exactly as an unknown key resolving to undefined did before.
+    const billingKey: 'monthly' | 'yearly' | null =
+      billing === 'monthly' ? 'monthly' : billing === 'yearly' ? 'yearly' : null;
+    const priceId = billingKey ? PLAN_PRICES[plan]?.[billingKey] : undefined;
     if (!priceId) {
       return NextResponse.json({ error: `Invalid plan/billing: ${plan}/${billing}` }, { status: 400 });
     }
