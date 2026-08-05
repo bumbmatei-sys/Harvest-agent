@@ -99,40 +99,45 @@ afterEach(() => {
 });
 
 describe('POST /api/domains/provision — plan gate', () => {
-  it('returns 403 for a Small Team (pro) tenant', async () => {
+  // The gate is `hasFeature(plan, 'customDomain')` and custom domains are free
+  // on every tier under the freemium model, so no plan is refused today. These
+  // tests are kept — inverted, not deleted — because the GATE itself still has
+  // to work: it is the server-side enforcement (super admins bypass, unknown
+  // plans resolve to the free tier), and if `customDomain` is ever made paid
+  // again these are the tests that must go red first.
+  it('allows a Root (pro) tenant — custom domains are free on every tier', async () => {
     mockRequireAdmin.mockResolvedValue(mockUser());
     onPlan('pro');
     const fetchMock = mockVercelOk();
 
     const res = await POST(postReq('church.org'));
 
-    expect(res.status).toBe(403);
-    expect((await res.json()).error).toMatch(/Community plan or higher/i);
-    // The gate must run before anything reaches Vercel or Firestore.
-    expect(fetchMock).not.toHaveBeenCalled();
-    expect(setCalls).toHaveLength(0);
+    expect(res.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalled();
   });
 
-  it('returns 403 for an Individual (plus) tenant', async () => {
+  it('allows a Seed (plus, free) tenant', async () => {
     mockRequireAdmin.mockResolvedValue(mockUser());
     onPlan('plus');
     const fetchMock = mockVercelOk();
 
     const res = await POST(postReq('church.org'));
 
-    expect(res.status).toBe(403);
-    expect(fetchMock).not.toHaveBeenCalled();
-    expect(setCalls).toHaveLength(0);
+    expect(res.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalled();
   });
 
-  it('fails closed for a tenant with no plan field', async () => {
+  it('resolves a tenant with no plan field to the free tier (still the most restrictive)', async () => {
+    // The fail-closed behaviour is unchanged: a missing plan resolves to the
+    // CHEAPEST tier, never a generous one. It no longer produces a 403 here only
+    // because the cheapest tier now has custom domains.
     mockRequireAdmin.mockResolvedValue(mockUser());
     tenantDocs.set('tenant1', { name: 'No Plan Church' });
     mockVercelOk();
 
     const res = await POST(postReq('church.org'));
 
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(200);
   });
 
   it('returns 404 when the tenant doc does not exist', async () => {
@@ -187,20 +192,18 @@ describe('POST /api/domains/provision — plan gate', () => {
 });
 
 describe('GET /api/domains/provision — plan gate', () => {
-  it('returns 403 for a Small Team (pro) tenant', async () => {
+  it('allows a Root (pro) tenant — custom domains are free on every tier', async () => {
     mockRequireAdmin.mockResolvedValue(mockUser());
     onPlan('pro');
     const fetchMock = mockVercelOk();
 
     const res = await GET(getReq('church.org'));
 
-    expect(res.status).toBe(403);
-    expect(fetchMock).not.toHaveBeenCalled();
-    // GET writes config.customDomainVerified — the gate must precede that too.
-    expect(setCalls).toHaveLength(0);
+    expect(res.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalled();
   });
 
-  it('succeeds for a Community (max) tenant', async () => {
+  it('succeeds for a Grove (max) tenant', async () => {
     mockRequireAdmin.mockResolvedValue(mockUser());
     onPlan('max');
     mockVercelOk();

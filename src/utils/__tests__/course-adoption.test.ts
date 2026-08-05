@@ -35,9 +35,11 @@ describe('course adoption', () => {
     });
 
     it('resolves each plan tier', () => {
+      // `max` went from unlimited to a hard 10 in the freemium repricing —
+      // limits are what paid tiers sell now, so only the top tier is unlimited.
       expect(resolveCourseLimit('plus')).toBe(2);
       expect(resolveCourseLimit('pro')).toBe(5);
-      expect(resolveCourseLimit('max')).toBe(UNLIMITED);
+      expect(resolveCourseLimit('max')).toBe(10);
       expect(resolveCourseLimit('ultra')).toBe(UNLIMITED);
     });
 

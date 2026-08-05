@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { generateAndSavePost, computeNextScheduled } from '../generate/route';
 import { captureHandledError } from '@/lib/money-path-sentry';
+import { hasFeature, toTenantPlan } from '@/utils/plan-features';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,8 +44,11 @@ export async function GET(request: NextRequest) {
 
       // Check tenant plan gate
       const tenantDoc = await adminDb.collection('tenants').doc(tenantId).get();
-      const plan = tenantDoc.data()?.plan || 'plus';
-      if (!['max', 'ultra'].includes(plan)) {
+      const plan = toTenantPlan(tenantDoc.data()?.plan);
+      // DERIVED from the feature matrix — see the note in blog/generate. With a
+      // hardcoded tier list, this cron would have silently switched automation
+      // OFF for every tenant the matrix says is entitled to it.
+      if (!hasFeature(plan, 'automatedBlog')) {
         // Disable automation for downgraded tenants
         await settingDoc.ref.set({ enabled: false }, { merge: true });
         results.push({ tenantId, status: 'disabled — plan downgraded' });

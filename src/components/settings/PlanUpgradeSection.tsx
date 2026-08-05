@@ -35,11 +35,15 @@ const PLAN_ORDER: TenantPlan[] = ['plus', 'pro', 'max', 'ultra'];
 // imported and unused two lines above it, so a repricing in PLAN_PRICING left
 // the in-app comparison showing the old numbers. The card now renders
 // formatPlanPrice(planId, billingPeriod). Do not reintroduce price literals.
+//
+// Names are NOT literals here either, for the same reason: they came from this
+// table and would have gone stale at the next rename. They derive from
+// PLAN_DISPLAY_NAMES.
 const PLANS: { id: TenantPlan; name: string; icon: any; color: string; popular?: boolean; comingSoon: string[] }[] = [
-  { id: 'plus', name: 'Individual', icon: Zap, color: '#6366f1', comingSoon: [] },
-  { id: 'pro', name: 'Small Team', icon: Crown, color: '#d4a017', comingSoon: [] },
-  { id: 'max', name: 'Community', icon: Star, color: '#8b5cf6', popular: true, comingSoon: [] },
-  { id: 'ultra', name: 'Ministry', icon: Building2, color: '#b45309', comingSoon: [] },
+  { id: 'plus', name: PLAN_DISPLAY_NAMES.plus, icon: Zap, color: '#6366f1', comingSoon: [] },
+  { id: 'pro', name: PLAN_DISPLAY_NAMES.pro, icon: Crown, color: '#d4a017', comingSoon: [] },
+  { id: 'max', name: PLAN_DISPLAY_NAMES.max, icon: Star, color: '#8b5cf6', popular: true, comingSoon: [] },
+  { id: 'ultra', name: PLAN_DISPLAY_NAMES.ultra, icon: Building2, color: '#b45309', comingSoon: [] },
 ];
 
 // Keyed lookup so we can resolve plan metadata by id (icon/color/popular).
@@ -57,6 +61,7 @@ const FEATURE_COMPARISON: { key: keyof PlanFeatures; label: string; format?: (v:
   { key: 'newsletterAutomation', label: 'Newsletter' },
   { key: 'maxCourses', label: 'Courses', format: (v) => v === -1 ? 'Unlimited' : `${v}` },
   { key: 'maxAdmins', label: 'Admin Accounts', format: (v) => v === -1 ? 'Unlimited' : `${v}` },
+  { key: 'maxMembers', label: 'Members', format: (v) => v === -1 ? 'Unlimited' : v.toLocaleString() },
   { key: 'customBranding', label: 'Custom Branding' },
   { key: 'customDomain', label: 'Custom Domain' },
   { key: 'aiAssistant', label: 'AI Assistant', format: (v) => v === -1 ? 'Unlimited' : v === 0 ? '—' : `${v}` },
@@ -75,8 +80,28 @@ const FEATURE_COMPARISON: { key: keyof PlanFeatures; label: string; format?: (v:
   { key: 'sermonNotes', label: 'Sermon Notes → Livestream' },
   { key: 'automatedBlog', label: 'Automated Blog Articles' },
   { key: 'communityGroups', label: 'Community Groups' },
-  { key: 'donationRetention', label: 'Donation Retention', format: (v) => `${v}%` },
+  // The FEE, phrased as a cost — not the retention complement it replaced.
+  // "Donation Retention — 98.5%" was the same fact stated backwards, and keeping
+  // both numbers is what let the app advertise 100% while a fee was deducted
+  // (THE-51). Show what the platform takes; never "your church keeps X%".
+  { key: 'platformFeePct', label: 'Platform fee', format: (v) => `${v}%` },
 ];
+
+/**
+ * Should this cell render in the "on" colour?
+ *
+ * Boolean feature rows use truthiness, but numeric rows must not: on
+ * `platformFeePct` the BEST value is 0 (the top tier takes nothing), and
+ * `Boolean(0)` would grey out the single most attractive cell in the table.
+ * Shared by the plan cards and the full comparison table so the two cannot
+ * disagree.
+ */
+function isPositiveCell(key: keyof PlanFeatures, value: unknown): boolean {
+  if (key === 'platformFeePct') return true;
+  if (key === 'maxChurches') return (value as number) !== 1;
+  if (key === 'aiAssistant') return true;
+  return Boolean(value);
+}
 
 // While the AI Telegram Assistant is hidden, drop its comparison row everywhere.
 // Flip AI_TELEGRAM_ASSISTANT_ENABLED to bring the row (and footnote below) back.
@@ -84,8 +109,8 @@ const VISIBLE_FEATURES = AI_TELEGRAM_ASSISTANT_ENABLED
   ? FEATURE_COMPARISON
   : FEATURE_COMPARISON.filter((r) => r.key !== 'aiAssistant');
 
-// No features are "coming soon" right now — Automated Blog Articles shipped on
-// Community + Ministry. Add entries here to re-enable the table's Coming Soon row.
+// No features are "coming soon" right now. Add entries here to re-enable the
+// table's Coming Soon row.
 const SOON_FEATURES: { label: string; plans: TenantPlan[] }[] = [];
 
 const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, tenantId, email, hideUpgrade }) => {
@@ -224,6 +249,9 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
           // Stripe charges monthly × 10 for annual (pay 10 months, get 12), same math as the
           // marketing site's Pricing.tsx — mirrored here so the two never show different numbers.
           const yearlyMonthlyEquivalent = Math.round((PLAN_PRICING[planId].monthlyUsd * 10) / 12);
+          // The free tier has no annual price — $0 has no billing period — so the
+          // "billed annually" / "Save 2 months" copy would be meaningless on it.
+          const isFree = PLAN_PRICING[planId].monthlyUsd === 0;
           const isCurrent = planId === currentPlan;
           const isDowngrade = PLAN_ORDER.indexOf(planId) < PLAN_ORDER.indexOf(currentPlan ?? 'plus');
 
@@ -250,13 +278,13 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
                   <meta.icon size={24} style={{ color: meta.color }} />
                 </div>
                 <h3 className="font-display text-lg font-bold text-strong">{name}</h3>
-                {billingPeriod === 'yearly' && (
+                {billingPeriod === 'yearly' && !isFree && (
                   <p className="text-sm text-faint">${yearlyMonthlyEquivalent}/mo billed annually</p>
                 )}
                 <p className="text-2xl font-bold text-strong mt-1">
                   {displayPrice}
                 </p>
-                {billingPeriod === 'yearly' && (
+                {billingPeriod === 'yearly' && !isFree && (
                   <p className="text-xs text-green-600 font-medium mt-1">Save 2 months</p>
                 )}
               </div>
@@ -264,11 +292,7 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
               <div className="space-y-2 mb-5">
                 {VISIBLE_FEATURES.map(({ key, label, format }) => {
                   const value = features[key];
-                  const isPositive = key === 'maxChurches'
-                    ? (value as number) !== 1
-                    : key === 'aiAssistant'
-                    ? true
-                    : Boolean(value);
+                  const isPositive = isPositiveCell(key, value);
                   const display = format
                     ? format(value)
                     : (value ? '✓' : '✗');
@@ -364,11 +388,7 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
                   {PLAN_ORDER.map(planId => {
                     const features = getPlanFeatures(planId);
                     const value = features[key];
-                    const isPositive = key === 'maxChurches'
-                      ? (value as number) !== 1
-                      : key === 'aiAssistant'
-                      ? true
-                      : Boolean(value);
+                    const isPositive = isPositiveCell(key, value);
                     const display = format ? format(value) : (value ? '✓' : '✗');
                     return (
                       <td key={planId} className={`py-3 px-3 text-center ${isPositive ? 'text-green-600' : 'text-faint'}`}>
@@ -409,7 +429,7 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
       ) : (
         <div className="text-center">
           <h2 className="font-display text-2xl font-bold text-strong">Billing</h2>
-          <p className="text-muted mt-1">You&apos;re on the Ministry plan — the highest tier. Manage or cancel your subscription below.</p>
+          <p className="text-muted mt-1">You&apos;re on the {PLAN_DISPLAY_NAMES.ultra} plan — the highest tier. Manage or cancel your subscription below.</p>
         </div>
       )}
 

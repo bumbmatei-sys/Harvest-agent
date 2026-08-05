@@ -2,7 +2,12 @@
 import React, { useState, useEffect } from 'react';
 import { Crown, Settings2, Bot, Plug, AlertTriangle, Check, FileText, MessageSquare, SlidersHorizontal, ChevronRight, DollarSign, CreditCard, Palette } from 'lucide-react';
 import { TenantPlan } from '../types/tenant.types';
-import { getPlanFeatures, AI_TELEGRAM_ASSISTANT_ENABLED } from '../utils/plan-features';
+import {
+  getPlanFeatures,
+  AI_TELEGRAM_ASSISTANT_ENABLED,
+  PLAN_DISPLAY_NAMES,
+  formatPlanPrice,
+} from '../utils/plan-features';
 import { hasPlatformOverride } from '../utils/tenant-scope';
 import SettingsAccordion from './settings/SettingsAccordion';
 import PaymentSection from './settings/PaymentSection';
@@ -37,13 +42,16 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
 
   const currentPlanData = currentPlan ? PLANS_DISPLAY.find(p => p.id === currentPlan) : null;
   const currentFeatures = currentPlan ? getPlanFeatures(currentPlan) : null;
-  // Compact, comma/dot-separated plan summary, e.g. "Unlimited courses · Blog · AI Chat".
+  // Compact, dot-separated plan summary, e.g. "2% platform fee · 5 courses ·
+  // 1,000 members". Every plan now carries every feature except RAG and SMS, so
+  // listing features here ("Blog · CRM") would say the same thing on all four
+  // tiers. What actually differs is the fee and the limits — summarise those.
   const planSummary = currentFeatures
     ? [
+        `${currentFeatures.platformFeePct}% platform fee`,
         `${currentFeatures.maxCourses === -1 ? 'Unlimited' : currentFeatures.maxCourses} courses`,
-        currentFeatures.blog ? 'Blog' : null,
+        `${currentFeatures.maxMembers === -1 ? 'Unlimited' : currentFeatures.maxMembers.toLocaleString()} members`,
         currentFeatures.aiChat ? 'AI Chat' : null,
-        currentFeatures.crm ? 'CRM' : null,
       ].filter(Boolean).join(' · ')
     : '';
   const [forceOpen, setForceOpen] = useState<string | null>(null);
@@ -320,12 +328,18 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
   );
 };
 
-// Display constants (needed for current plan summary)
-const PLANS_DISPLAY = [
-  { id: 'plus'  as TenantPlan, name: 'Individual', monthlyPrice: '$49/mo',  icon: Crown, color: '#6366f1' },
-  { id: 'pro'   as TenantPlan, name: 'Small Team', monthlyPrice: '$99/mo',  icon: Crown, color: '#d4a017' },
-  { id: 'max'   as TenantPlan, name: 'Community',  monthlyPrice: '$199/mo', icon: Crown, color: '#8b5cf6' },
-  { id: 'ultra' as TenantPlan, name: 'Ministry',   monthlyPrice: '$299/mo', icon: Crown, color: '#b45309' },
-];
+// Display constants (needed for current plan summary). Name and price are
+// DERIVED — they were literals here and went stale at every repricing/rename.
+const PLANS_DISPLAY = ([
+  { id: 'plus'  as TenantPlan, color: '#6366f1' },
+  { id: 'pro'   as TenantPlan, color: '#d4a017' },
+  { id: 'max'   as TenantPlan, color: '#8b5cf6' },
+  { id: 'ultra' as TenantPlan, color: '#b45309' },
+]).map((p) => ({
+  ...p,
+  name: PLAN_DISPLAY_NAMES[p.id],
+  monthlyPrice: formatPlanPrice(p.id, 'monthly'),
+  icon: Crown,
+}));
 
 export default AdminSettings;

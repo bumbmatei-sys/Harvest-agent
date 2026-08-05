@@ -213,13 +213,17 @@ describe('POST /api/certificate — idempotency', () => {
 });
 
 describe('POST /api/certificate — tenant branding gate', () => {
-  it('does NOT fetch a logo on an unbranded plan (customBranding false)', async () => {
-    const fetchSpy = vi.fn();
+  // This was "does NOT fetch a logo on an unbranded plan". There is no unbranded
+  // plan any more — `customBranding` is free on every tier — so the assertion is
+  // inverted rather than deleted: the gate still reads the matrix cell, and this
+  // is the test that goes red first if branding is ever made paid again.
+  it('DOES fetch the logo on the free tier — custom branding is free on every tier', async () => {
+    const fetchSpy = vi.fn().mockRejectedValue(new Error('network down'));
     vi.stubGlobal('fetch', fetchSpy);
     store.tenants.set('tenant-a', { name: 'Grace', plan: 'plus', config: { logo: 'https://cdn/logo.png', primaryColor: '#8dceb8' } });
     const res = await POST(makeReq({ courseId: 'course-1' }));
     expect(res.status).toBe(200);
-    expect(fetchSpy).not.toHaveBeenCalled(); // no branding → no logo fetch
+    expect(fetchSpy).toHaveBeenCalled();
     vi.unstubAllGlobals();
   });
 

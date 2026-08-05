@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { CheckCircle, Loader2, ArrowRight, Instagram, Mail, Globe, Palette } from 'lucide-react';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
+import { hasFeature, toTenantPlan } from '../utils/plan-features';
 
 interface PostPurchaseWizardProps {
   tenantId: string;
@@ -76,7 +77,10 @@ const PostPurchaseWizard: React.FC<PostPurchaseWizardProps> = ({ tenantId, onCom
       },
     ];
 
-    if (['pro', 'max', 'ultra'].includes(p)) {
+    // Derived from the feature matrix, not a hardcoded tier list: newsletter and
+    // custom domains are on every tier now, so a tier list here would hide the
+    // setup step from tenants who have the feature.
+    if (hasFeature(toTenantPlan(p), 'newsletterAutomation')) {
       steps.push({
         id: 'instagram',
         title: 'Connect Instagram',
@@ -95,7 +99,7 @@ const PostPurchaseWizard: React.FC<PostPurchaseWizardProps> = ({ tenantId, onCom
       });
     }
 
-    if (['max', 'ultra'].includes(p)) {
+    if (hasFeature(toTenantPlan(p), 'customDomain')) {
       steps.push({
         id: 'domain',
         title: 'Custom Domain',

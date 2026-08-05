@@ -8,7 +8,7 @@ import { NextRequest } from 'next/server';
  * rates so its redirect/metadata assertions do not move when pricing changes.
  * That leaves the REAL rate uncovered on the donation path, which is exactly
  * the number a repricing gets wrong. This file is the complement: it imports
- * the real `@/lib/stripe-config` and pins what a donor on Small Team (pro)
+ * the real `@/lib/stripe-config` and pins what a donor on Root (pro)
  * actually gets charged, on both the one-time and the monthly branch.
  *
  * The paid-event-ticket half — the other importer of the same map — is pinned
@@ -64,32 +64,32 @@ beforeEach(() => {
 });
 
 describe('POST /api/stripe/donate — real platform fee per plan', () => {
-  it('deducts 1.5% from a one-time donation on Small Team (pro)', async () => {
-    // $100.00 gift → $1.50 platform fee, $98.50 to the church (98.5% retention).
+  it('deducts 2% from a one-time donation on Root (pro)', async () => {
+    // $100.00 gift → $2.00 platform fee, $98.00 to the church.
     const res = await POST(makeRequest({ amount: 10000, tenantId: 'bumb', donationType: 'one-time' }));
     expect(res.status).toBe(200);
-    expect(lastSessionArgs().payment_intent_data.application_fee_amount).toBe(150);
+    expect(lastSessionArgs().payment_intent_data.application_fee_amount).toBe(200);
   });
 
-  it('sets application_fee_percent to 1.5 on a monthly donation on Small Team (pro)', async () => {
+  it('sets application_fee_percent to 2 on a monthly donation on Root (pro)', async () => {
     // Subscriptions take a percent, not a fixed amount: feePercent * 100.
     await POST(makeRequest({ amount: 10000, tenantId: 'bumb', donationType: 'monthly' }));
-    expect(lastSessionArgs().subscription_data.application_fee_percent).toBe(1.5);
+    expect(lastSessionArgs().subscription_data.application_fee_percent).toBe(2);
   });
 
-  it('deducts 1.5% on Individual (plus) — same rate as Small Team', async () => {
+  it('deducts 4% on Seed (plus) — the free tier pays the highest fee', async () => {
     tenantOnPlan('plus');
     await POST(makeRequest({ amount: 10000, tenantId: 'bumb', donationType: 'one-time' }));
-    expect(lastSessionArgs().payment_intent_data.application_fee_amount).toBe(150);
+    expect(lastSessionArgs().payment_intent_data.application_fee_amount).toBe(400);
   });
 
-  it('deducts 1% on Community (max)', async () => {
+  it('deducts 1% on Grove (max)', async () => {
     tenantOnPlan('max');
     await POST(makeRequest({ amount: 10000, tenantId: 'bumb', donationType: 'one-time' }));
     expect(lastSessionArgs().payment_intent_data.application_fee_amount).toBe(100);
   });
 
-  it('deducts nothing on Ministry (ultra) — the church keeps the whole gift', async () => {
+  it('deducts nothing on Harvest (ultra) — the church keeps the whole gift', async () => {
     tenantOnPlan('ultra');
     await POST(makeRequest({ amount: 10000, tenantId: 'bumb', donationType: 'one-time' }));
     expect(lastSessionArgs().payment_intent_data.application_fee_amount).toBe(0);

@@ -5,6 +5,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { getMimoChatUrl, MIMO_MODEL } from '@/lib/ai-config';
 import { captureHandledError } from '@/lib/money-path-sentry';
+import { hasFeature, toTenantPlan } from '@/utils/plan-features';
 
 export const dynamic = 'force-dynamic';
 
@@ -157,12 +158,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No tenant' }, { status: 400 });
     }
 
-    // Plan gate — max or ultra only
+    // Plan gate — DERIVED from the feature matrix, not a hardcoded tier list.
+    // It was `['max','ultra'].includes(plan)`, which meant flipping
+    // `automatedBlog` on in the matrix advertised a feature this route still
+    // refused. One source of truth: change the cell, the gate follows.
     const tenantDoc = await adminDb.collection('tenants').doc(tenantId).get();
-    const plan = tenantDoc.data()?.plan || 'plus';
-    if (!['max', 'ultra'].includes(plan)) {
+    const plan = toTenantPlan(tenantDoc.data()?.plan);
+    if (!hasFeature(plan, 'automatedBlog')) {
       return NextResponse.json(
-        { error: 'Automated blog requires Community or Ministry plan' },
+        { error: 'Automated blog is not available on your plan' },
         { status: 403 },
       );
     }

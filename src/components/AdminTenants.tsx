@@ -9,6 +9,7 @@ import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { AdminPageHeader, AdminPrimaryButton, AdminSearchBar } from './admin/AdminUI';
 import TenantUsagePanel from './admin/TenantUsagePanel';
 import AdminAffiliates from './AdminAffiliates';
+import { PLAN_DISPLAY_NAMES, formatPlanPrice } from '../utils/plan-features';
 
 const PLAN_LABELS: Record<TenantPlan, string> = {
   plus: 'Plus',
@@ -19,12 +20,14 @@ const PLAN_LABELS: Record<TenantPlan, string> = {
 
 // Marketing labels with price, shown in the (read-only) edit view. Intentionally
 // different from PLAN_LABELS — these match what customers see in checkout.
-const PLAN_DISPLAY: Record<TenantPlan, string> = {
-  plus: 'Individual — $49/mo',
-  pro: 'Small Team — $99/mo',
-  max: 'Community — $199/mo',
-  ultra: 'Ministry — $299/mo',
-};
+// DERIVED from the plan catalog: these were literals and went stale at every
+// repricing and rename.
+const PLAN_DISPLAY: Record<TenantPlan, string> = Object.fromEntries(
+  (['plus', 'pro', 'max', 'ultra'] as TenantPlan[]).map((id) => [
+    id,
+    `${PLAN_DISPLAY_NAMES[id]} — ${formatPlanPrice(id, 'monthly')}`,
+  ])
+) as Record<TenantPlan, string>;
 
 const PLAN_COLORS: Record<TenantPlan, string> = {
   plus: 'bg-blue-100 text-blue-700',
@@ -534,10 +537,9 @@ const AdminTenants: React.FC = () => {
                     onChange={e => setForm({ ...form, plan: e.target.value as TenantPlan })}
                     className="w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:ring-2 focus:ring-gold focus:border-gold outline-none bg-surface-raised"
                   >
-                    <option value="plus">Individual — $49/mo</option>
-                    <option value="pro">Small Team — $99/mo</option>
-                    <option value="max">Community — $199/mo</option>
-                    <option value="ultra">Ministry — $299/mo</option>
+                    {(['plus', 'pro', 'max', 'ultra'] as TenantPlan[]).map((id) => (
+                      <option key={id} value={id}>{PLAN_DISPLAY[id]}</option>
+                    ))}
                   </select>
                 )}
               </div>

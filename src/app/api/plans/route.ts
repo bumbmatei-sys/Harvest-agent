@@ -3,7 +3,7 @@ import {
   getPlanFeatures,
   PLAN_DISPLAY_NAMES,
   PLAN_PRICING,
-  PLAN_DONATION_RETENTION,
+  PLAN_PLATFORM_FEE_PCT,
   AI_ASSISTANT_ADDON_PRICING,
   AI_TELEGRAM_ASSISTANT_ENABLED,
 } from '@/utils/plan-features';
@@ -37,7 +37,11 @@ export async function GET() {
         yearlyUsd: pricing.yearlyUsd,
         yearlyOriginalUsd: pricing.monthlyUsd * 12,
       },
-      donationRetentionPct: PLAN_DONATION_RETENTION[id],
+      // BREAKING, deliberately: this replaced `donationRetentionPct`. Retention
+      // is retired — it was the `100 - fee * 100` complement of the fee, two
+      // numbers for one fact, which is what caused THE-51. The marketing site
+      // must show the FEE, phrased as a cost, and never "your church keeps X%".
+      platformFeePct: PLAN_PLATFORM_FEE_PCT[id],
       features: {
         blog: features.blog,
         aiChat: features.aiChat,
@@ -46,6 +50,7 @@ export async function GET() {
         maxChurches: features.maxChurches,
         maxCourses: features.maxCourses,
         maxAdmins: features.maxAdmins,
+        maxMembers: features.maxMembers,
         customDomain: features.customDomain,
         // `customBackground` is intentionally absent: the app has no background
         // uploader, so advertising it here would sell a capability that does not

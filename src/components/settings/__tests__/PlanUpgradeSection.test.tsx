@@ -60,29 +60,30 @@ describe('PlanUpgradeSection yearly pricing copy', () => {
     expect(container.querySelectorAll('.line-through').length).toBe(0);
   });
 
-  it('derives the yearly monthly-equivalent copy from PLAN_PRICING for Community (max)', () => {
+  it('derives the yearly monthly-equivalent copy from PLAN_PRICING for Grove (max)', () => {
     mount();
     clickButtonWithText('Yearly');
-    // max: monthlyUsd 199 -> Math.round(199 * 10 / 12) = 166
-    expect(container.textContent).toContain('$166/mo billed annually');
+    // max: monthlyUsd 179 -> Math.round(179 * 10 / 12) = 149
+    expect(container.textContent).toContain('$149/mo billed annually');
     // The real annual total comes from PLAN_PRICING.max.yearlyUsd.
-    expect(container.textContent).toContain('$1,990/yr');
+    expect(container.textContent).toContain('$1,790/yr');
   });
 
-  it('derives the yearly monthly-equivalent copy from PLAN_PRICING for Individual (plus)', () => {
+  it('shows no annual copy at all on Seed (plus) — $0 has no billing period', () => {
     mount();
     clickButtonWithText('Yearly');
-    // plus: monthlyUsd 49 -> Math.round(49 * 10 / 12) = 41
-    expect(container.textContent).toContain('$41/mo billed annually');
-    expect(container.textContent).toContain('$490/yr');
+    // The free tier has no annual price, so "$0/mo billed annually" and
+    // "Save 2 months" would both be meaningless. Neither renders; the other
+    // three tiers still carry their annual copy (asserted above).
+    expect(container.textContent).not.toContain('$0/mo billed annually');
   });
 
   it('leaves the monthly view unchanged', () => {
     mount();
     // Monthly is the default tab; assert the monthly prices render and no
     // yearly-only copy (old strikethrough or new annotation) leaks in.
-    expect(container.textContent).toContain('$49/mo');
-    expect(container.textContent).toContain('$199/mo');
+    expect(container.textContent).toContain('$0/mo');
+    expect(container.textContent).toContain('$179/mo');
     expect(container.textContent).not.toContain('billed annually');
     expect(container.querySelectorAll('.line-through').length).toBe(0);
 

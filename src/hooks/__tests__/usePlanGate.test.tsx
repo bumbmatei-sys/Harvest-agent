@@ -61,21 +61,22 @@ afterEach(() => {
 });
 
 describe('usePlanGate — community_chat (Community Groups)', () => {
-  // Community Groups moved from Ministry-only to Community and above. Reverting
-  // `max.communityGroups` to false in the feature matrix fails this test.
-  it('is unlocked on Community (max)', () => {
+  // Community Groups moved Ministry-only → Community-and-above → free on every
+  // tier under the freemium model. Reverting `plus.communityGroups` to false in
+  // the feature matrix fails the free-tier assertion below.
+  it('is unlocked on Grove (max)', () => {
     expect(gate('community_chat', 'max')).toBe(true);
   });
 
-  it('is locked on Small Team (pro)', () => {
-    expect(gate('community_chat', 'pro')).toBe(false);
+  it('is unlocked on Root (pro)', () => {
+    expect(gate('community_chat', 'pro')).toBe(true);
   });
 
-  it('is locked on Individual (plus)', () => {
-    expect(gate('community_chat', 'plus')).toBe(false);
+  it('is unlocked on Seed (plus) — the free tier', () => {
+    expect(gate('community_chat', 'plus')).toBe(true);
   });
 
-  it('stays unlocked on Ministry (ultra)', () => {
+  it('stays unlocked on Harvest (ultra)', () => {
     expect(gate('community_chat', 'ultra')).toBe(true);
   });
 });
@@ -105,29 +106,41 @@ describe('FEATURE_MIN_PLAN — minimum plan labels', () => {
   // `crm` and `docs` then moved a second time, down to Small Team (pro), in the
   // repricing. The labels below are derived from PLAN_FEATURES, so that move
   // propagated with no code change — these expectations are what proves it.
-  it('names Small Team as the minimum plan for CRM', () => {
-    expect(FEATURE_MIN_PLAN.crm).toBe('Small Team');
+  it('names Seed as the minimum plan for CRM', () => {
+    expect(FEATURE_MIN_PLAN.crm).toBe('Seed');
   });
 
-  it('names Community as the minimum plan for tax receipts', () => {
-    expect(FEATURE_MIN_PLAN.tax_receipts).toBe('Community');
+  it('names Seed as the minimum plan for tax receipts', () => {
+    expect(FEATURE_MIN_PLAN.tax_receipts).toBe('Seed');
   });
 
-  it('names Community as the minimum plan for community chat', () => {
-    expect(FEATURE_MIN_PLAN.community_chat).toBe('Community');
+  it('names Seed as the minimum plan for community chat', () => {
+    expect(FEATURE_MIN_PLAN.community_chat).toBe('Seed');
   });
 
-  it('keeps Ministry as the minimum plan for accounting', () => {
-    expect(FEATURE_MIN_PLAN.accounting).toBe('Ministry');
+  it('names Seed as the minimum plan for accounting', () => {
+    expect(FEATURE_MIN_PLAN.accounting).toBe('Seed');
   });
 
   it('keeps the cheapest tier for features every plan has', () => {
-    expect(FEATURE_MIN_PLAN.fundraising).toBe('Individual');
+    expect(FEATURE_MIN_PLAN.fundraising).toBe('Seed');
   });
 
-  it('names Community for event registration and Small Team for docs', () => {
-    expect(FEATURE_MIN_PLAN.event_registration).toBe('Community');
-    expect(FEATURE_MIN_PLAN.docs).toBe('Small Team');
+  it('names Seed for event registration and docs', () => {
+    expect(FEATURE_MIN_PLAN.event_registration).toBe('Seed');
+    expect(FEATURE_MIN_PLAN.docs).toBe('Seed');
+  });
+
+  it('resolves EVERY gate key to the free tier — no feature-based upgrade path left', () => {
+    // The freemium consequence, asserted where the upgrade copy is produced:
+    // with every feature on the free tier, `hasFeature` is always true and
+    // PlanUpgradeScreen can no longer fire for a FEATURE reason. If a future
+    // change makes a feature paid again, this test fails and that dead branch
+    // becomes live again — which is exactly when someone should look at it.
+    for (const key of ALL_KEYS) {
+      expect(FEATURE_MIN_PLAN[key], key).toBe('Seed');
+      expect(gate(key, 'plus'), `${key} locked on the free tier`).toBe(true);
+    }
   });
 
   it('covers every gate key', () => {

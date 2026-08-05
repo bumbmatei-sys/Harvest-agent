@@ -6,6 +6,8 @@ import {
   PLAN_ORDER,
   PLAN_DISPLAY_NAMES,
   formatPlanPrice,
+  getMinPlanForFeatureCell,
+  type PlanFeatures,
 } from '../utils/plan-features';
 
 // Both the tier ladder and the minimum-plan labels are derived from the feature
@@ -35,7 +37,17 @@ const PlanUpgradeScreen: React.FC<PlanUpgradeScreenProps> = ({
   onBack,
   onUpgrade,
 }) => {
-  const minPlanName = FEATURE_MIN_PLAN_NAME[featureKey] || 'Community';
+  // `featureKey` is EITHER a gate key (FEATURE_MAP, e.g. 'crm') or a raw matrix
+  // cell (AdminDashboard passes 'smsAutomation', 'customForms', 'livestream',
+  // 'customBranding'), so the gate-key lookup misses for the latter. It used to
+  // fall through to the literal 'Community', which named a plan that no longer
+  // exists after the rename AND could not be found in PLANS — leaving the screen
+  // listing every tier. Derive from the matrix cell instead; a genuinely unknown
+  // key still falls back to the top tier so the copy is never empty.
+  const derived = getMinPlanForFeatureCell(featureKey as keyof PlanFeatures);
+  const minPlanName =
+    FEATURE_MIN_PLAN_NAME[featureKey] ??
+    (derived ? PLAN_DISPLAY_NAMES[derived] : PLAN_DISPLAY_NAMES.ultra);
   const minIdx = PLANS.findIndex(p => p.name === minPlanName);
   const requiredPlans = minIdx >= 0 ? PLANS.slice(minIdx) : PLANS;
   const minPlan = requiredPlans[0];

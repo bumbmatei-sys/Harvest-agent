@@ -13,7 +13,8 @@ Read this before writing anything.
 > bug in this codebase has lived in that second category — a rejected Firestore query
 > rendering as "No activities" (#236), lost editor saves (#233, #234), members silently
 > dropped from a merge (#239), and a plan advertising 100% donation retention while
-> a fee was actually deducted (THE-51).
+> a fee was actually deducted (THE-51 — which is why retention is now retired and the
+> fee is the only number on either side).
 
 When a read can fail, make the failure visible: surface an error state, keep the
 distinction between "empty" and "could not load", and let the write throw rather than
@@ -147,67 +148,113 @@ src/
 Source of truth: `src/utils/plan-features.ts` (`PLAN_PRICING` + the `PLAN_FEATURES` matrix).
 This table is a summary — when they disagree, the code is right and this file is stale.
 
-| Plan  | Display Name | Price    | Blog | AI  | Custom Domain | Event Reg | CRM | Notes | Check-In | Livestream | Sermon Notes | Accounting | Community Groups |
-|-------|-------------|----------|------|-----|---------------|-----------|-----|-------|----------|------------|--------------|------------|------------------|
-| plus  | Individual  | $49/mo   | ✅   | ❌  | ❌            | ❌        | ❌  | ❌    | ❌       | ❌         | ❌           | ❌         | ❌               |
-| pro   | Small Team  | $99/mo   | ✅   | ✅  | ❌            | ❌        | ✅  | ✅    | ✅       | ✅         | ✅           | ❌         | ❌               |
-| max   | Community   | $199/mo  | ✅   | ✅  | ✅            | ✅        | ✅  | ✅    | ✅       | ✅         | ✅           | ❌         | ✅               |
-| ultra | Ministry    | $299/mo  | ✅   | ✅  | ✅            | ✅        | ✅  | ✅    | ✅       | ✅         | ✅           | ✅         | ✅               |
+**Harvest is FREEMIUM.** The free tier gets every feature except RAG (AI Chat /
+AI Knowledge Base) and SMS (SMS Automation / Text-to-Give). **Paid tiers sell a lower
+donation fee and higher limits — not more features.** Do not describe a tier by which
+features it unlocks; that is no longer how the tiers differ.
 
-Annual billing is monthly × 10 (pay ten months, get twelve): $490 / $990 / $1,990 / $2,990.
+| Plan  | Display Name | Price    | Platform fee | Churches | Courses | Admins | Members | RAG | SMS |
+|-------|--------------|----------|--------------|----------|---------|--------|---------|-----|-----|
+| plus  | **Seed**     | **$0**   | **4%**       | 2        | 2       | 3      | 250     | ❌  | ❌  |
+| pro   | **Root**     | $99/mo   | **2%**       | 4        | 5       | 9      | 1,000   | ✅  | ✅  |
+| max   | **Grove**    | **$179/mo** | **1%**    | 6        | 10      | 15     | 5,000   | ✅  | ✅  |
+| ultra | **Harvest**  | $299/mo  | **0%**       | 8        | ∞       | ∞      | ∞       | ✅  | ✅  |
 
-Five features — **Check-In, Livestream, Sermon Notes, Notes/Docs and CRM** — moved
-down from Community (max) to **Small Team (pro)**. The move is visibility only: no
-Firestore rule, API route, query or cap keys off those cells (CRM's `contacts` /
-`contactActivities` rules scope on the `manageCRM` permission, not on plan).
+Internal ids stay `plus` / `pro` / `max` / `ultra` — they are written on every tenant
+doc in Firestore, so renaming them would be a data migration. Only `PLAN_DISPLAY_NAMES`
+carries the new names.
+
+Annual billing is monthly × 10 (pay ten months, get twelve): $990 / $1,790 / $2,990.
+**`plus` has no annual price** — $0 has no billing period.
+
+⚠️ **$179 is load-bearing — do not round it up to $199.** Total monthly cost at giving
+*G*: Seed `0.04G` · Root `99 + 0.02G` · Grove `179 + 0.01G` · Harvest `299`. Those cross
+at **$4,950 / $8,000 / $12,000**, so every tier owns a band. At $199, Root→Grove and
+Grove→Harvest both cross at $10,000 and Grove is mathematically dominated — never the
+cheapest choice at any giving level. The fee gap shrinks each step (2 → 1 → 1) while a
+flat $100 price step does not, so **each price step must be larger than the last**.
+
+⚠️ **`maxChurches` is a HARD CAP in the code.** The 2/4/6/8 figures are meant as an
+included allowance with $10/campus overage on paid tiers, but that billing does not
+exist — `stripe-config.ts` has no per-campus price. (Separately, `/api/churches/add-billing`
+already charges $10/mo for church 2+ on `ultra` only, via an inline `price_data`, so on
+`ultra` churches inside the allowance are still billed. The two are not reconciled.)
+
+⚠️ **`maxMembers` is a value only — nothing enforces it.** Members arrive by self-signup,
+so a hard block would reject a *visitor*, who cannot fix it. The agreed behaviour is to
+let them past the cap, notify the admin, and gate something the admin controls. Counting
+rule, decided: **count every user doc in the tenant, admins included** — one number, no
+role filter.
+
+⚠️ **`FEATURE_MIN_PLAN` is now vacuous for features.** It is derived from `PLAN_FEATURES`,
+so with every feature on the free tier every gate key resolves to **Seed** and `hasFeature`
+always returns true. `PlanUpgradeScreen` can no longer fire for a feature reason — only
+for a limit (or, later, the RAG add-on). Its SMS call site is the one remaining reachable
+path, because `smsAutomation` is still false on `plus`.
 
 The "AI Assistant" column was removed: the Telegram add-on is retired (#214, THE-13).
 `AI_TELEGRAM_ASSISTANT_ENABLED = false` hides every customer-facing surface; the
 backend routes, Stripe wiring and the `aiAssistant` plan flag are left intact so the
 feature can be restored by flipping that one boolean.
 
-Community (max) is the tier most often described wrongly: it **does** get CRM, Tax
-Receipts, Community Groups, Custom Forms, Check-In, Livestream, Pledge Campaigns and
-Custom Domain. It does **not** get Accounting Tools, SMS, Text-to-Give or the global
-Church Directory — those stay Ministry. Note that CRM, Check-In and Livestream are no
-longer *exclusive* to Community: Small Team (pro) has them too. What Community adds
-over Small Team is Custom Domain, Custom Branding, Event Registration, Tax Receipts,
-Giving Statements, Custom Forms, Automated Blog/Newsletter, Pledge Campaigns and
-Community Groups.
+There is no "what tier X adds over tier Y" list any more, and writing one is a bug:
+every tier has every feature except RAG and SMS. What a paid tier adds is a **lower
+donation fee** and **higher limits**. Accounting Tools and the global Church Directory
+used to be Ministry-only and are now on every tier; `churchDirectory` has no consumer in
+the codebase at all, so flipping it changed nothing but the matrix.
 
-Custom domains are entitled from Community up, and the entitlement is enforced
-server-side in `src/app/api/domains/provision/route.ts` (403 for a plan without
-`customDomain`, super admins bypass) — not in the UI alone. Note the marketing site
-does not yet advertise custom domains on Community: provisioning has not been proven
-end to end against a live Vercel plan, so the code ships ahead of the public promise.
+Custom domains are entitled on **every** tier now, and the entitlement is still enforced
+server-side in `src/app/api/domains/provision/route.ts` (`hasFeature(plan, 'customDomain')`,
+super admins bypass) — not in the UI alone. ⚠️ That means **free tenants can provision
+Vercel domains**, and provisioning has never been proven end to end against a live Vercel
+plan. Watch the volume.
+
+Plan gates must **derive from the matrix**, never hardcode a tier list. The automated-blog
+routes did (`['max','ultra'].includes(plan)`) and are now `hasFeature(plan, 'automatedBlog')`
+— with the hardcoded list, the daily cron would have silently switched automation OFF for
+every tenant the matrix says is entitled to it.
 
 Minimum-plan labels on upgrade screens are **derived** from this matrix
 (`getFeatureMinPlan` / `FEATURE_MIN_PLAN` in `plan-features.ts`), not hand-written.
 Flipping a cell in `PLAN_FEATURES` moves the upgrade copy with it — never put a
 literal plan name in a gate message.
 
-Map note: All plans show their own church location(s) on the map. The global multi-church discovery directory (browsing all tenants' churches) is Ministry only (`churchDirectory` feature flag).
+Map note: All plans show their own church location(s) on the map, and the `map` flag is
+on for every tier. The `churchDirectory` flag (global multi-church discovery) is also on
+for every tier — but nothing in the codebase reads it, so it advertises nothing today.
 
 ## Revenue Sharing (Stripe Connect)
 The platform application fee is taken on money flowing through a tenant's connected
 account — donations AND paid event tickets. `PLATFORM_FEE_MAP`
-(`src/lib/stripe-config.ts`) is the rate actually charged; retention is `100 - fee`.
+(`src/lib/stripe-config.ts`) is the rate actually charged.
 
-| Plan | Platform fee | Ministry retains |
-|------|--------------|------------------|
-| Individual (plus) | 1.5% | **98.5%** |
-| Small Team (pro)  | 1.5% | **98.5%** |
-| Community (max)   | 1%   | **99%**   |
-| Ministry (ultra)  | 0%   | **100%**  |
+| Plan | Platform fee |
+|------|--------------|
+| Seed (plus)     | **4%** |
+| Root (pro)      | **2%** |
+| Grove (max)     | **1%** |
+| Harvest (ultra) | **0%** |
 
-Individual and Small Team are **98.5%, not 98 or 99** — non-integers, and this
-fraction is the class of number this file and the app both got wrong before
-(THE-51; Community was the fractional tier then, at 97.5). `PLAN_FEATURES.*.donationRetention` mirrors
-`PLATFORM_FEE_MAP` **by hand**: `plan-features.ts` is imported by ~20 client
-components and cannot import `stripe-config.ts`, which reads server-only
-`STRIPE_PRICE_*` vars at module load. `plan-features.test.ts` asserts the identity
-per plan, so changing a fee fails CI by name until retention is updated to match.
-Change one, change both.
+🔴 **Retention is RETIRED — the fee is the only number.** `donationRetention` was the
+`100 - fee * 100` complement: two numbers for one fact, which is exactly what caused
+THE-51 (the app advertised "keeps 100%" while 2.5% was deducted). It is gone from
+`PLAN_FEATURES`, from `/api/plans` (the field is now `platformFeePct`, a breaking change
+for that public endpoint) and from the in-app comparison table, which shows
+**"Platform fee — 2%"**. Do not reintroduce it here or on the marketing site; never
+phrase the fee as "your church keeps X%".
+
+`PLAN_FEATURES.*.platformFeePct` mirrors `PLATFORM_FEE_MAP` **by hand** as `fee * 100`:
+`plan-features.ts` is imported by ~20 client components and cannot import
+`stripe-config.ts`, which reads server-only `STRIPE_PRICE_*` vars at module load.
+`plan-features.test.ts` asserts the identity per plan, so changing a fee fails CI by name
+until the displayed percentage is updated to match. Change one, change both.
+
+Every fee is now an **integer** (4 / 2 / 1 / 0), which removes a whole class of risk —
+the previous scheme had values like 98.75 where a `toFixed(1)` would have rendered a
+wrong number on a pricing surface. THE-51's non-integer formatting guard is retired
+because there is no fraction left to protect; a test asserts integrality instead, so
+reintroducing a fractional fee fails there first. If you ever do reintroduce one,
+re-verify formatting end to end.
 
 ## Design System — Harvest Brand & Design System v1.0
 Tokens live in `src/app/globals.css` (`:root`) and `tailwind.config.ts`.
@@ -222,7 +269,7 @@ Tokens live in `src/app/globals.css` (`:root`) and `tailwind.config.ts`.
 - **"AI Assistant"** (admin-only Telegram bot) is **retired** (#214, THE-13) — hidden
   everywhere by `AI_TELEGRAM_ASSISTANT_ENABLED = false`, dormant code intact. Not to be
   confused with the RAG **AI Chat** / **AI Knowledge Base**, which are live on pro+.
-- Plus/Pro plans have **NO custom branding**
+- Custom branding is on **every** tier (freemium) — no plan is unbranded
 
 ## Firebase Project
 - Project ID: `harvest-agent-233a1`
@@ -281,16 +328,18 @@ Tokens live in `src/app/globals.css` (`:root`) and `tailwind.config.ts`.
 ## Current Status (as of last commits)
 - **No paying customers yet. Stripe is not live.** Nothing in production is taking real
   money, which is why fee/retention correctness is cheap to fix now and expensive later.
-- Plans: Individual ($49), Small Team ($99), Community ($199), Ministry ($299)
-- No enterprise plan — Ministry is the top tier
-- **1508 tests + 1 todo / 114 files** passing (`npm test`), plus **363 Firestore rules tests**
+- Plans: **Seed ($0, freemium), Root ($99), Grove ($179), Harvest ($299)**
+- No enterprise plan — Harvest is the top tier
+- ⚠️ **Nobody can sign up for the free tier yet.** `ChurchOnboarding.tsx` always routes to
+  Stripe Checkout and the webhook is the only thing that creates a tenant, so a $0 plan
+  with no checkout session cannot provision. Free-plan provisioning is its own change and
+  the app is knowingly inconsistent until it lands
+- **1886 tests + 1 todo / 124 files** passing (`npm test`), plus **363 Firestore rules tests**
   under `tests/rules/` that run separately (`npm run test:rules`, needs the emulator)
 - AI Assistant (Telegram bot) **retired** (#214) — dormant code intact
-- Newsletter live · Community Groups live on **Community (max)** and above
-- CRM, Notes, Check-In, Livestream and Sermon Notes live on **Small Team (pro)** and
-  above; Tax Receipts on **Community (max)** and above; **Accounting is Ministry
-  only**. Upgrade-screen labels are derived from the matrix — the old hand-written
-  maps said Ministry for CRM and Tax Receipts and oversold the top tier
+- **Every feature is live on every tier except RAG (AI Chat / AI Knowledge) and SMS
+  (SMS Automation / Text-to-Give).** Upgrade-screen labels are derived from the matrix,
+  which now means every one of them resolves to Seed — see the vacuity note above
 - Community Groups is gated **client-side only** — no Firestore-rules or server check
   keys off the `communityGroups` flag (rules scope channels/DMs by roster, not by plan)
 - CRM outbound email sends through **Composio Gmail** (`GMAIL_SEND_EMAIL`), per-admin

@@ -12,8 +12,22 @@ import { getPlanFeatures } from '../utils/plan-features';
 import { useTenant } from '@/contexts/TenantContext';
 import { AdminPageHeader, AdminPrimaryButton } from './admin/AdminUI';
 
-/** Every plan includes 1 church free (the tenant's own). */
+/**
+ * Churches billed free of charge, on every plan (the tenant's own).
+ *
+ * ⚠️ NOT the plan allowance — that is `maxChurches` (2 / 4 / 6 / 8), which is a
+ * hard cap on how many churches may exist. This constant is the BILLING
+ * threshold: `/api/churches/add-billing` charges $10/mo for church 2+ on the top
+ * plan only. The two disagree today — on the top plan, churches inside the
+ * allowance are still billed — and reconciling them is the per-campus billing
+ * work, not a cap change. Do not "fix" one to match the other here.
+ */
 const INCLUDED_CHURCHES = 1;
+
+/** Cap message, derived so it can never name a stale number or plan. */
+function churchLimitMessage(max: number): string {
+  return `Your plan includes up to ${max} church${max === 1 ? '' : 'es'}. Upgrade to add more.`;
+}
 
 
 const AdminChurches: React.FC = () => {
@@ -144,7 +158,7 @@ const AdminChurches: React.FC = () => {
   const handleAddChurchClick = () => {
     if (loading) return; // church count not known yet — can't decide cap/billing
     if (atLimit) {
-      setBillingNotice(`Your plan includes ${INCLUDED_CHURCHES} church. Upgrade to Ministry to add more.`);
+      setBillingNotice(churchLimitMessage(maxChurches));
       setTimeout(() => setBillingNotice(null), 5000);
       return;
     }
@@ -212,7 +226,7 @@ const AdminChurches: React.FC = () => {
         eyebrow="Platform"
         title="Churches"
         subtitle={isMinistry ? `${churches.length} church${churches.length !== 1 ? 'es' : ''} · $${Math.max(0, churches.length - INCLUDED_CHURCHES) * ENTERPRISE_PRICE_PER_CHURCH}/mo (${INCLUDED_CHURCHES} included free)` : undefined}
-        action={<AdminPrimaryButton onClick={() => handleAddChurchClick()} disabled={atLimit} title={atLimit ? `Your plan includes ${INCLUDED_CHURCHES} church. Upgrade to Ministry to add more.` : undefined} icon={<span className="text-[15px] leading-none">+</span>}>Add church</AdminPrimaryButton>}
+        action={<AdminPrimaryButton onClick={() => handleAddChurchClick()} disabled={atLimit} title={atLimit ? churchLimitMessage(maxChurches) : undefined} icon={<span className="text-[15px] leading-none">+</span>}>Add church</AdminPrimaryButton>}
       />
 
       {/* Billing Notice */}

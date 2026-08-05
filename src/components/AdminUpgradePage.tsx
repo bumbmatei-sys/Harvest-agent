@@ -6,6 +6,7 @@ import {
   PLAN_DISPLAY_NAMES,
   PLAN_PRICING,
   formatPlanPrice,
+  getPlanFeatures,
 } from '../utils/plan-features';
 import { authFetch } from '../utils/auth-fetch';
 import { getTenantId } from './settings/useTenantId';
@@ -21,12 +22,27 @@ interface AdminUpgradePageProps {
 const PLAN_ORDER: TenantPlan[] = ['plus', 'pro', 'max', 'ultra'];
 
 // Curated 4–5 key highlights per plan (kept short, no rainbow icons).
-const PLAN_HIGHLIGHTS: Record<TenantPlan, string[]> = {
-  plus: ['Blog & Posts', 'Fundraising campaigns', 'Mobile app (PWA)', '2 courses', '1 admin'],
-  pro: ['Everything in Individual', 'AI Chat & Knowledge', 'Newsletter', '5 courses', '5 admins'],
-  max: ['Everything in Small Team', 'Custom branding', 'Events & Notes', 'Automated newsletter', 'Unlimited courses'],
-  ultra: ['Everything in Community', 'CRM & Accounting', 'Custom domain', 'Livestream & SMS', 'Check-In & Giving Statements'],
-};
+//
+// These are DERIVED from the plan matrix, not written by hand. Every feature
+// except RAG and SMS is on every tier now, so a hand-written "Everything in
+// <lower tier> + these features" list would be false on all four cards — what a
+// paid tier actually buys is a LOWER DONATION FEE and HIGHER LIMITS. Deriving
+// also means a repricing or a rename can never leave this copy stale.
+function planHighlights(planId: TenantPlan): string[] {
+  const f = getPlanFeatures(planId);
+  const cap = (n: number) => (n === -1 ? 'Unlimited' : n.toLocaleString());
+  return [
+    f.platformFeePct === 0
+      ? 'No platform fee on donations'
+      : `${f.platformFeePct}% platform fee on donations`,
+    `${cap(f.maxMembers)} members`,
+    `${cap(f.maxAdmins)} admins`,
+    `${cap(f.maxCourses)} courses`,
+    `${cap(f.maxChurches)} churches`,
+    ...(f.aiChat ? ['AI Chat & Knowledge Base'] : []),
+    ...(f.smsAutomation ? ['SMS & Text-to-Give'] : []),
+  ];
+}
 
 const AdminUpgradePage: React.FC<AdminUpgradePageProps> = ({ currentPlan, tenantId, email }) => {
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly');
@@ -211,7 +227,7 @@ const AdminUpgradePage: React.FC<AdminUpgradePageProps> = ({ currentPlan, tenant
               </div>
 
               <ul className="space-y-2 mb-5 flex-1">
-                {PLAN_HIGHLIGHTS[planId].map((feature) => (
+                {planHighlights(planId).map((feature) => (
                   <li key={feature} className="flex items-start gap-2">
                     <Check size={14} className="text-faint mt-0.5 shrink-0" />
                     <span className="text-xs text-muted">{feature}</span>

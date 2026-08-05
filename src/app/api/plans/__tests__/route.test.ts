@@ -38,3 +38,40 @@ describe('GET /api/plans — retired AI Assistant add-on', () => {
     }
   });
 });
+
+describe('GET /api/plans — freemium catalog', () => {
+  it('serves platformFeePct (4 / 2 / 1 / 0) and no longer serves donationRetentionPct', async () => {
+    // BREAKING for any external consumer that read `donationRetentionPct` —
+    // deliberately. Retention was the `100 - fee * 100` complement of the fee:
+    // two numbers for one fact, which is what let the app advertise one rate
+    // while charging another (THE-51). The marketing site must render the FEE,
+    // phrased as a cost, and never "your church keeps X%".
+    const body = await (await GET()).json();
+    const byId = Object.fromEntries(body.plans.map((p: any) => [p.id, p]));
+
+    expect(byId.plus.platformFeePct).toBe(4);
+    expect(byId.pro.platformFeePct).toBe(2);
+    expect(byId.max.platformFeePct).toBe(1);
+    expect(byId.ultra.platformFeePct).toBe(0);
+
+    for (const plan of body.plans) {
+      expect('donationRetentionPct' in plan, `${plan.id} still serves retention`).toBe(false);
+      expect(Number.isInteger(plan.platformFeePct)).toBe(true);
+    }
+  });
+
+  it('serves the new names and prices', async () => {
+    const body = await (await GET()).json();
+    expect(body.plans.map((p: any) => p.name)).toEqual(['Seed', 'Root', 'Grove', 'Harvest']);
+    expect(body.plans.map((p: any) => p.pricing.monthlyUsd)).toEqual([0, 99, 179, 299]);
+    expect(body.plans.map((p: any) => p.pricing.yearlyUsd)).toEqual([0, 990, 1790, 2990]);
+  });
+
+  it('serves every limit, including the new maxMembers', async () => {
+    const body = await (await GET()).json();
+    expect(body.plans.map((p: any) => p.features.maxChurches)).toEqual([2, 4, 6, 8]);
+    expect(body.plans.map((p: any) => p.features.maxCourses)).toEqual([2, 5, 10, -1]);
+    expect(body.plans.map((p: any) => p.features.maxAdmins)).toEqual([3, 9, 15, -1]);
+    expect(body.plans.map((p: any) => p.features.maxMembers)).toEqual([250, 1000, 5000, -1]);
+  });
+});

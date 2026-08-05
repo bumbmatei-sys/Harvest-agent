@@ -5,7 +5,7 @@ import {
   hasFeature,
   hasBrandingAccess,
   PLAN_PRICING,
-  PLAN_DONATION_RETENTION,
+  PLAN_PLATFORM_FEE_PCT,
   AI_ASSISTANT_ADDON_PRICING,
   formatPlanPrice,
   getFeatureMinPlan,
@@ -26,32 +26,37 @@ import {
 import { PLATFORM_FEE_MAP } from '@/lib/stripe-config';
 
 describe('getPlanFeatures', () => {
-  it('returns correct features for plus plan', () => {
+  it('returns correct features for plus (Seed, free) plan', () => {
     const f = getPlanFeatures('plus');
     expect(f.blog).toBe(true);
-    // AI chat is available on Small Team (pro) and above; gated to match the pricing page.
+    // RAG stays paid on the free tier — the one feature exclusion besides SMS.
     expect(f.aiChat).toBe(false);
-    expect(f.maxChurches).toBe(1);
+    expect(f.maxChurches).toBe(2);
     expect(f.maxCourses).toBe(2);
-    expect(f.maxAdmins).toBe(1);
-    expect(f.customDomain).toBe(false);
+    expect(f.maxAdmins).toBe(3);
+    expect(f.maxMembers).toBe(250);
+    // Free tier now carries custom domains — features are not what paid tiers sell.
+    expect(f.customDomain).toBe(true);
     expect(f.aiAssistant).toBe(0);
   });
 
-  it('returns correct features for pro plan', () => {
+  it('returns correct features for pro (Root) plan', () => {
     const f = getPlanFeatures('pro');
     expect(f.aiChat).toBe(true);
     expect(f.maxCourses).toBe(5);
-    expect(f.maxAdmins).toBe(5);
-    expect(f.customDomain).toBe(false);
+    expect(f.maxAdmins).toBe(9);
+    expect(f.maxMembers).toBe(1000);
+    expect(f.customDomain).toBe(true);
   });
 
-  it('returns correct features for ultra plan', () => {
+  it('returns correct features for ultra (Harvest, top) plan', () => {
     const f = getPlanFeatures('ultra');
     expect(f.aiAssistant).toBe(1);
     expect(f.customDomain).toBe(true);
     expect(f.maxAdmins).toBe(-1);
-    expect(f.maxChurches).toBe(-1);
+    expect(f.maxMembers).toBe(-1);
+    // Was -1 (unlimited); the campus allowance made it a hard cap of 8.
+    expect(f.maxChurches).toBe(8);
     expect(f.map).toBe(true);
   });
 
@@ -63,14 +68,24 @@ describe('getPlanFeatures', () => {
 
 describe('getPlanDisplayName', () => {
   it('returns correct display names', () => {
-    expect(getPlanDisplayName('plus')).toBe('Individual');
-    expect(getPlanDisplayName('pro')).toBe('Small Team');
-    expect(getPlanDisplayName('max')).toBe('Community');
-    expect(getPlanDisplayName('ultra')).toBe('Ministry');
+    expect(getPlanDisplayName('plus')).toBe('Seed');
+    expect(getPlanDisplayName('pro')).toBe('Root');
+    expect(getPlanDisplayName('max')).toBe('Grove');
+    expect(getPlanDisplayName('ultra')).toBe('Harvest');
   });
 
-  it('defaults to Individual for unknown plan', () => {
-    expect(getPlanDisplayName('bad' as any)).toBe('Individual');
+  it('renames the four tiers to Seed / Root / Grove / Harvest', () => {
+    // Mutation guard for the rename. Internal ids stay plus/pro/max/ultra —
+    // they are written on every tenant doc in Firestore, so renaming THOSE
+    // would be a data migration. Only the display names move.
+    expect(PLAN_ORDER.map((p) => PLAN_DISPLAY_NAMES[p])).toEqual([
+      'Seed', 'Root', 'Grove', 'Harvest',
+    ]);
+    expect(Object.keys(PLAN_DISPLAY_NAMES)).toEqual(['plus', 'pro', 'max', 'ultra']);
+  });
+
+  it('defaults to the free tier name for an unknown plan', () => {
+    expect(getPlanDisplayName('bad' as any)).toBe('Seed');
   });
 });
 
@@ -96,84 +111,121 @@ describe('hasFeature', () => {
     expect(hasFeature('plus', 'maxCourses')).toBe(true);
   });
 
-  it('map is available on pro and above', () => {
-    expect(hasFeature('plus', 'map')).toBe(false);
+  // ─── Freemium: every feature is on for every tier except RAG and SMS ───────
+  //
+  // These `it`s were "X is available on <tier> and above" placement guards. The
+  // placement changed — it did not stop mattering — so each one is kept and now
+  // asserts the free-tier truth. Reverting any single cell fails here by name.
+
+  const FREE_ON_EVERY_TIER = [
+    'accountingTools', 'automatedBlog', 'automatedNewsletter', 'checkInSystem',
+    'churchDirectory', 'communityGroups', 'crm', 'customBranding', 'customDomain',
+    'customForms', 'docs', 'eventRegistration', 'givingStatements', 'livestream',
+    'map', 'newsletterAutomation', 'pledgeCampaigns', 'sermonNotes', 'taxReceipt',
+  ] as const;
+
+  it.each(FREE_ON_EVERY_TIER)('%s is unlocked on all four tiers', (key) => {
+    PLAN_ORDER.forEach((plan) => {
+      expect(hasFeature(plan, key), `${key} locked on ${plan}`).toBe(true);
+    });
+  });
+
+  it('map is available on every tier, including the free one', () => {
+    expect(hasFeature('plus', 'map')).toBe(true);
     expect(hasFeature('pro', 'map')).toBe(true);
     expect(hasFeature('max', 'map')).toBe(true);
     expect(hasFeature('ultra', 'map')).toBe(true);
   });
 
-  it('automatedNewsletter is available on max and above only', () => {
-    expect(hasFeature('plus', 'automatedNewsletter')).toBe(false);
-    expect(hasFeature('pro', 'automatedNewsletter')).toBe(false);
+  it('automatedNewsletter is available on every tier, including the free one', () => {
+    expect(hasFeature('plus', 'automatedNewsletter')).toBe(true);
+    expect(hasFeature('pro', 'automatedNewsletter')).toBe(true);
     expect(hasFeature('max', 'automatedNewsletter')).toBe(true);
     expect(hasFeature('ultra', 'automatedNewsletter')).toBe(true);
   });
 
-  it('customBranding (logo/colors/name) is available on max and above only', () => {
-    expect(hasFeature('plus', 'customBranding')).toBe(false);
-    expect(hasFeature('pro', 'customBranding')).toBe(false);
+  it('customBranding (logo/colors/name) is available on every tier', () => {
+    expect(hasFeature('plus', 'customBranding')).toBe(true);
+    expect(hasFeature('pro', 'customBranding')).toBe(true);
     expect(hasFeature('max', 'customBranding')).toBe(true);
     expect(hasFeature('ultra', 'customBranding')).toBe(true);
   });
 
-  // Moved from Ministry-only to Community and above: a white-label platform that
-  // cannot use the church's own domain is a weak Community-tier offer. Individual
-  // (plus) and Small Team (pro) stay locked.
-  it('customDomain is available on Community (max) and Ministry (ultra)', () => {
-    expect(hasFeature('plus', 'customDomain')).toBe(false);
-    expect(hasFeature('pro', 'customDomain')).toBe(false);
+  it('customDomain is available on every tier', () => {
+    expect(hasFeature('plus', 'customDomain')).toBe(true);
+    expect(hasFeature('pro', 'customDomain')).toBe(true);
     expect(hasFeature('max', 'customDomain')).toBe(true);
     expect(hasFeature('ultra', 'customDomain')).toBe(true);
   });
 
-  it('customForms is available on Community (max) and Ministry (ultra)', () => {
-    expect(hasFeature('plus', 'customForms')).toBe(false);
-    expect(hasFeature('pro', 'customForms')).toBe(false);
+  it('customForms is available on every tier', () => {
+    expect(hasFeature('plus', 'customForms')).toBe(true);
+    expect(hasFeature('pro', 'customForms')).toBe(true);
     expect(hasFeature('max', 'customForms')).toBe(true);
     expect(hasFeature('ultra', 'customForms')).toBe(true);
   });
 
-  it('checkInSystem is available on Small Team (pro) and above', () => {
-    expect(hasFeature('plus', 'checkInSystem')).toBe(false);
+  it('checkInSystem is available on every tier', () => {
+    expect(hasFeature('plus', 'checkInSystem')).toBe(true);
     expect(hasFeature('pro', 'checkInSystem')).toBe(true);
     expect(hasFeature('max', 'checkInSystem')).toBe(true);
     expect(hasFeature('ultra', 'checkInSystem')).toBe(true);
   });
 
-  it('livestream is available on Small Team (pro) and above', () => {
-    expect(hasFeature('plus', 'livestream')).toBe(false);
+  it('livestream is available on every tier', () => {
+    expect(hasFeature('plus', 'livestream')).toBe(true);
     expect(hasFeature('pro', 'livestream')).toBe(true);
     expect(hasFeature('max', 'livestream')).toBe(true);
     expect(hasFeature('ultra', 'livestream')).toBe(true);
   });
 
-  it('sermonNotes is available on Small Team (pro) and above', () => {
-    expect(hasFeature('plus', 'sermonNotes')).toBe(false);
+  it('sermonNotes is available on every tier', () => {
+    expect(hasFeature('plus', 'sermonNotes')).toBe(true);
     expect(hasFeature('pro', 'sermonNotes')).toBe(true);
     expect(hasFeature('max', 'sermonNotes')).toBe(true);
     expect(hasFeature('ultra', 'sermonNotes')).toBe(true);
   });
 
-  it('smsAutomation is available on Ministry (ultra) only', () => {
-    expect(hasFeature('plus', 'smsAutomation')).toBe(false);
-    expect(hasFeature('pro', 'smsAutomation')).toBe(false);
-    expect(hasFeature('max', 'smsAutomation')).toBe(false);
-    expect(hasFeature('ultra', 'smsAutomation')).toBe(true);
-  });
-
-  it('automatedBlog is available on Community (max) and Ministry (ultra) only', () => {
-    expect(hasFeature('plus', 'automatedBlog')).toBe(false);
-    expect(hasFeature('pro', 'automatedBlog')).toBe(false);
+  it('automatedBlog is available on every tier', () => {
+    expect(hasFeature('plus', 'automatedBlog')).toBe(true);
+    expect(hasFeature('pro', 'automatedBlog')).toBe(true);
     expect(hasFeature('max', 'automatedBlog')).toBe(true);
     expect(hasFeature('ultra', 'automatedBlog')).toBe(true);
   });
 
-  it('givingStatements is available on Community (max) and Ministry (ultra)', () => {
-    expect(hasFeature('plus', 'givingStatements')).toBe(false);
-    expect(hasFeature('pro', 'givingStatements')).toBe(false);
+  it('givingStatements is available on every tier', () => {
+    expect(hasFeature('plus', 'givingStatements')).toBe(true);
+    expect(hasFeature('pro', 'givingStatements')).toBe(true);
     expect(hasFeature('max', 'givingStatements')).toBe(true);
     expect(hasFeature('ultra', 'givingStatements')).toBe(true);
+  });
+
+  it('eventRegistration is available on every tier', () => {
+    expect(hasFeature('plus', 'eventRegistration')).toBe(true);
+    expect(hasFeature('pro', 'eventRegistration')).toBe(true);
+    expect(hasFeature('max', 'eventRegistration')).toBe(true);
+    expect(hasFeature('ultra', 'eventRegistration')).toBe(true);
+  });
+
+  it('pledgeCampaigns is available on every tier', () => {
+    expect(hasFeature('plus', 'pledgeCampaigns')).toBe(true);
+    expect(hasFeature('pro', 'pledgeCampaigns')).toBe(true);
+    expect(hasFeature('max', 'pledgeCampaigns')).toBe(true);
+    expect(hasFeature('ultra', 'pledgeCampaigns')).toBe(true);
+  });
+
+  it('churchDirectory is available on every tier (was top-tier only)', () => {
+    expect(hasFeature('plus', 'churchDirectory')).toBe(true);
+    expect(hasFeature('pro', 'churchDirectory')).toBe(true);
+    expect(hasFeature('max', 'churchDirectory')).toBe(true);
+    expect(hasFeature('ultra', 'churchDirectory')).toBe(true);
+  });
+
+  it('accountingTools is available on every tier (was top-tier only)', () => {
+    expect(hasFeature('plus', 'accountingTools')).toBe(true);
+    expect(hasFeature('pro', 'accountingTools')).toBe(true);
+    expect(hasFeature('max', 'accountingTools')).toBe(true);
+    expect(hasFeature('ultra', 'accountingTools')).toBe(true);
   });
 
   it('pwaApp (mobile app) is available on all plans', () => {
@@ -183,13 +235,6 @@ describe('hasFeature', () => {
     expect(hasFeature('ultra', 'pwaApp')).toBe(true);
   });
 
-  it('eventRegistration is available on Community (max) and above', () => {
-    expect(hasFeature('plus', 'eventRegistration')).toBe(false);
-    expect(hasFeature('pro', 'eventRegistration')).toBe(false);
-    expect(hasFeature('max', 'eventRegistration')).toBe(true);
-    expect(hasFeature('ultra', 'eventRegistration')).toBe(true);
-  });
-
   it('publicCalendar is available on all plans (public-facing)', () => {
     expect(hasFeature('plus', 'publicCalendar')).toBe(true);
     expect(hasFeature('pro', 'publicCalendar')).toBe(true);
@@ -197,18 +242,39 @@ describe('hasFeature', () => {
     expect(hasFeature('ultra', 'publicCalendar')).toBe(true);
   });
 
-  it('pledgeCampaigns is available on Community (max) and above', () => {
-    expect(hasFeature('plus', 'pledgeCampaigns')).toBe(false);
-    expect(hasFeature('pro', 'pledgeCampaigns')).toBe(false);
-    expect(hasFeature('max', 'pledgeCampaigns')).toBe(true);
-    expect(hasFeature('ultra', 'pledgeCampaigns')).toBe(true);
+  // ─── The two exclusions ───────────────────────────────────────────────────
+  //
+  // SMS is the only feature family the free tier does not get: it carries a hard
+  // per-segment carrier cost. RAG (aiChat / aiKnowledge) is the other, asserted
+  // in its own block below because it is UNCHANGED by the freemium move.
+
+  it('smsAutomation is locked on the free tier and unlocked on all paid tiers', () => {
+    expect(hasFeature('plus', 'smsAutomation')).toBe(false);
+    expect(hasFeature('pro', 'smsAutomation')).toBe(true);
+    expect(hasFeature('max', 'smsAutomation')).toBe(true);
+    expect(hasFeature('ultra', 'smsAutomation')).toBe(true);
   });
 
-  it('textToGive is available on Ministry (ultra) only', () => {
+  it('textToGive tracks SMS, not the everything-is-free rule', () => {
+    // Text-to-Give is inbound-SMS-keyword only — there is no non-SMS path in the
+    // codebase — so it is excluded from the free tier for the same carrier-cost
+    // reason as smsAutomation, and moves with it.
     expect(hasFeature('plus', 'textToGive')).toBe(false);
-    expect(hasFeature('pro', 'textToGive')).toBe(false);
-    expect(hasFeature('max', 'textToGive')).toBe(false);
+    expect(hasFeature('pro', 'textToGive')).toBe(true);
+    expect(hasFeature('max', 'textToGive')).toBe(true);
     expect(hasFeature('ultra', 'textToGive')).toBe(true);
+  });
+
+  it('RAG (aiChat / aiKnowledge) is UNCHANGED — still off on free, on everywhere else', () => {
+    // Deliberately not swept up in the freemium flip: RAG moves to add-on gating
+    // in its own change. Turning it on here would be the wrong shape; turning it
+    // off on the paid tiers would kill RAG for every current paying tenant.
+    (['aiChat', 'aiKnowledge'] as const).forEach((key) => {
+      expect(hasFeature('plus', key), `${key} on free tier`).toBe(false);
+      expect(hasFeature('pro', key)).toBe(true);
+      expect(hasFeature('max', key)).toBe(true);
+      expect(hasFeature('ultra', key)).toBe(true);
+    });
   });
 });
 
@@ -219,10 +285,10 @@ describe('Branding tab entitlement (hasBrandingAccess)', () => {
   // tab from any tier. This table is the before AND the after; if it ever
   // changes, a paying plan just lost a feature.
   const EXPECTED: Record<string, boolean> = {
-    plus: false,   // Individual  — no branding, no domain (unchanged)
-    pro: false,    // Small Team  — no branding, no domain (unchanged)
-    max: true,     // Community   — customBranding (unchanged)
-    ultra: true,   // Ministry    — customBranding + customDomain (unchanged)
+    plus: true,    // Seed    — customBranding + customDomain (freemium: gained)
+    pro: true,     // Root    — customBranding + customDomain (freemium: gained)
+    max: true,     // Grove   — customBranding (unchanged)
+    ultra: true,   // Harvest — customBranding + customDomain (unchanged)
   };
 
   (['plus', 'pro', 'max', 'ultra'] as const).forEach((plan) => {
@@ -231,7 +297,7 @@ describe('Branding tab entitlement (hasBrandingAccess)', () => {
     });
   });
 
-  it('every tier that had branding-family access before the customBackground removal still has it', () => {
+  it('no tier that had branding-family access before has lost it', () => {
     // Pre-removal matrix values, transcribed from git history:
     //   plan   customBranding  customBackground  customDomain
     //   plus   false           false             false
@@ -244,10 +310,19 @@ describe('Branding tab entitlement (hasBrandingAccess)', () => {
       max:   { branding: true,  background: true,  domain: false },
       ultra: { branding: true,  background: true,  domain: true },
     };
+    // One-directional now: the freemium move GRANTED branding to the two lower
+    // tiers, so this can no longer be an equality. The invariant it exists to
+    // protect is unchanged — no tier may LOSE branding-family access.
     (['plus', 'pro', 'max', 'ultra'] as const).forEach((plan) => {
       const b = BEFORE[plan];
       const beforeVisible = b.branding || b.background || b.domain;
-      expect(hasBrandingAccess(getPlanFeatures(plan))).toBe(beforeVisible);
+      if (beforeVisible) {
+        expect(hasBrandingAccess(getPlanFeatures(plan)), `${plan} lost branding`).toBe(true);
+      }
+    });
+    // And every tier has it now — branding is a free-tier feature.
+    (['plus', 'pro', 'max', 'ultra'] as const).forEach((plan) => {
+      expect(hasBrandingAccess(getPlanFeatures(plan))).toBe(true);
     });
   });
 
@@ -265,102 +340,101 @@ describe('AI_ASSISTANT_ADDON_PRICING', () => {
   });
 });
 
-describe('PLAN_DONATION_RETENTION', () => {
-  // What the ministry is TOLD it keeps must equal what Stripe actually leaves
-  // behind after the platform application fee. `donationRetention` is a
-  // hand-maintained mirror of PLATFORM_FEE_MAP (plan-features.ts cannot import
-  // stripe-config.ts — it is pulled into ~20 client components, and that module
-  // reads server-only STRIPE_PRICE_* env vars at load). Nothing enforces the
-  // mirror structurally, so it is enforced here.
+describe('PLAN_PLATFORM_FEE_PCT (THE-51 identity guard, re-pointed)', () => {
+  // What the ministry is TOLD it pays must equal what Stripe actually takes as
+  // the platform application fee. `platformFeePct` is a hand-maintained mirror
+  // of PLATFORM_FEE_MAP (plan-features.ts cannot import stripe-config.ts — it is
+  // pulled into ~20 client components, and that module reads server-only
+  // STRIPE_PRICE_* env vars at load). Nothing enforces the mirror structurally,
+  // so it is enforced here.
   //
-  // This caught a real overstatement: Community (max) advertised 100% retention
-  // while a 2.5% fee was being deducted, and Individual (plus) advertised 90%
-  // while only 5% was taken. See THE-51.
+  // This is the direct successor to THE-51's guard, which caught a real
+  // overstatement: a tier advertised 100% retention while a fee was deducted.
+  // The retention framing is gone — it was the `100 - fee * 100` complement,
+  // two numbers for one fact — and the fee is now stated the same way in both
+  // modules, so the identity is a plain multiplication.
+  //
+  // Strict equality is safe: 0.04*100, 0.02*100 and 0.01*100 are all exact in
+  // IEEE 754 (verified in Node), so there is no float slop to tolerate here.
   const PLANS = ['plus', 'pro', 'max', 'ultra'] as const;
 
   it.each(PLANS)(
-    'retention for "%s" equals 100 - PLATFORM_FEE_MAP fee (the rate actually charged)',
+    'displayed fee for "%s" equals PLATFORM_FEE_MAP * 100 (the rate actually charged)',
     (plan) => {
-      const feePct = PLATFORM_FEE_MAP[plan] * 100;
-      expect(getPlanFeatures(plan).donationRetention).toBe(100 - feePct);
+      expect(getPlanFeatures(plan).platformFeePct).toBe(PLATFORM_FEE_MAP[plan] * 100);
     }
   );
 
-  it('matches the fee schedule exactly (98.5 / 98.5 / 99 / 100)', () => {
-    expect(PLAN_DONATION_RETENTION.plus).toBe(98.5); // 1.5% fee
-    expect(PLAN_DONATION_RETENTION.pro).toBe(98.5); // 1.5% fee
-    expect(PLAN_DONATION_RETENTION.max).toBe(99); // 1% fee
-    expect(PLAN_DONATION_RETENTION.ultra).toBe(100); // no fee
+  it('matches the fee schedule exactly (4 / 2 / 1 / 0)', () => {
+    expect(PLAN_PLATFORM_FEE_PCT.plus).toBe(4);  // free tier pays the most
+    expect(PLAN_PLATFORM_FEE_PCT.pro).toBe(2);
+    expect(PLAN_PLATFORM_FEE_PCT.max).toBe(1);
+    expect(PLAN_PLATFORM_FEE_PCT.ultra).toBe(0); // top tier pays nothing
   });
 
-  // THE-51's non-integer guard. It was anchored on Community (max) at 97.5; the
-  // repricing made max a flat 99 (1% fee), so the anchor moved to the tiers that
-  // are fractional NOW — Individual and Small Team at 98.5 off a 1.5% fee. The
-  // assertion is deliberately NOT flipped to `Number.isInteger(...) === true` on
-  // max: the guard's purpose is to prove a FRACTIONAL retention survives string
-  // formatting and a JSON round-trip, and that only means anything on a plan
-  // that actually has one. max's exact value is pinned separately below.
-  it.each(['plus', 'pro'] as const)(
-    'keeps %s as a non-integer 98.5 — never rounded to 98 or 99',
-    (plan) => {
-      expect(PLAN_DONATION_RETENTION[plan]).toBe(98.5);
-      expect(Number.isInteger(PLAN_DONATION_RETENTION[plan])).toBe(false);
-      // The comparison table renders this as `${v}%` (PlanUpgradeSection.tsx) and
-      // /api/plans serves it raw as JSON. Both must survive the fraction intact.
-      expect(`${PLAN_DONATION_RETENTION[plan]}%`).toBe('98.5%');
-      expect(JSON.parse(JSON.stringify({ v: PLAN_DONATION_RETENTION[plan] })).v).toBe(98.5);
-    }
-  );
-
-  it('keeps Community (max) at exactly 99 — a 1% fee, not 98.5 and not 100', () => {
-    expect(PLAN_DONATION_RETENTION.max).toBe(99);
-    expect(`${PLAN_DONATION_RETENTION.max}%`).toBe('99%');
-    expect(JSON.parse(JSON.stringify({ v: PLAN_DONATION_RETENTION.max })).v).toBe(99);
+  // Replaces THE-51's NON-INTEGER guard, which is retired rather than
+  // re-pointed. That test existed to prove a FRACTIONAL percentage survived
+  // string formatting and a JSON round-trip (a `toFixed(1)` on 98.75 would have
+  // rendered a wrong number on a pricing surface). Every fee is an integer now,
+  // so there is no fraction left for it to protect and it would assert nothing.
+  //
+  // ⚠️ IF A FRACTIONAL FEE IS EVER REINTRODUCED (say 2.5%), formatting must be
+  // re-verified end to end — the comparison table renders `${v}%` and
+  // /api/plans serves the number raw as JSON. Do not re-add 2.5 and assume it
+  // renders as 2.5%; the previous scheme silently rendered 3%. This assertion
+  // is the tripwire: it fails first, loudly, at the value rather than at the
+  // pixel.
+  it.each(PLANS)('fee for "%s" is a whole percentage — no fractional fees', (plan) => {
+    expect(Number.isInteger(PLAN_PLATFORM_FEE_PCT[plan])).toBe(true);
   });
 
-  it('never advertises more than the fee schedule allows', () => {
+  it('never advertises a lower fee than the schedule actually charges', () => {
     PLANS.forEach((plan) => {
-      const actualRetention = 100 - PLATFORM_FEE_MAP[plan] * 100;
-      expect(getPlanFeatures(plan).donationRetention).toBeLessThanOrEqual(actualRetention);
+      expect(getPlanFeatures(plan).platformFeePct).toBeGreaterThanOrEqual(
+        PLATFORM_FEE_MAP[plan] * 100
+      );
     });
   });
 
-  it('stays in sync with the donationRetention field in the feature matrix', () => {
+  it('stays in sync with the platformFeePct field in the feature matrix', () => {
     PLANS.forEach((plan) => {
-      expect(getPlanFeatures(plan).donationRetention).toBe(PLAN_DONATION_RETENTION[plan]);
+      expect(getPlanFeatures(plan).platformFeePct).toBe(PLAN_PLATFORM_FEE_PCT[plan]);
+    });
+  });
+
+  it('retires donationRetention entirely — the field is gone from every plan', () => {
+    // Regression guard for the retirement. Retention was a derived complement of
+    // the fee; keeping both is what let the app advertise one number while
+    // charging another. If this fails, someone re-added the duplicate.
+    PLANS.forEach((plan) => {
+      expect('donationRetention' in getPlanFeatures(plan)).toBe(false);
     });
   });
 });
 
 describe('communityGroups tier', () => {
-  // Community Groups is sold on Community and above. The marketing site has
-  // advertised it on Community for some time while the app gated it to Ministry;
-  // this matrix is the side that moved. Ministry-only features (accounting, SMS,
-  // text-to-give, custom domain) are unaffected — see the guard below.
-  it('is unlocked on Community (max)', () => {
-    expect(getPlanFeatures('max').communityGroups).toBe(true);
+  // Community Groups was sold on Community (max) and above. Under the freemium
+  // model it is on every tier — features are not what paid plans sell. The
+  // guard below is kept and inverted: it now pins that the tier move did not
+  // quietly drag RAG or SMS along with it.
+  it('is unlocked on every tier, including the free one', () => {
+    PLAN_ORDER.forEach((plan) => {
+      expect(getPlanFeatures(plan).communityGroups).toBe(true);
+    });
   });
 
-  it('stays unlocked on Ministry (ultra)', () => {
-    expect(getPlanFeatures('ultra').communityGroups).toBe(true);
-  });
-
-  it('stays locked on Individual (plus) and Small Team (pro)', () => {
-    expect(getPlanFeatures('plus').communityGroups).toBe(false);
-    expect(getPlanFeatures('pro').communityGroups).toBe(false);
-  });
-
-  it('did not drag any other feature onto Community', () => {
-    // These stay Ministry-only. `customDomain` is deliberately NOT in this list
-    // any more: it was moved to Community in its own change (see the
-    // "customDomain is available on Community (max) and Ministry (ultra)" test),
-    // which is exactly the kind of tier move this guard is meant to surface. It
-    // is asserted true below so the guard still pins every cell it used to.
-    const f = getPlanFeatures('max');
-    expect(f.accountingTools).toBe(false);
+  it('did not drag RAG or SMS onto the free tier', () => {
+    // The four cells that must stay off on `plus`. A fifth feature riding along
+    // with the freemium flip fails here.
+    const f = getPlanFeatures('plus');
+    expect(f.aiChat).toBe(false);
+    expect(f.aiKnowledge).toBe(false);
     expect(f.smsAutomation).toBe(false);
     expect(f.textToGive).toBe(false);
-    expect(f.churchDirectory).toBe(false);
+    // Everything the old guard pinned as Ministry-only is now free — asserted
+    // explicitly so the move is visible here rather than silent.
+    expect(f.accountingTools).toBe(true);
+    expect(f.churchDirectory).toBe(true);
     expect(f.customDomain).toBe(true);
   });
 });
@@ -370,31 +444,48 @@ describe('getFeatureMinPlan / FEATURE_MIN_PLAN (derived)', () => {
   // decides what to buy — so a label naming a pricier plan than the matrix
   // requires is a direct over-sell. They used to be two hand-maintained literal
   // maps and had drifted; now they are derived from PLAN_FEATURES.
-  it('returns the cheapest plan that unlocks the feature', () => {
+  it('returns the cheapest plan that unlocks the feature — now the free tier for all of them', () => {
+    // Every gate key fronts a boolean feature, and every boolean feature except
+    // RAG/SMS is on the free tier, so the derivation bottoms out at `plus` for
+    // all seven. That is the freemium model, not a bug in the derivation — the
+    // generic agreement tests below still prove the derivation itself works.
     expect(getFeatureMinPlan('fundraising')).toBe('plus');
-    expect(getFeatureMinPlan('event_registration')).toBe('max');
-    expect(getFeatureMinPlan('docs')).toBe('pro');
-    expect(getFeatureMinPlan('accounting')).toBe('ultra');
+    expect(getFeatureMinPlan('event_registration')).toBe('plus');
+    expect(getFeatureMinPlan('docs')).toBe('plus');
+    expect(getFeatureMinPlan('accounting')).toBe('plus');
   });
 
-  it('puts CRM on Small Team, not Community or Ministry', () => {
-    // Two corrections, in order. The literal maps said 'Ministry' while max.crm
-    // was true (#242 derived the label and fixed that); the repricing then moved
-    // `crm` down again to Small Team (pro). Because the label is derived, that
-    // second move needed no edit here beyond the expectation.
-    expect(getFeatureMinPlan('crm')).toBe('pro');
-    expect(FEATURE_MIN_PLAN.crm).toBe('Small Team');
+  it('puts CRM on the free tier', () => {
+    // History, kept because it is the reason this map is derived at all: the old
+    // literal maps said 'Ministry' while max.crm was true (#242), then the
+    // repricing moved `crm` to Small Team, and now freemium moves it to Seed.
+    // Three moves, zero edits to any label — that is the point of deriving.
+    expect(getFeatureMinPlan('crm')).toBe('plus');
+    expect(FEATURE_MIN_PLAN.crm).toBe('Seed');
   });
 
-  it('puts tax receipts on Community, not Ministry', () => {
-    // Same pre-existing bug as CRM, and a separate one — max.taxReceipt is true.
-    expect(getFeatureMinPlan('tax_receipts')).toBe('max');
-    expect(FEATURE_MIN_PLAN.tax_receipts).toBe('Community');
+  it('puts tax receipts on the free tier', () => {
+    expect(getFeatureMinPlan('tax_receipts')).toBe('plus');
+    expect(FEATURE_MIN_PLAN.tax_receipts).toBe('Seed');
   });
 
-  it('puts Community Groups on Community', () => {
-    expect(getFeatureMinPlan('community_chat')).toBe('max');
-    expect(FEATURE_MIN_PLAN.community_chat).toBe('Community');
+  it('puts Community Groups on the free tier', () => {
+    expect(getFeatureMinPlan('community_chat')).toBe('plus');
+    expect(FEATURE_MIN_PLAN.community_chat).toBe('Seed');
+  });
+
+  it('is vacuous for features now — every gate key resolves to the free tier', () => {
+    // The direct consequence of "every feature is free": `hasFeature` returns
+    // true for every gate key on every plan, so no upgrade screen can fire for a
+    // FEATURE reason any more. Limits (and, later, the RAG add-on) are the only
+    // remaining upgrade reasons. Asserted explicitly so that if a future change
+    // makes a feature paid again, this fails and the dead-branch note below gets
+    // revisited rather than silently becoming wrong.
+    (Object.keys(FEATURE_MAP) as FeatureKey[]).forEach((key) => {
+      expect(getFeatureMinPlan(key), `${key} is not free`).toBe('plus');
+      expect(FEATURE_MIN_PLAN[key]).toBe('Seed');
+      expect(hasFeature('plus', FEATURE_MAP[key])).toBe(true);
+    });
   });
 
   it('agrees with the feature matrix for every gate key', () => {
@@ -429,26 +520,17 @@ describe('getFeatureMinPlan / FEATURE_MIN_PLAN (derived)', () => {
   });
 });
 
-// ─── Custom domain on Community (max) ────────────────────────────────────────
+// ─── Custom domain: now free on every tier ───────────────────────────────────
 //
-// Custom domains moved from Ministry-only to Community and above. A white-label
-// platform that cannot use the church's own domain is a weak Community-tier offer.
-//
-// These tests are the mutation guard for that move: reverting
-// `max.customDomain` to false in the matrix must fail here by name.
+// Custom domains moved Ministry-only → Community-and-above → free on every tier.
+// These tests are the mutation guard for the current position: locking
+// `plus.customDomain` back to false must fail here by name.
 
-describe('customDomain tier (Community / max and above)', () => {
-  it('is unlocked on Community (max)', () => {
-    expect(getPlanFeatures('max').customDomain).toBe(true);
-  });
-
-  it('stays locked on Individual (plus) and Small Team (pro)', () => {
-    expect(getPlanFeatures('plus').customDomain).toBe(false);
-    expect(getPlanFeatures('pro').customDomain).toBe(false);
-  });
-
-  it('remains unlocked on Ministry (ultra)', () => {
-    expect(getPlanFeatures('ultra').customDomain).toBe(true);
+describe('customDomain tier (free on every tier)', () => {
+  it('is unlocked on every tier', () => {
+    PLAN_ORDER.forEach((plan) => {
+      expect(getPlanFeatures(plan).customDomain).toBe(true);
+    });
   });
 
   // The label the admin UI shows in the locked state. `customDomain` has NO
@@ -457,12 +539,12 @@ describe('customDomain tier (Community / max and above)', () => {
   // on DomainSection instead. So the label derives via getMinPlanForFeatureCell
   // on the raw matrix cell rather than via FEATURE_MIN_PLAN. Deliberately not
   // adding a FeatureKey just to get a label.
-  it('has no FeatureKey, and its minimum-plan label derives to Community', () => {
+  it('has no FeatureKey, and its minimum-plan label derives to the free tier', () => {
     expect(Object.values(FEATURE_MAP)).not.toContain('customDomain');
 
     const minPlan = getMinPlanForFeatureCell('customDomain');
-    expect(minPlan).toBe('max');
-    expect(PLAN_DISPLAY_NAMES[minPlan!]).toBe('Community');
+    expect(minPlan).toBe('plus');
+    expect(PLAN_DISPLAY_NAMES[minPlan!]).toBe('Seed');
   });
 
   it('getMinPlanForFeatureCell agrees with getFeatureMinPlan for every gate key', () => {
@@ -472,28 +554,26 @@ describe('customDomain tier (Community / max and above)', () => {
     });
   });
 
-  // Branding-tab access is `customBranding || customDomain`. Community already
-  // had customBranding, so granting customDomain must not change any tier's
-  // Branding access — the move is scoped to domain attachment only.
   it('does not change Branding tab access for any tier', () => {
-    expect(hasBrandingAccess(getPlanFeatures('plus'))).toBe(false);
-    expect(hasBrandingAccess(getPlanFeatures('pro'))).toBe(false);
-    expect(hasBrandingAccess(getPlanFeatures('max'))).toBe(true);
-    expect(hasBrandingAccess(getPlanFeatures('ultra'))).toBe(true);
+    // Branding-tab access is `customBranding || customDomain`; both are free
+    // now, so every tier has it.
+    PLAN_ORDER.forEach((plan) => {
+      expect(hasBrandingAccess(getPlanFeatures(plan))).toBe(true);
+    });
   });
 });
 
-// ─── Repricing: new prices, new platform fees, five features to Small Team ────
+// ─── Freemium repricing: prices, fees, limits, names ─────────────────────────
 //
 // Mutation guard for the repricing. Every value it changed gets an assertion
-// that names it, so reverting any one of the thirteen — four fees, four prices,
-// five feature moves — fails here by name rather than silently shipping.
+// that names it, so reverting any one of them fails here rather than silently
+// shipping: four fees, four prices, four limit sets and the display-name map.
 
-describe('PLAN_PRICING (repriced)', () => {
+describe('PLAN_PRICING (freemium repricing)', () => {
   const EXPECTED = {
-    plus:  { monthlyUsd: 49,  yearlyUsd: 490  },
+    plus:  { monthlyUsd: 0,   yearlyUsd: 0    },
     pro:   { monthlyUsd: 99,  yearlyUsd: 990  },
-    max:   { monthlyUsd: 199, yearlyUsd: 1990 },
+    max:   { monthlyUsd: 179, yearlyUsd: 1790 },
     ultra: { monthlyUsd: 299, yearlyUsd: 2990 },
   } as const;
 
@@ -504,8 +584,17 @@ describe('PLAN_PRICING (repriced)', () => {
     }
   );
 
-  it('prices the four tiers at 49 / 99 / 199 / 299 per month', () => {
-    expect(PLAN_ORDER.map((p) => PLAN_PRICING[p].monthlyUsd)).toEqual([49, 99, 199, 299]);
+  it('prices the four tiers at 0 / 99 / 179 / 299 per month', () => {
+    expect(PLAN_ORDER.map((p) => PLAN_PRICING[p].monthlyUsd)).toEqual([0, 99, 179, 299]);
+  });
+
+  it('prices the four tiers at 0 / 990 / 1790 / 2990 per year', () => {
+    expect(PLAN_ORDER.map((p) => PLAN_PRICING[p].yearlyUsd)).toEqual([0, 990, 1790, 2990]);
+  });
+
+  it('makes the free tier actually free — $0 monthly AND no annual price', () => {
+    expect(PLAN_PRICING.plus.monthlyUsd).toBe(0);
+    expect(PLAN_PRICING.plus.yearlyUsd).toBe(0); // $0 has no billing period
   });
 
   it('bills annual as monthly × 10 (pay ten months, get twelve) on every tier', () => {
@@ -515,12 +604,39 @@ describe('PLAN_PRICING (repriced)', () => {
     });
   });
 
+  it('keeps Grove at $179 — every price step must be larger than the last', () => {
+    // $179 is LOAD-BEARING, not a number waiting to be rounded up. Total monthly
+    // cost at giving G: plus 0.04G · pro 99+0.02G · max 179+0.01G · ultra 299.
+    // Those cross at $4,950 / $8,000 / $12,000, so every tier owns a band.
+    // At $199, pro→max and max→ultra BOTH cross at $10,000 and Grove is
+    // mathematically dominated — never the cheapest choice at any giving level.
+    // The cause is structural: the fee gap shrinks each step (2 → 1 → 1) while a
+    // flat $100 price step does not.
+    expect(PLAN_PRICING.max.monthlyUsd).toBe(179);
+
+    const steps = PLAN_ORDER.slice(1).map(
+      (p, i) => PLAN_PRICING[p].monthlyUsd - PLAN_PRICING[PLAN_ORDER[i]].monthlyUsd
+    );
+    expect(steps).toEqual([99, 80, 120]);
+
+    // The property that keeps every tier alive: at each tier's own band the
+    // total cost is the minimum across all four tiers.
+    const total = (plan: (typeof PLAN_ORDER)[number], giving: number) =>
+      PLAN_PRICING[plan].monthlyUsd + (PLAN_PLATFORM_FEE_PCT[plan] / 100) * giving;
+    const cheapestAt = (giving: number) =>
+      PLAN_ORDER.reduce((best, p) => (total(p, giving) < total(best, giving) ? p : best));
+    expect(cheapestAt(1_000)).toBe('plus');
+    expect(cheapestAt(6_000)).toBe('pro');
+    expect(cheapestAt(10_000)).toBe('max');   // the band that vanishes at $199
+    expect(cheapestAt(20_000)).toBe('ultra');
+  });
+
   it('renders the repriced values through formatPlanPrice — the string the UI shows', () => {
-    expect(formatPlanPrice('plus', 'monthly')).toBe('$49/mo');
+    expect(formatPlanPrice('plus', 'monthly')).toBe('$0/mo');
     expect(formatPlanPrice('pro', 'monthly')).toBe('$99/mo');
-    expect(formatPlanPrice('max', 'monthly')).toBe('$199/mo');
+    expect(formatPlanPrice('max', 'monthly')).toBe('$179/mo');
     expect(formatPlanPrice('ultra', 'monthly')).toBe('$299/mo');
-    expect(formatPlanPrice('max', 'yearly')).toBe('$1,990/yr');
+    expect(formatPlanPrice('max', 'yearly')).toBe('$1,790/yr');
     expect(formatPlanPrice('ultra', 'yearly')).toBe('$2,990/yr');
   });
 
@@ -533,87 +649,74 @@ describe('PLAN_PRICING (repriced)', () => {
   });
 });
 
-describe('PLATFORM_FEE_MAP ↔ donationRetention (repriced fees)', () => {
-  it('is exactly { plus: 0.015, pro: 0.015, max: 0.01, ultra: 0 }', () => {
-    expect(PLATFORM_FEE_MAP.plus).toBe(0.015);
-    expect(PLATFORM_FEE_MAP.pro).toBe(0.015);
+describe('PLATFORM_FEE_MAP (freemium fees)', () => {
+  it('is exactly { plus: 0.04, pro: 0.02, max: 0.01, ultra: 0 }', () => {
+    expect(PLATFORM_FEE_MAP.plus).toBe(0.04);
+    expect(PLATFORM_FEE_MAP.pro).toBe(0.02);
     expect(PLATFORM_FEE_MAP.max).toBe(0.01);
     expect(PLATFORM_FEE_MAP.ultra).toBe(0);
   });
 
-  it('advertises retention of 98.5 / 98.5 / 99 / 100', () => {
-    expect(PLAN_ORDER.map((p) => getPlanFeatures(p).donationRetention)).toEqual([
-      98.5, 98.5, 99, 100,
-    ]);
+  it('advertises fees of 4 / 2 / 1 / 0 percent', () => {
+    expect(PLAN_ORDER.map((p) => getPlanFeatures(p).platformFeePct)).toEqual([4, 2, 1, 0]);
   });
 
   it.each(['plus', 'pro', 'max', 'ultra'] as const)(
-    'retention on %s is exactly 100 - fee*100 (no float slop at the new rates)',
+    'the fee shown on %s is exactly PLATFORM_FEE_MAP * 100 (exact in IEEE 754 at these rates)',
     (plan) => {
-      expect(getPlanFeatures(plan).donationRetention).toBe(100 - PLATFORM_FEE_MAP[plan] * 100);
+      expect(getPlanFeatures(plan).platformFeePct).toBe(PLATFORM_FEE_MAP[plan] * 100);
     }
   );
+
+  it('charges the free tier the most and the top tier nothing', () => {
+    // The shape of the whole model in one assertion: paid tiers sell a LOWER
+    // FEE, so the fee must fall monotonically as the price rises.
+    const fees = PLAN_ORDER.map((p) => PLATFORM_FEE_MAP[p]);
+    expect(fees).toEqual([...fees].sort((a, b) => b - a));
+    expect(fees[0]).toBeGreaterThan(0);
+    expect(fees[fees.length - 1]).toBe(0);
+  });
 });
 
-describe('five features moved from Community (max) to Small Team (pro)', () => {
-  const MOVED = ['checkInSystem', 'livestream', 'sermonNotes', 'docs', 'crm'] as const;
-
-  it.each(MOVED)('%s is unlocked on Small Team (pro)', (key) => {
-    expect(getPlanFeatures('pro')[key]).toBe(true);
+describe('plan limits (freemium)', () => {
+  it('caps churches at 2 / 4 / 6 / 8', () => {
+    // ⚠️ `ultra` went from -1 (unlimited) to 8 — a REDUCTION. Safe only while no
+    // tenant holds more than 8 churches.
+    expect(PLAN_ORDER.map((p) => getPlanFeatures(p).maxChurches)).toEqual([2, 4, 6, 8]);
   });
 
-  it.each(MOVED)('%s stays locked on Individual (plus)', (key) => {
-    expect(getPlanFeatures('plus')[key]).toBe(false);
+  it('caps courses at 2 / 5 / 10 / unlimited', () => {
+    expect(PLAN_ORDER.map((p) => getPlanFeatures(p).maxCourses)).toEqual([2, 5, 10, -1]);
   });
 
-  it.each(MOVED)('%s stays unlocked on Community (max) and Ministry (ultra)', (key) => {
-    expect(getPlanFeatures('max')[key]).toBe(true);
-    expect(getPlanFeatures('ultra')[key]).toBe(true);
+  it('caps admins at 3 / 9 / 15 / unlimited', () => {
+    expect(PLAN_ORDER.map((p) => getPlanFeatures(p).maxAdmins)).toEqual([3, 9, 15, -1]);
   });
 
-  it('moved these five and nothing else off Community-and-above exclusivity', () => {
-    // Every other cell that was max-and-above before the move must still be
-    // locked on pro. A sixth feature riding along fails here.
-    const f = getPlanFeatures('pro');
-    expect(f.customDomain).toBe(false);
-    expect(f.customBranding).toBe(false);
-    expect(f.eventRegistration).toBe(false);
-    expect(f.taxReceipt).toBe(false);
-    expect(f.givingStatements).toBe(false);
-    expect(f.communityGroups).toBe(false);
-    expect(f.customForms).toBe(false);
-    expect(f.automatedBlog).toBe(false);
-    expect(f.automatedNewsletter).toBe(false);
-    expect(f.pledgeCampaigns).toBe(false);
-    // Ministry-only cells are untouched too.
-    expect(f.accountingTools).toBe(false);
-    expect(f.smsAutomation).toBe(false);
-    expect(f.textToGive).toBe(false);
-    expect(f.churchDirectory).toBe(false);
-    // Caps are explicitly out of scope for the move.
-    expect(f.maxCourses).toBe(5);
-    expect(f.maxAdmins).toBe(5);
-    expect(f.maxChurches).toBe(1);
+  it('sets members at 250 / 1,000 / 5,000 / unlimited', () => {
+    expect(PLAN_ORDER.map((p) => getPlanFeatures(p).maxMembers)).toEqual([250, 1000, 5000, -1]);
   });
 
-  it('moves the derived upsell labels down with them — CRM and Notes now say Small Team', () => {
-    // The whole point of deriving FEATURE_MIN_PLAN (#242): flipping a matrix cell
-    // moves the upgrade copy with no edit to any label. `crm` and `docs` are the
-    // two moved features that have a FeatureKey.
-    expect(getFeatureMinPlan('crm')).toBe('pro');
-    expect(FEATURE_MIN_PLAN.crm).toBe('Small Team');
-    expect(getFeatureMinPlan('docs')).toBe('pro');
-    expect(FEATURE_MIN_PLAN.docs).toBe('Small Team');
-    expect(FEATURE_MIN_PLAN.crm).not.toBe('Community');
+  it('every limit is a value only where stated — maxMembers is not enforced anywhere', () => {
+    // maxMembers exists as a NUMBER in this change and nothing reads it as a
+    // gate. Members arrive by self-signup, so a hard block would reject a
+    // visitor, who cannot fix it; the agreed behaviour is to let them past, warn
+    // the admin, and gate something the admin controls. This assertion just
+    // pins that the value is present and well-formed on every tier.
+    PLAN_ORDER.forEach((plan) => {
+      const v = getPlanFeatures(plan).maxMembers;
+      expect(typeof v).toBe('number');
+      expect(v === -1 || v > 0).toBe(true);
+    });
   });
 
-  it('derives a Small Team label for the three moved cells that have no FeatureKey', () => {
-    // checkInSystem / livestream / sermonNotes are gated by matrix cell rather
-    // than a gate key, so their label comes from getMinPlanForFeatureCell.
-    (['checkInSystem', 'livestream', 'sermonNotes'] as const).forEach((cell) => {
-      const minPlan = getMinPlanForFeatureCell(cell);
-      expect(minPlan, `nothing unlocks ${cell}`).toBe('pro');
-      expect(PLAN_DISPLAY_NAMES[minPlan!]).toBe('Small Team');
+  it('raises every limit (or holds it) as the tier rises — no limit goes backwards', () => {
+    const rank = (n: number) => (n === -1 ? Infinity : n);
+    (['maxChurches', 'maxCourses', 'maxAdmins', 'maxMembers'] as const).forEach((key) => {
+      const values = PLAN_ORDER.map((p) => rank(getPlanFeatures(p)[key]));
+      values.slice(1).forEach((v, i) => {
+        expect(v, `${key} drops from ${PLAN_ORDER[i]} to ${PLAN_ORDER[i + 1]}`).toBeGreaterThanOrEqual(values[i]);
+      });
     });
   });
 });
