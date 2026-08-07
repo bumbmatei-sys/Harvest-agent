@@ -36,7 +36,7 @@ import Profile from './Profile';
 import MyAccountMenu from './MyAccountMenu';
 import BillingAndPayments from './BillingAndPayments';
 import { AdminScreenHeader, AdminHeaderContext, AdminHeaderOverride } from './AdminScreenHeader';
-import { getPlanFeatures, hasBrandingAccess } from '../utils/plan-features';
+import { getPlanFeatures, hasBrandingAccess, AFFILIATE_PROGRAM_ENABLED } from '../utils/plan-features';
 import { db, auth } from '../firebase';
 import { checkRosterAdminStatus } from '../utils/tenant.utils';
 import { signOut } from 'firebase/auth';
@@ -445,8 +445,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
     isSuperAdmin && { id: 'tenants', label: 'Tenants', icon: Building2 },
     // Admin Roles is no longer a standalone tab — it lives inside the CRM page
     // (Contacts · Analytics · Roles), so it's intentionally absent here.
-    // Affiliate — standalone section (near the bottom, above Settings)
-    (isSuperAdmin || hasFullAccess || perms.manageAffiliate) && { id: 'affiliate', label: 'Affiliate', icon: Link2 },
+    // Affiliate — standalone section (near the bottom, above Settings).
+    // Master switch first: while the programme is hidden NOBODY gets the entry,
+    // super admin included. The permission gate behind it is left untouched so
+    // flipping AFFILIATE_PROGRAM_ENABLED restores the exact same entitlement.
+    // The 'affiliate' id stays listed in MORE_GROUPS / DESKTOP_NAV_GROUPS above:
+    // those groups are filtered against this array, so an absent tab drops out
+    // of its group on its own — and the grouping survives for the flip back.
+    AFFILIATE_PROGRAM_ENABLED &&
+      (isSuperAdmin || hasFullAccess || perms.manageAffiliate) && { id: 'affiliate', label: 'Affiliate', icon: Link2 },
     // Branding — standalone appearance tab (logo, color, background, domain)
     canBranding && { id: 'branding', label: 'Branding', icon: Palette },
   ].filter(Boolean) as { id: string; label: string; icon: any }[];
@@ -880,7 +887,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
           ) : activeTab === 'tenants' ? (
             <div className="p-4 lg:p-0"><AdminTenants /></div>
           ) : activeTab === 'affiliate' ? (
-            <div className="p-4 lg:p-0"><AffiliateSection /></div>
+            // With the programme hidden the nav entry is gone, so this branch
+            // only catches a typed or bookmarked /admin/affiliate — it must not
+            // render the dashboard (referral link, earnings, payout setup).
+            // Flip AFFILIATE_PROGRAM_ENABLED to bring the section back.
+            AFFILIATE_PROGRAM_ENABLED
+              ? <div className="p-4 lg:p-0"><AffiliateSection /></div>
+              : <div className="flex flex-col items-center justify-center h-full text-faint">
+                  <p className="text-lg font-medium">Page not found.</p>
+                </div>
           ) : activeTab === 'branding' ? (
             canBranding
               ? <div className="p-4 lg:p-0"><AdminBranding currentFeatures={features} onBack={() => go('dashboard')} onUpgrade={() => go('upgrade')} /></div>

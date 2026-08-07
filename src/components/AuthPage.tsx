@@ -5,6 +5,7 @@ import { signInWithPopup, GoogleAuthProvider, createUserWithEmailAndPassword, si
 import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { isNonTenantSubdomain, isAffiliateHost } from '../utils/non-tenant-subdomains';
+import { AFFILIATE_PROGRAM_ENABLED } from '../utils/plan-features';
 import { useTenant } from '../contexts/TenantContext';
 import { Eye, EyeOff, Mail, Lock, ArrowLeft, X } from 'lucide-react';
 import { Turnstile } from '@marsidev/react-turnstile';
@@ -162,7 +163,13 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
   // the default view below. The SPA is client-only (App is imported with
   // ssr:false), so reading window.location during render is safe here, and the
   // hostname is stable for the session.
-  const isAffiliate = typeof window !== 'undefined' && isAffiliateHost(window.location.hostname);
+  // Master switch first: while the programme is hidden this screen must never
+  // advertise commission, so the affiliate host renders the ordinary Harvest
+  // auth copy. Only the COPY and the sign-up default key off this — the
+  // `isAffiliateHost` guard in the effect below is untouched, so a stray
+  // ?signup=church on the affiliate host still can't flip the church flow on.
+  const isAffiliate =
+    AFFILIATE_PROGRAM_ENABLED && typeof window !== 'undefined' && isAffiliateHost(window.location.hostname);
 
   const [isLogin, setIsLogin] = useState(() => {
     // Signup intent may be in the URL (?signup=…) OR preserved by App.tsx in

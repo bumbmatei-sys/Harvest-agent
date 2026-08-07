@@ -5,6 +5,7 @@ import { db, auth } from '../firebase';
 import { collection, addDoc } from 'firebase/firestore';
 import { getTenantScope } from '../utils/tenant-scope';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
+import { AFFILIATE_PROGRAM_ENABLED } from '../utils/plan-features';
 
 
 interface ContactModalProps {
@@ -14,9 +15,13 @@ interface ContactModalProps {
 
 // Bug-report "Where did it happen?" options — swapped based on the reporter's
 // role so the report is categorized against the area they actually saw.
+// 'Affiliate' is dropped while the programme is hidden — an admin can't reach
+// the area, so it can't be where they saw a bug. Flip AFFILIATE_PROGRAM_ENABLED
+// to list it again.
 const ADMIN_AREAS = [
  'Dashboard', 'Posts', 'Blog', 'Courses', 'Newsletter', 'AI Knowledge', 'CRM',
- 'Fundraising', 'Events', 'Check-In', 'Forms', 'SMS', 'Accounting', 'Affiliate',
+ 'Fundraising', 'Events', 'Check-In', 'Forms', 'SMS', 'Accounting',
+ ...(AFFILIATE_PROGRAM_ENABLED ? ['Affiliate'] : []),
  'Livestream', 'Branding', 'Settings', 'Other',
 ];
 const USER_AREAS = [
