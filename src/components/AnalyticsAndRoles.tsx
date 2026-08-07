@@ -4,6 +4,7 @@ import { db, auth } from "../firebase";
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { notifyError } from '../utils/notify';
 import { getTenantScope, SUPER_ADMIN_EMAIL } from '../utils/tenant-scope';
+import { AFFILIATE_PROGRAM_ENABLED } from '../utils/plan-features';
 import { useAdminHeader, HeaderActionButton } from './AdminScreenHeader';
 import {
   FileText, Rss, GraduationCap, BrainCircuit, Mail, StickyNote,
@@ -146,6 +147,27 @@ export const PERMISSION_CATEGORIES: PermissionCategory[] = [
 ];
 
 export const ALL_PERMISSION_DEFS: PermissionItem[] = PERMISSION_CATEGORIES.flatMap((c) => c.items);
+
+// ── What the UI actually SHOWS ───────────────────────────────────────────────
+//
+// While the affiliate programme is hidden, drop its permission row from every
+// surface that renders one — the Add/Edit form, the per-admin badge list, the
+// reference list, and the "N of M" counter that has to agree with them. Flip
+// AFFILIATE_PROGRAM_ENABLED to bring the row back.
+//
+// DISPLAY ONLY. `PERMISSION_CATEGORIES` and `ALL_PERMISSION_DEFS` above stay
+// complete on purpose: they are what `normalizePermissions` reads stored docs
+// through and what `buildPermission` writes, so an admin who already holds
+// `manageAffiliate` keeps it, Full Access still grants it, and nothing in
+// Firestore is rewritten by hiding a row. Filtering the catalog itself would
+// silently strip the flag off every doc that round-trips through this screen.
+const HIDDEN_PERMISSION_KEYS = new Set<string>(
+  AFFILIATE_PROGRAM_ENABLED ? [] : ['manageAffiliate']
+);
+export const VISIBLE_PERMISSION_CATEGORIES: PermissionCategory[] = PERMISSION_CATEGORIES
+  .map((c) => ({ ...c, items: c.items.filter((i) => !HIDDEN_PERMISSION_KEYS.has(i.key)) }))
+  .filter((c) => c.items.length > 0);
+export const VISIBLE_PERMISSION_DEFS: PermissionItem[] = VISIBLE_PERMISSION_CATEGORIES.flatMap((c) => c.items);
 
 // Build a Permission with every catalog flag set to `value` (and fullAccess set
 // explicitly). Built as a plain record and cast once, so adding a catalog key
@@ -390,12 +412,12 @@ function PermissionEditor({ admin, isNew, onSave, onClose, allUsers }: Permissio
       return next;
     });
 
-  const enabledCount = ALL_PERMISSION_DEFS.filter((d) => form.permissions[d.key]).length;
-  const totalCount = ALL_PERMISSION_DEFS.length;
+  const enabledCount = VISIBLE_PERMISSION_DEFS.filter((d) => form.permissions[d.key]).length;
+  const totalCount = VISIBLE_PERMISSION_DEFS.length;
   const q = permSearch.trim().toLowerCase();
   const matchesQuery = (item: PermissionItem): boolean =>
     !q || item.label.toLowerCase().includes(q) || item.desc.toLowerCase().includes(q);
-  const noMatches = q.length > 0 && PERMISSION_CATEGORIES.every((cat) => cat.items.filter(matchesQuery).length === 0);
+  const noMatches = q.length > 0 && VISIBLE_PERMISSION_CATEGORIES.every((cat) => cat.items.filter(matchesQuery).length === 0);
   const initial = (form.name || form.email || "?").trim().charAt(0).toUpperCase();
 
   return (
@@ -493,7 +515,7 @@ function PermissionEditor({ admin, isNew, onSave, onClose, allUsers }: Permissio
                 </div>
               </div>
 
-              {PERMISSION_CATEGORIES.map((cat) => {
+              {VISIBLE_PERMISSION_CATEGORIES.map((cat) => {
                 const matched = cat.items.filter(matchesQuery);
                 if (matched.length === 0) return null;
                 const catEnabled = cat.items.filter((i) => form.permissions[i.key]).length;
@@ -1121,7 +1143,7 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
                 const perms = admin.permissions;
                 const activePerms = isSuperAdmin || perms.fullAccess
                   ? ["Full Access"]
-                  : ALL_PERMISSION_DEFS.filter((d) => perms[d.key]).map((d) => d.label);
+                  : VISIBLE_PERMISSION_DEFS.filter((d) => perms[d.key]).map((d) => d.label);
                 const visiblePerms = activePerms.slice(0, 4);
                 const extraCount = activePerms.length - visiblePerms.length;
 
@@ -1183,7 +1205,7 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
                       <div style={{ fontSize: 12, color: TEXT2, marginTop: 1 }}>Every permission below, current and future</div>
                     </div>
                   </div>
-                  {PERMISSION_CATEGORIES.map((cat) => (
+                  {VISIBLE_PERMISSION_CATEGORIES.map((cat) => (
                     <div key={cat.id} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                       <div style={{ fontSize: 10.5, fontWeight: 800, color: TEXT2, letterSpacing: "0.08em", textTransform: "uppercase" }}>{cat.label}</div>
                       {cat.items.map((item) => {

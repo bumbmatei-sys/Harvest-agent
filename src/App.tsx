@@ -26,7 +26,7 @@ import PWAInstallManager from './components/PWAInstallManager';
 import PostPurchaseWizard from './components/PostPurchaseWizard';
 import { OperationType, handleFirestoreError } from './utils/firestore-errors';
 import { TenantPlan } from './types/tenant.types';
-import { PLAN_ORDER } from './utils/plan-features';
+import { PLAN_ORDER, AFFILIATE_PROGRAM_ENABLED } from './utils/plan-features';
 import { TenantProvider, useTenant } from './contexts/TenantContext';
 import { SavedItemsProvider } from './contexts/SavedItemsContext';
 import { useClaimsFreshness } from './hooks/useClaimsFreshness';
@@ -411,7 +411,14 @@ const AppInner: React.FC = () => {
                   origin, or any user whose doc read hasn't resolved/errored, still
                   gets MainApp (admins are redirected to their own tenant by the auth
                   callback), never trapped in the affiliate view. */}
-              {isAffiliateSignup && userTenantId === null
+              {/* Master switch: while the programme is hidden the affiliate host
+                  falls back to the platform/apex view — the documented
+                  pre-Phase-3 behaviour. The routing above is deliberately NOT
+                  gated: `resolvePostAuthFunnelRoute` still sends a confirmed
+                  tenant-less user on the affiliate host to '/', which is the
+                  incident guard that keeps them out of the paid church funnel.
+                  Hiding the dashboard must not re-open that. */}
+              {AFFILIATE_PROGRAM_ENABLED && isAffiliateSignup && userTenantId === null
                 ? <AffiliateDashboard />
                 : <MainApp onNavigate={handleNavigate} />}
             </ErrorBoundary>

@@ -289,6 +289,32 @@ export const AI_ASSISTANT_ADDON_PRICING = {
  */
 export const AI_TELEGRAM_ASSISTANT_ENABLED = false;
 
+/**
+ * Master switch for the affiliate programme across the whole app.
+ * Set to `false` to hide every user-facing surface (admin nav entry and the
+ * /admin/affiliate section, the standalone affiliate dashboard on
+ * affiliate.theharvest.app, the affiliate auth copy, the "Affiliate Program"
+ * permission row). Backend routes (/api/affiliate/*), the payout and
+ * commission-window libs, the Stripe webhook's commission paths, the
+ * `affiliate_commissions` collection and its rules are intentionally left
+ * intact so the feature can be re-enabled by flipping this one boolean back to
+ * `true`.
+ *
+ * Hidden because subscription billing is moving from Stripe to Dodo Payments (a
+ * merchant of record), which changes the payout rail end to end — affiliate
+ * transfers run through Stripe Connect today and that relationship does not
+ * survive the move unchanged. A public programme promising 15% of subscription
+ * revenue for 12 months, on a payout rail mid-migration, is how you end up owing
+ * commission you cannot pay. Migrate billing first, then decide whether to bring
+ * it back.
+ *
+ * NOT a kill switch for referral capture: `?ref=` attribution (ReferralTracker →
+ * localStorage['affiliateReferrerId'] → `referrerId` in checkout metadata) runs
+ * regardless of this flag, so a link shared before the programme was hidden
+ * still attributes if that person signs up afterwards.
+ */
+export const AFFILIATE_PROGRAM_ENABLED = false;
+
 // ─── Accessors ────────────────────────────────────────────────────────────────
 
 /**

@@ -14,6 +14,15 @@ import { createRoot, type Root } from 'react-dom/client';
  * a real Stripe payment and a real tenant. On the affiliate host, a CONFIRMED
  * tenant-less user must land on '/' no matter what signup intent is in play,
  * while the paid church funnel on the apex/tenant hosts stays byte-identical.
+ *
+ * The affiliate programme is currently hidden (AFFILIATE_PROGRAM_ENABLED ===
+ * false), so '/' paints MainApp rather than the affiliate dashboard. That is a
+ * change of DESTINATION COMPONENT ONLY — the guard under test is the ROUTE, and
+ * every assertion on it (lands on '/', never '/church-onboarding', stale intent
+ * dropped) is unchanged below. `resolvePostAuthFunnelRoute` is deliberately not
+ * gated on the flag, so hiding the dashboard cannot re-open the incident.
+ * App.affiliate-flag.test.tsx runs the same host with the flag ON and asserts
+ * the dashboard comes back.
  */
 
 // ── Controllable auth/firestore state (hoisted so the mocks can close over it) ──
@@ -176,7 +185,10 @@ describe('affiliate host — the affiliate branch is authoritative for confirmed
     await flush();
 
     expect(window.location.pathname).toBe('/');
-    expect(rendered('affiliate-dashboard')).toBe(true);
+    // The guard: '/' — NOT the paid church funnel. With the programme hidden
+    // that '/' paints MainApp; the dashboard is gated, the route is not.
+    expect(rendered('main-app')).toBe(true);
+    expect(rendered('affiliate-dashboard')).toBe(false);
     expect(rendered('church-onboarding')).toBe(false);
     expect(rendered('member-onboarding')).toBe(false);
     // …and the affiliate host drops the meaningless stale intent entirely,
@@ -193,7 +205,8 @@ describe('affiliate host — the affiliate branch is authoritative for confirmed
     await flush();
 
     expect(window.location.pathname).toBe('/');
-    expect(rendered('affiliate-dashboard')).toBe(true);
+    expect(rendered('main-app')).toBe(true);
+    expect(rendered('affiliate-dashboard')).toBe(false);
     expect(rendered('church-onboarding')).toBe(false);
     expect(sessionStorage.getItem('harvest_signup')).toBeNull();
   });
@@ -208,7 +221,8 @@ describe('affiliate host — the affiliate branch is authoritative for confirmed
     await flush();
 
     expect(window.location.pathname).toBe('/');
-    expect(rendered('affiliate-dashboard')).toBe(true);
+    expect(rendered('main-app')).toBe(true);
+    expect(rendered('affiliate-dashboard')).toBe(false);
     expect(rendered('church-onboarding')).toBe(false);
   });
 
