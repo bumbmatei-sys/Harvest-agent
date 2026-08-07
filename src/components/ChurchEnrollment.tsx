@@ -9,7 +9,7 @@ import Autocomplete from "react-google-autocomplete";
 
 import { ImageUpload } from './ImageUpload';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
-import { getTenantScope } from '../utils/tenant-scope';
+import { getTenantScope, getWriteTenantScope } from '../utils/tenant-scope';
 
 
 interface ChurchEnrollmentProps {
@@ -151,6 +151,11 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
  };
 
  if (initialData?.id) {
+   // READ scope, deliberately. This is an ownership pre-check, not a write:
+   // null means "all tenants", which correctly skips the check so a super
+   // admin on the apex can edit any tenant's church. Do NOT swap this for
+   // getWriteTenantScope() — that would resolve to the platform tenant and
+   // make every other tenant's church fail the mismatch guard.
    const tenantId = await getTenantScope();
    if (tenantId) {
      const docSnap = await getDoc(doc(db, 'churches', initialData.id));
@@ -162,7 +167,14 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
    await updateDoc(doc(db, 'churches', initialData.id), churchData);
  if (onSave) onSave({ id: initialData.id, name: churchData.name || '' });
  } else {
-   const tenantId = await getTenantScope();
+   // WRITE scope, deliberately. getTenantScope() returns null by design for a
+   // super admin with no host scope — fine for a read, wrong to persist. A
+   // church stamped `tenantId: null` stays fully visible but permanently
+   // unmanageable: churches/{id} update and delete both gate on
+   // hasPermission('modifyChurches', resource.data.tenantId), which never
+   // passes for a null tenant, so the owning church could never edit or delete
+   // its own record. getWriteTenantScope() falls back to PLATFORM_TENANT_ID.
+   const tenantId = await getWriteTenantScope();
    const ref = await addDoc(collection(db, 'churches'), {
      ...churchData,
      status: 'active',
