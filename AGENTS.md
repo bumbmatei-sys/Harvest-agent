@@ -210,7 +210,7 @@ Map note: All plans show their own church location(s) on the map. The global mul
 ## Revenue Sharing (Stripe Connect)
 The platform application fee is taken on money flowing through a tenant's connected
 account — donations AND paid event tickets. `PLATFORM_FEE_MAP`
-(`src/lib/stripe-config.ts`) is the rate actually charged.
+(`src/lib/stripe-connect.ts`) is the rate actually charged.
 
 | Plan | Platform fee |
 |------|--------------|

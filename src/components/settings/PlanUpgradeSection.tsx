@@ -51,9 +51,11 @@ const PLAN_META = Object.fromEntries(PLANS.map((p) => [p.id, p])) as Record<
  * Most rows read a `PlanFeatures` cell straight off the matrix (`key`). A row
  * with `staticValue` instead is one the matrix does not carry — currently only
  * the platform donation fee, which is a Stripe concern (PLATFORM_FEE_MAP in
- * src/lib/stripe-config.ts) and cannot be imported here: that module reads
- * server-only STRIPE_PRICE_* env vars at load and this component ships to the
- * browser. See DONATION_FEE_ROW below.
+ * src/lib/stripe-connect.ts). That module used to also hold the server-only
+ * STRIPE_PRICE_* env reads, which is why the fee is written out by hand here
+ * rather than imported into this browser bundle. The split moved those reads to
+ * billing.ts, so the technical blocker is gone — wiring the row to the map is
+ * now possible, just not done here. See DONATION_FEE_ROW below.
  */
 type ComparisonRow = {
   label: string;

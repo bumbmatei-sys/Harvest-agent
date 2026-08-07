@@ -8,7 +8,7 @@ import { NextRequest } from 'next/server';
  * rates so its redirect/metadata assertions do not move when pricing changes.
  * That leaves the REAL rate uncovered on the donation path, which is exactly
  * the number a repricing gets wrong. This file is the complement: it imports
- * the real `@/lib/stripe-config` and pins what a donor on each tier actually
+ * the real `@/lib/stripe-connect` and pins what a donor on each tier actually
  * gets charged, on both the one-time and the monthly branch.
  *
  * Every tier is 0% now. Asserting that on the real `application_fee_amount` /
@@ -37,7 +37,7 @@ vi.mock('@/lib/api-auth', () => ({ verifyAuth: mockVerifyAuth }));
 vi.mock('@/lib/firebase-admin', () => ({
   adminDb: { collection: vi.fn(() => ({ doc: vi.fn(() => ({ get: mockTenantGet })) })) },
 }));
-// NOTE: @/lib/stripe-config is intentionally NOT mocked here.
+// NOTE: @/lib/stripe-connect is intentionally NOT mocked here.
 
 const { POST } = await import('../donate/route');
 

@@ -46,7 +46,7 @@ vi.mock('stripe', () => ({
 
 vi.mock('@/lib/set-custom-claims', () => ({ setCustomClaims: vi.fn().mockResolvedValue(undefined) }));
 
-vi.mock('@/lib/stripe-config', () => ({
+vi.mock('@/lib/billing', () => ({
   PLAN_PRICES: { pro: { monthly: 'price_pro_m', yearly: 'price_pro_y' } },
   getPlanFromPriceId: vi.fn(() => 'pro'),
 }));

@@ -18,14 +18,13 @@ import {
   type FeatureKey,
 } from '../plan-features';
 import * as planFeaturesModule from '../plan-features';
-// The rate actually charged. Importing stripe-config is safe HERE and only here:
-// tests run server-side, where its STRIPE_PRICE_* env reads resolve. Today they
-// resolve via the `?? 'price_...'` fallbacks; once B1 (#207) removes those and
-// makes the module throw on a missing var, its own src/test/setup.ts stubs all
-// nine — verified by running this import against #207 with every var unset.
-// Do NOT copy this import into plan-features.ts itself: that module is pulled
-// into ~20 client components and would take the browser bundle down under B1.
-import { PLATFORM_FEE_MAP } from '@/lib/stripe-config';
+// The rate actually charged. This import used to carry a warning: the fee map
+// shared a module with the STRIPE_PRICE_* env reads, so pulling it in was only
+// safe server-side. Splitting stripe-config.ts into stripe-connect.ts (this
+// map) and billing.ts (the price IDs) removed that coupling — stripe-connect.ts
+// reads no env at all and is a plain constant. Importing it is unconditionally
+// safe now, here or anywhere.
+import { PLATFORM_FEE_MAP } from '@/lib/stripe-connect';
 
 describe('getPlanFeatures', () => {
   it('returns correct features for plus plan', () => {

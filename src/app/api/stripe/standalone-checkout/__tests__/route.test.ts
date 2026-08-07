@@ -19,7 +19,7 @@ vi.mock('stripe', () => ({
   },
 }));
 
-vi.mock('@/lib/stripe-config', () => ({ AI_ASSISTANT_MONTHLY: 'price_ai_m' }));
+vi.mock('@/lib/billing', () => ({ AI_ASSISTANT_MONTHLY: 'price_ai_m' }));
 
 const { POST } = await import('../route');
 

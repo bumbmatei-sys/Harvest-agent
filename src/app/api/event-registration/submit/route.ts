@@ -7,7 +7,7 @@ import { Resend } from 'resend';
 import { adminDb } from '@/lib/firebase-admin';
 import { getTenantPrivate } from '@/lib/tenant-private';
 import { verifyAuth } from '@/lib/api-auth';
-import { PLATFORM_FEE_MAP } from '@/lib/stripe-config';
+import { PLATFORM_FEE_MAP } from '@/lib/stripe-connect';
 import { sendAutomatedSms } from '@/lib/twilio';
 import { captureHandledError, captureMoneyPathError } from '@/lib/money-path-sentry';
 

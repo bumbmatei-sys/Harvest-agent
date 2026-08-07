@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { PLATFORM_FEE_MAP } from '../stripe-config';
+import { PLATFORM_FEE_MAP } from '../stripe-connect';
 
 // Fees are stored as DECIMAL fractions (0.015 = 1.5%), not integer percents.
 // The two money paths (src/app/api/stripe/donate + event-registration/submit)

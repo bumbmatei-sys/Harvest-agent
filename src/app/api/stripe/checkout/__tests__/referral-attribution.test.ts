@@ -56,7 +56,7 @@ vi.mock('@/lib/firebase-admin', () => ({
   },
 }));
 
-vi.mock('@/lib/stripe-config', () => ({
+vi.mock('@/lib/billing', () => ({
   PLAN_PRICES: {
     plus: { monthly: 'price_plus_m', yearly: 'price_plus_y' },
     pro: { monthly: 'price_pro_m', yearly: 'price_pro_y' },

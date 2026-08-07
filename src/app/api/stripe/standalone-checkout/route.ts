@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import Stripe from 'stripe';
-import { AI_ASSISTANT_MONTHLY } from '@/lib/stripe-config';
+import { AI_ASSISTANT_MONTHLY } from '@/lib/billing';
 import { AI_TELEGRAM_ASSISTANT_ENABLED } from '@/utils/plan-features';
 import { captureMoneyPathError } from '@/lib/money-path-sentry';
 

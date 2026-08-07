@@ -4,7 +4,7 @@ import Stripe from 'stripe';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireAuth } from '@/lib/api-auth';
 import { captureMoneyPathError } from '@/lib/money-path-sentry';
-import { PLAN_PRICES, AI_ASSISTANT_MONTHLY } from '@/lib/stripe-config';
+import { PLAN_PRICES, AI_ASSISTANT_MONTHLY } from '@/lib/billing';
 import { tenantPrivateRef, getTenantPrivate } from '@/lib/tenant-private';
 import { AI_TELEGRAM_ASSISTANT_ENABLED } from '@/utils/plan-features';
 
