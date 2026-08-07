@@ -70,7 +70,7 @@
  *     collectionGroup(), not as top-level collections.
  *
  * OUT OF SCOPE: does not delete test tenants/users/subscriptions (tenant deletion
- * has its own cascade), and does not touch stripe-config.ts (B1 / PR #207) or
+ * has its own cascade), and does not touch billing.ts (B1 / PR #207) or
  * firestore.rules.
  *
  * USAGE

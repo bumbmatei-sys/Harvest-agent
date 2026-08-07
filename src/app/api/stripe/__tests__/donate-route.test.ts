@@ -23,7 +23,7 @@ vi.mock('@/lib/firebase-admin', () => ({
   adminDb: { collection: vi.fn(() => ({ doc: vi.fn(() => ({ get: mockTenantGet })) })) },
 }));
 
-vi.mock('@/lib/stripe-config', () => ({
+vi.mock('@/lib/stripe-connect', () => ({
   PLATFORM_FEE_MAP: { plus: 0, pro: 0.1, max: 0.15, ultra: 0.2 },
 }));
 

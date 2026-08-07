@@ -3,7 +3,7 @@ import type { NextRequest } from 'next/server';
 import Stripe from 'stripe';
 import { adminDb } from '@/lib/firebase-admin';
 import { getTenantPrivate } from '@/lib/tenant-private';
-import { PLATFORM_FEE_MAP as FEE_MAP } from '@/lib/stripe-config';
+import { PLATFORM_FEE_MAP as FEE_MAP } from '@/lib/stripe-connect';
 import { verifyAuth } from '@/lib/api-auth';
 import { captureMoneyPathError } from '@/lib/money-path-sentry';
 

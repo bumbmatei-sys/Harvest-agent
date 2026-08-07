@@ -49,7 +49,7 @@ vi.mock('firebase-admin/firestore', () => ({
 
 vi.mock('@/lib/set-custom-claims', () => ({ setCustomClaims: vi.fn() }));
 vi.mock('@/lib/ai-utils', () => ({ generateAccessCode: vi.fn(() => 'CODE-1') }));
-vi.mock('@/lib/stripe-config', () => ({ PLAN_PRICES: {}, getPlanFromPriceId: vi.fn() }));
+vi.mock('@/lib/billing', () => ({ PLAN_PRICES: {}, getPlanFromPriceId: vi.fn() }));
 vi.mock('resend', () => ({ Resend: vi.fn(() => ({ emails: { send: vi.fn() } })) }));
 vi.mock('qrcode', () => ({ default: { toDataURL: vi.fn().mockResolvedValue('data:image/png;base64,x') } }));
 

@@ -128,7 +128,7 @@ export interface PlanFeatures {
   // actually charging 2.5%. With PLATFORM_FEE_MAP now { plus: 0, pro: 0,
   // max: 0 } the field is a constant 100 on every tier — it carries no
   // information and can only drift again. Read PLATFORM_FEE_MAP
-  // (src/lib/stripe-config.ts) directly; it is the rate actually charged.
+  // (src/lib/stripe-connect.ts) directly; it is the rate actually charged.
 }
 
 // ─── Feature matrix ───────────────────────────────────────────────────────────
@@ -267,11 +267,11 @@ export const PLAN_PRICING: Record<TenantPlan, { monthlyUsd: number; yearlyUsd: n
 
 // `PLAN_DONATION_RETENTION` was removed alongside the `donationRetention`
 // matrix cell it mirrored. It existed to publish `100 - PLATFORM_FEE_MAP[plan]
-// * 100` without importing stripe-config.ts into the client bundle. Every tier
+// * 100` without importing the fee map into the client bundle. Every tier
 // now charges a 0% platform fee, so the whole map was the constant 100 —
 // nothing to publish, and one more copy of the fee to drift out of sync (which
 // it previously did, advertising "keeps 100%" against a real 2.5% charge).
-// PLATFORM_FEE_MAP (src/lib/stripe-config.ts) is the single source for the fee.
+// PLATFORM_FEE_MAP (src/lib/stripe-connect.ts) is the single source for the fee.
 // Surfaces that used to render retention now render the FEE — "Donation fee —
 // 0%" — which is the number a customer actually cares about.
 

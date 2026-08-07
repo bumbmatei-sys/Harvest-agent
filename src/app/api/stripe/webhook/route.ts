@@ -4,7 +4,7 @@ import Stripe from 'stripe';
 import { adminDb, adminAuth } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { generateAccessCode } from '@/lib/ai-utils';
-import { PLAN_PRICES, getPlanFromPriceId } from '@/lib/stripe-config';
+import { PLAN_PRICES, getPlanFromPriceId } from '@/lib/billing';
 import { setCustomClaims } from '@/lib/set-custom-claims';
 import { issueDonationReceipt } from '@/lib/donation-receipt';
 import { affiliateSweepIdempotencyKey } from '@/lib/affiliate-payout';
