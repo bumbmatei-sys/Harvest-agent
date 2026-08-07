@@ -271,8 +271,8 @@ describe('apex host — the paid church funnel is unchanged', () => {
     expect(rendered('church-onboarding')).toBe(true);
   });
 
-  it('?signup=ultra (plan deep-link, doc exists, tenant-less) → /church-onboarding', async () => {
-    setURL(`${APEX_ORIGIN}/auth?signup=ultra`);
+  it('?signup=max (plan deep-link, doc exists, tenant-less) → /church-onboarding', async () => {
+    setURL(`${APEX_ORIGIN}/auth?signup=max`);
     state.user = USER;
     state.userDoc = { exists: true, data: { role: 'user', tenantId: null } };
 
@@ -281,7 +281,7 @@ describe('apex host — the paid church funnel is unchanged', () => {
 
     expect(window.location.pathname).toBe('/church-onboarding');
     expect(rendered('church-onboarding')).toBe(true);
-    expect(sessionStorage.getItem('harvest_signup')).toBe('ultra');
+    expect(sessionStorage.getItem('harvest_signup')).toBe('max');
   });
 
   it('stored plan intent (no URL param) still drives the funnel on the apex', async () => {

@@ -63,7 +63,7 @@ afterEach(() => {
 describe('usePlanGate — community_chat (Community Groups)', () => {
   // Community Groups moved from Ministry-only to Community and above. Reverting
   // `max.communityGroups` to false in the feature matrix fails this test.
-  it('is unlocked on Community (max)', () => {
+  it('is unlocked on Ministry (max)', () => {
     expect(gate('community_chat', 'max')).toBe(true);
   });
 
@@ -75,8 +75,8 @@ describe('usePlanGate — community_chat (Community Groups)', () => {
     expect(gate('community_chat', 'plus')).toBe(false);
   });
 
-  it('stays unlocked on Ministry (ultra)', () => {
-    expect(gate('community_chat', 'ultra')).toBe(true);
+  it('stays unlocked on Ministry (max)', () => {
+    expect(gate('community_chat', 'max')).toBe(true);
   });
 });
 
@@ -109,12 +109,12 @@ describe('FEATURE_MIN_PLAN — minimum plan labels', () => {
     expect(FEATURE_MIN_PLAN.crm).toBe('Small Team');
   });
 
-  it('names Community as the minimum plan for tax receipts', () => {
-    expect(FEATURE_MIN_PLAN.tax_receipts).toBe('Community');
+  it('names Ministry as the minimum plan for tax receipts', () => {
+    expect(FEATURE_MIN_PLAN.tax_receipts).toBe('Ministry');
   });
 
-  it('names Community as the minimum plan for community chat', () => {
-    expect(FEATURE_MIN_PLAN.community_chat).toBe('Community');
+  it('names Ministry as the minimum plan for community chat', () => {
+    expect(FEATURE_MIN_PLAN.community_chat).toBe('Ministry');
   });
 
   it('keeps Ministry as the minimum plan for accounting', () => {
@@ -125,8 +125,8 @@ describe('FEATURE_MIN_PLAN — minimum plan labels', () => {
     expect(FEATURE_MIN_PLAN.fundraising).toBe('Individual');
   });
 
-  it('names Community for event registration and Small Team for docs', () => {
-    expect(FEATURE_MIN_PLAN.event_registration).toBe('Community');
+  it('names Ministry for event registration and Small Team for docs', () => {
+    expect(FEATURE_MIN_PLAN.event_registration).toBe('Ministry');
     expect(FEATURE_MIN_PLAN.docs).toBe('Small Team');
   });
 
@@ -168,7 +168,7 @@ describe('label ↔ gate consistency', () => {
   });
 
   it('every label is the cheapest such plan — the tier below it is locked', () => {
-    const order: TenantPlan[] = ['plus', 'pro', 'max', 'ultra'];
+    const order: TenantPlan[] = ['plus', 'pro', 'max'];
     for (const key of ALL_KEYS) {
       const idx = order.indexOf(getFeatureMinPlan(key)!);
       if (idx <= 0) continue; // unlocked on the cheapest tier; nothing below it

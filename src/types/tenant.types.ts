@@ -1,4 +1,4 @@
-export type TenantPlan = 'plus' | 'pro' | 'max' | 'ultra';
+export type TenantPlan = 'plus' | 'pro' | 'max';
 export type TenantStatus = 'active' | 'suspended' | 'pending';
 
 export interface TenantConfig {
@@ -18,7 +18,7 @@ export interface TenantConfig {
   name?: string;
   primaryColor?: string; // hex color, e.g. "#D4AF37"
   description?: string;
-  customDomain?: string; // e.g. "yourchurch.com" (Ultra only)
+  customDomain?: string; // e.g. "yourchurch.com" (Ministry / max only)
   customDomainVerified?: boolean; // true once Vercel verifies the custom domain
   customDomainStatus?: 'pending' | 'verified' | 'failed'; // Vercel provisioning status
   backgroundImage?: string; // URL to custom background image for auth page

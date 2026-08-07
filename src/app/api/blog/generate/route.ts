@@ -5,6 +5,17 @@ import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { getMimoChatUrl, MIMO_MODEL } from '@/lib/ai-config';
 import { captureHandledError } from '@/lib/money-path-sentry';
+import {
+  getMinPlanForFeatureCell,
+  hasFeature,
+  toTenantPlan,
+  PLAN_DISPLAY_NAMES,
+  TOP_PLAN,
+} from '@/utils/plan-features';
+
+/** Cheapest plan whose matrix cell unlocks automated blog, for the 403 copy. */
+const AUTOMATED_BLOG_MIN_PLAN =
+  PLAN_DISPLAY_NAMES[getMinPlanForFeatureCell('automatedBlog') ?? TOP_PLAN];
 
 export const dynamic = 'force-dynamic';
 
@@ -157,12 +168,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No tenant' }, { status: 400 });
     }
 
-    // Plan gate — max or ultra only
+    // Plan gate — derived from the `automatedBlog` matrix cell rather than a
+    // literal tier list, so the gate follows the matrix instead of drifting from
+    // it. Unknown/missing plan fails closed to 'plus' via toTenantPlan.
     const tenantDoc = await adminDb.collection('tenants').doc(tenantId).get();
     const plan = tenantDoc.data()?.plan || 'plus';
-    if (!['max', 'ultra'].includes(plan)) {
+    if (!hasFeature(toTenantPlan(plan), 'automatedBlog')) {
       return NextResponse.json(
-        { error: 'Automated blog requires Community or Ministry plan' },
+        { error: `Automated blog requires the ${AUTOMATED_BLOG_MIN_PLAN} plan` },
         { status: 403 },
       );
     }

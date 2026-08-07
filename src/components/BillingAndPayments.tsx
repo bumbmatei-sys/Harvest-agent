@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { CreditCard, CalendarClock, FileText, Download, Loader2, ExternalLink, AlertCircle } from 'lucide-react';
 import { authFetch } from '../utils/auth-fetch';
-import { getPlanDisplayName } from '../utils/plan-features';
+import { getPlanDisplayName, TOP_PLAN } from '../utils/plan-features';
 import type { TenantPlan } from '../types/tenant.types';
 import PlanUpgradeSection from './settings/PlanUpgradeSection';
 
@@ -123,7 +123,9 @@ const BillingAndPayments: React.FC<BillingAndPaymentsProps> = ({ currentPlan, te
   const planId = (subscription?.plan as TenantPlan) || currentPlan;
   const planLabel = planId ? getPlanDisplayName(planId) : '—';
   const status = subscription?.status || null;
-  const isUltra = planId === 'ultra';
+  // Nothing to upgrade to on the top tier. Derived from PLAN_ORDER via TOP_PLAN
+  // rather than naming a tier, so a future tier change moves it automatically.
+  const isTopPlan = planId === TOP_PLAN;
 
   if (loading) {
     return (
@@ -184,7 +186,7 @@ const BillingAndPayments: React.FC<BillingAndPaymentsProps> = ({ currentPlan, te
           currentPlan={planId}
           tenantId={tenantId}
           email={email}
-          hideUpgrade={isUltra}
+          hideUpgrade={isTopPlan}
         />
       </div>
 

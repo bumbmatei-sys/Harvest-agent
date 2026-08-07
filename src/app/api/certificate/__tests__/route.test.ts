@@ -226,7 +226,7 @@ describe('POST /api/certificate — tenant branding gate', () => {
   it('attempts the logo on a branded plan and degrades gracefully when the fetch fails', async () => {
     const fetchSpy = vi.fn().mockRejectedValue(new Error('network down'));
     vi.stubGlobal('fetch', fetchSpy);
-    store.tenants.set('tenant-a', { name: 'Grace', plan: 'ultra', config: { logo: 'https://cdn/logo.png', primaryColor: '#8dceb8' } });
+    store.tenants.set('tenant-a', { name: 'Grace', plan: 'max', config: { logo: 'https://cdn/logo.png', primaryColor: '#8dceb8' } });
     const res = await POST(makeReq({ courseId: 'course-1' }));
     expect(res.status).toBe(200); // logo failure does NOT fail the cert
     expect(fetchSpy).toHaveBeenCalled();

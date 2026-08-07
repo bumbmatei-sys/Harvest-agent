@@ -155,9 +155,13 @@ describe('AdminCourses — maxCourses enforcement', () => {
     expect(container.querySelector('[data-testid="course-editor"]')).toBeNull();
   });
 
-  it('treats -1 as unlimited (Ministry/ultra) regardless of course count', async () => {
-    tenantCtx.tenantPlan = 'ultra'; // maxCourses: -1
-    mockCourses = makeCourses(50);
+  it('allows a new course while under the Ministry (max) cap of 15', async () => {
+    // Was "treats -1 as unlimited (Ministry/ultra)". No tier is unlimited any
+    // more — max is a finite 15 — so this pins the under-cap branch on the top
+    // tier instead. The at-cap branch is covered by the plus/pro tests above and
+    // by the max-at-cap test below.
+    tenantCtx.tenantPlan = 'max'; // maxCourses: 15
+    mockCourses = makeCourses(14);
     await mount();
 
     const button = newCourseButton();
@@ -165,6 +169,16 @@ describe('AdminCourses — maxCourses enforcement', () => {
 
     await act(async () => { button.click(); });
     expect(container.querySelector('[data-testid="course-editor"]')).not.toBeNull();
+  });
+
+  it('blocks a new course at the Ministry (max) cap of 15', async () => {
+    // The top tier is now capped like every other tier. Without this, deleting
+    // the unlimited tier would have silently dropped all coverage of max's cap.
+    tenantCtx.tenantPlan = 'max';
+    mockCourses = makeCourses(15);
+    await mount();
+
+    expect(newCourseButton().disabled).toBe(true);
   });
 
   it('fails closed to the plus limit when the plan is unknown/still loading', async () => {
@@ -287,9 +301,11 @@ describe('AdminCourses — library adoption', () => {
       expect(calls.fetches).toHaveLength(0);
     });
 
-    it('allows adopting under the cap, and -1 never blocks', async () => {
-      tenantCtx.tenantPlan = 'ultra'; // maxCourses: -1
-      mockCourses = makeCourses(50);
+    it('allows adopting while under the cap', async () => {
+      // Was "-1 never blocks" on ultra; no tier is unlimited now, so this runs
+      // under the top tier's finite cap (15) with room to spare.
+      tenantCtx.tenantPlan = 'max'; // maxCourses: 15
+      mockCourses = makeCourses(10);
       mockLibrary = makeLibrary(2);
       await mount();
       await act(async () => { libraryTab().click(); });

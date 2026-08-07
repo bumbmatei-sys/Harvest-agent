@@ -186,7 +186,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
   const [isChurchSignup, setIsChurchSignup] = useState(false);
   const { branding, tenantId: ctxTenantId, tenantName, tenantPlan } = useTenant();
   const isSubdomain = !!ctxTenantId;
-  const hasCustomBranding = tenantPlan === 'max' || tenantPlan === 'ultra';
+  const hasCustomBranding = tenantPlan === 'max';
 
   const [legalModalContent, setLegalModalContent] = useState<'terms' | 'privacy' | null>(null);
   const [error, setError] = useState('');

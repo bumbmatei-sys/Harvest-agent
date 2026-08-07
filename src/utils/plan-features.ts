@@ -9,10 +9,31 @@ export interface PlanFeatures {
   aiKnowledge: boolean;
   /** Show church map in user app (pro and above) */
   map: boolean;
-  /** Show global multi-church discovery directory (Ministry only) */
+  /** Show global multi-church discovery directory (Ministry / max only) */
   churchDirectory: boolean;
   /** Max number of churches (0 = hidden, -1 = unlimited) */
   maxChurches: number;
+  /**
+   * Max number of contacts (-1 = unlimited).
+   *
+   * VALUES ONLY — nothing enforces this yet. No contact cap exists anywhere in
+   * the app today; this cell is the published number so the plan matrix, the
+   * public /api/plans catalog and the in-app comparison all read from one
+   * place instead of a marketing page.
+   *
+   * It lives here rather than in PLAN_LIMITS (src/lib/planLimits.ts) because
+   * PLAN_LIMITS holds METERED flows and stocks — token and segment budgets fed
+   * by a per-tenant monthly usage doc. Contacts are a static entity count, the
+   * same shape as maxCourses / maxAdmins / maxChurches, so it belongs with
+   * them.
+   *
+   * When enforcement lands it mirrors the `maxCourses` shape below: gated
+   * client-side only (bypassable by a direct Firestore write, since
+   * firestore.rules does not enforce it — rules-level enforcement is a separate
+   * hardening task), blocking new creation only; a tenant already over the
+   * limit (e.g. after a downgrade) keeps their existing contacts.
+   */
+  maxContacts: number;
   /**
    * Max number of courses (-1 = unlimited).
    *
@@ -34,14 +55,37 @@ export interface PlanFeatures {
   // `customBackground` ("custom auth-page background image") was removed: no
   // background uploader was ever built anywhere in the app, so the flag sold a
   // capability that does not exist. It was true on exactly the tiers where
-  // customBranding is true (max, ultra), so dropping it from the Branding-tab
-  // gate (see hasBrandingAccess below) changed no tier's access. Don't re-add
-  // it as a plan flag unless an uploader ships with it.
+  // customBranding is true (at the time, Community/max and the since-deleted
+  // Ministry/ultra tier), so dropping it from the Branding-tab gate (see
+  // hasBrandingAccess below) changed no tier's access. Don't re-add it as a
+  // plan flag unless an uploader ships with it.
+  //
+  // `publicCalendar` was removed for the same reason, and on the same
+  // precedent: no public event-calendar page exists anywhere in the app. It was
+  // `true` on every tier, so nothing ever gated on it and removing it changed
+  // no tier's access — it only stopped the matrix (and the public /api/plans
+  // catalog) advertising a capability that was never built. Don't re-add it
+  // unless a calendar ships with it.
   /** Newsletter (manual + Mailchimp) — Small Team / pro+ */
   newsletterAutomation: boolean;
   /** AI-generated newsletter from Instagram (Community / max+) */
   automatedNewsletter: boolean;
-  /** SMS: manual broadcasts + automated event-registration/check-in/pledge triggers (see AdminSms TRIGGERS; scheduled broadcasts and other triggers are not promised) */
+  /**
+   * SMS: manual broadcasts + automated event-registration/check-in/pledge
+   * triggers (see AdminSms TRIGGERS; scheduled broadcasts and other triggers
+   * are not promised).
+   *
+   * `true` on EVERY tier, deliberately. SMS is no longer sold by plan: Harvest
+   * does not offer platform SMS at all, so the only thing deciding whether a
+   * tenant can send is whether they have connected their OWN Twilio
+   * credentials. A plan cell gating a capability the plan does not supply
+   * gates nothing.
+   *
+   * This also retires a live bug: plus/pro/max each carried a monthly Twilio
+   * segment budget in PLAN_LIMITS while this cell was `false` — three tiers
+   * metered for a feature they could not reach. Those budgets are now `null`
+   * (unmetered); see src/lib/planLimits.ts.
+   */
   smsAutomation: boolean;
   /** Number of AI assistants (0 = none, 1 = one, -1 = unlimited) */
   aiAssistant: number;
@@ -69,23 +113,22 @@ export interface PlanFeatures {
   sermonNotes: boolean;
   /** AI-generated SEO blog articles on schedule from Knowledge Base */
   automatedBlog: boolean;
-  /** Annual giving statements (year-end tax summaries) — Community / max+ */
+  /** Annual giving statements (year-end tax summaries) — Ministry / max+ */
   givingStatements: boolean;
-  /** Public event calendar page — all plans (it's public-facing) */
-  publicCalendar: boolean;
-  /** Pledge campaigns — Community (max) and above */
+  /** Pledge campaigns — Ministry (max) and above */
   pledgeCampaigns: boolean;
-  /** Text-to-Give via inbound SMS keyword */
+  /** Text-to-Give via inbound SMS keyword — BYO Twilio, all plans */
   textToGive: boolean;
   /** Installable Progressive Web App (mobile app) — all plans */
   pwaApp: boolean;
-  /**
-   * Percentage of donation payments the ministry retains after platform fee.
-   * Mirrors `PLATFORM_FEE_MAP` (src/lib/stripe-config.ts) by hand as
-   * `100 - fee * 100`; a test enforces the match. See PLAN_DONATION_RETENTION
-   * below before changing this. May be fractional (plus and pro are 98.5).
-   */
-  donationRetention: number;
+  // `donationRetention` ("percentage of a donation the ministry keeps") was
+  // removed with the move to a flat 0% platform fee on every tier. It was a
+  // hand-maintained complement of PLATFORM_FEE_MAP (`100 - fee * 100`), and
+  // that duplication is what once let the app advertise "keeps 100%" while
+  // actually charging 2.5%. With PLATFORM_FEE_MAP now { plus: 0, pro: 0,
+  // max: 0 } the field is a constant 100 on every tier — it carries no
+  // information and can only drift again. Read PLATFORM_FEE_MAP
+  // (src/lib/stripe-config.ts) directly; it is the rate actually charged.
 }
 
 // ─── Feature matrix ───────────────────────────────────────────────────────────
@@ -97,7 +140,7 @@ export interface PlanFeatures {
 // matrix changes without an explicit update to that test.
 
 const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
-  // Individual
+  // Individual — $49/mo
   plus: {
     blog: true,
     // AI chat is available on Small Team (pro) and above; gated to match the pricing page.
@@ -106,13 +149,16 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     map: false,
     churchDirectory: false,
     maxChurches: 1,
+    maxContacts: 150,
     maxCourses: 2,
-    maxAdmins: 1,
+    maxAdmins: 2,
     customDomain: false,
     customBranding: false,
     newsletterAutomation: false,
     automatedNewsletter: false,
-    smsAutomation: false,
+    // SMS is BYO-only on every tier — see the block comment above `smsAutomation`
+    // in PlanFeatures. Platform SMS is not sold, so the plan no longer gates it.
+    smsAutomation: true,
     aiAssistant: 0,
     fundraising: true,
     eventRegistration: false,
@@ -127,13 +173,11 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     sermonNotes: false,
     automatedBlog: false,
     givingStatements: false,
-    publicCalendar: true,
     pledgeCampaigns: false,
-    textToGive: false,
+    textToGive: true,
     pwaApp: true,
-    donationRetention: 98.5,
   },
-  // Small Team
+  // Small Team — $99/mo
   pro: {
     blog: true,
     aiChat: true,
@@ -141,17 +185,18 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     map: true,
     churchDirectory: false,
     maxChurches: 1,
+    maxContacts: 500,
     maxCourses: 5,
     maxAdmins: 5,
     customDomain: false,
     customBranding: false,
     newsletterAutomation: true,
     automatedNewsletter: false,
-    smsAutomation: false,
+    smsAutomation: true,
     aiAssistant: 0,
     fundraising: true,
     eventRegistration: false,
-    // Moved down from Community (max) in the repricing: Small Team now carries
+    // Moved down from the top tier in an earlier repricing: Small Team carries
     // Notes/Docs, CRM, Check-In, Livestream and Sermon Notes. Visibility only —
     // no rule, route or query keys off these cells (CRM's Firestore rules scope
     // on the `manageCRM` permission, not on plan).
@@ -166,57 +211,26 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     sermonNotes: true,
     automatedBlog: false,
     givingStatements: false,
-    publicCalendar: true,
     pledgeCampaigns: false,
-    textToGive: false,
+    textToGive: true,
     pwaApp: true,
-    donationRetention: 98.5,
   },
-  // Community
+  // Ministry — $199/mo. The top tier.
+  //
+  // Absorbed the deleted `ultra` tier: churchDirectory, accountingTools and
+  // aiAssistant: 1 folded in here. `maxChurches` deliberately did NOT inherit
+  // ultra's -1 — every tier is capped at 1 campus and additional campuses
+  // become a paid add-on.
   max: {
     blog: true,
     aiChat: true,
     aiKnowledge: true,
     map: true,
-    churchDirectory: false,
-    maxChurches: 1,
-    maxCourses: -1,
-    maxAdmins: 10,
-    customDomain: true,
-    customBranding: true,
-    newsletterAutomation: true,
-    automatedNewsletter: true,
-    smsAutomation: false,
-    aiAssistant: 0,
-    fundraising: true,
-    eventRegistration: true,
-    docs: true,
-    crm: true,
-    accountingTools: false,
-    taxReceipt: true,
-    communityGroups: true,
-    customForms: true,
-    checkInSystem: true,
-    livestream: true,
-    sermonNotes: true,
-    automatedBlog: true,
-    givingStatements: true,
-    publicCalendar: true,
-    pledgeCampaigns: true,
-    textToGive: false,
-    pwaApp: true,
-    donationRetention: 99,
-  },
-  // Ministry (top plan)
-  ultra: {
-    blog: true,
-    aiChat: true,
-    aiKnowledge: true,
-    map: true,
     churchDirectory: true,
-    maxChurches: -1,
-    maxCourses: -1,
-    maxAdmins: -1,
+    maxChurches: 1,
+    maxContacts: 2_000,
+    maxCourses: 15,
+    maxAdmins: 15,
     customDomain: true,
     customBranding: true,
     newsletterAutomation: true,
@@ -236,11 +250,9 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     sermonNotes: true,
     automatedBlog: true,
     givingStatements: true,
-    publicCalendar: true,
     pledgeCampaigns: true,
     textToGive: true,
     pwaApp: true,
-    donationRetention: 100,
   },
 };
 
@@ -248,42 +260,20 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
 
 /** Base plan pricing in USD. */
 export const PLAN_PRICING: Record<TenantPlan, { monthlyUsd: number; yearlyUsd: number }> = {
-  plus:  { monthlyUsd: 49,   yearlyUsd: 490  },
-  pro:   { monthlyUsd: 99,   yearlyUsd: 990  },
-  max:   { monthlyUsd: 199,  yearlyUsd: 1990 },
-  ultra: { monthlyUsd: 299,  yearlyUsd: 2990 },
+  plus: { monthlyUsd: 49,  yearlyUsd: 490  },
+  pro:  { monthlyUsd: 99,  yearlyUsd: 990  },
+  max:  { monthlyUsd: 199, yearlyUsd: 1990 },
 };
 
-/**
- * Percentage of donation payments the ministry retains after platform fee.
- *
- * These numbers are a HAND-MAINTAINED MIRROR of `PLATFORM_FEE_MAP` in
- * `src/lib/stripe-config.ts`, which is the rate actually charged:
- *
- *     donationRetention === 100 - PLATFORM_FEE_MAP[plan] * 100
- *
- * They are NOT derived from it in code, and deliberately so:
- * `stripe-config.ts` reads server-only `STRIPE_PRICE_*` env vars at module
- * load, while `plan-features.ts` is imported by ~20 client components. Importing
- * it here would drag those env reads into the browser bundle. Keep the mirror
- * manual; do not "simplify" it into an import.
- *
- * Because nothing enforces this structurally, `__tests__/plan-features.test.ts`
- * asserts the identity above for every plan. Never edit these values or the
- * `donationRetention` cells in the feature matrix independently of
- * `PLATFORM_FEE_MAP` — change the fee, change both, and let the test confirm it.
- *
- * Note `plus` and `pro` are 98.5, not integers: a 1.5% fee. Anything formatting
- * these must not round or truncate. (`max` was the fractional one before the
- * repricing at 97.5; it is now a flat 99 off a 1% fee, so the non-integer guard
- * in the tests is anchored on plus/pro.)
- */
-export const PLAN_DONATION_RETENTION: Record<TenantPlan, number> = {
-  plus:  PLAN_FEATURES.plus.donationRetention,
-  pro:   PLAN_FEATURES.pro.donationRetention,
-  max:   PLAN_FEATURES.max.donationRetention,
-  ultra: PLAN_FEATURES.ultra.donationRetention,
-};
+// `PLAN_DONATION_RETENTION` was removed alongside the `donationRetention`
+// matrix cell it mirrored. It existed to publish `100 - PLATFORM_FEE_MAP[plan]
+// * 100` without importing stripe-config.ts into the client bundle. Every tier
+// now charges a 0% platform fee, so the whole map was the constant 100 —
+// nothing to publish, and one more copy of the fee to drift out of sync (which
+// it previously did, advertising "keeps 100%" against a real 2.5% charge).
+// PLATFORM_FEE_MAP (src/lib/stripe-config.ts) is the single source for the fee.
+// Surfaces that used to render retention now render the FEE — "Donation fee —
+// 0%" — which is the number a customer actually cares about.
 
 /** AI Assistant add-on pricing (available on all plans; included on Ministry). */
 export const AI_ASSISTANT_ADDON_PRICING = {
@@ -326,13 +316,17 @@ export function toTenantPlan(plan: string | null | undefined): TenantPlan {
 
 /**
  * Human-readable display names for each plan tier.
- * Internal IDs (plus/pro/max/ultra) stay the same.
+ * Internal IDs (plus/pro/max) stay the same.
+ *
+ * `max` displays as 'Ministry', not the old 'Community'. That is not a rename
+ * of the product: 'Ministry' was the deleted `ultra` tier's name, and `max`
+ * inherited it when the two folded together. The top tier is still called what
+ * it was always called.
  */
 export const PLAN_DISPLAY_NAMES: Record<TenantPlan, string> = {
   plus: 'Individual',
   pro: 'Small Team',
-  max: 'Community',
-  ultra: 'Ministry',
+  max: 'Ministry',
 };
 
 /** Get the display name for a given plan. Defaults to 'Individual' if unknown. */
@@ -360,7 +354,18 @@ export function hasFeature(plan: TenantPlan, feature: keyof PlanFeatures): boole
 // ─── Feature gates & minimum plan (derived) ───────────────────────────────────
 
 /** Plan tiers cheapest → most expensive. Upgrade order; do not reorder. */
-export const PLAN_ORDER: readonly TenantPlan[] = ['plus', 'pro', 'max', 'ultra'] as const;
+export const PLAN_ORDER: readonly TenantPlan[] = ['plus', 'pro', 'max'] as const;
+
+/**
+ * The most expensive tier — the last entry in `PLAN_ORDER`.
+ *
+ * DERIVED, not hardcoded. This is the "no plan unlocks it, name the top tier"
+ * fallback for upgrade copy; it used to be a literal `'ultra'`, which is
+ * exactly the kind of reference that breaks silently the next time a tier is
+ * added or removed. Reading the last index means a tier change can only ever
+ * move it, never leave it pointing at a plan that no longer exists.
+ */
+export const TOP_PLAN: TenantPlan = PLAN_ORDER[PLAN_ORDER.length - 1];
 
 /**
  * Gate keys used by `usePlanGate` and the upgrade screens. These are the
@@ -425,13 +430,19 @@ export function getMinPlanForFeatureCell(key: keyof PlanFeatures): TenantPlan | 
 }
 
 /**
- * Display name of the cheapest plan that unlocks `feature` (e.g. 'Community').
- * Falls back to the top tier's name if nothing unlocks it, so upgrade copy can
+ * Display name of the cheapest plan that unlocks `feature` (e.g. 'Ministry').
+ * Falls back to the TOP tier's name if nothing unlocks it, so upgrade copy can
  * never render an empty plan name.
+ *
+ * The fallback goes through `TOP_PLAN` (derived from the last `PLAN_ORDER`
+ * entry) rather than naming a tier literally. It used to read
+ * `PLAN_DISPLAY_NAMES.ultra`, which stopped compiling the moment that tier was
+ * deleted — the point of deriving it is that the next tier change cannot break
+ * this the same way, or worse, break it silently.
  */
 export function getFeatureMinPlanName(feature: FeatureKey): string {
   const plan = getFeatureMinPlan(feature);
-  return plan ? PLAN_DISPLAY_NAMES[plan] : PLAN_DISPLAY_NAMES.ultra;
+  return PLAN_DISPLAY_NAMES[plan ?? TOP_PLAN];
 }
 
 /**
@@ -451,10 +462,12 @@ export const FEATURE_MIN_PLAN: Readonly<Record<FeatureKey, string>> = Object.fre
  * one definition and can be asserted per tier in plan-features.test.ts.
  *
  * `customBackground` used to be a third term here. It was true on precisely the
- * tiers where `customBranding` is true (Community/max and Ministry/ultra), so
- * removing it left every tier's Branding access unchanged:
- *   Individual (plus) hidden · Small Team (pro) hidden · Community (max) shown ·
- *   Ministry (ultra) shown.
+ * tiers where `customBranding` is true — at the time Community/max and the
+ * since-deleted Ministry/ultra — so removing it left every tier's Branding
+ * access unchanged:
+ *   Individual (plus) hidden · Small Team (pro) hidden · Ministry (max) shown.
+ * Folding ultra into max did not change that either: max already had both
+ * `customBranding` and `customDomain`.
  */
 export function hasBrandingAccess(features: PlanFeatures): boolean {
   return features.customBranding || features.customDomain;

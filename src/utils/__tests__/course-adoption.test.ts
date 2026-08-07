@@ -37,8 +37,15 @@ describe('course adoption', () => {
     it('resolves each plan tier', () => {
       expect(resolveCourseLimit('plus')).toBe(2);
       expect(resolveCourseLimit('pro')).toBe(5);
-      expect(resolveCourseLimit('max')).toBe(UNLIMITED);
-      expect(resolveCourseLimit('ultra')).toBe(UNLIMITED);
+      // max is a finite 15 now — it did NOT inherit the deleted ultra tier's
+      // unlimited (-1) course allowance.
+      expect(resolveCourseLimit('max')).toBe(15);
+    });
+
+    it('no tier is unlimited any more', () => {
+      for (const plan of ['plus', 'pro', 'max']) {
+        expect(resolveCourseLimit(plan), `${plan} is unlimited`).not.toBe(UNLIMITED);
+      }
     });
 
     it('counts own courses AND adoptions against the cap', () => {

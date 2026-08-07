@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { authFetch } from '../../utils/auth-fetch';
+import { getPlanFeatures, toTenantPlan } from '../../utils/plan-features';
 
 interface UserData {
   uid: string;
@@ -8,7 +9,7 @@ interface UserData {
   aiAssistantConnected?: boolean;
   telegramUsername?: string | null;
   tenantId?: string;
-  /** 'plan' when the assistant is included with the Ministry (ultra) plan. */
+  /** 'plan' when the assistant is included with the Ministry (max) plan. */
   aiAssistantSource?: string | null;
   /** Subscription id of a separately purchased add-on. */
   aiAssistantSubscriptionItemId?: string | null;
@@ -137,9 +138,14 @@ const AiAssistantSection: React.FC<AiAssistantSectionProps> = ({ currentPlan, em
     );
   }
 
-  // Ministry (ultra) plan includes 1 assistant for the plan owner — no separate
+  // The top plan includes 1 assistant for the plan owner — no separate
   // subscription, no buy/cancel here (cancelling the plan cancels it).
-  const isPlanIncluded = currentPlan === 'ultra' && !!isOwner;
+  //
+  // Read off the feature matrix rather than naming a tier: `aiAssistant` is a
+  // count (0 = none), so this follows the entitlement if it ever moves tier.
+  // It used to be `currentPlan === 'ultra'`, which silently stopped matching
+  // when that tier folded into `max`.
+  const isPlanIncluded = getPlanFeatures(toTenantPlan(currentPlan)).aiAssistant > 0 && !!isOwner;
   // Separately purchased add-on — managed (incl. cancel) in the buyer's own
   // Stripe portal via Manage billing.
   const hasPurchased = !!userData?.aiAssistantSubscriptionItemId && userData?.aiAssistantSource !== 'plan';

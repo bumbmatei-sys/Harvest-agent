@@ -38,7 +38,7 @@ export interface PostAuthFunnelArgs {
   confirmedTenantless: boolean;
   /** ?signup=church intent (URL or sessionStorage). */
   churchSignupIntent: boolean;
-  /** ?signup=<plus|pro|max|ultra> intent (URL or sessionStorage). */
+  /** ?signup=<plus|pro|max> intent (URL or sessionStorage). */
   planSignupIntent: boolean;
   /** The user doc's role is 'church_admin' (false when there is no doc). */
   isChurchAdminRole: boolean;
