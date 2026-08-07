@@ -164,9 +164,9 @@ describe('POST /api/domains/provision — plan gate', () => {
     ]);
   });
 
-  it('succeeds for a Ministry (ultra) tenant', async () => {
+  it('succeeds for a Ministry (max) tenant', async () => {
     mockRequireAdmin.mockResolvedValue(mockUser());
-    onPlan('ultra');
+    onPlan('max');
     mockVercelOk();
 
     const res = await POST(postReq('church.org'));

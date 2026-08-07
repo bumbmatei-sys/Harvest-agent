@@ -14,7 +14,6 @@ const PLAN_LABELS: Record<TenantPlan, string> = {
   plus: 'Plus',
   pro: 'Pro',
   max: 'Max',
-  ultra: 'Ultra',
 };
 
 // Marketing labels with price, shown in the (read-only) edit view. Intentionally
@@ -22,15 +21,13 @@ const PLAN_LABELS: Record<TenantPlan, string> = {
 const PLAN_DISPLAY: Record<TenantPlan, string> = {
   plus: 'Individual — $49/mo',
   pro: 'Small Team — $99/mo',
-  max: 'Community — $199/mo',
-  ultra: 'Ministry — $299/mo',
+  max: 'Ministry — $199/mo',
 };
 
 const PLAN_COLORS: Record<TenantPlan, string> = {
   plus: 'bg-blue-100 text-blue-700',
   pro: 'bg-purple-100 text-purple-700',
   max: 'bg-amber-100 text-amber-700',
-  ultra: 'bg-amber-100 text-amber-700',
 };
 
 const STATUS_COLORS: Record<TenantStatus, string> = {
@@ -536,13 +533,12 @@ const AdminTenants: React.FC = () => {
                   >
                     <option value="plus">Individual — $49/mo</option>
                     <option value="pro">Small Team — $99/mo</option>
-                    <option value="max">Community — $199/mo</option>
-                    <option value="ultra">Ministry — $299/mo</option>
+                    <option value="max">Ministry — $199/mo</option>
                   </select>
                 )}
               </div>
 
-              {(form.plan === 'max' || form.plan === 'ultra') && (
+              {form.plan === 'max' && (
                 <div>
                   <label className="block text-sm font-semibold text-body mb-1">Custom Domain</label>
                   <input

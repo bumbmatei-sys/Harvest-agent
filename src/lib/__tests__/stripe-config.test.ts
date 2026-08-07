@@ -2,8 +2,13 @@ import { describe, it, expect } from 'vitest';
 import { PLAN_PRICES, getPlanFromPriceId, AI_ASSISTANT_MONTHLY, AI_ASSISTANT_SETUP } from '../stripe-config';
 
 describe('PLAN_PRICES', () => {
-  it('has all 4 plans with monthly and yearly prices', () => {
-    const plans = ['plus', 'pro', 'max', 'ultra'];
+  it('has no ultra entry — the tier was deleted', () => {
+    expect(PLAN_PRICES.ultra).toBeUndefined();
+    expect(Object.keys(PLAN_PRICES)).toEqual(['plus', 'pro', 'max']);
+  });
+
+  it('has all 3 plans with monthly and yearly prices', () => {
+    const plans = ['plus', 'pro', 'max'];
     for (const plan of plans) {
       expect(PLAN_PRICES[plan]).toBeDefined();
       expect(PLAN_PRICES[plan].monthly).toBeTruthy();
@@ -24,7 +29,7 @@ describe('getPlanFromPriceId', () => {
   it('returns correct plan for known price IDs', () => {
     expect(getPlanFromPriceId(PLAN_PRICES.plus.monthly)).toBe('plus');
     expect(getPlanFromPriceId(PLAN_PRICES.pro.yearly)).toBe('pro');
-    expect(getPlanFromPriceId(PLAN_PRICES.ultra.monthly)).toBe('ultra');
+    expect(getPlanFromPriceId(PLAN_PRICES.max.monthly)).toBe('max');
   });
 
   it('returns null for unknown price ID', () => {

@@ -61,6 +61,30 @@ const adminDbMock = {
 };
 
 vi.mock('@/lib/firebase-admin', () => ({ adminDb: adminDbMock }));
+
+// ── Cap injection ───────────────────────────────────────────────────────────
+// Every tier is now UNMETERED (smsSegmentsPerMonth: null) — Harvest does not
+// sell platform SMS, so there is no allotment to ration. The reserve/settle/
+// refund machinery is still live code and still has to be correct for the day a
+// cap comes back (a metered add-on, a platform-SMS product), so its behaviour
+// tests below run against an INJECTED cap rather than being deleted.
+//
+// `capOverride === undefined` passes through to the real PLAN_LIMITS, which is
+// what the "no tier is metered" assertions rely on.
+let capOverride: number | null | undefined;
+
+vi.mock('@/lib/planLimits', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../planLimits')>();
+  return {
+    ...actual,
+    getPlanLimits: (plan?: string | null) => {
+      const limits = actual.getPlanLimits(plan);
+      return capOverride === undefined
+        ? limits
+        : { ...limits, smsSegmentsPerMonth: capOverride };
+    },
+  };
+});
 vi.mock('firebase-admin/firestore', () => ({
   FieldValue: {
     serverTimestamp: () => '__ts__',
@@ -80,48 +104,97 @@ const {
   getSmsUsageSnapshot,
 } = await import('../sms-usage');
 
-const PLUS_CAP = 250; // the default tier
+// The cap the metering tests inject. 250 was the real plus allotment before SMS
+// went BYO-only; keeping the number makes the diff on those tests obvious.
+const PLUS_CAP = 250;
 const JULY = new Date(Date.UTC(2026, 6, 15)); // 2026-07-15
 const JULY_DOC = 'tenants/t1/usage/2026-07';
 
 beforeEach(() => {
   store.clear();
   txQueue = Promise.resolve();
+  capOverride = undefined; // real PLAN_LIMITS unless a test opts in
 });
 
 // ── Plan caps ───────────────────────────────────────────────────────────────
 
-describe('the four SMS allotments', () => {
-  it('pins the per-tier segment allotments so they cannot drift silently', async () => {
-    // All four are signed off by Matei. Changing one of these numbers must be a
-    // deliberate act with the same sign-off, not a passing edit — a wrong cap
-    // either blocks a paying tenant's messages or uncaps their Twilio bill.
+describe('SMS is unmetered on every tier', () => {
+  it('pins every tier to null so a cap cannot reappear silently', async () => {
+    // Was 250 / 500 / 2,000 / 4,000. Those budgets metered plus/pro/max for a
+    // feature whose `smsAutomation` plan flag was FALSE — three tiers billed
+    // against an allotment they could not spend. SMS is now BYO-only: the
+    // tenant's own Twilio bills them directly, so Harvest has nothing to cap.
+    // Reintroducing a number here starts charging against an allotment nobody
+    // is buying, so it must be a deliberate act, not a passing edit.
     const { PLAN_LIMITS } = await import('../planLimits');
-    expect(PLAN_LIMITS.plus.smsSegmentsPerMonth).toBe(250);
-    expect(PLAN_LIMITS.pro.smsSegmentsPerMonth).toBe(500);
-    expect(PLAN_LIMITS.max.smsSegmentsPerMonth).toBe(2_000);
-    expect(PLAN_LIMITS.ultra.smsSegmentsPerMonth).toBe(4_000);
+    expect(PLAN_LIMITS.plus.smsSegmentsPerMonth).toBeNull();
+    expect(PLAN_LIMITS.pro.smsSegmentsPerMonth).toBeNull();
+    expect(PLAN_LIMITS.max.smsSegmentsPerMonth).toBeNull();
   });
 
-  it('leaves no tier unmetered', async () => {
+  it('leaves no tier metered', async () => {
     const { PLAN_LIMITS } = await import('../planLimits');
     for (const tier of Object.values(PLAN_LIMITS)) {
-      expect(tier.smsSegmentsPerMonth).not.toBeNull();
+      expect(tier.smsSegmentsPerMonth).toBeNull();
     }
+  });
+
+  it('has exactly three tiers — ultra is gone', async () => {
+    const { PLAN_LIMITS } = await import('../planLimits');
+    expect(Object.keys(PLAN_LIMITS)).toEqual(['plus', 'pro', 'max']);
+  });
+
+  it('keeps max on its own token numbers — it did not inherit ultra 150M/30M', async () => {
+    const { PLAN_LIMITS } = await import('../planLimits');
+    expect(PLAN_LIMITS.max.queryTokensPerMonth).toBe(50_000_000);
+    expect(PLAN_LIMITS.max.ingestTokensTotal).toBe(10_000_000);
+  });
+});
+
+// An unmetered tier takes the `cap === null` short-circuit: always allowed, and
+// it must never write a counter. This is the path EVERY tenant is on now.
+describe('the unmetered path (cap === null)', () => {
+  it('reports a null cap for every tier', async () => {
+    for (const plan of ['plus', 'pro', 'max']) {
+      store.set(`tenants/t-${plan}`, { plan });
+      expect(await getSmsSegmentCap(`t-${plan}`)).toBeNull();
+    }
+  });
+
+  it('always allows and writes NOTHING', async () => {
+    const gate = await reserveSmsSegment('t1', JULY);
+    expect(gate.allowed).toBe(true);
+    expect(gate.cap).toBeNull();
+    expect(gate.used).toBe(0);
+    expect(store.get(JULY_DOC)).toBeUndefined(); // no reservation, no doc
+  });
+
+  it('allows well past what any old allotment would have permitted', async () => {
+    store.set(JULY_DOC, { smsSegments: 999_999 });
+    const gate = await reserveSmsSegment('t1', JULY);
+    expect(gate.allowed).toBe(true);
+    expect(store.get(JULY_DOC)?.smsSegments).toBe(999_999); // untouched
   });
 });
 
 describe('getSmsSegmentCap', () => {
   it('reads the tenant plan', async () => {
-    store.set('tenants/t-ultra', { plan: 'ultra' });
-    expect(await getSmsSegmentCap('t-ultra')).toBe(4_000);
+    // Behaviour under test is "the cap comes from the tenant's plan", not the
+    // specific numbers — every real tier is null now, so the cap is injected.
+    capOverride = 2_000;
     store.set('tenants/t-max', { plan: 'max' });
     expect(await getSmsSegmentCap('t-max')).toBe(2_000);
     store.set('tenants/t-pro', { plan: 'pro' });
-    expect(await getSmsSegmentCap('t-pro')).toBe(500);
+    expect(await getSmsSegmentCap('t-pro')).toBe(2_000);
+  });
+
+  it('reads null straight through for a real (unmetered) tier', async () => {
+    store.set('tenants/t-max', { plan: 'max' });
+    expect(await getSmsSegmentCap('t-max')).toBeNull();
   });
 
   it('falls back to plus for a missing tenant or unknown plan', async () => {
+    capOverride = PLUS_CAP;
     expect(await getSmsSegmentCap('t-missing')).toBe(PLUS_CAP);
     store.set('tenants/t-weird', { plan: 'enterprise-x' });
     expect(await getSmsSegmentCap('t-weird')).toBe(PLUS_CAP);
@@ -131,6 +204,11 @@ describe('getSmsSegmentCap', () => {
 // ── Reserve (the atomic pre-send gate) ──────────────────────────────────────
 
 describe('reserveSmsSegment', () => {
+  // The gate only engages on a metered tier. No tier is metered today, so these
+  // run against an injected cap — the machinery must stay correct for the day
+  // one comes back.
+  beforeEach(() => { capOverride = PLUS_CAP; });
+
   it('treats a missing usage doc as 0 and reserves one segment', async () => {
     const gate = await reserveSmsSegment('t1', JULY);
     expect(gate.allowed).toBe(true);
@@ -265,18 +343,29 @@ describe('refundSmsSegment', () => {
 
 describe('getSmsUsageSnapshot', () => {
   it('reads the counter + cap for the admin indicator', async () => {
-    store.set('tenants/t1', { plan: 'ultra' });
+    capOverride = 2_000;
+    store.set('tenants/t1', { plan: 'max' });
     store.set(JULY_DOC, { smsSegments: 1_234, smsSegmentsByo: 56 });
     expect(await getSmsUsageSnapshot('t1', JULY)).toEqual({
-      plan: 'ultra',
+      plan: 'max',
       month: '2026-07',
       smsSegmentsUsed: 1_234,
       smsSegmentsByoUsed: 56,
-      smsSegmentsCap: 4_000,
+      smsSegmentsCap: 2_000,
     });
   });
 
+  it('reports a null cap on a real (unmetered) tier, counters still readable', async () => {
+    store.set('tenants/t1', { plan: 'max' });
+    store.set(JULY_DOC, { smsSegments: 1_234, smsSegmentsByo: 56 });
+    const snap = await getSmsUsageSnapshot('t1', JULY);
+    expect(snap.smsSegmentsCap).toBeNull();
+    expect(snap.smsSegmentsUsed).toBe(1_234);
+    expect(snap.smsSegmentsByoUsed).toBe(56);
+  });
+
   it('reports 0 for a tenant with no usage doc yet (missing doc reads as 0)', async () => {
+    capOverride = PLUS_CAP;
     const snap = await getSmsUsageSnapshot('t-fresh', JULY);
     expect(snap.smsSegmentsUsed).toBe(0);
     expect(snap.smsSegmentsByoUsed).toBe(0);

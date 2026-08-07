@@ -36,11 +36,21 @@ const AdminChurches: React.FC = () => {
   // because `churches` can update via onSnapshot before handleChurchSaved runs.
   const willBeBilledRef = useRef(false);
 
-  const isMinistry = tenantPlan === 'ultra';
-  const ENTERPRISE_PRICE_PER_CHURCH = 10; // $10/church/mo
-
   // Unknown/loading plan falls back to 'plus' (maxChurches: 1) — fail closed on the cap.
   const maxChurches = getPlanFeatures(tenantPlan ?? 'plus').maxChurches;
+
+  // Whether this plan bills PER CHURCH beyond the first. Derived from the plan's
+  // own church allowance instead of naming a tier: only an uncapped plan can
+  // reach church 2+, so only an uncapped plan can be billed for one.
+  //
+  // No tier is uncapped today — every plan is maxChurches: 1, so this is false
+  // everywhere and the per-church billing UI never renders. That is deliberate:
+  // additional campuses become a paid add-on rather than a property of the top
+  // tier. It used to read `tenantPlan === 'ultra'`, which would have gone
+  // silently dead when that tier was deleted. /api/churches/add-billing is the
+  // server half and is unchanged; it independently declines to charge.
+  const isMinistry = maxChurches === -1;
+  const ENTERPRISE_PRICE_PER_CHURCH = 10; // $10/church/mo
   const atLimit = maxChurches !== -1 && churches.length >= maxChurches;
 
   const openFilterPopup = (type: 'city' | 'pastor' | 'country') => {

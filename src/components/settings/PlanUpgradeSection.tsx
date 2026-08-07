@@ -6,6 +6,7 @@ import {
   getPlanFeatures,
   getPlanDisplayName,
   PLAN_DISPLAY_NAMES,
+  PLAN_ORDER,
   PLAN_PRICING,
   AI_ASSISTANT_ADDON_PRICING,
   AI_TELEGRAM_ASSISTANT_ENABLED,
@@ -26,9 +27,6 @@ interface PlanUpgradeSectionProps {
   hideUpgrade?: boolean;
 }
 
-// Plan tiers in ascending order — used to determine upgrade vs downgrade.
-const PLAN_ORDER: TenantPlan[] = ['plus', 'pro', 'max', 'ultra'];
-
 // Presentation only — icon, colour, "Popular" badge. Prices are NOT listed here:
 // this table used to carry `monthlyPrice`/`yearlyPrice` literals ('$59/mo',
 // '$2,990/yr') that the card actually rendered while `formatPlanPrice` sat
@@ -37,9 +35,8 @@ const PLAN_ORDER: TenantPlan[] = ['plus', 'pro', 'max', 'ultra'];
 // formatPlanPrice(planId, billingPeriod). Do not reintroduce price literals.
 const PLANS: { id: TenantPlan; name: string; icon: any; color: string; popular?: boolean; comingSoon: string[] }[] = [
   { id: 'plus', name: 'Individual', icon: Zap, color: '#6366f1', comingSoon: [] },
-  { id: 'pro', name: 'Small Team', icon: Crown, color: '#d4a017', comingSoon: [] },
-  { id: 'max', name: 'Community', icon: Star, color: '#8b5cf6', popular: true, comingSoon: [] },
-  { id: 'ultra', name: 'Ministry', icon: Building2, color: '#b45309', comingSoon: [] },
+  { id: 'pro', name: 'Small Team', icon: Crown, color: '#d4a017', popular: true, comingSoon: [] },
+  { id: 'max', name: 'Ministry', icon: Building2, color: '#b45309', comingSoon: [] },
 ];
 
 // Keyed lookup so we can resolve plan metadata by id (icon/color/popular).
@@ -48,7 +45,24 @@ const PLAN_META = Object.fromEntries(PLANS.map((p) => [p.id, p])) as Record<
   (typeof PLANS)[number]
 >;
 
-const FEATURE_COMPARISON: { key: keyof PlanFeatures; label: string; format?: (v: any) => string }[] = [
+/**
+ * A row in the plan-comparison table.
+ *
+ * Most rows read a `PlanFeatures` cell straight off the matrix (`key`). A row
+ * with `staticValue` instead is one the matrix does not carry — currently only
+ * the platform donation fee, which is a Stripe concern (PLATFORM_FEE_MAP in
+ * src/lib/stripe-config.ts) and cannot be imported here: that module reads
+ * server-only STRIPE_PRICE_* env vars at load and this component ships to the
+ * browser. See DONATION_FEE_ROW below.
+ */
+type ComparisonRow = {
+  label: string;
+  key?: keyof PlanFeatures;
+  staticValue?: string;
+  format?: (v: any) => string;
+};
+
+const FEATURE_COMPARISON: ComparisonRow[] = [
   { key: 'blog', label: 'Blog' },
   { key: 'pwaApp', label: 'Mobile App (PWA)' },
   { key: 'aiChat', label: 'AI Chat' },
@@ -75,8 +89,37 @@ const FEATURE_COMPARISON: { key: keyof PlanFeatures; label: string; format?: (v:
   { key: 'sermonNotes', label: 'Sermon Notes → Livestream' },
   { key: 'automatedBlog', label: 'Automated Blog Articles' },
   { key: 'communityGroups', label: 'Community Groups' },
-  { key: 'donationRetention', label: 'Donation Retention', format: (v) => `${v}%` },
+  // Phrased as the COST, not as what's left over. The old row was "Donation
+  // Retention — 100%", a hand-maintained complement of the real fee that once
+  // advertised "keeps 100%" while Stripe charged 2.5%. Stating the fee removes
+  // the arithmetic and the room to be wrong.
+  //
+  // Hardcoded '0%' because PLATFORM_FEE_MAP is server-only (see ComparisonRow).
+  // It is not an unguarded copy: platform-fee-map.test.ts pins the map to
+  // { plus: 0, pro: 0, max: 0 } and asserts a real donation on every tier
+  // computes an application_fee of 0, so this string cannot quietly become a
+  // lie the way "Donation Retention" did.
+  { label: 'Donation fee', staticValue: '0%' },
 ];
+
+/**
+ * Resolve one comparison cell for a plan: what to print, and whether to print
+ * it as a positive (green) value.
+ *
+ * One definition shared by the plan cards and the full comparison table — the
+ * two used to carry byte-identical copies of this ternary chain.
+ */
+function comparisonCell(row: ComparisonRow, plan: TenantPlan): { display: string; isPositive: boolean } {
+  if (row.staticValue !== undefined) {
+    return { display: row.staticValue, isPositive: true };
+  }
+  const value = getPlanFeatures(plan)[row.key!];
+  const isPositive =
+    row.key === 'maxChurches' ? (value as number) !== 1
+    : row.key === 'aiAssistant' ? true
+    : Boolean(value);
+  return { display: row.format ? row.format(value) : (value ? '✓' : '✗'), isPositive };
+}
 
 // While the AI Telegram Assistant is hidden, drop its comparison row everywhere.
 // Flip AI_TELEGRAM_ASSISTANT_ENABLED to bring the row (and footnote below) back.
@@ -84,8 +127,9 @@ const VISIBLE_FEATURES = AI_TELEGRAM_ASSISTANT_ENABLED
   ? FEATURE_COMPARISON
   : FEATURE_COMPARISON.filter((r) => r.key !== 'aiAssistant');
 
+
 // No features are "coming soon" right now — Automated Blog Articles shipped on
-// Community + Ministry. Add entries here to re-enable the table's Coming Soon row.
+// Ministry (max). Add entries here to re-enable the table's Coming Soon row.
 const SOON_FEATURES: { label: string; plans: TenantPlan[] }[] = [];
 
 const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, tenantId, email, hideUpgrade }) => {
@@ -262,19 +306,11 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
               </div>
 
               <div className="space-y-2 mb-5">
-                {VISIBLE_FEATURES.map(({ key, label, format }) => {
-                  const value = features[key];
-                  const isPositive = key === 'maxChurches'
-                    ? (value as number) !== 1
-                    : key === 'aiAssistant'
-                    ? true
-                    : Boolean(value);
-                  const display = format
-                    ? format(value)
-                    : (value ? '✓' : '✗');
+                {VISIBLE_FEATURES.map((row) => {
+                  const { display, isPositive } = comparisonCell(row, plan.id);
                   return (
-                    <div key={key} className="flex items-center justify-between text-sm">
-                      <span className="text-body">{label}</span>
+                    <div key={row.label} className="flex items-center justify-between text-sm">
+                      <span className="text-body">{row.label}</span>
                       <span className={isPositive ? 'text-green-600 font-medium' : 'text-faint'}>{display}</span>
                     </div>
                   );
@@ -358,18 +394,11 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
               </tr>
             </thead>
             <tbody>
-              {VISIBLE_FEATURES.map(({ key, label, format }) => (
-                <tr key={key} className="border-b border-line-subtle">
-                  <td className="py-3 px-3 text-strong font-medium">{label}</td>
+              {VISIBLE_FEATURES.map((row) => (
+                <tr key={row.label} className="border-b border-line-subtle">
+                  <td className="py-3 px-3 text-strong font-medium">{row.label}</td>
                   {PLAN_ORDER.map(planId => {
-                    const features = getPlanFeatures(planId);
-                    const value = features[key];
-                    const isPositive = key === 'maxChurches'
-                      ? (value as number) !== 1
-                      : key === 'aiAssistant'
-                      ? true
-                      : Boolean(value);
-                    const display = format ? format(value) : (value ? '✓' : '✗');
+                    const { display, isPositive } = comparisonCell(row, planId);
                     return (
                       <td key={planId} className={`py-3 px-3 text-center ${isPositive ? 'text-green-600' : 'text-faint'}`}>
                         {display}
@@ -381,7 +410,7 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
               {/* Coming soon section — only rendered when there are upcoming features */}
               {SOON_FEATURES.length > 0 && (
                 <tr>
-                  <td colSpan={5} className="pt-5 pb-2 px-3">
+                  <td colSpan={PLAN_ORDER.length + 1} className="pt-5 pb-2 px-3">
                     <span className="text-[10px] font-semibold tracking-widest uppercase text-amber-500">Coming Soon</span>
                   </td>
                 </tr>

@@ -26,6 +26,7 @@ import PWAInstallManager from './components/PWAInstallManager';
 import PostPurchaseWizard from './components/PostPurchaseWizard';
 import { OperationType, handleFirestoreError } from './utils/firestore-errors';
 import { TenantPlan } from './types/tenant.types';
+import { PLAN_ORDER } from './utils/plan-features';
 import { TenantProvider, useTenant } from './contexts/TenantContext';
 import { SavedItemsProvider } from './contexts/SavedItemsContext';
 import { useClaimsFreshness } from './hooks/useClaimsFreshness';
@@ -179,7 +180,10 @@ const AppInner: React.FC = () => {
   const isStripeReturn = typeof window !== 'undefined'
     && new URLSearchParams(window.location.search).has('stripe');
   const isChurchSignup = signupParam === 'church';
-  const signupPlan = signupParam && ['plus', 'pro', 'max', 'ultra'].includes(signupParam)
+  // Validated against PLAN_ORDER, not a literal list: `?signup=<tier>` is
+  // attacker-controlled and a stale literal would keep accepting a deleted tier
+  // (e.g. ?signup=ultra) long after it stopped existing in the matrix.
+  const signupPlan = signupParam && (PLAN_ORDER as readonly string[]).includes(signupParam)
     ? signupParam as TenantPlan : undefined;
   // Affiliate host (affiliate.theharvest.app): the subdomain implies affiliate
   // intent (no ?signup param). An affiliate is a tenant-less account, so it must

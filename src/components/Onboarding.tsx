@@ -345,7 +345,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
   // Logo: tenant logo (plan-gated) with the Harvest mark as fallback — same
   // treatment as AuthPage so the auth → onboarding transition feels continuous.
   const { branding, tenantPlan } = useTenant();
-  const hasCustomBranding = tenantPlan === 'max' || tenantPlan === 'ultra';
+  const hasCustomBranding = tenantPlan === 'max';
   const logoSrc = hasCustomBranding && branding.logo ? branding.logo : HARVEST_LOGO;
 
   // Branded field styling for textarea / select (icon inputs use <ObInput/>).

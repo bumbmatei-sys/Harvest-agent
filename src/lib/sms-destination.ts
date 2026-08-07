@@ -3,15 +3,19 @@ import { parsePhoneNumberFromString } from 'libphonenumber-js';
 // ─────────────────────────────────────────────────────────────────────────────
 // HARVEST — SMS destination policy: US NUMBERS ONLY (decision, 2026-07-25)
 //
-// WHY a country gate exists at all. The per-tenant cap in planLimits.ts is
-// measured in SEGMENTS, so it bounds VOLUME — not SPEND. Twilio's price per
-// segment varies ~10× by destination (verified: US ~$0.0079 + ~$0.003 carrier
-// surcharge ≈ $0.0109; UK ~$0.04; Brazil ~$0.075). The ultra ceiling of 4,000
-// segments therefore costs ~$44 to US numbers (9.4% of the $479 plan) but ~$160
-// to the UK and ~$300 to Brazil — 63% of the plan price. Capping segments alone
-// would let a single international tenant eat most of their plan's revenue, so
-// non-US destinations are REJECTED rather than metered. Cost-based metering was
-// considered and deliberately deferred.
+// WHY a country gate exists at all. Twilio's price per segment varies ~10× by
+// destination (verified: US ~$0.0079 + ~$0.003 carrier surcharge ≈ $0.0109;
+// UK ~$0.04; Brazil ~$0.075). A segment count bounds VOLUME, not SPEND, so a
+// segment cap alone cannot bound cost across countries — 4,000 segments is ~$44
+// to US numbers, ~$160 to the UK and ~$300 to Brazil. Non-US destinations are
+// therefore REJECTED rather than metered. Cost-based metering was considered and
+// deliberately deferred.
+//
+// This gate now stands on its own: SMS went BYO-only and every tier's
+// `smsSegmentsPerMonth` is null (see planLimits.ts), so there is no per-tenant
+// segment cap left to complement. Keeping US-only still matters — a tenant's own
+// Twilio account is the one being billed, but Harvest's compliance surface
+// (10DLC registration, opt-out handling) is scoped to US traffic.
 //
 // WHY NOT a `+1` prefix match. `+1` is the NANP country calling code, shared by
 // the US, Canada and ~20 Caribbean countries, all at different carrier rates

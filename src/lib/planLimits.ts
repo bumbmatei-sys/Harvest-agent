@@ -23,7 +23,7 @@ import type { TenantPlan } from '@/types/tenant.types';
 //     (shares the month-keyed usage doc with queryTokens).
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type PlanId = TenantPlan; // 'plus' | 'pro' | 'max' | 'ultra'
+export type PlanId = TenantPlan; // 'plus' | 'pro' | 'max'
 
 export interface PlanLimits {
   /** Monthly RAG/chat query budget, in MiMo tokens. Resets each month. */
@@ -39,8 +39,15 @@ export interface PlanLimits {
    * as "1 message" would undercount real cost by 2–3× and the cap would not
    * bind. The counter is fed by Twilio's own `num_segments`, never an estimate.
    *
-   * `null` keeps the original #213 meaning — NOT metered (see sms-usage.ts).
-   * No tier is null today.
+   * `null` keeps the original #213 meaning — NOT metered (see sms-usage.ts):
+   * `reserveSmsSegment` returns `{ allowed: true }` and writes nothing, and the
+   * admin snapshot reports `smsSegmentsCap: null`.
+   *
+   * EVERY tier is null today, and that is the intended end state. Harvest does
+   * not sell platform SMS at all — sending requires the tenant's OWN Twilio
+   * credentials, which Twilio bills them for directly. There is no Harvest
+   * allotment to ration, so there is nothing to cap. BYO volume was already
+   * unmetered: it counts into `smsSegmentsByo`, which no gate ever reads.
    */
   smsSegmentsPerMonth: number | null;
 }
@@ -48,24 +55,28 @@ export interface PlanLimits {
 // TUNE THESE — starting proposal, NOT verified against real tenant data.
 // Query = monthly (resets). Ingest = total embedded tokens (persistent, never
 // resets). Query numbers are the confirmed roadmap values. Ingest numbers are a
-// proposal (plus ≈ 750 pages, ultra ≈ 45,000 pages @ ~660 embed tokens/page) —
+// proposal (plus ≈ 750 pages, max ≈ 15,000 pages @ ~660 embed tokens/page) —
 // left tunable on purpose; they are NOT locked.
 //
-// SMS segments — all four CONFIRMED by Matei (ultra 2026-07-25; plus / pro /
-// max signed off at merge). At the verified US rate (~$0.0079 + ~$0.003 carrier
-// surcharge ≈ $0.0109/segment) the ultra ceiling costs ~$44/mo, 9.4% of the
-// $479 plan. Unlike the ingest numbers above, these are LOCKED — change them
-// only with the same sign-off, and update the pinning test in
-// __tests__/sms-usage.test.ts alongside.
-// A segment cap bounds VOLUME, not SPEND — the price per segment varies ~10× by
-// country (UK ~$0.04, Brazil ~$0.075, where 4,000 segments would be ~$160 and
-// ~$300). That is why sends are restricted to US destinations; see
-// sms-destination.ts.
+// `max` keeps its OWN token numbers (50M query / 10M ingest). It did not
+// inherit the deleted `ultra` tier's 150M/30M: those are pure COGS with no
+// marketing value at the higher number, and max sells at $199, not the $299
+// ultra carried.
+//
+// SMS segments — ALL NULL, i.e. not metered. Harvest does not sell platform
+// SMS; a tenant sends on their own Twilio credentials and Twilio bills them
+// directly, so there is no Harvest allotment to ration. The previous
+// 250/500/2,000 budgets on plus/pro/max were metering tiers whose
+// `smsAutomation` plan flag was `false` — a budget for a feature those tiers
+// could not reach. See `smsSegmentsPerMonth` above and sms-usage.ts.
+//
+// (A segment cap would bound VOLUME, not SPEND — the price per segment varies
+// ~10× by country, US ~$0.0109 vs UK ~$0.04 vs Brazil ~$0.075. Sends are
+// restricted to US destinations regardless; see sms-destination.ts.)
 export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
-  plus:  { queryTokensPerMonth: 2_000_000,   ingestTokensTotal: 500_000,    smsSegmentsPerMonth: 250 },
-  pro:   { queryTokensPerMonth: 10_000_000,  ingestTokensTotal: 2_000_000,  smsSegmentsPerMonth: 500 },
-  max:   { queryTokensPerMonth: 50_000_000,  ingestTokensTotal: 10_000_000, smsSegmentsPerMonth: 2_000 },
-  ultra: { queryTokensPerMonth: 150_000_000, ingestTokensTotal: 30_000_000, smsSegmentsPerMonth: 4_000 },
+  plus: { queryTokensPerMonth: 2_000_000,  ingestTokensTotal: 500_000,    smsSegmentsPerMonth: null },
+  pro:  { queryTokensPerMonth: 10_000_000, ingestTokensTotal: 2_000_000,  smsSegmentsPerMonth: null },
+  max:  { queryTokensPerMonth: 50_000_000, ingestTokensTotal: 10_000_000, smsSegmentsPerMonth: null },
 };
 
 /** Fallback tier when a tenant's plan is missing/unknown — the most restrictive,

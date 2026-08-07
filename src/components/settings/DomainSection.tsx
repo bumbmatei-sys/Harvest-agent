@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Globe, CheckCircle2, Clock, XCircle } from 'lucide-react';
 import { authFetch } from '../../utils/auth-fetch';
-import { getMinPlanForFeatureCell, PLAN_DISPLAY_NAMES } from '../../utils/plan-features';
+import { getMinPlanForFeatureCell, PLAN_DISPLAY_NAMES, TOP_PLAN } from '../../utils/plan-features';
 
 interface DomainSectionProps {
   hasCustomDomain: boolean;
@@ -28,7 +28,7 @@ interface VerificationRecord {
  * again. Falls back to the top tier's name if nothing unlocks it.
  */
 const CUSTOM_DOMAIN_MIN_PLAN =
-  PLAN_DISPLAY_NAMES[getMinPlanForFeatureCell('customDomain') ?? 'ultra'];
+  PLAN_DISPLAY_NAMES[getMinPlanForFeatureCell('customDomain') ?? TOP_PLAN];
 
 export const DomainSection: React.FC<DomainSectionProps> = ({ hasCustomDomain, onUpgrade }) => {
   const [subdomain, setSubdomain] = useState('');

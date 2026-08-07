@@ -3,16 +3,13 @@ import {
   getPlanFeatures,
   PLAN_DISPLAY_NAMES,
   PLAN_PRICING,
-  PLAN_DONATION_RETENTION,
+  PLAN_ORDER,
   AI_ASSISTANT_ADDON_PRICING,
   AI_TELEGRAM_ASSISTANT_ENABLED,
 } from '@/utils/plan-features';
-import { TenantPlan } from '@/types/tenant.types';
 
 export const dynamic = 'force-static';
 export const revalidate = 3600; // CDN cache: re-generate at most once per hour
-
-const PLAN_ORDER: TenantPlan[] = ['plus', 'pro', 'max', 'ultra'];
 
 /**
  * GET /api/plans
@@ -37,13 +34,18 @@ export async function GET() {
         yearlyUsd: pricing.yearlyUsd,
         yearlyOriginalUsd: pricing.monthlyUsd * 12,
       },
-      donationRetentionPct: PLAN_DONATION_RETENTION[id],
+      // `donationRetentionPct` is intentionally absent. Every tier now charges
+      // a 0% platform fee on donations, so the number it published was the
+      // constant 100 — and it was a hand-maintained complement of the real fee
+      // (PLATFORM_FEE_MAP), the duplication that once let "keeps 100%" ship
+      // against a real 2.5% charge. See plan-features.ts.
       features: {
         blog: features.blog,
         aiChat: features.aiChat,
         aiKnowledge: features.aiKnowledge,
         map: features.map,
         maxChurches: features.maxChurches,
+        maxContacts: features.maxContacts,
         maxCourses: features.maxCourses,
         maxAdmins: features.maxAdmins,
         customDomain: features.customDomain,

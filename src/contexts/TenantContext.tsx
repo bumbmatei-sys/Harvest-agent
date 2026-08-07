@@ -3,7 +3,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { TenantPlan, TenantConfig } from '../types/tenant.types';
-import { getPlanFeatures, PlanFeatures } from '../utils/plan-features';
+import { getPlanFeatures, PlanFeatures, TOP_PLAN } from '../utils/plan-features';
 import { hasPlatformOverride } from '../utils/tenant-scope';
 import { isNonTenantSubdomain } from '../utils/non-tenant-subdomains';
 
@@ -206,7 +206,7 @@ export const TenantProvider: React.FC<TenantProviderProps> = ({
   // tenant's actual plan.
   const platformOverride = hasPlatformOverride();
   const planFeatures = platformOverride
-    ? getPlanFeatures('ultra')
+    ? getPlanFeatures(TOP_PLAN)
     : (tenantPlan ? getPlanFeatures(tenantPlan) : null);
 
   return (

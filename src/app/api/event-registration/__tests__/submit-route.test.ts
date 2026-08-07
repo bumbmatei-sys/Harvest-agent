@@ -135,7 +135,8 @@ describe('POST /api/event-registration/submit — paid tickets', () => {
     );
     expect(mockAdd).not.toHaveBeenCalledWith(expect.objectContaining({ status: 'confirmed' }));
 
-    // Destination charge to the tenant's connected account, platform fee 1.5% (plus).
+    // Destination charge to the tenant's connected account, platform fee 0% —
+    // the whole ticket price goes to the church.
     expect(mockCheckoutCreate).toHaveBeenCalledWith(
       expect.objectContaining({
         mode: 'payment',
@@ -143,7 +144,7 @@ describe('POST /api/event-registration/submit — paid tickets', () => {
         cancel_url: expect.stringContaining('/event/e1?registration=cancel'),
         payment_intent_data: expect.objectContaining({
           transfer_data: { destination: 'acct_T' },
-          application_fee_amount: 75,
+          application_fee_amount: 0,
           metadata: expect.objectContaining({ type: 'event_registration', registrationId: 'pending1' }),
         }),
         metadata: expect.objectContaining({
@@ -153,7 +154,7 @@ describe('POST /api/event-registration/submit — paid tickets', () => {
     );
   });
 
-  it('deducts 1.5% on Small Team (pro) — the same PLATFORM_FEE_MAP the donation path uses', async () => {
+  it('deducts NOTHING on Small Team (pro) — the same PLATFORM_FEE_MAP the donation path uses', async () => {
     // The paid-ticket half of the shared-fee guarantee. `PLATFORM_FEE_MAP` feeds
     // BOTH this route and /api/stripe/donate, so a fee change lands on tickets
     // and donations together — intended, and pinned on both sides. The donation
@@ -164,28 +165,18 @@ describe('POST /api/event-registration/submit — paid tickets', () => {
 
     const res = await POST(makeRequest(baseBody));
     expect(res.status).toBe(200);
-    // $50.00 ticket → $0.75 platform fee (1.5%), $49.25 to the church.
+    // $50.00 ticket → $0.00 platform fee, the full $50.00 to the church.
     expect(mockCheckoutCreate).toHaveBeenCalledWith(
       expect.objectContaining({
-        payment_intent_data: expect.objectContaining({ application_fee_amount: 75 }),
+        payment_intent_data: expect.objectContaining({ application_fee_amount: 0 }),
       }),
     );
   });
 
-  it('deducts 1% on Community (max) and nothing on Ministry (ultra)', async () => {
+  it('deducts nothing on Ministry (max) either — 0% on every tier', async () => {
     mockDocGet
       .mockResolvedValueOnce({ exists: true, data: () => PAID_EVENT })
       .mockResolvedValueOnce({ exists: true, data: () => ({ stripeConnectAccountId: 'acct_T', plan: 'max' }) });
-    await POST(makeRequest(baseBody));
-    expect(mockCheckoutCreate).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        payment_intent_data: expect.objectContaining({ application_fee_amount: 50 }),
-      }),
-    );
-
-    mockDocGet
-      .mockResolvedValueOnce({ exists: true, data: () => PAID_EVENT })
-      .mockResolvedValueOnce({ exists: true, data: () => ({ stripeConnectAccountId: 'acct_T', plan: 'ultra' }) });
     await POST(makeRequest(baseBody));
     expect(mockCheckoutCreate).toHaveBeenLastCalledWith(
       expect.objectContaining({
@@ -269,10 +260,11 @@ describe('POST /api/event-registration/submit — multi-attendee quantity (BUG 5
     expect(mockAdd).toHaveBeenCalledWith(
       expect.objectContaining({ status: 'pending_payment', amount: 10000, quantity: 2 }),
     );
-    // Destination charge AND platform fee (1.5% plus) both reflect the full headcount.
+    // Destination charge reflects the full headcount; the platform fee is 0 on
+    // every tier, so it stays 0 however many attendees are on the registration.
     expect(mockCheckoutCreate).toHaveBeenCalledWith(
       expect.objectContaining({
-        payment_intent_data: expect.objectContaining({ application_fee_amount: 150 }),
+        payment_intent_data: expect.objectContaining({ application_fee_amount: 0 }),
         line_items: [expect.objectContaining({
           price_data: expect.objectContaining({ unit_amount: 10000 }),
         })],

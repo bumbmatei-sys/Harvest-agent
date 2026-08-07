@@ -26,11 +26,11 @@ describe('GET /api/plans — retired AI Assistant add-on', () => {
   it('still advertises the RAG capabilities (aiChat + aiKnowledge)', async () => {
     const res = await GET();
     const body = await res.json();
-    // Ministry (ultra) has RAG chat + knowledge base on; those flags must survive.
-    const ultra = body.plans.find((p: any) => p.id === 'ultra');
-    expect(ultra).toBeDefined();
-    expect(ultra.features.aiChat).toBe(true);
-    expect(ultra.features.aiKnowledge).toBe(true);
+    // Ministry (max) has RAG chat + knowledge base on; those flags must survive.
+    const max = body.plans.find((p: any) => p.id === 'max');
+    expect(max).toBeDefined();
+    expect(max.features.aiChat).toBe(true);
+    expect(max.features.aiKnowledge).toBe(true);
     // And every plan still reports both RAG flags (as booleans).
     for (const plan of body.plans) {
       expect(typeof plan.features.aiChat).toBe('boolean');

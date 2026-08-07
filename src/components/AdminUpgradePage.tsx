@@ -4,6 +4,7 @@ import { Check, ChevronRight, Crown } from 'lucide-react';
 import { TenantPlan } from '../types/tenant.types';
 import {
   PLAN_DISPLAY_NAMES,
+  PLAN_ORDER,
   PLAN_PRICING,
   formatPlanPrice,
 } from '../utils/plan-features';
@@ -17,15 +18,11 @@ interface AdminUpgradePageProps {
   onBack: () => void;
 }
 
-// Plan tiers in ascending order — used to determine upgrade vs downgrade.
-const PLAN_ORDER: TenantPlan[] = ['plus', 'pro', 'max', 'ultra'];
-
 // Curated 4–5 key highlights per plan (kept short, no rainbow icons).
 const PLAN_HIGHLIGHTS: Record<TenantPlan, string[]> = {
-  plus: ['Blog & Posts', 'Fundraising campaigns', 'Mobile app (PWA)', '2 courses', '1 admin'],
-  pro: ['Everything in Individual', 'AI Chat & Knowledge', 'Newsletter', '5 courses', '5 admins'],
-  max: ['Everything in Small Team', 'Custom branding', 'Events & Notes', 'Automated newsletter', 'Unlimited courses'],
-  ultra: ['Everything in Community', 'CRM & Accounting', 'Custom domain', 'Livestream & SMS', 'Check-In & Giving Statements'],
+  plus: ['Blog & Posts', 'Fundraising campaigns', 'Mobile app (PWA)', '150 contacts', '2 admins'],
+  pro: ['Everything in Individual', 'AI Chat & Knowledge', 'CRM & Check-In', '500 contacts', '5 admins'],
+  max: ['Everything in Small Team', 'Custom domain & branding', 'Accounting & Giving Statements', '2,000 contacts', '15 admins'],
 };
 
 const AdminUpgradePage: React.FC<AdminUpgradePageProps> = ({ currentPlan, tenantId, email }) => {

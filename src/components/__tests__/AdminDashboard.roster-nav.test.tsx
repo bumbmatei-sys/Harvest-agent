@@ -30,7 +30,7 @@ const checkRosterAdminStatus = vi.hoisted(() => vi.fn());
 const isSuperAdminMock = vi.hoisted(() => vi.fn(() => false));
 const hasPlatformOverrideMock = vi.hoisted(() => vi.fn(() => false));
 const store = vi.hoisted(() => ({
-  current: { tenantPlan: 'ultra' as string | null, currentTenantId: 'bumb' as string | null, isAuthReady: true },
+  current: { tenantPlan: 'max' as string | null, currentTenantId: 'bumb' as string | null, isAuthReady: true },
 }));
 const currentUser = vi.hoisted(() => ({ current: { uid: 'user-1' } as { uid: string } | null }));
 const userQuery = vi.hoisted(() => ({
@@ -54,7 +54,7 @@ vi.mock('../../hooks/queries/useTenantQueries', () => ({
   useTenant: () => ({ data: { name: 'Bumb Ministry', ownerId: 'someone-else' } }),
 }));
 vi.mock('../../contexts/TenantContext', () => ({
-  useTenant: () => ({ branding: null, isLoading: false, tenantPlan: 'ultra' }),
+  useTenant: () => ({ branding: null, isLoading: false, tenantPlan: 'max' }),
 }));
 vi.mock('../../firebase', () => ({
   db: {},
@@ -180,7 +180,7 @@ async function rerender() {
 beforeEach(() => {
   vi.clearAllMocks();
   vi.useRealTimers();
-  store.current = { tenantPlan: 'ultra', currentTenantId: TENANT_ID, isAuthReady: true };
+  store.current = { tenantPlan: 'max', currentTenantId: TENANT_ID, isAuthReady: true };
   currentUser.current = { uid: UID };
   isSuperAdminMock.mockReturnValue(false);
   hasPlatformOverrideMock.mockReturnValue(false);

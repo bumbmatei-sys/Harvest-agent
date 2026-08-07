@@ -176,11 +176,22 @@ describe('POST /api/courses/adopt', () => {
       expect(h.writes).toHaveLength(1);
     });
 
-    it('treats -1 as unlimited and never counts', async () => {
-      h.tenantDoc = { data: () => ({ plan: 'ultra' }) };
-      h.ownCount = 500;
-      h.adoptedCount = 500;
+    it('allows an adoption under the Ministry (max) cap', async () => {
+      // Was "treats -1 as unlimited" on ultra. No tier is unlimited now, so this
+      // pins the under-cap branch on the top tier (15) instead.
+      h.tenantDoc = { data: () => ({ plan: 'max' }) };
+      h.ownCount = 10;
+      h.adoptedCount = 2;
       expect((await POST(req(GOOD))).status).toBe(200);
+    });
+
+    it('blocks an adoption at the Ministry (max) cap of 15', async () => {
+      h.tenantDoc = { data: () => ({ plan: 'max' }) };
+      h.ownCount = 10;
+      h.adoptedCount = 5;
+      const res = await POST(req(GOOD));
+      expect(res.status).toBe(403);
+      expect(await res.json()).toMatchObject({ maxCourses: 15 });
     });
 
     it('fails closed to plus when the tenant doc carries no plan', async () => {
@@ -194,7 +205,7 @@ describe('POST /api/courses/adopt', () => {
     it('ignores any plan the CLIENT claims — only the tenant doc is trusted', async () => {
       h.tenantDoc = { data: () => ({ plan: 'plus' }) };
       h.ownCount = 2;
-      const res = await POST(req({ ...GOOD, plan: 'ultra', maxCourses: -1 }));
+      const res = await POST(req({ ...GOOD, plan: 'max', maxCourses: -1 }));
       expect(res.status).toBe(403);
     });
   });

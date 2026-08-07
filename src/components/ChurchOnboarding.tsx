@@ -4,7 +4,7 @@ import { auth, db } from '../firebase';
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { Church, ArrowRight, Sparkles, Loader2, AlertCircle } from 'lucide-react';
 import { TenantPlan } from '../types/tenant.types';
-import { PLAN_DISPLAY_NAMES } from '../utils/plan-features';
+import { PLAN_DISPLAY_NAMES, PLAN_ORDER } from '../utils/plan-features';
 
 const BRAND = 'var(--brand-color, #B8962E)';
 const HARVEST_LOGO = 'https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png';
@@ -49,8 +49,10 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ signupPlan }) => {
   const urlPlan = typeof window !== 'undefined'
     ? new URLSearchParams(window.location.search).get('plan') as TenantPlan | null
     : null;
+  // `?plan=` is URL-controlled — validate against PLAN_ORDER so a deleted tier
+  // can never be selected, and fail closed to 'plus'.
   const selectedPlan: TenantPlan =
-    signupPlan || (urlPlan && ['plus', 'pro', 'max', 'ultra'].includes(urlPlan) ? urlPlan : 'plus');
+    signupPlan || (urlPlan && (PLAN_ORDER as readonly string[]).includes(urlPlan) ? urlPlan : 'plus');
 
   const [ministryName, setMinistryName] = useState('');
   const [error, setError] = useState('');
