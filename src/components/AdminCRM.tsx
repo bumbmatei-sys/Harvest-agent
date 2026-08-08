@@ -26,6 +26,10 @@ import {
   type Contact, type ContactActivity, type PipelineStage,
 } from '../hooks/queries/useCRMQueries';
 import { PLATFORM_TENANT_ID } from '../utils/tenant-scope';
+import { useTenant } from '@/contexts/TenantContext';
+import {
+  resolveContactLimit, countContactAccounts, isAtContactLimit, contactLimitMessage,
+} from '../utils/contact-capacity';
 
 const TYPE_LABELS: Record<Contact['type'], string> = {
   donor: 'Donor',
@@ -217,6 +221,36 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
   // the coverage line, which renders only when `counts` arrived.
   const { data: counts } = useCRMCounts(tenantId, isAuthReady);
 
+  // maxContacts — a SOFT cap, CLIENT-SIDE ONLY. See src/utils/contact-capacity.ts
+  // for the counting rule (accounts only; donors visible and free; super admins
+  // excluded; owner and admins counted) and for where a real server-side gate
+  // would live.
+  //
+  // Soft means: member SELF-SIGNUP is never blocked — a visitor cannot upgrade a
+  // plan and must never be turned away — and no existing contact is deleted,
+  // hidden or made uneditable. The only thing this gates is the admin-initiated
+  // manual add, which is the one creation path an admin controls. (There is no
+  // CSV importer anywhere in the app; every CSV path is an export.)
+  //
+  // No new query: `counts.memberAccounts` is #279's existing server-side
+  // aggregate, so the cap adds zero reads and cannot miss an index.
+  const { tenantPlan } = useTenant();
+  const maxContacts = resolveContactLimit(tenantPlan);
+  // The platform-wide super-admin view counts EVERY church's users (the reads are
+  // unscoped there), so a tenant plan cap is meaningless against it — gating on
+  // that number would lock the platform CRM at 150. On a tenant subdomain a super
+  // admin IS gated by the tenant's plan, which is the `platformWide: false` path.
+  //
+  // A missing `counts` means the aggregate is still loading or FAILED. Do not
+  // block on it: unlike the plan (which fails closed to 'plus'), an unknown count
+  // is not evidence of being over the cap, and a failed count must not take the
+  // add button down with it — the same rule that keeps the list rendering when
+  // the coverage line cannot.
+  const contactCapApplies = !!counts && !counts.platformWide;
+  const accountsUsed = counts ? countContactAccounts(counts.memberAccounts, contacts) : 0;
+  const atContactLimit = contactCapApplies && isAtContactLimit(accountsUsed, maxContacts);
+  const contactLimitNotice = contactLimitMessage(maxContacts);
+
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | Contact['type']>('all');
   const [view, setView] = useState<ViewMode>('list');
@@ -267,6 +301,15 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
     return () => setHeaderOverride(null);
   }, [view, selected, isEditing, setHeaderOverride]);
 
+  // Don't open the form at all at the cap: filling it in and failing on save is
+  // the shape this gate exists to avoid. Editing an existing contact — including
+  // the upsert that gives a `users`-only member their first `contacts` doc — is
+  // untouched, because neither adds an account.
+  const openNewContact = (): void => {
+    if (atContactLimit) return;
+    setIsEditing(false); setForm(emptyContact); setView('form');
+  };
+
   // Publish the "Add Contact" action into the shared header — but only on the
   // Contacts sub-view (the Analytics sub-view renders AnalyticsAndRoles, which
   // manages its own header action). Re-asserts when the sub-view changes back.
@@ -275,9 +318,19 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
     // render AnalyticsAndRoles, which publishes its own action (e.g. "Add Admin"),
     // so do NOT clear the slot here on those sub-views or we'd clobber theirs.
     if (crmSubView !== 'contacts') return;
-    setHeaderAction(<HeaderActionButton label="Add Contact" onClick={() => { setIsEditing(false); setForm(emptyContact); setView('form'); }} />);
+    setHeaderAction(
+      <HeaderActionButton
+        label="Add Contact"
+        onClick={openNewContact}
+        disabled={atContactLimit}
+        title={atContactLimit ? contactLimitNotice : undefined}
+      />
+    );
     return () => setHeaderAction(null);
-  }, [setHeaderAction, crmSubView]);
+    // atContactLimit/contactLimitNotice are deps: the header action is a rendered
+    // node handed to a context, so it does not re-render itself when the account
+    // count changes — the effect has to re-publish it.
+  }, [setHeaderAction, crmSubView, atContactLimit, contactLimitNotice]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Contact timeline (server-side read — see useContactActivities).
   //
@@ -348,6 +401,15 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
 
   const handleSave = async () => {
     if (!form.firstName.trim()) return;
+    // The cap's last line of defence. `openNewContact` already refuses to open
+    // the form, but the form can also be reached with a stale count, so a NEW
+    // contact is re-checked at save. Edits are never blocked: `isEditing` covers
+    // both a real contact and the upsert that materialises a member's first
+    // `contacts` doc, and neither creates an account.
+    if (!isEditing && atContactLimit) {
+      notifyError(contactLimitNotice, 'Contact limit reached');
+      return;
+    }
     setSaving(true);
     try {
       const data = {
@@ -741,7 +803,11 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
             </div>
           </div>
           <div className="flex gap-2 flex-shrink-0">
-            <button onClick={() => openEdit(selected)} className="p-2 rounded-xl border border-line-hairline hover:bg-surface-sunken">
+            {/* Never gated by maxContacts. Editing an existing person — including
+                the upsert that gives a `users`-only member their first `contacts`
+                doc — adds no account, and an over-cap tenant must stay fully
+                manageable rather than frozen. */}
+            <button data-testid="crm-edit-contact" onClick={() => openEdit(selected)} className="p-2 rounded-xl border border-line-hairline hover:bg-surface-sunken">
               <Edit2 size={14} className="text-muted" />
             </button>
             <button onClick={() => setDeleteId(selected.id)} className="p-2 rounded-xl border border-line-hairline hover:bg-red-50">
@@ -1144,6 +1210,30 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
         </div>
       )}
 
+      {/* maxContacts — said clearly, ONCE. Not a running "142 of 150" meter on
+          every open: this appears only at the cap, where it is news the admin has
+          to act on. It states what does not count (donors), because seeing more
+          people listed than the plan allows otherwise reads as a bug, and it
+          promises nothing that isn't built — no price, no add-on. Everyone
+          already in the list keeps their place and stays editable. */}
+      {atContactLimit && (
+        <div
+          data-testid="crm-contact-limit"
+          className="mb-6 flex items-start gap-2.5 rounded-brand-lg border border-amber-300 bg-amber-50 px-4 py-3 text-[13px] text-amber-900"
+        >
+          <AlertTriangle size={15} className="mt-0.5 shrink-0" />
+          <div>
+            <span className="font-semibold">
+              {nf(accountsUsed)} member {accountsUsed === 1 ? 'account' : 'accounts'} in
+              use — you&apos;ve reached your plan&apos;s limit.
+            </span>{' '}
+            {contactLimitNotice} Adding contacts by hand is paused until then —
+            everyone already here stays, and people can still create their own
+            accounts.
+          </div>
+        </div>
+      )}
+
       {/* Search + filters + view toggle + add */}
       <div className="flex items-center gap-3 mb-6 flex-wrap">
         <div className="relative flex-1 min-w-[220px]">
@@ -1175,9 +1265,16 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
             <LayoutGrid size={13} /> Pipeline
           </button>
         </div>
+        {/* At the cap this is disabled and says why on hover — the same shape the
+            Roles screen uses for maxAdmins. It is never hidden: an admin who
+            cannot find the button learns nothing, and the disabled state plus the
+            notice above is how they find out they need a bigger plan. */}
         <button
-          onClick={() => { setIsEditing(false); setForm(emptyContact); setView('form'); }}
-          className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2.5 rounded-brand text-[13px] font-semibold text-white transition-opacity hover:opacity-90"
+          data-testid="crm-add-contact"
+          onClick={openNewContact}
+          disabled={atContactLimit}
+          title={atContactLimit ? contactLimitNotice : undefined}
+          className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2.5 rounded-brand text-[13px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:opacity-40"
           style={{ backgroundColor: 'var(--brand-color, #C9963A)' }}
         >
           <Plus size={16} /> Add contact

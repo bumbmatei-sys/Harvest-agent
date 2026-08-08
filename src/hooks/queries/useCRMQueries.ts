@@ -95,6 +95,23 @@ export interface Contact {
    *  and manual-add. Used to fold a member's `users` row into their existing
    *  contact row so the same person never surfaces under two different ids. */
   userId?: string;
+  /**
+   * DERIVED, never stored. Set by `mergeContactsWithUsers` on every row backed
+   * by a `users` document — both users-only members and `contacts` rows that
+   * folded one in — and left undefined on donor-only rows (someone who gave via
+   * the public donate page and never signed up).
+   *
+   * So `account !== undefined` IS "this person holds an account", which is what
+   * the `maxContacts` cap prices (src/utils/contact-capacity.ts): the cap counts
+   * accounts, donors are visible and free. It carries the two `users` fields the
+   * cap needs and nothing else — `role` and `email` are both legs of the
+   * super-admin exemption, and the `users` email is the authoritative one (a
+   * folded `contacts` row may differ from it by casing or whitespace).
+   *
+   * NOT part of any write payload. AdminCRM's save builds its document from the
+   * form fields explicitly, so this never reaches Firestore.
+   */
+  account?: { role: string; email: string };
 }
 
 export interface ContactActivity {
@@ -249,12 +266,19 @@ const userDocToMemberContact = (
     createdBy: id,
     updatedAt: null,
     tenantId: (u.tenantId ?? fallbackTenantId ?? PLATFORM_TENANT_ID) as string,
+    account: accountOf(u),
   };
 };
 
 /** Normalize an email for cross-collection matching: a missing value, casing, or
  *  stray surrounding whitespace must never split one person into two rows. */
 const normEmail = (s: unknown): string => String(s ?? '').trim().toLowerCase();
+
+/** The two `users` fields the `maxContacts` cap needs — see `Contact.account`. */
+const accountOf = (u: Record<string, any>): { role: string; email: string } => ({
+  role: String(u.role ?? ''),
+  email: String(u.email ?? ''),
+});
 
 /**
  * Merge CRM `contacts` rows with app `users` rows into ONE contact list, keeping
@@ -279,27 +303,47 @@ const normEmail = (s: unknown): string => String(s ?? '').trim().toLowerCase();
  *
  * `users`-only members (no matching contact) are still surfaced, keyed by their
  * `users` id — the same id the webhook writes their activities under.
+ *
+ * A folded row keeps its `contacts` id and its `contacts` fields, but GAINS
+ * `account` (the folded `users` doc's role + email). That flag is the only way a
+ * consumer can tell "this person holds an account" from "this person only ever
+ * gave money", which the `maxContacts` cap depends on — see `Contact.account`
+ * and src/utils/contact-capacity.ts. Contact rows are COPIED rather than
+ * mutated so stamping it never writes through to react-query's cached array.
  */
 export const mergeContactsWithUsers = (
   contactRows: Contact[],
   userRows: Array<{ id: string; data: Record<string, any> }>,
   fallbackTenantId: string | null | undefined,
 ): Contact[] => {
-  const linkedUserIds = new Set(
-    contactRows.map(c => c.userId).filter(Boolean) as string[],
-  );
-  const seenEmails = new Set(
-    contactRows.map(c => normEmail(c.email)).filter(Boolean),
-  );
+  const merged: Contact[] = contactRows.map(c => ({ ...c }));
+  // Both fold indexes point AT the row, not at a bare id, so a match can stamp
+  // `account` on it. Same two keys and the same precedence as before: the
+  // `userId` link first, normalized email as the legacy fallback.
+  const byLinkedUserId = new Map<string, Contact>();
+  const byEmail = new Map<string, Contact>();
+  for (const c of merged) {
+    if (c.userId) byLinkedUserId.set(c.userId, c);
+    const email = normEmail(c.email);
+    // First writer wins, matching the old Set-based membership test: two contact
+    // rows sharing an email fold the same single users doc into the first.
+    if (email && !byEmail.has(email)) byEmail.set(email, c);
+  }
   const userMembers: Contact[] = [];
   for (const d of userRows) {
-    if (linkedUserIds.has(d.id)) continue;        // already a contact (by userId link)
     const email = normEmail(d.data.email);
-    if (email && seenEmails.has(email)) continue; // already a contact (by email)
-    if (email) seenEmails.add(email);
-    userMembers.push(userDocToMemberContact(d.id, d.data, fallbackTenantId));
+    const linked = byLinkedUserId.get(d.id) ?? (email ? byEmail.get(email) : undefined);
+    if (linked) {                                 // already a contact (userId link, then email)
+      linked.account = accountOf(d.data);
+      continue;
+    }
+    const row = userDocToMemberContact(d.id, d.data, fallbackTenantId);
+    // Seed the email index with the surfaced member so a SECOND users doc
+    // sharing this email dedupes against it, exactly as `seenEmails` did.
+    if (email) byEmail.set(email, row);
+    userMembers.push(row);
   }
-  return [...contactRows, ...userMembers];
+  return [...merged, ...userMembers];
 };
 
 /**

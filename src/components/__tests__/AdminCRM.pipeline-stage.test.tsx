@@ -36,6 +36,10 @@ vi.mock('react-router-dom', () => ({ useNavigate: () => navigate }));
 vi.mock('../../utils/auth-fetch', () => ({ authFetch }));
 vi.mock('../../utils/notify', () => ({ notifyError }));
 vi.mock('../../firebase', () => ({ db: {}, auth: { currentUser: { uid: 'u1' } } }));
+// AdminCRM reads the tenant plan for the maxContacts cap (contact-capacity.ts).
+// `undefined` is the loading/unknown plan, which fails closed to 'plus' (150) —
+// no test here is near that number, so the cap stays inert.
+vi.mock('@/contexts/TenantContext', () => ({ useTenant: () => ({ tenantPlan: undefined }) }));
 vi.mock('firebase/firestore', () => ({
   collection: () => ({}),
   addDoc: vi.fn(async () => ({ id: 'a1' })),
