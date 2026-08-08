@@ -21,7 +21,7 @@ import { useAdminHeader, HeaderActionButton } from './AdminScreenHeader';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAppStore } from '../store/useAppStore';
 import {
-  useContactsWithUsers, useContactActivities,
+  useContactsWithUsers, useContactActivities, resolvePipelineStage,
   type Contact, type ContactActivity, type PipelineStage,
 } from '../hooks/queries/useCRMQueries';
 import { PLATFORM_TENANT_ID } from '../utils/tenant-scope';
@@ -49,19 +49,23 @@ const ACTIVITY_ICONS: Record<ContactActivity['type'], React.ReactNode> = {
 
 const emptyContact = {
   firstName: '', lastName: '', email: '', phone: '', type: 'member' as Contact['type'],
-  stage: 'new' as PipelineStage,
   notes: '', tags: [] as string[], totalDonated: 0,
   address: { street: '', city: '', state: '', zip: '', country: '' },
 };
 
-// Pipeline stage definitions: ordered left→right on the kanban board.
+// Pipeline stage presentation: ordered left→right on the kanban board. The stage
+// itself is DERIVED from `totalDonated` (resolvePipelineStage) — this array only
+// carries the label and colours for it. Nothing here is selectable.
 const STAGES: { id: PipelineStage; label: string; color: string; bg: string }[] = [
-  { id: 'new',       label: 'New',       color: 'var(--text-muted)', bg: '#F3EEE7' },
-  { id: 'connected', label: 'Connected', color: '#3B82F6', bg: '#EFF6FF' },
-  { id: 'active',    label: 'Active',    color: '#8B5CF6', bg: '#F5F3FF' },
-  { id: 'giving',    label: 'Giving',    color: '#B8962E', bg: '#FBF3E4' },
-  { id: 'champion',  label: 'Champion',  color: '#10B981', bg: '#ECFDF5' },
+  { id: 'member',   label: 'Member',   color: 'var(--text-muted)', bg: '#F3EEE7' },
+  { id: 'giving',   label: 'Giving',   color: '#B8962E', bg: '#FBF3E4' },
+  { id: 'champion', label: 'Champion', color: '#10B981', bg: '#ECFDF5' },
 ];
+
+/** Presentation for a contact's derived stage. Never falls through to STAGES[0]
+ *  by accident: resolvePipelineStage only ever returns an id present above. */
+const stageOf = (c: Pick<Contact, 'totalDonated'>) =>
+  STAGES.find(s => s.id === resolvePipelineStage(c.totalDonated)) || STAGES[0];
 
 const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n);
 
@@ -83,18 +87,17 @@ interface KanbanBoardProps {
   contacts: Contact[];
   stages: typeof STAGES;
   onOpenContact: (c: Contact) => void;
-  onStageChange: (contactId: string, newStage: PipelineStage) => void;
 }
 
 // Horizontal pipeline board: one column per stage, contacts sorted into the
-// column matching their `stage` (defaulting to 'new'). The dotted footer on
-// each card is a quick "stage mover" — tap a dot to send the contact to that
-// stage without opening the detail view.
-const KanbanBoard: React.FC<KanbanBoardProps> = ({ contacts, stages, onOpenContact, onStageChange }) => {
+// column their giving puts them in. There is deliberately no stage mover — the
+// column is a fact about `totalDonated`, so a control that "moved" a contact
+// between columns could only either lie or silently do nothing.
+const KanbanBoard: React.FC<KanbanBoardProps> = ({ contacts, stages, onOpenContact }) => {
   return (
     <div className="flex gap-3 overflow-x-auto pb-4 -mx-4 px-4">
       {stages.map(stage => {
-        const stageContacts = contacts.filter(c => (c.stage || 'new') === stage.id);
+        const stageContacts = contacts.filter(c => resolvePipelineStage(c.totalDonated) === stage.id);
         return (
           <div key={stage.id} className="flex-shrink-0 w-[220px]">
             {/* Column header */}
@@ -144,21 +147,6 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ contacts, stages, onOpenConta
                         {fmt(c.totalDonated)}
                       </span>
                     )}
-                  </div>
-
-                  {/* Stage mover — tap to move to that stage */}
-                  <div className="flex gap-1 mt-2 pt-2 border-t border-line-subtle">
-                    {stages.map(s => (
-                      <button
-                        key={s.id}
-                        onClick={(e) => { e.stopPropagation(); onStageChange(c.id, s.id); }}
-                        className="flex-1 h-1.5 rounded-full transition-colors"
-                        style={{
-                          backgroundColor: (c.stage || 'new') === s.id ? s.color : 'var(--surface-chip)',
-                        }}
-                        title={s.label}
-                      />
-                    ))}
                   </div>
                 </div>
               ))}
@@ -325,7 +313,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
     setIsEditing(true);
     setForm({
       firstName: c.firstName || '', lastName: c.lastName || '', email: c.email || '',
-      phone: c.phone || '', type: c.type, stage: c.stage || 'new',
+      phone: c.phone || '', type: c.type,
       notes: c.notes || '', tags: c.tags || [],
       totalDonated: c.totalDonated || 0,
       address: { ...{ street: '', city: '', state: '', zip: '', country: '' }, ...c.address },
@@ -351,7 +339,9 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
       const data = {
         firstName: form.firstName.trim(), lastName: form.lastName.trim(),
         email: form.email.trim(), phone: form.phone.trim(), type: form.type,
-        stage: form.stage || 'new',
+        // No `stage` in the payload: the pipeline stage is derived from
+        // totalDonated on read, so writing one would be a second copy of the
+        // same fact — free to drift, and the reason this was manual before.
         notes: form.notes.trim(), tags: form.tags, totalDonated: form.totalDonated,
         address: form.address, updatedAt: serverTimestamp(),
       };
@@ -386,28 +376,10 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
     if (view === 'detail') setView('list');
   };
 
-  const handleStageChange = async (contactId: string, newStage: PipelineStage) => {
-    try {
-      // Upsert with the row's identifying fields so dragging a member that came
-      // from the `users` collection (no contacts doc yet) creates it correctly.
-      const existing = contacts.find(c => c.id === contactId);
-      await setDoc(doc(db, 'contacts', contactId), {
-        firstName: existing?.firstName ?? '',
-        lastName: existing?.lastName ?? '',
-        email: existing?.email ?? '',
-        phone: existing?.phone ?? '',
-        type: existing?.type ?? 'member',
-        tenantId: existing?.tenantId || tenantId || PLATFORM_TENANT_ID,
-        stage: newStage,
-        updatedAt: serverTimestamp(),
-      }, { merge: true });
-      // Keep the open detail view in sync without waiting for the refetch.
-      if (selected?.id === contactId) setSelected({ ...selected, stage: newStage });
-      await queryClient.invalidateQueries({ queryKey: ['contacts', tenantId] });
-    } catch (err) {
-      notifyError('Failed to update stage', err);
-    }
-  };
+  // There is deliberately no stage-change handler here. The pipeline stage is a
+  // function of `totalDonated`, so the only way to move a contact between stages
+  // is to record giving — which the donation webhook and addActivity below
+  // already do. Re-adding a mutator would reintroduce the stored copy.
 
   const addActivity = async () => {
     if (!actForm.description.trim() || !selected) return;
@@ -648,23 +620,21 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
               <option value="both">Donor & Member</option>
             </select>
           </div>
+          {/* Pipeline Stage is not an editable field. It is derived from giving,
+              so the form shows where this contact currently sits and why, rather
+              than a row of chips that would write a stage nothing reads. */}
           <div>
             <label className="text-xs font-semibold text-muted mb-2 block">Pipeline Stage</label>
-            <div className="flex gap-1.5 flex-wrap">
-              {STAGES.map(s => (
-                <button
-                  key={s.id}
-                  type="button"
-                  onClick={() => setForm(f => ({ ...f, stage: s.id }))}
-                  className="px-3 py-1.5 rounded-full text-xs font-bold transition-colors"
-                  style={{
-                    backgroundColor: (form.stage || 'new') === s.id ? s.color : s.bg,
-                    color: (form.stage || 'new') === s.id ? '#fff' : s.color,
-                  }}
-                >
-                  {s.label}
-                </button>
-              ))}
+            <div className="flex items-center gap-2 flex-wrap">
+              <span
+                className="px-3 py-1.5 rounded-full text-xs font-bold"
+                style={{ backgroundColor: stageOf(form).bg, color: stageOf(form).color }}
+              >
+                {stageOf(form).label}
+              </span>
+              <span className="text-xs text-faint">
+                Set automatically from total given ({fmt(form.totalDonated || 0)}).
+              </span>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -745,21 +715,14 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
                 </span>
                 {selected.memberSince && <span className="text-xs text-faint">· Member since {fmtDate(selected.memberSince)}</span>}
               </div>
-              {/* Stage selector in detail view */}
+              {/* Derived stage — a badge, not a selector. */}
               <div className="flex gap-1.5 flex-wrap mt-2">
-                {STAGES.map(s => (
-                  <button
-                    key={s.id}
-                    onClick={() => handleStageChange(selected.id, s.id)}
-                    className="px-2.5 py-1 rounded-full text-[10px] font-bold transition-colors"
-                    style={{
-                      backgroundColor: (selected.stage || 'new') === s.id ? s.color : s.bg,
-                      color: (selected.stage || 'new') === s.id ? '#fff' : s.color,
-                    }}
-                  >
-                    {s.label}
-                  </button>
-                ))}
+                <span
+                  className="px-2.5 py-1 rounded-full text-[10px] font-bold"
+                  style={{ backgroundColor: stageOf(selected).color, color: '#fff' }}
+                >
+                  {stageOf(selected).label}
+                </span>
               </div>
             </div>
           </div>
@@ -1077,7 +1040,10 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
   const totalGiven = contacts.reduce((s, c) => s + (c.totalDonated || 0), 0);
   const memberCount = contacts.filter(c => c.type === 'member' || c.type === 'both').length;
   const donorCount = contacts.filter(c => c.type === 'donor' || c.type === 'both').length;
-  const championCount = contacts.filter(c => (c.stage || 'new') === 'champion').length;
+  // Counts contacts who have actually given $10,000+, not contacts an admin once
+  // tagged as champions. This stat was the clearest symptom of the stored stage:
+  // it reported button presses as a giving metric.
+  const championCount = contacts.filter(c => resolvePipelineStage(c.totalDonated) === 'champion').length;
 
   const stats: { label: string; value: React.ReactNode; icon: React.ReactNode }[] = [
     { label: 'Members', value: memberCount, icon: <Users size={15} /> },
@@ -1148,7 +1114,6 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
           contacts={filtered}
           stages={STAGES}
           onOpenContact={openDetail}
-          onStageChange={handleStageChange}
         />
       ) : filtered.length === 0 ? (
         <div className="text-center py-16 text-faint">
@@ -1165,7 +1130,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
               same openDetail handler as the desktop table below. */}
           <div className="lg:hidden bg-surface-raised rounded-brand-xl border border-line shadow-[var(--ds-sh-sm)] overflow-hidden">
             {filtered.map((c, i) => {
-              const stage = STAGES.find(s => s.id === (c.stage || 'new')) || STAGES[0];
+              const stage = stageOf(c);
               return (
                 <button
                   key={c.id}
@@ -1211,7 +1176,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
               </thead>
               <tbody className="divide-y divide-stone-200">
                 {filtered.map(c => {
-                  const stage = STAGES.find(s => s.id === (c.stage || 'new')) || STAGES[0];
+                  const stage = stageOf(c);
                   return (
                     <tr key={c.id} onClick={() => openDetail(c)} className="hover:bg-[color-mix(in_srgb,var(--surface-sunken)_60%,transparent)] transition-colors cursor-pointer">
                       <td className="px-6 py-3.5">
