@@ -8,7 +8,8 @@ import PlanUpgradeSection from '../PlanUpgradeSection';
  * the annual card used to show a struck-through $monthly×12 figure that
  * implies a discount off a price that never existed. It's replaced with an
  * honest monthly-equivalent derived from PLAN_PRICING (same math as the
- * marketing site's Pricing.tsx: Math.round(monthlyUsd * 10 / 12)).
+ * marketing site's Pricing.tsx:
+ * Math.round(monthlyUsd * ANNUAL_BILLED_MONTHS / 12)).
  *
  * Rendered with react-dom directly (not @testing-library/react), matching
  * ReferralTracker.test.tsx's approach — no @testing-library/dom dependency.
@@ -63,18 +64,18 @@ describe('PlanUpgradeSection yearly pricing copy', () => {
   it('derives the yearly monthly-equivalent copy from PLAN_PRICING for Community (max)', () => {
     mount();
     clickButtonWithText('Yearly');
-    // max: monthlyUsd 199 -> Math.round(199 * 10 / 12) = 166
-    expect(container.textContent).toContain('$166/mo billed annually');
+    // max: monthlyUsd 199 -> Math.round(199 * 9 / 12) = 149, exactly.
+    expect(container.textContent).toContain('$149/mo billed annually');
     // The real annual total comes from PLAN_PRICING.max.yearlyUsd.
-    expect(container.textContent).toContain('$1,990/yr');
+    expect(container.textContent).toContain('$1,791/yr');
   });
 
   it('derives the yearly monthly-equivalent copy from PLAN_PRICING for Individual (plus)', () => {
     mount();
     clickButtonWithText('Yearly');
-    // plus: monthlyUsd 49 -> Math.round(49 * 10 / 12) = 41
-    expect(container.textContent).toContain('$41/mo billed annually');
-    expect(container.textContent).toContain('$490/yr');
+    // plus: monthlyUsd 49 -> Math.round(49 * 9 / 12) = 37
+    expect(container.textContent).toContain('$37/mo billed annually');
+    expect(container.textContent).toContain('$441/yr');
   });
 
   it('leaves the monthly view unchanged', () => {

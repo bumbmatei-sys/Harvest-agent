@@ -5,6 +5,10 @@ import {
   hasFeature,
   hasBrandingAccess,
   PLAN_PRICING,
+  ANNUAL_BILLED_MONTHS,
+  ANNUAL_FREE_MONTHS,
+  ANNUAL_DISCOUNT_PCT,
+  annualMonthlyEquivalent,
   AI_ASSISTANT_ADDON_PRICING,
   formatPlanPrice,
   getFeatureMinPlan,
@@ -540,9 +544,9 @@ describe('customDomain tier (Ministry / max only)', () => {
 
 describe('PLAN_PRICING (repriced)', () => {
   const EXPECTED = {
-    plus: { monthlyUsd: 49,  yearlyUsd: 490  },
-    pro:  { monthlyUsd: 99,  yearlyUsd: 990  },
-    max:  { monthlyUsd: 199, yearlyUsd: 1990 },
+    plus: { monthlyUsd: 49,  yearlyUsd: 441  },
+    pro:  { monthlyUsd: 99,  yearlyUsd: 891  },
+    max:  { monthlyUsd: 199, yearlyUsd: 1791 },
   } as const;
 
   it.each(Object.keys(EXPECTED) as (keyof typeof EXPECTED)[])(
@@ -556,22 +560,43 @@ describe('PLAN_PRICING (repriced)', () => {
     expect(PLAN_ORDER.map((p) => PLAN_PRICING[p].monthlyUsd)).toEqual([49, 99, 199]);
   });
 
-  it('prices the three tiers at 490 / 990 / 1990 per year', () => {
-    expect(PLAN_ORDER.map((p) => PLAN_PRICING[p].yearlyUsd)).toEqual([490, 990, 1990]);
+  it('prices the three tiers at 441 / 891 / 1791 per year', () => {
+    expect(PLAN_ORDER.map((p) => PLAN_PRICING[p].yearlyUsd)).toEqual([441, 891, 1791]);
   });
 
-  it('bills annual as monthly × 10 (pay ten months, get twelve) on every tier', () => {
+  // The identity guard. `yearlyUsd` is written as a literal above, so this is
+  // what stops it drifting from the multiplier: change ANNUAL_BILLED_MONTHS
+  // without repricing the table (or reprice without moving the constant) and
+  // this fails by name instead of shipping a wrong annual price.
+  it('bills annual as monthly × ANNUAL_BILLED_MONTHS on every tier', () => {
     PLAN_ORDER.forEach((plan) => {
-      expect(PLAN_PRICING[plan].yearlyUsd).toBe(PLAN_PRICING[plan].monthlyUsd * 10);
+      expect(PLAN_PRICING[plan].yearlyUsd).toBe(PLAN_PRICING[plan].monthlyUsd * ANNUAL_BILLED_MONTHS);
       expect(PLAN_PRICING[plan].yearlyUsd).toBe(EXPECTED[plan].yearlyUsd);
     });
+  });
+
+  it('bills nine months for twelve — a 25% discount, three months free', () => {
+    expect(ANNUAL_BILLED_MONTHS).toBe(9);
+    expect(ANNUAL_FREE_MONTHS).toBe(3);
+    expect(ANNUAL_DISCOUNT_PCT).toBe(25);
+  });
+
+  // The monthly-equivalent figure every upgrade surface renders, and the one
+  // the marketing site must agree with. Math.round(199 * 9 / 12) is exactly
+  // 149 — a consequence of the multiplier, not a special case.
+  it('derives the monthly-equivalent annual price as 37 / 74 / 149', () => {
+    expect(PLAN_ORDER.map((p) => annualMonthlyEquivalent(p))).toEqual([37, 74, 149]);
+  });
+
+  it('leaves the monthly prices untouched at 49 / 99 / 199', () => {
+    expect(PLAN_ORDER.map((p) => PLAN_PRICING[p].monthlyUsd)).toEqual([49, 99, 199]);
   });
 
   it('renders the repriced values through formatPlanPrice — the string the UI shows', () => {
     expect(formatPlanPrice('plus', 'monthly')).toBe('$49/mo');
     expect(formatPlanPrice('pro', 'monthly')).toBe('$99/mo');
     expect(formatPlanPrice('max', 'monthly')).toBe('$199/mo');
-    expect(formatPlanPrice('max', 'yearly')).toBe('$1,990/yr');
+    expect(formatPlanPrice('max', 'yearly')).toBe('$1,791/yr');
   });
 
   it('leaves the retired AI Assistant add-on at $200 — not swept up in the repricing', () => {
