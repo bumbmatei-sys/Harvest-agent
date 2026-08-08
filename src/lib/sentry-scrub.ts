@@ -85,6 +85,42 @@ const SENSITIVE_ASSIGNMENT_RE = new RegExp(
 const EMAIL_RE = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
 
 /**
+ * A bare phone number in free prose — 7+ digits with optional separators and
+ * country code. Deliberately NOT part of `scrubString`: that pass runs over
+ * every string on every event, where long digit runs are far more often ids,
+ * timestamps or hashes than phone numbers. It applies only to `redactFreeText`,
+ * whose input is prose rather than structured fields.
+ */
+const BARE_PHONE_RE = /(?:\+\d{1,3}[\s.-]?)?(?:\(\d{3}\)|\d{3})[\s.-]?\d{3}[\s.-]?\d{4}\b/g;
+
+/**
+ * Prepare a free-text excerpt for attachment to an error report.
+ *
+ * Free text is a different risk class from the identifier fields the rest of
+ * this module guards. The motivating case is AI model output: it is derived
+ * from a tenant's own uploaded material (sermons, teaching notes, prayer
+ * requests), so it can carry a member's name, email or phone even though no
+ * call site ever deliberately put one there.
+ *
+ * Two protections, in order:
+ *  1. **Redact** — the standard `key: value` / bare-email passes, plus bare
+ *     phone numbers, which structured fields don't need but prose does.
+ *  2. **Bound** — hard-truncate. An excerpt exists to identify the SHAPE of a
+ *     malformed response (fenced? prose? truncated mid-token?), which the first
+ *     few hundred characters settle; shipping the whole article would be both a
+ *     larger disclosure and a worse diagnostic.
+ *
+ * Truncation is marked rather than silent, so a reader can tell "the model
+ * stopped here" apart from "we cut it off here" — the exact distinction this
+ * excerpt is being captured to diagnose.
+ */
+export function redactFreeText(value: string, maxChars: number): string {
+  const redacted = scrubString(value).replace(BARE_PHONE_RE, REDACTED);
+  if (redacted.length <= maxChars) return redacted;
+  return `${redacted.slice(0, maxChars)}…[truncated ${redacted.length - maxChars} chars]`;
+}
+
+/**
  * Keys whose string values are left alone by the string pass. These are paths
  * and symbol names — no realistic PII, and mangling them would make stack
  * traces harder to read. They are still subject to key-name redaction.

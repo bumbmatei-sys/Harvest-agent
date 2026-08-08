@@ -12,6 +12,7 @@ import { useAppStore } from '../store/useAppStore';
 import { getPlanFeatures } from '../utils/plan-features';
 import { authFetch } from '../utils/auth-fetch';
 import { notifyError } from '../utils/notify';
+import { MAX_CONSECUTIVE_FAILURES } from '../lib/blog-automation';
 
 const GOLD = 'var(--brand-color, #B8962E)';
 
@@ -62,10 +63,17 @@ const AdminBlog: React.FC = () => {
    lastGeneratedAt: string | null;
    nextScheduledAt: string | null;
    totalGenerated: number;
+   // Written by the cron when a generation fails. Surfaced below so automation
+   // turning itself off is something the admin can see and act on, rather than
+   // a toggle that is quietly off the next time they open this panel.
+   consecutiveFailures: number;
+   lastFailureMessage: string | null;
+   automationDisabledReason: string | null;
  }>({
    enabled: false, frequency: 'weekly', dayOfWeek: 1,
    hour: 8, timezone: detectedTimezone, topicHint: '', lastGeneratedAt: null,
    nextScheduledAt: null, totalGenerated: 0,
+   consecutiveFailures: 0, lastFailureMessage: null, automationDisabledReason: null,
  });
  const [savingAutomation, setSavingAutomation] = useState(false);
  const [generatingNow, setGeneratingNow] = useState(false);
@@ -157,6 +165,14 @@ const AdminBlog: React.FC = () => {
        }),
      });
      if (!resp.ok) throw new Error('Failed to save');
+     // The save cleared the failure streak server-side; mirror it locally so the
+     // warning doesn't linger on a panel the admin just acted on.
+     setAutomation(a => ({
+       ...a,
+       consecutiveFailures: 0,
+       lastFailureMessage: null,
+       automationDisabledReason: null,
+     }));
      setShowAutomation(false);
    } catch (e) {
      notifyError('Failed to save automation settings', e);
@@ -401,6 +417,31 @@ const AdminBlog: React.FC = () => {
  <X size={20} className="text-faint" />
  </button>
  </div>
+
+ {/* Automation stopped itself, or is failing its way toward it. Either way the
+     admin needs to see it — a feature that silently gave up is the failure the
+     retry cap is supposed to replace, not reproduce. */}
+ {automation.automationDisabledReason ? (
+ <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3">
+ <p className="text-sm font-semibold text-red-800">Automatic posting is turned off</p>
+ <p className="text-xs text-red-700 mt-1">{automation.automationDisabledReason}</p>
+ <p className="text-xs text-red-700 mt-1.5">
+ Turn the toggle back on and save to resume — that also clears this warning.
+ </p>
+ </div>
+ ) : automation.consecutiveFailures > 0 ? (
+ <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+ <p className="text-sm font-semibold text-amber-900">
+ Last {automation.consecutiveFailures} attempt{automation.consecutiveFailures !== 1 ? 's' : ''} failed
+ </p>
+ {automation.lastFailureMessage && (
+ <p className="text-xs text-amber-800 mt-1">{automation.lastFailureMessage}</p>
+ )}
+ <p className="text-xs text-amber-800 mt-1.5">
+ Harvest will retry. After {MAX_CONSECUTIVE_FAILURES} failures in a row, automatic posting turns off.
+ </p>
+ </div>
+ ) : null}
 
  {/* Enable toggle */}
  <div className="flex items-center justify-between py-3 border-b border-line">

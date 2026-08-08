@@ -123,6 +123,100 @@ export function computeNextScheduled(
   return zonedTimeToUtc(nowLocal.year, nowLocal.month, targetDay, hour, timezone);
 }
 
+/**
+ * Why a generation attempt failed, so callers can report the failure that
+ * actually happened instead of guessing at one.
+ *
+ * `no-context` is the only kind that is the tenant's to fix. The other two are
+ * ours, and saying otherwise sends someone to spend an afternoon uploading
+ * sermons to fix a JSON parsing bug.
+ */
+export type BlogGenerationFailure = 'no-context' | 'invalid-json' | 'truncated-output';
+
+/**
+ * A generation failure that knows which kind it is and carries the bounded
+ * diagnostics needed to investigate it.
+ *
+ * The diagnostics ride on the error rather than being captured where they are
+ * discovered, so the failure still produces exactly ONE Sentry event — raised
+ * here, reported by whichever caller catches it.
+ */
+export class BlogGenerationError extends Error {
+  readonly kind: BlogGenerationFailure;
+  readonly diagnostics: Record<string, string | number>;
+
+  constructor(
+    kind: BlogGenerationFailure,
+    message: string,
+    diagnostics: Record<string, string | number> = {},
+  ) {
+    super(message);
+    this.name = 'BlogGenerationError';
+    this.kind = kind;
+    this.diagnostics = { failureKind: kind, ...diagnostics };
+  }
+}
+
+/**
+ * Below this much retrieved source material, "there isn't enough to write from"
+ * is a fair reading of a failed generation and the add-source-material message
+ * is the honest one. Above it, the knowledge base plainly had something to work
+ * with and a failure is ours to explain. Roughly a couple of paragraphs — a
+ * tenant with real sermon content clears it by an order of magnitude.
+ */
+const MIN_CONTEXT_CHARS_FOR_ARTICLE = 800;
+
+/** The add-source-material message. Correct ONLY when context is the problem. */
+const NO_CONTEXT_MESSAGE =
+  "Couldn't generate a post from your current Knowledge Base. Add ministry-focused source material (sermons, devotionals, teaching notes) to the AI Knowledge Base, then try again.";
+
+/**
+ * Escape raw control characters that appear INSIDE JSON string literals.
+ *
+ * JSON forbids a literal newline in a string; `JSON.parse` rejects the whole
+ * document over one. A model writing a long `htmlContent` value is very likely
+ * to lay it out across lines, and that alone is enough to fail a response whose
+ * content is otherwise perfect. Quote tracking mirrors `extractFirstJsonObject`
+ * so an escaped `\"` inside a value doesn't end the string early.
+ */
+function escapeControlCharsInStrings(text: string): string {
+  let out = '';
+  let inString = false;
+  let escapeNext = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+
+    if (escapeNext) {
+      out += char;
+      escapeNext = false;
+      continue;
+    }
+    if (char === '\\' && inString) {
+      out += char;
+      escapeNext = true;
+      continue;
+    }
+    if (char === '"') {
+      inString = !inString;
+      out += char;
+      continue;
+    }
+    if (inString) {
+      if (char === '\n') { out += '\\n'; continue; }
+      if (char === '\r') { out += '\\r'; continue; }
+      if (char === '\t') { out += '\\t'; continue; }
+      const code = char.charCodeAt(0);
+      if (code < 0x20) {
+        out += `\\u${code.toString(16).padStart(4, '0')}`;
+        continue;
+      }
+    }
+    out += char;
+  }
+  return out;
+}
+
 /** Extract the first balanced {...} substring from text, or null if none found. */
 function extractFirstJsonObject(text: string): string | null {
   const start = text.indexOf('{');
@@ -189,7 +283,10 @@ export async function POST(request: NextRequest) {
     // generateAndSavePost publishes the post BEFORE updating the automation
     // stats, so a failure on that last write means a live published article the
     // admin was told failed — and retrying publishes a second one.
-    captureHandledError(err, { step: 'blog-generate' });
+    captureHandledError(err, {
+      step: 'blog-generate',
+      diagnostics: err instanceof BlogGenerationError ? err.diagnostics : undefined,
+    });
     return NextResponse.json(
       { error: err?.message || 'Failed to generate article' },
       { status: 500 },
@@ -234,8 +331,10 @@ export async function generateAndSavePost(
   );
 
   if (liveChunks.length === 0) {
-    throw new Error(
+    throw new BlogGenerationError(
+      'no-context',
       'No knowledge base content found. Please upload documents to the AI Knowledge Base first.',
+      { chunksUsed: 0, contextChars: 0 },
     );
   }
 
@@ -257,37 +356,37 @@ ${topicHint ? `Topic focus: ${topicHint}\n` : ''}
 SOURCE MATERIAL (ministry knowledge base):
 ${knowledgeContext}
 
+ARTICLE STRUCTURE — the HTML that goes in the "htmlContent" field, in this order:
+  <h1>the title</h1>
+  <p>compelling intro paragraph — include the primary keyword naturally in the first 100 words</p>
+  <h2>Section 1 heading — descriptive, keyword-related</h2>
+  <p>section content</p>
+  ... (3-5 H2 sections total, each with 1-3 paragraphs)
+  <h2>Conclusion</h2>
+  <p>summary paragraph</p>
+  <p>call to action — invite readers to engage with the ministry</p>
+
+SEO requirements for the article HTML:
+- Primary keyword used naturally 3-5 times total
+- 2-3 related/LSI keywords used throughout
+- Each H2 contains a relevant keyword or phrase
+- Total length: 800-1200 words
+- Short paragraphs (2-4 sentences max) for mobile readability
+- No keyword stuffing — reads naturally
+
 Respond with ONLY the JSON object below — no markdown, no backticks, no preamble, no
 explanation, and no commentary of any kind, even if you have concerns about the source
 material. If the source material is insufficient, still do your best to produce the
-JSON object from what is available. Schema:
-{
-  "seoTitle": "string — 50-60 characters, primary keyword near start, compelling",
-  "seoDescription": "string — 140-155 characters, includes primary keyword, clear value proposition, encourages clicks",
-  "slug": "string — kebab-case, 3-6 words, primary keyword included, no special chars",
-  "keywords": ["array", "of", "5-8", "target", "keywords"],
-  "title": "string — article headline, can be slightly longer/more creative than seoTitle",
-  "category": "string — one of: Faith, Ministry, Discipleship, Community, Worship, Outreach, Leadership",
-  "tags": ["array", "of", "3-5", "topic", "tags"],
-  "estimatedReadTime": number (minutes, integer),
-  "htmlContent": "string — full article HTML with this exact structure:
-    <h1>{title}</h1>
-    <p>{compelling intro paragraph — include primary keyword naturally in first 100 words}</p>
-    <h2>{Section 1 heading — descriptive, keyword-related}</h2>
-    <p>{section content}</p>
-    ... (3-5 H2 sections total, each with 1-3 paragraphs)
-    <h2>Conclusion</h2>
-    <p>{summary paragraph}</p>
-    <p>{call to action — invite readers to engage with the ministry}</p>
+JSON object from what is available.
 
-    SEO requirements for htmlContent:
-    - Primary keyword used naturally 3-5 times total
-    - 2-3 related/LSI keywords used throughout
-    - Each H2 contains a relevant keyword or phrase
-    - Total length: 800-1200 words
-    - Short paragraphs (2-4 sentences max) for mobile readability
-    - No keyword stuffing — reads naturally"
-}`;
+FORMATTING RULES, both mandatory:
+1. The response must be ONE valid JSON object that JSON.parse accepts.
+2. Every value must be on a SINGLE line. Never put a real line break inside a
+   string — the whole article HTML goes in "htmlContent" as one unbroken line.
+   Use "\\n" if you need a line break, or no break at all (HTML doesn't need one).
+
+Schema (types shown as values; replace each with real content):
+{"seoTitle":"50-60 characters, primary keyword near start, compelling","seoDescription":"140-155 characters, includes primary keyword, clear value proposition, encourages clicks","slug":"kebab-case, 3-6 words, primary keyword included, no special chars","keywords":["5-8","target","keywords"],"title":"article headline, can be slightly longer/more creative than seoTitle","category":"one of: Faith, Ministry, Discipleship, Community, Worship, Outreach, Leadership","tags":["3-5","topic","tags"],"estimatedReadTime":5,"htmlContent":"<h1>…</h1><p>…</p><h2>…</h2><p>…</p><h2>Conclusion</h2><p>…</p><p>…</p>"}`;
 
   // 3. Call MiMo for generation
   const mimoRes = await fetch(getMimoChatUrl(), {
@@ -315,32 +414,72 @@ JSON object from what is available. Schema:
 
   const mimoData = await mimoRes.json();
   const rawText = mimoData.choices?.[0]?.message?.content || '';
+  // 'length' means the model hit the output ceiling mid-article. That produces
+  // JSON that never closes its braces, which is indistinguishable from garbage
+  // at the parse but entirely distinguishable here.
+  const finishReason: string = mimoData.choices?.[0]?.finish_reason || 'unknown';
 
-  // 4. Parse JSON response — strip any accidental markdown fences
-  let parsed: any;
-  try {
-    const clean = rawText
-      .replace(/^```(?:json)?\s*/i, '')
-      .replace(/\s*```\s*$/i, '')
-      .trim();
-    parsed = JSON.parse(clean);
-  } catch {
-    // Model may have wrapped the JSON in prose (e.g. a refusal/explanation) —
-    // salvage the first balanced {...} object before giving up.
-    const salvaged = extractFirstJsonObject(rawText);
-    if (salvaged) {
-      try {
-        parsed = JSON.parse(salvaged);
-      } catch {
-        parsed = null;
+  // 4. Parse JSON response. Four attempts, cheapest first: as-is (after
+  //    stripping accidental markdown fences), then with raw control characters
+  //    inside string values escaped, then the same two against the first
+  //    balanced {...} object salvaged from surrounding prose.
+  const fenceStripped = rawText
+    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/\s*```\s*$/i, '')
+    .trim();
+  const salvaged = extractFirstJsonObject(rawText);
+
+  let parsed: any = null;
+  for (const candidate of [
+    fenceStripped,
+    escapeControlCharsInStrings(fenceStripped),
+    salvaged,
+    salvaged === null ? null : escapeControlCharsInStrings(salvaged),
+  ]) {
+    if (!candidate) continue;
+    try {
+      const result = JSON.parse(candidate);
+      // A bare string/number is valid JSON but not an article.
+      if (result && typeof result === 'object') {
+        parsed = result;
+        break;
       }
+    } catch {
+      // Try the next repair.
     }
-    if (!parsed) {
-      console.error('AI returned invalid JSON. Raw response:', rawText);
-      throw new Error(
-        "Couldn't generate a post from your current Knowledge Base. Add ministry-focused source material (sermons, devotionals, teaching notes) to the AI Knowledge Base, then try again.",
+  }
+
+  if (!parsed) {
+    console.error('AI returned invalid JSON. Raw response:', rawText);
+
+    // Report the failure that actually occurred. The knowledge base was read
+    // successfully to get here — `liveChunks` is non-empty and its content went
+    // into the prompt — so blaming the tenant's source material is only honest
+    // when there was barely any of it.
+    const diagnostics = {
+      finishReason,
+      rawResponseLength: rawText.length,
+      contextChars: knowledgeContext.length,
+      chunksUsed: liveChunks.length,
+      // Bounded and redacted by captureHandledError on the way to Sentry.
+      rawResponseExcerpt: rawText,
+    };
+
+    if (knowledgeContext.length < MIN_CONTEXT_CHARS_FOR_ARTICLE) {
+      throw new BlogGenerationError('no-context', NO_CONTEXT_MESSAGE, diagnostics);
+    }
+    if (finishReason === 'length') {
+      throw new BlogGenerationError(
+        'truncated-output',
+        'The AI ran out of room and its article was cut off before it finished, so there was nothing complete to publish. This is a length limit on our side, not a problem with your Knowledge Base. Please try again.',
+        diagnostics,
       );
     }
+    throw new BlogGenerationError(
+      'invalid-json',
+      "The AI's response came back in a format we couldn't read, so there was nothing to publish. Your Knowledge Base was read fine and this is a fault on our side — please try again, and contact support if it keeps happening.",
+      diagnostics,
+    );
   }
 
   // 5. Validate required fields

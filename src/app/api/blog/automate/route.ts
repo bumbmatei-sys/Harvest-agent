@@ -77,6 +77,15 @@ export async function POST(request: NextRequest) {
         // A JS Date is stored as a Firestore Timestamp (the cron reads it back
         // via .toDate()); FieldValue.delete() removes any prior schedule.
         nextScheduledAt,
+        // Saving the settings is the admin acting on the problem, so the failure
+        // streak starts over. Without this, automation that the cron disabled
+        // after N failures would be re-disabled by the very next failure, and
+        // the stale "we turned this off" banner would outlive the fix.
+        consecutiveFailures: 0,
+        lastFailureAt: FieldValue.delete(),
+        lastFailureMessage: FieldValue.delete(),
+        automationDisabledAt: FieldValue.delete(),
+        automationDisabledReason: FieldValue.delete(),
         updatedAt: FieldValue.serverTimestamp(),
         updatedBy: userOrErr.uid,
       }, { merge: true });

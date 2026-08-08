@@ -1,4 +1,5 @@
 import * as Sentry from '@sentry/nextjs';
+import { redactFreeText } from './sentry-scrub';
 
 /**
  * Sentry reporting for *caught* failures.
@@ -140,16 +141,49 @@ export interface HandledCapture {
    * connection ids. IDENTIFIERS ONLY — never an email, name, phone or amount.
    */
   ids?: Record<string, string | null | undefined>;
+  /**
+   * Bounded free-text diagnostics — the narrow exception to the identifiers-only
+   * rule above, and deliberately a separate field so it stays that way.
+   *
+   * `ids` is for values you can look a record up by. Some failures have no such
+   * value: when a model returns a response we cannot parse, the ONLY thing that
+   * identifies the fault is the response itself, and a `console.error` of it is
+   * unreadable on Vercel. Sending nothing means the next occurrence is as
+   * undiagnosable as the last, which is how one bug stayed open for 305 events.
+   *
+   * Every value is redacted and hard-truncated by `redactFreeText` (see
+   * `MAX_DIAGNOSTIC_CHARS`) on the way through, so a call site cannot leak a
+   * member's details or blow up the event payload even by passing raw model
+   * output straight in. Keep it to diagnostics — never route an identifier here
+   * to dodge the `ids` contract.
+   */
+  diagnostics?: Record<string, string | number | null | undefined>;
 }
+
+/**
+ * Per-value cap for `diagnostics`. Enough to see the shape of a malformed
+ * response — fence, prose preamble, truncation mid-token — without shipping a
+ * whole article to a third party.
+ */
+export const MAX_DIAGNOSTIC_CHARS = 500;
 
 export function captureHandledError(error: unknown, capture: HandledCapture): void {
   try {
-    const { step, level = 'error' } = capture;
+    const { step, level = 'error', diagnostics } = capture;
+
+    const details = buildDetails(capture);
+    for (const [key, value] of Object.entries(diagnostics || {})) {
+      // `0` and `''` are meaningful diagnostics (an empty model response is the
+      // whole finding), so only null/undefined are dropped here — unlike `ids`,
+      // where a falsy identifier is just noise.
+      if (value === null || value === undefined) continue;
+      details[key] = redactFreeText(String(value), MAX_DIAGNOSTIC_CHARS);
+    }
 
     Sentry.captureException(error, {
       level,
       tags: { handled_path: 'true', step },
-      contexts: { handled_path: buildDetails(capture) },
+      contexts: { handled_path: details },
     });
   } catch {
     // Observability must never alter the path it observes.
