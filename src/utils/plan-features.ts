@@ -258,12 +258,58 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
 
 // ─── Pricing (source of truth) ────────────────────────────────────────────────
 
-/** Base plan pricing in USD. */
+/**
+ * Months charged for a year of service. Annual = monthly × this.
+ *
+ * This is a PRICING DECISION, not a rounding convention — do NOT "simplify" it
+ * back to a literal, and do not fold it into the yearlyUsd numbers below as a
+ * one-off. Churches budget annually and prefer a single invoice, and a year
+ * paid up front is worth materially more to Harvest than twelve monthly
+ * payments, so the discount is deliberately generous: 9 of 12 months = 25% off.
+ *
+ * EVERY annual figure and every discount claim in this app derives from this
+ * constant — prices, the monthly-equivalent line, the "months free" badges.
+ * Nothing computes an annual number from a literal.
+ *
+ * ⚠️ CROSS-REPO: the marketing site (harvest-presentation-site) carries its own
+ * copy of this constant in src/components/Pricing.tsx — the two repos cannot
+ * share code, so they are kept in sync by hand. Changing this value here means
+ * changing it there IN THE SAME BREATH, or the app and the public pricing page
+ * quote different prices for the same plan.
+ */
+export const ANNUAL_BILLED_MONTHS = 9;
+
+/** Months of service received free on annual billing (12 − billed months). */
+export const ANNUAL_FREE_MONTHS = 12 - ANNUAL_BILLED_MONTHS;
+
+/** Annual discount against twelve monthly payments, as a whole percent (25). */
+export const ANNUAL_DISCOUNT_PCT = Math.round((1 - ANNUAL_BILLED_MONTHS / 12) * 100);
+
+/**
+ * Base plan pricing in USD.
+ *
+ * `yearlyUsd` is `monthlyUsd * ANNUAL_BILLED_MONTHS`, written out as literals
+ * rather than computed, so the published price of each tier is readable at a
+ * glance in the one table that defines it. The literals are NOT left
+ * unguarded: plan-features.test.ts pins the identity
+ * `yearlyUsd === monthlyUsd * ANNUAL_BILLED_MONTHS` on every tier, so a
+ * literal that drifts from the multiplier fails the suite instead of shipping.
+ */
 export const PLAN_PRICING: Record<TenantPlan, { monthlyUsd: number; yearlyUsd: number }> = {
-  plus: { monthlyUsd: 49,  yearlyUsd: 490  },
-  pro:  { monthlyUsd: 99,  yearlyUsd: 990  },
-  max:  { monthlyUsd: 199, yearlyUsd: 1990 },
+  plus: { monthlyUsd: 49,  yearlyUsd: 441  },
+  pro:  { monthlyUsd: 99,  yearlyUsd: 891  },
+  max:  { monthlyUsd: 199, yearlyUsd: 1791 },
 };
+
+/**
+ * Monthly-equivalent price of a plan on annual billing, e.g. 199 -> 149.
+ *
+ * The one place this rounding lives. Math.round(199 * 9 / 12) is exactly 149 —
+ * that is a consequence of choosing 9, not a special case to hard-code.
+ */
+export function annualMonthlyEquivalent(plan: TenantPlan): number {
+  return Math.round((PLAN_PRICING[plan].monthlyUsd * ANNUAL_BILLED_MONTHS) / 12);
+}
 
 // `PLAN_DONATION_RETENTION` was removed alongside the `donationRetention`
 // matrix cell it mirrored. It existed to publish `100 - PLATFORM_FEE_MAP[plan]

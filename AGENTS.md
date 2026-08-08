@@ -153,7 +153,16 @@ This table is a summary — when they disagree, the code is right and this file 
 | pro  | Small Team  | $99/mo  | 0%  | 500      | 5      | 5       | 1        | ✅   | ✅  | ❌            | ❌        | ✅  | ✅    | ✅       | ✅         | ✅           | ❌         | ❌               |
 | max  | Ministry    | $199/mo | 0%  | 2,000    | 15     | 15      | 1        | ✅   | ✅  | ✅            | ✅        | ✅  | ✅    | ✅       | ✅         | ✅           | ✅         | ✅               |
 
-Annual billing is monthly × 10 (pay ten months, get twelve): $490 / $990 / $1,990.
+Annual billing is monthly × `ANNUAL_BILLED_MONTHS` (pay nine months, get twelve —
+a 25% discount): $441 / $891 / $1,791, or $37 / $74 / $149 a month equivalent.
+
+`ANNUAL_BILLED_MONTHS` (src/utils/plan-features.ts) is the ONLY place the
+multiplier is written. Every annual price, monthly-equivalent figure and
+"months free" badge derives from it — do not reintroduce a literal. The
+marketing site (harvest-presentation-site) carries its own copy in
+src/components/Pricing.tsx; the two repos cannot share code, so a change to one
+must land with a change to the other or the app and the public pricing page
+will quote different prices.
 
 **There are three tiers.** A fourth, `ultra` (displayed as "Ministry", $299), was
 deleted and folded into `max` — which inherited both its display name and its

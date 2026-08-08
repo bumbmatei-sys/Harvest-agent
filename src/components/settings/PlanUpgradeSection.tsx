@@ -11,6 +11,9 @@ import {
   AI_ASSISTANT_ADDON_PRICING,
   AI_TELEGRAM_ASSISTANT_ENABLED,
   formatPlanPrice,
+  annualMonthlyEquivalent,
+  ANNUAL_BILLED_MONTHS,
+  ANNUAL_FREE_MONTHS,
   PlanFeatures,
 } from '../../utils/plan-features';
 import { authFetch } from '../../utils/auth-fetch';
@@ -242,14 +245,14 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
         >
           Yearly
           <span className="absolute -top-2 -right-2 px-1.5 py-0.5 bg-green-500 text-white text-[10px] font-bold rounded-full">
-            -2mo
+            -{ANNUAL_FREE_MONTHS}mo
           </span>
         </button>
       </div>
 
       {billingPeriod === 'yearly' && (
         <p className="text-center text-sm text-green-600 font-medium">
-          🎉 First year promotion: 2 months free! Pay for 10 months, get 12.
+          🎉 {ANNUAL_FREE_MONTHS} months free! Pay for {ANNUAL_BILLED_MONTHS} months, get 12.
         </p>
       )}
 
@@ -267,9 +270,10 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
           const features = getPlanFeatures(planId);
           const name = PLAN_DISPLAY_NAMES[planId];
           const displayPrice = formatPlanPrice(planId, billingPeriod);
-          // Stripe charges monthly × 10 for annual (pay 10 months, get 12), same math as the
-          // marketing site's Pricing.tsx — mirrored here so the two never show different numbers.
-          const yearlyMonthlyEquivalent = Math.round((PLAN_PRICING[planId].monthlyUsd * 10) / 12);
+          // Annual bills monthly × ANNUAL_BILLED_MONTHS, same math as the marketing site's
+          // Pricing.tsx — derived from the shared constant so the two never show different
+          // numbers. The rounding lives in annualMonthlyEquivalent(), not here.
+          const yearlyMonthlyEquivalent = annualMonthlyEquivalent(planId);
           const isCurrent = planId === currentPlan;
           const isDowngrade = PLAN_ORDER.indexOf(planId) < PLAN_ORDER.indexOf(currentPlan ?? 'plus');
 
@@ -303,7 +307,7 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
                   {displayPrice}
                 </p>
                 {billingPeriod === 'yearly' && (
-                  <p className="text-xs text-green-600 font-medium mt-1">Save 2 months</p>
+                  <p className="text-xs text-green-600 font-medium mt-1">Save {ANNUAL_FREE_MONTHS} months</p>
                 )}
               </div>
 

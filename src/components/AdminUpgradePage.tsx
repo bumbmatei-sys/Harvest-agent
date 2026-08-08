@@ -7,6 +7,8 @@ import {
   PLAN_ORDER,
   PLAN_PRICING,
   formatPlanPrice,
+  ANNUAL_BILLED_MONTHS,
+  ANNUAL_FREE_MONTHS,
 } from '../utils/plan-features';
 import { authFetch } from '../utils/auth-fetch';
 import { getTenantId } from './settings/useTenantId';
@@ -160,12 +162,12 @@ const AdminUpgradePage: React.FC<AdminUpgradePageProps> = ({ currentPlan, tenant
           >
             Yearly
             <span className="absolute -top-2 -right-2 px-1.5 py-0.5 bg-green-500 text-white text-[10px] font-bold rounded-full">
-              2mo free
+              {ANNUAL_FREE_MONTHS}mo free
             </span>
           </button>
         </div>
         {billingPeriod === 'yearly' && (
-          <p className="text-xs text-green-600 font-medium">Pay for 10 months, get 12 — first year.</p>
+          <p className="text-xs text-green-600 font-medium">Pay for {ANNUAL_BILLED_MONTHS} months, get 12.</p>
         )}
       </div>
 
