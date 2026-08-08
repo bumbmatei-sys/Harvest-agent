@@ -68,6 +68,10 @@ vi.mock('../../hooks/queries/useCRMQueries', async (importOriginal) => ({
   useContactActivities: () => ({
     data: [], isLoading: false, isError: false, error: null, refetch: () => {},
   }),
+  // Undefined data = counts not in yet. Deliberate here: it proves the error and
+  // empty states below are what AdminCRM renders on its own, with no coverage
+  // line propping them up.
+  useCRMCounts: () => ({ data: undefined }),
 }));
 
 let container: HTMLDivElement;

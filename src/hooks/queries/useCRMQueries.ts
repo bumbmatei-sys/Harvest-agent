@@ -1,5 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
-import { collection, query, where, getDocs, getDoc, doc, limit } from 'firebase/firestore';
+import {
+  collection, query, where, getDocs, getDoc, doc, limit, getCountFromServer,
+} from 'firebase/firestore';
 import { db } from '../../firebase';
 import type { DateLike } from '../../utils/format-date';
 import { sortByString } from '../../utils/query-helpers';
@@ -118,6 +120,35 @@ export const NO_TENANT_SCOPE_MESSAGE =
   'Could not determine which church to load contacts for. Reload the page, and if this keeps happening sign out and back in.';
 
 /**
+ * How many documents the CRM loads from EACH of the two collections it merges
+ * (`contacts` and `users`).
+ *
+ * ONE constant for both collections and both scoping paths, because the numbers
+ * it replaces were not only low but INVERTED: the scoped tenant read stopped at
+ * 500 while the unscoped super-admin read stopped at 1,000, so a church's own
+ * admin saw LESS of their church than a platform operator did. A single ceiling
+ * makes that class of drift impossible to reintroduce silently.
+ *
+ * Why a ceiling at all, and why this number. Firestore bills per document read
+ * and this list opens on every CRM visit, so an uncapped read is an uncapped
+ * bill. 1,000 per collection puts the worst case at ~2,000 document reads per
+ * cold open (plus 2 aggregation reads for the counts below), which is the read
+ * budget this list is allowed. React Query's 5-minute `staleTime` means repeat
+ * opens inside that window cost nothing.
+ *
+ * This ceiling is NOT the fix for truncation on its own — it is the fix for the
+ * inversion, plus a doubling of the tenant path. What makes the remaining
+ * truncation survivable is that it is now VISIBLE: `useCRMCounts` reports the
+ * true totals via a server-side aggregate, and the CRM says so on screen when
+ * the loaded list is short of them. Silent truncation is the bug; a ceiling the
+ * admin can SEE is a limit.
+ *
+ * Raising this further is not free and not correct on its own — see the
+ * `useCRMCounts` doc for why real pagination needs a data-model change first.
+ */
+export const CRM_FETCH_LIMIT = 1000;
+
+/**
  * Fetch the CRM `contacts` rows for the caller, applying the tenant scoping that
  * BOTH contact hooks share.
  *
@@ -157,7 +188,7 @@ const fetchContactRows = async (tenantId: string | null | undefined): Promise<Co
     // dropping any that belong to a *named* tenant (no cross-tenant leakage).
     // NOTE: at larger scale, replace this scan with a one-time migration that
     // stamps every legacy/null contact with tenantId 'harvest'.
-    const snap = await getDocs(query(collection(db, 'contacts'), limit(1000)));
+    const snap = await getDocs(query(collection(db, 'contacts'), limit(CRM_FETCH_LIMIT)));
     return snap.docs
       .map(d => ({ id: d.id, ...d.data() }) as Contact)
       .filter(c => c.tenantId == null || c.tenantId === '' || c.tenantId === PLATFORM_TENANT_ID);
@@ -172,7 +203,7 @@ const fetchContactRows = async (tenantId: string | null | undefined): Promise<Co
   // tenant lands here rather than on the scan: the equality constraint is what
   // the rule needs, and it is the only query they are allowed to run.
   const snap = await getDocs(
-    query(collection(db, 'contacts'), where('tenantId', '==', tenantId), limit(500)),
+    query(collection(db, 'contacts'), where('tenantId', '==', tenantId), limit(CRM_FETCH_LIMIT)),
   );
   return snap.docs.map(d => ({ id: d.id, ...d.data() }) as Contact);
 };
@@ -302,8 +333,8 @@ export const useContactsWithUsers = (tenantId: string | null | undefined, isAuth
       try {
         const scope = await getTenantScope();
         const usersQ = scope
-          ? query(collection(db, 'users'), where('tenantId', '==', scope), limit(1000))
-          : query(collection(db, 'users'), limit(1000));
+          ? query(collection(db, 'users'), where('tenantId', '==', scope), limit(CRM_FETCH_LIMIT))
+          : query(collection(db, 'users'), limit(CRM_FETCH_LIMIT));
         userDocs = (await getDocs(usersQ)).docs;
       } catch (e) {
         console.error('[CRM] failed to load app members from users:', e);
@@ -320,6 +351,135 @@ export const useContactsWithUsers = (tenantId: string | null | undefined, isAuth
 
       return sortByString(merged, 'lastName', 'asc');
     },
+    enabled: isAuthReady && tenantId !== undefined,
+    staleTime: 1000 * 60 * 5,
+  });
+
+/**
+ * The TRUE size of the two collections behind the CRM list, counted server-side.
+ *
+ * ── Why this exists ──────────────────────────────────────────────────────────
+ * `contacts.length` from the merged list cannot answer "how many people are
+ * there", because that array stops at CRM_FETCH_LIMIT per collection. Taking a
+ * total from it reports the ceiling as the answer — which is how the list came
+ * to end silently at 500. `getCountFromServer()` runs an aggregation in
+ * Firestore and returns a number WITHOUT loading the documents: it bills one
+ * read per 1,000 index entries matched, so counting a 2,000-contact church
+ * costs 2 reads rather than 2,000. That is what makes an honest total
+ * affordable on every CRM open, and it is the figure the `maxContacts` cap will
+ * consume (`memberAccounts` — the cap counts `users` docs only).
+ *
+ * ── The two numbers are reported SEPARATELY, and that is deliberate ───────────
+ * Do NOT add them together and call the sum "people". The list is a MERGE:
+ * `mergeContactsWithUsers` folds a person who has both a `contacts` row and a
+ * `users` row into ONE row. So the true head-count is somewhere between
+ * max(contactRecords, memberAccounts) and their sum, and nothing short of
+ * loading both collections can say where — the overlap is only discoverable by
+ * comparing `userId` links and emails document by document. Presenting the sum
+ * as a head-count would replace an undercount with an overcount. Each number is
+ * exact about its own collection; the UI states them as such.
+ *
+ * ── Truncation is DERIVED from the counts, not plumbed through the list ───────
+ * `contactsTruncated` / `usersTruncated` are `count > CRM_FETCH_LIMIT`, which is
+ * exactly equivalent to "that read stopped at the ceiling": both the list read
+ * and the count run the same scoping constraint, so if more documents match
+ * than the ceiling allows, the list read hit it. Deriving it here keeps
+ * `useContactsWithUsers` returning a plain `Contact[]` — no consumer has to
+ * change shape to learn that its data is partial.
+ *
+ * ── Why this is not pagination, and what blocks pagination ───────────────────
+ * Paginating the merged list is not implementable against the CURRENT data
+ * model, for two independent reasons:
+ *
+ *   1. DEDUPLICATION NEEDS THE WHOLE `contacts` SET. A `users` row is folded in
+ *      when some contact matches it on `contact.userId` or on email. To know a
+ *      `users` row is NOT a duplicate you must have seen EVERY contact. Load
+ *      contacts a page at a time and a member whose contact row sits on an
+ *      unloaded page surfaces a second time under their `users` id — with an
+ *      empty timeline, because activities are keyed to the contact id. That is
+ *      precisely the dual-id bug `mergeContactsWithUsers` was written to fix.
+ *
+ *   2. THE TWO COLLECTIONS HAVE NO COMMON SORT KEY. The list is ordered by
+ *      `lastName`, which only `contacts` stores; `users` carries a single
+ *      `displayName` that is split into first/last at read time. Firestore
+ *      cannot order `users` by a field the documents do not have (and would
+ *      drop every such document from an `orderBy('lastName')` result), so
+ *      "page N of the merged list, sorted by last name" is not expressible as a
+ *      pair of server queries.
+ *
+ * Fixing either one is a data-model change — a `lastName` (or a `contactId`
+ * back-link) written onto every `users` doc, plus a backfill and a write-path
+ * change — not a query change. Until then the honest move is the one taken
+ * here: load a bounded prefix, merge it whole so deduplication still holds
+ * across everything loaded, and TELL the admin the total they are not seeing.
+ */
+export interface CRMCounts {
+  /** Exact number of `contacts` documents in scope. */
+  contactRecords: number;
+  /**
+   * Exact number of `users` documents in scope — people with an app account.
+   * This is the figure the `maxContacts` cap consumes: the cap counts accounts,
+   * and donors who exist only in `contacts` stay visible but uncounted.
+   */
+  memberAccounts: number;
+  /**
+   * True on the unscoped super-admin path, where `contactRecords` counts EVERY
+   * church's contacts. The list itself shows only platform-owned rows (the scan
+   * filters them client-side), so on this path the count is an upper bound on
+   * what is displayed, not a target it should reach. The UI must label it.
+   */
+  platformWide: boolean;
+  /** More `contacts` documents match than the list read can load. */
+  contactsTruncated: boolean;
+  /** More `users` documents match than the list read can load. */
+  usersTruncated: boolean;
+}
+
+/** Run an aggregation and unwrap the count. */
+const countOf = async (q: ReturnType<typeof query>): Promise<number> =>
+  (await getCountFromServer(q)).data().count;
+
+/**
+ * Scoped exactly like the two list reads it describes — `contacts` by the
+ * caller's tenant (or unscoped for a super admin on the apex), `users` by
+ * `getTenantScope()`. If the scoping ever drifts apart from `fetchContactRows`
+ * and the members query, the counts stop describing the list.
+ */
+const fetchCRMCounts = async (tenantId: string | null | undefined): Promise<CRMCounts> => {
+  const platformWide = (!tenantId || tenantId === PLATFORM_TENANT_ID) && isSuperAdmin();
+
+  // Same fault as the list read: no tenant and no super-admin standing is a
+  // fault, not a zero. Reporting 0 here would render as "this church has no
+  // contacts" on a screen whose entire job is to stop saying that.
+  if (!platformWide && !tenantId) throw new Error(NO_TENANT_SCOPE_MESSAGE);
+
+  const contactsQ = platformWide
+    ? query(collection(db, 'contacts'))
+    : query(collection(db, 'contacts'), where('tenantId', '==', tenantId));
+
+  const scope = await getTenantScope();
+  const usersQ = scope
+    ? query(collection(db, 'users'), where('tenantId', '==', scope))
+    : query(collection(db, 'users'));
+
+  const [contactRecords, memberAccounts] = await Promise.all([
+    countOf(contactsQ),
+    countOf(usersQ),
+  ]);
+
+  return {
+    contactRecords,
+    memberAccounts,
+    platformWide,
+    contactsTruncated: contactRecords > CRM_FETCH_LIMIT,
+    usersTruncated: memberAccounts > CRM_FETCH_LIMIT,
+  };
+};
+
+export const useCRMCounts = (tenantId: string | null | undefined, isAuthReady = true) =>
+  useQuery({
+    queryKey: ['crmCounts', tenantId],
+    queryFn: (): Promise<CRMCounts> => fetchCRMCounts(tenantId),
     enabled: isAuthReady && tenantId !== undefined,
     staleTime: 1000 * 60 * 5,
   });

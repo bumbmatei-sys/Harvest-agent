@@ -68,6 +68,11 @@ vi.mock('../../hooks/queries/useCRMQueries', async (importOriginal) => ({
   useContactActivities: () => ({
     data: [], isLoading: false, isError: false, error: null, refetch: () => {},
   }),
+  // Undefined data = counts not in yet, so the coverage line does not render and
+  // these email assertions see the same DOM they always did. Stubbed rather than
+  // left real because the real hook calls useQuery, which this file's
+  // react-query mock does not provide.
+  useCRMCounts: () => ({ data: undefined }),
 }));
 
 let container: HTMLDivElement;

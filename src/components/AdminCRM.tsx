@@ -21,7 +21,8 @@ import { useAdminHeader, HeaderActionButton } from './AdminScreenHeader';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAppStore } from '../store/useAppStore';
 import {
-  useContactsWithUsers, useContactActivities, resolvePipelineStage,
+  useContactsWithUsers, useContactActivities, resolvePipelineStage, useCRMCounts,
+  CRM_FETCH_LIMIT,
   type Contact, type ContactActivity, type PipelineStage,
 } from '../hooks/queries/useCRMQueries';
 import { PLATFORM_TENANT_ID } from '../utils/tenant-scope';
@@ -202,6 +203,19 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
     error: contactsError,
     refetch: refetchContacts,
   } = useContactsWithUsers(tenantId, isAuthReady);
+
+  // True collection sizes, counted server-side without loading the documents.
+  //
+  // This is what stops the list lying about its own length. `contacts` above
+  // stops at CRM_FETCH_LIMIT per collection, so its `.length` reports the
+  // ceiling as the total once a church outgrows it — the silent truncation this
+  // screen shipped with. The aggregate below is the real number, and costs ~1
+  // read per 1,000 documents rather than one per document.
+  //
+  // Deliberately NOT destructured with an error flag: a failed count must not
+  // take the list down with it. The list is still worth showing; it just loses
+  // the coverage line, which renders only when `counts` arrived.
+  const { data: counts } = useCRMCounts(tenantId, isAuthReady);
 
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | Contact['type']>('all');
@@ -1045,6 +1059,21 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
   // it reported button presses as a giving metric.
   const championCount = contacts.filter(c => resolvePipelineStage(c.totalDonated) === 'champion').length;
 
+  // How much of the church the list is actually showing.
+  //
+  // The old failure was silence: past the limit people simply were not there,
+  // with nothing on screen to say so, so a truncated list and a complete one
+  // rendered identically. Everything below exists to make those two states
+  // distinguishable — and to say it with the REAL total, not the ceiling.
+  //
+  // Note the two counts are reported separately and never summed. The list is a
+  // merge: someone with both a `contacts` row and a `users` row is one row here,
+  // so `contactRecords + memberAccounts` would overcount every member who has
+  // both. Each figure is exact about its own collection; the head-count that is
+  // exact is `contacts.length`, and only while nothing is truncated.
+  const listIsPartial = !!counts && (counts.contactsTruncated || counts.usersTruncated);
+  const nf = (n: number) => n.toLocaleString();
+
   const stats: { label: string; value: React.ReactNode; icon: React.ReactNode }[] = [
     { label: 'Members', value: memberCount, icon: <Users size={15} /> },
     { label: 'Donors', value: donorCount, icon: <Heart size={15} /> },
@@ -1068,6 +1097,52 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
           </div>
         ))}
       </div>
+
+      {/* Coverage line — how much of the church this list is showing.
+          Renders only once the server-side counts arrive; a failed count costs
+          the line, never the list. When the list is short of the true totals
+          this is a warning, not a footnote: it names the real numbers AND warns
+          that search, the type filter and the stat cards above all see only the
+          loaded rows. A search that quietly covers half the church looks
+          authoritative, which is worse than a list that admits it is short. */}
+      {counts && (
+        <div
+          data-testid="crm-coverage"
+          className={`mb-6 flex items-start gap-2.5 rounded-brand-lg border px-4 py-3 text-[13px] ${
+            listIsPartial
+              ? 'border-amber-300 bg-amber-50 text-amber-900'
+              : 'border-line bg-surface-sunken text-faint'
+          }`}
+        >
+          {listIsPartial && <AlertTriangle size={15} className="mt-0.5 shrink-0" />}
+          <div>
+            {listIsPartial ? (
+              <>
+                <span className="font-semibold">
+                  Showing {nf(contacts.length)} {contacts.length === 1 ? 'person' : 'people'} — this list is incomplete.
+                </span>{' '}
+                {counts.platformWide
+                  ? `Across all churches there are ${nf(counts.contactRecords)} contact records and ${nf(counts.memberAccounts)} member accounts.`
+                  : `This church has ${nf(counts.contactRecords)} contact records and ${nf(counts.memberAccounts)} member accounts.`}{' '}
+                The CRM loads at most {nf(CRM_FETCH_LIMIT)} of each, so search, the
+                type filter and the totals above cover only the rows loaded here.
+              </>
+            ) : counts.platformWide ? (
+              <>
+                Showing {nf(contacts.length)} platform {contacts.length === 1 ? 'person' : 'people'}.
+                Across all churches: {nf(counts.contactRecords)} contact records and{' '}
+                {nf(counts.memberAccounts)} member accounts.
+              </>
+            ) : (
+              <>
+                Showing all {nf(contacts.length)} {contacts.length === 1 ? 'person' : 'people'} —{' '}
+                {nf(counts.contactRecords)} contact records and {nf(counts.memberAccounts)} member
+                accounts, merged (anyone with both counts once).
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Search + filters + view toggle + add */}
       <div className="flex items-center gap-3 mb-6 flex-wrap">

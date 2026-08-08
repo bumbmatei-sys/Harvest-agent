@@ -180,7 +180,11 @@ describe('CRM contacts scoping', () => {
 
       expect(wasUnscopedContactsScan()).toBe(false);
       expect(contactQueries()[0].whereClauses).toEqual([['tenantId', '==', 'harvest']]);
-      expect(contactQueries()[0].limit).toBe(500);
+      // 1,000, NOT the 500 this used to be. The scoped path must never load less
+      // than the unscoped one: a church's own admin seeing fewer of their people
+      // than a platform operator does is the truncation bug at its most backwards.
+      // See crm-list-coverage.test.tsx for the shared-ceiling guard.
+      expect(contactQueries()[0].limit).toBe(1000);
     });
 
     it('scopes a NAMED tenant and never issues the unscoped query', async () => {
