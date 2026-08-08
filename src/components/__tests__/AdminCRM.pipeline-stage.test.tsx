@@ -61,6 +61,10 @@ vi.mock('../../hooks/queries/useCRMQueries', async (importOriginal) => ({
   useContactActivities: () => ({
     data: [], isLoading: false, isError: false, error: null, refetch: () => {},
   }),
+  // Undefined data = counts not in yet, so the coverage line stays out of the
+  // DOM and the stage/kanban assertions below match on exactly what they did
+  // before. Coverage has its own test file.
+  useCRMCounts: () => ({ data: undefined }),
 }));
 
 // Imported AFTER the mock factory above so it resolves through it (and therefore
