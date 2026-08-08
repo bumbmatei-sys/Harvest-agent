@@ -268,23 +268,32 @@ describe('THE-67 — CRM list coverage', () => {
   describe('a member with BOTH a contacts row and a users row', () => {
     it('appears exactly once when the two rows sit at opposite ends of the list', async () => {
       signInAs('tenant');
-      // The member's `contacts` row is the FIRST of 600; their `users` row is the
-      // LAST of 400. Under any page size those two fall on different pages — the
-      // arrangement that would resurrect the dual-id bug if the merge ever saw
-      // less than the whole loaded set at once.
-      const theMember = {
-        id: 'contact-of-member',
-        firstName: 'Miriam', lastName: 'Bumb',
-        email: 'miriambumb@yahoo.com',
-        userId: 'user-of-member',
-        tenantId: 'harvest',
+      // TWO members, each matched by a DIFFERENT half of the dedup key, and each
+      // with their `contacts` row at the front of 600 and their `users` row at
+      // the back of 400. Under any page size those pairs fall on different pages
+      // — the arrangement that resurrects the dual-id bug the moment the merge
+      // sees less than the whole loaded set at once.
+      //
+      // Covering both halves here is deliberate: with only the email-matched
+      // case, breaking the `userId` link would still pass because the emails
+      // agree, and vice versa. Either half breaking must fail THIS test.
+      const linkedByUserId = {
+        id: 'contact-linked', firstName: 'Miriam', lastName: 'Bumb',
+        email: 'miriam.new@yahoo.com',            // email CHANGED since the users doc
+        userId: 'user-linked', tenantId: 'harvest',
       };
-      const contacts = [theMember, ...manyContacts(599)];
+      const linkedByEmail = {
+        id: 'contact-emailed', firstName: 'Ada', lastName: 'Anders',
+        email: '  Ada@Example.org ',              // casing + whitespace differ
+        tenantId: 'harvest',                       // no userId link ever written
+      };
+      const contacts = [linkedByUserId, linkedByEmail, ...manyContacts(598)];
       const users = [
-        ...Array.from({ length: 399 }, (_, i) => ({
+        ...Array.from({ length: 398 }, (_, i) => ({
           id: `u${i}`, displayName: `Member ${i}`, email: `u${i}@example.org`, tenantId: 'harvest',
         })),
-        { id: 'user-of-member', displayName: 'Miriam Bumb', email: 'miriambumb@yahoo.com', tenantId: 'harvest' },
+        { id: 'user-linked', displayName: 'Miriam Bumb', email: 'miriam.old@yahoo.com', tenantId: 'harvest' },
+        { id: 'user-emailed', displayName: 'Ada Anders', email: 'ada@example.org', tenantId: 'harvest' },
       ];
       resolveReads(contacts, users);
       resolveCounts(600, 400);
@@ -293,14 +302,18 @@ describe('THE-67 — CRM list coverage', () => {
       await until(() => list.current.isSuccess, 'list success');
 
       const rows = list.current.data!;
-      // Exactly one row for this person — and it carries the CONTACTS id, which
-      // is the id their activity timeline is keyed to.
-      const hers = rows.filter(c => c.id === 'contact-of-member' || c.id === 'user-of-member');
-      expect(hers).toHaveLength(1);
-      expect(hers[0].id).toBe('contact-of-member');
-      expect(rows.filter(c => c.email.toLowerCase() === 'miriambumb@yahoo.com')).toHaveLength(1);
-      // 600 contacts + 400 users, minus the one person counted twice.
-      expect(rows).toHaveLength(999);
+      const idsPresent = new Set(rows.map(c => c.id));
+
+      // Each person surfaces once, under their CONTACTS id — the id their
+      // activity timeline is keyed to. Surfacing under the `users` id instead
+      // is the bug: the same person twice, the second time with an empty timeline.
+      expect(idsPresent.has('contact-linked')).toBe(true);
+      expect(idsPresent.has('user-linked')).toBe(false);
+      expect(idsPresent.has('contact-emailed')).toBe(true);
+      expect(idsPresent.has('user-emailed')).toBe(false);
+
+      // 600 contacts + 400 users, minus the two people counted twice.
+      expect(rows).toHaveLength(998);
     });
 
     it('dedupes on the userId link even when the two rows disagree on email', async () => {
