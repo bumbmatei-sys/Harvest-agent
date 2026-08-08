@@ -96,6 +96,10 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.useRealTimers();
+  // In afterEach rather than at the end of the one test that spies on
+  // computeNextScheduled: a failing assertion returns early, and an unrestored
+  // module spy then leaks into the next test as a confusing second failure.
+  vi.restoreAllMocks();
 });
 
 describe('auto-generate cron — a failed generation advances nextScheduledAt', () => {
@@ -134,7 +138,6 @@ describe('auto-generate cron — a failed generation advances nextScheduledAt', 
 
     const payload = tenant.set.mock.calls[0][0];
     expect((payload.nextScheduledAt as Date).toISOString()).toBe(soon.toISOString());
-    vi.restoreAllMocks();
   });
 
   it('reports the failure to Sentry as well as rescheduling', async () => {
