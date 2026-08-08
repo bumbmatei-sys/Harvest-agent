@@ -22,7 +22,6 @@ const CONTACT = vi.hoisted(() => ({
   email: 'ada@example.com',
   phone: '',
   type: 'member' as const,
-  stage: 'new' as const,
   notes: '',
   tags: [] as string[],
   totalDonated: 0,
@@ -60,7 +59,11 @@ vi.mock('../AdminScreenHeader', () => ({
   HeaderActionButton: () => null,
 }));
 vi.mock('../AnalyticsAndRoles', () => ({ default: () => null }));
-vi.mock('../../hooks/queries/useCRMQueries', () => ({
+// Spread the real module so the pure helpers it exports (resolvePipelineStage,
+// which every stage badge in AdminCRM calls) stay REAL — only the two data hooks
+// are stubbed. A hand-written object here would silently drop new exports.
+vi.mock('../../hooks/queries/useCRMQueries', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../hooks/queries/useCRMQueries')>()),
   useContactsWithUsers: () => ({ data: [CONTACT], isLoading: false }),
   useContactActivities: () => ({
     data: [], isLoading: false, isError: false, error: null, refetch: () => {},

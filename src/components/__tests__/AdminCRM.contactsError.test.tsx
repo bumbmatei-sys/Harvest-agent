@@ -56,7 +56,11 @@ vi.mock('../AdminScreenHeader', () => ({
 vi.mock('../AnalyticsAndRoles', () => ({
   default: ({ mode }: { mode: string }) => <div data-testid="analytics-and-roles">{mode}</div>,
 }));
-vi.mock('../../hooks/queries/useCRMQueries', () => ({
+// Spread the real module so the pure helpers it exports (resolvePipelineStage,
+// which every stage badge in AdminCRM calls) stay REAL — only the two data hooks
+// are stubbed. A hand-written object here would silently drop new exports.
+vi.mock('../../hooks/queries/useCRMQueries', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../hooks/queries/useCRMQueries')>()),
   useContactsWithUsers: (...args: unknown[]) => {
     useContactsWithUsers(...args);
     return contactsResult.current;

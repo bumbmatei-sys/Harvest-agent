@@ -7,13 +7,50 @@ import { PLATFORM_TENANT_ID, getTenantScope, isSuperAdmin } from '../../utils/te
 import { authFetch } from '../../utils/auth-fetch';
 import { captureHandledError } from '../../lib/money-path-sentry';
 
-/** CRM pipeline stages, from first contact through to deeply-invested leader. */
+/**
+ * CRM pipeline stages — DERIVED from giving, never stored.
+ *
+ * The five previous stages ('new' / 'connected' / 'active' / 'giving' /
+ * 'champion') were all set by an admin clicking a button: no donation, check-in
+ * or registration path ever wrote one. So a contact who had given $10,000 sat in
+ * "New" forever unless somebody remembered to move them, and the Champions stat
+ * on the dashboard counted button presses rather than donors.
+ *
+ * 'new', 'connected' and 'active' are gone because nothing in the app produces a
+ * signal for them — they could only ever be manual. The three that remain are a
+ * pure function of `totalDonated`, which the donation webhook and the CRM's own
+ * manual donation-activity add both already maintain.
+ */
 export type PipelineStage =
-  | 'new'         // Just added / first contact
-  | 'connected'   // Reached out, in conversation
-  | 'active'      // Regular attender / member
-  | 'giving'      // Active donor
-  | 'champion';   // Deeply invested, volunteer, leader
+  | 'member'      // No donations recorded
+  | 'giving'      // Has given anything at all
+  | 'champion';   // Has given at or above CHAMPION_THRESHOLD_DOLLARS
+
+/**
+ * DOLLARS. `totalDonated` is stored in dollars everywhere (see the field doc on
+ * `Contact` and the BUG 2 units fix) — Stripe's cent amounts are converted before
+ * they ever reach it — so this threshold is $10,000, NOT 1,000,000 cents.
+ */
+export const CHAMPION_THRESHOLD_DOLLARS = 10000;
+
+/**
+ * The ONE place a pipeline stage is decided. Every badge, column, chip and metric
+ * calls this; nothing compares `totalDonated` to a threshold inline, and nothing
+ * reads a stored `stage` field.
+ *
+ * Deriving rather than storing is deliberate: a stored stage is a second copy of
+ * a fact `totalDonated` already holds, and duplicated facts drift. It also means
+ * no backfill — a contact document whose legacy `stage` still says 'champion'
+ * with nothing given renders as Member the moment this ships.
+ *
+ * Missing / null / NaN totals mean "no donations recorded", which is Member.
+ */
+export const resolvePipelineStage = (totalDonated?: number | null): PipelineStage => {
+  const given = Number(totalDonated);
+  if (!Number.isFinite(given) || given <= 0) return 'member';
+  // >= , not > : exactly $10,000 IS a champion.
+  return given >= CHAMPION_THRESHOLD_DOLLARS ? 'champion' : 'giving';
+};
 
 export interface Contact {
   id: string;
@@ -22,7 +59,10 @@ export interface Contact {
   email: string;
   phone: string;
   type: 'donor' | 'member' | 'both';
-  stage?: PipelineStage; // defaults to 'new' if missing
+  // NOTE: there is deliberately no `stage` field. The pipeline stage is derived
+  // from `totalDonated` by resolvePipelineStage() at read time. Legacy documents
+  // may still carry a stored `stage` string; it is ignored, never written, and
+  // must not be re-added here — see the PipelineStage doc above.
   address?: {
     street?: string;
     city?: string;
@@ -119,7 +159,7 @@ const fetchContactRows = async (tenantId: string | null | undefined): Promise<Co
     // stamps every legacy/null contact with tenantId 'harvest'.
     const snap = await getDocs(query(collection(db, 'contacts'), limit(1000)));
     return snap.docs
-      .map(d => ({ id: d.id, stage: 'new', ...d.data() }) as Contact)
+      .map(d => ({ id: d.id, ...d.data() }) as Contact)
       .filter(c => c.tenantId == null || c.tenantId === '' || c.tenantId === PLATFORM_TENANT_ID);
   }
 
@@ -134,7 +174,7 @@ const fetchContactRows = async (tenantId: string | null | undefined): Promise<Co
   const snap = await getDocs(
     query(collection(db, 'contacts'), where('tenantId', '==', tenantId), limit(500)),
   );
-  return snap.docs.map(d => ({ id: d.id, stage: 'new', ...d.data() }) as Contact);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }) as Contact);
 };
 
 export const useContacts = (tenantId: string | null | undefined, isAuthReady = true) =>
@@ -165,7 +205,6 @@ const userDocToMemberContact = (
     phone: u.phone || '',
     photoURL: u.photoURL || undefined,
     type: totalDonated > 0 ? 'both' : 'member',
-    stage: 'new',
     address: {
       city: u.city || undefined,
       country: u.country || undefined,
