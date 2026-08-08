@@ -5,6 +5,11 @@ import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { notifyError } from '../utils/notify';
 import { getTenantScope, SUPER_ADMIN_EMAIL } from '../utils/tenant-scope';
 import { AFFILIATE_PROGRAM_ENABLED } from '../utils/plan-features';
+import {
+  resolveAdminLimit, countAdminSeats, isAtAdminLimit, adminLimitMessage,
+  wouldSpendNewSeat, UNLIMITED,
+} from '../utils/admin-seats';
+import { useTenant } from '@/contexts/TenantContext';
 import { useAdminHeader, HeaderActionButton } from './AdminScreenHeader';
 import {
   FileText, Rss, GraduationCap, BrainCircuit, Mail, StickyNote,
@@ -597,6 +602,19 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
   const [hasSearched, setHasSearched] = useState(false);
   const [filteredUsers, setFilteredUsers] = useState<UserRecord[]>([]);
 
+  // maxAdmins — CLIENT-SIDE ONLY, and it blocks NEW promotions only. A tenant
+  // already over its cap keeps every admin it has; see src/utils/admin-seats.ts
+  // for the seat rule (super admins excluded, permissionless admins and the plan
+  // owner counted) and for where a real server-side gate would live.
+  //
+  // No new query: `admins` is already derived from the users read below, so the
+  // count is free and cannot miss an index.
+  const { tenantPlan } = useTenant();
+  const maxAdmins = resolveAdminLimit(tenantPlan);
+  const adminSeatsUsed = countAdminSeats(admins);
+  const atAdminLimit = isAtAdminLimit(adminSeatsUsed, maxAdmins);
+  const adminLimitNotice = adminLimitMessage(maxAdmins);
+
   const [editingAdmin, setEditingAdmin] = useState<AdminUser | null>(null);
   const [isNewAdmin, setIsNewAdmin] = useState(false);
   const [showEditor, setShowEditor] = useState(false);
@@ -893,6 +911,14 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
       notifyError('Select a user before adding them as an admin', 'No user selected');
       return;
     }
+    // Backstop for the disabled "Add Admin" button — a save is refused only when
+    // it would spend a NEW seat. Editing an existing admin (including one an
+    // over-cap tenant already has) always goes through, so enforcing the cap can
+    // never strand a tenant with admins they cannot manage, and never demotes.
+    if (atAdminLimit && wouldSpendNewSeat(admins, admin.id)) {
+      notifyError(adminLimitNotice, 'Admin limit reached');
+      return;
+    }
     try {
       const userRef = doc(db, "users", admin.id);
       await updateDoc(userRef, {
@@ -958,16 +984,31 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
     }
   };
 
-  const openNewAdmin = (): void => { setEditingAdmin(null); setIsNewAdmin(true); setShowEditor(true); };
+  // Don't open the form at all at the cap: filling it in and failing on save is
+  // the shape this gate exists to avoid. Editing an existing admin is untouched.
+  const openNewAdmin = (): void => {
+    if (atAdminLimit) return;
+    setEditingAdmin(null); setIsNewAdmin(true); setShowEditor(true);
+  };
   const openEditAdmin = (admin: AdminUser): void => { setEditingAdmin(admin); setIsNewAdmin(false); setShowEditor(true); };
 
   const { setHeaderAction } = useAdminHeader();
 
   useEffect(() => {
     if (mode !== "roles") { setHeaderAction(null); return; }
-    setHeaderAction(<HeaderActionButton label="Add Admin" onClick={openNewAdmin} />);
+    setHeaderAction(
+      <HeaderActionButton
+        label="Add Admin"
+        onClick={openNewAdmin}
+        disabled={atAdminLimit}
+        title={atAdminLimit ? adminLimitNotice : undefined}
+      />
+    );
     return () => setHeaderAction(null);
-  }, [setHeaderAction, mode]);
+    // atAdminLimit/adminLimitNotice are deps: the header action is a rendered
+    // node handed to a context, so it does not re-render itself when the seat
+    // count changes — the effect has to re-publish it.
+  }, [setHeaderAction, mode, atAdminLimit, adminLimitNotice]);
 
   return (
     <div style={pageStyle}>
@@ -1134,6 +1175,20 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
                   <strong>Admin Management.</strong> You can promote users and configure their permissions. Sections a limited admin has no access to are hidden from their dashboard entirely.
                 </div>
               </div>
+
+              {/* Seat usage. Super admins are listed below but never counted —
+                  they are platform staff, not a seat the church bought. */}
+              <div style={{ fontSize: 12, fontWeight: 700, color: TEXT2, letterSpacing: "0.02em" }}>
+                {maxAdmins === UNLIMITED
+                  ? `${adminSeatsUsed} admin${adminSeatsUsed === 1 ? "" : "s"}`
+                  : `${adminSeatsUsed} of ${maxAdmins} admin${maxAdmins === 1 ? "" : "s"} used`}
+              </div>
+
+              {atAdminLimit && (
+                <div style={{ background: GOLD_SOFT, border: `1.5px solid color-mix(in srgb, var(--brand-color, #C9963A) 22%, transparent)`, borderRadius: 14, padding: "12px 16px", fontSize: 13, color: TEXT, lineHeight: 1.6 }}>
+                  {adminLimitNotice} Everyone listed below keeps their access.
+                </div>
+              )}
 
               {admins.map((admin) => {
                 const isSuperAdmin = admin.role === "super_admin";
