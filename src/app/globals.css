@@ -154,6 +154,13 @@
   --ink-field-500: 110 142 82; --ink-field-600: 85 112 63; --ink-field-700: 64 86 47;
   --c-wheat-50: 251 244 230; --c-wheat-100: 245 237 224; --c-wheat-200: 234 213 168;
   --ink-wheat-500: 201 150 58; --ink-wheat-600: 181 134 47; --ink-wheat-700: 143 104 34;
+  /* THE-61: extends the wheat ink ramp by one step. The design kit sets gold
+     ink on the gold tint (badges, gold cards) as wheat-700 on wheat-100 --
+     4.33:1, i.e. below AA, and that exact pair already ships in
+     src/components/member/desktopKit.tsx. Darkened along the wheat -> earth
+     axis (10% earth) so the hue is unchanged; now 4.85:1 on --surface-gold,
+     5.14:1 on wheat-50 and 5.63:1 on white. #856121. */
+  --ink-wheat-800: 133 97 33;
   --c-sky-100: 228 240 250;
   --ink-sky-500: 79 151 214; --ink-sky-600: 58 120 181; --ink-sky-700: 44 92 140;
   --c-blue-50: 239 246 255; --c-blue-100: 219 234 254;
@@ -163,6 +170,30 @@
   --c-purple-50: 250 245 255; --c-purple-100: 243 232 255;
   --ink-purple-500: 168 85 247; --ink-purple-700: 126 34 206;
   --ink-pink-500: 236 72 153;
+
+  /* ── THE-61: the design-kit primitives ─────────────────────────────────
+     Three tokens, and only three. Everything else the kit's tokens/ spells
+     already exists here under a Harvest name — its gold-* IS wheat-*, its
+     green-* IS field-*, its surface-page/-card ARE --surface/--surface-raised
+     — so mapping to the existing names is what keeps one name per concept.
+     See the PR body for the full three-way classification.
+
+     Each is declared in BOTH themes. A token with no dark value is how a
+     surface stays light. */
+
+  /* Focus ring for Input/Select. Expressed through --brand-color rather than
+     the kit's literal rgba(201,150,58,.35) so a white-label tenant's focus
+     state is their colour: a focus ring is an accessibility affordance, and
+     pinning it to Harvest gold would leave tenants without one that reads. */
+  --ring-gold: 0 0 0 3px color-mix(in srgb, var(--brand-color) 35%, transparent);
+  /* Modal backdrop. Navy rather than black — it is the brand's night ground,
+     not a neutral scrim. Driven off --navy-900 rather than repeating its hex. */
+  --scrim-night: color-mix(in srgb, var(--navy-900) 82%, transparent);
+  /* Extends the --ds-sh-* elevation ramp by one step, for modals. NOT a second
+     shadow vocabulary: same family, same warm tint, next step up. The kit's
+     --shadow-xs..xl ramp maps onto --ds-sh-sm/md/lg, which stops one short of
+     what a dialog floating above every other surface needs. */
+  --ds-sh-xl: 0 32px 80px rgba(12, 21, 38, 0.22);
  }
 
  /* ── Theming stage 2: where stage 3's dark palette goes ──────────────────
@@ -275,6 +306,9 @@
   --ink-field-500: 140 169 110; --ink-field-600: 201 216 179; --ink-field-700: 234 240 226;
   --c-wheat-50: 47 39 27; --c-wheat-100: 57 46 29; --c-wheat-200: 71 56 31;
   --ink-wheat-500: 212 169 79; --ink-wheat-600: 234 213 168; --ink-wheat-700: 251 244 230;
+  /* Keeps the ramp monotonic at the top: a step lighter than 700, which has
+     already reached wheat-50. 11.9:1 on the dark --surface-gold. */
+  --ink-wheat-800: 254 250 242;
   --c-sky-100: 40 46 51;
   --ink-sky-500: 107 168 221; --ink-sky-600: 191 220 242; --ink-sky-700: 228 240 250;
   --c-blue-50: 36 37 42; --c-blue-100: 38 43 55;
@@ -284,6 +318,26 @@
   --c-purple-50: 45 33 42; --c-purple-100: 53 37 55;
   --ink-purple-500: 192 132 252; --ink-purple-700: 250 245 255;
   --ink-pink-500: 236 72 153;
+
+   /* ── THE-61 on dark ──────────────────────────────────────────────────
+      Derived here, from this block's own rules — NOT taken from the kit,
+      which has no dark theme at all. What it ships instead is a parallel set
+      of --text-*-dark / --border-dark tokens, i.e. a second name for every
+      concept rather than one name that inverts. That is precisely the shape
+      this file exists to avoid, so none of them are ported. */
+
+   /* Tracks the contrast-corrected accent for the same reason --glow-gold
+      does: a dark tenant colour would otherwise produce a focus ring nobody
+      can see. Lifted 35% -> 48% because a translucent ring reads weaker
+      against a dark ground. */
+   --ring-gold: 0 0 0 3px color-mix(in srgb, var(--brand-color-on-dark, var(--brand-color)) 48%, transparent);
+   /* The scrim goes DEEPER on dark, not lighter. It separates a dialog from a
+      page that is already dark, so 82% navy over a dark ground barely reads as
+      a veil — anchored on --navy-950 at 88% instead. */
+   --scrim-night: color-mix(in srgb, var(--navy-950) 88%, transparent);
+   /* Same treatment as the other three: a warm drop shadow is not subtle on a
+      dark ground, it is absent. Hairline top highlight + a deeper black. */
+   --ds-sh-xl: 0 1px 0 0 rgba(250, 248, 245, 0.07) inset, 0 32px 80px rgba(0, 0, 0, 0.65);
  }
 }
 

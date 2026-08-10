@@ -82,12 +82,17 @@ describe('no semantic token anywhere in src carries an opacity modifier', () => 
   // Extends #257's guard from the one converted file to all of src/.
   // Variable-backed colours emit NOTHING with `/NN` -- a wrong swap deletes a
   // background silently, with no error and no failing test.
-  it('finds no bg-surface*/border-line*/text-* with a /NN suffix', () => {
+  // ⚠️ Only tokens declared as a BARE `var(--x)` belong here. The hue scales
+  // (bg-red-50, text-sky-600, bg-danger-tint …) are `rgb(var(--x) / <alpha>)`
+  // channel triplets precisely so that /NN keeps working — listing those would
+  // fail on live, correct code. THE-61 widened the surface list to the full
+  // scale, which now includes -gold and -night.
+  it('finds no bg-surface*/border-line*/text-*/gold/danger with a /NN suffix', () => {
     const offenders: string[] = [];
     for (const f of FILES) {
       const src = readFileSync(f, 'utf8');
       for (const m of src.matchAll(
-        /\b(bg-surface(?:-raised|-sunken)?|border-line(?:-subtle|-strong)?|text-(?:strong|body|muted|faint))\/\d+/g,
+        /\b(bg-surface(?:-raised|-sunken|-chip|-tint|-gold|-night)?|border-line(?:-subtle|-strong)?|text-(?:strong|body|muted|faint)|(?:bg|text|border)-gold|(?:bg|border)-danger)\/\d+/g,
       )) {
         offenders.push(`${path.relative(ROOT, f)}: ${m[0]}`);
       }

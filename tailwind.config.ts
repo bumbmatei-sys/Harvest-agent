@@ -83,6 +83,19 @@ const config: Config = {
           sunken: "var(--surface-sunken)",
           chip: "var(--surface-chip)",
           tint: "var(--surface-tint)",
+          // THE-61, same rationale as `sunken` above: --surface-gold and
+          // --surface-night have existed in globals.css since the member
+          // desktop pass — with dark values since stage 3 — but had no utility,
+          // so every consumer spelled bg-[var(--surface-gold)] by hand. Card
+          // and Badge need both. This completes the surface scale; it adds no
+          // vocabulary.
+          //
+          // ⚠️ Their absence was invisible: `bg-surface-gold` is a well-formed
+          // class name that simply produced no rule. ds-primitives.test.tsx now
+          // asserts every token class the primitives spell resolves in this
+          // config, which is what caught it.
+          gold: "var(--surface-gold)",
+          night: "var(--surface-night)",
         },
         // Stage 4: TINT shades only -- see globals.css. 300+ stay Tailwind's.
         red: { 50: "rgb(var(--c-red-50) / <alpha-value>)", 100: "rgb(var(--c-red-100) / <alpha-value>)", 200: "rgb(var(--c-red-200) / <alpha-value>)", },
@@ -119,7 +132,8 @@ const config: Config = {
         green: { 400: "rgb(var(--ink-green-400) / <alpha-value>)", 500: "rgb(var(--ink-green-500) / <alpha-value>)", 600: "rgb(var(--ink-green-600) / <alpha-value>)", 700: "rgb(var(--ink-green-700) / <alpha-value>)", 800: "rgb(var(--ink-green-800) / <alpha-value>)", },
         amber: { 500: "rgb(var(--ink-amber-500) / <alpha-value>)", 600: "rgb(var(--ink-amber-600) / <alpha-value>)", 700: "rgb(var(--ink-amber-700) / <alpha-value>)", 800: "rgb(var(--ink-amber-800) / <alpha-value>)", },
         field: { 500: "rgb(var(--ink-field-500) / <alpha-value>)", 600: "rgb(var(--ink-field-600) / <alpha-value>)", 700: "rgb(var(--ink-field-700) / <alpha-value>)", },
-        wheat: { 500: "rgb(var(--ink-wheat-500) / <alpha-value>)", 600: "rgb(var(--ink-wheat-600) / <alpha-value>)", 700: "rgb(var(--ink-wheat-700) / <alpha-value>)", },
+        // 800 is THE-61's addition: the AA-clearing gold ink for gold tints.
+        wheat: { 500: "rgb(var(--ink-wheat-500) / <alpha-value>)", 600: "rgb(var(--ink-wheat-600) / <alpha-value>)", 700: "rgb(var(--ink-wheat-700) / <alpha-value>)", 800: "rgb(var(--ink-wheat-800) / <alpha-value>)", },
         sky: { 500: "rgb(var(--ink-sky-500) / <alpha-value>)", 600: "rgb(var(--ink-sky-600) / <alpha-value>)", 700: "rgb(var(--ink-sky-700) / <alpha-value>)", },
         blue: { 500: "rgb(var(--ink-blue-500) / <alpha-value>)", 600: "rgb(var(--ink-blue-600) / <alpha-value>)", 700: "rgb(var(--ink-blue-700) / <alpha-value>)", },
         yellow: { 500: "rgb(var(--ink-yellow-500) / <alpha-value>)", 600: "rgb(var(--ink-yellow-600) / <alpha-value>)", 700: "rgb(var(--ink-yellow-700) / <alpha-value>)", 800: "rgb(var(--ink-yellow-800) / <alpha-value>)", },
@@ -135,6 +149,31 @@ const config: Config = {
         brand: "12px",
         "brand-lg": "16px",
         "brand-xl": "24px",
+      },
+      // ── THE-61: the only three scale values the design kit adds ──────────
+      // Everything else in its tokens/ maps onto something that already
+      // exists: --space-1..40 ARE Tailwind's spacing scale, --weight-* ARE
+      // font-light..bold, --text-xs/sm/base/lg ARE Tailwind's, and
+      // --radius-lg/xl/2xl (12/16/24) ARE borderRadius.brand/-lg/-xl above.
+      //
+      // These are literals, not CSS variables, because none of them theme —
+      // a letter-spacing has no dark counterpart. Keeping them out of
+      // globals.css keeps the key-parity guard's list meaningful.
+      letterSpacing: {
+        // Fraunces display tracking. Distinct from Tailwind's `tracking-tight`
+        // (-0.025em), which is close enough to be mistaken for it but is not
+        // the brand value — hence a name of its own rather than an override.
+        display: "-0.02em",
+        // The tracked uppercase gold kicker. Tailwind's widest is 0.1em, so
+        // there is nothing to collide with.
+        eyebrow: "0.19em",
+      },
+      transitionTimingFunction: {
+        // The knob settle on Switch. Deliberately NOT overriding `out` or
+        // `in-out`: the kit's curves for those differ from Tailwind's, and
+        // redefining them would silently restyle every existing transition in
+        // src. Only the genuinely-new curve gets a name.
+        spring: "cubic-bezier(0.34, 1.56, 0.64, 1)",
       },
       backgroundImage: {
         "gold-gradient": "var(--background-image-gold-gradient)",
