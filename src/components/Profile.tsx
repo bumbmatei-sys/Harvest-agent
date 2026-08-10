@@ -382,19 +382,23 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
  <div className="bg-surface-raised rounded-3xl shadow-sm border border-line overflow-hidden transition-colors duration-300">
  {isAdmin && (
  <>
- <SettingItem 
- icon={<ShieldCheck size={16} className="text-red-500" />} 
- iconBg="bg-red-50" 
- label="Admin Dashboard" 
+ {/* Gold, not red. Red is reserved for destructive actions (Log Out, Cancel
+     Partnership) — a red disc on a plain navigation row reads as "this
+     deletes something". Gold is the brand's action colour and carries the
+     authority this row actually has. */}
+ <SettingItem
+ icon={<ShieldCheck size={16} className="text-wheat-600" />}
+ iconBg="bg-wheat-100"
+ label="Admin Dashboard"
  onClick={() => onNavigate('admin')}
  />
  <div className="h-px bg-surface-sunken mx-4"></div>
  </>
  )}
- <SettingItem 
- icon={<User size={16} className="text-sky-600" />} 
- iconBg="bg-sky-100" 
- label="Personal Information" 
+ <SettingItem
+ icon={<User size={16} className="text-wheat-600" />}
+ iconBg="bg-wheat-100"
+ label="Personal Information"
  onClick={() => setIsPersonalInfoOpen(true)}
  />
  {hasChurches && (
@@ -418,8 +422,8 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
      home for giving (Give again / Partner CTA + Donation History). */}
  <div className="h-px bg-surface-sunken mx-4"></div>
  <ToggleSettingItem
- icon={<Bell size={16} className="text-sky-600" />}
- iconBg="bg-sky-100"
+ icon={<Bell size={16} className="text-field-600" />}
+ iconBg="bg-field-100"
  label="Push Notifications"
  sublabel={notificationsEnabled && notificationsPermissionDenied ? 'Blocked in device settings' : undefined}
  checked={notificationsEnabled}
@@ -443,8 +447,8 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
  {/* Saved — bookmarked articles, lessons, posts and verses (private to the user). */}
  <div className="h-px bg-surface-sunken mx-4"></div>
  <SettingItem
- icon={<Bookmark size={16} className="text-sky-600" />}
- iconBg="bg-sky-100"
+ icon={<Bookmark size={16} className="text-field-600" />}
+ iconBg="bg-field-100"
  label="Saved"
  onClick={() => setShowSaved(true)}
  />
@@ -454,8 +458,8 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
      (which most members never see). */}
  <div className="h-px bg-surface-sunken mx-4"></div>
  <div className="flex items-center gap-3 px-4 py-3">
- <div className="w-8 h-8 rounded-lg bg-sky-100 flex items-center justify-center shrink-0">
- <Palette size={16} className="text-sky-600" />
+ <div className="w-8 h-8 rounded-lg bg-field-100 flex items-center justify-center shrink-0">
+ <Palette size={16} className="text-field-600" />
  </div>
  <span className="flex-1 text-sm font-medium text-strong">Appearance</span>
  <ThemeToggle variant="row" />
@@ -577,17 +581,21 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
  />
  <div className="h-px bg-surface-sunken mx-4"></div>
  <SettingItem
- icon={<ShieldCheck size={16} className="text-sky-600" />}
- iconBg="bg-sky-100"
+ icon={<ShieldCheck size={16} className="text-wheat-600" />}
+ iconBg="bg-wheat-100"
  label="Privacy & Terms"
  onClick={() => setIsPrivacyTermsOpen(true)}
  />
  {isAdmin && (
  <>
  <div className="h-px bg-surface-sunken mx-4"></div>
+ {/* navy-500/600 are literal hexes in tailwind.config.ts (no --ink-navy-*
+     token exists), so this row was the one Profile icon that could not
+     theme — it rendered the same mid-navy on the dark ground. Field green,
+     matching FAQ: both are secondary "go read something" rows. */}
  <SettingItem
- icon={<Map size={16} className="text-navy-600" />}
- iconBg="bg-navy-500/10"
+ icon={<Map size={16} className="text-field-600" />}
+ iconBg="bg-field-100"
  label="Roadmap"
  onClick={() => window.open('https://trello.com/b/1Uz9u1Lb/harvest-roadmap', '_blank', 'noopener,noreferrer')}
  />
