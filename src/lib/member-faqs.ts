@@ -140,15 +140,27 @@ export const MEMBER_FAQS: readonly MemberFAQ[] = [
     question: 'How do I leave, or delete my account?',
     answer: [
       'Profile, then Personal Information, then Delete Account. That removes your profile and your sign-in. It takes effect immediately and cannot be undone.',
-      'If nothing appears to happen, sign out, sign back in and try again — the deletion only goes through for an account that has signed in recently.',
+      'Deleting needs a recent sign-in, so if it has been a while you will be asked to confirm your password before it goes through. If you signed in with Google instead of a password, sign out, sign back in and delete within a few minutes. Either way the screen tells you what happened — it will not fail silently.',
       'There is no way to move an existing account to a different ministry, because that tie is fixed when the account is created. Joining another ministry means creating an account at that ministry’s address. If you would rather come off your ministry’s lists and keep your sign-in, ask an admin — removing a member’s record is something they can do.',
     ],
     // PersonalInformationModal.handleDeleteAccount deletes users/{uid} and then
-    // the Firebase Auth user; Firebase rejects it with
-    // 'auth/requires-recent-login' on a stale session. Admins remove a member
-    // record from the Roles screen (AnalyticsAndRoles.confirmDeleteUser).
+    // the Firebase Auth user; Firebase rejects the second step with
+    // 'auth/requires-recent-login' on a stale session. That rejection is no
+    // longer silent: a password account is re-authenticated in place (the
+    // `deleteState === 'reauth'` panel, via reauthenticateWithCredential), and
+    // every other outcome — including success — renders a message. `isEmailAuth`
+    // is the provider check that splits the two paths; Google accounts arrive
+    // via AuthPage's signInWithPopup and get the sign-out instruction, because
+    // re-authenticating them in place would need a second popup flow.
+    //
+    // ⚠️ "removes your profile" is currently only half true and is NOT fixed by
+    // the above: firestore.rules gives users/{userId} `allow delete: if
+    // isSuperAdmin()`, so a member's own deleteDoc is denied and the profile
+    // document survives the deletion of their sign-in. Correcting that needs a
+    // rules change or a Cloud Function — reported, not done here.
     sources: [
       'src/components/PersonalInformationModal.tsx',
+      'src/components/AuthPage.tsx',
       'src/components/AnalyticsAndRoles.tsx',
       'firestore.rules',
     ],
