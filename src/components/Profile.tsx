@@ -616,9 +616,13 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
  isOpen={isContactOpen}
  onClose={() => setIsContactOpen(false)}
  />
+ {/* Same `isAdmin` that gates the Admin Dashboard entry above — passed down so
+     the Refund & Cancellation link reuses that one condition instead of a
+     second admin check. Privacy and Terms are not gated by it. */}
  <PrivacyTermsModal
  isOpen={isPrivacyTermsOpen}
  onClose={() => setIsPrivacyTermsOpen(false)}
+ isAdmin={isAdmin}
  />
  <FAQModal
  isOpen={isFAQOpen}

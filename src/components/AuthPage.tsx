@@ -7,8 +7,9 @@ import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { isNonTenantSubdomain, isAffiliateHost } from '../utils/non-tenant-subdomains';
 import { AFFILIATE_PROGRAM_ENABLED } from '../utils/plan-features';
 import { useTenant } from '../contexts/TenantContext';
-import { Eye, EyeOff, Mail, Lock, ArrowLeft, X } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, ArrowLeft } from 'lucide-react';
 import { Turnstile } from '@marsidev/react-turnstile';
+import { PRIVACY_URL, TERMS_URL } from '../lib/legal-links';
 
 const HARVEST_GOLD = 'var(--brand-color, #B8962E)';
 const HARVEST_LOGO = 'https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png';
@@ -195,7 +196,6 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
   const isSubdomain = !!ctxTenantId;
   const hasCustomBranding = tenantPlan === 'max';
 
-  const [legalModalContent, setLegalModalContent] = useState<'terms' | 'privacy' | null>(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
@@ -686,71 +686,37 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
             )}
           </div>
 
-          {/* Terms */}
+          {/* Terms — the consent point, so these MUST be the canonical documents.
+              This screen used to open a modal holding its own third paraphrase of
+              the policies (different again from the app's Privacy & Terms screen
+              and from the site). A user consenting to text that is not the text
+              in force has not consented to anything useful. */}
           <p className="mt-5 text-center text-xs leading-relaxed" style={{ color: 'var(--text-muted, #8B7355)' }}>
             By continuing you accept the{' '}
-            <button
-              type="button"
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setLegalModalContent('terms'); }}
+            <a
+              href={TERMS_URL}
+              target="_blank"
+              rel="noopener noreferrer"
               className="underline"
               style={{ color: brandColor }}
             >
-              Terms of Use
-            </button>
+              Terms of Service
+            </a>
             {' '}and{' '}
-            <button
-              type="button"
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setLegalModalContent('privacy'); }}
+            <a
+              href={PRIVACY_URL}
+              target="_blank"
+              rel="noopener noreferrer"
               className="underline"
               style={{ color: brandColor }}
             >
               Privacy Policy
-            </button>
+            </a>
             .
           </p>
         </div>
       </AuthShell>
 
-      {legalModalContent && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="flex max-h-[80vh] w-full max-w-2xl flex-col overflow-hidden rounded-brand-xl bg-surface-raised shadow-2xl">
-            <div className="flex items-center justify-between border-b border-line bg-surface-sunken p-6">
-              <h3 className="font-display text-2xl font-semibold" style={{ color: 'var(--text-heading, #2D2519)' }}>
-                {legalModalContent === 'terms' ? 'Terms of Use' : 'Privacy Policy'}
-              </h3>
-              <button onClick={() => setLegalModalContent(null)} className="transition-colors" style={{ color: 'var(--text-muted, #8B7355)' }} aria-label="Close">
-                <X size={22} />
-              </button>
-            </div>
-            <div className="space-y-4 overflow-y-auto p-6" style={{ color: 'var(--text-body, #4A4038)' }}>
-              {legalModalContent === 'terms' ? (
-                <>
-                  <p><strong>1. Acceptance of Terms</strong><br/>By accessing and using the Harvest App, you accept and agree to be bound by the terms and provision of this agreement.</p>
-                  <p><strong>2. Description of Service</strong><br/>Harvest provides users with access to a rich collection of resources, including various communications tools, forums, shopping services, and personalized content.</p>
-                  <p><strong>3. User Conduct</strong><br/>You agree to use the service only for lawful purposes and in a way that does not infringe the rights of, restrict or inhibit anyone else&apos;s use and enjoyment of the website.</p>
-                  <p><strong>4. Intellectual Property</strong><br/>All content included on this site, such as text, graphics, logos, button icons, images, audio clips, digital downloads, data compilations, and software, is the property of Harvest or its content suppliers.</p>
-                </>
-              ) : (
-                <>
-                  <p><strong>1. Information We Collect</strong><br/>We collect information to provide better services to all our users. We collect information in the following ways: information you give us, and information we get from your use of our services.</p>
-                  <p><strong>2. How We Use Information</strong><br/>We use the information we collect from all our services to provide, maintain, protect and improve them, to develop new ones, and to protect Harvest and our users.</p>
-                  <p><strong>3. Information We Share</strong><br/>We do not share personal information with companies, organizations and individuals outside of Harvest unless one of the following circumstances applies: with your consent, for external processing, or for legal reasons.</p>
-                  <p><strong>4. Data Security</strong><br/>We work hard to protect Harvest and our users from unauthorized access to or unauthorized alteration, disclosure or destruction of information we hold.</p>
-                </>
-              )}
-            </div>
-            <div className="flex justify-end border-t border-line bg-surface-sunken p-6">
-              <button
-                onClick={() => setLegalModalContent(null)}
-                className="rounded-lg px-6 py-2.5 font-semibold text-white transition-opacity hover:opacity-90"
-                style={{ backgroundColor: brandColor }}
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 };
