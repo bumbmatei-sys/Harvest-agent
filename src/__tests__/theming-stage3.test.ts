@@ -59,12 +59,26 @@ beforeAll(() => {
  */
 describe('every themed token has a counterpart in both themes', () => {
   // The tokens the theme is responsible for inverting.
+  //
+  // ⚠️ THIS LIST IS EXPLICIT, NOT DERIVED. That is deliberate — it states which
+  // tokens the theme OWNS, so a token can be added to globals.css without
+  // anyone noticing it never got a dark value. The cost is that the list has to
+  // be extended by hand. If you add a themed token, add it here in the same
+  // commit; a light-only token is how a surface stays white in dark mode.
   const THEMED = [
     '--surface', '--surface-raised', '--surface-sunken',
     '--surface-night', '--surface-gold', '--surface-chip',
     '--border-subtle', '--border-default', '--border-strong', '--border-gold',
     '--text-strong', '--text-heading', '--text-body', '--text-muted', '--text-faint',
     '--ds-sh-sm', '--ds-sh-md', '--ds-sh-lg', '--glow-gold',
+    // Both of these have carried light AND dark values since stage 2, but were
+    // never listed here — the list had drifted two tokens behind globals.css,
+    // which is the exact failure mode described above. Closed by THE-61.
+    '--border-hairline', '--surface-tint',
+    // THE-61: the three tokens the design-kit primitives needed that Harvest
+    // had not named. --ds-sh-xl extends the elevation ramp for Modal;
+    // --scrim-night is its backdrop; --ring-gold is the Input/Select focus ring.
+    '--ring-gold', '--scrim-night', '--ds-sh-xl',
   ];
 
   it.each(THEMED)('%s is defined in the dark theme', (token) => {
