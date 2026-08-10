@@ -1,26 +1,27 @@
 "use client";
 import React, { useState } from 'react';
 import { ArrowLeft, ChevronDown, ChevronUp } from 'lucide-react';
+import { MEMBER_FAQS } from '../lib/member-faqs';
 
 interface FAQModalProps {
  isOpen: boolean;
  onClose: () => void;
 }
 
-const FAQItem: React.FC<{ 
- question: string; 
- answer: React.ReactNode; 
- isOpen: boolean; 
- onToggle: () => void; 
-}> = ({ 
- question, 
- answer, 
- isOpen, 
- onToggle 
+const FAQItem: React.FC<{
+ question: string;
+ answer: readonly string[];
+ isOpen: boolean;
+ onToggle: () => void;
+}> = ({
+ question,
+ answer,
+ isOpen,
+ onToggle
 }) => {
  return (
  <div className="bg-surface-raised rounded-2xl shadow-sm border border-line overflow-hidden mb-4 transition-all duration-300">
- <button 
+ <button
  onClick={onToggle}
  className="w-full flex items-center justify-between p-5 text-left hover:bg-surface-sunken transition-colors"
  >
@@ -31,10 +32,12 @@ const FAQItem: React.FC<{
  <ChevronDown size={20} className="text-gold flex-shrink-0" />
  )}
  </button>
- 
+
  {isOpen && (
  <div className="px-5 pb-5 text-sm text-muted leading-relaxed animate-in slide-in-from-top-2 duration-200">
- {answer}
+ {answer.map((paragraph, i) => (
+ <p key={i} className={i < answer.length - 1 ? 'mb-3' : undefined}>{paragraph}</p>
+ ))}
  </div>
  )}
  </div>
@@ -54,55 +57,10 @@ const FAQModal: React.FC<FAQModalProps> = ({ isOpen, onClose }) => {
  }
  };
 
- const faqs = [
- {
- question: "What is the primary goal of the Harvest App?",
- answer: "The Harvest App is designed to bridge the gap between a person's initial decision for Christ and their journey toward spiritual maturity. Our goal is to provide every new believer with a digital foundation that leads them into a healthy local church community and a deep, personal relationship with the Holy Spirit."
- },
- {
- question: "Is the app really free?",
- answer: "Yes. We believe that discipleship resources should be accessible to everyone, everywhere, regardless of their financial situation. The core curriculum, Harvest AI, and the Church Map are 100% free for the user. This is made possible by the generosity of partners who believe in the Billion Soul Harvest."
- },
- {
- question: "How does Harvest AI work?",
- answer: (
- <>
- Harvest AI is a specialized companion designed to answer the questions of &quot;baby Christians&quot; in a safe, biblically sound environment. Unlike generic AI tools, <strong className="text-strong ">Harvest AI is locally trained using healthy, trusted theological resources.</strong> We have carefully curated the data it learns from to ensure it provides life-giving, orthodox answers. Its primary function is to point users back to the Word of God, the Holy Spirit, and the local church.
- </>
- )
- },
- {
- question: "Is my data safe with the AI?",
- answer: "Absolutely. We prioritize your privacy. Your interactions with Harvest AI are used solely to help you grow and to improve the accuracy of the theological guidance provided. We never sell your data to third parties."
- },
- {
- question: "How does the Discipleship Curriculum work?",
- answer: (
- <>
- <p className="mb-3">The curriculum is divided into four levels:</p>
- <ul className="space-y-2 mb-3 pl-2">
- <li><strong className="text-strong ">Level 1:</strong> The Foundations (New Life in Christ)</li>
- <li><strong className="text-strong ">Level 2:</strong> Walking in the Spirit</li>
- <li><strong className="text-strong ">Level 3:</strong> Character & The Word</li>
- <li><strong className="text-strong ">Level 4:</strong> Commissioned to Serve</li>
- </ul>
- <p>As you progress through videos and infographics, you unlock new modules and deeper content.</p>
- </>
- )
- },
- {
- question: "I lead a church or ministry. How can we be visible on the Map?",
- answer: (
- <>
- We welcome biblically-based churches and ministries to join our global network. You can enroll through our <strong className="text-strong ">Church Partner Portal</strong>. Once verified, your location will be visible to new converts in your immediate area, helping them find their spiritual family.
- </>
- )
- },
- {
- question: "Can I use the app if I am already a mature Christian?",
- answer: "While the app is optimized for new converts, the resources, Bible integration, and prayer lines are valuable for any believer looking to strengthen their foundation or help others grow."
- }
- ];
+ // Content lives in src/lib/member-faqs.ts — see the header there before
+ // editing an answer. Every entry is verifiable against named source files,
+ // and nothing about price, plans or billing belongs in it.
+ const faqs = MEMBER_FAQS;
 
  return (
  <div className="fixed inset-0 z-50 flex flex-col bg-surface animate-in slide-in-from-bottom-full duration-300 overflow-hidden">
@@ -117,13 +75,13 @@ const FAQModal: React.FC<FAQModalProps> = ({ isOpen, onClose }) => {
  <div className="flex-1 overflow-y-auto p-4 pb-12">
  <div className="text-center mb-8 mt-4">
  <h2 className="text-2xl font-bold text-strong mb-2 font-display">Frequently Asked Questions</h2>
- <p className="text-muted text-sm">Everything you need to know about the Harvest App.</p>
+ <p className="text-muted text-sm">Using your ministry&apos;s workspace on Harvest.</p>
  </div>
 
  <div className="space-y-4">
  {faqs.map((faq, index) => (
  <FAQItem
- key={index}
+ key={faq.question}
  question={faq.question}
  answer={faq.answer}
  isOpen={openIndex === index}
