@@ -11,16 +11,36 @@
  * catalogue and undo "edits reach every adopter", which is the whole reason
  * adoption is a reference rather than a copy.
  *
- * ⚠️ THE PLAN CAP HERE IS CLIENT-SIDE ONLY.
+ * ⚠️ THE PLAN CAP IS ENFORCED ON ONE PATH AND NOT THE OTHER. THAT IS SETTLED,
+ * NOT PENDING.
  *
- * `maxCourses` has always been enforced purely in the UI (a disabled button in
- * AdminCourses) — nothing server-side or in the Firestore rules counts
- * documents. Counting adoptions against the cap keeps that behaviour consistent,
- * but a direct SDK write still bypasses it, exactly as it does for a tenant's
- * own courses today. Server-side enforcement (POST /api/courses/adopt, with the
- * plan resolved from tenants/{id}.plan, and adoptedCourses tightened to
- * server-only writes) is the immediate follow-up and will REPLACE the checks in
- * this module.
+ * An earlier version of this comment called server-side enforcement "the
+ * immediate follow-up" that would "REPLACE the checks in this module". It
+ * shipped, and neither half of that sentence describes what exists now — the
+ * stale wording has already produced two wrong conclusions in review, hence the
+ * detail here. What is actually true:
+ *
+ *   ADOPTION — server-enforced. tenants/{t}/adoptedCourses is
+ *   `allow write: if false` in firestore.rules, so POST /api/courses/adopt
+ *   (Admin SDK) is the only way an adoption record comes into existence, and it
+ *   checks the cap before writing. Note it does that by IMPORTING
+ *   `isAtCourseLimit` from this module rather than replacing it: the helpers
+ *   below are the single definition of the cap for both callers, which is what
+ *   stops the disabled button and the route from drifting apart.
+ *
+ *   CREATION — client-only. A tenant's own courses are still written straight
+ *   to /courses under hasPermission('createCourses', …), capped only by a
+ *   disabled button in AdminCourses (as since #228). A direct SDK write
+ *   bypasses that, and always has.
+ *
+ * So a determined tenant can still exceed `maxCourses` by creating courses, not
+ * by adopting them. That is accepted, not a gap awaiting a fix. Client-side caps
+ * are this codebase's settled position — #278 (maxAdmins) and #280 (maxContacts)
+ * both landed that way deliberately — and adoption is the odd one out only
+ * because THE-54 needed an API route for validation anyway (well-formed
+ * pointers, an `adoptedBy` that is the verified caller), so the cap check came
+ * along for free. Moving course CREATION behind a route is a real refactor with
+ * a real cost; see the route's own header comment for why it was scoped out.
  */
 
 import { getPlanFeatures, toTenantPlan } from './plan-features';
