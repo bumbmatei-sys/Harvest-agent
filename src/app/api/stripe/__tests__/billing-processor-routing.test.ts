@@ -42,13 +42,21 @@ vi.mock('stripe', () => ({
   },
 }));
 
-const { mockRequireAuth, mockRequireAdmin } = vi.hoisted(() => ({
+// THE-80 moved these routes off `requireAuth`/`requireAdmin` onto the owner and
+// tenant-admin gates. This suite is about PROCESSOR ROUTING, not authorisation,
+// so every gate is stubbed to a caller who passes; who is refused is asserted in
+// `billing-auth-gates.test.ts`.
+const { mockRequireAuth, mockRequireAdmin, mockRequireOwner, mockRequireTenantAdmin } = vi.hoisted(() => ({
   mockRequireAuth: vi.fn(),
   mockRequireAdmin: vi.fn(),
+  mockRequireOwner: vi.fn(),
+  mockRequireTenantAdmin: vi.fn(),
 }));
 vi.mock('@/lib/api-auth', () => ({
   requireAuth: mockRequireAuth,
   requireAdmin: mockRequireAdmin,
+  requireOwner: mockRequireOwner,
+  requireTenantAdmin: mockRequireTenantAdmin,
 }));
 
 // The one thing under test: what the tenant's private doc says about ownership.
@@ -136,8 +144,15 @@ beforeEach(() => {
   process.env.STRIPE_SECRET_KEY = 'sk_test_mock';
   process.env.NEXT_PUBLIC_APP_URL = 'https://theharvest.app';
 
-  mockRequireAuth.mockResolvedValue({ uid: 'u1', email: 'admin@grace.org', tenantId: 'grace', isSuperAdmin: false });
-  mockRequireAdmin.mockResolvedValue({ uid: 'u1', email: 'admin@grace.org', tenantId: 'grace', isSuperAdmin: false });
+  const CALLER = { uid: 'u1', email: 'admin@grace.org', tenantId: 'grace', isSuperAdmin: false };
+  mockRequireAuth.mockResolvedValue(CALLER);
+  mockRequireAdmin.mockResolvedValue(CALLER);
+  mockRequireTenantAdmin.mockResolvedValue(CALLER);
+  mockRequireOwner.mockResolvedValue({
+    user: CALLER,
+    tenantId: 'grace',
+    tenantData: { name: 'Grace Chapel', plan: 'ultra' },
+  });
 
   mockSessionsCreate.mockResolvedValue({ url: 'https://checkout.stripe/session' });
   mockCustomersRetrieve.mockResolvedValue({ id: 'cus_stripe_1', deleted: false });

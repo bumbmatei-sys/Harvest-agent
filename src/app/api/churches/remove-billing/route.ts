@@ -2,24 +2,25 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import Stripe from 'stripe';
 import { adminDb } from '@/lib/firebase-admin';
-import { requireAdmin } from '@/lib/api-auth';
+import { requireTenantAdmin } from '@/lib/api-auth';
 import { captureMoneyPathError } from '@/lib/money-path-sentry';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   try {
-    const userOrErr = await requireAdmin(request);
-    if (userOrErr instanceof Response) return userOrErr;
-
     const { tenantId, churchId } = await request.json();
     if (!tenantId || !churchId) {
       return NextResponse.json({ error: 'tenantId and churchId required' }, { status: 400 });
     }
 
-    if (!userOrErr.isSuperAdmin && userOrErr.tenantId !== tenantId) {
-      return NextResponse.json({ error: 'Access denied to this tenant' }, { status: 403 });
-    }
+    // THE-80: same fold as its add-billing counterpart — `requireAdmin` plus an
+    // inline tenant-match becomes the one tenant-scoped, roster-aware helper.
+    // Kept at admin level with add-billing on purpose: an admin who can add a
+    // church's $10/mo line must be able to remove it again, or deleting a church
+    // leaves the church gone and the charge running.
+    const userOrErr = await requireTenantAdmin(request, tenantId);
+    if (userOrErr instanceof Response) return userOrErr;
 
     const churchDoc = await adminDb.collection('churches').doc(churchId).get();
     const churchData = churchDoc.data();
