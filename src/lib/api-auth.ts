@@ -12,6 +12,18 @@ export interface AuthenticatedUser {
   tenantId: string | null;
   isAdmin: boolean;
   isSuperAdmin: boolean;
+  /**
+   * When the caller last actually authenticated (`auth_time`, epoch SECONDS —
+   * not when this token was minted; a refresh does not move it).
+   *
+   * Carried so a route guarding an IRREVERSIBLE action can demand a recent
+   * sign-in, the way the Firebase client SDK does for `deleteUser`/
+   * `updatePassword`. The Admin SDK has no such guard — it is all-powerful by
+   * design — so any route that moves one of those operations server-side must
+   * re-impose the freshness check itself or it silently WEAKENS the operation.
+   * Additive and unread by every existing consumer.
+   */
+  authTime: number;
 }
 
 /**
@@ -56,6 +68,9 @@ export async function verifyAuth(request: NextRequest): Promise<AuthenticatedUse
       tenantId,
       isAdmin,
       isSuperAdmin: decoded.superAdmin === true || isSuperAdminEmail(decoded.email),
+      // Absent on a malformed token — 0 reads as "ancient", which fails closed
+      // for anything gating on freshness rather than waving it through.
+      authTime: typeof decoded.auth_time === 'number' ? decoded.auth_time : 0,
     };
   } catch {
     return null;
