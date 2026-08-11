@@ -16,6 +16,18 @@ interface PersonalInformationModalProps {
 
 type PasswordFlowState = 'idle' | 'current' | 'new' | 'forgot';
 
+/**
+ * Where the Delete Account flow is. Every non-'idle' state renders a message —
+ * that is the whole point of the type existing: the flow used to have no state
+ * at all, so a failure had nowhere to be shown and went to the console.
+ *
+ *  'deleting' — in flight, buttons disabled
+ *  'reauth'   — Firebase wants a recent sign-in; asking for the password here
+ *  'error'    — it failed, and the member is told why
+ *  'done'     — it worked; confirmed before the sign-out redirect lands
+ */
+type DeleteFlowState = 'idle' | 'deleting' | 'reauth' | 'error' | 'done';
+
 const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isOpen, onClose }) => {
  const [name, setName] = useState(auth.currentUser?.displayName || '');
  const [email, setEmail] = useState(auth.currentUser?.email || '');
@@ -34,6 +46,12 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
  const [passwordMessage, setPasswordMessage] = useState('');
  const [isPasswordLoading, setIsPasswordLoading] = useState(false);
  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+ // Delete Account outcome. Every branch of handleDeleteAccount lands on one of
+ // these and renders `deleteMessage`; 'idle' is the only state that shows none.
+ const [deleteState, setDeleteState] = useState<DeleteFlowState>('idle');
+ const [deleteMessage, setDeleteMessage] = useState('');
+ const [deletePassword, setDeletePassword] = useState('');
 
  // Cancel Partnership state
  const [hasActivePartnership, setHasActivePartnership] = useState(false);
@@ -205,24 +223,136 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
  }
  };
 
+ /**
+  * Delete the account, and SAY WHAT HAPPENED.
+  *
+  * 🔴 This used to be the silent failure. Firebase rejects `deleteUser` with
+  * 'auth/requires-recent-login' on any session older than roughly five
+  * minutes; the old code caught that and wrote two `console.error` lines. The
+  * member tapped Delete and the screen did not move — no message, no spinner,
+  * no error. They could not tell whether the account was deleted, whether it
+  * failed, or whether the tap had registered at all. On a destructive,
+  * irreversible action that is the worst place in the app to be silent, so
+  * every outcome below ends in something rendered.
+  *
+  * The stale-session case is now re-authenticated IN PLACE rather than being
+  * turned into "sign out and sign back in": a password-account holder is asked
+  * for their password right here, in the confirm panel, using the same
+  * `reauthenticateWithCredential` call the change-password flow already makes.
+  * Federated accounts (Google) cannot do that without a sign-in popup, which
+  * would be a new flow rather than a fix — they get the explicit instruction
+  * instead. See DELETION-ORDER note below for what is NOT fixed here.
+  */
  const handleDeleteAccount = async () => {
- try {
- if (auth.currentUser) {
+ if (!auth.currentUser) {
+ setDeleteState('error');
+ setDeleteMessage('You are not signed in. Sign in again and retry.');
+ return;
+ }
+
+ setDeleteState('deleting');
+ setDeleteMessage('');
+
  const uid = auth.currentUser.uid;
+
+ // ⚠️ DELETION ORDER — PROFILE DOCUMENT FIRST, THEN THE SIGN-IN.
+ //
+ // Left exactly as it was. Reversing it is a data-loss decision, not a
+ // cleanup: delete the Auth user first and the Firestore document is
+ // orphaned with no session left that could ever retry the second half.
+ //
+ // What actually happens today is NOT the half-deletion the order suggests,
+ // and it is not fixed here because fixing it needs firestore.rules or a
+ // Cloud Function, both of which deploy to production:
+ //
+ //   firestore.rules → match /users/{userId} → `allow delete: if isSuperAdmin()`
+ //
+ // A member cannot delete their own user document. This `deleteDoc` is
+ // rejected with permission-denied for every ordinary member, every time.
+ // Execution continues past it (handleFirestoreError logs and returns, it
+ // does not throw), so `deleteUser` succeeds and the result is the mirror
+ // image of a half-deletion: THE SIGN-IN IS DESTROYED AND THE PROFILE
+ // DOCUMENT SURVIVES — name, email, phone, city, course progress — with no
+ // account left that could reach it. There is no member-facing server route
+ // that cleans it up; /api/tenants/delete is tenant-wide and admin-only.
+ //
+ // Hence `profileRemoved` below: the success copy states what was actually
+ // removed instead of claiming the profile is gone.
+ let profileRemoved = true;
  try {
  await deleteDoc(doc(db, 'users', uid));
  } catch (err) {
  handleFirestoreError(err, OperationType.DELETE, `users/${uid}`);
+ profileRemoved = false;
  }
+
+ try {
  await deleteUser(auth.currentUser);
- // App will redirect to login automatically via onAuthStateChanged
- }
- } catch (error: any) {
+ // Confirm BEFORE the sign-out lands. deleteUser resolves first and the
+ // redirect follows from onAuthStateChanged upstream, so this success
+ // panel is what the member sees the action end in rather than being
+ // dropped on the login screen with no idea whether it worked.
+ setDeleteState('done');
+ setDeleteMessage(
+ profileRemoved
+ ? 'Your account has been deleted. Signing you out now.'
+ : 'Your sign-in has been deleted and you will be signed out now. Some profile details could not be removed automatically — contact your ministry admin to have them erased.',
+ );
+ } catch (error: unknown) {
+ const code = (error as { code?: string })?.code;
  console.error('Error deleting account:', error);
- if (error.code === 'auth/requires-recent-login') {
- console.error('Please log out and log back in to delete your account.');
+
+ if (code === 'auth/requires-recent-login') {
+ if (isEmailAuth) {
+ setDeleteState('reauth');
+ setDeleteMessage('For your security, confirm your password to finish deleting your account.');
+ } else {
+ setDeleteState('error');
+ setDeleteMessage(
+ 'For your security, this needs a recent sign-in. Sign out, sign back in, and delete your account within a few minutes.',
+ );
  }
+ return;
  }
+
+ setDeleteState('error');
+ setDeleteMessage(
+ code === 'auth/network-request-failed'
+ ? 'Could not reach the server. Check your connection and try again.'
+ : 'Your account could not be deleted. Please try again, or contact your ministry admin if this keeps happening.',
+ );
+ }
+ };
+
+ /** Re-authenticate with the password typed into the confirm panel, then retry. */
+ const handleReauthAndDelete = async () => {
+ if (!auth.currentUser?.email) return;
+ if (!deletePassword) {
+ setDeleteMessage('Enter your password to continue.');
+ return;
+ }
+
+ setDeleteState('deleting');
+ try {
+ const credential = EmailAuthProvider.credential(auth.currentUser.email, deletePassword);
+ await reauthenticateWithCredential(auth.currentUser, credential);
+ } catch (error: unknown) {
+ console.error('Error re-authenticating before delete:', error);
+ setDeleteState('reauth');
+ setDeleteMessage('Incorrect password. Try again.');
+ return;
+ }
+
+ setDeletePassword('');
+ await handleDeleteAccount();
+ };
+
+ /** Put the delete panel back to its resting state — used by Cancel and by close. */
+ const resetDeleteFlow = () => {
+ setShowDeleteConfirm(false);
+ setDeleteState('idle');
+ setDeleteMessage('');
+ setDeletePassword('');
  };
 
  const handleVerifyCurrentPassword = async () => {
@@ -624,21 +754,63 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
 
  {showDeleteConfirm ? (
  <div className="w-full p-4 bg-red-50 rounded-2xl mt-4 flex flex-col gap-3">
+ {deleteState === 'done' ? (
+ // Success is confirmed, not assumed. The sign-out redirect follows
+ // from onAuthStateChanged upstream; this is what the member sees the
+ // action end in.
+ <p role="status" className="text-sm font-bold text-green-700 text-center">
+ {deleteMessage}
+ </p>
+ ) : (
+ <>
  <span className="text-sm font-bold text-red-600 text-center">Are you sure? This cannot be undone.</span>
+
+ {/* The failure the member could not see before. `role="alert"` so it
+     is announced, not just drawn. */}
+ {deleteMessage && (
+ <p
+ role="alert"
+ className={`text-xs text-center ${deleteState === 'reauth' ? 'text-body' : 'text-red-600'}`}
+ >
+ {deleteMessage}
+ </p>
+ )}
+
+ {deleteState === 'reauth' && (
+ <input
+ type="password"
+ aria-label="Password"
+ placeholder="Password"
+ value={deletePassword}
+ onChange={(e) => setDeletePassword(e.target.value)}
+ className="w-full px-4 py-2 bg-surface-raised border border-line rounded-xl text-sm text-body"
+ />
+ )}
+
  <div className="flex gap-2">
- <button 
- onClick={() => setShowDeleteConfirm(false)}
- className="flex-1 py-2 bg-surface-raised text-body rounded-xl font-medium border border-line"
+ <button
+ onClick={resetDeleteFlow}
+ disabled={deleteState === 'deleting'}
+ className="flex-1 py-2 bg-surface-raised text-body rounded-xl font-medium border border-line disabled:opacity-50"
  >
  Cancel
  </button>
- <button 
- onClick={handleDeleteAccount}
- className="flex-1 py-2 bg-red-600 text-white rounded-xl font-bold"
+ <button
+ onClick={deleteState === 'reauth' ? handleReauthAndDelete : handleDeleteAccount}
+ disabled={deleteState === 'deleting'}
+ className="flex-1 py-2 bg-red-600 text-white rounded-xl font-bold disabled:opacity-50"
  >
- Delete
+ {deleteState === 'deleting'
+ ? 'Deleting…'
+ : deleteState === 'reauth'
+ ? 'Confirm & Delete'
+ : deleteState === 'error'
+ ? 'Try Again'
+ : 'Delete'}
  </button>
  </div>
+ </>
+ )}
  </div>
  ) : (
  <button 
