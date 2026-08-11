@@ -361,6 +361,26 @@ export const AI_TELEGRAM_ASSISTANT_ENABLED = false;
  */
 export const AFFILIATE_PROGRAM_ENABLED = false;
 
+/**
+ * Master switch for Dodo Payments subscription billing.
+ *
+ * ⚠️ NOTHING READS THIS YET, AND THAT IS THE POINT. The Dodo billing module
+ * (`src/lib/dodo/`) exists — catalogue, provider, config, webhook signature
+ * verification — but signup still goes through Stripe end to end. This flag is
+ * the seam the cutover flips: the PR that moves provisioning to Dodo turns a
+ * one-line switch, instead of landing a new payment processor and a new code
+ * path in the same change.
+ *
+ * A test asserts both that this is `false` AND that no production code path
+ * reads it, which is the proof that shipping the module changed nothing a
+ * customer can see.
+ *
+ * ⚠️ SUBSCRIPTIONS ONLY. Donations and paid event tickets stay on Stripe Connect
+ * at a 0% platform fee (`stripe-connect.ts`) and are NOT affected by this flag,
+ * now or after the cutover.
+ */
+export const DODO_BILLING_ENABLED = false;
+
 // ─── Accessors ────────────────────────────────────────────────────────────────
 
 /**
