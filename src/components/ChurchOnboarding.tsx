@@ -5,6 +5,7 @@ import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { Church, ArrowRight, Sparkles, Loader2, AlertCircle } from 'lucide-react';
 import { TenantPlan } from '../types/tenant.types';
 import { PLAN_DISPLAY_NAMES, PLAN_ORDER } from '../utils/plan-features';
+import { SIGNUP_CHECKOUT_ENDPOINT } from '../utils/signup-checkout';
 
 const BRAND = 'var(--brand-color, #B8962E)';
 const HARVEST_LOGO = 'https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png';
@@ -37,10 +38,13 @@ interface ChurchOnboardingProps {
 /**
  * Minimal pre-payment signup: the user's login already exists (from AuthPage),
  * so all we collect here is the ministry name + the chosen plan, then send them
- * straight to Stripe Checkout. NO tenant is created client-side — the Stripe
- * webhook builds the tenant once payment lands (build-on-payment onboarding).
- * Subdomain, domain, logo, colour and description are claimed in the first-run
- * "Finish setup" screen after payment.
+ * straight to the processor's hosted Checkout. NO tenant is created client-side
+ * — the PROCESSOR'S WEBHOOK builds the tenant once payment lands
+ * (build-on-payment onboarding). Which processor that is follows
+ * `DODO_BILLING_ENABLED`: with it true, `/api/dodo/checkout` and the Dodo
+ * webhook; with it false, `/api/stripe/checkout` and the Stripe webhook, exactly
+ * as before. Subdomain, domain, logo, colour and description are claimed in the
+ * first-run "Finish setup" screen after payment.
  *
  * The plan is chosen upstream (marketing site → ?plan=…&signup=church) and is
  * shown here read-only — there is intentionally NO in-app plan picker.
@@ -106,9 +110,13 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ signupPlan }) => {
         }
       } catch { /* no referrer */ }
 
-      // 3) Straight to Stripe Checkout — the webhook creates the tenant on success.
+      // 3) Straight to the processor's Checkout — the webhook creates the tenant
+      //    on success. Which processor is `SIGNUP_CHECKOUT_ENDPOINT`'s decision,
+      //    driven by DODO_BILLING_ENABLED; the request body is identical either
+      //    way, including the `referrerId` that carries affiliate attribution
+      //    into subscription metadata.
       const token = await user.getIdToken();
-      const resp = await fetch('/api/stripe/checkout', {
+      const resp = await fetch(SIGNUP_CHECKOUT_ENDPOINT, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({

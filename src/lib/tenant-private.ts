@@ -23,13 +23,35 @@ import { adminDb } from '@/lib/firebase-admin';
  */
 export const TENANT_PRIVATE_COLLECTION = 'tenant_private';
 
-/** The tenant-doc fields being moved off the public document. */
+/**
+ * The tenant-doc fields being moved off the public document.
+ *
+ * ⚠️ THIS LIST IS WHAT SURVIVES A SUBDOMAIN RENAME. `/api/tenants/finish-setup`
+ * moves the private doc to the new tenant id with `pickTenantPrivateFields`,
+ * which copies EXACTLY these keys and silently drops everything else. First-run
+ * setup is where a brand-new church renames itself, so a billing identifier that
+ * is not on this list is an identifier that disappears the first time the owner
+ * picks their own subdomain — the tenant still looks provisioned and its
+ * subscription can no longer be resolved.
+ *
+ * The `dodo*` identifiers are therefore listed here from the moment anything
+ * writes them (REP-4 PR 2), not later.
+ */
 export const TENANT_PRIVATE_FIELDS = [
   'adminEmails',
   'stripeCustomerId',
   'stripeSubscriptionId',
   'stripePriceId',
   'stripeConnectAccountId',
+  // ─── Dodo Payments subscription identifiers ────────────────────────────────
+  // ⚠️ ADDITIONAL TO the stripe* fields above, never a replacement for them.
+  // Existing test tenants still carry Stripe ids, the Stripe path is the
+  // rollback, and `stripeConnectAccountId` is DONATIONS — a different processor
+  // relationship entirely that this migration does not touch.
+  'dodoCustomerId',
+  'dodoSubscriptionId',
+  /** The Dodo product the subscription sells. Dodo puts the price on the product. */
+  'dodoProductId',
 ] as const;
 
 export type TenantPrivateField = (typeof TENANT_PRIVATE_FIELDS)[number];

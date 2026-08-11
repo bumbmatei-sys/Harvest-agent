@@ -1,25 +1,22 @@
-import { describe, it, expect } from 'vitest';
-import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
 import { DODO_BILLING_ENABLED } from '@/utils/plan-features';
+import { SIGNUP_CHECKOUT_ENDPOINT, isReturningFromCheckout } from '@/utils/signup-checkout';
 
 /**
- * Test 7 — DODO_BILLING_ENABLED is false, and NO production code path reads it.
+ * REP-4 PR 2, tests 6 and 7 — the cutover, and the rollback that undoes it.
  *
- * This is the proof that the whole pull request changes nothing a real user
- * experiences. Everything else here — the catalogue, the provider, the webhook —
- * is inert precisely because nothing consults this switch and nothing calls into
- * the Dodo module. Signup still posts to /api/stripe/checkout and the Stripe
- * webhook is still the only thing that creates a tenant.
+ * 🔴 This file replaces #290's "the flag is false and nothing reads it". That
+ * test existed to prove #290 changed nothing; this one proves the opposite claim
+ * with the same rigour — that flipping the flag moves signup COMPLETELY, and
+ * flipping it back moves it COMPLETELY BACK.
  *
- * Both halves are load-bearing, and they fail differently:
- *
- *  • `=== false` catches the flip.
- *  • The source scan catches something worse: a flag left false while a code path
- *    reads it anyway. That is how a "disabled" feature ships half-on, and it
- *    would mean this PR's inertness depended on a boolean rather than on nothing
- *    being wired up.
+ * "Completely" is the whole point. A rollback that leaves one signup call site
+ * on the new processor is worse than no rollback: a customer who abandoned a
+ * Dodo checkout would be restarted on Stripe, or the reverse, and could end up
+ * paying twice.
  */
 
 const SRC = resolve(__dirname, '../../..');
@@ -39,59 +36,230 @@ function sourceFiles(dir: string, out: string[] = []): string[] {
 }
 
 const isTestFile = (path: string) => /__tests__|\.test\.tsx?$/.test(path);
+const read = (rel: string) => readFileSync(join(SRC, rel), 'utf8');
 
-describe('DODO_BILLING_ENABLED is off', () => {
-  it('is false', () => {
-    expect(DODO_BILLING_ENABLED).toBe(false);
+// ── The flag itself ──────────────────────────────────────────────────────────
+
+describe('DODO_BILLING_ENABLED is on', () => {
+  it('is true', () => {
+    expect(DODO_BILLING_ENABLED).toBe(true);
   });
 
-  it('is a literal `false` in plan-features.ts, not a computed or env-driven value', () => {
+  it('is a literal in plan-features.ts, not a computed or env-driven value', () => {
     // A switch derived from an environment variable is a switch that can be
-    // flipped without a code review, which defeats the point of it being here.
-    const source = readFileSync(join(SRC, 'utils/plan-features.ts'), 'utf8');
-    expect(source).toMatch(/export const DODO_BILLING_ENABLED = false;/);
+    // flipped without a code review — for the highest-risk path in the product.
+    expect(read('utils/plan-features.ts')).toMatch(/export const DODO_BILLING_ENABLED = (true|false);/);
+  });
+});
+
+// ── Test 7: with the flag TRUE, signup posts to Dodo ──────────────────────────
+
+describe('with the flag true, signup posts to Dodo and no Stripe checkout is created', () => {
+  it('resolves the signup endpoint to /api/dodo/checkout', () => {
+    expect(SIGNUP_CHECKOUT_ENDPOINT).toBe('/api/dodo/checkout');
   });
 
-  it('sits alongside the two flags it mirrors', () => {
-    const source = readFileSync(join(SRC, 'utils/plan-features.ts'), 'utf8');
-    for (const sibling of ['AI_TELEGRAM_ASSISTANT_ENABLED', 'AFFILIATE_PROGRAM_ENABLED']) {
-      expect(source).toContain(`export const ${sibling} = false;`);
+  it('routes BOTH signup call sites through the one switch', () => {
+    // ChurchOnboarding is the first attempt; OnboardingGate's restartCheckout is
+    // the same signup after an abandoned payment. Either one hard-coding a
+    // processor is a half-cutover — and, on the way back, a half-rollback.
+    for (const file of ['components/ChurchOnboarding.tsx', 'components/OnboardingGate.tsx']) {
+      const source = read(file);
+      expect(source, `${file} must post to SIGNUP_CHECKOUT_ENDPOINT`).toContain('SIGNUP_CHECKOUT_ENDPOINT');
+      expect(source, `${file} must not hard-code a checkout route`).not.toMatch(
+        /fetch\(\s*['"]\/api\/(stripe|dodo)\/checkout['"]/,
+      );
+    }
+  });
+
+  it('creates no Stripe checkout session on the signup path', async () => {
+    // The claim under test is about CALLS, not about strings: with the flag on,
+    // a signup must not reach stripe.checkout.sessions.create at all.
+    vi.resetModules();
+    const sessionsCreate = vi.fn().mockResolvedValue({ url: 'https://checkout.stripe/x' });
+    const dodoCreate = vi.fn().mockResolvedValue({ url: 'https://checkout.dodo/x', reference: 'cks_1' });
+
+    vi.doMock('stripe', () => ({
+      default: class MockStripe {
+        checkout = { sessions: { create: sessionsCreate } };
+        customers = { create: vi.fn(), list: vi.fn().mockResolvedValue({ data: [] }), retrieve: vi.fn() };
+      },
+    }));
+    vi.doMock('@/lib/dodo/dodo-provider', () => ({
+      dodoBillingProvider: { id: 'dodo', createPlanCheckout: dodoCreate },
+    }));
+    vi.doMock('@/lib/api-auth', () => ({
+      requireAuth: vi.fn().mockResolvedValue({
+        uid: 'uid_1', email: 'a@b.example', tenantId: null, isSuperAdmin: false,
+      }),
+    }));
+    vi.doMock('@/lib/money-path-sentry', () => ({ captureMoneyPathError: vi.fn() }));
+    vi.doMock('@/lib/firebase-admin', () => ({
+      adminDb: {
+        collection: vi.fn(() => ({
+          where: vi.fn().mockReturnThis(),
+          limit: vi.fn().mockReturnThis(),
+          get: vi.fn().mockResolvedValue({ empty: true, docs: [] }),
+          doc: vi.fn(() => ({ get: vi.fn(), set: vi.fn(), update: vi.fn() })),
+        })),
+      },
+      adminAuth: {},
+    }));
+
+    process.env.DODO_PAYMENTS_API_KEY = 'k';
+    process.env.DODO_PAYMENTS_WEBHOOK_KEY = 'whsec_' + Buffer.from('x').toString('base64');
+    process.env.DODO_PAYMENTS_ENVIRONMENT = 'test_mode';
+
+    const { NextRequest } = await import('next/server');
+    const { POST } = await import('@/app/api/dodo/checkout/route');
+    const res = await POST(
+      new NextRequest('https://theharvest.app/api/dodo/checkout', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ plan: 'max', billing: 'monthly', ministryName: 'X' }),
+      }) as never,
+    );
+
+    expect(res.status).toBe(200);
+    expect(dodoCreate).toHaveBeenCalledTimes(1);
+    expect(sessionsCreate).not.toHaveBeenCalled();
+
+    vi.doUnmock('stripe');
+    vi.resetModules();
+  });
+});
+
+// ── Test 6: with the flag FALSE, signup posts to Stripe and calls no Dodo ─────
+
+describe('with the flag false, signup posts to Stripe and no Dodo call is made', () => {
+  /**
+   * The rollback is exercised, not asserted about. `signup-checkout.ts` is
+   * re-imported with the flag stubbed false, so this is the module the app would
+   * actually build — not a restatement of the ternary.
+   */
+  async function endpointWithFlag(enabled: boolean): Promise<string> {
+    vi.resetModules();
+    vi.doMock('@/utils/plan-features', async (importOriginal) => ({
+      ...(await importOriginal<typeof import('@/utils/plan-features')>()),
+      DODO_BILLING_ENABLED: enabled,
+    }));
+    const mod = await import('@/utils/signup-checkout');
+    const endpoint = mod.SIGNUP_CHECKOUT_ENDPOINT;
+    vi.doUnmock('@/utils/plan-features');
+    vi.resetModules();
+    return endpoint;
+  }
+
+  it('sends signup back to /api/stripe/checkout — completely', async () => {
+    expect(await endpointWithFlag(false)).toBe('/api/stripe/checkout');
+  });
+
+  it('sends signup to /api/dodo/checkout when on, so the switch is the only difference', async () => {
+    expect(await endpointWithFlag(true)).toBe('/api/dodo/checkout');
+  });
+
+  it('leaves NO Dodo call on the rolled-back path: /api/dodo/checkout refuses outright', async () => {
+    // The client picks the endpoint, but a stale browser tab holding the old
+    // bundle keeps posting to whatever it was built with. Without this refusal
+    // the rollback would be partial — a live Dodo path nobody thinks is open.
+    vi.resetModules();
+    vi.doMock('@/utils/plan-features', async (importOriginal) => ({
+      ...(await importOriginal<typeof import('@/utils/plan-features')>()),
+      DODO_BILLING_ENABLED: false,
+    }));
+    const dodoCreate = vi.fn();
+    vi.doMock('@/lib/dodo/dodo-provider', () => ({
+      dodoBillingProvider: { id: 'dodo', createPlanCheckout: dodoCreate },
+    }));
+    vi.doMock('@/lib/api-auth', () => ({
+      requireAuth: vi.fn().mockResolvedValue({
+        uid: 'uid_1', email: 'a@b.example', tenantId: null, isSuperAdmin: false,
+      }),
+    }));
+    vi.doMock('@/lib/money-path-sentry', () => ({ captureMoneyPathError: vi.fn() }));
+    vi.doMock('@/lib/firebase-admin', () => ({ adminDb: { collection: vi.fn() }, adminAuth: {} }));
+
+    const { NextRequest } = await import('next/server');
+    const { POST } = await import('@/app/api/dodo/checkout/route');
+    const res = await POST(
+      new NextRequest('https://theharvest.app/api/dodo/checkout', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ plan: 'max', billing: 'monthly', ministryName: 'X' }),
+      }) as never,
+    );
+
+    expect(res.status).toBe(503);
+    expect(dodoCreate).not.toHaveBeenCalled();
+
+    vi.doUnmock('@/utils/plan-features');
+    vi.resetModules();
+  });
+
+  it('keeps the Stripe signup path intact and reachable', () => {
+    // The rollback target has to still exist. The Stripe route's new-ministry
+    // branch, its 7-day trial and its newTenant marker are untouched by this PR.
+    const stripeRoute = read('app/api/stripe/checkout/route.ts');
+    expect(stripeRoute).toContain('trial_period_days: 7');
+    expect(stripeRoute).toContain("newTenant: 'true'");
+    const stripeWebhook = read('app/api/stripe/webhook/route.ts');
+    expect(stripeWebhook).toContain("case 'checkout.session.completed'");
+    expect(stripeWebhook).toContain("meta.newTenant === 'true'");
+  });
+});
+
+// ── The Dodo webhook must NOT be gated by the flag ───────────────────────────
+
+describe('the Dodo webhook honours an already-paid subscription regardless of the flag', () => {
+  it('does not read the flag anywhere in the webhook or provisioning path', () => {
+    // Turning the flag off must not strand a customer who was mid-checkout when
+    // it happened: they paid, and they must get their church. The flag gates
+    // whether new checkouts are CREATED, never whether a payment is honoured.
+    for (const file of [
+      'app/api/dodo/webhook/route.ts',
+      'lib/dodo/webhook-dispatch.ts',
+      'lib/dodo/provisioning.ts',
+    ]) {
+      // Comments about the flag are welcome — an IMPORT of it is not, because
+      // only an import can become a branch.
+      expect(read(file), `${file} must not import ${FLAG}`).not.toMatch(
+        new RegExp(`import[^;]*\\b${FLAG}\\b[^;]*from`, 's'),
+      );
+      // …and it must not be referenced as a value anywhere outside a comment.
+      const code = read(file).replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+      expect(code, `${file} must not branch on ${FLAG}`).not.toContain(FLAG);
     }
   });
 });
 
-describe('no production code path reads DODO_BILLING_ENABLED', () => {
-  it('is referenced only by its own declaration and by tests', () => {
-    const readers = sourceFiles(SRC)
-      .filter((file) => !isTestFile(file))
-      .filter((file) => file !== join(SRC, 'utils/plan-features.ts'))
-      .filter((file) => readFileSync(file, 'utf8').includes(FLAG))
-      .map((file) => file.slice(SRC.length + 1));
+// ── Returning from either processor ──────────────────────────────────────────
 
-    expect(
-      readers,
-      `${FLAG} is read by production code: ${readers.join(', ')}. Nothing may branch on ` +
-        'it in this PR — the flag exists so the cutover (REP-4 PR 2) is one line, and a ' +
-        'reader here means the module is already wired into a live path.',
-    ).toEqual([]);
+describe('the first-run gate recognises a return from EITHER processor', () => {
+  it.each([
+    ['?stripe=success', true],
+    ['?dodo=success', true],
+    ['?dodo=success&session_id=cks_1', true],
+    ['?stripe=cancel', false],
+    ['?dodo=cancel', false],
+    ['', false],
+  ])('%s → %s', (search, expected) => {
+    expect(isReturningFromCheckout(search)).toBe(expected);
   });
 
-  it('is not imported anywhere outside tests', () => {
-    const importers = sourceFiles(SRC)
-      .filter((file) => !isTestFile(file))
-      .filter((file) => file !== join(SRC, 'utils/plan-features.ts'))
-      .filter((file) => new RegExp(`import[^;]*\\b${FLAG}\\b[^;]*from`, 's').test(readFileSync(file, 'utf8')))
-      .map((file) => file.slice(SRC.length + 1));
-
-    expect(importers).toEqual([]);
+  it('matters because the alternative is inviting a second payment', () => {
+    // OnboardingGate shows "Complete your payment" when a signup looks
+    // abandoned. A payer returning with the OTHER processor's marker — because
+    // the flag moved while they were in checkout — must not see that button.
+    const gate = read('components/OnboardingGate.tsx');
+    expect(gate).toContain('isReturningFromCheckout');
+    expect(gate).not.toContain("get('stripe') === 'success'");
   });
 });
 
-describe('the Dodo module is not wired into any live path', () => {
-  it('is imported by nothing outside src/lib/dodo, /api/dodo and tests', () => {
-    // The stronger claim behind the flag: even if someone flipped the boolean,
-    // there is no call site for it to switch on. This is what makes the PR safe,
-    // rather than the flag itself.
+// ── The Dodo module is now deliberately wired in ─────────────────────────────
+
+describe('the Dodo module is wired into exactly the paths this PR names', () => {
+  it('is imported only by the dodo lib, the dodo routes, and the signup switch', () => {
     const dodoLib = join(SRC, 'lib/dodo');
     const dodoRoute = join(SRC, 'app/api/dodo');
 
@@ -101,15 +269,27 @@ describe('the Dodo module is not wired into any live path', () => {
       .filter((file) => /from\s+['"](@\/lib\/dodo\/|\.\.?\/dodo\/)/.test(readFileSync(file, 'utf8')))
       .map((file) => file.slice(SRC.length + 1));
 
+    // Nothing outside the Dodo module imports it directly: the app reaches Dodo
+    // through the routes, and chooses between processors through one constant.
     expect(outsiders).toEqual([]);
   });
 
-  it('leaves ChurchOnboarding posting to the Stripe checkout route', () => {
-    // The tenant-creation constraint, restated where a Dodo change would break
-    // it: the Stripe webhook is still the only thing that creates a tenant.
-    const onboarding = readFileSync(join(SRC, 'components/ChurchOnboarding.tsx'), 'utf8');
-    expect(onboarding).toContain("'/api/stripe/checkout'");
-    expect(onboarding).not.toContain('/api/dodo');
-    expect(onboarding).not.toMatch(/from\s+['"][^'"]*\/dodo\//);
+  it('leaves the existing-tenant plan-change screens on Stripe', () => {
+    // Plan changes modify a live Stripe subscription. Moving them is REP-4 PR 6.
+    for (const file of ['components/settings/PlanUpgradeSection.tsx', 'components/AdminUpgradePage.tsx']) {
+      expect(read(file)).toContain("'/api/stripe/checkout'");
+    }
   });
+
+  it('leaves donations completely alone', () => {
+    // stripe-connect.ts is untouched, always. Giving runs on Stripe Connect at a
+    // 0% platform fee and is not part of this migration in any direction.
+    const connect = read('lib/stripe-connect.ts');
+    expect(connect).not.toContain('dodo');
+    expect(connect).not.toContain('Dodo');
+  });
+});
+
+beforeEach(() => {
+  vi.clearAllMocks();
 });

@@ -1,29 +1,37 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { readDodoWebhookHeaders, verifyDodoWebhook } from '@/lib/dodo/webhook-verify';
-import { receiveDodoWebhookEvent } from '@/lib/dodo/webhook-dispatch';
+import { isDurableDodoEventType, receiveDodoWebhookEvent } from '@/lib/dodo/webhook-dispatch';
 
 /**
  * Dodo Payments webhook endpoint.
  *
- * ⚠️ THIS ROUTE IS NOT WIRED TO ANYTHING A USER TOUCHES. Signup still goes
- * through Stripe; `src/app/api/stripe/webhook/route.ts` is still the only thing
- * that creates a tenant. This endpoint verifies, deduplicates and routes, and its
- * handlers are empty (see `webhook-dispatch.ts`).
+ * 🔴 THIS ROUTE CREATES TENANTS. With `DODO_BILLING_ENABLED` true it is the only
+ * thing that turns a paid signup into a church account — the role
+ * `src/app/api/stripe/webhook/route.ts` plays for the Stripe path, which stays
+ * in place as the rollback.
  *
- * ─── This route's shape is the OPPOSITE of the Stripe handler's ──────────────
+ * ─── Two response shapes, chosen per event ───────────────────────────────────
  *
- * 🔴 The Stripe handler does all of its work and THEN responds. Dodo's
- * documentation is explicit that a handler must return 2xx immediately and
- * process asynchronously; anything slower is treated as a failure and retried.
- * So the ordering here is inverted on purpose, and the Stripe handler must not be
- * used as the template:
+ * Dodo's documentation asks for a fast 2xx and retries anything else, so the
+ * DEFAULT here is still the opposite of the Stripe handler's do-everything-first
+ * shape:
  *
  *     verify signature → hand off WITHOUT awaiting → 2xx
  *
- * The idempotency reservation lives on the far side of that handoff, in
- * `receiveDodoWebhookEvent`, which is why it has to be atomic rather than a
- * read-then-write.
+ * But "fast" cannot win over "a church paid and has no account". For the one
+ * DURABLE event — `subscription.active`, which provisions — the handler is
+ * AWAITED and a failure is answered 5xx so Dodo redelivers. That work is a
+ * handful of Firestore writes, well inside Dodo's tolerance, and the
+ * alternative is a signup that silently evaporates. `isDurableDodoEventType`
+ * names the split; `webhook-dispatch.ts` explains why releasing the idempotency
+ * reservation on that path is safe.
+ *
+ * ⚠️ The flag is NOT consulted here, deliberately. `DODO_BILLING_ENABLED` gates
+ * whether new Dodo checkouts are CREATED. A subscription that was already paid
+ * for must still be provisioned even if the flag has since been turned off, or
+ * rolling back would strand the customers who were mid-checkout at the moment it
+ * happened.
  *
  * ─── The raw body ────────────────────────────────────────────────────────────
  *
@@ -59,9 +67,26 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
   }
 
-  // Hand off WITHOUT awaiting. `receiveDodoWebhookEvent` is documented never to
-  // reject; the `.catch` is a belt-and-braces guard so that a future change
-  // breaking that promise cannot produce an unhandled rejection in the runtime.
+  // ── Durable events: wait, and let a failure become a redelivery. ───────────
+  if (isDurableDodoEventType(event.type)) {
+    const result = await receiveDodoWebhookEvent(headers['webhook-id'], event);
+    if (result.outcome === 'failed') {
+      // 5xx is the ONLY thing that brings this event back. The reservation has
+      // already been released by the dispatcher so the redelivery is processed
+      // rather than skipped as a duplicate.
+      console.error(`[dodo] Provisioning failed for ${event.type}; asking Dodo to retry.`);
+      return NextResponse.json(
+        { error: 'Provisioning failed; will retry' },
+        { status: 500 },
+      );
+    }
+    return NextResponse.json({ received: true });
+  }
+
+  // ── Everything else: hand off WITHOUT awaiting. ────────────────────────────
+  // `receiveDodoWebhookEvent` is documented never to reject; the `.catch` is a
+  // belt-and-braces guard so that a future change breaking that promise cannot
+  // produce an unhandled rejection in the runtime.
   void receiveDodoWebhookEvent(headers['webhook-id'], event).catch((err) => {
     console.error('[dodo] Webhook processing failed after acknowledgement:', err);
   });

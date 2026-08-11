@@ -1,11 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 import {
+  DODO_DURABLE_EVENT_TYPES,
   DODO_EVENT_HANDLERS,
+  isDurableDodoEventType,
   receiveDodoWebhookEvent,
   type DodoEventHandler,
   type SeenEventStore,
 } from '../webhook-dispatch';
+import { handleDodoSubscriptionActive } from '../provisioning';
 import {
   DODO_HANDLED_EVENT_TYPES,
   DODO_PAYMENT_EVENT_TYPES,
@@ -15,30 +18,43 @@ import {
   type DodoWebhookEvent,
 } from '../events';
 
-vi.mock('@/lib/firebase-admin', () => ({ adminDb: { collection: vi.fn() } }));
+vi.mock('@/lib/firebase-admin', () => ({
+  adminDb: { collection: vi.fn() },
+  adminAuth: { getUser: vi.fn(), setCustomUserClaims: vi.fn() },
+}));
 vi.mock('@/lib/money-path-sentry', () => ({ captureMoneyPathError: vi.fn() }));
 
 /**
- * Tests 4 and 6 — process each event exactly once, and route every type we know.
+ * Routing, idempotency and durability for verified Dodo events.
  *
- * Test 4 is the most important test in this pull request, and it guards
- * something that does not exist yet. Dodo retries any non-2xx response, so every
- * event can arrive more than once; `webhook-id` is the only thing that identifies
- * a redelivery. REP-4 PR 2 creates a TENANT on a subscription event. Without this
- * guard, one retry is one duplicate church — with duplicate billing, a duplicate
- * subdomain claim, and an owner attached to whichever of the two won the race.
- * The guard is built and proven now so that PR can rely on it.
+ * The idempotency guard is the most important thing in REP-4, and as of PR 2 it
+ * is no longer guarding something hypothetical. Dodo retries any non-2xx
+ * response, so every event can arrive more than once; `webhook-id` is the only
+ * thing that identifies a redelivery, and `subscription.active` now CREATES A
+ * TENANT. Without the guard, one retry is one duplicate church — with duplicate
+ * billing, a duplicate subdomain claim, and an owner attached to whichever of
+ * the two won the race.
+ *
+ * The end-to-end version of that claim ("a retried webhook-id creates no second
+ * tenant", asserted against real provisioning rather than a recording stub)
+ * lives in `dodo-provisioning.test.ts`.
  */
 
 /** In-memory `SeenEventStore` with the same atomic claim semantics as Firestore. */
-function memoryStore(): SeenEventStore & { seen: Set<string> } {
+function memoryStore(): SeenEventStore & { seen: Set<string>; released: string[] } {
   const seen = new Set<string>();
+  const released: string[] = [];
   return {
     seen,
+    released,
     async reserve(webhookId) {
       if (seen.has(webhookId)) return false;
       seen.add(webhookId);
       return true;
+    },
+    async release(webhookId) {
+      seen.delete(webhookId);
+      released.push(webhookId);
     },
   };
 }
@@ -160,6 +176,7 @@ describe('a repeated webhook-id is a no-op', () => {
       async reserve() {
         throw new Error('firestore unavailable');
       },
+      async release() { /* never reached: nothing was claimed */ },
     };
 
     const result = await receiveDodoWebhookEvent('whk_broken', event('subscription.active'), {
@@ -251,30 +268,132 @@ describe('an unknown event type is logged and accepted, not thrown on', () => {
 });
 
 describe('a throwing handler does not take down the dispatcher', () => {
-  it('reports the event as routed and swallows the error', async () => {
+  it('reports a BEST-EFFORT event as routed and swallows the error', async () => {
     const store = memoryStore();
     const handlers = { ...DODO_EVENT_HANDLERS };
-    handlers['subscription.active'] = () => {
+    handlers['subscription.renewed'] = () => {
       throw new Error('handler exploded');
     };
     const err = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-    // The route has already answered 2xx by the time this runs, so a rejection
-    // here would be an unhandled rejection in the serverless runtime rather than
-    // an error anybody sees.
+    // The route has already answered 2xx by the time a best-effort handler runs,
+    // so a rejection here would be an unhandled rejection in the serverless
+    // runtime rather than an error anybody sees.
     await expect(
-      receiveDodoWebhookEvent('whk_boom', event('subscription.active'), { store, handlers }),
+      receiveDodoWebhookEvent('whk_boom', event('subscription.renewed'), { store, handlers }),
     ).resolves.toMatchObject({ outcome: 'routed' });
 
+    // Nothing is given back: there is no retry, and re-running a lifecycle event
+    // is not worth re-opening the duplicate window for.
+    expect(store.released).toEqual([]);
     expect(err).toHaveBeenCalled();
+    err.mockRestore();
+  });
+
+  it('never rejects, whichever kind of event failed', async () => {
+    const store = memoryStore();
+    const handlers = { ...DODO_EVENT_HANDLERS };
+    handlers['subscription.active'] = () => {
+      throw new Error('provisioning exploded');
+    };
+    const err = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    await expect(
+      receiveDodoWebhookEvent('whk_durable_boom', event('subscription.active'), { store, handlers }),
+    ).resolves.toBeDefined();
+
     err.mockRestore();
   });
 });
 
-describe('the handlers are empty — this PR routes, it does not act', () => {
-  it.each(DODO_HANDLED_EVENT_TYPES)('%s has a handler that does nothing', async (type) => {
-    // Business logic here would be REP-4 PR 2 or PR 3 arriving early, in a change
-    // whose whole premise is that a real user experiences nothing different.
+// ── Durability: the promise #290's module note made to this PR ───────────────
+
+describe('a DURABLE event turns failure into a retry', () => {
+  it('names subscription.active, and only subscription.active, as durable', () => {
+    // Every entry here is an event the endpoint holds a connection open for, so
+    // the list earns its members one at a time. Provisioning earns it because
+    // the alternative is a church that paid and has no account.
+    expect([...DODO_DURABLE_EVENT_TYPES]).toEqual(['subscription.active']);
+    expect(isDurableDodoEventType('subscription.active')).toBe(true);
+    expect(isDurableDodoEventType('subscription.renewed')).toBe(false);
+    expect(isDurableDodoEventType('payment.succeeded')).toBe(false);
+  });
+
+  it('reports `failed` and RELEASES the reservation when provisioning throws', async () => {
+    const store = memoryStore();
+    const handlers = { ...DODO_EVENT_HANDLERS };
+    handlers['subscription.active'] = () => {
+      throw new Error('firestore batch failed');
+    };
+    const err = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const result = await receiveDodoWebhookEvent('whk_prov_fail', event('subscription.active'), {
+      store,
+      handlers,
+    });
+
+    expect(result).toMatchObject({ outcome: 'failed', type: 'subscription.active' });
+    // Without the release, Dodo's redelivery would be discarded as a duplicate
+    // and the retry the 5xx bought would achieve exactly nothing.
+    expect(store.released).toEqual(['whk_prov_fail']);
+    expect(store.seen.has('whk_prov_fail')).toBe(false);
+    err.mockRestore();
+  });
+
+  it("lets Dodo's redelivery actually re-run the handler after a failure", async () => {
+    const store = memoryStore();
+    const calls: string[] = [];
+    const handlers = { ...DODO_EVENT_HANDLERS };
+    let attempt = 0;
+    handlers['subscription.active'] = () => {
+      attempt += 1;
+      calls.push(`attempt-${attempt}`);
+      if (attempt === 1) throw new Error('transient firestore failure');
+    };
+    const err = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const first = await receiveDodoWebhookEvent('whk_retry_me', event('subscription.active'), { store, handlers });
+    const second = await receiveDodoWebhookEvent('whk_retry_me', event('subscription.active'), { store, handlers });
+
+    expect(first.outcome).toBe('failed');
+    expect(second.outcome).toBe('routed');
+    expect(calls).toEqual(['attempt-1', 'attempt-2']);
+    err.mockRestore();
+  });
+
+  it('still reports `failed` when the release itself fails', async () => {
+    // A retry that gets skipped is no worse than no retry at all; reporting
+    // success would lose the event outright.
+    const store: SeenEventStore = {
+      async reserve() { return true; },
+      async release() { throw new Error('delete failed'); },
+    };
+    const handlers = { ...DODO_EVENT_HANDLERS };
+    handlers['subscription.active'] = () => { throw new Error('boom'); };
+    const err = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const result = await receiveDodoWebhookEvent('whk_release_fail', event('subscription.active'), {
+      store,
+      handlers,
+    });
+
+    expect(result.outcome).toBe('failed');
+    err.mockRestore();
+  });
+});
+
+describe('exactly one handler slot is filled — provisioning', () => {
+  const EMPTY = DODO_HANDLED_EVENT_TYPES.filter((t) => t !== 'subscription.active');
+
+  it.each(EMPTY)('%s still has a handler that does nothing', async (type) => {
+    // The lifecycle slots (on_hold, cancelled, expired, paused, …) are REP-4
+    // PR 3. Filling one here would be lifecycle arriving early — and its scope
+    // has changed: Dodo runs its own dunning and NEVER cancels, so what belongs
+    // in them is a decision, not a transcription of the Stripe handler.
     await expect(Promise.resolve(DODO_EVENT_HANDLERS[type](event(type)))).resolves.toBeUndefined();
+  });
+
+  it('routes subscription.active to the provisioner', () => {
+    expect(DODO_EVENT_HANDLERS['subscription.active']).toBe(handleDodoSubscriptionActive);
   });
 });
