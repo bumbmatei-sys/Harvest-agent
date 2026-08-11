@@ -3,8 +3,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import { X, Edit2, ChevronRight, ArrowLeft } from 'lucide-react';
 import { auth, db } from '../firebase';
-import { updateProfile, updatePassword, deleteUser, EmailAuthProvider, reauthenticateWithCredential, sendPasswordResetEmail } from 'firebase/auth';
-import { doc, getDoc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { updateProfile, updatePassword, signOut, EmailAuthProvider, reauthenticateWithCredential, sendPasswordResetEmail } from 'firebase/auth';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import CountrySelect from './CountrySelect';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { authFetch } from '../utils/auth-fetch';
@@ -241,7 +241,19 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
   * `reauthenticateWithCredential` call the change-password flow already makes.
   * Federated accounts (Google) cannot do that without a sign-in popup, which
   * would be a new flow rather than a fix — they get the explicit instruction
-  * instead. See DELETION-ORDER note below for what is NOT fixed here.
+  * instead.
+  *
+  * ⚠️ BOTH DELETIONS NOW HAPPEN ON THE SERVER, IN ORDER — see
+  * src/app/api/account/delete/route.ts. They used to happen here, and the
+  * first one never worked: firestore.rules gives `match /users/{userId}`
+  * `allow delete: if isSuperAdmin()`, so a member's own `deleteDoc` was denied
+  * every time, `handleFirestoreError` logged it without throwing, and
+  * `deleteUser` then succeeded — DESTROYING THE SIGN-IN AND LEAVING THE
+  * PROFILE BEHIND, unreachable by anyone but a super admin. The Admin SDK
+  * bypasses rules, so the route can delete the document, verify it is gone,
+  * and only then delete the Auth user; a failure at either step comes back as
+  * a non-2xx naming the step, and is rendered below. There is no longer any
+  * path through this handler that removes one half and reports success.
   */
  const handleDeleteAccount = async () => {
  if (!auth.currentUser) {
@@ -255,54 +267,46 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
 
  const uid = auth.currentUser.uid;
 
- // ⚠️ DELETION ORDER — PROFILE DOCUMENT FIRST, THEN THE SIGN-IN.
- //
- // Left exactly as it was. Reversing it is a data-loss decision, not a
- // cleanup: delete the Auth user first and the Firestore document is
- // orphaned with no session left that could ever retry the second half.
- //
- // What actually happens today is NOT the half-deletion the order suggests,
- // and it is not fixed here because fixing it needs firestore.rules or a
- // Cloud Function, both of which deploy to production:
- //
- //   firestore.rules → match /users/{userId} → `allow delete: if isSuperAdmin()`
- //
- // A member cannot delete their own user document. This `deleteDoc` is
- // rejected with permission-denied for every ordinary member, every time.
- // Execution continues past it (handleFirestoreError logs and returns, it
- // does not throw), so `deleteUser` succeeds and the result is the mirror
- // image of a half-deletion: THE SIGN-IN IS DESTROYED AND THE PROFILE
- // DOCUMENT SURVIVES — name, email, phone, city, course progress — with no
- // account left that could reach it. There is no member-facing server route
- // that cleans it up; /api/tenants/delete is tenant-wide and admin-only.
- //
- // Hence `profileRemoved` below: the success copy states what was actually
- // removed instead of claiming the profile is gone.
- let profileRemoved = true;
+ let res: Response;
+ let data: {
+ error?: string;
+ code?: string;
+ step?: string;
+ documentDeleted?: boolean;
+ authDeleted?: boolean;
+ };
  try {
- await deleteDoc(doc(db, 'users', uid));
- } catch (err) {
- handleFirestoreError(err, OperationType.DELETE, `users/${uid}`);
- profileRemoved = false;
+ // Force a token refresh first. The route requires a RECENT sign-in
+ // (`auth_time` within five minutes), and the cached ID token can be up to
+ // an hour old — so after `reauthenticateWithCredential` the retry would
+ // otherwise present the same stale `auth_time` and be rejected again,
+ // looping the member through the password panel forever.
+ await auth.currentUser.getIdToken(true);
+ res = await authFetch('/api/account/delete', {
+ method: 'POST',
+ body: JSON.stringify({ userId: uid }),
+ });
+ data = await res.json().catch(() => ({}));
+ } catch (error: unknown) {
+ console.error('Error deleting account:', error);
+ setDeleteState('error');
+ setDeleteMessage('Could not reach the server. Check your connection and try again.');
+ return;
  }
 
- try {
- await deleteUser(auth.currentUser);
- // Confirm BEFORE the sign-out lands. deleteUser resolves first and the
- // redirect follows from onAuthStateChanged upstream, so this success
- // panel is what the member sees the action end in rather than being
- // dropped on the login screen with no idea whether it worked.
+ if (res.ok) {
+ // Confirm BEFORE the sign-out lands: the sign-out redirect follows from
+ // onAuthStateChanged upstream, so this success panel is what the member
+ // sees the action end in rather than being dropped on the login screen
+ // with no idea whether it worked. The server has already deleted the Auth
+ // user, so the local session is signed out here rather than by Firebase.
  setDeleteState('done');
- setDeleteMessage(
- profileRemoved
- ? 'Your account has been deleted. Signing you out now.'
- : 'Your sign-in has been deleted and you will be signed out now. Some profile details could not be removed automatically — contact your ministry admin to have them erased.',
- );
- } catch (error: unknown) {
- const code = (error as { code?: string })?.code;
- console.error('Error deleting account:', error);
+ setDeleteMessage('Your account and sign-in have been deleted. Signing you out now.');
+ signOut(auth).catch((err) => console.error('Error signing out after delete:', err));
+ return;
+ }
 
- if (code === 'auth/requires-recent-login') {
+ if (data.code === 'auth/requires-recent-login') {
  if (isEmailAuth) {
  setDeleteState('reauth');
  setDeleteMessage('For your security, confirm your password to finish deleting your account.');
@@ -315,13 +319,14 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
  return;
  }
 
+ // Every remaining outcome is a real failure and says which half it stopped
+ // at. `step: 'auth'` is the only one where anything was removed, and it must
+ // never read as success — the member still has a working sign-in.
  setDeleteState('error');
  setDeleteMessage(
- code === 'auth/network-request-failed'
- ? 'Could not reach the server. Check your connection and try again.'
- : 'Your account could not be deleted. Please try again, or contact your ministry admin if this keeps happening.',
+ data.error ||
+ 'Your account could not be deleted. Please try again, or contact your ministry admin if this keeps happening.',
  );
- }
  };
 
  /** Re-authenticate with the password typed into the confirm panel, then retry. */
@@ -764,6 +769,19 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
  ) : (
  <>
  <span className="text-sm font-bold text-red-600 text-center">Are you sure? This cannot be undone.</span>
+
+ {/* Say what it actually does. "Delete my account" reads as full erasure,
+     and it is not: the route removes users/{uid} and the Auth account, and
+     nothing else. Data your ministry holds about you lives in their own
+     records (CRM, giving, registrations) and is theirs to remove — some of
+     it, giving history especially, they may be required to keep. Promising
+     erasure we do not perform would be a worse lie than the old copy. */}
+ <span className="text-xs text-body text-center">
+ This deletes your profile and your sign-in. Records your ministry
+ holds — giving history, event registrations, check-ins, prayer
+ requests and community posts — stay in their records; ask an admin to
+ remove those.
+ </span>
 
  {/* The failure the member could not see before. `role="alert"` so it
      is announced, not just drawn. */}

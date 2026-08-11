@@ -139,27 +139,44 @@ export const MEMBER_FAQS: readonly MemberFAQ[] = [
   {
     question: 'How do I leave, or delete my account?',
     answer: [
-      'Profile, then Personal Information, then Delete Account. That removes your profile and your sign-in. It takes effect immediately and cannot be undone.',
-      'Deleting needs a recent sign-in, so if it has been a while you will be asked to confirm your password before it goes through. If you signed in with Google instead of a password, sign out, sign back in and delete within a few minutes. Either way the screen tells you what happened — it will not fail silently.',
+      'Profile, then Personal Information, then Delete Account. That removes your profile — your name, contact details, course progress, notes and saved items — and your sign-in. It takes effect immediately and cannot be undone.',
+      'It does not remove everything your ministry holds about you. Records that live in their books rather than on your profile — giving history and receipts, event registrations, check-ins, prayer requests, community posts and messages, and your row in their contact list — stay with the ministry. Some of it they may be required to keep: a giving receipt is a financial record. Ask an admin if you want those removed too.',
+      'Deleting needs a recent sign-in, so if it has been a while you will be asked to confirm your password before it goes through. If you signed in with Google instead of a password, sign out, sign back in and delete within a few minutes. Either way the screen tells you what happened — it will not fail silently, and it will never tell you the account is gone unless both your profile and your sign-in were actually removed.',
       'There is no way to move an existing account to a different ministry, because that tie is fixed when the account is created. Joining another ministry means creating an account at that ministry’s address. If you would rather come off your ministry’s lists and keep your sign-in, ask an admin — removing a member’s record is something they can do.',
     ],
-    // PersonalInformationModal.handleDeleteAccount deletes users/{uid} and then
-    // the Firebase Auth user; Firebase rejects the second step with
-    // 'auth/requires-recent-login' on a stale session. That rejection is no
-    // longer silent: a password account is re-authenticated in place (the
-    // `deleteState === 'reauth'` panel, via reauthenticateWithCredential), and
-    // every other outcome — including success — renders a message. `isEmailAuth`
-    // is the provider check that splits the two paths; Google accounts arrive
-    // via AuthPage's signInWithPopup and get the sign-out instruction, because
-    // re-authenticating them in place would need a second popup flow.
+    // PersonalInformationModal.handleDeleteAccount POSTs to /api/account/delete,
+    // which deletes users/{uid} with the Admin SDK, reads it back to confirm it
+    // is gone, and only then deletes the Firebase Auth user. A failure at either
+    // step is a non-2xx naming the step and is rendered — hence "it will never
+    // tell you the account is gone unless both were actually removed".
     //
-    // ⚠️ "removes your profile" is currently only half true and is NOT fixed by
-    // the above: firestore.rules gives users/{userId} `allow delete: if
-    // isSuperAdmin()`, so a member's own deleteDoc is denied and the profile
-    // document survives the deletion of their sign-in. Correcting that needs a
-    // rules change or a Cloud Function — reported, not done here.
+    // "removes your profile" is now TRUE. It was half a lie before: firestore.rules
+    // gives users/{userId} `allow delete: if isSuperAdmin()`, so the member's own
+    // client-side deleteDoc was denied every time while deleteUser succeeded
+    // anyway — the sign-in went and the profile stayed. The rule is UNCHANGED;
+    // the Admin SDK bypasses it, which is why no rules deploy was needed.
+    //
+    // The recent-sign-in requirement survived the move. adminAuth.deleteUser has
+    // no freshness guard of its own, so the route re-imposes the ~5-minute
+    // `auth_time` window the client SDK used to enforce and rejects with the same
+    // 'auth/requires-recent-login' code; a password account is re-authenticated in
+    // place (the `deleteState === 'reauth'` panel, via reauthenticateWithCredential).
+    // `isEmailAuth` is the provider check that splits the two paths; Google
+    // accounts arrive via AuthPage's signInWithPopup and get the sign-out
+    // instruction, because re-authenticating them in place would need a second
+    // popup flow.
+    //
+    // Paragraph 2 is the retention boundary, and it is deliberate rather than a
+    // gap: the route deletes users/{uid} and the Auth account ONLY. Giving
+    // history (tenants/{t}/invoices), event registrations (…/registrations),
+    // check-ins (…/checkinSessions/{s}/attendees), prayer_requests, community_posts
+    // and their comments, tenants/{t}/dmMessages and channelMessages, and the CRM
+    // contacts row all key to the member and all survive. Widening that is a
+    // retention decision, not a bug fix — a receipted donation is a financial
+    // record — so the copy states the boundary instead of implying erasure.
     sources: [
       'src/components/PersonalInformationModal.tsx',
+      'src/app/api/account/delete/route.ts',
       'src/components/AuthPage.tsx',
       'src/components/AnalyticsAndRoles.tsx',
       'firestore.rules',
