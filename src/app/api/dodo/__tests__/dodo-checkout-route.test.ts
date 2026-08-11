@@ -22,6 +22,18 @@ const { mockCreatePlanCheckout, mockRequireAuth, mockCollGet } = vi.hoisted(() =
   mockCollGet: vi.fn(),
 }));
 
+// The route refuses with 503 while `DODO_BILLING_ENABLED` is false, which is how
+// it is shipped. Everything in this file is about what the route DOES when it is
+// serving, so the flag is stubbed on here rather than pinned to whatever the
+// shipped value happens to be — otherwise the whole file would silently reduce
+// to "it 503s" the moment the cutover is switched off, and the behaviour it
+// guards would go untested exactly while it is waiting to be turned on.
+// `dodo-billing-flag.test.ts` owns the shipped position of the switch.
+vi.mock('@/utils/plan-features', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/utils/plan-features')>()),
+  DODO_BILLING_ENABLED: true,
+}));
+
 vi.mock('@/lib/dodo/dodo-provider', () => ({
   dodoBillingProvider: { id: 'dodo', createPlanCheckout: mockCreatePlanCheckout },
 }));

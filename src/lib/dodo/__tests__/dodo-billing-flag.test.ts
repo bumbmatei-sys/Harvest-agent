@@ -38,11 +38,38 @@ function sourceFiles(dir: string, out: string[] = []): string[] {
 const isTestFile = (path: string) => /__tests__|\.test\.tsx?$/.test(path);
 const read = (rel: string) => readFileSync(join(SRC, rel), 'utf8');
 
+/**
+ * The signup endpoint the app would build with the flag in a given position.
+ *
+ * Both flag positions are exercised, not asserted about: `signup-checkout.ts` is
+ * re-imported with `DODO_BILLING_ENABLED` stubbed, so what is checked is the
+ * module the app would actually build — never a restatement of its ternary. That
+ * is what keeps "the cutover is one line away" a tested claim rather than a
+ * comment, in whichever position the shipped flag happens to be sitting.
+ */
+async function endpointWithFlag(enabled: boolean): Promise<string> {
+  vi.resetModules();
+  vi.doMock('@/utils/plan-features', async (importOriginal) => ({
+    ...(await importOriginal<typeof import('@/utils/plan-features')>()),
+    DODO_BILLING_ENABLED: enabled,
+  }));
+  const mod = await import('@/utils/signup-checkout');
+  const endpoint = mod.SIGNUP_CHECKOUT_ENDPOINT;
+  vi.doUnmock('@/utils/plan-features');
+  vi.resetModules();
+  return endpoint;
+}
+
 // ── The flag itself ──────────────────────────────────────────────────────────
 
-describe('DODO_BILLING_ENABLED is on', () => {
-  it('is true', () => {
-    expect(DODO_BILLING_ENABLED).toBe(true);
+describe('DODO_BILLING_ENABLED is off', () => {
+  it('is false', () => {
+    // The cutover is built, merged and tested — and OFF, until a real sandbox
+    // signup has proven that a paid Dodo subscription carries the checkout
+    // metadata provisioning reads. Everything below exercises BOTH positions of
+    // the switch through the real modules, so this line is the only thing that
+    // has to change to turn it on, and turning it on is a reviewable one-liner.
+    expect(DODO_BILLING_ENABLED).toBe(false);
   });
 
   it('is a literal in plan-features.ts, not a computed or env-driven value', () => {
@@ -55,8 +82,11 @@ describe('DODO_BILLING_ENABLED is on', () => {
 // ── Test 7: with the flag TRUE, signup posts to Dodo ──────────────────────────
 
 describe('with the flag true, signup posts to Dodo and no Stripe checkout is created', () => {
-  it('resolves the signup endpoint to /api/dodo/checkout', () => {
-    expect(SIGNUP_CHECKOUT_ENDPOINT).toBe('/api/dodo/checkout');
+  it('resolves the signup endpoint to /api/dodo/checkout', async () => {
+    // Asserted through the module rebuilt with the flag stubbed on, not through
+    // the shipped constant — the cutover has to stay provably one line away
+    // while it is switched off, or "flip the flag" becomes an untested claim.
+    expect(await endpointWithFlag(true)).toBe('/api/dodo/checkout');
   });
 
   it('routes BOTH signup call sites through the one switch', () => {
@@ -79,6 +109,10 @@ describe('with the flag true, signup posts to Dodo and no Stripe checkout is cre
     const sessionsCreate = vi.fn().mockResolvedValue({ url: 'https://checkout.stripe/x' });
     const dodoCreate = vi.fn().mockResolvedValue({ url: 'https://checkout.dodo/x', reference: 'cks_1' });
 
+    vi.doMock('@/utils/plan-features', async (importOriginal) => ({
+      ...(await importOriginal<typeof import('@/utils/plan-features')>()),
+      DODO_BILLING_ENABLED: true,
+    }));
     vi.doMock('stripe', () => ({
       default: class MockStripe {
         checkout = { sessions: { create: sessionsCreate } };
@@ -125,6 +159,7 @@ describe('with the flag true, signup posts to Dodo and no Stripe checkout is cre
     expect(sessionsCreate).not.toHaveBeenCalled();
 
     vi.doUnmock('stripe');
+    vi.doUnmock('@/utils/plan-features');
     vi.resetModules();
   });
 });
@@ -132,30 +167,15 @@ describe('with the flag true, signup posts to Dodo and no Stripe checkout is cre
 // ── Test 6: with the flag FALSE, signup posts to Stripe and calls no Dodo ─────
 
 describe('with the flag false, signup posts to Stripe and no Dodo call is made', () => {
-  /**
-   * The rollback is exercised, not asserted about. `signup-checkout.ts` is
-   * re-imported with the flag stubbed false, so this is the module the app would
-   * actually build — not a restatement of the ternary.
-   */
-  async function endpointWithFlag(enabled: boolean): Promise<string> {
-    vi.resetModules();
-    vi.doMock('@/utils/plan-features', async (importOriginal) => ({
-      ...(await importOriginal<typeof import('@/utils/plan-features')>()),
-      DODO_BILLING_ENABLED: enabled,
-    }));
-    const mod = await import('@/utils/signup-checkout');
-    const endpoint = mod.SIGNUP_CHECKOUT_ENDPOINT;
-    vi.doUnmock('@/utils/plan-features');
-    vi.resetModules();
-    return endpoint;
-  }
-
   it('sends signup back to /api/stripe/checkout — completely', async () => {
     expect(await endpointWithFlag(false)).toBe('/api/stripe/checkout');
   });
 
-  it('sends signup to /api/dodo/checkout when on, so the switch is the only difference', async () => {
-    expect(await endpointWithFlag(true)).toBe('/api/dodo/checkout');
+  it('is what the SHIPPED build does, since the flag is off', () => {
+    // The one assertion that reads the real constant rather than a stub: as
+    // shipped, every signup goes to Stripe. If this and `is false` above ever
+    // disagree, the switch has stopped being the only thing that decides.
+    expect(SIGNUP_CHECKOUT_ENDPOINT).toBe('/api/stripe/checkout');
   });
 
   it('leaves NO Dodo call on the rolled-back path: /api/dodo/checkout refuses outright', async () => {
