@@ -4,7 +4,7 @@ import Stripe from 'stripe';
 import { adminDb } from '@/lib/firebase-admin';
 import { getTenantPrivate } from '@/lib/tenant-private';
 import { billingActionUnavailable, blocksStripeAction, resolveBillingOwnership } from '@/lib/billing-processor';
-import { requireAuth } from '@/lib/api-auth';
+import { requireTenantAdmin } from '@/lib/api-auth';
 import { captureMoneyPathError } from '@/lib/money-path-sentry';
 
 export const dynamic = 'force-dynamic';
@@ -13,9 +13,6 @@ const ENTERPRISE_PRICE_PER_CHURCH = 1000; // $10 in cents
 
 export async function POST(request: NextRequest) {
   try {
-    const userOrErr = await requireAuth(request);
-    if (userOrErr instanceof Response) return userOrErr;
-
     const stripeKey = process.env.STRIPE_SECRET_KEY;
     if (!stripeKey) {
       return NextResponse.json({ error: 'Stripe not configured' }, { status: 500 });
@@ -25,14 +22,26 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { tenantId, action } = body;
 
-    // Verify tenant membership
-    if (!userOrErr.isSuperAdmin && userOrErr.tenantId !== tenantId) {
-      return NextResponse.json({ error: 'Access denied to this tenant' }, { status: 403 });
-    }
-
     if (!tenantId) {
       return NextResponse.json({ error: 'Missing required field: tenantId' }, { status: 400 });
     }
+
+    // 🔴 ADMIN-ONLY, from THE-80. This was `requireAuth` plus a tenant-match, so
+    // any member of the congregation could change the church's billed seat count.
+    //
+    // Admin rather than owner, deliberately: seat quantity is not a discretionary
+    // purchase, it is the true-up that FOLLOWS creating or deleting a church —
+    // an action a tenant admin is already authorised to take. Gating the true-up
+    // above the action it accompanies does not remove the admin's ability to
+    // commit the money; it only stops the subscription from being corrected
+    // afterwards, leaving churches billed at the wrong count. See the PR body:
+    // the plan/cancel paths that ARE discretionary use `requireOwner`.
+    //
+    // `requireTenantAdmin` (not `requireAdmin`) because it is scoped to THIS
+    // tenant and consults `tenant_private.adminEmails`, so an admin who holds
+    // their entitlement only through the roster is not locked out.
+    const userOrErr = await requireTenantAdmin(request, tenantId);
+    if (userOrErr instanceof Response) return userOrErr;
 
     // Look up tenant
     const tenantDoc = await adminDb.collection('tenants').doc(tenantId).get();

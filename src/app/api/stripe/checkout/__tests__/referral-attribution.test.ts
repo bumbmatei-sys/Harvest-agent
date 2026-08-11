@@ -27,7 +27,13 @@ const {
   mockCustomersList: vi.fn().mockResolvedValue({ data: [] }),
 }));
 
-const { mockRequireAuth } = vi.hoisted(() => ({ mockRequireAuth: vi.fn() }));
+const { mockRequireAuth, mockRequireOwner } = vi.hoisted(() => ({
+  mockRequireAuth: vi.fn(),
+  // THE-80 gates the existing-tenant plan-change branch on requireOwner. This
+  // suite is not about authorisation, so the gate is stubbed to a caller who
+  // passes; who is refused lives in billing-auth-gates.test.ts.
+  mockRequireOwner: vi.fn(),
+}));
 
 const { mockDocGet, mockDocSet, mockDocUpdate, mockCollGet } = vi.hoisted(() => ({
   mockDocGet: vi.fn(),
@@ -43,7 +49,7 @@ vi.mock('stripe', () => ({
   },
 }));
 
-vi.mock('@/lib/api-auth', () => ({ requireAuth: mockRequireAuth }));
+vi.mock('@/lib/api-auth', () => ({ requireAuth: mockRequireAuth, requireOwner: mockRequireOwner }));
 
 vi.mock('@/lib/firebase-admin', () => ({
   adminDb: {
@@ -85,6 +91,13 @@ beforeEach(() => {
   mockCustomersList.mockResolvedValue({ data: [] });
   mockCustomersCreate.mockResolvedValue({ id: 'cus_created' });
   mockCustomersRetrieve.mockResolvedValue({ id: 'cus_stored', deleted: false });
+  // The existing-tenant plan-change branch is owner-gated (THE-80); this stubs a
+  // caller who passes it, and supplies the tenant doc the route reads from it.
+  mockRequireOwner.mockResolvedValue({
+    user: { uid: 'u3', email: 'admin@t.org', tenantId: 'tenant1', isSuperAdmin: false },
+    tenantId: 'tenant1',
+    tenantData: { name: 'Tenant One' },
+  });
   mockCollGet.mockResolvedValue({ empty: true, docs: [] });
 });
 

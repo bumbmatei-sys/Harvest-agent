@@ -4,7 +4,7 @@ import Stripe from 'stripe';
 import { adminDb } from '@/lib/firebase-admin';
 import { getTenantPrivate } from '@/lib/tenant-private';
 import { billingActionUnavailable, blocksStripeAction, resolveBillingOwnership } from '@/lib/billing-processor';
-import { requireAdmin } from '@/lib/api-auth';
+import { requireTenantAdmin } from '@/lib/api-auth';
 import { captureMoneyPathError } from '@/lib/money-path-sentry';
 
 export const dynamic = 'force-dynamic';
@@ -14,18 +14,19 @@ const INCLUDED_CHURCHES = 1;
 
 export async function POST(request: NextRequest) {
   try {
-    const userOrErr = await requireAdmin(request);
-    if (userOrErr instanceof Response) return userOrErr;
-
     const { tenantId, churchId, churchName } = await request.json();
     if (!tenantId || !churchId) {
       return NextResponse.json({ error: 'tenantId and churchId required' }, { status: 400 });
     }
 
-    // Verify the user belongs to this tenant (super admins bypass)
-    if (!userOrErr.isSuperAdmin && userOrErr.tenantId !== tenantId) {
-      return NextResponse.json({ error: 'Access denied to this tenant' }, { status: 403 });
-    }
+    // THE-80: `requireAdmin` + an inline tenant-match, folded into the one
+    // tenant-scoped helper. Not a widening — the same three things are checked —
+    // but `requireTenantAdmin` also honours `tenant_private.adminEmails`, so an
+    // admin who holds their entitlement through the roster alone (no
+    // `role: 'admin'` on their user doc) is no longer refused. Admin rather than
+    // owner: see the note in /api/stripe/update-quantity.
+    const userOrErr = await requireTenantAdmin(request, tenantId);
+    if (userOrErr instanceof Response) return userOrErr;
 
     const tenantDoc = await adminDb.collection('tenants').doc(tenantId).get();
     const tenantData = tenantDoc.data();

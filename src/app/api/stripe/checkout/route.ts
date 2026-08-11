@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import Stripe from 'stripe';
 import { adminDb } from '@/lib/firebase-admin';
-import { requireAuth } from '@/lib/api-auth';
+import { requireAuth, requireOwner } from '@/lib/api-auth';
 import { captureMoneyPathError } from '@/lib/money-path-sentry';
 import { PLAN_PRICES, AI_ASSISTANT_MONTHLY } from '@/lib/billing';
 import { logReferralCapture, resolveAffiliateReferrer } from '@/lib/affiliate-referrer';
@@ -198,9 +198,24 @@ export async function POST(request: NextRequest) {
     }
 
     // ── Existing-tenant plan change (upgrade / downgrade). ───────────────────
-    if (!userOrErr.isSuperAdmin && userOrErr.tenantId !== tenantId) {
-      return NextResponse.json({ error: 'Access denied to this tenant' }, { status: 403 });
-    }
+    //
+    // 🔴 OWNER-ONLY, from THE-80. This branch used to inherit the `requireAuth`
+    // at the top of the handler plus a tenant-match — which is membership, not
+    // authority. Anyone who signed up through the church's public subdomain is a
+    // member, so the congregation could move their church from $49 to $199. The
+    // reads on the same Billing screen (`/api/billing/invoices`, `/statement`)
+    // were already `requireOwner`, so the write path was the LOOSER of the two;
+    // this makes them the same gate.
+    //
+    // ⚠️ It is applied HERE and not at the top of the handler on purpose. The
+    // new-ministry signup branch above has no tenant at all — the buyer is not
+    // an owner, an admin, or a member of anything yet, and the webhook creates
+    // the tenant afterwards. Gating the whole route would close the top of the
+    // money path to every new church. `requireOwner` also admits the roster
+    // admin and the apex super admin, neither of whom the old tenant-match
+    // reliably passed.
+    const ownerOrErr = await requireOwner(request, { tenantId });
+    if (ownerOrErr instanceof NextResponse) return ownerOrErr;
 
     // ── 🔴 ROUTE TO THE PROCESSOR THAT OWNS THE SUBSCRIPTION. ────────────────
     //
@@ -224,8 +239,8 @@ export async function POST(request: NextRequest) {
       return billingActionUnavailable('changing your plan', ownership);
     }
 
-    const tenantDoc = await adminDb.collection('tenants').doc(tenantId).get();
-    const tenantData = tenantDoc.data();
+    // The tenant doc was already read (and proved to exist) by the owner gate.
+    const tenantData = ownerOrErr.tenantData;
     const customerId = await getValidCustomerId(
       stripe,
       privateData.stripeCustomerId,

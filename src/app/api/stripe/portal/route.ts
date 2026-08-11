@@ -5,7 +5,7 @@ import { getTenantPrivate } from '@/lib/tenant-private';
 import { resolveBillingOwnership } from '@/lib/billing-processor';
 import { dodoBillingProvider } from '@/lib/dodo/dodo-provider';
 import { captureMoneyPathError } from '@/lib/money-path-sentry';
-import { requireAuth } from '@/lib/api-auth';
+import { requireAuth, requireOwner } from '@/lib/api-auth';
 
 /**
  * POST /api/stripe/portal — "Manage subscription".
@@ -32,20 +32,32 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   try {
+    // Authenticate first so an anonymous caller gets 401 rather than the 400
+    // below; the owner gate then runs once the body has named the tenant.
     const userOrErr = await requireAuth(request);
     if (userOrErr instanceof Response) return userOrErr;
 
     const body = await request.json();
     const { tenantId } = body;
 
-    // Verify tenant membership
     if (!tenantId) {
       return NextResponse.json({ error: 'Missing required field: tenantId' }, { status: 400 });
     }
 
-    if (!userOrErr.isSuperAdmin && userOrErr.tenantId !== tenantId) {
-      return NextResponse.json({ error: 'Access denied to this tenant' }, { status: 403 });
-    }
+    // 🔴 OWNER-ONLY, from THE-80. The hosted portal behind this route is where a
+    // subscription is CANCELLED and where the card on file is replaced — the
+    // single largest change anyone can make to what this church pays. It was
+    // reachable by any authenticated member of the tenant.
+    //
+    // ⚠️ Owner-only is the tight direction, and the tight direction has its own
+    // failure mode: this is the ONLY exit from a subscription, so refusing a
+    // legitimate admin traps a church. That is why the gate admits the roster
+    // admin (`tenant_private.adminEmails`, no `role: 'admin'` needed) and the
+    // apex super admin as well as `ownerId` — the three identities that can
+    // legitimately speak for the account. A volunteer admin who is none of them
+    // cannot cancel the church's plan, which is the intended outcome.
+    const ownerOrErr = await requireOwner(request, { tenantId });
+    if (ownerOrErr instanceof NextResponse) return ownerOrErr;
 
     const privateData = await getTenantPrivate(tenantId);
     const ownership = resolveBillingOwnership(privateData);

@@ -4,7 +4,7 @@ import Stripe from 'stripe';
 import { adminDb } from '@/lib/firebase-admin';
 import { getTenantPrivate } from '@/lib/tenant-private';
 import { billingActionUnavailable, blocksStripeAction, resolveBillingOwnership } from '@/lib/billing-processor';
-import { requireAuth } from '@/lib/api-auth';
+import { requireTenantAdmin } from '@/lib/api-auth';
 import { captureMoneyPathError } from '@/lib/money-path-sentry';
 
 export const dynamic = 'force-dynamic';
@@ -15,9 +15,6 @@ export const dynamic = 'force-dynamic';
  */
 export async function POST(request: NextRequest) {
   try {
-    const userOrErr = await requireAuth(request);
-    if (userOrErr instanceof Response) return userOrErr;
-
     const stripeKey = process.env.STRIPE_SECRET_KEY;
     if (!stripeKey) {
       return NextResponse.json({ error: 'Stripe not configured' }, { status: 500 });
@@ -31,10 +28,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing tenantId or churchId' }, { status: 400 });
     }
 
-    // Verify tenant membership (or super admin)
-    if (!userOrErr.isSuperAdmin && userOrErr.tenantId !== tenantId) {
-      return NextResponse.json({ error: 'Access denied to this tenant' }, { status: 403 });
-    }
+    // 🔴 ADMIN-ONLY, from THE-80. This legacy twin of /api/churches/add-billing
+    // gated on `requireAuth` while the route it duplicates already gated on
+    // `requireAdmin` — so the $10/mo-per-church line was addable by any member
+    // through this path and only by an admin through the other. Same operation,
+    // same gate now, and `requireTenantAdmin` also consults the roster, which
+    // `requireAdmin` on the twin did not.
+    const userOrErr = await requireTenantAdmin(request, tenantId);
+    if (userOrErr instanceof Response) return userOrErr;
 
     const tenantDoc = await adminDb.collection('tenants').doc(tenantId).get();
     const tenantData = tenantDoc.data();
