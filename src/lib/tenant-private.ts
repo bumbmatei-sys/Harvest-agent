@@ -52,6 +52,16 @@ export const TENANT_PRIVATE_FIELDS = [
   'dodoSubscriptionId',
   /** The Dodo product the subscription sells. Dodo puts the price on the product. */
   'dodoProductId',
+  /**
+   * 🔴 WHICH PROCESSOR OWNS THE SUBSCRIPTION — 'stripe' | 'dodo'.
+   *
+   * Every billing write path routes on this (see `@/lib/billing-processor`). It
+   * is on this list for the same reason the identifiers are: a rename that
+   * dropped it would leave the tenant's ownership to be re-derived from its ids,
+   * and a tenant whose ownership cannot be determined has its billing actions
+   * BLOCKED. Losing it is losing the ability to change or cancel a plan.
+   */
+  'billingProcessor',
 ] as const;
 
 export type TenantPrivateField = (typeof TENANT_PRIVATE_FIELDS)[number];

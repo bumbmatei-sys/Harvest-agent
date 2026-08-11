@@ -7,6 +7,7 @@ import { captureMoneyPathError } from '@/lib/money-path-sentry';
 import { PLAN_PRICES, AI_ASSISTANT_MONTHLY } from '@/lib/billing';
 import { logReferralCapture, resolveAffiliateReferrer } from '@/lib/affiliate-referrer';
 import { tenantPrivateRef, getTenantPrivate } from '@/lib/tenant-private';
+import { billingActionUnavailable, blocksStripeAction, resolveBillingOwnership } from '@/lib/billing-processor';
 import { AI_TELEGRAM_ASSISTANT_ENABLED } from '@/utils/plan-features';
 
 export const dynamic = 'force-dynamic';
@@ -201,11 +202,33 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Access denied to this tenant' }, { status: 403 });
     }
 
+    // ── 🔴 ROUTE TO THE PROCESSOR THAT OWNS THE SUBSCRIPTION. ────────────────
+    //
+    // THIS IS THE BUG THE WHOLE CHANGE EXISTS FOR. With DODO_BILLING_ENABLED on,
+    // signup creates a DODO subscription, and everything below creates a STRIPE
+    // one. A church that signed up through Dodo and then upgraded ended up paying
+    // two processors for one product — and `getValidCustomerId` would compound it
+    // by creating and PERSISTING a Stripe customer on the tenant, so the tenant
+    // itself would then look like it belonged to both.
+    //
+    // The guard therefore runs BEFORE any Stripe call, not just before the
+    // checkout session. Dodo's own plan change (`subscriptions.changePlan`) is
+    // deliberately NOT wired up here: it is a money decision about proration
+    // defaults plus product-collection configuration on Dodo's side, and it needs
+    // `subscription.plan_changed` handled to move the tenant's plan afterwards —
+    // which is lifecycle, a later part. Refusing is the recoverable outcome;
+    // charging twice is not.
+    const privateData = await getTenantPrivate(tenantId);
+    const ownership = resolveBillingOwnership(privateData);
+    if (blocksStripeAction(ownership)) {
+      return billingActionUnavailable('changing your plan', ownership);
+    }
+
     const tenantDoc = await adminDb.collection('tenants').doc(tenantId).get();
     const tenantData = tenantDoc.data();
     const customerId = await getValidCustomerId(
       stripe,
-      (await getTenantPrivate(tenantId)).stripeCustomerId,
+      privateData.stripeCustomerId,
       {
         email: email || undefined,
         name: tenantName || tenantData?.name || tenantId,

@@ -1203,6 +1203,14 @@ export async function POST(request: NextRequest) {
             stripePriceId: meta.billing === 'yearly'
               ? getYearlyPriceId(meta.plan)
               : getMonthlyPriceId(meta.plan),
+            // Who owns this subscription, stated rather than inferred — the
+            // counterpart of the `billingProcessor: 'dodo'` the Dodo provisioner
+            // writes. Purely additive: `resolveBillingOwnership` already derives
+            // 'stripe' from the identifiers above, and every tenant created
+            // before this line still does. Written here so the two provisioning
+            // paths keep producing the same field set, which is the property
+            // dodo-provisioning.test.ts checks key by key.
+            billingProcessor: 'stripe',
             createdAt: now,
             updatedAt: now,
           });

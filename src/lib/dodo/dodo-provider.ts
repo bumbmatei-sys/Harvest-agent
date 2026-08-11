@@ -7,6 +7,8 @@ import type {
   BillingSubscription,
   BillingSubscriptionStatus,
   CancelSubscriptionOptions,
+  CustomerPortalRequest,
+  CustomerPortalSession,
   PlanCheckout,
   PlanCheckoutRequest,
   SubscriptionBillingProvider,
@@ -153,6 +155,22 @@ export const dodoBillingProvider: SubscriptionBillingProvider = {
       );
     }
     return this.getSubscription(subscriptionId);
+  },
+
+  async createCustomerPortal(request: CustomerPortalRequest): Promise<CustomerPortalSession> {
+    // Dodo's hosted portal covers cancel (immediately or at the next billing
+    // date), payment-method update, on-hold reactivation, and invoice/receipt
+    // download — the same surface the Stripe billing portal gives a Stripe
+    // tenant, which is why routing `/api/stripe/portal` here is a real
+    // equivalent rather than a placeholder.
+    //
+    // `send_email` is deliberately not set: the app redirects the admin who is
+    // standing in front of it, and mailing a billing link to the customer record
+    // would be a second, unrequested delivery of a single-use credential.
+    const session = await client().customers.customerPortal.create(request.customerId, {
+      return_url: request.returnUrl,
+    });
+    return { url: session.link };
   },
 
   resolvePlanFromProductRef(

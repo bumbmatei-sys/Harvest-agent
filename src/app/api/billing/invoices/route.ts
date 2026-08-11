@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server';
 import Stripe from 'stripe';
 import { requireOwner } from '@/lib/api-auth';
 import { getTenantPrivate } from '@/lib/tenant-private';
+import { resolveBillingOwnership } from '@/lib/billing-processor';
 import { captureHandledError } from '@/lib/money-path-sentry';
 
 export const dynamic = 'force-dynamic';
@@ -31,19 +32,49 @@ export async function GET(request: NextRequest) {
     if (ownerOrResponse instanceof NextResponse) return ownerOrResponse;
     const { tenantData } = ownerOrResponse;
 
+    const privData = await getTenantPrivate(ownerOrResponse.tenantId);
+    const ownership = resolveBillingOwnership(privData);
+
+    // ── Not Stripe's tenant: say so, do not answer for Stripe. ───────────────
+    //
+    // This route is a READ, so it cannot double-charge anyone — but answering a
+    // Dodo-billed church out of Stripe's ledger reports "No payments yet" and an
+    // em-dash where their renewal date should be, to an owner who is being
+    // charged every month. That is not a blank screen, it is a wrong one, and it
+    // is the screen a treasurer would check first when reconciling.
+    //
+    // The plan and status below come from the tenant doc and ARE accurate for a
+    // Dodo tenant; only the Stripe-sourced fields are withheld. `historySource`
+    // tells the client where the real history lives — the Dodo customer portal,
+    // reachable from the same page's "Manage subscription" button.
+    if (ownership.processor === 'dodo' || ownership.reason === 'conflict') {
+      return NextResponse.json({
+        processor: ownership.processor,
+        subscription: {
+          plan: tenantData.plan ?? null,
+          status: tenantData.status ?? null,
+          currentPeriodEnd: null,
+          nextAmount: null,
+          currency: 'usd',
+          cancelAtPeriodEnd: false,
+        },
+        invoices: [],
+        historySource: 'portal',
+      });
+    }
+
     const stripeKey = process.env.STRIPE_SECRET_KEY;
     if (!stripeKey) {
       return NextResponse.json({ error: 'Stripe not configured' }, { status: 500 });
     }
     const stripe = new Stripe(stripeKey);
 
-    const privData = await getTenantPrivate(ownerOrResponse.tenantId);
     const customerId: string | undefined = privData.stripeCustomerId;
     const subscriptionId: string | undefined = privData.stripeSubscriptionId;
 
     // No customer yet (e.g. a legacy/free tenant) — nothing to bill against.
     if (!customerId) {
-      return NextResponse.json({ subscription: null, invoices: [] });
+      return NextResponse.json({ processor: 'stripe', subscription: null, invoices: [] });
     }
 
     // Subscription summary: plan/status come from the tenant doc (kept in sync by
@@ -111,7 +142,7 @@ export async function GET(request: NextRequest) {
       hostedUrl: inv.hosted_invoice_url,
     }));
 
-    return NextResponse.json({ subscription, invoices });
+    return NextResponse.json({ processor: 'stripe', subscription, invoices });
   } catch (error) {
     console.error('billing/invoices error:', error);
     return NextResponse.json({ error: 'Failed to load billing history' }, { status: 500 });

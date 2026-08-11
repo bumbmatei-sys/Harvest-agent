@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server';
 import Stripe from 'stripe';
 import { adminDb } from '@/lib/firebase-admin';
 import { getTenantPrivate } from '@/lib/tenant-private';
+import { billingActionUnavailable, blocksStripeAction, resolveBillingOwnership } from '@/lib/billing-processor';
 import { requireAuth } from '@/lib/api-auth';
 import { captureMoneyPathError } from '@/lib/money-path-sentry';
 
@@ -41,7 +42,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Tenant not found' }, { status: 404 });
     }
 
-    const subscriptionId = (await getTenantPrivate(tenantId)).stripeSubscriptionId;
+    // Same guard, same reason, as /api/churches/add-billing — this is the legacy
+    // twin of that route and is still reachable, so leaving it unguarded would
+    // reopen the exact hole the other one closes.
+    const privateData = await getTenantPrivate(tenantId);
+    const ownership = resolveBillingOwnership(privateData);
+    if (blocksStripeAction(ownership)) {
+      return billingActionUnavailable('adding billing for an extra church', ownership);
+    }
+
+    const subscriptionId = privateData.stripeSubscriptionId;
     if (!subscriptionId) {
       return NextResponse.json({ error: 'Tenant has no active Stripe subscription' }, { status: 400 });
     }
