@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server';
 import Stripe from 'stripe';
 import { adminDb } from '@/lib/firebase-admin';
 import { getTenantPrivate } from '@/lib/tenant-private';
+import { billingActionUnavailable, blocksStripeAction, resolveBillingOwnership } from '@/lib/billing-processor';
 import { requireAdmin } from '@/lib/api-auth';
 import { captureMoneyPathError } from '@/lib/money-path-sentry';
 
@@ -63,13 +64,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, skipped: 'first-church-free' });
     }
 
+    // A $10/mo line added to the tenant's subscription — a charge, on whichever
+    // processor owns it. Dodo's equivalent is an ADD-ON, which is a later part of
+    // this migration, so a Dodo-owned tenant is refused here rather than having a
+    // per-church line attached to a Stripe subscription it does not have. The
+    // refusal is visible: AdminChurches surfaces a billing-setup notice.
+    const privateData = await getTenantPrivate(tenantId);
+    const ownership = resolveBillingOwnership(privateData);
+    if (blocksStripeAction(ownership)) {
+      return billingActionUnavailable('adding billing for an extra church', ownership);
+    }
+
     const stripeKey = process.env.STRIPE_SECRET_KEY;
     if (!stripeKey) {
       return NextResponse.json({ error: 'Stripe not configured' }, { status: 500 });
     }
     const stripe = new Stripe(stripeKey);
 
-    const subscriptionId = (await getTenantPrivate(tenantId)).stripeSubscriptionId;
+    const subscriptionId = privateData.stripeSubscriptionId;
     if (!subscriptionId) {
       return NextResponse.json({ error: 'Tenant has no active Stripe subscription' }, { status: 400 });
     }

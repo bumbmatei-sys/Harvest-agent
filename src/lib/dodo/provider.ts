@@ -132,8 +132,22 @@ export interface CancelSubscriptionOptions {
   readonly atPeriodEnd: boolean;
 }
 
+/** What the app must supply to open a customer's self-service billing portal. */
+export interface CustomerPortalRequest {
+  /** The processor's customer id. Opaque to the app. */
+  readonly customerId: string;
+  /** Where the customer lands when they leave the portal. */
+  readonly returnUrl: string;
+}
+
+/** A self-service billing portal the customer can be redirected to. */
+export interface CustomerPortalSession {
+  /** Single-use redirect URL. Never cache or share one of these. */
+  readonly url: string;
+}
+
 /**
- * The four operations Harvest actually performs against a subscription
+ * The five operations Harvest actually performs against a subscription
  * processor. Nothing speculative: every method here has a named caller in the
  * REP-4 plan, and anything a later PR turns out to need gets added then.
  *
@@ -141,6 +155,7 @@ export interface CancelSubscriptionOptions {
  *   getSubscription           → PR 3, reading state for the lifecycle timer
  *   cancelSubscription        → PR 3, the end of Grace → Archived
  *   resolvePlanFromProductRef → PR 2, the subscription webhook naming a plan
+ *   createCustomerPortal      → THE-79, /api/stripe/portal for a Dodo tenant
  */
 export interface SubscriptionBillingProvider {
   /** Stable identifier for logs and Sentry context, e.g. 'dodo'. */
@@ -157,6 +172,18 @@ export interface SubscriptionBillingProvider {
     subscriptionId: string,
     options: CancelSubscriptionOptions,
   ): Promise<BillingSubscription>;
+
+  /**
+   * Open the customer's own self-service billing portal.
+   *
+   * 🔴 THIS IS THE CANCELLATION PATH. Harvest has no "cancel my plan" button of
+   * its own: `/api/stripe/portal` — the "Manage subscription" button in Settings,
+   * the upgrade page and the plan section — is the ONLY way an admin ends their
+   * subscription, and it is also where they update a card and read invoices.
+   * A processor plugged in here without a portal would leave churches unable to
+   * leave, which is worse than any billing bug this migration is fixing.
+   */
+  createCustomerPortal(request: CustomerPortalRequest): Promise<CustomerPortalSession>;
 
   /**
    * Resolve the plan a processor-side product reference sells.

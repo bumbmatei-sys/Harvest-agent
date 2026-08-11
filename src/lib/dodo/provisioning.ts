@@ -310,6 +310,12 @@ export async function provisionTenantFromDodoSubscription(
     dodoCustomerId: str(sub.customer?.customer_id) || null,
     dodoSubscriptionId: subscriptionId,
     dodoProductId: productId,
+    // 🔴 Who owns this subscription, stated rather than inferred. Every billing
+    // write path routes on it (`@/lib/billing-processor`), and it is what stops a
+    // later plan change from opening a SECOND subscription on Stripe and billing
+    // this church twice. Written in the same batch as the identifiers it
+    // describes, so the two can never disagree.
+    billingProcessor: 'dodo',
     createdAt: now,
     updatedAt: now,
   });

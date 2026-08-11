@@ -4,6 +4,7 @@ import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import Stripe from 'stripe';
 import { requireOwner } from '@/lib/api-auth';
 import { getTenantPrivate } from '@/lib/tenant-private';
+import { resolveBillingOwnership } from '@/lib/billing-processor';
 import { getPlanDisplayName } from '@/utils/plan-features';
 import type { TenantPlan } from '@/types/tenant.types';
 import { captureHandledError } from '@/lib/money-path-sentry';
@@ -152,6 +153,27 @@ export async function POST(request: NextRequest) {
     const status = tenantData.status || 'active';
 
     const privData = await getTenantPrivate(ownerOrResponse.tenantId);
+    const ownership = resolveBillingOwnership(privData);
+
+    // 🔴 REFUSE rather than emit a false document. For a Dodo-billed tenant the
+    // Stripe ledger below is empty, so this route would hand the owner a PDF
+    // headed with their church's name, their real plan, and "Total paid $0.00" —
+    // a statement that looks authoritative and is wrong. A treasurer could file
+    // that. An error message they can act on is strictly better than a document
+    // they cannot trust.
+    if (ownership.processor === 'dodo' || ownership.reason === 'conflict') {
+      return NextResponse.json(
+        {
+          error:
+            'Your payment history is held by Dodo Payments, our payment processor. ' +
+            'Open “Manage subscription” to view and download your invoices and receipts.',
+          code: 'statement-unavailable',
+          processor: ownership.processor,
+        },
+        { status: 409 },
+      );
+    }
+
     const customerId: string | undefined = privData.stripeCustomerId;
     const subscriptionId: string | undefined = privData.stripeSubscriptionId;
 

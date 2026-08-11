@@ -279,19 +279,46 @@ describe('the first-run gate recognises a return from EITHER processor', () => {
 // ── The Dodo module is now deliberately wired in ─────────────────────────────
 
 describe('the Dodo module is wired into exactly the paths this PR names', () => {
-  it('is imported only by the dodo lib, the dodo routes, and the signup switch', () => {
+  it('is imported only by the dodo lib, the dodo routes, and one named exception', () => {
     const dodoLib = join(SRC, 'lib/dodo');
     const dodoRoute = join(SRC, 'app/api/dodo');
+
+    /**
+     * The ONLY file outside the Dodo module allowed to import it.
+     *
+     * `/api/stripe/portal` is the "Manage subscription" button, and it is the
+     * only way an admin cancels, replaces a card, or reads an invoice — Harvest
+     * has no cancel control of its own. It therefore has to serve BOTH
+     * processors: refusing a Dodo-owned tenant here would trap a church in a
+     * subscription it cannot exit, which is worse than the double billing THE-79
+     * fixes. The alternative — a separate Dodo endpoint the client picks between
+     * — puts the choice back in a bundle that a stale browser tab may not have,
+     * on the one route that must never be unavailable.
+     *
+     * ⚠️ This is a named exception, not a widening. Every other file is still
+     * held to the original rule, and a new entry here needs the same argument:
+     * the app reaches Dodo through its routes, and picks a processor in one
+     * place — now `resolveBillingOwnership`, per tenant, rather than a constant.
+     */
+    const ALLOWED_OUTSIDE_IMPORTERS = ['app/api/stripe/portal/route.ts'];
 
     const outsiders = sourceFiles(SRC)
       .filter((file) => !isTestFile(file))
       .filter((file) => !file.startsWith(dodoLib) && !file.startsWith(dodoRoute))
       .filter((file) => /from\s+['"](@\/lib\/dodo\/|\.\.?\/dodo\/)/.test(readFileSync(file, 'utf8')))
-      .map((file) => file.slice(SRC.length + 1));
+      .map((file) => file.slice(SRC.length + 1))
+      .filter((file) => !ALLOWED_OUTSIDE_IMPORTERS.includes(file));
 
-    // Nothing outside the Dodo module imports it directly: the app reaches Dodo
-    // through the routes, and chooses between processors through one constant.
     expect(outsiders).toEqual([]);
+  });
+
+  it('the one exception imports Dodo ONLY to open a portal, never to charge', () => {
+    // The exception above is granted for cancellation. It must not become a
+    // doorway for checkout or plan changes — those go through the Dodo routes.
+    const portal = read('app/api/stripe/portal/route.ts');
+    expect(portal).toContain('createCustomerPortal');
+    expect(portal).not.toContain('createPlanCheckout');
+    expect(portal).not.toContain('changePlan');
   });
 
   it('leaves the existing-tenant plan-change screens on Stripe', () => {

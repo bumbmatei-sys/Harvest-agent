@@ -6,6 +6,8 @@ import type {
   BillingPeriod,
   BillingSubscription,
   CancelSubscriptionOptions,
+  CustomerPortalRequest,
+  CustomerPortalSession,
   PlanCheckout,
   PlanCheckoutRequest,
   SubscriptionBillingProvider,
@@ -95,6 +97,12 @@ class LedgerBillingProvider implements SubscriptionBillingProvider {
     if (options.atPeriodEnd) row.endDated = true;
     else row.state = 'CLOSED';
     return this.getSubscription(subscriptionId);
+  }
+
+  async createCustomerPortal(request: CustomerPortalRequest): Promise<CustomerPortalSession> {
+    // Deliberately unlike Dodo again: this processor mints a portal ticket
+    // rather than returning a link keyed on the customer id.
+    return { url: `https://ledger.example/portal?ticket=${request.customerId}&back=${encodeURIComponent(request.returnUrl)}` };
   }
 
   resolvePlanFromProductRef(productRef: string): { plan: TenantPlan; period: BillingPeriod } | null {

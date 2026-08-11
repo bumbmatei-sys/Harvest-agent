@@ -71,6 +71,13 @@ const BillingAndPayments: React.FC<BillingAndPaymentsProps> = ({ currentPlan, te
   const [invoices, setInvoices] = useState<BillingInvoice[]>([]);
   const [generating, setGenerating] = useState(false);
   const [genError, setGenError] = useState<string | null>(null);
+  /**
+   * True when this tenant's payment history lives with a processor whose ledger
+   * this page cannot read (Dodo). Without it the empty table below reads "No
+   * payments yet." to an owner who is being charged every month — the one
+   * sentence a treasurer reconciling two statements must not be told.
+   */
+  const [historyInPortal, setHistoryInPortal] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -86,6 +93,7 @@ const BillingAndPayments: React.FC<BillingAndPaymentsProps> = ({ currentPlan, te
         } else {
           setSubscription(data.subscription || null);
           setInvoices(Array.isArray(data.invoices) ? data.invoices : []);
+          setHistoryInPortal(data.historySource === 'portal');
         }
       } catch (e: any) {
         if (!cancelled) setError(e?.message || 'Failed to load billing information');
@@ -196,7 +204,14 @@ const BillingAndPayments: React.FC<BillingAndPaymentsProps> = ({ currentPlan, te
         {invoices.length === 0 ? (
           <div className="text-center py-12 text-faint bg-surface-raised rounded-2xl border border-line">
             <FileText size={36} className="mx-auto mb-2 opacity-30" />
-            <p className="text-sm">No payments yet.</p>
+            {historyInPortal ? (
+              <p className="text-sm px-6">
+                Your invoices and receipts are held by our payment processor. Open{' '}
+                <span className="font-semibold">Manage subscription</span> above to view and download them.
+              </p>
+            ) : (
+              <p className="text-sm">No payments yet.</p>
+            )}
           </div>
         ) : (
           <div className="bg-surface-raised rounded-2xl border border-line shadow-sm overflow-hidden">
@@ -248,11 +263,16 @@ const BillingAndPayments: React.FC<BillingAndPaymentsProps> = ({ currentPlan, te
       <div className="bg-surface-raised rounded-2xl p-5 border border-line shadow-sm">
         <h3 className="text-sm font-bold text-body mb-1 font-display">Billing Statement</h3>
         <p className="text-sm text-muted mb-4">
-          Download a consolidated PDF summary of your plan and all subscription payments.
+          {historyInPortal
+            ? 'Your payment history is held by our payment processor — open “Manage subscription” above to download your invoices and receipts.'
+            : 'Download a consolidated PDF summary of your plan and all subscription payments.'}
         </p>
         <button
           onClick={handleGenerateStatement}
-          disabled={generating}
+          // Disabled rather than hidden: the owner can see the capability exists
+          // and the sentence above says where it moved to. The server refuses this
+          // request anyway (409) — this just stops them having to find that out.
+          disabled={generating || historyInPortal}
           className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
           style={{ backgroundColor: GOLD }}
         >

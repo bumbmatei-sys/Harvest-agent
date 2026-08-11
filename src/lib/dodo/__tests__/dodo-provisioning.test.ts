@@ -198,9 +198,23 @@ describe('a completed Dodo checkout creates a tenant with every field the Stripe
       dodoCustomerId: 'cus_dodo_1',
       dodoSubscriptionId: 'sub_dodo_1',
       dodoProductId: productIdFor('max', 'monthly'),
+      // 🔴 THE-79: who owns this subscription, stated rather than inferred. Every
+      // billing write path routes on it; without it a later plan change would
+      // open a SECOND subscription on Stripe and bill this church twice.
+      billingProcessor: 'dodo',
       createdAt: expect.any(String),
       updatedAt: expect.any(String),
     });
+  });
+
+  it('records billingProcessor in the SAME batch as the identifiers it describes', async () => {
+    // Written together so the two can never disagree — a tenant carrying Dodo ids
+    // whose ownership says otherwise is the state that blocks its own billing.
+    await provisionTenantFromDodoSubscription(subscription());
+
+    const [, priv] = privateDoc()!;
+    expect(priv.billingProcessor).toBe('dodo');
+    expect(priv.dodoSubscriptionId).toBe('sub_dodo_1');
   });
 
   it('does NOT write any stripe* identifier — those belong to the rollback', async () => {
