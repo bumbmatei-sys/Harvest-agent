@@ -8,6 +8,8 @@ import LinkExtension from '@tiptap/extension-link';
 import TextAlign from '@tiptap/extension-text-align';
 import Placeholder from '@tiptap/extension-placeholder';
 import { authFetch } from '../utils/auth-fetch';
+import { useTenantCapability } from '../hooks/useTenantCapability';
+import { ARCHIVED_ACTION_MESSAGE } from '../lib/tenant-lifecycle';
 
 interface NewsletterEditorProps {
   tenantId: string;
@@ -66,6 +68,7 @@ const NewsletterEditor: React.FC<NewsletterEditorProps> = ({
   const [success, setSuccess] = useState<string | null>(null);
   const [mailchimpConnected, setMailchimpConnected] = useState(false);
   const [loadingConnections, setLoadingConnections] = useState(true);
+  const canSend = useTenantCapability('sending');
 
   const [startDate, setStartDate] = useState(() => {
     const d = new Date();
@@ -164,6 +167,12 @@ const NewsletterEditor: React.FC<NewsletterEditorProps> = ({
   };
 
   const handleSend = async (scheduledDate?: string) => {
+    // REP-4: sending stops when the subscription ends. Saving a draft above does
+    // NOT — the newsletter stays written and sends the moment they reactivate.
+    if (!canSend) {
+      setError(ARCHIVED_ACTION_MESSAGE);
+      return;
+    }
     setSending(true);
     setError(null);
     setSuccess(null);
@@ -230,7 +239,8 @@ const NewsletterEditor: React.FC<NewsletterEditorProps> = ({
             </button>
             <button
               onClick={() => handleSend()}
-              disabled={!hasContent || sending || !mailchimpConnected}
+              disabled={!hasContent || sending || !mailchimpConnected || !canSend}
+              title={canSend ? undefined : ARCHIVED_ACTION_MESSAGE}
               className="flex items-center gap-1.5 px-4 py-2 bg-gold text-white rounded-xl text-sm font-semibold hover:bg-[color-mix(in_srgb,var(--brand-color)_85%,black)] transition-colors disabled:opacity-50 cursor-pointer"
             >
               <Send size={15} />
@@ -402,7 +412,8 @@ const NewsletterEditor: React.FC<NewsletterEditorProps> = ({
                   />
                   <button
                     onClick={() => handleSend(scheduleDate)}
-                    disabled={!scheduleDate || sending || !hasContent}
+                    disabled={!scheduleDate || sending || !hasContent || !canSend}
+                    title={canSend ? undefined : ARCHIVED_ACTION_MESSAGE}
                     className="flex items-center gap-2 px-5 py-2.5 bg-earth text-cream rounded-xl text-sm font-semibold hover:bg-warm-dark dark:bg-cream dark:text-earth dark:hover:bg-stone-200 transition-colors disabled:opacity-50 cursor-pointer"
                   >
                     <Clock size={15} />

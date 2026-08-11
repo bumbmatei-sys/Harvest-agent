@@ -4,6 +4,7 @@ import Stripe from 'stripe';
 import { adminDb } from '@/lib/firebase-admin';
 import { getTenantPrivate } from '@/lib/tenant-private';
 import { PLATFORM_FEE_MAP as FEE_MAP } from '@/lib/stripe-connect';
+import { GIVING_UNAVAILABLE_MESSAGE, tenantAllows } from '@/lib/tenant-lifecycle';
 import { verifyAuth } from '@/lib/api-auth';
 import { captureMoneyPathError } from '@/lib/money-path-sentry';
 
@@ -57,6 +58,34 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Tenant not found' }, { status: 404 });
     }
     const tenantData = tenantDoc.data()!;
+
+    // 🔴 GIVING STOPS WHEN THE LIFECYCLE SAYS SO — the one gate this PR enforces
+    // on the SERVER rather than in the UI.
+    //
+    // Everything else REP-4 stops (publishing, sending) is client-gated for now,
+    // because a hidden button is enough until someone has an incentive to beat
+    // it. Giving is different on both counts: it is money, and at a 0% platform
+    // fee a live donate page is the most valuable surface in the product, so a
+    // cancelled church left with one is the product given away for free
+    // indefinitely. It is also a SINGLE ROUTE, which makes the server gate one
+    // check rather than a sweep.
+    //
+    // ⚠️ Placed BEFORE the Connect lookup and before either checkout branch, so
+    // one-time and monthly are both refused by the same line — a gate on only
+    // one of them is a gate on neither.
+    //
+    // ⚠️ `stripe-connect.ts` IS NOT TOUCHED. Donations are Stripe Connect
+    // destination charges into the church's own account at 0%, and that module
+    // stays exactly as it is; the gate belongs on the route, which is the thing
+    // that decides whether a checkout happens at all.
+    if (!tenantAllows(tenantData.status, 'giving')) {
+      // 403, not 409: the request is fine and this donor is not at fault — the
+      // ministry is not open for giving. The message says nothing about billing,
+      // because the reader is a donor and a church's subscription status is not
+      // theirs to be told.
+      return NextResponse.json({ error: GIVING_UNAVAILABLE_MESSAGE }, { status: 403 });
+    }
+
     const connectAccountId = (await getTenantPrivate(tenantId)).stripeConnectAccountId;
     const plan = tenantData.plan || 'plus';
 

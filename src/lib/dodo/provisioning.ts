@@ -7,6 +7,7 @@ import type { TenantPlan } from '@/types/tenant.types';
 import { resolvePlanFromProductId } from './catalogue';
 import type { BillingPeriod } from './provider';
 import type { DodoWebhookEvent } from './events';
+import { reactivateTenantForDodoSubscription } from './lifecycle';
 
 /**
  * Build-on-payment, on Dodo: turn a paid Dodo subscription into a tenant.
@@ -351,10 +352,44 @@ export async function provisionTenantFromDodoSubscription(
  * which is precisely the state the Stripe handler's `checkout.session.completed`
  * represented. On a 14-day card-up-front trial there is no successful payment to
  * wait for, so provisioning on a payment event would strand every trial signup.
+ *
+ * ─── It is also the REACTIVATION trigger ─────────────────────────────────────
+ *
+ * 🔴 `subscription.active` on a tenant that already exists used to be a pure
+ * no-op ('already-provisioned'), which was right while nothing ever archived a
+ * tenant. Now that `subscription.cancelled` / `subscription.expired` archive one
+ * (`./lifecycle`), the same event is how an archived church comes back — a new
+ * subscription for a tenant that already exists IS a reactivation, and leaving
+ * it a no-op would mean a church could pay again and stay switched off.
+ *
+ * ⚠️ Reactivation is TOTAL: same subdomain, same data, same members. It is total
+ * because archiving took nothing away — see the note in `./lifecycle`. The
+ * restore writes only when the tenant is actually archived, so the ordinary
+ * case (a fresh signup, or a redelivery of one) is unchanged and writes nothing.
  */
 export async function handleDodoSubscriptionActive(
   event: DodoWebhookEvent,
 ): Promise<DodoProvisioningOutcome> {
   const payload = (event.data || {}) as unknown as DodoSubscriptionPayload;
-  return provisionTenantFromDodoSubscription(payload);
+  const result = await provisionTenantFromDodoSubscription(payload);
+
+  if (result.outcome === 'already-provisioned') {
+    // Failure to restore must NOT turn a successful provisioning outcome into a
+    // retryable error: the tenant exists and is correct either way, and
+    // `subscription.active` is DURABLE — a throw here would make Dodo redeliver
+    // an event that has nothing left to do. Reported, then swallowed.
+    try {
+      await reactivateTenantForDodoSubscription(result.tenantId);
+    } catch (err) {
+      console.error(`[dodo] Could not reactivate tenant ${result.tenantId}:`, err);
+      captureMoneyPathError(err, {
+        step: 'dodo-reactivate-tenant',
+        level: 'error',
+        tenantId: result.tenantId,
+        ids: { subscriptionId: str(payload.subscription_id) },
+      });
+    }
+  }
+
+  return result;
 }

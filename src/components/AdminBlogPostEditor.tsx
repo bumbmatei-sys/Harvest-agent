@@ -8,6 +8,8 @@ import RichTextEditor from './RichTextEditor';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { getTenantScope, getWriteTenantScope } from '../utils/tenant-scope';
 import { AdminPrimaryButton, AdminSecondaryButton, AdminCard, AdminSectionLabel } from './admin/AdminUI';
+import { useTenantCapability } from '../hooks/useTenantCapability';
+import { ARCHIVED_ACTION_MESSAGE } from '../lib/tenant-lifecycle';
 
 interface BlogPost {
   id?: string;
@@ -46,6 +48,7 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
   const [availableCategories, setAvailableCategories] = useState<string[]>(categories);
+  const canPublish = useTenantCapability('publishing');
 
   useEffect(() => {
     if (categories.length > 0 && !category) {
@@ -84,6 +87,14 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
     if (saveStatus === 'scheduled' && scheduledDate && new Date(scheduledDate) <= new Date()) missing.push('Scheduled date must be in the future');
     if (missing.length > 0) {
       setError(`Missing required fields: ${missing.join(', ')}`);
+      return;
+    }
+
+    // REP-4: publishing stops when the subscription ends. DRAFTS DO NOT — an
+    // archived church keeps writing, keeps its posts, and gets them back the
+    // moment it reactivates. Downgrade, not lockout.
+    if (saveStatus !== 'draft' && !canPublish) {
+      setError(ARCHIVED_ACTION_MESSAGE);
       return;
     }
 
@@ -149,7 +160,13 @@ const AdminBlogPostEditor: React.FC<AdminBlogPostEditorProps> = ({ post, onClose
           <AdminSecondaryButton onClick={() => handleSave('draft')} disabled={isSaving}>
             {isSaving ? 'Saving…' : 'Save draft'}
           </AdminSecondaryButton>
-          <AdminPrimaryButton onClick={handlePublish} disabled={isSaving}>Publish</AdminPrimaryButton>
+          <AdminPrimaryButton
+            onClick={handlePublish}
+            disabled={isSaving || !canPublish}
+            title={canPublish ? undefined : ARCHIVED_ACTION_MESSAGE}
+          >
+            Publish
+          </AdminPrimaryButton>
         </div>
       </div>
 

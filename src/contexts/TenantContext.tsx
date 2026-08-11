@@ -2,8 +2,13 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
-import { TenantPlan, TenantConfig } from '../types/tenant.types';
+import { TenantPlan, TenantConfig, TenantStatus } from '../types/tenant.types';
 import { getPlanFeatures, PlanFeatures, TOP_PLAN } from '../utils/plan-features';
+import {
+  tenantCapabilities,
+  TENANT_STATUS_ACTIVE,
+  type TenantCapability,
+} from '../lib/tenant-lifecycle';
 import { hasPlatformOverride } from '../utils/tenant-scope';
 import { isNonTenantSubdomain } from '../utils/non-tenant-subdomains';
 
@@ -23,6 +28,22 @@ export interface TenantContextValue {
   error: string | null;
   /** Convenience: resolved plan features for the current plan */
   planFeatures: PlanFeatures | null;
+  /**
+   * The tenant's LIFECYCLE state, straight off the tenant doc.
+   *
+   * The plan says which tier they bought; this says whether the subscription is
+   * still live. Undefined until the tenant doc has loaded.
+   */
+  tenantStatus: TenantStatus | undefined;
+  /**
+   * What the lifecycle still permits — derived from `tenantStatus` alone.
+   *
+   * 🔴 Read this through `useTenantCapability`, never by comparing
+   * `tenantStatus` at a call site. One field, one derivation, one place a state
+   * can be mapped to what it allows — a hand-rolled `status !== 'archived'` in a
+   * component is exactly the second source of truth this shape exists to avoid.
+   */
+  capabilities: Readonly<Record<TenantCapability, boolean>>;
   /** Update the tenant plan locally (e.g. after a plan change) */
   setTenantPlan: (plan: TenantPlan) => void;
   /** Re-fetch the tenant's branding from Firestore and apply it immediately */
@@ -81,6 +102,7 @@ export const TenantProvider: React.FC<TenantProviderProps> = ({
   const [tenantId, setTenantId] = useState<string | null>(initialTenantId ?? null);
   const [tenantName, setTenantName] = useState<string | null>(null);
   const [tenantPlan, setTenantPlanState] = useState<TenantPlan | undefined>(initialPlan);
+  const [tenantStatus, setTenantStatus] = useState<TenantStatus | undefined>(undefined);
   const [branding, setBranding] = useState<TenantConfig>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -169,6 +191,10 @@ export const TenantProvider: React.FC<TenantProviderProps> = ({
           planInitialized.current = true;
           setTenantPlanState(data.plan as TenantPlan);
         }
+        // Lifecycle state. Unconditional (unlike the plan's one-shot
+        // `planInitialized` latch) because it is re-read on every validation
+        // pass and a stale 'active' is the one value that must not stick.
+        setTenantStatus(data.status as TenantStatus | undefined);
         if (data.name) {
           setTenantName(data.name as string);
           // White-label: reflect the ministry name in the browser tab title.
@@ -209,6 +235,19 @@ export const TenantProvider: React.FC<TenantProviderProps> = ({
     ? getPlanFeatures(TOP_PLAN)
     : (tenantPlan ? getPlanFeatures(tenantPlan) : null);
 
+  // A platform-context super admin is not inside any tenant's lifecycle, so they
+  // are resolved against 'active' — the same override the plan gate applies, for
+  // the same reason. On a tenant subdomain everyone, super admins included, gets
+  // that tenant's real state.
+  //
+  // An UNLOADED status (undefined) resolves to full capability, matching the
+  // module's fail-open rule: a church's donate button must not blink off while
+  // the tenant doc is in flight, and the server gate on /api/stripe/donate is
+  // what actually stops the money either way.
+  const capabilities = tenantCapabilities(
+    platformOverride ? TENANT_STATUS_ACTIVE : tenantStatus,
+  );
+
   return (
     <TenantContext.Provider
       value={{
@@ -219,6 +258,8 @@ export const TenantProvider: React.FC<TenantProviderProps> = ({
         isLoading,
         error,
         planFeatures,
+        tenantStatus,
+        capabilities,
         setTenantPlan,
         refreshBranding,
         isAdminDomain,
