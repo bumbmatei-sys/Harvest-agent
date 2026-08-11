@@ -364,10 +364,17 @@ export const AFFILIATE_PROGRAM_ENABLED = false;
 /**
  * Master switch for Dodo Payments subscription billing.
  *
- * 🔴 TRUE FROM REP-4 PR 2: NEW-MINISTRY SIGNUP CREATES A DODO CHECKOUT, AND THE
- * DODO WEBHOOK PROVISIONS THE TENANT. This is the highest-risk switch in the
- * project — a broken signup is a broken business, because there is no other way
- * for a church to become a customer.
+ * 🔴 FALSE. THE DODO CUTOVER IS BUILT AND LANDED, AND IT IS TURNED OFF. Signup
+ * goes through Stripe Checkout and the Stripe webhook is again the only thing
+ * that creates a tenant. This is the highest-risk switch in the project — a
+ * broken signup is a broken business, because there is no other way for a church
+ * to become a customer — so it is off until a real sandbox signup has been run
+ * end to end against Dodo and the resulting SUBSCRIPTION has been confirmed to
+ * carry the checkout metadata provisioning reads (`userId`, `ministryName`,
+ * `newTenant`). #291's body carries that acceptance checklist.
+ *
+ * Flipping it to `true` is a one-line, reviewable change; everything it switches
+ * on is already merged and tested. Flip it only after that test.
  *
  * ─── What it does, exactly ───────────────────────────────────────────────────
  *
@@ -397,7 +404,7 @@ export const AFFILIATE_PROGRAM_ENABLED = false;
  * unaffected in either direction — giving stays on Stripe Connect at a 0%
  * platform fee (src/lib/stripe-connect.ts) and is not part of this migration.
  */
-export const DODO_BILLING_ENABLED = true;
+export const DODO_BILLING_ENABLED = false;
 
 // ─── Accessors ────────────────────────────────────────────────────────────────
 
