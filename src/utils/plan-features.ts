@@ -364,17 +364,18 @@ export const AFFILIATE_PROGRAM_ENABLED = false;
 /**
  * Master switch for Dodo Payments subscription billing.
  *
- * 🔴 FALSE. THE DODO CUTOVER IS BUILT AND LANDED, AND IT IS TURNED OFF. Signup
- * goes through Stripe Checkout and the Stripe webhook is again the only thing
- * that creates a tenant. This is the highest-risk switch in the project — a
- * broken signup is a broken business, because there is no other way for a church
- * to become a customer — so it is off until a real sandbox signup has been run
- * end to end against Dodo and the resulting SUBSCRIPTION has been confirmed to
- * carry the checkout metadata provisioning reads (`userId`, `ministryName`,
- * `newTenant`). #291's body carries that acceptance checklist.
+ * 🔴 TRUE. THE DODO CUTOVER IS ON. Signup goes through Dodo Checkout and the
+ * Dodo webhook's `subscription.active` handler is what creates a tenant. This is
+ * the highest-risk switch in the project — a broken signup is a broken business,
+ * because there is no other way for a church to become a customer.
  *
- * Flipping it to `true` is a one-line, reviewable change; everything it switches
- * on is already merged and tested. Flip it only after that test.
+ * Before this ships anywhere real, #291's acceptance checklist still applies: a
+ * sandbox signup run end to end against Dodo, with the resulting SUBSCRIPTION
+ * confirmed to carry the checkout metadata provisioning reads (`userId`,
+ * `ministryName`, `newTenant`).
+ *
+ * Rolling back is the same one-line, reviewable change in reverse — set it to
+ * `false` and both signup call sites return to Stripe with no other edit.
  *
  * ─── What it does, exactly ───────────────────────────────────────────────────
  *
@@ -404,7 +405,7 @@ export const AFFILIATE_PROGRAM_ENABLED = false;
  * unaffected in either direction — giving stays on Stripe Connect at a 0%
  * platform fee (src/lib/stripe-connect.ts) and is not part of this migration.
  */
-export const DODO_BILLING_ENABLED = false;
+export const DODO_BILLING_ENABLED = true;
 
 // ─── Accessors ────────────────────────────────────────────────────────────────
 
