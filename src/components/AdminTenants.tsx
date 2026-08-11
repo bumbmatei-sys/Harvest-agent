@@ -34,6 +34,15 @@ const STATUS_COLORS: Record<TenantStatus, string> = {
   active: 'bg-green-100 text-green-700',
   suspended: 'bg-red-100 text-red-700',
   pending: 'bg-yellow-100 text-yellow-700',
+  // Billing-written lifecycle states. `past_due` and `cancelled` have been
+  // written by the Stripe webhook all along and rendered with an undefined
+  // class; `archived` is the Dodo terminal state. Muted for the two terminal
+  // ones — a church that stopped paying is not an error condition — via the
+  // theme tokens rather than a Tailwind default neutral, which the design-system
+  // tests forbid.
+  past_due: 'bg-orange-100 text-orange-700',
+  cancelled: 'bg-surface-sunken text-muted',
+  archived: 'bg-surface-sunken text-muted',
 };
 
 interface FormData {

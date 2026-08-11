@@ -9,6 +9,7 @@ import {
   type SeenEventStore,
 } from '../webhook-dispatch';
 import { handleDodoSubscriptionActive } from '../provisioning';
+import { handleDodoSubscriptionCancelled, handleDodoSubscriptionExpired } from '../lifecycle';
 import {
   DODO_HANDLED_EVENT_TYPES,
   DODO_PAYMENT_EVENT_TYPES,
@@ -382,18 +383,32 @@ describe('a DURABLE event turns failure into a retry', () => {
   });
 });
 
-describe('exactly one handler slot is filled — provisioning', () => {
-  const EMPTY = DODO_HANDLED_EVENT_TYPES.filter((t) => t !== 'subscription.active');
+describe('three handler slots are filled — provisioning and the two terminal events', () => {
+  // REP-4 PR 3 filled `subscription.cancelled` and `subscription.expired`. This
+  // list is what remains deliberately empty, and it is not a to-do list.
+  const FILLED = ['subscription.active', 'subscription.cancelled', 'subscription.expired'];
+  const EMPTY = DODO_HANDLED_EVENT_TYPES.filter((t) => !FILLED.includes(t));
 
   it.each(EMPTY)('%s still has a handler that does nothing', async (type) => {
-    // The lifecycle slots (on_hold, cancelled, expired, paused, …) are REP-4
-    // PR 3. Filling one here would be lifecycle arriving early — and its scope
-    // has changed: Dodo runs its own dunning and NEVER cancels, so what belongs
-    // in them is a decision, not a transcription of the Stripe handler.
+    // ⚠️ `subscription.on_hold` is the one to look at twice. It stays empty
+    // because Dodo runs its own retries and dunning there and then NEVER
+    // cancels — the subscription sits in on_hold forever — so what it needs is a
+    // TIMER Harvest owns, a reactive mechanism rather than an event handler, and
+    // that is the remainder of PR 3. `paused` and the payment events are still
+    // decisions nobody has made.
     await expect(Promise.resolve(DODO_EVENT_HANDLERS[type](event(type)))).resolves.toBeUndefined();
   });
 
   it('routes subscription.active to the provisioner', () => {
     expect(DODO_EVENT_HANDLERS['subscription.active']).toBe(handleDodoSubscriptionActive);
+  });
+
+  it('routes the two TERMINAL lifecycle events to the archiver', () => {
+    // The gap this closes was "recognised, no handler": a church cancelled, Dodo
+    // stopped billing, and Harvest left the tenant active with full entitlements
+    // indefinitely. Behaviour is covered in `dodo-subscription-lifecycle.test.ts`;
+    // what is pinned here is that the dispatcher actually reaches it.
+    expect(DODO_EVENT_HANDLERS['subscription.cancelled']).toBe(handleDodoSubscriptionCancelled);
+    expect(DODO_EVENT_HANDLERS['subscription.expired']).toBe(handleDodoSubscriptionExpired);
   });
 });

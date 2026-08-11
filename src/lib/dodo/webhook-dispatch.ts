@@ -7,6 +7,7 @@ import {
   type DodoWebhookEvent,
 } from './events';
 import { handleDodoSubscriptionActive } from './provisioning';
+import { handleDodoSubscriptionCancelled, handleDodoSubscriptionExpired } from './lifecycle';
 
 /**
  * Idempotent routing for verified Dodo webhook events.
@@ -129,10 +130,18 @@ export type DodoEventHandler = (event: DodoWebhookEvent) => void | Promise<void>
  * without a route, and a handler cannot exist for an event that is not in the
  * table. `dodo-webhook-dispatch.test.ts` pins that the two agree exactly.
  *
- * Only `subscription.active` has a body. The lifecycle slots (`on_hold`,
- * `cancelled`, `expired`, `paused`, …) are still deliberately empty: that is
- * REP-4 PR 3, and Dodo never cancels a subscription on its own — one sits in
- * `on_hold` indefinitely — so what fills them is a decision, not a transcription.
+ * Three slots are filled: `subscription.active` (provisioning, and the
+ * reactivation of an archived tenant) plus the two TERMINAL lifecycle events,
+ * `subscription.cancelled` and `subscription.expired`.
+ *
+ * ⚠️ `subscription.on_hold` IS STILL DELIBERATELY EMPTY, and that is not an
+ * oversight. Dodo runs its own retries and dunning while a subscription sits
+ * there, and then NEVER CANCELS — at the end of the recovery window the retries
+ * simply stop and the subscription sits in `on_hold` forever. So `on_hold` needs
+ * a timer Harvest owns, which is a reactive mechanism rather than an event
+ * handler and is the remainder of REP-4 part 3. The two events filled here are
+ * terminal and need exactly a handler. `paused` and the payment events remain
+ * empty for their own reasons.
  */
 export const DODO_EVENT_HANDLERS: Record<DodoEventType, DodoEventHandler> =
   DODO_HANDLED_EVENT_TYPES.reduce((handlers, type) => {
@@ -140,9 +149,11 @@ export const DODO_EVENT_HANDLERS: Record<DodoEventType, DodoEventHandler> =
     return handlers;
   }, {} as Record<DodoEventType, DodoEventHandler>);
 
-// The one filled slot. Assigned after the map is built so the exhaustiveness
-// above still comes from the table rather than from a hand-written literal.
+// The filled slots. Assigned after the map is built so the exhaustiveness above
+// still comes from the table rather than from a hand-written literal.
 DODO_EVENT_HANDLERS['subscription.active'] = handleDodoSubscriptionActive;
+DODO_EVENT_HANDLERS['subscription.cancelled'] = handleDodoSubscriptionCancelled;
+DODO_EVENT_HANDLERS['subscription.expired'] = handleDodoSubscriptionExpired;
 
 export interface ReceiveOptions {
   readonly store?: SeenEventStore;

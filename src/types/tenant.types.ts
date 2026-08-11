@@ -1,5 +1,31 @@
 export type TenantPlan = 'plus' | 'pro' | 'max';
-export type TenantStatus = 'active' | 'suspended' | 'pending';
+
+/**
+ * The tenant's LIFECYCLE state — where it sits with billing.
+ *
+ * ⚠️ Distinct from `TenantPlan`, which is the TIER. The app reads tier
+ * entitlement from `plan` (getPlanFeatures / getPlanLimits / usePlanGate) and
+ * lifecycle entitlement from this field, through the one predicate in
+ * `src/lib/tenant-lifecycle.ts`. Neither is a second answer to the other's
+ * question, and nothing else should become a third.
+ *
+ * The last three were already being WRITTEN and were missing from this union:
+ * the Stripe webhook has always set 'past_due' and 'suspended' on a failed
+ * payment and 'cancelled' on `customer.subscription.deleted`. Listing them makes
+ * the type describe the documents that exist rather than a subset of them.
+ *
+ * 🔴 'archived' is the new one, and the only one that gates anything: the
+ * terminal state a Dodo subscription's `cancelled`/`expired` lands a tenant in.
+ * Archived is NOT deleted and NOT disabled — login, admin read and every export
+ * keep working; giving, publishing and sending stop.
+ */
+export type TenantStatus =
+  | 'active'
+  | 'suspended'
+  | 'pending'
+  | 'past_due'
+  | 'cancelled'
+  | 'archived';
 
 export interface TenantConfig {
   logo?: string;        // URL to logo image
