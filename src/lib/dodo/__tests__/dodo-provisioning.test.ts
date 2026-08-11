@@ -461,6 +461,13 @@ describe('a retried webhook-id creates no second tenant', () => {
   });
 
   it('runs the two concurrent redeliveries of one id exactly once', async () => {
+    // 🔴 THE CASE ONLY THE RESERVATION CAN SAVE. The subscription-id and user
+    // guards are read-then-write, so two deliveries racing each other both see
+    // "no tenant yet" and both provision. Only the atomic claim serialises them.
+    //
+    // Counting tenant DOCUMENTS cannot detect that — both runs derive the same
+    // subdomain and write the same key, so the duplicate hides behind the
+    // collision. Counting how many times an owner was promoted can.
     const store = memoryStore();
     const event = activeEvent();
 
@@ -470,6 +477,18 @@ describe('a retried webhook-id creates no second tenant', () => {
     ]);
 
     expect([...db.current.store.keys()].filter((k: string) => k.startsWith('tenants/'))).toHaveLength(1);
+    expect(mockSetCustomClaims).toHaveBeenCalledTimes(1);
+  });
+
+  it('promotes the owner exactly once across five sequential redeliveries', async () => {
+    const store = memoryStore();
+    const event = activeEvent();
+
+    for (let i = 0; i < 5; i++) {
+      await receiveDodoWebhookEvent('whk_five', event, { store });
+    }
+
+    expect(mockSetCustomClaims).toHaveBeenCalledTimes(1);
   });
 });
 
