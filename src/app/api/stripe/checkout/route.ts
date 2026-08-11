@@ -5,6 +5,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { requireAuth } from '@/lib/api-auth';
 import { captureMoneyPathError } from '@/lib/money-path-sentry';
 import { PLAN_PRICES, AI_ASSISTANT_MONTHLY } from '@/lib/billing';
+import { logReferralCapture, resolveAffiliateReferrer } from '@/lib/affiliate-referrer';
 import { tenantPrivateRef, getTenantPrivate } from '@/lib/tenant-private';
 import { AI_TELEGRAM_ASSISTANT_ENABLED } from '@/utils/plan-features';
 
@@ -119,43 +120,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Resolve short affiliate code (<=16 chars) to userId for webhook processing.
-    // Shared by both the new-ministry and existing-tenant paths.
-    let resolvedReferrerId = referrerId;
-    if (referrerId && referrerId.length <= 16) {
-      try {
-        const affiliateSnap = await adminDb
-          .collection('users')
-          .where('affiliateCode', '==', referrerId)
-          .limit(1)
-          .get();
-        if (!affiliateSnap.empty) {
-          resolvedReferrerId = affiliateSnap.docs[0].id;
-        }
-      } catch (resolveErr) {
-        console.warn('Failed to resolve affiliate code, using as-is:', resolveErr);
-        // The unresolved code goes into the subscription metadata as `referrerId`,
-        // where the webhook will treat it as a user id and fail to credit anyone —
-        // so this checkout's commission is lost for good. Nothing retries a
-        // checkout session that was already created.
-        captureMoneyPathError(resolveErr, {
-          step: 'checkout-resolve-affiliate-code',
-          level: 'error',
-          tenantId,
-          ids: { affiliateCode: referrerId, plan, billing },
-        });
-      }
-    }
-
-    // Referral-capture breadcrumb: makes silent drops visible. If a checkout
-    // carries a referrerId it lands in the subscription metadata below (→ the
-    // webhook pays the commission). A code that arrives but doesn't resolve, or a
-    // checkout with no referral at all, is logged so a mis-captured/forwarded
-    // ?ref= can be spotted server-side instead of failing invisibly.
-    if (resolvedReferrerId) {
-      console.log(`🔗 Checkout carries affiliate referrerId ${resolvedReferrerId} (plan ${plan}, billing ${billing})`);
-    } else if (referrerId) {
-      console.warn(`⚠️ Checkout received an unresolvable referral code "${referrerId}" — no commission will be attributed`);
-    }
+    // Shared by both the new-ministry and existing-tenant paths — and, since
+    // REP-4 PR 2, by /api/dodo/checkout, which is why the rule moved into
+    // `@/lib/affiliate-referrer` rather than being copied. Both processors'
+    // webhooks read `referrerId` from subscription metadata and treat it as a
+    // user id, so a route that forwards the raw CODE credits nobody, for good.
+    const referralContext = { plan, billing, processor: 'stripe' };
+    const resolvedReferral = await resolveAffiliateReferrer(referrerId, referralContext);
+    const resolvedReferrerId = resolvedReferral.referrerId;
+    logReferralCapture(resolvedReferral, referralContext);
 
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://theharvest.app';
 

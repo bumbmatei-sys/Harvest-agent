@@ -7,6 +7,7 @@ import { auth, db } from '../firebase';
 import { isSuperAdminEmail } from '../utils/super-admins';
 import { checkRosterAdmin } from '../utils/tenant.utils';
 import { TenantPlan } from '../types/tenant.types';
+import { SIGNUP_CHECKOUT_ENDPOINT, isReturningFromCheckout } from '../utils/signup-checkout';
 import FirstRunSetup from './FirstRunSetup';
 
 const HARVEST_LOGO = 'https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png';
@@ -51,9 +52,13 @@ const OnboardingGate: React.FC<{ children: React.ReactNode }> = ({ children }) =
   const [pollTimedOut, setPollTimedOut] = useState(false);
   const [restarting, setRestarting] = useState(false);
 
-  // Is the user returning from Stripe right now?
-  const onStripeSuccess = typeof window !== 'undefined'
-    && new URLSearchParams(window.location.search).get('stripe') === 'success';
+  // Is the user returning from the payment processor right now? BOTH spellings
+  // count (?stripe=success and ?dodo=success): a customer who was mid-checkout
+  // when DODO_BILLING_ENABLED was flipped comes back carrying the other
+  // processor's marker, and failing to recognise it would show someone who has
+  // just paid the "Complete your payment" button — an invitation to pay twice.
+  const onCheckoutSuccess = typeof window !== 'undefined'
+    && isReturningFromCheckout(window.location.search);
 
   useEffect(() => {
     let userUnsub: (() => void) | null = null;
@@ -93,7 +98,7 @@ const OnboardingGate: React.FC<{ children: React.ReactNode }> = ({ children }) =
           stopTenant();
           setTenantId(null);
           // A signup is in flight but no tenant exists yet. ALWAYS start in
-          // 'paying' (poll) — even without ?stripe=success — so a user who paid
+          // 'paying' (poll) — even without the ?…=success marker — so a user who paid
           // but refreshed/returned without the param is never shown a re-checkout
           // button (which would double-charge). The webhook flips us to first-run
           // when the tenant lands; only a genuinely abandoned signup falls through
@@ -105,7 +110,7 @@ const OnboardingGate: React.FC<{ children: React.ReactNode }> = ({ children }) =
     });
 
     return () => { authUnsub(); stopUser(); stopTenant(); };
-  }, [onStripeSuccess]);
+  }, [onCheckoutSuccess]);
 
   // 'paying': the webhook is asynchronous. onSnapshot flips us to first-run the
   // moment tenantId lands; meanwhile force-refresh the token so claims propagate,
@@ -118,14 +123,15 @@ const OnboardingGate: React.FC<{ children: React.ReactNode }> = ({ children }) =
       try { if (auth.currentUser) await getIdToken(auth.currentUser, true); } catch { /* ignore */ }
       if (elapsed >= 30000) {
         clearInterval(interval);
-        // Returned via Stripe success → they definitely paid; keep waiting with a
-        // softer message. Otherwise the signup looks abandoned → let them pay.
-        if (onStripeSuccess) setPollTimedOut(true);
+        // Returned via a processor success marker → they definitely paid; keep
+        // waiting with a softer message. Otherwise the signup looks abandoned →
+        // let them pay.
+        if (onCheckoutSuccess) setPollTimedOut(true);
         else setStatus('needs-payment');
       }
     }, 2000);
     return () => clearInterval(interval);
-  }, [status, onStripeSuccess]);
+  }, [status, onCheckoutSuccess]);
 
   const restartCheckout = async () => {
     const user = auth.currentUser;
@@ -138,7 +144,7 @@ const OnboardingGate: React.FC<{ children: React.ReactNode }> = ({ children }) =
         if (stored) referrerId = JSON.parse(stored).id || undefined;
       } catch { /* none */ }
       const token = await user.getIdToken();
-      const resp = await fetch('/api/stripe/checkout', {
+      const resp = await fetch(SIGNUP_CHECKOUT_ENDPOINT, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -160,7 +166,7 @@ const OnboardingGate: React.FC<{ children: React.ReactNode }> = ({ children }) =
 
   if (status === 'loading') {
     // Avoid flashing the normal funnel for a paying user mid-resolve.
-    return onStripeSuccess
+    return onCheckoutSuccess
       ? <CenteredScreen title="Setting up your account…" subtitle="This only takes a moment." />
       : <>{children}</>;
   }

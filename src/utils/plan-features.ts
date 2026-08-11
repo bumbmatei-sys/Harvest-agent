@@ -364,25 +364,40 @@ export const AFFILIATE_PROGRAM_ENABLED = false;
 /**
  * Master switch for Dodo Payments subscription billing.
  *
- * 🔴 FALSE, AND NOTHING READS IT YET. That is not an oversight — it is the proof
- * that the Dodo module (src/lib/dodo/*, /api/dodo/webhook) changes nothing a real
- * user experiences. Signup goes through Stripe Checkout and the Stripe webhook is
- * still the only thing that creates a tenant; see ChurchOnboarding. This constant
- * exists so the cutover is one line rather than an archaeology exercise.
+ * 🔴 TRUE FROM REP-4 PR 2: NEW-MINISTRY SIGNUP CREATES A DODO CHECKOUT, AND THE
+ * DODO WEBHOOK PROVISIONS THE TENANT. This is the highest-risk switch in the
+ * project — a broken signup is a broken business, because there is no other way
+ * for a church to become a customer.
  *
- * `dodo-billing-flag.test.ts` asserts both halves: that it is `false`, and that
- * no production code path reads it. Flipping it to `true` fails that test BY
- * NAME, which is the point — a flip is a deliberate act in REP-4 PR 2, alongside
- * pointing ChurchOnboarding at the Dodo checkout and moving tenant provisioning
- * onto the Dodo webhook. Flipping it alone does nothing at all.
+ * ─── What it does, exactly ───────────────────────────────────────────────────
  *
- * Mirrors AI_TELEGRAM_ASSISTANT_ENABLED and AFFILIATE_PROGRAM_ENABLED above, with
- * one difference worth naming: those two HIDE a feature that used to be visible,
- * this one holds back a feature that has never been visible. Donations are not
- * affected in either direction — giving stays on Stripe Connect at a 0% platform
- * fee (src/lib/stripe-connect.ts) and is not part of this migration.
+ *  ON   `SIGNUP_CHECKOUT_ENDPOINT` resolves to `/api/dodo/checkout`, so both
+ *       signup call sites (ChurchOnboarding's first attempt and OnboardingGate's
+ *       restart) post there. `/api/dodo/checkout` serves the request. The Dodo
+ *       webhook's `subscription.active` handler builds the tenant.
+ *  OFF  Both call sites resolve to `/api/stripe/checkout` and the Stripe webhook
+ *       is again the only thing that creates a tenant — the pre-#290 behaviour,
+ *       whole. `/api/dodo/checkout` additionally refuses with 503, so a stale
+ *       browser tab holding the previous bundle cannot keep the Dodo path open.
+ *
+ * ⚠️ THE DODO WEBHOOK DELIBERATELY DOES NOT READ THIS FLAG. It gates whether new
+ * Dodo checkouts are CREATED, never whether an already-paid subscription is
+ * honoured. A customer who was mid-checkout when the flag was turned off must
+ * still get their church; refusing there would take their money and give them
+ * nothing.
+ *
+ * ⚠️ TENANTS PROVISIONED WHILE THIS WAS ON KEEP WORKING WHEN IT GOES OFF. They
+ * carry `dodo*` identifiers on `tenant_private` and no Stripe subscription;
+ * nothing in the sign-in, roster, rules or admin-area path reads a Stripe id.
+ * What degrades is billing MANAGEMENT for those tenants — see the pull request
+ * body for the itemised list.
+ *
+ * Mirrors AI_TELEGRAM_ASSISTANT_ENABLED and AFFILIATE_PROGRAM_ENABLED above in
+ * shape only: those two hide features, this one routes money. Donations are
+ * unaffected in either direction — giving stays on Stripe Connect at a 0%
+ * platform fee (src/lib/stripe-connect.ts) and is not part of this migration.
  */
-export const DODO_BILLING_ENABLED = false;
+export const DODO_BILLING_ENABLED = true;
 
 // ─── Accessors ────────────────────────────────────────────────────────────────
 
