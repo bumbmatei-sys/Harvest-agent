@@ -62,14 +62,20 @@ async function endpointWithFlag(enabled: boolean): Promise<string> {
 
 // ── The flag itself ──────────────────────────────────────────────────────────
 
-describe('DODO_BILLING_ENABLED is off', () => {
-  it('is false', () => {
-    // The cutover is built, merged and tested — and OFF, until a real sandbox
-    // signup has proven that a paid Dodo subscription carries the checkout
-    // metadata provisioning reads. Everything below exercises BOTH positions of
-    // the switch through the real modules, so this line is the only thing that
-    // has to change to turn it on, and turning it on is a reviewable one-liner.
-    expect(DODO_BILLING_ENABLED).toBe(false);
+describe('DODO_BILLING_ENABLED is on', () => {
+  it('is true', () => {
+    // The cutover is built, merged, tested — and now ON. Everything below still
+    // exercises BOTH positions of the switch through the real modules, so this
+    // line remains the only thing that has to change to roll back, and rolling
+    // back stays a reviewable one-liner.
+    expect(DODO_BILLING_ENABLED).toBe(true);
+  });
+
+  it('is what the SHIPPED build does, since the flag is on', () => {
+    // The one assertion that reads the real constant rather than a stub: as
+    // shipped, every signup goes to Dodo. If this and `is true` above ever
+    // disagree, the switch has stopped being the only thing that decides.
+    expect(SIGNUP_CHECKOUT_ENDPOINT).toBe('/api/dodo/checkout');
   });
 
   it('is a literal in plan-features.ts, not a computed or env-driven value', () => {
@@ -169,13 +175,6 @@ describe('with the flag true, signup posts to Dodo and no Stripe checkout is cre
 describe('with the flag false, signup posts to Stripe and no Dodo call is made', () => {
   it('sends signup back to /api/stripe/checkout — completely', async () => {
     expect(await endpointWithFlag(false)).toBe('/api/stripe/checkout');
-  });
-
-  it('is what the SHIPPED build does, since the flag is off', () => {
-    // The one assertion that reads the real constant rather than a stub: as
-    // shipped, every signup goes to Stripe. If this and `is false` above ever
-    // disagree, the switch has stopped being the only thing that decides.
-    expect(SIGNUP_CHECKOUT_ENDPOINT).toBe('/api/stripe/checkout');
   });
 
   it('leaves NO Dodo call on the rolled-back path: /api/dodo/checkout refuses outright', async () => {
