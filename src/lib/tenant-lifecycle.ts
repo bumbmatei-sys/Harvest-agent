@@ -70,6 +70,117 @@ export const TENANT_STATUS_ARCHIVED = 'archived';
 /** The lifecycle state a tenant returns to when its subscription comes back. */
 export const TENANT_STATUS_ACTIVE = 'active';
 
+/**
+ * How long a FAILED RENEWAL buys before entitlements stop. REP-4's decision.
+ *
+ * ─── Why Harvest owns this timer at all ──────────────────────────────────────
+ *
+ * 🔴 Dodo emits `subscription.on_hold` after a failed renewal, runs its own
+ * retries and dunning, and then NEVER CANCELS. At the end of its recovery window
+ * the retries simply stop and the subscription sits in `on_hold` indefinitely —
+ * no `cancelled`, no `expired`, no terminal event of any kind. Nothing else will
+ * ever end that state, so a church whose card failed would keep full
+ * entitlements forever, donate page included, at a 0% platform fee.
+ *
+ * ─── ⚠️ THE ASSUMPTION THIS NUMBER RESTS ON, stated here so the next reader does
+ *     not have to find it in a roadmap ──────────────────────────────────────────
+ *
+ * Dodo's recovery window is configured in Dodo's own dashboard, NOT here, and
+ * this constant assumes it is set to LESS THAN 21 days (THE-90). That ordering is
+ * the whole design:
+ *
+ *   Dodo's retries stop  ──────►  Harvest archives
+ *        (< 21 days)                 (day 21)
+ *
+ * Harvest's timer is deliberately the OUTER bound. While Dodo is still retrying,
+ * the church is inside grace and keeps everything — so the two systems are not
+ * both counting down against each other; one runs out, then the other fires.
+ *
+ * 🔴 If Dodo's window were ever set LONGER than 21 days, Harvest would archive a
+ * church that Dodo was still actively trying to charge — and a retry succeeding
+ * afterwards would arrive as `subscription.active` and reactivate them, so the
+ * failure is a temporary wrongful shutoff rather than a permanent one. That is
+ * the reason this is an assumption worth writing down rather than reconciling at
+ * runtime: there is no API that reports the window, and guessing it from observed
+ * retry traffic would be a timer driven by the thing it is supposed to bound.
+ */
+export const DODO_GRACE_PERIOD_DAYS = 21;
+
+/** The same window in milliseconds — what the resolver actually compares. */
+export const DODO_GRACE_PERIOD_MS = DODO_GRACE_PERIOD_DAYS * 24 * 60 * 60 * 1000;
+
+/**
+ * Where a tenant sits relative to its grace window.
+ *
+ * ⚠️ NOT a `TenantStatus` and deliberately not added to that union. `status` has
+ * exactly one gating value (`archived`) and this keeps it that way: grace is
+ * derived from a timestamp at read time, never recorded as a state. A second
+ * recorded state that gated things would be a second source of entitlement truth,
+ * which is the one thing `tenant-lifecycle` exists to prevent.
+ */
+export type TenantGraceState =
+  /** No hold recorded — the overwhelmingly common case. */
+  | 'none'
+  /** A hold is recorded and the window has NOT run out. Full entitlements. */
+  | 'in-grace'
+  /** The window has run out. The tenant is treated as archived. */
+  | 'expired';
+
+/** What the grace resolver needs. `now` is injected — see the note below. */
+export interface TenantGraceInput {
+  /** `tenants/{id}.status`, straight off the document. */
+  readonly status?: unknown;
+  /** `tenant_private/{id}.dodoOnHoldAt` — an ISO string, or absent. */
+  readonly onHoldAt?: unknown;
+  /** Milliseconds since the epoch. 🔴 Injected, never read inside. */
+  readonly now: number;
+}
+
+/**
+ * Where this tenant sits in its grace window.
+ *
+ * 🔴 PURE, and `now` is a parameter rather than a `Date.now()` call inside. That
+ * is not a testing convenience bolted on afterwards — it is what lets both sides
+ * of a 21-day boundary be exercised with two plain integers instead of fake
+ * timers, and it is why the giving gate and the convergence path can be shown to
+ * agree by construction rather than by both being mocked the same way.
+ *
+ * ⚠️ A missing, empty or UNPARSEABLE `onHoldAt` is 'none' — no gate. Same
+ * fail-OPEN reasoning as an unknown `status` above: the failure mode of allowing
+ * is revenue, and the failure mode of refusing is a paying church's donate page
+ * going dark because a timestamp did not parse. Those are not comparable.
+ */
+export function resolveTenantGraceState({ onHoldAt, now }: TenantGraceInput): TenantGraceState {
+  if (typeof onHoldAt !== 'string' || onHoldAt === '') return 'none';
+
+  const heldAt = Date.parse(onHoldAt);
+  if (Number.isNaN(heldAt)) return 'none';
+
+  // `>=` so the window is CLOSED at exactly 21 days: day 21 is expired, not the
+  // last day of grace. Stated because "21 days" alone does not say which side of
+  // the boundary the moment itself falls on, and the tests pin both.
+  return now - heldAt >= DODO_GRACE_PERIOD_MS ? 'expired' : 'in-grace';
+}
+
+/**
+ * The lifecycle state to ENFORCE, which is not always the one recorded.
+ *
+ * 🔴 THE ONE FUNCTION THE GIVING GATE ADDS. A tenant whose grace window has run
+ * out is still recorded `active` — Dodo sent no terminal event, so nothing has
+ * written a new status yet — and this is what makes it behave as archived
+ * anyway. Feed the result to `tenantAllows` and every capability answer follows
+ * from the existing table; no capability list is duplicated, and `export`,
+ * `login` and `adminRead` stay unconditional because they are unconditional
+ * THERE.
+ *
+ * ⚠️ Returns the recorded status untouched in every other case, so a tenant with
+ * no hold — every Stripe-owned tenant, and every Dodo tenant in good standing —
+ * takes exactly the path it takes today.
+ */
+export function resolveEffectiveTenantStatus({ status, onHoldAt, now }: TenantGraceInput): unknown {
+  return resolveTenantGraceState({ onHoldAt, now }) === 'expired' ? TENANT_STATUS_ARCHIVED : status;
+}
+
 /** The things a lifecycle state can permit or refuse. */
 export type TenantCapability =
   /** Sign in. Never refused. */

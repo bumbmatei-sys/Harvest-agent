@@ -2,9 +2,14 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import Stripe from 'stripe';
 import { adminDb } from '@/lib/firebase-admin';
-import { getTenantPrivate } from '@/lib/tenant-private';
+import { getTenantPrivate, DODO_ON_HOLD_FIELD } from '@/lib/tenant-private';
 import { PLATFORM_FEE_MAP as FEE_MAP } from '@/lib/stripe-connect';
-import { GIVING_UNAVAILABLE_MESSAGE, tenantAllows } from '@/lib/tenant-lifecycle';
+import {
+  GIVING_UNAVAILABLE_MESSAGE,
+  resolveEffectiveTenantStatus,
+  tenantAllows,
+} from '@/lib/tenant-lifecycle';
+import { convergeExpiredDodoGrace } from '@/lib/dodo/lifecycle';
 import { verifyAuth } from '@/lib/api-auth';
 import { captureMoneyPathError } from '@/lib/money-path-sentry';
 
@@ -78,7 +83,53 @@ export async function POST(request: NextRequest) {
     // destination charges into the church's own account at 0%, and that module
     // stays exactly as it is; the gate belongs on the route, which is the thing
     // that decides whether a checkout happens at all.
-    if (!tenantAllows(tenantData.status, 'giving')) {
+    //
+    // ⚠️ The private doc is read BEFORE the gate now, because the gate needs it.
+    // This costs NOTHING: the Connect account id below came from the same
+    // document and the same read, which is now simply hoisted above the check
+    // rather than performed after it.
+    const tenantPrivate = await getTenantPrivate(tenantId);
+
+    // 🔴 AND THE GRACE TIMER BITES HERE. A church whose renewal failed is still
+    // recorded `active` — Dodo never sends a terminal event for a subscription
+    // that stays `on_hold`, so nothing has rewritten the status. The deadline
+    // lives on the SERVER-ONLY private doc (a billing-trouble timestamp on the
+    // world-readable tenant doc would publish a named church's failed card), and
+    // `resolveEffectiveTenantStatus` turns it into the status to ENFORCE.
+    //
+    // Inside the window this returns the recorded status untouched, so a church
+    // in grace keeps its donate page for the full 21 days. Past it, the answer is
+    // the archived state and the existing capability table refuses giving with no
+    // second list of rules to keep in step.
+    const effectiveStatus = resolveEffectiveTenantStatus({
+      status: tenantData.status,
+      onHoldAt: tenantPrivate[DODO_ON_HOLD_FIELD],
+      now: Date.now(),
+    });
+
+    if (!tenantAllows(effectiveStatus, 'giving')) {
+      // The enforced answer and the recorded one disagree exactly when the timer
+      // has fired and nothing has written it down yet. Converge — through the
+      // same guarded path the terminal events use, so a Stripe-owned or
+      // conflict-owned tenant is refused there rather than trusted here.
+      //
+      // ⚠️ AFTER the decision to refuse and never in front of it. This is a
+      // best-effort write on a request that is already returning 403; if it
+      // fails, the donor still gets the same refusal and the next request tries
+      // again. Enforcement never waits on the bookkeeping.
+      if (effectiveStatus !== tenantData.status) {
+        try {
+          await convergeExpiredDodoGrace(tenantId, Date.now());
+        } catch (convergeErr) {
+          console.error(`[dodo] Could not converge expired grace for tenant ${tenantId}:`, convergeErr);
+          captureMoneyPathError(convergeErr, {
+            step: 'dodo-grace-converge',
+            level: 'warning',
+            tenantId,
+          });
+        }
+      }
+
       // 403, not 409: the request is fine and this donor is not at fault — the
       // ministry is not open for giving. The message says nothing about billing,
       // because the reader is a donor and a church's subscription status is not
@@ -86,7 +137,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: GIVING_UNAVAILABLE_MESSAGE }, { status: 403 });
     }
 
-    const connectAccountId = (await getTenantPrivate(tenantId)).stripeConnectAccountId;
+    const connectAccountId = tenantPrivate.stripeConnectAccountId;
     const plan = tenantData.plan || 'plus';
 
     if (!connectAccountId) {

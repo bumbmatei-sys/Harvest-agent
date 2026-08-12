@@ -278,7 +278,7 @@ describe('the first-run gate recognises a return from EITHER processor', () => {
 // ── The Dodo module is now deliberately wired in ─────────────────────────────
 
 describe('the Dodo module is wired into exactly the paths this PR names', () => {
-  it('is imported only by the dodo lib, the dodo routes, and one named exception', () => {
+  it('is imported only by the dodo lib, the dodo routes, and two named exceptions', () => {
     const dodoLib = join(SRC, 'lib/dodo');
     const dodoRoute = join(SRC, 'app/api/dodo');
 
@@ -298,8 +298,34 @@ describe('the Dodo module is wired into exactly the paths this PR names', () => 
      * held to the original rule, and a new entry here needs the same argument:
      * the app reaches Dodo through its routes, and picks a processor in one
      * place — now `resolveBillingOwnership`, per tenant, rather than a constant.
+     *
+     * ─── The SECOND exception: the giving gate, added for the grace timer ────
+     *
+     * `/api/stripe/donate` is the one server-side money gate, and REP-4 part 3
+     * gave it a deadline to enforce: a failed renewal starts a 21-day grace
+     * window, and when it closes the tenant must be archived for real rather
+     * than left `active`-but-refused on every request.
+     *
+     * 🔴 THE ARGUMENT, which is the portal's argument in a different key. Dodo
+     * emits NOTHING after its recovery window — no `cancelled`, no `expired`,
+     * no terminal event — so there is no later Dodo webhook to converge on and
+     * no scheduled job in this repo to run (`functions/` does not deploy on
+     * merge). The first request that consults the deadline is therefore the
+     * only reactive trigger that exists, and that request lands here. Refusing
+     * to let this route converge does not keep the state clean; it guarantees
+     * a tenant whose recorded status permanently disagrees with what every
+     * surface enforces.
+     *
+     * ⚠️ And it is the same NARROW shape the portal exception is held to: the
+     * route imports exactly one function, that function refuses anything
+     * `resolveBillingOwnership` does not resolve to Dodo, and it can only
+     * archive — it never charges, provisions, or reads a catalogue. The test
+     * below pins that.
      */
-    const ALLOWED_OUTSIDE_IMPORTERS = ['app/api/stripe/portal/route.ts'];
+    const ALLOWED_OUTSIDE_IMPORTERS = [
+      'app/api/stripe/portal/route.ts',
+      'app/api/stripe/donate/route.ts',
+    ];
 
     const outsiders = sourceFiles(SRC)
       .filter((file) => !isTestFile(file))
@@ -318,6 +344,34 @@ describe('the Dodo module is wired into exactly the paths this PR names', () => 
     expect(portal).toContain('createCustomerPortal');
     expect(portal).not.toContain('createPlanCheckout');
     expect(portal).not.toContain('changePlan');
+  });
+
+  it('the giving gate imports Dodo ONLY to converge an expired grace window', () => {
+    // 🔴 The second exception, held to the same narrowness. The donate route may
+    // ask Harvest's own timer to write down a state it is ALREADY enforcing. It
+    // may not reach Dodo for anything else — no checkout, no plan change, no
+    // provisioning, no catalogue.
+    const donate = read('app/api/stripe/donate/route.ts');
+    expect(donate).toContain('convergeExpiredDodoGrace');
+    for (const forbidden of [
+      'createPlanCheckout',
+      'createCustomerPortal',
+      'changePlan',
+      'provisionTenant',
+      'dodoBillingProvider',
+      'DODO_PRODUCTS',
+    ]) {
+      expect(donate, forbidden).not.toContain(forbidden);
+    }
+  });
+
+  it('imports exactly ONE symbol from the Dodo module into the giving gate', () => {
+    // The exception is one function wide. A second symbol is a widening and has
+    // to argue for itself here first.
+    const donate = read('app/api/stripe/donate/route.ts');
+    const imports = [...donate.matchAll(/import\s*\{([^}]*)\}\s*from\s*['"]@\/lib\/dodo\/[^'"]+['"]/g)]
+      .flatMap((m) => m[1].split(',').map((s) => s.trim()).filter(Boolean));
+    expect(imports).toEqual(['convergeExpiredDodoGrace']);
   });
 
   it('leaves the existing-tenant plan-change screens on Stripe', () => {

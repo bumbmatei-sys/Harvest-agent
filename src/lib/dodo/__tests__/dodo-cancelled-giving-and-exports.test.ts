@@ -38,6 +38,8 @@ const { store, mockCheckoutCreate, mockVerifyAuth, mockGetTenantPrivate, mockSig
 
 function docRef(path: string): any {
   return {
+    // Carried so `batch()` below can resolve a ref back to its document.
+    __path: path,
     async get() {
       const data = store.get(path);
       return { id: path.split('/').pop(), exists: data !== undefined, data: () => (data ? { ...data } : undefined) };
@@ -50,6 +52,29 @@ function docRef(path: string): any {
       store.set(path, { ...(store.get(path) || {}), ...patch });
     },
     collection: (name: string) => collRef(`${path}/${name}`),
+  };
+}
+
+/**
+ * A batch, added so the grace-window CONVERGENCE runs for real in this file.
+ *
+ * ⚠️ Convergence is what makes the recorded state agree with the enforced one,
+ * and it happens on the donate route. Stubbing it out here would leave the one
+ * place it actually fires untested.
+ */
+function batch(): any {
+  const writes: Array<() => void> = [];
+  return {
+    set(ref: any, data: Record<string, any>, options?: { merge?: boolean }) {
+      writes.push(() => {
+        const existing = options?.merge ? store.get(ref.__path) : undefined;
+        store.set(ref.__path, { ...(existing || {}), ...data });
+      });
+    },
+    update(ref: any, patch: Record<string, any>) {
+      writes.push(() => store.set(ref.__path, { ...(store.get(ref.__path) || {}), ...patch }));
+    },
+    async commit() { for (const write of writes) write(); },
   };
 }
 
@@ -76,13 +101,20 @@ vi.mock('stripe', () => ({
   },
 }));
 vi.mock('@/lib/firebase-admin', () => ({
-  adminDb: { collection: (name: string) => collRef(name) },
+  adminDb: { collection: (name: string) => collRef(name), batch: () => batch() },
   adminAuth: { getUser: vi.fn(), getUserByEmail: vi.fn() },
   getReceiptsBucket: () => ({
     file: () => ({ save: mockFileSave, getSignedUrl: mockSignedUrl }),
   }),
 }));
-vi.mock('@/lib/tenant-private', () => ({ getTenantPrivate: mockGetTenantPrivate }));
+vi.mock('@/lib/tenant-private', () => ({
+  getTenantPrivate: mockGetTenantPrivate,
+  DODO_ON_HOLD_FIELD: 'dodoOnHoldAt',
+  // Needed by the convergence path, which writes the archived state through the
+  // same guarded batch the terminal events use.
+  TENANT_PRIVATE_COLLECTION: 'tenant_private',
+  tenantPrivateRef: (id: string) => docRef(`tenant_private/${id}`),
+}));
 vi.mock('@/lib/api-auth', () => ({
   verifyAuth: mockVerifyAuth,
   requireAuth: async () => mockVerifyAuth(),
@@ -97,7 +129,44 @@ vi.mock('resend', () => ({ Resend: vi.fn(() => ({ emails: { send: vi.fn() } })) 
 const { POST: donatePOST } = await import('@/app/api/stripe/donate/route');
 const { POST: donorReceiptPOST } = await import('@/app/api/donation-history/download/route');
 const { POST: givingStatementPOST } = await import('@/app/api/giving-statements/generate/route');
-const { TENANT_STATUS_ARCHIVED, GIVING_UNAVAILABLE_MESSAGE } = await import('@/lib/tenant-lifecycle');
+const {
+  TENANT_STATUS_ARCHIVED,
+  GIVING_UNAVAILABLE_MESSAGE,
+  DODO_GRACE_PERIOD_DAYS,
+} = await import('@/lib/tenant-lifecycle');
+
+// ── Grace-window fixtures ────────────────────────────────────────────────────
+//
+// ⚠️ The donate route reads its own `Date.now()`, so these are anchored to the
+// real clock rather than to a fixed instant — and expressed in terms of
+// DODO_GRACE_PERIOD_DAYS, never the literal 21. No fake timers are involved:
+// moving the HOLD backwards past the deadline is the same arithmetic as moving
+// `now` forwards, and it leaves the route reading a clock it actually trusts.
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+/** A hold that started `days` ago. */
+const heldDaysAgo = (days: number) => new Date(Date.now() - days * DAY_MS).toISOString();
+/** Comfortably inside the window. */
+const HELD_INSIDE_WINDOW = () => heldDaysAgo(DODO_GRACE_PERIOD_DAYS - 1);
+/** Past it. */
+const HELD_PAST_WINDOW = () => heldDaysAgo(DODO_GRACE_PERIOD_DAYS + 1);
+
+/**
+ * The private doc of a Dodo church, optionally on hold.
+ *
+ * `billingProcessor` and `dodoSubscriptionId` are what make the convergence
+ * path's ownership check resolve to Dodo — without them it refuses, which is
+ * the behaviour the conflict-owned tests rely on.
+ */
+function dodoPrivate(onHoldAt?: string) {
+  return {
+    stripeConnectAccountId: 'acct_T',
+    dodoCustomerId: 'cus_dodo_1',
+    dodoSubscriptionId: 'sub_dodo_1',
+    billingProcessor: 'dodo',
+    ...(onHoldAt ? { dodoOnHoldAt: onHoldAt } : {}),
+  };
+}
 
 /** The archived Dodo church every test below acts on. */
 const ARCHIVED_TENANT = 'gracechurch';
@@ -213,6 +282,259 @@ describe('giving is refused server-side for a cancelled tenant', () => {
     expect(connect).not.toContain('tenant-lifecycle');
     expect(connect).not.toContain('archived');
     expect(connect).not.toContain('import');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// REP-4 part 3 — the grace window, enforced on the one server-side money gate
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ─── Test 5 — giving still works during the grace window ─────────────────────
+
+describe('giving still works during the grace window', () => {
+  it('still works during the grace window', async () => {
+    // 🔴 THE HALF THAT PROTECTS THE CUSTOMER. A failed renewal is usually an
+    // expired card, not a decision to leave. Taking the donate page down on the
+    // day the card failed would cost a church its offering while they were still
+    // trying to pay.
+    seedTenant('active');
+    mockGetTenantPrivate.mockResolvedValue(dodoPrivate(HELD_INSIDE_WINDOW()));
+
+    const res = await donatePOST(donateRequest({ amount: 5000, tenantId: ARCHIVED_TENANT, donationType: 'one-time' }));
+
+    expect(res.status).toBe(200);
+    expect(mockCheckoutCreate).toHaveBeenCalledTimes(1);
+    // And still at 0% into the church's own connected account — nothing degraded.
+    expect(mockCheckoutCreate.mock.calls[0][0].payment_intent_data.application_fee_amount).toBe(0);
+  });
+
+  it('still works on the FIRST day of the hold', async () => {
+    seedTenant('active');
+    mockGetTenantPrivate.mockResolvedValue(dodoPrivate(heldDaysAgo(0)));
+
+    const res = await donatePOST(donateRequest({ amount: 5000, tenantId: ARCHIVED_TENANT, donationType: 'one-time' }));
+
+    expect(res.status).toBe(200);
+  });
+
+  it('takes a MONTHLY gift during the window too', async () => {
+    seedTenant('active');
+    mockGetTenantPrivate.mockResolvedValue(dodoPrivate(HELD_INSIDE_WINDOW()));
+
+    const res = await donatePOST(donateRequest({ amount: 5000, tenantId: ARCHIVED_TENANT, donationType: 'monthly' }));
+
+    expect(res.status).toBe(200);
+  });
+
+  it('does not archive the tenant while it is inside the window', async () => {
+    // Convergence must not fire early: the recorded state is still correct.
+    seedTenant('active');
+    mockGetTenantPrivate.mockResolvedValue(dodoPrivate(HELD_INSIDE_WINDOW()));
+
+    await donatePOST(donateRequest({ amount: 5000, tenantId: ARCHIVED_TENANT, donationType: 'one-time' }));
+
+    expect(store.get(`tenants/${ARCHIVED_TENANT}`)!.status).toBe('active');
+  });
+});
+
+// ─── Test 4 — giving is refused once the grace window has passed ─────────────
+
+describe('giving is refused once the grace window has passed', () => {
+  it('is refused once the grace window has passed', async () => {
+    // 🔴 THE WHOLE POINT OF THE PR. Dodo emits NO terminal event for a
+    // subscription that stays on hold, so this tenant is still recorded
+    // `active` — and at a 0% platform fee a live donate page is the product
+    // given away free, indefinitely, unless something ends it.
+    seedTenant('active');
+    store.set(`tenant_private/${ARCHIVED_TENANT}`, dodoPrivate(HELD_PAST_WINDOW()));
+    mockGetTenantPrivate.mockResolvedValue(dodoPrivate(HELD_PAST_WINDOW()));
+
+    const res = await donatePOST(donateRequest({ amount: 5000, tenantId: ARCHIVED_TENANT, donationType: 'one-time' }));
+
+    expect(res.status).toBe(403);
+    expect(await res.json()).toEqual({ error: GIVING_UNAVAILABLE_MESSAGE });
+    // No Checkout session was opened at all — a refusal that still took the
+    // donor's card would strand the money.
+    expect(mockCheckoutCreate).not.toHaveBeenCalled();
+  });
+
+  it('refuses a MONTHLY gift too — one gate, before either branch', async () => {
+    seedTenant('active');
+    store.set(`tenant_private/${ARCHIVED_TENANT}`, dodoPrivate(HELD_PAST_WINDOW()));
+    mockGetTenantPrivate.mockResolvedValue(dodoPrivate(HELD_PAST_WINDOW()));
+
+    const res = await donatePOST(donateRequest({ amount: 5000, tenantId: ARCHIVED_TENANT, donationType: 'monthly' }));
+
+    expect(res.status).toBe(403);
+    expect(mockCheckoutCreate).not.toHaveBeenCalled();
+  });
+
+  it('tells the DONOR nothing about the church’s billing', async () => {
+    // The reader is a donor who came to give money to their church. A church's
+    // subscription trouble is not theirs to be told.
+    seedTenant('active');
+    store.set(`tenant_private/${ARCHIVED_TENANT}`, dodoPrivate(HELD_PAST_WINDOW()));
+    mockGetTenantPrivate.mockResolvedValue(dodoPrivate(HELD_PAST_WINDOW()));
+
+    const body = await (await donatePOST(
+      donateRequest({ amount: 5000, tenantId: ARCHIVED_TENANT, donationType: 'one-time' }),
+    )).json();
+
+    for (const leak of ['subscription', 'cancel', 'billing', 'plan', 'archiv', 'expired', 'grace', 'hold', 'card']) {
+      expect(String(body.error).toLowerCase()).not.toContain(leak);
+    }
+  });
+
+  it('refuses even though the church still has a live Connect account', async () => {
+    // The money could physically move. What stopped it is the deadline.
+    seedTenant('active');
+    store.set(`tenant_private/${ARCHIVED_TENANT}`, dodoPrivate(HELD_PAST_WINDOW()));
+    mockGetTenantPrivate.mockResolvedValue({ ...dodoPrivate(HELD_PAST_WINDOW()), stripeConnectAccountId: 'acct_LIVE' });
+
+    const res = await donatePOST(donateRequest({ amount: 100_000, tenantId: ARCHIVED_TENANT, donationType: 'one-time' }));
+
+    expect(res.status).toBe(403);
+  });
+
+  it('CONVERGES the recorded state so the tenant is not left active-but-refused', async () => {
+    // 🔴 Dodo will never send a terminal event and this repo has no scheduled
+    // job, so the first request that consults the deadline is the only reactive
+    // trigger there is. Without this the document would say `active` forever
+    // while every surface refused.
+    seedTenant('active');
+    store.set(`tenant_private/${ARCHIVED_TENANT}`, dodoPrivate(HELD_PAST_WINDOW()));
+    mockGetTenantPrivate.mockResolvedValue(dodoPrivate(HELD_PAST_WINDOW()));
+
+    await donatePOST(donateRequest({ amount: 5000, tenantId: ARCHIVED_TENANT, donationType: 'one-time' }));
+
+    expect(store.get(`tenants/${ARCHIVED_TENANT}`)!.status).toBe(TENANT_STATUS_ARCHIVED);
+    expect(store.get(`tenant_private/${ARCHIVED_TENANT}`)!.dodoSubscriptionStatus).toBe('grace-expired');
+  });
+
+  it('leaves `plan` alone while converging', async () => {
+    seedTenant('active');
+    store.set(`tenant_private/${ARCHIVED_TENANT}`, dodoPrivate(HELD_PAST_WINDOW()));
+    mockGetTenantPrivate.mockResolvedValue(dodoPrivate(HELD_PAST_WINDOW()));
+
+    await donatePOST(donateRequest({ amount: 5000, tenantId: ARCHIVED_TENANT, donationType: 'one-time' }));
+
+    expect(store.get(`tenants/${ARCHIVED_TENANT}`)!.plan).toBe('max');
+  });
+
+  it('still refuses when the convergence write fails', async () => {
+    // ⚠️ ENFORCEMENT NEVER WAITS ON BOOKKEEPING. The refusal is derived from the
+    // deadline, so a failed archive write cannot hand the donate page back.
+    seedTenant('active');
+    mockGetTenantPrivate.mockResolvedValue(dodoPrivate(HELD_PAST_WINDOW()));
+    // No `tenant_private` doc seeded, so the convergence lookup finds no tenant.
+
+    const res = await donatePOST(donateRequest({ amount: 5000, tenantId: ARCHIVED_TENANT, donationType: 'one-time' }));
+
+    expect(res.status).toBe(403);
+    expect(mockCheckoutCreate).not.toHaveBeenCalled();
+  });
+
+  it('refuses on every subsequent request, not just the one that converged', async () => {
+    seedTenant('active');
+    store.set(`tenant_private/${ARCHIVED_TENANT}`, dodoPrivate(HELD_PAST_WINDOW()));
+    mockGetTenantPrivate.mockResolvedValue(dodoPrivate(HELD_PAST_WINDOW()));
+
+    for (let i = 0; i < 3; i++) {
+      const res = await donatePOST(donateRequest({ amount: 5000, tenantId: ARCHIVED_TENANT, donationType: 'one-time' }));
+      expect(res.status).toBe(403);
+    }
+    expect(mockCheckoutCreate).not.toHaveBeenCalled();
+  });
+
+  it('does not gate a tenant whose subscription Dodo does not own', async () => {
+    // 🔴 A conflict-owned tenant (identifiers from BOTH processors) must not be
+    // archived by a Dodo timer. The gate still refuses — the deadline is on the
+    // document — but the convergence write is refused by ownership.
+    seedTenant('active');
+    const conflicted = { ...dodoPrivate(HELD_PAST_WINDOW()), stripeSubscriptionId: 'sub_stripe_1', stripeCustomerId: 'cus_stripe_1' };
+    store.set(`tenant_private/${ARCHIVED_TENANT}`, conflicted);
+    mockGetTenantPrivate.mockResolvedValue(conflicted);
+
+    await donatePOST(donateRequest({ amount: 5000, tenantId: ARCHIVED_TENANT, donationType: 'one-time' }));
+
+    expect(store.get(`tenants/${ARCHIVED_TENANT}`)!.status).toBe('active');
+  });
+});
+
+// ─── Test 6 — every export still works past the grace window ─────────────────
+
+describe('every export still works for a tenant whose grace window has passed', () => {
+  /** A church whose window closed AND whose state has already converged. */
+  function seedGraceExpiredChurch() {
+    seedTenant(TENANT_STATUS_ARCHIVED);
+    seedDonationReceipt();
+    store.set(`tenant_private/${ARCHIVED_TENANT}`, dodoPrivate(HELD_PAST_WINDOW()));
+    mockGetTenantPrivate.mockResolvedValue(dodoPrivate(HELD_PAST_WINDOW()));
+  }
+
+  it('the DONOR export still returns a receipt', async () => {
+    // 🔴 STOP CONDITION, and the most important test here. This is a donor
+    // asking for their own charitable-contribution receipt from a church whose
+    // card failed. `export` is on NEVER_GATED and no deadline may reach it.
+    seedGraceExpiredChurch();
+    mockVerifyAuth.mockResolvedValue({ uid: 'donor_1', email: 'donor@example.com' });
+
+    const res = await donorReceiptPOST(
+      jsonRequest('https://example.com/api/donation-history/download', {
+        tenantId: ARCHIVED_TENANT,
+        invoiceId: 'inv_1',
+      }),
+    );
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ url: 'https://signed.example/receipt.pdf' });
+  });
+
+  it('the GIVING export still generates year-end statements', async () => {
+    seedGraceExpiredChurch();
+    mockVerifyAuth.mockResolvedValue({ uid: 'admin_1', email: 'pastor@gracechurch.org', isAdmin: true, tenantId: ARCHIVED_TENANT });
+
+    const res = await givingStatementPOST(
+      jsonRequest('https://example.com/api/giving-statements/generate', { year: 2026, send: false }),
+    );
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ generated: 1, totalDonors: 1, failed: 0 });
+    expect(mockFileSave).toHaveBeenCalledTimes(1);
+  });
+
+  it('produces the SAME export result past the window as inside it', async () => {
+    // The strongest form: byte-for-byte the same answer, so nothing degraded
+    // quietly rather than being refused outright.
+    const run = async (onHoldAt: string, status: string) => {
+      store.clear();
+      seedTenant(status);
+      seedDonationReceipt();
+      store.set(`tenant_private/${ARCHIVED_TENANT}`, dodoPrivate(onHoldAt));
+      mockGetTenantPrivate.mockResolvedValue(dodoPrivate(onHoldAt));
+      mockVerifyAuth.mockResolvedValue({ uid: 'admin_1', email: 'pastor@gracechurch.org', isAdmin: true, tenantId: ARCHIVED_TENANT });
+      return (await givingStatementPOST(
+        jsonRequest('https://example.com/api/giving-statements/generate', { year: 2026, send: false }),
+      )).json();
+    };
+
+    expect(await run(HELD_PAST_WINDOW(), TENANT_STATUS_ARCHIVED)).toEqual(await run(HELD_INSIDE_WINDOW(), 'active'));
+  });
+
+  it('keeps admin READ working for a church past its window', async () => {
+    // Login and admin read are never gated either — the church can still get in
+    // to fix the card that caused all this.
+    const { GET: rosterStatusGET } = await import('@/app/api/tenants/roster-status/route');
+    seedGraceExpiredChurch();
+    mockGetTenantPrivate.mockResolvedValue({ ...dodoPrivate(HELD_PAST_WINDOW()), adminEmails: ['pastor@gracechurch.org'] });
+    mockVerifyAuth.mockResolvedValue({ uid: 'admin_1', email: 'pastor@gracechurch.org', isAdmin: true, tenantId: ARCHIVED_TENANT });
+
+    const res = await rosterStatusGET(
+      new NextRequest(`https://example.com/api/tenants/roster-status?tenantId=${ARCHIVED_TENANT}`),
+    );
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ isRosterAdmin: true });
   });
 });
 
