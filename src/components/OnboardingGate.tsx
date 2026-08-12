@@ -8,6 +8,7 @@ import { isSuperAdminEmail } from '../utils/super-admins';
 import { checkRosterAdmin } from '../utils/tenant.utils';
 import { TenantPlan } from '../types/tenant.types';
 import { SIGNUP_CHECKOUT_ENDPOINT, isReturningFromCheckout } from '../utils/signup-checkout';
+import { useForcedLightTheme } from '../lib/theme-runtime';
 import FirstRunSetup from './FirstRunSetup';
 
 const HARVEST_LOGO = 'https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png';
@@ -132,6 +133,22 @@ const OnboardingGate: React.FC<{ children: React.ReactNode }> = ({ children }) =
     }, 2000);
     return () => clearInterval(interval);
   }, [status, onCheckoutSuccess]);
+
+  // THE-85: the funnel screens this gate renders have NO path of their own —
+  // the processor returns the payer to "/?…=success", and a refresh lands on a
+  // bare "/". They are only identifiable once the user doc resolves, so the URL
+  // cannot classify them and the gate declares them instead.
+  //
+  // ⚠️ Deliberately NOT `status !== 'ready'`. In 'loading' WITHOUT a checkout
+  // marker this gate renders `children`, i.e. the whole signed-in app — forcing
+  // light there would flash every dark-mode user light on every single load.
+  // Only the states below actually paint a funnel screen.
+  const rendersFunnelScreen =
+    status === 'paying' ||
+    status === 'needs-payment' ||
+    status === 'first-run' ||
+    (status === 'loading' && onCheckoutSuccess);
+  useForcedLightTheme(rendersFunnelScreen);
 
   const restartCheckout = async () => {
     const user = auth.currentUser;

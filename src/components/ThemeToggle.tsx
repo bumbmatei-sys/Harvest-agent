@@ -1,7 +1,8 @@
 "use client";
 import React, { useCallback, useEffect, useState } from 'react';
 import { Sun, Moon, Monitor } from 'lucide-react';
-import { THEME_STORAGE_KEY, isThemeChoice, resolveTheme, type ThemeChoice } from '@/lib/theme';
+import { THEME_STORAGE_KEY, type ThemeChoice } from '@/lib/theme';
+import { applyTheme, readStoredChoice } from '@/lib/theme-runtime';
 
 /**
  * Theming stage 3 — the light / dark / system control.
@@ -25,29 +26,11 @@ const OPTIONS: ReadonlyArray<{ value: ThemeChoice; label: string; Icon: typeof S
   { value: 'system', label: 'System', Icon: Monitor },
 ];
 
-const prefersDark = (): boolean =>
-  typeof window !== 'undefined' &&
-  typeof window.matchMedia === 'function' &&
-  window.matchMedia('(prefers-color-scheme: dark)').matches;
-
-/** Stamp <html>. Mirrors exactly what the pre-paint script does. */
-export function applyTheme(choice: ThemeChoice): void {
-  if (typeof document === 'undefined') return;
-  const resolved = resolveTheme(choice, prefersDark());
-  const el = document.documentElement;
-  el.setAttribute('data-theme', resolved);
-  el.classList.toggle('dark', resolved === 'dark');
-}
-
-function readStoredChoice(): ThemeChoice {
-  try {
-    const raw = localStorage.getItem(THEME_STORAGE_KEY);
-    return isThemeChoice(raw) ? raw : 'system';
-  } catch {
-    // localStorage can throw in private mode / sandboxed iframes.
-    return 'system';
-  }
-}
+/* applyTheme / readStoredChoice moved to @/lib/theme-runtime in THE-85 so that
+   this control and the pre-auth light override stamp <html> through one code
+   path rather than two that could disagree. Behaviour here is unchanged: the
+   same key is read and written, and <html> is still stamped directly rather
+   than through React state. */
 
 interface ThemeToggleProps {
   /** Compact row styling for the member Profile list; default suits settings. */

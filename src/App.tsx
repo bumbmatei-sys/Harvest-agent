@@ -35,6 +35,7 @@ import { useAppStore } from './store/useAppStore';
 import { PLATFORM_TENANT_ID, getTenantIdFromHost } from './utils/tenant-scope';
 import { isAffiliateHost } from './utils/non-tenant-subdomains';
 import { resolvePostAuthFunnelRoute } from './utils/post-auth-route';
+import { usePreAuthTheme, useForcedLightTheme } from './lib/theme-runtime';
 
 /** Paths that represent the auth / onboarding funnel (used to decide redirects). */
 const FUNNEL_PATHS = ['/auth', '/onboarding', '/church-onboarding'];
@@ -50,7 +51,12 @@ const queryClient = new QueryClient({
   },
 });
 
-const TenantNotFound: React.FC<{ tenantId: string; message: string }> = ({ tenantId, message }) => (
+const TenantNotFound: React.FC<{ tenantId: string; message: string }> = ({ tenantId, message }) => {
+  // THE-85: an error page reachable with no account — a mistyped or retired
+  // subdomain. It has no funnel path of its own (it replaces whatever route was
+  // requested), so it declares itself rather than being classified by URL.
+  useForcedLightTheme(true);
+  return (
   <div className="min-h-screen flex items-center justify-center bg-background-dark">
     <div className="max-w-md mx-auto text-center p-8">
       <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-red-500/10 flex items-center justify-center">
@@ -71,7 +77,8 @@ const TenantNotFound: React.FC<{ tenantId: string; message: string }> = ({ tenan
       </a>
     </div>
   </div>
-);
+  );
+};
 
 const renderLoading = () => (
   <div className="min-h-screen flex items-center justify-center bg-background-dark">
@@ -87,6 +94,14 @@ const AppInner: React.FC = () => {
   const location = useLocation();
   const pathnameRef = useRef(location.pathname);
   useEffect(() => { pathnameRef.current = location.pathname; }, [location.pathname]);
+
+  // THE-85: pre-auth screens are light mode only. The pre-paint script in
+  // layout.tsx covers hard loads; this covers CLIENT-SIDE navigation, which the
+  // script never sees because it runs once per document load. The case that
+  // matters is signing out of dark mode — the callback below does
+  // `navigate('/auth')` with no reload, so without this the sign-in screen
+  // would inherit the `.dark` class the signed-in session left on <html>.
+  usePreAuthTheme(location.pathname);
 
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [userRole, setUserRole] = useState<string>('user');

@@ -7,6 +7,7 @@ import './globals.css';
 import { cn } from "@/lib/utils";
 import { getTenantFromHost } from '@/lib/server-tenant';
 import { deriveOnDarkAccent } from '@/lib/theme';
+import { PREAUTH_PATHS } from '@/lib/preauth-theme';
 import ReferralTracker from '@/components/ReferralTracker';
 import { Toaster } from '@/components/ui/sonner';
 
@@ -135,10 +136,36 @@ export default async function RootLayout({
             matches, new CSS + old JS stamps nothing. Both land on the light
             theme, which is the only theme that exists today anyway. The
             try/catch keeps a blocked localStorage (private mode, sandboxed
-            iframe) from throwing before the app ever boots. */}
+            iframe) from throwing before the app ever boots.
+
+            ── THE-85: the pre-auth screens are light mode only ───────────────
+            The funnel paths short-circuit to 'light' BEFORE the stored
+            preference or the OS is consulted. This is the whole override, and
+            it lives here rather than in the components on purpose: the tokens
+            still resolve exactly as they always did, they simply resolve to
+            their light values because `.dark` is never stamped. Hardcoding
+            light colours into the pre-auth components is what caused THE-85 in
+            the first place.
+
+            ⚠️ prefers-color-scheme is DELIBERATELY overridden. A visitor whose
+            OS is in dark mode still gets a light sign-in page. That is
+            intended, not an oversight — these are the only screens a
+            prospective customer sees before paying, and a half-themed sign-in
+            page reads as a broken product. Do not "fix" this back.
+
+            ⚠️ It READS the preference and never writes it, on any path. A user
+            who signs out of dark mode sees light here and is returned to dark
+            the moment they sign back in.
+
+            PREAUTH_PATHS is interpolated from @/lib/preauth-theme rather than
+            duplicated as a literal (the mistake the storage key above makes),
+            so the list physically cannot drift. The three normalising
+            statements DO mirror normalizePath() by hand — a test runs this very
+            script against the same path table as that function and fails if
+            they disagree. */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var s=localStorage.getItem('harvest-theme');var t=(s==='light'||s==='dark')?s:(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');var e=document.documentElement;e.setAttribute('data-theme',t);e.classList.toggle('dark',t==='dark');}catch(_){}})();`,
+            __html: `(function(){try{var e=document.documentElement;var p=(location.pathname||'/').split(/[?#]/)[0].replace(/\\/+$/,'');p=(p===''?'/':p).toLowerCase();if(${JSON.stringify(PREAUTH_PATHS)}.indexOf(p)>-1){e.setAttribute('data-theme','light');e.classList.remove('dark');return;}var s=localStorage.getItem('harvest-theme');var t=(s==='light'||s==='dark')?s:(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');e.setAttribute('data-theme',t);e.classList.toggle('dark',t==='dark');}catch(_){}})();`,
           }}
         />
 
