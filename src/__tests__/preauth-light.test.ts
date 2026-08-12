@@ -331,6 +331,9 @@ describe('no pre-auth component gained a hardcoded colour', () => {
     'components/ChurchOnboarding.tsx',
     'components/OnboardingGate.tsx',
     'components/FirstRunSetup.tsx',
+    // THE-86: the post-payment handoff. Reached before the customer is signed
+    // in on the new origin, so it is as pre-auth as the rest of this list.
+    'components/WorkspaceHandoff.tsx',
   ];
 
   /**
@@ -352,6 +355,9 @@ describe('no pre-auth component gained a hardcoded colour', () => {
     'components/ChurchOnboarding.tsx': 3,
     'components/OnboardingGate.tsx': 0,
     'components/FirstRunSetup.tsx': 3,
+    // A new screen starts at zero: there is no pre-existing baseline to inherit,
+    // so it is held to the rule this test exists to enforce.
+    'components/WorkspaceHandoff.tsx': 0,
   };
 
   const bareHexes = (file: string): string[] => {
@@ -488,6 +494,7 @@ describe('no pre-auth screen injects its own style block', () => {
     'components/ChurchOnboarding.tsx',
     'components/OnboardingGate.tsx',
     'components/FirstRunSetup.tsx',
+    'components/WorkspaceHandoff.tsx',
     'components/settings/BrandingSection.tsx',
     'components/settings/DomainSection.tsx',
   ];
