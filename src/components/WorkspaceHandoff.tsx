@@ -4,6 +4,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { CheckCircle2, Loader2, ArrowRight, AlertCircle, Mail } from 'lucide-react';
 import { db } from '../firebase';
 import { useForcedLightTheme } from '../lib/theme-runtime';
+import { getTenantIdFromHost } from '../utils/tenant-scope';
 
 const BRAND = 'var(--brand-color, #B8962E)';
 const SUCCESS = 'var(--brand-success, #6E8E52)';
@@ -137,6 +138,36 @@ const WorkspaceHandoff: React.FC<WorkspaceHandoffProps> = ({ tenantId, fallbackM
   const address = `${tenantId}.theharvest.app`;
   const displayName = ministryName || fallbackMinistryName || 'Your ministry';
 
+  /**
+   * 🔴 Is the destination actually a DIFFERENT origin from the one we are
+   * rendering on?
+   *
+   * It is not always. `App.tsx`'s auth callback (lines 266–299) hard-redirects
+   * apex → subdomain as soon as the user doc has `onboardingCompleted: true`,
+   * which the payment webhook sets when it provisions — so a reload at "/"
+   * after provisioning but before first-run setup finishes lands the owner on
+   * `<generated>.theharvest.app`, and the gate renders first-run setup THERE.
+   * Keeping the generated subdomain is a valid finish (`FirstRunSetup.tsx:66`
+   * short-circuits the availability check when `subdomain === tenantId`, and
+   * line 80 lets that satisfy `canFinish`), so `onFinished` can hand back the
+   * very id the user is already hosted on.
+   *
+   * On that path the cross-origin copy below is FALSE: there is no second
+   * sign-in, because they signed in on this origin to get here. Telling someone
+   * something untrue about their account at the moment they are thinking about
+   * a charge is the exact failure this screen exists to prevent — so the claim
+   * is made only when it is true.
+   *
+   * ⚠️ Resolved with the SHARED host resolver, never by parsing
+   * `window.location.hostname` here. Four resolvers already have to agree about
+   * what a tenant subdomain is; a fifth inline parse is how they drift apart.
+   * `getTenantIdFromHost()` returns null on the apex, so the apex case falls out
+   * as cross-origin without a special case. Safe during render: the whole app is
+   * mounted `ssr: false` (`src/app/[[...slug]]/page.tsx:8`), and App.tsx:150
+   * already calls it this way.
+   */
+  const crossOrigin = tenantId !== getTenantIdFromHost();
+
   return (
     <div
       className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-6 py-14 text-center"
@@ -186,25 +217,43 @@ const WorkspaceHandoff: React.FC<WorkspaceHandoffProps> = ({ tenantId, fallbackM
         </div>
 
         {/* (4) Why they will be asked to sign in again — stated as expected,
-            not as a failure. This is the whole reason the screen exists. */}
-        <p className="mt-5 max-w-[42ch] text-[13px] leading-relaxed" style={{ color: 'var(--text-body, #4A4038)' }}>
-          Your ministry has its own web address, so you&rsquo;ll sign in once more when you get
-          there. That&rsquo;s expected — sign-ins don&rsquo;t carry across addresses. Your account is
-          already created and nothing was lost.
-        </p>
+            not as a failure. This is the whole reason the screen exists, and it
+            is claimed ONLY when the destination really is another origin. */}
+        {crossOrigin ? (
+          <p className="mt-5 max-w-[42ch] text-[13px] leading-relaxed" style={{ color: 'var(--text-body, #4A4038)' }}>
+            Your ministry has its own web address, so you&rsquo;ll sign in once more when you get
+            there. That&rsquo;s expected — sign-ins don&rsquo;t carry across addresses. Your account is
+            already created and nothing was lost.
+          </p>
+        ) : (
+          <p className="mt-5 max-w-[42ch] text-[13px] leading-relaxed" style={{ color: 'var(--text-body, #4A4038)' }}>
+            You&rsquo;re already signed in at this address, so there&rsquo;s nothing more to do —
+            your workspace is ready when you are.
+          </p>
+        )}
 
         {/* (5) A single action — and only once the workspace genuinely resolves. */}
         <div className="mt-8 flex w-full flex-col items-center">
           {ready ? (
+            /* Cross-origin gets the absolute URL; same-origin gets an in-origin
+               route to /admin, because a link to `https://<current host>/admin`
+               would be a self-link dressed up as a departure.
+               ⚠️ Deliberately a real navigation and NOT react-router's
+               `navigate()`, which is how the app moves within an origin
+               everywhere else: this screen is rendered by OnboardingGate AHEAD
+               of <Routes> (that precedence is load-bearing — see the gate), so
+               a client-side navigation would change the URL while the gate kept
+               rendering this screen, stranding the user here. Reloading lets the
+               gate re-resolve to 'ready' and hand them the app. */
             <a
-              href={`https://${address}/admin`}
+              href={crossOrigin ? `https://${address}/admin` : '/admin'}
               className="inline-flex items-center gap-2 rounded-lg font-semibold text-white no-underline"
               style={{
                 background: BRAND, padding: '13px 30px', fontSize: 15,
                 boxShadow: `0 10px 30px -8px color-mix(in srgb, ${BRAND} 42%, transparent)`,
               }}
             >
-              Continue to {address} <ArrowRight size={16} />
+              {crossOrigin ? <>Continue to {address}</> : <>Go to your dashboard</>} <ArrowRight size={16} />
             </a>
           ) : stalled ? (
             /* Genuinely stuck. The ONLY escape offered is a human: everyone here

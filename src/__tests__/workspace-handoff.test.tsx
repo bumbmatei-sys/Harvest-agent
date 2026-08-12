@@ -7,6 +7,7 @@ import WorkspaceHandoff from '../components/WorkspaceHandoff';
 import OnboardingGate from '../components/OnboardingGate';
 import { PREAUTH_PATHS } from '../lib/preauth-theme';
 import { THEME_STORAGE_KEY } from '../lib/theme';
+import { getTenantIdFromHost } from '../utils/tenant-scope';
 
 /**
  * THE-86 part 1 — the screen between paying and the new workspace.
@@ -59,8 +60,16 @@ vi.mock('firebase/auth', () => ({
   getIdToken,
 }));
 
-vi.mock('../utils/super-admins', () => ({ isSuperAdminEmail: () => false }));
 vi.mock('../utils/tenant.utils', () => ({ checkRosterAdmin }));
+
+// ⚠️ `../utils/tenant-scope` and `../utils/super-admins` are deliberately NOT
+// mocked. The same-origin branch is decided by the real `getTenantIdFromHost()`,
+// so these tests move the actual host and let the real resolver run — mocking it
+// and then asserting on its own output would prove nothing about the branch.
+/** Point the document at a real host and let the shared resolver read it. */
+const setHost = (url: string) => {
+  (window as unknown as { happyDOM: { setURL: (u: string) => void } }).happyDOM.setURL(url);
+};
 
 // Stands in for the real first-run screen so the test can fire the exact
 // callback that used to hard-redirect to the subdomain.
@@ -110,7 +119,9 @@ beforeEach(() => {
   localStorage.clear();
   document.documentElement.className = '';
   document.documentElement.removeAttribute('data-theme');
-  window.history.replaceState({}, '', '/');
+  // Default every test to the apex, where the resolver returns null and the
+  // destination is therefore a different origin — the primary path.
+  setHost('https://theharvest.app/');
   getDoc.mockResolvedValue(provisioned());
   container = document.createElement('div');
   document.body.appendChild(container);
@@ -406,6 +417,113 @@ describe('7 — no plan, price or trial length that was not read from real data'
     expect(HANDOFF_SRC).not.toContain('PLAN_DISPLAY_NAMES');
     expect(HANDOFF_SRC).not.toContain('catalogue');
     expect(HANDOFF_SRC).not.toMatch(/\btrialDays\b/);
+  });
+});
+
+/* ── 8 ─────────────────────────────────────────────────────────────────────── */
+
+describe('8 — on the origin the workspace already lives on, it does not claim a second sign-in', () => {
+  /**
+   * This state is reachable, and both halves of it are already in the tree.
+   *
+   * `App.tsx`'s auth callback (lines 266–299) hard-redirects apex → subdomain
+   * once the user doc has `onboardingCompleted: true` — which the payment
+   * webhook sets when it provisions (`provisioning.ts` also writes
+   * `role: 'admin'`, so the `hasAdminRole` half of that condition is satisfied
+   * too). A reload at "/" after provisioning but before first-run setup is done
+   * therefore lands the owner on `<generated>.theharvest.app`, and the gate
+   * renders first-run setup THERE. Keeping the generated subdomain is a valid
+   * finish (`FirstRunSetup.tsx:66` short-circuits the availability check when
+   * `subdomain === tenantId`; line 80 lets that satisfy `canFinish`), so
+   * `onFinished` hands back the id the user is already hosted on.
+   *
+   * The host below is moved for real and read by the real resolver — nothing
+   * about `getTenantIdFromHost` is mocked, or this would be circular.
+   */
+  const onTheWorkspaceOrigin = () => setHost('https://gracechurch.theharvest.app/');
+
+  it('the resolver really sees the moved host — otherwise the rest of this group proves nothing', () => {
+    onTheWorkspaceOrigin();
+    expect(getTenantIdFromHost()).toBe('gracechurch');
+  });
+
+  it('does not claim sign-ins fail to carry when the destination is the current origin', async () => {
+    onTheWorkspaceOrigin();
+    render(<WorkspaceHandoff tenantId="gracechurch" />);
+    await flush();
+
+    // 🔴 They signed in on THIS origin to get here. Saying otherwise is a false
+    // statement about their account at the moment they are thinking about a
+    // charge — the exact failure this screen exists to prevent.
+    const copy = text();
+    expect(copy).not.toContain('sign in once more');
+    expect(copy).not.toContain("sign-ins don't carry across addresses");
+    expect(copy).not.toContain('sign-ins don’t carry across addresses');
+    expect(copy).toContain('already signed in at this address');
+  });
+
+  it('offers an in-origin route to the admin app, not a cross-origin link to itself', async () => {
+    onTheWorkspaceOrigin();
+    render(<WorkspaceHandoff tenantId="gracechurch" />);
+    await flush();
+
+    const els = actionables();
+    expect(els).toHaveLength(1);
+    const href = els[0].getAttribute('href') || '';
+    // Named by destination, not by position: an in-origin path, not an absolute
+    // URL that happens to point back at the host we are already on.
+    expect(href).toBe('/admin');
+    expect(href).not.toContain('theharvest.app');
+    expect(href).not.toMatch(/^https?:|^\/\//);
+  });
+
+  it('still confirms the payment and names the workspace on the same origin', async () => {
+    onTheWorkspaceOrigin();
+    getDoc.mockResolvedValue(provisioned('Grace Community Church'));
+    render(<WorkspaceHandoff tenantId="gracechurch" />);
+    await flush();
+
+    // These are true on both paths and are the point of the screen.
+    const copy = text();
+    expect(copy).toContain('Your payment went through.');
+    expect(copy).toContain('Grace Community Church');
+    expect(copy).toContain('gracechurch.theharvest.app');
+  });
+
+  it('still withholds the action until the tenant document exists', async () => {
+    onTheWorkspaceOrigin();
+    getDoc.mockResolvedValue(notProvisioned());
+    render(<WorkspaceHandoff tenantId="gracechurch" />);
+    await flush();
+
+    // The readiness guard is not a cross-origin concern — it applies here too.
+    expect(actionables()).toHaveLength(0);
+    expect(text()).toContain('Preparing your workspace');
+  });
+
+  it('exposes no payment action on the same-origin path either', async () => {
+    onTheWorkspaceOrigin();
+    render(<WorkspaceHandoff tenantId="gracechurch" />);
+    await flush();
+
+    // ⚠️ Absolute in both branches: everyone here has already been charged.
+    for (const el of actionables()) {
+      expect(el.textContent || '').not.toMatch(
+        /pay now|pay again|try again|retry payment|complete your payment|checkout|billing|card details|subscribe/i,
+      );
+      expect(el.getAttribute('href')).toBe('/admin');
+    }
+  });
+
+  it('a DIFFERENT tenant on this host is still cross-origin', async () => {
+    // Guards against the comparison being written as "am I on any subdomain"
+    // rather than "am I on THIS workspace's subdomain".
+    setHost('https://someotherchurch.theharvest.app/');
+    render(<WorkspaceHandoff tenantId="gracechurch" />);
+    await flush();
+
+    expect(text()).toContain('sign in once more');
+    expect(continueLink()?.getAttribute('href')).toBe('https://gracechurch.theharvest.app/admin');
   });
 });
 
