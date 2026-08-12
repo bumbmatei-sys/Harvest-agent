@@ -10,6 +10,7 @@ import { TenantPlan } from '../types/tenant.types';
 import { SIGNUP_CHECKOUT_ENDPOINT, isReturningFromCheckout } from '../utils/signup-checkout';
 import { useForcedLightTheme } from '../lib/theme-runtime';
 import FirstRunSetup from './FirstRunSetup';
+import WorkspaceHandoff from './WorkspaceHandoff';
 
 const HARVEST_LOGO = 'https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png';
 const BRAND = 'var(--brand-color, #B8962E)';
@@ -52,6 +53,9 @@ const OnboardingGate: React.FC<{ children: React.ReactNode }> = ({ children }) =
   const [signupMinistryName, setSignupMinistryName] = useState<string>('');
   const [pollTimedOut, setPollTimedOut] = useState(false);
   const [restarting, setRestarting] = useState(false);
+  // The tenant id first-run setup finished on, i.e. the workspace this user is
+  // being handed off to. Non-null means the handoff screen is showing.
+  const [handoffTenantId, setHandoffTenantId] = useState<string | null>(null);
 
   // Is the user returning from the payment processor right now? BOTH spellings
   // count (?stripe=success and ?dodo=success): a customer who was mid-checkout
@@ -144,6 +148,7 @@ const OnboardingGate: React.FC<{ children: React.ReactNode }> = ({ children }) =
   // light there would flash every dark-mode user light on every single load.
   // Only the states below actually paint a funnel screen.
   const rendersFunnelScreen =
+    handoffTenantId !== null ||
     status === 'paying' ||
     status === 'needs-payment' ||
     status === 'first-run' ||
@@ -179,6 +184,19 @@ const OnboardingGate: React.FC<{ children: React.ReactNode }> = ({ children }) =
     }
   };
 
+  // 🔴 Checked FIRST, ahead of `status`, and deliberately so. Finishing first-run
+  // setup renames the tenant: the old tenant doc is deleted and the user doc is
+  // re-pointed at the new id. Both of this gate's onSnapshot listeners fire on
+  // that — the tenant listener sees its document vanish (`!t`) and the user
+  // listener sees a tenant whose `setupCompleted` is now true — and BOTH resolve
+  // to `status: 'ready'`. Reading `status` first would therefore replace the
+  // handoff screen with the app a beat after it appeared, dumping the payer back
+  // into the origin they were being sent away from. Precedence here makes the
+  // handoff terminal without having to tear the listeners down.
+  if (handoffTenantId) {
+    return <WorkspaceHandoff tenantId={handoffTenantId} fallbackMinistryName={signupMinistryName} />;
+  }
+
   if (status === 'ready') return <>{children}</>;
 
   if (status === 'loading') {
@@ -199,10 +217,15 @@ const OnboardingGate: React.FC<{ children: React.ReactNode }> = ({ children }) =
       <FirstRunSetup
         tenantId={tenantId}
         onFinished={(finalTenantId) => {
-          // Hand the new owner off to their own subdomain admin. (Auth is per-origin,
-          // so they'll sign in once on the subdomain — expected until we add a
-          // seamless cross-subdomain handoff.)
-          window.location.href = `https://${finalTenantId}.theharvest.app/admin`;
+          // Hand the new owner off to their own subdomain admin — via a screen,
+          // not a redirect. This used to be a bare
+          // `window.location.href = https://<id>.theharvest.app/admin`, which
+          // teleported someone who had just been charged straight into a login
+          // prompt on an origin that (correctly) cannot see their session. The
+          // second sign-in is unavoidable and stays; what changes is that it is
+          // now explained, and that the customer is told their payment
+          // succeeded before being asked for anything.
+          setHandoffTenantId(finalTenantId);
         }}
       />
     );
