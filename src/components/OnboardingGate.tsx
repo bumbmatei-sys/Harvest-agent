@@ -7,7 +7,7 @@ import { auth, db } from '../firebase';
 import { isSuperAdminEmail } from '../utils/super-admins';
 import { checkRosterAdmin } from '../utils/tenant.utils';
 import { TenantPlan } from '../types/tenant.types';
-import { SIGNUP_CHECKOUT_ENDPOINT, isReturningFromCheckout } from '../utils/signup-checkout';
+import { SIGNUP_CHECKOUT_ENDPOINT, isReturningFromCheckout, readSignupBillingPeriod, type SignupBillingPeriod } from '../utils/signup-checkout';
 import { useForcedLightTheme } from '../lib/theme-runtime';
 import FirstRunSetup from './FirstRunSetup';
 import WorkspaceHandoff from './WorkspaceHandoff';
@@ -50,6 +50,10 @@ const OnboardingGate: React.FC<{ children: React.ReactNode }> = ({ children }) =
   const [status, setStatus] = useState<GateStatus>('loading');
   const [tenantId, setTenantId] = useState<string | null>(null);
   const [signupPlan, setSignupPlan] = useState<TenantPlan | null>(null);
+  // The billing term the church chose, read back off the same marker as the
+  // plan. Restarting an abandoned ANNUAL checkout on monthly would charge the
+  // wrong price for the term they picked — the two travel together, always.
+  const [signupBilling, setSignupBilling] = useState<SignupBillingPeriod>('monthly');
   const [signupMinistryName, setSignupMinistryName] = useState<string>('');
   const [pollTimedOut, setPollTimedOut] = useState(false);
   const [restarting, setRestarting] = useState(false);
@@ -82,6 +86,10 @@ const OnboardingGate: React.FC<{ children: React.ReactNode }> = ({ children }) =
         const role = (data?.role as string) || 'user';
         const inProgress = data?.signupInProgress === true;
         setSignupPlan((data?.signupPlan as TenantPlan) || null);
+        // Validated on read-back, not just on write: the marker is a Firestore
+        // doc the user can write to, and an unrecognised period must fall
+        // closed to 'monthly' rather than travel into a checkout body.
+        setSignupBilling(readSignupBillingPeriod(data?.signupBilling));
         setSignupMinistryName((data?.signupMinistryName as string) || '');
 
         if (tId) {
@@ -171,7 +179,7 @@ const OnboardingGate: React.FC<{ children: React.ReactNode }> = ({ children }) =
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           plan: signupPlan || 'plus',
-          billing: 'monthly',
+          billing: signupBilling,
           ministryName: signupMinistryName || '',
           ...(referrerId ? { referrerId } : {}),
         }),

@@ -5,7 +5,7 @@ import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { Church, ArrowRight, Sparkles, Loader2, AlertCircle } from 'lucide-react';
 import { TenantPlan } from '../types/tenant.types';
 import { PLAN_DISPLAY_NAMES, PLAN_ORDER } from '../utils/plan-features';
-import { SIGNUP_CHECKOUT_ENDPOINT } from '../utils/signup-checkout';
+import { SIGNUP_CHECKOUT_ENDPOINT, readSignupBillingPeriod } from '../utils/signup-checkout';
 
 const BRAND = 'var(--brand-color, #B8962E)';
 const HARVEST_LOGO = 'https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png';
@@ -58,6 +58,16 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ signupPlan }) => {
   const selectedPlan: TenantPlan =
     signupPlan || (urlPlan && (PLAN_ORDER as readonly string[]).includes(urlPlan) ? urlPlan : 'plus');
 
+  // `?billing=` is carried the same way as `?plan=`: chosen upstream on the
+  // pricing page (where the prices are shown), validated here, displayed
+  // read-only. URL-controlled, so it fails closed to 'monthly' — a link with
+  // no period (or a mangled one) buys exactly what signup sold before annual.
+  const selectedBilling = readSignupBillingPeriod(
+    typeof window !== 'undefined'
+      ? new URLSearchParams(window.location.search).get('billing')
+      : null,
+  );
+
   const [ministryName, setMinistryName] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -77,11 +87,14 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ signupPlan }) => {
       // 1) Lightweight marker so the app knows a signup is in flight (gates the
       //    "Complete your payment" / "Setting up…" screens). No tenant, no role,
       //    no plan, no claims are written here — the webhook owns all of that.
-      // `signupPlan` + `signupMinistryName` let the first-run gate re-start
-      // checkout if the user closes the Stripe tab before paying.
+      // `signupPlan` + `signupBilling` + `signupMinistryName` let the first-run
+      // gate re-start checkout if the user closes the Stripe tab before paying.
+      // The period travels WITH the plan: a church that chose annual and
+      // abandoned the tab must not be silently restarted on monthly.
       const marker = {
         signupInProgress: true,
         signupPlan: selectedPlan,
+        signupBilling: selectedBilling,
         signupMinistryName: ministryName.trim(),
       };
       const userRef = doc(db, 'users', user.uid);
@@ -121,7 +134,7 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ signupPlan }) => {
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           plan: selectedPlan,
-          billing: 'monthly',
+          billing: selectedBilling,
           ministryName: ministryName.trim(),
           ...(referrerId ? { referrerId } : {}),
         }),
@@ -148,7 +161,9 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ signupPlan }) => {
         <img src={HARVEST_LOGO} alt="Harvest logo" className="h-12 w-auto object-contain" />
       </div>
 
-      {/* Chosen plan — read-only (no in-app plan picker; plan is chosen upstream) */}
+      {/* Chosen plan + billing term — read-only (no in-app picker for either;
+          both are chosen upstream, and the term must be visible before the
+          church commits to being charged for it) */}
       <div className="mb-4 flex justify-center">
         <span
           className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-[13px] font-bold"
@@ -159,6 +174,8 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ signupPlan }) => {
           }}
         >
           <Sparkles size={14} /> {PLAN_DISPLAY_NAMES[selectedPlan]} plan
+          <span aria-hidden style={{ opacity: 0.55 }}>·</span>
+          {selectedBilling === 'yearly' ? 'billed annually' : 'billed monthly'}
         </span>
       </div>
 
