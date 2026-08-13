@@ -23,6 +23,31 @@ export const SIGNUP_CHECKOUT_ENDPOINT = DODO_BILLING_ENABLED
   : '/api/stripe/checkout';
 
 /**
+ * Billing cadence for a signup, in the app's own vocabulary.
+ *
+ * Structurally identical to `BillingPeriod` in `src/lib/dodo/provider.ts`, and
+ * deliberately NOT imported from there: client components may not import the
+ * Dodo module (`dodo-billing-flag.test.ts` pins that boundary), and the period
+ * is processor-neutral anyway — the Stripe signup route reads the same two
+ * words. A test pins the two types mutually assignable so they cannot drift.
+ */
+export type SignupBillingPeriod = 'monthly' | 'yearly';
+
+/**
+ * Validate an untrusted billing period — `?billing=` from a URL, or the
+ * `signupBilling` marker read back off the user doc — failing CLOSED to
+ * 'monthly'.
+ *
+ * 🔴 An unrecognised value must never travel onward: the Dodo catalogue has no
+ * fallback by design, so a bad period reaching a product lookup is a hole this
+ * validator exists to close. 'monthly' is the safe floor because a signup
+ * carrying no period is exactly the signup the app sold before annual existed.
+ */
+export function readSignupBillingPeriod(raw: unknown): SignupBillingPeriod {
+  return raw === 'monthly' || raw === 'yearly' ? raw : 'monthly';
+}
+
+/**
  * The query flag the processor appends when it sends a payer back to the app.
  *
  * `OnboardingGate` reads BOTH spellings rather than only the current one: a
