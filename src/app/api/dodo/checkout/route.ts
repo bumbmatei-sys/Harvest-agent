@@ -17,12 +17,11 @@ import type { TenantPlan } from '@/types/tenant.types';
  * ─── Scope: NEW-MINISTRY SIGNUP ONLY ─────────────────────────────────────────
  *
  * The Stripe route this replaces carries three flows in one handler: signup, the
- * existing-tenant plan change, and the retired AI add-on. Only the FIRST moves
- * here. An existing tenant changing plan keeps posting to `/api/stripe/checkout`
- * — it has a Stripe customer and a live Stripe subscription to modify, and
- * moving that is REP-4 PR 6 (retiring the Stripe path), not this change. So
- * there is no `tenantId` branch below, and a request carrying one is refused
- * rather than quietly treated as a signup.
+ * existing-tenant plan change, and the retired AI add-on. Only the FIRST lives
+ * here. An existing tenant changing plan posts to `/api/dodo/change-plan` when
+ * Dodo owns its subscription (THE-89), or to `/api/stripe/checkout` when Stripe
+ * does. So there is no `tenantId` branch below, and a request carrying one is
+ * refused rather than quietly treated as a signup.
  *
  * ─── Why the flag is checked HERE and not only in the client ─────────────────
  *
@@ -64,11 +63,12 @@ export async function POST(request: NextRequest) {
     const { plan: rawPlan, billing: rawBilling, ministryName, email, referrerId, tenantId } = body ?? {};
 
     if (tenantId) {
-      // An existing tenant belongs to the Stripe plan-change path (see above).
-      // Falling through would create a SECOND subscription on a second processor
-      // for a church that already has one, and bill them twice.
+      // An existing tenant belongs to a plan-change path — /api/dodo/change-plan
+      // for a Dodo-owned tenant, /api/stripe/checkout for a Stripe one. Falling
+      // through would create a SECOND subscription for a church that already
+      // has one, and bill them twice.
       return NextResponse.json(
-        { error: 'This endpoint creates new ministries only. Plan changes go through /api/stripe/checkout.' },
+        { error: 'This endpoint creates new ministries only. Plan changes go through /api/dodo/change-plan or /api/stripe/checkout.' },
         { status: 400 },
       );
     }

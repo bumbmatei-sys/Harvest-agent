@@ -15,6 +15,7 @@ import {
   handleDodoSubscriptionOnHold,
   handleDodoSubscriptionRenewed,
 } from '../lifecycle';
+import { handleDodoSubscriptionPlanChanged } from '../plan-change';
 import {
   DODO_HANDLED_EVENT_TYPES,
   DODO_PAYMENT_EVENT_TYPES,
@@ -388,16 +389,17 @@ describe('a DURABLE event turns failure into a retry', () => {
   });
 });
 
-describe('five handler slots are filled — provisioning, the terminal events, and the grace timer', () => {
+describe('six handler slots are filled — provisioning, the terminal events, the grace timer, and the plan change', () => {
   // REP-4 PR 3 filled `subscription.cancelled` and `subscription.expired`; part 3
-  // adds the two halves of the grace timer. This list is what remains
-  // deliberately empty, and it is not a to-do list.
+  // added the two halves of the grace timer; THE-89 added `plan_changed`. This
+  // list is what remains deliberately empty, and it is not a to-do list.
   const FILLED = [
     'subscription.active',
     'subscription.cancelled',
     'subscription.expired',
     'subscription.on_hold',
     'subscription.renewed',
+    'subscription.plan_changed',
   ];
   const EMPTY = DODO_HANDLED_EVENT_TYPES.filter((t) => !FILLED.includes(t));
 
@@ -430,11 +432,26 @@ describe('five handler slots are filled — provisioning, the terminal events, a
     expect(DODO_EVENT_HANDLERS['subscription.renewed']).toBe(handleDodoSubscriptionRenewed);
   });
 
+  it('routes subscription.plan_changed to the plan mover (THE-89)', () => {
+    // The single writer of a Dodo tenant's plan after an up/downgrade.
+    // Behaviour is covered in `dodo-plan-changed-webhook.test.ts`; what is
+    // pinned here is that the dispatcher actually reaches it.
+    expect(DODO_EVENT_HANDLERS['subscription.plan_changed']).toBe(handleDodoSubscriptionPlanChanged);
+  });
+
   it('keeps the grace timer OFF the durable list', () => {
     // Holding the webhook connection open is reserved for events whose loss
     // costs a customer their account. A missed `on_hold` costs at most one grace
     // window's revenue, and a missed `renewed` is covered by `active`.
     expect(isDurableDodoEventType('subscription.on_hold')).toBe(false);
     expect(isDurableDodoEventType('subscription.renewed')).toBe(false);
+  });
+
+  it('keeps plan_changed OFF the durable list too', () => {
+    // Same bar. A lost plan_changed leaves the tenant's recorded tier one step
+    // behind Dodo's billed tier — reported to Sentry by the handler and fixable
+    // by a support redo that fires a fresh event. Bad, but not "a church paid
+    // and has no account", which is what durability is reserved for.
+    expect(isDurableDodoEventType('subscription.plan_changed')).toBe(false);
   });
 });
