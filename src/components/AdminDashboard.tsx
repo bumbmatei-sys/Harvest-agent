@@ -33,7 +33,7 @@ import AdminSms from './AdminSms';
 import AdminEvents from './AdminEvents';
 import PlanUpgradeScreen from './PlanUpgradeScreen';
 import Profile from './Profile';
-import MyAccountMenu from './MyAccountMenu';
+import MyAccountMenu, { type BillingAccess } from './MyAccountMenu';
 import BillingAndPayments from './BillingAndPayments';
 import GraceWindowBanner from './GraceWindowBanner';
 import { AdminScreenHeader, AdminHeaderContext, AdminHeaderOverride } from './AdminScreenHeader';
@@ -104,7 +104,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
 
   // Tenant and user data from React Query
   const tenantId = currentTenantId;
-  const { data: tenantData } = useTenantDoc(tenantId);
+  // `isLoading` matters to the Billing gate below: until the tenant doc is read
+  // we do not know `ownerId`, so "you are not the owner" is not yet a fact.
+  const { data: tenantData, isLoading: tenantDocLoading } = useTenantDoc(tenantId);
   const tenantName = tenantData?.name ?? tenantData?.config?.name ?? 'Ministry';
   // Mirror MainApp: white-label tenants show their own logo; the platform /
   // super-admin view keeps the default Harvest mark.
@@ -338,10 +340,48 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
   const isRosterReady = !rosterMatters || rosterState !== 'unknown';
   const isLoading = !isAuthReady || userLoading || !isPlanReady || !isRosterReady;
 
-  // My Account menu (top-right avatar). Owner identity gates Billing & Payments —
-  // ownerId is the buyer uid set by the Stripe webhook at tenant creation.
+  // ── Owner identity, split into two deliberately different flags (THE-83) ──
+  //
+  // These used to be one `isOwner` reading `ownerId` alone, which disagreed with
+  // the server: `requireOwner` (src/lib/api-auth.ts) admits THREE identities —
+  // the buyer by `ownerId`, an owner-by-roster from `tenant_private.adminEmails`,
+  // and the super admin. So a roster admin was authorised for every /api/billing/*
+  // route and could not see the menu item that reaches them. That is the third
+  // instance of one bug (THE-64, PR #295): an entitlement that does not live on
+  // the user document. Any check reading only `ownerId` silently refuses it.
   const currentUid = auth.currentUser?.uid;
-  const isOwner = !!currentUid && !!tenantData?.ownerId && currentUid === tenantData.ownerId;
+
+  // (1) Owner by `ownerId` — the buyer uid the Stripe webhook writes at tenant
+  // creation. Kept NARROW on purpose; see `billingAccess` below for why the two
+  // flags did not merge.
+  const isPlanOwner = !!currentUid && !!tenantData?.ownerId && currentUid === tenantData.ownerId;
+
+  // (2) May this admin reach Billing & Payments? Mirrors `requireOwner`'s three
+  // identities, and is THREE-state because one of them is an async answer: the
+  // roster is server-only (`tenant_private` is `allow read, write: if false`),
+  // so it comes from GET /api/tenants/roster-status via `rosterState` above.
+  //
+  // 🔴 Never default the roster arm to `false`. THE-64 was caused by exactly
+  // that substitution — an async lookup whose in-flight value was indis-
+  // tinguishable from a settled "no", so the UI rendered a denial on data it
+  // did not have. Corollary 5: an async default is a silent claim. Consumers
+  // must render the 'unknown' window, not collapse it into 'no'.
+  //
+  // Note this window is WIDER than `rosterMatters` above, and deliberately so:
+  // that flag scopes who waits on the loading *skeleton*, and a full-access
+  // admin's nav is identical whichever way the roster answers. Their Billing
+  // row is not. Rather than put them back on a global skeleton for a fetch
+  // their nav does not need, the Billing surface owns its own unknown window.
+  const ownerIdSettled = !tenantDocLoading;
+  // With no tenant or no signed-in user the roster effect never asks, so its
+  // 'unknown' will never resolve — for them that is a settled "no", not a wait.
+  const rosterCanAnswer = !!tenantId && !!currentUid;
+  const billingAccess: BillingAccess =
+    (isSuperAdmin && !!tenantId) || isPlanOwner || rosterState === 'admin'
+      ? 'yes'
+      : !ownerIdSettled || (rosterState === 'unknown' && rosterCanAnswer)
+        ? 'unknown'
+        : 'no';
 
   // Branding tab/page entitlement — keyed off the branding-family feature flags
   // (matches the old Settings branding gate). Used both in allTabs and the render
@@ -363,13 +403,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
     photoURL: userData?.photoURL ?? null,
     displayName: userData?.displayName ?? null,
     email: userData?.email ?? auth.currentUser?.email ?? null,
-    isOwner,
+    billingAccess,
     onOpenProfile: () => setShowProfile(true),
     // Settings item shows only when entitled (canSettings) — undefined hides the
     // row, matching the More-drawer / desktop-sidebar Settings gate.
     onOpenSettings: canSettings ? () => go('settings') : undefined,
-    // Billing item is shown only to the owner (MyAccountMenu also guards on isOwner).
-    onOpenBilling: isOwner ? () => setShowBilling(true) : undefined,
+    // Billing item opens only on a settled 'yes' (MyAccountMenu guards too, and
+    // renders the 'unknown' window as a busy row that has nothing to open).
+    onOpenBilling: billingAccess === 'yes' ? () => setShowBilling(true) : undefined,
     // Member-app shortcut (same one-shot-intent action the More drawer used). The
     // menu row is mobile-only; desktop keeps its "Open member app" top-bar pill.
     onGoToUserApp: handleViewApp,
@@ -925,7 +966,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
               currentPlan={tenantPlan ?? undefined}
               tenantId={tenantId ?? undefined}
               email={auth.currentUser?.email ?? undefined}
-              isOwner={isOwner}
+              isPlanOwner={isPlanOwner}
               onCustomizeNav={() => setShowNavCustomizer(true)}
               onChangePlan={async (plan) => {
                 if (auth.currentUser) {
@@ -1069,9 +1110,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
         </div>
       )}
 
-      {/* Billing & Payments — owner-only overlay (the item is hidden for non-owners
-          and the /api/billing/* routes enforce the same owner gate server-side). */}
-      {showBilling && isOwner && (
+      {/* Billing & Payments — owner-only overlay. 'yes' only: an unresolved
+          roster must not open it either. The /api/billing/* routes enforce the
+          same three-identity owner gate server-side (requireOwner). */}
+      {showBilling && billingAccess === 'yes' && (
         <div className="fixed inset-0 z-[200] bg-surface flex flex-col">
           <div className="flex items-center gap-1 h-12 px-3 bg-surface-raised border-b border-line shrink-0">
             <button

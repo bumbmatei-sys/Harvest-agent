@@ -4,18 +4,37 @@ import { User, Settings, CreditCard, ExternalLink, LogOut } from 'lucide-react';
 
 const GOLD = 'var(--brand-color, #B8962E)';
 
+/**
+ * "May this admin reach Billing & Payments?" — deliberately THREE-state.
+ *
+ * 'yes'/'no' are settled answers; 'unknown' means the parent is still resolving
+ * one. Owner-by-roster membership lives on the server-only tenant_private doc,
+ * so part of this answer is an ASYNC lookup where `ownerId` alone was a
+ * synchronous field read. A boolean cannot hold that gap: `false` in flight is
+ * indistinguishable from a settled "no", and the menu would render a denial it
+ * cannot back. That substitution is what THE-64 cost — an async default is a
+ * silent claim — so the unknown window gets its own state and its own render.
+ */
+export type BillingAccess = 'unknown' | 'yes' | 'no';
+
 interface MyAccountMenuProps {
   /** Admin's profile photo — same source Profile.tsx reads (users/{uid}.photoURL). */
   photoURL?: string | null;
   displayName?: string | null;
   email?: string | null;
-  /** True only for the plan owner (tenant.ownerId). Gates the Billing item. */
-  isOwner: boolean;
+  /**
+   * Gates the Billing item, three-state. 'yes' for each of the three identities
+   * the server's `requireOwner` admits (src/lib/api-auth.ts): the super admin,
+   * the buyer by `tenants/{id}.ownerId`, and an owner-by-roster from
+   * `tenant_private.adminEmails`. While 'unknown' the row renders as a busy
+   * placeholder — never as an absence, which would claim a "no" we do not have.
+   */
+  billingAccess: BillingAccess;
   onOpenProfile: () => void;
   /** When provided, the Settings item is shown. The parent passes this only when
    *  the admin is entitled to Settings (canSettings), so absence hides the row. */
   onOpenSettings?: () => void;
-  /** When provided AND isOwner, the Billing & Payments item is shown. */
+  /** When provided AND billingAccess is 'yes', the Billing & Payments item is shown. */
   onOpenBilling?: () => void;
   /** Open the member app (same one-shot-intent action the More drawer used). The
    *  menu row is mobile-only; desktop keeps its "Open member app" top-bar pill. */
@@ -49,12 +68,12 @@ const Avatar: React.FC<{ photoURL?: string | null; name?: string | null; email?:
 
 /**
  * Circular avatar button (admin header, top-right) that opens a small dropdown
- * with My Profile · Settings (if entitled) · Billing & Payments (owner only) ·
- * Go to User App · Log out. Closes on outside-click / Esc. Admin-side only —
- * the user app has its own Profile tab.
+ * with My Profile · Settings (if entitled) · Billing & Payments (owners, by
+ * `ownerId` OR by the admin roster) · Go to User App · Log out. Closes on
+ * outside-click / Esc. Admin-side only — the user app has its own Profile tab.
  */
 const MyAccountMenu: React.FC<MyAccountMenuProps> = ({
-  photoURL, displayName, email, isOwner, onOpenProfile, onOpenSettings, onOpenBilling, onGoToUserApp, onLogout,
+  photoURL, displayName, email, billingAccess, onOpenProfile, onOpenSettings, onOpenBilling, onGoToUserApp, onLogout,
 }) => {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -123,7 +142,26 @@ const MyAccountMenu: React.FC<MyAccountMenuProps> = ({
               </button>
             )}
 
-            {isOwner && onOpenBilling && (
+            {/* Billing & Payments. The unknown window renders a BUSY row rather
+                than nothing: hiding it would tell the admin they have no billing
+                access at the one moment we do not yet know, which is the exact
+                shape of THE-64. It resolves in place to the real row or to
+                nothing once the roster answers. */}
+            {billingAccess === 'unknown' ? (
+              <div
+                role="menuitem"
+                aria-disabled="true"
+                aria-busy="true"
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-left opacity-60 cursor-default"
+              >
+                <CreditCard size={16} className="text-muted" />
+                <span className="text-sm font-medium text-body">Billing &amp; Payments</span>
+                <span
+                  aria-hidden="true"
+                  className="ml-auto h-3 w-3 rounded-full border-2 border-line border-t-transparent animate-spin"
+                />
+              </div>
+            ) : billingAccess === 'yes' && onOpenBilling ? (
               <button
                 role="menuitem"
                 onClick={() => run(onOpenBilling)}
@@ -132,7 +170,7 @@ const MyAccountMenu: React.FC<MyAccountMenuProps> = ({
                 <CreditCard size={16} className="text-muted" />
                 <span className="text-sm font-medium text-body">Billing &amp; Payments</span>
               </button>
-            )}
+            ) : null}
 
             {/* Go to User App — gold accent, mirroring the old More-drawer row.
                 Hidden on desktop (lg:hidden): the branded top bar already has an

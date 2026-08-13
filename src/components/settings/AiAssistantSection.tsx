@@ -18,13 +18,22 @@ interface UserData {
 interface AiAssistantSectionProps {
   currentPlan?: string;
   email?: string;
-  /** True only for the plan owner (tenant.ownerId) — see AdminDashboard. */
-  isOwner?: boolean;
+  /**
+   * True only for the plan owner by `tenants/{id}.ownerId` — see AdminDashboard.
+   *
+   * Deliberately NOT the owner-or-roster gate that THE-83 gave Billing. The
+   * plan-included assistant is a COUNT (`features.aiAssistant`, currently 1),
+   * not an access right: widening this flag to the roster would hand that one
+   * included seat to every rostered admin at once. Who receives a plan's
+   * included add-on is a purchase question, and the server does not answer it
+   * the way `requireOwner` answers billing access. Left on `ownerId`.
+   */
+  isPlanOwner?: boolean;
 }
 
 const BOT_USERNAME = 'theharvestapp_bot';
 
-const AiAssistantSection: React.FC<AiAssistantSectionProps> = ({ currentPlan, email, isOwner }) => {
+const AiAssistantSection: React.FC<AiAssistantSectionProps> = ({ currentPlan, email, isPlanOwner }) => {
   const [userData, setUserData] = useState<UserData | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
@@ -145,7 +154,7 @@ const AiAssistantSection: React.FC<AiAssistantSectionProps> = ({ currentPlan, em
   // count (0 = none), so this follows the entitlement if it ever moves tier.
   // It used to be `currentPlan === 'ultra'`, which silently stopped matching
   // when that tier folded into `max`.
-  const isPlanIncluded = getPlanFeatures(toTenantPlan(currentPlan)).aiAssistant > 0 && !!isOwner;
+  const isPlanIncluded = getPlanFeatures(toTenantPlan(currentPlan)).aiAssistant > 0 && !!isPlanOwner;
   // Separately purchased add-on — managed (incl. cancel) in the buyer's own
   // Stripe portal via Manage billing.
   const hasPurchased = !!userData?.aiAssistantSubscriptionItemId && userData?.aiAssistantSource !== 'plan';

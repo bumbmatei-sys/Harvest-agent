@@ -20,13 +20,15 @@ interface AdminSettingsProps {
   onCancelPlan: () => void;
   tenantId?: string;
   email?: string;
-  /** True only for the plan owner (tenant.ownerId) — gates plan-included AI Assistant. */
-  isOwner?: boolean;
+  /** True only for the plan owner (tenant.ownerId) — gates plan-included AI Assistant.
+   *  Owner by `tenants/{id}.ownerId` only — NOT the wider owner-or-roster gate
+   *  that gates Billing. See AdminDashboard's `isPlanOwner` / `billingAccess`. */
+  isPlanOwner?: boolean;
   /** Opens the bottom-bar / More-drawer customizer (lives in AdminDashboard). */
   onCustomizeNav?: () => void;
 }
 
-const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onChangePlan, onCancelPlan, tenantId, email, isOwner, onCustomizeNav }) => {
+const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onChangePlan, onCancelPlan, tenantId, email, isPlanOwner, onCustomizeNav }) => {
   const [stripeStatus, setStripeStatus] = useState<string | null>(null);
   const [stripeAddon, setStripeAddon] = useState<string | null>(null);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
@@ -158,7 +160,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
       id: 'ai-assistant',
       label: 'AI Assistant',
       icon: <Bot size={18} />,
-      content: <AiAssistantSection currentPlan={currentPlan} email={email} isOwner={isOwner} />,
+      content: <AiAssistantSection currentPlan={currentPlan} email={email} isPlanOwner={isPlanOwner} />,
       hidden: !AI_TELEGRAM_ASSISTANT_ENABLED,
     },
     {
