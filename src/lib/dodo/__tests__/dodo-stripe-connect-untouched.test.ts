@@ -123,7 +123,10 @@ vi.mock('stripe', () => ({
   },
 }));
 vi.mock('@/lib/firebase-admin', () => ({ adminDb: { collection: vi.fn(() => makeCollRef()) } }));
-vi.mock('@/lib/tenant-private', () => ({ getTenantPrivate: mockGetTenantPrivate }));
+vi.mock('@/lib/tenant-private', () => ({
+  getTenantPrivate: mockGetTenantPrivate,
+  DODO_ON_HOLD_FIELD: 'dodoOnHoldAt',
+}));
 vi.mock('@/lib/api-auth', () => ({ verifyAuth: mockVerifyAuth }));
 vi.mock('@/lib/twilio', () => ({ sendAutomatedSms: vi.fn().mockResolvedValue(undefined) }));
 vi.mock('firebase-admin/firestore', () => ({

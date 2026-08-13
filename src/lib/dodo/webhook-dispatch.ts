@@ -7,7 +7,12 @@ import {
   type DodoWebhookEvent,
 } from './events';
 import { handleDodoSubscriptionActive } from './provisioning';
-import { handleDodoSubscriptionCancelled, handleDodoSubscriptionExpired } from './lifecycle';
+import {
+  handleDodoSubscriptionCancelled,
+  handleDodoSubscriptionExpired,
+  handleDodoSubscriptionOnHold,
+  handleDodoSubscriptionRenewed,
+} from './lifecycle';
 
 /**
  * Idempotent routing for verified Dodo webhook events.
@@ -130,18 +135,34 @@ export type DodoEventHandler = (event: DodoWebhookEvent) => void | Promise<void>
  * without a route, and a handler cannot exist for an event that is not in the
  * table. `dodo-webhook-dispatch.test.ts` pins that the two agree exactly.
  *
- * Three slots are filled: `subscription.active` (provisioning, and the
- * reactivation of an archived tenant) plus the two TERMINAL lifecycle events,
- * `subscription.cancelled` and `subscription.expired`.
+ * Five slots are filled: `subscription.active` (provisioning, the reactivation
+ * of an archived tenant, and clearing a grace hold), the two TERMINAL lifecycle
+ * events `subscription.cancelled` and `subscription.expired`, and the two halves
+ * of the grace timer below.
  *
- * ⚠️ `subscription.on_hold` IS STILL DELIBERATELY EMPTY, and that is not an
- * oversight. Dodo runs its own retries and dunning while a subscription sits
- * there, and then NEVER CANCELS — at the end of the recovery window the retries
- * simply stop and the subscription sits in `on_hold` forever. So `on_hold` needs
- * a timer Harvest owns, which is a reactive mechanism rather than an event
- * handler and is the remainder of REP-4 part 3. The two events filled here are
- * terminal and need exactly a handler. `paused` and the payment events remain
- * empty for their own reasons.
+ * ─── The `on_hold` timer, which used to be the empty slot here ───────────────
+ *
+ * Dodo runs its own retries and dunning while a subscription sits in `on_hold`,
+ * and then NEVER CANCELS — at the end of the recovery window the retries simply
+ * stop and the subscription sits there forever, so nothing would ever end the
+ * state and a church whose card failed would keep full entitlements
+ * indefinitely. Harvest owns that timer now:
+ *
+ *   `subscription.on_hold`   STARTS the clock — one timestamp on the private
+ *                            doc, ONCE. A second `on_hold` must not restart it.
+ *   `subscription.renewed`   CLEARS it. 🔴 Paired with `subscription.active`
+ *                            below, which clears it too. Both, because clearing
+ *                            on too few events archives a church that PAID —
+ *                            see the recovery note in `./lifecycle`.
+ *
+ * ⚠️ Neither is DURABLE, so a handler that throws is an unhandled rejection
+ * nobody sees rather than a retry. Both are written to report through their
+ * return value instead of throwing, which is why neither is added to
+ * `DODO_DURABLE_EVENT_TYPES`: holding the webhook connection open is reserved
+ * for events whose loss costs a customer their account, and a missed `on_hold`
+ * costs at most one grace window's revenue.
+ *
+ * `paused` and the payment events remain empty for their own reasons.
  */
 export const DODO_EVENT_HANDLERS: Record<DodoEventType, DodoEventHandler> =
   DODO_HANDLED_EVENT_TYPES.reduce((handlers, type) => {
@@ -154,6 +175,8 @@ export const DODO_EVENT_HANDLERS: Record<DodoEventType, DodoEventHandler> =
 DODO_EVENT_HANDLERS['subscription.active'] = handleDodoSubscriptionActive;
 DODO_EVENT_HANDLERS['subscription.cancelled'] = handleDodoSubscriptionCancelled;
 DODO_EVENT_HANDLERS['subscription.expired'] = handleDodoSubscriptionExpired;
+DODO_EVENT_HANDLERS['subscription.on_hold'] = handleDodoSubscriptionOnHold;
+DODO_EVENT_HANDLERS['subscription.renewed'] = handleDodoSubscriptionRenewed;
 
 export interface ReceiveOptions {
   readonly store?: SeenEventStore;

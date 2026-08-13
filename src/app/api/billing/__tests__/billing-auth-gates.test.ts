@@ -93,6 +93,7 @@ vi.mock('@/lib/tenant-private', () => ({
   getTenantPrivate: async (id: string) => tenantPrivate.get(id) ?? {},
   tenantPrivateRef: () => ({ set: async () => undefined }),
   TENANT_PRIVATE_COLLECTION: 'tenant_private',
+  DODO_ON_HOLD_FIELD: 'dodoOnHoldAt',
 }));
 
 vi.mock('@/lib/dodo/dodo-provider', () => ({

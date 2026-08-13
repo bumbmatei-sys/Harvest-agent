@@ -9,7 +9,12 @@ import {
   type SeenEventStore,
 } from '../webhook-dispatch';
 import { handleDodoSubscriptionActive } from '../provisioning';
-import { handleDodoSubscriptionCancelled, handleDodoSubscriptionExpired } from '../lifecycle';
+import {
+  handleDodoSubscriptionCancelled,
+  handleDodoSubscriptionExpired,
+  handleDodoSubscriptionOnHold,
+  handleDodoSubscriptionRenewed,
+} from '../lifecycle';
 import {
   DODO_HANDLED_EVENT_TYPES,
   DODO_PAYMENT_EVENT_TYPES,
@@ -383,19 +388,24 @@ describe('a DURABLE event turns failure into a retry', () => {
   });
 });
 
-describe('three handler slots are filled — provisioning and the two terminal events', () => {
-  // REP-4 PR 3 filled `subscription.cancelled` and `subscription.expired`. This
-  // list is what remains deliberately empty, and it is not a to-do list.
-  const FILLED = ['subscription.active', 'subscription.cancelled', 'subscription.expired'];
+describe('five handler slots are filled — provisioning, the terminal events, and the grace timer', () => {
+  // REP-4 PR 3 filled `subscription.cancelled` and `subscription.expired`; part 3
+  // adds the two halves of the grace timer. This list is what remains
+  // deliberately empty, and it is not a to-do list.
+  const FILLED = [
+    'subscription.active',
+    'subscription.cancelled',
+    'subscription.expired',
+    'subscription.on_hold',
+    'subscription.renewed',
+  ];
   const EMPTY = DODO_HANDLED_EVENT_TYPES.filter((t) => !FILLED.includes(t));
 
   it.each(EMPTY)('%s still has a handler that does nothing', async (type) => {
-    // ⚠️ `subscription.on_hold` is the one to look at twice. It stays empty
-    // because Dodo runs its own retries and dunning there and then NEVER
-    // cancels — the subscription sits in on_hold forever — so what it needs is a
-    // TIMER Harvest owns, a reactive mechanism rather than an event handler, and
-    // that is the remainder of PR 3. `paused` and the payment events are still
-    // decisions nobody has made.
+    // ⚠️ `subscription.paused` and the payment events are still decisions nobody
+    // has made. `on_hold` USED to be on this list, described as needing a timer
+    // rather than a handler; that timer is what part 3 built, and it turns out to
+    // need both — an event to start the clock and a derived deadline to enforce.
     await expect(Promise.resolve(DODO_EVENT_HANDLERS[type](event(type)))).resolves.toBeUndefined();
   });
 
@@ -410,5 +420,21 @@ describe('three handler slots are filled — provisioning and the two terminal e
     // what is pinned here is that the dispatcher actually reaches it.
     expect(DODO_EVENT_HANDLERS['subscription.cancelled']).toBe(handleDodoSubscriptionCancelled);
     expect(DODO_EVENT_HANDLERS['subscription.expired']).toBe(handleDodoSubscriptionExpired);
+  });
+
+  it('routes BOTH halves of the grace timer — the hold and its recovery', () => {
+    // 🔴 `on_hold` starts the clock and `renewed` clears it. A dispatcher that
+    // reached the first and not the second would archive churches that PAID, so
+    // the pair is pinned together rather than one slot at a time.
+    expect(DODO_EVENT_HANDLERS['subscription.on_hold']).toBe(handleDodoSubscriptionOnHold);
+    expect(DODO_EVENT_HANDLERS['subscription.renewed']).toBe(handleDodoSubscriptionRenewed);
+  });
+
+  it('keeps the grace timer OFF the durable list', () => {
+    // Holding the webhook connection open is reserved for events whose loss
+    // costs a customer their account. A missed `on_hold` costs at most one grace
+    // window's revenue, and a missed `renewed` is covered by `active`.
+    expect(isDurableDodoEventType('subscription.on_hold')).toBe(false);
+    expect(isDurableDodoEventType('subscription.renewed')).toBe(false);
   });
 });

@@ -66,6 +66,44 @@ export const TENANT_PRIVATE_FIELDS = [
 
 export type TenantPrivateField = (typeof TENANT_PRIVATE_FIELDS)[number];
 
+/**
+ * When a Dodo subscription's renewal failed and the grace window started.
+ *
+ * An ISO string on `tenant_private/{tenantId}`, or absent when there is no hold.
+ *
+ * ─── 🔴 WHY IT IS ON THE PRIVATE DOC AND CAN NEVER MOVE ──────────────────────
+ *
+ * `tenants/{id}` is world-readable (`allow read: if true` in firestore.rules —
+ * pre-auth subdomain resolution needs it). A grace timestamp there would publish
+ * the fact that a named church's card failed, to anyone who asked, with the exact
+ * date. That is a church's financial trouble made public — the `adminEmails`
+ * mistake (THE-62) repeated with worse content, since a roster is at least data
+ * the church chose to have.
+ *
+ * ⚠️ WHAT THAT COSTS, stated plainly: this collection is `allow read, write: if
+ * false`, so THE CLIENT CANNOT READ THIS. An admin cannot be shown "your payment
+ * failed, 14 days left" from a direct Firestore read — that banner needs a new
+ * authenticated API route, and it is a follow-up. Enforcement does not wait on a
+ * banner, and the alternative (publish it so the UI is easy) is not a trade worth
+ * making.
+ *
+ * ─── ⚠️ Deliberately NOT on TENANT_PRIVATE_FIELDS ────────────────────────────
+ *
+ * That list is what `pickTenantPrivateFields` carries across a subdomain rename,
+ * and a field missing from it is dropped. This one is safe to omit because the
+ * rename is STRUCTURALLY first-run-only: `/api/tenants/finish-setup` returns
+ * `alreadyCompleted` the moment `setupCompleted === true`, so a tenant can never
+ * rename again afterwards. A subscription cannot reach `on_hold` before its first
+ * RENEWAL, which is a full billing period after setup finished — so a hold and a
+ * rename can never coexist.
+ *
+ * It also keeps that list what it says it is: billing IDENTIFIERS, guarded by the
+ * stripe-to-dodo parity test. And if the impossible ordering ever happened, the
+ * field would be lost and the tenant would fall OPEN — grace clears, giving keeps
+ * working — which is the direction this module already prefers everywhere else.
+ */
+export const DODO_ON_HOLD_FIELD = 'dodoOnHoldAt';
+
 export function tenantPrivateRef(tenantId: string) {
   return adminDb.collection(TENANT_PRIVATE_COLLECTION).doc(tenantId);
 }

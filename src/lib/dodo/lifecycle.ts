@@ -1,8 +1,19 @@
 import { adminDb } from '@/lib/firebase-admin';
 import { captureMoneyPathError } from '@/lib/money-path-sentry';
 import { resolveBillingOwnership } from '@/lib/billing-processor';
-import { getTenantPrivate, tenantPrivateRef, TENANT_PRIVATE_COLLECTION } from '@/lib/tenant-private';
-import { TENANT_STATUS_ACTIVE, TENANT_STATUS_ARCHIVED } from '@/lib/tenant-lifecycle';
+import {
+  getTenantPrivate,
+  tenantPrivateRef,
+  TENANT_PRIVATE_COLLECTION,
+  DODO_ON_HOLD_FIELD,
+} from '@/lib/tenant-private';
+import {
+  DODO_GRACE_PERIOD_DAYS,
+  DODO_GRACE_PERIOD_MS,
+  resolveTenantGraceState,
+  TENANT_STATUS_ACTIVE,
+  TENANT_STATUS_ARCHIVED,
+} from '@/lib/tenant-lifecycle';
 import type { DodoWebhookEvent } from './events';
 
 /**
@@ -70,9 +81,31 @@ import type { DodoWebhookEvent } from './events';
  * 🔴 This is deliberately NOT a timer. `subscription.on_hold` is the one that
  * needs a timer Harvest owns, because Dodo runs the retries and dunning but
  * never cancels — at the end of the recovery window retries stop and the
- * subscription sits in `on_hold` forever. That is a reactive mechanism and it is
- * the remainder of REP-4 part 3; this file handles the two TERMINAL events and
- * nothing else. `on_hold` keeps its empty handler.
+ * subscription sits in `on_hold` forever.
+ *
+ * ─── THE `on_hold` TIMER, added here ─────────────────────────────────────────
+ *
+ * That timer now lives in this file too, below the terminal handlers. It is
+ * REACTIVE BY DESIGN and that is a constraint, not a shortcut: `functions/` does
+ * not deploy on merge and has silently no-opped behind a green "Deploy
+ * complete!", so a scheduled job is not a mechanism this repo actually has. So
+ * nothing counts down in the background. Instead:
+ *
+ *   RECORD     `subscription.on_hold` writes ONE timestamp to the private doc.
+ *              Nothing is gated yet — the church keeps everything.
+ *   DERIVE     Every read that matters resolves that timestamp against `now`
+ *              (`resolveEffectiveTenantStatus` in `@/lib/tenant-lifecycle`), so
+ *              the deadline is enforced the instant it is consulted rather than
+ *              whenever a cron happened to run.
+ *   CONVERGE   The first consultation AFTER the window closes archives the
+ *              tenant for real, through `archiveTenantForDodoSubscription` —
+ *              the same guarded path the terminal events use — so the recorded
+ *              state catches up with the enforced one instead of leaving a
+ *              tenant permanently `active`-but-refused.
+ *
+ * ⚠️ The order matters: enforcement never waits on convergence. The gate refuses
+ * from the derived answer, and the write is best-effort afterwards. A tenant
+ * whose convergence write failed is still refused, every time, on every request.
  *
  * ─── Idempotency, beyond the webhook-id guard ────────────────────────────────
  *
@@ -94,8 +127,16 @@ export interface DodoLifecyclePayload {
   metadata?: unknown;
 }
 
-/** Which terminal event archived the tenant. Provenance only — never a gate. */
-export type DodoTerminalReason = 'cancelled' | 'expired';
+/**
+ * Why the tenant was archived. Provenance only — never a gate.
+ *
+ * ⚠️ `grace-expired` is NOT an event Dodo sends; it is Harvest's own timer
+ * firing, and it is recorded distinctly precisely because a human reading
+ * `tenant_private` later needs to tell "they cancelled" from "their card failed
+ * and nobody fixed it in 21 days". The capability answer is identical for all
+ * three, which is why this stays provenance and never becomes a status.
+ */
+export type DodoTerminalReason = 'cancelled' | 'expired' | 'grace-expired';
 
 /** What an archive attempt decided. */
 export type DodoLifecycleOutcome =
@@ -113,8 +154,45 @@ export type DodoLifecycleOutcome =
 /** What a reactivation attempt decided. */
 export type DodoReactivationOutcome =
   | { readonly outcome: 'reactivated'; readonly tenantId: string }
-  /** Not archived — the normal `subscription.active` case. Nothing written. */
+  /**
+   * 🔴 The tenant was NOT archived but was inside its grace window, and the hold
+   * has been cleared. This is a church that paid before the timer ran out, and
+   * it is the single most important outcome in this file — see the note on
+   * `reactivateTenantForDodoSubscription`.
+   */
+  | { readonly outcome: 'hold-cleared'; readonly tenantId: string }
+  /** Not archived, no hold — the normal `subscription.active` case. Nothing written. */
   | { readonly outcome: 'not-archived'; readonly tenantId: string }
+  | { readonly outcome: 'not-dodo-owned'; readonly tenantId: string };
+
+/** What recording a hold decided. */
+export type DodoOnHoldOutcome =
+  /** The clock STARTED. `graceEndsAt` is when giving stops. */
+  | {
+      readonly outcome: 'on-hold-recorded';
+      readonly tenantId: string;
+      readonly onHoldAt: string;
+      readonly graceEndsAt: string;
+    }
+  /** 🔴 A hold was already recorded. The clock was NOT restarted. */
+  | { readonly outcome: 'already-on-hold'; readonly tenantId: string; readonly onHoldAt: string }
+  /** A repeat hold arrived after the window closed, so the tenant was archived. */
+  | { readonly outcome: 'grace-expired'; readonly tenantId: string }
+  /** Already archived — a terminal event got there first. Nothing written. */
+  | { readonly outcome: 'already-archived'; readonly tenantId: string }
+  | { readonly outcome: 'no-tenant'; readonly subscriptionId: string }
+  | { readonly outcome: 'no-subscription-id' }
+  | { readonly outcome: 'not-dodo-owned'; readonly tenantId: string };
+
+/** What a convergence check decided. */
+export type DodoGraceConvergenceOutcome =
+  /** The window had closed; the tenant is now archived for real. */
+  | { readonly outcome: 'archived'; readonly tenantId: string; readonly reason: DodoTerminalReason }
+  /** Inside the window. Full entitlements, nothing written. */
+  | { readonly outcome: 'in-grace'; readonly tenantId: string }
+  /** No hold recorded at all. Nothing to converge. */
+  | { readonly outcome: 'no-hold'; readonly tenantId: string }
+  | { readonly outcome: 'already-archived'; readonly tenantId: string }
   | { readonly outcome: 'not-dodo-owned'; readonly tenantId: string };
 
 function str(value: unknown): string {
@@ -251,32 +329,69 @@ export async function archiveTenantForDodoSubscription(
  * for archiving instead of deleting, and it is why the archive write is one
  * field rather than a cascade.
  *
- * Writes only when the tenant IS archived, so the overwhelmingly common
+ * Writes only when there is something to undo, so the overwhelmingly common
  * `subscription.active` (a brand-new signup, or a redelivery of one) costs one
  * read and no write.
+ *
+ * ─── 🔴 IT ALSO CLEARS THE GRACE HOLD, AND THAT IS THE POINT ─────────────────
+ *
+ * A tenant inside its grace window is still recorded `active` — the hold is a
+ * timestamp on the private doc, not a status. So "reactivate only if archived"
+ * would look correct and be catastrophically wrong: a church whose card was
+ * fixed on day 3 would come back as `active` (it never left), the hold would
+ * still be sitting there, and on day 21 the timer would archive A CHURCH THAT
+ * PAID. That is the worst outcome this work can produce — strictly worse than
+ * never shipping the timer — so the clear is unconditional on the archived
+ * check, not nested inside it.
  */
 export async function reactivateTenantForDodoSubscription(
   tenantId: string,
 ): Promise<DodoReactivationOutcome> {
-  const tenantRef = adminDb.collection('tenants').doc(tenantId);
-  const tenantSnap = await tenantRef.get();
-  if (!tenantSnap.exists || tenantSnap.data()?.status !== TENANT_STATUS_ARCHIVED) {
-    return { outcome: 'not-archived', tenantId };
+  // ⚠️ Ownership resolves FIRST now. The old order (archived? then owned?) was
+  // safe only because the archived check happened to exclude everything
+  // interesting; a hold can sit on a tenant in any status, so the refusal has to
+  // come before the decision about what to write.
+  const priv = await getTenantPrivate(tenantId);
+  if (!isDodoOwned(priv)) {
+    return { outcome: 'not-dodo-owned', tenantId };
   }
 
-  if (!isDodoOwned(await getTenantPrivate(tenantId))) {
-    return { outcome: 'not-dodo-owned', tenantId };
+  const tenantRef = adminDb.collection('tenants').doc(tenantId);
+  const tenantSnap = await tenantRef.get();
+  const wasArchived = tenantSnap.exists && tenantSnap.data()?.status === TENANT_STATUS_ARCHIVED;
+  const hadHold = typeof priv?.[DODO_ON_HOLD_FIELD] === 'string' && priv[DODO_ON_HOLD_FIELD] !== '';
+
+  if (!wasArchived && !hadHold) {
+    return { outcome: 'not-archived', tenantId };
   }
 
   const now = new Date().toISOString();
   const batch = adminDb.batch();
-  batch.update(tenantRef, { status: TENANT_STATUS_ACTIVE, updatedAt: now });
-  batch.set(
-    tenantPrivateRef(tenantId),
-    { dodoSubscriptionStatus: TENANT_STATUS_ACTIVE, archivedAt: null, updatedAt: now },
-    { merge: true },
-  );
+
+  // 🔴 Always cleared. Recovery from grace and recovery from archived are the
+  // same event arriving (`subscription.active`), and neither may leave a live
+  // deadline behind.
+  const privatePatch: Record<string, unknown> = {
+    [DODO_ON_HOLD_FIELD]: null,
+    dodoSubscriptionStatus: TENANT_STATUS_ACTIVE,
+    updatedAt: now,
+  };
+
+  if (wasArchived) {
+    // The status only moves when it actually left `active`. A tenant recovering
+    // from grace was never archived, so there is nothing to restore and the
+    // public doc is not written at all.
+    batch.update(tenantRef, { status: TENANT_STATUS_ACTIVE, updatedAt: now });
+    privatePatch.archivedAt = null;
+  }
+
+  batch.set(tenantPrivateRef(tenantId), privatePatch, { merge: true });
   await batch.commit();
+
+  if (!wasArchived) {
+    console.log(`✅ [dodo] Tenant ${tenantId} recovered inside its grace window — hold cleared, nothing was ever gated`);
+    return { outcome: 'hold-cleared', tenantId };
+  }
 
   console.log(`✅ [dodo] Tenant ${tenantId} reactivated — subdomain, data and members unchanged`);
   return { outcome: 'reactivated', tenantId };
@@ -296,4 +411,228 @@ export async function handleDodoSubscriptionExpired(
 ): Promise<DodoLifecycleOutcome> {
   const payload = (event.data || {}) as unknown as DodoLifecyclePayload;
   return archiveTenantForDodoSubscription(payload, 'expired');
+}
+
+// ─── The `on_hold` timer ─────────────────────────────────────────────────────
+
+/**
+ * Archive a tenant whose grace window has closed, if it has.
+ *
+ * 🔴 CONVERGENCE. The gate refuses from a DERIVED answer the moment the deadline
+ * passes; this is what makes the RECORDED state agree with it. Without it a
+ * tenant sits `active` in Firestore while every request is refused — which reads
+ * as a bug to anyone looking at the document, and leaves the eventual
+ * reactivation with nothing to undo.
+ *
+ * Routed through `archiveTenantForDodoSubscription` rather than writing the
+ * status directly, so the timer inherits every refusal the terminal events have:
+ * the `isDodoOwned` check, the already-archived short-circuit, and the single
+ * batch that lands the public status and the private provenance together. A
+ * Stripe-owned or conflict-owned tenant is refused here for exactly the same
+ * reason it is refused there, in the same code.
+ *
+ * `now` is injected so the caller decides what "now" means — the resolver stays
+ * pure and this stays testable without fake timers.
+ */
+export async function convergeExpiredDodoGrace(
+  tenantId: string,
+  now: number,
+): Promise<DodoGraceConvergenceOutcome> {
+  const priv = await getTenantPrivate(tenantId);
+
+  if (!isDodoOwned(priv)) {
+    return { outcome: 'not-dodo-owned', tenantId };
+  }
+
+  const onHoldAt = priv?.[DODO_ON_HOLD_FIELD];
+  const graceState = resolveTenantGraceState({ onHoldAt, now });
+  if (graceState === 'none') return { outcome: 'no-hold', tenantId };
+  if (graceState === 'in-grace') return { outcome: 'in-grace', tenantId };
+
+  const subscriptionId = str(priv?.dodoSubscriptionId);
+  if (!subscriptionId) {
+    // isDodoOwned resolved 'dodo', so ownership came from `billingProcessor` or
+    // from `dodoCustomerId` without a subscription id. There is no subscription
+    // to archive against and the terminal path is keyed on that id.
+    return { outcome: 'no-hold', tenantId };
+  }
+
+  const result = await archiveTenantForDodoSubscription({ subscription_id: subscriptionId }, 'grace-expired');
+
+  if (result.outcome === 'archived') {
+    console.log(
+      `⏳ [dodo] Tenant ${tenantId}: ${DODO_GRACE_PERIOD_DAYS}-day grace window closed (held ${onHoldAt}); archived`,
+    );
+    return { outcome: 'archived', tenantId, reason: 'grace-expired' };
+  }
+  if (result.outcome === 'already-archived') return { outcome: 'already-archived', tenantId };
+  if (result.outcome === 'not-dodo-owned') return { outcome: 'not-dodo-owned', tenantId };
+  return { outcome: 'no-hold', tenantId };
+}
+
+/**
+ * Record that a Dodo subscription went on hold, and start the clock ONCE.
+ *
+ * ⚠️ IDEMPOTENT ON ITS OWN TERMS, and this one is load-bearing in a way the
+ * terminal handlers' is not. Dodo emits `subscription.on_hold` on the failed
+ * renewal AND can emit it again as its own retries fail, each with its own
+ * `webhook-id` — so #290's redelivery guard does not cover it. Rewriting the
+ * timestamp on the second one would push the deadline out by however long the
+ * retries ran, and a subscription that failed weekly would never reach it: grace
+ * would extend indefinitely and the timer would silently never fire. So a hold
+ * that already exists is LEFT EXACTLY AS IT IS.
+ *
+ * A repeat hold that arrives after the window has already closed is the cheapest
+ * convergence trigger available — Dodo is still talking to us about a
+ * subscription whose grace ran out — so it archives rather than doing nothing.
+ *
+ * Never throws: `on_hold` is a BEST-EFFORT event, so the route has already
+ * answered 2xx and a rejection would be an unhandled rejection nobody sees.
+ */
+export async function recordDodoSubscriptionOnHold(
+  sub: DodoLifecyclePayload,
+  now: number,
+): Promise<DodoOnHoldOutcome> {
+  const subscriptionId = str(sub.subscription_id);
+  if (!subscriptionId) {
+    captureMoneyPathError(
+      new Error('[dodo] subscription.on_hold carried no subscription_id; no grace timer could be started'),
+      { step: 'dodo-on-hold-missing-subscription-id', level: 'error' },
+    );
+    return { outcome: 'no-subscription-id' };
+  }
+
+  const tenantId = await findTenantForDodoSubscription(subscriptionId);
+  if (!tenantId) {
+    console.log(`[dodo] subscription.on_hold for ${subscriptionId}: no tenant carries it; no timer to start`);
+    return { outcome: 'no-tenant', subscriptionId };
+  }
+
+  const priv = await getTenantPrivate(tenantId);
+  if (!isDodoOwned(priv)) {
+    // 🔴 Same refusal the terminal handlers make, for the same reason: a tenant
+    // carrying both processors' identifiers resolves to `conflict` and is never
+    // written by a Dodo event. A grace timer is a write like any other.
+    console.warn(
+      `[dodo] Refusing to record on_hold for tenant ${tenantId}: its subscription is not owned by Dodo ` +
+        `(resolved ${resolveBillingOwnership(priv).reason}).`,
+    );
+    captureMoneyPathError(
+      new Error(`[dodo] subscription.on_hold matched tenant ${tenantId}, which Dodo does not own`),
+      { step: 'dodo-on-hold-ownership-refused', level: 'warning', tenantId, ids: { subscriptionId } },
+    );
+    return { outcome: 'not-dodo-owned', tenantId };
+  }
+
+  const existing = priv?.[DODO_ON_HOLD_FIELD];
+  if (typeof existing === 'string' && existing !== '') {
+    // 🔴 THE GUARD. Do not restart the clock.
+    if (resolveTenantGraceState({ onHoldAt: existing, now }) === 'expired') {
+      const converged = await convergeExpiredDodoGrace(tenantId, now);
+      if (converged.outcome === 'archived') return { outcome: 'grace-expired', tenantId };
+      if (converged.outcome === 'already-archived') return { outcome: 'already-archived', tenantId };
+    }
+    console.log(`⏭️ [dodo] Tenant ${tenantId} is already on hold since ${existing}; the clock is NOT restarted`);
+    return { outcome: 'already-on-hold', tenantId, onHoldAt: existing };
+  }
+
+  const tenantSnap = await adminDb.collection('tenants').doc(tenantId).get();
+  if (tenantSnap.exists && tenantSnap.data()?.status === TENANT_STATUS_ARCHIVED) {
+    // A terminal event already ended this subscription. Starting a grace timer
+    // on an archived tenant would record a deadline for entitlements it no
+    // longer has.
+    return { outcome: 'already-archived', tenantId };
+  }
+
+  const onHoldAt = new Date(now).toISOString();
+  const graceEndsAt = new Date(now + DODO_GRACE_PERIOD_MS).toISOString();
+
+  // ⚠️ ONE field, on the SERVER-ONLY doc, and the public tenant doc is not
+  // touched at all. Nothing is gated yet: the church keeps giving, publishing
+  // and sending for the whole window. `status` stays `active` because the tenant
+  // IS active — recording trouble is not the same as enforcing it.
+  await tenantPrivateRef(tenantId).set(
+    { [DODO_ON_HOLD_FIELD]: onHoldAt, dodoSubscriptionStatus: 'on_hold', updatedAt: onHoldAt },
+    { merge: true },
+  );
+
+  console.log(
+    `⏳ [dodo] Tenant ${tenantId} on hold (subscription ${subscriptionId}); ` +
+      `${DODO_GRACE_PERIOD_DAYS}-day grace window ends ${graceEndsAt}`,
+  );
+  return { outcome: 'on-hold-recorded', tenantId, onHoldAt, graceEndsAt };
+}
+
+/**
+ * The `subscription.on_hold` handler — the failed renewal that starts the clock.
+ */
+export async function handleDodoSubscriptionOnHold(
+  event: DodoWebhookEvent,
+): Promise<DodoOnHoldOutcome> {
+  const payload = (event.data || {}) as unknown as DodoLifecyclePayload;
+  return recordDodoSubscriptionOnHold(payload, Date.now());
+}
+
+/**
+ * Clear the grace hold because this subscription is paying again.
+ *
+ * ─── 🔴 WHICH EVENTS MEAN RECOVERY, and why these ────────────────────────────
+ *
+ * Established from Dodo's own docs, not inferred:
+ *
+ *   • `subscription.active` — Payment Retries states it outright: "`subscription
+ *     .active` | A retry succeeds and the subscription is reactivated", and the
+ *     state machine reads `on_hold --> active: Payment method updated / retry
+ *     succeeds`. The Subscriptions page adds the manual path: "After successfully
+ *     updating the payment method for an `on_hold` subscription, you'll receive
+ *     `payment.succeeded` followed by `subscription.active`."
+ *
+ *   • `subscription.renewed` — a HEDGE, and deliberately so. The docs define it
+ *     as "Renewal succeeds", and a successful retry IS a renewal succeeding, so
+ *     it is genuinely possible that a recovery emits this alongside (or instead
+ *     of) `active`. The asymmetry decides it: clearing on an event that did not
+ *     mean recovery costs revenue for one billing cycle, while FAILING to clear
+ *     takes a paying church's donate page down on day 21. `renewed` cannot be
+ *     emitted for a subscription that has not paid, so the hedge is free.
+ *
+ * ⚠️ WHAT IS DELIBERATELY NOT CLEARED ON:
+ *
+ *   • `subscription.updated` — "fires alongside the more specific events above",
+ *     on ANY field change. It therefore fires alongside `on_hold` ITSELF, so
+ *     clearing on it would race the very write that starts the clock and could
+ *     erase the timer the instant it was set. That is not over-clearing, it is
+ *     disabling the feature.
+ *   • `payment.succeeded` and `dunning.recovered` — both are documented as
+ *     STRICTLY PRECEDING or accompanying a `subscription.active` we already
+ *     clear on, so neither adds a path; `dunning.recovered` would also mean
+ *     recognising a whole new `dunning.*` event family for nothing.
+ */
+async function clearDodoGraceHoldForSubscription(
+  sub: DodoLifecyclePayload,
+  recoveryEvent: string,
+): Promise<DodoReactivationOutcome | { readonly outcome: 'no-tenant' | 'no-subscription-id' }> {
+  const subscriptionId = str(sub.subscription_id);
+  if (!subscriptionId) return { outcome: 'no-subscription-id' };
+
+  const tenantId = await findTenantForDodoSubscription(subscriptionId);
+  if (!tenantId) return { outcome: 'no-tenant' };
+
+  const result = await reactivateTenantForDodoSubscription(tenantId);
+  if (result.outcome === 'hold-cleared') {
+    console.log(`✅ [dodo] ${recoveryEvent} cleared tenant ${tenantId}'s grace hold — they paid inside the window`);
+  }
+  return result;
+}
+
+/**
+ * The `subscription.renewed` handler — a paid renewal, which clears any hold.
+ *
+ * For the ordinary case (a healthy subscription renewing on schedule) this reads
+ * the private doc, finds no hold, and writes nothing.
+ */
+export async function handleDodoSubscriptionRenewed(
+  event: DodoWebhookEvent,
+): Promise<DodoReactivationOutcome | { readonly outcome: 'no-tenant' | 'no-subscription-id' }> {
+  const payload = (event.data || {}) as unknown as DodoLifecyclePayload;
+  return clearDodoGraceHoldForSubscription(payload, 'subscription.renewed');
 }
