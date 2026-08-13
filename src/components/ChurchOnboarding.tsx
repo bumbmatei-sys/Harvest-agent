@@ -5,7 +5,7 @@ import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { Church, ArrowRight, Sparkles, Loader2, AlertCircle } from 'lucide-react';
 import { TenantPlan } from '../types/tenant.types';
 import { PLAN_DISPLAY_NAMES, PLAN_ORDER } from '../utils/plan-features';
-import { SIGNUP_CHECKOUT_ENDPOINT, readSignupBillingPeriod } from '../utils/signup-checkout';
+import { SIGNUP_CHECKOUT_ENDPOINT, WALLET_FALLBACK_LINE, readSignupBillingPeriod } from '../utils/signup-checkout';
 
 const BRAND = 'var(--brand-color, #B8962E)';
 const HARVEST_LOGO = 'https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png';
@@ -244,6 +244,10 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ signupPlan }) => {
             )}
           </button>
         </div>
+
+        <p className="mt-4 text-center text-xs leading-relaxed" style={{ color: 'var(--text-muted, #8B7355)' }}>
+          {WALLET_FALLBACK_LINE}
+        </p>
       </div>
     </MinShell>
   );

@@ -23,6 +23,20 @@ export const SIGNUP_CHECKOUT_ENDPOINT = DODO_BILLING_ENABLED
   : '/api/stripe/checkout';
 
 /**
+ * THE-130: one quiet line shown beside both "Continue to payment" actions.
+ *
+ * The processor's hosted checkout offers wallet buttons (Google Pay etc.) whose
+ * pop-up some browsers block — a failure that happens on a page Harvest does
+ * not own and cannot annotate. The screen immediately before the handoff is the
+ * only surface we control, so it is where a church learns that entering a card
+ * is the dependable route. Shared for the same reason as
+ * `SIGNUP_CHECKOUT_ENDPOINT` above: `ChurchOnboarding` and `OnboardingGate` are
+ * both signup, and the two copies must not drift.
+ */
+export const WALLET_FALLBACK_LINE =
+  "If a wallet option such as Google Pay doesn't load on the payment page, you can pay by card instead.";
+
+/**
  * Billing cadence for a signup, in the app's own vocabulary.
  *
  * Structurally identical to `BillingPeriod` in `src/lib/dodo/provider.ts`, and

@@ -7,7 +7,7 @@ import { auth, db } from '../firebase';
 import { isSuperAdminEmail } from '../utils/super-admins';
 import { checkRosterAdmin } from '../utils/tenant.utils';
 import { TenantPlan } from '../types/tenant.types';
-import { SIGNUP_CHECKOUT_ENDPOINT, isReturningFromCheckout, readSignupBillingPeriod, type SignupBillingPeriod } from '../utils/signup-checkout';
+import { SIGNUP_CHECKOUT_ENDPOINT, WALLET_FALLBACK_LINE, isReturningFromCheckout, readSignupBillingPeriod, type SignupBillingPeriod } from '../utils/signup-checkout';
 import { useForcedLightTheme } from '../lib/theme-runtime';
 import FirstRunSetup from './FirstRunSetup';
 import WorkspaceHandoff from './WorkspaceHandoff';
@@ -265,6 +265,9 @@ const OnboardingGate: React.FC<{ children: React.ReactNode }> = ({ children }) =
         >
           {restarting ? <><Loader2 size={18} className="animate-spin" /> Redirecting…</> : <>Continue to payment</>}
         </button>
+        <p className="mt-4 max-w-sm text-xs leading-relaxed" style={{ color: 'var(--text-muted, #8B7355)' }}>
+          {WALLET_FALLBACK_LINE}
+        </p>
       </div>
     </div>
   );
