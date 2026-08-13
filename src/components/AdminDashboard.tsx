@@ -35,6 +35,7 @@ import PlanUpgradeScreen from './PlanUpgradeScreen';
 import Profile from './Profile';
 import MyAccountMenu from './MyAccountMenu';
 import BillingAndPayments from './BillingAndPayments';
+import GraceWindowBanner from './GraceWindowBanner';
 import { AdminScreenHeader, AdminHeaderContext, AdminHeaderOverride } from './AdminScreenHeader';
 import { getPlanFeatures, hasBrandingAccess, AFFILIATE_PROGRAM_ENABLED } from '../utils/plan-features';
 import { db, auth } from '../firebase';
@@ -793,6 +794,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
 
         {/* Main Content Area */}
         <div className={`flex-1 ${activeTab === 'community' ? 'overflow-hidden lg:overflow-y-auto pb-[65px] lg:pb-8' : 'overflow-y-auto pb-24 lg:pb-8'} p-0 lg:p-6 ${showMoreSheet ? 'overflow-hidden' : ''}`}>
+          {/* Billing grace window. Mounted in the SHELL rather than on one tab so a
+              failed renewal is visible from whichever screen the admin happens to
+              open — the point of the banner is that nobody currently finds out at
+              all, and a warning that only lives on the Billing tab is a warning for
+              people who already went looking. Renders nothing unless this tenant is
+              inside the window; see GraceWindowBanner. */}
+          <div className="px-4 lg:px-0">
+            <GraceWindowBanner tenantId={tenantId ?? null} />
+          </div>
           {activeTab === 'dashboard' ? (
             <div className="p-4 lg:p-0">
               <AdminDashboardHome
