@@ -4,9 +4,49 @@ import Stripe from 'stripe';
 import { requireOwner } from '@/lib/api-auth';
 import { getTenantPrivate } from '@/lib/tenant-private';
 import { resolveBillingOwnership } from '@/lib/billing-processor';
+import { getDodoRenewalSummary } from '@/lib/dodo/renewal';
 import { captureHandledError } from '@/lib/money-path-sentry';
 
 export const dynamic = 'force-dynamic';
+
+/** ISO 8601 → Unix seconds, the unit this route's `currentPeriodEnd` is in. */
+function toUnixSeconds(iso: string | null): number | null {
+  if (!iso) return null;
+  const ms = Date.parse(iso);
+  return Number.isFinite(ms) ? Math.floor(ms / 1000) : null;
+}
+
+/**
+ * The renewal schedule for a Dodo-owned tenant, or nulls when it cannot be read.
+ *
+ * 🔴 DEGRADES, NEVER THROWS. A Dodo outage must cost this church its renewal
+ * DATE, not its billing screen — the same trade the Stripe branch below makes
+ * when `subscriptions.retrieve` fails. The plan and status come from the tenant
+ * doc either way and stay accurate.
+ *
+ * No subscription id is the other degrade path, and it is not an error: a Dodo
+ * tenant carrying only `dodoCustomerId` (the field `resolveBillingOwnership`
+ * also accepts as proof of Dodo ownership) has nothing to look up.
+ */
+async function dodoRenewal(subscriptionId: unknown): Promise<{
+  currentPeriodEnd: number | null;
+  cancelAtPeriodEnd: boolean;
+}> {
+  if (typeof subscriptionId !== 'string' || !subscriptionId) {
+    return { currentPeriodEnd: null, cancelAtPeriodEnd: false };
+  }
+  try {
+    const renewal = await getDodoRenewalSummary(subscriptionId);
+    return {
+      currentPeriodEnd: toUnixSeconds(renewal.nextBillingDate),
+      cancelAtPeriodEnd: renewal.cancelAtPeriodEnd,
+    };
+  } catch (err) {
+    console.warn('billing/invoices: failed to load Dodo subscription:', err);
+    captureHandledError(err, { step: 'billing-dodo-renewal-load', level: 'warning' });
+    return { currentPeriodEnd: null, cancelAtPeriodEnd: false };
+  }
+}
 
 /**
  * GET /api/billing/invoices — owner-only.
@@ -47,16 +87,44 @@ export async function GET(request: NextRequest) {
     // Dodo tenant; only the Stripe-sourced fields are withheld. `historySource`
     // tells the client where the real history lives — the Dodo customer portal,
     // reachable from the same page's "Manage subscription" button.
+    //
+    // ─── The renewal date, for a tenant Dodo owns (THE-131) ──────────────────
+    //
+    // `currentPeriodEnd` used to be a hard null here, so a Dodo-billed church saw
+    // "No active subscription" under Next Billing while its card was being
+    // charged every month. A church that cannot see its renewal date cannot
+    // budget for it, and a surprise charge is the most common trigger for a
+    // chargeback — so the date is read from Dodo, which is the only authority on
+    // it, through the one read-only function in `@/lib/dodo/renewal`.
+    //
+    // ⚠️ `reason === 'conflict'` is deliberately NOT given the same read. A
+    // conflicted tenant carries live identifiers from BOTH processors, so there
+    // is no single subscription whose date would be the true one, and showing
+    // either would tell a church already being billed twice which of its two
+    // charges to expect. It keeps exactly the treatment it has today.
+    //
+    // 🔴 STILL NO AMOUNT, and that is a decision rather than an omission. Dodo
+    // reports the catalogue price (`recurring_pre_tax_amount` / `currency`) but
+    // applies ADAPTIVE CURRENCY at charge time: the live subscription verified on
+    // 2026-08-13 says 4900 USD while its own payment settled in RON. Nothing on
+    // the subscription says which currency the card will see, so an amount here
+    // would be an assertion about money this route cannot stand behind. See the
+    // note in `@/lib/dodo/renewal`.
     if (ownership.processor === 'dodo' || ownership.reason === 'conflict') {
+      const renewal =
+        ownership.processor === 'dodo'
+          ? await dodoRenewal(privData.dodoSubscriptionId)
+          : { currentPeriodEnd: null, cancelAtPeriodEnd: false };
+
       return NextResponse.json({
         processor: ownership.processor,
         subscription: {
           plan: tenantData.plan ?? null,
           status: tenantData.status ?? null,
-          currentPeriodEnd: null,
+          currentPeriodEnd: renewal.currentPeriodEnd,
           nextAmount: null,
           currency: 'usd',
-          cancelAtPeriodEnd: false,
+          cancelAtPeriodEnd: renewal.cancelAtPeriodEnd,
         },
         invoices: [],
         historySource: 'portal',
