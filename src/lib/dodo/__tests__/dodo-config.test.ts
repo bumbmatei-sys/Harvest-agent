@@ -74,18 +74,24 @@ describe('a missing required env var throws at module load', () => {
   });
 });
 
-describe('live mode is refused outright', () => {
-  it('throws when DODO_PAYMENTS_ENVIRONMENT is live_mode', async () => {
-    // A live key with a test-mode catalogue is a stop condition, not a next step:
-    // the live products do not exist, so every checkout would fail — and if they
-    // did exist, this build would be charging real money with no cutover review.
+describe('the environment is validated to exactly two values', () => {
+  it('accepts live_mode now that the live catalogue exists', async () => {
+    // Until 2026-08-13 live_mode was refused outright because the live products
+    // did not exist. They do now, verified against the live API, and
+    // catalogue.ts selects them off this validated value — so live_mode is a
+    // permitted, explicit choice rather than a stop condition.
     process.env.DODO_PAYMENTS_ENVIRONMENT = 'live_mode';
-    await expect(import('../config')).rejects.toThrow(/live/i);
+    const { dodoConfig } = await import('../config');
+    expect(dodoConfig.environment).toBe('live_mode');
   });
 
-  it('throws on any value that is neither test_mode nor live_mode', async () => {
+  it('still throws on any value that is neither test_mode nor live_mode', async () => {
+    // Accepting live_mode must not have widened the gate: a typo or a
+    // Stripe-flavoured value ("production") is still a broken deploy, never a
+    // guess at which catalogue was meant.
     process.env.DODO_PAYMENTS_ENVIRONMENT = 'production';
     await expect(import('../config')).rejects.toThrow(/test_mode/);
+    await expect(import('../config')).rejects.toThrow(/live_mode/);
   });
 });
 
