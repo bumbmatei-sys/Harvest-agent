@@ -342,11 +342,40 @@ describe('the Dodo module is wired into exactly the paths this PR names', () => 
      * refuses anything `resolveBillingOwnership` does not resolve to Dodo, and
      * which can only archive. The test below pins that, and a further test pins
      * that this route exposes no payment action of its own.
+     *
+     * ─── The FOURTH exception: the renewal date (THE-131) ───────────────────
+     *
+     * 🔴 SAY IT PLAINLY: this is a fourth entry on a list whose third entry was
+     * already the signal to build the processor-neutral seam. It is recorded
+     * here as a widening, not smuggled in as a detail.
+     *
+     * `/api/billing/invoices` is the Billing & Payments screen's only data
+     * source, and its Dodo branch returned `currentPeriodEnd: null` — so every
+     * Dodo-billed church saw "No active subscription" under Next Billing while
+     * its card was charged monthly. The renewal date exists only at Dodo:
+     * nothing in Firestore records it, and mirroring it onto `tenant_private`
+     * from the webhook would put a second stored copy of a billing fact behind
+     * a delivery guarantee this repo cannot audit — a church shown a WRONG
+     * renewal date is worse off than one shown none.
+     *
+     * ⚠️ WHY THE SEAM IS STILL NOT BUILT HERE. `SubscriptionBillingProvider` and
+     * `BillingSubscription` are processor-NEUTRAL types that live inside
+     * `src/lib/dodo/`; that misplacement is the actual reason every consumer
+     * must reach into this folder. Moving them out and resolving a provider by
+     * processor is THE-126, and doing it honestly means migrating the three
+     * exceptions above — a money-path refactor that must not ride along with a
+     * user-visible fix.
+     *
+     * ⚠️ Held to the SAME narrowness as the other three: one imported symbol,
+     * from a module that exposes exactly one read-only function, which performs
+     * a single GET and cannot charge, cancel, or provision. The tests below pin
+     * that, exactly as they do for the giving gate and the grace-status read.
      */
     const ALLOWED_OUTSIDE_IMPORTERS = [
       'app/api/stripe/portal/route.ts',
       'app/api/stripe/donate/route.ts',
       'app/api/tenants/grace-status/route.ts',
+      'app/api/billing/invoices/route.ts',
     ];
 
     const outsiders = sourceFiles(SRC)
@@ -418,6 +447,46 @@ describe('the Dodo module is wired into exactly the paths this PR names', () => 
       'DODO_PRODUCTS',
     ]) {
       expect(graceStatus, forbidden).not.toContain(forbidden);
+    }
+  });
+
+  it('the billing read imports Dodo ONLY to read a renewal date, and cannot charge', () => {
+    // 🔴 The fourth exception, held to the same one-function width. This is the
+    // screen an owner opens to check their billing; a second Dodo symbol here
+    // would put checkout, cancellation or the catalogue behind a READ.
+    const invoices = read('app/api/billing/invoices/route.ts');
+    const imports = [...invoices.matchAll(/import\s*\{([^}]*)\}\s*from\s*['"]@\/lib\/dodo\/[^'"]+['"]/g)]
+      .flatMap((m) => m[1].split(',').map((s) => s.trim()).filter(Boolean));
+    expect(imports).toEqual(['getDodoRenewalSummary']);
+
+    for (const forbidden of [
+      'createPlanCheckout',
+      'createCustomerPortal',
+      'cancelSubscription',
+      'changePlan',
+      'provisionTenant',
+      'dodoBillingProvider',
+      'DODO_PRODUCTS',
+    ]) {
+      expect(invoices, forbidden).not.toContain(forbidden);
+    }
+  });
+
+  it('the renewal module it imports is a single read-only function', () => {
+    // The exception is only as narrow as the module behind it. `renewal.ts` may
+    // grow no second export and no mutating Dodo call, or the one-symbol import
+    // above stops meaning anything.
+    const renewal = read('lib/dodo/renewal.ts');
+    const exported = [...renewal.matchAll(/^export\s+(?:async\s+)?function\s+(\w+)/gm)].map((m) => m[1]);
+    expect(exported).toEqual(['getDodoRenewalSummary']);
+
+    // Comments NAMING the methods this module refuses to call are the point of
+    // the module; only real code is held to the rule — same treatment the flag
+    // check above gives the webhook files.
+    const code = renewal.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    expect(code).toContain('getSubscription');
+    for (const mutating of ['createPlanCheckout', 'cancelSubscription', 'changePlan', 'update(']) {
+      expect(code, mutating).not.toContain(mutating);
     }
   });
 
