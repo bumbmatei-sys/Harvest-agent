@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
@@ -20,7 +20,10 @@ import { PLAN_ORDER } from '@/utils/plan-features';
 
 const SRC = resolve(__dirname, '../../..');
 
-beforeAll(() => {
+// Hoisted above the static imports: the catalogue consumes the validated
+// dodoConfig, so config.ts evaluates when '../catalogue' is imported and the
+// three required variables must already exist.
+vi.hoisted(() => {
   process.env.DODO_PAYMENTS_API_KEY = 'k';
   process.env.DODO_PAYMENTS_WEBHOOK_KEY = 'whsec_' + Buffer.from('x').toString('base64');
   process.env.DODO_PAYMENTS_ENVIRONMENT = 'test_mode';

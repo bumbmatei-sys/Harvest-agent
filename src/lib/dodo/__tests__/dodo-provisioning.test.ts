@@ -78,6 +78,15 @@ function makeDb() {
   };
 }
 
+// The provisioning chain reaches the Dodo catalogue, which consumes the
+// validated dodoConfig — so the three required variables must exist before the
+// dynamic imports below run. Hoisted for symmetry with the mock block.
+vi.hoisted(() => {
+  process.env.DODO_PAYMENTS_API_KEY = 'dodo_test_key';
+  process.env.DODO_PAYMENTS_WEBHOOK_KEY = 'whsec_dGVzdHNlY3JldA==';
+  process.env.DODO_PAYMENTS_ENVIRONMENT = 'test_mode';
+});
+
 const { db, mockGetUser, mockSetCustomClaims, mockCapture } = vi.hoisted(() => ({
   db: { current: null as any },
   mockGetUser: vi.fn(),

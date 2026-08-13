@@ -1,5 +1,6 @@
 import type { TenantPlan } from '@/types/tenant.types';
 import { ANNUAL_BILLED_MONTHS, PLAN_PRICING } from '@/utils/plan-features';
+import { DODO_LIVE_MODE, DODO_TEST_MODE, dodoConfig, type DodoEnvironment } from './config';
 import type { BillingPeriod } from './provider';
 
 /**
@@ -26,10 +27,14 @@ import type { BillingPeriod } from './provider';
  * There is therefore no fallback of any kind in this module: no `??`, no env
  * read, no default. A wrong product ID is a wrong product ID in the diff.
  *
- * ─── Test mode only ──────────────────────────────────────────────────────────
+ * ─── Two catalogues, one active ──────────────────────────────────────────────
  *
- * These are Dodo TEST-MODE products, created 2026-08-11. The live catalogue does
- * not exist yet. `config.ts` refuses to start in live mode for that reason.
+ * The TEST-MODE products were created 2026-08-11; the LIVE products 2026-08-13,
+ * verified field-by-field against the authenticated live API. Which catalogue is
+ * active follows `dodoConfig.environment` — a REQUIRED variable that `config.ts`
+ * validates to exactly `test_mode` or `live_mode` and never defaults — so the
+ * rule above still holds here: this module reads no environment variable and
+ * contains no fallback; it consumes the one already-validated value.
  */
 
 /** One Dodo product: an id, and the amount Dodo will actually charge for it. */
@@ -113,6 +118,9 @@ function annualEntry(plan: TenantPlan, productId: string): DodoCatalogueEntry {
   };
 }
 
+/** The full `(plan, period) → product` map — the shape both catalogues share. */
+export type DodoCatalogue = Readonly<Record<TenantPlan, Readonly<Record<BillingPeriod, DodoCatalogueEntry>>>>;
+
 /**
  * The six products, in Dodo TEST MODE.
  *
@@ -133,25 +141,64 @@ function annualEntry(plan: TenantPlan, productId: string): DodoCatalogueEntry {
  * and all six products above currently have an empty `addons` array. Add-ons are
  * REP-5.
  */
-export const DODO_TEST_CATALOGUE: Readonly<Record<TenantPlan, Readonly<Record<BillingPeriod, DodoCatalogueEntry>>>> =
-  Object.freeze({
-    plus: Object.freeze({
-      monthly: monthlyEntry('plus', 'pdt_0NlAMMZk44L0tL8lcLX6M'),
-      yearly: annualEntry('plus', 'pdt_0NlAMMeWwZDSlfNdti8FD'),
-    }),
-    pro: Object.freeze({
-      monthly: monthlyEntry('pro', 'pdt_0NlAMMhi90q5Ovk6QBzcf'),
-      yearly: annualEntry('pro', 'pdt_0NlAMMlsVKeYG8ukapmzE'),
-    }),
-    max: Object.freeze({
-      monthly: monthlyEntry('max', 'pdt_0NlAMMp4QndR3qPzlD8sG'),
-      yearly: annualEntry('max', 'pdt_0NlAMMsQBzMvRVNCY7zws'),
-    }),
-  });
+export const DODO_TEST_CATALOGUE: DodoCatalogue = Object.freeze({
+  plus: Object.freeze({
+    monthly: monthlyEntry('plus', 'pdt_0NlAMMZk44L0tL8lcLX6M'),
+    yearly: annualEntry('plus', 'pdt_0NlAMMeWwZDSlfNdti8FD'),
+  }),
+  pro: Object.freeze({
+    monthly: monthlyEntry('pro', 'pdt_0NlAMMhi90q5Ovk6QBzcf'),
+    yearly: annualEntry('pro', 'pdt_0NlAMMlsVKeYG8ukapmzE'),
+  }),
+  max: Object.freeze({
+    monthly: monthlyEntry('max', 'pdt_0NlAMMp4QndR3qPzlD8sG'),
+    yearly: annualEntry('max', 'pdt_0NlAMMsQBzMvRVNCY7zws'),
+  }),
+});
 
-/** The catalogue entry for a plan on a billing period. */
+/**
+ * The six products, in Dodo LIVE MODE.
+ *
+ * Created 2026-08-13 and verified field-by-field against the authenticated live
+ * API: same names, prices, 14-day trial, `tax_category`, and `plan_key` /
+ * `billing_period` metadata as the test products above, id for id.
+ *
+ * 🔴 These ids are what a real card is charged against. They are pinned
+ * character-for-character in `dodo-catalogue.test.ts`; a wrong id here is a
+ * checkout that SUCCEEDS at the wrong price, not one that fails.
+ */
+export const DODO_LIVE_CATALOGUE: DodoCatalogue = Object.freeze({
+  plus: Object.freeze({
+    monthly: monthlyEntry('plus', 'pdt_0NlJZKKU2AQSSH7E4ziKA'),
+    yearly: annualEntry('plus', 'pdt_0NlJZMLLKZ5SVGEoSGDdk'),
+  }),
+  pro: Object.freeze({
+    monthly: monthlyEntry('pro', 'pdt_0NlJZMOMhmZWiG6UVDl8I'),
+    yearly: annualEntry('pro', 'pdt_0NlJZMRWL8tuAZseUIRTP'),
+  }),
+  max: Object.freeze({
+    monthly: monthlyEntry('max', 'pdt_0NlJZMUUiT36FGMoiFXgl'),
+    yearly: annualEntry('max', 'pdt_0NlJZMXTnpRBAwTfBVpPs'),
+  }),
+});
+
+/**
+ * The catalogue this build transacts against.
+ *
+ * Keyed by the already-validated `dodoConfig.environment` — a total lookup over
+ * the two-value union, not a conditional with a default arm. If the variable
+ * was missing, blank, or a third value, `config.ts` threw before this line ran.
+ */
+const CATALOGUES_BY_ENVIRONMENT: Readonly<Record<DodoEnvironment, DodoCatalogue>> = Object.freeze({
+  [DODO_TEST_MODE]: DODO_TEST_CATALOGUE,
+  [DODO_LIVE_MODE]: DODO_LIVE_CATALOGUE,
+});
+
+export const DODO_ACTIVE_CATALOGUE: DodoCatalogue = CATALOGUES_BY_ENVIRONMENT[dodoConfig.environment];
+
+/** The active catalogue's entry for a plan on a billing period. */
 export function catalogueEntry(plan: TenantPlan, period: BillingPeriod): DodoCatalogueEntry {
-  return DODO_TEST_CATALOGUE[plan][period];
+  return DODO_ACTIVE_CATALOGUE[plan][period];
 }
 
 /** The Dodo product id to put in a checkout cart for `(plan, period)`. */
@@ -164,15 +211,20 @@ export function productIdFor(plan: TenantPlan, period: BillingPeriod): string {
  *
  * The direct counterpart of `billing.ts`'s `getPlanFromPriceId`, and the reason
  * the subscription webhook can name a plan at all: a Dodo subscription payload
- * carries `product_id` and nothing that says "Ministry, annual". Returns null for
- * anything not in the catalogue — an add-on product, a live-mode id, or a product
- * created by hand in the dashboard — so an unknown id can never be silently
- * treated as the cheapest plan.
+ * carries `product_id` and nothing that says "Ministry, annual". Resolves the
+ * ACTIVE catalogue only, and returns null for anything else — an add-on product,
+ * a product created by hand in the dashboard, or the OTHER MODE's ids — so an
+ * unknown id can never be silently treated as the cheapest plan.
+ *
+ * The other-mode case is deliberate: under live mode a test product id is
+ * foreign. Every existing test-mode tenant is a cancelled test artifact, and a
+ * live deployment that treated its id as valid would be a bug surface, not a
+ * convenience.
  */
 export function resolvePlanFromProductId(
   productId: string,
 ): { plan: TenantPlan; period: BillingPeriod } | null {
-  for (const [plan, periods] of Object.entries(DODO_TEST_CATALOGUE) as [
+  for (const [plan, periods] of Object.entries(DODO_ACTIVE_CATALOGUE) as [
     TenantPlan,
     Record<BillingPeriod, DodoCatalogueEntry>,
   ][]) {
@@ -183,9 +235,9 @@ export function resolvePlanFromProductId(
   return null;
 }
 
-/** Every product id in the catalogue. Six of them. */
+/** Every product id in the active catalogue. Six of them. */
 export function allCatalogueProductIds(): string[] {
-  return Object.values(DODO_TEST_CATALOGUE).flatMap((periods) =>
+  return Object.values(DODO_ACTIVE_CATALOGUE).flatMap((periods) =>
     Object.values(periods).map((entry) => entry.productId),
   );
 }

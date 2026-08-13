@@ -92,6 +92,15 @@ function makeDb() {
   };
 }
 
+// The lifecycle/dispatch chain reaches the Dodo catalogue (via provisioning),
+// which consumes the validated dodoConfig — so the three required variables
+// must exist before the dynamic imports below run.
+vi.hoisted(() => {
+  process.env.DODO_PAYMENTS_API_KEY = 'dodo_test_key';
+  process.env.DODO_PAYMENTS_WEBHOOK_KEY = 'whsec_dGVzdHNlY3JldA==';
+  process.env.DODO_PAYMENTS_ENVIRONMENT = 'test_mode';
+});
+
 const { mockCapture, mockSetCustomClaims, mockGetUser } = vi.hoisted(() => ({
   mockCapture: vi.fn(),
   mockSetCustomClaims: vi.fn().mockResolvedValue(undefined),

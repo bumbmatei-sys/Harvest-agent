@@ -15,16 +15,25 @@
  * ─── Consequence, stated plainly ─────────────────────────────────────────────
  *
  * Because the webhook route imports this module, `next build` imports it too.
- * The sandbox variables below MUST be set in Vercel before this branch is
- * deployed or the build fails. That is the fail-fast behaviour working as
- * designed; it is not a surprise to debug later.
+ * The three variables below MUST be set in Vercel before any branch is deployed
+ * or the build fails. That is the fail-fast behaviour working as designed; it
+ * is not a surprise to debug later.
  *
- * 🔴 SANDBOX ONLY IN THIS PR. Do not put live keys in Vercel. Live mode is
- * refused outright below — the live catalogue does not exist, and reaching for a
- * live key is a stop condition, not a next step.
+ * ─── Both modes are permitted; neither is a default ──────────────────────────
+ *
+ * `DODO_PAYMENTS_ENVIRONMENT` selects Dodo's API host and, through
+ * `catalogue.ts`, which of the two product catalogues this build transacts
+ * against. `test_mode` and `live_mode` are both accepted — the live catalogue
+ * exists as of 2026-08-13 — and any third value throws. The variable is
+ * required, so "which catalogue gets billed" is always an explicit, validated
+ * choice, never something a missing setting decided silently.
+ *
+ * 🔴 Pointing Production at live is a HUMAN step after this merges: setting the
+ * three variables to live values in Vercel, on the Production environment only.
+ * Nothing charges a real card until someone does that deliberately.
  */
 
-/** Dodo's two API hosts. Test mode is the only one this build accepts. */
+/** Dodo's two API hosts — the only values DODO_PAYMENTS_ENVIRONMENT may take. */
 export const DODO_TEST_MODE = 'test_mode';
 export const DODO_LIVE_MODE = 'live_mode';
 
@@ -53,23 +62,13 @@ export function requiredEnv(name: string): string {
 function requiredEnvironment(): DodoEnvironment {
   const raw = requiredEnv('DODO_PAYMENTS_ENVIRONMENT').trim();
 
-  if (raw === DODO_LIVE_MODE) {
-    throw new Error(
-      `[dodo] DODO_PAYMENTS_ENVIRONMENT is "${DODO_LIVE_MODE}", which this build refuses. ` +
-        'The Dodo catalogue in src/lib/dodo/catalogue.ts holds TEST-MODE product ids ' +
-        'only; the live products have not been created. Running live against test ' +
-        'product ids would fail every checkout, and pointing this build at live ' +
-        'credentials is out of scope for REP-4 part 1.',
-    );
-  }
+  if (raw === DODO_TEST_MODE || raw === DODO_LIVE_MODE) return raw;
 
-  if (raw !== DODO_TEST_MODE) {
-    throw new Error(
-      `[dodo] DODO_PAYMENTS_ENVIRONMENT must be "${DODO_TEST_MODE}" (received "${raw}").`,
-    );
-  }
-
-  return DODO_TEST_MODE;
+  throw new Error(
+    `[dodo] DODO_PAYMENTS_ENVIRONMENT must be "${DODO_TEST_MODE}" or "${DODO_LIVE_MODE}" ` +
+      `(received "${raw}"). There is no default environment: which catalogue gets ` +
+      'billed must always be an explicit, validated choice.',
+  );
 }
 
 export interface DodoConfig {

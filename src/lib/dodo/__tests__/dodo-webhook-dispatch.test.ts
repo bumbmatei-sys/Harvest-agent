@@ -1,5 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+// The dispatch chain (provisioning, plan-change) reaches the Dodo catalogue,
+// which consumes the validated dodoConfig — so the three required variables
+// must exist before those modules load. Hoisted above the imports by vitest.
+vi.hoisted(() => {
+  process.env.DODO_PAYMENTS_API_KEY = 'dodo_test_key';
+  process.env.DODO_PAYMENTS_WEBHOOK_KEY = 'whsec_dGVzdHNlY3JldA==';
+  process.env.DODO_PAYMENTS_ENVIRONMENT = 'test_mode';
+});
+
 import {
   DODO_DURABLE_EVENT_TYPES,
   DODO_EVENT_HANDLERS,
