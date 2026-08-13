@@ -321,10 +321,32 @@ describe('the Dodo module is wired into exactly the paths this PR names', () => 
      * `resolveBillingOwnership` does not resolve to Dodo, and it can only
      * archive — it never charges, provisions, or reads a catalogue. The test
      * below pins that.
+     *
+     * ─── The THIRD exception: the grace-status read (THE-125) ───────────────
+     *
+     * `/api/tenants/grace-status` is the church's only view of its own grace
+     * window. The deadline lives on `tenant_private`, which is `allow read,
+     * write: if false`, so no client can read it and — until this route — no
+     * owner could be told their card had failed before their donate page went
+     * dark.
+     *
+     * 🔴 IT TAKES THE EXCEPTION FOR THE SAME REASON THE GIVING GATE DOES, and
+     * fixes the same gap from the other side. Convergence had exactly two
+     * triggers: a donation attempt past the deadline, and a repeat
+     * `subscription.on_hold`. A lapsed church with NO donate traffic therefore
+     * kept `status: 'active'` — and kept publishing and sending — indefinitely.
+     * Admins load the admin far more reliably than donors hit a donate page, so
+     * this read is the cheapest reliable trigger that exists without a scheduler.
+     *
+     * ⚠️ And it is held to the same narrowness: one imported function, which
+     * refuses anything `resolveBillingOwnership` does not resolve to Dodo, and
+     * which can only archive. The test below pins that, and a further test pins
+     * that this route exposes no payment action of its own.
      */
     const ALLOWED_OUTSIDE_IMPORTERS = [
       'app/api/stripe/portal/route.ts',
       'app/api/stripe/donate/route.ts',
+      'app/api/tenants/grace-status/route.ts',
     ];
 
     const outsiders = sourceFiles(SRC)
@@ -372,6 +394,31 @@ describe('the Dodo module is wired into exactly the paths this PR names', () => 
     const imports = [...donate.matchAll(/import\s*\{([^}]*)\}\s*from\s*['"]@\/lib\/dodo\/[^'"]+['"]/g)]
       .flatMap((m) => m[1].split(',').map((s) => s.trim()).filter(Boolean));
     expect(imports).toEqual(['convergeExpiredDodoGrace']);
+  });
+
+  it('the grace-status read imports Dodo ONLY to converge, and exposes no payment action', () => {
+    // 🔴 The third exception, held to the same one-function width. This route is
+    // a READ that admins hit on every dashboard load; a second Dodo symbol here
+    // would put the checkout/portal/provisioning surface behind the most
+    // frequently called route in the app.
+    const graceStatus = read('app/api/tenants/grace-status/route.ts');
+    const imports = [...graceStatus.matchAll(/import\s*\{([^}]*)\}\s*from\s*['"]@\/lib\/dodo\/[^'"]+['"]/g)]
+      .flatMap((m) => m[1].split(',').map((s) => s.trim()).filter(Boolean));
+    expect(imports).toEqual(['convergeExpiredDodoGrace']);
+
+    // ⚠️ NO PAYMENT ACTION. Dodo has already charged or attempted to charge, and
+    // its dunning email already links to the customer portal. A charge path here
+    // would be a second way to be billed for one subscription.
+    for (const forbidden of [
+      'createPlanCheckout',
+      'createCustomerPortal',
+      'changePlan',
+      'provisionTenant',
+      'dodoBillingProvider',
+      'DODO_PRODUCTS',
+    ]) {
+      expect(graceStatus, forbidden).not.toContain(forbidden);
+    }
   });
 
   it('leaves the existing-tenant plan-change screens on Stripe', () => {
