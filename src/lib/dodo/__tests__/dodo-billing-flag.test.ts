@@ -421,11 +421,19 @@ describe('the Dodo module is wired into exactly the paths this PR names', () => 
     }
   });
 
-  it('leaves the existing-tenant plan-change screens on Stripe', () => {
-    // Plan changes modify a live Stripe subscription. Moving them is REP-4 PR 6.
+  it('keeps the Stripe plan-change path intact and routes Dodo tenants by processor (THE-89)', () => {
+    // A Stripe tenant's plan change still modifies its live Stripe subscription
+    // through /api/stripe/checkout — that literal must survive. A Dodo tenant's
+    // goes through the runDodoPlanChange flow (utils/plan-change.ts →
+    // /api/dodo/change-plan), picked from the `processor` the client reads off
+    // /api/billing/invoices. Losing either half strands one processor's
+    // tenants: no Stripe literal breaks every existing church; no Dodo branch
+    // sends Dodo churches back to the 409.
     for (const file of ['components/settings/PlanUpgradeSection.tsx', 'components/AdminUpgradePage.tsx']) {
       expect(read(file)).toContain("'/api/stripe/checkout'");
+      expect(read(file)).toContain('runDodoPlanChange');
     }
+    expect(read('utils/plan-change.ts')).toContain("'/api/dodo/change-plan'");
   });
 
   it('leaves donations completely alone', () => {

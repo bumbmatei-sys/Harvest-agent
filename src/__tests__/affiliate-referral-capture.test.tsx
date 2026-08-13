@@ -57,8 +57,17 @@ afterEach(() => {
   container.remove();
 });
 
-/** The body AdminUpgradePage actually POSTed to /api/stripe/checkout. */
-const checkoutBody = () => JSON.parse(authFetch.mock.calls[0][1].body);
+/**
+ * The body AdminUpgradePage actually POSTed to /api/stripe/checkout — found by
+ * URL, not by call order: since THE-89 the click first asks
+ * /api/billing/invoices which processor owns the tenant, so the checkout POST
+ * is no longer the first authFetch call.
+ */
+const checkoutBody = () => {
+  const call = authFetch.mock.calls.find(([url]) => url === '/api/stripe/checkout');
+  expect(call, 'no POST to /api/stripe/checkout').toBeTruthy();
+  return JSON.parse(call![1].body);
+};
 
 describe('referral capture is NOT gated on the affiliate programme flag', () => {
   it('the programme really is hidden — otherwise the rest of this file proves nothing', () => {

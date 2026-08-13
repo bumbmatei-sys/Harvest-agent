@@ -227,11 +227,12 @@ export async function POST(request: NextRequest) {
     // itself would then look like it belonged to both.
     //
     // The guard therefore runs BEFORE any Stripe call, not just before the
-    // checkout session. Dodo's own plan change (`subscriptions.changePlan`) is
-    // deliberately NOT wired up here: it is a money decision about proration
-    // defaults plus product-collection configuration on Dodo's side, and it needs
-    // `subscription.plan_changed` handled to move the tenant's plan afterwards —
-    // which is lifecycle, a later part. Refusing is the recoverable outcome;
+    // checkout session. Dodo's own plan change lives at `/api/dodo/change-plan`
+    // (THE-89) — a Dodo route, not a branch here, because this file is not one
+    // of the named exceptions allowed to import the Dodo module. The client
+    // routes Dodo tenants there from the `processor` it reads off
+    // `/api/billing/invoices`; this refusal stays for the stale bundle that
+    // posts a Dodo tenant here anyway. Refusing is the recoverable outcome;
     // charging twice is not.
     const privateData = await getTenantPrivate(tenantId);
     const ownership = resolveBillingOwnership(privateData);

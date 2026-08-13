@@ -17,6 +17,7 @@ import {
   PlanFeatures,
 } from '../../utils/plan-features';
 import { authFetch } from '../../utils/auth-fetch';
+import { fetchBillingProcessor, runDodoPlanChange, PlanChangeProcessor } from '../../utils/plan-change';
 import { getTenantId } from './useTenantId';
 
 interface PlanUpgradeSectionProps {
@@ -28,6 +29,13 @@ interface PlanUpgradeSectionProps {
    * top tier). The "Manage Subscription" / cancel action stays available.
    */
   hideUpgrade?: boolean;
+  /**
+   * Which processor owns this tenant's subscription, when the parent already
+   * knows (BillingAndPayments reads it off /api/billing/invoices). Undefined
+   * means "not known yet" and it is resolved lazily on the first plan click;
+   * the server guards both routes regardless, so this only picks the flow.
+   */
+  processor?: PlanChangeProcessor;
 }
 
 // Presentation only — icon, colour, "Popular" badge. Prices are NOT listed here:
@@ -137,7 +145,7 @@ const VISIBLE_FEATURES = AI_TELEGRAM_ASSISTANT_ENABLED
 // Ministry (max). Add entries here to re-enable the table's Coming Soon row.
 const SOON_FEATURES: { label: string; plans: TenantPlan[] }[] = [];
 
-const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, tenantId, email, hideUpgrade }) => {
+const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, tenantId, email, hideUpgrade, processor }) => {
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly');
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);
@@ -156,6 +164,39 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
   const resolveTenantId = async (): Promise<string | null> => {
     if (tenantId) return tenantId;
     return getTenantId();
+  };
+
+  /**
+   * One entry point per plan card. Dodo tenants get the in-place
+   * preview-then-confirm change (up AND down — Dodo's hosted portal has no plan
+   * controls, so sending a downgrade there would dead-end); Stripe tenants keep
+   * exactly the flow they had: checkout for an upgrade, the portal for a
+   * downgrade. The server refuses a mis-routed request either way.
+   */
+  const handlePlanSelect = async (planId: TenantPlan, isDowngrade: boolean) => {
+    setCheckoutLoading(planId);
+    try {
+      const proc = processor !== undefined ? processor : await fetchBillingProcessor();
+      if (proc === 'dodo') {
+        const tid = await resolveTenantId();
+        if (!tid) { alert('Unable to find your organization. Please try again.'); return; }
+        const result = await runDodoPlanChange({ tenantId: tid, plan: planId, billing: billingPeriod });
+        if (result.ok) {
+          alert(result.message);
+          window.location.reload();
+        } else if (result.message) {
+          alert(result.message);
+        }
+        return;
+      }
+      if (isDowngrade) {
+        await handleManageSubscription();
+        return;
+      }
+      await handleStripeCheckout(planId);
+    } finally {
+      setCheckoutLoading(null);
+    }
   };
 
   const handleStripeCheckout = async (planId: string) => {
@@ -337,11 +378,7 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
 
               <button
                 onClick={() => {
-                  if (!isCurrent && !isDowngrade) {
-                    handleStripeCheckout(plan.id);
-                  } else if (!isCurrent && isDowngrade) {
-                    handleManageSubscription();
-                  }
+                  if (!isCurrent) handlePlanSelect(plan.id, isDowngrade);
                 }}
                 disabled={isCurrent || checkoutLoading === planId}
                 className={`w-full py-2.5 rounded-xl text-sm font-semibold transition-colors ${

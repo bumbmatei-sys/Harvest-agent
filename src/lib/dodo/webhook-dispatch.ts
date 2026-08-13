@@ -13,6 +13,7 @@ import {
   handleDodoSubscriptionOnHold,
   handleDodoSubscriptionRenewed,
 } from './lifecycle';
+import { handleDodoSubscriptionPlanChanged } from './plan-change';
 
 /**
  * Idempotent routing for verified Dodo webhook events.
@@ -135,10 +136,12 @@ export type DodoEventHandler = (event: DodoWebhookEvent) => void | Promise<void>
  * without a route, and a handler cannot exist for an event that is not in the
  * table. `dodo-webhook-dispatch.test.ts` pins that the two agree exactly.
  *
- * Five slots are filled: `subscription.active` (provisioning, the reactivation
+ * Six slots are filled: `subscription.active` (provisioning, the reactivation
  * of an archived tenant, and clearing a grace hold), the two TERMINAL lifecycle
- * events `subscription.cancelled` and `subscription.expired`, and the two halves
- * of the grace timer below.
+ * events `subscription.cancelled` and `subscription.expired`, the two halves
+ * of the grace timer below, and `subscription.plan_changed` (THE-89), which
+ * moves the tenant's plan after an up/downgrade — the single writer of that
+ * field on the Dodo path; see `./plan-change`.
  *
  * ─── The `on_hold` timer, which used to be the empty slot here ───────────────
  *
@@ -177,6 +180,7 @@ DODO_EVENT_HANDLERS['subscription.cancelled'] = handleDodoSubscriptionCancelled;
 DODO_EVENT_HANDLERS['subscription.expired'] = handleDodoSubscriptionExpired;
 DODO_EVENT_HANDLERS['subscription.on_hold'] = handleDodoSubscriptionOnHold;
 DODO_EVENT_HANDLERS['subscription.renewed'] = handleDodoSubscriptionRenewed;
+DODO_EVENT_HANDLERS['subscription.plan_changed'] = handleDodoSubscriptionPlanChanged;
 
 export interface ReceiveOptions {
   readonly store?: SeenEventStore;

@@ -78,6 +78,12 @@ const BillingAndPayments: React.FC<BillingAndPaymentsProps> = ({ currentPlan, te
    * sentence a treasurer reconciling two statements must not be told.
    */
   const [historyInPortal, setHistoryInPortal] = useState(false);
+  /**
+   * Which processor owns the subscription, from the same invoices response.
+   * PlanUpgradeSection uses it to route a plan change to the right flow —
+   * undefined until the fetch lands, and the section resolves it itself then.
+   */
+  const [processor, setProcessor] = useState<'stripe' | 'dodo' | null | undefined>(undefined);
 
   useEffect(() => {
     let cancelled = false;
@@ -94,6 +100,7 @@ const BillingAndPayments: React.FC<BillingAndPaymentsProps> = ({ currentPlan, te
           setSubscription(data.subscription || null);
           setInvoices(Array.isArray(data.invoices) ? data.invoices : []);
           setHistoryInPortal(data.historySource === 'portal');
+          setProcessor(data.processor === 'dodo' ? 'dodo' : data.processor === 'stripe' ? 'stripe' : null);
         }
       } catch (e: any) {
         if (!cancelled) setError(e?.message || 'Failed to load billing information');
@@ -195,6 +202,7 @@ const BillingAndPayments: React.FC<BillingAndPaymentsProps> = ({ currentPlan, te
           tenantId={tenantId}
           email={email}
           hideUpgrade={isTopPlan}
+          processor={processor}
         />
       </div>
 

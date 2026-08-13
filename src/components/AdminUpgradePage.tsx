@@ -11,6 +11,7 @@ import {
   ANNUAL_FREE_MONTHS,
 } from '../utils/plan-features';
 import { authFetch } from '../utils/auth-fetch';
+import { fetchBillingProcessor, runDodoPlanChange } from '../utils/plan-change';
 import { getTenantId } from './settings/useTenantId';
 
 interface AdminUpgradePageProps {
@@ -35,6 +36,39 @@ const AdminUpgradePage: React.FC<AdminUpgradePageProps> = ({ currentPlan, tenant
   const resolveTenantId = async (): Promise<string | null> => {
     if (tenantId) return tenantId;
     return getTenantId();
+  };
+
+  /**
+   * One entry point per plan card, same shape as PlanUpgradeSection: a Dodo
+   * tenant changes plan in place (preview → confirm → the plan_changed webhook
+   * moves the tier), a Stripe tenant keeps checkout for upgrades and the
+   * portal for downgrades. The processor is resolved lazily on click; the
+   * server refuses a mis-routed request either way.
+   */
+  const handlePlanSelect = async (planId: TenantPlan, isDowngrade: boolean) => {
+    setCheckoutLoading(planId);
+    try {
+      const proc = await fetchBillingProcessor();
+      if (proc === 'dodo') {
+        const tid = await resolveTenantId();
+        if (!tid) { alert('Unable to find your organization. Please try again.'); return; }
+        const result = await runDodoPlanChange({ tenantId: tid, plan: planId, billing: billingPeriod });
+        if (result.ok) {
+          alert(result.message);
+          window.location.reload();
+        } else if (result.message) {
+          alert(result.message);
+        }
+        return;
+      }
+      if (isDowngrade) {
+        await handleManageSubscription();
+        return;
+      }
+      await handleCheckout(planId);
+    } finally {
+      setCheckoutLoading(null);
+    }
   };
 
   const handleCheckout = async (planId: string) => {
@@ -224,7 +258,7 @@ const AdminUpgradePage: React.FC<AdminUpgradePageProps> = ({ currentPlan, tenant
                 </div>
               ) : (
                 <button
-                  onClick={() => (isDowngrade ? handleManageSubscription() : handleCheckout(planId))}
+                  onClick={() => handlePlanSelect(planId, isDowngrade)}
                   disabled={checkoutLoading === planId}
                   className={`w-full py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-60 ${
                     isRecommended
