@@ -18,7 +18,7 @@ import type { TenantPlan } from '@/types/tenant.types';
  * ─── Scope: subscriptions ONLY ───────────────────────────────────────────────
  *
  * ⚠️ This is NOT a general payments abstraction, and nothing here may ever grow a
- * donation or ticketing method. Giving runs on Stripe Connect destination charges
+ * donation or ticketing method. Giving runs on Stripe Connect direct charges
  * at a 0% platform fee, it is NOT moving, and it is NOT swappable — the whole
  * point of `stripe-connect.ts` is that it stays put. A second abstraction layer
  * over it would create exactly the coupling this split was made to prevent.

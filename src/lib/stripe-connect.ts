@@ -2,23 +2,25 @@
  * Stripe Connect configuration — the platform's cut of money that flows through
  * a tenant's own connected account.
  *
- * This side of the payments split stays on Stripe. Donations and paid event
- * tickets are destination charges into each church's own Stripe account;
- * Harvest is only the platform taking an application fee (currently none).
+ * This side of the payments split stays on Stripe. Donations are DIRECT charges
+ * on each church's own Stripe account (THE-145) and paid event tickets are still
+ * destination charges into it; either way Harvest is only the platform taking an
+ * application fee (currently none).
  * Subscription/price configuration lives in `billing.ts` and is on its way to
  * another processor — nothing in this module should follow it there.
  */
 
 /**
  * Platform application-fee rate per plan, applied to money that flows through a
- * tenant's connected account via a destination charge (donations AND paid event
- * tickets). Single source of truth so the two money paths can never charge a
- * different platform fee for the same plan. A missing plan defaults to 0.
+ * tenant's connected account (donations, which are direct charges, AND paid
+ * event tickets, which are destination charges). Single source of truth so the
+ * two money paths can never charge a different platform fee for the same plan. A
+ * missing plan defaults to 0.
  *
  * ZERO ON EVERY TIER. Harvest takes no cut of a donation or a paid ticket on
- * any plan — the plans sell features and capacity, not a share of giving. A
- * destination charge with an application fee of 0 sends the whole amount to the
- * connected account.
+ * any plan — the plans sell features and capacity, not a share of giving. With
+ * an application fee of 0 the connected account keeps the whole amount on either
+ * charge type.
  *
  * This used to be mirrored by hand into `PLAN_FEATURES[plan].donationRetention`
  * / `PLAN_DONATION_RETENTION` as `100 - fee * 100`, so customers could be shown

@@ -119,7 +119,11 @@ describe('webhook payment_intent.succeeded — donation CRM linkage (ISSUE 5)', 
       .mockResolvedValueOnce({ exists: false }) // dedup
       .mockResolvedValueOnce({ exists: true, data: () => ({ tenantId: 't1' }) }) // donor user
       .mockResolvedValueOnce({ exists: true, data: () => ({ name: 'Grace' }) }); // tenant
-    mockCollGet.mockResolvedValueOnce({ docs: [existing] }); // contacts.where(userId==) hit
+    mockCollGet
+      // THE-145: the recorder first asks whether this PaymentIntent already has a
+      // donation_receipt (its per-payment idempotency gate). Nothing yet.
+      .mockResolvedValueOnce({ docs: [] })
+      .mockResolvedValueOnce({ docs: [existing] }); // contacts.where(userId==) hit
 
     await POST(makeRequest());
     // totalDonated increment is DOLLARS (BUG 2): 5000 cents → 50.

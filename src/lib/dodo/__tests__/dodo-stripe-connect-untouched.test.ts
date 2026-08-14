@@ -192,8 +192,11 @@ describe('a donation still computes a 0% fee, with the Dodo module present', () 
   });
 
   it('still routes the charge to the church’s own connected account', async () => {
-    // 0% of a destination charge is the whole point: the money lands in the
-    // church's Stripe account, not Harvest's, and Dodo is nowhere near it.
+    // 0% of a charge on the CHURCH'S OWN account is the whole point: the money
+    // lands in the church's Stripe account, not Harvest's, and Dodo is nowhere
+    // near it. THE-145 changed HOW it gets there — a direct charge created as the
+    // connected account, rather than a destination charge swept to it — but not
+    // WHERE it ends up, which is what this test has always been about.
     mockDocGet.mockResolvedValue({ exists: true, data: () => ({ plan: 'pro' }) });
 
     await donatePOST(
@@ -204,6 +207,9 @@ describe('a donation still computes a 0% fee, with the Dodo module present', () 
       }),
     );
 
-    expect(lastSessionArgs().payment_intent_data.transfer_data.destination).toBe('acct_T');
+    // The session is created AS the church (Stripe-Account header), so the funds
+    // are the church's from the moment the card clears — there is no transfer.
+    expect(mockCheckoutCreate.mock.calls.at(-1)![1]).toEqual({ stripeAccount: 'acct_T' });
+    expect(lastSessionArgs().payment_intent_data).not.toHaveProperty('transfer_data');
   });
 });

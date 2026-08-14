@@ -5,17 +5,51 @@ import { adminDb } from '@/lib/firebase-admin';
 import { deriveConnectStatus } from '@/lib/stripe-connect-status';
 import { sweepPendingAffiliateCommissions } from '@/lib/affiliate-payout';
 import { captureMoneyPathError } from '@/lib/money-path-sentry';
+import {
+  finalizePartnershipSubscription,
+  incrementCampaignRaised,
+  recordOneTimeDonation,
+  recordPartnershipRenewalDonation,
+} from '@/lib/donation-webhook';
 
 export const dynamic = 'force-dynamic';
 
 /**
  * Connected-account webhook (separate Stripe endpoint from the main platform
- * webhook, with its OWN signing secret STRIPE_CONNECT_WEBHOOK_SECRET). It listens
- * to `account.updated` and syncs the church's Connect payout status onto its
- * tenant doc AND mirrors it onto the tenant owner's user doc so the ONE account
- * powers donations and affiliate payouts alike. Structure mirrors
- * src/app/api/stripe/webhook/route.ts: verify the signature FIRST, then dedup,
- * then process.
+ * webhook, with its OWN signing secret STRIPE_CONNECT_WEBHOOK_SECRET). Structure
+ * mirrors src/app/api/stripe/webhook/route.ts: verify the signature FIRST, then
+ * dedup, then process.
+ *
+ * It handles two unrelated families of event:
+ *
+ *  1. `account.updated` — syncs the church's Connect payout status onto its
+ *     tenant doc AND mirrors it onto the tenant owner's user doc so the ONE
+ *     account powers donations and affiliate payouts alike, then sweeps any
+ *     affiliate commissions banked `pending`. Untouched by THE-145.
+ *
+ *  2. 🔴 THE DONATIONS THEMSELVES (THE-145). A donation is now a DIRECT charge
+ *     created on the church's connected account, so Stripe delivers its
+ *     lifecycle events HERE rather than to the platform endpoint — Stripe's own
+ *     scoping table puts "direct charges paid to connected accounts" and
+ *     "updates to Invoices and Subscriptions that connected accounts charge
+ *     their customers using direct charges" in the Connected accounts scope.
+ *     Without these cases every donation would succeed at Stripe and Harvest
+ *     would record nothing: no CRM activity, no receipt PDF, no `totalDonated`,
+ *     no donor profile. That is why the charge change and this one are one PR.
+ *
+ * ⚠️ EVERY STRIPE READ IN THE DONATION PATH IS SCOPED TO THE CONNECTED ACCOUNT.
+ * The Session, the PaymentIntent, the Subscription and the Invoice all live on
+ * the connected account now; a platform-scoped `retrieve` 404s — silently, if it
+ * is inside a `try`. The scope comes from `event.account`, which Stripe sets on
+ * every Connect-scoped delivery, NOT from anything in the payload body.
+ *
+ * ⚠️ The tenant is resolved from `metadata.tenantId`, exactly as on the platform
+ * endpoint. `event.account` is the CHURCH'S STRIPE ACCOUNT, not a tenant id.
+ *
+ * ⚠️ The bookkeeping itself is imported, never re-implemented — the same
+ * functions the platform endpoint calls. Two copies of the code that writes CRM
+ * activity, receipts and `totalDonated` is the duplicated-fact shape this
+ * project keeps paying for.
  */
 export async function POST(request: NextRequest) {
   const stripeKey = process.env.STRIPE_SECRET_KEY;
@@ -61,6 +95,18 @@ export async function POST(request: NextRequest) {
     }
     markerWritten = true; // flipped before the write so an ambiguous set() failure still gets undone
     await eventRef.set({ type: event.type, processedAt: new Date().toISOString() });
+
+    // 🔴 THE SCOPE FOR EVERY STRIPE READ BELOW. On a direct charge the Session,
+    // the PaymentIntent, the Subscription and the Invoice all live on the
+    // CONNECTED account — a platform-scoped `retrieve` 404s, and inside a `try`
+    // it does so silently. `event.account` is set by Stripe on Connect-scoped
+    // deliveries and is part of the signature-verified payload.
+    //
+    // `undefined` when absent rather than a bogus id: stripe-node then makes a
+    // plain platform-scoped call, which is correct for `account.updated`
+    // (delivered without an `account` field on some paths) and fails loudly
+    // rather than quietly against the wrong account for anything else.
+    const connectedAccount = event.account ? { stripeAccount: event.account } : undefined;
 
     switch (event.type) {
       case 'account.updated': {
@@ -179,8 +225,125 @@ export async function POST(request: NextRequest) {
         break;
       }
 
+      // ── Donations, which are direct charges on this connected account ──────
+      //
+      // `connectedAccount` is the scope EVERY Stripe read below is made under.
+      // Stripe sets `event.account` on Connect-scoped deliveries; it is part of
+      // the signed payload, so it is as trustworthy as the event itself.
+      case 'checkout.session.completed': {
+        const session = event.data.object as Stripe.Checkout.Session;
+        const subscriptionId = session.subscription as string | null;
+
+        // 🔴 ONE-TIME GIFTS ARE NOT RECORDED HERE. A one-time donation's session
+        // has no subscription, and its money is recorded from
+        // payment_intent.succeeded below — the only place that carries the
+        // partnership metadata for a one-time gift. Recording it here as well
+        // would double every one-time donation, because the session and the
+        // PaymentIntent are DISTINCT events whose ids the webhook_events marker
+        // cannot dedup across.
+        if (!subscriptionId) break;
+
+        let subObj: Stripe.Subscription | null = null;
+        try {
+          // `undefined` params, options third: `subscriptions.retrieve` takes
+          // (id, params, options) positionally, so the account scope only lands
+          // in the Stripe-Account header from the THIRD slot.
+          subObj = await stripe.subscriptions.retrieve(subscriptionId, undefined, connectedAccount);
+        } catch (subErr) {
+          console.error('Connect webhook: failed to retrieve subscription metadata:', subErr);
+          captureMoneyPathError(subErr, {
+            step: 'connect-subscription-metadata-load',
+            level: 'warning',
+            eventId: event.id,
+            eventType: event.type,
+            ids: { subscriptionId, connectAccountId: event.account },
+          });
+          // Without the metadata we cannot tell a monthly partnership from any
+          // other subscription on this account, and a partner's opening gift
+          // would be silently lost. Undo the marker and 5xx so Stripe redelivers.
+          await eventRef.delete().catch(() => { /* best effort */ });
+          return NextResponse.json({ error: 'Could not load subscription metadata; will retry' }, { status: 503 });
+        }
+
+        const meta = (subObj.metadata || {}) as Record<string, string>;
+        // A connected account may run subscriptions of its own that have nothing
+        // to do with Harvest. Only a Harvest donation carries this marker.
+        if (meta.type !== 'partnership') {
+          console.log(`ℹ️ Non-partnership subscription ${subscriptionId} on ${event.account} — nothing to record`);
+          break;
+        }
+
+        await finalizePartnershipSubscription(session, subObj, meta);
+        break;
+      }
+
+      case 'payment_intent.succeeded': {
+        // One-time gifts. The PaymentIntent arrives complete on the verified
+        // event, so there is no Stripe read to scope — and the recorder itself
+        // ignores anything without `type: 'partnership'`.
+        await recordOneTimeDonation(event.data.object as Stripe.PaymentIntent);
+        break;
+      }
+
+      case 'invoice.payment_succeeded': {
+        // Every month AFTER a monthly partner's first. Without this a partner's
+        // giving statement shows one month forever and their `totalDonated`
+        // freezes after the opening gift.
+        //
+        // ⚠️ ONLY the donation half of the platform endpoint's handler belongs
+        // here. Tenant reactivation and affiliate commissions key off a CHURCH'S
+        // OWN plan subscription, which is billed by Dodo/Stripe on the PLATFORM
+        // account and never reaches this endpoint.
+        const invoice = event.data.object as Stripe.Invoice;
+        // Same off-type read the platform route documents: `subscription` was
+        // removed from Stripe's Invoice type but is still on the wire.
+        const invoiceSubId = (invoice as unknown as { subscription?: string | null }).subscription ?? null;
+        if (!invoiceSubId) break;
+
+        let subMeta: Record<string, string> = {};
+        try {
+          const sub = await stripe.subscriptions.retrieve(invoiceSubId, undefined, connectedAccount);
+          subMeta = (sub.metadata || {}) as Record<string, string>;
+        } catch (subErr) {
+          console.error('Connect webhook: failed to retrieve subscription for invoice.payment_succeeded:', subErr);
+          captureMoneyPathError(subErr, {
+            step: 'connect-invoice-payment-succeeded-subscription-load',
+            level: 'warning',
+            eventId: event.id,
+            eventType: event.type,
+            ids: { subscriptionId: invoiceSubId, invoiceId: invoice.id, connectAccountId: event.account },
+          });
+          // A renewal gift with no receipt and no CRM credit. Retry it rather
+          // than 200 it away — the recorders are idempotent per invoice id.
+          await eventRef.delete().catch(() => { /* best effort */ });
+          return NextResponse.json({ error: 'Could not load subscription metadata; will retry' }, { status: 503 });
+        }
+
+        const tenantId = subMeta.tenantId;
+        // The OPENING month arrives as billing_reason 'subscription_create' and is
+        // already recorded by checkout.session.completed above. The two are
+        // DISTINCT events, so the webhook_events marker cannot dedup across them;
+        // this guard is what stops month one from counting twice.
+        const isPartnershipRenewal =
+          subMeta.type === 'partnership' &&
+          (invoice as any).billing_reason !== 'subscription_create';
+
+        if (!isPartnershipRenewal || !tenantId) break;
+
+        if (subMeta.campaignId) {
+          await incrementCampaignRaised({
+            campaignId: subMeta.campaignId,
+            tenantId,
+            amountDollars: (invoice.amount_paid || 0) / 100,
+            paymentId: invoice.id,
+          });
+        }
+
+        await recordPartnershipRenewalDonation({ invoice, subMeta, tenantId });
+        break;
+      }
+
       default:
-        // The dashboard endpoint is scoped to account.updated, but stay defensive.
         console.log(`Unhandled connect event type: ${event.type}`);
     }
 
