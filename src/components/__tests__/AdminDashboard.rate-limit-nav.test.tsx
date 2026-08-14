@@ -196,6 +196,9 @@ function navLabels(): Set<string> {
   return found;
 }
 
+/** True while the dashboard is showing its loading skeleton (no nav rendered). */
+const isSkeleton = () => container.querySelector('.animate-spin') !== null;
+
 /** The tabs a roster grant — and nothing else — puts in front of this admin. */
 const ROSTER_GRANTED_TABS = ['CRM', 'Blog', 'Courses', 'Community', 'Settings'];
 
@@ -319,6 +322,32 @@ describe('THE-139 — a rate-limited entitlement lookup must not reduce the nav'
     // already known. Nothing was sent to the limiter at all.
     expect(callsTo('/api/tenants/roster-status')).toBe(before);
     vi.useRealTimers();
+  });
+
+  it('a remount renders the known nav on the first paint, without a skeleton flash', async () => {
+    rosterResponses = [rosterSays(true)];
+    await mount({ role: 'user', permissions: {} });
+    await flush();
+    expect(navLabels().has('CRM')).toBe(true);
+    await unmount();
+
+    // Remount and look BEFORE any promise has had a chance to settle. Crossing
+    // between '/admin' and '/admin/:section' is a real remount (separate router
+    // entries), and it is the hop an admin makes most often — resolving the
+    // roster asynchronously each time would blink the whole nav away and back.
+    // Synchronous act on purpose: an async one would flush the lookup's promise
+    // and hide the very frame under test.
+    act(() => {
+      root = createRoot(container);
+      root.render(<AdminDashboard onNavigate={() => {}} />);
+    });
+    mounted = true;
+
+    expect(isSkeleton(), 'the nav blinked through a skeleton on remount').toBe(false);
+    expect(navLabels().has('CRM')).toBe(true);
+
+    await flush();
+    expect(navLabels().has('CRM')).toBe(true);
   });
 
   // ── 3. 🔴 The fail-open guard ─────────────────────────────────────────────
