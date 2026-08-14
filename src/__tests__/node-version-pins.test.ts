@@ -2,9 +2,15 @@ import { describe, expect, it } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 
-// Guards the Node 20 -> 24 migration (THE-99). Vercel disables Node 20 builds
-// on 2026-10-01; these assertions read the real files so a reintroduced Node
-// 20 pin fails CI instead of silently shipping.
+// Guards the Node 20 -> 24 migration (THE-99) and its follow-up. Vercel
+// disables Node 20 builds on 2026-10-01, so the repo root targets 24. But
+// Cloud Functions decommissions Node 20 on 2026-10-30 and all 5 Harvest
+// functions are GCF 1st gen (v1), which tops out at nodejs22 — nodejs24 is
+// 2nd gen only and cannot deploy on 1st gen. So functions/ is pinned to 22
+// on purpose while the root stays on 24; that split is intentional, not
+// drift. These assertions read the real files so a reintroduced Node 20
+// pin, a functions/root runtime mismatch, or a functions runtime bumped
+// past the 1st gen ceiling fails CI instead of silently failing to deploy.
 const repoRoot = path.resolve(__dirname, '../..');
 
 function readJson(relativePath: string) {
@@ -42,15 +48,34 @@ describe('Node version pins', () => {
     expect(functionsEngineMatch, 'functions/package.json engines.node is not a bare major version').not.toBeNull();
 
     expect(functionsEngineMatch![1]).toBe(firebaseRuntimeMatch![1]);
-    expect(firebaseRuntimeMatch![1]).toBe('24');
+    expect(firebaseRuntimeMatch![1]).toBe('22');
   });
 
-  it('no .nvmrc or .node-version reintroduces an older pin', () => {
-    for (const file of ['.nvmrc', '.node-version', 'functions/.nvmrc', 'functions/.node-version']) {
+  it('the functions runtime never exceeds the 1st gen ceiling', () => {
+    const firebaseConfig = readJson('firebase.json');
+    const firebaseRuntimeMatch = String(firebaseConfig.functions?.runtime ?? '').match(/^nodejs(\d+)$/);
+    expect(firebaseRuntimeMatch, 'firebase.json functions.runtime is not a nodejsNN string').not.toBeNull();
+
+    const runtimeMajor = parseInt(firebaseRuntimeMatch![1], 10);
+    expect(
+      runtimeMajor,
+      `functions.runtime is nodejs${runtimeMajor}, but all 5 Harvest functions are GCF 1st gen (v1) and nodejs24+ is 2nd gen only — this cannot deploy (THE-99)`,
+    ).toBeLessThan(24);
+  });
+
+  it('.nvmrc scoping requires 24 at the root and 22 under functions/', () => {
+    const minimumByFile: Record<string, number> = {
+      '.nvmrc': 24,
+      '.node-version': 24,
+      'functions/.nvmrc': 22,
+      'functions/.node-version': 22,
+    };
+
+    for (const [file, minimum] of Object.entries(minimumByFile)) {
       const fullPath = path.join(repoRoot, file);
       if (!fs.existsSync(fullPath)) continue;
       const version = parseInt(fs.readFileSync(fullPath, 'utf8').trim().replace(/^v/, ''), 10);
-      expect(version, `${file} pins Node ${version}, older than the required 24`).toBeGreaterThanOrEqual(24);
+      expect(version, `${file} pins Node ${version}, older than the required ${minimum}`).toBeGreaterThanOrEqual(minimum);
     }
   });
 });
