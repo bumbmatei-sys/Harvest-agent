@@ -6,9 +6,15 @@ import { getTenantPrivate } from '@/lib/tenant-private';
 import { billingActionUnavailable, resolveBillingOwnership } from '@/lib/billing-processor';
 import { resolvePlanFromProductId } from '@/lib/dodo/catalogue';
 import {
+  describeDodoAddons,
   executeDodoPlanChange,
   isDodoSubscriptionInTrial,
+  planDodoAddonCarryOver,
   previewDodoPlanChange,
+  retrieveDodoSubscription,
+  type DodoAddonCarryOver,
+  type DodoNamedAddon,
+  type DodoSubscriptionLike,
 } from '@/lib/dodo/dodo-provider';
 import type { BillingPeriod } from '@/lib/dodo/provider';
 import { PLAN_ORDER } from '@/utils/plan-features';
@@ -35,6 +41,11 @@ import type { TenantPlan } from '@/types/tenant.types';
  * charge now (`previewChangePlan`), and nothing is billed. With `confirm: true`
  * it performs the change. The client shows the preview and asks; a church never
  * commits to a proration it has not seen.
+ *
+ * The preview also names the ADD-ONS the change would remove (THE-132). A Dodo
+ * add-on is attached to specific products, so a downgrade can land on a plan
+ * that does not offer one the church holds; that add-on goes, and it is said in
+ * words before the confirm, not discovered on the next invoice.
  *
  * ─── What this route deliberately does NOT do ────────────────────────────────
  *
@@ -165,9 +176,14 @@ export async function POST(request: NextRequest) {
     // one that charges. See `isDodoSubscriptionInTrial` for the two detections.
     // A failure to determine trial status refuses too: uncertainty about
     // whether a church will be charged early is resolved by not charging.
+    let subscription: DodoSubscriptionLike;
     let inTrial: boolean;
     try {
-      inTrial = await isDodoSubscriptionInTrial(subscriptionId);
+      // Retrieved ONCE and used twice: the trial check reads its dates, the
+      // add-on carry-over below reads what it holds. The confirm path therefore
+      // grows no subscription read at all.
+      subscription = await retrieveDodoSubscription(subscriptionId);
+      inTrial = await isDodoSubscriptionInTrial(subscriptionId, subscription);
     } catch (trialErr) {
       captureMoneyPathError(trialErr, {
         step: 'dodo-change-plan-trial-check',
@@ -191,9 +207,47 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // ── 🔴 ADD-ONS: WHAT SURVIVES THE CHANGE, AND WHAT THE CHURCH LOSES. ─────
+    // A Dodo add-on is attached to specific products, so a downgrade can land
+    // on a plan that does not offer something the church is paying for. That
+    // add-on is removed — and named in the preview, so the loss is read BEFORE
+    // the confirm rather than discovered on the next invoice.
+    //
+    // Computed ONCE here, for the preview and the confirm alike: the confirm
+    // sends exactly the set the quoted amount was calculated from.
+    //
+    // 🔴 A FAILURE TO READ REFUSES. "No add-ons" and "could not determine the
+    // add-ons" are different facts, and sending `[]` for the second would
+    // delete something a church pays for on the strength of a network error.
+    let carryOver: DodoAddonCarryOver;
+    let addOnsCarried: DodoNamedAddon[] = [];
+    let addOnsRemoved: DodoNamedAddon[] = [];
+    try {
+      carryOver = await planDodoAddonCarryOver(subscription, plan, period);
+      if (confirm !== true) {
+        // Names cost a call each and are only ever shown, so they are fetched
+        // on the preview and never on the confirm.
+        [addOnsCarried, addOnsRemoved] = await Promise.all([
+          describeDodoAddons(carryOver.carried),
+          describeDodoAddons(carryOver.removed),
+        ]);
+      }
+    } catch (addonErr) {
+      captureMoneyPathError(addonErr, {
+        step: 'dodo-change-plan-addons',
+        level: 'error',
+        tenantId: ownerOrErr.tenantId,
+        ids: { subscriptionId },
+      });
+      return NextResponse.json(
+        { error: 'We could not check the add-ons on your subscription just now, so your plan was left unchanged. Please try again in a few minutes.' },
+        { status: 503 },
+      );
+    }
+
     if (confirm !== true) {
       // Preview only. Nothing has been charged and nothing has changed.
-      const preview = await previewDodoPlanChange(subscriptionId, plan, period);
+      const preview = await previewDodoPlanChange(subscriptionId, plan, period, carryOver.carried);
       return NextResponse.json({
         preview: {
           amountDueNow: preview.amountDueNow,
@@ -201,6 +255,10 @@ export async function POST(request: NextRequest) {
           currency: preview.currency,
           plan,
           billing: period,
+          // By NAME. `adn_0NlKtwD3VfBLgx2LTw69O` is not a thing a church can
+          // weigh a decision against; "Unlimited Contacts" is.
+          addOnsCarried,
+          addOnsRemoved,
         },
       });
     }
@@ -209,7 +267,7 @@ export async function POST(request: NextRequest) {
     // a failed payment leaves the church exactly where it was. The tenant's
     // `plan` is NOT written here: the `subscription.plan_changed` webhook is
     // the single writer, and it fires only when the change actually took.
-    await executeDodoPlanChange(subscriptionId, plan, period);
+    await executeDodoPlanChange(subscriptionId, plan, period, carryOver.carried);
 
     return NextResponse.json({
       ok: true,

@@ -71,7 +71,22 @@ export async function runDodoPlanChange(args: {
         ? `No charge today. ${fmtMinor(creditMovement, currency)} of unused time on your current plan becomes credit that automatically reduces your future renewals.`
         : 'No charge today.';
 
-  if (!window.confirm(`Confirm your plan change.\n\n${moneyLine}`)) {
+  // 🔴 THE LOSS, BEFORE THE CONFIRM (THE-132). An add-on the new plan does not
+  // offer is removed by the change. The server names them; this states them,
+  // because a church learning on the next invoice that it lost something it was
+  // paying for is the same failure as an unseen proration.
+  const removedNames: string[] = (Array.isArray(previewData?.preview?.addOnsRemoved)
+    ? previewData.preview.addOnsRemoved
+    : []
+  )
+    .map((addOn: { name?: unknown }) => (typeof addOn?.name === 'string' ? addOn.name : ''))
+    .filter((name: string) => name !== '');
+
+  const lossLine = removedNames.length
+    ? `\n\nThe new plan does not include ${removedNames.join(', ')}, so ${removedNames.length === 1 ? 'it' : 'they'} will be removed and you will stop being billed for ${removedNames.length === 1 ? 'it' : 'them'}.`
+    : '';
+
+  if (!window.confirm(`Confirm your plan change.\n\n${moneyLine}${lossLine}`)) {
     return { ok: false, message: '' };
   }
 
