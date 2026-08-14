@@ -8,7 +8,8 @@
     "deploy": "firebase deploy --only functions",
     "logs": "firebase functions:log"
   },
-  "engines": { "node": "24" },
+  "//engines": "Pinned to 22, not the repo root's 24: all 5 functions here are GCF 1st gen (v1), and nodejs24 is 2nd-gen only, so it can't deploy (THE-99). 22 is the highest 1st gen supports, and clears the Node 20 EOL on Cloud Functions (2026-10-30). The Next.js app at the repo root targets 24 for Vercel instead — the two are intentionally different.",
+  "engines": { "node": "22" },
   "main": "lib/index.js",
   "dependencies": {
     "firebase-admin": "^12.6.0",

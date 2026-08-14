@@ -5,7 +5,7 @@
   },
   "functions": {
     "source": "functions",
-    "runtime": "nodejs24"
+    "runtime": "nodejs22"
   },
   "storage": [
     { "bucket": "harvest-agent-233a1.firebasestorage.app", "rules": "storage.rules" },
