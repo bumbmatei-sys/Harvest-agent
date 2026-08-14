@@ -197,6 +197,11 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
   const hasCustomBranding = tenantPlan === 'max';
 
   const [error, setError] = useState('');
+  // Set only for auth/email-already-in-use, so the error banner can offer the
+  // "Sign in instead" action alongside the message rather than just naming the
+  // problem. Kept separate from `error` (a plain string) so the CTA's presence
+  // doesn't depend on matching message text.
+  const [emailInUse, setEmailInUse] = useState(false);
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   // Cloudflare Turnstile — bot gate on email/password sign-in AND sign-up.
@@ -243,6 +248,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
     try {
       setLoading(true);
       setError('');
+      setEmailInUse(false);
 
       const provider = new GoogleAuthProvider();
       const result = await signInWithPopup(auth, provider);
@@ -307,7 +313,9 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
       if (err.code === 'auth/popup-closed-by-user') {
         setError('Sign-in was cancelled.');
       } else {
-        setError(err.message || 'Failed to sign in with Google.');
+        // Same one-line fallback fix as handleEmailAuth below: no raw Firebase
+        // wording reaches the screen.
+        setError('Failed to sign in with Google. Please try again.');
       }
     } finally {
       setLoading(false);
@@ -320,6 +328,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
       setLoading(true);
       setError('');
       setSuccess('');
+      setEmailInUse(false);
 
       // Pre-flight bot check — must pass before either Firebase Auth call fires.
       try {
@@ -419,8 +428,22 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
       console.error(err);
       if (err.code === 'auth/operation-not-allowed') {
         setError('Email/Password sign-in is not enabled. Please enable it in the Firebase Console.');
+      } else if (err.code === 'auth/email-already-in-use') {
+        // The population most likely to convert — someone who already has a
+        // Harvest account — must be pointed at what to do next, not just told
+        // what went wrong. The "Sign in instead" action next to this message
+        // reuses the same mode-switch as the toggle link below (switchAuthMode).
+        setEmailInUse(true);
+        setError('An account with this email already exists.');
+      } else if (err.code === 'auth/invalid-email') {
+        setError('Please enter a valid email address.');
+      } else if (err.code === 'auth/network-request-failed') {
+        setError("We couldn't reach the server. Check your connection and try again.");
       } else {
-        setError(err.message || 'Authentication failed.');
+        // No raw Firebase wording reaches the screen — an unrecognised code
+        // still gets a message a church can act on (retry), just not one
+        // written by a library.
+        setError(isLogin ? 'Unable to sign in. Please try again.' : 'Unable to create your account. Please try again.');
       }
     } finally {
       setLoading(false);
@@ -454,6 +477,21 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Single path between the sign-in and sign-up views — used by the toggle link
+  // below AND by the "Sign in instead" action on the email-already-in-use error,
+  // so there is only one place that resets the error/success messages and
+  // remounts the (single-use) Turnstile widget for the new view. Deliberately
+  // does not touch `email` — the address the person already typed must survive
+  // the switch.
+  const switchAuthMode = (nextIsLogin: boolean) => {
+    setIsLogin(nextIsLogin);
+    setError('');
+    setSuccess('');
+    setEmailInUse(false);
+    setTurnstileToken(null);
+    setTurnstileKey((k) => k + 1);
   };
 
   // Editorial eyebrow / title / sub for the current view.
@@ -510,6 +548,18 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
             {error && (
               <div className="mt-5 rounded-lg border px-3.5 py-3 text-sm" style={{ background: '#FBEEEA', borderColor: '#EBD0C7', color: '#B0432B' }}>
                 {error}
+                {emailInUse && (
+                  <>
+                    {' '}
+                    <button
+                      type="button"
+                      onClick={() => switchAuthMode(true)}
+                      className="font-semibold underline"
+                    >
+                      Sign in instead
+                    </button>
+                  </>
+                )}
               </div>
             )}
             {success && (
@@ -666,16 +716,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
                 <p className="mt-5 text-center text-[13px]" style={{ color: 'var(--text-body, #4A4038)' }}>
                   {isLogin ? 'New to Harvest?' : 'Already have an account?'}{' '}
                   <button
-                    onClick={() => {
-                      setIsLogin(!isLogin);
-                      setError('');
-                      setSuccess('');
-                      // Reset the bot gate on mode switch so a token solved for one
-                      // view never carries over to the other (a submit's finally block
-                      // handles the post-attempt case; this handles a direct toggle).
-                      setTurnstileToken(null);
-                      setTurnstileKey((k) => k + 1);
-                    }}
+                    onClick={() => switchAuthMode(!isLogin)}
                     className="font-semibold hover:underline"
                     style={{ color: brandColor }}
                   >
