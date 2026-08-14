@@ -7,6 +7,7 @@ import { getTenantId } from './useTenantId';
 const PaymentSection: React.FC = () => {
   const [stripeConnectStatus, setStripeConnectStatus] = useState<string | null>(null);
   const [stripeConnectLoading, setStripeConnectLoading] = useState(false);
+  const [dashboardLoading, setDashboardLoading] = useState(false);
   const [paymentLoaded, setPaymentLoaded] = useState(false);
 
   // Load Stripe Connect status from tenant doc
@@ -61,6 +62,44 @@ const PaymentSection: React.FC = () => {
     }
   };
 
+  /**
+   * Open the church's OWN Stripe dashboard (THE-137).
+   *
+   * Harvest connects churches as Express accounts, and an Express holder has no
+   * Stripe password — so this cannot be a link to dashboard.stripe.com, which is
+   * a login wall they can never pass. The server mints a single-use login link
+   * per click; nothing about it is cached here or anywhere else.
+   */
+  const handleOpenStripeDashboard = async () => {
+    const tid = await getTenantId();
+    if (!tid) { alert('Unable to find your organization.'); return; }
+    setDashboardLoading(true);
+    try {
+      const resp = await authFetch('/api/stripe/connect/login-link', {
+        method: 'POST',
+        body: JSON.stringify({ tenantId: tid }),
+      });
+      const data = await resp.json();
+      if (data.url) {
+        window.location.href = data.url;
+        return;
+      }
+      // Never connected, or connected but onboarding never finished. A login
+      // link cannot exist yet, so send them where it can be earned instead of
+      // showing an error with no way forward.
+      if (data.onboardingRequired) {
+        await handleStripeConnect();
+        return;
+      }
+      alert(data.error || 'Failed to open your Stripe dashboard');
+    } catch (e) {
+      console.error('Stripe dashboard error:', e);
+      alert('Failed to open your Stripe dashboard. Please try again.');
+    } finally {
+      setDashboardLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <p className="text-body">
@@ -84,15 +123,14 @@ const PaymentSection: React.FC = () => {
                 Active
               </span>
             </div>
-            <a
-              href="https://dashboard.stripe.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-earth text-cream rounded-xl text-sm font-semibold hover:bg-warm-dark dark:bg-cream dark:text-earth dark:hover:bg-stone-200 transition-colors"
+            <button
+              onClick={handleOpenStripeDashboard}
+              disabled={dashboardLoading || stripeConnectLoading}
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-earth text-cream rounded-xl text-sm font-semibold hover:bg-warm-dark dark:bg-cream dark:text-earth dark:hover:bg-stone-200 transition-colors disabled:opacity-50"
             >
-              Manage Stripe Dashboard
+              {dashboardLoading ? 'Opening Stripe…' : 'Manage Stripe Dashboard'}
               <ChevronRight size={16} />
-            </a>
+            </button>
           </div>
         ) : stripeConnectStatus === 'pending' ? (
           <div className="space-y-4">
