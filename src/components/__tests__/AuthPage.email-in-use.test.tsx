@@ -103,7 +103,14 @@ const findButton = (label: string) =>
 const text = () => (container.textContent ?? '').replace(/\s+/g, ' ');
 
 beforeEach(() => {
-  vi.clearAllMocks();
+  // mockReset (not clearAllMocks) — a test that fails partway through a
+  // multi-call sequence can leave a queued mockRejectedValueOnce/
+  // mockResolvedValueOnce unconsumed, and clearAllMocks does not drop that
+  // queue, so it would leak into the next test and produce a misleading
+  // failure there instead.
+  createUser.mockReset();
+  signIn.mockReset();
+  setDoc.mockReset().mockImplementation(async () => {});
   turnstileMounts = 0;
   sessionStorage.clear();
   setURL('https://theharvest.app/auth?signup=plus');
