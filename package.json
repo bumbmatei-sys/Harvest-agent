@@ -2,6 +2,7 @@
   "name": "harvest-site",
   "version": "0.1.0",
   "private": true,
+  "engines": { "node": "24.x" },
   "scripts": {
     "dev": "next dev -p 3000",
     "build": "next build",
@@ -89,7 +90,7 @@
     "@testing-library/user-event": "^14.6.1",
     "@types/dompurify": "^3.2.0",
     "@types/leaflet": "^1.9.12",
-    "@types/node": "^20",
+    "@types/node": "^24",
     "@types/qrcode": "^1.5.5",
     "@types/react": "^18",
     "@types/react-dom": "^18",
