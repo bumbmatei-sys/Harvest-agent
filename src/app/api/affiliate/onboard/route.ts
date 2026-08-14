@@ -83,8 +83,35 @@ export async function POST(request: NextRequest) {
         let accountId: string | undefined = (await getTenantPrivate(tenantId)).stripeConnectAccountId;
         let connectStatus: string | undefined = tData.stripeConnectStatus;
         if (!accountId) {
+          // ─── 🔴 STANDARD, because this IS the donations account (THE-147) ───
+          //
+          // ⚠️ THIS CALL SITE IS NOT PAYOUT-ONLY, despite living in the affiliate
+          // route. It writes `tenant_private.stripeConnectAccountId` below — the
+          // canonical account `/api/stripe/donate` charges, and #316 made those
+          // charges DIRECT, so Stripe debits a disputed gift from the CHURCH's
+          // balance. Express + direct charges is the exact pairing THE-145 (#317)
+          // exists to eliminate: an Express holder has no Stripe credentials and
+          // only the Express Dashboard, so the money lands on the church while the
+          // dispute and refund tools stay with Harvest. Standard is the church's
+          // OWN Stripe account — its own login, its own disputes, its own records.
+          //
+          // 🔴 THE GAP THIS CLOSES. #317 switched `/api/stripe/connect` to
+          // 'standard' and left this site on 'express', so a church owner who
+          // clicked "become an affiliate" BEFORE "connect Stripe" still minted an
+          // Express donations account and then took direct charges on it. That is
+          // the new-customer path, and it reopened the whole defect.
+          //
+          // ⚠️ KEEP THIS IN LOCKSTEP WITH `/api/stripe/connect`. Two routes create
+          // the tenant donations account and each holds its own account type; the
+          // types diverging is precisely how THE-147 happened. They are pinned
+          // together by `affiliate-onboard-standard-account.test.ts`
+          // ("both creation paths agree"), which fails if either side moves alone.
+          //
+          // ⚠️ Existing accounts are untouched — `accountId` above short-circuits
+          // this branch, and Stripe does not allow an account's type to change
+          // after creation. This applies to accounts created from now on only.
           const account = await stripe.accounts.create({
-            type: 'express',
+            type: 'standard',
             metadata: { tenantId, tenantName: tData.name || '', app: 'harvest' },
           });
           accountId = account.id;
@@ -137,7 +164,27 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ url: accountLink.url });
     }
 
-    // Create a new user-scoped Stripe Connect Express account.
+    // ─── 🔴 EXPRESS, AND IT STAYS EXPRESS (THE-147) ──────────────────────────
+    //
+    // ⚠️ DO NOT "FIX" THIS TO MATCH THE TENANT PATH ABOVE. They are not the same
+    // thing and the difference is the whole ticket. This account belongs to a
+    // caller with NO tenant: it is written only to
+    // `users/{uid}.affiliateStripeAccountId`, never to
+    // `tenant_private.stripeConnectAccountId`, so no church's donations resolve
+    // to it and `/api/stripe/donate` can never charge it.
+    //
+    // It is a payout-only RECIPIENT. Money reaches it exactly one way — the
+    // platform's `stripe.transfers.create({ destination })` in
+    // `sweepPendingAffiliateCommissions` — so it needs the `transfers`
+    // capability, not `card_payments`. It takes no charges at all, which means
+    // none of the direct-charge reasoning above applies to it: there is no
+    // merchant of record to be, no dispute to answer, no donor money held.
+    // Standard would be the wrong shape (Stripe lists Standard's supported
+    // charge type as direct-only) and a different authorization model, not a
+    // one-word change.
+    //
+    // Pinned by `affiliate-onboard-standard-account.test.ts` test 2 — the
+    // regression test. If that test fails, this line was changed by mistake.
     const account = await stripe.accounts.create({
       type: 'express',
       metadata: {

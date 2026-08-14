@@ -323,7 +323,10 @@ describe('a new connected account is created as Standard', () => {
 // Test 2 — 🔴 THE REGRESSION TEST. Worth more than test 1.
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('🔴 affiliate accounts are still created as Express', () => {
+// ⚠️ Scope note (THE-147): "affiliate accounts" here means the PAYOUT-ONLY,
+// tenant-less recipient. The tenant-backstop case further down shares this
+// route but creates the tenant's DONATIONS account, and is Standard.
+describe('🔴 payout-only affiliate accounts are still created as Express', () => {
   it('a payout-only affiliate with no tenant still gets an Express account', async () => {
     mockAccountsCreate.mockResolvedValue({ id: AFFILIATE_ACCOUNT_ID });
 
@@ -357,8 +360,8 @@ describe('🔴 affiliate accounts are still created as Express', () => {
     expect(tenantPrivateWrites).toEqual([]);
   });
 
-  it('🔴 the unified-account backstop is UNCHANGED and still creates Express', async () => {
-    // ⚠️ READ THIS BEFORE "FIXING" THE PIN BELOW.
+  it('🔴 the unified-account backstop now creates Standard too — the gap is CLOSED', async () => {
+    // ⚠️ THIS ASSERTION WAS DELIBERATELY FLIPPED BY THE-147. Read before editing.
     //
     // `/api/affiliate/onboard` has a second `accounts.create` call: when the
     // caller DOES belong to a tenant that has not connected yet, it creates the
@@ -367,13 +370,16 @@ describe('🔴 affiliate accounts are still created as Express', () => {
     // charges. So this path, unlike the one above, is not payout-only despite
     // living in the affiliate route.
     //
-    // 🔴 That means a church whose owner clicks "become an affiliate" BEFORE
-    // "connect Stripe" still gets an EXPRESS donations account after this
-    // change. That gap is REPORTED, not silently closed here: THE-145 PR 2 was
-    // scoped to leave both affiliate call sites untouched, and changing this one
-    // moves account creation for the money path into a route this PR does not
-    // own. This test pins today's behaviour so the gap is visible and so the
-    // follow-up that closes it has to change this line deliberately.
+    // THE-145 PR 2 (#317) left that site on 'express' and pinned it here, with
+    // the note that "the follow-up that closes it has to change this line
+    // deliberately". THE-147 is that follow-up: a church owner who clicked
+    // "become an affiliate" BEFORE "connect Stripe" was minting an EXPRESS
+    // donations account and then taking direct charges on it — the exact pairing
+    // #317 exists to eliminate. The line below is that deliberate change.
+    //
+    // 🔴 The two creation sites must now AGREE. This assertion is one half of
+    // that; `affiliate-onboard-standard-account.test.ts` ("both creation paths
+    // agree") pins them against each other directly.
     tenantPrivate.set('grace', { adminEmails: [] }); // Grace has not connected
     mockAccountsCreate.mockResolvedValue({ id: NEW_CHURCH_ACCOUNT_ID });
 
@@ -381,8 +387,9 @@ describe('🔴 affiliate accounts are still created as Express', () => {
 
     expect(res.status).toBe(200);
     expect(mockAccountsCreate).toHaveBeenCalledTimes(1);
-    expect(accountCreateParams().type).toBe('express');
-    // …and it really is the donations account, which is what makes it a gap.
+    expect(accountCreateParams().type).toBe('standard');
+    expect(accountCreateParams().type).not.toBe('express');
+    // …and it really is the donations account, which is what made it a defect.
     expect(privateWritesFor('grace')).toContainEqual(
       expect.objectContaining({ stripeConnectAccountId: NEW_CHURCH_ACCOUNT_ID }),
     );
