@@ -76,10 +76,11 @@ export const MEMBER_FAQS: readonly MemberFAQ[] = [
       'The money goes to the ministry, not to Harvest. The whole amount lands in the ministry’s account with nothing taken out by the platform, and Harvest never holds it. Your card details go to Stripe and are not stored by Harvest.',
       'A record of what you have given to this ministry is under Profile. If Give tells you the ministry has not set up payments yet, that is setup the ministry still has to finish — there is nothing wrong with your account.',
     ],
-    // /api/stripe/donate creates a destination charge: transfer_data.destination
-    // is the tenant's own connected account, and PLATFORM_FEE_MAP is 0 on every
-    // tier, so application_fee_amount is 0. The "not set up payments yet" copy
-    // is the route's own 400 when the tenant has no connected account.
+    // /api/stripe/donate creates a DIRECT charge: the Checkout Session is created
+    // as the tenant's own connected account (Stripe-Account header), so the money
+    // never touches Harvest's balance, and PLATFORM_FEE_MAP is 0 on every tier, so
+    // application_fee_amount is 0. The "not set up payments yet" copy is the
+    // route's own 400 when the tenant has no connected account.
     sources: [
       'src/app/api/stripe/donate/route.ts',
       'src/lib/stripe-connect.ts',

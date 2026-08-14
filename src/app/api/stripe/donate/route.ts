@@ -79,8 +79,8 @@ export async function POST(request: NextRequest) {
     // one-time and monthly are both refused by the same line — a gate on only
     // one of them is a gate on neither.
     //
-    // ⚠️ `stripe-connect.ts` IS NOT TOUCHED. Donations are Stripe Connect
-    // destination charges into the church's own account at 0%, and that module
+    // ⚠️ `stripe-connect.ts` IS NOT TOUCHED. Donations are Stripe Connect direct
+    // charges on the church's own account at 0%, and that module's rate table
     // stays exactly as it is; the gate belongs on the route, which is the thing
     // that decides whether a checkout happens at all.
     //
@@ -147,112 +147,55 @@ export async function POST(request: NextRequest) {
     const feePercent = FEE_MAP[plan] ?? 0;
     const applicationFeeAmount = Math.round(amount * feePercent);
 
-    // 🔴 WHO THE DONOR'S CARD STATEMENT NAMES — the church, not Harvest.
+    // 🔴 THE CHURCH IS CHARGED, NOT HARVEST — this is a DIRECT charge.
     //
-    // Both branches below create DESTINATION charges (transfer_data.destination =
-    // the church's connected account). Stripe: "If `on_behalf_of` is omitted, the
-    // platform is the business of record for the payment." Omitting it made
-    // Harvest the business of record on every donation to every church, which
-    // contradicts the reason donations stayed on Stripe at all: a
-    // merchant-of-record structure is incompatible with 501(c)(3) substantiation.
-    // Subscriptions moved to Dodo precisely so this path would not have to.
+    // Both branches below create the Checkout Session AS the connected account
+    // (the `Stripe-Account` header, i.e. the `{ stripeAccount }` request option on
+    // each `sessions.create` call). That single change moves three things off the
+    // platform and onto the church:
     //
-    // Setting it makes the CHURCH the settlement merchant, which per Stripe's
-    // destination-charge docs changes three things that matter here:
-    //   - charges settle in the church's country and settlement currency (a
-    //     verified sandbox donation charged usd and settled RON, because
-    //     settlement followed the PLATFORM);
-    //   - the church's fee structure applies;
-    //   - the church's statement descriptor — not `THE HARVEST SANDBOX` — is what
-    //     the donor sees, which is the difference between a recognised gift and a
-    //     chargeback.
+    //   • LIABILITY. Stripe, verbatim: "For connected accounts that use direct
+    //     charges, Stripe always attempts to debit disputed amounts from the
+    //     connected account's balance." Under the destination charges this
+    //     replaces, a disputed gift was debited from HARVEST's balance — for a
+    //     gift Harvest earns 0% on. That is the defect this change exists to fix,
+    //     and `on_behalf_of` could not fix it: "For destination charges, with or
+    //     without `on_behalf_of`, Stripe debits dispute amounts and fees from your
+    //     platform account."
+    //   • MERCHANT OF RECORD. The connected account IS the merchant on a direct
+    //     charge — its country, its settlement currency, its fee structure, its
+    //     statement descriptor on the donor's card. Harvest being the business of
+    //     record contradicted the recorded reason Stripe was kept for donations at
+    //     all: a merchant-of-record structure is incompatible with 501(c)(3) donor
+    //     substantiation.
+    //   • THE MONEY ITSELF. There is no `transfer_data` any more because there is
+    //     nothing to transfer — the funds land in the church's balance directly.
     //
-    // ⚠️ IT DOES NOT MOVE LIABILITY, and no comment here should imply it does.
-    // Stripe, verbatim: "For destination charges, with or without `on_behalf_of`,
-    // Stripe debits dispute amounts and fees from your platform account." Disputes
-    // and refunds stay with Harvest either way. Moving that is the direct- vs
-    // destination-charge decision, which is a different and larger change.
+    // ⚠️ `on_behalf_of` IS GONE, and so is the capability gate and the
+    // `donate-settlement-merchant-fallback` capture that guarded it (#315). That
+    // parameter exists to name a settlement merchant on an INDIRECT charge; on a
+    // direct charge the connected account already is the merchant, so sending it
+    // is meaningless. Its whole apparatus — the `stripeConnectStatus === 'active'`
+    // proxy for `card_payments`, the deliberate under-application, the loud
+    // fallback — was solving a problem that no longer exists here.
     //
-    // ⚠️ AND IT DOES NOT TOUCH THE FEE. `application_fee_amount` /
-    // `application_fee_percent` below are computed above from PLATFORM_FEE_MAP and
-    // are unchanged — 0 on every tier. `on_behalf_of` selects the settlement
-    // merchant; it is not a fee parameter.
+    // ⚠️ THE FEE DOES NOT MOVE. `application_fee_amount` /
+    // `application_fee_percent` below still come from PLATFORM_FEE_MAP and are
+    // still 0 on every tier — Harvest takes no cut of a gift. Direct charges
+    // support application fees exactly as destination charges did; what changed is
+    // who is charged, not what Harvest keeps.
     //
-    // ─── WHY THIS IS GATED, AND ON WHAT ──────────────────────────────────────
+    // ⚠️ THE PRICE STAYS INLINE. `price_data` creates the Price and Product on
+    // whichever account the session is created on, so nothing has to be
+    // provisioned on the church's account first.
     //
-    // Stripe: "The `on_behalf_of` parameter is supported only for connected
-    // accounts with a payments capability such as `card_payments`." Sending it to
-    // an account without one is an API error — which, from this route, means the
-    // Checkout Session throws and the DONOR SEES A FAILED DONATION. So it can only
-    // be sent where it is known to be accepted.
-    //
-    // 🔴 The capability itself is NOT stored anywhere, and this route deliberately
-    // does not call Stripe to ask: an extra `accounts.retrieve` on the donate path
-    // would put a network round-trip in front of every gift. What IS already on
-    // the tenant doc read above is `stripeConnectStatus`, mirrored by the Connect
-    // webhook (`account.updated`) and the onboarding callback, both via
-    // `deriveConnectStatus` — 'active' exactly when Stripe reports
-    // `charges_enabled && payouts_enabled`.
-    //
-    // `charges_enabled` is Stripe's own summary of "the account can process
-    // charges", which an account cannot do without an active payments capability.
-    // So 'active' ⟹ the capability is present. That direction is sound and it is
-    // the only one being relied on.
-    //
-    // ⚠️ THE CONVERSE IS NOT TRUE and must not be read into this. 'pending' and
-    // 'restricted' mean "payouts are off" or "Stripe has fresh `currently_due`
-    // requirements" — an account in either state may well still hold
-    // `card_payments`. This gate is therefore CONSERVATIVE, not precise: it is a
-    // sufficient condition, not a necessary one, and it under-applies rather than
-    // risking a rejected donation. THE-137 made the same call in the opposite
-    // direction for the same reason (see the login-link route) — 'active' is too
-    // coarse to gate a church out of its own dashboard, and here it is too coarse
-    // to gate a church out of its own donations, so the fallback keeps giving up.
-    const canSettleAsChurch = tenantData.stripeConnectStatus === 'active';
-
-    // 🔴 THE FALLBACK IS LOUD. Refusing the donation was the alternative, and it
-    // was rejected: the gate above cannot tell "capability lapsed" from "payouts
-    // not enabled yet", so refusing would take a working donate page away from
-    // every church that is merely mid-onboarding — turning an attribution fix into
-    // an outage on the one surface that must never go down.
-    //
-    // But a church whose donations quietly revert to settling as Harvest is
-    // exactly the defect this ticket exists to fix, so the fallback is never
-    // silent. This names the tenant and the status that produced it, so the church
-    // still settling as Harvest can be found and finished rather than discovered
-    // by a donor reading their card statement.
-    //
-    // `warning`, not `error`, and deliberately: the donation SUCCEEDS and the
-    // church receives the whole gift — nothing is lost and no money is stranded.
-    // It also self-heals, because the next `account.updated` that flips this
-    // tenant to 'active' makes every subsequent donation carry `on_behalf_of` with
-    // no intervention. Raising `error` on every gift to every not-yet-onboarded
-    // church would bury the `money_path:true` alert that exists to mean a payment
-    // actually broke.
-    if (!canSettleAsChurch) {
-      console.warn(
-        `[donate] Tenant ${tenantId} has Connect status '${tenantData.stripeConnectStatus ?? 'unset'}' — ` +
-        'donation will settle with Harvest as the business of record, not the church.'
-      );
-      captureMoneyPathError(
-        new Error('Donation settling as the platform: Connect account is not confirmed payments-capable'),
-        {
-          step: 'donate-settlement-merchant-fallback',
-          level: 'warning',
-          tenantId,
-          ids: {
-            connectAccountId,
-            // Defaulted rather than left undefined: `buildDetails` drops falsy
-            // ids, and "no status recorded at all" is the case most worth seeing.
-            connectStatus: tenantData.stripeConnectStatus ?? 'unset',
-          },
-        },
-      );
-    }
-
-    // Undefined is omitted by stripe-node on the wire, same as `customer_email`
-    // below — so the fallback sends exactly today's request, unchanged.
-    const settlementAccountId = canSettleAsChurch ? connectAccountId : undefined;
+    // 🔴 AND THE WEBHOOK MOVED WITH IT. A session created on the connected account
+    // emits its events — checkout.session.completed, payment_intent.succeeded,
+    // invoice.payment_succeeded — to the CONNECT endpoint, not the platform one.
+    // `/api/stripe/connect/webhook` handles them in this same change; shipping
+    // this half alone would mean every donation succeeds and Harvest records
+    // nothing.
+    const directCharge = { stripeAccount: connectAccountId };
 
     // Return the donor to the TENANT'S subdomain after checkout, not the apex.
     // Same bug class as the Connect callback fix (#114): building from
@@ -279,12 +222,10 @@ export async function POST(request: NextRequest) {
           },
         ],
         payment_intent_data: {
-          transfer_data: {
-            destination: connectAccountId,
-          },
-          // The church is the business of record for this gift. See the block
-          // above for why this is gated and why the fallback is reported.
-          on_behalf_of: settlementAccountId,
+          // Zero on every tier (PLATFORM_FEE_MAP). A direct charge with no
+          // application fee leaves the entire gift in the church's balance.
+          // ⚠️ One-time uses a fixed AMOUNT; the monthly branch below uses a
+          // PERCENT. That split is required by Stripe, not stylistic — see there.
           application_fee_amount: applicationFeeAmount,
           metadata: {
             tenantId,
@@ -309,7 +250,7 @@ export async function POST(request: NextRequest) {
           campaignId: campaignId || '',
           donorName: donorName || '',
         },
-      });
+      }, directCharge);
 
       return NextResponse.json({ url: session.url });
     }
@@ -333,12 +274,13 @@ export async function POST(request: NextRequest) {
         },
       ],
       subscription_data: {
-        transfer_data: {
-          destination: connectAccountId,
-        },
-        // Same settlement merchant as the one-time branch — a monthly partner's
-        // card statement must name the church too, on every renewal.
-        on_behalf_of: settlementAccountId,
+        // Zero on every tier (PLATFORM_FEE_MAP), same as the one-time branch —
+        // but expressed as a PERCENT, and that is not interchangeable. Stripe:
+        // "Application fees on subscriptions must normally be a percentage
+        // because the amount billed with subscriptions often varies. You can't
+        // set a subscription's recurring application fee as a flat amount."
+        // Unifying the two branches on one parameter breaks whichever branch
+        // loses its own.
         application_fee_percent: feePercent * 100,
         metadata: {
           // `type: 'partnership'` lets the webhook's checkout.session.completed
@@ -363,7 +305,11 @@ export async function POST(request: NextRequest) {
       cancel_url: `${returnBase}/?donation=cancel`,
       customer_email: effectiveDonorEmail || undefined,
     };
-    const session = await stripe.checkout.sessions.create(subParams as any);
+    // ⚠️ Created AS the church, exactly like the one-time branch. Checkout mints
+    // the Customer on the connected account for us — no platform Customer is
+    // passed (only `customer_email`, a prefill), so nothing has to exist on the
+    // church's account before a monthly partner can subscribe.
+    const session = await stripe.checkout.sessions.create(subParams as any, directCharge);
 
     return NextResponse.json({ url: session.url });
   } catch (error: any) {
