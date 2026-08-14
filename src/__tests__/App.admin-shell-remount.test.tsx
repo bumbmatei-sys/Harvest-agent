@@ -70,12 +70,14 @@ vi.mock('../components/ChurchOnboarding', () => ({ default: () => <div data-test
 // mount here is two `/api/*` calls there.
 vi.mock('../components/AdminDashboard', async () => {
   const React = await import('react');
-  return {
-    default: () => {
-      React.useEffect(() => { state.mounts++; }, []);
-      return <div data-testid="admin-dashboard" />;
-    },
+  // Named (and capitalised) rather than an inline arrow on `default`: it calls a
+  // hook, and react-hooks/rules-of-hooks can only recognise a function as a
+  // component by its name.
+  const AdminDashboardProbe = () => {
+    React.useEffect(() => { state.mounts++; }, []);
+    return <div data-testid="admin-dashboard" />;
   };
+  return { default: AdminDashboardProbe };
 });
 vi.mock('../components/ErrorBoundary', () => ({
   default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
