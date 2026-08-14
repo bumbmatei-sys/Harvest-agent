@@ -40,6 +40,7 @@ import { AdminScreenHeader, AdminHeaderContext, AdminHeaderOverride } from './Ad
 import { getPlanFeatures, hasBrandingAccess, AFFILIATE_PROGRAM_ENABLED } from '../utils/plan-features';
 import { db, auth } from '../firebase';
 import { checkRosterAdminStatus } from '../utils/tenant.utils';
+import { readCachedRosterAnswer } from '../utils/roster-cache';
 import { signOut } from 'firebase/auth';
 import { collection, query, where, onSnapshot, limit } from 'firebase/firestore';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
@@ -259,8 +260,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
   // nav was built without the roster's grant and the redirect at the bottom of
   // this file bounced a roster-only admin back to /admin. 'unknown' is folded
   // into `isLoading` below instead, but only for the users it can affect.
+  //
+  // A settled answer is also remembered for the session (../utils/roster-cache),
+  // so the FIRST render after a remount already has it and neither flashes the
+  // skeleton nor spends a request re-asking. That is what makes THE-139 survivable:
+  // the shell is remounted often, and an entitlement question that is re-asked on
+  // every remount is a question that will eventually be rate limited.
   type RosterState = 'unknown' | 'admin' | 'not-admin';
-  const [rosterState, setRosterState] = useState<RosterState>('unknown');
+  const [rosterState, setRosterState] = useState<RosterState>(
+    () => (tenantId && readCachedRosterAnswer(tenantId)) || 'unknown',
+  );
   // Which (tenant, user) pair the current answer belongs to. A resolved answer
   // is only invalidated by a genuinely *different* tenant/user — never by a
   // momentarily falsy one, which is the ordinary shape of a navigation blip.
@@ -280,12 +289,20 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
       rosterKeyRef.current = rosterKey;
       setRosterState('unknown');
     }
+    // Already answered for this tenant and this user earlier in the session:
+    // reuse it and ask nobody. The cache is keyed by BOTH, so this can never
+    // serve another tenant's or another sign-in's answer (see roster-cache).
+    const remembered = readCachedRosterAnswer(tenantId);
+    if (remembered) {
+      setRosterState(remembered);
+      return;
+    }
     // Bound the wait. checkRosterAdminStatus resolves on any HTTP/parse error,
     // but a hung request would otherwise leave rosterState at 'unknown' forever
     // and strand a roster-dependent admin on the loading skeleton.
     const timer = setTimeout(() => {
       if (cancelled) return;
-      console.warn(`[admin-nav] roster lookup for tenant "${tenantId}" timed out after ${ROSTER_LOOKUP_TIMEOUT_MS}ms — building the nav from role/permission access only.`);
+      console.warn(`[admin-nav] roster lookup for tenant "${tenantId}" timed out after ${ROSTER_LOOKUP_TIMEOUT_MS}ms (its own retries never settled) — building the nav from role/permission access only. Tabs granted ONLY by the roster will be missing until this view is reloaded; server-side access is unchanged.`);
       setRosterState('not-admin');
     }, ROSTER_LOOKUP_TIMEOUT_MS);
     checkRosterAdminStatus(tenantId).then((status) => {
@@ -294,7 +311,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
       if (status === 'error') {
         // Fail closed, but never silently: THE-64 was invisible partly because
         // a failed/undecided roster lookup produced no console or Sentry signal.
-        console.warn(`[admin-nav] roster lookup for tenant "${tenantId}" failed — building the nav from role/permission access only.`);
+        //
+        // By the time 'error' arrives the lookup has already retried a
+        // retryable failure (429/5xx/network) to exhaustion — see
+        // checkRosterAdminStatus. So this is no longer "one request did not
+        // land", which is what THE-139 degraded on; it is the roster genuinely
+        // being unreachable, and a reduced nav is the honest thing to render.
+        console.warn(`[admin-nav] roster lookup for tenant "${tenantId}" failed after retrying — building the nav from role/permission access only. Tabs granted ONLY by the roster will be missing until this view is reloaded; server-side access is unchanged.`);
       }
       setRosterState(status === 'admin' ? 'admin' : 'not-admin');
     });

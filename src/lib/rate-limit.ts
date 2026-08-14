@@ -11,10 +11,24 @@ const redis = process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_RE
 
 // Rate limiters per endpoint category
 export const rateLimiters = {
-  // General API: 30 requests per minute per IP
+  // General API: 60 requests per minute per IP.
+  //
+  // Raised from 30 (THE-139). ⚠️ The raise is NOT the fix and must not be read
+  // as one: an admin was hitting the old ceiling because the dashboard remounted
+  // twice per tab change and re-asked both entitlement questions each time (see
+  // RequireAdmin in src/App.tsx). That refetching is gone, and one admin screen
+  // now costs 2 `/api/*` calls once per session rather than 4 per navigation.
+  //
+  // The headroom is for what remains legitimate. This limit is per IP, not per
+  // user, so one church behind one NAT shares a single budget across everyone in
+  // the building; and a client-rendered SPA screen honestly makes several calls
+  // (Accounting alone opens with two QuickBooks status reads). 30/minute left
+  // almost no margin for that. If this ceiling is ever reached again, the
+  // question to ask is which caller became chatty — not what the number should
+  // be next.
   api: redis ? new Ratelimit({
     redis,
-    limiter: Ratelimit.slidingWindow(30, '60 s'),
+    limiter: Ratelimit.slidingWindow(60, '60 s'),
     analytics: true,
     prefix: 'rl:api',
   }) : null,

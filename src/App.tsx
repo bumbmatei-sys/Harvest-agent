@@ -87,6 +87,29 @@ const renderLoading = () => (
   </div>
 );
 
+/**
+ * Guard: admin routes require an admin role (or admin subdomain / super admin).
+ *
+ * 🔴 Defined at MODULE scope, and it has to stay there. This used to live inside
+ * AppInner's render body, closing over `isAdmin` instead of taking it as a prop.
+ * A component declared during render is a NEW function identity on every render,
+ * and React reconciles by element type — so every single AppInner render threw
+ * the admin subtree away and mounted a fresh one, rather than re-rendering it.
+ *
+ * AppInner re-renders on every navigation (it reads `useLocation`), so an admin
+ * moving between tabs was remounting the whole dashboard — measured at TWO full
+ * remounts per tab change, since a navigation also re-runs the auth effect whose
+ * deps include `navigate`. Each remount re-ran the shell's mount effects, which
+ * is 2 more `/api/*` calls (roster-status + grace-status). That is what
+ * exhausted the shared 30-per-minute limiter and produced THE-139: a 429 on the
+ * roster lookup, which the nav then read as "not an admin".
+ *
+ * The entitlement handling downstream is now robust to a failed lookup on its
+ * own terms — but the traffic that caused the failure was manufactured here.
+ */
+const RequireAdmin: React.FC<{ isAdmin: boolean; children: React.ReactElement }> = ({ isAdmin, children }) =>
+  isAdmin ? children : <Navigate to="/" replace />;
+
 /** Inner App component that uses the TenantContext + React Router. */
 const AppInner: React.FC = () => {
   useClaimsFreshness(); // Force-refresh token when claims change
@@ -406,12 +429,8 @@ const AppInner: React.FC = () => {
     return <TenantNotFound tenantId={tenantId} message={tenantError} />;
   }
 
-  /** Guard: admin routes require an admin role (or admin subdomain / super admin). */
-  const RequireAdmin: React.FC<{ children: React.ReactElement }> = ({ children }) =>
-    isAdmin ? children : <Navigate to="/" replace />;
-
   const adminElement = (
-    <RequireAdmin>
+    <RequireAdmin isAdmin={isAdmin}>
       <ErrorBoundary>
         <AdminDashboard onNavigate={handleNavigate} />
       </ErrorBoundary>

@@ -1,0 +1,83 @@
+import { auth } from '../firebase';
+
+/**
+ * Last known answer to "is this user on this tenant's admin roster?", held for
+ * the life of the tab.
+ *
+ * ─── Why this exists (THE-139) ──────────────────────────────────────────────
+ *
+ * The roster lookup is an async entitlement question, and the admin shell asks
+ * it again on every remount. When the answer does not come back — in the live
+ * incident because the shared `/api/*` rate limiter returned 429 — the nav was
+ * rebuilt from role/permission access alone and an admin's tabs disappeared.
+ * A cached answer means the second and every later ask is free: the nav renders
+ * from what the roster already said instead of from a lookup that may not
+ * answer, and the limiter is never asked the same question twice.
+ *
+ * ─── 🔴 This is a UI cache. It grants nothing. ──────────────────────────────
+ *
+ * Every admin route enforces its own access server-side (`requireAuth` /
+ * `requireOwner` in src/lib/api-auth.ts read the roster from the server-only
+ * `tenant_private` doc on every request), so a stale entry here cannot hand
+ * anyone real access. The worst a stale 'admin' can do is render a tab whose
+ * screen the server then refuses; the worst a stale 'not-admin' can do is hide
+ * a tab until the tab is reloaded. Neither is an entitlement decision.
+ *
+ * ─── 🔴 Scoping is the part that matters ────────────────────────────────────
+ *
+ * An answer is about ONE (user, tenant) pair and is never valid for another:
+ *   • the tenant is part of the key, so a super admin moving between tenants
+ *     can never carry tenant A's "yes" into tenant B;
+ *   • the signed-in uid is part of the key AND is checked on every access, so a
+ *     sign-out or a different sign-in drops the whole map before it can be
+ *     read. There is no window in which the previous user's answer is visible.
+ *
+ * Only settled answers are ever stored. 'error' — "we failed to ask" — is not
+ * an answer and is never cached; caching it would make one failed lookup
+ * permanent for the session, which is the defect this file exists to prevent.
+ */
+
+/** A settled roster answer. Deliberately excludes 'error'. */
+export type CachedRosterAnswer = 'admin' | 'not-admin';
+
+const answers = new Map<string, CachedRosterAnswer>();
+/** The uid every entry in `answers` belongs to; null when signed out. */
+let cachedForUid: string | null = null;
+
+/** NUL cannot appear in a uid or a tenant id, so keys cannot collide. */
+const keyFor = (uid: string, tenantId: string) => `${uid}\u0000${tenantId}`;
+
+/**
+ * Drop everything if the signed-in user changed since the last access. Checked
+ * on read AND on write rather than wired to an auth listener, so there is no
+ * ordering in which a stale answer survives an auth change long enough to be
+ * read — signing out (uid → null) clears just as a different sign-in does.
+ */
+function syncToSignedInUser(): string | null {
+  const uid = auth.currentUser?.uid ?? null;
+  if (uid !== cachedForUid) {
+    answers.clear();
+    cachedForUid = uid;
+  }
+  return uid;
+}
+
+/** The last settled answer for this tenant and the current user, or null. */
+export function readCachedRosterAnswer(tenantId: string): CachedRosterAnswer | null {
+  const uid = syncToSignedInUser();
+  if (!uid || !tenantId) return null;
+  return answers.get(keyFor(uid, tenantId)) ?? null;
+}
+
+/** Remember a settled answer for this tenant and the current user. */
+export function cacheRosterAnswer(tenantId: string, answer: CachedRosterAnswer): void {
+  const uid = syncToSignedInUser();
+  if (!uid || !tenantId) return;
+  answers.set(keyFor(uid, tenantId), answer);
+}
+
+/** Forget everything. Exported for tests and for an explicit sign-out. */
+export function clearRosterAnswerCache(): void {
+  answers.clear();
+  cachedForUid = null;
+}
