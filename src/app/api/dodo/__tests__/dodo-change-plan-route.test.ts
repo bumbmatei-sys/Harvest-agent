@@ -34,12 +34,17 @@ const T = {
 
 function makeDb() {
   const store = new Map<string, Record<string, any>>();
+  // Every document read, in order — what test 8 counts. A guard that re-read
+  // the private doc instead of using the copy the route already holds would
+  // show up here as an extra `tenant_private/…` entry and nowhere else.
+  const reads: string[] = [];
   const key = (coll: string, id: string) => `${coll}/${id}`;
 
   const docRef = (coll: string, id: string) => ({
     __coll: coll,
     __id: id,
     async get() {
+      reads.push(key(coll, id));
       const data = store.get(key(coll, id));
       return { id, exists: data !== undefined, data: () => (data ? { ...data } : undefined) };
     },
@@ -77,6 +82,7 @@ function makeDb() {
 
   return {
     store,
+    reads,
     collection: vi.fn(collection),
     batch() {
       const writes: Array<() => void> = [];
@@ -133,6 +139,8 @@ vi.mock('stripe', () => ({
 import { POST as dodoChangePlan } from '@/app/api/dodo/change-plan/route';
 import { POST as stripeCheckout } from '@/app/api/stripe/checkout/route';
 import { __setDodoClientForTests } from '@/lib/dodo/dodo-provider';
+// The REAL window, imported rather than restated — see the THE-128 block.
+import { DODO_GRACE_PERIOD_MS } from '@/lib/tenant-lifecycle';
 
 // ── The Dodo SDK stub — the one Dodo mock the brief allows ───────────────────
 
@@ -241,6 +249,30 @@ function seedConflictedTenant() {
   });
   currentDb.store.set('users/owner_1', { tenantId: T.tenant, role: 'admin', plan: 'plus' });
 }
+
+/**
+ * A Dodo tenant whose renewal FAILED — the THE-128 church.
+ *
+ * `dodoOnHoldAt` is the field the `subscription.on_hold` handler writes to
+ * `tenant_private/{id}`, and it is set here as a raw value on the seeded
+ * document rather than through any helper, so the route reads exactly what the
+ * webhook leaves behind. `status` stays 'active' on purpose: Dodo sends no
+ * terminal event for a subscription that sits in `on_hold`, so nothing has
+ * rewritten the tenant's recorded status — the hold is only ever derived.
+ */
+function seedDodoTenantOnHold(onHoldAt: unknown) {
+  seedDodoTenant();
+  currentDb.store.set(`tenant_private/${T.tenant}`, {
+    ...currentDb.store.get(`tenant_private/${T.tenant}`),
+    dodoOnHoldAt: onHoldAt,
+  });
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+const daysAgo = (n: number) => new Date(Date.now() - n * DAY_MS).toISOString();
+
+/** Reads of the private doc only — the collection test 8 is about. */
+const privateReads = () => currentDb.reads.filter((k) => k.startsWith('tenant_private/'));
 
 function asOwner() {
   mockVerifyIdToken.mockResolvedValue({
@@ -532,6 +564,248 @@ describe('a member who is not the owner cannot change the plan', () => {
     const res = await post(dodoChangePlan, changePlanBody);
     expect(res.status).toBe(200);
     expect((await res.json()).preview).toBeDefined();
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// THE-128 — a failed card gets "update your card", not a generic error.
+//
+// Driven through the REAL route, the REAL `resolveBillingOwnership`, the REAL
+// `requireOwner` and the REAL `resolveTenantGraceState`. `DODO_GRACE_PERIOD_MS`
+// is imported rather than restated so a guard that re-derived the window with
+// its own arithmetic fails test 4 instead of quietly agreeing with itself.
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe('THE-128: a church whose renewal failed is told what actually happened', () => {
+  it('test 1: a tenant in grace is told its payment failed, not given a generic error', async () => {
+    const heldAt = daysAgo(7);
+    seedDodoTenantOnHold(heldAt);
+    asOwner();
+    pastTrialSubscription();
+    stubPreview({ total_amount: 2500 });
+
+    const res = await post(dodoChangePlan, changePlanBody);
+    expect(res.status).toBe(409);
+    const data = await res.json();
+
+    // The problem, named. Not "Failed to change plan" and not the 500 the
+    // catch-all would have produced.
+    expect(data.error).toMatch(/payment did not go through/i);
+    expect(data.error).not.toMatch(/failed to change plan/i);
+    expect(data.state).toBe('in-grace');
+
+    // 🔴 And the deadline they can act on, to the millisecond — derived from
+    // the one definition of the window, so this is the same day the donate gate
+    // stops giving rather than a second countdown that can drift from it.
+    const expected = new Date(Date.parse(heldAt) + DODO_GRACE_PERIOD_MS);
+    expect(data.graceEndsAt).toBe(expected.toISOString());
+    expect(data.error).toContain(
+      expected.toLocaleDateString('en-US', {
+        month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC',
+      }),
+    );
+  });
+
+  it('test 2: the refusal names the card as the thing to fix', async () => {
+    seedDodoTenantOnHold(daysAgo(7));
+    asOwner();
+
+    const data = await (await post(dodoChangePlan, changePlanBody)).json();
+
+    // The one sentence worth having. "Contact support" would not be it, and
+    // neither would naming the failure without naming the remedy.
+    expect(data.error).toMatch(/card/i);
+    expect(data.error).toMatch(/update the card on file/i);
+    expect(data.error).not.toMatch(/contact support/i);
+  });
+
+  it('test 3: the refusal carries its own code, distinct from the trial and ownership refusals', async () => {
+    // All three codes collected from REAL responses rather than compared against
+    // hardcoded strings — renaming any one of them still has to keep them apart.
+    seedDodoTenantOnHold(daysAgo(7));
+    asOwner();
+    const onHoldCode = (await (await post(dodoChangePlan, changePlanBody)).json()).code;
+
+    currentDb = makeDb();
+    seedDodoTenant();
+    asOwner();
+    inTrialSubscription(Date.now());
+    const trialCode = (await (await post(dodoChangePlan, changePlanBody)).json()).code;
+
+    currentDb = makeDb();
+    seedStripeTenant();
+    asOwner();
+    const ownershipCode = (await (await post(dodoChangePlan, changePlanBody)).json()).code;
+
+    expect(onHoldCode).toBe('plan-change-unavailable-payment-failed');
+    expect(new Set([onHoldCode, trialCode, ownershipCode]).size).toBe(3);
+  });
+
+  it('test 4: a tenant past the grace window is refused too — and told giving has already stopped', async () => {
+    seedDodoTenantOnHold(daysAgo(22));
+    asOwner();
+    pastTrialSubscription();
+
+    const res = await post(dodoChangePlan, changePlanBody);
+    expect(res.status).toBe(409);
+    const data = await res.json();
+
+    // 🔴 The EXPIRED variant specifically. A guard that re-derived the window
+    // with its own (longer) arithmetic would still refuse — but it would call
+    // this church 'in-grace' and quote it a future deadline that has already
+    // passed, and that is what this pins.
+    expect(data.code).toBe('plan-change-unavailable-payment-failed');
+    expect(data.state).toBe('expired');
+    expect(data.graceEndsAt).toBeUndefined();
+    expect(data.error).toMatch(/giving has been paused/i);
+    expect(data.error).toMatch(/card/i);
+
+    // The boundary itself: at exactly 21 days the window is CLOSED, so this is
+    // 'expired' and not the last day of grace.
+    currentDb = makeDb();
+    seedDodoTenantOnHold(new Date(Date.now() - DODO_GRACE_PERIOD_MS).toISOString());
+    asOwner();
+    expect((await (await post(dodoChangePlan, changePlanBody)).json()).state).toBe('expired');
+  });
+
+  it('test 5: 🔴 a tenant that was never on hold changes plan normally — the no-regression test', async () => {
+    seedDodoTenant();
+    asOwner();
+    pastTrialSubscription();
+    stubPreview({ total_amount: 2500, currency: 'USD' });
+    dodoStub.changePlan.mockResolvedValue(undefined);
+
+    // No hold recorded at all — the overwhelmingly common case, and every
+    // Stripe-owned tenant forever.
+    expect(currentDb.store.get(`tenant_private/${T.tenant}`)?.dodoOnHoldAt).toBeUndefined();
+
+    const previewRes = await post(dodoChangePlan, changePlanBody);
+    expect(previewRes.status).toBe(200);
+    expect((await previewRes.json()).preview).toMatchObject({ amountDueNow: 2500, plan: 'pro' });
+
+    const confirmRes = await post(dodoChangePlan, { ...changePlanBody, confirm: true });
+    expect(confirmRes.status).toBe(200);
+    expect((await confirmRes.json()).ok).toBe(true);
+    expect(dodoStub.changePlan).toHaveBeenCalledTimes(1);
+  });
+
+  it('test 5b: an unparseable hold timestamp does not strand a paying church', async () => {
+    // The resolver's documented fail-OPEN: the failure mode of allowing is
+    // revenue, the failure mode of refusing is a paying church locked out of
+    // its own plan by a timestamp that did not parse. This route inherits that
+    // rather than second-guessing it.
+    seedDodoTenantOnHold('not-a-date');
+    asOwner();
+    pastTrialSubscription();
+    stubPreview({ total_amount: 2500 });
+
+    const res = await post(dodoChangePlan, changePlanBody);
+    expect(res.status).toBe(200);
+    expect((await res.json()).preview).toBeDefined();
+  });
+
+  it('test 6: the preview refuses as well as the confirm', async () => {
+    seedDodoTenantOnHold(daysAgo(7));
+    asOwner();
+    pastTrialSubscription();
+    stubPreview({ total_amount: 2500 });
+
+    // 🔴 Refusing only on confirm would let a church read a quoted price for a
+    // change that cannot happen.
+    const previewRes = await post(dodoChangePlan, changePlanBody);
+    expect(previewRes.status).toBe(409);
+    expect((await previewRes.json()).code).toBe('plan-change-unavailable-payment-failed');
+
+    const confirmRes = await post(dodoChangePlan, { ...changePlanBody, confirm: true });
+    expect(confirmRes.status).toBe(409);
+    expect((await confirmRes.json()).code).toBe('plan-change-unavailable-payment-failed');
+
+    // No quote was fetched and no change was attempted, on either phase.
+    expect(dodoStub.previewChangePlan).not.toHaveBeenCalled();
+    expect(dodoStub.changePlan).not.toHaveBeenCalled();
+    expect(dodoStub.retrieve).not.toHaveBeenCalled();
+  });
+
+  it('test 7: no payment action or retry is exposed', async () => {
+    seedDodoTenantOnHold(daysAgo(7));
+    asOwner();
+
+    const data = await (await post(dodoChangePlan, changePlanBody)).json();
+
+    // 🔴 The response surface, by LABEL: exactly these keys and no others. A
+    // `retryUrl`, `checkoutUrl`, `clientSecret` or `paymentIntent` added later
+    // fails here rather than shipping a second way to be charged for one
+    // subscription.
+    expect(Object.keys(data).sort()).toEqual(
+      ['code', 'error', 'graceEndsAt', 'manageBillingPath', 'state'].sort(),
+    );
+
+    // The single way out is the existing "Manage subscription" path, which
+    // routes a Dodo tenant to Dodo's own portal. Not a route this PR invented.
+    expect(data.manageBillingPath).toBe('/api/stripe/portal');
+    expect(data.error).not.toMatch(/retry|try again/i);
+
+    // And nothing was charged or attempted to reach a charge.
+    expect(dodoStub.changePlan).not.toHaveBeenCalled();
+    expect(dodoStub.previewChangePlan).not.toHaveBeenCalled();
+  });
+
+  it('test 8: no additional tenant_private read is introduced', async () => {
+    // The healthy path's private-doc reads, as the baseline.
+    seedDodoTenant();
+    asOwner();
+    pastTrialSubscription();
+    stubPreview({ total_amount: 2500 });
+    await post(dodoChangePlan, changePlanBody);
+    const healthy = privateReads().length;
+
+    // The refusal path's, on the same request shape.
+    currentDb = makeDb();
+    seedDodoTenantOnHold(daysAgo(7));
+    asOwner();
+    await post(dodoChangePlan, changePlanBody);
+    const onHold = privateReads().length;
+
+    // 🔴 EQUAL. `dodoOnHoldAt` rides on the document the ownership check already
+    // fetched, so the guard is free. A `getTenantPrivate` call inside the guard
+    // would make this one higher.
+    expect(healthy).toBeGreaterThan(0);
+    expect(onHold).toBe(healthy);
+  });
+
+  it('test 9: on_payment_failure is still prevent_change', async () => {
+    seedDodoTenant();
+    asOwner();
+    pastTrialSubscription();
+    stubPreview({ total_amount: 2500 });
+    dodoStub.changePlan.mockResolvedValue(undefined);
+
+    await post(dodoChangePlan, changePlanBody);
+    await post(dodoChangePlan, { ...changePlanBody, confirm: true });
+
+    // The guarantee this PR must not weaken: the failed charge blocks the
+    // change, so no church is moved to a tier it has not paid for. Explicit on
+    // every call, preview and confirm alike.
+    const calls = [...dodoStub.previewChangePlan.mock.calls, ...dodoStub.changePlan.mock.calls];
+    expect(calls.length).toBe(2);
+    for (const call of calls) expect(call[1].on_payment_failure).toBe('prevent_change');
+  });
+
+  it('test 10: nothing in this path writes the tenant plan', async () => {
+    seedDodoTenantOnHold(daysAgo(7));
+    asOwner();
+
+    const before = new Map([...currentDb.store].map(([k, v]) => [k, { ...v }]));
+    const res = await post(dodoChangePlan, { ...changePlanBody, confirm: true });
+    expect(res.status).toBe(409);
+
+    // Byte-for-byte unchanged. The refusal records nothing — no status, no
+    // convergence, no `plan`. The webhook stays the single writer, and the
+    // grace timer is converged by the paths that already own that (the donate
+    // gate and /api/tenants/grace-status), not by a plan-change attempt.
+    expect(new Map([...currentDb.store].map(([k, v]) => [k, { ...v }]))).toEqual(before);
+    expect(currentDb.store.get(`tenants/${T.tenant}`)?.plan).toBe('plus');
+    expect(currentDb.store.get(`tenants/${T.tenant}`)?.status).toBe('active');
   });
 });
 
