@@ -2,8 +2,9 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { requireOwner } from '@/lib/api-auth';
 import { captureMoneyPathError } from '@/lib/money-path-sentry';
-import { getTenantPrivate } from '@/lib/tenant-private';
+import { getTenantPrivate, DODO_ON_HOLD_FIELD } from '@/lib/tenant-private';
 import { billingActionUnavailable, resolveBillingOwnership } from '@/lib/billing-processor';
+import { resolveTenantGraceState, DODO_GRACE_PERIOD_MS } from '@/lib/tenant-lifecycle';
 import { resolvePlanFromProductId } from '@/lib/dodo/catalogue';
 import {
   describeDodoAddons,
@@ -56,6 +57,11 @@ import type { TenantPlan } from '@/types/tenant.types';
  *    (the immediate ones charge right away), so a day-3 upgrade would silently
  *    take days 4–14 the church was promised. An honest refusal is recoverable;
  *    an early charge is not (Harvest issues no refunds).
+ *  • It refuses a tenant whose renewal failed, IN ITS OWN WORDS (THE-128). The
+ *    change was already blocked for that church — `on_payment_failure:
+ *    'prevent_change'` sees to that — but the refusal reached them as a generic
+ *    failure, which reads as "Harvest is broken" rather than "your card
+ *    bounced". It offers no payment surface of its own; see the guard.
  *  • It refuses a monthly↔annual switch. Annual products are separate Dodo
  *    products, so the same API call would do it — but annual billing is THE-88,
  *    a separate decision, and this route does not make it by accident.
@@ -75,6 +81,24 @@ function readPlan(raw: unknown): TenantPlan | null {
 
 function readPeriod(raw: unknown): BillingPeriod | null {
   return raw === 'monthly' || raw === 'yearly' ? raw : null;
+}
+
+/**
+ * The grace deadline in words a church reads, rather than an ISO string.
+ *
+ * Locale and time zone are both PINNED. The rest of this route's copy is
+ * English, and `timeZone: 'UTC'` keeps the day named here the same day
+ * `/api/tenants/grace-status` counts down to — a server in UTC-7 formatting the
+ * same instant in local time would name the day before, and the two surfaces
+ * would quote different deadlines for one window.
+ */
+function formatGraceDeadline(iso: string): string {
+  return new Date(iso).toLocaleDateString('en-US', {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+    timeZone: 'UTC',
+  });
 }
 
 export async function POST(request: NextRequest) {
@@ -122,6 +146,68 @@ export async function POST(request: NextRequest) {
           code: 'billing-action-unavailable',
           processor: ownership.processor,
           reason: ownership.reason,
+        },
+        { status: 409 },
+      );
+    }
+
+    // ── 🔴 A FAILED RENEWAL IS NAMED, NOT LEFT AS A GENERIC FAILURE (THE-128). ─
+    //
+    // Nothing below would have charged this church twice or moved it to a tier
+    // it has not paid for: `on_payment_failure: 'prevent_change'` is explicit on
+    // both Dodo calls, so the failed charge blocks the change. That guarantee
+    // was never the defect. THE MESSAGE WAS. The refusal arrived from further
+    // down as "Failed to change plan", and a church one failed payment into a
+    // 21-day countdown reads that as Harvest being broken rather than as its
+    // card having bounced — at the exact moment the one useful sentence is
+    // "update your card". This says that sentence.
+    //
+    // COSTS NO ADDITIONAL READ. `dodoOnHoldAt` is on the private doc fetched
+    // above for the ownership check, and `resolveTenantGraceState` is the same
+    // pure resolver the donate gate and `/api/tenants/grace-status` ask. The
+    // deadline quoted here and the day giving actually stops are therefore one
+    // answer derived once, not two that can drift.
+    //
+    // 🔴 BEFORE THE TRIAL CHECK AND BEFORE EVERY DODO CALL, deliberately. The
+    // trial check reaches Dodo and answers 503 when it cannot — and a church
+    // whose card just failed is precisely when "We could not verify your
+    // billing status just now" is most likely to be what they see, which is the
+    // generic error this exists to remove. The one fact worth having is already
+    // in hand. It also means a subscription that is somehow both in trial and
+    // on hold hears about the card first: the trial refusal tells them to wait,
+    // which is wrong advice for a payment that has already failed.
+    //
+    // ⚠️ NO PAYMENT SURFACE HERE, and none behind it. The way out is
+    // `/api/stripe/portal` — the existing "Manage subscription" path, which
+    // routes a Dodo-owned tenant to Dodo's hosted portal, and the same
+    // destination the dunning email's "Update payment method" link already
+    // points at. A retry button on this route would be a second way to be
+    // charged for one subscription.
+    const now = Date.now();
+    const onHoldAt = privateData[DODO_ON_HOLD_FIELD];
+    const graceState = resolveTenantGraceState({ onHoldAt, now });
+    if (graceState !== 'none') {
+      // `in-grace` is the only state with time left to report, exactly as
+      // `/api/tenants/grace-status` treats it. The 21 is not re-derived here —
+      // the window has one definition and this reads it; `onHoldAt` parsed
+      // cleanly or the resolver would have answered 'none'.
+      const graceEndsAt =
+        graceState === 'in-grace'
+          ? new Date(Date.parse(onHoldAt as string) + DODO_GRACE_PERIOD_MS).toISOString()
+          : undefined;
+
+      return NextResponse.json(
+        {
+          error: graceEndsAt
+            ? `Your last payment did not go through, so your plan cannot be changed yet. Update the card on file under Manage subscription and then change your plan. Online giving stops on ${formatGraceDeadline(graceEndsAt)} if the payment is not completed.`
+            : 'Your last payment did not go through, so online giving has been paused and your plan cannot be changed. Update the card on file under Manage subscription to restore your account, and then change your plan.',
+          // Its own code, distinct from the trial and ownership refusals, so the
+          // client branches on the reason rather than on the prose.
+          code: 'plan-change-unavailable-payment-failed',
+          state: graceState,
+          ...(graceEndsAt ? { graceEndsAt } : {}),
+          // The existing portal path — a place to fix the card, never a charge.
+          manageBillingPath: '/api/stripe/portal',
         },
         { status: 409 },
       );
