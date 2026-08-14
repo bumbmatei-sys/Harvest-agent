@@ -154,7 +154,13 @@ function installDodoStub() {
   } as never);
 }
 
-/** A subscription well past its trial: created 2025, 14-day trial long over. */
+/**
+ * A subscription well past its trial: created 2025, 14-day trial long over.
+ *
+ * `addons: []` is present because Dodo returns it on every subscription — an
+ * empty cart, stated. THE-132's add-on tests live in their own file; here it
+ * only keeps the stub faithful to the payload the route now reads.
+ */
 function pastTrialSubscription() {
   dodoStub.retrieve.mockResolvedValue({
     subscription_id: T.sub,
@@ -162,6 +168,7 @@ function pastTrialSubscription() {
     product_id: T.plusMonthly,
     trial_period_days: 14,
     created_at: '2025-01-01T00:00:00Z',
+    addons: [],
   });
   // Two payments: the $0 trial mandate plus a real renewal — not in trial.
   dodoStub.paymentsList.mockResolvedValue({
@@ -177,6 +184,7 @@ function inTrialSubscription(nowMs: number) {
     trial_period_days: 14,
     // Day 3 of 14.
     created_at: new Date(nowMs - 3 * 24 * 60 * 60 * 1000).toISOString(),
+    addons: [],
   });
   // Exactly one $0 payment — Dodo's own documented in-trial fingerprint.
   dodoStub.paymentsList.mockResolvedValue({ items: [{ total_amount: 0 }] });
@@ -476,6 +484,7 @@ describe('a plan change during trial does not silently charge early', () => {
       product_id: T.plusMonthly,
       trial_period_days: 14,
       created_at: '2026-07-01T00:00:00Z',
+      addons: [],
     });
     // …but no real charge has ever landed: exactly one $0 payment.
     dodoStub.paymentsList.mockResolvedValue({ items: [{ total_amount: 0 }] });

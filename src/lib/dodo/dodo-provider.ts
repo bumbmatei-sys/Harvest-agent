@@ -74,6 +74,14 @@ export interface DodoSubscriptionLike {
   created_at?: string | null;
   customer?: { customer_id?: string | null } | null;
   metadata?: unknown;
+  /**
+   * What the subscription currently holds, as Dodo reports it. Dodo returns this
+   * field on EVERY subscription — `[]` when nothing is attached — so it is
+   * declared optional here only because this is a stated expectation about a wire
+   * payload, not a promise. Its ABSENCE is treated as "could not determine",
+   * never as "none": see `readHeldDodoAddons`.
+   */
+  addons?: Array<{ addon_id?: unknown; quantity?: unknown }> | null;
 }
 
 /** Dodo subscription payload → the app's `BillingSubscription`. */
@@ -245,25 +253,218 @@ export const dodoBillingProvider: SubscriptionBillingProvider = {
 // had. The one caller is `/api/dodo/change-plan`, which is a Dodo route and may
 // import the Dodo module directly, same as `/api/dodo/checkout` does.
 
+// ─── Add-ons across a plan change (THE-132) ─────────────────────────────────
+//
+// 🔴 A DODO ADD-ON IS ATTACHED TO SPECIFIC PRODUCTS. "Contacts +500" exists on
+// Small Team and Ministry and NOT on Individual, so "carry everything across"
+// would send an `addon_id` the target product does not offer — a failed plan
+// change on the money path, or worse, an accepted one whose price nobody
+// predicted.
+//
+// The decided rule: on a downgrade, an add-on the lower tier does not offer is
+// REMOVED, and the church is told BEFORE it confirms. Grandfathering was
+// considered and rejected: it would move tier availability out of Dodo, where
+// it is structural, and into Harvest application code, where one buggy gate
+// would sell $59 Unlimited Contacts on a $49 Individual plan.
+//
+// So availability is never inferred and never hardcoded — it is read from the
+// TARGET PRODUCT'S OWN `addons` array, every time.
+
+/** One add-on on a subscription: which add-on, and how many. Dodo's own shape. */
+export interface DodoAddonSelection {
+  readonly addon_id: string;
+  readonly quantity: number;
+}
+
+/** An add-on in words, for a human deciding. No id ever reaches a church. */
+export interface DodoNamedAddon {
+  readonly name: string;
+  readonly quantity: number;
+}
+
+/** What a plan change does to the add-ons a subscription already holds. */
+export interface DodoAddonCarryOver {
+  /** Offered by the target product, so they survive the change unchanged. */
+  readonly carried: readonly DodoAddonSelection[];
+  /** NOT offered by the target product, so the change removes them. */
+  readonly removed: readonly DodoAddonSelection[];
+}
+
+/**
+ * 🔴 What a subscription holds could not be determined.
+ *
+ * A distinct error type because "no add-ons" and "could not read the add-ons"
+ * must never converge: sending `[]` for the second silently deletes something a
+ * church pays for. Every path that catches this REFUSES the plan change.
+ */
+export class DodoAddonsUnreadableError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'DodoAddonsUnreadableError';
+  }
+}
+
+/** One subscription read, so the trial check and the add-on read can share it. */
+export async function retrieveDodoSubscription(
+  subscriptionId: string,
+): Promise<DodoSubscriptionLike> {
+  return (await client().subscriptions.retrieve(subscriptionId)) as unknown as DodoSubscriptionLike;
+}
+
+/**
+ * The add-ons a subscription currently holds.
+ *
+ * Throws rather than returning `[]` for anything it cannot vouch for — a
+ * missing `addons` field, an entry without an id, a quantity that is not a
+ * number. Dodo returns `addons: []` on every subscription, so the absence of
+ * the field is a payload this build does not understand, not an empty cart.
+ */
+export function readHeldDodoAddons(sub: DodoSubscriptionLike): DodoAddonSelection[] {
+  const raw = sub.addons;
+  if (!Array.isArray(raw)) {
+    throw new DodoAddonsUnreadableError(
+      `[dodo] subscription ${sub.subscription_id} did not report its add-ons`,
+    );
+  }
+  return raw.map((entry) => {
+    const addonId = entry?.addon_id;
+    const quantity = entry?.quantity;
+    if (typeof addonId !== 'string' || addonId === '') {
+      throw new DodoAddonsUnreadableError(
+        `[dodo] subscription ${sub.subscription_id} holds an add-on with no id`,
+      );
+    }
+    if (typeof quantity !== 'number' || !Number.isFinite(quantity)) {
+      throw new DodoAddonsUnreadableError(
+        `[dodo] subscription ${sub.subscription_id} holds add-on ${addonId} with no usable quantity`,
+      );
+    }
+    return { addon_id: addonId, quantity };
+  });
+}
+
+/**
+ * Which add-ons a product offers, read from the product itself.
+ *
+ * 🔴 Computed here rather than assumed: Dodo may filter an unattached add-on,
+ * or may reject the whole call — it is not documented which, and a plan change
+ * is not the place to find out. An id this returns is an id the target product
+ * lists; anything else is never sent.
+ */
+export async function retrieveDodoProductAddonIds(productId: string): Promise<Set<string>> {
+  const product = (await client().products.retrieve(productId)) as unknown as {
+    addons?: unknown;
+  };
+  const raw = product?.addons;
+  if (!Array.isArray(raw)) {
+    throw new DodoAddonsUnreadableError(`[dodo] product ${productId} did not report its add-ons`);
+  }
+  const offered = new Set<string>();
+  for (const addonId of raw) {
+    if (typeof addonId !== 'string' || addonId === '') {
+      throw new DodoAddonsUnreadableError(
+        `[dodo] product ${productId} listed an add-on with no id`,
+      );
+    }
+    offered.add(addonId);
+  }
+  return offered;
+}
+
+/**
+ * THE ONE PLACE the carried set is computed — called once per request, by both
+ * the preview and the confirm, so the two can never disagree about what runs.
+ *
+ * The product read is skipped when the subscription holds nothing, because the
+ * answer is then `{ carried: [], removed: [] }` for every possible product and
+ * a church with no add-ons should not pay a round trip to learn it.
+ */
+export async function planDodoAddonCarryOver(
+  subscription: DodoSubscriptionLike,
+  plan: TenantPlan,
+  period: BillingPeriod,
+): Promise<DodoAddonCarryOver> {
+  const held = readHeldDodoAddons(subscription);
+  if (held.length === 0) return { carried: [], removed: [] };
+
+  const offered = await retrieveDodoProductAddonIds(catalogueEntry(plan, period).productId);
+  const carried: DodoAddonSelection[] = [];
+  const removed: DodoAddonSelection[] = [];
+  for (const addon of held) {
+    (offered.has(addon.addon_id) ? carried : removed).push(addon);
+  }
+  return { carried, removed };
+}
+
+/**
+ * Add-ons in words, for the preview a church reads.
+ *
+ * `adn_0NlKtwD3VfBLgx2LTw69O` is not something anyone can act on, and a name is
+ * not on the subscription payload — it is on the add-on. A name that cannot be
+ * read throws: showing the id instead would technically answer the question and
+ * practically answer nothing, and the preview charges nothing, so refusing it is
+ * the recoverable direction.
+ */
+export async function describeDodoAddons(
+  selections: readonly DodoAddonSelection[],
+): Promise<DodoNamedAddon[]> {
+  return Promise.all(
+    selections.map(async (selection) => {
+      const addon = (await client().addons.retrieve(selection.addon_id)) as unknown as {
+        name?: unknown;
+      };
+      const name = typeof addon?.name === 'string' ? addon.name.trim() : '';
+      if (name === '') {
+        throw new DodoAddonsUnreadableError(
+          `[dodo] add-on ${selection.addon_id} has no name to show`,
+        );
+      }
+      return { name, quantity: selection.quantity };
+    }),
+  );
+}
+
+/**
+ * The `addons` field for a change-plan call, ALWAYS present.
+ *
+ * Dodo documents `addons: []` as "removes any existing add-ons" and says
+ * nothing at all about omitting the field — and it documents omit-vs-empty
+ * explicitly for `discount_codes` on the very same endpoint, so the silence
+ * about `addons` is a gap, not an implied "preserve". Omission is unspecified;
+ * this build is never unspecified about a subscription's contents.
+ */
+function addonsPayload(addons: readonly DodoAddonSelection[]): Array<DodoAddonSelection> {
+  return addons.map((addon) => ({ addon_id: addon.addon_id, quantity: addon.quantity }));
+}
+
 /**
  * What confirming a plan change would charge, before anything is charged.
  *
  * A church committing to a proration it cannot see is the statement-PDF bug in
  * a different shape, so the route shows this to the owner before it will accept
  * a confirm.
+ *
+ * `addons` is a REQUIRED parameter, not an optional one: add-ons are part of
+ * Dodo's proration calculation, so a caller that forgot them would quote an
+ * amount that is not the amount charged. The compiler refuses that here.
  */
 export async function previewDodoPlanChange(
   subscriptionId: string,
   plan: TenantPlan,
   period: BillingPeriod,
+  addons: readonly DodoAddonSelection[],
 ): Promise<DodoPlanChangePreview> {
   const entry = catalogueEntry(plan, period);
   const preview = await client().subscriptions.previewChangePlan(subscriptionId, {
     product_id: entry.productId,
+    // `quantity` is the count of the BASE PRODUCT — one subscription, one plan.
+    // It is not, and never becomes, an add-on quantity: those travel per add-on
+    // in `addons` below.
     quantity: 1,
     proration_billing_mode: DODO_PLAN_CHANGE_PRORATION_MODE,
     // Sent on the preview too, so what is previewed is exactly what will run.
     on_payment_failure: DODO_PLAN_CHANGE_ON_PAYMENT_FAILURE,
+    addons: addonsPayload(addons),
   });
   const summary = preview?.immediate_charge?.summary;
   return {
@@ -280,20 +481,28 @@ export async function previewDodoPlanChange(
  * writer, because a plan change can also originate outside this app entirely
  * (Dodo's dashboard, or its customer portal once the products join a
  * collection) and only the webhook sees those.
+ *
+ * 🔴 `addons` is the SAME LIST THE PREVIEW WAS COMPUTED FROM — the route
+ * resolves the carry-over once and hands it to both calls. Add-ons are inside
+ * Dodo's proration calculation, so a set that diverges between the two makes
+ * the quoted amount and the charged amount different numbers.
  */
 export async function executeDodoPlanChange(
   subscriptionId: string,
   plan: TenantPlan,
   period: BillingPeriod,
+  addons: readonly DodoAddonSelection[],
 ): Promise<void> {
   const entry = catalogueEntry(plan, period);
   await client().subscriptions.changePlan(subscriptionId, {
     product_id: entry.productId,
+    // The base product's count, not an add-on's. See `previewDodoPlanChange`.
     quantity: 1,
     proration_billing_mode: DODO_PLAN_CHANGE_PRORATION_MODE,
     // 🔴 Explicit, always. See the constant's note: the dashboard default is
     // `apply_change`, which grants the tier even when the payment fails.
     on_payment_failure: DODO_PLAN_CHANGE_ON_PAYMENT_FAILURE,
+    addons: addonsPayload(addons),
   });
 }
 
@@ -319,9 +528,17 @@ export async function executeDodoPlanChange(
  * The union errs toward refusing, which is the recoverable direction: a
  * refused change can be retried after the trial; an early charge cannot be
  * unmade (Harvest issues no refunds).
+ *
+ * `subscription` may be passed in when the caller has already retrieved it —
+ * the change-plan route needs the same payload to read the add-ons, and one
+ * read answering both questions keeps the confirm path from growing a call.
+ * Omitted, it retrieves the subscription itself, exactly as before.
  */
-export async function isDodoSubscriptionInTrial(subscriptionId: string): Promise<boolean> {
-  const sub = (await client().subscriptions.retrieve(subscriptionId)) as unknown as DodoSubscriptionLike;
+export async function isDodoSubscriptionInTrial(
+  subscriptionId: string,
+  subscription?: DodoSubscriptionLike,
+): Promise<boolean> {
+  const sub = subscription ?? (await retrieveDodoSubscription(subscriptionId));
 
   const trialDays = sub.trial_period_days ?? 0;
   if (trialDays > 0 && typeof sub.created_at === 'string') {
