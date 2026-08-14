@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Check, ChevronRight, Crown } from 'lucide-react';
 import { TenantPlan } from '../types/tenant.types';
 import {
@@ -11,7 +11,7 @@ import {
   ANNUAL_FREE_MONTHS,
 } from '../utils/plan-features';
 import { authFetch } from '../utils/auth-fetch';
-import { fetchBillingProcessor, runDodoPlanChange } from '../utils/plan-change';
+import { fetchBillingProcessor, runDodoPlanChange, subscriptionProcessorAttribution, type PlanChangeProcessor } from '../utils/plan-change';
 import { getTenantId } from './settings/useTenantId';
 
 interface AdminUpgradePageProps {
@@ -32,6 +32,22 @@ const AdminUpgradePage: React.FC<AdminUpgradePageProps> = ({ currentPlan, tenant
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly');
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);
+  // Which processor owns this tenant's subscription. Unlike PlanUpgradeSection
+  // (whose parent, BillingAndPayments, already reads it off
+  // /api/billing/invoices and passes it down), nothing above this page holds
+  // the processor — so it is resolved here at mount through the SAME
+  // fetchBillingProcessor() this page already calls on every plan click; no new
+  // endpoint, no new prop chain. `undefined` = fetch not resolved yet, `null` =
+  // could not be determined (not an owner, network failure); in both cases the
+  // attribution below renders nothing rather than naming a processor on a
+  // guess.
+  const [processor, setProcessor] = useState<PlanChangeProcessor | undefined>(undefined);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchBillingProcessor().then((proc) => { if (!cancelled) setProcessor(proc); });
+    return () => { cancelled = true; };
+  }, []);
 
   const resolveTenantId = async (): Promise<string | null> => {
     if (tenantId) return tenantId;
@@ -48,7 +64,7 @@ const AdminUpgradePage: React.FC<AdminUpgradePageProps> = ({ currentPlan, tenant
   const handlePlanSelect = async (planId: TenantPlan, isDowngrade: boolean) => {
     setCheckoutLoading(planId);
     try {
-      const proc = await fetchBillingProcessor();
+      const proc = processor !== undefined ? processor : await fetchBillingProcessor();
       if (proc === 'dodo') {
         const tid = await resolveTenantId();
         if (!tid) { alert('Unable to find your organization. Please try again.'); return; }
@@ -283,7 +299,7 @@ const AdminUpgradePage: React.FC<AdminUpgradePageProps> = ({ currentPlan, tenant
       <div className="border-t border-line pt-6">
         <h4 className="text-xs font-semibold uppercase tracking-wider text-muted mb-3">Billing &amp; Invoices</h4>
         <p className="text-sm text-muted mb-3">
-          Manage payment methods and view past invoices through Stripe.
+          Manage payment methods and view past invoices through our payment processor.
         </p>
         <button
           onClick={handleManageSubscription}
@@ -296,7 +312,9 @@ const AdminUpgradePage: React.FC<AdminUpgradePageProps> = ({ currentPlan, tenant
             <>Open Billing Portal <ChevronRight size={15} /></>
           )}
         </button>
-        <p className="text-xs text-faint mt-2">Powered by Stripe</p>
+        {subscriptionProcessorAttribution(processor) && (
+          <p className="text-xs text-faint mt-2">{subscriptionProcessorAttribution(processor)}</p>
+        )}
       </div>
 
       {/* Cancel subscription */}

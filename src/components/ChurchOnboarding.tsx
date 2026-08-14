@@ -5,7 +5,7 @@ import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { Church, ArrowRight, Sparkles, Loader2, AlertCircle } from 'lucide-react';
 import { TenantPlan } from '../types/tenant.types';
 import { PLAN_DISPLAY_NAMES, PLAN_ORDER } from '../utils/plan-features';
-import { SIGNUP_CHECKOUT_ENDPOINT, WALLET_FALLBACK_LINE, readSignupBillingPeriod } from '../utils/signup-checkout';
+import { SIGNUP_CHECKOUT_ENDPOINT, WALLET_FALLBACK_LINE, resolveSignupBillingPeriod } from '../utils/signup-checkout';
 
 const BRAND = 'var(--brand-color, #B8962E)';
 const HARVEST_LOGO = 'https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png';
@@ -58,14 +58,15 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ signupPlan }) => {
   const selectedPlan: TenantPlan =
     signupPlan || (urlPlan && (PLAN_ORDER as readonly string[]).includes(urlPlan) ? urlPlan : 'plus');
 
-  // `?billing=` is carried the same way as `?plan=`: chosen upstream on the
-  // pricing page (where the prices are shown), validated here, displayed
-  // read-only. URL-controlled, so it fails closed to 'monthly' — a link with
-  // no period (or a mangled one) buys exactly what signup sold before annual.
-  const selectedBilling = readSignupBillingPeriod(
-    typeof window !== 'undefined'
-      ? new URLSearchParams(window.location.search).get('billing')
-      : null,
+  // The period is chosen upstream on the pricing page (where the prices are
+  // shown), validated here, displayed read-only. THE-135: by the time this
+  // screen renders, the /auth redirect has usually dropped the query string —
+  // so the period is read the way the plan is read: URL first, then the
+  // sessionStorage lane App.tsx captured it into. Both sources are untrusted
+  // and fail closed to 'monthly' — a link with no period (or a mangled one)
+  // buys exactly what signup sold before annual.
+  const selectedBilling = resolveSignupBillingPeriod(
+    typeof window !== 'undefined' ? window.location.search : '',
   );
 
   const [ministryName, setMinistryName] = useState('');

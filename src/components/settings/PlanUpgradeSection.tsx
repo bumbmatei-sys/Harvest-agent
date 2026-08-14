@@ -17,7 +17,7 @@ import {
   PlanFeatures,
 } from '../../utils/plan-features';
 import { authFetch } from '../../utils/auth-fetch';
-import { fetchBillingProcessor, runDodoPlanChange, PlanChangeProcessor } from '../../utils/plan-change';
+import { fetchBillingProcessor, runDodoPlanChange, subscriptionProcessorAttribution, PlanChangeProcessor } from '../../utils/plan-change';
 import { getTenantId } from './useTenantId';
 
 interface PlanUpgradeSectionProps {
@@ -501,7 +501,9 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
             'Manage Subscription'
           )}
         </button>
-        <p className="text-xs text-faint">Powered by Stripe</p>
+        {subscriptionProcessorAttribution(processor) && (
+          <p className="text-xs text-faint">{subscriptionProcessorAttribution(processor)}</p>
+        )}
       </div>
 
     </div>
