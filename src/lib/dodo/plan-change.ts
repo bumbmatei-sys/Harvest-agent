@@ -2,8 +2,14 @@ import { adminDb } from '@/lib/firebase-admin';
 import { captureMoneyPathError } from '@/lib/money-path-sentry';
 import { resolveBillingOwnership } from '@/lib/billing-processor';
 import { getTenantPrivate, tenantPrivateRef } from '@/lib/tenant-private';
-import type { TenantPlan } from '@/types/tenant.types';
+import { readTenantAddons } from '@/utils/plan-features';
+import type { TenantAddons, TenantPlan } from '@/types/tenant.types';
 import { resolvePlanFromProductId } from './catalogue';
+import {
+  readDodoAddonEntitlements,
+  reportUnrecognisedDodoAddons,
+  sameTenantAddons,
+} from './addons';
 import type { BillingPeriod } from './provider';
 import type { DodoWebhookEvent } from './events';
 import { findTenantForDodoSubscription } from './lifecycle';
@@ -33,6 +39,12 @@ import { findTenantForDodoSubscription } from './lifecycle';
  * apply:
  *
  *   • `tenants/{id}.plan` — the tier every entitlement check reads.
+ *   • `tenants/{id}.addons` — WHAT THEY OWN BEYOND THE TIER (REP-5a), in
+ *     meanings, never in Dodo ids. Written from the same event by the same
+ *     writer because `subscription.plan_changed` is Dodo's ADD-ON CHANGE event
+ *     too (see `./events`) — an add-on bought or dropped arrives here and
+ *     nowhere else, so a handler that only moved `plan` would take the money and
+ *     change nothing.
  *   • `tenant_private.dodoProductId` — kept current so the NEXT plan change can
  *     tell what the tenant is on, and so `already-applied` below is decidable.
  *   • `users/{uid}.plan` for every member — the per-user copy of the tier, same
@@ -47,9 +59,15 @@ import { findTenantForDodoSubscription } from './lifecycle';
  * The webhook-id reservation covers a redelivery of one delivery. It does not
  * cover the same CHANGE arriving as two first deliveries (Dodo fires
  * `subscription.updated` alongside, and a support redo in the dashboard is a
- * new event). So the handler checks its own work: if the tenant's plan and
- * stored product id already match the payload, it writes nothing and reports
- * `already-applied`.
+ * new event). So the handler checks its own work: if the tenant's plan, stored
+ * product id AND add-on set already match the payload, it writes nothing and
+ * reports `already-applied`.
+ *
+ * 🔴 The add-on set is part of that comparison, and the write is a REPLACEMENT
+ * computed from the subscription's current `addons` array — never an increment.
+ * A redelivery therefore recomputes the same five numbers and either matches
+ * (nothing written) or writes them again identically. There is no counter to
+ * double.
  *
  * ─── Refusals ────────────────────────────────────────────────────────────────
  *
@@ -64,6 +82,13 @@ import { findTenantForDodoSubscription } from './lifecycle';
 export interface DodoPlanChangePayload {
   subscription_id?: unknown;
   product_id?: unknown;
+  /**
+   * What the subscription holds after the change. Dodo returns this on every
+   * subscription (`Array<{ addon_id, quantity }>`, non-optional in the SDK's
+   * `Subscription`), so its ABSENCE is "could not determine", never "none" —
+   * see `./addons`.
+   */
+  addons?: unknown;
 }
 
 /** What applying a plan change decided. */
@@ -74,8 +99,12 @@ export type DodoPlanChangeOutcome =
       readonly tenantId: string;
       readonly plan: TenantPlan;
       readonly period: BillingPeriod;
+      /** The add-on set written alongside, or null when the payload was unreadable. */
+      readonly addons: TenantAddons | null;
+      /** 🔴 How many held add-on ids this build could not map. Reported, not dropped. */
+      readonly unrecognisedAddons: number;
     }
-  /** The tenant is already on this plan and product. Nothing written. */
+  /** The tenant is already on this plan, product and add-on set. Nothing written. */
   | { readonly outcome: 'already-applied'; readonly tenantId: string }
   /** 🔴 A product this build does not sell. Never defaulted; reported. */
   | { readonly outcome: 'unknown-product'; readonly productId: string }
@@ -154,10 +183,42 @@ export async function applyDodoPlanChange(
     return { outcome: 'not-dodo-owned', tenantId };
   }
 
+  // ── 🔴 THE ADD-ON SET, from the same payload. ────────────────────────────
+  //
+  // `subscription.plan_changed` is Dodo's add-on-change event as well as its
+  // up/downgrade event, so this is where a bought or dropped add-on arrives.
+  // The set is a REPLACEMENT computed from the subscription's current `addons`
+  // array — redelivery recomputes the same numbers, so nothing can double.
+  //
+  // A payload that does not report its add-ons at all resolves to `null`, and
+  // null leaves the stored set ALONE. Writing "owns nothing" on the strength of
+  // a malformed payload would strip capacity a church pays for; the plan half of
+  // this handler still runs, because a readable plan change should not be lost
+  // to an unreadable add-on field.
+  const entitlements = readDodoAddonEntitlements(sub);
+  if (entitlements === null) {
+    console.warn(
+      `[dodo] subscription.plan_changed for ${subscriptionId} did not report its add-ons; ` +
+        'the stored add-on set is left untouched (absent is not empty).',
+    );
+  }
+  const unrecognisedAddons = entitlements
+    ? reportUnrecognisedDodoAddons(entitlements.unrecognised, {
+        step: 'dodo-plan-changed-unrecognised-addon',
+        subscriptionId,
+        tenantId,
+      })
+    : 0;
+
   const tenantRef = adminDb.collection('tenants').doc(tenantId);
   const tenantSnap = await tenantRef.get();
   const currentPlan = tenantSnap.exists ? tenantSnap.data()?.plan : undefined;
-  if (currentPlan === resolved.plan && priv?.dodoProductId === productId) {
+  // An unreadable payload has no add-on change to apply, so it cannot be what
+  // makes this event worth writing — treat it as "matches" for this decision.
+  const addonsAlreadyApplied =
+    entitlements === null ||
+    sameTenantAddons(readTenantAddons(tenantSnap.data()?.addons), entitlements.addons);
+  if (currentPlan === resolved.plan && priv?.dodoProductId === productId && addonsAlreadyApplied) {
     // The change is already recorded — a sibling event (or a same-content
     // redelivery under a fresh webhook-id) got here first. Applies ONCE.
     console.log(`⏭️ [dodo] Tenant ${tenantId} is already on ${resolved.plan} (${productId}); nothing to move`);
@@ -168,9 +229,16 @@ export async function applyDodoPlanChange(
 
   // ONE batch: the public tier and the private product record land together, or
   // neither does — a tenant on the new plan whose stored product still names the
-  // old one would refuse its NEXT plan change as "already on this plan".
+  // old one would refuse its NEXT plan change as "already on this plan". The
+  // add-on set rides the same write for the same reason: the tier and what the
+  // church bought on top of it are one fact about what they are owed.
   const batch = adminDb.batch();
-  batch.update(tenantRef, { plan: resolved.plan, updatedAt: now });
+  batch.update(tenantRef, {
+    plan: resolved.plan,
+    // MEANINGS ONLY. No `adn_` id is ever written to this world-readable doc.
+    ...(entitlements ? { addons: entitlements.addons } : {}),
+    updatedAt: now,
+  });
   batch.set(
     tenantPrivateRef(tenantId),
     { dodoProductId: productId, updatedAt: now },
@@ -191,7 +259,14 @@ export async function applyDodoPlanChange(
     `✅ [dodo] Tenant ${tenantId} moved to ${resolved.plan}/${resolved.period} ` +
       `(subscription ${subscriptionId}, product ${productId})`,
   );
-  return { outcome: 'plan-moved', tenantId, plan: resolved.plan, period: resolved.period };
+  return {
+    outcome: 'plan-moved',
+    tenantId,
+    plan: resolved.plan,
+    period: resolved.period,
+    addons: entitlements ? entitlements.addons : null,
+    unrecognisedAddons,
+  };
 }
 
 /** The `subscription.plan_changed` handler — up/downgrades land here. */

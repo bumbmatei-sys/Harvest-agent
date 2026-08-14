@@ -77,8 +77,9 @@
  * demotes anyone, and every existing row stays editable.
  */
 
-import { getPlanFeatures, toTenantPlan } from './plan-features';
+import { getEffectiveFeatures, readTenantAddons, toTenantPlan } from './plan-features';
 import { isSuperAdminEmail } from './super-admins';
+import type { TenantAddons } from '../types/tenant.types';
 
 /** Unlimited sentinel used by plan-features' maxContacts. */
 export const UNLIMITED = -1;
@@ -103,16 +104,41 @@ export interface CapacityCandidate {
 }
 
 /**
- * The tenant's contact allowance.
+ * The tenant's contact allowance, INCLUDING any Contacts +500 packs it owns.
  *
  * Fails closed to 'plus' (150) when the plan is unknown or still loading — the
  * same fallback AdminCourses uses for maxCourses, AnalyticsAndRoles for
  * maxAdmins and AdminChurches for maxChurches. A super admin browsing a tenant
  * subdomain is gated by that tenant's real plan, matching TenantContext's rule
  * that on a tenant subdomain EVERYONE is gated by the tenant's plan.
+ *
+ * `addons` is OPTIONAL and defaults to owning nothing (REP-5a). That default is
+ * the honest one: it is exactly a tenant's answer before REP-5b threads the
+ * add-on set through to the screens, and it can only ever UNDER-state capacity,
+ * never over-state it. Passing a set raises the number by
+ * `CONTACTS_PER_PACK` per pack.
+ *
+ * 🔴 ALWAYS FINITE. Unlimited Contacts does NOT come back through this number —
+ * it is a separate boolean, and `isAtContactLimit` is where the two meet. See
+ * `getEffectiveFeatures` for why a numeric "unlimited" is a zero-capacity bug
+ * waiting for its first `>=`.
  */
-export function resolveContactLimit(plan: string | null | undefined): number {
-  return getPlanFeatures(toTenantPlan(plan)).maxContacts;
+export function resolveContactLimit(
+  plan: string | null | undefined,
+  addons?: TenantAddons | null,
+): number {
+  return getEffectiveFeatures(toTenantPlan(plan), addons).maxContacts;
+}
+
+/**
+ * Does this tenant hold the Unlimited Contacts add-on?
+ *
+ * The companion to `resolveContactLimit` — the two answers a cap check needs,
+ * asked separately because one is a number and the other is not. Plan-free by
+ * construction: no tier grants unlimited contacts, only the add-on does.
+ */
+export function hasUnlimitedContacts(addons?: TenantAddons | null): boolean {
+  return readTenantAddons(addons).unlimitedContacts;
 }
 
 /**
@@ -201,11 +227,29 @@ export function countContactAccounts(
 /**
  * Whether the tenant has spent its contact allowance.
  *
+ * 🔴 THE QUESTION IS "UNLIMITED, OR UNDER THE NUMBER?" — in that order.
+ * `unlimited` is the Unlimited Contacts add-on (REP-5a) and it is asked FIRST,
+ * because there is no number that can carry "unlimited" safely: `Infinity` does
+ * not survive Firestore, and a `-1` reaching a `>=` somewhere reads as zero
+ * capacity — the most expensive add-on Harvest sells, silently inverted. So the
+ * count stays a real number and the unlimited fact travels beside it.
+ *
+ * It defaults to `false`, which keeps every existing two-argument call site
+ * behaving exactly as it did. `hasUnlimitedContacts(tenant.addons)` is what
+ * fills it once a caller holds the tenant's add-on set.
+ *
  * `>=`, not `>`: at exactly the cap there is no slot left to fill.
  * A tenant ALREADY over the cap is simply at-limit — see the module header;
  * being over it blocks the next manual add and nothing else.
  */
-export function isAtContactLimit(accountCount: number, maxContacts: number): boolean {
+export function isAtContactLimit(
+  accountCount: number,
+  maxContacts: number,
+  unlimited: boolean = false,
+): boolean {
+  if (unlimited) return false;
+  // The matrix's own sentinel, kept for any tier that ever carries it. Not the
+  // add-on's route to unlimited — that is the flag above.
   if (maxContacts === UNLIMITED) return false;
   return accountCount >= maxContacts;
 }

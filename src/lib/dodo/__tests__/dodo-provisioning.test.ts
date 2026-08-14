@@ -110,6 +110,7 @@ const {
 const { receiveDodoWebhookEvent } = await import('../webhook-dispatch');
 const { productIdFor } = await import('../catalogue');
 const { TENANT_PRIVATE_FIELDS } = await import('@/lib/tenant-private');
+const { NO_ADDONS } = await import('@/utils/plan-features');
 
 // ── Fixtures ─────────────────────────────────────────────────────────────────
 
@@ -185,6 +186,12 @@ describe('a completed Dodo checkout creates a tenant with every field the Stripe
       subdomain: tenantId,
       // From the PRODUCT, not from metadata. See test 4.
       plan: 'max',
+      // 🔴 An EMPTY write, not an absent field (REP-5a). Nothing sells an add-on
+      // at signup, so every value is zero — but the key exists, so a tenant with
+      // no add-ons is distinguishable from a tenant whose add-on write failed.
+      // Compared against NO_ADDONS rather than a literal, so the shape has one
+      // definition.
+      addons: NO_ADDONS,
       status: 'active',
       config: {},
       ownerId: OWNER_UID,
@@ -291,8 +298,20 @@ describe('a completed Dodo checkout creates a tenant with every field the Stripe
       "batch.set(adminDb.collection('tenants').doc(newTenantId), {",
     );
 
+    // The ONE deliberate difference, named rather than tolerated: `addons`
+    // (REP-5a) is what the tenant owns BEYOND its tier, and only Dodo sells
+    // those. The Stripe handler is the rollback path and has no add-on concept,
+    // so writing the field there would record a set nothing can ever change.
+    // Everything else must still agree key for key — that is what this guards.
+    const DODO_ONLY = ['addons'];
+    const withoutDodoOnly = (fields: string[]) => fields.filter((f) => !DODO_ONLY.includes(f)).sort();
+
     expect(stripeFields.length).toBeGreaterThan(0);
-    expect(dodoFields.sort()).toEqual(stripeFields.sort());
+    // The exception is real, not a way to pass: `addons` IS written by the Dodo
+    // path, so removing it from provisioning.ts fails here rather than silently
+    // satisfying the filter.
+    expect(dodoFields).toContain('addons');
+    expect(withoutDodoOnly(dodoFields)).toEqual(withoutDodoOnly(stripeFields));
   });
 
   it('writes the same tenant_private field set, with dodo* in place of stripe*', () => {

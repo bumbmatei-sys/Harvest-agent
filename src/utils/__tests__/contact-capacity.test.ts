@@ -46,7 +46,7 @@ const donorRows = (n: number) => Array.from({ length: n }, donorOnly);
 describe('resolveContactLimit — the number comes from PLAN_FEATURES', () => {
   // ── 8 ──────────────────────────────────────────────────────────────────────
   it('resolves 150 / 500 / 2,000 for Individual / Small Team / Ministry', () => {
-    expect(PLAN_ORDER.map(resolveContactLimit)).toEqual([150, 500, 2_000]);
+    expect(PLAN_ORDER.map((p) => resolveContactLimit(p))).toEqual([150, 500, 2_000]);
   });
 
   it('reads the plan matrix rather than carrying its own copy of the numbers', () => {

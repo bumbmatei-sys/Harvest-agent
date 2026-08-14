@@ -1,4 +1,4 @@
-import { TenantPlan } from '../types/tenant.types';
+import { TenantAddons, TenantPlan } from '../types/tenant.types';
 
 export interface PlanFeatures {
   /** Show blog tab in user app + blog management in admin */
@@ -415,6 +415,141 @@ export const DODO_BILLING_ENABLED = true;
  */
 export function getPlanFeatures(plan: TenantPlan): PlanFeatures {
   return PLAN_FEATURES[plan] || PLAN_FEATURES.plus;
+}
+
+// ─── Add-ons layered on a plan (REP-5a) ──────────────────────────────────────
+
+/**
+ * The sentinel `PlanFeatures`' numeric cells use for "unlimited".
+ *
+ * Written down here because `getEffectiveFeatures` has to RECOGNISE it: adding
+ * capacity to a cell that already means unlimited would turn -1 into a small
+ * positive number and silently LOWER the cap. No tier currently carries it —
+ * every cap in the matrix above is a real count — so this is a guard against a
+ * future matrix change, not a live case. `contact-capacity.ts` and
+ * `admin-seats.ts` each export the same value under the name `UNLIMITED` for
+ * their own call sites.
+ */
+export const UNLIMITED_CAP = -1;
+
+/** Contacts one "Contacts +500" pack adds. The pack's whole meaning, once. */
+export const CONTACTS_PER_PACK = 500;
+
+/** Owning nothing. The answer for every tenant that predates add-ons. */
+export const NO_ADDONS: TenantAddons = Object.freeze({
+  aiAssistant: 0,
+  adminSeats: 0,
+  contactPacks: 0,
+  unlimitedContacts: false,
+  campuses: 0,
+});
+
+/**
+ * A plan's features with the tenant's add-ons layered on top.
+ *
+ * 🔴 `unlimitedContacts` IS A SEPARATE BOOLEAN AND STAYS ONE. It is not folded
+ * into `maxContacts`, and that is a decision, not an omission:
+ *
+ *   • `Infinity` is not storable in Firestore, so it could never round-trip.
+ *   • `-1` is storable and is already this matrix's unlimited sentinel — but it
+ *     is a NUMBER, and the app compares these cells with `>=` and `<` in
+ *     several places. One consumer that has not learned the sentinel evaluates
+ *     `accountCount >= -1` as true forever and reports the church as AT ITS
+ *     LIMIT — unlimited contacts becoming zero capacity, silently, for the most
+ *     expensive add-on Harvest sells.
+ *
+ * So `maxContacts` here is always a real, finite, honest number — the tier's
+ * allowance plus `CONTACTS_PER_PACK` per pack — and the unlimited fact travels
+ * beside it. A cap check asks "unlimited, or under the number?" (see
+ * `isAtContactLimit`). A consumer that has NOT been taught about the boolean
+ * still reads a finite number that is at worst too small, never zero, and never
+ * smaller than what the church actually paid for.
+ */
+export interface EffectiveFeatures extends PlanFeatures {
+  /**
+   * The Unlimited Contacts add-on. When true, `maxContacts` is a floor to be
+   * ignored, not a limit to enforce.
+   */
+  unlimitedContacts: boolean;
+}
+
+/**
+ * Coerce an untrusted `tenants/{id}.addons` value to a `TenantAddons`.
+ *
+ * Same shape and same reasoning as `toTenantPlan`: this field comes off a
+ * Firestore document, it may be absent (every tenant created before REP-5a), and
+ * it must fail closed to "owns nothing" rather than throw on a screen render.
+ *
+ * Counts are floored at 0 and rounded down. A negative quantity — a corrupt doc,
+ * a hand edit — must never REDUCE a cap; that is the one direction an add-on may
+ * never move a limit.
+ */
+export function readTenantAddons(raw: unknown): TenantAddons {
+  if (!raw || typeof raw !== 'object') return NO_ADDONS;
+  const value = raw as Partial<Record<keyof TenantAddons, unknown>>;
+  const count = (n: unknown): number =>
+    typeof n === 'number' && Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
+  return {
+    aiAssistant: count(value.aiAssistant),
+    adminSeats: count(value.adminSeats),
+    contactPacks: count(value.contactPacks),
+    unlimitedContacts: value.unlimitedContacts === true,
+    campuses: count(value.campuses),
+  };
+}
+
+/**
+ * Add capacity to a cap without ever lowering it.
+ *
+ * An already-unlimited cell is returned untouched — see `UNLIMITED_CAP`. A
+ * negative addition is clamped to zero, so the invariant "no add-on lowers any
+ * cap" holds structurally rather than by every caller remembering it.
+ */
+function raiseCap(base: number, extra: number): number {
+  if (base === UNLIMITED_CAP) return base;
+  return base + Math.max(0, extra);
+}
+
+/**
+ * A plan's features with `addons` layered on — the function cap checks should
+ * ask once a tenant's add-on set is in hand.
+ *
+ * 🔴 SEPARATE FROM `getPlanFeatures` ON PURPOSE, and `getPlanFeatures` is
+ * unchanged. That function has roughly forty callers reading a tier's PUBLISHED
+ * allowance — the pricing matrix, /api/plans, the comparison table, every
+ * per-component gate. Teaching it about add-ons would move all forty at once,
+ * and the ones that are meant to show the published number (a plan-comparison
+ * row cannot show one church's purchased capacity) would become wrong with no
+ * way to tell which. Two functions, two questions: "what does this TIER
+ * include" and "what does this TENANT have".
+ *
+ * PURE. No fetch, no clock, no module state — `addons` is passed in by whoever
+ * already holds the tenant doc. It returns a NEW frozen object and never
+ * touches `PLAN_FEATURES`; `plan-features.test.ts` pins that every tier reads
+ * identically before and after this is called.
+ *
+ * Four cells move, and only these four:
+ *   `maxContacts`  + `CONTACTS_PER_PACK` per pack (and see `unlimitedContacts`)
+ *   `maxAdmins`    + one per admin seat
+ *   `maxChurches`  + one per campus — the ONLY path past 1, which is the design
+ *   `aiAssistant`  + one per AI Assistant add-on
+ * Everything else is the tier's, untouched: an add-on buys capacity, never a
+ * feature flag.
+ */
+export function getEffectiveFeatures(
+  plan: TenantPlan,
+  addons?: TenantAddons | null,
+): EffectiveFeatures {
+  const base = getPlanFeatures(plan);
+  const owned = readTenantAddons(addons);
+  return Object.freeze({
+    ...base,
+    maxContacts: raiseCap(base.maxContacts, owned.contactPacks * CONTACTS_PER_PACK),
+    maxAdmins: raiseCap(base.maxAdmins, owned.adminSeats),
+    maxChurches: raiseCap(base.maxChurches, owned.campuses),
+    aiAssistant: raiseCap(base.aiAssistant, owned.aiAssistant),
+    unlimitedContacts: owned.unlimitedContacts,
+  });
 }
 
 /**

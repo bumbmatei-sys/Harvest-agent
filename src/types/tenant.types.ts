@@ -27,6 +27,44 @@ export type TenantStatus =
   | 'cancelled'
   | 'archived';
 
+/**
+ * The add-ons a tenant OWNS, in meanings rather than in Dodo ids (REP-5a).
+ *
+ * 🔴 NO `adn_` ID EVER APPEARS HERE. `tenants/{id}` is world-readable, and a
+ * client that knows a Dodo add-on id breaks the moment that add-on is recreated
+ * — the id changes, the meaning does not. The id → meaning map lives once,
+ * server-side, in `src/lib/dodo/catalogue.ts`, and the webhook writes only what
+ * came out of it.
+ *
+ * ─── Why this is on the public tenant doc and not tenant_private ─────────────
+ *
+ * `plan` is already here, and an add-on quantity is the same KIND of fact: it is
+ * capacity, which every cap check needs synchronously to render a screen. That
+ * is different from `dodoOnHoldAt`, which is billing TROUBLE and stayed private.
+ * Putting capacity behind a server fetch would make every cap check async, and
+ * an async default is a silent claim — the shape behind THE-64 and THE-139.
+ * Nothing here is a secret: the church knows what it bought.
+ *
+ * ─── The field names are counts, and say so ──────────────────────────────────
+ *
+ * `contactPacks` is a COUNT OF BLOCKS, not a contact count: 2 means two blocks
+ * of `CONTACTS_PER_PACK`, i.e. +1,000 contacts. `unlimitedContacts` is a plain
+ * boolean and stays one — see `getEffectiveFeatures` for why no number can carry
+ * "unlimited" through Firestore safely.
+ */
+export interface TenantAddons {
+  /** Extra AI assistants bought, on top of whatever the tier includes. */
+  aiAssistant: number;
+  /** Extra admin seats bought, on top of the tier's `maxAdmins`. */
+  adminSeats: number;
+  /** Blocks of contacts bought. One pack = `CONTACTS_PER_PACK` contacts. */
+  contactPacks: number;
+  /** True when the Unlimited Contacts add-on is held. Beats any pack count. */
+  unlimitedContacts: boolean;
+  /** Extra churches/campuses bought. The ONLY path past `maxChurches: 1`. */
+  campuses: number;
+}
+
 export interface TenantConfig {
   logo?: string;        // URL to logo image
   /**
@@ -91,6 +129,17 @@ export interface Tenant {
   setupCompleted?: boolean;
   createdAt: string;     // ISO date string
   updatedAt: string;     // ISO date string
+  /**
+   * What the tenant owns beyond its tier (REP-5a). Written by the Dodo webhook
+   * — `subscription.plan_changed` and, defensively, `subscription.active` — and
+   * by nothing else.
+   *
+   * OPTIONAL because every tenant created before REP-5a has no field. Read it
+   * through `readTenantAddons` (src/utils/plan-features.ts), which resolves an
+   * absent or malformed value to "owns nothing" rather than throwing: a missing
+   * field means the tenant predates add-ons, which is exactly no add-ons.
+   */
+  addons?: TenantAddons;
   // Add-on subscription IDs
   addOnAiAssistant?: string; // Stripe subscription ID for AI Assistant add-on
   // Stripe Connect status (the account ID itself is on tenant_private)
