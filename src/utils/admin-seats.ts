@@ -25,8 +25,9 @@
  * admin. Nothing in this module demotes, hides, or removes anyone.
  */
 
-import { getPlanFeatures, toTenantPlan } from './plan-features';
+import { getEffectiveFeatures, toTenantPlan } from './plan-features';
 import { isSuperAdminEmail } from './super-admins';
+import type { TenantAddons } from '../types/tenant.types';
 
 /** Unlimited sentinel used by plan-features' maxAdmins. */
 export const UNLIMITED = -1;
@@ -38,16 +39,25 @@ export interface SeatCandidate {
 }
 
 /**
- * The tenant's admin allowance.
+ * The tenant's admin allowance, INCLUDING any Admin Seat add-ons it owns.
  *
  * Fails closed to 'plus' (2) when the plan is unknown or still loading — the
  * same fallback AdminCourses uses for maxCourses and AdminChurches for
  * maxChurches. A super admin browsing a tenant subdomain is gated by that
  * tenant's real plan, matching TenantContext's rule that on a tenant subdomain
  * EVERYONE is gated by the tenant's plan.
+ *
+ * `addons` is OPTIONAL and defaults to owning nothing (REP-5a) — the same shape
+ * and the same reasoning as `resolveContactLimit`: the default is exactly a
+ * tenant's answer before REP-5b threads the add-on set through to the screens,
+ * and it can only under-state the allowance, never over-state it. One seat
+ * add-on unit raises this by one.
  */
-export function resolveAdminLimit(plan: string | null | undefined): number {
-  return getPlanFeatures(toTenantPlan(plan)).maxAdmins;
+export function resolveAdminLimit(
+  plan: string | null | undefined,
+  addons?: TenantAddons | null,
+): number {
+  return getEffectiveFeatures(toTenantPlan(plan), addons).maxAdmins;
 }
 
 /**

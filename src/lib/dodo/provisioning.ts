@@ -3,8 +3,14 @@ import { captureMoneyPathError } from '@/lib/money-path-sentry';
 import { setCustomClaims } from '@/lib/set-custom-claims';
 import { tenantPrivateRef, TENANT_PRIVATE_COLLECTION } from '@/lib/tenant-private';
 import { NON_TENANT_SUBDOMAINS } from '@/utils/non-tenant-subdomains';
-import type { TenantPlan } from '@/types/tenant.types';
+import { readTenantAddons } from '@/utils/plan-features';
+import type { TenantAddons, TenantPlan } from '@/types/tenant.types';
 import { resolvePlanFromProductId } from './catalogue';
+import {
+  readDodoAddonEntitlements,
+  reportUnrecognisedDodoAddons,
+  sameTenantAddons,
+} from './addons';
 import type { BillingPeriod } from './provider';
 import type { DodoWebhookEvent } from './events';
 import { reactivateTenantForDodoSubscription } from './lifecycle';
@@ -76,6 +82,13 @@ export interface DodoSubscriptionPayload {
   created_at?: unknown;
   customer?: { customer_id?: unknown; email?: unknown; name?: unknown } | null;
   metadata?: unknown;
+  /**
+   * What the subscription holds. Nothing sells an add-on at signup today, so in
+   * practice this is `[]` — but it is read rather than assumed, because a
+   * subscription created in Dodo's dashboard WITH add-ons also arrives here and
+   * assuming empty would silently under-serve it.
+   */
+  addons?: unknown;
 }
 
 /** The metadata this app stamps on a signup checkout, after validation. */
@@ -285,6 +298,25 @@ export async function provisionTenantFromDodoSubscription(
   const ids = { subscriptionId, userId: meta.userId, newTenantId, productId };
   const userEmail = await resolveOwnerEmail(meta.userId, sub, ids);
 
+  // ── The add-on set, written even when it is empty (REP-5a). ───────────────
+  //
+  // Nothing sells an add-on at signup yet, so this is `NO_ADDONS` in practice.
+  // It is still written: an ABSENT field and an EMPTY one read the same to a cap
+  // check but not to a person debugging one, and a tenant created today with no
+  // `addons` key is indistinguishable from a tenant whose add-on write failed.
+  // A new tenant has no prior value to lose, so an unreadable payload writes the
+  // empty set here rather than nothing — the opposite of the rule on an EXISTING
+  // tenant, where absent must never overwrite.
+  const entitlements = readDodoAddonEntitlements(sub);
+  const addons: TenantAddons = entitlements ? entitlements.addons : readTenantAddons(null);
+  if (entitlements) {
+    reportUnrecognisedDodoAddons(entitlements.unrecognised, {
+      step: 'dodo-provisioning-unrecognised-addon',
+      subscriptionId,
+      tenantId: newTenantId,
+    });
+  }
+
   const now = new Date().toISOString();
 
   // The world-readable tenant doc carries only the pre-auth/public fields; the
@@ -296,6 +328,8 @@ export async function provisionTenantFromDodoSubscription(
     name: meta.ministryName || 'My Ministry',
     subdomain: newTenantId,
     plan,
+    // MEANINGS ONLY — never a Dodo add-on id on this world-readable doc.
+    addons,
     status: TENANT_STATUS_ACTIVE,
     config: {},
     ownerId: meta.userId,
@@ -344,6 +378,42 @@ export async function provisionTenantFromDodoSubscription(
 }
 
 /**
+ * Bring an EXISTING tenant's stored add-on set in line with the subscription.
+ *
+ * Defensive, and deliberately narrower than the creation path above: an
+ * unreadable `addons` field writes NOTHING here, because this tenant already has
+ * a set and "the payload did not say" must never overwrite "the church owns
+ * three campuses". Idempotent by comparison — an identical set is not rewritten,
+ * so a redelivery of `subscription.active` cannot touch `updatedAt` either.
+ *
+ * `subscription.plan_changed` remains the primary writer (see `./plan-change`);
+ * this exists so a reactivation or a dashboard-created subscription that already
+ * carries add-ons is not left with a stale set until the next plan change.
+ */
+async function syncAddonsForExistingTenant(
+  tenantId: string,
+  sub: DodoSubscriptionPayload,
+): Promise<void> {
+  const entitlements = readDodoAddonEntitlements(sub);
+  if (!entitlements) return;
+
+  const subscriptionId = str(sub.subscription_id);
+  reportUnrecognisedDodoAddons(entitlements.unrecognised, {
+    step: 'dodo-subscription-active-unrecognised-addon',
+    subscriptionId,
+    tenantId,
+  });
+
+  const tenantRef = adminDb.collection('tenants').doc(tenantId);
+  const snap = await tenantRef.get();
+  if (!snap.exists) return;
+  if (sameTenantAddons(readTenantAddons(snap.data()?.addons), entitlements.addons)) return;
+
+  await tenantRef.update({ addons: entitlements.addons, updatedAt: new Date().toISOString() });
+  console.log(`✅ [dodo] Synced add-on set for tenant ${tenantId} from subscription ${subscriptionId}`);
+}
+
+/**
  * The `subscription.active` handler.
  *
  * `subscription.active` — not `payment.succeeded` — is the provisioning trigger:
@@ -366,6 +436,12 @@ export async function provisionTenantFromDodoSubscription(
  * because archiving took nothing away — see the note in `./lifecycle`. The
  * restore writes only when the tenant is actually archived, so the ordinary
  * case (a fresh signup, or a redelivery of one) is unchanged and writes nothing.
+ *
+ * ─── It also keeps the add-on set current (REP-5a) ───────────────────────────
+ *
+ * Defensively, per the brief: nothing sells an add-on at signup yet, so a fresh
+ * signup writes the empty set. An ALREADY-PROVISIONED tenant is synced only from
+ * a payload that actually reports its add-ons — see `syncAddonsForExistingTenant`.
  */
 export async function handleDodoSubscriptionActive(
   event: DodoWebhookEvent,
@@ -384,6 +460,21 @@ export async function handleDodoSubscriptionActive(
       console.error(`[dodo] Could not reactivate tenant ${result.tenantId}:`, err);
       captureMoneyPathError(err, {
         step: 'dodo-reactivate-tenant',
+        level: 'error',
+        tenantId: result.tenantId,
+        ids: { subscriptionId: str(payload.subscription_id) },
+      });
+    }
+
+    // Same swallow, same reason: the tenant exists and its TIER is right either
+    // way, and a durable event must not be redelivered forever over an add-on
+    // sync. The `plan_changed` handler is the primary writer and will correct it.
+    try {
+      await syncAddonsForExistingTenant(result.tenantId, payload);
+    } catch (err) {
+      console.error(`[dodo] Could not sync add-ons for tenant ${result.tenantId}:`, err);
+      captureMoneyPathError(err, {
+        step: 'dodo-subscription-active-addon-sync',
         level: 'error',
         tenantId: result.tenantId,
         ids: { subscriptionId: str(payload.subscription_id) },

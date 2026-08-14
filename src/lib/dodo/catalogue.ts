@@ -241,3 +241,193 @@ export function allCatalogueProductIds(): string[] {
     Object.values(periods).map((entry) => entry.productId),
   );
 }
+
+// ─── The add-on catalogue (REP-5a) ───────────────────────────────────────────
+//
+// ⚠️ DODO ADD-ONS CARRY NO METADATA FIELD. A Dodo product has `metadata` and
+// this build uses it (`plan_key`, `billing_period` above); an ADD-ON does not
+// have one at all. So "what does owning this add-on mean" cannot be derived at
+// runtime from anything Dodo returns — an `addon_id` and a name is the whole of
+// it, and a name is display copy that a dashboard edit can change under us.
+//
+// The mapping therefore has to be written down, and it is written down HERE,
+// beside the products, under the SAME rules as the products: two tables, one
+// active, selected by the already-validated `dodoConfig.environment`. No `??`,
+// no env read, no default — `dodo-addon-catalogue.test.ts` scans this file's
+// source for all three, exactly as `dodo-catalogue.test.ts` already does.
+//
+// 🔴 THE IDS NEVER LEAVE THIS MODULE. What gets stored on a tenant is the
+// MEANING (`contactPacks: 2`), never `adn_0NlKtwD3VfBLgx2LTw69O`. An id on a
+// world-readable tenant doc is a client that breaks the moment an add-on is
+// recreated in Dodo, and the mapping belongs server-side, once.
+
+/**
+ * What owning an add-on MEANS — the five things Harvest sells beyond a tier.
+ *
+ * These are the words the rest of the app reasons in. `campus` and `adminSeat`
+ * are singular because one add-on unit is one campus / one seat and the
+ * quantity carries the count; `contactPack` is one block of
+ * `CONTACTS_PER_PACK` contacts for the same reason. `unlimitedContacts` is the
+ * odd one: a quantity means nothing there, holding it at all is the whole fact.
+ */
+export const DODO_ADDON_MEANINGS = [
+  'aiAssistant',
+  'adminSeat',
+  'campus',
+  'contactPack',
+  'unlimitedContacts',
+] as const;
+
+export type DodoAddonMeaning = (typeof DODO_ADDON_MEANINGS)[number];
+
+/**
+ * 🔴 An add-on that EXISTS IN DODO but whose id was never written down.
+ *
+ * Not "this add-on does not exist" and not "we do not sell this" — it is sold,
+ * priced and attached in Dodo, and this build cannot name it. The marker exists
+ * so the table can say that IN WORDS rather than by leaving a key out: an absent
+ * key is indistinguishable from a forgotten one, and the difference between
+ * "deliberately unmapped" and "someone dropped a line" is the difference between
+ * a known gap and a silent defect.
+ *
+ * A held add-on whose id maps to nothing takes the unrecognised-id path, which
+ * REPORTS (see `../dodo/addons`). That is the safety property that makes
+ * shipping with a gap defensible: nobody pays for nothing in silence.
+ */
+export const DODO_ADDON_UNMAPPED = null;
+
+/** The two ids one meaning is sold under. `null` names a deliberate gap. */
+export type DodoAddonIds = Readonly<Record<BillingPeriod, string | null>>;
+
+/** meaning → its ids, in one mode. Total over the five meanings, by type. */
+export type DodoAddonTable = Readonly<Record<DodoAddonMeaning, DodoAddonIds>>;
+
+/**
+ * The ten add-ons, in Dodo TEST MODE. Five meanings × two billing periods.
+ *
+ * `yearly` is the app's word for what Dodo's dashboard calls "Annual", the same
+ * reconciliation the product catalogue above makes — the two vocabularies meet
+ * in this module and nowhere else.
+ *
+ * ⚠️ COMPLETE, DELIBERATELY. Campus is mapped here and NOT in live (below), and
+ * that asymmetry is the point: test mode is where Campus has to work end to end,
+ * so that filling the live gap is two ids and no logic.
+ */
+export const DODO_TEST_ADDONS: DodoAddonTable = Object.freeze({
+  aiAssistant: Object.freeze({
+    monthly: 'adn_0NlNfaOwHWiV8CrPNREiU',
+    yearly: 'adn_0NlNfaSduoV543Ey8y9tR',
+  }),
+  adminSeat: Object.freeze({
+    monthly: 'adn_0NlNfaVFaLLWXU8KXw1JI',
+    yearly: 'adn_0NlNfaXplUpTTYwm1jJCV',
+  }),
+  campus: Object.freeze({
+    monthly: 'adn_0NlNfafdHZgpetrweMI31',
+    yearly: 'adn_0NlNfaiGQpP5IAxXI82Fz',
+  }),
+  contactPack: Object.freeze({
+    monthly: 'adn_0NlNfakv8J9oKpmVGavKm',
+    yearly: 'adn_0NlNfanWnF8iZ0A8rESdW',
+  }),
+  unlimitedContacts: Object.freeze({
+    monthly: 'adn_0NlNfaqEXuZZsLYWtKcer',
+    yearly: 'adn_0NlNfaspQfXIgGxB6d0Bd',
+  }),
+});
+
+/**
+ * The ten add-ons, in Dodo LIVE MODE — with EIGHT of them mapped.
+ *
+ * 🔴 CAMPUS IS UNMAPPED IN LIVE, ON PURPOSE, AND IT IS A REAL GAP.
+ *
+ * Both live Campus add-ons exist in Dodo — created, priced and attached — but
+ * their ids were not recorded at creation and are not guessable. Guessing one
+ * would be worse than the gap: a wrong `adn_` that happened to resolve would
+ * grant a campus nobody bought, and one that did not would fail in exactly the
+ * same silence.
+ *
+ * What a church buying a live Campus gets today, stated plainly: Dodo charges
+ * them $15/mo, the add-on rides the subscription, the id reaches
+ * `resolveAddonMeaning` below, resolves to null, and the webhook REPORTS it as
+ * an unrecognised add-on (money-path Sentry, `dodo-addon-unrecognised`) instead
+ * of dropping it. Their `maxChurches` does NOT move. Someone finds out — which
+ * is the entire reason this table names the gap rather than omitting it.
+ *
+ * `dodo-addon-catalogue.test.ts` PINS this gap as intentional. Filling the two
+ * ids means deleting that test on purpose, which is the point: the follow-up
+ * cannot quietly forget the second half.
+ */
+export const DODO_LIVE_ADDONS: DodoAddonTable = Object.freeze({
+  aiAssistant: Object.freeze({
+    monthly: 'adn_0NlKtuImtSn7PcdvjnSni',
+    yearly: 'adn_0NlKtw3IOHfv1GGCevNol',
+  }),
+  adminSeat: Object.freeze({
+    monthly: 'adn_0NlKtw7AayNYI6YYwphQ5',
+    yearly: 'adn_0NlKtw9lWLs0VRN9hWciX',
+  }),
+  // 🔴 THE GAP. Named, not omitted. See the block above for what a live Campus
+  // purchase does today and what filling this in requires.
+  campus: Object.freeze({
+    monthly: DODO_ADDON_UNMAPPED,
+    yearly: DODO_ADDON_UNMAPPED,
+  }),
+  contactPack: Object.freeze({
+    monthly: 'adn_0NlKtwD3VfBLgx2LTw69O',
+    yearly: 'adn_0NlKtwGbLRk2nPC07uC6o',
+  }),
+  unlimitedContacts: Object.freeze({
+    monthly: 'adn_0NlKtwKAhJgz0jeaqDX2c',
+    yearly: 'adn_0NlKtwMjMlsjzZ8z2Wt7P',
+  }),
+});
+
+/**
+ * The add-on table this build maps against.
+ *
+ * Keyed by `dodoConfig.environment` exactly as `CATALOGUES_BY_ENVIRONMENT` is —
+ * a total lookup over the two-value union, not a conditional with a default arm.
+ */
+const ADDONS_BY_ENVIRONMENT: Readonly<Record<DodoEnvironment, DodoAddonTable>> = Object.freeze({
+  [DODO_TEST_MODE]: DODO_TEST_ADDONS,
+  [DODO_LIVE_MODE]: DODO_LIVE_ADDONS,
+});
+
+export const DODO_ACTIVE_ADDONS: DodoAddonTable = ADDONS_BY_ENVIRONMENT[dodoConfig.environment];
+
+/**
+ * Reverse lookup: Dodo add-on id → what owning it MEANS.
+ *
+ * The add-on counterpart of `resolvePlanFromProductId`, and it refuses the same
+ * way: the ACTIVE table only, `null` for everything else — an unmapped live
+ * Campus, the other mode's ids, a hand-made dashboard add-on, a typo. Callers
+ * must REPORT a null rather than skip it; a silently ignored add-on is a church
+ * paying for nothing.
+ *
+ * Both periods resolve to the SAME meaning: a monthly campus and an annual
+ * campus are both one campus. Period is a billing fact, not an entitlement one.
+ */
+export function resolveAddonMeaning(addonId: string): DodoAddonMeaning | null {
+  if (addonId === '') return null;
+  for (const [meaning, ids] of Object.entries(DODO_ACTIVE_ADDONS) as [
+    DodoAddonMeaning,
+    DodoAddonIds,
+  ][]) {
+    for (const id of Object.values(ids)) {
+      if (id !== DODO_ADDON_UNMAPPED && id === addonId) return meaning;
+    }
+  }
+  return null;
+}
+
+/** Every add-on id this build can map, in the active mode. Ten, or eight in live. */
+export function allMappedAddonIds(): string[] {
+  const ids: string[] = [];
+  for (const periods of Object.values(DODO_ACTIVE_ADDONS)) {
+    for (const id of Object.values(periods)) {
+      if (id !== DODO_ADDON_UNMAPPED) ids.push(id);
+    }
+  }
+  return ids;
+}
