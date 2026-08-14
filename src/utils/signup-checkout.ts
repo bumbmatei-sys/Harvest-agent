@@ -62,6 +62,43 @@ export function readSignupBillingPeriod(raw: unknown): SignupBillingPeriod {
 }
 
 /**
+ * THE-135: the sessionStorage lane that carries `?billing=` across the auth
+ * redirect, exactly as `sessionStorage['harvest_signup']` carries `?signup=`.
+ *
+ * 🔴 The redirect to /auth (App.tsx) deliberately drops the query string, and
+ * the plan survived it only because App.tsx gave it a sessionStorage lane. The
+ * period had no lane, so a church that chose annual reached checkout as
+ * monthly. This key is that lane. Its lifecycle is the PLAN's lifecycle:
+ * captured where `harvest_signup` is captured, cleared everywhere
+ * `harvest_signup` is cleared — a stale 'yearly' outliving its signup would
+ * charge a later monthly signup annually, the same defect pointed the other
+ * way.
+ *
+ * The stored value is user-writable (sessionStorage), so it is validated
+ * through `readSignupBillingPeriod` on every read-back, never trusted raw.
+ */
+export const SIGNUP_BILLING_STORAGE_KEY = 'harvest_signup_billing';
+
+/**
+ * The billing period for the signup checkout about to be started: `?billing=`
+ * from the current URL when present, else the value App.tsx stashed in
+ * `SIGNUP_BILLING_STORAGE_KEY` before the auth redirect dropped the query.
+ *
+ * URL wins over the stored value — the same precedence App.tsx gives the plan
+ * (`urlSignup || storedSignup`). Both sources are untrusted and both fail
+ * closed to 'monthly' through `readSignupBillingPeriod`; a URL that carries
+ * `billing` at all decides the outcome by itself, so a mangled URL value
+ * becomes 'monthly' rather than deferring to a stale stored one.
+ */
+export function resolveSignupBillingPeriod(search: string): SignupBillingPeriod {
+  const fromUrl = new URLSearchParams(search).get('billing');
+  if (fromUrl !== null) return readSignupBillingPeriod(fromUrl);
+  let stored: string | null = null;
+  try { stored = sessionStorage.getItem(SIGNUP_BILLING_STORAGE_KEY); } catch { /* fail closed */ }
+  return readSignupBillingPeriod(stored);
+}
+
+/**
  * The query flag the processor appends when it sends a payer back to the app.
  *
  * `OnboardingGate` reads BOTH spellings rather than only the current one: a

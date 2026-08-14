@@ -13,6 +13,33 @@ import { authFetch } from './auth-fetch';
 export type PlanChangeProcessor = 'stripe' | 'dodo' | null;
 
 /**
+ * THE-135: the one "Powered by …" line under the subscription-management
+ * actions, derived from the processor that actually owns the subscription.
+ *
+ * Subscriptions moved to Dodo; donations did not. The old hardcoded
+ * "Powered by Stripe" under "Manage Subscription" told every Dodo tenant its
+ * subscription ran on a processor it has never paid — and it existed as TWO
+ * hardcoded copies (PlanUpgradeSection, AdminUpgradePage), which is exactly how
+ * one of them was missed. This is the single source; do not write the string
+ * out by hand at a call site again.
+ *
+ * Returns null when the processor is not (yet) known — `undefined` before the
+ * fetch resolves, `null` when it cannot be determined — so the caller renders
+ * NO attribution rather than guessing. A default shown while the answer is
+ * still loading is a silent claim, and this project has paid for that twice.
+ *
+ * 🔴 The donation surfaces (PaymentSection, PublicCampaign) are NOT callers:
+ * donations run on Stripe Connect and their "powered by Stripe" lines are true.
+ */
+export function subscriptionProcessorAttribution(
+  processor: PlanChangeProcessor | undefined,
+): string | null {
+  if (processor === 'stripe') return 'Powered by Stripe';
+  if (processor === 'dodo') return 'Powered by Dodo Payments';
+  return null;
+}
+
+/**
  * Which processor owns this tenant's subscription, from the same
  * `/api/billing/invoices` response the Billing screen already renders.
  * Null when it cannot be determined (not an owner, network failure) — callers

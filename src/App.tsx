@@ -35,6 +35,7 @@ import { useAppStore } from './store/useAppStore';
 import { PLATFORM_TENANT_ID, getTenantIdFromHost } from './utils/tenant-scope';
 import { isAffiliateHost } from './utils/non-tenant-subdomains';
 import { resolvePostAuthFunnelRoute } from './utils/post-auth-route';
+import { SIGNUP_BILLING_STORAGE_KEY } from './utils/signup-checkout';
 import { usePreAuthTheme, useForcedLightTheme } from './lib/theme-runtime';
 
 /** Paths that represent the auth / onboarding funnel (used to decide redirects). */
@@ -177,10 +178,25 @@ const AppInner: React.FC = () => {
       // copy for the rest of the session. sessionStorage is per-origin, so
       // this can never touch the apex/tenant hosts' paid funnel.
       try { sessionStorage.removeItem('harvest_signup'); } catch {}
+      try { sessionStorage.removeItem(SIGNUP_BILLING_STORAGE_KEY); } catch {}
       return;
     }
-    const p = new URLSearchParams(window.location.search).get('signup');
-    if (p) { try { sessionStorage.setItem('harvest_signup', p); } catch {} }
+    const params = new URLSearchParams(window.location.search);
+    const p = params.get('signup');
+    if (p) {
+      try { sessionStorage.setItem('harvest_signup', p); } catch {}
+      // THE-135: the billing period rides the same lane as the plan, or it dies
+      // at the /auth redirect below (which drops the query string) and every
+      // annual signup silently buys monthly. Captured only WITH a signup intent
+      // — the period has no meaning apart from the signup it belongs to — and a
+      // signup link carrying no period must overwrite a stale one from an
+      // earlier annual link in this tab, or that signup buys yearly unasked.
+      const b = params.get('billing');
+      try {
+        if (b) sessionStorage.setItem(SIGNUP_BILLING_STORAGE_KEY, b);
+        else sessionStorage.removeItem(SIGNUP_BILLING_STORAGE_KEY);
+      } catch {}
+    }
   }, []);
 
   const urlSignup = typeof window !== 'undefined'
@@ -226,8 +242,11 @@ const AppInner: React.FC = () => {
             const onboardingDone = data.onboardingCompleted;
 
             if (onboardingDone) {
-              // Signup funnel finished — clear any stored signup intent.
+              // Signup funnel finished — clear any stored signup intent, and
+              // the billing period with it (the period must never outlive the
+              // signup it was chosen for).
               try { sessionStorage.removeItem('harvest_signup'); } catch {}
+              try { sessionStorage.removeItem(SIGNUP_BILLING_STORAGE_KEY); } catch {}
               // Plan source of truth:
               //  - On a tenant subdomain, the TENANT's plan (tenant doc, via
               //    TenantContext) is authoritative — applied by the effect above.
