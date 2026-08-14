@@ -751,26 +751,30 @@ describe('THE-128: a church whose renewal failed is told what actually happened'
   });
 
   it('test 8: no additional tenant_private read is introduced', async () => {
-    // The healthy path's private-doc reads, as the baseline.
+    // 🔴 ABSOLUTE, not a comparison between the two paths. A `getTenantPrivate`
+    // call added ABOVE the `graceState` branch lands on the healthy path too, so
+    // "the two paths read the same number of times" stays true while the read
+    // count has silently doubled. The number itself is what has to be pinned.
+    //
+    // ONE read: the `getTenantPrivate` at the ownership resolution. `dodoOnHoldAt`
+    // is a field on that same document, so the guard consults a copy already in
+    // hand and adds nothing.
+    const THE_OWNERSHIP_READ = [`tenant_private/${T.tenant}`];
+
     seedDodoTenant();
     asOwner();
     pastTrialSubscription();
     stubPreview({ total_amount: 2500 });
     await post(dodoChangePlan, changePlanBody);
-    const healthy = privateReads().length;
+    expect(privateReads()).toEqual(THE_OWNERSHIP_READ);
 
-    // The refusal path's, on the same request shape.
+    // And the refusal path reads no more than the healthy one — the guard is
+    // free on the request it actually fires for.
     currentDb = makeDb();
     seedDodoTenantOnHold(daysAgo(7));
     asOwner();
     await post(dodoChangePlan, changePlanBody);
-    const onHold = privateReads().length;
-
-    // 🔴 EQUAL. `dodoOnHoldAt` rides on the document the ownership check already
-    // fetched, so the guard is free. A `getTenantPrivate` call inside the guard
-    // would make this one higher.
-    expect(healthy).toBeGreaterThan(0);
-    expect(onHold).toBe(healthy);
+    expect(privateReads()).toEqual(THE_OWNERSHIP_READ);
   });
 
   it('test 9: on_payment_failure is still prevent_change', async () => {
