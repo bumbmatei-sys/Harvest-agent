@@ -5,11 +5,20 @@ import { NextRequest } from 'next/server';
  * THE-137 — a church reaching its OWN Stripe dashboard.
  *
  * 🔴 The bug: the settings "Manage Stripe Dashboard" control was a plain link to
- * `https://dashboard.stripe.com`. Harvest connects churches as EXPRESS accounts,
+ * `https://dashboard.stripe.com`. Harvest connected churches as EXPRESS accounts,
  * and an Express holder has no Stripe password — Express onboarding collects
  * business and bank details, never credentials. So every church that connected
  * landed on a login wall it could never pass, and the only route to its payouts,
  * balance, payout schedule and bank details was closed.
+ *
+ * 🔴 THE-145 PR 2 — and why the route now has TWO answers. Churches are created
+ * as STANDARD accounts from now on, because donations are direct charges and a
+ * direct charge debits disputes from the church's own balance. A Standard holder
+ * has a real Stripe account with their own credentials, so for them
+ * `dashboard.stripe.com` was never the broken destination — a login link is, and
+ * `createLoginLink` is Express-only. The route dispatches on the account type;
+ * the Express branch stays because every account connected before the switch is
+ * still Express and cannot be converted.
  *
  * ⚠️ THIS SUITE DELIBERATELY DOES NOT MOCK `@/lib/api-auth`, for the same reason
  * `billing-auth-gates` does not: the authorization decision IS the point of this
@@ -118,6 +127,12 @@ const HOPE_ACCOUNT_ID = 'acct_hope_express';
 const STRIPE_SECRET_KEY = 'sk_test_platform_secret_value';
 /** What Stripe hands back. Single-use and short-lived by construction. */
 const LOGIN_LINK_URL = 'https://connect.stripe.com/express/acct_grace_express/session_one_time';
+/**
+ * Where a Standard holder signs in with their OWN credentials. Not a credential,
+ * not single-use, and identical for every church — which is exactly why it can
+ * be handed back verbatim and why no id belongs in it.
+ */
+const STRIPE_DASHBOARD_URL = 'https://dashboard.stripe.com';
 
 // ── Personas ────────────────────────────────────────────────────────────────
 //
@@ -213,6 +228,11 @@ function expressAccount(id: string, overrides: Record<string, unknown> = {}) {
     requirements: { currently_due: [] },
     ...overrides,
   };
+}
+
+/** The same account, as a Standard one — every church connected from now on. */
+function standardAccount(id: string, overrides: Record<string, unknown> = {}) {
+  return expressAccount(id, { type: 'standard', ...overrides });
 }
 
 beforeEach(() => {
@@ -529,25 +549,159 @@ describe('an account that has not finished onboarding is sent back to onboarding
     expect(mockCreateLoginLink).toHaveBeenCalledWith(GRACE_ACCOUNT_ID);
   });
 
-  it('🔴 fails loudly for an account that is not Express at all', async () => {
-    // A Standard holder logs in at dashboard.stripe.com with their own
-    // credentials; a login link is the wrong mechanism entirely. If the account
-    // type ever changes underneath us, the right destination for the button
-    // changes with it — that is a platform fault to be paged about, not
-    // something to paper over.
+  it('a half-onboarded STANDARD account is sent back to onboarding too', async () => {
+    // Same answer, same reason: a church that walked away part-way through
+    // Connect Onboarding never finished creating its Stripe login, so
+    // dashboard.stripe.com would be exactly the login wall THE-137 exists to
+    // stop showing them.
     mockAccountsRetrieve.mockImplementation(async (id: string) =>
-      expressAccount(id, { type: 'standard' }),
+      standardAccount(id, { details_submitted: false, charges_enabled: false, payouts_enabled: false }),
+    );
+
+    const res = await loginLink(request({ tenantId: 'grace' }, OWNER));
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.onboardingRequired).toBe(true);
+    expect(body.reason).toBe('onboarding_incomplete');
+    expect(body.url).toBeUndefined();
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Test 11 — 🔴 THE-145 PR 2. One button, two mechanisms, chosen server-side.
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe('🔴 a Standard account is sent to its own Stripe dashboard, not a login link', () => {
+  beforeEach(() => {
+    mockAccountsRetrieve.mockImplementation(async (id: string) => standardAccount(id));
+  });
+
+  it('hands back the Stripe Dashboard URL', async () => {
+    const res = await loginLink(request({ tenantId: 'grace' }, OWNER));
+
+    expect(res.status).toBe(200);
+    expect((await res.json()).url).toBe(STRIPE_DASHBOARD_URL);
+  });
+
+  it('🔴 never calls createLoginLink — it is Express-only and would error', async () => {
+    await loginLink(request({ tenantId: 'grace' }, OWNER));
+
+    expect(mockCreateLoginLink).not.toHaveBeenCalled();
+    // Nor does it silently route a working account back through onboarding it
+    // does not need: that would be the "paper over it" failure mode.
+    expect(mockAccountLinksCreate).not.toHaveBeenCalled();
+  });
+
+  it('🔴 does not put the account id in the destination', async () => {
+    // `dashboard.stripe.com/{account_id}` would deep-link, and would also put a
+    // server-only identifier into a response body. The bare root is the trade
+    // this route makes on purpose.
+    const raw = await (await loginLink(request({ tenantId: 'grace' }, OWNER))).text();
+
+    expect(Object.keys(JSON.parse(raw))).toEqual(['url']);
+    expect(raw).not.toContain(GRACE_ACCOUNT_ID);
+    expect(raw).not.toContain(STRIPE_SECRET_KEY);
+  });
+
+  it('🔴 requireOwner still gates it — a member gets no dashboard either', async () => {
+    // The account type must not have become a way around the gate: reaching a
+    // church's Stripe account is privileged regardless of how you get in.
+    const res = await loginLink(request({ tenantId: 'grace' }, MEMBER));
+
+    expect(res.status).toBe(403);
+    expect((await res.json()).error).toBe('Owner access required');
+    expect(mockAccountsRetrieve).not.toHaveBeenCalled();
+  });
+
+  it('a volunteer admin is still refused, and church A still cannot name church B', async () => {
+    expect((await loginLink(request({ tenantId: 'grace' }, VOLUNTEER_ADMIN))).status).toBe(403);
+
+    await loginLink(request({ tenantId: 'hope' }, OWNER));
+    expect(mockAccountsRetrieve).not.toHaveBeenCalledWith(HOPE_ACCOUNT_ID);
+  });
+
+  it('writes nothing and creates nothing', async () => {
+    const res = await loginLink(request({ tenantId: 'grace' }, OWNER));
+
+    expect(res.status).toBe(200);
+    expect(firestoreWrites).toEqual([]);
+    expect(tenantPrivateWrites).toEqual([]);
+    expect(stripeAccountMutations()).toHaveLength(0);
+  });
+});
+
+describe('an Express account still gets a login link', () => {
+  it('🔴 the Express branch survives the switch — it is the only way legacy accounts get in', async () => {
+    // Every account connected before THE-145 PR 2 is Express and cannot be
+    // converted (Stripe fixes the type at creation). Deleting this branch would
+    // lock those churches out of their own money.
+    mockAccountsRetrieve.mockImplementation(async (id: string) => expressAccount(id));
+
+    const res = await loginLink(request({ tenantId: 'grace' }, OWNER));
+
+    expect(res.status).toBe(200);
+    expect((await res.json()).url).toBe(LOGIN_LINK_URL);
+    expect(mockCreateLoginLink).toHaveBeenCalledWith(GRACE_ACCOUNT_ID);
+  });
+
+  it('and is NOT sent to the dashboard login wall it can never pass', async () => {
+    mockAccountsRetrieve.mockImplementation(async (id: string) => expressAccount(id));
+
+    const body = await (await loginLink(request({ tenantId: 'grace' }, OWNER))).json();
+
+    // The original THE-137 bug, restated as an assertion.
+    expect(body.url).not.toBe(STRIPE_DASHBOARD_URL);
+    expect(body.url).not.toContain('dashboard.stripe.com');
+  });
+});
+
+describe('🔴 an account that is neither is still refused loudly', () => {
+  // The guard did not get weaker to make room for Standard. Custom has no
+  // dashboard at all, and `none` is what a v2/controller-properties account
+  // reports — neither has a destination this button could send anyone to.
+  for (const type of ['custom', 'none']) {
+    it(`refuses a '${type}' account with an explicit error, not a silent fallback`, async () => {
+      mockAccountsRetrieve.mockImplementation(async (id: string) =>
+        expressAccount(id, { type }),
+      );
+
+      const res = await loginLink(request({ tenantId: 'grace' }, OWNER));
+
+      expect(res.status).toBe(500);
+      const body = await res.json();
+      expect(body.error).toBeTruthy();
+      // Loud means loud: not an onboarding redirect, and not a dashboard URL
+      // handed over on the assumption that any account can use one.
+      expect(body.onboardingRequired).toBeUndefined();
+      expect(body.url).toBeUndefined();
+      expect(mockCreateLoginLink).not.toHaveBeenCalled();
+    });
+  }
+
+  it('🔴 refuses BEFORE the onboarding check, so a half-set-up Custom account is still loud', async () => {
+    // Order matters. If the `details_submitted` check ran first, a Custom
+    // account mid-setup would get a cheerful "go and onboard" and the platform
+    // fault would never be paged.
+    mockAccountsRetrieve.mockImplementation(async (id: string) =>
+      expressAccount(id, { type: 'custom', details_submitted: false }),
     );
 
     const res = await loginLink(request({ tenantId: 'grace' }, OWNER));
 
     expect(res.status).toBe(500);
-    const body = await res.json();
-    // Loud: an explicit error, NOT a silent onboarding redirect that would send
-    // a working Standard account into a flow it does not need.
-    expect(body.onboardingRequired).toBeUndefined();
-    expect(body.error).toBeTruthy();
-    expect(mockCreateLoginLink).not.toHaveBeenCalled();
+    expect((await res.json()).onboardingRequired).toBeUndefined();
+  });
+
+  it('leaks neither the account id nor the key in the refusal', async () => {
+    mockAccountsRetrieve.mockImplementation(async (id: string) =>
+      expressAccount(id, { type: 'custom' }),
+    );
+
+    const raw = await (await loginLink(request({ tenantId: 'grace' }, OWNER))).text();
+
+    expect(raw).not.toContain(GRACE_ACCOUNT_ID);
+    expect(raw).not.toContain(STRIPE_SECRET_KEY);
   });
 });
 

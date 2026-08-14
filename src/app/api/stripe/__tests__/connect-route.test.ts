@@ -112,7 +112,8 @@ describe('POST /api/stripe/connect — unified account mirror', () => {
 
     const res = await POST(makeRequest({ tenantId: 'tenant1' }));
     expect(res.status).toBe(200);
-    // Never mints a second Express account for an already-connected tenant.
+    // Never mints a second account for an already-connected tenant. (The type
+    // that a NEW account is created with is pinned in `standard-connect-account`.)
     expect(mockAccountsCreate).not.toHaveBeenCalled();
     // Mirrors the existing canonical account + its live status onto the caller.
     expect(mockDocSet).toHaveBeenCalledWith(

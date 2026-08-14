@@ -91,9 +91,42 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ url: accountLink.url });
     }
 
-    // Create a new Stripe Connect Express account
+    // ─── 🔴 STANDARD, not Express (THE-145 PR 2) ─────────────────────────────
+    //
+    // #316 made donations DIRECT charges, so Stripe now debits a disputed gift
+    // from the CHURCH's balance. Stripe pairs that with Standard, not Express:
+    // "Direct charges are recommended for connected accounts with access to the
+    // full Stripe Dashboard, which includes Standard accounts." Standard is in
+    // fact the only account type whose supported charge type is direct-only.
+    //
+    // The pairing matters because of what the church can then DO about that
+    // debit. An Express holder has no Stripe credentials and only the Express
+    // Dashboard, where refunds and disputes are features the PLATFORM may or may
+    // not switch on — so a disputed donation lands on the church's balance while
+    // the tools to answer it stay with Harvest. A Standard account is the
+    // church's OWN Stripe account: its own login at dashboard.stripe.com, its
+    // own disputes and refunds, its own records, and Stripe collecting its fees
+    // from it directly. For an organisation holding donor money, that is the
+    // correct shape — the church is the merchant of record on a direct charge
+    // either way, so it should hold the merchant's controls too.
+    //
+    // ⚠️ ACCOUNT LINKS ARE STILL THE RIGHT ONBOARDING MECHANISM. Both call sites
+    // below (`accountLinks.create({ type: 'account_onboarding' })`) are exactly
+    // what Stripe documents as "the recommended method for creating standard
+    // accounts" — create with `type: 'standard'`, then send the holder through a
+    // Connect Onboarding account link. OAuth is for a DIFFERENT job (an
+    // extension claiming an EXISTING Stripe account) and is not needed here.
+    //
+    // ⚠️ THIS APPLIES TO ACCOUNTS CREATED FROM NOW ON, AND ONLY THOSE. Liability
+    // and fee responsibility are fixed at creation and Stripe does not allow an
+    // account's type to change afterwards, so every already-connected Express
+    // account stays Express until it is re-onboarded by hand.
+    //
+    // ⚠️ AFFILIATE PAYOUT accounts are deliberately NOT changed
+    // (`/api/affiliate/onboard`). They receive transfers and take no charges, so
+    // none of the above applies to them and Standard would be the wrong shape.
     const account = await stripe.accounts.create({
-      type: 'express',
+      type: 'standard',
       metadata: {
         tenantId,
         tenantName: tenantData.name || '',
@@ -114,7 +147,10 @@ export async function POST(request: NextRequest) {
 
     // Mirror onto the connecting user so the SAME account also powers their
     // affiliate payouts. Status starts 'pending'; the connect callback and
-    // account.updated webhook flip it to 'active' once Express onboarding completes.
+    // account.updated webhook flip it to 'active' once onboarding completes.
+    // (`deriveConnectStatus` reads charges_enabled / payouts_enabled /
+    // requirements.currently_due — all populated on a Standard account exactly as
+    // on an Express one, so neither reconciliation path changes here.)
     // (mirrorSafe is always true here for a brand-new account unless the user already
     // holds a different active one — in which case we leave their working payout be.)
     if (mirrorSafe(account.id)) {

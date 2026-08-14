@@ -65,10 +65,16 @@ const PaymentSection: React.FC = () => {
   /**
    * Open the church's OWN Stripe dashboard (THE-137).
    *
-   * Harvest connects churches as Express accounts, and an Express holder has no
-   * Stripe password — so this cannot be a link to dashboard.stripe.com, which is
-   * a login wall they can never pass. The server mints a single-use login link
-   * per click; nothing about it is cached here or anywhere else.
+   * 🔴 The destination is the SERVER's to decide, which is why this cannot be a
+   * plain link. Churches connect as Standard accounts (THE-145 PR 2) and sign in
+   * at dashboard.stripe.com themselves, but every account connected before that
+   * is still Express — and an Express holder has no Stripe password, so for them
+   * that same URL is a login wall they can never pass. Only the server knows
+   * which it is: the account id lives on a doc no client can read. So it hands
+   * back a `url` and this navigates to it, identically for both.
+   *
+   * For an Express account that url is a single-use login link, minted per
+   * click; nothing about it is cached here or anywhere else.
    */
   const handleOpenStripeDashboard = async () => {
     const tid = await getTenantId();
