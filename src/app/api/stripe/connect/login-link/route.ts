@@ -3,6 +3,13 @@ import type { NextRequest } from 'next/server';
 import Stripe from 'stripe';
 import { requireOwner } from '@/lib/api-auth';
 import { captureMoneyPathError } from '@/lib/money-path-sentry';
+import {
+  CONNECT_ACCOUNT_GONE_REASON,
+  CONNECT_ACCOUNT_GONE_STEP,
+  forgetGoneConnectAccount,
+  isMissingConnectAccountError,
+  isRejectedConnectAccount,
+} from '@/lib/stripe-connect-gone';
 import { getTenantPrivate } from '@/lib/tenant-private';
 
 export const dynamic = 'force-dynamic';
@@ -14,6 +21,58 @@ export const dynamic = 'force-dynamic';
  * can be handed back verbatim.
  */
 const STRIPE_DASHBOARD_URL = 'https://dashboard.stripe.com';
+
+/**
+ * 🔴 THE-148 — the answer for a connected account that is gone, and the record
+ * correction that stops the app lying about it.
+ *
+ * ─── THE ORDER IS THE POINT ──────────────────────────────────────────────────
+ *
+ * The response is BUILT FIRST, before a single byte is written. Everything the
+ * church is told is already decided and serialized by the time the bookkeeping
+ * is attempted, so the correction cannot change the answer, cannot downgrade it,
+ * and cannot turn it back into the 500 this ticket exists to remove. It is the
+ * same shape `/api/stripe/donate` uses to converge an expired Dodo grace window:
+ * decide, respond, then reconcile inside a `try` — never the reverse.
+ *
+ * ⚠️ IT IS AWAITED, NOT FIRED AND FORGOTTEN. A promise left dangling past
+ * `return` is not guaranteed to run on a serverless runtime, and a correction
+ * that is usually dropped is the THE-148 defect again with extra steps: the
+ * church would be offered re-onboarding while the world-readable doc went on
+ * reporting that giving worked. The cost is one batched write on a request that
+ * is already answering; the answer does not depend on it in any way.
+ *
+ * ⚠️ A FAILED CORRECTION IS A WARNING, NOT A 500. If the write does not land,
+ * the church still gets its re-onboarding answer and the next click tries again
+ * — the detection is stateless and re-derives from Stripe every time. Turning a
+ * bookkeeping failure into an error would put the church back where it started.
+ *
+ * ⚠️ The Sentry capture carries the tenant and the step, never the account id.
+ */
+async function offerReonboarding(tenantId: string, cause: unknown): Promise<NextResponse> {
+  const answer = NextResponse.json({
+    onboardingRequired: true,
+    reason: CONNECT_ACCOUNT_GONE_REASON,
+  });
+
+  // Worth knowing about: a church's connected account disappearing is a real
+  // event, not noise. It cannot flood — the correction below clears the id, so
+  // the next click answers `not_connected` without reaching Stripe at all.
+  captureMoneyPathError(cause, { step: CONNECT_ACCOUNT_GONE_STEP, level: 'warning', tenantId });
+
+  try {
+    await forgetGoneConnectAccount(tenantId);
+  } catch (correctionError) {
+    console.error('Could not clear a gone Stripe Connect account:', correctionError);
+    captureMoneyPathError(correctionError, {
+      step: `${CONNECT_ACCOUNT_GONE_STEP}-correction`,
+      level: 'warning',
+      tenantId,
+    });
+  }
+
+  return answer;
+}
 
 /**
  * Send a church to its own Stripe dashboard — by whichever mechanism its
@@ -93,6 +152,31 @@ const STRIPE_DASHBOARD_URL = 'https://dashboard.stripe.com';
  *  - The response carries the link and nothing else: no account id, no key.
  *    The account id is server-only (`tenant_private` is `allow read, write: if
  *    false`) and there is no reason for a browser to learn it.
+ *
+ * ─── 🔴 THE-148: and the state that had no answer at all ─────────────────────
+ *
+ * Every other state above is handled deliberately — `not_connected`, a wrong
+ * account type, `onboarding_incomplete`. The one that was missing is a STORED ID
+ * WHOSE ACCOUNT IS GONE: closed in Stripe, or rejected by it. `accounts.retrieve`
+ * throws for the first and returns a disabled object for the second, and both
+ * used to end at the generic catch below — a 500 saying "Failed to open your
+ * Stripe dashboard", which reads as transient. It is not transient. Nothing the
+ * church can do makes that id work again, the settings screen kept offering
+ * Manage because the tenant doc still said `active`, and recovery took a manual
+ * Firestore edit no customer can perform.
+ *
+ * So a gone account now answers in the shape this route already speaks —
+ * `{ onboardingRequired: true, reason: 'account_gone' }` — and the church is
+ * offered a fresh account instead of an error. `PaymentSection` needs no change:
+ * it already routes any `onboardingRequired` answer into the connect flow.
+ *
+ * 🔴 AND THE GENERIC CATCH DID NOT WIDEN. Only the two signals in
+ * `@/lib/stripe-connect-gone` are read as gone, and every one is a typed Stripe
+ * field rather than a message string. A network blip, an authentication failure
+ * and a rate limit all still reach the catch and still return a 500 that says
+ * try again — because telling a church with a WORKING account that it has none
+ * would invite it to re-onboard, and re-onboarding mints a new account, which
+ * moves where the money lands.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -127,7 +211,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ onboardingRequired: true, reason: 'not_connected' });
     }
 
-    const account = await stripe.accounts.retrieve(accountId);
+    // 🔴 THE-148 SIGNAL 1 — the account does not exist any more.
+    //
+    // Scoped to this ONE call rather than folded into the catch at the bottom.
+    // `accounts.retrieve` names exactly one resource, so a resource-missing
+    // answer here can only be about this account id; a `try` around the whole
+    // handler could not say that, and widening the generic catch is the mistake
+    // this ticket is most at risk of making.
+    //
+    // 🔴 ANYTHING NOT POSITIVELY RECOGNISED IS RE-THROWN, so it lands in the
+    // generic catch and still returns a 500 that says try again.
+    let account: Stripe.Account;
+    try {
+      account = await stripe.accounts.retrieve(accountId);
+    } catch (retrieveError) {
+      if (!isMissingConnectAccountError(retrieveError)) throw retrieveError;
+      return await offerReonboarding(tenantId, retrieveError);
+    }
 
     // ⚠️ Two types reach a dashboard, and nothing else does — loudly. A login
     // link is unavailable for Custom, and `none` is not a dashboard-bearing
@@ -145,6 +245,23 @@ export async function POST(request: NextRequest) {
         { error: 'This Stripe account does not support dashboard login links' },
         { status: 500 },
       );
+    }
+
+    // 🔴 THE-148 SIGNAL 2 — the account exists and Stripe has REJECTED it.
+    //
+    // No error is thrown for this one; the object comes back disabled, carrying
+    // a `requirements.disabled_reason` in the `rejected.` namespace. A rejected
+    // account is as permanent as a deleted one — it cannot be re-onboarded and
+    // its dashboard leads nowhere useful — so it gets the same answer.
+    //
+    // ⚠️ AHEAD of the `details_submitted` check on purpose. A church rejected
+    // part-way through onboarding is not "mid-onboarding": sending it back would
+    // hand it an account link against an account Stripe will not accept.
+    //
+    // ⚠️ BEHIND the account-type check on purpose, so a rejected Custom account
+    // is still the loud platform fault above rather than a quiet redirect.
+    if (isRejectedConnectAccount(account)) {
+      return await offerReonboarding(tenantId, new Error('Connect account was rejected by Stripe'));
     }
 
     // Onboarding not finished → back into onboarding, for BOTH types, and for
