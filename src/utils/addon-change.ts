@@ -18,13 +18,29 @@ import { authFetch } from './auth-fetch';
  * repo; every figure shown comes from the catalogue read or from the preview.
  */
 
-/** The five things Harvest sells beyond a tier, as the wire names them. */
-export type AddonMeaning =
-  | 'aiAssistant'
-  | 'adminSeat'
-  | 'campus'
-  | 'contactPack'
-  | 'unlimitedContacts';
+/**
+ * The five things Harvest sells beyond a tier, as the wire names them.
+ *
+ * A VALUE, not just a type, and the reason is the live Campus gap. A surface
+ * that wants to say "this exists but cannot be bought here yet" has to be able
+ * to subtract the offerable set from the whole set, and a type union cannot be
+ * subtracted at runtime. It is the client's counterpart of the server's
+ * `DODO_ADDON_MEANINGS` — the same five words, in the same order, and nothing
+ * else: no id, no price, and no statement about what is offerable. Availability
+ * still comes from the server and only from the server.
+ */
+export const ADDON_MEANINGS = [
+  'aiAssistant',
+  'adminSeat',
+  'campus',
+  'contactPack',
+  'unlimitedContacts',
+] as const;
+
+export type AddonMeaning = (typeof ADDON_MEANINGS)[number];
+
+/** Which period a tenant is billed on. The tenant's own, read server-side. */
+export type AddonBillingPeriod = 'monthly' | 'yearly';
 
 /** One add-on a church can be offered: named and priced by Dodo, never by code. */
 export interface OfferableAddon {
@@ -45,7 +61,7 @@ export interface OfferableAddon {
  */
 export async function fetchOfferableAddons(
   tenantId: string,
-): Promise<{ addons: OfferableAddon[]; billing: 'monthly' | 'yearly' | null; error: string | null }> {
+): Promise<{ addons: OfferableAddon[]; billing: AddonBillingPeriod | null; error: string | null }> {
   try {
     const resp = await authFetch(`/api/dodo/addons?tenantId=${encodeURIComponent(tenantId)}`);
     const data = await resp.json().catch(() => ({}));
@@ -98,15 +114,125 @@ export function ownedAddonQuantity(
   }
 }
 
-const fmtMinor = (minor: number, currency: string) =>
+const fmtMinor = (minor: number, currency: string, trimWholeCents = false) =>
   new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: (currency || 'USD').toUpperCase(),
+    ...(trimWholeCents && Number.isInteger(Math.abs(minor) / 100) ? { minimumFractionDigits: 0 } : {}),
   }).format(Math.abs(minor) / 100);
 
-/** Money in words, for a surface that has a price and a currency in hand. */
-export function formatAddonPrice(minor: number, currency: string): string {
+/**
+ * An exact amount of money — a charge, a credit — always to the cent.
+ *
+ * Separate from `formatAddonPrice` below because the two are different kinds of
+ * number. This one is what Dodo computed for one specific change, so it keeps
+ * its cents: a proration is $94.12, and rounding it on a surface that is about
+ * to charge it would make the button and the invoice disagree.
+ */
+export function formatAddonAmount(minor: number, currency: string): string {
   return fmtMinor(minor, currency);
+}
+
+/** The recurring period a price is charged over, in words a church reads. */
+const PERIOD_WORD: Record<AddonBillingPeriod, string> = {
+  monthly: 'month',
+  yearly: 'year',
+};
+
+/**
+ * An add-on's RECURRING price, and it always carries the period it recurs on.
+ *
+ * 🔴 THE PERIOD IS NOT OPTIONAL AND IS NOT A LITERAL. `$228.00` beside an add-on
+ * reads as a one-off charge; `$228/year` is the same figure and a different
+ * claim. The period comes from `billing` — the tenant's OWN subscription period,
+ * resolved server-side and returned by the catalogue read — so a church billed
+ * monthly is quoted `$19/month` from the same call, and no surface has to guess.
+ *
+ * Whole amounts lose their cents (`$228/year`, not `$228.00/year`): a sticker
+ * price is a round settled figure, and the trailing zeros are what make it look
+ * like a transaction total instead of a rate.
+ */
+export function formatAddonPrice(
+  minor: number,
+  currency: string,
+  billing: AddonBillingPeriod,
+): string {
+  return `${fmtMinor(minor, currency, true)}/${PERIOD_WORD[billing]}`;
+}
+
+/** What Dodo says one specific change costs right now, for one add-on. */
+export interface AddonChangePreview {
+  /** The quantity this figure was computed FOR. Never dropped — see below. */
+  readonly quantity: number;
+  /** The prorated amount due immediately, in minor units. */
+  readonly amountDueNow: number;
+  readonly currency: string;
+}
+
+/**
+ * We asked, and the answer did not arrive in a usable state. Deliberately has no
+ * amount: there is no honest number to put in it.
+ */
+const PREVIEW_UNAVAILABLE = 'We could not work out what this change costs just now.';
+
+/**
+ * PREVIEW ONLY — what a change would cost, charging nothing.
+ *
+ * The same POST `runDodoAddonChange` makes for its first phase, without
+ * `confirm`, split out so a surface can show the real prorated figure BEFORE the
+ * owner commits to anything rather than only inside the confirmation.
+ *
+ * 🔴 NEVER RESOLVES TO AN AMOUNT IT WAS NOT GIVEN. A refusal, a network failure
+ * and a reply with no `amountDueNow` in it all come back as `ok: false` with no
+ * figure at all — never as zero, and never as the add-on's sticker price. A
+ * caller that cannot show a real number has to say so; the one thing it must not
+ * do is put a confident wrong figure on a button that charges money.
+ *
+ * `quantity` travels back out with the amount so the caller can tell whether the
+ * answer is still the answer to the question on screen.
+ */
+export async function previewAddonChange(args: {
+  tenantId: string;
+  addon: AddonMeaning;
+  quantity: number;
+}): Promise<{ ok: true; preview: AddonChangePreview } | { ok: false; error: string }> {
+  let data: any;
+  let resp: Response;
+  try {
+    resp = await authFetch('/api/dodo/addons', {
+      method: 'POST',
+      body: JSON.stringify({
+        tenantId: args.tenantId,
+        addons: [{ addon: args.addon, quantity: args.quantity }],
+      }),
+    });
+    data = await resp.json().catch(() => ({}));
+  } catch {
+    return { ok: false, error: PREVIEW_UNAVAILABLE };
+  }
+
+  // Every server refusal already says what happened in words a church can act
+  // on — the trial refusal names the day they can come back, the unmapped-add-on
+  // refusal says to contact support. Surfaced as it was written, never restated.
+  if (!resp.ok) {
+    return { ok: false, error: typeof data?.error === 'string' && data.error ? data.error : PREVIEW_UNAVAILABLE };
+  }
+
+  const amountDueNow = data?.preview?.amountDueNow;
+  if (typeof amountDueNow !== 'number' || !Number.isFinite(amountDueNow)) {
+    // A 200 with no amount in it is not "no charge" — it is an answer we could
+    // not read, and the two are different facts.
+    return { ok: false, error: PREVIEW_UNAVAILABLE };
+  }
+
+  return {
+    ok: true,
+    preview: {
+      quantity: args.quantity,
+      amountDueNow,
+      currency: typeof data?.preview?.currency === 'string' ? data.preview.currency : 'USD',
+    },
+  };
 }
 
 /**
