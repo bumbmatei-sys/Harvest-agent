@@ -44,6 +44,37 @@ const TYPE_COLORS: Record<Contact['type'], string> = {
   both: 'bg-[color-mix(in_srgb,#6E8E52_16%,white)] text-field-700',
 };
 
+/**
+ * THE-150 — the Type pill for a row whose `type` we cannot read.
+ *
+ * Both maps above are `Record<Contact['type'], …>`, which is a claim about the
+ * TypeScript type, not about the documents. Every row in this list is cast
+ * straight off Firestore (`{ id, ...d.data() } as Contact` in useCRMQueries), so
+ * a document with no `type` field, or one carrying a value from outside the
+ * union, indexes both maps to `undefined` — no class and no text, i.e. the blank
+ * grey pill. A bare map lookup on unvalidated data is the bug; the two readers
+ * below are the only way the pill is allowed to be rendered.
+ *
+ * The label is deliberately NOT 'Member'. `emptyContact` below defaults a NEW
+ * contact to member, but that is a choice made about a record being created —
+ * saying "Member" about a row whose type we could not read would assert
+ * something nobody recorded, and it is exactly the kind of unearned claim the
+ * derived pipeline stage exists to avoid. "Unspecified" says only what is true:
+ * this row does not carry a type we recognise.
+ *
+ * The fill is `--surface-chip` (the token that exists for opaque pill fills) and
+ * `--text-muted`, so it is themed in both light and dark rather than a literal.
+ */
+const UNKNOWN_TYPE_LABEL = 'Unspecified';
+const UNKNOWN_TYPE_COLOR = 'bg-surface-chip text-muted';
+
+/** Total lookups — `t` is typed as a bare string because the value arrives from
+ *  a document, not from the union, however it is annotated at the call site. */
+const typeLabel = (t: string | undefined | null): string =>
+  TYPE_LABELS[t as Contact['type']] ?? UNKNOWN_TYPE_LABEL;
+const typeColor = (t: string | undefined | null): string =>
+  TYPE_COLORS[t as Contact['type']] ?? UNKNOWN_TYPE_COLOR;
+
 const ACTIVITY_ICONS: Record<ContactActivity['type'], React.ReactNode> = {
   note: <MessageSquare size={13} />,
   donation: <DollarSign size={13} />,
@@ -84,6 +115,46 @@ const fmtDate = (ts: DateLike) => {
   const diff = Date.now() - d.getTime();
   if (diff < 86400000) return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+};
+
+/**
+ * THE-149 — WHETHER someone has given, and WHEN, are two different questions.
+ *
+ * The card used to answer both from `lastDonationAt`, so a contact with a real
+ * `totalDonated` but no date on the row was told "No donations yet" beside
+ * "$100 total given". Two fields describing one fact, and the badge read the
+ * one that is only ever about timing.
+ *
+ * WHETHER is derived, from the same single source the pipeline stage uses:
+ * `resolvePipelineStage` returns 'member' exactly when no usable total is
+ * recorded. Going through it rather than comparing `totalDonated > 0` inline
+ * means the badge and the stage cannot drift apart, and nothing here writes a
+ * second copy of a fact `totalDonated` already holds.
+ *
+ * WHEN stays `lastDonationAt`, which is the only thing it is good for — and it
+ * is allowed to be missing. `fmtDate` returns '' for a date it cannot read, so
+ * `date === ''` means "they have given, we do not know when", which the two
+ * surfaces below say out loud instead of denying the gift.
+ */
+const lastGift = (c: Pick<Contact, 'totalDonated' | 'lastDonationAt'>) => {
+  const given = resolvePipelineStage(c.totalDonated) !== 'member';
+  return { given, date: given ? fmtDate(c.lastDonationAt) : '' };
+};
+
+/** The detail card's giving badge. Never contradicts the total beside it. */
+const lastGiftBadge = (c: Pick<Contact, 'totalDonated' | 'lastDonationAt'>): string => {
+  const { given, date } = lastGift(c);
+  if (!given) return 'No donations yet';
+  return date ? `Last gift ${date}` : 'Last gift date not recorded';
+};
+
+/** The list's LAST GIFT cell. Built from the same `lastGift`, so the em dash
+ *  appears in the list exactly when the card says "No donations yet" — the two
+ *  surfaces agree by construction rather than by both being edited together. */
+const lastGiftCell = (c: Pick<Contact, 'totalDonated' | 'lastDonationAt'>): string => {
+  const { given, date } = lastGift(c);
+  if (!given) return '—';
+  return date || 'Not recorded';
 };
 
 type ViewMode = 'list' | 'detail' | 'form';
@@ -143,9 +214,10 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ contacts, stages, onOpenConta
                   {/* Type badge */}
                   <div className="flex items-center justify-between">
                     <span
-                      className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${TYPE_COLORS[c.type]}`}
+                      data-testid="crm-type-badge"
+                      className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${typeColor(c.type)}`}
                     >
-                      {TYPE_LABELS[c.type]}
+                      {typeLabel(c.type)}
                     </span>
                     {c.totalDonated > 0 && (
                       <span className="text-[9px] font-bold text-gold">
@@ -786,8 +858,8 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
             <div className="min-w-0">
               <h2 className="text-2xl font-black text-strong leading-tight truncate">{selected.firstName} {selected.lastName}</h2>
               <div className="flex items-center gap-2 mt-1 flex-wrap">
-                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${TYPE_COLORS[selected.type]}`}>
-                  {TYPE_LABELS[selected.type]}
+                <span data-testid="crm-type-badge" className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${typeColor(selected.type)}`}>
+                  {typeLabel(selected.type)}
                 </span>
                 {selected.memberSince && <span className="text-xs text-faint">· Member since {fmtDate(selected.memberSince)}</span>}
               </div>
@@ -819,8 +891,8 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
         {/* Stats strip */}
         <div className="flex gap-2 flex-wrap mb-5">
           <span className="bg-[color-mix(in_srgb,var(--brand-color)_12%,white)] text-gold text-xs font-semibold px-3 py-1.5 rounded-full">{fmt(selected.totalDonated || 0)} total given</span>
-          <span className="bg-[color-mix(in_srgb,var(--brand-color)_12%,white)] text-gold text-xs font-semibold px-3 py-1.5 rounded-full">
-            {selected.lastDonationAt ? `Last gift ${fmtDate(selected.lastDonationAt)}` : 'No donations yet'}
+          <span data-testid="crm-last-gift" className="bg-[color-mix(in_srgb,var(--brand-color)_12%,white)] text-gold text-xs font-semibold px-3 py-1.5 rounded-full">
+            {lastGiftBadge(selected)}
           </span>
           {/* Never render "0 activities" off a failed read — that is the lie the
               silent `= []` default used to tell. */}
@@ -1321,7 +1393,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
                     {c.email && <span className="block text-xs text-faint truncate">{c.email}</span>}
                   </span>
                   <span className="flex flex-col items-end gap-1 shrink-0">
-                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${TYPE_COLORS[c.type]}`}>{TYPE_LABELS[c.type]}</span>
+                    <span data-testid="crm-type-badge" className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${typeColor(c.type)}`}>{typeLabel(c.type)}</span>
                     <span className="flex items-center gap-1.5 text-[11px] font-semibold text-muted">
                       <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: stage.color }} />
                       {stage.label}
@@ -1367,7 +1439,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
                         </div>
                       </td>
                       <td className="px-6 py-3.5">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${TYPE_COLORS[c.type]}`}>{TYPE_LABELS[c.type]}</span>
+                        <span data-testid="crm-type-badge" className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${typeColor(c.type)}`}>{typeLabel(c.type)}</span>
                       </td>
                       <td className="px-6 py-3.5">
                         <span className="inline-flex items-center gap-1.5 text-sm text-muted">
@@ -1379,7 +1451,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
                         <span className={`text-sm font-semibold ${c.totalDonated > 0 ? 'text-strong' : 'text-stone-300'}`}>{c.totalDonated > 0 ? fmt(c.totalDonated) : '—'}</span>
                       </td>
                       <td className="px-6 py-3.5 text-right">
-                        <span className="text-sm text-faint">{c.lastDonationAt ? fmtDate(c.lastDonationAt) : '—'}</span>
+                        <span data-testid="crm-last-gift-cell" className="text-sm text-faint">{lastGiftCell(c)}</span>
                       </td>
                     </tr>
                   );
