@@ -2,10 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { requireOwner } from '@/lib/api-auth';
 import { captureMoneyPathError } from '@/lib/money-path-sentry';
-import { getTenantPrivate, DODO_ON_HOLD_FIELD } from '@/lib/tenant-private';
-import { billingActionUnavailable, resolveBillingOwnership } from '@/lib/billing-processor';
-import { resolveTenantGraceState, DODO_GRACE_PERIOD_MS } from '@/lib/tenant-lifecycle';
-import { resolvePlanFromProductId } from '@/lib/dodo/catalogue';
+import { resolveDodoSubscriptionContext } from '@/lib/dodo/billing-context';
 import {
   describeDodoAddons,
   executeDodoPlanChange,
@@ -57,6 +54,12 @@ import type { TenantPlan } from '@/types/tenant.types';
  *    (the immediate ones charge right away), so a day-3 upgrade would silently
  *    take days 4–14 the church was promised. An honest refusal is recoverable;
  *    an early charge is not (Harvest issues no refunds).
+ *  • It does not sell ADD-ONS. Buying, re-quantifying or dropping one without
+ *    moving tier is `/api/dodo/addons` (REP-5b) — a sibling route rather than a
+ *    flag on this one, because an add-on purchase is definitionally a same-plan
+ *    call and would collide with the `plan === current.plan` refusal below. See
+ *    that route's header for the full reasoning and for its own trial decision.
+ *    Both routes share one implementation of the guards above.
  *  • It refuses a tenant whose renewal failed, IN ITS OWN WORDS (THE-128). The
  *    change was already blocked for that church — `on_payment_failure:
  *    'prevent_change'` sees to that — but the refusal reached them as a generic
@@ -81,24 +84,6 @@ function readPlan(raw: unknown): TenantPlan | null {
 
 function readPeriod(raw: unknown): BillingPeriod | null {
   return raw === 'monthly' || raw === 'yearly' ? raw : null;
-}
-
-/**
- * The grace deadline in words a church reads, rather than an ISO string.
- *
- * Locale and time zone are both PINNED. The rest of this route's copy is
- * English, and `timeZone: 'UTC'` keeps the day named here the same day
- * `/api/tenants/grace-status` counts down to — a server in UTC-7 formatting the
- * same instant in local time would name the day before, and the two surfaces
- * would quote different deadlines for one window.
- */
-function formatGraceDeadline(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-US', {
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-    timeZone: 'UTC',
-  });
 }
 
 export async function POST(request: NextRequest) {
@@ -127,119 +112,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ── 🔴 ONLY THE PROCESSOR THAT OWNS THE SUBSCRIPTION MAY CHANGE IT. ──────
-    // The mirror image of the guard in /api/stripe/checkout: that route refuses
-    // Dodo-owned tenants; this one refuses everything that is not Dodo-owned.
-    // A conflicted tenant — identifiers from both processors, the fingerprint
-    // of the double-billing bug — is refused on BOTH routes, with the same
-    // wording, from the same helper.
-    const privateData = await getTenantPrivate(ownerOrErr.tenantId);
-    const ownership = resolveBillingOwnership(privateData);
-    if (ownership.reason === 'conflict') {
-      return billingActionUnavailable('changing your plan', ownership);
-    }
-    if (ownership.processor !== 'dodo') {
-      return NextResponse.json(
-        {
-          error:
-            'This organization is not billed through Dodo Payments, so this endpoint cannot change its plan. Please use the standard plan change instead.',
-          code: 'billing-action-unavailable',
-          processor: ownership.processor,
-          reason: ownership.reason,
-        },
-        { status: 409 },
-      );
-    }
-
-    // ── 🔴 A FAILED RENEWAL IS NAMED, NOT LEFT AS A GENERIC FAILURE (THE-128). ─
+    // ── The guards this route shares with `/api/dodo/addons`. ────────────────
     //
-    // Nothing below would have charged this church twice or moved it to a tier
-    // it has not paid for: `on_payment_failure: 'prevent_change'` is explicit on
-    // both Dodo calls, so the failed charge blocks the change. That guarantee
-    // was never the defect. THE MESSAGE WAS. The refusal arrived from further
-    // down as "Failed to change plan", and a church one failed payment into a
-    // 21-day countdown reads that as Harvest being broken rather than as its
-    // card having bounced — at the exact moment the one useful sentence is
-    // "update your card". This says that sentence.
+    // Ownership (only the processor that owns a subscription may change it), the
+    // THE-128 failed-renewal refusal, and the current-product resolution all
+    // live in `@/lib/dodo/billing-context` now that a second route needs the
+    // same five checks on the same subscription. Their reasoning moved with
+    // them; a second hand-written copy of a money-path guard is how two routes
+    // drift into disagreeing about when to refuse.
     //
-    // COSTS NO ADDITIONAL READ. `dodoOnHoldAt` is on the private doc fetched
-    // above for the ownership check, and `resolveTenantGraceState` is the same
-    // pure resolver the donate gate and `/api/tenants/grace-status` ask. The
-    // deadline quoted here and the day giving actually stops are therefore one
-    // answer derived once, not two that can drift.
-    //
-    // 🔴 BEFORE THE TRIAL CHECK AND BEFORE EVERY DODO CALL, deliberately. The
-    // trial check reaches Dodo and answers 503 when it cannot — and a church
-    // whose card just failed is precisely when "We could not verify your
-    // billing status just now" is most likely to be what they see, which is the
-    // generic error this exists to remove. The one fact worth having is already
-    // in hand. It also means a subscription that is somehow both in trial and
-    // on hold hears about the card first: the trial refusal tells them to wait,
-    // which is wrong advice for a payment that has already failed.
-    //
-    // ⚠️ NO PAYMENT SURFACE HERE, and none behind it. The way out is
-    // `/api/stripe/portal` — the existing "Manage subscription" path, which
-    // routes a Dodo-owned tenant to Dodo's hosted portal, and the same
-    // destination the dunning email's "Update payment method" link already
-    // points at. A retry button on this route would be a second way to be
-    // charged for one subscription.
-    const now = Date.now();
-    const onHoldAt = privateData[DODO_ON_HOLD_FIELD];
-    const graceState = resolveTenantGraceState({ onHoldAt, now });
-    if (graceState !== 'none') {
-      // `in-grace` is the only state with time left to report, exactly as
-      // `/api/tenants/grace-status` treats it. The 21 is not re-derived here —
-      // the window has one definition and this reads it; `onHoldAt` parsed
-      // cleanly or the resolver would have answered 'none'.
-      const graceEndsAt =
-        graceState === 'in-grace'
-          ? new Date(Date.parse(onHoldAt as string) + DODO_GRACE_PERIOD_MS).toISOString()
-          : undefined;
+    // ⚠️ STILL ONE `tenant_private` READ, and still AFTER `requireOwner` — the
+    // ordering is preserved at this call site rather than buried in the helper.
+    const context = await resolveDodoSubscriptionContext({
+      tenantId: ownerOrErr.tenantId,
+      action: 'changing your plan',
+      step: 'dodo-change-plan-unknown-current-product',
+      blockedPhrase: 'your plan cannot be changed',
+      retryPhrase: 'change your plan',
+    });
+    if (context instanceof NextResponse) return context;
 
-      return NextResponse.json(
-        {
-          error: graceEndsAt
-            ? `Your last payment did not go through, so your plan cannot be changed yet. Update the card on file under Manage subscription and then change your plan. Online giving stops on ${formatGraceDeadline(graceEndsAt)} if the payment is not completed.`
-            : 'Your last payment did not go through, so online giving has been paused and your plan cannot be changed. Update the card on file under Manage subscription to restore your account, and then change your plan.',
-          // Its own code, distinct from the trial and ownership refusals, so the
-          // client branches on the reason rather than on the prose.
-          code: 'plan-change-unavailable-payment-failed',
-          state: graceState,
-          ...(graceEndsAt ? { graceEndsAt } : {}),
-          // The existing portal path — a place to fix the card, never a charge.
-          manageBillingPath: '/api/stripe/portal',
-        },
-        { status: 409 },
-      );
-    }
-
-    const subscriptionId: string =
-      typeof privateData.dodoSubscriptionId === 'string' ? privateData.dodoSubscriptionId : '';
-    if (!subscriptionId) {
-      return NextResponse.json(
-        { error: 'No active subscription was found for this organization, so changing your plan is not available.' },
-        { status: 409 },
-      );
-    }
-
-    // The tenant's current product decides what a "change" even is. Written at
-    // provisioning and kept current by the plan_changed webhook.
-    const currentProductId: string =
-      typeof privateData.dodoProductId === 'string' ? privateData.dodoProductId : '';
-    const current = currentProductId ? resolvePlanFromProductId(currentProductId) : null;
-    if (!current) {
-      // A product outside this build's catalogue (or none recorded at all). The
-      // same never-guess rule as everywhere else: without knowing what they are
-      // on, "change" could double for "sell them something else".
-      captureMoneyPathError(
-        new Error(`[dodo] change-plan: tenant ${ownerOrErr.tenantId} has unresolvable product "${currentProductId}"`),
-        { step: 'dodo-change-plan-unknown-current-product', level: 'error', tenantId: ownerOrErr.tenantId },
-      );
-      return NextResponse.json(
-        { error: 'We could not determine your current plan. Please contact support and we will make the change for you.' },
-        { status: 409 },
-      );
-    }
+    const current = { plan: context.plan, period: context.period };
+    const subscriptionId = context.subscriptionId;
 
     if (period !== current.period) {
       // Annual products are separate Dodo products, so this call COULD switch
