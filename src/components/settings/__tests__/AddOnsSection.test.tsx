@@ -477,6 +477,36 @@ describe('a preview that arrives after another change is not offered', () => {
     expect(commitCopy('AI Assistant')).toBe('Add 2 — $188.24 today, then $228/year');
   });
 
+  it('is not stranded by an earlier reply landing last', async () => {
+    // The other order, and the one the render-time check alone cannot survive:
+    // the RIGHT answer arrives first and the overtaken one lands on top of it.
+    // Letting the straggler through would replace a good amount with a stale
+    // one, and the button would sit at "working out the cost…" for ever with
+    // nothing left in flight to rescue it.
+    const settle: Record<number, (value: any) => void> = {};
+    onPost = (body) =>
+      new Promise((res) => {
+        settle[body.addons[0].quantity] = res;
+      });
+
+    await mount();
+    await click(plus('AI Assistant'));
+    await advance(500);
+    await click(plus('AI Assistant'));
+    await advance(500);
+
+    await act(async () => {
+      settle[2](reply({ preview: { amountDueNow: 18824, creditMovement: 0, currency: 'USD' } }));
+    });
+    expect(commitCopy('AI Assistant')).toBe('Add 2 — $188.24 today, then $228/year');
+
+    await act(async () => {
+      settle[1](reply({ preview: { amountDueNow: 9412, creditMovement: 0, currency: 'USD' } }));
+    });
+    expect(commitCopy('AI Assistant')).toBe('Add 2 — $188.24 today, then $228/year');
+    expect(commitButton('AI Assistant')!.disabled).toBe(false);
+  });
+
   it('drops the amount the instant the quantity moves off it', async () => {
     await mount();
     await click(plus('AI Assistant'));
