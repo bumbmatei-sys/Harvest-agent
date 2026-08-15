@@ -260,7 +260,14 @@ const userDocToMemberContact = (
     notes: '',
     tags: [],
     totalDonated,
-    lastDonationAt: null,
+    // Carried THROUGH from the users doc, not hardcoded to null (THE-149). The
+    // donation webhook stamps `lastDonationAt` on the donor's `users` document in
+    // the same write that increments `totalDonated` there (linkDonationToCRM), so
+    // dropping it here handed the CRM a row whose total said "$100 given" and
+    // whose date said "never" — the same fact, split, with one half thrown away
+    // on read. `DateLike` already covers the webhook's ISO string, and every
+    // reader goes through toSafeDate, so no shape conversion belongs here.
+    lastDonationAt: (u.lastDonationAt ?? null) as DateLike,
     memberSince: null,
     createdAt: null,
     createdBy: id,
