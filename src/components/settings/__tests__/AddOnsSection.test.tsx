@@ -284,6 +284,32 @@ describe('the contacts card shows the resulting total', () => {
     expect(cardFor('Contacts +500').textContent).toContain(`1 owned · ${total} total`);
   });
 
+  it('takes the total from the layered features, not from a tier it assumed', async () => {
+    // The same one pack on a SMALLER tier is a different total. A component
+    // that added CONTACTS_PER_PACK to a base it picked would answer the Ministry
+    // number here.
+    const held = owns({ contactPacks: 1 });
+    tenantValue.current.tenantAddons = held;
+    tenantValue.current.planFeatures = getEffectiveFeatures('pro', held);
+    await mount();
+
+    const total = getEffectiveFeatures('pro', held).maxContacts.toLocaleString();
+    expect(cardFor('Contacts +500').textContent).toContain(`1 owned · ${total} total`);
+    expect(cardFor('Contacts +500').textContent).not.toContain(
+      getEffectiveFeatures('max', held).maxContacts.toLocaleString(),
+    );
+  });
+
+  it('does the pack arithmetic nowhere in this file', async () => {
+    const code = source();
+    // 🔴 `getEffectiveFeatures` is the one implementation of "tier allowance
+    // plus packs". A second one here would be the number a church checks its
+    // contact list against, computed twice.
+    expect(code).toContain('planFeatures.maxContacts');
+    expect(code, 'a pack is being multiplied out here').not.toMatch(/CONTACTS_PER_PACK\s*[*+\-/]/);
+    expect(code, 'a pack count is being multiplied out here').not.toMatch(/contactPacks\s*[*+\-/]/);
+  });
+
   it('does not quote a finite total to a church that holds Unlimited Contacts', async () => {
     const held = owns({ contactPacks: 1, unlimitedContacts: true });
     tenantValue.current.tenantAddons = held;
