@@ -233,13 +233,49 @@ export async function POST(request: NextRequest) {
         userId: userId || '',
       };
 
+      // 🔴 THE CHURCH IS CHARGED, NOT HARVEST — this is a DIRECT charge (THE-154).
+      //
+      // The session is created AS the connected account (the `Stripe-Account`
+      // header, i.e. the `{ stripeAccount }` request option below). Tickets were
+      // the LAST destination charge left in the codebase; PR 316 moved donations
+      // for exactly these reasons and deliberately left tickets out of scope.
+      //
+      //   • LIABILITY. Stripe, verbatim: "For connected accounts that use direct
+      //     charges, Stripe always attempts to debit disputed amounts from the
+      //     connected account's balance." Under the destination charge this
+      //     replaces, a disputed TICKET was debited from HARVEST's balance — for
+      //     a sale Harvest earns 0% on.
+      //   • MERCHANT OF RECORD. On a direct charge the church is the merchant on
+      //     the attendee's card statement — its country, its settlement currency,
+      //     its fee structure. Harvest was the business of record on ticket sales
+      //     for events it has nothing to do with.
+      //   • THE MONEY ITSELF. There is no `transfer_data` any more because there
+      //     is nothing to transfer: the funds land in the church's balance.
+      //
+      // ⚠️ THE FEE DOES NOT MOVE. `application_fee_amount` still comes from
+      // PLATFORM_FEE_MAP and is still 0 on every tier — Harvest takes no cut of a
+      // ticket. Direct charges support application fees exactly as destination
+      // charges did; what changed is who is charged, not what Harvest keeps.
+      //
+      // ⚠️ THE PRICE STAYS INLINE. `price_data` creates the Price and Product on
+      // whichever account the session is created on, so nothing has to be
+      // provisioned on the church's account first.
+      //
+      // 🔴 AND THE WEBHOOK MOVED WITH IT. A session created on the connected
+      // account emits `checkout.session.completed` to the CONNECT endpoint
+      // (`/api/stripe/connect/webhook`), not the platform one. That endpoint
+      // confirms the registration in this same change — shipping this half alone
+      // would mean every ticket is paid for and no registration is ever
+      // confirmed, which is worse than the destination charge it replaces.
+      const directCharge = { stripeAccount: connectAccountId };
+
       try {
         const session = await stripe.checkout.sessions.create({
           mode: 'payment',
           // Single line item carrying the FULL headcount charge (price × quantity −
           // discount). Keeping quantity:1 with the net unit_amount makes the
-          // destination charge and the platform fee exact even when a discount
-          // applies; the headcount is reflected in the amount and the line name.
+          // charge and the platform fee exact even when a discount applies; the
+          // headcount is reflected in the amount and the line name.
           line_items: [
             {
               price_data: {
@@ -255,7 +291,9 @@ export async function POST(request: NextRequest) {
             },
           ],
           payment_intent_data: {
-            transfer_data: { destination: connectAccountId },
+            // Zero on every tier (PLATFORM_FEE_MAP). A direct charge with no
+            // application fee leaves the entire ticket price in the church's
+            // balance. NO `transfer_data`: the money is already theirs.
             application_fee_amount: applicationFeeAmount,
             metadata,
           },
@@ -263,7 +301,7 @@ export async function POST(request: NextRequest) {
           cancel_url: `${origin}/event/${eventId}?registration=cancel`,
           customer_email: email || undefined,
           metadata,
-        });
+        }, directCharge);
 
         return NextResponse.json({ url: session.url });
       } catch (stripeErr) {

@@ -166,6 +166,13 @@ describe('webhook — paid event ticket confirmation', () => {
       { payment_intent: 'pi_123' },
       expect.objectContaining({ idempotencyKey: 'evt_reg_refund_reg1' }),
     );
+    // 🔴 And NOT scoped to a connected account (THE-154). This endpoint only
+    // still sees tickets that were mid-Checkout as DESTINATION charges, whose
+    // PaymentIntent really does live on the platform — scoping this refund to
+    // the church would 404 against an account that never held the charge. The
+    // church-scoped counterpart is pinned in
+    // connect-webhook-event-registration.test.ts.
+    expect(mockRefundsCreate.mock.calls[0][1]).not.toHaveProperty('stripeAccount');
     expect(mockDocUpdate).toHaveBeenCalledWith(
       expect.objectContaining({ status: 'cancelled', refunded: true, refundReason: 'sold_out' }),
     );
