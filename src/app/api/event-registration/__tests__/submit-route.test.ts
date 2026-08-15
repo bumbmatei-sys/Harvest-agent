@@ -135,15 +135,16 @@ describe('POST /api/event-registration/submit — paid tickets', () => {
     );
     expect(mockAdd).not.toHaveBeenCalledWith(expect.objectContaining({ status: 'confirmed' }));
 
-    // Destination charge to the tenant's connected account, platform fee 0% —
-    // the whole ticket price goes to the church.
+    // DIRECT charge on the tenant's connected account (THE-154), platform fee
+    // 0% — the whole ticket price goes to the church, and so does the dispute
+    // liability. The charge-type claims themselves are pinned in
+    // submit-direct-charge.test.ts.
     expect(mockCheckoutCreate).toHaveBeenCalledWith(
       expect.objectContaining({
         mode: 'payment',
         success_url: expect.stringContaining('/event/e1?registration=success'),
         cancel_url: expect.stringContaining('/event/e1?registration=cancel'),
         payment_intent_data: expect.objectContaining({
-          transfer_data: { destination: 'acct_T' },
           application_fee_amount: 0,
           metadata: expect.objectContaining({ type: 'event_registration', registrationId: 'pending1' }),
         }),
@@ -151,6 +152,7 @@ describe('POST /api/event-registration/submit — paid tickets', () => {
           type: 'event_registration', tenantId: 't1', eventId: 'e1', ticketTypeId: 'tt1', registrationId: 'pending1',
         }),
       }),
+      { stripeAccount: 'acct_T' },
     );
   });
 
@@ -170,6 +172,7 @@ describe('POST /api/event-registration/submit — paid tickets', () => {
       expect.objectContaining({
         payment_intent_data: expect.objectContaining({ application_fee_amount: 0 }),
       }),
+      expect.anything(),
     );
   });
 
@@ -182,6 +185,7 @@ describe('POST /api/event-registration/submit — paid tickets', () => {
       expect.objectContaining({
         payment_intent_data: expect.objectContaining({ application_fee_amount: 0 }),
       }),
+      expect.anything(),
     );
   });
 
@@ -260,8 +264,8 @@ describe('POST /api/event-registration/submit — multi-attendee quantity (BUG 5
     expect(mockAdd).toHaveBeenCalledWith(
       expect.objectContaining({ status: 'pending_payment', amount: 10000, quantity: 2 }),
     );
-    // Destination charge reflects the full headcount; the platform fee is 0 on
-    // every tier, so it stays 0 however many attendees are on the registration.
+    // The charge reflects the full headcount; the platform fee is 0 on every
+    // tier, so it stays 0 however many attendees are on the registration.
     expect(mockCheckoutCreate).toHaveBeenCalledWith(
       expect.objectContaining({
         payment_intent_data: expect.objectContaining({ application_fee_amount: 0 }),
@@ -269,6 +273,7 @@ describe('POST /api/event-registration/submit — multi-attendee quantity (BUG 5
           price_data: expect.objectContaining({ unit_amount: 10000 }),
         })],
       }),
+      expect.anything(),
     );
   });
 
@@ -448,6 +453,7 @@ describe('POST /api/event-registration/submit — userId identity link', () => {
           metadata: expect.objectContaining({ userId: 'user_9' }),
         }),
       }),
+      expect.anything(),
     );
   });
 

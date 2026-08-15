@@ -11,6 +11,10 @@ import {
   recordOneTimeDonation,
   recordPartnershipRenewalDonation,
 } from '@/lib/donation-webhook';
+import {
+  expireEventRegistration,
+  finalizeEventRegistration,
+} from '@/lib/event-registration-webhook';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,7 +24,7 @@ export const dynamic = 'force-dynamic';
  * mirrors src/app/api/stripe/webhook/route.ts: verify the signature FIRST, then
  * dedup, then process.
  *
- * It handles two unrelated families of event:
+ * It handles three unrelated families of event:
  *
  *  1. `account.updated` — syncs the church's Connect payout status onto its
  *     tenant doc AND mirrors it onto the tenant owner's user doc so the ONE
@@ -36,6 +40,13 @@ export const dynamic = 'force-dynamic';
  *     Without these cases every donation would succeed at Stripe and Harvest
  *     would record nothing: no CRM activity, no receipt PDF, no `totalDonated`,
  *     no donor profile. That is why the charge change and this one are one PR.
+ *
+ *  3. 🔴 PAID EVENT TICKETS (THE-154). The last destination charge in the
+ *     codebase, now a direct charge for the same reasons — so a ticket's
+ *     `checkout.session.completed` (and its `checkout.session.expired`) is
+ *     delivered here too. Same rule as the donations above: the bookkeeping is
+ *     imported from `@/lib/event-registration-webhook`, never re-implemented,
+ *     and the account scope is handed to it explicitly.
  *
  * ⚠️ EVERY STRIPE READ IN THE DONATION PATH IS SCOPED TO THE CONNECTED ACCOUNT.
  * The Session, the PaymentIntent, the Subscription and the Invoice all live on
@@ -234,6 +245,25 @@ export async function POST(request: NextRequest) {
         const session = event.data.object as Stripe.Checkout.Session;
         const subscriptionId = session.subscription as string | null;
 
+        // 🔴 PAID EVENT TICKETS (THE-154). A ticket is now a DIRECT charge on the
+        // church's account too, so its session completes HERE — the platform
+        // endpoint no longer sees one. Without this branch a ticket would be paid
+        // for and the registration never confirmed: the `pending_payment` doc the
+        // submit route wrote would just sit there, no ticket code issued and no
+        // confirmation email sent. That is why the charge change and this one are
+        // one PR.
+        //
+        // Checked BEFORE the subscription branch below: a ticket is a one-time
+        // payment with no subscription, so it would otherwise fall out at the
+        // `!subscriptionId` guard and be silently dropped.
+        //
+        // 🔴 `connectedAccount` is passed through because the oversold path
+        // refunds — and on a direct charge that PaymentIntent is the CHURCH'S.
+        if (session.metadata?.type === 'event_registration') {
+          await finalizeEventRegistration({ stripe, session, requestOptions: connectedAccount });
+          break;
+        }
+
         // 🔴 ONE-TIME GIFTS ARE NOT RECORDED HERE. A one-time donation's session
         // has no subscription, and its money is recorded from
         // payment_intent.succeeded below — the only place that carries the
@@ -274,6 +304,26 @@ export async function POST(request: NextRequest) {
         }
 
         await finalizePartnershipSubscription(session, subObj, meta);
+        break;
+      }
+
+      case 'checkout.session.expired': {
+        // Housekeeping for an abandoned paid-ticket Checkout, which is now
+        // created on this account and so expires here (THE-154).
+        //
+        // ⚠️ THE LIVE ENDPOINT IS NOT SUBSCRIBED TO THIS EVENT YET
+        // (we_1U4N04Fu6Zt5HgJCbRY9Tg0W carries account.updated,
+        // checkout.session.completed, payment_intent.succeeded and
+        // invoice.payment_succeeded). Until `checkout.session.expired` is added
+        // there, an abandoned direct-charge ticket leaves its `pending_payment`
+        // registration sitting instead of being marked `expired`. Nothing is
+        // oversold or overcharged by that — a pending reg holds no capacity and
+        // consumes no discount — but the row lingers. The case is here so the
+        // fix is a dashboard checkbox and not another deploy.
+        const session = event.data.object as Stripe.Checkout.Session;
+        if (session.metadata?.type === 'event_registration') {
+          await expireEventRegistration(session);
+        }
         break;
       }
 
