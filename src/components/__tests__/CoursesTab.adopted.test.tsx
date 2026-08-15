@@ -172,6 +172,34 @@ describe('THE-140 — adopted library courses in the member app', () => {
     expect(titles()).not.toContain('Unfinished Catalogue Draft');
   });
 
+  it("an adopted course reaches members as the adopting church runs it", async () => {
+    // The two tenant-owned flags are resolved HERE, where the member list is
+    // composed, so CourseOverview's certificate affordance, LessonView's quiz
+    // gate and verifyCourseCompletion all see the same values without a second
+    // copy of the precedence rule. THE TENANT WINS IN BOTH DIRECTIONS, and
+    // absent is not false.
+    data.libraryCourses = [libraryCourse({ requireQuiz: true, issueCertificate: false })];
+    data.adopted = [adoptionRecord({ requireQuiz: false, issueCertificate: true })];
+
+    await mount();
+
+    const adopted = mergeSpy.mock.calls[0][1];
+    expect(adopted).toHaveLength(1);
+    expect(adopted[0].requireQuiz).toBe(false);
+    expect(adopted[0].issueCertificate).toBe(true);
+  });
+
+  it("an adopted course with no override keeps the library course's own flags", async () => {
+    data.libraryCourses = [libraryCourse({ requireQuiz: true, issueCertificate: false })];
+    data.adopted = [adoptionRecord()];
+
+    await mount();
+
+    const adopted = mergeSpy.mock.calls[0][1];
+    expect(adopted[0].requireQuiz).toBe(true);
+    expect(adopted[0].issueCertificate).toBe(false);
+  });
+
   it('the member list and the admin count agree about how many courses exist', async () => {
     data.courses = [ownCourse({ id: 'own-1', title: 'Membership Class' })];
     data.libraryCourses = [
@@ -226,6 +254,23 @@ describe('THE-140 — adopted library courses in the member app', () => {
     expect(calls.paths.some((p) => p.includes('undefined') || p.includes('null'))).toBe(false);
     // The field-filtered /courses read is still correct while unscoped.
     expect(titles()).toContain('Membership Class');
+  });
+
+  it('a super admin on the apex reads the platform tenant\'s adoptions', async () => {
+    // The read scope is null (correct — /courses is field-filtered and null
+    // means every tenant), but the PATH scope is not: getWriteTenantScope()
+    // resolves the platform tenant, exactly as AdminCourses' adoption listener
+    // does. Using the read scope for the path skips the read entirely and the
+    // adopted course silently disappears — no error, just an empty list.
+    scope.read = null;
+    scope.write = 'harvest';
+    data.libraryCourses = [libraryCourse({ title: 'Foundations of Prayer' })];
+    data.adopted = [adoptionRecord()];
+
+    await mount();
+
+    expect(calls.paths).toContain('tenants/harvest/adoptedCourses');
+    expect(titles()).toContain('Foundations of Prayer');
   });
 
   it('no colour is hardcoded', () => {
