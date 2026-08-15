@@ -3,9 +3,8 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Home, BookOpen, MessageCircle, Map as MapIcon, User, Play, ChevronLeft, ChevronRight, Newspaper, FileText, GraduationCap, MessageSquare, HandHeart, HeartHandshake } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import dynamic from 'next/dynamic';
-import { collection, query, where, getDocs, limit, doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
-import { getTenantScope } from '../utils/tenant-scope';
 
 import Profile from './Profile';
 import PartnerWithUsTab from './PartnerWithUsTab';
@@ -20,6 +19,7 @@ import ErrorBoundary from './ErrorBoundary';
 import BiblePage from './BiblePage';
 import ReferralTracker from './ReferralTracker';
 import { getPlanFeatures } from '../utils/plan-features';
+import { hasMemberVisibleCourses } from '../utils/member-courses';
 import { hasPlatformOverride } from '../utils/tenant-scope';
 import { useAppStore } from '../store/useAppStore';
 import { useTenant } from '../contexts/TenantContext';
@@ -108,21 +108,27 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
   const features = isMainSite ? null : (resolvedPlan ? getPlanFeatures(resolvedPlan) : null);
 
   // 'loading' means we haven't fetched yet — hide tab until we know.
-  // 'empty' means 0 published courses — hide tab.
+  // 'empty' means 0 member-visible courses — hide tab.
   // 'present' means at least 1 course exists — show tab.
+  //
+  // ⚠️ ADOPTED LIBRARY COURSES COUNT (THE-140). This gate used to read /courses
+  // only, so a church whose sole content was an adopted course scored 'empty'
+  // and the Courses tab vanished — the adopted course was not merely missing
+  // from the list, there was no list to open. It never errored; it looked
+  // exactly like a church with no courses.
+  //
+  // The count is not computed here. hasMemberVisibleCourses() asks the SAME
+  // module the member list itself reads from (utils/member-courses), so the tab
+  // and its contents cannot disagree — a second count is how they drifted
+  // apart in the first place. That module also owns the adoptedCourses path
+  // scoping, which getTenantScope()'s null cannot build.
   const [coursesStatus, setCoursesStatus] = useState<'loading' | 'empty' | 'present'>('loading');
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const tenantId = await getTenantScope();
-        // Single-field filter only (status); tenant scoping applied in-memory to avoid a composite index.
-        const q = tenantId
-          ? query(collection(db, 'courses'), where('tenantId', '==', tenantId), limit(50))
-          : query(collection(db, 'courses'), where('status', '==', 'published'), limit(50));
-        const snap = await getDocs(q);
-        const has = snap.docs.some(d => d.data().status === 'published');
+        const has = await hasMemberVisibleCourses();
         if (!cancelled) setCoursesStatus(has ? 'present' : 'empty');
       } catch {
         // On error, hide the tab to avoid showing a broken courses screen

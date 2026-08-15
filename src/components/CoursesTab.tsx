@@ -1,39 +1,33 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { collection, query, where, getDocs, limit } from 'firebase/firestore';
-import { db } from '../firebase';
 import { getPlaceholderImage } from '@/utils/placeholder';
 import { BookOpen, Clock, ChevronRight } from 'lucide-react';
-import { Course } from './AdminCourseEditor';
-import { getTenantScope } from '../utils/tenant-scope';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
-import { sortByTime } from '../utils/query-helpers';
+import { fetchMemberCourses, type MemberCourse } from '../utils/member-courses';
 
 
 interface CoursesTabProps {
- onOpenCourse?: (course: Course) => void;
+ onOpenCourse?: (course: MemberCourse) => void;
 }
 
+/**
+ * The member course list: the church's own published courses AND the library
+ * courses it has adopted (THE-140).
+ *
+ * The read, the published/adoptable filter and the merge all live in
+ * utils/member-courses — the same call MainApp's Courses-tab gate makes, so the
+ * tab cannot be shown over an empty list or hidden over a full one. Reading
+ * /courses here directly is exactly how adopted courses came to be invisible.
+ */
 const CoursesTab: React.FC<CoursesTabProps> = ({ onOpenCourse }) => {
- const [courses, setCourses] = useState<Course[]>([]);
+ const [courses, setCourses] = useState<MemberCourse[]>([]);
  const [loading, setLoading] = useState(true);
 
  useEffect(() => {
  const fetchCourses = async () => {
  try {
- const tenantId = await getTenantScope();
- // Single-field filter only (status); tenant filter + sort applied client-side.
- const q = tenantId
-   ? query(collection(db, 'courses'), where('tenantId', '==', tenantId), limit(100))
-   : query(collection(db, 'courses'), where('status', '==', 'published'), limit(100));
- const querySnapshot = await getDocs(q);
- let fetchedCourses: Course[] = [];
- querySnapshot.forEach((doc) => {
- fetchedCourses.push({ id: doc.id, ...doc.data() } as Course);
- });
- fetchedCourses = fetchedCourses.filter(c => (c as any).status === 'published');
- setCourses(sortByTime(fetchedCourses, 'createdAt', 'desc'));
+ setCourses(await fetchMemberCourses());
  } catch (error) {
  handleFirestoreError(error, OperationType.GET, `courses`);
  } finally {
