@@ -5,6 +5,7 @@ import { authFetch } from '../utils/auth-fetch';
 import { getPlanDisplayName, TOP_PLAN } from '../utils/plan-features';
 import type { TenantPlan } from '../types/tenant.types';
 import PlanUpgradeSection from './settings/PlanUpgradeSection';
+import AddOnsSection from './settings/AddOnsSection';
 
 const GOLD = 'var(--brand-color, #B8962E)';
 
@@ -206,7 +207,13 @@ const BillingAndPayments: React.FC<BillingAndPaymentsProps> = ({ currentPlan, te
         />
       </div>
 
-      {/* 4: Payment history — links to Stripe's own hosted invoice PDFs */}
+      {/* 4: Add-ons — the canonical purchase surface (REP-5b). Renders nothing
+          for a Stripe tenant, and nothing when this environment can sell no
+          add-ons; the offer list is derived server-side from the active add-on
+          table, never from a list held here. */}
+      <AddOnsSection tenantId={tenantId} processor={processor} />
+
+      {/* 5: Payment history — links to Stripe's own hosted invoice PDFs */}
       <div>
         <h3 className="text-sm font-bold text-body mb-3 font-display">Payment History</h3>
         {invoices.length === 0 ? (
@@ -267,7 +274,7 @@ const BillingAndPayments: React.FC<BillingAndPaymentsProps> = ({ currentPlan, te
         )}
       </div>
 
-      {/* 5: Generate consolidated billing-summary PDF (pdf-lib, admin-facing) */}
+      {/* 6: Generate consolidated billing-summary PDF (pdf-lib, admin-facing) */}
       <div className="bg-surface-raised rounded-2xl p-5 border border-line shadow-sm">
         <h3 className="text-sm font-bold text-body mb-1 font-display">Billing Statement</h3>
         <p className="text-sm text-muted mb-4">

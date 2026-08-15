@@ -405,6 +405,25 @@ export async function planDodoAddonCarryOver(
  * practically answer nothing, and the preview charges nothing, so refusing it is
  * the recoverable direction.
  */
+/**
+ * One add-on as Dodo holds it — its name, its price, its currency.
+ *
+ * The read behind the purchase surface's catalogue (REP-5b). Deliberately raw:
+ * it hands back what Dodo said and makes no judgement, so the one place that
+ * decides what a missing name or price MEANS is the caller that has to render
+ * it. Add-on prices are settled in Dodo and are never written into this repo,
+ * which is why a surface that shows one has to ask for it.
+ */
+export async function retrieveDodoAddon(
+  addonId: string,
+): Promise<{ name?: unknown; price?: unknown; currency?: unknown }> {
+  return (await client().addons.retrieve(addonId)) as unknown as {
+    name?: unknown;
+    price?: unknown;
+    currency?: unknown;
+  };
+}
+
 export async function describeDodoAddons(
   selections: readonly DodoAddonSelection[],
 ): Promise<DodoNamedAddon[]> {

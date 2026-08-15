@@ -421,6 +421,52 @@ export function resolveAddonMeaning(addonId: string): DodoAddonMeaning | null {
   return null;
 }
 
+/**
+ * Forward lookup: a MEANING on a billing period → the Dodo add-on id that sells
+ * it, or `null` when the active table does not map it.
+ *
+ * 🔴 THE ONE ANSWER TO "CAN THIS BE SOLD" (REP-5b). A purchase surface asks this
+ * and nothing else — never a list written out beside it. `null` here is not "the
+ * lookup failed", it is "this build cannot sell that in this environment", and
+ * every caller must refuse rather than substitute anything.
+ *
+ * The live Campus gap is exactly this case: `DODO_LIVE_ADDONS.campus` is
+ * `DODO_ADDON_UNMAPPED` on both periods, so under live mode this returns `null`
+ * for Campus and the add-on is not offerable. Charging a church $15 a month for
+ * an id this build cannot recognise on the way back in is the failure that gap
+ * exists to prevent; refusing to SELL it is the other half of the same
+ * guarantee. Filling the two ids in the table above makes Campus purchasable
+ * with no other edit anywhere.
+ *
+ * The exact counterpart of `resolveAddonMeaning`, which walks this same table in
+ * the other direction — so the set of ids that can be sold and the set that can
+ * be understood are, structurally, one set.
+ */
+export function addonIdFor(meaning: DodoAddonMeaning, period: BillingPeriod): string | null {
+  return DODO_ACTIVE_ADDONS[meaning][period];
+}
+
+/**
+ * The add-ons this build can SELL on `period`, in the active mode.
+ *
+ * 🔴 DERIVED FROM THE TABLE, NEVER LISTED. A hardcoded list is how the live
+ * Campus gap would become a live Campus SALE: the table would say "unmapped" and
+ * the sales surface would say "buy me", and the church would be charged for
+ * something no code path can grant. Every availability question in the purchase
+ * path resolves through here.
+ *
+ * Tier availability is NOT considered and must not be (THE-133): which add-ons a
+ * given plan may hold is enforced by Dodo, on the product, precisely so that a
+ * Harvest bug cannot sell Unlimited Contacts to a $49 plan. This answers only
+ * "does this build know the id", which is a different question with a different
+ * failure mode.
+ */
+export function offerableAddonMeanings(period: BillingPeriod): DodoAddonMeaning[] {
+  return DODO_ADDON_MEANINGS.filter(
+    (meaning) => addonIdFor(meaning, period) !== DODO_ADDON_UNMAPPED,
+  );
+}
+
 /** Every add-on id this build can map, in the active mode. Ten, or eight in live. */
 export function allMappedAddonIds(): string[] {
   const ids: string[] = [];
