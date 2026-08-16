@@ -25,6 +25,11 @@ const scope = vi.hoisted(() => ({ read: 'tenant-1' as string | null, write: 'ten
 vi.mock('../../utils/tenant-scope', () => ({
   getTenantScope: async () => scope.read,
   getWriteTenantScope: async () => scope.write,
+  // The feed's "Message privately" now runs through usePlanGate (Community
+  // Groups is Ministry-only), and that hook reads hasPlatformOverride. With no
+  // TenantProvider mounted here the gate is open, so these tenant-scope
+  // assertions are unaffected — the export just has to exist.
+  hasPlatformOverride: () => false,
   PLATFORM_TENANT_ID: 'harvest',
 }));
 

@@ -27,6 +27,17 @@ interface PlanUpgradeScreenProps {
   featureKey: string;
   onBack: () => void;
   onUpgrade?: () => void;
+  /**
+   * Who is reading this. 'admin' (the default, and every pre-existing call
+   * site) is the original screen: the price ladder plus an Upgrade button.
+   *
+   * 'member' is the member app. A member cannot buy a plan — only their
+   * church's owner can — so an "Upgrade" button would be a dead end and the
+   * prices are not theirs to act on. The member variant keeps the same
+   * explanation of WHICH plan carries the feature, and says plainly who has to
+   * make the change.
+   */
+  audience?: 'admin' | 'member';
 }
 
 const PlanUpgradeScreen: React.FC<PlanUpgradeScreenProps> = ({
@@ -34,28 +45,43 @@ const PlanUpgradeScreen: React.FC<PlanUpgradeScreenProps> = ({
   featureKey,
   onBack,
   onUpgrade,
+  audience = 'admin',
 }) => {
+  const isMember = audience === 'member';
   const minPlanName = FEATURE_MIN_PLAN_NAME[featureKey] || 'Community';
   const minIdx = PLANS.findIndex(p => p.name === minPlanName);
   const requiredPlans = minIdx >= 0 ? PLANS.slice(minIdx) : PLANS;
   const minPlan = requiredPlans[0];
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] p-6 text-center">
-      <div
-        className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4"
-        style={{ backgroundColor: '#fcefc7' }}
-      >
-        <Lock size={28} style={{ color: '#d4a017' }} />
+    <div className="flex flex-col items-center justify-center min-h-[60vh] p-6 text-center" data-testid="plan-upgrade-screen">
+      {/* --surface-gold / --brand-color rather than the cream+gold hexes this
+          tile used to carry: the member app is themeable, and a fixed cream
+          plate stays cream on the dark ramp. */}
+      <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4 bg-surface-gold">
+        <Lock size={28} className="text-gold" />
       </div>
 
       <h2 className="text-xl font-bold text-strong mb-2 font-display">{featureName}</h2>
       <p className="text-sm text-muted mb-6 max-w-xs leading-relaxed">
-        This feature requires the <strong>{minPlanName}</strong> plan or higher.
-        Upgrade to unlock access.
+        {isMember ? (
+          <>
+            {featureName} is part of the <strong>{minPlanName}</strong> plan, and your
+            church is on a plan that does not include it. Nothing here is lost —
+            an admin at your church is the one who can change the plan.
+          </>
+        ) : (
+          <>
+            This feature requires the <strong>{minPlanName}</strong> plan or higher.
+            Upgrade to unlock access.
+          </>
+        )}
       </p>
 
-      {/* Plan options */}
+      {/* Plan options — prices are for whoever can actually buy, so the member
+          variant omits the ladder entirely rather than quoting a member a price
+          they cannot act on. */}
+      {!isMember && (
       <div className="w-full max-w-sm space-y-2 mb-6">
         {requiredPlans.map(plan => (
           <div
@@ -79,6 +105,7 @@ const PlanUpgradeScreen: React.FC<PlanUpgradeScreenProps> = ({
           </div>
         ))}
       </div>
+      )}
 
       <div className="flex gap-3 w-full max-w-sm">
         <button
@@ -87,6 +114,7 @@ const PlanUpgradeScreen: React.FC<PlanUpgradeScreenProps> = ({
         >
           Go Back
         </button>
+        {!isMember && (
         <button
           onClick={onUpgrade}
           className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
@@ -94,6 +122,7 @@ const PlanUpgradeScreen: React.FC<PlanUpgradeScreenProps> = ({
         >
           Upgrade
         </button>
+        )}
       </div>
     </div>
   );

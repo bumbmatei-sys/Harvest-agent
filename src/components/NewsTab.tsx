@@ -14,6 +14,7 @@ import SaveButton from './SaveButton';
 import { isSuperAdminEmail } from '../utils/super-admins';
 import { checkRosterAdmin } from '../utils/tenant.utils';
 import { getOrCreateDm } from '../lib/dm';
+import { usePlanGate } from '../hooks/usePlanGate';
 import CampaignWidget from './CampaignWidget';
 import KebabMenu from './KebabMenu';
 import { sortByTime } from '../utils/query-helpers';
@@ -153,6 +154,12 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
   const [currentUserRole, setCurrentUserRole] = useState('user');
   const [deletePostId, setDeletePostId] = useState<string | null>(null);
   const [dmBusyId, setDmBusyId] = useState<string | null>(null);
+  // "Message privately" CREATES a DM — a Community Groups write — and then jumps
+  // to the Messages tab, which is Ministry-only. On a tier without the feature
+  // it would write a thread nobody can open, so it is gated on the same flag the
+  // tab is. The rest of the comment kebab (delete) is moderation, not community,
+  // and is untouched.
+  const canUseCommunityGroups = usePlanGate('community_chat');
 
   // Admin announcement composer state (text + up to 3 images + embed + poll + pin).
   // Gated to admins via `canCompose` below; members read/like/comment only.
@@ -1400,7 +1407,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
                             ariaLabel="Comment options"
                             size={13}
                             items={[
-                              ...(canManage && auth.currentUser && comment.authorId !== auth.currentUser.uid ? [{
+                              ...(canManage && canUseCommunityGroups && auth.currentUser && comment.authorId !== auth.currentUser.uid ? [{
                                 label: 'Message privately',
                                 onClick: () => handleMessagePrivately(comment),
                                 disabled: dmBusyId === comment.id,
