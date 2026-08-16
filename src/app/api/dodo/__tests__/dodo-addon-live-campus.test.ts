@@ -102,11 +102,26 @@ import { __setDodoClientForTests } from '@/lib/dodo/dodo-provider';
 
 const PLUS_MONTHLY = productIdFor('plus', 'monthly');
 
+/**
+ * 🔴 WHAT THE LIVE INDIVIDUAL PRODUCT CARRIES, as Dodo reports it (THE-160).
+ *
+ * Read from the live `pdt_…` behind `productIdFor('plus', 'monthly')` on
+ * 2026-08-16: AI Assistant, Admin Seat and Campus — and NOT Contacts +500 or
+ * Unlimited Contacts, which is the attachment THE-160 exists to respect.
+ *
+ * ⚠️ CAMPUS IS ON IT, which is what keeps this file's subject intact. The gap
+ * this file pins was never about attachment — Campus was attached to all six
+ * live products all along — it was about the two ids not being written down.
+ * Availability now asks both questions, and Campus answers yes to both.
+ */
+const LIVE_PLUS_MEANINGS = ['aiAssistant', 'adminSeat', 'campus'] as const;
+
 const dodoStub = {
   retrieve: vi.fn(),
   previewChangePlan: vi.fn(),
   changePlan: vi.fn(),
   paymentsList: vi.fn(),
+  productsRetrieve: vi.fn(),
   addonsRetrieve: vi.fn(),
 };
 
@@ -118,8 +133,16 @@ function installDodoStub() {
       changePlan: dodoStub.changePlan,
     },
     payments: { list: dodoStub.paymentsList },
+    products: { retrieve: dodoStub.productsRetrieve },
     addons: { retrieve: dodoStub.addonsRetrieve },
   } as never);
+
+  // Plain id STRINGS, as the live API returns them — resolved through the real
+  // live table rather than retyped.
+  dodoStub.productsRetrieve.mockImplementation(async (productId: string) => ({
+    product_id: productId,
+    addons: LIVE_PLUS_MEANINGS.map((meaning) => addonIdFor(meaning, 'monthly') as string),
+  }));
 
   // Every LIVE add-on has an id now, Campus included, so every one of them can
   // be named and priced through this stub.
@@ -192,7 +215,7 @@ beforeEach(() => {
 // ── Test 7 — 🔴 THE GAP IS CLOSED: refusals become sales, no logic changed ───
 
 describe('live Campus is now offerable — the ids close the gap with no route change', () => {
-  it('the live catalogue now lists Campus alongside the other four', async () => {
+  it('the live catalogue now lists Campus among what this tenant’s product carries', async () => {
     seedDodoTenant();
     asOwner();
 
@@ -201,11 +224,19 @@ describe('live Campus is now offerable — the ids close the gap with no route c
     const offered: string[] = (await res.json()).addons.map((a: { addon: string }) => a.addon);
 
     // Named by MEANING, from the real table. Campus is present because
-    // `addonIdFor('campus', …)` now resolves in live, not because this test
-    // says so.
+    // `addonIdFor('campus', …)` now resolves in live AND because the live
+    // Individual product carries it — two independent yeses, not one.
     expect(offered).toContain('campus');
-    expect(offered.sort()).toEqual([...DODO_ADDON_MEANINGS].sort());
-    expect(offered).toHaveLength(DODO_ADDON_MEANINGS.length);
+    expect(offered.sort()).toEqual([...LIVE_PLUS_MEANINGS].sort());
+
+    // ⚠️ AND IT IS NOT ALL FIVE, deliberately (THE-160). This tenant is on the
+    // $49 Individual plan, whose products Dodo does not attach Contacts +500 or
+    // Unlimited Contacts to. Asserting all five here is what the defect looked
+    // like: an offer list filtered by billing period, with the product's own
+    // answer never asked for.
+    expect(offered).not.toContain('contactPack');
+    expect(offered).not.toContain('unlimitedContacts');
+    expect(offered.length).toBeLessThan(DODO_ADDON_MEANINGS.length);
   });
 
   it('🔴 buying a live Campus now SUCCEEDS — the ids close the gap with no logic change', async () => {

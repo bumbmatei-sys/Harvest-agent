@@ -49,6 +49,23 @@ export interface DodoSubscriptionContext {
    * forms one, because it reads the period from here rather than from the body.
    */
   readonly period: BillingPeriod;
+  /**
+   * The Dodo product the tenant is on RIGHT NOW — the id `plan` and `period`
+   * were resolved FROM, carried out rather than re-derived.
+   *
+   * 🔴 THE ONLY THING THAT CAN ANSWER "MAY THIS CHURCH BUY THIS ADD-ON"
+   * (THE-133). Dodo puts add-on availability on the PRODUCT — "Contacts +500"
+   * is attached to Small Team and Ministry and not to Individual, "Unlimited
+   * Contacts" to Ministry alone — so the set a tenant may be offered is an
+   * intersection with THIS product's own `addons` array. That restriction lives
+   * in the payment processor precisely so a Harvest bug cannot sell Unlimited
+   * Contacts to a $49 plan, and reading it from here is what keeps the answer
+   * derived instead of written down.
+   *
+   * Already proven to name a plan and a period by the lookup below, so a caller
+   * re-deriving it would be a second answer to a settled question.
+   */
+  readonly productId: string;
   /** The private doc already read for the checks above. No second read. */
   readonly privateData: Record<string, any>;
 }
@@ -210,6 +227,7 @@ export async function resolveDodoSubscriptionContext(args: {
     subscriptionId,
     plan: current.plan,
     period: current.period,
+    productId: currentProductId,
     privateData,
   };
 }

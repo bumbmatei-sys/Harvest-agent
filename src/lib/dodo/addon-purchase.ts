@@ -81,6 +81,18 @@ export function normaliseAddonQuantity(meaning: DodoAddonMeaning, quantity: numb
 export type DodoAddonChangeRefusal =
   /** 🔴 No id in the ACTIVE environment — live Campus. Not offerable, not sellable. */
   | { readonly reason: 'unmapped'; readonly meaning: DodoAddonMeaning }
+  /**
+   * 🔴 Mapped and sellable, but NOT ATTACHED TO THIS TENANT'S OWN PRODUCT — a
+   * $49 Individual plan asking for the $59 Unlimited Contacts (THE-160).
+   *
+   * ⚠️ A DIFFERENT FACT FROM `unmapped`, and the two must never be answered with
+   * one message. "This build does not know that add-on's id in this
+   * environment" is a gap in the catalogue that support can close; "your tier
+   * does not sell that" is the tier ladder working as designed, and the way out
+   * is an upgrade, not a support ticket. Collapsing them would send churches to
+   * the wrong place in both directions.
+   */
+  | { readonly reason: 'not-on-product'; readonly meaning: DodoAddonMeaning }
   /** Above `MAX_ADDON_QUANTITY`. Refused rather than clamped. */
   | { readonly reason: 'quantity-too-large'; readonly meaning: DodoAddonMeaning };
 
@@ -114,12 +126,30 @@ export interface DodoDesiredAddons {
  * should stop existing because the running build has not been taught its name.
  *
  * Returns a refusal instead of an array when a requested meaning has no id in
- * the active environment, so an unsellable add-on cannot reach Dodo at all.
+ * the active environment, or when the tenant's own product does not carry it,
+ * so an unsellable add-on cannot reach Dodo at all.
+ *
+ * 🔴 `offeredByProduct` IS REQUIRED, not optional — the add-on ids the tenant's
+ * OWN Dodo product carries (THE-133, THE-160). A caller that could omit it is a
+ * caller that can sell Unlimited Contacts to a $49 plan, so the compiler refuses
+ * that here exactly as it refuses a `previewDodoPlanChange` with no add-ons.
+ *
+ * ⚠️ ONLY WHAT IS BEING ADDED IS CHECKED AGAINST IT. Two absences are
+ * deliberate:
+ *
+ *  • A REMOVAL is never refused for attachment. A church that already holds
+ *    something its tier does not sell must be able to stop paying for it;
+ *    refusing that would trap it in the charge this rule exists to prevent.
+ *  • A HELD add-on the product does not carry is still CARRIED THROUGH by the
+ *    fold below, untouched. Stripping it here would silently cancel something
+ *    the church pays for as a side effect of buying something else — the exact
+ *    failure the module note forbids. What this refuses is SELLING more of it.
  */
 export function resolveDesiredAddons(
   held: readonly DodoAddonSelection[],
   changes: readonly DodoAddonChange[],
   period: BillingPeriod,
+  offeredByProduct: ReadonlySet<string>,
 ): DodoDesiredAddons | DodoAddonChangeRefusal {
   const wanted = new Map<DodoAddonMeaning, number>();
   for (const change of changes) {
@@ -130,8 +160,17 @@ export function resolveDesiredAddons(
     // 🔴 Resolved BEFORE anything is built, so an unmapped meaning refuses the
     // whole request rather than being dropped out of a set the church then
     // believes it bought.
-    if (addonIdFor(change.meaning, period) === null) {
+    const addonId = addonIdFor(change.meaning, period);
+    if (addonId === null) {
       return { reason: 'unmapped', meaning: change.meaning };
+    }
+    // 🔴 AND THE TENANT'S OWN PRODUCT HAS TO CARRY IT. Checked here rather than
+    // left to Dodo: it is not documented whether Dodo rejects an unattached
+    // add-on on a change-plan call or simply bills it, and a church's card is
+    // not the place to find out. Ordered AFTER the unmapped check so live
+    // Campus keeps its own refusal instead of being reported as a tier problem.
+    if (quantity > 0 && !offeredByProduct.has(addonId)) {
+      return { reason: 'not-on-product', meaning: change.meaning };
     }
     wanted.set(change.meaning, quantity);
   }
@@ -220,15 +259,37 @@ export interface DodoOfferableAddon {
  * amount that is not the charged amount. `addon-purchase-surface.test.ts` scans
  * the repo for them.
  *
- * The LIST is `offerableAddonMeanings` — the active table, never a literal — so
- * an add-on with no id in this environment is not returned and therefore cannot
- * be rendered, let alone bought. Live Campus is exactly that case today.
+ * ─── 🔴 TWO INDEPENDENT QUESTIONS, INTERSECTED (THE-160) ────────────────────
+ *
+ * An add-on is offerable only when BOTH answer yes, and neither substitutes for
+ * the other:
+ *
+ *  1. `offerableAddonMeanings(period)` — DOES THIS BUILD KNOW THE ID? The active
+ *     table, never a literal. An add-on with no id here cannot be rendered, let
+ *     alone bought; live Campus was exactly that case until its ids were
+ *     recorded.
+ *  2. `offeredByProduct` — DOES THE TENANT'S OWN PRODUCT CARRY IT? Read from
+ *     that product's own `addons` array in Dodo, because THE-133 put tier
+ *     availability in the processor, on the product, precisely so that a
+ *     Harvest bug cannot sell Unlimited Contacts to a $49 plan.
+ *
+ * ⚠️ Filtering by PERIOD ALONE was THE-160: every add-on mapped for monthly was
+ * offered to every monthly tenant, so an Individual tenant was shown Contacts
+ * +500 and the $59 Unlimited Contacts — neither of which is attached to the
+ * Individual products. The second question is what this parameter asks, and it
+ * is REQUIRED for the same reason it is required on `resolveDesiredAddons`.
+ *
+ * The intersection is taken BEFORE the per-add-on reads, so a tenant is never
+ * charged a round trip to price something it cannot buy.
  */
 export async function describeOfferableAddons(
   period: BillingPeriod,
   retrieveAddon: (addonId: string) => Promise<{ name?: unknown; price?: unknown; currency?: unknown }>,
+  offeredByProduct: ReadonlySet<string>,
 ): Promise<DodoOfferableAddon[]> {
-  const meanings = offerableAddonMeanings(period);
+  const meanings = offerableAddonMeanings(period).filter((meaning) =>
+    offeredByProduct.has(addonIdFor(meaning, period) as string),
+  );
   return Promise.all(
     meanings.map(async (meaning) => {
       const addon = await retrieveAddon(addonIdFor(meaning, period) as string);

@@ -117,8 +117,18 @@ vi.mock('@/lib/money-path-sentry', () => ({
   captureHandledError: vi.fn(),
 }));
 
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { GET as addonCatalogue, POST as addonChange } from '@/app/api/dodo/addons/route';
-import { DODO_TEST_ADDONS, productIdFor } from '@/lib/dodo/catalogue';
+import {
+  DODO_ADDON_MEANINGS,
+  DODO_TEST_ADDONS,
+  addonIdFor,
+  productIdFor,
+  type DodoAddonMeaning,
+} from '@/lib/dodo/catalogue';
+import type { BillingPeriod } from '@/lib/dodo/provider';
+import type { TenantPlan } from '@/types/tenant.types';
 import { __setDodoClientForTests } from '@/lib/dodo/dodo-provider';
 
 // ── The add-ons in play, named through the REAL catalogue ────────────────────
@@ -148,6 +158,41 @@ const ADDON_NAMES: Record<string, string> = {
 
 const PLUS_MONTHLY = productIdFor('plus', 'monthly');
 const PLUS_YEARLY = productIdFor('plus', 'yearly');
+const PRO_MONTHLY = productIdFor('pro', 'monthly');
+const MAX_MONTHLY = productIdFor('max', 'monthly');
+
+// ── 🔴 THE TIER LADDER, AS DODO HOLDS IT (THE-160) ───────────────────────────
+//
+// ⚠️ THIS IS A MOCK OF DODO, NOT A TABLE THE APP MAY CONSULT. Availability is
+// attachment, and attachment lives on the product in the payment processor
+// (THE-133) — so the only way to test what Harvest does with it is to state what
+// the processor would answer. That is this fixture, and it belongs here in the
+// Dodo stub for the same reason add-on names and prices do.
+//
+// Mirrors the attachment read from the six LIVE products on 2026-08-16, which is
+// what makes tests 1–4 statements about the real ladder rather than invented
+// ones: Individual carries AI Assistant, Admin Seat and Campus; Small Team adds
+// Contacts +500; Ministry adds Unlimited Contacts. Named by MEANING and resolved
+// to ids through the real catalogue, never retyped.
+const ATTACHED_MEANINGS: Readonly<Record<TenantPlan, readonly DodoAddonMeaning[]>> = {
+  plus: ['aiAssistant', 'adminSeat', 'campus'],
+  pro: ['aiAssistant', 'adminSeat', 'campus', 'contactPack'],
+  max: ['aiAssistant', 'adminSeat', 'campus', 'contactPack', 'unlimitedContacts'],
+};
+
+/** productId → the add-on ids Dodo reports on it, for all six products. */
+function attachmentByProduct(): Map<string, string[]> {
+  const byProduct = new Map<string, string[]>();
+  for (const plan of Object.keys(ATTACHED_MEANINGS) as TenantPlan[]) {
+    for (const period of ['monthly', 'yearly'] as BillingPeriod[]) {
+      byProduct.set(
+        productIdFor(plan, period),
+        ATTACHED_MEANINGS[plan].map((meaning) => addonIdFor(meaning, period) as string),
+      );
+    }
+  }
+  return byProduct;
+}
 
 // ── The Dodo SDK stub — the one Dodo mock the brief allows ───────────────────
 
@@ -185,6 +230,32 @@ function installDodoStub() {
     new_plan: {},
   });
   dodoStub.changePlan.mockResolvedValue(undefined);
+
+  // 🔴 A PRODUCT'S `addons` IS AN ARRAY OF PLAIN ID STRINGS, which is what the
+  // live API returns and what PR 307 established. Objects here would make every
+  // intersection empty and offer nothing at all, so the shape is part of the
+  // fixture rather than an incidental detail of it — test 8 pins the other half.
+  const attachment = attachmentByProduct();
+  dodoStub.productsRetrieve.mockImplementation(async (productId: string) => {
+    const addons = attachment.get(productId);
+    if (!addons) throw new Error(`no such product ${productId}`);
+    return { product_id: productId, addons: [...addons] };
+  });
+}
+
+/** Dodo reports `productId` carrying exactly `meanings`, for this one test. */
+function productCarries(
+  productId: string,
+  period: BillingPeriod,
+  meanings: readonly DodoAddonMeaning[],
+) {
+  dodoStub.productsRetrieve.mockImplementation(async (asked: string) => {
+    if (asked !== productId) throw new Error(`no such product ${asked}`);
+    return {
+      product_id: productId,
+      addons: meanings.map((meaning) => addonIdFor(meaning, period) as string),
+    };
+  });
 }
 
 /** A subscription past its trial, on `productId`, holding `held`. */
@@ -821,9 +892,13 @@ describe('the request body is validated before anything is billed', () => {
   });
 
   it('🔴 caps Unlimited Contacts at one — holding it at all is the whole fact', async () => {
-    seedDodoTenant(PLUS_MONTHLY, 'plus');
+    // ⚠️ ON MINISTRY, because that is the only tier whose product Dodo attaches
+    // Unlimited Contacts to (THE-160). This test is about the QUANTITY cap, and
+    // running it on Individual would now be refused for a different reason
+    // entirely — passing or failing for nothing to do with what it asserts.
+    seedDodoTenant(MAX_MONTHLY, 'max');
     asOwner();
-    subscriptionHolding(PLUS_MONTHLY, []);
+    subscriptionHolding(MAX_MONTHLY, []);
 
     await post({
       tenantId: T.tenant,
@@ -870,19 +945,18 @@ describe('the request body is validated before anything is billed', () => {
 // ── The catalogue read ───────────────────────────────────────────────────────
 
 describe('the catalogue lists what can be sold, priced by Dodo', () => {
-  it('offers every mapped add-on for the tenant OWN period, named and priced', async () => {
-    seedDodoTenant(PLUS_MONTHLY, 'plus');
+  it("offers what the tenant's OWN product carries, named and priced", async () => {
+    seedDodoTenant(MAX_MONTHLY, 'max');
     asOwner();
-    subscriptionHolding(PLUS_MONTHLY, []);
+    subscriptionHolding(MAX_MONTHLY, []);
 
     const res = await get(T.tenant);
     expect(res.status).toBe(200);
     const data = await res.json();
 
     expect(data.billing).toBe('monthly');
-    // All five meanings are mapped in TEST mode — Campus included, which is
-    // exactly the asymmetry `dodo-addon-live-campus.test.ts` pins the other half
-    // of. Named by meaning, never by id.
+    // A Ministry tenant, whose product carries all five. Named by meaning,
+    // never by id — and the set is the product's, not the period's.
     expect(data.addons.map((a: { addon: string }) => a.addon).sort()).toEqual(
       ['adminSeat', 'aiAssistant', 'campus', 'contactPack', 'unlimitedContacts'],
     );
@@ -913,5 +987,391 @@ describe('the catalogue lists what can be sold, priced by Dodo', () => {
     const asked = dodoStub.addonsRetrieve.mock.calls.map((call) => call[0]);
     expect(asked).toContain(ADMIN_SEAT_YEARLY);
     expect(asked).not.toContain(ADMIN_SEAT_MONTHLY);
+  });
+});
+
+// ── THE-160 — 🔴 A TIER IS ONLY OFFERED WHAT ITS PRODUCT ACTUALLY CARRIES ────
+
+/** The meanings this tenant is offered, sorted. Names, never ids. */
+async function offeredMeanings(): Promise<string[]> {
+  const res = await get(T.tenant);
+  expect(res.status).toBe(200);
+  return ((await res.json()).addons as { addon: string }[]).map((a) => a.addon).sort();
+}
+
+const SRC = resolve(__dirname, '../../../..');
+/** A source file with its comments stripped — stating a rule is not breaking it. */
+const readSource = (rel: string) =>
+  readFileSync(resolve(SRC, rel), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/^[ \t]*\/\/.*$/gm, '');
+
+describe('the add-ons offered follow the tenant’s own product, not its billing period', () => {
+  // ── Tests 1 and 2 — 🔴 THE REGRESSION ──────────────────────────────────────
+
+  it('an Individual tenant is not offered Contacts +500', async () => {
+    seedDodoTenant(PLUS_MONTHLY, 'plus');
+    asOwner();
+
+    const offered = await offeredMeanings();
+
+    // 🔴 THE DEFECT, in one line. The offered set was filtered by billing period
+    // alone, so every monthly-mapped add-on reached every monthly tenant —
+    // including a pack Dodo does not attach to the Individual products.
+    expect(offered).not.toContain('contactPack');
+    // And the three the Individual products DO carry are still there: this is a
+    // filter, not an outage.
+    expect(offered).toEqual(['adminSeat', 'aiAssistant', 'campus']);
+  });
+
+  it('an Individual tenant is not offered Unlimited Contacts', async () => {
+    seedDodoTenant(PLUS_MONTHLY, 'plus');
+    asOwner();
+
+    const offered = await offeredMeanings();
+
+    // 🔴 THE MONEY HALF. Unlimited Contacts is attached to Ministry alone, so
+    // offering it on a $49 plan inverts the tier ladder — which is the exact
+    // thing THE-133 put availability in Dodo to prevent.
+    expect(offered).not.toContain('unlimitedContacts');
+
+    // Nothing was even priced for it: the intersection is taken before the
+    // per-add-on reads, so an unsellable add-on costs no round trip either.
+    const asked = dodoStub.addonsRetrieve.mock.calls.map((call) => call[0]);
+    expect(asked).not.toContain(UNLIMITED_MONTHLY);
+    expect(asked).not.toContain(CONTACT_PACK_MONTHLY);
+  });
+
+  it('an Individual tenant on ANNUAL billing is filtered the same way', async () => {
+    seedDodoTenant(PLUS_YEARLY, 'plus');
+    asOwner();
+
+    // The two questions are independent: the period picks WHICH id, the product
+    // decides WHETHER it is offered. Both apply on both periods.
+    expect(await offeredMeanings()).toEqual(['adminSeat', 'aiAssistant', 'campus']);
+  });
+
+  // ── Test 3 ─────────────────────────────────────────────────────────────────
+
+  it('a Small Team tenant is offered Contacts +500 but not Unlimited', async () => {
+    seedDodoTenant(PRO_MONTHLY, 'pro');
+    asOwner();
+
+    const offered = await offeredMeanings();
+
+    // The middle rung, which is what makes this a ladder rather than a switch.
+    expect(offered).toContain('contactPack');
+    expect(offered).not.toContain('unlimitedContacts');
+  });
+
+  // ── Test 4 ─────────────────────────────────────────────────────────────────
+
+  it('a Ministry tenant is offered all five', async () => {
+    seedDodoTenant(MAX_MONTHLY, 'max');
+    asOwner();
+
+    // The top rung loses nothing. A filter that quietly narrowed everybody would
+    // pass tests 1–3 and still be a defect.
+    expect(await offeredMeanings()).toEqual([...DODO_ADDON_MEANINGS].sort());
+  });
+
+  // ── Test 5 — 🔴 THE THE-133 GUARD ──────────────────────────────────────────
+
+  describe('the offered set is derived from the product, never from a tier table', () => {
+    it('follows Dodo when Dodo contradicts the tier ladder entirely', async () => {
+      seedDodoTenant(PLUS_MONTHLY, 'plus');
+      asOwner();
+      // 🔴 Dodo says the INDIVIDUAL product carries Unlimited Contacts. That is
+      // not the real ladder — and that is the point: if this build held a tier
+      // table, or hardcoded "unlimited is Ministry only", the answer here would
+      // be the table's rather than the processor's. Attachment is the only
+      // input, so moving it in Dodo moves what is sold with no code change.
+      productCarries(PLUS_MONTHLY, 'monthly', ['unlimitedContacts']);
+
+      expect(await offeredMeanings()).toEqual(['unlimitedContacts']);
+    });
+
+    it('narrows a Ministry tenant when Dodo says its product carries one add-on', async () => {
+      seedDodoTenant(MAX_MONTHLY, 'max');
+      asOwner();
+      // The same claim in the other direction: the top tier is not special-cased
+      // into "gets everything" anywhere.
+      productCarries(MAX_MONTHLY, 'monthly', ['adminSeat']);
+
+      expect(await offeredMeanings()).toEqual(['adminSeat']);
+    });
+
+    it('states no tier’s add-ons anywhere on the availability path', () => {
+      // An absence, so it is scanned rather than exercised: the build looks
+      // identical right up until someone "helpfully" writes the ladder down.
+      for (const file of ['app/api/dodo/addons/route.ts', 'lib/dodo/addon-purchase.ts']) {
+        expect(readSource(file), `${file} names a plan`).not.toMatch(/['"](plus|pro|max)['"]/);
+      }
+      // And the derivation is a read of the product, by name.
+      expect(readSource('app/api/dodo/addons/route.ts')).toContain('retrieveDodoProductAddonIds');
+    });
+  });
+
+  // ── Test 8 ─────────────────────────────────────────────────────────────────
+
+  describe('the product add-on array is read as id strings, not objects', () => {
+    it('refuses rather than offering nothing when Dodo reports objects', async () => {
+      seedDodoTenant(MAX_MONTHLY, 'max');
+      asOwner();
+      // 🔴 PR 307 established the shape: a product's `addons` holds plain id
+      // strings. Comparing objects against strings yields an EMPTY intersection,
+      // which would silently offer nothing at all — a build that looks merely
+      // conservative while it has actually stopped selling. So an entry that is
+      // not a string is an unreadable payload, and unreadable refuses.
+      dodoStub.productsRetrieve.mockResolvedValue({
+        product_id: MAX_MONTHLY,
+        addons: [{ addon_id: ADMIN_SEAT_MONTHLY, quantity: 1 }],
+      });
+
+      const res = await get(T.tenant);
+      expect(res.status).toBe(503);
+      // Not an empty catalogue reported as success.
+      expect((await res.json()).addons).toBeUndefined();
+    });
+
+    it('refuses the purchase path on the same payload, charging nothing', async () => {
+      seedDodoTenant(MAX_MONTHLY, 'max');
+      asOwner();
+      subscriptionHolding(MAX_MONTHLY, []);
+      dodoStub.productsRetrieve.mockResolvedValue({
+        product_id: MAX_MONTHLY,
+        addons: [{ addon_id: ADMIN_SEAT_MONTHLY, quantity: 1 }],
+      });
+
+      const res = await post({ ...buyOneSeat, confirm: true });
+      expect(res.status).toBe(503);
+      expect(dodoStub.previewChangePlan).not.toHaveBeenCalled();
+      expect(dodoStub.changePlan).not.toHaveBeenCalled();
+    });
+
+    it('sells normally when the ids arrive as the strings Dodo really sends', async () => {
+      seedDodoTenant(MAX_MONTHLY, 'max');
+      asOwner();
+      subscriptionHolding(MAX_MONTHLY, []);
+
+      const res = await post({ ...buyOneSeat, confirm: true });
+      expect(res.status).toBe(200);
+      expect(addonsSentTo(dodoStub.changePlan)).toEqual([
+        { addon_id: ADMIN_SEAT_MONTHLY, quantity: 1 },
+      ]);
+    });
+  });
+});
+
+// ── Test 6 — 🔴 THE POST REFUSES TOO, WITH NO OFFER SURFACE IN FRONT OF IT ───
+
+describe('a POST for an add-on not attached to the tenant’s product is refused', () => {
+  it('is refused before any Dodo call that quotes or charges', async () => {
+    seedDodoTenant(PLUS_MONTHLY, 'plus');
+    asOwner();
+    subscriptionHolding(PLUS_MONTHLY, []);
+
+    // An Individual tenant confirming the $59 Unlimited Contacts — a stale tab,
+    // a replay, or a direct call. The GET not listing it is not a gate.
+    const confirmRes = await post({
+      tenantId: T.tenant,
+      addons: [{ addon: 'unlimitedContacts', quantity: 1 }],
+      confirm: true,
+    });
+
+    expect(confirmRes.status).toBe(400);
+    expect((await confirmRes.json()).code).toBe('addon-not-on-your-plan');
+
+    // 🔴 Nothing was quoted and nothing was charged. Whether Dodo would have
+    // rejected the unattached add-on or simply billed for it is undocumented,
+    // and a church's card is not where that gets established.
+    expect(dodoStub.previewChangePlan).not.toHaveBeenCalled();
+    expect(dodoStub.changePlan).not.toHaveBeenCalled();
+  });
+
+  it('refuses the PREVIEW too, so no price is quoted for it either', async () => {
+    seedDodoTenant(PLUS_MONTHLY, 'plus');
+    asOwner();
+    subscriptionHolding(PLUS_MONTHLY, []);
+
+    const res = await post({
+      tenantId: T.tenant,
+      addons: [{ addon: 'contactPack', quantity: 1 }],
+    });
+
+    expect(res.status).toBe(400);
+    expect((await res.json()).code).toBe('addon-not-on-your-plan');
+    expect(dodoStub.previewChangePlan).not.toHaveBeenCalled();
+  });
+
+  it('names the add-on by MEANING in the refusal, never by id', async () => {
+    seedDodoTenant(PLUS_MONTHLY, 'plus');
+    asOwner();
+    subscriptionHolding(PLUS_MONTHLY, []);
+
+    const res = await post({
+      tenantId: T.tenant,
+      addons: [{ addon: 'unlimitedContacts', quantity: 1 }],
+    });
+    const data = await res.json();
+
+    expect(data.addon).toBe('unlimitedContacts');
+    const body = JSON.stringify(data);
+    for (const id of Object.keys(ADDON_NAMES)) {
+      expect(body, `refusal leaked ${id}`).not.toContain(id);
+    }
+  });
+
+  it('reports it on the money path, with the product that could not sell it', async () => {
+    seedDodoTenant(PLUS_MONTHLY, 'plus');
+    asOwner();
+    subscriptionHolding(PLUS_MONTHLY, []);
+
+    await post({ tenantId: T.tenant, addons: [{ addon: 'unlimitedContacts', quantity: 1 }] });
+
+    // An offer surface that produced this request has drifted from what the
+    // tenant's product sells, and that is worth knowing about.
+    const steps = mockCapture.mock.calls.map((call) => call[1]?.step);
+    expect(steps).toContain('dodo-addons-not-on-product');
+    const reported = mockCapture.mock.calls.find(
+      (call) => call[1]?.step === 'dodo-addons-not-on-product',
+    );
+    expect(reported?.[1]?.ids?.productId).toBe(PLUS_MONTHLY);
+    expect(reported?.[1]?.ids?.meaning).toBe('unlimitedContacts');
+  });
+
+  it('🔴 still lets the tenant REMOVE one it already holds', async () => {
+    seedDodoTenant(PLUS_MONTHLY, 'plus');
+    asOwner();
+    // Sold by the very defect this fixes: an Individual tenant holding the pack
+    // its product does not carry. Refusing the removal would trap it in the
+    // charge — so attachment is checked on what is ADDED, never on what is
+    // dropped, and this is the unwind path for anything already sold.
+    subscriptionHolding(PLUS_MONTHLY, [{ addon_id: CONTACT_PACK_MONTHLY, quantity: 2 }]);
+
+    const res = await post({
+      tenantId: T.tenant,
+      addons: [{ addon: 'contactPack', quantity: 0 }],
+      confirm: true,
+    });
+
+    expect(res.status).toBe(200);
+    expect(addonsSentTo(dodoStub.changePlan)).toEqual([]);
+  });
+
+  it('🔴 carries an unattached add-on it holds through an UNRELATED purchase', async () => {
+    seedDodoTenant(PLUS_MONTHLY, 'plus');
+    asOwner();
+    subscriptionHolding(PLUS_MONTHLY, [{ addon_id: UNLIMITED_MONTHLY, quantity: 1 }]);
+
+    // Buying a seat must not silently cancel something the church already pays
+    // for. The attachment check reads the REQUEST, never the fold — stripping
+    // held add-ons here would be a refund-shaped bug with no refund available.
+    const res = await post({ ...buyOneSeat, confirm: true });
+
+    expect(res.status).toBe(200);
+    expect(addonsSentTo(dodoStub.changePlan)).toEqual([
+      { addon_id: UNLIMITED_MONTHLY, quantity: 1 },
+      { addon_id: ADMIN_SEAT_MONTHLY, quantity: 1 },
+    ]);
+  });
+
+  it('refuses when what the product sells cannot be read, rather than assuming it sells everything', async () => {
+    seedDodoTenant(PLUS_MONTHLY, 'plus');
+    asOwner();
+    subscriptionHolding(PLUS_MONTHLY, []);
+    dodoStub.productsRetrieve.mockRejectedValue(new Error('dodo unreachable'));
+
+    const res = await post({ ...buyOneSeat, confirm: true });
+
+    expect(res.status).toBe(503);
+    expect(dodoStub.changePlan).not.toHaveBeenCalled();
+  });
+});
+
+// ── Test 7 ───────────────────────────────────────────────────────────────────
+
+describe('that refusal is distinct from the not-mapped-in-this-environment refusal', () => {
+  it('does not answer a tier problem with the catalogue-gap message', async () => {
+    seedDodoTenant(PLUS_MONTHLY, 'plus');
+    asOwner();
+    subscriptionHolding(PLUS_MONTHLY, []);
+
+    const res = await post({
+      tenantId: T.tenant,
+      addons: [{ addon: 'unlimitedContacts', quantity: 1 }],
+    });
+    const data = await res.json();
+
+    // 🔴 "Not sold on your tier" and "not mapped in this environment" are
+    // different facts with different ways out — an upgrade the owner can make
+    // themselves, versus a catalogue gap only support can close. One message for
+    // both sends every church to the wrong place.
+    expect(data.code).toBe('addon-not-on-your-plan');
+    expect(data.code).not.toBe('addon-not-available');
+    expect(data.error).toMatch(/current plan/i);
+    // The live-Campus copy, which must not appear here.
+    expect(data.error).not.toMatch(/set it up for you/i);
+    expect(data.error).not.toMatch(/not available for purchase yet/i);
+
+    // And they report under different steps, so the two are separable in Sentry
+    // rather than one undifferentiated count.
+    const steps = mockCapture.mock.calls.map((call) => call[1]?.step);
+    expect(steps).toContain('dodo-addons-not-on-product');
+    expect(steps).not.toContain('dodo-addons-unmapped-requested');
+  });
+
+  it('keeps both refusals in the route, as two codes and two steps', () => {
+    /**
+     * ⚠️ THE SECOND REFUSAL HAS NO RUNTIME TRIGGER LEFT, so its distinctness is
+     * pinned as SOURCE rather than exercised. `DODO_TEST_ADDONS` and
+     * `DODO_LIVE_ADDONS` now map all ten ids — the live Campus gap that used to
+     * fire it was closed when its two ids were recorded — so no request in
+     * either environment can reach the unmapped arm today.
+     *
+     * That is exactly when a refusal gets quietly folded into its neighbour
+     * during a later edit: it looks dead. It is not. It is the guard that stops
+     * an add-on this build cannot name from being sold the moment a new meaning
+     * is added to the table with one period's id missing.
+     */
+    const route = readSource('app/api/dodo/addons/route.ts');
+    for (const marker of [
+      'addon-not-on-your-plan',
+      'addon-not-available',
+      'dodo-addons-not-on-product',
+      'dodo-addons-unmapped-requested',
+    ]) {
+      expect(route, `route no longer states ${marker}`).toContain(marker);
+    }
+    // Distinct strings, not one constant used twice.
+    expect(new Set(['addon-not-on-your-plan', 'addon-not-available']).size).toBe(2);
+
+    // And the resolver still answers them as two separate reasons.
+    const resolver = readSource('lib/dodo/addon-purchase.ts');
+    expect(resolver).toContain("reason: 'not-on-product'");
+    expect(resolver).toContain("reason: 'unmapped'");
+  });
+});
+
+// ── Test 9 ───────────────────────────────────────────────────────────────────
+
+describe('an unknown current product still reports its existing coded error', () => {
+  it('refuses both paths before reading what any product sells', async () => {
+    // A product outside this build's catalogue, or none recorded. Resolved by
+    // the shared billing context, which is also where the product id the new
+    // filter reads comes from — so this refusal has to come FIRST or the filter
+    // would be asking Dodo about a product Harvest cannot name.
+    seedDodoTenant('pdt_not_in_this_catalogue', 'plus');
+    asOwner();
+
+    for (const res of [await get(T.tenant), await post(buyOneSeat)]) {
+      expect(res.status).toBe(409);
+      expect((await res.json()).error).toMatch(/could not determine your current plan/i);
+    }
+
+    const steps = mockCapture.mock.calls.map((call) => call[1]?.step);
+    expect(steps).toContain('dodo-addons-unknown-current-product');
+    expect(dodoStub.productsRetrieve).not.toHaveBeenCalled();
+    expect(dodoStub.changePlan).not.toHaveBeenCalled();
   });
 });
