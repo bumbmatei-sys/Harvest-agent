@@ -42,6 +42,20 @@ interface WorkspaceHandoffProps {
    * authoritative name.
    */
   fallbackMinistryName?: string;
+  /**
+   * Called as the payer leaves through the single action below.
+   *
+   * THE-138: when this screen is the confirmation shown BEFORE the apex →
+   * subdomain hop, the hop is being held back until the church has seen it. This
+   * is the acknowledgement that releases it — after which the redirect App.tsx
+   * already had behaves exactly as before. Optional because the post-first-run
+   * handoff (#298) holds nothing back and passes nothing.
+   *
+   * ⚠️ Fires on the way OUT, never on mount: marking the screen "seen" merely
+   * for having rendered would mean a refresh mid-read hands the church straight
+   * to the login prompt this screen exists to explain.
+   */
+  onContinue?: () => void;
 }
 
 /** Soft gold halo, matching the other transitional screens in this funnel. */
@@ -82,7 +96,7 @@ const Halo = () => (
  * place to be wrong about it — on the one screen where the customer is actively
  * thinking about what they were charged.
  */
-const WorkspaceHandoff: React.FC<WorkspaceHandoffProps> = ({ tenantId, fallbackMinistryName }) => {
+const WorkspaceHandoff: React.FC<WorkspaceHandoffProps> = ({ tenantId, fallbackMinistryName, onContinue }) => {
   // This screen has no path of its own — it renders at "/" like the rest of the
   // gate's funnel screens, so the URL cannot classify it and it declares itself.
   // `useForcedLightTheme` is a counter, so the gate asserting the same force
@@ -218,11 +232,20 @@ const WorkspaceHandoff: React.FC<WorkspaceHandoffProps> = ({ tenantId, fallbackM
 
         {/* (4) Why they will be asked to sign in again — stated as expected,
             not as a failure. This is the whole reason the screen exists, and it
-            is claimed ONLY when the destination really is another origin. */}
+            is claimed ONLY when the destination really is another origin.
+
+            🔴 THE-138 named the destination in this sentence. This copy is now
+            also what a church reads BEFORE the hop, not only after first-run
+            setup — it is the last thing said on the origin that took the
+            payment, and the very next thing that happens is the login prompt it
+            describes. "You'll sign in again" with no address is a warning about
+            an unnamed elsewhere; naming it makes the prompt they are about to
+            meet recognisable as the one they were promised. */}
         {crossOrigin ? (
           <p className="mt-5 max-w-[42ch] text-[13px] leading-relaxed" style={{ color: 'var(--text-body, #4A4038)' }}>
             Your ministry has its own web address, so you&rsquo;ll sign in once more when you get
-            there. That&rsquo;s expected — sign-ins don&rsquo;t carry across addresses. Your account is
+            to <strong style={{ color: 'var(--text-heading, #2D2519)' }}>{address}</strong>.
+            That&rsquo;s expected — sign-ins don&rsquo;t carry across addresses. Your account is
             already created and nothing was lost.
           </p>
         ) : (
@@ -247,6 +270,7 @@ const WorkspaceHandoff: React.FC<WorkspaceHandoffProps> = ({ tenantId, fallbackM
                gate re-resolve to 'ready' and hand them the app. */
             <a
               href={crossOrigin ? `https://${address}/admin` : '/admin'}
+              onClick={onContinue}
               className="inline-flex items-center gap-2 rounded-lg font-semibold text-white no-underline"
               style={{
                 background: BRAND, padding: '13px 30px', fontSize: 15,

@@ -8,6 +8,11 @@ import { isSuperAdminEmail } from '../utils/super-admins';
 import { checkRosterAdmin } from '../utils/tenant.utils';
 import { TenantPlan } from '../types/tenant.types';
 import { SIGNUP_CHECKOUT_ENDPOINT, WALLET_FALLBACK_LINE, isReturningFromCheckout, readSignupBillingPeriod, type SignupBillingPeriod } from '../utils/signup-checkout';
+import {
+  PAYMENT_CONFIRMATION_EVENT,
+  completePaymentConfirmation,
+  readPendingPaymentConfirmation,
+} from '../utils/paid-arrival';
 import { useForcedLightTheme } from '../lib/theme-runtime';
 import FirstRunSetup from './FirstRunSetup';
 import WorkspaceHandoff from './WorkspaceHandoff';
@@ -68,6 +73,27 @@ const OnboardingGate: React.FC<{ children: React.ReactNode }> = ({ children }) =
   // just paid the "Complete your payment" button — an invitation to pay twice.
   const onCheckoutSuccess = typeof window !== 'undefined'
     && isReturningFromCheckout(window.location.search);
+
+  /**
+   * 🔴 THE-138. The tenant whose subdomain hop App.tsx is holding back because
+   * this arrival has just paid — i.e. the confirmation is owed HERE, on the
+   * origin that took the payment, while the payer's session still exists.
+   *
+   * Initialised from sessionStorage so a refresh mid-screen re-paints the
+   * confirmation instead of racing the callback into performing the hop; kept in
+   * sync by the event because the decision is made inside an async auth callback
+   * long after this component mounted. Both sources are scoped to a genuine
+   * checkout return by `readPendingPaymentConfirmation`.
+   */
+  const [confirmingTenantId, setConfirmingTenantId] = useState<string | null>(() =>
+    typeof window === 'undefined' ? null : readPendingPaymentConfirmation(window.location.search)
+  );
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const onHeld = () => setConfirmingTenantId(readPendingPaymentConfirmation(window.location.search));
+    window.addEventListener(PAYMENT_CONFIRMATION_EVENT, onHeld);
+    return () => window.removeEventListener(PAYMENT_CONFIRMATION_EVENT, onHeld);
+  }, []);
 
   useEffect(() => {
     let userUnsub: (() => void) | null = null;
@@ -157,6 +183,7 @@ const OnboardingGate: React.FC<{ children: React.ReactNode }> = ({ children }) =
   // Only the states below actually paint a funnel screen.
   const rendersFunnelScreen =
     handoffTenantId !== null ||
+    confirmingTenantId !== null ||
     status === 'paying' ||
     status === 'needs-payment' ||
     status === 'first-run' ||
@@ -203,6 +230,31 @@ const OnboardingGate: React.FC<{ children: React.ReactNode }> = ({ children }) =
   // handoff terminal without having to tear the listeners down.
   if (handoffTenantId) {
     return <WorkspaceHandoff tenantId={handoffTenantId} fallbackMinistryName={signupMinistryName} />;
+  }
+
+  /**
+   * 🔴 THE-138: the payment confirmation, BEFORE the origin hop.
+   *
+   * Checked ahead of `status` for the same reason the handoff above is: by the
+   * time we get here the webhook has already provisioned, so the listeners have
+   * resolved to 'first-run' (a brand-new tenant with an admin) and reading
+   * `status` first would put white-labelling in front of the sentence the payer
+   * is looking for — on the last screen before their session stops existing.
+   *
+   * It renders the SAME component as the post-first-run handoff, deliberately:
+   * this is the cross-origin case #298 already wrote the copy for, and it is now
+   * the honest one — the church really will sign in again at its new address.
+   * `WorkspaceHandoff` decides that from the live host, so nothing here has to
+   * tell it which variant to be.
+   */
+  if (confirmingTenantId) {
+    return (
+      <WorkspaceHandoff
+        tenantId={confirmingTenantId}
+        fallbackMinistryName={signupMinistryName}
+        onContinue={completePaymentConfirmation}
+      />
+    );
   }
 
   if (status === 'ready') return <>{children}</>;
