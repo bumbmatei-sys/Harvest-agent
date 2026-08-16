@@ -19,6 +19,7 @@ import {
   previewDodoPlanChange,
   readHeldDodoAddons,
   retrieveDodoAddon,
+  retrieveDodoProductAddonIds,
   retrieveDodoSubscription,
   type DodoNamedAddon,
   type DodoSubscriptionLike,
@@ -82,12 +83,24 @@ import {
  *    event too, so an add-on bought here arrives there. #319 already taught its
  *    already-applied short-circuit to compare the add-on set, so a purchase with
  *    no tier change is no longer swallowed as a duplicate.
- *  • It never gates on tier. Which add-ons a plan may hold is enforced by Dodo,
- *    on the product (THE-133) — "Contacts +500" is not attached to the
- *    Individual products and "Unlimited Contacts" only to Ministry. That
- *    restriction lives in the payment processor precisely so a Harvest bug
- *    cannot sell Unlimited Contacts to a $49 plan, so this route sends what was
- *    asked for and lets Dodo refuse it.
+ *  • It holds NO TIER TABLE, and never will. Which add-ons a plan may hold is
+ *    decided by Dodo, on the product (THE-133) — "Contacts +500" is not
+ *    attached to the Individual products and "Unlimited Contacts" only to
+ *    Ministry. That restriction lives in the payment processor precisely so a
+ *    Harvest bug cannot sell Unlimited Contacts to a $49 plan.
+ *
+ *    🔴 BUT IT IS READ, NOT ASSUMED (THE-160). The original reading of the rule
+ *    above was that this route should send whatever was asked for and let Dodo
+ *    refuse it. That is what shipped, and it was wrong in both directions: the
+ *    offer list was filtered by BILLING PERIOD alone, so an Individual tenant
+ *    was shown — and could click — Contacts +500 and the $59 Unlimited
+ *    Contacts, and the POST had nothing that would stop the confirm. Dodo's
+ *    change-plan API documents no rejection for an add-on that is not attached
+ *    to the product (its documented refusals are a pending plan change, and an
+ *    inactive or on-demand subscription), so "let Dodo refuse it" was resting a
+ *    money guard on behaviour nobody had established. Availability is now
+ *    DERIVED, on both paths, from the tenant's own product's `addons` array —
+ *    still Dodo's answer, just actually asked for.
  *  • It never accepts or emits a Dodo add-on id. The wire vocabulary is the five
  *    MEANINGS; see `@/lib/dodo/addon-purchase`.
  */
@@ -157,13 +170,22 @@ function readChanges(raw: unknown): DodoAddonChange[] | string {
 }
 
 /**
- * GET — the add-ons this build can sell, named and priced by Dodo.
+ * GET — the add-ons THIS TENANT can buy, named and priced by Dodo.
  *
- * 🔴 THE LIST IS DERIVED FROM THE ACTIVE ADD-ON TABLE, never written out. An
- * add-on with no id in the running environment is absent from this response, so
- * it cannot be rendered and cannot be bought. Live Campus is that case today:
- * its two ids were never recorded, and until they are, Campus is simply not on
- * this list. Filling them in `catalogue.ts` makes it appear with no other edit.
+ * 🔴 THE LIST IS DERIVED, never written out, and from TWO sources that are both
+ * Dodo's:
+ *
+ *  • the active add-on table, so an add-on with no id in the running
+ *    environment is absent from this response and cannot be rendered or bought
+ *    — recording its ids in `catalogue.ts` makes it appear with no other edit;
+ *  • the tenant's OWN product's `addons` array, so an add-on Dodo does not
+ *    attach to the tier this church is on is absent too (THE-160).
+ *
+ * ⚠️ THE SECOND ONE IS THE FIX. This filtered by billing period alone, which
+ * offered every monthly-mapped add-on to every monthly tenant — an Individual
+ * tenant was shown Contacts +500 and the $59 Unlimited Contacts, neither of
+ * which Dodo attaches to the Individual products. There is still no tier table
+ * anywhere in Harvest: the answer is read from the processor that owns it.
  *
  * Prices come from Dodo on every request and are never stored in this repo.
  */
@@ -188,7 +210,18 @@ export async function GET(request: NextRequest) {
     });
     if (context instanceof NextResponse) return context;
 
-    const offerable = await describeOfferableAddons(context.period, retrieveDodoAddon);
+    // 🔴 ONE PRODUCT READ, and it pays for itself. This path already spends a
+    // Dodo call per add-on to name and price it, and the intersection is taken
+    // BEFORE those — so a tenant offered three of five now costs one read plus
+    // three instead of five, and the response stops advertising two add-ons its
+    // tier cannot buy. A failure here is caught below and answers 503: showing
+    // nothing is recoverable, showing everything is what THE-160 was.
+    const offeredByProduct = await retrieveDodoProductAddonIds(context.productId);
+    const offerable = await describeOfferableAddons(
+      context.period,
+      retrieveDodoAddon,
+      offeredByProduct,
+    );
     return NextResponse.json({
       billing: context.period,
       plan: context.plan,
@@ -289,6 +322,40 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // ── 🔴 WHAT THIS TENANT'S OWN PRODUCT ACTUALLY SELLS (THE-160). ──────────
+    //
+    // The GET not showing an add-on is not a gate. A stale tab rendered before
+    // an downgrade, a replayed request, or a direct call to this route all
+    // arrive here with no offer surface in front of them, so the refusal has to
+    // live on the path that charges.
+    //
+    // ⚠️ READ, NOT ASSUMED, and read from Dodo rather than from anything in
+    // this repo — availability is the processor's answer (THE-133). It is also
+    // read BEFORE the request is resolved into an `addons` array, so an add-on
+    // the tier does not sell cannot reach `previewChangePlan` or `changePlan`
+    // at all: nothing is quoted and nothing is charged.
+    //
+    // A failure REFUSES rather than proceeding. "Could not read what this
+    // product sells" is not "it sells everything", and resolving that
+    // uncertainty by charging is the direction Harvest cannot undo — it issues
+    // no refunds. One extra read on this path is the price of the guarantee;
+    // `change-plan` already spends the same read for its carry-over.
+    let offeredByProduct: ReadonlySet<string>;
+    try {
+      offeredByProduct = await retrieveDodoProductAddonIds(context.productId);
+    } catch (productErr) {
+      captureMoneyPathError(productErr, {
+        step: 'dodo-addons-product-read',
+        level: 'error',
+        tenantId: ownerOrErr.tenantId,
+        ids: { subscriptionId: context.subscriptionId, productId: context.productId },
+      });
+      return NextResponse.json(
+        { error: 'We could not check which add-ons your plan includes just now, so nothing was changed. Please try again in a few minutes.' },
+        { status: 503 },
+      );
+    }
+
     // ── The set to send, computed ONCE for the preview and the confirm. ──────
     //
     // 🔴 A FAILURE TO READ WHAT IS HELD REFUSES. "No add-ons" and "could not
@@ -297,7 +364,12 @@ export async function POST(request: NextRequest) {
     // of a network error. `readHeldDodoAddons` throws rather than guessing.
     let resolved;
     try {
-      resolved = resolveDesiredAddons(readHeldDodoAddons(subscription), changes, context.period);
+      resolved = resolveDesiredAddons(
+        readHeldDodoAddons(subscription),
+        changes,
+        context.period,
+        offeredByProduct,
+      );
     } catch (readErr) {
       captureMoneyPathError(readErr, {
         step: 'dodo-addons-read-held',
@@ -317,6 +389,57 @@ export async function POST(request: NextRequest) {
           {
             error: `You can buy at most ${MAX_ADDON_QUANTITY} of one add-on here. Please contact support if you need more.`,
             code: 'addon-quantity-too-large',
+          },
+          { status: 400 },
+        );
+      }
+      // ── 🔴 NOT SOLD ON THIS TIER — THE-160's refusal. ──────────────────────
+      //
+      // ⚠️ DELIBERATELY NOT THE SAME REFUSAL AS THE ONE BELOW, and the two must
+      // never be merged. They are different facts with different ways out:
+      //
+      //   this one — Dodo does not attach that add-on to the product this
+      //     church is on. Nothing is broken; the tier ladder is working. The
+      //     way out is a higher plan, and support cannot shortcut it.
+      //   below    — this build has no id for that add-on in this environment.
+      //     Nothing is wrong with the church's plan at all; the catalogue has a
+      //     gap, and support genuinely can set it up.
+      //
+      // One message for both would send every church to the wrong place: an
+      // Individual owner told to contact support about an upgrade they could
+      // make themselves, and a church hitting a real catalogue gap told to buy
+      // a bigger plan that would not help.
+      //
+      // Reported at `warning` for the same reason as below — an offer surface
+      // that produced this request has drifted from what the tenant's product
+      // sells — and carrying the product id, because "which tier was this" is
+      // the first question anyone reading the report will have.
+      if (resolved.reason === 'not-on-product') {
+        captureMoneyPathError(
+          new Error(
+            `[dodo] add-on "${resolved.meaning}" was requested but is not attached to product ` +
+              `${context.productId}; it is not sold on this tier and the request was refused ` +
+              'before any charge.',
+          ),
+          {
+            step: 'dodo-addons-not-on-product',
+            level: 'warning',
+            tenantId: ownerOrErr.tenantId,
+            ids: {
+              subscriptionId: context.subscriptionId,
+              productId: context.productId,
+              meaning: resolved.meaning,
+            },
+          },
+        );
+        return NextResponse.json(
+          {
+            error: 'That add-on is not available on your current plan. Moving to a higher plan is how to add it — or contact support and we will help you choose.',
+            code: 'addon-not-on-your-plan',
+            // The MEANING, which is the wire's own vocabulary for an add-on and
+            // what the request named it — never an id. Returned so a surface can
+            // mark the row the owner clicked rather than guess.
+            addon: resolved.meaning,
           },
           { status: 400 },
         );

@@ -52,6 +52,104 @@ export const PAYMENT_CONFIRMATION_PENDING_KEY = 'harvest_payment_confirmation';
 export const PAYMENT_CONFIRMATION_SEEN_KEY = 'harvest_payment_confirmation_seen';
 
 /**
+ * THE-138 part 2 — how "the confirmation was already given" CROSSES the origin.
+ *
+ * 🔴 WHY A SECOND MECHANISM EXISTS AT ALL. Everything above lives in
+ * sessionStorage, which is per-origin. That is exactly right for HOLDING the
+ * hop — the hold is a fact about one origin, decided and consumed there. It
+ * cannot work for REMEMBERING the hop was announced, because that fact has to
+ * survive crossing the very boundary the storage is scoped to. `SEEN` is
+ * written on the apex; `<tenant>.theharvest.app` is a different origin and
+ * simply does not have it. So the destination could not tell an announced
+ * arrival from an unannounced one, and #298's post-first-run confirmation
+ * fired again — the church saw "Your payment went through." twice.
+ *
+ * The hop itself is a full URL assignment (an `<a href>` out of the
+ * confirmation, or `window.location.href` in App.tsx's callback), so a query
+ * parameter DOES survive it — unlike the in-app `navigate()` that #310 had to
+ * build a sessionStorage lane around.
+ *
+ * ⚠️ THIS PARAMETER IS USER-WRITABLE AND IS TREATED AS A HINT, NOTHING MORE.
+ * Its entire power is to SUPPRESS ONE REASSURANCE SCREEN. It grants no access,
+ * carries no identity, names no tenant, is never read as authorisation, and is
+ * not consulted by any gate, role check or route. Forging it costs the forger a
+ * screen they were welcome to skip and gets them nothing else — every door in
+ * this app is still Firebase auth, the gate's own status machine and the
+ * Firestore rules. If this value ever needs to be trusted for anything beyond
+ * hiding a screen, it is the wrong mechanism and must be replaced, not widened.
+ */
+export const PAYMENT_CONFIRMATION_HANDOFF_PARAM = 'payment_confirmed';
+
+/**
+ * The one value the parameter is honoured for.
+ *
+ * Compared exactly rather than tested for presence, so a stray
+ * `?payment_confirmed=` (an empty value is what a mangled URL usually produces)
+ * fails CLOSED — i.e. shows the confirmation — which is the direction this
+ * whole module fails in: a duplicate is annoying, a missing confirmation after
+ * a charge is what produces a chargeback.
+ */
+const PAYMENT_CONFIRMATION_HANDOFF_VALUE = '1';
+
+/**
+ * The destination URL, carrying the acknowledgement across the origin hop.
+ *
+ * Called only where the confirmation demonstrably HAS been given: the action on
+ * the screen itself (the payer is clicking through it right now) and the
+ * resumed hop in App.tsx's callback (`SEEN` is set, which only
+ * `completePaymentConfirmation` can do). Never called speculatively — a church
+ * that has not seen the screen must arrive without this, or the destination
+ * suppresses a confirmation it never gave.
+ */
+export function withPaymentConfirmationHandoff(destination: string): string {
+  const separator = destination.includes('?') ? '&' : '?';
+  return `${destination}${separator}${PAYMENT_CONFIRMATION_HANDOFF_PARAM}=${PAYMENT_CONFIRMATION_HANDOFF_VALUE}`;
+}
+
+/**
+ * Land the hint in the DESTINATION origin's own storage, on arrival.
+ *
+ * 🔴 WHY IT IS NOT SIMPLY READ OFF THE URL WHERE IT MATTERS. The church arrives
+ * at `<tenant>.theharvest.app/admin?…` NOT signed in on that origin, so
+ * App.tsx's callback immediately does `navigate('/auth')` — a react-router
+ * navigation, which DROPS THE QUERY STRING (the same drop #310's lane exists to
+ * survive). By the time first-run setup finishes, minutes and one sign-in
+ * later, the parameter is long gone. Capturing it into this origin's
+ * sessionStorage the moment the document loads is what makes it outlive that,
+ * and a refresh mid-setup with it.
+ *
+ * It writes the SAME key the apex writes, because it is the same fact —
+ * "this browser has been shown, and acknowledged, the payment confirmation".
+ * `hasSeenPaymentConfirmation()` then answers correctly on BOTH origins with no
+ * second vocabulary.
+ *
+ * ⚠️ Only on a tenant subdomain, and the caller resolves that with the SHARED
+ * host resolver rather than this module parsing a hostname (a fifth inline
+ * parse is how the four existing ones drift apart). The hint is an INBOUND
+ * signal for a destination: the apex is where this fact is created, never
+ * imported. Scoping it that way means a forged parameter on the apex cannot
+ * suppress the apex confirmation, and keeps `SEEN` on the apex meaning strictly
+ * "the payer clicked through the screen" — which is what App.tsx's resumed hop
+ * relies on when it decides whether to carry the hint onward.
+ *
+ * ⚠️ Writes no tenant state, exactly like everything else here.
+ */
+export function capturePaymentConfirmationHandoff(args: {
+  search: string;
+  hostTenantId: string | null;
+}): void {
+  if (args.hostTenantId === null) return;
+  const params = new URLSearchParams(args.search);
+  if (params.get(PAYMENT_CONFIRMATION_HANDOFF_PARAM) !== PAYMENT_CONFIRMATION_HANDOFF_VALUE) return;
+  try {
+    sessionStorage.setItem(PAYMENT_CONFIRMATION_SEEN_KEY, 'true');
+  } catch {
+    // Storage unavailable → the destination falls back to showing the
+    // confirmation once more, which is the safe direction.
+  }
+}
+
+/**
  * How App.tsx tells the gate it has held a hop.
  *
  * The decision is made inside an async auth callback, long after the gate has

@@ -424,9 +424,13 @@ describe('getFeatureMinPlan / FEATURE_MIN_PLAN (derived)', () => {
     expect(getFeatureMinPlan('accounting')).toBe('max');
   });
 
-  it('puts CRM on Small Team, not Ministry', () => {
-    expect(getFeatureMinPlan('crm')).toBe('pro');
-    expect(FEATURE_MIN_PLAN.crm).toBe('Small Team');
+  it('puts CRM on Individual — the cheapest tier there is', () => {
+    // THE-161 put CRM on every tier. The label is DERIVED, so the upgrade copy
+    // followed the cell with no literal edited anywhere; these two lines are
+    // what prove it went all the way down rather than one step.
+    expect(getFeatureMinPlan('crm')).toBe('plus');
+    expect(FEATURE_MIN_PLAN.crm).toBe('Individual');
+    expect(FEATURE_MIN_PLAN.crm).not.toBe('Ministry');
   });
 
   it('puts tax receipts on Ministry (max)', () => {
@@ -644,8 +648,13 @@ describe('PLATFORM_FEE_MAP — donations are free on every tier', () => {
   );
 });
 
-describe('five features moved from the top tier to Small Team (pro)', () => {
-  const MOVED = ['checkInSystem', 'livestream', 'sermonNotes', 'docs', 'crm'] as const;
+describe('four features moved from the top tier to Small Team (pro)', () => {
+  // Was five. `crm` moved a second time in THE-161 — past Small Team, all the
+  // way to Individual — so Small Team is no longer its floor and it is asserted
+  // in its own file (plan-features.crm-individual.test.ts) instead. The four
+  // below are untouched by that move, and the "stays locked on Individual"
+  // assertion is precisely what stops one of them riding along with it.
+  const MOVED = ['checkInSystem', 'livestream', 'sermonNotes', 'docs'] as const;
 
   it.each(MOVED)('%s is unlocked on Small Team (pro)', (key) => {
     expect(getPlanFeatures('pro')[key]).toBe(true);
@@ -659,7 +668,7 @@ describe('five features moved from the top tier to Small Team (pro)', () => {
     expect(getPlanFeatures('max')[key]).toBe(true);
   });
 
-  it('moved these five and nothing else off top-tier exclusivity', () => {
+  it('moved these four and nothing else off top-tier exclusivity', () => {
     // Every other cell that was max-and-above before the move must still be
     // locked on pro. A sixth feature riding along fails here.
     //
@@ -686,15 +695,15 @@ describe('five features moved from the top tier to Small Team (pro)', () => {
     expect(f.maxChurches).toBe(1);
   });
 
-  it('moves the derived upsell labels down with them — CRM and Notes now say Small Team', () => {
+  it('moves the derived upsell label down with it — Notes now says Small Team', () => {
     // The whole point of deriving FEATURE_MIN_PLAN (#242): flipping a matrix cell
-    // moves the upgrade copy with no edit to any label. `crm` and `docs` are the
-    // two moved features that have a FeatureKey.
-    expect(getFeatureMinPlan('crm')).toBe('pro');
-    expect(FEATURE_MIN_PLAN.crm).toBe('Small Team');
+    // moves the upgrade copy with no edit to any label. `docs` is the moved
+    // feature that has a FeatureKey. (`crm` had one too and has since moved
+    // again, to Individual — that move needed no edit here either, which is the
+    // same point made twice.)
     expect(getFeatureMinPlan('docs')).toBe('pro');
     expect(FEATURE_MIN_PLAN.docs).toBe('Small Team');
-    expect(FEATURE_MIN_PLAN.crm).not.toBe('Ministry');
+    expect(FEATURE_MIN_PLAN.docs).not.toBe('Ministry');
   });
 
   it('derives a Small Team label for the three moved cells that have no FeatureKey', () => {
