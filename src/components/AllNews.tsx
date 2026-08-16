@@ -10,6 +10,7 @@ import { sortByTime } from '../utils/query-helpers';
 import { isSuperAdminEmail } from '../utils/super-admins';
 import { checkRosterAdmin } from '../utils/tenant.utils';
 import { getOrCreateDm } from '../lib/dm';
+import { usePlanGate } from '../hooks/usePlanGate';
 import KebabMenu from './KebabMenu';
 import { FeedEmbedCard, type PostEmbed } from './EmbedCard';
 import { ImageLightbox, PostImageGrid, postImages } from './feed/PostMedia';
@@ -89,6 +90,9 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages }) => {
   const [currentUserRole, setCurrentUserRole] = useState('user');
   const [deletePostId, setDeletePostId] = useState<string | null>(null);
   const [dmBusyId, setDmBusyId] = useState<string | null>(null);
+  // Same gate as NewsTab's copy of this menu: "Message privately" creates a DM
+  // (a Community Groups write) and jumps to the Ministry-only Messages tab.
+  const canUseCommunityGroups = usePlanGate('community_chat');
 
   // Lightbox: the images to page through + which one is open.
   const [lightbox, setLightbox] = useState<{ images: string[]; index: number } | null>(null);
@@ -683,7 +687,7 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages }) => {
                               ariaLabel="Comment options"
                               size={13}
                               items={[
-                                ...(canManage && auth.currentUser && comment.authorId !== auth.currentUser.uid ? [{
+                                ...(canManage && canUseCommunityGroups && auth.currentUser && comment.authorId !== auth.currentUser.uid ? [{
                                   label: 'Message privately',
                                   onClick: () => handleMessagePrivately(comment),
                                   disabled: dmBusyId === comment.id,

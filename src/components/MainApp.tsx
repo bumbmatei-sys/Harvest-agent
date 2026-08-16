@@ -17,6 +17,7 @@ import AIChat from './AIChat';
 import UserMessages from './UserMessages';
 import ErrorBoundary from './ErrorBoundary';
 import BiblePage from './BiblePage';
+import PlanUpgradeScreen from './PlanUpgradeScreen';
 import ReferralTracker from './ReferralTracker';
 import { getPlanFeatures } from '../utils/plan-features';
 import { hasMemberVisibleCourses } from '../utils/member-courses';
@@ -107,6 +108,23 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
   const resolvedPlan = tenantPlan ?? ctxTenantPlan ?? null;
   const features = isMainSite ? null : (resolvedPlan ? getPlanFeatures(resolvedPlan) : null);
 
+  // Community Groups — the private channels + DMs behind the Messages tab — is
+  // Ministry (max) only, and the member app used to ship it to every tier: the
+  // Messages entry was an unconditional literal in `topTabs`, so a $49
+  // Individual church and a $99 Small Team church both got a feature sold on
+  // the $199 plan.
+  //
+  // Same shape as the blog / aiChat / map gates around it, and deliberately NOT
+  // usePlanGate(): that hook answers `true` while the plan is still loading,
+  // which is the right default for a feature being wrongly WITHHELD and the
+  // wrong one here. `features` is null until the tenant doc has resolved, so an
+  // unknown plan reads as "no", never as "yes".
+  //
+  // Scope note: this is Messages only. Prayer is a public prayer wall, the news
+  // feed's `community_posts` is the church feed, and Map has its own `map`
+  // flag — none of them is communityGroups, and none of them is touched.
+  const hasCommunityGroups = isMainSite || (isPlanReady && features?.communityGroups === true);
+
   // 'loading' means we haven't fetched yet — hide tab until we know.
   // 'empty' means 0 member-visible courses — hide tab.
   // 'present' means at least 1 course exists — show tab.
@@ -150,7 +168,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
     (isMainSite || (isPlanReady && features?.blog === true)) && { id: 'blog', label: 'Blog' },
     // Only include Courses tab once we know at least 1 course exists
     coursesStatus === 'present' && { id: 'courses', label: 'Courses' },
-    { id: 'messages', label: 'Messages' },
+    hasCommunityGroups && { id: 'messages', label: 'Messages' },  // Ministry (max) only
     { id: 'prayer', label: 'Prayer' },        // all plans, all users
     { id: 'partner', label: 'Give' },
   ].filter(Boolean) as { id: string; label: string }[];
@@ -602,10 +620,25 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
                   {activeTopTab === 'courses' && (
                     <CourseExperience onOpenCourse={(courseId, lessonId) => setFullScreenView({type: 'course', data: {courseId, lessonId}})} />
                   )}
+                  {/* The ROUTE, gated as well as the nav entry. Dropping Messages
+                      from `topTabs` alone would only hide it: the tab can still be
+                      selected without the strip — the feed's "Message privately"
+                      jump, a swipe, or any state that survives the plan resolving —
+                      and UserMessages would mount and open its channel/DM listeners
+                      anyway. Gating here is what actually refuses it. */}
                   {activeTopTab === 'messages' && (
-                    <div className="-m-4 lg:-mx-10 xl:-mx-12 h-full lg:h-[calc(100%+2rem)]">
-                      <UserMessages embedded onBack={() => {}} />
-                    </div>
+                    hasCommunityGroups ? (
+                      <div className="-m-4 lg:-mx-10 xl:-mx-12 h-full lg:h-[calc(100%+2rem)]">
+                        <UserMessages embedded onBack={() => {}} />
+                      </div>
+                    ) : (
+                      <PlanUpgradeScreen
+                        featureName="Community Groups"
+                        featureKey="community_chat"
+                        audience="member"
+                        onBack={() => setActiveTopTab('news')}
+                      />
+                    )
                   )}
                   {activeTopTab === 'prayer' && (
                     <PrayerWall />
