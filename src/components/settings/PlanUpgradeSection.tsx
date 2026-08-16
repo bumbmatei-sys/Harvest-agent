@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useRef, useCallback } from 'react';
-import { Zap, Crown, Star, Building2 } from 'lucide-react';
+import { Zap, Crown, Building2, Check } from 'lucide-react';
 import { TenantPlan } from '../../types/tenant.types';
 import {
   getPlanFeatures,
@@ -8,8 +8,8 @@ import {
   PLAN_DISPLAY_NAMES,
   PLAN_ORDER,
   PLAN_PRICING,
-  AI_ASSISTANT_ADDON_PRICING,
   AI_TELEGRAM_ASSISTANT_ENABLED,
+  UNLIMITED_CAP,
   formatPlanPrice,
   annualMonthlyEquivalent,
   ANNUAL_BILLED_MONTHS,
@@ -25,8 +25,8 @@ interface PlanUpgradeSectionProps {
   tenantId?: string;
   email?: string;
   /**
-   * Hide the plan cards + comparison table (there's nothing to upgrade to on the
-   * top tier). The "Manage Subscription" / cancel action stays available.
+   * Hide the plan cards (there's nothing to upgrade to on the top tier). The
+   * "Manage Subscription" / cancel action stays available.
    */
   hideUpgrade?: boolean;
   /**
@@ -57,37 +57,59 @@ const PLAN_META = Object.fromEntries(PLANS.map((p) => [p.id, p])) as Record<
 >;
 
 /**
- * A row in the plan-comparison table.
+ * One matrix cell, and the name to print for it.
  *
- * Most rows read a `PlanFeatures` cell straight off the matrix (`key`). A row
- * with `staticValue` instead is one the matrix does not carry — currently only
- * the platform donation fee, which is a Stripe concern (PLATFORM_FEE_MAP in
- * src/lib/stripe-connect.ts). That module used to also hold the server-only
- * STRIPE_PRICE_* env reads, which is why the fee is written out by hand here
- * rather than imported into this browser bundle. The split moved those reads to
- * billing.ts, so the technical blocker is gone — wiring the row to the map is
- * now possible, just not done here. See DONATION_FEE_ROW below.
+ * 🔴 THE ONLY COPY IN THIS FILE IS A NAME PER CELL — never a tier's contents.
+ * Every card walks this one list and prints the cells that ITS OWN
+ * `getPlanFeatures(planId)` row unlocks, so flipping a cell in the matrix moves
+ * the card with no edit here. That is the entire point. A hand-written "what
+ * Individual includes" list is how this product once advertised "keeps 100%"
+ * against a real 2.5% fee and how a `$59/mo` figure outlived a reprice; a third
+ * standing copy of the tier contents is exactly what must not reappear.
+ *
+ * `count` marks a NUMERIC cell: [singular, plural] nouns printed against the
+ * tier's own number ("150 contacts", "1 church"). Everything else is a boolean
+ * cell, printed as `label` when the tier has it and left out when it does not.
+ *
+ * The platform donation fee is deliberately NOT here. It was the one row the
+ * deleted comparison table hardcoded (`staticValue: '0%'`), because
+ * PLATFORM_FEE_MAP (src/lib/stripe-connect.ts) is server-only and
+ * `getPlanFeatures` does not carry the fee at all — so on a card that derives
+ * every line it has nowhere to come from. That is a gap in the feature matrix,
+ * not a string to retype here.
  */
-type ComparisonRow = {
-  label: string;
-  key?: keyof PlanFeatures;
-  staticValue?: string;
-  format?: (v: any) => string;
+type CardFeature = {
+  key: keyof PlanFeatures;
+  /** Boolean cell — the line printed when the tier has it. */
+  label?: string;
+  /** Numeric cell — [singular, plural] noun printed against the tier's count. */
+  count?: readonly [string, string];
 };
 
-const FEATURE_COMPARISON: ComparisonRow[] = [
+/**
+ * Everything a card can say, in the order it says it: capacity first — the
+ * numbers a church sizes itself against — then capabilities.
+ *
+ * These are the same cells the deleted comparison table named, plus
+ * `maxContacts`. That one is new to this surface and is here deliberately: CRM
+ * is on every tier now, and the contact cap is what scopes the claim.
+ * Advertising the roster without the number it stops at is the overselling this
+ * file has been burned by twice. It derives like every other line.
+ */
+const CARD_FEATURES: CardFeature[] = [
+  { key: 'maxContacts', count: ['contact', 'contacts'] },
+  { key: 'maxAdmins', count: ['admin account', 'admin accounts'] },
+  { key: 'maxCourses', count: ['course', 'courses'] },
+  { key: 'maxChurches', count: ['church', 'churches'] },
+  { key: 'aiAssistant', count: ['AI Assistant', 'AI Assistants'] },
   { key: 'blog', label: 'Blog' },
   { key: 'pwaApp', label: 'Mobile App (PWA)' },
   { key: 'aiChat', label: 'AI Chat' },
   { key: 'aiKnowledge', label: 'AI Knowledge Base' },
   { key: 'map', label: 'Church Map' },
   { key: 'newsletterAutomation', label: 'Newsletter' },
-  { key: 'maxCourses', label: 'Courses', format: (v) => v === -1 ? 'Unlimited' : `${v}` },
-  { key: 'maxAdmins', label: 'Admin Accounts', format: (v) => v === -1 ? 'Unlimited' : `${v}` },
   { key: 'customBranding', label: 'Custom Branding' },
   { key: 'customDomain', label: 'Custom Domain' },
-  { key: 'aiAssistant', label: 'AI Assistant', format: (v) => v === -1 ? 'Unlimited' : v === 0 ? '—' : `${v}` },
-  { key: 'maxChurches', label: 'Churches', format: (v) => v === -1 ? 'Unlimited' : `${v}` },
   { key: 'fundraising', label: 'Fundraising' },
   { key: 'eventRegistration', label: 'Event Registration' },
   { key: 'docs', label: 'Notes' },
@@ -102,48 +124,33 @@ const FEATURE_COMPARISON: ComparisonRow[] = [
   { key: 'sermonNotes', label: 'Sermon Notes → Livestream' },
   { key: 'automatedBlog', label: 'Automated Blog Articles' },
   { key: 'communityGroups', label: 'Community Groups' },
-  // Phrased as the COST, not as what's left over. The old row was "Donation
-  // Retention — 100%", a hand-maintained complement of the real fee that once
-  // advertised "keeps 100%" while Stripe charged 2.5%. Stating the fee removes
-  // the arithmetic and the room to be wrong.
-  //
-  // Hardcoded '0%' because PLATFORM_FEE_MAP is server-only (see ComparisonRow).
-  // It is not an unguarded copy: platform-fee-map.test.ts pins the map to
-  // { plus: 0, pro: 0, max: 0 } and asserts a real donation on every tier
-  // computes an application_fee of 0, so this string cannot quietly become a
-  // lie the way "Donation Retention" did.
-  { label: 'Donation fee', staticValue: '0%' },
 ];
 
+// While the AI Telegram Assistant is hidden, drop its line from every card.
+// Flip AI_TELEGRAM_ASSISTANT_ENABLED to bring it back.
+const VISIBLE_CARD_FEATURES = AI_TELEGRAM_ASSISTANT_ENABLED
+  ? CARD_FEATURES
+  : CARD_FEATURES.filter((f) => f.key !== 'aiAssistant');
+
 /**
- * Resolve one comparison cell for a plan: what to print, and whether to print
- * it as a positive (green) value.
+ * The line this tier's card prints for one cell, or `null` when the tier does
+ * not include it and the card leaves it out entirely.
  *
- * One definition shared by the plan cards and the full comparison table — the
- * two used to carry byte-identical copies of this ternary chain.
+ * "Includes" is `hasFeature`'s definition rather than a second one: booleans by
+ * their value, numbers by being non-zero. `features` arrives already resolved so
+ * a card reads the matrix ONCE rather than once per line.
  */
-function comparisonCell(row: ComparisonRow, plan: TenantPlan): { display: string; isPositive: boolean } {
-  if (row.staticValue !== undefined) {
-    return { display: row.staticValue, isPositive: true };
+function cardLine(feature: CardFeature, features: PlanFeatures): string | null {
+  const value = features[feature.key];
+  if (feature.count) {
+    const [one, many] = feature.count;
+    const n = value as number;
+    if (n === 0) return null;
+    if (n === UNLIMITED_CAP) return `Unlimited ${many}`;
+    return `${n.toLocaleString()} ${n === 1 ? one : many}`;
   }
-  const value = getPlanFeatures(plan)[row.key!];
-  const isPositive =
-    row.key === 'maxChurches' ? (value as number) !== 1
-    : row.key === 'aiAssistant' ? true
-    : Boolean(value);
-  return { display: row.format ? row.format(value) : (value ? '✓' : '✗'), isPositive };
+  return value ? feature.label! : null;
 }
-
-// While the AI Telegram Assistant is hidden, drop its comparison row everywhere.
-// Flip AI_TELEGRAM_ASSISTANT_ENABLED to bring the row (and footnote below) back.
-const VISIBLE_FEATURES = AI_TELEGRAM_ASSISTANT_ENABLED
-  ? FEATURE_COMPARISON
-  : FEATURE_COMPARISON.filter((r) => r.key !== 'aiAssistant');
-
-
-// No features are "coming soon" right now — Automated Blog Articles shipped on
-// Ministry (max). Add entries here to re-enable the table's Coming Soon row.
-const SOON_FEATURES: { label: string; plans: TenantPlan[] }[] = [];
 
 const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, tenantId, email, hideUpgrade, processor }) => {
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly');
@@ -321,7 +328,9 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
           return (
             <div
               key={planId}
-              className={`relative bg-surface-raised rounded-2xl border-2 p-5 transition-all min-w-[280px] max-w-[320px] flex-shrink-0 snap-center ${
+              data-testid="plan-card"
+              data-plan={planId}
+              className={`relative bg-surface-raised rounded-2xl border-2 p-5 transition-all min-w-[280px] max-w-[320px] flex-shrink-0 snap-center flex flex-col ${
                 isCurrent ? 'border-gold shadow-lg' : 'border-line-subtle hover:border-line'
               }`}
             >
@@ -331,7 +340,10 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
                 </div>
               )}
               {isCurrent && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-green-500 text-white text-xs font-bold rounded-full">
+                <div
+                  data-testid="plan-card-current"
+                  className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-green-500 text-white text-xs font-bold rounded-full"
+                >
                   Current
                 </div>
               )}
@@ -344,7 +356,7 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
                 {billingPeriod === 'yearly' && (
                   <p className="text-sm text-faint">${yearlyMonthlyEquivalent}/mo billed annually</p>
                 )}
-                <p className="text-2xl font-bold text-strong mt-1">
+                <p data-testid="plan-card-price" className="text-2xl font-bold text-strong mt-1">
                   {displayPrice}
                 </p>
                 {billingPeriod === 'yearly' && (
@@ -352,19 +364,30 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
                 )}
               </div>
 
-              <div className="space-y-2 mb-5">
-                {VISIBLE_FEATURES.map((row) => {
-                  const { display, isPositive } = comparisonCell(row, plan.id);
-                  return (
-                    <div key={row.label} className="flex items-center justify-between text-sm">
-                      <span className="text-body">{row.label}</span>
-                      <span className={isPositive ? 'text-green-600 font-medium' : 'text-faint'}>{display}</span>
-                    </div>
-                  );
-                })}
+              {/* What this tier includes. Every line is derived from `features`
+                  above — the card names no feature the matrix did not hand it,
+                  and omits what the tier does not have rather than printing a
+                  row of ✗ against it. */}
+              <div className="mb-5 flex-1">
+                <ul data-testid="plan-card-features" data-plan={planId} className="space-y-2">
+                  {VISIBLE_CARD_FEATURES.map((feature) => {
+                    const line = cardLine(feature, features);
+                    if (!line) return null;
+                    return (
+                      <li
+                        key={feature.key}
+                        data-feature={feature.key}
+                        className="flex items-start gap-2 text-sm"
+                      >
+                        <Check size={16} aria-hidden="true" className="text-green-600 shrink-0 mt-0.5" />
+                        <span className="text-body">{line}</span>
+                      </li>
+                    );
+                  })}
+                </ul>
 
                 {plan.comingSoon.length > 0 && (
-                  <div className="pt-2 mt-1 border-t border-amber-100">
+                  <div className="pt-2 mt-2 border-t border-amber-100">
                     <p className="text-[10px] font-semibold text-amber-500 uppercase tracking-wider mb-1.5">Coming Soon</p>
                     {plan.comingSoon.map((item) => (
                       <div key={item} className="flex items-center justify-between text-sm">
@@ -421,62 +444,11 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
         ))}
       </div>
 
-      {/* Full Feature Comparison Table */}
-      <div className="bg-surface-raised rounded-2xl border border-line-subtle p-6 mt-6">
-        <h3 className="font-display text-lg font-bold text-strong mb-4">Full Feature Comparison</h3>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-line-subtle">
-                <th className="text-left py-3 px-3 text-muted font-medium">Feature</th>
-                {PLAN_ORDER.map(planId => (
-                  <th key={planId} className="text-center py-3 px-3 text-muted font-medium">
-                    {PLAN_DISPLAY_NAMES[planId]}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {VISIBLE_FEATURES.map((row) => (
-                <tr key={row.label} className="border-b border-line-subtle">
-                  <td className="py-3 px-3 text-strong font-medium">{row.label}</td>
-                  {PLAN_ORDER.map(planId => {
-                    const { display, isPositive } = comparisonCell(row, planId);
-                    return (
-                      <td key={planId} className={`py-3 px-3 text-center ${isPositive ? 'text-green-600' : 'text-faint'}`}>
-                        {display}
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
-              {/* Coming soon section — only rendered when there are upcoming features */}
-              {SOON_FEATURES.length > 0 && (
-                <tr>
-                  <td colSpan={PLAN_ORDER.length + 1} className="pt-5 pb-2 px-3">
-                    <span className="text-[10px] font-semibold tracking-widest uppercase text-amber-500">Coming Soon</span>
-                  </td>
-                </tr>
-              )}
-              {SOON_FEATURES.map(({ label, plans: planIds }) => (
-                <tr key={label} className="border-b border-line-subtle">
-                  <td className="py-3 px-3 text-strong font-medium">{label}</td>
-                  {PLANS.map(p => (
-                    <td key={p.id} className={`py-3 px-3 text-center ${planIds.includes(p.id) ? 'text-amber-500' : 'text-faint'}`}>
-                      {planIds.includes(p.id) ? <span className="text-xs font-semibold">Soon</span> : '—'}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        {AI_TELEGRAM_ASSISTANT_ENABLED && (
-          <p className="text-xs text-faint mt-3">
-            * AI Assistant: ${AI_ASSISTANT_ADDON_PRICING.monthlyUsd}/mo on all plans. Included at no extra cost on Ministry.
-          </p>
-        )}
-      </div>
+      {/* The "Full Feature Comparison" table stood here and is deliberately
+          gone. It was a 27-row ✓/✗ matrix rendering the same `getPlanFeatures`
+          cells the three cards above already carry — a second rendering of the
+          same facts, on the screen where a church is choosing a plan rather than
+          auditing one. The cards are the comparison now. */}
       </>
       ) : (
         <div className="text-center">

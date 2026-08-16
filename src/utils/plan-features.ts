@@ -163,7 +163,19 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     fundraising: true,
     eventRegistration: false,
     docs: false,
-    crm: false,
+    // CRM is on EVERY tier, Individual included. A $49 church has members to
+    // keep track of, and shipping the cheapest plan without a roster left it no
+    // way to see who they are.
+    //
+    // VISIBILITY ONLY, exactly as the note on `pro` below describes: no rule,
+    // route or query keys off this cell. Firestore scopes `contacts` and
+    // `contactActivities` on the `manageCRM` permission and `isTenantAdmin`, not
+    // on plan; both /api/crm routes gate the same way and import nothing from
+    // this module. So this widens what the tier ADVERTISES and which nav entry
+    // renders — it does not widen who may read a contact.
+    //
+    // `maxContacts` (150 here) is what scopes it, and is enforced separately.
+    crm: true,
     accountingTools: false,
     taxReceipt: false,
     communityGroups: false,
@@ -197,9 +209,11 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     fundraising: true,
     eventRegistration: false,
     // Moved down from the top tier in an earlier repricing: Small Team carries
-    // Notes/Docs, CRM, Check-In, Livestream and Sermon Notes. Visibility only —
-    // no rule, route or query keys off these cells (CRM's Firestore rules scope
-    // on the `manageCRM` permission, not on plan).
+    // Notes/Docs, Check-In, Livestream and Sermon Notes. CRM moved further still
+    // and is now on every tier, Individual included — see the note on `plus`
+    // above; `pro` is no longer its floor. Visibility only — no rule, route or
+    // query keys off these cells (CRM's Firestore rules scope on the `manageCRM`
+    // permission, not on plan).
     docs: true,
     crm: true,
     accountingTools: false,
