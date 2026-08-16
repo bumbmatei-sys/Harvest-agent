@@ -337,26 +337,13 @@ export const DODO_TEST_ADDONS: DodoAddonTable = Object.freeze({
 });
 
 /**
- * The ten add-ons, in Dodo LIVE MODE — with EIGHT of them mapped.
+ * The ten add-ons, in Dodo LIVE MODE — all ten mapped.
  *
- * 🔴 CAMPUS IS UNMAPPED IN LIVE, ON PURPOSE, AND IT IS A REAL GAP.
- *
- * Both live Campus add-ons exist in Dodo — created, priced and attached — but
- * their ids were not recorded at creation and are not guessable. Guessing one
- * would be worse than the gap: a wrong `adn_` that happened to resolve would
- * grant a campus nobody bought, and one that did not would fail in exactly the
- * same silence.
- *
- * What a church buying a live Campus gets today, stated plainly: Dodo charges
- * them $15/mo, the add-on rides the subscription, the id reaches
- * `resolveAddonMeaning` below, resolves to null, and the webhook REPORTS it as
- * an unrecognised add-on (money-path Sentry, `dodo-addon-unrecognised`) instead
- * of dropping it. Their `maxChurches` does NOT move. Someone finds out — which
- * is the entire reason this table names the gap rather than omitting it.
- *
- * `dodo-addon-catalogue.test.ts` PINS this gap as intentional. Filling the two
- * ids means deleting that test on purpose, which is the point: the follow-up
- * cannot quietly forget the second half.
+ * The two live Campus ids were read from the authenticated live Dodo API and
+ * verified against all six live products (every one carries the correct
+ * period-matched add-on set), closing the gap `dodo-addon-catalogue.test.ts`
+ * used to pin deliberately. Attachment needed no change in Dodo; this table
+ * was the only place the gap lived.
  */
 export const DODO_LIVE_ADDONS: DodoAddonTable = Object.freeze({
   aiAssistant: Object.freeze({
@@ -367,11 +354,9 @@ export const DODO_LIVE_ADDONS: DodoAddonTable = Object.freeze({
     monthly: 'adn_0NlKtw7AayNYI6YYwphQ5',
     yearly: 'adn_0NlKtw9lWLs0VRN9hWciX',
   }),
-  // 🔴 THE GAP. Named, not omitted. See the block above for what a live Campus
-  // purchase does today and what filling this in requires.
   campus: Object.freeze({
-    monthly: DODO_ADDON_UNMAPPED,
-    yearly: DODO_ADDON_UNMAPPED,
+    monthly: 'adn_0NlKwDcuqIWoVK7Qay13L',
+    yearly: 'adn_0NlKwDgKMpuqzR5VmlCBD',
   }),
   contactPack: Object.freeze({
     monthly: 'adn_0NlKtwD3VfBLgx2LTw69O',

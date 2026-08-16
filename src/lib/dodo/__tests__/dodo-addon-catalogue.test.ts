@@ -69,17 +69,17 @@ const DODO_TEST_ADDONS_AS_RECORDED = [
 /**
  * The LIVE-mode add-ons, as recorded when they were created in Dodo.
  *
- * 🔴 EIGHT ENTRIES, NOT TEN. The two live Campus add-ons exist in Dodo — sold,
- * priced and attached — but their ids were never written down. They are absent
- * from this fixture because there is nothing to transcribe, and the gap they
- * leave is asserted deliberately below rather than being allowed to look like
- * completeness.
+ * All ten. The two live Campus ids were read from the authenticated live Dodo
+ * API and verified against all six live products — the gap this fixture used
+ * to leave deliberately is closed.
  */
 const DODO_LIVE_ADDONS_AS_RECORDED = [
   { meaning: 'aiAssistant', period: 'monthly', id: 'adn_0NlKtuImtSn7PcdvjnSni', label: 'AI Assistant - Monthly' },
   { meaning: 'aiAssistant', period: 'yearly', id: 'adn_0NlKtw3IOHfv1GGCevNol', label: 'AI Assistant - Annual' },
   { meaning: 'adminSeat', period: 'monthly', id: 'adn_0NlKtw7AayNYI6YYwphQ5', label: 'Admin Seat - Monthly' },
   { meaning: 'adminSeat', period: 'yearly', id: 'adn_0NlKtw9lWLs0VRN9hWciX', label: 'Admin Seat - Annual' },
+  { meaning: 'campus', period: 'monthly', id: 'adn_0NlKwDcuqIWoVK7Qay13L', label: 'Campus - Monthly' },
+  { meaning: 'campus', period: 'yearly', id: 'adn_0NlKwDgKMpuqzR5VmlCBD', label: 'Campus - Annual' },
   { meaning: 'contactPack', period: 'monthly', id: 'adn_0NlKtwD3VfBLgx2LTw69O', label: 'Contacts +500 - Monthly' },
   { meaning: 'contactPack', period: 'yearly', id: 'adn_0NlKtwGbLRk2nPC07uC6o', label: 'Contacts +500 - Annual' },
   { meaning: 'unlimitedContacts', period: 'monthly', id: 'adn_0NlKtwKAhJgz0jeaqDX2c', label: 'Unlimited Contacts - Monthly' },
@@ -142,79 +142,38 @@ describe('every add-on id is pinned exactly, in both modes', () => {
   });
 });
 
-// ── Test 2 — 🔴 THE GAP ──────────────────────────────────────────────────────
+// ── Test 2 — the live Campus gap is closed ────────────────────────────────────
 
-describe('live Campus is unmapped on purpose, and a live Campus add-on is reported rather than dropped', () => {
-  /**
-   * 🔴 DELETE THIS BLOCK DELIBERATELY, NOT INCIDENTALLY.
-   *
-   * The two live Campus ids exist in Dodo and were simply not recorded. Filling
-   * them in means removing these assertions BY HAND — which is the point: the
-   * follow-up cannot quietly ship half a fix, because a mapped live Campus makes
-   * this suite fail until someone states that the gap is closed.
-   */
-  it('names Campus in the live table as unmapped, rather than omitting the key', () => {
-    // An ABSENT key is indistinguishable from a forgotten one. The key is
-    // present and says, in the type system, that there is no id.
-    expect(Object.keys(DODO_LIVE_ADDONS)).toContain('campus');
-    expect(DODO_LIVE_ADDONS.campus.monthly).toBe(DODO_ADDON_UNMAPPED);
-    expect(DODO_LIVE_ADDONS.campus.yearly).toBe(DODO_ADDON_UNMAPPED);
+describe('live Campus is now mapped, exactly as verified against Dodo', () => {
+  it('both live Campus ids are pinned exactly as verified against Dodo', () => {
+    expect(DODO_LIVE_ADDONS.campus.monthly).toBe('adn_0NlKwDcuqIWoVK7Qay13L');
+    expect(DODO_LIVE_ADDONS.campus.yearly).toBe('adn_0NlKwDgKMpuqzR5VmlCBD');
   });
 
-  it('is the ONLY gap — every other live meaning maps at both periods', () => {
-    for (const meaning of DODO_ADDON_MEANINGS) {
-      if (meaning === 'campus') continue;
-      expect(DODO_LIVE_ADDONS[meaning].monthly).not.toBe(DODO_ADDON_UNMAPPED);
-      expect(DODO_LIVE_ADDONS[meaning].yearly).not.toBe(DODO_ADDON_UNMAPPED);
-    }
-  });
-
-  it('takes the unrecognised-id path in live mode, and someone is TOLD', async () => {
-    // The whole safety property, end to end: a church buys a campus in live
-    // mode, Dodo charges them, the id does not map — and it is REPORTED rather
-    // than dropped. `getEffectiveFeatures` never sees a campus, so the church's
-    // maxChurches does not move; what they get instead is a money-path error
-    // with the id and the subscription on it.
+  it('live Campus resolves to the campus meaning at both periods', async () => {
     const live = await withEnvironment('live_mode');
 
-    // A live Campus id is not knowable from this build, so this stands in for
-    // one: whatever the real id is, it resolves to null exactly like this.
-    const unrecordedLiveCampus = 'adn_the_live_campus_id_nobody_wrote_down';
-    expect(live.catalogue.resolveAddonMeaning(unrecordedLiveCampus)).toBeNull();
+    expect(live.catalogue.resolveAddonMeaning('adn_0NlKwDcuqIWoVK7Qay13L')).toBe('campus');
+    expect(live.catalogue.resolveAddonMeaning('adn_0NlKwDgKMpuqzR5VmlCBD')).toBe('campus');
 
-    const held = [{ addon_id: unrecordedLiveCampus, quantity: 1 }];
-    const mapped = live.addons.mapDodoAddons(held);
-
-    // NOT granted — and not silently absorbed into some other meaning either.
-    expect(mapped.addons.campuses).toBe(0);
-    expect(mapped.unrecognised).toEqual(held);
-
-    const reported = live.addons.reportUnrecognisedDodoAddons(mapped.unrecognised, {
-      step: 'dodo-plan-changed-unrecognised-addon',
-      subscriptionId: 'sub_live_campus',
-    });
-    expect(reported).toBe(1);
-    expect(mockCapture).toHaveBeenCalledWith(
-      expect.any(Error),
-      expect.objectContaining({
-        step: 'dodo-plan-changed-unrecognised-addon',
-        level: 'error',
-        ids: expect.objectContaining({ addonId: unrecordedLiveCampus }),
-      }),
-    );
-  });
-
-  it('still maps every OTHER live add-on, so one gap does not cost a church the rest', async () => {
-    const live = await withEnvironment('live_mode');
-    for (const { meaning, id, label } of DODO_LIVE_ADDONS_AS_RECORDED) {
-      expect(live.catalogue.resolveAddonMeaning(id), label).toBe(meaning);
-    }
+    // End to end: a church buying a live Campus is now GRANTED it, not just
+    // recognised — the same path that used to hit the unrecognised-id branch.
+    const monthly = live.addons.mapDodoAddons([
+      { addon_id: 'adn_0NlKwDcuqIWoVK7Qay13L', quantity: 1 },
+    ]);
+    const yearly = live.addons.mapDodoAddons([
+      { addon_id: 'adn_0NlKwDgKMpuqzR5VmlCBD', quantity: 1 },
+    ]);
+    expect(monthly.unrecognised).toEqual([]);
+    expect(monthly.addons.campuses).toBe(1);
+    expect(yearly.unrecognised).toEqual([]);
+    expect(yearly.addons.campuses).toBe(1);
   });
 });
 
 // ── Test 3 ───────────────────────────────────────────────────────────────────
 
-describe('live and test add-on ids never overlap', () => {
+describe('live and test add-on ids still never overlap', () => {
   it('shares not one id between the two modes', () => {
     // Widened to string: the fixtures are `as const`, so a literal-typed
     // `includes` would be a COMPILE-time comparison of two disjoint unions —
@@ -240,15 +199,24 @@ describe('live and test add-on ids never overlap', () => {
   });
 });
 
-// ── Test 4 — 🔴 CAMPUS WORKS END TO END IN TEST ──────────────────────────────
+// ── Test 4 — 🔴 THE TEST-MODE-ONLY QUALIFIER COMES OFF ────────────────────────
 
-describe('test mode maps all five meanings at both periods', () => {
-  it.each(DODO_ADDON_MEANINGS)('maps %s at monthly AND yearly', (meaning) => {
+describe('each mode now maps all five meanings at both periods', () => {
+  it.each(DODO_ADDON_MEANINGS)('test mode maps %s at monthly AND yearly', (meaning) => {
     for (const period of ['monthly', 'yearly'] as const) {
       const id = DODO_TEST_ADDONS[meaning][period];
       expect(id).not.toBe(DODO_ADDON_UNMAPPED);
       // Round-trip: the table's id resolves back to the table's meaning.
       expect(resolveAddonMeaning(id as string)).toBe(meaning);
+    }
+  });
+
+  it.each(DODO_ADDON_MEANINGS)('live mode maps %s at monthly AND yearly', async (meaning) => {
+    const live = await withEnvironment('live_mode');
+    for (const period of ['monthly', 'yearly'] as const) {
+      const id = live.catalogue.DODO_LIVE_ADDONS[meaning][period];
+      expect(id).not.toBe(DODO_ADDON_UNMAPPED);
+      expect(live.catalogue.resolveAddonMeaning(id as string)).toBe(meaning);
     }
   });
 
@@ -258,9 +226,15 @@ describe('test mode maps all five meanings at both periods', () => {
     );
   });
 
-  it('carries a Campus purchase all the way to a campus count', () => {
-    // Campus is the meaning with a live gap, so test mode is the only place it
-    // can be proven to work. Both periods, because they are separate products.
+  it('resolves the ten recorded live ids and nothing else', async () => {
+    const live = await withEnvironment('live_mode');
+    expect(new Set(live.catalogue.allMappedAddonIds())).toEqual(
+      new Set(DODO_LIVE_ADDONS_AS_RECORDED.map((addon) => addon.id)),
+    );
+  });
+
+  it('carries a Campus purchase all the way to a campus count, in test mode', () => {
+    // Both periods, because they are separate products.
     for (const period of ['monthly', 'yearly'] as const) {
       const campusId = DODO_TEST_ADDONS.campus[period] as string;
       const mapped = mapDodoAddons([{ addon_id: campusId, quantity: 2 }]);
@@ -280,7 +254,7 @@ describe('test mode maps all five meanings at both periods', () => {
 
 // ── Test 5 ───────────────────────────────────────────────────────────────────
 
-describe('an unrecognised add-on id is reported, not silently dropped', () => {
+describe('an unrecognised add-on id is still reported, not silently dropped', () => {
   it('hands the unknown id back instead of skipping it', () => {
     const mapped = mapDodoAddons([{ addon_id: 'adn_something_this_build_never_heard_of', quantity: 3 }]);
 
@@ -365,7 +339,7 @@ describe('the add-on table follows the same rules as the product catalogue', () 
     expect(codeOnly).toContain('ADDONS_BY_ENVIRONMENT[dodoConfig.environment]');
   });
 
-  it('carries no add-on PRICE — those are settled and deliberately not in code', () => {
+  it('no add-on price literal appears in the repo', () => {
     // Add-on prices ($19/$228, $10/$120, $15/$180, $20/$240, $59/$708) are a
     // Dodo-side fact. A copy here would be a second source of truth that drifts.
     for (const price of [19, 228, 10, 120, 15, 180, 20, 240, 59, 708]) {

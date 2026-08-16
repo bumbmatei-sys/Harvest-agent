@@ -2,30 +2,25 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 
 /**
- * REP-5b, test 7 — 🔴 THE LIVE CAMPUS GUARD.
+ * REP-5b, test 7 — 🔴 THE LIVE CAMPUS GUARD, now the live Campus SALE.
  *
- * REP-5a mapped Campus in TEST mode only: both live Campus add-ons exist in
- * Dodo — created, priced, attached — but their ids were never recorded, and
- * guessing one would be worse than the gap. `DODO_LIVE_ADDONS.campus` is
- * therefore `DODO_ADDON_UNMAPPED` on both periods, on purpose.
+ * REP-5a originally mapped Campus in TEST mode only: both live Campus add-ons
+ * existed in Dodo — created, priced, attached — but their ids were never
+ * recorded, and guessing one would have been worse than the gap. This file
+ * pinned the purchase-side half of that gap's safety property: a live Campus
+ * could not be SOLD while its ids were unknown.
  *
- * That gap already had one half of its safety property: a live Campus arriving
- * on a webhook is REPORTED rather than dropped, so nobody pays for nothing in
- * silence. This file pins the OTHER half, which is what REP-5b owes it: a live
- * Campus cannot be SOLD in the first place. Charging a church $15 a month for
- * something no code path can grant them is the failure; refusing to offer it is
- * how that failure stops being reachable.
+ * The two live ids are now recorded in `catalogue.ts`, exactly as this file's
+ * own docstring anticipated: "recording the two live ids turns the refusals
+ * below into sales with no logic change anywhere." That is exactly what
+ * happened — `route.ts` is untouched, and every assertion below flips from a
+ * refusal to a success because `addonIdFor`/`offerableAddonMeanings` now
+ * resolve Campus like any other live meaning.
  *
  * 🔴 THE WHOLE FILE RUNS IN LIVE MODE. `catalogue.ts` selects its active table
  * from `dodoConfig.environment` at module load, so this cannot share a file with
  * the test-mode route tests — hence its own `DODO_PAYMENTS_ENVIRONMENT`, hoisted
  * above every import.
- *
- * ⚠️ THIS FILE MUST START PASSING DIFFERENTLY WHEN THE IDS ARE FILLED. It drives
- * availability through the real catalogue rather than restating "campus is
- * missing", so recording the two live ids turns the refusals below into sales
- * with no logic change anywhere — and the assertions that pin the OTHER four
- * add-ons as offerable go on holding throughout.
  */
 
 vi.hoisted(() => {
@@ -98,7 +93,6 @@ vi.mock('@/lib/money-path-sentry', () => ({
 import { GET as addonCatalogue, POST as addonChange } from '@/app/api/dodo/addons/route';
 import {
   DODO_ADDON_MEANINGS,
-  DODO_ADDON_UNMAPPED,
   DODO_LIVE_ADDONS,
   addonIdFor,
   offerableAddonMeanings,
@@ -127,8 +121,8 @@ function installDodoStub() {
     addons: { retrieve: dodoStub.addonsRetrieve },
   } as never);
 
-  // Every LIVE add-on that has an id can be named and priced. Campus has no id,
-  // so it never reaches this stub — which is the point.
+  // Every LIVE add-on has an id now, Campus included, so every one of them can
+  // be named and priced through this stub.
   dodoStub.addonsRetrieve.mockImplementation(async (addonId: string) => ({
     id: addonId,
     name: `Add-on ${addonId.slice(-4)}`,
@@ -195,10 +189,10 @@ beforeEach(() => {
   installDodoStub();
 });
 
-// ── Test 7 ───────────────────────────────────────────────────────────────────
+// ── Test 7 — 🔴 THE GAP IS CLOSED: refusals become sales, no logic changed ───
 
-describe('an add-on with no mapping in the active environment cannot be offered', () => {
-  it('🔴 the live catalogue does not list Campus — the gap, restated as availability', async () => {
+describe('live Campus is now offerable — the ids close the gap with no route change', () => {
+  it('the live catalogue now lists Campus alongside the other four', async () => {
     seedDodoTenant();
     asOwner();
 
@@ -206,20 +200,15 @@ describe('an add-on with no mapping in the active environment cannot be offered'
     expect(res.status).toBe(200);
     const offered: string[] = (await res.json()).addons.map((a: { addon: string }) => a.addon);
 
-    // Named by MEANING, from the real table. Campus is absent because
-    // `addonIdFor('campus', …)` is null in live, not because this test says so.
-    expect(offered).not.toContain('campus');
-
-    // 🔴 And it is the ONLY thing missing. A guard that hid everything would
-    // also pass "campus is absent" — this pins that the other four are still
-    // sellable, so the refusal is precise rather than a blanket outage.
-    expect(offered.sort()).toEqual(
-      DODO_ADDON_MEANINGS.filter((m) => m !== 'campus').slice().sort(),
-    );
-    expect(offered).toHaveLength(DODO_ADDON_MEANINGS.length - 1);
+    // Named by MEANING, from the real table. Campus is present because
+    // `addonIdFor('campus', …)` now resolves in live, not because this test
+    // says so.
+    expect(offered).toContain('campus');
+    expect(offered.sort()).toEqual([...DODO_ADDON_MEANINGS].sort());
+    expect(offered).toHaveLength(DODO_ADDON_MEANINGS.length);
   });
 
-  it('🔴 buying a live Campus is REFUSED before any charge', async () => {
+  it('🔴 buying a live Campus now SUCCEEDS — the ids close the gap with no logic change', async () => {
     seedDodoTenant();
     asOwner();
 
@@ -229,36 +218,35 @@ describe('an add-on with no mapping in the active environment cannot be offered'
       confirm: true,
     });
 
-    expect(res.status).toBe(400);
-    expect((await res.json()).code).toBe('addon-not-available');
-
-    // The whole point: Dodo was never asked to charge for something this build
-    // could not have granted afterwards.
-    expect(dodoStub.previewChangePlan).not.toHaveBeenCalled();
-    expect(dodoStub.changePlan).not.toHaveBeenCalled();
+    expect(res.status).toBe(200);
+    expect(dodoStub.changePlan).toHaveBeenCalledTimes(1);
+    // The LIVE campus id, read from the real table rather than retyped.
+    expect(dodoStub.changePlan.mock.calls[0][1].addons).toEqual([
+      { addon_id: DODO_LIVE_ADDONS.campus.monthly as string, quantity: 1 },
+    ]);
   });
 
-  it('refuses the PREVIEW too, so no price is ever quoted for it', async () => {
+  it('quotes a preview for it too, now that it is offerable', async () => {
     seedDodoTenant();
     asOwner();
 
     const res = await post({ tenantId: T.tenant, addons: [{ addon: 'campus', quantity: 1 }] });
-    expect(res.status).toBe(400);
-    expect(dodoStub.previewChangePlan).not.toHaveBeenCalled();
+    expect(res.status).toBe(200);
+    expect(dodoStub.previewChangePlan).toHaveBeenCalledTimes(1);
   });
 
-  it('reports the attempt — an offer surface that produced it has drifted', async () => {
+  it('reports nothing — a normal purchase, not a drifted offer surface', async () => {
     seedDodoTenant();
     asOwner();
 
     await post({ tenantId: T.tenant, addons: [{ addon: 'campus', quantity: 1 }] });
 
-    // The catalogue above cannot render Campus, so a request for one means
-    // something is out of step. Refusing silently would hide that.
-    expect(mockCapture).toHaveBeenCalled();
+    // The catalogue can render Campus now, so a request for one is no longer a
+    // sign that something drifted.
+    expect(mockCapture).not.toHaveBeenCalled();
   });
 
-  it('refuses the whole request when an unmapped add-on rides along with a valid one', async () => {
+  it('buys a live Campus alongside another add-on in the same request', async () => {
     seedDodoTenant();
     asOwner();
 
@@ -271,14 +259,19 @@ describe('an add-on with no mapping in the active environment cannot be offered'
       confirm: true,
     });
 
-    // 🔴 ALL OR NOTHING. Quietly dropping the campus and selling the seat would
-    // leave a church believing it bought two things and paying for one — the
-    // silent partial success this codebase refuses everywhere else.
-    expect(res.status).toBe(400);
-    expect(dodoStub.changePlan).not.toHaveBeenCalled();
+    expect(res.status).toBe(200);
+    expect(dodoStub.changePlan).toHaveBeenCalledTimes(1);
+    const addons = dodoStub.changePlan.mock.calls[0][1].addons;
+    expect(addons).toEqual(
+      expect.arrayContaining([
+        { addon_id: DODO_LIVE_ADDONS.adminSeat.monthly as string, quantity: 1 },
+        { addon_id: DODO_LIVE_ADDONS.campus.monthly as string, quantity: 1 },
+      ]),
+    );
+    expect(addons).toHaveLength(2);
   });
 
-  it('🔴 the OTHER four live add-ons sell normally — the gap is Campus alone', async () => {
+  it('🔴 the OTHER four live add-ons still sell normally too', async () => {
     seedDodoTenant();
     asOwner();
 
@@ -296,18 +289,16 @@ describe('an add-on with no mapping in the active environment cannot be offered'
     ]);
   });
 
-  it('availability is DERIVED from the table, so filling the ids is the only change needed', () => {
+  it('availability is DERIVED from the table — filling the ids was the only change needed', () => {
     // The claim this whole file rests on: nothing anywhere states "campus is
-    // unavailable". Availability is a lookup, and the lookup is what is missing.
-    expect(addonIdFor('campus', 'monthly')).toBe(DODO_ADDON_UNMAPPED);
-    expect(addonIdFor('campus', 'yearly')).toBe(DODO_ADDON_UNMAPPED);
+    // available". Availability is a lookup, and the lookup now resolves.
+    expect(addonIdFor('campus', 'monthly')).toBe(DODO_LIVE_ADDONS.campus.monthly);
+    expect(addonIdFor('campus', 'yearly')).toBe(DODO_LIVE_ADDONS.campus.yearly);
 
     for (const period of ['monthly', 'yearly'] as const) {
       const offerable = offerableAddonMeanings(period);
-      expect(offerable).not.toContain('campus');
-      // Every meaning WITH an id is offerable, with no second condition applied
-      // — so the day the two ids are recorded, Campus joins this list and the
-      // route sells it with no other edit.
+      expect(offerable).toContain('campus');
+      // Every meaning WITH an id is offerable, with no second condition applied.
       for (const meaning of DODO_ADDON_MEANINGS) {
         expect(offerable.includes(meaning)).toBe(addonIdFor(meaning, period) !== null);
       }
