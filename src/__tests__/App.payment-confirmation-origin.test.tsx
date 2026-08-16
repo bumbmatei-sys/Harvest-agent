@@ -120,6 +120,7 @@ import { SIGNUP_BILLING_STORAGE_KEY, resolveSignupBillingPeriod } from '../utils
 import {
   PAYMENT_CONFIRMATION_PENDING_KEY,
   PAYMENT_CONFIRMATION_SEEN_KEY,
+  withPaymentConfirmationHandoff,
 } from '../utils/paid-arrival';
 
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -141,6 +142,16 @@ const APEX = 'https://theharvest.app';
 const AFFILIATE = 'https://affiliate.theharvest.app';
 const TENANT = 'gracechurch';
 const WORKSPACE_URL = `https://${TENANT}.theharvest.app/admin`;
+/**
+ * THE-138 part 2: the same workspace, with the acknowledgement riding along.
+ *
+ * The hop's DESTINATION is unchanged — these tests still pin "it goes to the
+ * workspace" — but once the church has acknowledged the confirmation the URL
+ * also has to tell the far origin so, because sessionStorage cannot cross it.
+ * Built through the exported helper rather than spelled out, so the parameter is
+ * named by label here and can be renamed in one place.
+ */
+const WORKSPACE_URL_CONFIRMED = withPaymentConfirmationHandoff(WORKSPACE_URL);
 const PASTOR = { uid: 'u1', email: 'pastor@gracechurch.org' };
 
 /** The user doc exactly as the provisioning webhook leaves it. */
@@ -404,7 +415,12 @@ describe('3 — the hop is gated, not removed', () => {
     mount();
     await flush();
 
-    expect(hops, 'the gate outlived the confirmation and stranded the church').toEqual([WORKSPACE_URL]);
+    // 🔴 Still the hop, still to the workspace — gated, never removed. It now
+    // also carries the acknowledgement, because THIS is the resumed hop: the
+    // payer came back to the apex after clicking through, and without the hint
+    // the destination would show the confirmation a second time.
+    expect(hops, 'the gate outlived the confirmation and stranded the church').toEqual([WORKSPACE_URL_CONFIRMED]);
+    expect(hops[0].startsWith(WORKSPACE_URL), 'the hop no longer lands on the workspace').toBe(true);
   });
 
   it('the action points at the workspace, which is where the redirect went', async () => {
@@ -416,7 +432,10 @@ describe('3 — the hop is gated, not removed', () => {
     mount();
     await flush();
 
-    expect(continueLink()?.getAttribute('href')).toBe(WORKSPACE_URL);
+    const href = continueLink()?.getAttribute('href');
+    expect(href?.startsWith(WORKSPACE_URL), 'the action no longer points at the workspace').toBe(true);
+    // …and carries the acknowledgement over the boundary sessionStorage cannot.
+    expect(href).toBe(WORKSPACE_URL_CONFIRMED);
   });
 
   it('holds nothing when the workspace does not resolve yet', async () => {
@@ -520,7 +539,7 @@ describe('5 — refreshing on the confirmation', () => {
     // 🔴 Never nowhere: the same confirmation, with the same way onward, and
     // still no unannounced hop.
     expect(text()).toContain('Your payment went through.');
-    expect(continueLink()?.getAttribute('href')).toBe(WORKSPACE_URL);
+    expect(continueLink()?.getAttribute('href')).toBe(WORKSPACE_URL_CONFIRMED);
     expect(hops).toEqual([]);
   });
 
@@ -538,8 +557,9 @@ describe('5 — refreshing on the confirmation', () => {
     mount();
     await flush();
 
-    // Acknowledged once ⇒ the hop is theirs to make, and it is made.
-    expect(hops).toEqual([WORKSPACE_URL]);
+    // Acknowledged once ⇒ the hop is theirs to make, and it is made — carrying
+    // the acknowledgement, so the far origin does not repeat the screen.
+    expect(hops).toEqual([WORKSPACE_URL_CONFIRMED]);
   });
 });
 

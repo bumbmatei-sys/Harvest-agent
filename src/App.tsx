@@ -36,7 +36,13 @@ import { PLATFORM_TENANT_ID, getTenantIdFromHost } from './utils/tenant-scope';
 import { isAffiliateHost } from './utils/non-tenant-subdomains';
 import { resolvePostAuthFunnelRoute } from './utils/post-auth-route';
 import { SIGNUP_BILLING_STORAGE_KEY } from './utils/signup-checkout';
-import { beginPaymentConfirmation, shouldConfirmPaymentBeforeHandoff } from './utils/paid-arrival';
+import {
+  beginPaymentConfirmation,
+  capturePaymentConfirmationHandoff,
+  hasSeenPaymentConfirmation,
+  shouldConfirmPaymentBeforeHandoff,
+  withPaymentConfirmationHandoff,
+} from './utils/paid-arrival';
 import { usePreAuthTheme, useForcedLightTheme } from './lib/theme-runtime';
 
 /** Paths that represent the auth / onboarding funnel (used to decide redirects). */
@@ -223,6 +229,34 @@ const AppInner: React.FC = () => {
     }
   }, []);
 
+  // THE-138 part 2: the same shape of lane, for the fact that the payment
+  // confirmation has ALREADY been given.
+  //
+  // 🔴 It must run here, on arrival, and not where the fact is finally needed.
+  // A church lands on `<tenant>.theharvest.app/admin?…` NOT signed in on that
+  // origin, so the callback below immediately `navigate('/auth')`s — dropping
+  // the query string, exactly as the `?billing=` comment above describes. The
+  // fact is needed minutes later, after a sign-in and first-run setup, by which
+  // time the URL that carried it is long gone. Captured into this origin's
+  // sessionStorage the moment the document loads, it survives all of that and a
+  // refresh besides.
+  //
+  // Separate from the capture above ON PURPOSE: this rides the hop, not the
+  // /auth redirect, and has nothing to do with signup intent — coupling them
+  // would mean an arrival with no `?signup=` silently drops it.
+  //
+  // ⚠️ Deliberately unconditional on the funnel and scoped INSIDE the util to
+  // tenant subdomains (via the shared host resolver, passed in): the hint is an
+  // inbound signal for a destination origin, and the apex — where the fact is
+  // created — must never import one.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    capturePaymentConfirmationHandoff({
+      search: window.location.search,
+      hostTenantId: getTenantIdFromHost(),
+    });
+  }, []);
+
   const urlSignup = typeof window !== 'undefined'
     ? new URLSearchParams(window.location.search).get('signup') : null;
   const storedSignup = typeof window !== 'undefined'
@@ -361,7 +395,25 @@ const AppInner: React.FC = () => {
                     })) {
                       beginPaymentConfirmation(data.tenantId);
                     } else {
-                      window.location.href = `https://${data.tenantId}.theharvest.app/admin`;
+                      // THE-138 part 2. This is also the RESUMED hop: a payer
+                      // who acknowledged the confirmation and then came back to
+                      // the apex (browser back, a reopened link) is sent onward
+                      // from here rather than through the screen's own action.
+                      // It must carry the acknowledgement for the same reason
+                      // that action does, or the destination shows the
+                      // confirmation again and the duplicate survives on this
+                      // path alone.
+                      //
+                      // Carried ONLY when it demonstrably happened:
+                      // `completePaymentConfirmation` is the sole writer of that
+                      // flag and only the screen's own action calls it. Every
+                      // other arrival here — a church that did not just pay, an
+                      // established tenant on a stale success URL — hops
+                      // byte-for-byte as before.
+                      const workspaceUrl = `https://${data.tenantId}.theharvest.app/admin`;
+                      window.location.href = hasSeenPaymentConfirmation()
+                        ? withPaymentConfirmationHandoff(workspaceUrl)
+                        : workspaceUrl;
                     }
                   } else {
                     console.warn(

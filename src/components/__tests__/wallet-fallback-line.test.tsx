@@ -54,7 +54,13 @@ vi.mock('firebase/firestore', () => ({
     return () => {};
   }),
 }));
-vi.mock('../../utils/super-admins', () => ({ isSuperAdminEmail: () => false }));
+// Both exports, not just the predicate: the gate resolves the host tenant
+// through the shared `tenant-scope` resolver, which reads `SUPER_ADMIN_EMAILS`
+// at module load. A partial stub fails the whole suite on import.
+vi.mock('../../utils/super-admins', () => ({
+  isSuperAdminEmail: () => false,
+  SUPER_ADMIN_EMAILS: [] as readonly string[],
+}));
 vi.mock('../../utils/tenant.utils', () => ({ checkRosterAdmin: vi.fn(async () => false) }));
 vi.mock('../../lib/theme-runtime', () => ({ useForcedLightTheme: () => {} }));
 vi.mock('../FirstRunSetup', () => ({ default: () => null }));
