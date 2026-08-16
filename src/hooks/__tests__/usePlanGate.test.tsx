@@ -105,8 +105,12 @@ describe('FEATURE_MIN_PLAN — minimum plan labels', () => {
   // `crm` and `docs` then moved a second time, down to Small Team (pro), in the
   // repricing. The labels below are derived from PLAN_FEATURES, so that move
   // propagated with no code change — these expectations are what proves it.
-  it('names Small Team as the minimum plan for CRM', () => {
-    expect(FEATURE_MIN_PLAN.crm).toBe('Small Team');
+  //
+  // `crm` has since moved a THIRD time, in THE-161: it is on every tier now, so
+  // the cheapest plan that unlocks it is the cheapest plan there is. Derived
+  // again, so again no label was edited to make it true.
+  it('names Individual as the minimum plan for CRM', () => {
+    expect(FEATURE_MIN_PLAN.crm).toBe('Individual');
   });
 
   it('names Ministry as the minimum plan for tax receipts', () => {
