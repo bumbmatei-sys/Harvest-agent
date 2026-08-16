@@ -5,6 +5,7 @@ import { CheckCircle2, Loader2, ArrowRight, AlertCircle, Mail } from 'lucide-rea
 import { db } from '../firebase';
 import { useForcedLightTheme } from '../lib/theme-runtime';
 import { getTenantIdFromHost } from '../utils/tenant-scope';
+import { withPaymentConfirmationHandoff } from '../utils/paid-arrival';
 
 const BRAND = 'var(--brand-color, #B8962E)';
 const SUCCESS = 'var(--brand-success, #6E8E52)';
@@ -56,6 +57,26 @@ interface WorkspaceHandoffProps {
    * to the login prompt this screen exists to explain.
    */
   onContinue?: () => void;
+  /**
+   * THE-138 part 2: carry "this church has already been told its payment went
+   * through" to the destination ORIGIN, on the link out of here.
+   *
+   * 🔴 Set ONLY by the render that IS the pre-hop confirmation — the one whose
+   * hold is being released by `onContinue`. The destination reads it and
+   * suppresses its own copy of this screen, which is the duplicate the church
+   * was seeing. Without it the fact dies at the origin boundary: sessionStorage
+   * is per-origin, and the far side cannot see the apex's.
+   *
+   * ⚠️ A HINT, never a credential. All it can do is hide a reassurance screen —
+   * see `PAYMENT_CONFIRMATION_HANDOFF_PARAM`. It is therefore also deliberately
+   * NOT set by the post-first-run handoff (#298): when THAT screen is
+   * cross-origin the church is being sent to a subdomain they renamed and will
+   * genuinely sign in at, so the sentence below is still owed to them there.
+   *
+   * ⚠️ Only ever affects the cross-origin href. Same-origin the destination IS
+   * this origin, which already holds the fact.
+   */
+  suppressRepeatAtDestination?: boolean;
 }
 
 /** Soft gold halo, matching the other transitional screens in this funnel. */
@@ -96,7 +117,7 @@ const Halo = () => (
  * place to be wrong about it — on the one screen where the customer is actively
  * thinking about what they were charged.
  */
-const WorkspaceHandoff: React.FC<WorkspaceHandoffProps> = ({ tenantId, fallbackMinistryName, onContinue }) => {
+const WorkspaceHandoff: React.FC<WorkspaceHandoffProps> = ({ tenantId, fallbackMinistryName, onContinue, suppressRepeatAtDestination }) => {
   // This screen has no path of its own — it renders at "/" like the rest of the
   // gate's funnel screens, so the URL cannot classify it and it declares itself.
   // `useForcedLightTheme` is a counter, so the gate asserting the same force
@@ -182,6 +203,27 @@ const WorkspaceHandoff: React.FC<WorkspaceHandoffProps> = ({ tenantId, fallbackM
    */
   const crossOrigin = tenantId !== getTenantIdFromHost();
 
+  /**
+   * Where the single action goes.
+   *
+   * Cross-origin gets the absolute URL; same-origin gets an in-origin route to
+   * /admin, because a link to `https://<current host>/admin` would be a
+   * self-link dressed up as a departure.
+   *
+   * 🔴 THE-138 part 2. On the cross-origin path — and only when this render is
+   * the confirmation being acknowledged before the hop — the URL also carries
+   * the acknowledgement, because the destination is a different origin and
+   * cannot otherwise learn that this screen already happened. That is the whole
+   * repair: see `withPaymentConfirmationHandoff`. Same-origin carries nothing,
+   * as the fact is already in this origin's storage.
+   */
+  const workspaceUrl = `https://${address}/admin`;
+  const continueHref = !crossOrigin
+    ? '/admin'
+    : suppressRepeatAtDestination
+      ? withPaymentConfirmationHandoff(workspaceUrl)
+      : workspaceUrl;
+
   return (
     <div
       className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-6 py-14 text-center"
@@ -258,9 +300,7 @@ const WorkspaceHandoff: React.FC<WorkspaceHandoffProps> = ({ tenantId, fallbackM
         {/* (5) A single action — and only once the workspace genuinely resolves. */}
         <div className="mt-8 flex w-full flex-col items-center">
           {ready ? (
-            /* Cross-origin gets the absolute URL; same-origin gets an in-origin
-               route to /admin, because a link to `https://<current host>/admin`
-               would be a self-link dressed up as a departure.
+            /* The destination is resolved above (`continueHref`).
                ⚠️ Deliberately a real navigation and NOT react-router's
                `navigate()`, which is how the app moves within an origin
                everywhere else: this screen is rendered by OnboardingGate AHEAD
@@ -269,7 +309,7 @@ const WorkspaceHandoff: React.FC<WorkspaceHandoffProps> = ({ tenantId, fallbackM
                rendering this screen, stranding the user here. Reloading lets the
                gate re-resolve to 'ready' and hand them the app. */
             <a
-              href={crossOrigin ? `https://${address}/admin` : '/admin'}
+              href={continueHref}
               onClick={onContinue}
               className="inline-flex items-center gap-2 rounded-lg font-semibold text-white no-underline"
               style={{

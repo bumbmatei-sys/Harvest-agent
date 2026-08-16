@@ -11,8 +11,10 @@ import { SIGNUP_CHECKOUT_ENDPOINT, WALLET_FALLBACK_LINE, isReturningFromCheckout
 import {
   PAYMENT_CONFIRMATION_EVENT,
   completePaymentConfirmation,
+  hasSeenPaymentConfirmation,
   readPendingPaymentConfirmation,
 } from '../utils/paid-arrival';
+import { getTenantIdFromHost } from '../utils/tenant-scope';
 import { useForcedLightTheme } from '../lib/theme-runtime';
 import FirstRunSetup from './FirstRunSetup';
 import WorkspaceHandoff from './WorkspaceHandoff';
@@ -172,6 +174,42 @@ const OnboardingGate: React.FC<{ children: React.ReactNode }> = ({ children }) =
     return () => clearInterval(interval);
   }, [status, onCheckoutSuccess]);
 
+  /**
+   * 🔴 THE-138 part 2 — would the post-first-run handoff below merely REPEAT a
+   * confirmation this church has already been given?
+   *
+   * The church saw "Your payment went through." on the apex, clicked through,
+   * hopped, signed in, finished first-run setup — and #298's handoff then said
+   * it again. The destination could not tell, because the acknowledgement lived
+   * in apex sessionStorage. It now crosses on the hop and is captured into THIS
+   * origin's storage on arrival, so `hasSeenPaymentConfirmation()` can finally
+   * answer here.
+   *
+   * 🔴 BOTH CONDITIONS ARE LOAD-BEARING, and the second is the strand guard.
+   * Suppressing on "already confirmed" alone would delete the screen for a
+   * church that RENAMED its subdomain during first-run: that church is about to
+   * be sent to a THIRD origin and really will sign in again, and the sentence
+   * warning them is owed at that moment — the apex confirmation named the
+   * generated address, not the one they just chose. So the repeat is only
+   * suppressed when the handoff would be its SAME-ORIGIN variant, i.e. when the
+   * only thing left on the screen is the congratulation they already read.
+   *
+   * ⚠️ Everything else keeps the screen, deliberately. A church whose webhook
+   * landed late, whose tab was closed, or that navigated to the subdomain
+   * directly arrives with no acknowledgement and is shown the confirmation
+   * exactly as #298 intended. A duplicate is annoying; a missing confirmation
+   * after a charge is a chargeback.
+   *
+   * ⚠️ Resolved with the SHARED host resolver, never an inline hostname parse —
+   * `WorkspaceHandoff` decides its own variant the same way, and these two
+   * answers MUST agree or the screen is suppressed in the very case whose copy
+   * it still needs to deliver.
+   */
+  const handoffRepeatsGivenConfirmation =
+    handoffTenantId !== null
+    && handoffTenantId === getTenantIdFromHost()
+    && hasSeenPaymentConfirmation();
+
   // THE-85: the funnel screens this gate renders have NO path of their own —
   // the processor returns the payer to "/?…=success", and a refresh lands on a
   // bare "/". They are only identifiable once the user doc resolves, so the URL
@@ -182,7 +220,7 @@ const OnboardingGate: React.FC<{ children: React.ReactNode }> = ({ children }) =
   // light there would flash every dark-mode user light on every single load.
   // Only the states below actually paint a funnel screen.
   const rendersFunnelScreen =
-    handoffTenantId !== null ||
+    (handoffTenantId !== null && !handoffRepeatsGivenConfirmation) ||
     confirmingTenantId !== null ||
     status === 'paying' ||
     status === 'needs-payment' ||
@@ -228,7 +266,15 @@ const OnboardingGate: React.FC<{ children: React.ReactNode }> = ({ children }) =
   // handoff screen with the app a beat after it appeared, dumping the payer back
   // into the origin they were being sent away from. Precedence here makes the
   // handoff terminal without having to tear the listeners down.
-  if (handoffTenantId) {
+  // THE-138 part 2: …unless it would only repeat a confirmation this church has
+  // already been given on the origin that took the payment (see above). Falling
+  // through then is the whole point — `status` has resolved to 'ready' by the
+  // rename (or resolves a beat later off the same listener that flipped
+  // `setupCompleted`), so the church lands in the admin app it was heading for
+  // instead of reading the same congratulation a second time. No navigation is
+  // performed here: the screen this replaces offered an IN-ORIGIN /admin link,
+  // and the church is already on /admin.
+  if (handoffTenantId && !handoffRepeatsGivenConfirmation) {
     return <WorkspaceHandoff tenantId={handoffTenantId} fallbackMinistryName={signupMinistryName} />;
   }
 
@@ -253,6 +299,10 @@ const OnboardingGate: React.FC<{ children: React.ReactNode }> = ({ children }) =
         tenantId={confirmingTenantId}
         fallbackMinistryName={signupMinistryName}
         onContinue={completePaymentConfirmation}
+        /* THE-138 part 2: this is the render whose acknowledgement has to
+           outlive the origin hop, so its action carries the hint that stops the
+           destination saying all of this again. */
+        suppressRepeatAtDestination
       />
     );
   }
