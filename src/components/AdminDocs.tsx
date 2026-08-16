@@ -923,7 +923,7 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
             ) : (
               <button
                 onClick={() => setMoveCreating(true)}
-                className="flex items-center gap-2 w-full px-3 py-2.5 rounded-xl hover:bg-[color-mix(in_srgb,var(--brand-color)_10%,white)] transition-colors text-sm font-semibold text-gold mb-1 mt-1"
+                className="flex items-center gap-2 w-full px-3 py-2.5 rounded-xl hover:bg-[color-mix(in_srgb,var(--brand-color)_10%,transparent)] transition-colors text-sm font-semibold text-gold mb-1 mt-1"
               >
                 <Plus size={14} /> New folder…
               </button>
@@ -969,7 +969,7 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
             <div
               key={d.id}
               onClick={() => { openDocument(d); onNavigate?.(); }}
-              className={`flex items-center gap-1.5 px-2.5 py-2 rounded-brand cursor-pointer group transition-colors ${isOpen ? 'bg-[color-mix(in_srgb,var(--brand-color)_10%,white)]' : 'hover:bg-surface-sunken'}`}
+              className={`flex items-center gap-1.5 px-2.5 py-2 rounded-brand cursor-pointer group transition-colors ${isOpen ? 'bg-[color-mix(in_srgb,var(--brand-color)_10%,transparent)]' : 'hover:bg-surface-sunken'}`}
             >
               <FileText size={13} className={`flex-shrink-0 ${isOpen ? 'text-gold' : 'text-faint'}`} />
               <span className={`text-xs flex-1 truncate ${isOpen ? 'text-strong font-semibold' : 'text-body'}`}>{d.title || 'Untitled'}</span>
@@ -1009,7 +1009,7 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
               <div
                 key={d.id}
                 onClick={() => { openDocument(d); onNavigate?.(); }}
-                className={`flex items-center gap-1.5 px-2.5 py-2 rounded-brand cursor-pointer group transition-colors ${openDoc?.id === d.id ? 'bg-[color-mix(in_srgb,var(--brand-color)_10%,white)]' : 'hover:bg-surface-sunken'}`}
+                className={`flex items-center gap-1.5 px-2.5 py-2 rounded-brand cursor-pointer group transition-colors ${openDoc?.id === d.id ? 'bg-[color-mix(in_srgb,var(--brand-color)_10%,transparent)]' : 'hover:bg-surface-sunken'}`}
               >
                 <Share2 size={13} className="text-faint flex-shrink-0" />
                 <span className="text-xs text-body flex-1 truncate">{d.title || 'Untitled'}</span>
@@ -1115,7 +1115,10 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
                   }
                 }}
                 onBlur={handleTitleBlur}
-                className="w-full font-display text-4xl font-normal tracking-[-0.01em] text-strong bg-transparent border-none outline-none placeholder-stone-300 mb-6 mt-6"
+                // THE-136: placeholder-stone-300 was a fixed light beige — 1.55:1
+                // on the white card in light, and unthemed in dark. text-faint is
+                // the placeholder role and clears AA on both grounds.
+                className="w-full font-display text-4xl font-normal tracking-[-0.01em] text-strong bg-transparent border-none outline-none placeholder:text-faint mb-6 mt-6"
                 placeholder="Untitled"
               />
               <RichTextEditor
@@ -1209,7 +1212,7 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
               return (
                 <div
                   key={f.id}
-                  className={`relative group flex items-center gap-2 pl-3.5 pr-2.5 py-2.5 rounded-brand-lg border transition-all text-left ${active ? 'border-[color-mix(in_srgb,var(--brand-color)_45%,transparent)] bg-[color-mix(in_srgb,var(--brand-color)_7%,white)]' : 'border-line bg-surface-raised hover:border-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] shadow-[var(--ds-sh-sm)]'}`}
+                  className={`relative group flex items-center gap-2 pl-3.5 pr-2.5 py-2.5 rounded-brand-lg border transition-all text-left ${active ? 'border-[color-mix(in_srgb,var(--brand-color)_45%,transparent)] bg-[color-mix(in_srgb,var(--brand-color)_7%,transparent)]' : 'border-line bg-surface-raised hover:border-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] shadow-[var(--ds-sh-sm)]'}`}
                 >
                   <button
                     onClick={() => setActiveFolderId(active ? null : f.id)}

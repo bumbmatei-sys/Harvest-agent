@@ -41,7 +41,12 @@ import { notifyError } from '../utils/notify';
 // CONSTANTS
 // ═══════════════════════════════════════════════
 const GOLD = "var(--brand-color, #C9963A)";
-const GOLD_LIGHT = "color-mix(in srgb, var(--brand-color, #C9963A) 12%, white)";
+// Soft accent tint. Mixed over --surface-raised rather than a literal `white`:
+// in the light theme that variable is plain white, so the rendered colour is
+// unchanged, while on a dark ground the tint follows the card instead of
+// staying a near-white block. The accent itself is untouched — this still reads
+// var(--brand-color), so a tenant's colour drives it in both themes.
+const GOLD_LIGHT = "color-mix(in srgb, var(--brand-color, #C9963A) 12%, var(--surface-raised))";
 const GOLD_BTN = "linear-gradient(135deg, var(--brand-color, #C9963A), color-mix(in srgb, var(--brand-color, #C9963A) 82%, #ffffff))";
 const BG = "var(--surface)";
 const CARD = "var(--surface-raised)";
@@ -228,7 +233,7 @@ function OutlineEditor({ items, onChange }: OutlineEditorProps) {
  <input style={{ flex: 1, border: "none", outline: "none", fontWeight: 700, fontSize: 14, color: TEXT, background: "transparent", fontFamily: "inherit" }}
  value={item.title} onChange={(e) => update(i, "title", e.target.value)} placeholder="Outline point title..." />
  {items.length > 1 && (
- <button style={{ background: "none", border: "none", color: "#CCC", cursor: "pointer", fontSize: 15 }}
+ <button style={{ background: "none", border: "none", color: "var(--text-faint)", cursor: "pointer", fontSize: 15 }}
  onClick={() => onChange(items.filter((_, idx) => idx !== i))}>✕</button>
  )}
  </div>
@@ -318,7 +323,7 @@ function LinksEditor({ links, onChange }: LinksEditorProps) {
  </select>
  <input style={s.input} value={link.url} onChange={(e) => update(i, "url", e.target.value)} placeholder="https://..." />
  {links.length > 1 && (
- <button style={{ background: "none", border: "none", color: "#CCC", cursor: "pointer", fontSize: 15 }}
+ <button style={{ background: "none", border: "none", color: "var(--text-faint)", cursor: "pointer", fontSize: 15 }}
  onClick={() => onChange(links.filter((_, idx) => idx !== i))}>✕</button>
  )}
  </div>
@@ -570,7 +575,7 @@ function LessonCard({ lesson, onChange, onRemove, authorsLibrary = [] }: LessonC
  return (
  <div style={{ background: "var(--surface)", border: `1.5px solid ${BORDER}`, borderRadius: 12, marginBottom: 8, overflow: "hidden" }}>
  <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 14px", cursor: "pointer" }} onClick={() => setOpen((o) => !o)}>
- <span style={{ color: "#CCC", fontSize: 18, cursor: "grab", userSelect: "none" }}>⠿</span>
+ <span style={{ color: "var(--text-faint)", fontSize: 18, cursor: "grab", userSelect: "none" }}>⠿</span>
  <div style={{ flex: 1 }}>
  <div style={{ fontSize: 14, fontWeight: 600, color: TEXT }}>{lesson.title || "Untitled Lesson"}</div>
  <div style={{ display: "flex", gap: 10, marginTop: 2 }}>
@@ -671,10 +676,14 @@ function SectionCard({ section, onChange, onRemove, authorsLibrary = [] }: Secti
  onChange({ ...section, lessons: ls });
  dragging.current = null; dragOver.current = null;
  };
+ // THE-136: the Section Title row. Was a fixed light-grey literal that stayed
+ // light while the input's own `color: TEXT` inverted, i.e. cream text on a
+ // near-white band. --surface-sunken is the recessed-fill role and reads as
+ // nested inside the level card in both themes.
  return (
- <div style={{ background: "#F7F8FA", border: `1.5px solid ${BORDER}`, borderRadius: 12, marginBottom: 10, overflow: "hidden" }}>
+ <div style={{ background: "var(--surface-sunken)", border: `1.5px solid ${BORDER}`, borderRadius: 12, marginBottom: 10, overflow: "hidden" }}>
  <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 14px", borderBottom: open ? `1px solid ${BORDER}` : "none" }}>
- <span style={{ color: "#CCC", fontSize: 16, cursor: "grab", userSelect: "none" }}>⠿</span>
+ <span style={{ color: "var(--text-faint)", fontSize: 16, cursor: "grab", userSelect: "none" }}>⠿</span>
  <div style={{ width: 6, height: 6, borderRadius: "50%", background: GOLD, flexShrink: 0 }} />
  <input style={{ flex: 1, border: "none", outline: "none", fontWeight: 700, fontSize: 14, color: TEXT, background: "transparent", fontFamily: "inherit" }}
  value={section.title} onChange={(e) => onChange({ ...section, title: e.target.value })} placeholder="Section Title..." />
@@ -725,8 +734,12 @@ function LevelCard({ level, onChange, onRemove, authorsLibrary = [] }: LevelCard
  };
  return (
  <div style={{ ...s.card, marginBottom: 14, border: `2px solid ${BORDER}` }}>
- <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "13px 16px", background: "#FDFCF8", borderBottom: open ? `1px solid ${BORDER}` : "none" }}>
- <span style={{ color: "#CCC", fontSize: 18, cursor: "grab", userSelect: "none" }}>⠿</span>
+ {/* THE-136: the Level Title row. Was a fixed light-cream literal that stayed
+     light while the input's own `color: TEXT` inverted, so the title and its
+     placeholder vanished on the dark page. --surface-tint is the same
+     barely-there tint role in light and follows the ground in dark. */}
+ <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "13px 16px", background: "var(--surface-tint)", borderBottom: open ? `1px solid ${BORDER}` : "none" }}>
+ <span style={{ color: "var(--text-faint)", fontSize: 18, cursor: "grab", userSelect: "none" }}>⠿</span>
  <div style={{ width: 10, height: 10, borderRadius: "50%", background: GOLD, border: `2px solid ${GOLD_LIGHT}`, flexShrink: 0 }} />
  <input style={{ flex: 1, border: "none", outline: "none", fontWeight: 800, fontSize: 16, color: TEXT, background: "transparent", fontFamily: "inherit" }}
  value={level.title} onChange={(e) => onChange({ ...level, title: e.target.value })} placeholder="Level Title (e.g. Beginner, Week 1)..." />
@@ -743,7 +756,7 @@ function LevelCard({ level, onChange, onRemove, authorsLibrary = [] }: LevelCard
  <SectionCard section={sec} onChange={(updated) => setSection(i, updated)} onRemove={() => removeSection(i)} authorsLibrary={authorsLibrary} />
  </div>
  ))}
- <button style={{ ...s.addLessonBtn, borderColor: "#D0D0D0", color: TEXT2 }} onClick={() => onChange({ ...level, sections: [...level.sections, emptySection()] })}>+ Add Section</button>
+ <button style={{ ...s.addLessonBtn, borderColor: "var(--border-strong)", color: TEXT2 }} onClick={() => onChange({ ...level, sections: [...level.sections, emptySection()] })}>+ Add Section</button>
  </div>
  )}
  </div>
@@ -1091,11 +1104,11 @@ export default function CourseBuilder({ course: initialCourse, onClose, library 
  <div style={s.root}>
  <style>{`
  *{box-sizing:border-box;margin:0;padding:0;}
- [contenteditable]:empty:before{content:attr(data-placeholder);color:#BBB;pointer-events:none;}
- textarea::placeholder,input::placeholder{color:#BBBBBB;}
+ [contenteditable]:empty:before{content:attr(data-placeholder);color:var(--text-faint);pointer-events:none;}
+ textarea::placeholder,input::placeholder{color:var(--text-faint);}
  textarea,input,select{outline:none;}
  ::-webkit-scrollbar{width:5px;}
- ::-webkit-scrollbar-thumb{background:#DDD;border-radius:4px;}
+ ::-webkit-scrollbar-thumb{background:var(--border-strong);border-radius:4px;}
  button:disabled{opacity:0.6;cursor:not-allowed;}
  `}</style>
 
@@ -1320,7 +1333,7 @@ const s: Record<string, CSSProperties> = {
  row2: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 },
  avatar: { width: 40, height: 40, borderRadius: "50%", objectFit: "cover", border: `2px solid ${BORDER}`, flexShrink: 0 },
  avatarEmpty: { width: 40, height: 40, borderRadius: "50%", background: GOLD_LIGHT, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 },
- removeBtn: { background: "none", border: "none", color: "#CCC", cursor: "pointer", fontSize: 16, padding: "2px 4px", lineHeight: 1, fontFamily: "inherit", marginLeft: 4 },
+ removeBtn: { background: "none", border: "none", color: "var(--text-faint)", cursor: "pointer", fontSize: 16, padding: "2px 4px", lineHeight: 1, fontFamily: "inherit", marginLeft: 4 },
  newBtn: { background: GOLD_BTN, border: "none", color: "var(--surface-raised)", fontWeight: 700, padding: "13px", borderRadius: 12, cursor: "pointer", fontSize: 14, width: "100%", fontFamily: "inherit", boxShadow: "0 2px 8px rgba(201,150,58,0.3)" },
  addLessonBtn: { background: "transparent", border: `1.5px dashed ${BORDER}`, color: TEXT2, padding: "10px", borderRadius: 10, cursor: "pointer", fontSize: 13, width: "100%", fontFamily: "inherit", fontWeight: 600, marginTop: 4 },
  aiBtn: { display: "inline-flex", alignItems: "center", gap: 6, border: `1.5px solid ${GOLD}`, background: GOLD_LIGHT, color: GOLD, borderRadius: 10, padding: "10px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap", flexShrink: 0 },
