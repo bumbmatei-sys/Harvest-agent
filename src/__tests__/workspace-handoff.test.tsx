@@ -242,10 +242,10 @@ describe('3 — while provisioning is incomplete it does not send the user onwar
 
     expect(text()).toContain('taking longer than usual');
     expect(text()).toContain('nothing to pay again');
-    const mailto = Array.from(container.querySelectorAll('a')).find((a) =>
-      (a.getAttribute('href') || '').startsWith('mailto:'),
+    const contact = Array.from(container.querySelectorAll('a')).find((a) =>
+      a.getAttribute('href') === 'https://theharvest.site/contact',
     );
-    expect(mailto, 'a stuck signup was left with no way to reach a human').toBeTruthy();
+    expect(contact, 'a stuck signup was left with no way to reach a human').toBeTruthy();
     // Still never the broken destination.
     expect(continueLink()).toBeNull();
   });
@@ -324,7 +324,7 @@ describe('5 — no path on this screen can initiate a second payment', () => {
 
     const els = actionables();
     expect(els).toHaveLength(1);
-    expect(els[0].getAttribute('href') || '').toMatch(/^mailto:/);
+    expect(els[0].getAttribute('href')).toBe('https://theharvest.site/contact');
     expect(els[0].textContent || '').not.toMatch(PAY_ACTION);
   });
 
@@ -524,6 +524,104 @@ describe('8 — on the origin the workspace already lives on, it does not claim 
 
     expect(text()).toContain('sign in once more');
     expect(continueLink()?.getAttribute('href')).toBe('https://gracechurch.theharvest.app/admin');
+  });
+});
+
+/* ── 9 — the stuck-state support link is a real, monitored destination (THE-158) ── */
+
+describe('9 — the stuck-state support link is a real, monitored destination (THE-158)', () => {
+  const CONTACT_URL = 'https://theharvest.site/contact';
+
+  const renderStuck = async () => {
+    vi.useFakeTimers();
+    getDoc.mockResolvedValue(notProvisioned());
+    render(<WorkspaceHandoff tenantId="gracechurch" />);
+    await act(async () => { await vi.advanceTimersByTimeAsync(STALLED_AFTER_MS + POLL_INTERVAL_MS); });
+  };
+
+  const contactLink = () =>
+    Array.from(container.querySelectorAll('a')).find((a) => a.getAttribute('href') === CONTACT_URL) || null;
+
+  it('the handoff offers a contact route that exists', async () => {
+    await renderStuck();
+    expect(contactLink(), 'the stuck branch offered no reachable contact route').toBeTruthy();
+  });
+
+  it('no mailto to an unmonitored address is rendered anywhere on the screen', async () => {
+    await renderStuck();
+    const mailtos = Array.from(container.querySelectorAll('a')).filter((a) =>
+      (a.getAttribute('href') || '').startsWith('mailto:'),
+    );
+    expect(mailtos, 'a mailto: link to an address nobody reads was rendered').toEqual([]);
+    // Structural: the invented address cannot come back even if the copy is
+    // rewritten later.
+    expect(HANDOFF_SRC).not.toContain('mailto:');
+    expect(HANDOFF_SRC).not.toContain('support@theharvest.app');
+  });
+
+  it('the contact link points at the public marketing contact page, not an in-app route', async () => {
+    await renderStuck();
+    const link = contactLink();
+    // Absolute, on the marketing origin — never a same-origin in-app path,
+    // which would require the church to already be signed in on an app origin
+    // it may be unable to reach at this exact moment.
+    expect(link?.getAttribute('href')).toBe(CONTACT_URL);
+    expect(link?.getAttribute('href')).toMatch(/^https:\/\/theharvest\.site\//);
+  });
+
+  it('the link opens in a new tab and does not navigate away from the funnel', async () => {
+    await renderStuck();
+    const link = contactLink();
+    expect(link?.getAttribute('target')).toBe('_blank');
+    expect(link?.getAttribute('rel')).toBe('noopener noreferrer');
+  });
+
+  it('the cross-origin and same-origin copy from PR 327 is unchanged', async () => {
+    // Cross-origin: apex → subdomain (the default host set in beforeEach).
+    render(<WorkspaceHandoff tenantId="gracechurch" />);
+    await flush();
+    const crossOriginCopy = text();
+    expect(crossOriginCopy).toContain('sign in once more');
+    expect(crossOriginCopy).toContain('expected');
+    expect(crossOriginCopy).toContain('own web address');
+    expect(crossOriginCopy).toContain('nothing was lost');
+
+    // Tear down and re-render on the workspace's own origin.
+    act(() => { root?.unmount(); });
+    container.remove();
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    setHost('https://gracechurch.theharvest.app/');
+
+    render(<WorkspaceHandoff tenantId="gracechurch" />);
+    await flush();
+    expect(text()).toContain('already signed in at this address');
+  });
+
+  it('no colour is hardcoded', () => {
+    // Structural, on the source: isolate the JSX block for the contact link
+    // (from its opening tag to "Contact support") and require every
+    // colour-bearing property in it to be a CSS custom property reference —
+    // its fallback may be a literal, that is how var() works, but the value
+    // actually used must come from a token, never a bare hex/rgb doing the
+    // work on its own. This screen is light-mode-only by decision (THE-85)
+    // and must stay themeable through tokens.
+    const start = HANDOFF_SRC.indexOf('href={CONTACT_URL}');
+    expect(start, 'the contact link markup was not found').toBeGreaterThan(-1);
+    const end = HANDOFF_SRC.indexOf('Contact support', start);
+    const block = HANDOFF_SRC.slice(start, end);
+
+    // Values may themselves contain commas (e.g. color-mix(in srgb, ...)), so
+    // check whole lines rather than splitting on ",": each line naming a
+    // colour-bearing property must be themed either inline (`var(--...)`) or
+    // via one of the module-level token constants declared at the top of the
+    // file — BRAND and SUCCESS are themselves `var(--brand-color, ...)` /
+    // `var(--brand-success, ...)`.
+    const colourLines = block.split('\n').filter((line) => /\b(color|border|background)\s*:/.test(line));
+    expect(colourLines.length).toBeGreaterThan(0);
+    for (const line of colourLines) {
+      expect(line).toMatch(/var\(--|\bBRAND\b|\bSUCCESS\b/);
+    }
   });
 });
 
