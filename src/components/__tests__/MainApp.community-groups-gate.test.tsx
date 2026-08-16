@@ -50,10 +50,7 @@ vi.mock('../../utils/tenant-scope', () => ({
 
 // Every Firestore mutation verb is recorded so the "nothing is deleted" test can
 // assert on the absence of writes rather than on the absence of an error.
-const fx = vi.hoisted(() => ({
-  mutations: [] as string[],
-  listenedPaths: [] as string[],
-}));
+const fx = vi.hoisted(() => ({ mutations: [] as string[] }));
 
 vi.mock('firebase/firestore', () => ({
   collection: (_db: unknown, ...seg: string[]) => ({ __path: seg.join('/') }),
@@ -64,7 +61,7 @@ vi.mock('firebase/firestore', () => ({
   doc: (_db: unknown, ...seg: string[]) => ({ __path: seg.join('/') }),
   getDoc: async () => ({ exists: () => false, data: () => ({}) }),
   getDocs: async () => ({ docs: [], forEach: () => {} }),
-  onSnapshot: (q: any) => { fx.listenedPaths.push(String(q?.__path ?? '')); return () => {}; },
+  onSnapshot: () => () => {},
   addDoc: async () => { fx.mutations.push('addDoc'); return { id: 'x' }; },
   updateDoc: async () => { fx.mutations.push('updateDoc'); },
   deleteDoc: async () => { fx.mutations.push('deleteDoc'); },
@@ -156,6 +153,21 @@ const topTab = (id: string): HTMLElement | null =>
   container.querySelector(`[data-tab-id="${id}"]`);
 
 /**
+ * The labels inside one desktop sidebar group, addressed by the group's own
+ * heading. Messages, Prayer and Map all live under "COMMUNITY", so this is
+ * where a gate keyed on the heading rather than on the flag shows itself.
+ */
+function sidebarGroup(heading: string): string[] {
+  const head = Array.from(container.querySelectorAll('div')).find(
+    (d) => d.children.length === 0 && (d.textContent || '').trim() === heading,
+  );
+  const wrapper = head?.parentElement;
+  return wrapper
+    ? Array.from(wrapper.querySelectorAll('button')).map((b) => (b.textContent || '').trim())
+    : [];
+}
+
+/**
  * Every nav control anywhere in the shell carrying `label` — the mobile top-tab
  * strip, the mobile bottom bar and the desktop sidebar all render into the same
  * tree in jsdom, so this answers "is this surface offered at all".
@@ -178,7 +190,7 @@ beforeEach(() => {
   container = document.createElement('div');
   document.body.appendChild(container);
   fx.mutations = [];
-  fx.listenedPaths = [];
+
 });
 
 afterEach(async () => {
@@ -195,14 +207,13 @@ describe("an Individual tenant's members cannot reach the community surfaces", (
     expect(navControls('Messages'), 'a Messages nav entry survives somewhere').toHaveLength(0);
   });
 
-  it('never mounts the channel + DM screen', async () => {
+  it('drops Messages from the desktop COMMUNITY group but keeps the rest of it', async () => {
     await mount('plus');
 
-    expect(messagesScreen()).toBeNull();
-    expect(
-      fx.listenedPaths.filter((p) => p.includes('channels') || p.includes('directMessages')),
-      'a channel/DM listener was opened on a tenant with no entitlement',
-    ).toEqual([]);
+    const group = sidebarGroup('COMMUNITY');
+    expect(group, 'the COMMUNITY sidebar group did not render at all').not.toEqual([]);
+    expect(group).not.toContain('Messages');
+    expect(group, 'the whole group was gated instead of the one feature in it').toContain('Prayer');
   });
 
   it('stays closed while the plan is still resolving', async () => {
@@ -234,6 +245,12 @@ describe("a Ministry tenant's members still can", () => {
 
     expect(topTab('messages'), 'Ministry lost a feature it pays for').not.toBeNull();
     expect(navControls('Messages').length).toBeGreaterThan(0);
+  });
+
+  it('keeps Messages in the desktop COMMUNITY group', async () => {
+    await mount('max');
+
+    expect(sidebarGroup('COMMUNITY')).toContain('Messages');
   });
 
   it('opens the real channel + DM screen, not an upgrade prompt', async () => {
