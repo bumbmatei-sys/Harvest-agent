@@ -36,6 +36,7 @@ import { PLATFORM_TENANT_ID, getTenantIdFromHost } from './utils/tenant-scope';
 import { isAffiliateHost } from './utils/non-tenant-subdomains';
 import { resolvePostAuthFunnelRoute } from './utils/post-auth-route';
 import { SIGNUP_BILLING_STORAGE_KEY } from './utils/signup-checkout';
+import { beginPaymentConfirmation, shouldConfirmPaymentBeforeHandoff } from './utils/paid-arrival';
 import { usePreAuthTheme, useForcedLightTheme } from './lib/theme-runtime';
 
 /** Paths that represent the auth / onboarding funnel (used to decide redirects). */
@@ -320,15 +321,48 @@ const AppInner: React.FC = () => {
                   // subdomain that renders "Organization Not Found". If it's gone,
                   // stay on the apex admin (the always-valid destination) instead.
                   let tenantExists = false;
+                  let tenantSetupCompleted: unknown;
                   try {
                     const tenantSnap = await getDoc(doc(db, 'tenants', data.tenantId));
                     tenantExists = tenantSnap.exists();
+                    // Read off the SAME snapshot — the payment gate below needs
+                    // to know whether this is a just-provisioned tenant, and a
+                    // second get for one boolean would be a second read on the
+                    // hottest path in the funnel.
+                    tenantSetupCompleted = tenantSnap.data()?.setupCompleted;
                   } catch (e) {
                     // Lookup failed — don't gamble on a possibly-dead subdomain.
                     console.warn('Tenant existence check failed before subdomain redirect:', e);
                   }
                   if (tenantExists) {
-                    window.location.href = `https://${data.tenantId}.theharvest.app/admin`;
+                    // 🔴 THE-138. The line below is an ORIGIN HOP, not a
+                    // navigation: `theharvest.app` and `<tenant>.theharvest.app`
+                    // are different origins and Firebase persists auth in
+                    // origin-scoped storage, so it ends the only session the
+                    // payer has. A church returning from checkout therefore used
+                    // to be redirected off the origin that just took its money
+                    // BEFORE anything told it the payment succeeded — it signed
+                    // in again, completed first-run setup, and met "Your payment
+                    // went through" on the far side, in the same-origin variant
+                    // that says no second sign-in is needed. By then it had done
+                    // one.
+                    //
+                    // So the hop WAITS for the confirmation. It is not removed,
+                    // not reordered and not conditioned on the funnel: the
+                    // moment the payer acknowledges the screen the redirect
+                    // resumes byte-for-byte, and any arrival that did not just
+                    // pay never enters the branch at all. The confirmation is
+                    // painted by OnboardingGate (which already owns every
+                    // screen in this funnel) on THIS origin, where the session
+                    // is still alive.
+                    if (shouldConfirmPaymentBeforeHandoff({
+                      search: window.location.search,
+                      tenantSetupCompleted,
+                    })) {
+                      beginPaymentConfirmation(data.tenantId);
+                    } else {
+                      window.location.href = `https://${data.tenantId}.theharvest.app/admin`;
+                    }
                   } else {
                     console.warn(
                       `User ${user.uid} references tenant '${data.tenantId}' which no longer exists; staying on apex admin.`
