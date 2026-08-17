@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { ArrowLeft, ChevronDown, ChevronUp } from 'lucide-react';
 import { MEMBER_FAQS } from '../lib/member-faqs';
+import ModalContentContainer from './ModalContentContainer';
 
 interface FAQModalProps {
  isOpen: boolean;
@@ -72,7 +73,8 @@ const FAQModal: React.FC<FAQModalProps> = ({ isOpen, onClose }) => {
  <h2 className="text-lg font-bold text-strong flex-1 text-center pr-8 font-display">FAQ</h2>
  </div>
 
- <div className="flex-1 overflow-y-auto p-4 pb-12">
+ <div className="flex-1 overflow-y-auto">
+ <ModalContentContainer>
  <div className="text-center mb-8 mt-4">
  <h2 className="text-2xl font-bold text-strong mb-2 font-display">Frequently Asked Questions</h2>
  <p className="text-muted text-sm">Using your ministry&apos;s workspace on Harvest.</p>
@@ -89,6 +91,7 @@ const FAQModal: React.FC<FAQModalProps> = ({ isOpen, onClose }) => {
  />
  ))}
  </div>
+ </ModalContentContainer>
  </div>
  </div>
  );

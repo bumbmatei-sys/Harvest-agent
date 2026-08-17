@@ -6,6 +6,7 @@ import { collection, addDoc } from 'firebase/firestore';
 import { getTenantScope } from '../utils/tenant-scope';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { AFFILIATE_PROGRAM_ENABLED } from '../utils/plan-features';
+import ModalContentContainer from './ModalContentContainer';
 
 
 interface ContactModalProps {
@@ -207,7 +208,8 @@ const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) => {
  <h2 className="text-lg font-bold text-strong flex-1 text-center pr-8 font-display">Contact</h2>
  </div>
 
- <div className="flex-1 overflow-y-auto p-4 pb-12">
+ <div className="flex-1 overflow-y-auto">
+ <ModalContentContainer>
  <div className="text-center mb-8 mt-4">
  <h2 className="text-2xl font-bold text-strong mb-2 font-display">How can we help?</h2>
  <p className="text-muted text-sm">We are here to serve you.</p>
@@ -340,6 +342,7 @@ const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) => {
  </form>
  </AccordionItem>
 
+ </ModalContentContainer>
  </div>
  </div>
  );
