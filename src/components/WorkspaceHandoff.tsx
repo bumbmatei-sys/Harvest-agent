@@ -12,14 +12,18 @@ const SUCCESS = 'var(--brand-success, #6E8E52)';
 const HARVEST_LOGO = 'https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png';
 
 /**
- * ⚠️ UNVERIFIED — the one string in this file not derived from the repo. Nothing
- * in the codebase or docs names a support address (only `noreply@theharvest.app`
- * and test fixtures exist), so this is a convention, not a confirmed mailbox.
- * It is a constant precisely so correcting it is a one-line change. If this
- * address is not monitored, a church whose provisioning stalls emails a void —
- * which is the exact failure this screen exists to prevent.
+ * The public marketing site's contact page — reachable without being signed
+ * in, on an origin the church can always reach even mid-signup. The in-app
+ * contact surface (ContactModal) requires auth, so it is unreachable exactly
+ * when this screen needs it: everyone here is pre-auth-adjacent by definition.
+ * Submissions land in the founder's monitored super-admin inbox.
+ *
+ * ⚠️ No subject or context can be passed here. `/api/contact` — the route this
+ * page posts to — collects name/email/message only; there is no subject field
+ * to carry the workspace address the old support-email link's subject line
+ * named. Adding one is a marketing-site change, out of scope for this app.
  */
-const SUPPORT_EMAIL = 'support@theharvest.app';
+const CONTACT_URL = 'https://theharvest.site/contact';
 
 /** How often we re-check that the workspace really exists. */
 const POLL_INTERVAL_MS = 2000;
@@ -332,7 +336,9 @@ const WorkspaceHandoff: React.FC<WorkspaceHandoffProps> = ({ tenantId, fallbackM
                 Send us a note and we&rsquo;ll finish setting it up by hand.
               </p>
               <a
-                href={`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(`Workspace setup — ${address}`)}`}
+                href={CONTACT_URL}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="mt-5 inline-flex items-center gap-2 rounded-lg font-semibold no-underline"
                 style={{
                   padding: '12px 26px', fontSize: 15, color: BRAND,
