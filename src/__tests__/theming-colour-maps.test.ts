@@ -50,7 +50,6 @@ const read = (rel: string) => readFileSync(path.join(SRC, rel), 'utf8');
  */
 const BACKSTOP = { light: '#FFFFFF', dark: '#221D18' } as const;
 type Theme = keyof typeof BACKSTOP;
-const THEMES: Theme[] = ['light', 'dark'];
 
 /** Non-text contrast floor (WCAG 1.4.11) — used for the pill fill itself. */
 const NON_TEXT_CONTRAST = 3;
@@ -283,9 +282,16 @@ interface Surface {
   /** What a reader points at. Used as the test name. */
   label: string;
   file: string;
-  map: string;
+  map?: string;
   /** A separate const holding the branch taken when the map lookup misses. */
   fallback?: string;
+  /**
+   * Named single-string class constants, for a surface whose variants are too
+   * few to be a map but which is still one colour decision spelled once. Held to
+   * exactly the same assertions — the bug does not care whether the repetition
+   * was indexed.
+   */
+  consts?: string[];
 }
 
 const SURFACES: Surface[] = [
@@ -294,6 +300,11 @@ const SURFACES: Surface[] = [
     file: 'components/AdminCRM.tsx',
     map: 'TYPE_COLORS',
     fallback: 'UNKNOWN_TYPE_COLOR',
+  },
+  {
+    label: 'the CRM giving pills',
+    file: 'components/AdminCRM.tsx',
+    consts: ['GIVING_PILL', 'GIVING_PILL_ERROR'],
   },
   { label: 'the shared admin status badge', file: 'components/admin/AdminUI.tsx', map: 'BADGE_TONES' },
   { label: 'the tenant plan badge', file: 'components/AdminTenants.tsx', map: 'PLAN_COLORS' },
@@ -304,10 +315,30 @@ const SURFACES: Surface[] = [
   { label: 'the billing status badge', file: 'components/BillingAndPayments.tsx', map: 'STATUS_STYLES' },
 ];
 
-/** Every branch of a surface, including its fallback if it has one. */
+/** Every branch of a surface: its map, its named constants, and its fallback. */
 function allBranches(s: Surface): Array<[string, string]> {
-  const branches = branchesOf(s.file, s.map);
-  return s.fallback ? [...branches, [`${s.fallback} (fallback)`, constString(s.file, s.fallback)]] : branches;
+  const out: Array<[string, string]> = [];
+  if (s.map) out.push(...branchesOf(s.file, s.map));
+  for (const name of s.consts ?? []) out.push([name, constString(s.file, name)]);
+  if (s.fallback) out.push([`${s.fallback} (fallback)`, constString(s.file, s.fallback)]);
+  expect(out.length, `${s.label} resolved to zero branches`).toBeGreaterThan(0);
+  return out;
+}
+
+/**
+ * The source text a surface is spelled in — its map initialiser plus any named
+ * constants. This is what the literal/inline-style/dark-variant scans read, so a
+ * surface declared as constants is held to the same rules as one declared as a
+ * map.
+ */
+function sourceOf(s: Surface): string {
+  const src = read(s.file);
+  const parts = s.map ? [mapBody(src, s.map)] : [];
+  for (const name of [...(s.consts ?? []), ...(s.fallback ? [s.fallback] : [])]) {
+    const m = src.match(new RegExp(`\\bconst\\s+${name}\\b[^=]*=\\s*'[^']*'`));
+    if (m) parts.push(m[0]);
+  }
+  return parts.join('\n');
 }
 
 /** The resolved ink/fill pair for one branch in one theme. */
@@ -334,6 +365,13 @@ function pairFor(classes: string, theme: Theme): { ink: string; fill: string } {
 // ═══════════════════════════════════════════════════════════════════════════
 
 const CRM = SURFACES[0];
+/**
+ * The CRM badge's own map name, narrowed once. `Surface.map` is optional so a
+ * surface can be declared as named constants instead (the giving pills below),
+ * but this section is specifically about the map, so it asserts that rather than
+ * asserting non-null at each use.
+ */
+const CRM_MAP = CRM.map!;
 
 describe('the CRM type badge is readable in dark mode for every known type', () => {
   /**
@@ -345,11 +383,11 @@ describe('the CRM type badge is readable in dark mode for every known type', () 
    * that should break a test, not silently shrink the coverage.
    */
   it('every known type is still a branch of the map', () => {
-    const keys = branchesOf(CRM.file, CRM.map).map(([k]) => k);
+    const keys = branchesOf(CRM.file, CRM_MAP).map(([k]) => k);
     expect(keys, 'a contact type stopped being coloured').toEqual(['donor', 'member', 'both']);
   });
 
-  it.each(branchesOf(CRM.file, CRM.map))('type "%s" clears AA on dark', (branch, classes) => {
+  it.each(branchesOf(CRM.file, CRM_MAP))('type "%s" clears AA on dark', (branch, classes) => {
     const { ink, fill } = pairFor(classes, 'dark');
     const r = contrastRatio(ink, fill);
     expect(
@@ -358,7 +396,7 @@ describe('the CRM type badge is readable in dark mode for every known type', () 
     ).toBeGreaterThanOrEqual(AA_CONTRAST);
   });
 
-  it.each(branchesOf(CRM.file, CRM.map))('the "%s" pill is visible against the card on dark', (branch, classes) => {
+  it.each(branchesOf(CRM.file, CRM_MAP))('the "%s" pill is visible against the card on dark', (branch, classes) => {
     // The half PR 322 could not have caught by looking at ink alone: a pill whose
     // fill is a fixed light value is a white block on the dark card even when the
     // text on it happens to contrast.
@@ -549,7 +587,7 @@ describe('no hex, rgb() or inline colour is introduced', () => {
   it.each(SURFACES.map((s) => [s.label, s] as const))(
     "%s's map body contains no colour literal",
     (label, s) => {
-      const body = mapBody(read(s.file), s.map);
+      const body = sourceOf(s);
       const literals = [...body.matchAll(/#[0-9A-Fa-f]{3,8}\b|rgba?\([^)]*\)|hsla?\([^)]*\)/g)].map(
         (m) => m[0],
       );
@@ -563,7 +601,7 @@ describe('no hex, rgb() or inline colour is introduced', () => {
   it.each(SURFACES.map((s) => [s.label, s] as const))(
     '%s renders through classes, not an inline style',
     (label, s) => {
-      const body = mapBody(read(s.file), s.map);
+      const body = sourceOf(s);
       expect(body, `${label} carries an inline style object, which no class guard can see`).not.toMatch(
         /style\s*[:=]|background(?:Color)?\s*:/,
       );
@@ -633,7 +671,7 @@ describe('the tenant accent is still not inverted', () => {
     // A `dark:` class would be a second theming mechanism competing with the
     // variable blocks — and the one place a tenant colour could get frozen.
     for (const s of SURFACES) {
-      const body = mapBody(read(s.file), s.map);
+      const body = sourceOf(s);
       expect([...body.matchAll(/\bdark:[a-z-]+/g)].map((m) => m[0]), `${s.label} added a dark: variant`).toEqual(
         [],
       );

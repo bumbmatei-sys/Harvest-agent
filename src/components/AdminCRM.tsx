@@ -103,6 +103,23 @@ const TYPE_COLORS: Record<Contact['type'], string> = {
 const UNKNOWN_TYPE_LABEL = 'Unspecified';
 const UNKNOWN_TYPE_COLOR = 'bg-surface-chip text-muted';
 
+/**
+ * THE-136 — the gold pills on the contact detail panel ("… total given", the
+ * last-gift badge, the activity count).
+ *
+ * Spelled once rather than three times, for the same reason the badge is a map:
+ * the bug this PR fixes is a colour repeated per call site, so a repeated call
+ * site is where it comes back. All three sat on the same `color-mix(…, white)`
+ * fill the donor badge did and carried `text-gold` on it — 2.39:1 in BOTH
+ * themes, and a white pill on the dark card. They are on /admin/crm, the screen
+ * the regression was reported against, one row below the badge.
+ *
+ * Same token pair as TYPE_COLORS.donor above, so the panel reads as one thing.
+ */
+const GIVING_PILL = 'bg-surface-gold text-wheat-800 text-xs font-semibold px-3 py-1.5 rounded-full';
+/** The failed-read variant. red-600 on red-50 is 4.41:1, below AA in light. */
+const GIVING_PILL_ERROR = 'bg-red-50 text-red-700 text-xs font-semibold px-3 py-1.5 rounded-full';
+
 /** Total lookups — `t` is typed as a bare string because the value arrives from
  *  a document, not from the union, however it is annotated at the call site. */
 const typeLabel = (t: string | undefined | null): string =>
@@ -1140,16 +1157,16 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
 
         {/* Stats strip */}
         <div className="flex gap-2 flex-wrap mb-5">
-          <span className="bg-[color-mix(in_srgb,var(--brand-color)_12%,white)] text-gold text-xs font-semibold px-3 py-1.5 rounded-full">{fmt(selected.totalDonated || 0)} total given</span>
-          <span data-testid="crm-last-gift" className="bg-[color-mix(in_srgb,var(--brand-color)_12%,white)] text-gold text-xs font-semibold px-3 py-1.5 rounded-full">
+          <span className={GIVING_PILL}>{fmt(selected.totalDonated || 0)} total given</span>
+          <span data-testid="crm-last-gift" className={GIVING_PILL}>
             {lastGiftBadge(selected)}
           </span>
           {/* Never render "0 activities" off a failed read — that is the lie the
               silent `= []` default used to tell. */}
           {activitiesFailed ? (
-            <span className="bg-red-50 text-red-600 text-xs font-semibold px-3 py-1.5 rounded-full">Activity count unavailable</span>
+            <span className={GIVING_PILL_ERROR}>Activity count unavailable</span>
           ) : (
-            <span className="bg-[color-mix(in_srgb,var(--brand-color)_12%,white)] text-gold text-xs font-semibold px-3 py-1.5 rounded-full">
+            <span className={GIVING_PILL}>
               {activitiesLoading ? 'Loading activities…' : `${activities.length} ${activities.length === 1 ? 'activity' : 'activities'}`}
             </span>
           )}
