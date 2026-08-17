@@ -40,7 +40,13 @@ const STATUS_COLORS: Record<TenantStatus, string> = {
   // ones — a church that stopped paying is not an error condition — via the
   // theme tokens rather than a Tailwind default neutral, which the design-system
   // tests forbid.
-  past_due: 'bg-orange-100 text-orange-700',
+  // THE-136 — was orange, the one hue family the project never tokenised, so
+  // `bg-orange-100` fell through to Tailwind's stock palette and rendered the
+  // same bright pill in both themes. Amber rather than a new orange family: this
+  // is the only orange in src, and BillingAndPayments already spells the very
+  // same `past_due` status amber. `pending` above stays yellow, so no two
+  // statuses collapse onto one colour.
+  past_due: 'bg-amber-100 text-amber-700',
   cancelled: 'bg-surface-sunken text-muted',
   archived: 'bg-surface-sunken text-muted',
 };

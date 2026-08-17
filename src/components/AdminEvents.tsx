@@ -47,7 +47,9 @@ const fmtDiscount = (d: DiscountCode) => (d.type === 'percent' ? `${d.value}% of
 const STATUS_COLORS: Record<Event['status'], string> = {
   draft: 'bg-surface-sunken text-muted',
   published: 'bg-field-100 text-field-700',
-  cancelled: 'bg-red-100 text-red-600',
+  // THE-136 — red-600 on red-100 is 3.95:1, below AA. red-700 is what every
+  // other red badge in the app already uses on this fill.
+  cancelled: 'bg-red-100 text-red-700',
   completed: 'bg-sky-100 text-sky-700',
 };
 

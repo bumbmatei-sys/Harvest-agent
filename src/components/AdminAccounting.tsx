@@ -66,7 +66,9 @@ const TYPE_LABELS: Record<Invoice['type'], string> = {
 };
 
 const TYPE_COLORS: Record<Invoice['type'], string> = {
-  donation_receipt: 'bg-wheat-100 text-wheat-700',
+  // THE-136 — wheat-700 on wheat-100 is 4.33:1, below AA. This is the exact pair
+  // THE-61 added --ink-wheat-800 for; the badge simply predates it.
+  donation_receipt: 'bg-wheat-100 text-wheat-800',
   event_ticket: 'bg-sky-100 text-sky-700',
   invoice: 'bg-purple-100 text-purple-700',
 };

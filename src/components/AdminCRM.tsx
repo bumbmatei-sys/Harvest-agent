@@ -55,11 +55,28 @@ const TYPE_LABELS: Record<Contact['type'], string> = {
  */
 const CONTACT_TYPE_VALUES = Object.keys(TYPE_LABELS) as Contact['type'][];
 
-// Warm brand tag styles used on the list/detail badges (gold / sky / field-green).
+/**
+ * Warm brand tag styles used on the list/detail badges (gold / sky / field-green).
+ *
+ * THE-136 — every branch is spelled with tokens, because a badge is a SEMANTIC
+ * value and the value decides the colour. `member` was always correct; the other
+ * two mixed a themeable colour toward a literal `white`, which is a well-formed
+ * expression whose result is pinned light in both themes. The surface stayed
+ * light while the ink on it inverted, so `both` shipped as #EAF0E2 on #E8EDE3 —
+ * 1.02:1, a white pill with invisible text, live on /admin/crm.
+ *
+ * PR 322 added the UNKNOWN fallback below and computed contrast for it, but the
+ * fallback is the branch a real contact almost never takes. Checking it while
+ * leaving `donor` and `both` unresolved is why a 1.02:1 pill passed a test.
+ *
+ * `--surface-gold` is the palette's own token for a gold tint pill; it tracks
+ * the contrast-corrected accent on dark and the fixed wheat tint on light, and
+ * `--ink-wheat-800` is the gold ink THE-61 added precisely to clear AA on it.
+ */
 const TYPE_COLORS: Record<Contact['type'], string> = {
-  donor: 'bg-[color-mix(in_srgb,var(--brand-color)_14%,white)] text-[color-mix(in_srgb,var(--brand-color)_80%,black)]',
+  donor: 'bg-surface-gold text-wheat-800',
   member: 'bg-sky-100 text-sky-700',
-  both: 'bg-[color-mix(in_srgb,#6E8E52_16%,white)] text-field-700',
+  both: 'bg-field-100 text-field-700',
 };
 
 /**
