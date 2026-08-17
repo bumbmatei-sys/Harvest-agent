@@ -1,14 +1,14 @@
 "use client";
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Plus, Search, Edit2, Trash2, Users, Mail, Phone,
   MessageSquare, DollarSign, PhoneCall, Calendar, Clock, ChevronRight, MapPin,
-  List, LayoutGrid, Heart, Award, AlertTriangle, Send
+  List, LayoutGrid, Heart, Award, AlertTriangle, Send, Upload
 } from 'lucide-react';
 import {
   collection, addDoc, deleteDoc, setDoc,
-  doc, serverTimestamp,
+  doc, serverTimestamp, writeBatch,
 } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { toSafeDate, type DateLike } from '../utils/format-date';
@@ -30,12 +30,30 @@ import { useTenant } from '@/contexts/TenantContext';
 import {
   resolveContactLimit, countContactAccounts, isAtContactLimit, contactLimitMessage,
 } from '../utils/contact-capacity';
+import {
+  readCsvTable, mapRows, planImport, chunkForBatches, importSummary, countSkips,
+  normalizeEmailKey, columnLabel, hasRequiredMapping,
+  IMPORT_FIELDS, IMPORT_FIELD_LABELS, REQUIRED_IMPORT_FIELD,
+  type CsvTable, type ColumnMapping, type ImportField, type ImportOutcome,
+} from '../utils/csv-import';
 
 const TYPE_LABELS: Record<Contact['type'], string> = {
   donor: 'Donor',
   member: 'Member',
   both: 'Donor & Member',
 };
+
+/**
+ * The contact `type` union, as VALUES, derived from the label map above.
+ *
+ * Derived rather than written out again: `TYPE_LABELS` is a
+ * `Record<Contact['type'], string>`, so TypeScript forces it to hold every
+ * member of the union and nothing else. A second hand-written list here could
+ * fall behind the union silently, and the importer would then quietly refuse a
+ * type the CRM understands — or, worse, accept one it does not. The union
+ * itself is untouched: it is used well beyond this file.
+ */
+const CONTACT_TYPE_VALUES = Object.keys(TYPE_LABELS) as Contact['type'][];
 
 // Warm brand tag styles used on the list/detail badges (gold / sky / field-green).
 const TYPE_COLORS: Record<Contact['type'], string> = {
@@ -353,6 +371,221 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
     canViewContacts ? 'contacts' : canViewAnalytics ? 'analytics' : canManageRoles ? 'roles' : 'contacts'
   );
   const [listMode, setListMode] = useState<'list' | 'kanban'>('list');
+
+  // ── THE-74 — CSV import ────────────────────────────────────────────────────
+  //
+  // Upload → map columns → preview → import. The parsing, mapping, dedupe and
+  // batching all live in src/utils/csv-import.ts (pure, unit-tested); what is
+  // here is the screen and the write.
+  //
+  // ⚠️ THE FILE IS NEVER UPLOADED ANYWHERE. It is read with `File.text()` and
+  // parsed in this tab. A member list is personal data — names, emails, phone
+  // numbers — and this way it never leaves the device; only the contact
+  // documents cross the wire, on the same authenticated client write path the
+  // manual add already uses. See the csv-import module header.
+  const [showImport, setShowImport] = useState(false);
+  const [importFileName, setImportFileName] = useState('');
+  const [importTable, setImportTable] = useState<CsvTable | null>(null);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [mapping, setMapping] = useState<ColumnMapping>({});
+  // '' is NOT "member". It is "the admin has not said yet", and the import
+  // button stays disabled until they do — see the type decision below.
+  const [importType, setImportType] = useState<Contact['type'] | ''>('');
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<{ ok: boolean; text: string } | null>(null);
+
+  /**
+   * Every email already in this CRM, normalised — the de-duplication index.
+   *
+   * Built from `contacts`, which is the MERGED list, so it covers both real
+   * `contacts` rows and people who exist only as a `users` account. Importing
+   * someone who already has an app account would otherwise create a second row
+   * for them, which is the dual-id shape `mergeContactsWithUsers` exists to
+   * prevent.
+   *
+   * 🔴 NO NEW QUERY. Deduplicating server-side would mean an `in` query over
+   * emails (batched at 30 a time, hundreds of round trips) or a composite
+   * (tenantId + email) index. The `contacts` rule gates reads on
+   * `isTenantAdmin(resource.data.tenantId)` and a missing composite index fails
+   * a query SILENTLY — a dedupe that quietly returns nothing would double a
+   * church's list on the second import, which is precisely the failure being
+   * defended against. The already-loaded list costs nothing and cannot fail.
+   *
+   * ⚠️ Bounded by CRM_FETCH_LIMIT, like everything else on this screen. When
+   * the list is truncated the index is a prefix, and the import panel says so
+   * rather than implying a completeness it does not have.
+   */
+  const existingEmailKeys = useMemo(
+    () => new Set(contacts.map(c => normalizeEmailKey(c.email)).filter(Boolean)),
+    [contacts],
+  );
+
+  /**
+   * What WOULD be written, recomputed as the admin maps columns.
+   *
+   * Null until the two things the import cannot be honest without are settled:
+   * a First name column (the manual add's own required field) and an explicit
+   * type. That is what keeps the preview from ever rendering a row carrying an
+   * assumption.
+   */
+  const importPlan = useMemo(() => {
+    if (!importTable || !importType || !hasRequiredMapping(mapping)) return null;
+    return planImport(
+      mapRows(importTable, mapping, importType, CONTACT_TYPE_VALUES),
+      existingEmailKeys,
+    );
+  }, [importTable, importType, mapping, existingEmailKeys]);
+
+  /** Reset to a clean sheet — used on open and on close. */
+  const resetImport = (): void => {
+    setImportFileName(''); setImportTable(null); setImportError(null);
+    setMapping({}); setImportType(''); setImportResult(null);
+  };
+
+  // Gated exactly like `openNewContact`. Import is an admin-initiated creation
+  // path, which is the one category contact-capacity.ts gates — see the cap
+  // decision on `runImport`.
+  const openImport = (): void => {
+    if (atContactLimit) return;
+    resetImport();
+    setShowImport(true);
+  };
+
+  const closeImport = (): void => { setShowImport(false); resetImport(); };
+
+  /**
+   * Read the chosen file and turn it into a table. Nothing is written here.
+   *
+   * An unreadable file is reported the same way a rejected one is: the panel
+   * stays on the upload step with a message, never advancing to a mapping
+   * screen built on nothing.
+   */
+  const onImportFile = async (file: File | null | undefined): Promise<void> => {
+    setImportResult(null);
+    setMapping({});
+    setImportType('');
+    setImportTable(null);
+    setImportError(null);
+    if (!file) return;
+    setImportFileName(file.name);
+    let text: string;
+    try {
+      text = await file.text();
+    } catch {
+      setImportError('That file could not be read. Try exporting it again.');
+      return;
+    }
+    const result = readCsvTable(text);
+    if (!result.ok) { setImportError(result.error); return; }
+    setImportTable(result.table);
+  };
+
+  /**
+   * Write the planned rows.
+   *
+   * ── THE CAP ────────────────────────────────────────────────────────────────
+   * 🔴 AT THE CAP THE FILE IS REFUSED, WHOLE. Not trimmed to fit.
+   *
+   * The alternative — import up to the cap and report the rest — reads as the
+   * considerate option and is actually a false statement. `maxContacts` counts
+   * ACCOUNTS: `useCRMCounts.memberAccounts` is an aggregate over `users`, and
+   * `countContactAccounts` subtracts only super admins from it. An imported
+   * contact is a `contacts` document with no account attached, exactly like a
+   * donor who gave through the public donate page — so importing 400 people
+   * changes `accountsUsed` by zero. "127 of your 400 were imported, you have
+   * reached your limit" would name a limit nothing consumed.
+   *
+   * So there is no headroom arithmetic here and none is possible: the cap is a
+   * boolean about accounts, and the honest use of it is the one the manual add
+   * already makes. Import is admin-initiated creation — the single category
+   * contact-capacity.ts says is gated — so it is closed when the manual add is
+   * closed and open when it is open. Nothing in contact-capacity.ts changed;
+   * two other cards depend on its behaviour.
+   *
+   * The wording is `contactLimitMessage`, which owns it, shown ONCE in the
+   * existing notice rather than as a running meter.
+   *
+   * ── PARTIAL FAILURE ────────────────────────────────────────────────────────
+   * A Firestore batch is ATOMIC. So on a failure the rows that reached
+   * Firestore are exactly the rows in the batches that already committed — the
+   * failing batch wrote nothing and the batches after it were never attempted.
+   * That is what makes the report exact rather than a guess, and it is why the
+   * loop stops at the first failure instead of pressing on: the likely causes
+   * (permission denied, quota, the connection) fail every subsequent batch too,
+   * and continuing would only scatter the gap.
+   */
+  const runImport = async (): Promise<void> => {
+    if (!importTable || !importType || !importPlan) return;
+    // Last line of defence, mirroring `handleSave`: the panel can be open with
+    // a count that has since gone stale.
+    if (atContactLimit) {
+      notifyError(contactLimitNotice, 'Contact limit reached');
+      return;
+    }
+    setImporting(true);
+    setImportResult(null);
+
+    const { toWrite, skipped } = importPlan;
+    const chunks = chunkForBatches(toWrite);
+
+    let imported = 0;
+    let lastWrittenLine: number | null = null;
+    let failure: ImportOutcome['failure'] = null;
+
+    for (const group of chunks) {
+      try {
+        const batch = writeBatch(db);
+        for (const row of group) {
+          // 🔴 `doc(collection(...))` with no id mints a new auto-id ref — the
+          // batch equivalent of the manual add's `addDoc`, so an import can
+          // never overwrite an existing contact by colliding on an id.
+          batch.set(doc(collection(db, 'contacts')), {
+            firstName: row.firstName, lastName: row.lastName,
+            email: row.email, phone: row.phone,
+            // 🔴 ALWAYS PRESENT. Either the file said it or the admin chose it
+            // — `mapRows` has no third branch. An unset `type` renders a blank
+            // badge (THE-150) and upsertContact's update branch never repairs
+            // one, so a row must not reach Firestore without it.
+            type: row.type,
+            notes: row.notes, tags: [], totalDonated: 0,
+            address: row.address,
+            // 🔴 The manual add's own resolution (see handleSave). Concrete,
+            // never null: `getTenantScope()` returns null for a super admin and
+            // null means ALL TENANTS on a read — it is simply wrong on a write.
+            tenantId: tenantId || PLATFORM_TENANT_ID,
+            lastDonationAt: null, memberSince: null,
+            createdAt: serverTimestamp(), createdBy: auth.currentUser?.uid || '',
+            updatedAt: serverTimestamp(),
+          });
+        }
+        await batch.commit();
+        imported += group.length;
+        lastWrittenLine = group[group.length - 1].line;
+      } catch (e) {
+        failure = {
+          notWritten: toWrite.length - imported,
+          lastWrittenLine,
+          firstUnwrittenLine: group[0].line,
+          message: (e as Error)?.message || 'the import could not be completed',
+        };
+        break;
+      }
+    }
+
+    setImportResult(importSummary({
+      imported,
+      duplicates: countSkips(skipped, 'duplicate-in-crm'),
+      repeatedInFile: countSkips(skipped, 'duplicate-in-file'),
+      noName: countSkips(skipped, 'no-name'),
+      failure,
+    }));
+
+    // Refresh whatever DID land, on the failure path too — the list must show
+    // the rows that wrote rather than leaving the admin to guess.
+    await queryClient.invalidateQueries({ queryKey: ['contacts', tenantId] });
+    await queryClient.invalidateQueries({ queryKey: ['crmCounts', tenantId] });
+    setImporting(false);
+  };
 
   // Drive the shared header: in detail/form sub-views the back chevron steps
   // back within CRM; on the list view it shows the "Add Contact" action.
@@ -1337,6 +1570,20 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
             <LayoutGrid size={13} /> Pipeline
           </button>
         </div>
+        {/* THE-74 — import a member list. Sits beside the manual add because it
+            is the same act at a different scale, and carries the SAME cap gate:
+            disabled at the limit, with `contactLimitMessage` on hover. Secondary
+            styling (a bordered button, not the brand fill) so the primary action
+            on this toolbar stays singular. */}
+        <button
+          data-testid="crm-import-contacts"
+          onClick={openImport}
+          disabled={atContactLimit}
+          title={atContactLimit ? contactLimitNotice : undefined}
+          className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2.5 rounded-brand border border-line bg-surface-raised text-[13px] font-semibold text-muted transition-colors hover:bg-surface-sunken disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-surface-raised"
+        >
+          <Upload size={16} /> Import CSV
+        </button>
         {/* At the cap this is disabled and says why on hover — the same shape the
             Roles screen uses for maxAdmins. It is never hidden: an admin who
             cannot find the button learns nothing, and the disabled state plus the
@@ -1461,6 +1708,265 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
           </div>
         </div>
         </>
+      )}
+
+      {/* ── THE-74 — the import panel ──────────────────────────────────────────
+          Upload → map → preview → import, in that order and on one surface, so
+          the admin can still see the file they chose while they check the rows
+          it produced.
+
+          Every colour here is either a surface/text token or one of the two
+          class sets this screen already uses for an error and a warning — no
+          literal, no new colour, so the dark-mode sweep landing in this file
+          catches them with everything else. */}
+      {showImport && (
+        <div
+          data-testid="crm-import-modal"
+          className="fixed inset-0 z-[210] flex items-end sm:items-center justify-center bg-black/50 p-4"
+        >
+          <div className="bg-surface-raised rounded-3xl w-full max-w-3xl max-h-[90vh] flex flex-col">
+            <div className="p-5 border-b border-line-hairline">
+              <h3 className="font-bold text-strong font-display">Import contacts from a spreadsheet</h3>
+              {/* Said up front, because it is the question a church asks about
+                  its member list before it asks anything else. */}
+              <p className="text-[11px] text-faint mt-1">
+                Your file is read here in your browser and is never uploaded. Only the
+                contacts themselves are saved.
+              </p>
+            </div>
+
+            <div className="p-5 space-y-5 overflow-y-auto">
+              {/* ── 1. the file ─────────────────────────────────────────────── */}
+              <div>
+                <label className="text-xs font-semibold text-muted mb-1 block">CSV file</label>
+                <input
+                  data-testid="crm-import-file"
+                  type="file"
+                  accept=".csv,text/csv"
+                  onChange={e => { void onImportFile(e.target.files?.[0]); }}
+                  className="w-full rounded-xl border border-line-hairline px-3 py-2.5 text-sm text-body file:mr-3 file:rounded-lg file:border-0 file:bg-surface-sunken file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-muted"
+                />
+                {importFileName && (
+                  <p className="text-[11px] text-faint mt-1">{importFileName}</p>
+                )}
+              </div>
+
+              {/* A file that cannot become contacts says which mistake it is —
+                  empty and header-only are different problems. */}
+              {importError && (
+                <div
+                  data-testid="crm-import-error"
+                  className="flex gap-2 rounded-xl border border-red-200 bg-red-50 p-3"
+                >
+                  <AlertTriangle size={14} className="text-red-500 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-xs font-semibold text-red-700">Nothing to import</p>
+                    <p className="text-xs text-red-600 mt-0.5">{importError}</p>
+                  </div>
+                </div>
+              )}
+
+              {importTable && (
+                <>
+                  {/* ── 2. the mapping ──────────────────────────────────────────
+                      🔴 THE USER MAPS. Nothing is guessed from a heading name.
+                      Churches export as `First Name`, `Given Name`, `Primary
+                      Email`, `Email Address`, `Home Phone` — or with no headings
+                      worth the name at all. A guess that is right most of the
+                      time silently files the tenth church's phone numbers into
+                      its notes field. */}
+                  <div>
+                    <p className="text-xs font-bold text-faint uppercase tracking-wider mb-1">
+                      Match your columns
+                    </p>
+                    <p className="text-[11px] text-faint mb-3">
+                      Pick which column in your file holds each field. Anything left as
+                      “Not imported” is ignored. First name is required.
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {IMPORT_FIELDS.map((field: ImportField) => (
+                        <div key={field}>
+                          <label className="text-[11px] font-semibold text-muted mb-1 block">
+                            {IMPORT_FIELD_LABELS[field]}
+                            {field === REQUIRED_IMPORT_FIELD && ' *'}
+                          </label>
+                          <select
+                            data-testid={`crm-import-map-${field}`}
+                            value={mapping[field] ?? ''}
+                            onChange={e => setMapping(prev => {
+                              const next: ColumnMapping = { ...prev };
+                              if (e.target.value === '') delete next[field];
+                              else next[field] = Number(e.target.value);
+                              return next;
+                            })}
+                            className="w-full rounded-xl border border-line-hairline px-3 py-2 text-xs bg-surface-raised text-body focus:border-gold focus:outline-none"
+                          >
+                            <option value="">Not imported</option>
+                            {importTable.headers.map((h, i) => (
+                              <option key={`${field}-${i}`} value={i}>{columnLabel(h, i)}</option>
+                            ))}
+                          </select>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* ── 3. the type ─────────────────────────────────────────────
+                      🔴 NO PRE-SELECTION. An unset `type` renders a blank badge
+                      (THE-150), so every imported row must carry one — but the
+                      importer must not INVENT it either. The manual form defaults
+                      a new contact to Member, which is fair about a record being
+                      typed in by hand; applied to a file, it would label a whole
+                      congregation as members on the church's behalf. So the
+                      import button stays disabled until this is answered. */}
+                  <div>
+                    <label className="text-xs font-semibold text-muted mb-1 block">
+                      Type for these contacts *
+                    </label>
+                    <select
+                      data-testid="crm-import-type-default"
+                      value={importType}
+                      onChange={e => setImportType(e.target.value as Contact['type'] | '')}
+                      className="w-full rounded-xl border border-line-hairline px-3 py-2.5 text-sm bg-surface-raised text-body focus:border-gold focus:outline-none"
+                    >
+                      <option value="">Choose a type…</option>
+                      {CONTACT_TYPE_VALUES.map(t => (
+                        <option key={t} value={t}>{TYPE_LABELS[t]}</option>
+                      ))}
+                    </select>
+                    <p className="text-[11px] text-faint mt-1">
+                      {typeof mapping.type === 'number'
+                        ? 'Used for any row whose Type column is empty or holds something else. Rows that name a type keep theirs.'
+                        : 'Applied to every row. Map a Type column above if your file already says.'}
+                    </p>
+                  </div>
+
+                  {/* ── 4. the preview ──────────────────────────────────────────
+                      Nothing is written before this is on screen. It shows the
+                      values AS MAPPED — including the type each row will carry
+                      and where that type came from — so an admin who lined a
+                      column up wrongly sees it here rather than in their CRM. */}
+                  {importPlan ? (
+                    <div>
+                      <p className="text-xs font-bold text-faint uppercase tracking-wider mb-2">
+                        Preview
+                      </p>
+                      <div className="rounded-xl border border-line overflow-x-auto">
+                        <table className="w-full text-left border-collapse min-w-[560px]">
+                          <thead>
+                            <tr className="border-b border-line">
+                              {['Line', 'Name', 'Email', 'Phone', 'Type'].map(h => (
+                                <th key={h} className="px-3 py-2 text-[11px] font-semibold text-muted uppercase tracking-wider">
+                                  {h}
+                                </th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-line">
+                            {importPlan.toWrite.slice(0, 5).map(row => (
+                              <tr key={row.line} data-testid="crm-import-preview-row">
+                                <td className="px-3 py-2 text-[11px] text-faint">{row.line}</td>
+                                <td className="px-3 py-2 text-xs text-strong">
+                                  {[row.firstName, row.lastName].filter(Boolean).join(' ')}
+                                </td>
+                                <td className="px-3 py-2 text-xs text-body">{row.email || '—'}</td>
+                                <td className="px-3 py-2 text-xs text-body">{row.phone || '—'}</td>
+                                <td className="px-3 py-2">
+                                  <span className="text-xs font-semibold text-strong">
+                                    {typeLabel(row.type)}
+                                  </span>
+                                  <span data-testid="crm-import-type-source" className="block text-[11px] text-faint">
+                                    {row.typeSource === 'file' ? 'from your file' : 'your choice'}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      <p data-testid="crm-import-counts" className="text-[11px] text-faint mt-2">
+                        {importPlan.toWrite.length.toLocaleString()} to import
+                        {importPlan.toWrite.length > 5 && ` (showing the first 5)`}
+                        {countSkips(importPlan.skipped, 'duplicate-in-crm') > 0 &&
+                          ` · ${countSkips(importPlan.skipped, 'duplicate-in-crm').toLocaleString()} already in your CRM, matched by email`}
+                        {countSkips(importPlan.skipped, 'duplicate-in-file') > 0 &&
+                          ` · ${countSkips(importPlan.skipped, 'duplicate-in-file').toLocaleString()} listed more than once in your file`}
+                        {countSkips(importPlan.skipped, 'no-name') > 0 &&
+                          ` · ${countSkips(importPlan.skipped, 'no-name').toLocaleString()} with no first name`}
+                      </p>
+
+                      {/* The rows a second upload WOULD double. Said before the
+                          import, not discovered after it. */}
+                      {importPlan.unmatchable.length > 0 && (
+                        <p data-testid="crm-import-unmatchable" className="text-[11px] text-amber-900 mt-2">
+                          {importPlan.unmatchable.length.toLocaleString()} of these have no email
+                          address. They will be imported, but they cannot be matched against your
+                          CRM — uploading this file again would add them a second time.
+                        </p>
+                      )}
+
+                      {/* The dedupe index is the loaded list, and the loaded list
+                          has a ceiling. Where that ceiling bites, say so. */}
+                      {listIsPartial && (
+                        <p data-testid="crm-import-truncation" className="text-[11px] text-amber-900 mt-2">
+                          This CRM holds more people than it can load at once, so the
+                          duplicate check covers only the {nf(contacts.length)} loaded here.
+                          Someone beyond that may be imported again.
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-[11px] text-faint">
+                      Choose a First name column and a type to see what will be imported.
+                    </p>
+                  )}
+                </>
+              )}
+
+              {/* ── 5. what actually happened ───────────────────────────────────
+                  Never silence. Shaped after the SMS broadcast's partial-send
+                  report (THE-29) — a count of what worked, then a clause for
+                  every way it fell short. */}
+              {importResult && (
+                <div
+                  data-testid="crm-import-result"
+                  className={`flex gap-2 rounded-xl border p-3 ${
+                    importResult.ok
+                      ? 'border-line bg-surface-sunken'
+                      : 'border-amber-300 bg-amber-50'
+                  }`}
+                >
+                  {!importResult.ok && <AlertTriangle size={14} className="text-amber-900 flex-shrink-0 mt-0.5" />}
+                  <p className={`text-xs ${importResult.ok ? 'text-body' : 'text-amber-900'}`}>
+                    {importResult.text}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="p-5 border-t border-line-hairline flex flex-col sm:flex-row gap-2">
+              <button
+                onClick={closeImport}
+                disabled={importing}
+                className="flex-1 py-2.5 rounded-xl border border-line-hairline text-sm font-semibold text-muted disabled:opacity-50"
+              >
+                {importResult ? 'Done' : 'Cancel'}
+              </button>
+              <button
+                data-testid="crm-import-run"
+                onClick={runImport}
+                disabled={importing || !importPlan || importPlan.toWrite.length === 0}
+                className="flex-1 py-2.5 rounded-xl bg-gold text-white text-sm font-semibold disabled:opacity-50"
+              >
+                {importing
+                  ? 'Importing…'
+                  : importPlan
+                    ? `Import ${importPlan.toWrite.length.toLocaleString()} ${importPlan.toWrite.length === 1 ? 'contact' : 'contacts'}`
+                    : 'Import'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {deleteId && (
