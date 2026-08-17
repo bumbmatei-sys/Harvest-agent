@@ -338,10 +338,37 @@ describe('the Dodo module is wired into exactly the paths this PR names', () => 
      * Admins load the admin far more reliably than donors hit a donate page, so
      * this read is the cheapest reliable trigger that exists without a scheduler.
      *
-     * ⚠️ And it is held to the same narrowness: one imported function, which
-     * refuses anything `resolveBillingOwnership` does not resolve to Dodo, and
-     * which can only archive. The test below pins that, and a further test pins
-     * that this route exposes no payment action of its own.
+     * ⚠️ And it is held to the same narrowness: imported functions that refuse
+     * anything `resolveBillingOwnership` does not resolve to Dodo, and that can
+     * only archive. The test below pins that, and a further test pins that this
+     * route exposes no payment action of its own.
+     *
+     * ─── 🔴 THE-167 WIDENED THIS ONE FROM ONE SYMBOL TO TWO ──────────────────
+     *
+     * Recorded as a widening, not smuggled in as a detail. The list of ALLOWED
+     * FILES is unchanged and still four — no fifth exception was taken — but
+     * this route now imports a SECOND function, `convergeDodoSubscriptionStatus`.
+     *
+     * WHY IT COULD NOT BE ONE SYMBOL. THE-167 is a cancelled Dodo subscription
+     * that left its tenant fully `active`: Dodo reports `cancelled`, the tenant
+     * doc says `active`, and whether the `subscription.cancelled` webhook ever
+     * fired cannot be determined because Dodo exposes no delivery log this
+     * account can read. The fix is to stop depending on the webhook for a
+     * terminal state and reconcile against Dodo directly. That is a genuinely
+     * DIFFERENT convergence from the grace timer — one reconciles the PROCESSOR's
+     * status, the other Harvest's own 21-day clock — and folding them into one
+     * exported function would have meant restructuring `convergeExpiredDodoGrace`
+     * and its call site, which is the money-path module this card is under
+     * orders not to disturb. A sibling is the honest shape; a wrapper would have
+     * hidden a second behaviour behind a name that means something else.
+     *
+     * ⚠️ WHAT DID NOT WIDEN, which is what the width was protecting. The
+     * forbidden-symbol check below is unchanged and still passes: the route
+     * cannot reach `dodoBillingProvider`, checkout, the portal, plan changes,
+     * provisioning or the catalogue. The new module is held to exactly the shape
+     * `renewal.ts` established — ONE exported function, a single GET against
+     * Dodo, incapable of charging — and a test below pins that, so the second
+     * symbol is the same kind of thing as the first rather than a doorway.
      *
      * ─── The FOURTH exception: the renewal date (THE-131) ───────────────────
      *
@@ -426,14 +453,18 @@ describe('the Dodo module is wired into exactly the paths this PR names', () => 
   });
 
   it('the grace-status read imports Dodo ONLY to converge, and exposes no payment action', () => {
-    // 🔴 The third exception, held to the same one-function width. This route is
-    // a READ that admins hit on every dashboard load; a second Dodo symbol here
-    // would put the checkout/portal/provisioning surface behind the most
-    // frequently called route in the app.
+    // 🔴 The third exception. This route is a READ that admins hit on every
+    // dashboard load, so the surface behind it is held to CONVERGENCE ONLY —
+    // anything that could charge, cancel or provision would be sitting behind
+    // the most frequently called route in the app.
+    //
+    // ⚠️ TWO symbols since THE-167, both convergences, and the widening is
+    // argued at the exception list above. The list is exhaustive on purpose: a
+    // THIRD symbol is a new widening and has to make its own case here first.
     const graceStatus = read('app/api/tenants/grace-status/route.ts');
     const imports = [...graceStatus.matchAll(/import\s*\{([^}]*)\}\s*from\s*['"]@\/lib\/dodo\/[^'"]+['"]/g)]
       .flatMap((m) => m[1].split(',').map((s) => s.trim()).filter(Boolean));
-    expect(imports).toEqual(['convergeExpiredDodoGrace']);
+    expect(imports).toEqual(['convergeExpiredDodoGrace', 'convergeDodoSubscriptionStatus']);
 
     // ⚠️ NO PAYMENT ACTION. Dodo has already charged or attempted to charge, and
     // its dunning email already links to the customer portal. A charge path here
@@ -470,6 +501,35 @@ describe('the Dodo module is wired into exactly the paths this PR names', () => 
     ]) {
       expect(invoices, forbidden).not.toContain(forbidden);
     }
+  });
+
+  it('the subscription-convergence module is a single function that can only archive', () => {
+    // 🔴 THE-167's second symbol is only as narrow as the module behind it —
+    // the same rule `renewal.ts` is held to below. It may grow no second export
+    // and no mutating Dodo call, or the two-symbol import above stops meaning
+    // anything and becomes a doorway to the processor.
+    const convergence = read('lib/dodo/subscription-convergence.ts');
+    const exported = [...convergence.matchAll(/^export\s+(?:async\s+)?function\s+(\w+)/gm)].map((m) => m[1]);
+    expect(exported).toEqual(['convergeDodoSubscriptionStatus']);
+
+    // Comments NAMING what the module refuses to do are the point of the module;
+    // only real code is held to the rule, the same treatment `renewal.ts` gets.
+    const code = convergence.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    expect(code).toContain('getSubscription');
+    for (const mutating of ['createPlanCheckout', 'cancelSubscription', 'changePlan', 'createCustomerPortal']) {
+      expect(code, mutating).not.toContain(mutating);
+    }
+
+    // 🔴 ONE DIRECTION. The module has no path back to `active`, and that is
+    // structural rather than remembered: reactivation is `subscription.active`'s
+    // job, and a side channel that could restore a church which has not paid is
+    // the one outcome this convergence must never produce.
+    expect(code).not.toContain('reactivateTenantForDodoSubscription');
+
+    // 🔴 ONE WRITER. It routes through the archive path the webhook uses rather
+    // than writing the lifecycle field itself.
+    expect(code).toContain('archiveTenantForDodoSubscription');
+    expect(code).not.toContain('TENANT_STATUS_ARCHIVED');
   });
 
   it('the renewal module it imports is a single read-only function', () => {

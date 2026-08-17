@@ -104,6 +104,34 @@ export type TenantPrivateField = (typeof TENANT_PRIVATE_FIELDS)[number];
  */
 export const DODO_ON_HOLD_FIELD = 'dodoOnHoldAt';
 
+/**
+ * When Harvest last ASKED DODO what a subscription's status actually is.
+ *
+ * An ISO string on `tenant_private/{tenantId}`, or absent when it has never been
+ * asked. Written by `@/lib/dodo/subscription-convergence` and read by nothing
+ * else — it is a throttle stamp about HARVEST'S OWN POLLING, not a fact about
+ * the church, and no entitlement check consults it.
+ *
+ * ─── ⚠️ Why a stamp is needed at all ─────────────────────────────────────────
+ *
+ * The convergence that reads it hangs off `/api/tenants/grace-status`, which
+ * every admin shell mount calls. Without a stamp that is one Dodo API call per
+ * page load, on the route THE-139 already took down with a 429. The stamp is
+ * what turns "per page load" into "per interval", so the call rate is bounded by
+ * wall-clock rather than by how busy a church's admins are.
+ *
+ * ─── ⚠️ Deliberately NOT on TENANT_PRIVATE_FIELDS ────────────────────────────
+ *
+ * Same treatment as `DODO_ON_HOLD_FIELD` above, and the argument is easier here.
+ * A subdomain rename drops anything missing from that list — and unlike a hold,
+ * this stamp CAN coexist with a rename, because the first admin load during
+ * first-run setup already writes one. Losing it is still harmless: the tenant
+ * falls OPEN toward asking Dodo again, costing exactly one extra API call and
+ * never a wrong lifecycle state. A throttle that fails toward MORE checking is
+ * the direction this module prefers everywhere else.
+ */
+export const DODO_SUBSCRIPTION_CHECK_FIELD = 'lastSubscriptionCheckAt';
+
 export function tenantPrivateRef(tenantId: string) {
   return adminDb.collection(TENANT_PRIVATE_COLLECTION).doc(tenantId);
 }
