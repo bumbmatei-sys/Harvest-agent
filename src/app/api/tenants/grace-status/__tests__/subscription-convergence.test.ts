@@ -334,11 +334,21 @@ describe('THE-167 — converging a tenant against Dodo\'s actual subscription st
     // came from Firestore and the resolver; it is correct either way.
     const healthy = await GET(request(OWNER));
     const healthyBody = await healthy.json();
+    expect(mockGetSubscription).toHaveBeenCalledTimes(1);
+
+    // ⚠️ Age the throttle stamp the healthy load just wrote, or the second load
+    // is throttled and never reaches the failing call — the outage would go
+    // untested and this would pass for the wrong reason.
+    firestore.set('tenant_private/grace', {
+      ...firestore.get('tenant_private/grace'),
+      [DODO_SUBSCRIPTION_CHECK_FIELD]: msAgo(DODO_SUBSCRIPTION_CHECK_INTERVAL_MS + 60_000),
+    });
 
     mockGetSubscription.mockRejectedValue(new Error('dodo unavailable'));
     const broken = await GET(request(OWNER));
     const brokenBody = await broken.json();
 
+    expect(mockGetSubscription).toHaveBeenCalledTimes(2);
     expect(broken.status).toBe(healthy.status);
     expect(broken.status).toBe(200);
     expect(brokenBody).toEqual(healthyBody);
