@@ -96,9 +96,22 @@ export const AdminSectionLabel: React.FC<{ children: React.ReactNode; className?
 );
 
 type BadgeTone = 'green' | 'gold' | 'sky' | 'stone' | 'red';
+/**
+ * THE-136 — the same shape of bug as the CRM type badge, and the reason fixing
+ * call sites would not have been enough: this map is the badge for every admin
+ * surface that renders `AdminBadge`/`statusTone`, so `green` alone was shipping
+ * a 1.02:1 pill (#EAF0E2 on #E8EDE3) everywhere a church marks something
+ * published, active, live, sent, approved or paid.
+ *
+ * `sky`/`stone`/`red` were already token-spelled and are untouched. The two that
+ * were not mixed toward a literal `white`, which pins the fill light in both
+ * themes while the ink on it inverts. Fixing the map is one edit; fixing the
+ * render sites would have been twelve files and would not have stopped the
+ * thirteenth.
+ */
 const BADGE_TONES: Record<BadgeTone, string> = {
-  green: 'bg-[color-mix(in_srgb,#6E8E52_16%,white)] text-field-700',
-  gold: 'bg-[color-mix(in_srgb,var(--brand-color)_16%,white)] text-[color-mix(in_srgb,var(--brand-color)_78%,black)]',
+  green: 'bg-field-100 text-field-700',
+  gold: 'bg-surface-gold text-wheat-800',
   sky: 'bg-sky-100 text-sky-700',
   stone: 'bg-surface-sunken text-muted',
   red: 'bg-danger-tint text-danger-strong',
