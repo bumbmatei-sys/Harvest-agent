@@ -195,7 +195,7 @@ const PrayerWall: React.FC = () => {
  </div>
 
  {/* Share bar (mockup): avatar + inline input + Post — mobile & desktop. */}
- <div className="flex items-center gap-3 bg-surface-raised rounded-2xl border p-3" style={{ borderColor: 'var(--ds-border)' }}>
+ <div className="flex items-center gap-3 bg-surface-raised rounded-2xl border border-line p-3">
  <div className="w-10 h-10 rounded-full bg-surface-sunken flex items-center justify-center text-sm font-bold text-muted shrink-0">{(name || 'A').charAt(0).toUpperCase()}</div>
  <input value={request} onChange={(e) => setRequest(e.target.value.slice(0, 200))} onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit(); }} placeholder="Share a prayer request with the community…" className="flex-1 bg-transparent outline-none text-sm text-body placeholder:text-faint" />
  <button onClick={handleSubmit} disabled={submitting || !request.trim()} className="px-5 py-2.5 rounded-xl text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50 shrink-0" style={{ backgroundColor: 'var(--brand-color, #C9963A)' }}>{submitting ? 'Posting…' : 'Post'}</button>
@@ -261,7 +261,7 @@ const PrayerWall: React.FC = () => {
  <button
  onClick={() => handlePray(p)}
  className={`flex items-center gap-1.5 text-xs font-semibold rounded-full px-3 py-1.5 transition-colors ${
- prayed ? 'bg-[color-mix(in_srgb,var(--brand-color)_15%,white)]' : 'bg-surface-sunken hover:bg-surface-sunken'
+ prayed ? 'bg-[color-mix(in_srgb,var(--brand-color)_15%,transparent)]' : 'bg-surface-sunken hover:bg-surface-sunken'
  }`}
  style={prayed ? { color: 'var(--brand-color, #d4a017)' } : { color: 'var(--text-muted)' }}
  aria-pressed={prayed}

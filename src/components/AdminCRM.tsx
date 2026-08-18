@@ -1496,7 +1496,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
           <div key={s.label} className="bg-surface-raised rounded-brand-lg border border-line shadow-[var(--ds-sh-sm)] p-5">
             <div className="flex items-start justify-between">
               <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-faint">{s.label}</p>
-              <span className="text-stone-300">{s.icon}</span>
+              <span className="text-faint">{s.icon}</span>
             </div>
             <p className="font-display text-[2rem] font-light text-strong mt-2 leading-none">{s.value}</p>
           </div>
@@ -1699,7 +1699,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
                   <th className="px-6 py-4 text-[11px] font-semibold text-gold uppercase tracking-[0.12em] text-right">Last Gift</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-stone-200">
+              <tbody className="divide-y divide-line">
                 {filtered.map(c => {
                   const stage = stageOf(c);
                   return (
@@ -1729,7 +1729,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
                         </span>
                       </td>
                       <td className="px-6 py-3.5 text-right">
-                        <span className={`text-sm font-semibold ${c.totalDonated > 0 ? 'text-strong' : 'text-stone-300'}`}>{c.totalDonated > 0 ? fmt(c.totalDonated) : '—'}</span>
+                        <span className={`text-sm font-semibold ${c.totalDonated > 0 ? 'text-strong' : 'text-faint'}`}>{c.totalDonated > 0 ? fmt(c.totalDonated) : '—'}</span>
                       </td>
                       <td className="px-6 py-3.5 text-right">
                         <span data-testid="crm-last-gift-cell" className="text-sm text-faint">{lastGiftCell(c)}</span>

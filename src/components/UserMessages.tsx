@@ -74,7 +74,7 @@ const RoleBadge: React.FC<{ role?: string }> = ({ role }) => {
   return (
     <span
       className="text-[9px] font-bold px-1.5 py-0.5 rounded-full leading-none"
-      style={isAdmin ? { backgroundColor: 'color-mix(in srgb, var(--brand-color, #B8962E) 12%, white)', color: 'var(--brand-color, #B8962E)' } : { backgroundColor: 'var(--surface-sunken)', color: 'var(--text-muted)' }}
+      style={isAdmin ? { backgroundColor: 'color-mix(in srgb, var(--brand-color, #B8962E) 12%, transparent)', color: 'var(--brand-color, #B8962E)' } : { backgroundColor: 'var(--surface-sunken)', color: 'var(--text-muted)' }}
     >
       {isAdmin ? 'Admin' : 'User'}
     </span>
@@ -382,8 +382,8 @@ const DmThread: React.FC<{
                 return (
                   <div key={m.id} className="flex gap-2.5 items-end">
                     {isFirst ? (
-                      <div className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold text-white"
-                        style={{ backgroundColor: isAdminSender ? 'var(--brand-color, #B8962E)' : '#A89A87' }}>
+                      <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold ${isAdminSender ? 'text-white' : 'text-muted bg-surface-chip'}`}
+                        style={isAdminSender ? { backgroundColor: 'var(--brand-color, #B8962E)' } : undefined}>
                         {(group.senderName || 'A').charAt(0).toUpperCase()}
                       </div>
                     ) : (
@@ -414,7 +414,7 @@ const DmThread: React.FC<{
         {attachments.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-2">
             {attachments.map((a, i) => (
-              <div key={i} className="flex items-center gap-1.5 bg-[color-mix(in_srgb,var(--brand-color)_12%,white)] border border-[color-mix(in_srgb,var(--brand-color)_30%,white)] rounded-lg px-2.5 py-1 text-xs font-medium text-gold">
+              <div key={i} className="flex items-center gap-1.5 bg-[color-mix(in_srgb,var(--brand-color)_12%,transparent)] border border-[color-mix(in_srgb,var(--brand-color)_30%,transparent)] rounded-lg px-2.5 py-1 text-xs font-medium text-gold">
                 <span className="text-sm">📝</span>
                 <span className="max-w-[90px] truncate">{a.title}</span>
                 <button onClick={() => setAttachments(prev => prev.filter((_, idx) => idx !== i))}>
@@ -520,7 +520,7 @@ const ChannelView: React.FC<{
           <ArrowLeft size={22} style={{ color: 'var(--brand-color, #B8962E)' }} />
         </button>
         <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-          style={{ backgroundColor: 'var(--brand-color, #B8962E)1A' }}>
+          style={{ backgroundColor: 'color-mix(in srgb, var(--brand-color, #B8962E) 12%, transparent)' }}>
           <Hash size={16} style={{ color: 'var(--brand-color, #B8962E)' }} />
         </div>
         <div className="flex-1 min-w-0">
@@ -540,8 +540,8 @@ const ChannelView: React.FC<{
           const isAdmin = group.senderRole === 'admin' || group.senderRole === 'church_admin' || group.senderRole === 'super_admin';
           return (
             <div key={group.messages[0].id} className="flex gap-3">
-              <div className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold text-white"
-                style={{ backgroundColor: isAdmin ? 'var(--brand-color, #B8962E)' : '#8B7355' }}>
+              <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold ${isAdmin ? 'text-white' : 'text-muted bg-surface-chip'}`}
+                style={isAdmin ? { backgroundColor: 'var(--brand-color, #B8962E)' } : undefined}>
                 {(group.senderName || 'A').charAt(0).toUpperCase()}
               </div>
               <div className="flex-1 min-w-0">
@@ -852,7 +852,7 @@ const UserMessages: React.FC<UserMessagesProps> = ({ onBack, embedded = false })
                       onClick={() => setOpenChannel(ch)}
                       className="w-full bg-surface-raised rounded-2xl border border-line-hairline px-4 py-3.5 flex items-center gap-3 hover:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] hover:shadow-sm transition-all text-left"
                     >
-                      <div className="w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center lg:bg-[color-mix(in_srgb,var(--brand-color)_12%,white)]">
+                      <div className="w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center lg:bg-[color-mix(in_srgb,var(--brand-color)_12%,transparent)]">
                         <Hash size={18} style={{ color: 'var(--brand-color, #B8962E)' }} />
                       </div>
                       <div className="flex-1 min-w-0">

@@ -486,7 +486,7 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages }) => {
 
   return (
     <div className="flex flex-col h-screen bg-surface ">
-      <div className="sticky top-0 z-20 bg-white/80 backdrop-blur-md border-b border-line px-4 py-3 flex items-center gap-3 lg:max-w-2xl lg:mx-auto w-full">
+      <div className="sticky top-0 z-20 bg-[color-mix(in_srgb,var(--surface-raised)_80%,transparent)] backdrop-blur-md border-b border-line px-4 py-3 flex items-center gap-3 lg:max-w-2xl lg:mx-auto w-full">
         <button 
           onClick={onBack}
           className="p-2 -ml-2 text-muted hover:bg-surface-sunken rounded-full transition-colors"
@@ -513,7 +513,7 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages }) => {
             <div key={post.id} className="bg-surface-raised rounded-2xl p-4 shadow-sm border border-line ">
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-earth text-white flex items-center justify-center font-bold overflow-hidden relative">
+                  <div className="w-10 h-10 rounded-full bg-surface-chip text-muted flex items-center justify-center font-bold overflow-hidden relative">
                     {post.authorPhoto ? (
                       <Image src={post.authorPhoto} alt={post.authorName} fill sizes="40px" className="object-cover" referrerPolicy="no-referrer" />
                     ) : (
@@ -524,7 +524,7 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages }) => {
                     <div className="flex items-center gap-2">
                       <div className="font-bold text-strong text-sm">{post.authorName}</div>
                       {post.isPinned && (
-                        <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-gold bg-[color-mix(in_srgb,var(--brand-color)_15%,white)] px-2 py-0.5 rounded-full">
+                        <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-gold bg-[color-mix(in_srgb,var(--brand-color)_15%,transparent)] px-2 py-0.5 rounded-full">
                           Pinned
                         </span>
                       )}
@@ -573,13 +573,13 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages }) => {
                         disabled={!!hasVoted}
                         className={`w-full relative overflow-hidden rounded-xl border p-3 text-left transition-all ${
                           isMyVote 
-                            ? 'border-gold bg-[color-mix(in_srgb,var(--brand-color)_15%,white)] ' 
+                            ? 'border-gold bg-[color-mix(in_srgb,var(--brand-color)_15%,transparent)] '
                             : 'border-line hover:border-gold'
                         }`}
                       >
                         {hasVoted && (
                           <div 
-                            className="absolute left-0 top-0 bottom-0 bg-[color-mix(in_srgb,var(--brand-color)_15%,white)] transition-all duration-500"
+                            className="absolute left-0 top-0 bottom-0 bg-[color-mix(in_srgb,var(--brand-color)_15%,transparent)] transition-all duration-500"
                             style={{ width: `${percentage}%` }}
                           />
                         )}

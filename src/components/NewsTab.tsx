@@ -940,7 +940,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
       {/* Admin announcement composer — text + up to 3 images + embed + poll + pin.
           Admin-only (posts are announcements); members read/like/comment only. */}
       {canCompose && auth.currentUser && (
-        <div className="bg-surface-raised rounded-2xl shadow-sm border border-line p-4 lg:rounded-[var(--ds-radius-card)] lg:border-[color:var(--ds-border)] lg:shadow-[var(--ds-sh-sm)]">
+        <div className="bg-surface-raised rounded-2xl shadow-sm border border-line p-4 lg:rounded-[var(--ds-radius-card)] lg:shadow-[var(--ds-sh-sm)]">
           {/* Post / Poll switch (ported from AdminPosts). Hidden while editing so
               an existing post's type isn't accidentally flipped. */}
           {!editingPostId && (
@@ -1125,7 +1125,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
                 onClick={() => setComposerPinned(p => !p)}
                 aria-pressed={composerPinned}
                 aria-label={composerPinned ? 'Unpin from top' : 'Pin to top'}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium transition-colors ${composerPinned ? 'bg-[color-mix(in_srgb,var(--brand-color)_15%,white)] text-gold' : 'text-muted hover:bg-surface-sunken'}`}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium transition-colors ${composerPinned ? 'bg-[color-mix(in_srgb,var(--brand-color)_15%,transparent)] text-gold' : 'text-muted hover:bg-surface-sunken'}`}
               >
                 <Pin size={15} className={composerPinned ? 'fill-current' : ''} />
                 {composerPinned ? 'Pinned' : 'Pin'}
@@ -1169,7 +1169,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
             ) : (
               <HeroBand radius="0" className="!absolute inset-0" />
             )}
-            <span className="absolute top-3 left-3 z-10 inline-flex items-center text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full" style={{ background: 'var(--surface-gold)', color: 'var(--wheat-700)' }}>Pinned Event</span>
+            <span className="absolute top-3 left-3 z-10 inline-flex items-center text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full text-wheat-800" style={{ background: 'var(--surface-gold)' }}>Pinned Event</span>
           </div>
           <div className="p-4 lg:p-[18px]">
             <h3 className="font-bold text-strong text-base lg:text-[17px] mb-1">{event.title}</h3>
@@ -1211,7 +1211,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
         <div className="text-center py-12 text-muted">No news yet.</div>
       ) : (
         posts.map((post, index) => (
-          <div key={post.id} className="bg-surface-raised rounded-2xl shadow-sm border border-line p-4 lg:rounded-[var(--ds-radius-card)] lg:border-[color:var(--ds-border)] lg:shadow-[var(--ds-sh-sm)]">
+          <div key={post.id} className="bg-surface-raised rounded-2xl shadow-sm border border-line p-4 lg:rounded-[var(--ds-radius-card)] lg:shadow-[var(--ds-sh-sm)]">
             <div className="flex justify-between items-start mb-3">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-surface-chip overflow-hidden flex items-center justify-center font-bold text-muted relative">
@@ -1225,7 +1225,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
                   <div className="flex items-center gap-2">
                     <h4 className="font-bold text-strong text-sm">{post.authorName}</h4>
                     {post.isPinned && (
-                      <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-gold bg-[color-mix(in_srgb,var(--brand-color)_15%,white)] px-2 py-0.5 rounded-full">
+                      <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-gold bg-[color-mix(in_srgb,var(--brand-color)_15%,transparent)] px-2 py-0.5 rounded-full">
                         Pinned
                       </span>
                     )}
@@ -1280,13 +1280,13 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
                       disabled={hasVoted}
                       className={`relative w-full h-10 border rounded-lg overflow-hidden flex items-center px-3 transition-colors ${
                         userVotedThis 
-                          ? 'border-gold bg-[color-mix(in_srgb,var(--brand-color)_8%,white)] '
+                          ? 'border-gold bg-[color-mix(in_srgb,var(--brand-color)_8%,transparent)] '
                           : 'border-line bg-surface-sunken hover:border-gold'
                       }`}
                     >
                       {hasVoted && (
                         <div 
-                          className="absolute left-0 top-0 bottom-0 bg-[color-mix(in_srgb,var(--brand-color)_15%,white)] transition-all duration-500"
+                          className="absolute left-0 top-0 bottom-0 bg-[color-mix(in_srgb,var(--brand-color)_15%,transparent)] transition-all duration-500"
                           style={{ width: `${percentage}%` }}
                         />
                       )}
@@ -1530,7 +1530,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
                   </div>
                 ) : (
                   <div className="w-16 h-16 sm:w-20 sm:h-20 flex-shrink-0 bg-surface-sunken flex items-center justify-center rounded-lg">
-                    <FileText size={20} className="text-stone-300 " />
+                    <FileText size={20} className="text-faint " />
                   </div>
                 )}
                 
@@ -1604,14 +1604,14 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
                 onClick={() => { window.location.href = `/event/${event.id}`; }}
                 className="w-full flex items-start gap-3 text-left group"
               >
-                <div className="bg-[color-mix(in_srgb,var(--brand-color)_7%,white)] border border-[color-mix(in_srgb,var(--brand-color)_18%,white)] rounded-lg px-2 py-1.5 text-center shrink-0 min-w-[44px]">
+                <div className="bg-[color-mix(in_srgb,var(--brand-color)_7%,transparent)] border border-[color-mix(in_srgb,var(--brand-color)_18%,transparent)] rounded-lg px-2 py-1.5 text-center shrink-0 min-w-[44px]">
                   {event.startDate ? (
                     <>
                       <div className="text-[9px] font-bold uppercase text-gold">{event.startDate.toDate().toLocaleString('default', { month: 'short' })}</div>
                       <div className="text-sm font-bold text-strong leading-none mt-0.5">{event.startDate.toDate().getDate()}</div>
                     </>
                   ) : (
-                    <CalendarIcon size={14} className="text-stone-300 mx-auto" />
+                    <CalendarIcon size={14} className="text-faint mx-auto" />
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
@@ -1648,7 +1648,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
                   </div>
                 ) : (
                   <div className="w-11 h-11 rounded-lg bg-surface-sunken shrink-0 flex items-center justify-center">
-                    <FileText size={16} className="text-stone-300" />
+                    <FileText size={16} className="text-faint" />
                   </div>
                 )}
                 <div className="min-w-0 flex-1">
@@ -1662,7 +1662,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
       )}
 
       <DesktopCard elevation="sm" className="p-4 text-center">
-        <div className="w-11 h-11 mx-auto rounded-full flex items-center justify-center mb-3" style={{ backgroundColor: 'color-mix(in srgb, var(--brand-color) 12%, white)' }}>
+        <div className="w-11 h-11 mx-auto rounded-full flex items-center justify-center mb-3" style={{ backgroundColor: 'color-mix(in srgb, var(--brand-color) 12%, transparent)' }}>
           <HeartHandshake size={20} className="text-gold" />
         </div>
         <h3 className="font-bold text-strong text-sm mb-1 font-display">Partner with Us</h3>

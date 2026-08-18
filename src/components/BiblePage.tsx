@@ -10,7 +10,7 @@ import { verseKey } from "../types/saved.types";
 // ─────────────────────────────────────────────
 
 const GOLD = "var(--brand-color, #C9963A)";
-const GOLD_LIGHT = "color-mix(in srgb, var(--brand-color, #C9963A) 12%, white)";
+const GOLD_LIGHT = "color-mix(in srgb, var(--brand-color, #C9963A) 12%, transparent)";
 
 // ── Types ──────────────────────────────────────
 type Tab = "read" | "search";
@@ -242,7 +242,7 @@ function BookPicker({ currentBook, currentChapter, onSelect, onClose }: { curren
           <>
             <div className="px-4 pt-3 pb-1.5">
               <div className="relative">
-                <svg className="absolute left-3.5 top-1/2 -translate-y-1/2" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8B7355" strokeWidth="2"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
+                <svg className="absolute left-3.5 top-1/2 -translate-y-1/2" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
                 <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search books…" className="w-full box-border border border-line-strong rounded-brand-lg py-2.5 pl-10 pr-3 text-[13.5px] outline-none bg-surface-raised text-body" />
               </div>
             </div>
@@ -262,7 +262,7 @@ function BookPicker({ currentBook, currentChapter, onSelect, onClose }: { curren
                       }`}
                     >
                       <span className={`text-[14.5px] ${b.id === currentBook.id ? "font-semibold text-wheat-700" : "font-medium text-strong"}`}>{b.name}</span>
-                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#A89A87" strokeWidth="2"><path d="m9 18 6-6-6-6" /></svg>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text-faint)" strokeWidth="2"><path d="m9 18 6-6-6-6" /></svg>
                     </button>
                   ))}
                 </div>
@@ -400,15 +400,15 @@ function VerseActionSheet({ verseAction, translation, highlighted, onHighlight, 
 
           <div className="grid grid-cols-3 gap-2.5 px-4 py-3.5 pb-8">
             <button onClick={toggleVerseSave} aria-pressed={verseSaved} className={`border-[1.5px] rounded-xl py-3 cursor-pointer flex flex-col items-center gap-1.5 transition-colors ${verseSaved ? "bg-wheat-100 border-gold" : "bg-surface-sunken border-line hover:border-gold hover:bg-[var(--surface-gold)]"}`}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill={verseSaved ? "var(--brand-color)" : "none"} stroke={verseSaved ? "var(--brand-color)" : "#8B7355"} strokeWidth="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" /></svg>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill={verseSaved ? "var(--brand-color)" : "none"} stroke={verseSaved ? "var(--brand-color)" : "var(--text-muted)"} strokeWidth="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" /></svg>
               <span className={`text-[11px] font-bold ${verseSaved ? "text-wheat-700" : "text-muted"}`}>{verseSaved ? "Saved" : "Save"}</span>
             </button>
             <button onClick={() => { onCopy(verse.text, ref); onClose(); }} className="bg-surface-sunken border-[1.5px] border-line rounded-xl py-3 cursor-pointer flex flex-col items-center gap-1.5 hover:border-gold hover:bg-[var(--surface-gold)] transition-colors">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8B7355" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
               <span className="text-[11px] font-bold text-muted">Copy</span>
             </button>
             <button onClick={() => { onShare(verse.text, ref); onClose(); }} className="bg-surface-sunken border-[1.5px] border-line rounded-xl py-3 cursor-pointer flex flex-col items-center gap-1.5 hover:border-gold hover:bg-[var(--surface-gold)] transition-colors">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8B7355" strokeWidth="2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" /><polyline points="16 6 12 2 8 6" /><line x1="12" y1="2" x2="12" y2="15" /></svg>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" /><polyline points="16 6 12 2 8 6" /><line x1="12" y1="2" x2="12" y2="15" /></svg>
               <span className="text-[11px] font-bold text-muted">Share</span>
             </button>
           </div>
@@ -445,7 +445,7 @@ function MobileVersionPicker({ byLanguage, current, loading, error, onPick, onCl
         <div className="px-4 pb-3.5 relative">
           <button onClick={() => setOpen((o) => !o)} className="w-full flex items-center justify-between border border-line-strong bg-surface-raised rounded-brand-lg px-3.5 py-3 text-sm font-semibold text-strong cursor-pointer">
             {lang}
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8B7355" strokeWidth="2" style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform .15s" }}><path d="m6 9 6 6 6-6" /></svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2" style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform .15s" }}><path d="m6 9 6 6 6-6" /></svg>
           </button>
           {open && (
             <div className="absolute left-4 right-4 top-[calc(100%-8px)] bg-surface-raised border border-line rounded-brand-lg shadow-[0_8px_24px_rgba(45,37,25,0.12)] p-1.5 z-[3] max-h-60 overflow-y-auto">
@@ -598,7 +598,7 @@ export default function BiblePage() {
       <aside className={`hidden lg:flex-col lg:w-[264px] lg:flex-shrink-0 lg:border-r lg:border-line lg:bg-surface-raised lg:min-h-0 ${bookNavCollapsed ? 'lg:hidden' : 'lg:flex'}`}>
         <div className="p-4 border-b border-line flex items-center gap-2">
           <div className="flex-1 flex items-center gap-2 bg-surface-sunken rounded-lg border border-line px-3 py-2">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#A89A87" strokeWidth="2.5"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-faint)" strokeWidth="2.5"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
             <input value={deskSearch} onChange={(e) => setDeskSearch(e.target.value)} placeholder="Search books…" className="flex-1 border-none bg-transparent text-[13px] outline-none text-strong" />
           </div>
           <button onClick={() => setBookNavCollapsed(true)} title="Collapse books" className="w-8 h-8 rounded-lg flex items-center justify-center text-faint hover:bg-surface-sunken shrink-0">
@@ -654,11 +654,11 @@ export default function BiblePage() {
         <button onClick={() => setShowPicker(true)} className="flex items-center gap-2 border border-line-strong rounded-brand-lg bg-surface-raised px-3.5 py-2 cursor-pointer">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--brand-color)" strokeWidth="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" /><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" /></svg>
           <span className="text-[14.5px] font-bold text-strong">{book.name} {chapter}</span>
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#A89A87" strokeWidth="2"><path d="m6 9 6 6 6-6" /></svg>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text-faint)" strokeWidth="2"><path d="m6 9 6 6 6-6" /></svg>
         </button>
         <button onClick={() => setShowTranslations(true)} className="flex items-center gap-1.5 border border-line-strong rounded-brand-lg bg-surface-raised px-3 py-2 cursor-pointer">
           <span className="text-[13px] font-bold text-gold">{getTranslationName(translation)}</span>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#A89A87" strokeWidth="2"><path d="m6 9 6 6 6-6" /></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-faint)" strokeWidth="2"><path d="m6 9 6 6 6-6" /></svg>
         </button>
         <button onClick={() => setTab(tab === "search" ? "read" : "search")} aria-label="Search" className={`ml-auto w-9 h-9 rounded-brand-lg border flex items-center justify-center cursor-pointer transition-colors ${tab === "search" ? "border-gold text-gold bg-wheat-100" : "border-line-strong text-muted bg-surface-raised"}`}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
@@ -671,7 +671,7 @@ export default function BiblePage() {
           <div className="flex items-center gap-2">
           <button onClick={() => setShowPicker(true)} className="bg-transparent border-none cursor-pointer flex items-center gap-1 lg:hidden">
             <span className="font-extrabold text-[17px] text-strong font-display">{book.name} {chapter}</span>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#A89A87" strokeWidth="2"><path d="m6 9 6 6 6-6" /></svg>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-faint)" strokeWidth="2"><path d="m6 9 6 6 6-6" /></svg>
           </button>
           {/* Desktop: re-open the book sidebar after collapsing it */}
           {bookNavCollapsed && (
@@ -762,7 +762,7 @@ export default function BiblePage() {
                       return (
                         <span key={verse.number} onClick={() => setActiveVerse({ verse, book: book.name, chapter })}
                           className="cursor-pointer"
-                          style={{ background: hlColor ? HIGHLIGHT_COLORS[hlColor] : "transparent", boxShadow: picked ? "0 0 0 2px var(--brand-color)" : "none", borderRadius: 3, padding: "1px 0" }}>
+                          style={{ background: hlColor ? HIGHLIGHT_COLORS[hlColor] : "transparent", color: hlColor ? "var(--earth)" : undefined, boxShadow: picked ? "0 0 0 2px var(--brand-color)" : "none", borderRadius: 3, padding: "1px 0" }}>
                           <sup className="text-[10px] font-bold text-gold mr-[3px] align-super">{verse.number}</sup>
                           {verse.text}{" "}
                         </span>
@@ -788,7 +788,7 @@ export default function BiblePage() {
                       className="flex gap-3 mb-4 cursor-pointer rounded-[10px] py-2 px-2.5 transition-colors hover:bg-black/[0.02]"
                       style={{ background: hlColor ? HIGHLIGHT_COLORS[hlColor] : "transparent" }}>
                       <span className="text-[11px] font-extrabold min-w-[24px] pt-1 flex-shrink-0" style={{ color: GOLD }}>{verse.number}</span>
-                      <span style={{ fontSize: fontSize, fontFamily: "'Crimson Pro', Georgia, serif", lineHeight: 1.85 }} className="text-strong lg:![font-family:var(--font-serif),Georgia,serif]">{verse.text}</span>
+                      <span style={{ fontSize: fontSize, fontFamily: "'Crimson Pro', Georgia, serif", lineHeight: 1.85, color: hlColor ? "var(--earth)" : undefined }} className="text-strong lg:![font-family:var(--font-serif),Georgia,serif]">{verse.text}</span>
                     </div>
                   );
                 })}
@@ -799,12 +799,12 @@ export default function BiblePage() {
           {!loading && !error && (
             <div className="flex gap-2.5 px-4 py-3 pb-24 lg:pb-6 flex-shrink-0 lg:max-w-[760px] lg:mx-auto lg:w-full lg:px-10">
               <button onClick={() => goToChapter(-1)} disabled={chapter === 1}
-                className={`flex-1 py-3 rounded-xl text-sm font-bold cursor-pointer flex items-center justify-center gap-1.5 transition-colors ${chapter > 1 ? "bg-surface-raised border-[1.5px] border-line text-muted hover:border-line-strong" : "bg-surface-sunken border border-line text-stone-300 cursor-not-allowed"}`}>
+                className={`flex-1 py-3 rounded-xl text-sm font-bold cursor-pointer flex items-center justify-center gap-1.5 transition-colors ${chapter > 1 ? "bg-surface-raised border-[1.5px] border-line text-muted hover:border-line-strong" : "bg-surface-sunken border border-line text-faint cursor-not-allowed"}`}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m15 18-6-6 6-6" /></svg>
                 Chapter {chapter - 1}
               </button>
               <button onClick={() => goToChapter(1)} disabled={chapter === book.chapters}
-                className={`flex-1 py-3 rounded-xl text-sm font-bold cursor-pointer flex items-center justify-center gap-1.5 transition-colors ${chapter < book.chapters ? "bg-gold border-none text-white hover:bg-wheat-600" : "bg-surface-sunken border border-line text-stone-300 cursor-not-allowed"}`}>
+                className={`flex-1 py-3 rounded-xl text-sm font-bold cursor-pointer flex items-center justify-center gap-1.5 transition-colors ${chapter < book.chapters ? "bg-gold border-none text-white hover:bg-wheat-600" : "bg-surface-sunken border border-line text-faint cursor-not-allowed"}`}>
                 Chapter {chapter + 1}
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m9 18 6-6-6-6" /></svg>
               </button>
@@ -818,7 +818,7 @@ export default function BiblePage() {
         <div className="flex-1 overflow-y-auto flex flex-col">
           <div className="px-4 py-3 flex-shrink-0">
             <div className="flex items-center gap-2 bg-surface-raised rounded-full border-[1.5px] border-line px-4 py-3">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#A89A87" strokeWidth="2.5"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text-faint)" strokeWidth="2.5"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
               <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder='Try "John 3:16" or "Romans 8:28"...' autoFocus className="flex-1 border-none bg-transparent text-sm outline-none text-strong" />
               {searchQuery && <button onClick={() => { setSearchQuery(""); setSearchResults([]); }} className="bg-transparent border-none text-faint cursor-pointer text-sm">✕</button>}
             </div>
@@ -835,7 +835,7 @@ export default function BiblePage() {
           <div className="flex-1 px-4 pb-8 flex flex-col gap-3">
             {!searchQuery && (
               <div className="text-center py-12 text-faint">
-                <svg className="mx-auto mb-3 text-stone-300" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" /><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" /></svg>
+                <svg className="mx-auto mb-3 text-faint" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" /><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" /></svg>
                 <p className="text-sm font-semibold">Search the Scriptures</p>
                 <p className="text-[13px] mt-1">Type a verse reference or keyword</p>
               </div>

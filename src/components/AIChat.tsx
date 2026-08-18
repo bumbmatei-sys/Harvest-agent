@@ -167,9 +167,9 @@ function ChatList({ history, activeId, onSelect, onDelete }: ChatListProps) {
  {/* Delete button */}
  <button
  onClick={(e) => { e.stopPropagation(); onDelete(chat.id); }}
- style={{ background: "none", border: "none", cursor: "pointer", color: "#CCC", fontSize: 15, padding: "4px", lineHeight: 1, flexShrink: 0, borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center" }}
- onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "#E74C3C"; (e.currentTarget as HTMLButtonElement).style.background = "#FDECEA"; }}
- onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "#CCC"; (e.currentTarget as HTMLButtonElement).style.background = "none"; }}>
+ style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-faint)", fontSize: 15, padding: "4px", lineHeight: 1, flexShrink: 0, borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center" }}
+ onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "rgb(var(--ink-danger-strong))"; (e.currentTarget as HTMLButtonElement).style.background = "rgb(var(--c-danger-tint))"; }}
+ onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--text-faint)"; (e.currentTarget as HTMLButtonElement).style.background = "none"; }}>
  🗑
  </button>
  </div>

@@ -390,7 +390,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
             : 'lg:flex-row lg:justify-start lg:gap-3 lg:w-full lg:h-11 lg:px-3 w-16 h-12'
         } ${
           isActive
-            ? 'lg:bg-[color-mix(in_srgb,var(--brand-color)_16%,white)]'
+            ? 'lg:bg-[color-mix(in_srgb,var(--brand-color)_16%,transparent)]'
             : 'text-faint hover:text-muted lg:text-muted lg:hover:text-strong lg:hover:bg-surface-sunken'
         }`}
         style={isActive ? { color: 'var(--brand-color, #e6b325)' } : undefined}
@@ -450,7 +450,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
   }
 
   return (
-    <div className="flex flex-col lg:flex-row h-screen bg-surface lg:bg-[var(--ds-page-bg)] font-sans overflow-hidden transition-colors duration-300">
+    <div className="flex flex-col lg:flex-row h-screen bg-surface font-sans overflow-hidden transition-colors duration-300">
       <ReferralTracker />
       
       {/* Side/Bottom Navigation */}
@@ -518,7 +518,7 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
       </div>
 
       {/* Main Container */}
-      <div className="flex-1 flex flex-col h-screen relative bg-surface lg:bg-[var(--ds-page-bg)] overflow-hidden min-w-0">
+      <div className="flex-1 flex flex-col h-screen relative bg-surface overflow-hidden min-w-0">
         {/* Desktop top bar: page title + date (hard-left), profile avatar (hard-right) — Phase 1.6/1.7, lg:-only.
             Full-bleed padded row (not the centered content container) so the title hugs the content area's
             left edge and the avatar sits in the far top-right corner, per #104 feedback. */}
