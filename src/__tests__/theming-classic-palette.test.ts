@@ -5,9 +5,14 @@ import postcss from 'postcss';
 import {
   contrastRatio,
   deriveOnDarkAccent,
+  deriveOnTintAccent,
+  accentTintGround,
+  ACCENT_TINT_PCT,
   AA_CONTRAST,
   DARK_SURFACE,
   CLASSIC_DARK_SURFACE,
+  DARK_SURFACE_RAISED,
+  CLASSIC_DARK_SURFACE_RAISED,
   PALETTE_FAMILIES,
   isPaletteFamily,
 } from '../lib/theme';
@@ -36,6 +41,22 @@ import {
  */
 
 const NON_TEXT_CONTRAST = 3.0;
+
+/**
+ * The ONLY custom property this branch adds to Harvest's own two blocks.
+ *
+ * It is not part of the palette family — it is the accent-on-tint AA fix:
+ * --brand-color-on-dark corrects the accent against the PAGE GROUND, but an
+ * accent-tinted chip sits above that ground and is lighter, so a dark
+ * white-label accent can clear AA on the page and still fail on the chip
+ * (~4.27:1), in Harvest dark exactly as much as in Classic dark.
+ *
+ * Listing it by name rather than loosening the pins: every one of the 134
+ * :root and 82 .dark values stays pinned exactly, and any OTHER new token
+ * still fails. In light it is the identity (var(--brand-color)), asserted
+ * below, so nothing about Harvest's rendering moves.
+ */
+const ALLOWED_NEW_TOKENS = ['--ink-on-accent-tint'];
 
 const ROOT = path.resolve(__dirname, '../..');
 const SRC = path.join(ROOT, 'src');
@@ -237,13 +258,20 @@ describe('Harvest light is byte-identical to before this change', () => {
     expect(rootVars[token], `${token} is missing from :root`).toBe(expected);
   });
 
-  it('introduces no new :root custom property — a new token here is a Harvest change, not a Classic addition', () => {
+  it('introduces no new :root custom property beyond the one named accent-ink token', () => {
     const extra = Object.keys(rootVars).filter((k) => !(k in PINNED_ROOT));
-    expect(extra, 'a new :root token appeared').toEqual([]);
+    expect(extra, 'an UNEXPECTED new :root token appeared').toEqual(ALLOWED_NEW_TOKENS);
   });
 
-  it(':root declares exactly the pinned count of custom properties', () => {
-    expect(Object.keys(rootVars).length).toBe(Object.keys(PINNED_ROOT).length);
+  it(':root declares exactly the pinned count of custom properties, plus the accent-ink token', () => {
+    expect(Object.keys(rootVars).length).toBe(Object.keys(PINNED_ROOT).length + ALLOWED_NEW_TOKENS.length);
+  });
+
+  it('the accent-ink token is the IDENTITY in light — it resolves to the raw accent, so light renders exactly as before', () => {
+    // This is what makes adding it a non-event for light mode: every call
+    // site that now reads --ink-on-accent-tint used var(--brand-color)
+    // before, and in light that is still literally what it resolves to.
+    expect(rootVars['--ink-on-accent-tint']).toBe('var(--brand-color)');
   });
 });
 
@@ -341,13 +369,13 @@ describe('Harvest dark is byte-identical to before this change', () => {
     expect(harvestDarkVars[token], `${token} is missing from .dark`).toBe(expected);
   });
 
-  it('introduces no new .dark custom property — Classic dark lives under its own selector, not this one', () => {
+  it('introduces no new .dark custom property beyond the one named accent-ink token', () => {
     const extra = Object.keys(harvestDarkVars).filter((k) => !(k in PINNED_DARK));
-    expect(extra, 'a new .dark token appeared').toEqual([]);
+    expect(extra, 'an UNEXPECTED new .dark token appeared').toEqual(ALLOWED_NEW_TOKENS);
   });
 
-  it('.dark declares exactly the pinned count of custom properties', () => {
-    expect(Object.keys(harvestDarkVars).length).toBe(Object.keys(PINNED_DARK).length);
+  it('.dark declares exactly the pinned count of custom properties, plus the accent-ink token', () => {
+    expect(Object.keys(harvestDarkVars).length).toBe(Object.keys(PINNED_DARK).length + ALLOWED_NEW_TOKENS.length);
   });
 
   it('color-scheme: dark is still declared (a regular property, invisible to the custom-property pins above)', () => {
@@ -871,5 +899,126 @@ describe('the admin sidebar selected nav item follows the palette family', () =>
     // The mobile drawer sibling was already correct (transparent, 10%); the
     // desktop pill was the lone holdout. Both now composite over their ground.
     expect(adminSrc).toContain("color-mix(in srgb, var(--brand-color, #C9963A) 10%, transparent)");
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 16 · 🔴 accent ink on an accent TINT — the second half of the trap
+//
+// deriveOnDarkAccent corrects the accent against the PAGE GROUND. An
+// accent-tinted chip sits ABOVE that ground (it is the accent mixed into the
+// raised surface), so it is lighter, and ink that clears AA on the ground can
+// still fail on the chip. Pre-existing and family-independent: it bites
+// Harvest dark exactly as hard as Classic dark. deriveOnTintAccent closes it
+// by deriving against the chip itself.
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe('accent ink clears AA on the accent tint it sits on, in both families', () => {
+  const FAMILIES = [
+    ['Harvest', DARK_SURFACE, DARK_SURFACE_RAISED, harvestDarkVars],
+    ['Classic', CLASSIC_DARK_SURFACE, CLASSIC_DARK_SURFACE_RAISED, classicDarkVars],
+  ] as const;
+
+  it.each(FAMILIES.map(([n, , raised, vars]) => [n, raised, vars] as const))(
+    '%s: DARK_SURFACE_RAISED matches that family\'s real --surface-raised — the correction is against fiction otherwise',
+    (_name, raised, vars) => {
+      expect(raised).toBe(resolve('--surface-raised', vars));
+    },
+  );
+
+  // The same tenant list theming-stage3 uses, so this is directly comparable
+  // to its own on-dark assertions — same inputs, one layer up.
+  const DARK_TENANTS = ['#0C1526', '#14532D', '#5B0E12', '#000000', '#2563EB'];
+
+  it.each(
+    FAMILIES.flatMap(([name, ground, raised]) =>
+      DARK_TENANTS.map((hex) => [name, hex, ground, raised] as const),
+    ),
+  )(
+    '%s / %s: the PAGE-GROUND correction genuinely fails on the chip — this is the gap, not a hypothetical',
+    (_name, hex, ground, raised) => {
+      const chip = accentTintGround(hex, raised, ACCENT_TINT_PCT);
+      const pageInk = deriveOnDarkAccent(hex, ground);
+      // It clears AA where it was derived...
+      expect(contrastRatio(pageInk, ground)).toBeGreaterThanOrEqual(AA_CONTRAST);
+      // ...and fails on the chip that actually sits under it.
+      expect(
+        contrastRatio(pageInk, chip),
+        `${hex}: the page-ground ink ${pageInk} already cleared AA on the chip ${chip} — this test proves nothing`,
+      ).toBeLessThan(AA_CONTRAST);
+    },
+  );
+
+  it.each(
+    FAMILIES.flatMap(([name, , raised]) => DARK_TENANTS.map((hex) => [name, hex, raised] as const)),
+  )('%s / %s: the chip-derived correction clears AA on the chip', (_name, hex, raised) => {
+    const chip = accentTintGround(hex, raised, ACCENT_TINT_PCT);
+    const ink = deriveOnTintAccent(hex, raised, ACCENT_TINT_PCT);
+    const ratio = contrastRatio(ink, chip);
+    expect(ratio, `${hex}: ink ${ink} on chip ${chip} is ${ratio.toFixed(2)}:1`).toBeGreaterThanOrEqual(AA_CONTRAST);
+  });
+
+  it.each(DARK_TENANTS)('%s is corrected differently per family — the raised surface differs, so the chip does too', (hex) => {
+    expect(deriveOnTintAccent(hex, DARK_SURFACE_RAISED, ACCENT_TINT_PCT))
+      .not.toBe(deriveOnTintAccent(hex, CLASSIC_DARK_SURFACE_RAISED, ACCENT_TINT_PCT));
+  });
+
+  it.each(['#C9963A', '#B8962E'])(
+    '🔴 %s (the Harvest golds) is returned UNCHANGED by the tint correction — the default brand does not shift',
+    (gold) => {
+      expect(deriveOnTintAccent(gold, DARK_SURFACE_RAISED, ACCENT_TINT_PCT)).toBe(gold);
+      expect(deriveOnTintAccent(gold, CLASSIC_DARK_SURFACE_RAISED, ACCENT_TINT_PCT)).toBe(gold);
+    },
+  );
+
+  it('🔴 ACCENT_TINT_PCT is low enough that Harvest gold never needs lightening — raising it past the ceiling would shift the brand', () => {
+    // Computed, not assumed: at 16% gold falls to 4.48:1 on Classic's chip
+    // and the derivation would start lightening it, visibly changing the
+    // brand colour in dark. This pins the constant below that ceiling.
+    for (const raised of [DARK_SURFACE_RAISED, CLASSIC_DARK_SURFACE_RAISED]) {
+      const chip = accentTintGround('#C9963A', raised, ACCENT_TINT_PCT);
+      const ratio = contrastRatio('#C9963A', chip);
+      expect(
+        ratio,
+        `gold is ${ratio.toFixed(2)}:1 on its own ${ACCENT_TINT_PCT}% chip (${chip}) — the tint is too strong`,
+      ).toBeGreaterThanOrEqual(AA_CONTRAST);
+    }
+  });
+
+  it('leaves a malformed hex alone rather than emitting garbage', () => {
+    expect(deriveOnTintAccent('not-a-hex')).toBe('not-a-hex');
+  });
+
+  it('layout.tsx injects the chip-corrected accent per family, alongside the page-ground one', () => {
+    const layout = readFileSync(LAYOUT, 'utf8');
+    expect(layout).toContain('deriveOnTintAccent(brandColor, DARK_SURFACE_RAISED)');
+    expect(layout).toContain('deriveOnTintAccent(brandColor, CLASSIC_DARK_SURFACE_RAISED)');
+    // Both palette selectors carry it — one declaration each, and only one
+    // of the two selectors can ever match a given <html>.
+    expect(layout).toContain('[data-palette="harvest"]{');
+    expect(layout).toContain('[data-palette="classic"]{');
+    // Counted inside the injected <style> template only — the explanatory
+    // comment above it names the token too, and a comment is not a rule.
+    const styleTag = layout.match(/<style dangerouslySetInnerHTML=\{\{ __html: `([^`]*)`/);
+    expect(styleTag, 'the tenant brand <style> injection is gone').not.toBeNull();
+    expect([...styleTag![1].matchAll(/--brand-color-on-tint:/g)]).toHaveLength(2);
+    expect([...styleTag![1].matchAll(/--brand-color-on-dark:/g)]).toHaveLength(2);
+  });
+
+  it('globals.css switches the consumer token by MODE — identity in light, chip-corrected in dark', () => {
+    expect(rootVars['--ink-on-accent-tint']).toBe('var(--brand-color)');
+    expect(harvestDarkVars['--ink-on-accent-tint']).toBe('var(--brand-color-on-tint, var(--brand-color))');
+  });
+
+  it('Classic dark inherits the same consumer token rather than redeclaring it — one definition, family-aware via the injected value', () => {
+    expect(classicDarkVars['--ink-on-accent-tint']).toBeUndefined();
+    expect(classicLightVars['--ink-on-accent-tint']).toBeUndefined();
+  });
+
+  it('the fallback chain still ends at the raw accent, so a tenant with no injected value renders gold', () => {
+    // The default (non-white-label) tenant injects nothing at all, so
+    // --brand-color-on-tint is undefined and the chain must not collapse to
+    // an empty value.
+    expect(harvestDarkVars['--ink-on-accent-tint']).toContain('var(--brand-color)');
   });
 });

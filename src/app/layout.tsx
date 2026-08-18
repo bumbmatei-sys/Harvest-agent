@@ -6,7 +6,14 @@ import { Inter, Fraunces, Newsreader } from 'next/font/google';
 import './globals.css';
 import { cn } from "@/lib/utils";
 import { getTenantFromHost } from '@/lib/server-tenant';
-import { deriveOnDarkAccent, DARK_SURFACE, CLASSIC_DARK_SURFACE } from '@/lib/theme';
+import {
+  deriveOnDarkAccent,
+  deriveOnTintAccent,
+  DARK_SURFACE,
+  CLASSIC_DARK_SURFACE,
+  DARK_SURFACE_RAISED,
+  CLASSIC_DARK_SURFACE_RAISED,
+} from '@/lib/theme';
 import { PREAUTH_PATHS } from '@/lib/preauth-theme';
 import ReferralTracker from '@/components/ReferralTracker';
 import { Toaster } from '@/components/ui/sonner';
@@ -227,9 +234,26 @@ export default async function RootLayout({
             existing dark-mode consumer of --brand-color-on-dark
             (--surface-gold, --border-gold, --glow-gold, --ring-gold in
             globals.css) needs no changes at all: the variable they already
-            reference now resolves differently per family for free. */}
+            reference now resolves differently per family for free.
+
+            ── --brand-color-on-tint: the same correction, one layer up ──────
+            --brand-color-on-dark corrects the accent against the PAGE
+            GROUND. An accent-tinted chip sits ABOVE that ground — it is the
+            accent mixed into the raised surface — so it is lighter, and ink
+            that clears AA on the ground can still fail on the chip. Harvest
+            gold is comfortable either way; a dark white-label accent is not
+            (navy #0C1526 clears 4.54:1 on the ground and only 4.27:1 on the
+            chip, in Harvest dark exactly as much as in Classic dark).
+
+            So a second value is derived against the chip itself, per family,
+            and injected the same way. Consumed through --ink-on-accent-tint
+            in globals.css, which is what makes it mode-aware — this rule
+            applies in BOTH modes, exactly like --brand-color-on-dark above,
+            and neither is ever read in light. Harvest gold is returned
+            unchanged by this derivation too (5.15:1 on its own 12% chip), so
+            the default brand renders identically. */}
         {brandColorValid && (
-          <style dangerouslySetInnerHTML={{ __html: `:root{--brand-color:${brandColor};--color-primary:${brandColor};}[data-palette="harvest"]{--brand-color-on-dark:${deriveOnDarkAccent(brandColor, DARK_SURFACE)};}[data-palette="classic"]{--brand-color-on-dark:${deriveOnDarkAccent(brandColor, CLASSIC_DARK_SURFACE)};}` }} />
+          <style dangerouslySetInnerHTML={{ __html: `:root{--brand-color:${brandColor};--color-primary:${brandColor};}[data-palette="harvest"]{--brand-color-on-dark:${deriveOnDarkAccent(brandColor, DARK_SURFACE)};--brand-color-on-tint:${deriveOnTintAccent(brandColor, DARK_SURFACE_RAISED)};}[data-palette="classic"]{--brand-color-on-dark:${deriveOnDarkAccent(brandColor, CLASSIC_DARK_SURFACE)};--brand-color-on-tint:${deriveOnTintAccent(brandColor, CLASSIC_DARK_SURFACE_RAISED)};}` }} />
         )}
         <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block" rel="stylesheet" />
       </head>

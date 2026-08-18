@@ -667,17 +667,22 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
             // and still reads clearly as a selected state. Mode-dependent
             // accent opacity is the same call globals.css already makes for
             // --ring-gold (35% -> 48%) and --border-gold (40% -> 52%).
+            //
+            // The label/icon below paint in --ink-on-accent-tint: the raw
+            // accent in light (unchanged), the chip-corrected accent in dark,
+            // so a dark white-label accent stays readable on the tint it sits
+            // on. Harvest gold resolves to itself in both.
             ? 'lg:bg-[color-mix(in_srgb,var(--brand-color)_16%,transparent)] dark:lg:bg-[color-mix(in_srgb,var(--brand-color)_12%,transparent)]'
             : 'text-muted hover:text-strong lg:hover:bg-surface-sunken'
         }`}
-        style={isActive ? { color: 'var(--brand-color, #C9963A)' } : undefined}
+        style={isActive ? { color: 'var(--ink-on-accent-tint, var(--brand-color, #C9963A))' } : undefined}
         title={isSidebarCollapsed ? tab.label : undefined}
       >
         <Icon
           size={20}
           strokeWidth={isActive ? 2.4 : 2}
           className="shrink-0"
-          style={isActive ? { color: 'var(--brand-color, #C9963A)' } : undefined}
+          style={isActive ? { color: 'var(--ink-on-accent-tint, var(--brand-color, #C9963A))' } : undefined}
         />
         {!isSidebarCollapsed && <span className="text-[13px] font-medium truncate">{tab.label}</span>}
         {showDot && (

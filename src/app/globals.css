@@ -111,6 +111,14 @@
     value injected per-request from layout.tsx (deriveOnDarkAccent). Unused
     in the light theme — declared here only so the var always resolves. */
  --brand-color-on-dark: var(--brand-color);
+ /* The ink for accent-coloured text/icons sitting ON an accent-tinted chip.
+    Identity in light — the raw accent, exactly what those call sites used
+    before this token existed, so light is unchanged. The dark block below
+    swaps it for the chip-corrected accent. Declared here (rather than only
+    in .dark) because components read it in BOTH modes; --brand-color-on-dark
+    can get away without a light-correct value only because it is read solely
+    from inside dark-scoped rules in this file. */
+ --ink-on-accent-tint: var(--brand-color);
  /* Harvest's own danger pair was spelled as bare hex literals in 44 places
     (text-[#C4553B] x23, bg-[#F7E7E2] x18, text-[#A23C28]) so it never themed,
     and the near-black guard could not see it -- these are mid-tone and light.
@@ -289,6 +297,15 @@
    /* The gold CTA halo needs the corrected accent, or a dark tenant colour
       produces a glow nobody can see. */
    --glow-gold: 0 10px 30px -8px color-mix(in srgb, var(--brand-color-on-dark, var(--brand-color)) 46%, transparent);
+   /* Accent ink on an accent-tinted chip. --brand-color-on-dark is corrected
+      against the PAGE GROUND, but a chip sits above it and is lighter, so
+      that correction is not enough there: a dark tenant accent lands ~4.27:1
+      on the chip while clearing AA on the ground. --brand-color-on-tint is
+      derived against the chip itself and injected per family by layout.tsx;
+      it is absent for the default (non-white-label) tenant, where the raw
+      accent is already correct — Harvest gold is 5.15:1 on its own chip — so
+      the fallback chain ends at --brand-color and gold is untouched. */
+   --ink-on-accent-tint: var(--brand-color-on-tint, var(--brand-color));
    --c-danger-tint: 57 37 29;
    --ink-danger: 232 166 149; --ink-danger-strong: 240 191 178;
 
