@@ -1,13 +1,12 @@
 "use client";
 import React, { useState, useEffect, useRef } from 'react';
 import { db, auth } from '../firebase';
-import { collection, query, where, onSnapshot, doc, deleteDoc, getDoc, addDoc, updateDoc, orderBy, limit } from 'firebase/firestore';
-import { Church, Search, Filter, Edit2, Trash2, Plus, CheckCircle, Clock, DollarSign, Megaphone, Save, X } from 'lucide-react';
+import { collection, query, where, onSnapshot, doc, deleteDoc, getDoc, limit } from 'firebase/firestore';
+import { Church, Search, Filter, Edit2, Trash2, CheckCircle, Clock, DollarSign } from 'lucide-react';
 import ChurchEnrollment from './ChurchEnrollment';
 import { authFetch } from '../utils/auth-fetch';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
-import { getTenantScope, getWriteTenantScope } from '../utils/tenant-scope';
-import { sendPushNotification } from '../utils/send-notification';
+import { getTenantScope } from '../utils/tenant-scope';
 import { getPlanFeatures } from '../utils/plan-features';
 import { useTenant } from '@/contexts/TenantContext';
 import { AdminPageHeader, AdminPrimaryButton } from './admin/AdminUI';
@@ -208,11 +207,6 @@ const AdminChurches: React.FC = () => {
             onSave={handleChurchSaved}
           />
         </div>
-
-        {/* Announcements Section — only when editing */}
-        {editingChurch && (
-          <AnnouncementsSection churchId={editingChurch.id} />
-        )}
       </div>
     );
   }
@@ -498,189 +492,3 @@ const AdminChurches: React.FC = () => {
 };
 
 export default AdminChurches;
-
-// ─── Announcements Section (inline component) ────────────────────────
-
-// Exported for direct testing — it owns the announcement create path, which
-// must stamp a concrete tenantId (see the getWriteTenantScope note below).
-export const AnnouncementsSection: React.FC<{ churchId: string }> = ({ churchId }) => {
-  const [announcements, setAnnouncements] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [newTitle, setNewTitle] = useState('');
-  const [newContent, setNewContent] = useState('');
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editTitle, setEditTitle] = useState('');
-  const [editContent, setEditContent] = useState('');
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    const q = query(collection(db, 'churches', churchId, 'announcements'), orderBy('createdAt', 'desc'));
-    const unsub = onSnapshot(q, (snap) => {
-      setAnnouncements(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-      setLoading(false);
-    }, (error) => {
-      console.error('Announcements listener error:', error);
-      setLoading(false);
-    });
-    return () => unsub();
-  }, [churchId]);
-
-  const handleCreate = async () => {
-    if (!newTitle.trim() || !newContent.trim()) return;
-    setSaving(true);
-    try {
-      // getWriteTenantScope, NOT getTenantScope — this is a CREATE. The read
-      // resolver returns null for a super admin on the apex ("all tenants",
-      // right for a read), which stamped `tenantId: null` here. The document is
-      // created and the UI looks fine, but the announcements update/delete rules
-      // gate on hasPermission('modifyChurches', resource.data.tenantId), and
-      // that never passes for a null tenant — so the church can never edit or
-      // delete its own announcement again. `|| null` is kept: getWriteTenantScope
-      // can still legitimately return null for a non-super-admin with no
-      // resolvable tenant, and the field's `string | null` contract is unchanged.
-      const tenantId = await getWriteTenantScope();
-      await addDoc(collection(db, 'churches', churchId, 'announcements'), {
-        title: newTitle.trim(),
-        content: newContent.trim(),
-        tenantId: tenantId || null,
-        createdAt: new Date().toISOString(),
-        createdBy: auth.currentUser?.uid || null,
-      });
-      // Fire-and-forget push notification
-      sendPushNotification('New Announcement', newTitle.trim());
-      setNewTitle('');
-      setNewContent('');
-    } catch (error) {
-      console.error('Failed to create announcement:', error);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleUpdate = async (id: string) => {
-    if (!editTitle.trim() || !editContent.trim()) return;
-    try {
-      await updateDoc(doc(db, 'churches', churchId, 'announcements', id), {
-        title: editTitle.trim(),
-        content: editContent.trim(),
-        updatedAt: new Date().toISOString(),
-      });
-      setEditingId(null);
-    } catch (error) {
-      console.error('Failed to update announcement:', error);
-    }
-  };
-
-  const handleDelete = async (id: string) => {
-    try {
-      await deleteDoc(doc(db, 'churches', churchId, 'announcements', id));
-    } catch (error) {
-      console.error('Failed to delete announcement:', error);
-    }
-  };
-
-  return (
-    <div className="border-t border-line p-4">
-      <h3 className="text-lg font-bold text-strong mb-4 flex items-center gap-2 font-display">
-        <Megaphone size={18} className="text-gold" />
-        Announcements
-      </h3>
-
-      {/* Create Form */}
-      <div className="bg-surface-sunken rounded-xl p-4 mb-4">
-        <input
-          type="text"
-          placeholder="Announcement title"
-          value={newTitle}
-          onChange={(e) => setNewTitle(e.target.value)}
-          className="w-full px-3 py-2 rounded-lg border border-line bg-surface-raised text-sm mb-2 focus:outline-none focus:border-gold"
-        />
-        <textarea
-          placeholder="Announcement content"
-          value={newContent}
-          onChange={(e) => setNewContent(e.target.value)}
-          rows={3}
-          className="w-full px-3 py-2 rounded-lg border border-line bg-surface-raised text-sm mb-2 focus:outline-none focus:border-gold resize-none"
-        />
-        <button
-          onClick={handleCreate}
-          disabled={saving || !newTitle.trim() || !newContent.trim()}
-          className="flex items-center gap-2 bg-gold text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[color-mix(in_srgb,var(--brand-color)_85%,black)] transition-colors disabled:opacity-50"
-        >
-          <Plus size={14} />
-          {saving ? 'Adding...' : 'Add Announcement'}
-        </button>
-      </div>
-
-      {/* List */}
-      {loading ? (
-        <div className="flex justify-center py-4">
-          <div className="w-6 h-6 border-4 border-[color-mix(in_srgb,var(--brand-color)_30%,transparent)] border-t-gold rounded-full animate-spin"></div>
-        </div>
-      ) : announcements.length === 0 ? (
-        <p className="text-sm text-muted text-center py-4 font-display">No announcements yet</p>
-      ) : (
-        <div className="space-y-3">
-          {announcements.map((a) => (
-            <div key={a.id} className="bg-surface-sunken rounded-xl p-4">
-              {editingId === a.id ? (
-                <div>
-                  <input
-                    type="text"
-                    value={editTitle}
-                    onChange={(e) => setEditTitle(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg border border-line bg-surface-raised text-sm mb-2 focus:outline-none focus:border-gold"
-                  />
-                  <textarea
-                    value={editContent}
-                    onChange={(e) => setEditContent(e.target.value)}
-                    rows={3}
-                    className="w-full px-3 py-2 rounded-lg border border-line bg-surface-raised text-sm mb-2 focus:outline-none focus:border-gold resize-none"
-                  />
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => handleUpdate(a.id)}
-                      className="flex items-center gap-1 bg-field-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-field-700"
-                    >
-                      <Save size={12} /> Save
-                    </button>
-                    <button
-                      onClick={() => setEditingId(null)}
-                      className="flex items-center gap-1 bg-surface-chip text-body px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-line-strong"
-                    >
-                      <X size={12} /> Cancel
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div>
-                  <h4 className="font-bold text-strong text-sm">{a.title}</h4>
-                  <p className="text-xs text-muted mt-1 whitespace-pre-wrap">{a.content}</p>
-                  {a.createdAt && (
-                    <p className="text-xs text-faint mt-2">
-                      {new Date(a.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                    </p>
-                  )}
-                  <div className="flex gap-2 mt-3">
-                    <button
-                      onClick={() => { setEditingId(a.id); setEditTitle(a.title); setEditContent(a.content); }}
-                      className="p-1.5 text-sky-600 hover:bg-sky-100 rounded-lg transition-colors"
-                    >
-                      <Edit2 size={14} />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(a.id)}
-                      className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-};
