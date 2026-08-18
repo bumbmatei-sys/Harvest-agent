@@ -4,6 +4,7 @@ import { requireAuth, requireTenantAdmin } from '@/lib/api-auth';
 import { getTenantPrivate, DODO_ON_HOLD_FIELD } from '@/lib/tenant-private';
 import { resolveTenantGraceState, DODO_GRACE_PERIOD_MS } from '@/lib/tenant-lifecycle';
 import { convergeExpiredDodoGrace } from '@/lib/dodo/lifecycle';
+import { convergeDodoSubscriptionStatus } from '@/lib/dodo/subscription-convergence';
 import { captureMoneyPathError } from '@/lib/money-path-sentry';
 
 /**
@@ -149,6 +150,43 @@ export async function GET(request: NextRequest) {
         tenantId,
       });
     }
+  }
+
+  /**
+   * ⚠️ THE SIBLING CONVERGENCE (THE-167) — the PROCESSOR's status, not Harvest's
+   * clock. Same rule as the block above, for the same reasons, and deliberately
+   * independent of it.
+   *
+   * 🔴 The defect it exists for: three subscriptions were cancelled through the
+   * Dodo API on 2026-08-17, Dodo reports all three `cancelled`, and every tenant
+   * doc still read `active`. `subscription.cancelled` is a terminal event that
+   * archives a tenant, so the state should have moved. The endpoint is
+   * configured correctly, and whether the event ever fired CANNOT BE DETERMINED
+   * — Dodo exposes no delivery log this account can read. Rather than fix a
+   * webhook that may not be broken, this stops depending on it for a terminal
+   * state; see `@/lib/dodo/subscription-convergence` for why that closes all
+   * three possible causes where a webhook fix closes at most two.
+   *
+   * ⚠️ IT IS THROTTLED, and that is not optional. This route runs on every admin
+   * shell mount and THE-139 was a 429 on it; the interval and its argument live
+   * with the function.
+   *
+   * 🔴 Unconditional, unlike the grace block: a cancelled subscription has
+   * nothing to do with a hold, so gating this on `graceState` would miss exactly
+   * the tenant it was written for — one that was never on hold and was cancelled
+   * outright. Same try/catch, same best-effort contract: the answer above is
+   * already built and correct, and a Dodo outage must not turn a working read
+   * into a 500 that leaves the admin with no banner.
+   */
+  try {
+    await convergeDodoSubscriptionStatus(tenantId, now);
+  } catch (convergeErr) {
+    console.error(`[dodo] Could not converge subscription status for tenant ${tenantId}:`, convergeErr);
+    captureMoneyPathError(convergeErr, {
+      step: 'dodo-subscription-converge',
+      level: 'warning',
+      tenantId,
+    });
   }
 
   return response;
