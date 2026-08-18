@@ -1022,3 +1022,112 @@ describe('accent ink clears AA on the accent tint it sits on, in both families',
     expect(harvestDarkVars['--ink-on-accent-tint']).toContain('var(--brand-color)');
   });
 });
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 17 · the color-mix-over-white sweep
+//
+// `color-mix(<accent> N%, white)` pins a tint to a fixed near-white in EVERY
+// theme, so it cannot follow the mode or the family — the defect behind the
+// founder's report. #340 fixed the twelve member screens; this sweeps the
+// remaining 34 across admin, member and public surfaces.
+//
+// The pre-auth screens are deliberately NOT swept: THE-85 renders them light
+// forever, so the literal never manifests there — and several of them sit on
+// cream rather than white, where swapping to `transparent` would be a real
+// light-mode regression on a screen that has no dark mode to fix.
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe('no surface composites an accent over hardcoded white outside the light-only pre-auth screens', () => {
+  function walk(dir: string, out: string[] = []): string[] {
+    for (const e of readdirSync(dir)) {
+      const p = path.join(dir, e);
+      if (statSync(p).isDirectory()) {
+        if (e !== '__tests__' && e !== 'node_modules') walk(p, out);
+      } else if (/\.tsx?$/.test(e)) out.push(p);
+    }
+    return out;
+  }
+
+  const OVER_WHITE = /color-mix\(in[_\s]srgb,[^\]"'`\n]*?,[_\s]*white[_\s]*\)/g;
+
+  /**
+   * The ONLY files allowed to keep the literal, with exact counts.
+   *
+   * Every one is a signup-funnel screen forced to light by THE-85, so the
+   * value it pins is the value it will always render. Counts are exact (not
+   * `<=`) so that deleting a pre-auth screen's mix, or adding one anywhere,
+   * both surface here rather than drifting.
+   */
+  const PREAUTH_ALLOWED: Record<string, number> = {
+    'src/components/ChurchOnboarding.tsx': 2,
+    'src/components/FirstRunSetup.tsx': 1,
+    'src/components/Onboarding.tsx': 4,
+    'src/components/OnboardingGate.tsx': 1,
+    'src/components/WorkspaceHandoff.tsx': 2,
+  };
+
+  const offenders = new Map<string, number>();
+  for (const file of walk(SRC)) {
+    const n = (readFileSync(file, 'utf8').match(OVER_WHITE) ?? []).length;
+    if (n > 0) offenders.set(path.relative(ROOT, file), n);
+  }
+
+  it('🔴 every non-pre-auth surface was swept', () => {
+    const unexpected = [...offenders.entries()]
+      .filter(([f]) => !(f in PREAUTH_ALLOWED))
+      .map(([f, n]) => `${f} (${n})`);
+    expect(unexpected, 'this surface still pins an accent tint to white and cannot follow the family').toEqual([]);
+  });
+
+  it.each(Object.entries(PREAUTH_ALLOWED))(
+    '%s keeps exactly its pre-auth count (light-only by THE-85)',
+    (file, count) => {
+      expect(offenders.get(file) ?? 0).toBe(count);
+    },
+  );
+
+  it('the pre-auth exemption is justified — every allowed file really is on the funnel path list', () => {
+    // Guards the guard: if one of these stopped being pre-auth, it would be
+    // rendering a pinned white tint in dark mode and this exemption would be
+    // silently wrong.
+    const PREAUTH_TREE = [
+      'components/ChurchOnboarding.tsx', 'components/FirstRunSetup.tsx',
+      'components/Onboarding.tsx', 'components/OnboardingGate.tsx',
+      'components/WorkspaceHandoff.tsx',
+    ];
+    for (const f of Object.keys(PREAUTH_ALLOWED)) {
+      expect(PREAUTH_TREE.some((p) => f.endsWith(p)), `${f} is exempted but is not a pre-auth screen`).toBe(true);
+    }
+  });
+
+  it('the sweep is light-identical by construction — both replacements equal #FFFFFF in light, in both families', () => {
+    // Two replacements were used. `transparent` where the backdrop is
+    // definitively --surface-raised (it then composites onto exactly the
+    // white the literal hardcoded), and `var(--surface-raised)` where the
+    // backdrop is cream or varies across call sites — that token IS #FFFFFF
+    // in light in both families, so it is identical to the literal there
+    // regardless of what sits behind.
+    expect(resolve('--surface-raised', rootVars)).toBe('#FFFFFF');
+    expect(resolve('--surface-raised', classicLightVars)).toBe('#FFFFFF');
+  });
+
+  it('the sweep introduced no bare hex — the accent is still read through its variable everywhere it was swept', () => {
+    const SWEPT = [
+      'components/AdminBlog.tsx', 'components/AdminCommunity.tsx', 'components/AdminCourses.tsx',
+      'components/AdminFundraising.tsx', 'components/AdminLibraryCourses.tsx', 'components/AdminLivestream.tsx',
+      'components/AdminRAG.tsx', 'components/AdminSettings.tsx', 'components/AffiliateSection.tsx',
+      'components/AnalyticsAndRoles.tsx', 'components/CanvasList.tsx', 'components/NewsletterCampaigns.tsx',
+      'components/PlanUpgradeScreen.tsx', 'components/SaveButton.tsx', 'components/ShareButton.tsx',
+      'components/UserEvents.tsx', 'components/course/AuthorProfile.tsx',
+    ];
+    for (const rel of SWEPT) {
+      const src = readFileSync(path.join(SRC, rel), 'utf8');
+      for (const m of src.match(/color-mix\(in[_\s]srgb,[^\]"'`\n]*?\)/g) ?? []) {
+        // Every swept mix must still name a variable, never a pasted hex.
+        if (/#[0-9A-Fa-f]{6}/.test(m) && !/var\(--/.test(m)) {
+          throw new Error(`${rel}: a swept mix hardcodes a colour: ${m}`);
+        }
+      }
+    }
+  });
+});

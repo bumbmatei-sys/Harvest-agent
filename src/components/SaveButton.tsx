@@ -63,7 +63,7 @@ const SaveButton: React.FC<SaveButtonProps> = ({ entry, variant = 'pill', classN
       className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-opacity hover:opacity-90 ${className || ''}`}
       style={{
         color: 'var(--brand-color, #B8962E)',
-        background: 'color-mix(in srgb, var(--brand-color, #B8962E) 12%, white)',
+        background: 'color-mix(in srgb, var(--brand-color, #B8962E) 12%, transparent)',
       }}
     >
       <Bookmark size={14} strokeWidth={2.5} fill={saved ? 'currentColor' : 'none'} />

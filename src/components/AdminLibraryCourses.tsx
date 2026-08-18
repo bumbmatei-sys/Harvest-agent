@@ -188,7 +188,7 @@ const AdminLibraryCourses: React.FC = () => {
                   <tr key={course.id} className="hover:bg-[color-mix(in_srgb,var(--surface-sunken)_60%,transparent)] transition-colors group">
                     <td className="px-6 py-3.5">
                       <div className="flex items-center gap-3">
-                        <span className="w-9 h-9 rounded-brand bg-[color-mix(in_srgb,var(--brand-color)_12%,white)] flex items-center justify-center shrink-0">
+                        <span className="w-9 h-9 rounded-brand bg-[color-mix(in_srgb,var(--brand-color)_12%,transparent)] flex items-center justify-center shrink-0">
                           <Library size={17} className="text-gold" />
                         </span>
                         <span className="text-sm font-semibold text-strong line-clamp-1">{course.title}</span>

@@ -88,7 +88,7 @@ const PlanUpgradeScreen: React.FC<PlanUpgradeScreenProps> = ({
             key={plan.key}
             className={`flex items-center justify-between px-4 py-3 rounded-xl border ${
               plan.key === minPlan.key
-                ? 'border-gold bg-[color-mix(in_srgb,var(--brand-color)_12%,white)]'
+                ? 'border-gold bg-[color-mix(in_srgb,var(--brand-color)_12%,var(--surface-raised))]'
                 : 'border-line bg-surface-raised'
             }`}
           >

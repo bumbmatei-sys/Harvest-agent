@@ -19,7 +19,7 @@ import { MAX_PDF_UPLOAD_BYTES, limitMb } from '../utils/upload-limits';
 // ─────────────────────────────────────────────
 
 const GOLD = "var(--brand-color, #C9963A)";
-const GOLD_LIGHT = "color-mix(in srgb, var(--brand-color, #C9963A) 12%, white)";
+const GOLD_LIGHT = "color-mix(in srgb, var(--brand-color, #C9963A) 12%, var(--surface-raised))";
 const GOLD_BTN = "linear-gradient(135deg, var(--brand-color, #C9963A), color-mix(in srgb, var(--brand-color, #C9963A) 82%, #ffffff))";
 const BG = "var(--surface)";
 const CARD = "var(--surface-raised)";

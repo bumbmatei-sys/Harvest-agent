@@ -216,7 +216,7 @@ const RoleBadge: React.FC<{ role?: string }> = ({ role }) => {
   return (
     <span
       className="text-[9px] font-bold px-1.5 py-0.5 rounded-full leading-none"
-      style={isAdmin ? { backgroundColor: 'color-mix(in srgb, var(--brand-color, #B8962E) 12%, white)', color: 'var(--brand-color, #B8962E)' } : { backgroundColor: 'var(--surface-sunken)', color: 'var(--text-muted)' }}
+      style={isAdmin ? { backgroundColor: 'color-mix(in srgb, var(--brand-color, #B8962E) 12%, var(--surface-raised))', color: 'var(--brand-color, #B8962E)' } : { backgroundColor: 'var(--surface-sunken)', color: 'var(--text-muted)' }}
     >
       {isAdmin ? 'Admin' : 'User'}
     </span>
@@ -689,7 +689,7 @@ const ChannelThread: React.FC<{
         {attachments.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-2">
             {attachments.map((a, i) => (
-              <div key={i} className="flex items-center gap-1.5 bg-[color-mix(in_srgb,var(--brand-color)_12%,white)] border border-[color-mix(in_srgb,var(--brand-color)_30%,white)] rounded-lg px-2.5 py-1 text-xs font-medium text-gold">
+              <div key={i} className="flex items-center gap-1.5 bg-[color-mix(in_srgb,var(--brand-color)_12%,transparent)] border border-[color-mix(in_srgb,var(--brand-color)_30%,transparent)] rounded-lg px-2.5 py-1 text-xs font-medium text-gold">
                 <span className="text-sm">{a.type === 'doc' ? '📄' : a.type === 'contact' ? '👤' : a.type === 'form' ? '📝' : '🎯'}</span>
                 <span className="max-w-[90px] truncate">{a.title}</span>
                 <button onClick={() => setAttachments(prev => prev.filter((_, idx) => idx !== i))}>
@@ -883,7 +883,7 @@ const DmThread: React.FC<{
         {attachments.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-2">
             {attachments.map((a, i) => (
-              <div key={i} className="flex items-center gap-1.5 bg-[color-mix(in_srgb,var(--brand-color)_12%,white)] border border-[color-mix(in_srgb,var(--brand-color)_30%,white)] rounded-lg px-2.5 py-1 text-xs font-medium text-gold">
+              <div key={i} className="flex items-center gap-1.5 bg-[color-mix(in_srgb,var(--brand-color)_12%,transparent)] border border-[color-mix(in_srgb,var(--brand-color)_30%,transparent)] rounded-lg px-2.5 py-1 text-xs font-medium text-gold">
                 <span className="text-sm">{a.type === 'doc' ? '📄' : a.type === 'contact' ? '👤' : a.type === 'form' ? '📝' : '🎯'}</span>
                 <span className="max-w-[90px] truncate">{a.title}</span>
                 <button onClick={() => setAttachments(prev => prev.filter((_, idx) => idx !== i))}>
@@ -1308,7 +1308,7 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
                 <button
                   key={ch.id}
                   onClick={() => setOpenChannel(ch)}
-                  className={`w-full rounded-2xl lg:rounded-brand px-4 py-3 border flex items-center gap-3 transition-all text-left ${active ? 'bg-[color-mix(in_srgb,var(--brand-color)_9%,white)] border-[color-mix(in_srgb,var(--brand-color)_45%,transparent)]' : 'bg-surface-raised border-line hover:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] hover:shadow-sm'}`}
+                  className={`w-full rounded-2xl lg:rounded-brand px-4 py-3 border flex items-center gap-3 transition-all text-left ${active ? 'bg-[color-mix(in_srgb,var(--brand-color)_9%,transparent)] border-[color-mix(in_srgb,var(--brand-color)_45%,transparent)]' : 'bg-surface-raised border-line hover:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] hover:shadow-sm'}`}
                 >
                   <div className="relative flex-shrink-0">
                     <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'var(--brand-color, #B8962E)1A' }}>
@@ -1466,7 +1466,7 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
             {/* Channel header — desktop only; on mobile the shell header override supplies back + Members */}
             <div className="hidden lg:flex items-center justify-between px-5 py-4 border-b border-line shrink-0">
               <div className="flex items-center gap-2.5 min-w-0">
-                <span className="w-8 h-8 rounded-brand bg-[color-mix(in_srgb,var(--brand-color)_12%,white)] flex items-center justify-center shrink-0"><Hash size={16} className="text-gold" /></span>
+                <span className="w-8 h-8 rounded-brand bg-[color-mix(in_srgb,var(--brand-color)_12%,transparent)] flex items-center justify-center shrink-0"><Hash size={16} className="text-gold" /></span>
                 <div className="min-w-0">
                   <p className="font-display text-base font-semibold text-strong truncate">{openChannel.name}</p>
                   <p className="text-xs text-faint">{(openChannel.members?.length || 0).toLocaleString()} {(openChannel.members?.length || 0) === 1 ? 'member' : 'members'}</p>
@@ -1495,7 +1495,7 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
           </>
         ) : (
           <div className="hidden lg:flex flex-1 flex-col items-center justify-center text-center px-6">
-            <span className="w-14 h-14 rounded-brand-lg bg-[color-mix(in_srgb,var(--brand-color)_10%,white)] flex items-center justify-center mb-4"><MessageSquare size={26} className="text-gold" /></span>
+            <span className="w-14 h-14 rounded-brand-lg bg-[color-mix(in_srgb,var(--brand-color)_10%,transparent)] flex items-center justify-center mb-4"><MessageSquare size={26} className="text-gold" /></span>
             <p className="font-display text-lg text-strong">Select a conversation</p>
             <p className="text-sm text-muted mt-1">Pick a channel or DM from the list to start messaging.</p>
           </div>

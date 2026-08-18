@@ -223,7 +223,7 @@ const AdminLivestream: React.FC = () => {
       <div className="bg-surface-raised rounded-brand-lg border border-line shadow-[var(--ds-sh-sm)] divide-y divide-stone-200">
         {pastSessions.filter(s => s.endedAt).map(s => (
           <div key={s.id} className="flex items-center gap-3 px-5 py-3.5">
-            <span className="w-8 h-8 rounded-brand bg-[color-mix(in_srgb,var(--brand-color)_10%,white)] flex items-center justify-center shrink-0">
+            <span className="w-8 h-8 rounded-brand bg-[color-mix(in_srgb,var(--brand-color)_10%,transparent)] flex items-center justify-center shrink-0">
               <Video size={15} className="text-gold" />
             </span>
             <div className="flex-1 min-w-0">
@@ -257,7 +257,7 @@ const AdminLivestream: React.FC = () => {
                 <div className="text-sm text-muted mt-0.5">{p.prayerText}</div>
                 <div className="text-xs text-faint mt-1">{fmtDate(p.submittedAt)}</div>
               </div>
-              <button onClick={() => markPrayed(p.id)} className="flex items-center gap-1 text-xs font-semibold text-field-700 hover:bg-[color-mix(in_srgb,#6E8E52_14%,white)] rounded-lg px-2 py-1 shrink-0 transition-colors">
+              <button onClick={() => markPrayed(p.id)} className="flex items-center gap-1 text-xs font-semibold text-field-700 hover:bg-[color-mix(in_srgb,var(--brand-success)_14%,transparent)] rounded-lg px-2 py-1 shrink-0 transition-colors">
                 <Check size={14} /> Prayed
               </button>
             </div>
