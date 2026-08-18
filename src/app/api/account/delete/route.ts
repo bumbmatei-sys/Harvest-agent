@@ -81,7 +81,7 @@ export const maxDuration = 300;
  * ── Partial failure is never a 200 ───────────────────────────────────────────
  * Every response names `step` and reports `documentDeleted` / `authDeleted`
  * exactly as they are, and now carries a `report` naming every collection that
- * was cleared, anonymised, retained, or failed. A route that clears 23 of 24
+ * was cleared, anonymised, retained, or failed. A route that clears 24 of 25
  * collections and returns 200 is worse than one that fails loudly, so a sweep
  * with any failure returns 500 with `report.status: 'partial'` and touches
  * neither the profile nor the sign-in. The report follows the shape the SMS

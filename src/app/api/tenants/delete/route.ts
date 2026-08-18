@@ -42,7 +42,7 @@ import {
  * cleared, which is exactly the state a member is in before they join a church.
  * They keep their account, their sign-in and their own data. A member who wants
  * their data gone deletes their own account through /api/account/delete, which
- * is the route that owns that decision and sweeps the ~24 collections it
+ * is the route that owns that decision and sweeps the 25 collections it
  * touches.
  *
  * `dryRun=true` returns a per-collection count of what WOULD be deleted (plus the

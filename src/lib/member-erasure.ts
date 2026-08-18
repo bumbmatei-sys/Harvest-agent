@@ -17,14 +17,23 @@ import {
  * ERASING ONE MEMBER'S DATA — the enumerated disposition of every collection.
  *
  * The audit that opened THE-76 put the number at "around 21 collections". The
- * schema has moved since; the real figure, re-derived here from firestore.rules
- * plus every `collection(...)` call in `src/`, is **41 collections and
- * subcollections that store a uid, an email, a name or a photo URL**. They break
- * down as 24 the member can be found in and 17 that hold no member key at all.
- * {@link MEMBER_DATA_MAP} below is that enumeration, one entry per collection,
- * each carrying its own disposition and the reason for it. The route does not
- * hold a second list — it iterates this one, so a collection cannot be swept
- * without being documented, or documented without being swept.
+ * schema has moved since. Re-derived here from firestore.rules plus every
+ * `collection(...)` call in `src/`, the app has **58 collections and
+ * subcollections in total**, of which **37 store a uid, an email, a name or a
+ * photo URL**. Those 37 split three ways:
+ *
+ *   • 25 hold data belonging to a specific member and are ACTED ON — 19 swept,
+ *     6 anonymised. Each is an entry in {@link MEMBER_DATA_MAP} below.
+ *   • 3 hold member data with NO usable member key, and are named as gaps
+ *     rather than guessed at (livestream prayers, the two SMS delivery logs).
+ *   • 9 hold only an admin's `createdBy`/`authorId` uid on church-owned content
+ *     — blog posts, courses, docs, events, newsletters and the like — which is
+ *     an unresolvable reference once the profile is gone, not member data.
+ *
+ * MEMBER_DATA_MAP is the enumeration, one entry per collection, each carrying
+ * its own disposition and the reason for it. The route does not hold a second
+ * list — it iterates this one, so a collection cannot be swept without being
+ * documented, or documented without being swept.
  *
  * ── The three decisions this file makes ─────────────────────────────────────
  *
@@ -833,8 +842,8 @@ export async function resolveContactIds(uid: string, email: string, tenantId: st
 /**
  * Run every sweep in {@link MEMBER_DATA_MAP} and return what actually happened.
  *
- * ⚠️ A failing sweep does NOT abort the run — the member is better served by 23
- * of 24 collections cleared plus a report naming the 24th than by a run that
+ * ⚠️ A failing sweep does NOT abort the run — the member is better served by 24
+ * of 25 collections cleared plus a report naming the 25th than by a run that
  * stops at the first error and says nothing about the rest. The caller must
  * treat `status: 'partial'` as a non-2xx and must NOT go on to delete the
  * profile document or the Auth account: leaving those in place is what keeps the
