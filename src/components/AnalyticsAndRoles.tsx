@@ -18,7 +18,7 @@ import {
   BarChart3, Shield, Palette, Link2, Plug, Crown,
   Search, X, ChevronDown, Globe, TrendingUp, User, type LucideIcon,
 } from "lucide-react";
-import { FORM_CONTAINER, FIELD_WIDTH, ACTION_BUTTON, CONTROL_DENSITY } from './layout/form-layout';
+import { FIELD_WIDTH, ACTION_BUTTON, CONTROL_DENSITY } from './layout/form-layout';
 
 
 
@@ -1104,7 +1104,10 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
       )}
 
       <div style={{ overflowY: "auto", flex: 1 }}>
-        <div className={`w-full ${FORM_CONTAINER}`} style={{ padding: "20px 16px 60px" }}>
+        {/* No container here: AdminCRM wraps this component, and the sub-tab bar
+              above it, in the page measure already. A second one would be a
+              second definition of the same number. */}
+          <div className="w-full" style={{ padding: "20px 16px 60px" }}>
 
           {tab === "analytics" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>

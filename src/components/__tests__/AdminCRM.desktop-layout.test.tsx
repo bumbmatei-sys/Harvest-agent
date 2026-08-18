@@ -343,11 +343,39 @@ describe('mobile touch targets are at least 44px', () => {
 // 3. The container.
 // ─────────────────────────────────────────────────────────────────────────────
 describe("each tab's content is constrained at desktop widths", () => {
-  it.each(TABS)('caps %s with a measure form-layout.ts defines', async (name) => {
+  /**
+   * A container only counts if it is ABOVE the tab's content. Asserting merely
+   * that the subtree contains SOME element carrying a measure is satisfied by a
+   * container anywhere — including a redundant second one — so it cannot tell
+   * that the real cap was removed. Each tab is therefore anchored to a named
+   * piece of its own content and the cap has to be an ancestor of it.
+   */
+  const CONTENT_ANCHOR: Record<CrmTab, (c: HTMLElement) => Element> = {
+    Contacts: (c) => inputByPlaceholder(c, 'Search by name or email'),
+    Analytics: (c) => region(c, 'data-search-registrations'),
+    Roles: (c) => region(c, 'data-permission-reference'),
+  };
+
+  it.each(TABS)('caps %s above its own content, with a measure form-layout.ts defines', async (name) => {
     const c = await tab(name);
-    const capped = Array.from(c.querySelectorAll('*'))
-      .filter((el) => CONTAINERS.some((rule) => carries(el, rule)));
-    expect(capped.length, `${name} has no container from the module`).toBeGreaterThan(0);
+    let el: Element | null = CONTENT_ANCHOR[name](c);
+    const ancestors: Element[] = [];
+    while (el && el !== c) { ancestors.push(el); el = el.parentElement; }
+    const capped = ancestors.filter((a) => CONTAINERS.some((rule) => carries(a, rule)));
+    expect(capped.length, `nothing above ${name}'s content carries a measure from the module`).toBeGreaterThan(0);
+  });
+
+  it('caps each tab exactly once — a second measure is a second definition', async () => {
+    for (const name of TABS) {
+      const c = await tab(name);
+      let el: Element | null = CONTENT_ANCHOR[name](c);
+      const capped: string[] = [];
+      while (el && el !== c) {
+        if (CONTAINERS.some((rule) => carries(el as Element, rule))) capped.push((el as Element).getAttribute('class') ?? '');
+        el = el.parentElement;
+      }
+      expect(capped.length, `${name} is capped ${capped.length} times: ${capped.join(' | ')}`).toBe(1);
+    }
   });
 
   it('gives the contact list and the two sub-screens the PAGE measure, not a new number', async () => {
