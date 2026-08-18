@@ -350,9 +350,32 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
  </div>
  </div>
 
- {/* Content Section — centered desktop column at the brand's wide container
-     (1280px) so it fills wide monitors instead of floating narrow. */}
- <div className="px-4 mt-6 relative z-10 space-y-6 lg:mt-0 lg:px-8 lg:pt-6 lg:max-w-[1280px] lg:mx-auto lg:grid lg:grid-cols-[320px_1fr] lg:gap-8 lg:items-start lg:space-y-0">
+ {/* Content Section — the page's composition, desktop only (`lg:` and up);
+     every class here is breakpoint-prefixed so the sub-640px rendering is
+     byte-for-byte what it was.
+
+     `lg:w-full` is load-bearing, not decoration. This div is a flex item of
+     the `flex flex-col` root above, and `lg:mx-auto` sets auto margins on the
+     *cross* axis — which suppresses the flex item's default `stretch`. Without
+     an explicit width the item therefore sized to max-content (643px measured
+     at 1440px), so `lg:max-w-[1280px]` never bound and the whole page rendered
+     as a narrow island floating in the middle of a 1216px area, with the
+     settings column squeezed to 236px. `lg:w-full` gives it a definite cross
+     size, so max-w caps it and mx-auto centres what is left.
+
+     `minmax(0,1fr)` rather than `1fr`: a bare `1fr` track has an automatic
+     minimum, so a long unbreakable string in a settings row could push the
+     column past the container instead of wrapping inside it.
+
+     The identity rail is 260px rather than the previous 320px. The card holds
+     an 87px avatar, a name and a chip — 260px carries all three — and every
+     pixel of rail width is a pixel of blank column underneath it, because the
+     rail's content is short and the settings list is not.
+
+     A shared page container (max-width, gutters) is being built in parallel and
+     is expected to replace the `lg:w-full lg:max-w-[…] lg:mx-auto lg:px-8` part
+     of this line later; the grid itself is Profile's own composition and stays. */}
+ <div className="px-4 mt-6 relative z-10 space-y-6 lg:mt-0 lg:px-8 lg:pt-6 lg:w-full lg:max-w-[1280px] lg:mx-auto lg:grid lg:grid-cols-[260px_minmax(0,1fr)] lg:gap-8 lg:items-start lg:space-y-0">
  {/* Desktop profile card — left column */}
  <div className="hidden lg:block">
  <div className="bg-surface-raised rounded-3xl border border-line p-6 text-center lg:sticky lg:top-4">
@@ -373,7 +396,29 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
  </div>
  </div>
 
- {/* Settings — right column */}
+ {/* Settings — right column.
+
+     From `xl` (1280px) up this column splits into two, because at that width a
+     single settings column is both too wide to read as a list (its rows reach
+     ~800px) and too tall to sit beside a 234px identity card without leaving a
+     dead rail below it. Splitting fixes both at once: the rows come back to a
+     list measure, and the page gets short enough that the rail no longer has
+     several hundred pixels of nothing under it.
+
+     The split is done by grouping, not by auto-placement. Handing four blocks
+     to a two-column grid would put Partnership in row 1 beside Account
+     Settings and then start Support & Info in row 2 under Account Settings,
+     tying every block's top to the tallest block in its row. Two explicit
+     groups let each column stack at its own rhythm. Document order is
+     untouched — reading left column then right column is still Account
+     Settings → Partnership → Support & Info → Log Out.
+
+     Below `xl` the two wrappers are inert: the outer `space-y-6` puts 24px
+     between the groups and each inner `space-y-6` puts 24px between its own
+     children, which is exactly the 24px-between-every-block the flat list
+     produced. */}
+ <div className="space-y-6 xl:space-y-0 xl:grid xl:grid-cols-2 xl:gap-6 xl:items-start">
+
  <div className="space-y-6">
 
  {/* Account Settings */}
@@ -476,6 +521,12 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
  </div>
  </div>
  </div>
+
+ </div>
+
+ {/* Second settings group — Partnership, Support & Info and Log Out. Sits
+     beside Account Settings from `xl` up and directly under it below that. */}
+ <div className="space-y-6">
 
  {/* Partnership */}
  <div>
@@ -623,6 +674,7 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
  Log Out
  </button>
 
+ </div>
  </div>
  </div>
 
