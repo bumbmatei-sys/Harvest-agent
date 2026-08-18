@@ -59,6 +59,9 @@ vi.mock('firebase/firestore', () => ({
   setDoc: vi.fn(async () => {}),
   doc: () => ({}),
   serverTimestamp: () => 'SERVER_TS',
+  // THE-74 added a batched import write. Mocked modules must export every
+  // binding the component imports, so this is required even where unused.
+  writeBatch: vi.fn(() => ({ set: vi.fn(), commit: vi.fn(async () => {}) })),
 }));
 vi.mock('@tanstack/react-query', () => ({ useQueryClient: () => ({ invalidateQueries }) }));
 vi.mock('../../store/useAppStore', () => ({
