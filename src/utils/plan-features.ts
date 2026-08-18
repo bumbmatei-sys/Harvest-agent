@@ -9,8 +9,15 @@ export interface PlanFeatures {
   aiKnowledge: boolean;
   /** Show church map in user app (pro and above) */
   map: boolean;
-  /** Show global multi-church discovery directory (Ministry / max only) */
-  churchDirectory: boolean;
+  // `churchDirectory` ("global multi-church discovery directory, Ministry only")
+  // was removed: it was read nowhere in the app — no gate, route, query or
+  // component consulted it (see docs/plan-features-flag-audit.md). It was not
+  // redundant with `maxChurches` (that caps a tenant's OWN campuses; this named
+  // a cross-tenant browsing capability), it just named a capability that was
+  // never built. `ChurchMap` (the member-facing map) is gated by `map` instead,
+  // and is not a discovery-across-tenants surface. Same precedent as
+  // `customBackground`/`publicCalendar` above: don't re-add it as a plan flag
+  // unless a church-directory feature ships with it.
   /** Max number of churches (0 = hidden, -1 = unlimited) */
   maxChurches: number;
   /**
@@ -117,7 +124,20 @@ export interface PlanFeatures {
   givingStatements: boolean;
   /** Pledge campaigns — Ministry (max) and above */
   pledgeCampaigns: boolean;
-  /** Text-to-Give via inbound SMS keyword — BYO Twilio, all plans */
+  /**
+   * Text-to-Give via inbound SMS keyword (`AdminSms.tsx`'s Text-to-Give panel,
+   * served by `app/api/sms/incoming/route.ts`).
+   *
+   * `true` on EVERY tier, deliberately, and read by nothing — same shape and
+   * same reasoning as `smsAutomation` above. The feature is fully built and
+   * live, but access is decided per-tenant by whether they connected their OWN
+   * Twilio credentials (see `src/lib/twilio.ts`), not by plan. Kept (not
+   * deleted, unlike the removed `churchDirectory`) because it documents a real,
+   * shipped capability rather than one that was never built — deleting it would
+   * make the matrix a worse description of the product, not a more accurate
+   * one. Don't gate anything on this cell; gate on the tenant's Twilio
+   * connection instead.
+   */
   textToGive: boolean;
   /** Installable Progressive Web App (mobile app) — all plans */
   pwaApp: boolean;
@@ -147,7 +167,6 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     aiChat: false,
     aiKnowledge: false,
     map: false,
-    churchDirectory: false,
     maxChurches: 1,
     maxContacts: 150,
     maxCourses: 2,
@@ -195,7 +214,6 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
     aiChat: true,
     aiKnowledge: true,
     map: true,
-    churchDirectory: false,
     maxChurches: 1,
     maxContacts: 500,
     maxCourses: 5,
@@ -231,16 +249,17 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
   },
   // Ministry — $199/mo. The top tier.
   //
-  // Absorbed the deleted `ultra` tier: churchDirectory, accountingTools and
-  // aiAssistant: 1 folded in here. `maxChurches` deliberately did NOT inherit
-  // ultra's -1 — every tier is capped at 1 campus and additional campuses
-  // become a paid add-on.
+  // Absorbed the deleted `ultra` tier: accountingTools and aiAssistant: 1
+  // folded in here. `maxChurches` deliberately did NOT inherit ultra's -1 —
+  // every tier is capped at 1 campus and additional campuses become a paid
+  // add-on. Ultra's third folded-in cell, `churchDirectory`, was later removed
+  // entirely — see the comment on its old declaration site above `maxChurches`
+  // in the PlanFeatures interface.
   max: {
     blog: true,
     aiChat: true,
     aiKnowledge: true,
     map: true,
-    churchDirectory: true,
     maxChurches: 1,
     maxContacts: 2_000,
     maxCourses: 15,
