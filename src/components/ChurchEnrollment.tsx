@@ -10,6 +10,7 @@ import Autocomplete from "react-google-autocomplete";
 import { ImageUpload } from './ImageUpload';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { getTenantScope, getWriteTenantScope } from '../utils/tenant-scope';
+import { FIELD_WIDTH, ACTION_BUTTON } from './layout/form-layout';
 
 
 interface ChurchEnrollmentProps {
@@ -213,7 +214,7 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
  Church Details
  </h3>
 
-          <div className="mt-4 mb-2">
+          <div className={`mt-4 mb-2 ${FIELD_WIDTH.long}`}>
             <label className="block text-sm font-bold text-strong mb-2">Search Church with Google Maps API</label>
             <Autocomplete
               apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}
@@ -254,7 +255,7 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
           </div>
 
  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
- <div>
+ <div className={FIELD_WIDTH.long}>
  <label className="block text-sm font-bold text-strong mb-2">Church Name <span className="text-red-500">*</span></label>
  <input 
  required 
@@ -266,7 +267,7 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
  placeholder="e.g. Grace Community Church" 
  />
  </div>
- <div>
+ <div className={FIELD_WIDTH.medium}>
  <label className="block text-sm font-bold text-strong mb-2">Denomination <span className="text-faint font-normal">(Optional)</span></label>
  <input 
  type="text" 
@@ -277,7 +278,7 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
  placeholder="e.g. Non-denominational" 
  />
  </div>
- <div className="md:col-span-2">
+ <div className={`md:col-span-2 ${FIELD_WIDTH.long}`}>
  <label className="block text-sm font-bold text-strong mb-2">Church Image <span className="text-faint font-normal">(Optional)</span></label>
  <ImageUpload 
  value={formData.imageUrl} 
@@ -296,7 +297,7 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
  </h3>
  
  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
- <div className="md:col-span-2">
+ <div className={`md:col-span-2 ${FIELD_WIDTH.long}`}>
  <label className="block text-sm font-bold text-strong mb-2">Street <span className="text-red-500">*</span></label>
  <input 
  required 
@@ -308,7 +309,7 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
  placeholder="Street Name" 
  />
  </div>
- <div>
+ <div className={FIELD_WIDTH.short}>
  <label className="block text-sm font-bold text-strong mb-2">Number <span className="text-red-500">*</span></label>
  <input 
  required 
@@ -323,7 +324,7 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
  </div>
 
  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
- <div>
+ <div className={FIELD_WIDTH.medium}>
  <label className="block text-sm font-bold text-strong mb-2">City <span className="text-red-500">*</span></label>
  <input 
  required 
@@ -335,7 +336,7 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
  placeholder="City" 
  />
  </div>
- <div>
+ <div className={FIELD_WIDTH.medium}>
  <label className="block text-sm font-bold text-strong mb-2">State/Province <span className="text-red-500">*</span></label>
  <input 
  required 
@@ -347,7 +348,7 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
  placeholder="State or Province" 
  />
  </div>
- <div>
+ <div className={FIELD_WIDTH.short}>
  <label className="block text-sm font-bold text-strong mb-2">Zipcode <span className="text-red-500">*</span></label>
  <input 
  required 
@@ -359,7 +360,7 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
  placeholder="Postal Code" 
  />
  </div>
- <div>
+ <div className={FIELD_WIDTH.medium}>
  <label className="block text-sm font-bold text-strong mb-2">Country <span className="text-red-500">*</span></label>
  <input 
  required 
@@ -374,7 +375,7 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
  </div>
 
  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
- <div>
+ <div className={FIELD_WIDTH.short}>
  <label className="block text-sm font-bold text-strong mb-2">Latitude <span className="text-faint font-normal">(Optional - For map display)</span></label>
  <input 
  type="text" 
@@ -385,7 +386,7 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
  placeholder="e.g. 40.7128" 
  />
  </div>
- <div>
+ <div className={FIELD_WIDTH.short}>
  <label className="block text-sm font-bold text-strong mb-2">Longitude <span className="text-faint font-normal">(Optional - For map display)</span></label>
  <input 
  type="text" 
@@ -409,7 +410,7 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
  
  <div className="space-y-4">
  {formData.services.map((service, index) => (
- <div key={index} className="flex flex-col md:flex-row gap-4 items-start md:items-center bg-surface-sunken p-4 rounded-xl border border-line">
+ <div key={index} className={`flex flex-col md:flex-row gap-4 items-start md:items-center bg-surface-sunken p-4 rounded-xl border border-line ${FIELD_WIDTH.group}`}>
  <div className="w-full md:w-1/4">
  <label className="block text-xs font-bold text-strong mb-1">Day</label>
  <select 
@@ -476,7 +477,7 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
  <User className="text-gold" size={24} />
  Contact Person
  </h3>
- <div>
+ <div className={FIELD_WIDTH.long}>
  <label className="block text-sm font-bold text-strong mb-2">Full Name <span className="text-red-500">*</span></label>
  <input 
  required 
@@ -489,7 +490,7 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
  />
  </div>
  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
- <div>
+ <div className={FIELD_WIDTH.long}>
  <label className="block text-sm font-bold text-strong mb-2">Email Address <span className="text-red-500">*</span></label>
  <input 
  required 
@@ -501,7 +502,7 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
  placeholder="contact@church.org" 
  />
  </div>
- <div>
+ <div className={FIELD_WIDTH.medium}>
  <label className="block text-sm font-bold text-strong mb-2">Phone Number <span className="text-red-500">*</span></label>
  <input 
  required 
@@ -523,7 +524,7 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
  Online Presence
  </h3>
  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
- <div>
+ <div className={FIELD_WIDTH.long}>
  <label className="block text-sm font-bold text-strong mb-2">Website</label>
  <div className="relative">
  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-faint">
@@ -539,7 +540,7 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
  />
  </div>
  </div>
- <div>
+ <div className={FIELD_WIDTH.long}>
  <label className="block text-sm font-bold text-strong mb-2">Facebook</label>
  <div className="relative">
  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-faint font-bold text-lg">f</div>
@@ -553,7 +554,7 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
  />
  </div>
  </div>
- <div>
+ <div className={FIELD_WIDTH.medium}>
  <label className="block text-sm font-bold text-strong mb-2">Instagram</label>
  <div className="relative">
  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-faint font-bold text-lg">@</div>
@@ -574,7 +575,7 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
  <button 
  type="submit" 
  disabled={isSubmitting}
- className={`flex-1 bg-gold text-white font-bold py-4 rounded-xl hover:bg-[color-mix(in_srgb,var(--brand-color)_85%,black)] transition-colors shadow-[var(--glow-gold)] flex items-center justify-center gap-2 ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}
+ className={`flex-1 bg-gold text-white font-bold py-4 rounded-xl hover:bg-[color-mix(in_srgb,var(--brand-color)_85%,black)] transition-colors shadow-[var(--glow-gold)] flex items-center justify-center gap-2 ${ACTION_BUTTON} ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}
  >
  {isSubmitting ? (
  <>
