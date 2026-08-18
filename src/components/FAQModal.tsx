@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { ArrowLeft, ChevronDown, ChevronUp } from 'lucide-react';
 import { MEMBER_FAQS } from '../lib/member-faqs';
+import ModalContentContainer from './ModalContentContainer';
 
 interface FAQModalProps {
  isOpen: boolean;
@@ -62,8 +63,15 @@ const FAQModal: React.FC<FAQModalProps> = ({ isOpen, onClose }) => {
  // and nothing about price, plans or billing belongs in it.
  const faqs = MEMBER_FAQS;
 
+ /* z-[300], not z-50: the desktop sidebar (MainApp.tsx) is `lg:relative
+      z-[100]`, so a z-50 overlay is painted UNDERNEATH it. `inset-0` still spanned
+      the viewport, but its left 224px sat behind the rail — which is how body copy
+      ended up clipped mid-word, and why `mx-auto` centred the column 112px left of
+      where every other page centres. z-[300] matches the sibling overlays opened
+      from the same settings list (UserEvents / SavedItems / DonationHistory in
+      Profile.tsx). Guarded in modal-content-surface.test.tsx. */
  return (
- <div className="fixed inset-0 z-50 flex flex-col bg-surface animate-in slide-in-from-bottom-full duration-300 overflow-hidden">
+ <div className="fixed inset-0 z-[300] flex flex-col bg-surface animate-in slide-in-from-bottom-full duration-300 overflow-hidden">
  {/* Header */}
  <div className="flex items-center px-4 py-4 bg-surface-raised border-b border-line sticky top-0 z-10">
  <button onClick={onClose} className="p-2 -ml-2 text-muted ">
@@ -72,7 +80,8 @@ const FAQModal: React.FC<FAQModalProps> = ({ isOpen, onClose }) => {
  <h2 className="text-lg font-bold text-strong flex-1 text-center pr-8 font-display">FAQ</h2>
  </div>
 
- <div className="flex-1 overflow-y-auto p-4 pb-12">
+ <div className="flex-1 overflow-y-auto">
+ <ModalContentContainer>
  <div className="text-center mb-8 mt-4">
  <h2 className="text-2xl font-bold text-strong mb-2 font-display">Frequently Asked Questions</h2>
  <p className="text-muted text-sm">Using your ministry&apos;s workspace on Harvest.</p>
@@ -89,6 +98,7 @@ const FAQModal: React.FC<FAQModalProps> = ({ isOpen, onClose }) => {
  />
  ))}
  </div>
+ </ModalContentContainer>
  </div>
  </div>
  );

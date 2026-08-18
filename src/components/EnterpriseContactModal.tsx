@@ -68,7 +68,16 @@ const EnterpriseContactModal: React.FC<EnterpriseContactModalProps> = ({ isOpen,
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm" onClick={handleClose} onKeyDown={handleKeyDown}>
-      <div className="bg-surface w-full sm:w-[500px] max-h-[90vh] rounded-t-3xl sm:rounded-3xl overflow-y-auto flex flex-col relative animate-slide-up sm:animate-fade-in" onClick={(e) => e.stopPropagation()}>
+      {/*
+        Labelled, not restyled. Unlike Contact / FAQ / Privacy & Terms this is a
+        real centered dialog — scrim plus panel — and its width constraint was
+        never lost, so there is nothing here to put back. The attribute exists
+        so the consistency guard can find this panel by name and prove all four
+        modals are constrained, rather than matching on a width class. See
+        modal-content-surface.test.tsx for why this one is the documented
+        exception to the shared container.
+      */}
+      <div data-modal-container="dialog-panel" className="bg-surface w-full sm:w-[500px] max-h-[90vh] rounded-t-3xl sm:rounded-3xl overflow-y-auto flex flex-col relative animate-slide-up sm:animate-fade-in" onClick={(e) => e.stopPropagation()}>
         {/* Close */}
         <button
           onClick={handleClose}
