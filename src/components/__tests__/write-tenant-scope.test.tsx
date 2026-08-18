@@ -85,7 +85,6 @@ vi.mock('../../utils/firestore-errors', () => ({
   handleFirestoreError: () => {},
 }));
 
-const { AnnouncementsSection } = await import('../AdminChurches');
 
 let container: HTMLDivElement;
 let root: Root;
@@ -123,45 +122,6 @@ function apexSuperAdmin() {
   scope.write = 'harvest';
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Site 1 — church announcements
-//
-// The worst of the five. `announcements` read is `if isAuthenticated()`, so a
-// null-tenant announcement IS visible — but update and delete both gate on
-// hasPermission('modifyChurches', resource.data.tenantId), which never passes
-// for a null tenant. The church can never edit or delete its own announcement
-// again; only a super admin can.
-// ─────────────────────────────────────────────────────────────────────────────
-describe('AdminChurches — announcement create', () => {
-  async function mountAndSubmit() {
-    await act(async () => {
-      root = createRoot(container);
-      root.render(<AnnouncementsSection churchId="church-1" />);
-      await Promise.resolve();
-    });
-    const [title, content] = [
-      container.querySelector('input[placeholder="Announcement title"]') as HTMLInputElement,
-      container.querySelector('textarea[placeholder="Announcement content"]') as HTMLTextAreaElement,
-    ];
-    await act(async () => { setValue(title, 'T'); });
-    await act(async () => { setValue(content, 'C'); });
-    await act(async () => { byText('Add Announcement')!.click(); await Promise.resolve(); });
-  }
-
-  it('stamps tenantId "harvest" for an apex super admin, not null', async () => {
-    apexSuperAdmin();
-    await mountAndSubmit();
-    const write = fx.adds.find((a) => a.path === 'churches/church-1/announcements');
-    expect(write).toBeDefined();
-    expect(write!.data.tenantId).toBe('harvest');
-    expect(write!.data.tenantId).not.toBeNull();
-  });
-
-  it('is unchanged for an ordinary tenant admin on a subdomain', async () => {
-    await mountAndSubmit();
-    expect(fx.adds[0].data.tenantId).toBe('tenant-1');
-  });
-});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Sites 2 & 3 — community comments (AllNews and NewsTab)

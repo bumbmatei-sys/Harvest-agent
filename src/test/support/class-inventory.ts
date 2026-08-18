@@ -186,3 +186,39 @@ export function maxWidthPx(token: string): number | null {
 export function maxWidthTokens(el: Element): string[] {
   return (el.getAttribute('class') ?? '').split(/\s+/).filter((t) => /(?:^|:)max-w-/.test(t));
 }
+
+/**
+ * The px an arbitrary-value token carries — `h-[38px]`, `sm:mb-[6px]`,
+ * `sm:space-y-[16px]`. Returns null for anything that is not an absolute
+ * length, so a `%`/`vh` value is reported as "not a fixed size" rather than
+ * silently becoming a number.
+ */
+export function arbitraryPx(token: string, remPx: number = REM_PX_MOBILE): number | null {
+  const utility = token.slice(variantChain(token).reduce((n, v) => n + v.length + 1, 0));
+  const m = utility.match(/-\[(-?[\d.]+)(px|rem)\]$/);
+  if (!m) return null;
+  return m[2] === 'px' ? parseFloat(m[1]) : parseFloat(m[1]) * remPx;
+}
+
+/**
+ * The px a HEIGHT token resolves to at a given rem base, or null when the
+ * token is not a fixed height (`h-full`, `h-screen`, `h-auto`).
+ *
+ * The named scale is included deliberately: a touch-target check that only
+ * understood `h-[38px]` would miss `h-9`, which is the same 36px regression in
+ * Tailwind's own vocabulary.
+ */
+export function heightPx(token: string, remPx: number = REM_PX_MOBILE): number | null {
+  const utility = token.slice(variantChain(token).reduce((n, v) => n + v.length + 1, 0));
+  if (!/^h-/.test(utility)) return null;
+  if (utility === 'h-px') return 1;
+  const arbitrary = arbitraryPx(token, remPx);
+  if (arbitrary !== null) return arbitrary;
+  const named = utility.match(/^h-(\d+(?:\.\d+)?)$/)?.[1];
+  return named === undefined ? null : (parseFloat(named) / 4) * remPx;
+}
+
+/** Height tokens carried by an element, in the order they appear. */
+export function heightTokens(el: Element): string[] {
+  return (el.getAttribute('class') ?? '').split(/\s+/).filter((t) => /(?:^|:)h-/.test(t));
+}

@@ -10,7 +10,7 @@ import Autocomplete from "react-google-autocomplete";
 import { ImageUpload } from './ImageUpload';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { getTenantScope, getWriteTenantScope } from '../utils/tenant-scope';
-import { FIELD_WIDTH, ACTION_BUTTON } from './layout/form-layout';
+import { FIELD_WIDTH, ACTION_BUTTON, CONTROL_DENSITY } from './layout/form-layout';
 
 
 interface ChurchEnrollmentProps {
@@ -205,17 +205,17 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
  <p>{error}</p>
  </div>
  )}
- <form className="space-y-10" onSubmit={handleSubmit}>
+ <form className={`space-y-10 ${CONTROL_DENSITY.sectionGap}`} onSubmit={handleSubmit}>
  
  {/* Section 1: Church Details */}
- <div className="space-y-6">
+ <div className={`space-y-6 ${CONTROL_DENSITY.fieldGap}`}>
  <h3 className="text-lg font-bold text-strong border-b border-line pb-3 flex items-center gap-2 font-display">
  <Church className="text-gold" size={24} />
  Church Details
  </h3>
 
           <div className={`mt-4 mb-2 ${FIELD_WIDTH.long}`}>
-            <label className="block text-sm font-bold text-strong mb-2">Search Church with Google Maps API</label>
+            <label className={`block text-sm font-bold text-strong mb-2 ${CONTROL_DENSITY.labelGap}`}>Search Church with Google Maps API</label>
             <Autocomplete
               apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}
               onPlaceSelected={(place) => {
@@ -249,37 +249,37 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
               options={{
                 types: ['establishment'],
               }}
-              className="w-full px-4 py-3 rounded-xl border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors"
+              className={`w-full px-4 py-3 rounded-xl border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors ${CONTROL_DENSITY.control}`}
               placeholder="Start typing to auto-fill..."
             />
           </div>
 
- <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+ <div className={`grid grid-cols-1 md:grid-cols-2 gap-6 ${CONTROL_DENSITY.rowGap}`}>
  <div className={FIELD_WIDTH.long}>
- <label className="block text-sm font-bold text-strong mb-2">Church Name <span className="text-red-500">*</span></label>
+ <label className={`block text-sm font-bold text-strong mb-2 ${CONTROL_DENSITY.labelGap}`}>Church Name <span className="text-red-500">*</span></label>
  <input 
  required 
  type="text" 
  name="churchName"
  value={formData.churchName}
  onChange={handleChange}
- className="w-full px-4 py-3 rounded-xl border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors" 
+ className={`w-full px-4 py-3 rounded-xl border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors ${CONTROL_DENSITY.control}`} 
  placeholder="e.g. Grace Community Church" 
  />
  </div>
  <div className={FIELD_WIDTH.medium}>
- <label className="block text-sm font-bold text-strong mb-2">Denomination <span className="text-faint font-normal">(Optional)</span></label>
+ <label className={`block text-sm font-bold text-strong mb-2 ${CONTROL_DENSITY.labelGap}`}>Denomination <span className="text-faint font-normal">(Optional)</span></label>
  <input 
  type="text" 
  name="denomination"
  value={formData.denomination}
  onChange={handleChange}
- className="w-full px-4 py-3 rounded-xl border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors" 
+ className={`w-full px-4 py-3 rounded-xl border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors ${CONTROL_DENSITY.control}`} 
  placeholder="e.g. Non-denominational" 
  />
  </div>
  <div className={`md:col-span-2 ${FIELD_WIDTH.long}`}>
- <label className="block text-sm font-bold text-strong mb-2">Church Image <span className="text-faint font-normal">(Optional)</span></label>
+ <label className={`block text-sm font-bold text-strong mb-2 ${CONTROL_DENSITY.labelGap}`}>Church Image <span className="text-faint font-normal">(Optional)</span></label>
  <ImageUpload 
  value={formData.imageUrl} 
  onChange={(url) => setFormData(prev => ({ ...prev, imageUrl: url }))} 
@@ -290,110 +290,110 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
  </div>
 
  {/* Section 2: Location */}
- <div className="space-y-6">
+ <div className={`space-y-6 ${CONTROL_DENSITY.fieldGap}`}>
  <h3 className="text-lg font-bold text-strong border-b border-line pb-3 flex items-center gap-2 font-display">
  <MapPin className="text-gold" size={24} />
  Location
  </h3>
  
- <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+ <div className={`grid grid-cols-1 md:grid-cols-3 gap-6 ${CONTROL_DENSITY.rowGap}`}>
  <div className={`md:col-span-2 ${FIELD_WIDTH.long}`}>
- <label className="block text-sm font-bold text-strong mb-2">Street <span className="text-red-500">*</span></label>
+ <label className={`block text-sm font-bold text-strong mb-2 ${CONTROL_DENSITY.labelGap}`}>Street <span className="text-red-500">*</span></label>
  <input 
  required 
  type="text" 
  name="street"
  value={formData.street}
  onChange={handleChange}
- className="w-full px-4 py-3 rounded-xl border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors" 
+ className={`w-full px-4 py-3 rounded-xl border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors ${CONTROL_DENSITY.control}`} 
  placeholder="Street Name" 
  />
  </div>
  <div className={FIELD_WIDTH.short}>
- <label className="block text-sm font-bold text-strong mb-2">Number <span className="text-red-500">*</span></label>
+ <label className={`block text-sm font-bold text-strong mb-2 ${CONTROL_DENSITY.labelGap}`}>Number <span className="text-red-500">*</span></label>
  <input 
  required 
  type="text" 
  name="number"
  value={formData.number}
  onChange={handleChange}
- className="w-full px-4 py-3 rounded-xl border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors" 
+ className={`w-full px-4 py-3 rounded-xl border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors ${CONTROL_DENSITY.control}`} 
  placeholder="Building/Apt" 
  />
  </div>
  </div>
 
- <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+ <div className={`grid grid-cols-1 md:grid-cols-3 gap-6 ${CONTROL_DENSITY.rowGap}`}>
  <div className={FIELD_WIDTH.medium}>
- <label className="block text-sm font-bold text-strong mb-2">City <span className="text-red-500">*</span></label>
+ <label className={`block text-sm font-bold text-strong mb-2 ${CONTROL_DENSITY.labelGap}`}>City <span className="text-red-500">*</span></label>
  <input 
  required 
  type="text" 
  name="city"
  value={formData.city}
  onChange={handleChange}
- className="w-full px-4 py-3 rounded-xl border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors" 
+ className={`w-full px-4 py-3 rounded-xl border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors ${CONTROL_DENSITY.control}`} 
  placeholder="City" 
  />
  </div>
  <div className={FIELD_WIDTH.medium}>
- <label className="block text-sm font-bold text-strong mb-2">State/Province <span className="text-red-500">*</span></label>
+ <label className={`block text-sm font-bold text-strong mb-2 ${CONTROL_DENSITY.labelGap}`}>State/Province <span className="text-red-500">*</span></label>
  <input 
  required 
  type="text" 
  name="state"
  value={formData.state}
  onChange={handleChange}
- className="w-full px-4 py-3 rounded-xl border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors" 
+ className={`w-full px-4 py-3 rounded-xl border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors ${CONTROL_DENSITY.control}`} 
  placeholder="State or Province" 
  />
  </div>
  <div className={FIELD_WIDTH.short}>
- <label className="block text-sm font-bold text-strong mb-2">Zipcode <span className="text-red-500">*</span></label>
+ <label className={`block text-sm font-bold text-strong mb-2 ${CONTROL_DENSITY.labelGap}`}>Zipcode <span className="text-red-500">*</span></label>
  <input 
  required 
  type="text" 
  name="zipcode"
  value={formData.zipcode}
  onChange={handleChange}
- className="w-full px-4 py-3 rounded-xl border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors" 
+ className={`w-full px-4 py-3 rounded-xl border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors ${CONTROL_DENSITY.control}`} 
  placeholder="Postal Code" 
  />
  </div>
  <div className={FIELD_WIDTH.medium}>
- <label className="block text-sm font-bold text-strong mb-2">Country <span className="text-red-500">*</span></label>
+ <label className={`block text-sm font-bold text-strong mb-2 ${CONTROL_DENSITY.labelGap}`}>Country <span className="text-red-500">*</span></label>
  <input 
  required 
  type="text" 
  name="country"
  value={formData.country}
  onChange={handleChange}
- className="w-full px-4 py-3 rounded-xl border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors" 
+ className={`w-full px-4 py-3 rounded-xl border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors ${CONTROL_DENSITY.control}`} 
  placeholder="Country" 
  />
  </div>
  </div>
 
- <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+ <div className={`grid grid-cols-1 md:grid-cols-2 gap-6 ${CONTROL_DENSITY.rowGap}`}>
  <div className={FIELD_WIDTH.short}>
- <label className="block text-sm font-bold text-strong mb-2">Latitude <span className="text-faint font-normal">(Optional - For map display)</span></label>
+ <label className={`block text-sm font-bold text-strong mb-2 ${CONTROL_DENSITY.labelGap}`}>Latitude <span className="text-faint font-normal">(Optional - For map display)</span></label>
  <input 
  type="text" 
  name="lat"
  value={formData.lat}
  onChange={handleChange}
- className="w-full px-4 py-3 rounded-xl border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors" 
+ className={`w-full px-4 py-3 rounded-xl border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors ${CONTROL_DENSITY.control}`} 
  placeholder="e.g. 40.7128" 
  />
  </div>
  <div className={FIELD_WIDTH.short}>
- <label className="block text-sm font-bold text-strong mb-2">Longitude <span className="text-faint font-normal">(Optional - For map display)</span></label>
+ <label className={`block text-sm font-bold text-strong mb-2 ${CONTROL_DENSITY.labelGap}`}>Longitude <span className="text-faint font-normal">(Optional - For map display)</span></label>
  <input 
  type="text" 
  name="lng"
  value={formData.lng}
  onChange={handleChange}
- className="w-full px-4 py-3 rounded-xl border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors" 
+ className={`w-full px-4 py-3 rounded-xl border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors ${CONTROL_DENSITY.control}`} 
  placeholder="e.g. -74.0060" 
  />
  </div>
@@ -401,7 +401,7 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
  </div>
 
  {/* Section: Weekly Services */}
- <div className="space-y-6">
+ <div className={`space-y-6 ${CONTROL_DENSITY.fieldGap}`}>
  <h3 className="text-lg font-bold text-strong border-b border-line pb-3 flex items-center gap-2 font-display">
  <Calendar className="text-gold" size={24} />
  Weekly Services
@@ -416,7 +416,7 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
  <select 
  value={service.day}
  onChange={(e) => handleServiceChange(index, 'day', e.target.value)}
- className="w-full px-3 py-2 rounded-lg border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors"
+ className={`w-full px-3 py-2 rounded-lg border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors ${CONTROL_DENSITY.control}`}
  >
  <option value="Sunday">Sunday</option>
  <option value="Monday">Monday</option>
@@ -433,7 +433,7 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
  type="text" 
  value={service.time}
  onChange={(e) => handleServiceChange(index, 'time', e.target.value)}
- className="w-full px-3 py-2 rounded-lg border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors" 
+ className={`w-full px-3 py-2 rounded-lg border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors ${CONTROL_DENSITY.control}`} 
  placeholder="e.g. 10:00 AM" 
  />
  </div>
@@ -444,7 +444,7 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
  type="text" 
  value={service.name}
  onChange={(e) => handleServiceChange(index, 'name', e.target.value)}
- className="w-full px-3 py-2 rounded-lg border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors" 
+ className={`w-full px-3 py-2 rounded-lg border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors ${CONTROL_DENSITY.control}`} 
  placeholder="e.g. Main Service, Youth Group" 
  />
  {formData.services.length > 1 && (
@@ -472,45 +472,45 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
  </div>
 
  {/* Section 3: Contact Person */}
- <div className="space-y-6">
+ <div className={`space-y-6 ${CONTROL_DENSITY.fieldGap}`}>
  <h3 className="text-lg font-bold text-strong border-b border-line pb-3 flex items-center gap-2 font-display">
  <User className="text-gold" size={24} />
  Contact Person
  </h3>
  <div className={FIELD_WIDTH.long}>
- <label className="block text-sm font-bold text-strong mb-2">Full Name <span className="text-red-500">*</span></label>
+ <label className={`block text-sm font-bold text-strong mb-2 ${CONTROL_DENSITY.labelGap}`}>Full Name <span className="text-red-500">*</span></label>
  <input 
  required 
  type="text" 
  name="contactName"
  value={formData.contactName}
  onChange={handleChange}
- className="w-full px-4 py-3 rounded-xl border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors" 
+ className={`w-full px-4 py-3 rounded-xl border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors ${CONTROL_DENSITY.control}`} 
  placeholder="Lead Pastor or Administrator" 
  />
  </div>
- <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+ <div className={`grid grid-cols-1 md:grid-cols-2 gap-6 ${CONTROL_DENSITY.rowGap}`}>
  <div className={FIELD_WIDTH.long}>
- <label className="block text-sm font-bold text-strong mb-2">Email Address <span className="text-red-500">*</span></label>
+ <label className={`block text-sm font-bold text-strong mb-2 ${CONTROL_DENSITY.labelGap}`}>Email Address <span className="text-red-500">*</span></label>
  <input 
  required 
  type="email" 
  name="contactEmail"
  value={formData.contactEmail}
  onChange={handleChange}
- className="w-full px-4 py-3 rounded-xl border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors" 
+ className={`w-full px-4 py-3 rounded-xl border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors ${CONTROL_DENSITY.control}`} 
  placeholder="contact@church.org" 
  />
  </div>
  <div className={FIELD_WIDTH.medium}>
- <label className="block text-sm font-bold text-strong mb-2">Phone Number <span className="text-red-500">*</span></label>
+ <label className={`block text-sm font-bold text-strong mb-2 ${CONTROL_DENSITY.labelGap}`}>Phone Number <span className="text-red-500">*</span></label>
  <input 
  required 
  type="tel" 
  name="contactPhone"
  value={formData.contactPhone}
  onChange={handleChange}
- className="w-full px-4 py-3 rounded-xl border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors" 
+ className={`w-full px-4 py-3 rounded-xl border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors ${CONTROL_DENSITY.control}`} 
  placeholder="+1 (555) 000-0000" 
  />
  </div>
@@ -518,14 +518,14 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
  </div>
 
  {/* Section 4: Social Links */}
- <div className="space-y-6">
+ <div className={`space-y-6 ${CONTROL_DENSITY.fieldGap}`}>
  <h3 className="text-lg font-bold text-strong border-b border-line pb-3 flex items-center gap-2 font-display">
  <Globe className="text-gold" size={24} />
  Online Presence
  </h3>
- <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+ <div className={`grid grid-cols-1 md:grid-cols-2 gap-6 ${CONTROL_DENSITY.rowGap}`}>
  <div className={FIELD_WIDTH.long}>
- <label className="block text-sm font-bold text-strong mb-2">Website</label>
+ <label className={`block text-sm font-bold text-strong mb-2 ${CONTROL_DENSITY.labelGap}`}>Website</label>
  <div className="relative">
  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-faint">
  <Globe size={20} />
@@ -535,13 +535,13 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
  name="website"
  value={formData.website}
  onChange={handleChange}
- className="w-full pl-12 pr-4 py-3 rounded-xl border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors" 
+ className={`w-full pl-12 pr-4 py-3 rounded-xl border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors ${CONTROL_DENSITY.control}`} 
  placeholder="https://www.yourchurch.com" 
  />
  </div>
  </div>
  <div className={FIELD_WIDTH.long}>
- <label className="block text-sm font-bold text-strong mb-2">Facebook</label>
+ <label className={`block text-sm font-bold text-strong mb-2 ${CONTROL_DENSITY.labelGap}`}>Facebook</label>
  <div className="relative">
  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-faint font-bold text-lg">f</div>
  <input 
@@ -549,13 +549,13 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
  name="facebook"
  value={formData.facebook}
  onChange={handleChange}
- className="w-full pl-12 pr-4 py-3 rounded-xl border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors" 
+ className={`w-full pl-12 pr-4 py-3 rounded-xl border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors ${CONTROL_DENSITY.control}`} 
  placeholder="facebook.com/page" 
  />
  </div>
  </div>
  <div className={FIELD_WIDTH.medium}>
- <label className="block text-sm font-bold text-strong mb-2">Instagram</label>
+ <label className={`block text-sm font-bold text-strong mb-2 ${CONTROL_DENSITY.labelGap}`}>Instagram</label>
  <div className="relative">
  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-faint font-bold text-lg">@</div>
  <input 
@@ -563,7 +563,7 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
  name="instagram"
  value={formData.instagram}
  onChange={handleChange}
- className="w-full pl-12 pr-4 py-3 rounded-xl border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors" 
+ className={`w-full pl-12 pr-4 py-3 rounded-xl border border-line-strong focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-colors ${CONTROL_DENSITY.control}`} 
  placeholder="username" 
  />
  </div>
@@ -575,7 +575,7 @@ const ChurchEnrollment: React.FC<ChurchEnrollmentProps> = ({ onBack, initialData
  <button 
  type="submit" 
  disabled={isSubmitting}
- className={`flex-1 bg-gold text-white font-bold py-4 rounded-xl hover:bg-[color-mix(in_srgb,var(--brand-color)_85%,black)] transition-colors shadow-[var(--glow-gold)] flex items-center justify-center gap-2 ${ACTION_BUTTON} ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}
+ className={`flex-1 bg-gold text-white font-bold py-4 rounded-xl hover:bg-[color-mix(in_srgb,var(--brand-color)_85%,black)] transition-colors shadow-[var(--glow-gold)] flex items-center justify-center gap-2 ${ACTION_BUTTON} ${CONTROL_DENSITY.action} ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}
  >
  {isSubmitting ? (
  <>

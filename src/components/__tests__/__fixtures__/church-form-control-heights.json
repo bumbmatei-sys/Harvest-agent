@@ -1,0 +1,61 @@
+{
+  "380": {
+    "formHeight": 2706,
+    "labelGap": 8,
+    "fieldGap": 24,
+    "sectionGap": 40,
+    "submit": 56,
+    "controls": {
+      "Search Church with Google Maps API": 50,
+      "Church Name *": 50,
+      "Denomination (Optional)": 50,
+      "Street *": 50,
+      "Number *": 50,
+      "City *": 50,
+      "State/Province *": 50,
+      "Zipcode *": 50,
+      "Country *": 50,
+      "Latitude (Optional - For map display)": 50,
+      "Longitude (Optional - For map display)": 50,
+      "Day": 39,
+      "Time": 42,
+      "Service Name": 42,
+      "Full Name *": 50,
+      "Email Address *": 50,
+      "Phone Number *": 50,
+      "Website": 50,
+      "Facebook": 50,
+      "Instagram": 50
+    }
+  },
+  "1440": {
+    "formHeight": 1671.75,
+    "labelGap": 7.25,
+    "fieldGap": 21.75,
+    "sectionGap": 36.25,
+    "submit": 53,
+    "controls": {
+      "Search Church with Google Maps API": 45.5,
+      "Church Name *": 45.5,
+      "Denomination (Optional)": 45.5,
+      "Street *": 45.5,
+      "Number *": 45.5,
+      "City *": 45.5,
+      "State/Province *": 45.5,
+      "Zipcode *": 45.5,
+      "Country *": 45.5,
+      "Latitude (Optional - For map display)": 45.5,
+      "Longitude (Optional - For map display)": 45.5,
+      "Day": 34.5,
+      "Time": 38.25,
+      "Service Name": 38.25,
+      "Full Name *": 45.5,
+      "Email Address *": 45.5,
+      "Phone Number *": 45.5,
+      "Website": 45.5,
+      "Facebook": 45.5,
+      "Instagram": 45.5
+    }
+  },
+  "_note": "Rendered heights in px, measured in headless Chromium against the real compiled Tailwind CSS and the real admin shell, on unmodified HEAD (0accd19). Keyed by the visible label, never by a class pattern. \"Church Image\" is absent: it has no control of its own, only the shared ImageUpload component, which this rule does not touch."
+}
