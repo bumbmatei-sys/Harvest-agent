@@ -71,6 +71,7 @@ let matchesDark = false;
 beforeEach(() => {
   localStorage.clear();
   document.documentElement.removeAttribute('data-theme');
+  document.documentElement.removeAttribute('data-palette');
   document.documentElement.classList.remove('dark');
   matchesDark = false;
   // happy-dom reports prefers-color-scheme: dark as false and offers no way to
