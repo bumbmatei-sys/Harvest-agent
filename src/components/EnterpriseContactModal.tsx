@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { X, Building2, Send, CheckCircle } from 'lucide-react';
 import { auth } from '../firebase';
+import { FIELD_WIDTH, ACTION_BUTTON, CONTROL_DENSITY } from './layout/form-layout';
 
 interface EnterpriseContactModalProps {
   isOpen: boolean;
@@ -114,7 +115,7 @@ const EnterpriseContactModal: React.FC<EnterpriseContactModalProps> = ({ isOpen,
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
+              <div className={FIELD_WIDTH.long}>
                 <label className="text-sm font-medium text-body mb-1 block">Your Name *</label>
                 <input
                   type="text"
@@ -123,11 +124,11 @@ const EnterpriseContactModal: React.FC<EnterpriseContactModalProps> = ({ isOpen,
                   required
                   placeholder="Pastor John"
                   maxLength={100}
-                  className="w-full px-4 py-3 rounded-xl border border-line bg-surface-raised text-sm focus:outline-none focus:border-gold text-strong"
+                  className={`w-full px-4 py-3 rounded-xl border border-line bg-surface-raised text-sm focus:outline-none focus:border-gold text-strong ${CONTROL_DENSITY.control}`}
                 />
               </div>
 
-              <div>
+              <div className={FIELD_WIDTH.long}>
                 <label className="text-sm font-medium text-body mb-1 block">Email *</label>
                 <input
                   type="email"
@@ -136,11 +137,11 @@ const EnterpriseContactModal: React.FC<EnterpriseContactModalProps> = ({ isOpen,
                   required
                   placeholder="john@church.org"
                   maxLength={200}
-                  className="w-full px-4 py-3 rounded-xl border border-line bg-surface-raised text-sm focus:outline-none focus:border-gold text-strong"
+                  className={`w-full px-4 py-3 rounded-xl border border-line bg-surface-raised text-sm focus:outline-none focus:border-gold text-strong ${CONTROL_DENSITY.control}`}
                 />
               </div>
 
-              <div>
+              <div className={FIELD_WIDTH.long}>
                 <label className="text-sm font-medium text-body mb-1 block">Church / Organization Name *</label>
                 <input
                   type="text"
@@ -149,11 +150,11 @@ const EnterpriseContactModal: React.FC<EnterpriseContactModalProps> = ({ isOpen,
                   required
                   placeholder="Grace Community Church"
                   maxLength={200}
-                  className="w-full px-4 py-3 rounded-xl border border-line bg-surface-raised text-sm focus:outline-none focus:border-gold text-strong"
+                  className={`w-full px-4 py-3 rounded-xl border border-line bg-surface-raised text-sm focus:outline-none focus:border-gold text-strong ${CONTROL_DENSITY.control}`}
                 />
               </div>
 
-              <div>
+              <div className={FIELD_WIDTH.short}>
                 <label className="text-sm font-medium text-body mb-1 block">Number of Churches</label>
                 <input
                   type="number"
@@ -162,7 +163,7 @@ const EnterpriseContactModal: React.FC<EnterpriseContactModalProps> = ({ isOpen,
                   min="1"
                   max="10000"
                   placeholder="e.g. 5"
-                  className="w-full px-4 py-3 rounded-xl border border-line bg-surface-raised text-sm focus:outline-none focus:border-gold text-strong"
+                  className={`w-full px-4 py-3 rounded-xl border border-line bg-surface-raised text-sm focus:outline-none focus:border-gold text-strong ${CONTROL_DENSITY.control}`}
                 />
               </div>
 
@@ -185,7 +186,7 @@ const EnterpriseContactModal: React.FC<EnterpriseContactModalProps> = ({ isOpen,
               <button
                 type="submit"
                 disabled={loading || !name.trim() || !email.trim() || !churchName.trim()}
-                className="w-full flex items-center justify-center gap-2 py-3 bg-[#0b1121] text-white font-bold rounded-xl hover:bg-[#1a2744] transition-colors disabled:opacity-50"
+                className={`w-full flex items-center justify-center gap-2 py-3 bg-[#0b1121] text-white font-bold rounded-xl hover:bg-[#1a2744] transition-colors disabled:opacity-50 ${ACTION_BUTTON} ${CONTROL_DENSITY.action}`}
               >
                 {loading ? (
                   <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
