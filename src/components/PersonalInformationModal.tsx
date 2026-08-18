@@ -8,6 +8,7 @@ import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import CountrySelect from './CountrySelect';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { authFetch } from '../utils/auth-fetch';
+import { FIELD_WIDTH, CONTROL_DENSITY } from './layout/form-layout';
 
 interface PersonalInformationModalProps {
  isOpen: boolean;
@@ -604,7 +605,7 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
  {/* Form Card */}
  <div className="bg-surface-raised rounded-3xl p-2 shadow-sm border border-line">
  {/* Full Name */}
- <div className="p-4 pb-2">
+ <div className={`p-4 pb-2 ${FIELD_WIDTH.long}`}>
  <label className="text-[10px] font-bold text-faint tracking-wider uppercase mb-2 block">
  Full Name
  </label>
@@ -612,12 +613,12 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
  type="text"
  value={name}
  onChange={(e) => setName(e.target.value)}
- className="w-full bg-surface-sunken rounded-2xl px-4 py-4 text-strong font-bold focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_20%,transparent)]"
+ className={`w-full bg-surface-sunken rounded-2xl px-4 py-4 text-strong font-bold focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_20%,transparent)] ${CONTROL_DENSITY.control}`}
  />
  </div>
 
  {/* Country */}
- <div className="p-4 pb-2 relative z-50">
+ <div className={`p-4 pb-2 relative z-50 ${FIELD_WIDTH.medium}`}>
  <label className="text-[10px] font-bold text-faint tracking-wider uppercase mb-2 block">
  Country
  </label>
@@ -630,7 +631,7 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
  </div>
 
  {/* City */}
- <div className="p-4 pb-2 relative z-40">
+ <div className={`p-4 pb-2 relative z-40 ${FIELD_WIDTH.medium}`}>
  <label className="text-[10px] font-bold text-faint tracking-wider uppercase mb-2 block">
  City
  </label>
@@ -638,12 +639,12 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
  type="text"
  value={city}
  onChange={(e) => setCity(e.target.value)}
- className="w-full bg-surface-sunken rounded-2xl px-4 py-4 text-strong font-bold focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_20%,transparent)]"
+ className={`w-full bg-surface-sunken rounded-2xl px-4 py-4 text-strong font-bold focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_20%,transparent)] ${CONTROL_DENSITY.control}`}
  />
  </div>
 
  {/* Phone */}
- <div className="p-4 pb-2 relative z-30">
+ <div className={`p-4 pb-2 relative z-30 ${FIELD_WIDTH.medium}`}>
  <label className="text-[10px] font-bold text-faint tracking-wider uppercase mb-2 block">
  Phone Number
  </label>
@@ -651,7 +652,7 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
  type="tel"
  value={phone}
  onChange={(e) => setPhone(e.target.value)}
- className="w-full bg-surface-sunken rounded-2xl px-4 py-4 text-strong font-bold focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_20%,transparent)]"
+ className={`w-full bg-surface-sunken rounded-2xl px-4 py-4 text-strong font-bold focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_20%,transparent)] ${CONTROL_DENSITY.control}`}
  />
  </div>
 
@@ -660,8 +661,11 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
           <label className="text-[10px] font-bold text-faint tracking-wider uppercase mb-2 block">
             Have you accepted Jesus?
           </label>
+          {/* Not a field — two adjacent buttons. flex-1 stays for the mobile
+              full-width split; from sm: up they shrink to their own content
+              and sit together rather than each stretching to half the row. */}
           <div className="flex gap-4">
-            <label className="flex-1 cursor-pointer">
+            <label className="flex-1 sm:flex-none cursor-pointer">
               <input
                 type="radio"
                 name="acceptedJesusModal"
@@ -671,11 +675,11 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
                 className="peer sr-only"
                 required
               />
-              <div className="w-full bg-surface-sunken rounded-2xl px-4 py-4 text-center text-strong font-bold peer-checked:bg-[color-mix(in_srgb,var(--brand-color)_10%,transparent)] peer-checked:text-gold peer-checked:ring-2 peer-checked:ring-[color-mix(in_srgb,var(--brand-color)_30%,transparent)] transition-all">
+              <div className="w-full sm:w-auto bg-surface-sunken rounded-2xl px-4 py-4 text-center text-strong font-bold peer-checked:bg-[color-mix(in_srgb,var(--brand-color)_10%,transparent)] peer-checked:text-gold peer-checked:ring-2 peer-checked:ring-[color-mix(in_srgb,var(--brand-color)_30%,transparent)] transition-all">
                 Yes
               </div>
             </label>
-            <label className="flex-1 cursor-pointer">
+            <label className="flex-1 sm:flex-none cursor-pointer">
               <input
                 type="radio"
                 name="acceptedJesusModal"
@@ -685,7 +689,7 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
                 className="peer sr-only"
                 required
               />
-              <div className="w-full bg-surface-sunken rounded-2xl px-4 py-4 text-center text-strong font-bold peer-checked:bg-surface-chip peer-checked:ring-2 peer-checked:ring-line-strong transition-all">
+              <div className="w-full sm:w-auto bg-surface-sunken rounded-2xl px-4 py-4 text-center text-strong font-bold peer-checked:bg-surface-chip peer-checked:ring-2 peer-checked:ring-line-strong transition-all">
                 No
               </div>
             </label>
@@ -693,7 +697,7 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
         </div>
 
         {/* Email (Read Only) */}
- <div className="p-4 pt-2">
+ <div className={`p-4 pt-2 ${FIELD_WIDTH.long}`}>
  <label className="text-[10px] font-bold text-faint tracking-wider uppercase mb-2 block">
  Email Address
  </label>
@@ -701,12 +705,13 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
  type="email"
  value={email}
  readOnly
- className="w-full bg-surface-sunken rounded-2xl px-4 py-4 text-muted font-medium focus:outline-none cursor-not-allowed"
+ className={`w-full bg-surface-sunken rounded-2xl px-4 py-4 text-muted font-medium focus:outline-none cursor-not-allowed ${CONTROL_DENSITY.control}`}
  />
  </div>
 
- {/* Actions */}
- <div className="px-2 pb-2 space-y-2">
+ {/* Actions — capped so Change Password / Cancel Partnership / Delete
+     Account read as rows, not a bar spanning the whole card at desktop. */}
+ <div className={`px-2 pb-2 space-y-2 ${FIELD_WIDTH.long}`}>
  {isEmailAuth && (
  <button 
  onClick={() => setPasswordFlowState('current')}

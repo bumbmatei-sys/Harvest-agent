@@ -166,9 +166,11 @@ will quote different prices.
 
 **There are three tiers.** A fourth, `ultra` (displayed as "Ministry", $299), was
 deleted and folded into `max` — which inherited both its display name and its
-Church Directory, Accounting Tools and included AI Assistant. `max` did **not**
-inherit ultra's unlimited campuses/courses/admins: every cap is finite now, and
-extra capacity is sold as add-ons instead.
+Accounting Tools and included AI Assistant. (Ultra's third folded-in capability,
+a global Church Directory, was carried by a `churchDirectory` flag that turned
+out to gate nothing anywhere in the app and was later removed — see below.)
+`max` did **not** inherit ultra's unlimited campuses/courses/admins: every cap
+is finite now, and extra capacity is sold as add-ons instead.
 
 `maxContacts` is **published but NOT enforced** — no contact cap exists anywhere
 in the app. It lives in `PLAN_FEATURES` (not `PLAN_LIMITS`, which holds metered
@@ -189,12 +191,11 @@ feature can be restored by flipping that one boolean.
 
 Ministry (max) is the top tier and carries everything: CRM, Tax Receipts, Community
 Groups, Custom Forms, Check-In, Livestream, Pledge Campaigns, Custom Domain, and —
-folded in from the deleted `ultra` tier — Accounting Tools and the global Church
-Directory. CRM, Check-In and Livestream are **not** exclusive to it: Small Team (pro)
-has them too. What Ministry adds over Small Team is Custom Domain, Custom Branding,
-Event Registration, Tax Receipts, Giving Statements, Custom Forms, Automated
-Blog/Newsletter, Pledge Campaigns, Community Groups, Accounting Tools and Church
-Directory.
+folded in from the deleted `ultra` tier — Accounting Tools. CRM, Check-In and
+Livestream are **not** exclusive to it: Small Team (pro) has them too. What Ministry
+adds over Small Team is Custom Domain, Custom Branding, Event Registration, Tax
+Receipts, Giving Statements, Custom Forms, Automated Blog/Newsletter, Pledge
+Campaigns, Community Groups and Accounting Tools.
 
 **SMS is not sold by plan.** `smsAutomation` and `textToGive` are `true` on all three
 tiers; whether a tenant can actually send is decided by whether they have connected
@@ -214,7 +215,13 @@ Minimum-plan labels on upgrade screens are **derived** from this matrix
 Flipping a cell in `PLAN_FEATURES` moves the upgrade copy with it — never put a
 literal plan name in a gate message.
 
-Map note: All plans show their own church location(s) on the map. The global multi-church discovery directory (browsing all tenants' churches) is Ministry (max) only (`churchDirectory` feature flag).
+Map note: `ChurchMap` (member-facing map, gated by the `map` flag — pro and
+above) shows a tenant's own church location(s). There is no plan-gated
+cross-tenant discovery directory in the app — the `churchDirectory` flag that
+used to name one was read nowhere and has been removed (THE-77). ⚠️ The
+marketing site's pricing page still carries a "Church directory — Ministry
+only" row; that claim is now unimplemented by any tier and needs its own
+fix on that site (a separate repo, out of scope here).
 
 ## Revenue Sharing (Stripe Connect)
 The platform application fee is taken on money flowing through a tenant's connected

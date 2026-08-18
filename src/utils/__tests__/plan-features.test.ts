@@ -290,9 +290,11 @@ describe('the ultra tier is deleted', () => {
     expect(TOP_PLAN).toBe(PLAN_ORDER[PLAN_ORDER.length - 1]);
   });
 
-  it('folds ultra capabilities into max: directory, accounting, one AI assistant', () => {
+  it('folds ultra capabilities into max: accounting, one AI assistant', () => {
+    // `churchDirectory` was ultra's third folded-in cell; it was later removed
+    // from the matrix entirely for having zero consumers — see the retired-cells
+    // describe block below, which is now its regression test.
     const f = getPlanFeatures('max');
-    expect(f.churchDirectory).toBe(true);
     expect(f.accountingTools).toBe(true);
     expect(f.aiAssistant).toBe(1);
   });
@@ -303,9 +305,14 @@ describe('the ultra tier is deleted', () => {
 // Test #8 of the repricing. `donationRetention` and `publicCalendar` are gone.
 // This is the regression test for both retirements: it fails if either comes
 // back, in the matrix or as a module export.
+//
+// `churchDirectory` joined this list later (THE-77): it named a global
+// multi-church discovery directory that was never built — no gate, route,
+// query or component read it anywhere in the app (see
+// docs/plan-features-flag-audit.md). Same precedent as the other two.
 
 describe('retired matrix cells stay retired', () => {
-  it.each(['donationRetention', 'publicCalendar'] as const)(
+  it.each(['donationRetention', 'publicCalendar', 'churchDirectory'] as const)(
     '%s does not exist on any tier of PLAN_FEATURES',
     (cell) => {
       PLAN_ORDER.forEach((plan) => {
@@ -322,11 +329,12 @@ describe('retired matrix cells stay retired', () => {
     expect('PLAN_DONATION_RETENTION' in planFeaturesModule).toBe(false);
   });
 
-  it('nothing derives a minimum plan for either cell', () => {
+  it('nothing derives a minimum plan for any retired cell', () => {
     // getMinPlanForFeatureCell walks PLAN_FEATURES; a retired cell is truthy
     // nowhere, so it derives to null rather than silently unlocking on plus.
     expect(getMinPlanForFeatureCell('donationRetention' as any)).toBeNull();
     expect(getMinPlanForFeatureCell('publicCalendar' as any)).toBeNull();
+    expect(getMinPlanForFeatureCell('churchDirectory' as any)).toBeNull();
   });
 });
 
@@ -396,15 +404,15 @@ describe('communityGroups tier', () => {
   });
 
   it('pins what max exclusively carries after the ultra fold', () => {
-    // This guard used to assert accountingTools/smsAutomation/textToGive/
-    // churchDirectory were FALSE on max — they were ultra-only. Three of those
-    // moved deliberately in this change (accounting + directory folded into max;
-    // SMS went BYO-only on every tier), so the guard now pins the new shape
-    // rather than the old one. It still catches a feature drifting onto max by
-    // accident.
+    // This guard used to assert accountingTools/smsAutomation/textToGive were
+    // FALSE on max — they were ultra-only. Two of those moved deliberately in
+    // this change (accounting folded into max; SMS went BYO-only on every
+    // tier), so the guard now pins the new shape rather than the old one. It
+    // still catches a feature drifting onto max by accident. (`churchDirectory`,
+    // ultra's third folded-in cell, was later removed from the matrix entirely
+    // — see 'retired matrix cells stay retired' above.)
     const f = getPlanFeatures('max');
     expect(f.accountingTools).toBe(true);   // folded in from ultra
-    expect(f.churchDirectory).toBe(true);   // folded in from ultra
     expect(f.smsAutomation).toBe(true);     // BYO-only, all tiers
     expect(f.textToGive).toBe(true);        // BYO-only, all tiers
     expect(f.customDomain).toBe(true);
@@ -688,7 +696,8 @@ describe('four features moved from the top tier to Small Team (pro)', () => {
     expect(f.automatedNewsletter).toBe(false);
     expect(f.pledgeCampaigns).toBe(false);
     expect(f.accountingTools).toBe(false);
-    expect(f.churchDirectory).toBe(false);
+    // `churchDirectory` was asserted false here too; it was later removed from
+    // the matrix entirely (see 'retired matrix cells stay retired' above).
     // Caps are explicitly out of scope for the move.
     expect(f.maxCourses).toBe(5);
     expect(f.maxAdmins).toBe(5);
