@@ -1,8 +1,9 @@
 /**
  * Desktop layout rules for forms — the container (a page measure and a form
- * measure), the field widths, the button, and the density of a control.
+ * measure), the field widths, the button, the density of a control, and the
+ * two-column split of a form too long to read in one.
  *
- * Four rules, defined once. The app is responsive to 1024px and then stretches
+ * Five rules, defined once. The app is responsive to 1024px and then stretches
  * with no maximum, so on a wide monitor the Add Church form rendered a 1517px
  * Google Maps field, a 748px "Church Name" for a value needing about 300, and a
  * 1517px submit button. That is not a typography or component problem — it is
@@ -11,13 +12,18 @@
  * Rules 1-3 are horizontal and landed together; they made the form narrower
  * without making it smaller. Rule 4 is the vertical half — height and rhythm —
  * and it is the one that can reach a phone if it is ever written carelessly.
+ * Rule 5 is vertical too, but by composition rather than by density: a form
+ * whose content is genuinely long stays long however tight its rows are, and
+ * the only way left to halve its height is to put half of it beside the other
+ * half (THE-187).
  *
  * ── Every rule here is gated at `sm:` and above, deliberately ────────────────
  * Below 640px the app is fine and must not move, so no rule in this file can
  * apply to a phone. That is a hard constraint, not a convention: adding an
  * unprefixed token here changes mobile rendering, and
  * ChurchEnrollment.desktop-layout.test.tsx pins the sub-640px class layer
- * against an extracted baseline precisely so that fails loudly.
+ * against an extracted baseline precisely so that fails loudly. Rule 5 is
+ * gated harder still, at `lg:` — see its own note for why.
  *
  * ── Why the widths are in px and not rem ─────────────────────────────────────
  * globals.css trims the rem base to 14.5px, but only at `min-width: 1024px`
@@ -232,3 +238,62 @@ export const DENSITY_PX = {
  * here a later screen must not quietly raise.
  */
 export const DESKTOP_CONTROL_MAX_PX = 40;
+
+/**
+ * Rule 5 — the desktop two-column split of a long form.
+ *
+ * Rules 1-4 make a form narrower and denser. They cannot make it SHORTER than
+ * its content, and a form whose content is genuinely long stays long: the
+ * course builder's Course Info tab measures 1229.81px tall at 1440px with
+ * every rule above already applied, inside a viewport 1200px high. The
+ * founder's verdict on it — "extremely big, I need it way smaller and split
+ * into 2 screens" — is the vertical problem Rules 1-4 do not reach.
+ *
+ * ── Why `lg` and not `sm` or `xl` ────────────────────────────────────────────
+ * `lg` (1024px) is where the admin shell itself becomes desktop: the sidebar
+ * stops being a fixed bottom bar and takes 232px of the row, and globals.css
+ * drops the rem base to 14.5px. Splitting anywhere else means the page
+ * reflows at a width where nothing else about the shell changes.
+ *
+ * It is also the only choice that is safe against the non-monotonic available
+ * width THE-184 found. Crossing 1024px the shell TAKES 275.5px away, so the
+ * content box drops from 951px at 1023px to 708.5px at 1024px — the narrowest
+ * a desktop column ever gets is therefore 346.25px, at exactly 1024px. That is
+ * still WIDER than the 308px the same content already renders in at a 380px
+ * phone, so no column can be narrower than a width the markup demonstrably
+ * survives. Splitting at `xl` instead would put the cliff at 1280px, which is
+ * exactly where THE-184 measured a 41px overflow.
+ *
+ * ── Explicit grouping, not auto-placement ────────────────────────────────────
+ * The two children are column GROUPS, each a flex column of its own blocks, so
+ * a block's top edge depends only on the blocks above it in its own group.
+ * With auto-placement every block's top is tied to the tallest block in its
+ * grid row instead, which is the failure THE-181 (PR 346) already paid for.
+ *
+ * ── The gap is Rule 4's, not a new number ────────────────────────────────────
+ * Both axes take `DENSITY_PX.rowGap` — 16px, the gap Rule 4 already settled
+ * between the rows of a field grid, and the gap the panel being split already
+ * used between its cards. Nothing here introduces a length this module had
+ * not already derived.
+ *
+ * ── The consumer supplies the mobile-inert half ──────────────────────────────
+ * Every token below is `lg:`-gated, so on a phone these two rules apply
+ * nothing at all — which also means the wrapper elements they go on would
+ * otherwise be extra boxes in the mobile layout. A consumer pairs them with an
+ * unprefixed `contents` (`display: contents`, i.e. no box) so that below `lg`
+ * the wrappers vanish and the blocks stay direct children of the original
+ * parent. That token stays at the call site deliberately: it is a mechanism
+ * for not disturbing mobile, not a desktop rule, and this module's invariant
+ * is that nothing it exports can apply below 640px.
+ */
+export const COLUMN_SPLIT = 'lg:grid lg:grid-cols-2 lg:items-start lg:gap-[16px]';
+
+/** One column of Rule 5's split — its own stack, so tops do not interlock. */
+export const COLUMN_GROUP = 'lg:flex lg:flex-col lg:gap-[16px]';
+
+/** Both halves of Rule 5, for the tests that range over it. */
+export const COLUMN_RULES = [COLUMN_SPLIT, COLUMN_GROUP];
+
+/** The viewport Rule 5's split begins at, and the gap it uses — as numbers. */
+export const SPLIT_MIN_PX = 1024;
+export const SPLIT_GAP_PX = DENSITY_PX.rowGap;

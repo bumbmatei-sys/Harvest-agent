@@ -25,7 +25,13 @@ import { notifyError } from '../utils/notify';
 // the existing inline `style` object does not already own that property, so
 // nothing here can be shadowed by the (untouched, higher-priority) inline
 // styles the rest of the file still uses.
-import { FORM_CONTAINER, FIELD_WIDTH, ACTION_BUTTON } from './layout/form-layout';
+//
+// THE-187 adds the Course Info tab to that: Rule 1b (a FORM's measure, not the
+// data-dense PAGE measure the Curriculum tab correctly takes), Rule 2 on the
+// five fields that had no width at all, Rule 3 on "+ Select Authors", and
+// Rule 5 — the two-column split. The Curriculum tab is untouched by all of it;
+// the two tabs share only `s.content`, whose FORM_CONTAINER cap is unchanged.
+import { FORM_CONTAINER, FORM_MEASURE, FIELD_WIDTH, ACTION_BUTTON, COLUMN_SPLIT, COLUMN_GROUP } from './layout/form-layout';
 
 
 
@@ -206,11 +212,17 @@ interface FieldProps {
  placeholder?: string;
  textarea?: boolean;
  type?: string;
+ /** Rule 2's width cap, applied to the field's WRAPPER (form-layout.ts). */
+ className?: string;
 }
 
-function Field({ label, value, onChange, placeholder, textarea, type = "text" }: FieldProps) {
+function Field({ label, value, onChange, placeholder, textarea, type = "text", className }: FieldProps) {
  return (
- <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+ // The cap goes on the wrapper exactly as Rule 2 documents it — the control
+ // inside keeps its inline `width: 100%` and simply stops growing past it.
+ // Undefined at every call site that has not opted in, so React renders no
+ // class attribute there at all and those fields are byte-for-byte untouched.
+ <div style={{ display: "flex", flexDirection: "column", gap: 6 }} className={className}>
  {label && <label style={s.label}>{label}</label>}
  {textarea
  ? <textarea style={s.textarea} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} rows={3} />
@@ -1182,17 +1194,32 @@ export default function CourseBuilder({ course: initialCourse, onClose, library 
 
  {/* ── INFO ── */}
  {tab === "info" && (
- <div style={s.panel}>
+ // Rule 1b + Rule 5. `s.panel`'s own `display/flexDirection/gap` are dropped
+ // here and re-stated as UNPREFIXED classes (`flex flex-col gap-[16px]`) —
+ // identical numbers, so the phone renders the same box — because an inline
+ // `display: flex` outranks `lg:grid` and would silently shadow the split.
+ // The Curriculum tab still uses `s.panel` itself, unchanged.
+ <div style={s.infoPanel} className={`flex flex-col gap-[16px] ${FORM_MEASURE} ${COLUMN_SPLIT}`}>
+ {/* LEFT — everything up to and including the Authors section, in document
+     order. `contents` (no box) below `lg`, so the five cards stay direct
+     children of the panel and the phone layout is untouched. */}
+ <div className={`contents ${COLUMN_GROUP}`}>
  <div style={s.card}>
  <div style={s.sectionHeading}>Basic Information</div>
  <div style={s.cardBody}>
- <Field label="Course Title" value={course.title} onChange={(v) => set("title", v)} placeholder="e.g. The Gospel of John" />
- <div>
+ <Field label="Course Title" value={course.title} onChange={(v) => set("title", v)} placeholder="e.g. The Gospel of John" className={FIELD_WIDTH.long} />
+ {/* `long`, and no fifth width invented for it. Rule 2's four sizes are all
+     single-line, so none of them was written for a multi-line editor — but
+     the number a paragraph wants is a MEASURE, not a field length, and the
+     readable band for a 14px face is 45-75 characters, i.e. 400-480px. 440px
+     is the middle of that band and is already in the module. A wider value
+     would be worse prose, not more room. */}
+ <div className={FIELD_WIDTH.long}>
  <label style={s.label}>Course Description</label>
  <RichTextEditor content={course.description} onChange={(v) => set("description", v)} minHeight="120px" placeholder="What will students learn?" />
  </div>
  <div style={s.row2}>
- <div>
+ <div className={FIELD_WIDTH.medium}>
  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
  <label style={{ ...s.label, marginBottom: 0 }}>Category</label>
  <button onClick={() => setShowCatManager((v) => !v)}
@@ -1205,7 +1232,7 @@ export default function CourseBuilder({ course: initialCourse, onClose, library 
  {categories.map((c) => <option key={c}>{c}</option>)}
  </select>
  </div>
- <div>
+ <div className={FIELD_WIDTH.medium}>
  <label style={s.label}>Status</label>
  <select style={s.select} value={course.status} onChange={(e) => set("status", e.target.value as CourseStatus)}>
  <option value="draft">Draft</option>
@@ -1213,7 +1240,10 @@ export default function CourseBuilder({ course: initialCourse, onClose, library 
  </select>
  </div>
  </div>
- <div onClick={() => set("featured", !course.featured)}
+ {/* Rule 2 on a row rather than an input: measured at 1440px on b990525 this
+     bar was 1048px wide with 629.5px of nothing between the label block and
+     the toggle. `long` is the width of the fields it sits under. */}
+ <div onClick={() => set("featured", !course.featured)} className={FIELD_WIDTH.long}
  style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px", borderRadius: 12, border: `1.5px solid ${course.featured ? GOLD : BORDER}`, background: course.featured ? GOLD_LIGHT : CARD, cursor: "pointer", transition: "all 0.2s" }}>
  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
  <span style={{ fontSize: 22 }}>⭐</span>
@@ -1245,11 +1275,19 @@ export default function CourseBuilder({ course: initialCourse, onClose, library 
  onClick={() => set("authorIds", course.authorIds.filter((id) => id !== a.id))}>Remove</button>
  </div>
  ))}
- <button style={s.publishBtn} onClick={() => setShowAuthorPicker(true)}>
+ {/* Rule 3. `sm:self-start` opts out of the flex-column parent's default
+     stretch, the same way "+ Add Level" does on the Curriculum tab — without
+     it `sm:w-auto` alone still fills the row. Nothing unprefixed is added, so
+     the phone keeps the full-width button it has today. */}
+ <button style={s.publishBtn} className={`sm:w-auto sm:self-start ${ACTION_BUTTON}`} onClick={() => setShowAuthorPicker(true)}>
  {selectedAuthors.length > 0 ? "+ Change / Add Authors" : "+ Select Authors"}
  </button>
  </div>
  </div>
+ </div>
+ {/* RIGHT — everything below the "+ Select Authors" control, in document
+     order: the Authors Library, the Thumbnail and the Certificate settings. */}
+ <div className={`contents ${COLUMN_GROUP}`}>
  <div style={s.card}>
  <div style={{ ...s.sectionHeading, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
  <span>Authors Library</span>
@@ -1299,6 +1337,7 @@ export default function CourseBuilder({ course: initialCourse, onClose, library 
  {showCertPreview ? "Hide certificate preview" : "Preview certificate →"}
  </button>
  {showCertPreview && <CertificatePreview title={course.title} teacherName={selectedAuthors[0]?.name} />}
+ </div>
  </div>
  </div>
  </div>
@@ -1355,6 +1394,12 @@ const s: Record<string, CSSProperties> = {
  // that ever applied, since no viewport here reaches 900px unconstrained.
  content: { padding: "18px 20px 48px" },
  panel: { display: "flex", flexDirection: "column", gap: 16 },
+ // The Course Info panel, which Rule 5 splits in two at `lg`. `display`,
+ // `flexDirection` and `gap` are deliberately ABSENT: an inline style outranks
+ // any class, so leaving them here would shadow `lg:grid` and the split would
+ // silently do nothing. They are re-stated verbatim as unprefixed classes at
+ // the call site, so the sub-`lg` box is the same one `s.panel` draws.
+ infoPanel: {},
  card: { background: CARD, borderRadius: 16, border: `1px solid ${BORDER}`, boxShadow: "0 1px 2px rgba(45,37,25,0.05), 0 2px 8px rgba(45,37,25,0.06)", overflow: "hidden" },
  cardBody: { padding: "16px", display: "flex", flexDirection: "column", gap: 14 },
  sectionHeading: { padding: "14px 16px", fontSize: 11, fontWeight: 700, color: GOLD, letterSpacing: "0.14em", textTransform: "uppercase", borderBottom: `1px solid ${BORDER}` },
