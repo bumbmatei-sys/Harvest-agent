@@ -89,7 +89,7 @@ const NewsletterCampaigns: React.FC<NewsletterCampaignsProps> = ({ tenantId, onC
           title="Keep your community engaged"
           action={<AdminPrimaryButton onClick={onCreateNew} icon={<Plus size={16} />}>New newsletter</AdminPrimaryButton>}
         />
-        <div className="bg-[color-mix(in_srgb,var(--brand-color)_7%,white)] border border-[color-mix(in_srgb,var(--brand-color)_22%,transparent)] rounded-brand-lg p-5 flex items-start gap-3">
+        <div className="bg-[color-mix(in_srgb,var(--brand-color)_7%,var(--surface-raised))] border border-[color-mix(in_srgb,var(--brand-color)_22%,transparent)] rounded-brand-lg p-5 flex items-start gap-3">
           <AlertCircle size={18} className="text-gold shrink-0 mt-0.5" />
           <div>
             <p className="text-sm font-semibold text-strong">Couldn&apos;t load your campaign history right now</p>

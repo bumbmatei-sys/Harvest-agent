@@ -216,7 +216,7 @@ const UserEvents: React.FC<UserEventsProps> = ({ onBack }) => {
                     </div>
                     {ticketed && (
                       <span className="shrink-0 inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-full"
-                        style={{ backgroundColor: 'color-mix(in srgb, var(--brand-color, #B8962E) 14%, white)', color: BRAND }}>
+                        style={{ backgroundColor: 'color-mix(in srgb, var(--brand-color, #B8962E) 14%, transparent)', color: BRAND }}>
                         <Ticket size={11} /> Your ticket
                       </span>
                     )}

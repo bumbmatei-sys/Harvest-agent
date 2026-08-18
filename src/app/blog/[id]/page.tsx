@@ -157,7 +157,7 @@ export default async function BlogPostPage({
             {post.tags.map(tag => (
               <span
                 key={tag}
-                className="text-xs font-medium px-2.5 py-1 rounded-full bg-[color-mix(in_srgb,var(--brand-color)_12%,white)] text-[var(--brand-color)]"
+                className="text-xs font-medium px-2.5 py-1 rounded-full bg-[color-mix(in_srgb,var(--brand-color)_12%,transparent)] text-[var(--brand-color)]"
               >
                 {tag}
               </span>

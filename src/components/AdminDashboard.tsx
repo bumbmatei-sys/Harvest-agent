@@ -649,17 +649,40 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
             : 'lg:justify-start lg:gap-3 lg:w-full lg:h-11 lg:px-3'
         } ${
           isActive
-            ? 'lg:bg-[color-mix(in_srgb,var(--brand-color)_16%,white)]'
+            // The active pill is an accent TINT, so it has to composite over
+            // whatever surface is under it. Mixing over hardcoded `white` (as
+            // this did) pins it to a near-white #F6EEDF in every theme: on a
+            // dark sidebar that is a glaring bright block at 14.5:1 against
+            // its own background, and the gold label on it falls to 2.30:1.
+            // Same bug, same fix as the twelve member screens in #340, and as
+            // the More-drawer row above already does — `white` -> `transparent`.
+            // Light is unchanged BY CONSTRUCTION: the sidebar is
+            // --surface-raised (#FFFFFF) in light in both families, so mixing
+            // over transparent composites onto the very white this hardcoded.
+            //
+            // The dark tint is stepped down to 12% because the label sits ON
+            // it: at 16% the pill lifts far enough off the ground that gold
+            // reaches only 4.48:1 on Classic's neutral grey, just under AA.
+            // 12% clears it in both families (5.15:1 Harvest, 4.78:1 Classic)
+            // and still reads clearly as a selected state. Mode-dependent
+            // accent opacity is the same call globals.css already makes for
+            // --ring-gold (35% -> 48%) and --border-gold (40% -> 52%).
+            //
+            // The label/icon below paint in --ink-on-accent-tint: the raw
+            // accent in light (unchanged), the chip-corrected accent in dark,
+            // so a dark white-label accent stays readable on the tint it sits
+            // on. Harvest gold resolves to itself in both.
+            ? 'lg:bg-[color-mix(in_srgb,var(--brand-color)_16%,transparent)] dark:lg:bg-[color-mix(in_srgb,var(--brand-color)_12%,transparent)]'
             : 'text-muted hover:text-strong lg:hover:bg-surface-sunken'
         }`}
-        style={isActive ? { color: 'var(--brand-color, #C9963A)' } : undefined}
+        style={isActive ? { color: 'var(--ink-on-accent-tint, var(--brand-color, #C9963A))' } : undefined}
         title={isSidebarCollapsed ? tab.label : undefined}
       >
         <Icon
           size={20}
           strokeWidth={isActive ? 2.4 : 2}
           className="shrink-0"
-          style={isActive ? { color: 'var(--brand-color, #C9963A)' } : undefined}
+          style={isActive ? { color: 'var(--ink-on-accent-tint, var(--brand-color, #C9963A))' } : undefined}
         />
         {!isSidebarCollapsed && <span className="text-[13px] font-medium truncate">{tab.label}</span>}
         {showDot && (
@@ -805,7 +828,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
               onClick={handleViewApp}
               className="flex items-center gap-2 rounded-full border border-line bg-surface-raised pl-1.5 pr-3 py-1.5 text-[13px] font-semibold text-strong hover:bg-surface-sunken transition-colors shrink-0"
             >
-              <span className="w-6 h-6 rounded-md bg-[color-mix(in_srgb,var(--brand-color)_14%,white)] flex items-center justify-center shrink-0">
+              {/* Same white -> transparent fix as the sidebar pill: this chip
+                  sits on --surface-raised (the button's own fill), so light is
+                  unchanged and dark stops rendering a bright block. No text
+                  sits on it — it holds the logo image — so it keeps its 14%. */}
+              <span className="w-6 h-6 rounded-md bg-[color-mix(in_srgb,var(--brand-color)_14%,transparent)] flex items-center justify-center shrink-0">
                 <img src={displayLogo} alt="" className="w-4 h-4 object-contain" />
               </span>
               Open member app

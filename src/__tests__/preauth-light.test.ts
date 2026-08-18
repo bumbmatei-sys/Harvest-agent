@@ -2,9 +2,9 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import postcss from 'postcss';
-import { contrastRatio, AA_CONTRAST, THEME_STORAGE_KEY } from '../lib/theme';
+import { contrastRatio, AA_CONTRAST, THEME_STORAGE_KEY, FAMILY_STORAGE_KEY } from '../lib/theme';
 import { PREAUTH_PATHS, isPreAuthPath, normalizePath } from '../lib/preauth-theme';
-import { applyThemeForLocation } from '../lib/theme-runtime';
+import { applyThemeForLocation, readStoredFamily } from '../lib/theme-runtime';
 
 /**
  * THE-85 — pre-auth screens are light mode only.
@@ -63,6 +63,7 @@ function runPrePaint(url: string): void {
 const stamped = () => ({
   attr: document.documentElement.getAttribute('data-theme'),
   dark: document.documentElement.classList.contains('dark'),
+  palette: document.documentElement.getAttribute('data-palette'),
 });
 
 let matchesDark = false;
@@ -70,6 +71,7 @@ let matchesDark = false;
 beforeEach(() => {
   localStorage.clear();
   document.documentElement.removeAttribute('data-theme');
+  document.documentElement.removeAttribute('data-palette');
   document.documentElement.classList.remove('dark');
   matchesDark = false;
   // happy-dom reports prefers-color-scheme: dark as false and offers no way to
@@ -89,26 +91,36 @@ afterEach(() => {
 /**
  * TEST 1 — the regression test for the whole issue.
  * 🔴 Removing the override from EITHER half must fail this by name.
+ *
+ * THE-168 extends this in place rather than adding a parallel test: the
+ * stored FAMILY is set to 'classic' alongside mode='dark', and both halves
+ * must force back to 'harvest' + light. A Classic pre-auth screen has never
+ * been built or reviewed (see theme-runtime.ts's applyThemeForLocation), so
+ * this is the same regression, one axis further.
  */
-describe('a pre-auth screen renders light with the stored preference set to dark', () => {
-  it.each(PREAUTH_PATHS)('%s is light before first paint and after a route change', (p) => {
+describe('a pre-auth screen renders Harvest light with the stored preference set to classic dark', () => {
+  it.each(PREAUTH_PATHS)('%s is light+harvest before first paint and after a route change', (p) => {
     localStorage.setItem(THEME_STORAGE_KEY, 'dark');
+    localStorage.setItem(FAMILY_STORAGE_KEY, 'classic');
 
     // Half 1: the pre-paint script, i.e. a hard load / refresh / deep link.
     runPrePaint(p);
-    expect(stamped(), `${p} painted dark on load — this is THE-85`).toEqual({
+    expect(stamped(), `${p} painted dark/classic on load — this is THE-85, extended to family`).toEqual({
       attr: 'light',
       dark: false,
+      palette: 'harvest',
     });
 
     // Half 2: the client applier, i.e. signing out of dark mode navigates here
     // with no reload, so nothing re-runs the script.
     document.documentElement.classList.add('dark');
     document.documentElement.setAttribute('data-theme', 'dark');
+    document.documentElement.setAttribute('data-palette', 'classic');
     applyThemeForLocation(p);
-    expect(stamped(), `${p} stayed dark after a client-side navigation`).toEqual({
+    expect(stamped(), `${p} stayed dark/classic after a client-side navigation`).toEqual({
       attr: 'light',
       dark: false,
+      palette: 'harvest',
     });
   });
 
@@ -139,10 +151,11 @@ describe('a pre-auth screen renders light with prefers-color-scheme: dark and no
     expect(stamped(), `${p} followed the OS instead of forcing light`).toEqual({
       attr: 'light',
       dark: false,
+      palette: 'harvest',
     });
 
     applyThemeForLocation(p);
-    expect(stamped()).toEqual({ attr: 'light', dark: false });
+    expect(stamped()).toEqual({ attr: 'light', dark: false, palette: 'harvest' });
   });
 
   it('still follows a dark OS behind auth — the override is scoped, not global', () => {
@@ -151,6 +164,7 @@ describe('a pre-auth screen renders light with prefers-color-scheme: dark and no
     expect(stamped(), 'the OS preference stopped working everywhere').toEqual({
       attr: 'dark',
       dark: true,
+      palette: 'harvest',
     });
   });
 });
@@ -158,23 +172,33 @@ describe('a pre-auth screen renders light with prefers-color-scheme: dark and no
 /**
  * TEST 3 — the guard that stops this PR going too far.
  * 🔴 Applying the override to a signed-in screen must fail this by name.
+ *
+ * Extended to family: a signed-in screen must keep rendering the user's
+ * stored 'classic' choice, not get silently pulled back to Harvest. This is
+ * the mirror image of TEST 1 above and guards the same forcing logic from
+ * the opposite direction — proof the force is scoped to pre-auth/funnel
+ * screens rather than applied everywhere (STOP condition: a third stamping
+ * path, or an over-broad one, would fail exactly here).
  */
-describe('a signed-in screen still renders dark when the preference is dark', () => {
+describe('a signed-in screen still renders dark and its stored family when the preference is dark/classic', () => {
   const SIGNED_IN = ['/', '/admin', '/admin/crm', '/admin/docs/abc', '/bible', '/profile'];
 
-  it.each(SIGNED_IN)('%s renders dark', (p) => {
+  it.each(SIGNED_IN)('%s renders dark and classic', (p) => {
     localStorage.setItem(THEME_STORAGE_KEY, 'dark');
+    localStorage.setItem(FAMILY_STORAGE_KEY, 'classic');
 
     runPrePaint(p);
     expect(stamped(), `${p} was forced light — dark mode is broken behind auth`).toEqual({
       attr: 'dark',
       dark: true,
+      palette: 'classic',
     });
 
     applyThemeForLocation(p);
-    expect(stamped(), `${p} was forced light on a client-side navigation`).toEqual({
+    expect(stamped(), `${p} was forced light/harvest on a client-side navigation`).toEqual({
       attr: 'dark',
       dark: true,
+      palette: 'classic',
     });
   });
 
@@ -198,34 +222,44 @@ describe('a signed-in screen still renders dark when the preference is dark', ()
 
 /**
  * TEST 4 — the preference survives. Signing out and back in returns to dark.
+ * Extended to family: signing out and back in must return the user to
+ * 'classic' too, and neither key may be overwritten by the pre-auth force.
  */
-describe('signing out and back in returns the user to dark', () => {
-  it('round-trips /admin -> /auth -> / without losing the stored choice', () => {
+describe('signing out and back in returns the user to dark and classic', () => {
+  it('round-trips /admin -> /auth -> / without losing the stored choice or family', () => {
     localStorage.setItem(THEME_STORAGE_KEY, 'dark');
+    localStorage.setItem(FAMILY_STORAGE_KEY, 'classic');
 
-    // Signed in, dark.
+    // Signed in, dark + classic.
     applyThemeForLocation('/admin');
-    expect(stamped()).toEqual({ attr: 'dark', dark: true });
+    expect(stamped()).toEqual({ attr: 'dark', dark: true, palette: 'classic' });
 
     // Sign out: App.tsx navigates to /auth with no reload.
     applyThemeForLocation('/auth');
-    expect(stamped()).toEqual({ attr: 'light', dark: false });
+    expect(stamped()).toEqual({ attr: 'light', dark: false, palette: 'harvest' });
     expect(
       localStorage.getItem(THEME_STORAGE_KEY),
       'the pre-auth override overwrote the stored preference',
     ).toBe('dark');
+    expect(
+      localStorage.getItem(FAMILY_STORAGE_KEY),
+      'the pre-auth override overwrote the stored family',
+    ).toBe('classic');
 
     // Sign back in.
     applyThemeForLocation('/');
-    expect(stamped(), 'dark did not come back after signing in again').toEqual({
+    expect(stamped(), 'dark/classic did not come back after signing in again').toEqual({
       attr: 'dark',
       dark: true,
+      palette: 'classic',
     });
   });
 
-  it('never writes the storage key from the theme-application layer', () => {
-    // Reading is fine; resolving the choice to 'light' and PERSISTING it is how
-    // a user silently loses dark mode by signing out once.
+  it('never writes either storage key from the theme-application layer', () => {
+    // Reading is fine; resolving the choice to 'light'/'harvest' and PERSISTING
+    // it is how a user silently loses dark mode (or Classic) by signing out
+    // once. One assertion covers both keys: theme-runtime.ts and layout.tsx
+    // must contain no localStorage.setItem call at all.
     const runtime = readFileSync(path.join(SRC, 'lib/theme-runtime.ts'), 'utf8');
     expect(runtime).not.toMatch(/localStorage\.setItem/);
     expect(readFileSync(LAYOUT, 'utf8')).not.toMatch(/localStorage\.setItem/);
@@ -233,9 +267,39 @@ describe('signing out and back in returns the user to dark', () => {
 
   it('survives a hard reload of a pre-auth screen', () => {
     localStorage.setItem(THEME_STORAGE_KEY, 'dark');
+    localStorage.setItem(FAMILY_STORAGE_KEY, 'classic');
     runPrePaint('/auth');
-    expect(stamped()).toEqual({ attr: 'light', dark: false });
+    expect(stamped()).toEqual({ attr: 'light', dark: false, palette: 'harvest' });
     expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe('dark');
+    expect(localStorage.getItem(FAMILY_STORAGE_KEY)).toBe('classic');
+  });
+});
+
+/**
+ * A user with no stored family gets Harvest — the default this PR must ship
+ * so every existing user (who has never seen a family control before) is
+ * unaffected. Mirrors how a missing/garbage THEME_STORAGE_KEY already
+ * defaults to 'system' via isThemeChoice.
+ */
+describe('a user with no stored family gets Harvest', () => {
+  it('readStoredFamily defaults to harvest when the key is absent', () => {
+    expect(localStorage.getItem(FAMILY_STORAGE_KEY)).toBeNull();
+    expect(readStoredFamily()).toBe('harvest');
+  });
+
+  it('defaults to harvest for a garbage stored value too', () => {
+    localStorage.setItem(FAMILY_STORAGE_KEY, 'sepia');
+    expect(readStoredFamily()).toBe('harvest');
+  });
+
+  it('the pre-paint script stamps harvest when nothing is stored', () => {
+    runPrePaint('/');
+    expect(stamped().palette).toBe('harvest');
+  });
+
+  it('applyThemeForLocation stamps harvest for a fresh signed-in session', () => {
+    applyThemeForLocation('/');
+    expect(stamped().palette).toBe('harvest');
   });
 });
 

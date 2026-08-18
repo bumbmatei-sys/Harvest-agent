@@ -249,7 +249,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
       {/* Current Plan Summary */}
       {currentPlan ? (
         <div className="bg-surface-raised rounded-brand-lg border border-line shadow-[var(--ds-sh-sm)] p-4 flex items-center gap-4">
-          <span className="w-11 h-11 rounded-brand bg-[color-mix(in_srgb,var(--brand-color)_12%,white)] flex items-center justify-center shrink-0">
+          <span className="w-11 h-11 rounded-brand bg-[color-mix(in_srgb,var(--brand-color)_12%,transparent)] flex items-center justify-center shrink-0">
             <DollarSign size={20} className="text-gold" />
           </span>
           <div className="min-w-0 flex-1">
@@ -265,7 +265,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
         </div>
       ) : (
         <div className="bg-surface-raised rounded-brand-lg border border-line shadow-[var(--ds-sh-sm)] p-4 flex items-center gap-4">
-          <span className="w-11 h-11 rounded-brand bg-[color-mix(in_srgb,var(--brand-color)_12%,white)] flex items-center justify-center shrink-0">
+          <span className="w-11 h-11 rounded-brand bg-[color-mix(in_srgb,var(--brand-color)_12%,transparent)] flex items-center justify-center shrink-0">
             <Crown size={20} className="text-gold" />
           </span>
           <div>

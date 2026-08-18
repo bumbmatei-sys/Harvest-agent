@@ -6,7 +6,14 @@ import { Inter, Fraunces, Newsreader } from 'next/font/google';
 import './globals.css';
 import { cn } from "@/lib/utils";
 import { getTenantFromHost } from '@/lib/server-tenant';
-import { deriveOnDarkAccent } from '@/lib/theme';
+import {
+  deriveOnDarkAccent,
+  deriveOnTintAccent,
+  DARK_SURFACE,
+  CLASSIC_DARK_SURFACE,
+  DARK_SURFACE_RAISED,
+  CLASSIC_DARK_SURFACE_RAISED,
+} from '@/lib/theme';
 import { PREAUTH_PATHS } from '@/lib/preauth-theme';
 import ReferralTracker from '@/components/ReferralTracker';
 import { Toaster } from '@/components/ui/sonner';
@@ -162,10 +169,26 @@ export default async function RootLayout({
             so the list physically cannot drift. The three normalising
             statements DO mirror normalizePath() by hand — a test runs this very
             script against the same path table as that function and fails if
-            they disagree. */}
+            they disagree.
+
+            ── Palette family: a second, independent preference ───────────────
+            Stamped as `data-palette` in the SAME script, right beside
+            `data-theme` — one pre-paint pass, two attributes, so there is
+            still exactly one moment where <html> goes from unstamped to fully
+            stamped and no window where a family-only or mode-only flash is
+            possible. FAMILY_STORAGE_KEY ('harvest-theme-family') is duplicated
+            here as a literal for the same reason THEME_STORAGE_KEY is: this
+            script cannot import. `theming-stage3.test.ts`'s existing pin is
+            extended to cover this key too.
+
+            On a pre-auth path, family is forced to 'harvest' alongside mode
+            being forced to 'light' — see applyThemeForLocation's comment for
+            why: a Classic pre-auth screen has never been built or reviewed,
+            so a returning signed-out user with a stored 'classic' preference
+            must not be the first person to see one. */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var e=document.documentElement;var p=(location.pathname||'/').split(/[?#]/)[0].replace(/\\/+$/,'');p=(p===''?'/':p).toLowerCase();if(${JSON.stringify(PREAUTH_PATHS)}.indexOf(p)>-1){e.setAttribute('data-theme','light');e.classList.remove('dark');return;}var s=localStorage.getItem('harvest-theme');var t=(s==='light'||s==='dark')?s:(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');e.setAttribute('data-theme',t);e.classList.toggle('dark',t==='dark');}catch(_){}})();`,
+            __html: `(function(){try{var e=document.documentElement;var p=(location.pathname||'/').split(/[?#]/)[0].replace(/\\/+$/,'');p=(p===''?'/':p).toLowerCase();if(${JSON.stringify(PREAUTH_PATHS)}.indexOf(p)>-1){e.setAttribute('data-theme','light');e.classList.remove('dark');e.setAttribute('data-palette','harvest');return;}var s=localStorage.getItem('harvest-theme');var t=(s==='light'||s==='dark')?s:(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');e.setAttribute('data-theme',t);e.classList.toggle('dark',t==='dark');var f=localStorage.getItem('harvest-theme-family');e.setAttribute('data-palette',f==='classic'?'classic':'harvest');}catch(_){}})();`,
           }}
         />
 
@@ -183,9 +206,54 @@ export default async function RootLayout({
             that already works comes back untouched — Harvest gold is 6.77:1 and
             is not altered at all. CSS has no contrast function, so a blunt
             fixed color-mix would have been the only pure-CSS option, and it
-            would have washed gold out to a pale #E2C99B. */}
+            would have washed gold out to a pale #E2C99B.
+
+            ── Palette family: which ground does the server derive against? ───
+            🔴 The trap this PR calls out explicitly. Classic's dark ground
+            (#1C1C1C) is not Harvest's (#1A1612) — an accent corrected for one
+            can still fail AA on the other — so deriveOnDarkAccent's `ground`
+            argument has to match whichever family is actually rendering.
+
+            The server CANNOT know that: family is a client-only localStorage
+            preference (like the mode), and this layout renders before any
+            client code runs. Resolving it here would mean guessing.
+
+            So it doesn't resolve anything — it does exactly what this file
+            already does one line up for --brand-color-on-dark itself, which
+            has the identical problem one dimension down (the server doesn't
+            know the MODE either, and doesn't need to: the value is injected
+            unconditionally and only ever consumed from inside a `.dark`-
+            scoped rule, so it is inert in light and correct in dark without
+            the server ever asking which one applies). Extended one axis
+            further: BOTH possible derivations are computed and injected,
+            each scoped to the `data-palette` value the pre-paint script
+            above stamps client-side before first paint. Only one selector
+            ever matches a given <html>, so exactly one of these two rules is
+            ever in effect — the CSS cascade is what "learns" the family, at
+            the moment the attribute lands, not this server render. Every
+            existing dark-mode consumer of --brand-color-on-dark
+            (--surface-gold, --border-gold, --glow-gold, --ring-gold in
+            globals.css) needs no changes at all: the variable they already
+            reference now resolves differently per family for free.
+
+            ── --brand-color-on-tint: the same correction, one layer up ──────
+            --brand-color-on-dark corrects the accent against the PAGE
+            GROUND. An accent-tinted chip sits ABOVE that ground — it is the
+            accent mixed into the raised surface — so it is lighter, and ink
+            that clears AA on the ground can still fail on the chip. Harvest
+            gold is comfortable either way; a dark white-label accent is not
+            (navy #0C1526 clears 4.54:1 on the ground and only 4.27:1 on the
+            chip, in Harvest dark exactly as much as in Classic dark).
+
+            So a second value is derived against the chip itself, per family,
+            and injected the same way. Consumed through --ink-on-accent-tint
+            in globals.css, which is what makes it mode-aware — this rule
+            applies in BOTH modes, exactly like --brand-color-on-dark above,
+            and neither is ever read in light. Harvest gold is returned
+            unchanged by this derivation too (5.15:1 on its own 12% chip), so
+            the default brand renders identically. */}
         {brandColorValid && (
-          <style dangerouslySetInnerHTML={{ __html: `:root{--brand-color:${brandColor};--color-primary:${brandColor};--brand-color-on-dark:${deriveOnDarkAccent(brandColor)};}` }} />
+          <style dangerouslySetInnerHTML={{ __html: `:root{--brand-color:${brandColor};--color-primary:${brandColor};}[data-palette="harvest"]{--brand-color-on-dark:${deriveOnDarkAccent(brandColor, DARK_SURFACE)};--brand-color-on-tint:${deriveOnTintAccent(brandColor, DARK_SURFACE_RAISED)};}[data-palette="classic"]{--brand-color-on-dark:${deriveOnDarkAccent(brandColor, CLASSIC_DARK_SURFACE)};--brand-color-on-tint:${deriveOnTintAccent(brandColor, CLASSIC_DARK_SURFACE_RAISED)};}` }} />
         )}
         <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block" rel="stylesheet" />
       </head>

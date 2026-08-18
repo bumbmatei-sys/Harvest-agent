@@ -543,7 +543,7 @@ const AdminBlog: React.FC = () => {
 
  {/* Stats (if any posts generated) */}
  {automation.totalGenerated > 0 && (
- <div className="bg-[color-mix(in_srgb,var(--brand-color)_12%,white)] rounded-xl px-4 py-3 flex items-center justify-between">
+ <div className="bg-[color-mix(in_srgb,var(--brand-color)_12%,transparent)] rounded-xl px-4 py-3 flex items-center justify-between">
  <span className="text-sm font-semibold text-gold">
  {automation.totalGenerated} article{automation.totalGenerated !== 1 ? 's' : ''} generated
  </span>

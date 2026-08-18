@@ -18,10 +18,10 @@ import {
   CalendarCheck,
   Bookmark,
   Map,
-  Receipt,
-  Palette
+  Receipt
 } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
+import PaletteFamilyToggle from './PaletteFamilyToggle';
 import Image from 'next/image';
 import { auth, db, messaging, VAPID_KEY } from '../firebase';
 import { signOut, updateProfile } from 'firebase/auth';
@@ -455,14 +455,24 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
  {/* Appearance — the member-facing half of the theme control. Harvest is
      mobile-first and this Profile list is the mobile settings surface, so
      the toggle has to be reachable here and not only in admin settings
-     (which most members never see). */}
+     (which most members never see).
+
+     Two independent controls now: mode (light/dark/system) and palette
+     family (Harvest/Classic). The icon + "Appearance" label from the
+     single-control version is dropped to make room — both rows are
+     self-labelling (each button already carries its own icon and word), so
+     nothing is lost by not captioning the row itself. Stacked rather than
+     side by side: at a 380px viewport, two three/two-option pill groups on
+     one line either overflows or forces text below the 11px floor: even at
+     11px, mode (Light/Dark/System) plus family (Harvest/Classic) run to
+     roughly 195px + 155px of buttons alone, before the row's own padding —
+     too tight to be reliable across devices and font-rendering. Stacked, each
+     row is independently well under any reasonable card width, with no
+     shrinkage beyond what ThemeToggle's own row variant already applies. */}
  <div className="h-px bg-surface-sunken mx-4"></div>
- <div className="flex items-center gap-3 px-4 py-3">
- <div className="w-8 h-8 rounded-lg bg-field-100 flex items-center justify-center shrink-0">
- <Palette size={16} className="text-field-600" />
- </div>
- <span className="flex-1 text-sm font-medium text-strong">Appearance</span>
+ <div className="flex flex-col items-start gap-2 px-4 py-3">
  <ThemeToggle variant="row" />
+ <PaletteFamilyToggle />
  </div>
  </div>
  </div>

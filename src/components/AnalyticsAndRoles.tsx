@@ -22,11 +22,11 @@ import {
 
 
 const GOLD = "var(--brand-color, #C9963A)";
-const GOLD_LIGHT = "color-mix(in srgb, var(--brand-color, #C9963A) 12%, white)";
+const GOLD_LIGHT = "color-mix(in srgb, var(--brand-color, #C9963A) 12%, transparent)";
 const GOLD_BTN = "linear-gradient(135deg, var(--brand-color, #C9963A), color-mix(in srgb, var(--brand-color, #C9963A) 82%, #ffffff))";
 // Brand-adaptive accents for the redesigned Add/Edit Admin sheet (white-label:
 // every accent derives from the tenant's --brand-color).
-const GOLD_SOFT = "color-mix(in srgb, var(--brand-color, #C9963A) 12%, white)";
+const GOLD_SOFT = "color-mix(in srgb, var(--brand-color, #C9963A) 12%, var(--surface-raised))";
 const GOLD_GLOW = "0 4px 14px color-mix(in srgb, var(--brand-color, #C9963A) 35%, transparent)";
 const BG = "var(--surface)";
 const CARD = "var(--surface-raised)";
@@ -347,7 +347,7 @@ const DownloadMenu: React.FC<{ onContacts: () => void; onOnboarding: () => void;
   return (
     <div ref={ref} style={{ position: 'relative', ...style }}>
       <button onClick={() => setOpen(o => !o)}
-        style={{ background: 'color-mix(in srgb, var(--brand-color, #C9963A) 10%, white)', border: '1px solid color-mix(in srgb, var(--brand-color, #C9963A) 35%, white)', color: BRAND, padding: '6px 12px', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
+        style={{ background: 'color-mix(in srgb, var(--brand-color, #C9963A) 10%, var(--surface-raised))', border: '1px solid color-mix(in srgb, var(--brand-color, #C9963A) 35%, var(--surface-raised))', color: BRAND, padding: '6px 12px', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
         ⬇ Download <ChevronDown size={13} style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
       </button>
       {open && (

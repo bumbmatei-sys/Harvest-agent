@@ -427,7 +427,7 @@ const AdminFundraising: React.FC<AdminFundraisingProps> = ({ initialCampaignId, 
           onClick={() => setShowPayment((v) => !v)}
           className="w-full flex items-center gap-4 px-5 py-4 hover:bg-[color-mix(in_srgb,var(--surface-sunken)_60%,transparent)] transition-colors text-left"
         >
-          <span className="w-11 h-11 rounded-brand bg-[color-mix(in_srgb,var(--brand-color)_12%,white)] flex items-center justify-center shrink-0">
+          <span className="w-11 h-11 rounded-brand bg-[color-mix(in_srgb,var(--brand-color)_12%,transparent)] flex items-center justify-center shrink-0">
             <DollarSign size={20} className="text-gold" />
           </span>
           <div className="flex-1 min-w-0">
@@ -592,12 +592,12 @@ const AdminFundraising: React.FC<AdminFundraisingProps> = ({ initialCampaignId, 
                   <label className="text-xs font-semibold text-strong mb-2 block">Campaign type</label>
                   <div className="grid grid-cols-2 gap-3">
                     <button onClick={() => setForm({ ...form, campaignType: 'fundraising' })}
-                      className={`text-left p-4 rounded-brand border transition-colors ${form.campaignType !== 'pledge' ? 'border-[color-mix(in_srgb,var(--brand-color)_55%,transparent)] bg-[color-mix(in_srgb,var(--brand-color)_8%,white)]' : 'border-line hover:border-line-strong'}`}>
+                      className={`text-left p-4 rounded-brand border transition-colors ${form.campaignType !== 'pledge' ? 'border-[color-mix(in_srgb,var(--brand-color)_55%,transparent)] bg-[color-mix(in_srgb,var(--brand-color)_8%,transparent)]' : 'border-line hover:border-line-strong'}`}>
                       <p className={`font-semibold text-sm ${form.campaignType !== 'pledge' ? 'text-gold' : 'text-strong'}`}>Fundraising</p>
                       <p className="text-[11px] text-muted mt-1 leading-relaxed">One-time &amp; recurring gifts toward a goal</p>
                     </button>
                     <button onClick={() => setForm({ ...form, campaignType: 'pledge' })}
-                      className={`text-left p-4 rounded-brand border transition-colors ${form.campaignType === 'pledge' ? 'border-[color-mix(in_srgb,var(--brand-color)_55%,transparent)] bg-[color-mix(in_srgb,var(--brand-color)_8%,white)]' : 'border-line hover:border-line-strong'}`}>
+                      className={`text-left p-4 rounded-brand border transition-colors ${form.campaignType === 'pledge' ? 'border-[color-mix(in_srgb,var(--brand-color)_55%,transparent)] bg-[color-mix(in_srgb,var(--brand-color)_8%,transparent)]' : 'border-line hover:border-line-strong'}`}>
                       <p className={`font-semibold text-sm ${form.campaignType === 'pledge' ? 'text-gold' : 'text-strong'}`}>Pledge campaign</p>
                       <p className="text-[11px] text-muted mt-1 leading-relaxed">Donors commit an amount, tracked over time</p>
                     </button>

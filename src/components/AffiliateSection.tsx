@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Copy, Check, Share2, ExternalLink, TrendingUp, ChevronRight } from 'lucide-react';
 
 const GOLD = 'var(--brand-color, #B8962E)';
-const GOLD_LIGHT = 'color-mix(in srgb, var(--brand-color, #B8962E) 12%, white)';
+const GOLD_LIGHT = 'color-mix(in srgb, var(--brand-color, #B8962E) 12%, var(--surface-raised))';
 
 interface AffiliateStatus {
   isAffiliate: boolean;
