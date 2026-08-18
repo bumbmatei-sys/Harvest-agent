@@ -106,7 +106,17 @@ const ThemeToggle: React.FC<ThemeToggleProps> = ({ variant = 'default' }) => {
             }
           >
             <Icon size={variant === 'row' ? 12 : 14} />
-            {label}
+            {/* Row-variant labels drop to icon-only below `sm` (640px) AND from
+                `xl` (1280px) up — see the Profile Appearance block for the
+                measured widths. The `xl` cutoff is not symmetry for its own
+                sake: Profile's settings column SHRINKS at exactly `xl`, where
+                it splits into two, so the card is narrower there than in the
+                single-column layout just below it — full labels measured a
+                real 41px overflow at 1280px width. `aria-label` above is
+                unconditional, so the accessible name never depends on which
+                of these two is visually painted. `default` (admin settings,
+                this variant's only other caller) is untouched. */}
+            {variant === 'row' ? <span className="hidden sm:inline xl:hidden">{label}</span> : label}
           </button>
         );
       })}

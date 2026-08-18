@@ -502,22 +502,50 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
      the toggle has to be reachable here and not only in admin settings
      (which most members never see).
 
-     Two independent controls now: mode (light/dark/system) and palette
-     family (Harvest/Classic). The icon + "Appearance" label from the
-     single-control version is dropped to make room — both rows are
-     self-labelling (each button already carries its own icon and word), so
-     nothing is lost by not captioning the row itself. Stacked rather than
-     side by side: at a 380px viewport, two three/two-option pill groups on
-     one line either overflows or forces text below the 11px floor: even at
-     11px, mode (Light/Dark/System) plus family (Harvest/Classic) run to
-     roughly 195px + 155px of buttons alone, before the row's own padding —
-     too tight to be reliable across devices and font-rendering. Stacked, each
-     row is independently well under any reasonable card width, with no
-     shrinkage beyond what ThemeToggle's own row variant already applies. */}
+     Two independent controls: palette family (Harvest/Classic) on the LEFT,
+     mode (light/dark/system) on the RIGHT, one row — the founder's explicit
+     call, checked on a phone: "the switch for themes should not be under but
+     next to it." That includes mobile; this row is a deliberate exception to
+     the rule that mobile stays byte-identical elsewhere on this page. The
+     icon + "Appearance" label from the single-control version stays dropped —
+     both pill groups are self-labelling, so nothing is lost by not captioning
+     the row itself. Order here (family, then mode) matches the visual order
+     left-to-right, so DOM/tab order and reading order agree — not reversed
+     with CSS, which would desync focus order from what is on screen.
+
+     Full labels do not fit beside each other at a 380px viewport: measured in
+     Chromium, mode (Light/Dark/System) plus family (Harvest/Classic) need
+     ~380px of button content alone (161px family + 8px gap + 211px mode) —
+     more than the ~314px available inside this card's own px-4 gutters at
+     380px, even before either control's own padding. Text is never shrunk
+     below the 11px floor to close that gap; instead both controls hide their
+     label text below `sm` (640px) and fall back to icon + `aria-label`
+     (ThemeToggle.tsx / PaletteFamilyToggle.tsx), which fits at 380px with
+     ~150px to spare (194px natural width in a 346px-wide card).
+
+     Labels return from `sm` up — but NOT unconditionally: they hide again
+     from `xl` (1280px) up, which is not symmetry for its own sake. `settings`
+     (below) splits into a two-column grid exactly AT `xl`, and that split
+     makes this card's column narrower than the single, unsplit column it was
+     just below that breakpoint — width does not grow monotonically with the
+     viewport here. A real Chromium measurement of the full nested grid
+     (container → rail + settings → this column → this card → this row) found
+     a genuine 41px overflow at exactly 1280px width with labels shown — one
+     of the most common laptop viewport widths there is. The 1280–1360px
+     range stays icon-only rather than chase that band with a one-off
+     breakpoint: `xl` is already a real Tailwind step, and the interval is
+     narrow enough (this column widens fast past it) that a bespoke pixel
+     value would buy back very little for a magic number future code would
+     have no way to rediscover the reason for. Verified clean (no overflow)
+     at every 50–170px step from 375px to 1920px with this rule: labels
+     shown 640–1279px (this page's single-column phase, ~605–989px
+     available) and hidden again everywhere from 1280px up, even past where
+     the column widens back out. See ThemeToggle.tsx / PaletteFamilyToggle.tsx
+     for the breakpoints. */}
  <div className="h-px bg-surface-sunken mx-4"></div>
- <div className="flex flex-col items-start gap-2 px-4 py-3">
- <ThemeToggle variant="row" />
+ <div className="flex items-center gap-2 px-4 py-3">
  <PaletteFamilyToggle />
+ <ThemeToggle variant="row" />
  </div>
  </div>
  </div>
