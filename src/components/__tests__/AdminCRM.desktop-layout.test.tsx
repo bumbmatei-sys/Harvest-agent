@@ -565,6 +565,13 @@ describe('widths, heights and gaps come from form-layout, not new per-screen val
   });
 
   it('reaches only the screens that deliberately opted in', () => {
+    // The twin of the list in ChurchEnrollment.desktop-layout.test.tsx. Both
+    // are kept because the gate is the point: an adopter has to be written down
+    // twice, deliberately, or the rules have leaked. THE-181 batch 2 added
+    // PersonalInformationModal and EnterpriseContactModal to the other list
+    // without adding them here, which left this red; THE-183 adds its own
+    // AdminSettings.tsx and the two that were missed, so the two lists agree
+    // again.
     const importers = execSync(
       "grep -rl \"from '.*form-layout'\" src --include=*.tsx --include=*.ts || true",
       { encoding: 'utf8' },
@@ -573,8 +580,11 @@ describe('widths, heights and gaps come from form-layout, not new per-screen val
       'src/components/AdminCRM.tsx',
       'src/components/AdminChurches.tsx',
       'src/components/AdminCourseEditor.tsx',
+      'src/components/AdminSettings.tsx',
       'src/components/AnalyticsAndRoles.tsx',
       'src/components/ChurchEnrollment.tsx',
+      'src/components/EnterpriseContactModal.tsx',
+      'src/components/PersonalInformationModal.tsx',
     ]);
   });
 });

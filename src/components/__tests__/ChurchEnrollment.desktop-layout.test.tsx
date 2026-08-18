@@ -728,6 +728,13 @@ describe('the layout rules live in one shared place and have a caller', () => {
     // AdminCRM.tsx because it renders two of the three tabs itself.
     // AdminCRM.desktop-layout.test.tsx holds the same list, so this gate keeps
     // failing loudly for adopter five.
+    //
+    // THE-183 (AdminSettings.regroup.test.tsx) is that adopter, on the same
+    // terms: admin Settings took FORM_MEASURE, ACTION_BUTTON and CONTROL_DENSITY
+    // as they stand, and retired a fourth rem measure (another max-w-2xl, 609px
+    // on a monitor). It takes no FIELD_WIDTH, because it renders no input of its
+    // own — every field on that screen lives inside a settings section
+    // component, and those were out of scope.
     const importers = execSync(
       "grep -rl \"from '.*form-layout'\" src --include=*.tsx --include=*.ts || true",
       { encoding: 'utf8' },
@@ -736,6 +743,7 @@ describe('the layout rules live in one shared place and have a caller', () => {
       'src/components/AdminCRM.tsx',
       'src/components/AdminChurches.tsx',
       'src/components/AdminCourseEditor.tsx',
+      'src/components/AdminSettings.tsx',
       'src/components/AnalyticsAndRoles.tsx',
       'src/components/ChurchEnrollment.tsx',
       'src/components/EnterpriseContactModal.tsx',
