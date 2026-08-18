@@ -547,6 +547,24 @@ describe('every imported contact carries a concrete tenantId, never null', () =>
     }
   });
 
+  it('a tenant that never resolved still writes a concrete id, never null', async () => {
+    // The exact state the bug class comes from: no tenant in context and no
+    // super-admin standing, so the screen's own `tenantId` is null. The write
+    // must still land on a real id — a null tenantId means ALL TENANTS on a
+    // read, and a contact written with one is unreadable and uneditable.
+    appStore.current = { currentTenantId: null, isAuthReady: true, isSuperAdmin: false };
+    await mountCRM();
+    await openAndMap();
+    await choose('crm-import-type-default', 'member');
+    await runImport();
+
+    expect(writes.committed.length).toBeGreaterThan(0);
+    for (const written of writes.committed) {
+      expect(written.tenantId).toBe('harvest');
+      expect(written.tenantId).not.toBeNull();
+    }
+  });
+
   it('uses the same tenant resolution the manual add uses', async () => {
     await mountCRM();
     // Manual add first…
