@@ -73,7 +73,13 @@ const PaletteFamilyToggle: React.FC = () => {
             }`}
           >
             <Icon size={12} />
-            {label}
+            {/* Drop to icon-only below `sm` (640px) AND from `xl` (1280px) up —
+                mirrors ThemeToggle's row variant; see the Profile Appearance
+                block for the measured widths, including the real 41px
+                overflow this control and ThemeToggle cause together at 1280px
+                if labels stay shown through the settings column's `xl` split.
+                `aria-label` above stays unconditional. */}
+            <span className="hidden sm:inline xl:hidden">{label}</span>
           </button>
         );
       })}

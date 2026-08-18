@@ -372,18 +372,22 @@ describe('Profile — the desktop composition', () => {
         .map((b) => (b.getAttribute('aria-label') || b.textContent || '').trim())
         .filter((t) => t && t !== 'Change photo');
 
-    // Captured from 752ff16 before the composition changed.
+    // Captured from 752ff16 before the composition changed, with one
+    // deliberate reorder on top: Harvest/Classic now precedes Light/Dark/
+    // System, matching the Appearance row's new left-to-right visual order
+    // (family, then mode) — DOM order follows visual order so tab order
+    // stays in sync, rather than reversing one control with CSS alone.
     expect(rows(await mount(MEMBER))).toEqual([
       'Personal Information',
       'My Home Church',
       'Push Notifications',
       'My Events',
       'Saved',
+      'Harvest',
+      'Classic',
       'Light',
       'Dark',
       'System',
-      'Harvest',
-      'Classic',
       'Give again →',
       'Donation History',
       'Contact Us',
@@ -400,11 +404,11 @@ describe('Profile — the desktop composition', () => {
       'Push Notifications',
       'My Events',
       'Saved',
+      'Harvest',
+      'Classic',
       'Light',
       'Dark',
       'System',
-      'Harvest',
-      'Classic',
       'Give again →',
       'Donation History',
       'Contact Us',

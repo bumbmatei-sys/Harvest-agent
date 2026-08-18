@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { execSync } from 'node:child_process';
 import path from 'node:path';
 import postcss from 'postcss';
 import {
@@ -698,11 +699,11 @@ describe('only one code path stamps <html> with theme/palette attributes', () =>
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 13 · both controls render in the Profile row without overflow at a
-//      narrow viewport
+// 13 · both controls render side by side, family on the left, without
+//      overflow — on mobile, and past the desktop settings column split
 // ═══════════════════════════════════════════════════════════════════════════
 
-describe('both controls render in the Profile row without overflow at a narrow viewport', () => {
+describe('both controls render side by side, family on the left, without overflow', () => {
   const profileSrc = readFileSync(path.join(SRC, 'components/Profile.tsx'), 'utf8');
   const themeToggleSrc = readFileSync(path.join(SRC, 'components/ThemeToggle.tsx'), 'utf8');
   const familyToggleSrc = readFileSync(path.join(SRC, 'components/PaletteFamilyToggle.tsx'), 'utf8');
@@ -712,13 +713,109 @@ describe('both controls render in the Profile row without overflow at a narrow v
     expect(profileSrc).toContain('<PaletteFamilyToggle />');
   });
 
-  it('the row stacks the two controls (flex-col) rather than cramming them onto one line', () => {
-    // This is the layout decision this PR reports explicitly: at 380px, mode
-    // (Light/Dark/System) plus family (Harvest/Classic) side by side runs to
-    // roughly 195px + 155px of buttons before any row padding — too tight to
-    // rely on. Stacked, each control is independently well under any
-    // reasonable card width.
-    expect(profileSrc).toMatch(/flex flex-col items-start gap-\S+ px-4 py-3/);
+  it('the row places the two controls side by side (flex, not flex-col) — family first, so it lands on the left', () => {
+    // The founder's explicit call, checked on a phone: side by side, not
+    // stacked — "the switch for themes should not be under but next to it" —
+    // including on mobile. See the comment above the row in Profile.tsx.
+    expect(profileSrc).toMatch(/flex items-center gap-\S+ px-4 py-3/);
+    expect(profileSrc).not.toMatch(/flex-col[^\n]*px-4 py-3/);
+
+    // DOM order follows visual order (family, then mode) rather than
+    // reversing one control with CSS alone, which would desync tab order
+    // from what is on screen. Anchored to the Appearance block itself —
+    // both component names also appear in the import statements above it.
+    const appearance = profileSrc.slice(profileSrc.indexOf('{/* Appearance —'));
+    expect(appearance.length, 'Appearance block comment not found').toBeGreaterThan(0);
+    const familyAt = appearance.indexOf('<PaletteFamilyToggle />');
+    const modeAt = appearance.indexOf('<ThemeToggle variant="row" />');
+    expect(familyAt).toBeGreaterThan(-1);
+    expect(modeAt).toBeGreaterThan(-1);
+    expect(familyAt, 'PaletteFamilyToggle must render before ThemeToggle to land on the left')
+      .toBeLessThan(modeAt);
+  });
+
+  it("full labels do not fit side by side at 380px — computed from Tailwind's own spacing scale plus a real Chromium text measurement", () => {
+    // tailwind.config.ts does not override `spacing`, so these are the
+    // framework's own published px-at-16px-root values, not guesses:
+    // 0.5 => 2px, 1 => 4px, 2 => 8px, 4 => 16px.
+    const PAGE_GUTTER = 32; // the page container's own `px-4`, both sides
+    const CARD_BORDER = 2; // the Account Settings card's `border`, both sides
+    const ROW_PADDING = 32; // this row's own `px-4`, both sides
+    const available380 = 380 - PAGE_GUTTER - CARD_BORDER - ROW_PADDING;
+    expect(available380).toBe(314);
+
+    // Full button-pill widths (icon + gap + text + padding together, not
+    // just the glyphs) measured in Chromium at a 380px viewport: family
+    // (Harvest/Classic) 161.15625px, mode (Light/Dark/System) 210.875px,
+    // plus this row's own gap-2 (8px) between the two controls.
+    const fullLabelContent = 161.15625 + 210.875 + 8;
+    expect(Math.round(fullLabelContent)).toBe(380);
+    expect(
+      fullLabelContent,
+      'full labels should overflow the 380px card — if this ever passes, re-verify the icon fallback below is still necessary in a real browser before relaxing it',
+    ).toBeGreaterThan(available380);
+  });
+
+  it('icon-only fits at 380px with room to spare — computed from Tailwind\'s own spacing scale and the icon size in source, no text metrics involved', () => {
+    const iconSize = 12; // asserted below: both controls render size={12}
+    const buttonPadding = 16; // `px-2`, both sides
+    const containerPadding = 4; // `p-0.5`, both sides
+    const interButtonGap = 2; // `gap-0.5`, between each pair of buttons
+    const rowGap = 8; // `gap-2`, between the two controls
+
+    const buttonWidth = iconSize + buttonPadding; // no label, so no gap-1 to it
+    const modeWidth = containerPadding + 3 * buttonWidth + 2 * interButtonGap; // Light/Dark/System
+    const familyWidth = containerPadding + 2 * buttonWidth + 1 * interButtonGap; // Harvest/Classic
+    const iconOnlyContent = familyWidth + rowGap + modeWidth;
+    const available380 = 380 - 32 /* page gutter */ - 2 /* card border */ - 32 /* row padding */;
+
+    expect(iconOnlyContent, 'icon-only content should comfortably clear the 380px card')
+      .toBeLessThan(available380);
+    // Cross-checked against a real Chromium render at 375–639px: natural
+    // (unconstrained) row width 194px inside a 346px-wide card, no overflow.
+  });
+
+  it('labels drop to icon-only below `sm` (640px) AND from `xl` (1280px) up', () => {
+    // Both breakpoints are load-bearing, not just the obvious one. Profile's
+    // `settings` column splits into two exactly at `xl`, which makes this
+    // card's column NARROWER there than in the single-column layout just
+    // below that breakpoint — a real Chromium measurement of the full nested
+    // grid found a genuine 41px overflow at exactly 1280px width with labels
+    // shown, one of the most common laptop viewport widths there is. See the
+    // comment above the Appearance row in Profile.tsx for the full
+    // measurement (375px through 1920px, verified clean with this rule).
+    for (const src of [themeToggleSrc, familyToggleSrc]) {
+      expect(src).toMatch(/hidden sm:inline xl:hidden/);
+    }
+  });
+
+  it('the accessible name never depends on which of icon-only / icon+label is showing', () => {
+    // `aria-label={label}` must sit on its own, unconditional line — not
+    // inside the same variant/breakpoint branch as the visible label text —
+    // or a screen reader loses the name exactly when sighted users lose it.
+    for (const src of [themeToggleSrc, familyToggleSrc]) {
+      const ariaLabelLine = src.split('\n').find((l) => l.includes('aria-label={label}'));
+      expect(ariaLabelLine, 'aria-label={label} not found on its own line').toBeTruthy();
+      expect(ariaLabelLine).not.toMatch(/variant === 'row' \?|hidden sm:inline/);
+    }
+  });
+
+  it('the reordered/reflowed Appearance block hardcodes no colour', () => {
+    // Scoped to the Appearance block specifically — the composition test's
+    // own "hardcodes no colour" check (Profile.composition.test.tsx) only
+    // walks the five composition wrapper elements, not their descendants, so
+    // it never sees this block. Every colour four palettes must resolve
+    // (Harvest/Classic x light/dark) still comes from CSS custom properties
+    // (bg-surface-sunken, bg-surface-raised, text-strong, text-muted, …), not
+    // a literal, exactly as before this PR — this PR only touched flex
+    // direction, order and the icon/label breakpoints.
+    const appearance = profileSrc.slice(
+      profileSrc.indexOf('{/* Appearance —'),
+      profileSrc.indexOf('{/* Second settings group'),
+    );
+    expect(appearance.length, 'Appearance block not found').toBeGreaterThan(0);
+    expect(appearance).not.toMatch(/#[0-9a-fA-F]{3,8}|rgba?\(|hsla?\(/);
+    expect(appearance).not.toMatch(/style=\{/);
   });
 
   it('neither control shrinks its text below the 11px floor', () => {
@@ -753,6 +850,30 @@ describe('both controls render in the Profile row without overflow at a narrow v
     expect(isPaletteFamily('harvest')).toBe(true);
     expect(isPaletteFamily('classic')).toBe(true);
     expect(isPaletteFamily('sepia')).toBe(false);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 13b · reordering the controls is presentation only — the pre-paint script
+//       and the theme runtime it shares with the toggle are untouched
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe('the pre-paint script and the theme runtime are untouched by the reorder', () => {
+  // Same idiom as "ChurchMap needed no edits at all" above: a clean
+  // `git diff --stat` is a stronger claim than a content assertion, because
+  // it also catches a change that happens to preserve every string this file
+  // already checks for. Neither file has any reason to change for a
+  // presentation-only reorder of two already-working controls — see the
+  // non-negotiable in the Appearance block comment (Profile.tsx) not to
+  // touch `applyTheme`, `readStoredChoice`, or the pre-paint script.
+  it('theme-runtime.ts (applyTheme / readStoredChoice) has no uncommitted changes', () => {
+    const diff = execSync('git diff --stat -- src/lib/theme-runtime.ts', { cwd: ROOT }).toString().trim();
+    expect(diff, 'theme-runtime.ts changed — applyTheme/readStoredChoice must stay the one stamping path THE-85 consolidated').toBe('');
+  });
+
+  it('layout.tsx (the pre-paint script) has no uncommitted changes', () => {
+    const diff = execSync('git diff --stat -- src/app/layout.tsx', { cwd: ROOT }).toString().trim();
+    expect(diff, 'layout.tsx changed — the pre-paint script is a raw string with duplicated keys pinned by theming-stage3.test.ts; touching it risks a flash of the wrong palette on load').toBe('');
   });
 });
 
