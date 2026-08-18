@@ -590,3 +590,73 @@ it('no horizontal overflow at a narrow viewport', () => {
     .filter((n) => n < 11);
   expect(tooSmall, 'text below 11px is unreadable on a phone').toEqual([]);
 });
+
+// ═══════════════════════════════════════════════════════════════════════════
+// the layer the container is rendered on
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * A max-width that is correct but painted underneath another element is not a
+ * constraint anybody can see, which is exactly how this bug survived its own fix.
+ *
+ * The overlays are `fixed inset-0`, so they claim the whole viewport. The desktop
+ * sidebar is `lg:relative` with `z-[100]`, i.e. it establishes a stacking context
+ * ABOVE a `z-50` overlay. The overlay still spanned the viewport, but its left
+ * 224px was covered by the rail — body copy was clipped mid-word, and `mx-auto`
+ * centred the column on a viewport whose left edge was not visible, landing it
+ * 112px (half the rail) left of where every other page centres.
+ *
+ * So the container and the layer that makes it visible are asserted together.
+ * Both values are READ FROM SOURCE rather than pinned: raising the sidebar and
+ * forgetting the overlays is the same defect in the other direction, and a test
+ * holding a copy of `100` would keep passing through it.
+ */
+describe('the full-screen overlays are painted above the app shell', () => {
+  /** The z-index the desktop sidebar rail paints on. */
+  function sidebarZ(): number {
+    const src = readFileSync(path.join(SRC, 'components/MainApp.tsx'), 'utf8');
+    // The rail is the one element that is `fixed` on mobile and `lg:relative` in
+    // flow on desktop — found by that shape, not by a line number.
+    const rail = [...src.matchAll(/className={?`([^`]*fixed lg:relative[^`]*)`/g)]
+      .map((m) => m[1])
+      .find((c) => /lg:w-\[\d+px\]/.test(c) && /z-\[\d+\]/.test(c));
+    expect(rail, 'the desktop sidebar rail is no longer recognisable in MainApp').toBeDefined();
+    return Number(rail!.match(/z-\[(\d+)\]/)![1]);
+  }
+
+  /** The z-index an overlay's own root element paints on. */
+  function overlayZ(name: string): number {
+    const src = readFileSync(path.join(SRC, `components/${name}.tsx`), 'utf8');
+    const root = src.match(/fixed inset-0 z-(?:\[(\d+)\]|(\d+))/);
+    expect(root, `${name} no longer has a fixed inset-0 root`).not.toBeNull();
+    return Number(root![1] ?? root![2]);
+  }
+
+  it.each(MODALS.map((m) => m.name))('%s paints above the desktop sidebar', (name) => {
+    const z = overlayZ(name);
+    const rail = sidebarZ();
+    expect(
+      z,
+      `${name} is z-${z} and the sidebar rail is z-${rail} — the overlay renders underneath the rail, so its left edge is covered and its centred column is offset by half the rail`,
+    ).toBeGreaterThan(rail);
+  });
+
+  it('the overlays share one layer rather than each picking a number', () => {
+    // Four different values here would mean four different answers to the same
+    // question, and the next modal would invent a fifth.
+    const zs = OVERLAYS.map((m) => overlayZ(m.name));
+    expect(new Set(zs).size, `the overlays disagree on their layer: ${zs.join(', ')}`).toBe(1);
+  });
+
+  it('that layer is the one the sibling settings screens already use', () => {
+    // My Events / Saved / Donation History open from the same list in Profile and
+    // were never reported broken. Matching them is what makes this a convention
+    // rather than a number that happened to work.
+    const profile = readFileSync(path.join(SRC, 'components/Profile.tsx'), 'utf8');
+    const siblings = [...profile.matchAll(/fixed inset-0 z-\[(\d+)\]/g)].map((m) => Number(m[1]));
+    expect(siblings.length, 'Profile no longer renders its full-screen settings screens').toBeGreaterThan(0);
+    const shared = new Set(siblings);
+    expect(shared.size, `Profile's own overlays disagree: ${siblings.join(', ')}`).toBe(1);
+    expect(overlayZ('PrivacyTermsModal')).toBe([...shared][0]);
+  });
+});
