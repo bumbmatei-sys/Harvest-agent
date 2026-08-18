@@ -940,7 +940,7 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
       {/* Admin announcement composer — text + up to 3 images + embed + poll + pin.
           Admin-only (posts are announcements); members read/like/comment only. */}
       {canCompose && auth.currentUser && (
-        <div className="bg-surface-raised rounded-2xl shadow-sm border border-line p-4 lg:rounded-[var(--ds-radius-card)] lg:border-[color:var(--ds-border)] lg:shadow-[var(--ds-sh-sm)]">
+        <div className="bg-surface-raised rounded-2xl shadow-sm border border-line p-4 lg:rounded-[var(--ds-radius-card)] lg:shadow-[var(--ds-sh-sm)]">
           {/* Post / Poll switch (ported from AdminPosts). Hidden while editing so
               an existing post's type isn't accidentally flipped. */}
           {!editingPostId && (

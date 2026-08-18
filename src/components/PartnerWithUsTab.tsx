@@ -115,7 +115,7 @@ const PartnerWithUsTab: React.FC = () => {
               onClick={() => setAmount(preset)}
               className={`py-3 rounded-xl text-sm font-bold transition-colors border ${
                 amount === preset
-                  ? 'bg-[var(--surface-gold)] border-gold text-[color:var(--wheat-700)]'
+                  ? 'bg-[var(--surface-gold)] border-gold text-wheat-800'
                   : 'bg-surface-raised border-line text-strong'
               }`}
             >
