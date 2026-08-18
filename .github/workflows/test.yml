@@ -1,10 +1,44 @@
 name: CI
 
+# Runs on `pull_request` only. The `push: branches: [main]` trigger was removed
+# in THE-170: every merge ran this suite twice — once for the pull request, once
+# for the commit that merge produced — and the two runs were near-duplicates.
+# That, plus a build job that could never pass, exhausted the 2,000-minute
+# Actions allowance on this private repo.
+#
+# The tradeoff, stated plainly so nobody has to rediscover it:
+#
+#   A `pull_request` run tests `refs/pull/N/merge` — the PR head merged into
+#   `main` as it stood when the run started. That is the same tree the merge
+#   produces ONLY while `main` has not moved since. It moves two ways here:
+#
+#     - Squash merge (48 of the last 50 commits on `main`). If another PR lands
+#       between this PR's last CI run and its merge, the squash is computed
+#       against the newer `main`, and the tree that reaches `main` was never
+#       tested in that exact form.
+#     - Rebase merge (PR #338, the other 2). Every commit but the tip is
+#       replayed onto `main` having never been tested on its own.
+#
+#   So `main` is not "verified" — it is assembled from verified parts. If a PR
+#   has sat while other PRs merged, update the branch or re-run this workflow
+#   before merging rather than trusting the older green check.
+#
+#   `main` is also unprotected, so a commit pushed straight to it now gets no
+#   CI at all.
+#
+# Restoring a `push` trigger would buy that certainty back at the cost of the
+# double-run this removed — re-check the minute budget first.
+
 on:
-  push:
-    branches: [main]
   pull_request:
     branches: [main]
+
+# One live run per pull request. Pushing three commits to a branch used to start
+# three full suites and let all three finish; superseded runs are now cancelled
+# and only the newest commit is tested.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test:
@@ -32,30 +66,3 @@ jobs:
 
       - name: Run lint
         run: npm run lint
-
-  # Build is intentionally separate and not required to pass yet.
-  # `next build` needs ~25 real env vars (Firebase, Stripe, Composio, etc.)
-  # that we don't want to fake with dummy values, since a fake Stripe key
-  # could mask a real config bug. Vercel already builds on every deploy
-  # with real secrets, so this isn't the safety net for build failures —
-  # `test` above is. Revisit this job once secrets are wired into
-  # GitHub Actions via repo secrets, if build-time regressions become a problem.
-  build-check:
-    name: Build (informational only)
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build
-        run: npm run build
