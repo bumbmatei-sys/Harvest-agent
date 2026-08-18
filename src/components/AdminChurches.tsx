@@ -10,7 +10,7 @@ import { getTenantScope } from '../utils/tenant-scope';
 import { getPlanFeatures } from '../utils/plan-features';
 import { useTenant } from '@/contexts/TenantContext';
 import { AdminPageHeader, AdminPrimaryButton } from './admin/AdminUI';
-import { FORM_CONTAINER } from './layout/form-layout';
+import { FORM_MEASURE } from './layout/form-layout';
 
 /** Every plan includes 1 church free (the tenant's own). */
 const INCLUDED_CHURCHES = 1;
@@ -188,7 +188,7 @@ const AdminChurches: React.FC = () => {
 
   if (isAdding || editingChurch) {
     return (
-      <div className={`bg-surface-raised rounded-2xl shadow-sm border border-line overflow-hidden ${FORM_CONTAINER}`}>
+      <div className={`bg-surface-raised rounded-2xl shadow-sm border border-line overflow-hidden ${FORM_MEASURE}`}>
         <div className="p-4 border-b border-line flex justify-between items-center">
           <h2 className="text-xl font-bold text-strong font-display">
             {isAdding ? 'Add Church' : 'Edit Church'}

@@ -94,12 +94,12 @@ const {
   mountForm, fieldBoxByLabel, fieldByLabel, fieldLabels, submitButton, normalise,
 } = await import('../../test/support/church-form');
 const {
-  FORM_CONTAINER, FIELD_WIDTH, FIELD_WIDTHS, ACTION_BUTTON,
+  FORM_CONTAINER, FORM_MEASURE, CONTAINERS, FIELD_WIDTH, FIELD_WIDTHS, ACTION_BUTTON,
   CONTROL_DENSITY, CONTROL_DENSITY_TOKENS, DENSITY_PX, DESKTOP_CONTROL_MAX_PX,
 } = await import('../layout/form-layout');
 
 /** Every rule in the module, as one list — what the `sm:` gate is checked over. */
-const ALL_RULES = [FORM_CONTAINER, ACTION_BUTTON, ...FIELD_WIDTHS, ...CONTROL_DENSITY_TOKENS];
+const ALL_RULES = [...CONTAINERS, ACTION_BUTTON, ...FIELD_WIDTHS, ...CONTROL_DENSITY_TOKENS];
 
 const SRC = path.resolve(__dirname, '..');
 const read = (rel: string) => readFileSync(path.join(SRC, rel), 'utf8');
@@ -256,6 +256,13 @@ describe('the form content is constrained at desktop widths', () => {
     const { card } = await addChurchCard();
     const px = maxWidthTokens(card).map(maxWidthPx).find((v): v is number => v !== null);
     expect(px).toBeDefined();
+    // The card takes the FORM measure, not the page one. Both live in the
+    // module: the page measure sizes a data-dense screen against the room the
+    // admin shell leaves (the course builder's curriculum tab, THE-179), and
+    // this one sizes a form against the content going into it. A form on the
+    // page measure is the defect below.
+    expect(card.className).toContain(FORM_MEASURE.split(' ')[0]);
+    expect(px).toBe(maxWidthPx(FORM_MEASURE.split(' ')[0]));
     // This bound was ">1024 and <1164.5" — the admin shell's content box at
     // 1440px, minus nothing. That sizes the room, not the content, and measured
     // in Chromium it left 93.6px of dead space to the right of the busiest row.
@@ -275,6 +282,17 @@ describe('the form content is constrained at desktop widths', () => {
     // Still below the 1164.5px the shell leaves at 1440px, so it engages at the
     // width the defect was reported at.
     expect(px!).toBeLessThan(1164.5);
+  });
+
+  it('keeps the two measures distinct — a form measure that equals the page one is not one', () => {
+    const page = maxWidthPx(FORM_CONTAINER.split(' ')[0])!;
+    const measure = maxWidthPx(FORM_MEASURE.split(' ')[0])!;
+    expect(measure).toBeLessThan(page);
+    // The page measure is the shell's business and is asserted by THE-179's own
+    // tests; pinned here only so that narrowing a form cannot be done by
+    // quietly moving the page instead.
+    expect(page).toBeGreaterThan(1024);
+    expect(page).toBeLessThan(1164.5);
   });
 
   it('leaves the cap inert below sm — the card is unconstrained on a phone', async () => {
@@ -675,6 +693,7 @@ describe('the number of distinct field widths is small and enumerable', () => {
 describe('the layout rules live in one shared place and have a caller', () => {
   it('exports all three rules from src/components/layout/form-layout.ts', () => {
     expect(typeof FORM_CONTAINER).toBe('string');
+    expect(typeof FORM_MEASURE).toBe('string');
     expect(typeof ACTION_BUTTON).toBe('string');
     expect(Object.keys(FIELD_WIDTH).length).toBeGreaterThan(0);
   });
@@ -787,7 +806,7 @@ describe('no colour is hardcoded, and all four palettes resolve', () => {
     expect(code).not.toMatch(/\b(?:rgba?|hsla?|oklch|color-mix)\(/);
     const probe = document.createElement('div');
     probe.appendChild(document.createElement('span')).className =
-      [FORM_CONTAINER, ACTION_BUTTON, ...FIELD_WIDTHS].join(' ');
+      [...CONTAINERS, ACTION_BUTTON, ...FIELD_WIDTHS].join(' ');
     expect(colourTokens(probe)).toEqual([]);
   });
 
@@ -823,7 +842,7 @@ describe('no font size changed', () => {
   });
 
   it('introduces no font size anywhere in the shared rules module', () => {
-    const rules = [FORM_CONTAINER, ACTION_BUTTON, ...FIELD_WIDTHS].join(' ').split(/\s+/);
+    const rules = [...CONTAINERS, ACTION_BUTTON, ...FIELD_WIDTHS].join(' ').split(/\s+/);
     expect(rules.filter((t) => /(?:^|:)text-|font-size/.test(t))).toEqual([]);
   });
 
@@ -846,7 +865,7 @@ describe('no font size changed', () => {
   });
 
   it('adds no font size below 11px — the rules module carries no size at all', () => {
-    const rules = [FORM_CONTAINER, ACTION_BUTTON, ...FIELD_WIDTHS].join(' ').split(/\s+/);
+    const rules = [...CONTAINERS, ACTION_BUTTON, ...FIELD_WIDTHS].join(' ').split(/\s+/);
     const sized = rules.filter((t) => fontSizePx(t, REM_PX_DESKTOP) !== null);
     expect(sized).toEqual([]);
   });

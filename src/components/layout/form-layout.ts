@@ -1,6 +1,6 @@
 /**
- * Desktop layout rules for forms — the container, the field widths, the button,
- * and the density of a control.
+ * Desktop layout rules for forms — the container (a page measure and a form
+ * measure), the field widths, the button, and the density of a control.
  *
  * Four rules, defined once. The app is responsive to 1024px and then stretches
  * with no maximum, so on a wide monitor the Add Church form rendered a 1517px
@@ -32,31 +32,49 @@
  */
 
 /**
- * Rule 1 — the page container. A FORM measure, not a page measure.
+ * Rule 1 — the container. TWO measures, because a page and a form want
+ * different ones, and the difference is the whole point of this rule.
  *
- * 940px, centred. This was 1120px, derived from the admin shell: the shell
- * spends 275.5px on chrome (a 232px sidebar plus 21.75px of padding either
- * side), so on a 1440px monitor the content box is 1164.5px and 1120px sat
- * just under it. That is the right way to size a data-dense PAGE and the wrong
- * way to size a form, because it measures the room available rather than the
- * content that has to go in it.
+ * ── 1a. The page measure — 1120px ────────────────────────────────────────────
+ * Derived from the admin shell: the shell spends 275.5px on chrome (a 232px
+ * sidebar plus 21.75px of padding either side), so on a 1440px monitor the
+ * content box is 1164.5px and 1120px sits just under it. That is the right way
+ * to size a data-dense PAGE — a screen whose job is to show as much at once as
+ * the shell will allow. The course builder's curriculum tab is that (THE-179).
  *
- * Measured: at 1440px the widest thing the form draws is the second column of
- * a two-column row, ending 995.4px into a 1089px content box — 93.6px of dead
- * space, on the busiest row. Most rows end at 900.5px, and the services row
- * caps at 760px, so the card's right edge was empty for most of its height.
+ * ── 1b. The form measure — 940px ─────────────────────────────────────────────
+ * A form is not a data-dense page, and sizing it against the room available
+ * rather than the content going into it leaves the room over. Measured in
+ * Chromium at 1440px, the widest thing the Add Church form draws is the second
+ * column of a two-column row, ending 995.4px into a 1089px content box —
+ * 93.6px of dead space on the busiest row. Most rows ended at 900.5px and the
+ * services row caps at 760px, so the card's right edge was empty for most of
+ * its height.
  *
  * 940px is that content, measured rather than chosen: two `long` fields at
  * 440px plus the column gap, plus the card's own 1px border and `p-4` either
  * side. At the 16px rem base that is 904 + 34 = 938px, and at the 14.5px
  * desktop base 901.75 + 31 = 932.75px, so 940px fits both with the wider one
- * deciding. At 1440px the busiest row now ends 905.4px into a 909px content
- * box, and the dead space is gone.
+ * deciding. At 1440px the busiest row now ends 905.4px into a 909px box.
  *
- * This narrows the Add Church card — the only thing this rule is on, in both
- * its Add and its Edit mode. That is the deliberate change, not a side effect.
+ * ── Why both, and not one ────────────────────────────────────────────────────
+ * The form measure started life as a change to FORM_CONTAINER itself, on the
+ * reading that the module had one consumer and it was a form. THE-179 landed
+ * first and made the course builder a second consumer, where 1120px is
+ * correct — so a single number would have silently taken 180px off a screen
+ * that had just been laid out deliberately. Two named measures, each with its
+ * own derivation, is what the distinction actually was.
+ *
+ * A screen picks one. Carrying both is a second, competing definition, which
+ * is what "no width outside this module" exists to prevent.
  */
-export const FORM_CONTAINER = 'sm:max-w-[940px] sm:mx-auto';
+export const FORM_CONTAINER = 'sm:max-w-[1120px] sm:mx-auto';
+
+/** Rule 1b — a form's own measure. See above; not interchangeable with 1a. */
+export const FORM_MEASURE = 'sm:max-w-[940px] sm:mx-auto';
+
+/** Both measures, for the tests that range over every rule in this module. */
+export const CONTAINERS = [FORM_CONTAINER, FORM_MEASURE];
 
 /**
  * Rule 2 — field widths sized to content.
