@@ -17,6 +17,7 @@ import { sortByTime, sortByString } from '../utils/query-helpers';
 import { notifyError } from '../utils/notify';
 import { authFetch } from '../utils/auth-fetch';
 import AnalyticsAndRoles, { Permission } from './AnalyticsAndRoles';
+import { FORM_CONTAINER, FORM_MEASURE, FIELD_WIDTH, CONTROL_DENSITY } from './layout/form-layout';
 import { useAdminHeader, HeaderActionButton } from './AdminScreenHeader';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAppStore } from '../store/useAppStore';
@@ -940,7 +941,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
 
   if (crmSubView === 'analytics') {
     return (
-      <div ref={scrollRef} className="max-w-3xl mx-auto">
+      <div ref={scrollRef} className={`w-full ${FORM_CONTAINER}`}>
         {subTabBar}
         {canViewAnalytics && currentUserRole ? (
           <AnalyticsAndRoles
@@ -959,7 +960,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
 
   if (crmSubView === 'roles') {
     return (
-      <div ref={scrollRef} className="max-w-3xl mx-auto">
+      <div ref={scrollRef} className={`w-full ${FORM_CONTAINER}`}>
         {subTabBar}
         {canManageRoles && currentUserRole ? (
           <AnalyticsAndRoles
@@ -978,7 +979,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
 
   if (loading) {
     return (
-      <div ref={scrollRef} className="max-w-3xl mx-auto">
+      <div ref={scrollRef} className={`w-full ${FORM_CONTAINER}`}>
         {subTabBar}
         <div className="flex items-center justify-center h-40"><div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--brand-color, #B8962E)', borderTopColor: 'transparent' }} /></div>
       </div>
@@ -990,7 +991,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
   // invite an admin to re-enter people who are already there but unreadable.
   if (contactsFailed) {
     return (
-      <div ref={scrollRef} className="max-w-3xl mx-auto">
+      <div ref={scrollRef} className={`w-full ${FORM_CONTAINER}`}>
         {subTabBar}
         <div className="bg-red-50 rounded-2xl border border-red-200 shadow-sm p-8 text-center text-red-700">
           <AlertTriangle size={28} className="mx-auto mb-2 opacity-60" />
@@ -1011,7 +1012,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
 
   if (view === 'form') {
     return (
-      <div ref={scrollRef} className="max-w-2xl mx-auto">
+      <div ref={scrollRef} className={`w-full ${FORM_MEASURE}`}>
         {subTabBar}
         <div className="bg-surface-raised rounded-2xl border border-line-hairline shadow-sm p-6 space-y-5">
           <div className="grid grid-cols-2 gap-4">
@@ -1108,7 +1109,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
 
   if (view === 'detail' && selected) {
     return (
-      <div ref={scrollRef} className="max-w-2xl mx-auto">
+      <div ref={scrollRef} className={`w-full ${FORM_MEASURE}`}>
         {subTabBar}
 
         {/* Hero */}
@@ -1487,11 +1488,14 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
   ];
 
   return (
-    <div ref={scrollRef} className="max-w-6xl mx-auto">
+    <div ref={scrollRef} className={`w-full ${FORM_CONTAINER}`}>
       {subTabBar}
 
-      {/* Stat cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      {/* Stat cards. Rule 4 (form-layout.ts) owns the desktop gaps: `gap-4` is a
+          rem gap, so it renders 16px on a tablet and 14.5px on a monitor — the
+          same split the container measures were moved off. The column count is
+          untouched. */}
+      <div className={`grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6 ${CONTROL_DENSITY.rowGap} ${CONTROL_DENSITY.columnGap}`}>
         {stats.map(s => (
           <div key={s.label} className="bg-surface-raised rounded-brand-lg border border-line shadow-[var(--ds-sh-sm)] p-5">
             <div className="flex items-start justify-between">
@@ -1575,11 +1579,17 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
 
       {/* Search + filters + view toggle + add */}
       <div className="flex items-center gap-3 mb-6 flex-wrap">
-        <div className="relative flex-1 min-w-[220px]">
+        {/* Rule 2 (form-layout.ts): a name or an email is a `long` value, so the
+            field stops at 440px instead of absorbing every pixel the toolbar has
+            spare. `flex-1` still governs below `sm:`, where the phone wants it
+            full width. Rule 4 gives it the same 38px box every other desktop
+            control has; `sm:py-0` is part of that token, so the padding that
+            sets today's height is zeroed with it rather than left to fight. */}
+        <div className={`relative flex-1 min-w-[220px] ${FIELD_WIDTH.long}`}>
           <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-faint" />
           <input value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Search by name or email…"
-            className="w-full bg-surface-raised pl-11 pr-4 py-3 text-sm border border-line rounded-brand-lg text-strong placeholder:text-faint focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent" />
+            className={`w-full bg-surface-raised pl-11 pr-4 py-3 text-sm border border-line rounded-brand-lg text-strong placeholder:text-faint focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--brand-color)_35%,transparent)] focus:border-transparent ${CONTROL_DENSITY.control}`} />
         </div>
         {/* Type filter segmented */}
         <div className="flex gap-0.5 bg-surface-sunken rounded-lg p-1 shrink-0">
@@ -1614,7 +1624,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
           onClick={openImport}
           disabled={atContactLimit}
           title={atContactLimit ? contactLimitNotice : undefined}
-          className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2.5 rounded-brand border border-line bg-surface-raised text-[13px] font-semibold text-muted transition-colors hover:bg-surface-sunken disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-surface-raised"
+          className={`shrink-0 inline-flex items-center gap-1.5 px-4 py-2.5 rounded-brand border border-line bg-surface-raised text-[13px] font-semibold text-muted transition-colors hover:bg-surface-sunken disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-surface-raised ${CONTROL_DENSITY.action}`}
         >
           <Upload size={16} /> Import CSV
         </button>
@@ -1627,7 +1637,7 @@ const AdminCRM: React.FC<AdminCRMProps> = ({ currentUserRole, currentUserPermiss
           onClick={openNewContact}
           disabled={atContactLimit}
           title={atContactLimit ? contactLimitNotice : undefined}
-          className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2.5 rounded-brand text-[13px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:opacity-40"
+          className={`shrink-0 inline-flex items-center gap-1.5 px-4 py-2.5 rounded-brand text-[13px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:opacity-40 ${CONTROL_DENSITY.action}`}
           style={{ backgroundColor: 'var(--brand-color, #C9963A)' }}
         >
           <Plus size={16} /> Add contact
