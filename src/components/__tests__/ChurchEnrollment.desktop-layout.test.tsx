@@ -13,12 +13,21 @@ import path from 'node:path';
  * "Church Name" field at 747.88px for a value needing about 300, the zipcode at
  * 491.34px, and the submit button at 1517.5px.
  *
- * Three rules fix it, and they live in ONE place — src/components/layout/
- * form-layout.ts. Every rule there is gated at `sm:` and above, so none of them
- * can reach a phone. That is the constraint the first test in this file exists
- * to enforce, and it is the most important test here: the founder's report was
- * "for mobile, the app is fine", so a diff that moves the sub-640px rendering
- * has failed no matter how good the desktop looks.
+ * Three rules fixed that, and a fourth — desktop control density — fixes the
+ * half they could not: they made the form narrower without making it smaller.
+ * On the same measurement, at 1440px, every input rendered 45.5px tall where
+ * 36-40px is normal desktop density, the submit button 53px, and the whole form
+ * 1671.75px long.
+ *
+ * All four live in ONE place — src/components/layout/form-layout.ts. Every rule
+ * there is gated at `sm:` and above, so none of them can reach a phone. That is
+ * the constraint the first test in this file exists to enforce, and it is the
+ * most important test here: the founder's report was "for mobile, the app is
+ * fine", so a diff that moves the sub-640px rendering has failed no matter how
+ * good the desktop looks. Rule 4 is the one most able to break it — a height
+ * that escapes its `sm:` gate is a touch target shrinking to 38px on a phone,
+ * which is why "mobile touch targets" is the second test here and not a
+ * footnote.
  *
  * Field lookups go through the visible LABEL, never a `name` attribute and never
  * a class pattern — a test that found the zipcode by matching `max-w-[160px]`
@@ -78,13 +87,19 @@ const AdminChurches = (await import('../AdminChurches')).default;
 const {
   mobileLayer, fontSizeTokens, fontSizePx, colourTokens, allTokens,
   maxWidthPx, maxWidthTokens, isResponsive, breakpointOf,
+  arbitraryPx, heightPx, heightTokens,
   REM_PX_MOBILE, REM_PX_DESKTOP,
 } = await import('../../test/support/class-inventory');
 const {
   mountForm, fieldBoxByLabel, fieldByLabel, fieldLabels, submitButton, normalise,
 } = await import('../../test/support/church-form');
-const { FORM_CONTAINER, FIELD_WIDTH, FIELD_WIDTHS, ACTION_BUTTON } =
-  await import('../layout/form-layout');
+const {
+  FORM_CONTAINER, FIELD_WIDTH, FIELD_WIDTHS, ACTION_BUTTON,
+  CONTROL_DENSITY, CONTROL_DENSITY_TOKENS, DENSITY_PX, DESKTOP_CONTROL_MAX_PX,
+} = await import('../layout/form-layout');
+
+/** Every rule in the module, as one list — what the `sm:` gate is checked over. */
+const ALL_RULES = [FORM_CONTAINER, ACTION_BUTTON, ...FIELD_WIDTHS, ...CONTROL_DENSITY_TOKENS];
 
 const SRC = path.resolve(__dirname, '..');
 const read = (rel: string) => readFileSync(path.join(SRC, rel), 'utf8');
@@ -114,6 +129,35 @@ interface CardBaseline { mobileLayer: string[]; cardClass: string }
 
 const readFixture = <T,>(name: string): T =>
   JSON.parse(readFileSync(path.join(FIXTURES, name), 'utf8')) as T;
+
+/**
+ * Rendered control heights and gaps in px, measured in headless Chromium
+ * against the real compiled Tailwind CSS and the real admin shell on
+ * unmodified HEAD (0accd19), keyed by the visible label.
+ *
+ * happy-dom does no layout, so a height cannot be measured here — but it does
+ * not have to be. What a phone renders is decided by the class tokens that
+ * reach it, and those ARE readable here: a control keeps the box it was
+ * measured with unless a height token escapes its `sm:` gate and lands on it.
+ * The fixture supplies the measured box; the tests supply the escape check.
+ */
+interface ControlBaseline {
+  formHeight: number; labelGap: number; fieldGap: number; sectionGap: number;
+  submit: number; controls: Record<string, number>;
+}
+const CONTROL_BASELINE = readFixture<Record<'380' | '1440', ControlBaseline>>(
+  'church-form-control-heights.json',
+);
+const MOBILE_BASE = CONTROL_BASELINE['380'];
+const DESKTOP_BASE = CONTROL_BASELINE['1440'];
+
+/** The WCAG / platform floor for a touch target. */
+const TOUCH_TARGET_MIN_PX = 44;
+
+const tokensOf = (el: Element) => (el.getAttribute('class') ?? '').split(/\s+/).filter(Boolean);
+/** True when an element carries every token of a rule, exactly as the rule spells it. */
+const carries = (el: Element, rule: string) =>
+  rule.split(/\s+/).every((t) => tokensOf(el).includes(t));
 
 let BASELINE!: FormBaseline;
 let CARD_BASELINE!: CardBaseline;
@@ -187,14 +231,12 @@ describe('the sub-640px rendering of the Church form is unchanged', () => {
   });
 
   it('defines no rule that can reach a phone — every token in the shared module is breakpoint-gated', () => {
-    const rules = [FORM_CONTAINER, ACTION_BUTTON, ...FIELD_WIDTHS];
-    const ungated = rules.flatMap((r) => r.split(/\s+/).filter(Boolean)).filter((t) => !isResponsive(t));
+    const ungated = ALL_RULES.flatMap((r) => r.split(/\s+/).filter(Boolean)).filter((t) => !isResponsive(t));
     expect(ungated, 'these tokens would apply at every width, mobile included').toEqual([]);
   });
 
   it('gates every rule at sm: — the first breakpoint above the phone range', () => {
-    const rules = [FORM_CONTAINER, ACTION_BUTTON, ...FIELD_WIDTHS];
-    const gates = new Set(rules.flatMap((r) => r.split(/\s+/).filter(Boolean)).map(breakpointOf));
+    const gates = new Set(ALL_RULES.flatMap((r) => r.split(/\s+/).filter(Boolean)).map(breakpointOf));
     expect([...gates]).toEqual(['sm']);
   });
 });
@@ -210,14 +252,28 @@ describe('the form content is constrained at desktop widths', () => {
     expect(card.className).toContain('sm:mx-auto');
   });
 
-  it('caps it at a desktop measure, not at an accident of the viewport', async () => {
+  it('caps it at the measure of the FORM, not at the room the shell happens to leave', async () => {
     const { card } = await addChurchCard();
     const px = maxWidthTokens(card).map(maxWidthPx).find((v): v is number => v !== null);
     expect(px).toBeDefined();
-    // Below the 1164.5px the admin shell leaves at 1440px, so the cap actually
-    // engages at the width the defect was reported at; above the 1024px
-    // breakpoint, so it never engages before the sidebar layout does.
-    expect(px!).toBeGreaterThan(1024);
+    // This bound was ">1024 and <1164.5" — the admin shell's content box at
+    // 1440px, minus nothing. That sizes the room, not the content, and measured
+    // in Chromium it left 93.6px of dead space to the right of the busiest row.
+    //
+    // The measure of the form is the widest row it can draw: two `long` fields
+    // side by side, plus the column gap between them, plus the card's own 1px
+    // border and `p-4` either side. The column gap and the padding are rem, so
+    // they are wider at the 16px base than at the 14.5px desktop one, and the
+    // wider of the two decides.
+    const columnGap = 1.5 * REM_PX_MOBILE;          // `gap-6`
+    const cardChrome = 2 * (1 * REM_PX_MOBILE) + 2; // `p-4` either side + 1px border either side
+    const twoLongFields = 2 * maxWidthPx(FIELD_WIDTH.long)! + columnGap + cardChrome;
+    expect(px!).toBeGreaterThanOrEqual(twoLongFields);
+    // ...and no wider than that, give or take a rounding to a whole ten. A cap
+    // materially above the content it holds is the dead space coming back.
+    expect(px!).toBeLessThan(twoLongFields + 10);
+    // Still below the 1164.5px the shell leaves at 1440px, so it engages at the
+    // width the defect was reported at.
     expect(px!).toBeLessThan(1164.5);
   });
 
@@ -253,6 +309,296 @@ describe('the submit button is full width on mobile and content width from sm up
     const tokens = (btn.getAttribute('class') ?? '').split(/\s+/);
     // The button carries only `py-4` — full width never needed side padding.
     expect(tokens.some((t) => /^sm:px-/.test(t)), 'a content-width button with no side padding hugs its text').toBe(true);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 4. Rule 4 — desktop control density.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Every control the density rule is responsible for, found without a class pattern. */
+const controlsOf = (root: ParentNode) =>
+  Array.from(root.querySelectorAll('form input:not([type="file"]), form select, form textarea'));
+
+describe('a desktop control is no taller than the chosen maximum', () => {
+  it('sizes every control and every action to a height inside the desktop band', () => {
+    const heights = Object.entries(CONTROL_DENSITY)
+      .flatMap(([name, rule]) => rule.split(/\s+/).map((t) => [name, t, heightPx(t, REM_PX_DESKTOP)] as const))
+      .filter((h): h is readonly [string, string, number] => h[2] !== null);
+    expect(heights.length, 'the rule sets no height at all').toBeGreaterThan(0);
+    for (const [name, token, px] of heights) {
+      expect(px, `${name} (${token}) is above the desktop density band`).toBeLessThanOrEqual(DESKTOP_CONTROL_MAX_PX);
+    }
+  });
+
+  it('measures every one of them in px, so the desktop rem trim cannot move them', () => {
+    // globals.css runs a 14.5px root above 1024px. A rem height would be one
+    // number on a tablet and 9.4% less on a monitor, which is not a cap.
+    for (const token of CONTROL_DENSITY_TOKENS.flatMap((r) => r.split(/\s+/))) {
+      expect(token, `${token} carries a rem value`).not.toMatch(/-\[[\d.]+rem\]$/);
+    }
+    expect(heightPx(CONTROL_DENSITY.control, REM_PX_MOBILE))
+      .toBe(heightPx(CONTROL_DENSITY.control, REM_PX_DESKTOP));
+  });
+
+  it('puts that height on every control the form draws, not on a chosen few', async () => {
+    const c = await form();
+    const bare = controlsOf(c).filter((el) => !carries(el, CONTROL_DENSITY.control));
+    expect(bare.map((el) => el.getAttribute('placeholder') ?? el.tagName), 'these controls keep the old height').toEqual([]);
+    expect(controlsOf(c).length, 'the form lost its controls').toBeGreaterThan(15);
+  });
+
+  it('puts the action height on the submit button', async () => {
+    expect(carries(submitButton(await form()), CONTROL_DENSITY.action)).toBe(true);
+  });
+
+  it('agrees with the px it documents — the tokens and the numbers are one rule', () => {
+    for (const [name, rule] of Object.entries(CONTROL_DENSITY)) {
+      const px = rule.split(/\s+/).map((t) => arbitraryPx(t, REM_PX_DESKTOP)).find((v) => v !== null);
+      expect(px, `${name} carries no absolute length`).toBe(DENSITY_PX[name as keyof typeof DENSITY_PX]);
+    }
+  });
+});
+
+describe('mobile touch targets are at least 44px', () => {
+  /**
+   * What a control would actually render at 380px: an unprefixed height token
+   * wins, because it reaches the phone; otherwise the control keeps the box it
+   * was measured with. Dropping the `sm:` from the height rule is exactly the
+   * first case, and it lands here as 38px.
+   *
+   * Deleting the mobile padding instead is test 1's catch, not this one's —
+   * `mobileLayer` pins every unprefixed token on every element.
+   */
+  const mobileHeight = (el: Element, measured: number) => {
+    const escaped = heightTokens(el)
+      .filter((t) => !isResponsive(t))
+      .map((t) => heightPx(t, REM_PX_MOBILE))
+      .find((v): v is number => v !== null);
+    return escaped ?? measured;
+  };
+
+  const measuredMobile = async () => {
+    const c = await form();
+    const out = new Map<string, number>();
+    for (const label of Array.from(c.querySelectorAll('label'))) {
+      const control = label.parentElement?.querySelector('input:not([type="file"]), select, textarea');
+      const text = normalise(label.textContent ?? '');
+      const base = MOBILE_BASE.controls[text];
+      if (control && base !== undefined) out.set(text, mobileHeight(control, base));
+    }
+    out.set('__submit__', mobileHeight(submitButton(c), MOBILE_BASE.submit));
+    return out;
+  };
+
+  it('keeps every field the form asks a phone to tap at 44px or more', async () => {
+    const heights = await measuredMobile();
+    // The Weekly Services row is a pre-existing exception and not this rule's
+    // to fix: `px-3 py-2` renders 42px, and its day picker 39px, on unmodified
+    // HEAD. Naming them from the MEASURED baseline rather than a hand-written
+    // list means the exception cannot quietly grow to cover a new regression.
+    const alreadyBelow = new Set(
+      Object.entries(MOBILE_BASE.controls)
+        .filter(([, h]) => h < TOUCH_TARGET_MIN_PX)
+        .map(([label]) => label),
+    );
+    const below = [...heights].filter(([label, h]) => h < TOUCH_TARGET_MIN_PX && !alreadyBelow.has(label));
+    expect(below, 'these are new sub-44px touch targets on a phone').toEqual([]);
+  });
+
+  it('shrinks no control on a phone, not even one already under 44px', async () => {
+    const heights = await measuredMobile();
+    const shrunk = [...heights].filter(([label, h]) => {
+      const base = label === '__submit__' ? MOBILE_BASE.submit : MOBILE_BASE.controls[label];
+      return h < base;
+    });
+    expect(shrunk, 'the density rule reached the phone').toEqual([]);
+  });
+
+  it('keeps the submit button a 56px target on a phone', async () => {
+    const heights = await measuredMobile();
+    expect(heights.get('__submit__')).toBe(MOBILE_BASE.submit);
+    expect(heights.get('__submit__')!).toBeGreaterThanOrEqual(TOUCH_TARGET_MIN_PX);
+  });
+});
+
+describe('every new token is gated at sm: or above', () => {
+  it('gates every token of the density rule, read off the token strings themselves', () => {
+    const tokens = CONTROL_DENSITY_TOKENS.flatMap((r) => r.split(/\s+/).filter(Boolean));
+    expect(tokens.length, 'the density rule defines no tokens').toBeGreaterThan(0);
+    expect(tokens.filter((t) => !isResponsive(t)), 'these reach a phone').toEqual([]);
+    expect([...new Set(tokens.map(breakpointOf))]).toEqual(['sm']);
+  });
+
+  it('gates each token individually — a rule is only as gated as its loosest token', () => {
+    // `sm:h-[38px] py-0` would pass a check that only looked at the first token.
+    for (const [name, rule] of Object.entries(CONTROL_DENSITY)) {
+      for (const token of rule.split(/\s+/)) {
+        expect(breakpointOf(token), `${name} carries an ungated token: ${token}`).toBe('sm');
+      }
+    }
+  });
+});
+
+describe('the vertical rhythm tokens come from form-layout, not per-screen values', () => {
+  /** The token families this rule owns: height, vertical padding, and the gaps. */
+  const RHYTHM = /^(?:h-|py-|mb-|space-y-|gap-y-)/;
+  const rhythmTokensIn = (root: ParentNode) => {
+    const owned = new Set(CONTROL_DENSITY_TOKENS.flatMap((r) => r.split(/\s+/)));
+    return [...new Set(allTokens(root).filter((t) => isResponsive(t) && RHYTHM.test(t.replace(/^sm:/, ''))))]
+      .filter((t) => !owned.has(t));
+  };
+
+  it('renders no sm:-gated rhythm value the shared module does not define', async () => {
+    expect(rhythmTokensIn(await form()), 'a rhythm value defined per screen rebuilds the problem').toEqual([]);
+  });
+
+  it('renders none on the card that hosts the form either', async () => {
+    const { container } = await addChurchCard();
+    expect(rhythmTokensIn(container)).toEqual([]);
+  });
+
+  it('writes none of them inline in either consumer', () => {
+    for (const file of ['AdminChurches.tsx', 'ChurchEnrollment.tsx']) {
+      expect(read(file).match(/sm:h-\[|sm:py-|sm:mb-\[|sm:space-y-\[|sm:gap-y-\[/g), file).toBeNull();
+    }
+  });
+
+  it('puts the rhythm on the elements that lay the form out', async () => {
+    const c = await form();
+    const formEl = c.querySelector('form')!;
+    expect(carries(formEl, CONTROL_DENSITY.sectionGap), 'the form spaces its sections per-screen').toBe(true);
+    const sections = Array.from(formEl.children).filter((el) => el.querySelector('h3'));
+    expect(sections.length).toBeGreaterThan(3);
+    for (const section of sections) {
+      expect(carries(section, CONTROL_DENSITY.fieldGap), 'a section spaces its fields per-screen').toBe(true);
+    }
+    const grids = Array.from(formEl.querySelectorAll('[class*="grid-cols-"]'));
+    expect(grids.length).toBeGreaterThan(3);
+    for (const grid of grids) {
+      expect(carries(grid, CONTROL_DENSITY.rowGap), 'a field grid spaces its rows per-screen').toBe(true);
+    }
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 5. What the rule actually buys: a shorter form.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** How many columns a grid divides itself into at desktop. */
+const gridCols = (el: Element) => {
+  const t = tokensOf(el).find((x) => isResponsive(x) && /grid-cols-\d+$/.test(x));
+  return t ? parseInt(t.slice(t.lastIndexOf('-') + 1), 10) : 1;
+};
+const isGrid = (el: Element) => tokensOf(el).some((t) => /(?:^|:)grid-cols-\d+$/.test(t));
+const colSpan = (el: Element) => {
+  const t = tokensOf(el).find((x) => /(?:^|:)col-span-\d+$/.test(x));
+  return t ? parseInt(t.slice(t.lastIndexOf('-') + 1), 10) : 1;
+};
+
+/** The cells of a grid, packed into the rows they actually land on. */
+const packRows = (grid: Element): Element[][] => {
+  const cols = gridCols(grid);
+  const rows: Element[][] = [];
+  let row: Element[] = [];
+  let used = 0;
+  for (const cell of Array.from(grid.children)) {
+    const span = Math.min(colSpan(cell), cols);
+    if (used + span > cols) { rows.push(row); row = []; used = 0; }
+    row.push(cell);
+    used += span;
+  }
+  if (row.length) rows.push(row);
+  return rows;
+};
+
+/**
+ * The desktop height this rule takes OUT of the form, in px, split by lever.
+ *
+ * Walked over the real rendered markup: form -> section -> block -> row, with a
+ * grid's cells packed into rows the way the browser packs them. A row gives
+ * back what its TALLEST cell gives back, which is why shrinking a control that
+ * shares a row with a taller one is worth nothing — and why counting controls
+ * instead of rows would overstate this by a factor of about two.
+ *
+ * Against the same form measured in Chromium at 1440px, this comes to 223.75px:
+ * 1671.75px -> 1448px. It is a model, and it is pinned to that measurement.
+ */
+const heightSavedAtDesktop = (container: HTMLElement) => {
+  const acc = { controls: 0, labels: 0, gaps: 0 };
+  const formEl = container.querySelector('form')!;
+
+  const baseline = new Map<Element, number>();
+  for (const label of Array.from(formEl.querySelectorAll('label'))) {
+    const control = label.parentElement?.querySelector('input:not([type="file"]), select, textarea');
+    const h = DESKTOP_BASE.controls[normalise(label.textContent ?? '')];
+    if (control && h !== undefined) baseline.set(control, h);
+  }
+  baseline.set(submitButton(formEl), DESKTOP_BASE.submit);
+
+  const now = (c: Element) =>
+    carries(c, CONTROL_DENSITY.control) ? DENSITY_PX.control
+      : carries(c, CONTROL_DENSITY.action) ? DENSITY_PX.action
+        : baseline.get(c)!;
+
+  const controlsIn = (cells: Element[]) =>
+    cells.flatMap((el) => [...Array.from(el.querySelectorAll('*')), el]).filter((el) => baseline.has(el));
+
+  const rowSaving = (cells: Element[]) => {
+    const cs = controlsIn(cells);
+    if (cs.length) acc.controls += Math.max(...cs.map((c) => baseline.get(c)!)) - Math.max(...cs.map(now));
+    const labels = cells.flatMap((c) => Array.from(c.querySelectorAll('label')));
+    if (labels.some((l) => carries(l, CONTROL_DENSITY.labelGap))) {
+      acc.labels += DESKTOP_BASE.labelGap - DENSITY_PX.labelGap;
+    }
+  };
+
+  const gapSaving = (el: Element, rule: string, before: number, after: number, n: number) => {
+    if (n > 0 && carries(el, rule)) acc.gaps += n * (before - after);
+  };
+
+  const sections = Array.from(formEl.children);
+  gapSaving(formEl, CONTROL_DENSITY.sectionGap, DESKTOP_BASE.sectionGap, DENSITY_PX.sectionGap, sections.length - 1);
+  for (const section of sections) {
+    const blocks = Array.from(section.children);
+    gapSaving(section, CONTROL_DENSITY.fieldGap, DESKTOP_BASE.fieldGap, DENSITY_PX.fieldGap, blocks.length - 1);
+    for (const block of blocks) {
+      if (isGrid(block)) {
+        const rows = packRows(block);
+        gapSaving(block, CONTROL_DENSITY.rowGap, DESKTOP_BASE.fieldGap, DENSITY_PX.rowGap, rows.length - 1);
+        for (const row of rows) rowSaving(row);
+      } else {
+        rowSaving([block]);
+      }
+    }
+  }
+  return { ...acc, total: acc.controls + acc.labels + acc.gaps };
+};
+
+describe('the total rendered form height at 1440px is measurably shorter than before', () => {
+  it('takes 223.75px out of a 1671.75px form — 1448px, a 13.4% cut', async () => {
+    const saved = heightSavedAtDesktop(await form());
+    expect(saved.total).toBeCloseTo(223.75, 2);
+    expect(DESKTOP_BASE.formHeight - saved.total).toBeCloseTo(1448, 2);
+  });
+
+  it('gets it from BOTH levers — smaller controls AND tighter gaps', async () => {
+    const saved = heightSavedAtDesktop(await form());
+    // The warning this test exists for: shrinking controls without tightening
+    // the gaps leaves the form the same length with smaller parts in it. The
+    // gaps are the LARGER half here — 121.75px against 88.25px — so a diff that
+    // keeps the heights and drops the rhythm gives back barely a third of this.
+    expect(saved.controls, 'no height came out of the controls').toBeGreaterThan(80);
+    expect(saved.gaps, 'the gaps were left as they were').toBeGreaterThan(100);
+    expect(saved.gaps).toBeGreaterThan(saved.controls);
+  });
+
+  it('shortens the form without shortening the label — that is the type scale', async () => {
+    const saved = heightSavedAtDesktop(await form());
+    // The label margin is rhythm and moves; the label SIZE is 769 one-off
+    // values and a separate step. 13.75px of 223.75px comes from the margin.
+    expect(saved.labels).toBeGreaterThan(0);
+    expect(saved.labels).toBeLessThan(saved.total * 0.1);
   });
 });
 
