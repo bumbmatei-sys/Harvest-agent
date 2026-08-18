@@ -767,3 +767,109 @@ describe('fonts, radii and shadows are unchanged', () => {
     expect(layout).toContain("variable: '--font-serif'");
   });
 });
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 15 · the admin sidebar's selected nav item follows the family
+//
+// Founder review on the deployed preview: the selected nav item (Courses in
+// the screenshot) did not match Classic. Root cause was NOT the family
+// mechanism — it was that the active pill mixed the accent over hardcoded
+// `white`, so it rendered a fixed near-white #F6EEDF in EVERY theme and
+// could not respond to the family (or to dark mode at all). Same bug class
+// #340 fixed across the twelve member screens; its guard only covered those
+// files, so the admin chrome still carried it.
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe('the admin sidebar selected nav item follows the palette family', () => {
+  const adminSrc = readFileSync(path.join(SRC, 'components/AdminDashboard.tsx'), 'utf8');
+
+  /** color-mix(in srgb, FG P%, transparent) composited over `ground`. */
+  const mixOver = (fg: string, pct: number, ground: string): string => {
+    const rgb = (h: string) => [0, 2, 4].map((i) => parseInt(h.replace('#', '').slice(i, i + 2), 16));
+    const a = pct / 100;
+    const [f, g] = [rgb(fg), rgb(ground)];
+    return '#' + f.map((c, i) => Math.round(c * a + g[i] * (1 - a)).toString(16).padStart(2, '0')).join('').toUpperCase();
+  };
+
+  // Read straight out of globals.css rather than retyped, so a palette move
+  // recomputes these instead of silently passing on a stale hex.
+  const ACCENT = resolve('--brand-color', rootVars);
+  const RAISED_LIGHT = resolve('--surface-raised', rootVars);
+  const RAISED_HARVEST_DARK = resolve('--surface-raised', harvestDarkVars);
+  const RAISED_CLASSIC_DARK = resolve('--surface-raised', classicDarkVars);
+
+  /** The tint percentages the component actually spells, parsed from source. */
+  const tints = (): { light: number; dark: number } => {
+    const active = adminSrc.slice(adminSrc.indexOf('const renderDesktopTab'));
+    const light = active.match(/\blg:bg-\[color-mix\(in_srgb,var\(--brand-color\)_(\d+)%,transparent\)\]/);
+    const dark = active.match(/\bdark:lg:bg-\[color-mix\(in_srgb,var\(--brand-color\)_(\d+)%,transparent\)\]/);
+    expect(light, 'the active pill no longer spells a transparent-composited light tint').not.toBeNull();
+    expect(dark, 'the active pill no longer spells a transparent-composited dark tint').not.toBeNull();
+    return { light: Number(light![1]), dark: Number(dark![1]) };
+  };
+
+  it('🔴 the active pill no longer mixes the accent over hardcoded white', () => {
+    // The precise regression. `white` here pins the pill to one fixed colour
+    // in every theme, which is exactly what made it clash with Classic.
+    const offenders = [...adminSrc.matchAll(/color-mix\(in[_\s]srgb,[^\]]*?,\s*white\s*\)/g)].map((m) => m[0]);
+    expect(offenders, 'AdminDashboard still composites an accent over hardcoded white').toEqual([]);
+  });
+
+  it('light mode is provably unchanged — the sidebar is #FFFFFF in light, so transparent composites onto the very white it hardcoded', () => {
+    expect(RAISED_LIGHT).toBe('#FFFFFF');
+    expect(resolve('--surface-raised', classicLightVars)).toBe('#FFFFFF');
+    const { light } = tints();
+    // What it rendered before (mix over literal white) vs what it renders now
+    // (mix over transparent, composited on the white sidebar): identical.
+    expect(mixOver(ACCENT, light, '#FFFFFF')).toBe(mixOver(ACCENT, light, RAISED_LIGHT));
+  });
+
+  it('the pill actually changes between the two families in dark mode — it is no longer one fixed colour', () => {
+    const { dark } = tints();
+    const onHarvest = mixOver(ACCENT, dark, RAISED_HARVEST_DARK);
+    const onClassic = mixOver(ACCENT, dark, RAISED_CLASSIC_DARK);
+    expect(onHarvest, 'the pill renders the same in both families — it is still pinned').not.toBe(onClassic);
+  });
+
+  it('the pill is no longer a bright block on a dark sidebar (it was 14.5:1 against its own background)', () => {
+    const { dark } = tints();
+    for (const [family, ground] of [['Harvest', RAISED_HARVEST_DARK], ['Classic', RAISED_CLASSIC_DARK]] as const) {
+      const pill = mixOver(ACCENT, dark, ground);
+      const ratio = contrastRatio(pill, ground);
+      // A selected-state tint should sit just off its ground, not blaze
+      // against it. The broken white-mix was 13-14:1 here.
+      expect(ratio, `${family}: the pill is ${pill} at ${ratio.toFixed(2)}:1 against ${ground} — still a bright block`)
+        .toBeLessThan(2);
+      expect(ratio, `${family}: the pill is invisible against its own sidebar`).toBeGreaterThan(1.05);
+    }
+  });
+
+  it.each(['Harvest', 'Classic'] as const)(
+    '%s dark: the selected label clears AA on the pill it sits on — computed, not eyeballed',
+    (family) => {
+      const { dark } = tints();
+      const ground = family === 'Harvest' ? RAISED_HARVEST_DARK : RAISED_CLASSIC_DARK;
+      const pill = mixOver(ACCENT, dark, ground);
+      // The active label/icon paint in the raw accent (AdminDashboard sets
+      // color: var(--brand-color) on both), so that is the ink to measure.
+      const ratio = contrastRatio(ACCENT, pill);
+      expect(
+        ratio,
+        `${family}: accent ${ACCENT} on the pill ${pill} is ${ratio.toFixed(2)}:1, needs ${AA_CONTRAST}:1`,
+      ).toBeGreaterThanOrEqual(AA_CONTRAST);
+    },
+  );
+
+  it('the label ink is still the tenant accent, not a fixed Harvest wheat — white-label survives', () => {
+    const active = adminSrc.slice(adminSrc.indexOf('const renderDesktopTab'));
+    expect(active).toContain("color: 'var(--brand-color, #C9963A)'");
+    expect(active, 'the active label was pinned to a fixed wheat and would ignore tenant branding')
+      .not.toMatch(/color:\s*'var\(--wheat-/);
+  });
+
+  it('the fix reuses the accent tint the More-drawer row already used, rather than inventing a second mechanism', () => {
+    // The mobile drawer sibling was already correct (transparent, 10%); the
+    // desktop pill was the lone holdout. Both now composite over their ground.
+    expect(adminSrc).toContain("color-mix(in srgb, var(--brand-color, #C9963A) 10%, transparent)");
+  });
+});
