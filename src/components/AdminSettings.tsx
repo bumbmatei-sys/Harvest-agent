@@ -12,6 +12,9 @@ import SmsSection from './settings/SmsSection';
 import AiAssistantSection from './settings/AiAssistantSection';
 import IntegrationsSection from './settings/IntegrationsSection';
 import ThemeToggle from './ThemeToggle';
+import PaletteFamilyToggle from './PaletteFamilyToggle';
+import SectionHeading from './settings/SectionHeading';
+import { FORM_MEASURE, ACTION_BUTTON, CONTROL_DENSITY } from './layout/form-layout';
 
 interface AdminSettingsProps {
   onBack: () => void;
@@ -110,6 +113,36 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
   // surfaced here as the PRIMARY home for connecting the ONE account that powers
   // donations AND affiliate payouts (it also remains inside Fundraising).
   // Icons are neutral gray (no rainbow), rendered at 18px.
+  //
+  // ── THE-183: the regions, and why these ones ────────────────────────────────
+  // Every `group` below labels a run of CONSECUTIVE rows, so the array order is
+  // the region order and nothing is reordered — which is what lets the grouping
+  // land without moving a single row on a phone. The groups fall out of the
+  // order the screen already had; they were not chosen and then imposed on it.
+  //
+  //   Account          the plan card and the billing portal (outside this array)
+  //   Appearance       palette family + light/dark
+  //   Payments         Stripe Connect
+  //   Church Setup     Onboarding Questions, Giving Statements
+  //   Connected Services  SMS (Twilio), AI Assistant (Telegram), Mailchimp
+  //   Danger Zone      Cancel Subscription, alone and cordoned off
+  //   Navigation       Customize Navigation (outside this array)
+  //
+  // Departures from the grouping sketched in the ticket, and why:
+  //
+  //  • "Branding and Appearance" → "Appearance". There is no branding section on
+  //    this screen — Branding is its own admin tab, per the header comment above
+  //    — so that heading would name something that is not underneath it.
+  //  • Payments is its own region rather than an Integration. The comment above
+  //    calls it the PRIMARY home for the ONE account powering donations and
+  //    affiliate payouts; it is the money root, and filing it beside Twilio
+  //    would bury the screen's most consequential connection.
+  //  • "Integrations" → "Connected Services". The region would otherwise carry
+  //    the same word as one of the rows inside it (the Mailchimp row is labelled
+  //    "Integrations"), and a heading that repeats its own child's label reads
+  //    as a rendering bug. Renaming the ROW would have been the other fix, but
+  //    that is visible copy on a phone.
+  //  • Cancel is NOT in Account. See the Danger Zone note on that section.
   const sections = [
     {
       // Appearance is ungated — the theme is a per-user display preference, not
@@ -118,32 +151,63 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
       id: 'appearance',
       label: 'Appearance',
       icon: <Palette size={18} />,
+      group: 'Appearance',
       content: (
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-sm font-semibold text-strong">Colour theme</p>
             <p className="text-sm text-muted mt-0.5">
-              Applies to your account on this device. System follows your device setting.
+              Palette and light/dark, for your account on this device. System follows your device setting.
             </p>
           </div>
-          <ThemeToggle />
+          {/* THE-183 — the palette family (Harvest / Classic) was reachable only
+              from the member Profile, so an admin who never opens the member app
+              could not select Classic at all. Same two components as the
+              Profile's Appearance row, in the same wrapper: `flex items-center
+              gap-2`, family on the LEFT and mode on the RIGHT, DOM order
+              matching visual order so tab order agrees with reading order.
+
+              Reused verbatim, not re-implemented and not re-sized. Both write
+              their own localStorage key and both stamp <html> through
+              applyTheme in lib/theme-runtime.ts — the ONE path THE-85
+              consolidated to. Two UI copies of a control writing the same keys
+              is fine; a second stamping path is not, and "no second stamping
+              path exists" asserts that by enumerating the whole of src/.
+
+              ThemeToggle moves from its `default` variant to `row` here: `row`
+              is documented as the sizing for when the row holds two controls
+              instead of one, which is now this row as well. That is also what
+              brings the icon-only fallback with it — below `sm` (640px), and
+              again from `xl` (1280px) up, where the Profile's settings column
+              splits and available width stops growing with the viewport
+              (THE-184). Admin Settings does not split at `xl`, so it has room
+              for the labels there; it takes the fallback anyway because
+              "match the member Profile exactly" is the requirement, and a
+              per-caller breakpoint would be a second answer to one question. */}
+          <div className="flex items-center gap-2">
+            <PaletteFamilyToggle />
+            <ThemeToggle variant="row" />
+          </div>
         </div>
       ),
     },
     {
       id: 'payments',
+      group: 'Payments',
       label: 'Payments (Connect Stripe)',
       icon: <CreditCard size={18} />,
       content: <PaymentSection />,
     },
     {
       id: 'onboarding',
+      group: 'Church Setup',
       label: 'Onboarding Questions',
       icon: <Settings2 size={18} />,
       content: <OnboardingSection />,
     },
     {
       id: 'giving-statements',
+      group: 'Church Setup',
       label: 'Giving Statements',
       icon: <FileText size={18} />,
       content: <GivingStatementsSection />,
@@ -151,6 +215,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
     },
     {
       id: 'sms',
+      group: 'Connected Services',
       label: 'SMS (Twilio)',
       icon: <MessageSquare size={18} />,
       content: <SmsSection />,
@@ -158,6 +223,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
     },
     {
       id: 'ai-assistant',
+      group: 'Connected Services',
       label: 'AI Assistant',
       icon: <Bot size={18} />,
       content: <AiAssistantSection currentPlan={currentPlan} email={email} isPlanOwner={isPlanOwner} />,
@@ -165,21 +231,42 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
     },
     {
       id: 'integrations',
+      group: 'Connected Services',
       label: 'Integrations',
       icon: <Plug size={18} />,
       content: <IntegrationsSection />,
       hidden: !platformOverride && !currentFeatures?.newsletterAutomation,
     },
     {
+      // THE-183 — the Danger Zone. A destructive action was sitting in the same
+      // flat run as a colour preference; it is now the only row in its own
+      // region, which SettingsAccordion draws behind a hairline rule with a
+      // full section gap of padding above it, under a danger-toned heading.
+      //
+      // It stays exactly where it was in the array. The founder's requirement
+      // is that Cancel is SEPARATED, explicitly "not merely last" — separation
+      // is the property, being last is not — and every alternative placement
+      // meant reordering rows on a phone, which is not allowed here. So it
+      // moves nowhere and gains the separation instead. That also keeps it out
+      // of the Account region, where "plan, billing, cancel" would have put a
+      // destructive action back beside the two benign things it is most likely
+      // to be misclicked for.
       id: 'cancel-plan',
+      group: 'Danger Zone',
       label: 'Cancel Subscription',
       icon: <AlertTriangle size={18} />,
       content: (
         <div>
           <p className="text-muted text-sm mb-4">Cancel your subscription. Your ministry will remain active until the end of the current billing period.</p>
+          {/* Rules 3 and 4 on the action. The red-* classes are pre-existing and
+              deliberately untouched: they are literal palette colours rather
+              than the `text-danger` token the row header already uses, but
+              changing them repaints this button in every palette — a mobile
+              change, and a theming fix rather than a layout one. Reported, not
+              bundled. */}
           <button
             onClick={() => setShowCancelConfirm(true)}
-            className="px-4 py-2 border border-red-200 text-red-600 rounded-lg text-sm font-medium hover:bg-red-50 transition-colors"
+            className={`px-4 py-2 border border-red-200 text-red-600 rounded-lg text-sm font-medium hover:bg-red-50 transition-colors ${ACTION_BUTTON} ${CONTROL_DENSITY.action}`}
           >
             Cancel Subscription
           </button>
@@ -191,9 +278,32 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
   ];
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6 px-4 lg:px-0">
+    <div className={`space-y-6 ${CONTROL_DENSITY.sectionGap} px-4 lg:px-0 ${FORM_MEASURE}`}>
       {/* Mobile side gutter (px-4) to match the mockup's card margins. Desktop is
           unchanged — lg:px-0 is a no-op and the shell already pads with lg:p-6. */}
+      {/* THE-183, Rule 1b — the form measure, replacing an unqualified
+          `max-w-2xl mx-auto`.
+
+          `max-w-2xl` is 42rem, and globals.css trims the rem base to 14.5px
+          from 1024px up, so on a monitor it resolved to 609px — not the 672px
+          the class name suggests. Measured in Chromium in the real admin shell
+          at 1440px, the content box is 1164.5px (1440 − a 232px `lg:w-64`
+          sidebar − 21.75px of `lg:p-6` either side), which left 277.75px of
+          dead space on EACH side of a 609px column. That is the founder's
+          "narrow column with large empty regions either side", and it is
+          exactly the split-rem-base trap form-layout.ts documents.
+
+          FORM_MEASURE (940px, in px so the number in the class is the number on
+          screen at every viewport) is Rule 1b — a form's measure, not
+          FORM_CONTAINER's 1120px page measure. Settings is a stack of controls
+          a person acts on one at a time, not a data-dense page, so 1b is the
+          rule that applies. It is `sm:`-gated, so nothing below 640px moves:
+          `max-w-2xl` was 672px there and never bound a phone either.
+
+          `space-y-6` (24px) stays for mobile and Rule 4's sectionGap (28px)
+          takes over from `sm:` up, so the regions below get the settled rhythm
+          rather than the 21.75px `space-y-6` collapses to at the desktop rem
+          base. */}
       {/* Desktop page header (Platform eyebrow + Settings title). Hidden on mobile:
           the shell's AdminScreenHeader already renders "Settings", so an in-content
           title would duplicate it (same convention as the Accounting rebuild). The
@@ -246,7 +356,12 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
         </div>
       )}
 
-      {/* Current Plan Summary */}
+      {/* Account — the plan and the billing portal behind "Manage". The one
+          region that is not an accordion, so its heading is rendered here
+          rather than by SettingsAccordion. Cancel Subscription is deliberately
+          NOT in this region: see the Danger Zone note on the sections array. */}
+      <div>
+        <SectionHeading className="sm:mb-2.5">Account</SectionHeading>
       {currentPlan ? (
         <div className="bg-surface-raised rounded-brand-lg border border-line shadow-[var(--ds-sh-sm)] p-4 flex items-center gap-4">
           <span className="w-11 h-11 rounded-brand bg-[color-mix(in_srgb,var(--brand-color)_12%,transparent)] flex items-center justify-center shrink-0">
@@ -258,7 +373,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
           </div>
           <button
             onClick={handleManageSubscription}
-            className="shrink-0 px-4 py-2 rounded-brand border border-line bg-surface-raised text-[13px] font-semibold text-strong hover:bg-surface-sunken transition-colors"
+            className={`shrink-0 px-4 py-2 rounded-brand border border-line bg-surface-raised text-[13px] font-semibold text-strong hover:bg-surface-sunken transition-colors ${ACTION_BUTTON} ${CONTROL_DENSITY.action}`}
           >
             Manage
           </button>
@@ -274,12 +389,19 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
           </div>
         </div>
       )}
+      </div>
 
       {/* Accordion Sections */}
       <SettingsAccordion sections={sections} forceOpen={forceOpen} />
 
-      {/* Customize Navigation — opens the bottom-bar / More-drawer reorder tool */}
+      {/* Navigation — the bottom-bar / More-drawer reorder tool. It keeps the
+          position it has always had, after the accordion, because moving it
+          would reorder the page on a phone and mobile is not allowed to move.
+          That leaves it below the Danger Zone; see the note on the sections
+          array for why "separated" and "last" are not the same requirement. */}
       {onCustomizeNav && (
+        <div>
+        <SectionHeading className="sm:mb-2.5">Navigation</SectionHeading>
         <button
           onClick={onCustomizeNav}
           className="w-full flex items-center gap-3 px-5 py-4 bg-surface-raised rounded-brand border border-line shadow-[var(--ds-sh-sm)] hover:bg-[color-mix(in_srgb,var(--surface-sunken)_60%,transparent)] transition-colors text-left"
@@ -291,6 +413,7 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
           </div>
           <ChevronRight size={16} className="text-faint" />
         </button>
+        </div>
       )}
 
       {/* Cancel Confirmation Modal */}

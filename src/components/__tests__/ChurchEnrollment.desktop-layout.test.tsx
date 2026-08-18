@@ -715,9 +715,14 @@ describe('the layout rules live in one shared place and have a caller', () => {
     // The point of this PR was that one form could be judged before the rules
     // reached forty screens. THE-179 (AdminCourseEditor.desktop-layout.test.tsx)
     // is the deliberate, explicitly-instructed second adopter — reusing these
-    // exact rules instead of inventing a second set of desktop widths. An
-    // importer NOT in this list is what would mean the rules leaked in by
-    // accident rather than by a scoped decision each time.
+    // exact rules instead of inventing a second set of desktop widths. THE-183
+    // (AdminSettings.regroup.test.tsx) is the third, on the same terms: admin
+    // Settings took FORM_MEASURE, ACTION_BUTTON and CONTROL_DENSITY as they
+    // stand. It takes no FIELD_WIDTH, because it renders no input of its own —
+    // every field on that screen lives inside a settings section component,
+    // and those were out of scope. An importer NOT in this list is what would
+    // mean the rules leaked in by accident rather than by a scoped decision
+    // each time.
     const importers = execSync(
       "grep -rl \"from '.*form-layout'\" src --include=*.tsx --include=*.ts || true",
       { encoding: 'utf8' },
@@ -725,6 +730,7 @@ describe('the layout rules live in one shared place and have a caller', () => {
     expect(importers).toEqual([
       'src/components/AdminChurches.tsx',
       'src/components/AdminCourseEditor.tsx',
+      'src/components/AdminSettings.tsx',
       'src/components/ChurchEnrollment.tsx',
     ]);
   });
