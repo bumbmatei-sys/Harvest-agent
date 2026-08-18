@@ -5,6 +5,7 @@ import { Resend } from 'resend';
 import { requireAdmin } from '@/lib/api-auth';
 import { adminDb, getReceiptsBucket } from '@/lib/firebase-admin';
 import { PLATFORM_TENANT_ID } from '@/utils/tenant-scope';
+import { isAnonymisedDonorEmail } from '@/lib/member-deletion';
 import { toSafeDate } from '@/utils/format-date';
 import { captureHandledError } from '@/lib/money-path-sentry';
 
@@ -34,6 +35,16 @@ interface DonorAgg {
   email: string;
   total: number; // cents
   donations: DonationLine[];
+  /**
+   * The donor deleted their account (THE-76). Their invoices were ANONYMISED,
+   * not deleted, so the gifts still belong on the church's statement — but the
+   * address on them is now a reserved `.invalid` pseudonym that can never be
+   * delivered to. The statement is still GENERATED and stored; only the email is
+   * skipped. Without this, every deleted donor would fail its Resend call, land
+   * in `failures`, inflate the `failed` count and fire a Sentry event on every
+   * annual run.
+   */
+  deleted: boolean;
 }
 
 interface StatementConfig {
@@ -196,9 +207,19 @@ export async function POST(request: NextRequest) {
       if (!donorEmail) continue;
       if (onlyEmail && donorEmail !== onlyEmail) continue;
       if (!donorsMap.has(donorEmail)) {
-        donorsMap.set(donorEmail, { name: inv.recipientName || donorEmail, email: donorEmail, total: 0, donations: [] });
+        donorsMap.set(donorEmail, {
+          name: inv.recipientName || donorEmail,
+          email: donorEmail,
+          total: 0,
+          donations: [],
+          deleted: false,
+        });
       }
       const donor = donorsMap.get(donorEmail)!;
+      // Sticky: one anonymised invoice is enough to mark the donor gone. The
+      // pseudonym is stable per donor per tenant, so every row in this group
+      // carries it anyway.
+      if (inv.donorDeleted === true || isAnonymisedDonorEmail(donorEmail)) donor.deleted = true;
       donor.total += inv.amount || 0;
       donor.donations.push({
         date: issued,
@@ -235,7 +256,7 @@ export async function POST(request: NextRequest) {
         generated++;
 
         let didSend = false;
-        if (send && resendKey) {
+        if (send && resendKey && !donor.deleted) {
           const resend = new Resend(resendKey);
           const pdfBase64 = Buffer.from(pdfBytes).toString('base64');
           const { error } = await resend.emails.send({
@@ -258,6 +279,7 @@ export async function POST(request: NextRequest) {
           pdfPath: filePath,
           sentAt: didSend ? new Date().toISOString() : null,
           status: didSend ? 'sent' : 'generated',
+          donorDeleted: donor.deleted,
           generatedAt: new Date().toISOString(),
           generatedBy: uid,
         }, { merge: true });

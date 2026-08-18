@@ -152,7 +152,13 @@ describe('POST /api/account/delete — a failed document delete must NOT delete 
   it('treats a delete that silently did nothing as a failure, and still spares the auth user', async () => {
     // `delete()` resolving is not proof. The document is read back, and here it
     // is still there — the exact shape of "it did not throw, it also did not work".
-    mockDocGet.mockResolvedValueOnce({ exists: true, data: () => ({ tenantId: 't1' }) });
+    //
+    // Two reads now: the route reads the profile FIRST to resolve the member's
+    // tenant for the satellite sweep (THE-76), then reads it BACK after the
+    // delete. This account carries no tenant, so the sweep is skipped and the
+    // second read is the one under test.
+    mockDocGet.mockResolvedValueOnce({ exists: true, data: () => ({}) });
+    mockDocGet.mockResolvedValueOnce({ exists: true, data: () => ({}) });
 
     const res = await POST(makeRequest());
 

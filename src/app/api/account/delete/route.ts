@@ -3,8 +3,11 @@ import type { NextRequest } from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebase-admin';
 import { requireAuth } from '@/lib/api-auth';
 import { captureHandledError } from '@/lib/money-path-sentry';
+import { emptyReport, type DeletionReport } from '@/lib/member-deletion';
+import { eraseMemberData, resolveContactIds } from '@/lib/member-erasure';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 300;
 
 /**
  * POST /api/account/delete   — a member deletes their OWN account.
@@ -35,7 +38,23 @@ export const dynamic = 'force-dynamic';
  * client calls with no way to recover from the first one failing. Here both
  * deletions are ordered, verified, and reported.
  *
- * ── Deletion order: DOCUMENT FIRST, THEN THE AUTH USER ───────────────────────
+ * ── Deletion order: SATELLITE DATA, THEN THE DOCUMENT, THEN THE AUTH USER ────
+ *
+ * ⚠️ STEP 0 CAME LATER (THE-76). This route originally removed `users/{uid}` and
+ * the Auth account and NOTHING ELSE, and said so: everything keyed to the member
+ * elsewhere was left as "a retention decision". It is one, and the decision is
+ * now made and enumerated — see MEMBER_DATA_MAP in src/lib/member-erasure.ts,
+ * which names every collection holding a uid, an email, a name or a photo URL
+ * and says for each whether it is deleted, anonymised, or kept on purpose.
+ *
+ * The sweep runs BEFORE the profile document, and the profile document is only
+ * deleted if the sweep came back clean. That ordering is the whole safety
+ * property: a member whose sweep half-failed still has their profile, still has
+ * their session, and can retry — and the retry is idempotent, because every
+ * sweep is keyed on identity and finds nothing left the second time. Deleting
+ * the profile first would strand any collection the sweep had not reached, since
+ * `users/{uid}` is where the member's tenant and email are read from.
+ *
  * Both orders leave a broken state if the second step fails, so the question is
  * which broken state a member can get OUT of. The caller's own credential is the
  * only thing that can drive a retry, and deleting the Auth user destroys it:
@@ -61,17 +80,23 @@ export const dynamic = 'force-dynamic';
  *
  * ── Partial failure is never a 200 ───────────────────────────────────────────
  * Every response names `step` and reports `documentDeleted` / `authDeleted`
- * exactly as they are. A failure at either step returns a non-2xx. Returning a
- * success body for a half-completed deletion would be the original bug rebuilt
- * on the server.
+ * exactly as they are, and now carries a `report` naming every collection that
+ * was cleared, anonymised, retained, or failed. A route that clears 24 of 25
+ * collections and returns 200 is worse than one that fails loudly, so a sweep
+ * with any failure returns 500 with `report.status: 'partial'` and touches
+ * neither the profile nor the sign-in. The report follows the shape the SMS
+ * broadcast established in THE-29: explicit per-target counters, an explicit
+ * 'complete' | 'partial' status, and a spelled-out `error` when partial — not a
+ * success body a caller has to diff to notice something survived.
  *
- * ── What this does NOT delete ────────────────────────────────────────────────
- * Only `users/{uid}` and the Auth account. Data keyed to the member elsewhere —
- * CRM contact rows, giving history, prayer requests, community posts and DMs,
- * event registrations, check-in records — is deliberately left alone; widening
- * the scope is a retention decision (a donation record is a financial record a
- * church may be required to keep), not a code cleanup. The member-facing copy
- * says what is and is not removed rather than implying a full erasure.
+ * ── What this deliberately does NOT delete ───────────────────────────────────
+ * DONATION RECORDS. A church needs its giving history to close its books and a
+ * donor needs the receipt for their tax return, so invoices, giving statements,
+ * pledges and 'donation' CRM activities survive with their figures intact and
+ * their identity replaced by a stable pseudonym. Two collections also survive
+ * because they carry no member key at all — livestream prayers and SMS delivery
+ * logs; both are named as gaps in the report rather than guessed at. Every
+ * disposition and its reason is in MEMBER_DATA_MAP.
  */
 
 /**
@@ -136,6 +161,58 @@ export async function POST(request: NextRequest) {
 
   const userRef = adminDb.collection('users').doc(userId);
 
+  // ── STEP 0: everything else the member is in ──────────────────────────────
+  // Read the profile FIRST — it is the only place the member's tenant lives, and
+  // every tenant-scoped sweep below needs a concrete one. A member with no
+  // tenant has no tenant-scoped data to sweep, so the sweep is skipped and said
+  // to be skipped; it is never run with a null scope (see assertConcreteScope).
+  let report: DeletionReport = emptyReport();
+  try {
+    const profile = await userRef.get();
+    const data = profile.exists ? profile.data() ?? {} : {};
+    const tenantId = typeof data.tenantId === 'string' && data.tenantId ? data.tenantId : '';
+    const email = (typeof data.email === 'string' ? data.email : userOrErr.email ?? '').trim().toLowerCase();
+
+    if (tenantId) {
+      // Resolved before anything is deleted: form submissions and check-in rows
+      // are reachable ONLY through the CRM contact id, so clearing the contacts
+      // first would make them permanently unreachable.
+      const contactIds = await resolveContactIds(userId, email, tenantId);
+      report = await eraseMemberData({ uid: userId, email, tenantId, contactIds });
+    } else {
+      report.retained['(tenant-scoped collections)'] =
+        'Skipped — this account carries no tenant, so it has no tenant-scoped data.';
+    }
+  } catch (e) {
+    // A throw here is the sweep itself failing to even start (an unreadable
+    // profile, a rejected scope). Nothing has been deleted, so this is a clean
+    // no-op that the member can retry from a session they still hold.
+    report.status = 'partial';
+    report.failures.push({ collection: '(sweep)', message: e instanceof Error ? e.message : String(e) });
+    report.error = 'Deletion could not start — nothing was removed.';
+  }
+
+  if (report.status === 'partial') {
+    // 🔴 THE LOUD STOP. Some of the member's data survives, so the profile and
+    // the sign-in are both left alone: that is what keeps the member's own
+    // credential — the only thing that can drive a retry — alive.
+    captureHandledError(new Error(report.error ?? 'account deletion sweep incomplete'), {
+      step: 'account-delete-sweep',
+      ids: { uid: userId, failed: report.failures.map((f) => f.collection).join(',') },
+    });
+    return NextResponse.json(
+      {
+        error:
+          'Some of your data could not be removed, so nothing else was deleted and you are still signed in. Please try again.',
+        step: 'sweep',
+        documentDeleted: false,
+        authDeleted: false,
+        report,
+      },
+      { status: 500 },
+    );
+  }
+
   // ── STEP 1: the profile document ──────────────────────────────────────────
   // Deleted AND read back. A delete that quietly does nothing is precisely the
   // failure this route exists to stop, so "it did not throw" is not accepted as
@@ -155,6 +232,7 @@ export async function POST(request: NextRequest) {
         detail: errMsg(e),
         documentDeleted: false,
         authDeleted: false,
+        report,
       },
       { status: 500 },
     );
@@ -182,6 +260,7 @@ export async function POST(request: NextRequest) {
           detail: errMsg(e),
           documentDeleted: true,
           authDeleted: false,
+          report,
         },
         { status: 500 },
       );
@@ -194,5 +273,6 @@ export async function POST(request: NextRequest) {
     step: 'complete',
     documentDeleted: true,
     authDeleted: true,
+    report,
   });
 }

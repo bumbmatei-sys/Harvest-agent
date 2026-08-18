@@ -87,11 +87,23 @@ function makeQuery(name: string) {
   return q;
 }
 
+export const mockBatchUpdate = vi.fn();
+
 function makeBatch() {
   const pending: Array<{ __collection?: string; id?: string }> = [];
   return {
     delete: vi.fn((ref: { __collection?: string; id?: string }) => {
       pending.push(ref);
+    }),
+    // Batched UPDATE, not just delete: /api/tenants/delete DETACHES members
+    // (clears tenantId/role/permissions) instead of deleting them, and the
+    // account route anonymises donation invoices the same way. The store applies
+    // the patch so a paginated "re-query until empty" loop actually terminates.
+    update: vi.fn((ref: { __collection?: string; id?: string }, patch: Record<string, unknown>) => {
+      mockBatchUpdate(ref, patch);
+      if (!ref?.__collection) return;
+      const doc = (store.get(ref.__collection) || []).find((d) => d.id === ref.id);
+      if (doc) Object.assign(doc.data, patch);
     }),
     commit: vi.fn(async () => {
       pending.forEach(spliceFromStore);

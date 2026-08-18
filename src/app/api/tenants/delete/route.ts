@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/api-auth';
-import { adminDb, adminAuth } from '@/lib/firebase-admin';
+import { adminDb } from '@/lib/firebase-admin';
 import { captureHandledError } from '@/lib/money-path-sentry';
 import { tenantPrivateRef } from '@/lib/tenant-private';
+import {
+  assertConcreteScope,
+  emptyReport,
+  type DeletionReport,
+} from '@/lib/member-deletion';
 
 /**
  * DELETE /api/tenants/delete?id=<tenantId>[&dryRun=true]
@@ -18,11 +23,27 @@ import { tenantPrivateRef } from '@/lib/tenant-private';
  *      collections, not subcollections of the tenant doc — so each is
  *      query-and-deleted here (paginated + batched). Skipping them is what
  *      previously ORPHANED a tenant's users and content on deletion.
- *   3. The Firebase AUTH accounts of the tenant's users. Deleting only the
- *      `users/{uid}` Firestore doc leaves the Auth account intact — the person
- *      can still sign in (into a broken, doc-less state) and their email is
- *      permanently unusable for a new signup (Auth collision). So user deletion
- *      MUST also delete the Auth account.
+ *   3. The tenant's MEMBERS — who are DETACHED, never deleted. See below.
+ *
+ * ⚠️ MEMBERS ARE PEOPLE, NOT TENANT DATA (THE-76). This route used to delete
+ * every `users/{uid}` doc carrying the tenant's id AND the matching Firebase Auth
+ * account. That is wrong on both halves:
+ *
+ *   • A member may belong to another church. Deleting their `users` doc because
+ *     ONE of their churches was removed destroys a profile that is still in use
+ *     somewhere else — along with their course progress, saved items and lesson
+ *     notes, none of which are the deleted tenant's property.
+ *   • Deleting their Auth account is worse still: it destroys a sign-in that
+ *     nobody in this flow asked to remove, and locks their email out of ever
+ *     being reused. A super admin removing a church has no mandate over the
+ *     people inside it.
+ *
+ * So the members are DETACHED instead: `tenantId`, `role` and `permissions` are
+ * cleared, which is exactly the state a member is in before they join a church.
+ * They keep their account, their sign-in and their own data. A member who wants
+ * their data gone deletes their own account through /api/account/delete, which
+ * is the route that owns that decision and sweeps the 25 collections it
+ * touches.
  *
  * `dryRun=true` returns a per-collection count of what WOULD be deleted (plus the
  * list of user uids/emails) and deletes NOTHING — use it to preview before the
@@ -96,13 +117,20 @@ const errMsg = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
 /** Count matching docs without reading them all (aggregate query) — dry-run. */
 async function countCollection(name: string, tenantId: string): Promise<number> {
-  const agg = await adminDb.collection(name).where('tenantId', '==', tenantId).count().get();
+  const agg = await adminDb
+    .collection(name)
+    .where('tenantId', '==', assertConcreteScope(tenantId, 'tenantId'))
+    .count()
+    .get();
   return agg.data().count;
 }
 
 /** List the tenant's users (uid + email) for the dry-run preview. */
 async function listUsers(tenantId: string): Promise<{ uid: string; email: string | null }[]> {
-  const snap = await adminDb.collection('users').where('tenantId', '==', tenantId).get();
+  const snap = await adminDb
+    .collection('users')
+    .where('tenantId', '==', assertConcreteScope(tenantId, 'tenantId'))
+    .get();
   return snap.docs.map((d) => ({ uid: d.id, email: (d.data()?.email as string) ?? null }));
 }
 
@@ -112,6 +140,7 @@ async function listUsers(tenantId: string): Promise<{ uid: string; email: string
  * so the next page is the next set, terminating when a page comes back empty.
  */
 async function deleteCollection(name: string, tenantId: string): Promise<number> {
+  assertConcreteScope(tenantId, 'tenantId');
   const coll = adminDb.collection(name);
   let count = 0;
   // eslint-disable-next-line no-constant-condition
@@ -133,6 +162,7 @@ async function deleteCollection(name: string, tenantId: string): Promise<number>
  * churches/announcements) instead of being orphaned.
  */
 async function deleteCollectionRecursive(name: string, tenantId: string): Promise<number> {
+  assertConcreteScope(tenantId, 'tenantId');
   const coll = adminDb.collection(name);
   let count = 0;
   // eslint-disable-next-line no-constant-condition
@@ -147,63 +177,92 @@ async function deleteCollectionRecursive(name: string, tenantId: string): Promis
 }
 
 /**
- * Delete the tenant's users: Firebase Auth accounts AND Firestore docs, paginated.
- * Auth is deleted first per page — a leftover Auth account (can still sign in,
- * email locked) is worse than a leftover Firestore doc. Per-uid Auth failures are
- * recorded and do not abort the run.
+ * DETACH the tenant's members: clear `tenantId`, `role` and `permissions`,
+ * paginated and batched. Nothing is deleted — not the `users` doc, not the Auth
+ * account.
+ *
+ * 🔴 THE ONE RULE THIS FUNCTION EXISTS TO ENFORCE: a member may belong to
+ * another church. A super admin removing THIS church has no mandate to destroy
+ * a person's profile or sign-in, so the strongest thing that may happen to them
+ * is losing their membership of the tenant that is going away. Detached is
+ * exactly the state a member is in before they join one, so the app already
+ * handles it everywhere.
+ *
+ * Detaching also fixes what deletion was really for: the orphan. A user doc that
+ * kept a dead `tenantId` stayed in the tenant's queries; clearing the field
+ * takes them out of every one of them without touching the person.
+ *
+ * Members who WANT their data gone use /api/account/delete, which owns that
+ * decision and sweeps the collections it covers.
  */
-async function deleteUsersAndAuth(
-  tenantId: string,
-  errors: DeleteError[],
-): Promise<{ docCount: number; authDeleted: number }> {
+async function detachUsers(tenantId: string, errors: DeleteError[]): Promise<number> {
+  assertConcreteScope(tenantId, 'tenantId');
   const usersColl = adminDb.collection('users');
-  const canBatchAuth = typeof (adminAuth as { deleteUsers?: unknown }).deleteUsers === 'function';
-  let docCount = 0;
-  let authDeleted = 0;
+  let detached = 0;
+  let cursor: unknown = undefined;
 
   // eslint-disable-next-line no-constant-condition
   while (true) {
-    // BATCH_LIMIT (400) is under both the WriteBatch cap (500) and the
-    // adminAuth.deleteUsers cap (1000), so one page = one auth call + one batch.
-    const snap = await usersColl.where('tenantId', '==', tenantId).limit(BATCH_LIMIT).get();
+    // Cursor-paged, not re-query-paged: a detached doc no longer matches the
+    // filter, so the next page IS the next set — but only after the commit
+    // lands, and paging by the last doc keeps that ordering explicit.
+    const base = usersColl.where('tenantId', '==', tenantId).limit(BATCH_LIMIT);
+    const snap = await (cursor === undefined ? base : usersColl.where('tenantId', '==', tenantId).startAfter(cursor).limit(BATCH_LIMIT)).get();
     if (snap.empty) break;
-    const uids = snap.docs.map((d) => d.id);
 
     try {
-      if (canBatchAuth) {
-        const res = await adminAuth.deleteUsers(uids);
-        authDeleted += res.successCount ?? 0;
-        for (const e of res.errors || []) {
-          errors.push({ step: `auth:${uids[e.index] ?? '?'}`, message: e.error?.message || 'Auth delete failed' });
-        }
-      } else {
-        for (const uid of uids) {
-          try {
-            await adminAuth.deleteUser(uid);
-            authDeleted += 1;
-          } catch (e) {
-            errors.push({ step: `auth:${uid}`, message: errMsg(e) });
-          }
-        }
-      }
+      const batch = adminDb.batch();
+      snap.docs.forEach((d) =>
+        batch.update(d.ref, {
+          tenantId: null,
+          role: 'user',
+          permissions: {},
+          detachedFromTenantId: tenantId,
+          detachedAt: new Date().toISOString(),
+        }),
+      );
+      await batch.commit();
+      detached += snap.size;
     } catch (e) {
-      // A wholesale Auth failure (e.g. network) — record it and stop the users
-      // phase rather than looping forever on a page we can't clear. The users
-      // phase stopping means Auth accounts for a deleted tenant SURVIVE: those
-      // people can still sign in, and their emails stay locked against re-signup.
-      errors.push({ step: 'auth:batch', message: errMsg(e) });
-      captureHandledError(e, { step: 'tenant-delete-auth-batch', tenantId });
+      // Recorded and stopped rather than looping forever on a page that will not
+      // clear. The members left attached still point at a tenant that is gone —
+      // reported, never silent.
+      errors.push({ step: 'detach:users', message: errMsg(e) });
+      captureHandledError(e, { step: 'tenant-delete-detach-users', tenantId });
       break;
     }
 
-    const batch = adminDb.batch();
-    snap.docs.forEach((d) => batch.delete(d.ref));
-    await batch.commit();
-    docCount += snap.size;
     if (snap.size < BATCH_LIMIT) break;
+    cursor = snap.docs[snap.docs.length - 1];
   }
 
-  return { docCount, authDeleted };
+  return detached;
+}
+
+/**
+ * Fold the per-step counters into the shared partial-report shape, so a caller
+ * reading either deletion route sees the same thing: what was cleared, what was
+ * kept, and — named, never implied — what failed. Mirrors THE-29's SMS broadcast
+ * report; `errors` is kept alongside it unchanged so existing callers still work.
+ */
+function buildReport(deleted: Record<string, number>, errors: DeleteError[]): DeletionReport {
+  const report = emptyReport();
+  for (const [name, n] of Object.entries(deleted)) {
+    if (name === 'users') continue; // members are detached, not deleted
+    report.cleared[name] = n;
+  }
+  report.retained['users'] =
+    'Members are DETACHED (tenantId/role/permissions cleared), never deleted — a member may belong to another church.';
+  report.retained['certificates'] = 'Course-completion records, retained on purpose.';
+  report.retained['affiliate_commissions'] = "Payout records owned by the referrer, not by this tenant.";
+  for (const e of errors) {
+    report.failures.push({ collection: e.step, message: e.message });
+  }
+  if (report.failures.length > 0) {
+    report.status = 'partial';
+    report.error = `Tenant deletion was incomplete — ${report.failures.length} step(s) failed.`;
+  }
+  return report;
 }
 
 export async function DELETE(request: NextRequest) {
@@ -244,7 +303,10 @@ export async function DELETE(request: NextRequest) {
     // ── DRY RUN: count everything, delete nothing ──────────────────────────────
     if (dryRun) {
       const userAccounts = await listUsers(tenantId);
-      deleted.users = userAccounts.length;
+      // 0, and stays 0. Members are DETACHED, not deleted — `deleted` counts
+      // deletions and would be lying if it claimed these. `detached` and
+      // `userAccounts` say who is affected and how.
+      deleted.users = 0;
       for (const { name } of TENANT_COLLECTIONS) {
         try {
           deleted[name] = await countCollection(name, tenantId);
@@ -257,22 +319,25 @@ export async function DELETE(request: NextRequest) {
         tenantId,
         dryRun: true,
         deleted,
-        authDeleted: userAccounts.length,
+        detached: userAccounts.length,
+        // Members' Auth accounts are never touched by this route.
+        authDeleted: 0,
         userAccounts,
         errors,
+        report: buildReport(deleted, errors),
       });
     }
 
     // ── REAL DELETION ──────────────────────────────────────────────────────────
-    // 1) Users + their Auth accounts first (the most irreversible step).
-    let authDeleted = 0;
+    // 1) Members first — DETACHED, never deleted. Done before the cascade so a
+    //    run that dies partway has already taken them out of the dying tenant's
+    //    queries rather than leaving them pointing at half a church.
+    deleted.users = 0;
+    let detached = 0;
     try {
-      const r = await deleteUsersAndAuth(tenantId, errors);
-      deleted.users = r.docCount;
-      authDeleted = r.authDeleted;
+      detached = await detachUsers(tenantId, errors);
     } catch (e) {
-      deleted.users = deleted.users ?? 0;
-      errors.push({ step: 'delete:users', message: errMsg(e) });
+      errors.push({ step: 'detach:users', message: errMsg(e) });
       captureHandledError(e, { step: 'tenant-delete-users', tenantId });
     }
 
@@ -308,7 +373,16 @@ export async function DELETE(request: NextRequest) {
     }
 
     return NextResponse.json(
-      { tenantId, dryRun: false, deleted, authDeleted, errors },
+      {
+        tenantId,
+        dryRun: false,
+        deleted,
+        detached,
+        // Members keep their sign-in — this route never deletes an Auth account.
+        authDeleted: 0,
+        errors,
+        report: buildReport(deleted, errors),
+      },
       { status: errors.length > 0 ? 500 : 200 },
     );
   } catch (error) {
