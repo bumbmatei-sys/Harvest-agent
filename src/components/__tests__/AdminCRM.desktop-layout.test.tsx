@@ -103,7 +103,7 @@ const AdminCRM = (await import('../AdminCRM')).default;
 const { AdminHeaderContext } = await import('../AdminScreenHeader');
 const {
   mobileLayer, allTokens, isResponsive, breakpointOf, maxWidthPx, arbitraryPx,
-  REM_PX_MOBILE, REM_PX_DESKTOP,
+  BREAKPOINT_MIN_PX, REM_PX_MOBILE, REM_PX_DESKTOP,
 } = await import('../../test/support/class-inventory');
 const {
   mountScreen, openTab, buttonByLabel, inputByPlaceholder, region, carries, tokensOf, inlineStyles,
@@ -259,13 +259,20 @@ describe('the sub-640px rendering of all three CRM tabs is unchanged', () => {
     const roster = region(await tab('Roles'), 'data-admin-roster');
     const table = roster.querySelector('table')!;
     const wrapper = table.closest('div')!;
-    // `hidden sm:block`: display:none below 640px, so the phone renders the
-    // card stack and nothing else — the table is not merely off-screen.
+    // `hidden md:block`: display:none below 768px, so the phone renders the card
+    // stack and nothing else — the table is not merely off-screen. The switch
+    // sits at `md:` because the four columns need 632px and `sm:` offers 565px;
+    // gating it further UP than the module's `sm:` keeps the phone safe a
+    // fortiori, which is the direction this constraint allows.
     expect(tokensOf(wrapper)).toContain('hidden');
-    expect(tokensOf(wrapper)).toContain('sm:block');
-    const stack = roster.querySelector('.sm\\:hidden')!;
-    expect(tokensOf(stack), 'the card stack would show on desktop too').toContain('sm:hidden');
-    expect(tokensOf(stack), 'an inline display would out-rank sm:hidden').toContain('flex');
+    expect(tokensOf(wrapper)).toContain('md:block');
+    const stack = roster.querySelector('.md\\:hidden')!;
+    expect(tokensOf(stack), 'the card stack would show on desktop too').toContain('md:hidden');
+    expect(tokensOf(stack), 'an inline display would out-rank md:hidden').toContain('flex');
+    // Both presentations are gated ABOVE the phone range, never below it.
+    for (const t of ['md:block', 'md:hidden']) {
+      expect(BREAKPOINT_MIN_PX[breakpointOf(t)!]).toBeGreaterThanOrEqual(640);
+    }
   });
 
   it('gates every rule the CRM spells at sm:, so none of them can reach a phone', async () => {

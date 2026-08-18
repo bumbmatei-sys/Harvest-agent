@@ -1350,8 +1350,16 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
 
                 return (
                   <div data-admin-roster="">
-                    {/* Phone: the card stack, exactly as it was. */}
-                    <div className="flex flex-col sm:hidden" style={{ gap: 16 }}>
+                    {/* Phone AND narrow tablet: the card stack, exactly as it was.
+                        The switch is at `md:` and not `sm:` because that is where
+                        the table actually fits. Measured in Chromium: the four
+                        columns have an intrinsic minimum of 632px, and at 640px
+                        the card offers 565px — the table clipped by 67px and had
+                        to be scrolled sideways inside its own card. 768px offers
+                        693px, which is the first breakpoint that clears it. `md:`
+                        is further from the phone than `sm:`, never nearer, so the
+                        sub-640px constraint is kept a fortiori. */}
+                    <div className="flex flex-col md:hidden" style={{ gap: 16 }}>
                       {rows.map((r) => (
                         <div key={r.admin.id} style={s.card}>
                           <div style={{ padding: "14px 16px", display: "flex", alignItems: "center", gap: 12 }}>
@@ -1376,7 +1384,7 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
                     </div>
 
                     {/* Desktop: one row per admin, one column per fact. */}
-                    <div className="hidden sm:block" style={{ ...s.card, overflowX: "auto" }}>
+                    <div className="hidden md:block" style={{ ...s.card, overflowX: "auto" }}>
                       <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
                         <thead>
                           <tr style={{ borderBottom: `1px solid ${BORDER}`, background: "var(--surface)" }}>
