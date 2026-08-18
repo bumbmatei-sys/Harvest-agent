@@ -6,6 +6,7 @@ import {
   mockRecursiveDelete,
   mockDeleteUsers,
   mockBatchCommit,
+  mockBatchUpdate,
   __setCollectionDocs,
   __resetStore,
   __applyDefaultImpls,
@@ -108,11 +109,15 @@ describe('DELETE /api/tenants/delete — dry run', () => {
     const json = await res.json();
 
     expect(json.dryRun).toBe(true);
-    expect(json.deleted.users).toBe(2);
+    // 🔴 Members are DETACHED, never deleted — a member may belong to another
+    // church, so `deleted.users` stays 0 and `detached` carries the count.
+    expect(json.deleted.users).toBe(0);
+    expect(json.detached).toBe(2);
     expect(json.deleted.courses).toBe(3);
     expect(json.deleted.rag_chunks).toBe(5);
     expect(json.deleted.blog_posts).toBe(0);
-    expect(json.authDeleted).toBe(2);
+    // No Auth account is ever removed by the tenant route.
+    expect(json.authDeleted).toBe(0);
     expect(json.userAccounts).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ email: 'a@t.com' }),
@@ -128,7 +133,7 @@ describe('DELETE /api/tenants/delete — dry run', () => {
 });
 
 describe('DELETE /api/tenants/delete — real cascade', () => {
-  it('removes docs from EVERY tenant collection and deletes Auth accounts', async () => {
+  it('removes docs from EVERY tenant collection and DETACHES members instead of deleting them', async () => {
     mockVerifyIdToken.mockResolvedValue({ uid: 'u1', email: 'admin@test.com', superAdmin: true });
     mockGetDoc.mockResolvedValue({ exists: true });
     __setCollectionDocs('users', [{ tenantId: 't1', email: 'a@t.com' }]);
@@ -142,14 +147,21 @@ describe('DELETE /api/tenants/delete — real cascade', () => {
 
     expect(json.dryRun).toBe(false);
     expect(json.errors).toEqual([]);
-    expect(json.deleted.users).toBe(1);
+    expect(json.deleted.users).toBe(0);
+    expect(json.detached).toBe(1);
     CASCADE_COLLECTIONS.forEach((n) => expect(json.deleted[n]).toBe(1));
     // certificates must NOT be part of the cascade.
     expect(json.deleted.certificates).toBeUndefined();
 
-    // Firebase Auth account was deleted (not just the Firestore doc).
-    expect(json.authDeleted).toBe(1);
-    expect(mockDeleteUsers).toHaveBeenCalledWith(['users-0']);
+    // 🔴 Neither the Auth account nor the users doc is deleted — the person may
+    // belong to another church, and a super admin removing THIS church has no
+    // mandate over them. They are detached: tenantId/role/permissions cleared.
+    expect(json.authDeleted).toBe(0);
+    expect(mockDeleteUsers).not.toHaveBeenCalled();
+    expect(mockBatchUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ __collection: 'users' }),
+      expect.objectContaining({ tenantId: null, role: 'user', permissions: {} }),
+    );
 
     // Subcollection-bearing collections + the tenant doc go via recursiveDelete
     // (community_posts, churches, tenant) so nested docs are not orphaned.
@@ -170,27 +182,26 @@ describe('DELETE /api/tenants/delete — real cascade', () => {
     expect(mockBatchCommit).toHaveBeenCalledTimes(3);
   });
 
-  it('records per-uid Auth failures without aborting, and still deletes the user docs', async () => {
+  it('reports a failed member detach by name instead of silently leaving them attached', async () => {
     mockVerifyIdToken.mockResolvedValue({ uid: 'u1', email: 'admin@test.com', superAdmin: true });
     mockGetDoc.mockResolvedValue({ exists: true });
     __setCollectionDocs('users', [
       { tenantId: 't1', email: 'a@t.com' },
       { tenantId: 't1', email: 'b@t.com' },
     ]);
-    mockDeleteUsers.mockResolvedValueOnce({
-      successCount: 1,
-      failureCount: 1,
-      errors: [{ index: 1, error: { message: 'auth boom' } }],
-    });
+    mockBatchCommit.mockRejectedValueOnce(new Error('detach boom'));
 
     const res = await DELETE(makeRequest('tok', 't1'));
     // Any error → 500, but with the full summary body.
     expect(res.status).toBe(500);
     const json = await res.json();
 
-    expect(json.deleted.users).toBe(2); // both Firestore docs still removed
-    expect(json.authDeleted).toBe(1);
-    expect(json.errors.some((e: { step: string }) => e.step.startsWith('auth:'))).toBe(true);
+    expect(json.detached).toBe(0);
+    expect(json.errors.some((e: { step: string }) => e.step === 'detach:users')).toBe(true);
+    expect(json.report.status).toBe('partial');
+    // Still nothing deleted about the people themselves.
+    expect(json.deleted.users).toBe(0);
+    expect(mockDeleteUsers).not.toHaveBeenCalled();
   });
 
   it('reports partial progress when a collection delete throws (no rollback)', async () => {
