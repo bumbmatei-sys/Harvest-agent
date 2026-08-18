@@ -342,15 +342,20 @@ describe('the layout rules live in one shared place and have a caller', () => {
     }
   });
 
-  it('reaches exactly the two files of this one form — no other screen was touched', () => {
-    // The point of this PR is that one form can be judged before the rules
-    // reach forty screens. A third importer means that stopped being true.
+  it('reaches only the screens that deliberately opted in — not forty screens by accident', () => {
+    // The point of this PR was that one form could be judged before the rules
+    // reached forty screens. THE-179 (AdminCourseEditor.desktop-layout.test.tsx)
+    // is the deliberate, explicitly-instructed second adopter — reusing these
+    // exact rules instead of inventing a second set of desktop widths. An
+    // importer NOT in this list is what would mean the rules leaked in by
+    // accident rather than by a scoped decision each time.
     const importers = execSync(
       "grep -rl \"from '.*form-layout'\" src --include=*.tsx --include=*.ts || true",
       { encoding: 'utf8' },
     ).split('\n').filter(Boolean).filter((f) => !f.includes('__tests__')).sort();
     expect(importers).toEqual([
       'src/components/AdminChurches.tsx',
+      'src/components/AdminCourseEditor.tsx',
       'src/components/ChurchEnrollment.tsx',
     ]);
   });
