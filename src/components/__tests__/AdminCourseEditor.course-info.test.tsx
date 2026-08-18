@@ -91,7 +91,7 @@ const {
 } = await import('../../test/support/class-inventory');
 const {
   FORM_CONTAINER, FORM_MEASURE, FIELD_WIDTH, FIELD_WIDTHS, ACTION_BUTTON,
-  COLUMN_SPLIT, COLUMN_GROUP, COLUMN_RULES, SPLIT_MIN_PX, SPLIT_GAP_PX, DENSITY_PX,
+  COLUMN_SPLIT, COLUMN_GROUP, COLUMN_RULES, SPLIT_MIN_PX, DENSITY_PX,
 } = await import('../layout/form-layout');
 
 const SRC = path.resolve(__dirname, '..');
@@ -111,19 +111,29 @@ const read = (rel: string) => readFileSync(path.join(SRC, rel), 'utf8');
  * To re-record — ONLY when the sub-640px rendering is deliberately changing,
  * which for this PR it is not:
  *
- *     git stash push src/components/AdminCourseEditor.tsx
+ *     git checkout a32665a -- src/components/AdminCourseEditor.tsx
  *     UPDATE_LAYOUT_BASELINE=1 npx vitest run \
  *       src/components/__tests__/AdminCourseEditor.course-info.test.tsx
- *     git stash pop
+ *     git checkout HEAD -- src/components/AdminCourseEditor.tsx
  *
  * The recorder refuses to run against a working tree that already carries this
  * PR's markup, so a stale baseline cannot be recorded by accident.
+ *
+ * `git` is used ONLY while recording. CI checks out at depth 1, so no revision
+ * but HEAD exists on the runner — a `git show <sha>` in an assertion fails the
+ * job rather than the assertion, which is exactly what it did on the first
+ * attempt at this PR. Everything the tests compare against is in the fixture.
  */
 const FIXTURES = path.join(__dirname, '__fixtures__');
 const FIXTURE = path.join(FIXTURES, 'admin-course-editor-info-mobile.json');
 const RECORDING = !!process.env.UPDATE_LAYOUT_BASELINE;
 const TARGET_FILE = path.join(SRC, 'AdminCourseEditor.tsx');
-const PRE_PR_REVISION = 'b990525';
+/**
+ * The merge base. `AdminCourseEditor.tsx` is byte-identical here and at
+ * b990525, the revision the Chromium numbers above were measured on, so the
+ * baseline is the same file either way.
+ */
+const PRE_PR_REVISION = 'a32665a';
 
 interface Baseline {
   infoMobileBoxes: string[];
@@ -132,6 +142,31 @@ interface Baseline {
   infoColours: string[];
   infoFontSizes: string[];
   curriculumMobile: string[];
+  /** Pre-PR source of every function that WRITES — see test 12. */
+  writePaths: Record<string, string>;
+}
+
+/**
+ * The write paths this PR must not touch, named by what they do rather than by
+ * line number. Their pre-PR source is recorded into the fixture rather than
+ * read back out of git at test time: CI checks out at depth 1, so no revision
+ * but HEAD exists on the runner and a `git show <sha>` here fails the job
+ * rather than the assertion.
+ */
+const WRITE_PATHS = [
+  'const handleSave',
+  'const handleUpdateCategories',
+  'const addAuthorToLibrary',
+  'const updateLibraryAuthor',
+  'const removeLibraryAuthor',
+  'const result = await ingestTextSource(',
+] as const;
+
+/** The source of `name`'s definition, long enough to cover its whole body. */
+function writePathBody(src: string, name: string): string {
+  const at = src.indexOf(name);
+  if (at < 0) throw new Error(`${name} vanished from AdminCourseEditor.tsx`);
+  return src.slice(at, at + 1400);
 }
 
 let BASELINE!: Baseline;
@@ -301,6 +336,7 @@ beforeAll(async () => {
       infoColours: colourTokens(infoContainer),
       infoFontSizes: fontSizeTokens(infoContainer),
       curriculumMobile: [],
+      writePaths: Object.fromEntries(WRITE_PATHS.map((fn) => [fn, writePathBody(pre, fn)])),
     };
     mounted!.unmount(); mounted = null;
     recorded.curriculumMobile = mobileLayer(await curriculum());
@@ -592,7 +628,9 @@ describe('the two columns align at the top', () => {
       const d = effective(g, 1440);
       expect(d.display).toBe('flex');
       expect(d['flex-direction']).toBe('column');
-      expect(d.gap).toBe(`${SPLIT_GAP_PX}px`);
+      // Rule 4's own two names for this 16px — no third one was minted.
+      expect(d['row-gap'] ?? d.gap).toBe(`${DENSITY_PX.rowGap}px`);
+      expect(d['column-gap'] ?? d.gap).toBe(`${DENSITY_PX.columnGap}px`);
     }
   });
 });
@@ -708,7 +746,12 @@ describe('widths, heights and gaps come from form-layout, not new per-screen val
     const unprefixed = mobileTokens(panel).filter((t) => arbitraryPx(t) !== null);
     expect(unprefixed).toEqual(['gap-[16px]']);
     expect(arbitraryPx(unprefixed[0])).toBe(DENSITY_PX.rowGap);
-    expect(SPLIT_GAP_PX).toBe(DENSITY_PX.rowGap);
+    expect(DENSITY_PX.columnGap, 'the two axes of one 16px gap have drifted apart')
+      .toBe(DENSITY_PX.rowGap);
+    // Rule 5 exports no gap constant of its own — THE-181 already named this
+    // 16px on both axes, and a second name for it is what this module exists
+    // to prevent.
+    expect(read('layout/form-layout.ts')).not.toMatch(/^export const SPLIT_GAP_PX/m);
   });
 
   it('gives Course Title, Course Description, Category and Status the widths the rules name', async () => {
@@ -802,21 +845,11 @@ describe('no colour is hardcoded, and all four palettes resolve', () => {
 // ═════════════════════════════════════════════════════════════════════════════
 describe('no field, save, publish or author path changed', () => {
   it('leaves every save, publish, draft, category and AI-knowledge path byte-identical', () => {
-    const before = execSync(`git show ${PRE_PR_REVISION}:src/components/AdminCourseEditor.tsx`,
-      { cwd: ROOT, encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 });
     const now = read('AdminCourseEditor.tsx');
-    // Named by what they do, not by line number: every function that writes.
-    const bodyOf = (src: string, name: string) => {
-      const at = src.indexOf(name);
-      expect(at, `${name} vanished`).toBeGreaterThan(-1);
-      return src.slice(at, at + 1400);
-    };
-    for (const fn of [
-      'const handleSave', 'const handleUpdateCategories', 'const addAuthorToLibrary',
-      'const updateLibraryAuthor', 'const removeLibraryAuthor',
-      'const result = await ingestTextSource(',
-    ]) {
-      expect(bodyOf(now, fn), `${fn} changed`).toBe(bodyOf(before, fn));
+    expect(Object.keys(BASELINE.writePaths).sort(), 'the recorded write paths are not the ones under test')
+      .toEqual([...WRITE_PATHS].sort());
+    for (const fn of WRITE_PATHS) {
+      expect(writePathBody(now, fn), `${fn} changed`).toBe(BASELINE.writePaths[fn]);
     }
   });
 

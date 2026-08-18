@@ -270,11 +270,19 @@ export const DESKTOP_CONTROL_MAX_PX = 40;
  * With auto-placement every block's top is tied to the tallest block in its
  * grid row instead, which is the failure THE-181 (PR 346) already paid for.
  *
- * ── The gap is Rule 4's, not a new number ────────────────────────────────────
- * Both axes take `DENSITY_PX.rowGap` — 16px, the gap Rule 4 already settled
- * between the rows of a field grid, and the gap the panel being split already
- * used between its cards. Nothing here introduces a length this module had
- * not already derived.
+ * ── The gap is Rule 4's, and it is Rule 4's NAME too ─────────────────────────
+ * Both axes take the 16px Rule 4 already settled: `DENSITY_PX.rowGap` down the
+ * stack and `DENSITY_PX.columnGap` across it — the same two names THE-181 gave
+ * the CRM's reference grid. Rule 5 mints no third name for that 16px and no
+ * `SPLIT_GAP_PX` of its own: this module's whole point is one name per value,
+ * and a `lg:gap-[16px]` shorthand is those two axes written once. It is also
+ * the gap the panel being split already used between its cards, so nothing
+ * here introduces a length the module had not already derived.
+ *
+ * There is no `lg:` spelling of those two tokens because Rule 4 is a `sm:`
+ * rule and must stay one — a `lg:`-gated twin of `columnGap` would be a second
+ * definition of the same 16px, which is the thing being avoided. The NUMBER is
+ * imported; only the gate differs, and the gate is Rule 5's own business.
  *
  * ── The consumer supplies the mobile-inert half ──────────────────────────────
  * Every token below is `lg:`-gated, so on a phone these two rules apply
@@ -294,6 +302,8 @@ export const COLUMN_GROUP = 'lg:flex lg:flex-col lg:gap-[16px]';
 /** Both halves of Rule 5, for the tests that range over it. */
 export const COLUMN_RULES = [COLUMN_SPLIT, COLUMN_GROUP];
 
-/** The viewport Rule 5's split begins at, and the gap it uses — as numbers. */
+/**
+ * The viewport Rule 5's split begins at. The gap has no constant of its own —
+ * it is `DENSITY_PX.rowGap` / `DENSITY_PX.columnGap`, which are already 16.
+ */
 export const SPLIT_MIN_PX = 1024;
-export const SPLIT_GAP_PX = DENSITY_PX.rowGap;
