@@ -714,8 +714,9 @@ describe('the layout rules live in one shared place and have a caller', () => {
   it('reaches only the screens that deliberately opted in — not forty screens by accident', () => {
     // The point of this PR was that one form could be judged before the rules
     // reached forty screens. THE-179 (AdminCourseEditor.desktop-layout.test.tsx)
-    // is the deliberate, explicitly-instructed second adopter — reusing these
-    // exact rules instead of inventing a second set of desktop widths. An
+    // and THE-181 batch 2 (PersonalInformationModal, EnterpriseContactModal) are
+    // the deliberate, explicitly-instructed adopters that followed — reusing
+    // these exact rules instead of inventing a second set of desktop widths. An
     // importer NOT in this list is what would mean the rules leaked in by
     // accident rather than by a scoped decision each time.
     const importers = execSync(
@@ -726,6 +727,8 @@ describe('the layout rules live in one shared place and have a caller', () => {
       'src/components/AdminChurches.tsx',
       'src/components/AdminCourseEditor.tsx',
       'src/components/ChurchEnrollment.tsx',
+      'src/components/EnterpriseContactModal.tsx',
+      'src/components/PersonalInformationModal.tsx',
     ]);
   });
 });
