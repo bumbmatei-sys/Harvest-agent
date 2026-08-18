@@ -92,6 +92,25 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ signupPlan }) => {
       // gate re-start checkout if the user closes the Stripe tab before paying.
       // The period travels WITH the plan: a church that chose annual and
       // abandoned the tab must not be silently restarted on monthly.
+      //
+      // 🔴 THE-92: `signupInProgress` is written HERE, before checkout is
+      // attempted, and that is deliberate — it is what makes an abandoned
+      // signup RECOVERABLE rather than what strands it. It is the only thing
+      // that routes the church back to the resumable screen: App.tsx reads it
+      // to leave a tenant-less mid-signup user alone instead of bouncing them
+      // into the generic funnel, and OnboardingGate reads it to render
+      // "Complete your payment" with a restart button that re-buys the SAME
+      // plan and term off this marker. Writing it later (say, only once the
+      // checkout POST has returned a URL) would leave a church that abandoned
+      // before that point with no marker at all, and the generic member
+      // onboarding funnel is where they would land — losing the plan, the
+      // term and the ministry name they had already chosen.
+      //
+      // Only the processors clear it (`signupInProgress: false`, one release
+      // per processor: Dodo provisioning and the Stripe webhook). There is
+      // deliberately NO client-side release — a church that has paid but
+      // whose webhook is still in flight must never be shown a re-checkout
+      // button, which is a double charge.
       const marker = {
         signupInProgress: true,
         signupPlan: selectedPlan,
@@ -103,13 +122,24 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ signupPlan }) => {
       if (snap.exists()) {
         await updateDoc(userRef, marker);
       } else {
+        // 🔴 THE-73: NO `termsAccepted` here. This screen displays no terms,
+        // no link and no checkbox, so it has no evidence of consent to record
+        // — it can only assume. AuthPage is the consent point: it shows the
+        // sentence and links the canonical Terms/Privacy documents beside the
+        // submit button, and it records `termsAccepted` on all four of its
+        // paths (Google new/existing, email signup/login). Asserting consent
+        // from here would be a second writer of a consent record whose screen
+        // never presented anything — under audit that is a claim that did not
+        // happen, which is worse than no record at all. Nothing existing is
+        // deleted or overwritten: this doc is only created when none exists,
+        // and a doc that already carries the field keeps it untouched (the
+        // updateDoc branch above writes the marker fields only).
         await setDoc(userRef, {
           uid: user.uid,
           email: user.email,
           displayName: user.displayName || ministryName.trim(),
           role: 'user',
           createdAt: new Date().toISOString(),
-          termsAccepted: true,
           ...marker,
         });
       }
