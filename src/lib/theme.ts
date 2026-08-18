@@ -19,9 +19,34 @@ export const THEME_CHOICES: readonly ThemeChoice[] = ['light', 'dark', 'system']
 export const isThemeChoice = (v: unknown): v is ThemeChoice =>
   typeof v === 'string' && (THEME_CHOICES as readonly string[]).includes(v);
 
-/** The dark page ground. Kept here so contrast derivation and CSS agree. */
+/**
+ * A second, independent preference: which palette FAMILY (as opposed to which
+ * MODE) the surfaces render in. Orthogonal to ThemeChoice — every family
+ * resolves to a light and a dark rendering, exactly like Harvest does today.
+ * Stored under its own key so it can be missing independently of the mode
+ * choice; a missing value means Harvest (see isPaletteFamily's caller).
+ */
+export const FAMILY_STORAGE_KEY = 'harvest-theme-family';
+
+export type PaletteFamily = 'harvest' | 'classic';
+
+export const PALETTE_FAMILIES: readonly PaletteFamily[] = ['harvest', 'classic'] as const;
+
+export const isPaletteFamily = (v: unknown): v is PaletteFamily =>
+  typeof v === 'string' && (PALETTE_FAMILIES as readonly string[]).includes(v);
+
+/** The dark page ground for the Harvest family (warm brown). Kept here so
+ *  contrast derivation and CSS agree. */
 export const DARK_SURFACE = '#1A1612';
-/** Brand cream — what an accent is lightened toward. */
+/** The dark page ground for the Classic family (neutral grey) — see
+ *  --surface under [data-palette="classic"].dark in globals.css, which this
+ *  must match exactly for deriveOnDarkAccent's AA guarantee to hold. */
+export const CLASSIC_DARK_SURFACE = '#1C1C1C';
+/** Brand cream — what an accent is lightened toward. Shared by both families:
+ *  lightening toward cream (rather than toward each family's own near-white)
+ *  is what keeps a corrected tenant accent reading as gold-tinted instead of
+ *  flattening to a neutral grey — see the non-negotiable that the accent must
+ *  never grey out. */
 export const CREAM = '#FAF8F5';
 /** WCAG AA for body text. */
 export const AA_CONTRAST = 4.5;

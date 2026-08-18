@@ -33,7 +33,9 @@ const OPTIONS: ReadonlyArray<{ value: ThemeChoice; label: string; Icon: typeof S
    than through React state. */
 
 interface ThemeToggleProps {
-  /** Compact row styling for the member Profile list; default suits settings. */
+  /** Compact row styling for the member Profile list, sized to sit beside
+   *  PaletteFamilyToggle now that the row holds two controls instead of one;
+   *  default (unchanged) suits admin settings, where it is the only control. */
   variant?: 'default' | 'row';
 }
 
@@ -74,7 +76,7 @@ const ThemeToggle: React.FC<ThemeToggleProps> = ({ variant = 'default' }) => {
       aria-label="Colour theme"
       className={
         variant === 'row'
-          ? 'flex items-center gap-1 bg-surface-sunken rounded-brand p-1'
+          ? 'flex items-center gap-0.5 bg-surface-sunken rounded-brand p-0.5'
           : 'inline-flex items-center gap-1 bg-surface-sunken rounded-brand p-1'
       }
     >
@@ -89,13 +91,21 @@ const ThemeToggle: React.FC<ThemeToggleProps> = ({ variant = 'default' }) => {
             aria-label={label}
             data-theme-choice={value}
             onClick={() => select(value)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] text-[13px] font-semibold transition-colors ${
-              active
-                ? 'bg-surface-raised text-strong shadow-[var(--ds-sh-sm)]'
-                : 'text-muted hover:text-strong'
-            }`}
+            className={
+              variant === 'row'
+                ? `flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold transition-colors ${
+                    active
+                      ? 'bg-surface-raised text-strong shadow-[var(--ds-sh-sm)]'
+                      : 'text-muted hover:text-strong'
+                  }`
+                : `flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] text-[13px] font-semibold transition-colors ${
+                    active
+                      ? 'bg-surface-raised text-strong shadow-[var(--ds-sh-sm)]'
+                      : 'text-muted hover:text-strong'
+                  }`
+            }
           >
-            <Icon size={14} />
+            <Icon size={variant === 'row' ? 12 : 14} />
             {label}
           </button>
         );

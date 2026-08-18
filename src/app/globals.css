@@ -339,6 +339,83 @@
       dark ground, it is absent. Hairline top highlight + a deeper black. */
    --ds-sh-xl: 0 1px 0 0 rgba(250, 248, 245, 0.07) inset, 0 32px 80px rgba(0, 0, 0, 0.65);
  }
+
+ /* ── Palette family: Classic ─────────────────────────────────────────────
+    A second FAMILY, not a second theme. Harvest's two selectors above
+    (:root, .dark/[data-theme="dark"]) are completely untouched by this
+    block — Classic is purely additive, two new selectors that only ever
+    match when the pre-paint script / applyTheme has stamped
+    data-palette="classic" on <html>.
+
+    Only surface and text tokens are overridden — the exact set stage 3
+    already treats as "the neutral ramp" (surface/border/text), the same
+    tokens that already differ between :root and .dark above. Borders are
+    included in that ramp: a plain-white surface with Harvest's warm stone
+    borders would read as unfinished, not as a second family, and the brief
+    draws no third bucket between "surface" and "text". Every value below
+    is an OVERRIDE of a token Harvest already declares — no new custom
+    property is introduced here. Fonts, radii, spacing and shadows are not
+    touched: --ds-sh-*, --ds-radius-card etc. are absent from both blocks
+    below, so they keep resolving to :root's / .dark's values in Classic too.
+
+    Deliberately NOT overridden, in either mode: --surface-gold,
+    --border-gold, --glow-gold, --ring-gold, --scrim-night, --surface-night.
+    These are accent- or navy-derived (composited from --brand-color / the
+    fixed brand navy scale), not part of the neutral surface ramp, and the
+    non-negotiable is that the tenant accent — and the fixed brand structure
+    it composites against — must not grey out in either family. They fall
+    through to :root's / .dark's declarations unchanged, so a Classic gold
+    button or focus ring looks exactly like a Harvest one, as required.
+    --brand-color-on-dark (which --surface-gold/--border-gold/--glow-gold/
+    --ring-gold read on dark) is itself made family-aware — see layout.tsx —
+    so Classic dark still composites those against the RIGHT derived accent
+    even though this block never mentions the token.
+
+    Computed contrast ratios for every value below are asserted in
+    src/__tests__/theming-classic-palette.test.ts, resolved through postcss
+    exactly like theming-stage3.test.ts does for Harvest — nothing here is
+    eyeballed. */
+
+ /* Classic — light. "Plain white surfaces": the page ground drops Harvest's
+    cream tint for a neutral near-white, and every border/text value is
+    desaturated to match rather than converged onto Harvest's warm hexes. */
+ [data-palette="classic"][data-theme="light"] {
+   --surface:         #F7F7F7;
+   --surface-raised:  #FFFFFF;
+   --surface-sunken:  #EFEFEF;
+   --surface-chip:    #E0E0E0;
+   --surface-tint:    #F5F5F5;
+   --border-hairline: #EDEDED;
+   --border-default:  #E0E0E0;
+   --border-subtle:   #EFEFEF;
+   --border-strong:   #C7C7C7;
+   --text-strong:     #1A1A1A;
+   --text-heading:    #1A1A1A;
+   --text-body:       #404040;
+   --text-muted:      #595959;
+   --text-faint:      #696969;
+ }
+
+ /* Classic — dark. "Neutral dark grey": same lightness steps as Harvest's
+    dark ramp (mirrors --surface/-raised/-sunken's deltas almost exactly),
+    desaturated to neutral instead of warm-brown. */
+ [data-palette="classic"].dark,
+ [data-palette="classic"][data-theme="dark"] {
+   --surface:         #1C1C1C;
+   --surface-raised:  #242424;
+   --surface-sunken:  #131313;
+   --surface-chip:    #2E2E2E;
+   --surface-tint:    #1C1C1C;
+   --border-hairline: #2A2A2A;
+   --border-default:  #333333;
+   --border-subtle:   #2A2A2A;
+   --border-strong:   #474747;
+   --text-strong:     #F2F2F2;
+   --text-heading:    #F2F2F2;
+   --text-body:       #CCCCCC;
+   --text-muted:      #ABABAB;
+   --text-faint:      #969696;
+ }
 }
 
 /* ── Theming stage 3: tenant logos are images and do not invert ───────────

@@ -1,6 +1,14 @@
 'use client';
 import { useEffect, useLayoutEffect } from 'react';
-import { THEME_STORAGE_KEY, isThemeChoice, resolveTheme, type ThemeChoice } from './theme';
+import {
+  THEME_STORAGE_KEY,
+  FAMILY_STORAGE_KEY,
+  isThemeChoice,
+  isPaletteFamily,
+  resolveTheme,
+  type ThemeChoice,
+  type PaletteFamily,
+} from './theme';
 import { isPreAuthPath } from './preauth-theme';
 
 /**
@@ -17,6 +25,14 @@ import { isPreAuthPath } from './preauth-theme';
  * out of dark mode gets a light sign-in screen and is back in dark the moment
  * they sign in again. That is the whole point of forcing at this layer rather
  * than resolving the choice to 'light' and persisting it.
+ *
+ * The palette-family PR extends this same file rather than adding a second
+ * one: `applyTheme` now stamps `data-palette` alongside `data-theme`/`.dark`,
+ * so mode and family always land through the identical call. A family
+ * argument defaults to the stored value (re-read fresh on every call, not
+ * cached), which is why picking a new MODE from the toggle needs no changes
+ * here at all — the family that was already active is simply re-stamped.
+ * Only the pre-auth/funnel force below passes an explicit override.
  */
 
 const prefersDark = (): boolean =>
@@ -24,13 +40,33 @@ const prefersDark = (): boolean =>
   typeof window.matchMedia === 'function' &&
   window.matchMedia('(prefers-color-scheme: dark)').matches;
 
-/** Stamp <html>. Mirrors exactly what the pre-paint script does. */
-export function applyTheme(choice: ThemeChoice): void {
+/** Read the persisted family. Never writes — see the file header. */
+export function readStoredFamily(): PaletteFamily {
+  try {
+    const raw = localStorage.getItem(FAMILY_STORAGE_KEY);
+    return isPaletteFamily(raw) ? raw : 'harvest';
+  } catch {
+    // localStorage can throw in private mode / sandboxed iframes.
+    return 'harvest';
+  }
+}
+
+/**
+ * Stamp <html>. Mirrors exactly what the pre-paint script does.
+ *
+ * `family` defaults to whatever is currently stored so that callers changing
+ * only the mode (the toggle) don't have to know about the family axis at
+ * all. Callers that need to FORCE a family — the pre-auth/funnel override
+ * below — pass it explicitly, the same way they already pass an explicit
+ * `choice` instead of relying on resolveTheme's default.
+ */
+export function applyTheme(choice: ThemeChoice, family: PaletteFamily = readStoredFamily()): void {
   if (typeof document === 'undefined') return;
   const resolved = resolveTheme(choice, prefersDark());
   const el = document.documentElement;
   el.setAttribute('data-theme', resolved);
   el.classList.toggle('dark', resolved === 'dark');
+  el.setAttribute('data-palette', family);
 }
 
 /** Read the persisted choice. Never writes — see the file header. */
@@ -61,12 +97,23 @@ let forcedLightCount = 0;
  * usual. Defaults to the live URL because a screen declaring itself (below)
  * knows its own state but not its route — and inside the SPA, React Router has
  * already updated `window.location` by the time effects run.
+ *
+ * The same `forced` flag also pins the FAMILY to Harvest, not just the mode
+ * to light. Reasoning: these are the screens a prospective customer sees
+ * before they have an account at all, so nobody has ever chosen Classic here
+ * — the only way family could differ from the default on a funnel screen is a
+ * RETURNING signed-out user's stored 'classic' leaking through, which is
+ * exactly the kind of half-configured, never-design-reviewed combination
+ * (Classic pre-auth has no screenshots, no test coverage, nothing) that THE-85
+ * was written to keep off screens where "reads as a broken product" is the
+ * cost of getting it wrong. Harvest light is the one pre-auth presentation
+ * that has actually been built and verified; every other combination is not.
  */
 export function applyThemeForLocation(pathname?: string): void {
   if (typeof document === 'undefined') return;
   const path = pathname ?? window.location.pathname;
   const forced = forcedLightCount > 0 || isPreAuthPath(path);
-  applyTheme(forced ? 'light' : readStoredChoice());
+  applyTheme(forced ? 'light' : readStoredChoice(), forced ? 'harvest' : readStoredFamily());
 }
 
 /**

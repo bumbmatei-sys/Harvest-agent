@@ -7,6 +7,7 @@ import {
   deriveOnDarkAccent,
   resolveTheme,
   THEME_STORAGE_KEY,
+  FAMILY_STORAGE_KEY,
   AA_CONTRAST,
   DARK_SURFACE,
 } from '../lib/theme';
@@ -205,6 +206,21 @@ describe('the persisted choice survives a reload', () => {
     // stored choice is silently ignored on reload and the theme flashes.
     expect(toggle).toContain('THEME_STORAGE_KEY');
     expect(layout).toContain(`localStorage.getItem('${THEME_STORAGE_KEY}')`);
+  });
+
+  /**
+   * THE-168 — extends the pin above to the second duplicated key. The
+   * pre-paint script also cannot import FAMILY_STORAGE_KEY, so it is
+   * duplicated as a literal the same way; PaletteFamilyToggle reads/writes
+   * the constant. If the two drift, a stored family is silently ignored on
+   * reload and the surface flashes from Classic to Harvest (or back) after
+   * first paint.
+   */
+  it('the family control writes the same key the pre-paint script reads', () => {
+    const familyToggle = readFileSync(path.join(ROOT, 'src/components/PaletteFamilyToggle.tsx'), 'utf8');
+    const layout = readFileSync(LAYOUT, 'utf8');
+    expect(familyToggle).toContain('FAMILY_STORAGE_KEY');
+    expect(layout).toContain(`localStorage.getItem('${FAMILY_STORAGE_KEY}')`);
   });
 
   it('the pre-paint script stamps before paint and cannot throw', () => {
