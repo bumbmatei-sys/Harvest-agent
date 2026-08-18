@@ -718,13 +718,24 @@ describe('the layout rules live in one shared place and have a caller', () => {
     // exact rules instead of inventing a second set of desktop widths. An
     // importer NOT in this list is what would mean the rules leaked in by
     // accident rather than by a scoped decision each time.
+    //
+    // THE-181 adds the CRM's two files as the third and fourth adopters, again
+    // by explicit instruction, and again reusing the rules rather than minting
+    // widths: between them they retired THREE rem container measures
+    // (max-w-2xl / -3xl / -6xl, each a different number either side of the
+    // 1024px rem trim). AnalyticsAndRoles.tsx is listed separately from
+    // AdminCRM.tsx because it renders two of the three tabs itself.
+    // AdminCRM.desktop-layout.test.tsx holds the same list, so this gate keeps
+    // failing loudly for adopter five.
     const importers = execSync(
       "grep -rl \"from '.*form-layout'\" src --include=*.tsx --include=*.ts || true",
       { encoding: 'utf8' },
     ).split('\n').filter(Boolean).filter((f) => !f.includes('__tests__')).sort();
     expect(importers).toEqual([
+      'src/components/AdminCRM.tsx',
       'src/components/AdminChurches.tsx',
       'src/components/AdminCourseEditor.tsx',
+      'src/components/AnalyticsAndRoles.tsx',
       'src/components/ChurchEnrollment.tsx',
     ]);
   });

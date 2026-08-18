@@ -184,6 +184,24 @@ export const CONTROL_DENSITY = {
   fieldGap: 'sm:space-y-[16px]',
   /** Between the ROWS of a field grid. The column gap is Rule 2's business. */
   rowGap: 'sm:gap-y-[16px]',
+  /**
+   * Between the COLUMNS of a reference grid — a block of read-only material
+   * laid into columns so it stops running past the fold.
+   *
+   * ── Why this is not the column gap the rule above declines to own ───────────
+   * The note on `rowGap` is about NARROWING a column gap that already exists on
+   * a field grid: the Add Church form's `gap-6` decides where its second column
+   * starts, and the 940px form measure is derived from that. Nothing here
+   * touches it. This token is only ever spelled by a grid that had no columns at
+   * all before — the CRM's Permission Reference, 24 items in one column, 1525px
+   * tall inside a 900px viewport — so there is no existing second-column
+   * position for it to move.
+   *
+   * 16px rather than a new number, for the reason `control` is 38px: the module
+   * already has ONE gap, and a reference grid is not a new density. Reusing it
+   * names an axis instead of minting a value.
+   */
+  columnGap: 'sm:gap-x-[16px]',
   /** Between one section of the form and the next. */
   sectionGap: 'sm:space-y-[28px]',
 } as const;
@@ -204,6 +222,7 @@ export const DENSITY_PX = {
   labelGap: 6,
   fieldGap: 16,
   rowGap: 16,
+  columnGap: 16,
   sectionGap: 28,
 } as const;
 

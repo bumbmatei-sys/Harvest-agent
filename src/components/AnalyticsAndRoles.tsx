@@ -16,8 +16,9 @@ import {
   Church, Users, MessageCircle, ClipboardList, Heart, Receipt, FileSpreadsheet,
   CalendarCheck, ClipboardCheck, QrCode, Radio, MessageSquare,
   BarChart3, Shield, Palette, Link2, Plug, Crown,
-  Search, X, ChevronDown, type LucideIcon,
+  Search, X, ChevronDown, Globe, TrendingUp, User, type LucideIcon,
 } from "lucide-react";
+import { FORM_CONTAINER, FIELD_WIDTH, ACTION_BUTTON, CONTROL_DENSITY } from './layout/form-layout';
 
 
 
@@ -30,16 +31,40 @@ const GOLD_SOFT = "color-mix(in srgb, var(--brand-color, #C9963A) 12%, var(--sur
 const GOLD_GLOW = "0 4px 14px color-mix(in srgb, var(--brand-color, #C9963A) 35%, transparent)";
 const BG = "var(--surface)";
 const CARD = "var(--surface-raised)";
-const TEXT = "#111111";
-const TEXT2 = "#888888";
+/**
+ * THE-181 — these were literal hexes, and this file styles itself with inline
+ * `style` objects rather than classes, so nothing in the theming work could
+ * reach them. Every one of them was pinned light in all four palettes:
+ * `TEXT` (#111111) is the body colour of both this screen's tabs, so on the
+ * dark ground it rendered near-black text on `--surface-raised` (#242424) —
+ * 1.2:1, i.e. invisible — and `GREEN_BG`/`RED_BG`/`PURPLE_BG` were white-ish
+ * pills on that same dark card.
+ *
+ * Each now names the token the rest of the app already uses for that role, so
+ * all four palettes (Harvest light/dark, Classic light/dark) resolve from one
+ * place. The `--ink-*` / `--c-*` tokens hold CHANNEL TRIPLETS ("R G B"), which
+ * is why they are wrapped in `rgb(…)` here — Tailwind does that wrapping in the
+ * config, and an inline style has to do it itself.
+ */
+const TEXT = "var(--text-strong)";
+const TEXT2 = "var(--text-muted)";
 const BORDER = "var(--border-default)";
-const GREEN = "#16A34A";
-const GREEN_BG = "#F0FDF4";
-const RED = "#E74C3C";
-const RED_BG = "#FEF2F2";
-const BLUE = "#2563EB";
-const PURPLE = "#7C3AED";
-const PURPLE_BG = "#F5F3FF";
+const GREEN = "rgb(var(--ink-green-600))";
+const GREEN_BG = "rgb(var(--c-green-100))";
+const RED = "rgb(var(--ink-red-600))";
+const RED_BG = "rgb(var(--c-red-100))";
+const BLUE = "rgb(var(--ink-blue-600))";
+/**
+ * Violet is NOT part of this app's palette — the founder's report on the Roles
+ * tab named it, and it is absent from the Harvest ramp, the Classic ramp and
+ * the tenant accent alike. Every use of it on the Roles TAB is gone (the notice
+ * banner, the SUPER badge, the reference crown). What remains is the Add/Edit
+ * Admin sheet's "Full Access" row — a modal, outside this PR's three-tab
+ * scope — so the constants stay, pointed at real tokens so that sheet at least
+ * stops rendering a light violet card on the dark ground.
+ */
+const PURPLE = "rgb(var(--ink-purple-700))";
+const PURPLE_BG = "rgb(var(--c-purple-100))";
 
 const uid = (): string => Math.random().toString(36).slice(2, 9);
 
@@ -298,8 +323,26 @@ const downloadOnboardingCSV = async (users: UserRecord[], filename: string): Pro
   }
 };
 
-interface StatCardProps { label: string; value: string | number; sub?: string; color?: string; icon: string; onClick?: () => void; }
-function StatCard({ label, value, sub, color = GOLD, icon, onClick }: StatCardProps) {
+/**
+ * A stat tile.
+ *
+ * ── The icon is a component, not a character ────────────────────────────────
+ * These three tiles carried literal emoji ("\u{1F465}", "\u{1F30D}", "\u{1F4C8}") where every other surface
+ * in the app draws `lucide-react`. An emoji is a glyph from the platform font,
+ * so it cannot be themed at all: it does not take `color`, it does not darken
+ * with the dark palette, and it renders as a different picture on Android, iOS
+ * and Windows. `color` on the wrapper below now actually reaches the icon,
+ * which is the whole reason a tile has an accent.
+ *
+ * ── The LIVE badge is gone ──────────────────────────────────────────────────
+ * It claimed real-time data these tiles have never had: the numbers come from
+ * one `getDocs` at mount (line ~654) and never update again until the screen is
+ * remounted. There is no `onSnapshot` in this file. A badge that says LIVE on a
+ * snapshot is not decoration, it is wrong — and on a tenant with a single user
+ * it is wrong three times on one row.
+ */
+interface StatCardProps { label: string; value: string | number; sub?: string; color?: string; icon: LucideIcon; onClick?: () => void; }
+function StatCard({ label, value, sub, color = GOLD, icon: Icon, onClick }: StatCardProps) {
   return (
     <div onClick={onClick} style={{ background: CARD, borderRadius: 14, padding: "14px 16px", boxShadow: "0 1px 6px rgba(0,0,0,0.07)", flex: 1, minWidth: 0, cursor: onClick ? "pointer" : "default", transition: "transform 0.1s" }}
          onMouseDown={e => onClick && (e.currentTarget.style.transform = "scale(0.98)")}
@@ -307,8 +350,9 @@ function StatCard({ label, value, sub, color = GOLD, icon, onClick }: StatCardPr
          onMouseLeave={e => onClick && (e.currentTarget.style.transform = "scale(1)")}
     >
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-        <div style={{ fontSize: 22 }}>{icon}</div>
-        <div style={{ fontSize: 10, fontWeight: 700, color: color, background: `${color}18`, borderRadius: 99, padding: "2px 8px" }}>LIVE</div>
+        <div style={{ width: 34, height: 34, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", background: `color-mix(in srgb, ${color} 12%, transparent)`, color }}>
+          <Icon size={18} />
+        </div>
       </div>
       <div style={{ fontSize: 26, fontWeight: 800, color: TEXT, marginTop: 8, lineHeight: 1 }}>{value}</div>
       <div style={{ fontSize: 12, color: TEXT2, marginTop: 4 }}>{label}</div>
@@ -1050,37 +1094,41 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
 
       {mode === "full" && (currentUserRole === "super_admin" || currentUserPermissions?.manageAdmins || currentUserPermissions?.fullAccess) && (
         <div style={s.tabBar}>
-          {([["analytics", "📊 Analytics"], ["roles", "👥 Admin Roles"]] as [MainTab, string][]).map(([id, label]) => (
+          {([["analytics", "Analytics", BarChart3], ["roles", "Admin Roles", Users]] as [MainTab, string, LucideIcon][]).map(([id, label, Icon]) => (
             <button key={id} onClick={() => setTab(id)}
-              style={{ ...s.tab, ...(tab === id ? s.tabActive : {}) }}>
-              {label}
+              style={{ ...s.tab, ...(tab === id ? s.tabActive : {}), display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7 }}>
+              <Icon size={15} /> {label}
             </button>
           ))}
         </div>
       )}
 
       <div style={{ overflowY: "auto", flex: 1 }}>
-        <div style={{ maxWidth: 760, margin: "0 auto", padding: "20px 16px 60px" }}>
+        <div className={`w-full ${FORM_CONTAINER}`} style={{ padding: "20px 16px 60px" }}>
 
           {tab === "analytics" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               {subView === "main" && (
                 <>
                   <div style={{ display: "flex", gap: 12 }}>
-                    <StatCard icon="👥" label="Total Users" value={totalAll} sub="All time" onClick={() => setSubView("all_users")} />
-                    <StatCard icon="🌍" label="Countries" value={countries} sub="Represented" color={BLUE} onClick={() => setSubView("countries")} />
-                    <StatCard icon="📈" label={`Last ${period}d`} value={periodAll.length} sub="New signups" color={GREEN} />
+                    <StatCard icon={Users} label="Total Users" value={totalAll} sub="All time" onClick={() => setSubView("all_users")} />
+                    <StatCard icon={Globe} label="Countries" value={countries} sub="Represented" color={BLUE} onClick={() => setSubView("countries")} />
+                    <StatCard icon={TrendingUp} label={`Last ${period}d`} value={periodAll.length} sub="New signups" color={GREEN} />
                   </div>
 
-                  <div style={s.card}>
+                  {/* Rule 1b (form-layout.ts): this card is a FORM, so it takes the
+                      form measure rather than the page measure the tab carries. */}
+                  <div data-search-registrations="" style={s.card}>
                     <div style={s.sectionHeading}>Search Registrations</div>
                     <div style={s.cardBody}>
                       <div>
                         <label style={s.label}>Time Period</label>
-                        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, marginTop: 6 }}>
+                        {/* Rule 2: four period buttons are a `medium` field, not a row
+                            that should stretch to whatever the card has spare. */}
+                        <div className={FIELD_WIDTH.medium} style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, marginTop: 6 }}>
                           {([1, 3, 7, 30] as TimePeriod[]).map((d) => (
                             <button key={d} onClick={() => setPeriod(d)}
-                              style={{ padding: "10px 4px", border: `1.5px solid ${period === d ? GOLD : BORDER}`, background: period === d ? GOLD_BTN : CARD, color: period === d ? "#fff" : TEXT2, fontWeight: 700, fontSize: 13, borderRadius: 10, cursor: "pointer", fontFamily: "inherit", transition: "all 0.2s" }}>
+                              style={{ padding: "10px 4px", border: `1.5px solid ${period === d ? GOLD : BORDER}`, background: period === d ? GOLD_BTN : CARD, color: period === d ? "var(--surface-raised)" : TEXT2, fontWeight: 700, fontSize: 13, borderRadius: 10, cursor: "pointer", fontFamily: "inherit", transition: "all 0.2s" }}>
                               {d === 1 ? "Today" : `${d}d`}
                             </button>
                           ))}
@@ -1089,7 +1137,7 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
 
                       <div>
                         <label style={s.label}>Location Filter</label>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8, background: "var(--surface)", borderRadius: 10, border: `1.5px solid ${BORDER}`, padding: "0 12px", marginTop: 6 }}>
+                        <div className={FIELD_WIDTH.long} style={{ display: "flex", alignItems: "center", gap: 8, background: "var(--surface)", borderRadius: 10, border: `1.5px solid ${BORDER}`, padding: "0 12px", marginTop: 6 }}>
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={TEXT2} strokeWidth="2.5"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
                           <input value={locationQuery} onChange={(e) => setLocationQuery(e.target.value)}
                             onKeyDown={(e) => e.key === "Enter" && handleSearch()}
@@ -1099,9 +1147,16 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
                         </div>
                       </div>
 
+                      {/* Rule 3 + Rule 4: both buttons are content width from `sm:` up
+                          and share the 40px action box. Below `sm:` the flex weights
+                          still decide, so the phone keeps the 2:1 split it has today.
+                          The 11px padding moves from an inline `style` to the class
+                          layer unchanged: an inline shorthand out-ranks any class, so
+                          `sm:p-0` could never have cleared it from there. `p-[11px]`
+                          is unprefixed, so the phone still gets exactly 11px. */}
                       <div style={{ display: "flex", gap: 10 }}>
-                        <button onClick={handleReset} style={{ flex: 1, background: "transparent", border: `1.5px solid ${BORDER}`, color: TEXT2, padding: "11px", borderRadius: 10, cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 13 }}>Reset</button>
-                        <button onClick={handleSearch} style={{ flex: 2, background: GOLD_BTN, border: "none", color: "var(--surface-raised)", fontWeight: 800, padding: "11px", borderRadius: 10, cursor: "pointer", fontFamily: "inherit", fontSize: 14, boxShadow: "0 2px 8px color-mix(in srgb, var(--brand-color, #C9963A) 30%, transparent)" }}>
+                        <button onClick={handleReset} data-analytics-reset="" className={`flex-[1] p-[11px] sm:p-0 ${ACTION_BUTTON} ${CONTROL_DENSITY.action}`} style={{ background: "transparent", border: `1.5px solid ${BORDER}`, color: TEXT2, borderRadius: 10, cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 13 }}>Reset</button>
+                        <button onClick={handleSearch} data-analytics-search="" className={`flex-[2] p-[11px] sm:p-0 ${ACTION_BUTTON} ${CONTROL_DENSITY.action}`} style={{ background: GOLD_BTN, border: "none", color: "var(--surface-raised)", fontWeight: 800, borderRadius: 10, cursor: "pointer", fontFamily: "inherit", fontSize: 14, boxShadow: "0 2px 8px color-mix(in srgb, var(--brand-color, #C9963A) 30%, transparent)" }}>
                           Search
                         </button>
                       </div>
@@ -1169,92 +1224,227 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
 
           {tab === "roles" && (currentUserRole === "super_admin" || currentUserPermissions?.manageAdmins || currentUserPermissions?.fullAccess) && (
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              <div style={{ background: PURPLE_BG, border: `1.5px solid ${PURPLE}33`, borderRadius: 14, padding: "12px 16px", display: "flex", gap: 10, alignItems: "flex-start" }}>
-                <span style={{ fontSize: 18, flexShrink: 0 }}>👑</span>
-                <div style={{ fontSize: 13, color: PURPLE, lineHeight: 1.6 }}>
-                  <strong>Admin Management.</strong> You can promote users and configure their permissions. Sections a limited admin has no access to are hidden from their dashboard entirely.
+              {/* THE-181 — this banner was #F5F3FF/#7C3AED. Nothing else in the app
+                  is violet: it is not in the Harvest ramp, not in Classic, and not
+                  in the tenant accent, so it read as a foreign component and stayed
+                  the same two hexes in all four palettes — a light violet card on
+                  the dark ground. It is ordinary guidance, so it takes the ordinary
+                  notice tokens, which resolve in every palette. The emoji goes for
+                  the same reason as the tiles': a glyph takes no colour. */}
+              <div data-admin-notice="" style={{ background: "var(--surface-sunken)", border: `1px solid ${BORDER}`, borderRadius: 14, padding: "12px 16px", display: "flex", gap: 10, alignItems: "flex-start" }}>
+                <div style={{ color: GOLD, flexShrink: 0, display: "flex", marginTop: 1 }}><Crown size={16} /></div>
+                <div style={{ fontSize: 13, color: "var(--text-body)", lineHeight: 1.6 }}>
+                  <strong style={{ color: "var(--text-strong)" }}>Admin Management.</strong> You can promote users and configure their permissions. Sections a limited admin has no access to are hidden from their dashboard entirely.
                 </div>
               </div>
 
               {/* Seat usage. Super admins are listed below but never counted —
-                  they are platform staff, not a seat the church bought. */}
-              <div style={{ fontSize: 12, fontWeight: 700, color: TEXT2, letterSpacing: "0.02em" }}>
-                {maxAdmins === UNLIMITED
-                  ? `${adminSeatsUsed} admin${adminSeatsUsed === 1 ? "" : "s"}`
-                  : `${adminSeatsUsed} of ${maxAdmins} admin${maxAdmins === 1 ? "" : "s"} used`}
+                  they are platform staff, not a seat the church bought.
+
+                  THE-181 — this was 18px of bare uppercase text. It is the plan
+                  cap: `maxAdmins` is 2 / 5 / 15 by plan and is raised by the $10
+                  Admin Seat add-on, so it is the one line on this screen where an
+                  admin learns their limit exists. It is now a labelled figure with
+                  a seat meter, sized like the roster it heads.
+
+                  Deliberately NOT a purchase flow, and deliberately no price here:
+                  this states what is true (seats used, seats bought) and stops.
+                  The at-cap notice below already carries `adminLimitMessage`, which
+                  is where the upgrade is named — repeating it on every visit would
+                  make a status line into an advertisement. */}
+              <div data-admin-seats="" style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: TEXT2, letterSpacing: "0.02em", textTransform: "uppercase" }}>
+                  Admin seats
+                </div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-strong)" }}>
+                  {maxAdmins === UNLIMITED
+                    ? `${adminSeatsUsed} admin${adminSeatsUsed === 1 ? "" : "s"}`
+                    : `${adminSeatsUsed} of ${maxAdmins} admin${maxAdmins === 1 ? "" : "s"} used`}
+                </div>
+                {maxAdmins !== UNLIMITED && (
+                  <div aria-hidden="true" style={{ display: "flex", gap: 4 }}>
+                    {Array.from({ length: Math.max(maxAdmins, adminSeatsUsed) }).map((_, i) => (
+                      <span key={i} style={{ width: 18, height: 4, borderRadius: 99, background: i < adminSeatsUsed ? GOLD : BORDER }} />
+                    ))}
+                  </div>
+                )}
               </div>
 
               {atAdminLimit && (
-                <div style={{ background: GOLD_SOFT, border: `1.5px solid color-mix(in srgb, var(--brand-color, #C9963A) 22%, transparent)`, borderRadius: 14, padding: "12px 16px", fontSize: 13, color: TEXT, lineHeight: 1.6 }}>
+                <div style={{ background: GOLD_SOFT, border: `1.5px solid color-mix(in srgb, var(--brand-color, #C9963A) 22%, transparent)`, borderRadius: 14, padding: "12px 16px", fontSize: 13, color: "var(--text-body)", lineHeight: 1.6 }}>
                   {adminLimitNotice} Everyone listed below keeps their access.
                 </div>
               )}
 
-              {admins.map((admin) => {
-                const isSuperAdmin = admin.role === "super_admin";
-                // Platform super admins are the one party the owner-protection rule
-                // still lets edit the owner, so they keep the Edit/Remove buttons.
-                const isOwner = !!tenantOwnerId && admin.id === tenantOwnerId && currentUserRole !== "super_admin";
-                const perms = admin.permissions;
-                const activePerms = isSuperAdmin || perms.fullAccess
-                  ? ["Full Access"]
-                  : VISIBLE_PERMISSION_DEFS.filter((d) => perms[d.key]).map((d) => d.label);
-                const visiblePerms = activePerms.slice(0, 4);
-                const extraCount = activePerms.length - visiblePerms.length;
+              {/* ── The roster ───────────────────────────────────────────────
+                  A stack of cards on a phone (unchanged), a TABLE from `sm:` up.
+
+                  The founder's report is right that a roster is tabular: every
+                  row carries the same four facts, and a card stack makes the
+                  reader re-find each one per admin. This file already renders
+                  its user lists this way — `renderAllUsers` uses exactly this
+                  `s.card` + `s.th`/`s.td` idiom — so the table is the screen's
+                  own pattern, not a new one.
+
+                  Nothing about behaviour moves: both presentations are built
+                  from the SAME derived row, and Edit / Remove / the Owner lock
+                  call the same handlers with the same arguments. There is no
+                  inline editing and no permission toggle on this screen to
+                  break — permissions are edited in the Add/Edit Admin sheet,
+                  which `openEditAdmin` still opens unchanged. */}
+              {(() => {
+                const rows = admins.map((admin) => {
+                  const isSuperAdmin = admin.role === "super_admin";
+                  // Platform super admins are the one party the owner-protection rule
+                  // still lets edit the owner, so they keep the Edit/Remove buttons.
+                  const isOwner = !!tenantOwnerId && admin.id === tenantOwnerId && currentUserRole !== "super_admin";
+                  const perms = admin.permissions;
+                  const activePerms = isSuperAdmin || perms.fullAccess
+                    ? ["Full Access"]
+                    : VISIBLE_PERMISSION_DEFS.filter((d) => perms[d.key]).map((d) => d.label);
+                  const visiblePerms = activePerms.slice(0, 4);
+                  return { admin, isSuperAdmin, isOwner, perms, activePerms, visiblePerms, extraCount: activePerms.length - visiblePerms.length };
+                });
+
+                const avatar = (admin: AdminUser, size: number) => (admin.picture
+                  ? <img src={admin.picture} alt="" style={{ width: size, height: size, borderRadius: "50%", objectFit: "cover", border: `2px solid ${GOLD_LIGHT}`, flexShrink: 0 }} onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                  : <div style={{ width: size, height: size, borderRadius: "50%", background: GOLD_LIGHT, color: GOLD, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><User size={Math.round(size * 0.45)} /></div>
+                );
+
+                const rankBadge = (r: typeof rows[number]) => (<>
+                  {r.isSuperAdmin && <span style={{ fontSize: 10, fontWeight: 800, color: GOLD, background: GOLD_SOFT, borderRadius: 99, padding: "2px 7px" }}>SUPER</span>}
+                  {!r.isSuperAdmin && r.perms.fullAccess && <span style={{ fontSize: 10, fontWeight: 800, color: GREEN, background: GREEN_BG, borderRadius: 99, padding: "2px 7px" }}>FULL</span>}
+                </>);
+
+                const permPills = (r: typeof rows[number]) => (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+                    {r.visiblePerms.map((p) => (
+                      <span key={p} style={{ fontSize: 10, fontWeight: 700, background: GOLD_LIGHT, color: GOLD, borderRadius: 99, padding: "2px 8px" }}>{p}</span>
+                    ))}
+                    {r.extraCount > 0 && <span style={{ fontSize: 10, fontWeight: 700, background: "var(--surface-chip)", color: TEXT2, borderRadius: 99, padding: "2px 8px" }}>+{r.extraCount} more</span>}
+                    {r.activePerms.length === 0 && <span style={{ fontSize: 11, color: TEXT2, fontStyle: "italic" }}>No permissions assigned</span>}
+                  </div>
+                );
+
+                const ownerBadge = (
+                  <div title="The plan owner's admin access is locked and cannot be edited or removed."
+                    style={{ display: "inline-flex", alignItems: "center", gap: 5, background: GOLD_LIGHT, color: GOLD, borderRadius: 99, padding: "5px 12px", fontSize: 12, fontWeight: 800, flexShrink: 0, whiteSpace: "nowrap" }}>
+                    <Crown size={13} /> Owner
+                  </div>
+                );
+                const editBtn = (admin: AdminUser) => (
+                  <button onClick={() => openEditAdmin(admin)}
+                    style={{ background: GOLD_LIGHT, border: `1px solid color-mix(in srgb, var(--brand-color) 20%, transparent)`, color: GOLD, borderRadius: 8, padding: "5px 12px", cursor: "pointer", fontSize: 12, fontFamily: "inherit", fontWeight: 700 }}>
+                    Edit
+                  </button>
+                );
+                const removeBtn = (id: string) => (
+                  <button onClick={() => setShowRemoveConfirm(id)}
+                    style={{ background: RED_BG, border: `1px solid ${RED}`, color: RED, borderRadius: 8, padding: "5px 12px", cursor: "pointer", fontSize: 12, fontFamily: "inherit", fontWeight: 700 }}>
+                    Remove
+                  </button>
+                );
 
                 return (
-                  <div key={admin.id} style={s.card}>
-                    <div style={{ padding: "14px 16px", display: "flex", alignItems: "center", gap: 12 }}>
-                      {admin.picture
-                        ? <img src={admin.picture} alt="" style={{ width: 44, height: 44, borderRadius: "50%", objectFit: "cover", border: `2px solid ${isSuperAdmin ? PURPLE : GOLD_LIGHT}`, flexShrink: 0 }} onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
-                        : <div style={{ width: 44, height: 44, borderRadius: "50%", background: GOLD_LIGHT, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>👤</div>
-                      }
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-                          <span style={{ fontWeight: 700, fontSize: 15, color: TEXT }}>{admin.name}</span>
-                          {isSuperAdmin && <span style={{ fontSize: 10, fontWeight: 800, color: PURPLE, background: PURPLE_BG, borderRadius: 99, padding: "2px 7px" }}>SUPER</span>}
-                          {!isSuperAdmin && perms.fullAccess && <span style={{ fontSize: 10, fontWeight: 800, color: GREEN, background: GREEN_BG, borderRadius: 99, padding: "2px 7px" }}>FULL</span>}
-                        </div>
-                        <div style={{ fontSize: 12, color: TEXT2, marginTop: 1 }}>{admin.email}</div>
-
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginTop: 8 }}>
-                          {visiblePerms.map((p) => (
-                            <span key={p} style={{ fontSize: 10, fontWeight: 700, background: GOLD_LIGHT, color: GOLD, borderRadius: 99, padding: "2px 8px" }}>{p}</span>
-                          ))}
-                          {extraCount > 0 && <span style={{ fontSize: 10, fontWeight: 700, background: "#F2F2F2", color: TEXT2, borderRadius: 99, padding: "2px 8px" }}>+{extraCount} more</span>}
-                          {activePerms.length === 0 && <span style={{ fontSize: 11, color: TEXT2, fontStyle: "italic" }}>No permissions assigned</span>}
-                        </div>
-                      </div>
-
-                      {!isSuperAdmin && (isOwner ? (
-                        // The owner's role/permissions are locked by firestore.rules —
-                        // no Edit/Remove, just a badge so the lock isn't a dead end.
-                        <div title="The plan owner's admin access is locked and cannot be edited or removed."
-                          style={{ display: "flex", alignItems: "center", gap: 5, background: GOLD_LIGHT, color: GOLD, borderRadius: 99, padding: "5px 12px", fontSize: 12, fontWeight: 800, flexShrink: 0 }}>
-                          <Crown size={13} /> Owner
-                        </div>
-                      ) : (
-                        <div style={{ display: "flex", flexDirection: "column", gap: 6, flexShrink: 0 }}>
-                          <button onClick={() => openEditAdmin(admin)}
-                            style={{ background: GOLD_LIGHT, border: `1px solid color-mix(in srgb, var(--brand-color) 20%, transparent)`, color: GOLD, borderRadius: 8, padding: "5px 12px", cursor: "pointer", fontSize: 12, fontFamily: "inherit", fontWeight: 700 }}>
-                            Edit
-                          </button>
-                          <button onClick={() => setShowRemoveConfirm(admin.id)}
-                            style={{ background: RED_BG, border: `1px solid ${RED}22`, color: RED, borderRadius: 8, padding: "5px 12px", cursor: "pointer", fontSize: 12, fontFamily: "inherit", fontWeight: 700 }}>
-                            Remove
-                          </button>
+                  <div data-admin-roster="">
+                    {/* Phone: the card stack, exactly as it was. */}
+                    <div className="flex flex-col sm:hidden" style={{ gap: 16 }}>
+                      {rows.map((r) => (
+                        <div key={r.admin.id} style={s.card}>
+                          <div style={{ padding: "14px 16px", display: "flex", alignItems: "center", gap: 12 }}>
+                            {avatar(r.admin, 44)}
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                                <span style={{ fontWeight: 700, fontSize: 15, color: TEXT }}>{r.admin.name}</span>
+                                {rankBadge(r)}
+                              </div>
+                              <div style={{ fontSize: 12, color: TEXT2, marginTop: 1 }}>{r.admin.email}</div>
+                              <div style={{ marginTop: 8 }}>{permPills(r)}</div>
+                            </div>
+                            {!r.isSuperAdmin && (r.isOwner ? ownerBadge : (
+                              <div style={{ display: "flex", flexDirection: "column", gap: 6, flexShrink: 0 }}>
+                                {editBtn(r.admin)}
+                                {removeBtn(r.admin.id)}
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       ))}
                     </div>
+
+                    {/* Desktop: one row per admin, one column per fact. */}
+                    <div className="hidden sm:block" style={{ ...s.card, overflowX: "auto" }}>
+                      <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
+                        <thead>
+                          <tr style={{ borderBottom: `1px solid ${BORDER}`, background: "var(--surface)" }}>
+                            <th style={s.th}>Admin</th>
+                            <th style={s.th}>Email</th>
+                            <th style={s.th}>Permissions</th>
+                            <th style={{ ...s.th, textAlign: "right" }}>Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {rows.map((r) => (
+                            <tr key={r.admin.id} style={{ borderBottom: `1px solid ${BORDER}` }}>
+                              <td style={s.td}>
+                                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                                  {avatar(r.admin, 34)}
+                                  <span style={{ fontWeight: 700, whiteSpace: "nowrap" }}>{r.admin.name}</span>
+                                  {rankBadge(r)}
+                                </div>
+                              </td>
+                              <td style={{ ...s.td, color: TEXT2, fontSize: 13 }}>{r.admin.email}</td>
+                              <td style={s.td}>{permPills(r)}</td>
+                              <td style={{ ...s.td, textAlign: "right" }}>
+                                {!r.isSuperAdmin && (r.isOwner ? ownerBadge : (
+                                  <div style={{ display: "inline-flex", gap: 6, justifyContent: "flex-end" }}>
+                                    {editBtn(r.admin)}
+                                    {removeBtn(r.admin.id)}
+                                  </div>
+                                ))}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 );
-              })}
+              })()}
 
-              <div style={{ ...s.card, marginTop: 4 }}>
+              {/* ── Permission Reference ─────────────────────────────────────
+                  Reference material, laid into COLUMNS from `sm:` up.
+
+                  It was one 24-item column: 1525px tall inside a 900px viewport,
+                  so two thirds of it sat past the fold on the screen where an
+                  admin is deciding what to grant. Of the three options —
+
+                    · a disclosure, which hides it. Wrong for a table an admin
+                      consults WHILE editing permissions in the sheet beside it;
+                      it would turn one glance into open/read/close per lookup.
+                    · beside the roster, which puts two blocks with different
+                      growth axes in one row. The roster grows a row per admin
+                      and the reference is fixed at 24 items, so one of the two
+                      is always the wrong height for the other.
+                    · columns, which keep every item visible and cut the height.
+
+                  — columns is the only one that keeps the whole thing scannable,
+                  which is what reference material is FOR.
+
+                  Two columns, not three: there are exactly four categories, so a
+                  third column leaves a hole, and it would have to be gated at
+                  `xl:` — the column split at 1280px that THE-184 is about, taken
+                  on for no gain. The CATEGORY blocks are the grid cells, so the
+                  phone keeps its single flex column and its 14px/10px gaps
+                  untouched. Grid gaps come from Rule 4. */}
+              <div data-permission-reference="" style={{ ...s.card, marginTop: 4 }}>
                 <div style={s.sectionHeading}>Permission Reference</div>
-                <div style={{ padding: "14px 16px", display: "flex", flexDirection: "column", gap: 14 }}>
-                  <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-                    <div style={{ width: 26, height: 26, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, background: PURPLE_BG, color: PURPLE }}><Crown size={14} /></div>
+                <div
+                  className={`flex flex-col gap-[14px] sm:grid sm:grid-cols-2 ${CONTROL_DENSITY.rowGap} ${CONTROL_DENSITY.columnGap}`}
+                  style={{ padding: "14px 16px" }}
+                >
+                  <div className="sm:col-span-full" style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                    <div style={{ width: 26, height: 26, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, background: GOLD_SOFT, color: GOLD }}><Crown size={14} /></div>
                     <div>
                       <div style={{ fontWeight: 700, fontSize: 13, color: TEXT }}>Full Access</div>
                       <div style={{ fontSize: 12, color: TEXT2, marginTop: 1 }}>Every permission below, current and future</div>
@@ -1267,7 +1457,7 @@ export default function AnalyticsAndRoles({ currentUserRole, currentUserPermissi
                         const Icon = item.icon;
                         return (
                           <div key={item.key} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-                            <div style={{ width: 26, height: 26, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, background: "#F5F5F5", color: TEXT2 }}><Icon size={14} /></div>
+                            <div style={{ width: 26, height: 26, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, background: "var(--surface-chip)", color: TEXT2 }}><Icon size={14} /></div>
                             <div>
                               <div style={{ fontWeight: 700, fontSize: 13, color: TEXT }}>{item.label}</div>
                               <div style={{ fontSize: 12, color: TEXT2, marginTop: 1 }}>{item.desc}</div>
