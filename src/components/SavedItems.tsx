@@ -52,7 +52,7 @@ const SavedItems: React.FC<SavedItemsProps> = ({ onBack, onOpenBlog, onOpenLesso
       key={key}
       className="flex items-start gap-3 bg-surface-raised rounded-2xl border border-line p-3.5"
     >
-      <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ background: 'color-mix(in srgb, var(--brand-color, #B8962E) 12%, white)' }}>
+      <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ background: 'color-mix(in srgb, var(--brand-color, #B8962E) 12%, transparent)' }}>
         <Icon size={16} style={{ color: BRAND }} />
       </div>
       <button

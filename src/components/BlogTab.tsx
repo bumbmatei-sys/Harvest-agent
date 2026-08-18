@@ -136,7 +136,7 @@ const BlogTab: React.FC<BlogTabProps> = ({ onOpenArticle, initialPost, onBack, i
  if (posts.length === 0) {
  return (
  <div className="flex flex-col items-center justify-center h-64 text-muted px-4 text-center">
- <FileText size={48} className="text-stone-300 mb-4" />
+ <FileText size={48} className="text-faint mb-4" />
  <p className="text-lg font-medium text-strong mb-2 font-display">No articles yet</p>
  <p className="text-sm">Check back later for new content.</p>
  </div>
@@ -151,7 +151,7 @@ const BlogTab: React.FC<BlogTabProps> = ({ onOpenArticle, initialPost, onBack, i
  {errorMessage}
  </div>
  )}
- <div className="sticky top-0 z-10 bg-white/80 backdrop-blur-md border-b border-line px-4 py-3 flex items-center justify-between">
+ <div className="sticky top-0 z-10 bg-[color-mix(in_srgb,var(--surface-raised)_80%,transparent)] backdrop-blur-md border-b border-line px-4 py-3 flex items-center justify-between">
  <div className="flex items-center">
  <button 
  onClick={() => {
@@ -347,7 +347,7 @@ const BlogTab: React.FC<BlogTabProps> = ({ onOpenArticle, initialPost, onBack, i
  </div>
  ) : (
  <div className="w-16 h-16 sm:w-20 sm:h-20 flex-shrink-0 bg-surface-sunken flex items-center justify-center rounded-lg">
- <FileText size={20} className="text-stone-300 " />
+ <FileText size={20} className="text-faint " />
  </div>
  )}
  

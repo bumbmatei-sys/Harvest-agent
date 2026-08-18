@@ -573,7 +573,7 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
  {/* Profile Photo — left-column card on desktop */}
  <div className="flex flex-col items-center mt-2 mb-8 lg:mt-0 lg:mb-0 lg:bg-surface-raised lg:border lg:border-line lg:rounded-3xl lg:p-6 lg:sticky lg:top-4">
  <div className="relative">
- <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-white shadow-sm bg-surface-chip relative">
+ <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-surface-raised shadow-sm bg-surface-chip relative">
  {profilePic ? (
  <Image src={profilePic} alt="Profile" fill sizes="128px" className="object-cover" />
  ) : (
@@ -584,7 +584,7 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
  </div>
  <button 
  onClick={handlePhotoClick}
- className="absolute bottom-0 right-0 w-10 h-10 bg-gold rounded-full flex items-center justify-center text-white border-4 border-cream shadow-sm"
+ className="absolute bottom-0 right-0 w-10 h-10 bg-gold rounded-full flex items-center justify-center text-white border-4 border-surface-raised shadow-sm"
  >
  <Edit2 size={16} fill="currentColor" />
  </button>
@@ -625,7 +625,7 @@ const PersonalInformationModal: React.FC<PersonalInformationModalProps> = ({ isO
  value={country}
  onChange={setCountry}
  className="w-full"
- buttonClassName="!bg-stone-100 !border-transparent !text-earth !font-bold focus-within:!ring-2 focus-within:!ring-[color-mix(in_srgb,var(--brand-color)_20%,transparent)] !py-4 !rounded-2xl"
+ buttonClassName="!bg-surface-sunken !border-transparent !text-strong !font-bold focus-within:!ring-2 focus-within:!ring-[color-mix(in_srgb,var(--brand-color)_20%,transparent)] !py-4 !rounded-2xl"
  />
  </div>
 

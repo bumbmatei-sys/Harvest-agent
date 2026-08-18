@@ -338,7 +338,7 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
  {profilePic ? (
  <img src={profilePic} alt={userName} className="w-full h-full object-cover" />
  ) : (
- <span className="font-display text-3xl font-light" style={{ color: 'var(--wheat-700)' }}>{(userName || 'U').charAt(0).toUpperCase()}</span>
+ <span className="font-display text-3xl font-light text-wheat-800">{(userName || 'U').charAt(0).toUpperCase()}</span>
  )}
  </div>
  </label>
@@ -355,19 +355,19 @@ const Profile: React.FC<ProfileProps> = ({ onNavigate, onGoToPartner, onGoToMap,
  <div className="px-4 mt-6 relative z-10 space-y-6 lg:mt-0 lg:px-8 lg:pt-6 lg:max-w-[1280px] lg:mx-auto lg:grid lg:grid-cols-[320px_1fr] lg:gap-8 lg:items-start lg:space-y-0">
  {/* Desktop profile card — left column */}
  <div className="hidden lg:block">
- <div className="bg-surface-raised rounded-3xl border p-6 text-center lg:sticky lg:top-4" style={{ borderColor: 'var(--ds-border)' }}>
+ <div className="bg-surface-raised rounded-3xl border border-line p-6 text-center lg:sticky lg:top-4">
  <label htmlFor="profile-pic-upload" className="cursor-pointer group block">
  <div className="w-24 h-24 rounded-full mx-auto mb-3 overflow-hidden flex items-center justify-center" style={{ background: 'var(--surface-gold)' }}>
  {profilePic ? (
  <img src={profilePic} alt={userName} className="w-full h-full object-cover" />
  ) : (
- <span className="text-3xl font-light font-display" style={{ color: 'var(--wheat-700)' }}>{(userName || 'U').charAt(0).toUpperCase()}</span>
+ <span className="text-3xl font-light font-display text-wheat-800">{(userName || 'U').charAt(0).toUpperCase()}</span>
  )}
  </div>
  <span className="text-[12px] font-semibold group-hover:underline" style={{ color: 'var(--brand-color, #C9963A)' }}>Change photo</span>
  </label>
  <h2 className="text-xl font-light text-strong font-display mt-3 tracking-[-0.01em]">{userName}</h2>
- <div className="inline-flex items-center gap-1.5 mt-2 px-3 py-1 rounded-full text-[11px] font-bold" style={{ background: 'var(--surface-gold)', color: 'var(--wheat-700)' }}>
+ <div className="inline-flex items-center gap-1.5 mt-2 px-3 py-1 rounded-full text-[11px] font-bold text-wheat-800" style={{ background: 'var(--surface-gold)' }}>
  <BadgeCheck size={13} /> Member since 2026
  </div>
  </div>
@@ -743,7 +743,7 @@ const ToggleSettingItem = ({ icon, iconBg, label, sublabel, checked, onChange }:
  aria-label={label}
  onClick={onChange}
  className="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors"
- style={{ background: checked ? 'var(--brand-color, #C9963A)' : '#D6CCBE' }}
+ style={{ background: checked ? 'var(--brand-color, #C9963A)' : 'var(--border-strong)' }}
  >
  <span
  className="inline-block h-5 w-5 transform rounded-full bg-surface-raised shadow transition-transform"
