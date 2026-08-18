@@ -85,7 +85,7 @@ vi.mock('../ImageUpload', () => ({
 const ChurchEnrollment = (await import('../ChurchEnrollment')).default;
 const AdminChurches = (await import('../AdminChurches')).default;
 const {
-  mobileLayer, fontSizeTokens, fontSizePx, colourTokens, allTokens,
+  mobileLayer, fontSizeTokens, fontSizePx, isFontSizeToken, colourTokens, allTokens,
   maxWidthPx, maxWidthTokens, isResponsive, breakpointOf,
   arbitraryPx, heightPx, heightTokens,
   REM_PX_MOBILE, REM_PX_DESKTOP,
@@ -322,12 +322,16 @@ const controlsOf = (root: ParentNode) =>
 
 describe('a desktop control is no taller than the chosen maximum', () => {
   it('sizes every control and every action to a height inside the desktop band', () => {
-    const heights = Object.entries(CONTROL_DENSITY)
-      .flatMap(([name, rule]) => rule.split(/\s+/).map((t) => [name, t, heightPx(t, REM_PX_DESKTOP)] as const))
-      .filter((h): h is readonly [string, string, number] => h[2] !== null);
-    expect(heights.length, 'the rule sets no height at all').toBeGreaterThan(0);
-    for (const [name, token, px] of heights) {
-      expect(px, `${name} (${token}) is above the desktop density band`).toBeLessThanOrEqual(DESKTOP_CONTROL_MAX_PX);
+    // Asked of `control` and `action` BY NAME rather than of whatever heights
+    // happen to be in the module: a rule that quietly stops setting a height is
+    // the whole defect coming back, and a check that only ranged over the
+    // heights it found would report nothing at all.
+    for (const name of ['control', 'action'] as const) {
+      const px = CONTROL_DENSITY[name].split(/\s+/)
+        .map((t) => heightPx(t, REM_PX_DESKTOP)).find((v): v is number => v !== null);
+      expect(px, `${name} sets no height — nothing caps how tall it renders`).toBeDefined();
+      expect(px!, `${name} is above the desktop density band`).toBeLessThanOrEqual(DESKTOP_CONTROL_MAX_PX);
+      expect(px!, `${name} is not a real height`).toBeGreaterThan(0);
     }
   });
 
@@ -802,6 +806,20 @@ describe('no colour is hardcoded, and all four palettes resolve', () => {
 describe('no font size changed', () => {
   it('renders the same font-size tokens as the baseline', async () => {
     expect(fontSizeTokens(await form())).toEqual(BASELINE.fontSizes);
+  });
+
+  it('renders the same font size on each ELEMENT, not merely the same set of them', async () => {
+    // The set alone does not catch a swap. `text-xs` is already in it — the
+    // services row labels carry it — so moving a field's label from `text-sm`
+    // to `text-xs` leaves the set byte-identical while shrinking that label to
+    // 10.875px, under the 11px floor. Compared element by element, in document
+    // order, against the same recorded baseline.
+    const perElement = (rows: string[]) =>
+      rows.map((row) => {
+        const [index, tag, tokens] = row.split('\t');
+        return `${index}\t${tag}\t${(tokens ?? '').split(' ').filter(isFontSizeToken).join(' ')}`;
+      });
+    expect(perElement(mobileLayer(await form()))).toEqual(perElement(BASELINE.mobileLayer));
   });
 
   it('introduces no font size anywhere in the shared rules module', () => {
