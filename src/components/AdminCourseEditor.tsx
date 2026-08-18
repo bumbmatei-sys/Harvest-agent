@@ -19,6 +19,13 @@ import {
 // optional "add to AI Knowledge" checkbox feeds the video summary through this.
 import { ingestTextSource } from '../utils/rag-ingest';
 import { notifyError } from '../utils/notify';
+// Desktop layout rules (THE-179): the same container/field-width/button rules
+// PR 345 proved on the Add Church form. This file has no Tailwind classes at
+// all today — every property below is layered in via `className` only where
+// the existing inline `style` object does not already own that property, so
+// nothing here can be shadowed by the (untouched, higher-priority) inline
+// styles the rest of the file still uses.
+import { FORM_CONTAINER, FIELD_WIDTH, ACTION_BUTTON } from './layout/form-layout';
 
 
 
@@ -686,12 +693,20 @@ function SectionCard({ section, onChange, onRemove, authorsLibrary = [] }: Secti
  <span style={{ color: "var(--text-faint)", fontSize: 16, cursor: "grab", userSelect: "none" }}>⠿</span>
  <div style={{ width: 6, height: 6, borderRadius: "50%", background: GOLD, flexShrink: 0 }} />
  <input style={{ flex: 1, border: "none", outline: "none", fontWeight: 700, fontSize: 14, color: TEXT, background: "transparent", fontFamily: "inherit" }}
+ className={FIELD_WIDTH.medium}
  value={section.title} onChange={(e) => onChange({ ...section, title: e.target.value })} placeholder="Section Title..." />
  <span style={{ fontSize: 10, color: TEXT2, cursor: "pointer" }} onClick={() => setOpen((o) => !o)}>{open ? "▲" : "▼"}</span>
  <button style={s.removeBtn} onClick={onRemove}>✕</button>
  </div>
  {open && (
- <div style={{ padding: "10px 12px 12px" }}>
+ // Depth mechanism (THE-179): Level → Section → Lesson is already told apart
+ // by background role (surface-tint → surface-sunken → surface) and accent-dot
+ // size — that survives at any width. What reads as accidental at a 1120px
+ // container is the padding-based indent alone (14px → 12px, barely a step).
+ // From sm: up each body's LEFT padding grows instead, so a lesson sits
+ // visibly stepped in from its section, which sits stepped in from its level;
+ // below sm: the padding is untouched (12/10/12 — identical to today).
+ <div style={{ paddingTop: 10, paddingBottom: 12 }} className="px-[12px] sm:pl-[24px]">
  {section.lessons.map((lesson, i) => (
  <div key={lesson.id} draggable
  onDragStart={() => { dragging.current = i; }}
@@ -700,7 +715,12 @@ function SectionCard({ section, onChange, onRemove, authorsLibrary = [] }: Secti
  <LessonCard lesson={lesson} onChange={(l) => setLesson(i, l)} onRemove={() => removeLesson(i)} authorsLibrary={authorsLibrary} />
  </div>
  ))}
- <button style={s.addLessonBtn} onClick={() => onChange({ ...section, lessons: [...section.lessons, emptyLesson()] })}>+ Add Lesson</button>
+ {/* Rule 3 (form-layout.ts): full width on mobile (unchanged — `width: undefined`
+ drops the shared style's 100% only for this instance), content width from sm:
+ up. `ACTION_BUTTON`'s own `sm:px-8`/`sm:flex-none` are inert here (this button
+ already carries its own padding and isn't a flex-row child) but it is still
+ the rule this button follows, so it stays in the class list. */}
+ <button style={{ ...s.addLessonBtn, width: undefined }} className={`w-full sm:w-auto ${ACTION_BUTTON}`} onClick={() => onChange({ ...section, lessons: [...section.lessons, emptyLesson()] })}>+ Add Lesson</button>
  </div>
  )}
  </div>
@@ -741,13 +761,19 @@ function LevelCard({ level, onChange, onRemove, authorsLibrary = [] }: LevelCard
  <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "13px 16px", background: "var(--surface-tint)", borderBottom: open ? `1px solid ${BORDER}` : "none" }}>
  <span style={{ color: "var(--text-faint)", fontSize: 18, cursor: "grab", userSelect: "none" }}>⠿</span>
  <div style={{ width: 10, height: 10, borderRadius: "50%", background: GOLD, border: `2px solid ${GOLD_LIGHT}`, flexShrink: 0 }} />
+ {/* Rule 2 (form-layout.ts): a level title is short, so it gets the same
+ sm:-gated max-width as a "medium" field on the Add Church form — it still
+ grows to fill the row below that breakpoint via `flex: 1`. */}
  <input style={{ flex: 1, border: "none", outline: "none", fontWeight: 800, fontSize: 16, color: TEXT, background: "transparent", fontFamily: "inherit" }}
+ className={FIELD_WIDTH.medium}
  value={level.title} onChange={(e) => onChange({ ...level, title: e.target.value })} placeholder="Level Title (e.g. Beginner, Week 1)..." />
  <span style={{ fontSize: 11, color: TEXT2, cursor: "pointer" }} onClick={() => setOpen((o) => !o)}>{open ? "▲" : "▼"}</span>
  <button style={s.removeBtn} onClick={onRemove}>✕</button>
  </div>
  {open && (
- <div style={{ padding: "12px 14px 14px" }}>
+ // See the matching comment in SectionCard — same mechanism, one step further
+ // in: unchanged 12/14/14 padding below sm:, a deeper left indent from sm: up.
+ <div style={{ paddingTop: 12, paddingBottom: 14 }} className="px-[14px] sm:pl-[28px]">
  {level.sections.map((sec, i) => (
  <div key={sec.id} draggable
  onDragStart={() => { dragging.current = i; }}
@@ -756,7 +782,7 @@ function LevelCard({ level, onChange, onRemove, authorsLibrary = [] }: LevelCard
  <SectionCard section={sec} onChange={(updated) => setSection(i, updated)} onRemove={() => removeSection(i)} authorsLibrary={authorsLibrary} />
  </div>
  ))}
- <button style={{ ...s.addLessonBtn, borderColor: "var(--border-strong)", color: TEXT2 }} onClick={() => onChange({ ...level, sections: [...level.sections, emptySection()] })}>+ Add Section</button>
+ <button style={{ ...s.addLessonBtn, borderColor: "var(--border-strong)", color: TEXT2, width: undefined }} className={`w-full sm:w-auto ${ACTION_BUTTON}`} onClick={() => onChange({ ...level, sections: [...level.sections, emptySection()] })}>+ Add Section</button>
  </div>
  )}
  </div>
@@ -1152,7 +1178,7 @@ export default function CourseBuilder({ course: initialCourse, onClose, library 
  ))}
  </div>
 
- <div style={s.content}>
+ <div style={s.content} className={FORM_CONTAINER}>
 
  {/* ── INFO ── */}
  {tab === "info" && (
@@ -1284,7 +1310,10 @@ export default function CourseBuilder({ course: initialCourse, onClose, library 
  <div style={{ background: GOLD_LIGHT, border: `1.5px solid ${GOLD}`, borderRadius: 12, padding: "10px 14px", fontSize: 13, color: GOLD, fontWeight: 600 }}>
  Structure: <strong>Level</strong> → Section → Lesson &nbsp;·&nbsp; Drag ⠿ to reorder anything
  </div>
- <button style={s.newBtn} onClick={addLevel}>+ Add Level</button>
+ {/* `sm:self-start` opts out of the flex-column parent's default stretch —
+ without it `sm:w-auto` alone would still fill the row (align-items: stretch
+ wins over an "auto" cross-size), so the button would stay full width. */}
+ <button style={s.newBtn} className={`w-full sm:w-auto sm:self-start ${ACTION_BUTTON}`} onClick={addLevel}>+ Add Level</button>
  {course.levels.length === 0 && (
  <div style={{ ...s.card, padding: "40px 20px", textAlign: "center" }}>
  <div style={{ fontSize: 32, marginBottom: 8 }}>📚</div>
@@ -1321,7 +1350,10 @@ const s: Record<string, CSSProperties> = {
  tabBar: { display: "flex", padding: "16px 20px 0", borderBottom: `1px solid ${BORDER}` },
  tab: { background: "none", border: "none", color: TEXT2, cursor: "pointer", padding: "10px 16px 12px", fontSize: 14, fontWeight: 600, fontFamily: "inherit", borderBottom: "2.5px solid transparent" },
  tabActive: { color: GOLD, borderBottom: `2.5px solid ${GOLD}` },
- content: { padding: "18px 20px 48px", maxWidth: 900, margin: "0 auto" },
+ // Rule 1 (form-layout.ts) owns the desktop cap via `FORM_CONTAINER` now — see
+ // the className on the element this styles. Below sm: this padding is all
+ // that ever applied, since no viewport here reaches 900px unconstrained.
+ content: { padding: "18px 20px 48px" },
  panel: { display: "flex", flexDirection: "column", gap: 16 },
  card: { background: CARD, borderRadius: 16, border: `1px solid ${BORDER}`, boxShadow: "0 1px 2px rgba(45,37,25,0.05), 0 2px 8px rgba(45,37,25,0.06)", overflow: "hidden" },
  cardBody: { padding: "16px", display: "flex", flexDirection: "column", gap: 14 },
@@ -1334,7 +1366,9 @@ const s: Record<string, CSSProperties> = {
  avatar: { width: 40, height: 40, borderRadius: "50%", objectFit: "cover", border: `2px solid ${BORDER}`, flexShrink: 0 },
  avatarEmpty: { width: 40, height: 40, borderRadius: "50%", background: GOLD_LIGHT, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 },
  removeBtn: { background: "none", border: "none", color: "var(--text-faint)", cursor: "pointer", fontSize: 16, padding: "2px 4px", lineHeight: 1, fontFamily: "inherit", marginLeft: 4 },
- newBtn: { background: GOLD_BTN, border: "none", color: "var(--surface-raised)", fontWeight: 700, padding: "13px", borderRadius: 12, cursor: "pointer", fontSize: 14, width: "100%", fontFamily: "inherit", boxShadow: "0 2px 8px rgba(201,150,58,0.3)" },
+ // `width` dropped: the "+ Add Level" button is the only user of this style,
+ // so its Rule 3 width now comes entirely from the className at the call site.
+ newBtn: { background: GOLD_BTN, border: "none", color: "var(--surface-raised)", fontWeight: 700, padding: "13px", borderRadius: 12, cursor: "pointer", fontSize: 14, fontFamily: "inherit", boxShadow: "0 2px 8px rgba(201,150,58,0.3)" },
  addLessonBtn: { background: "transparent", border: `1.5px dashed ${BORDER}`, color: TEXT2, padding: "10px", borderRadius: 10, cursor: "pointer", fontSize: 13, width: "100%", fontFamily: "inherit", fontWeight: 600, marginTop: 4 },
  aiBtn: { display: "inline-flex", alignItems: "center", gap: 6, border: `1.5px solid ${GOLD}`, background: GOLD_LIGHT, color: GOLD, borderRadius: 10, padding: "10px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap", flexShrink: 0 },
  certPreviewBtn: { width: "100%", marginTop: 4, border: `1.5px solid ${GOLD}`, background: GOLD_LIGHT, color: GOLD, borderRadius: 10, padding: "11px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" },
