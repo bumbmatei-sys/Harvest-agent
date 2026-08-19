@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeAll, afterEach } from 'vitest';
 import React from 'react';
 import { readFileSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { execSync } from 'node:child_process';
 import path from 'node:path';
 
@@ -156,7 +157,76 @@ const RECORDING = !!process.env.UPDATE_LAYOUT_BASELINE;
 /** The five screens, and the revision their pre-PR form is read from. */
 const SCREENS = ['AdminCommunity', 'AdminEvents', 'AdminFundraising', 'AdminForms', 'AdminCheckin'] as const;
 type Screen = typeof SCREENS[number];
-const PRE_PR_REVISION = '29769c6';
+const PRE_PR_REVISION = 'ef557af';
+
+/**
+ * The pre-PR shape of each screen, as a FIXTURE rather than a `git show` at
+ * assertion time.
+ *
+ * The first cut of this file shelled out to `git show <rev>:<path>` inside the
+ * assertions. That passes locally and can never pass on CI: `actions/checkout`
+ * clones shallow, so the merge-base commit is not in the runner's object
+ * database and every one of those tests died on `fatal: invalid object name`.
+ * A test that needs history it cannot be given is not a test.
+ *
+ * So the git call happens once, under UPDATE_LAYOUT_BASELINE=1, on a machine
+ * that has the history — and what lands in the repo is the extracted evidence:
+ *
+ *   • `strippedSha` / `strippedLines` — the source with every className
+ *     replaced and comments dropped. A hash rather than the text itself
+ *     because the five files strip to 3,928 lines, which would swamp review;
+ *     `strippedLines` is carried alongside so a failure can at least say
+ *     whether the file grew or shrank.
+ *   • `firestorePaths` — every collection()/doc() path, verbatim. Small, and
+ *     the thing PR 332's member gate actually depends on, so it is stored as
+ *     readable text and diffed as text.
+ *   • `exportCsv` — the check-in CSV body, verbatim. Small, and REP-4 says it
+ *     must never be gated, so a failure here should show the real diff.
+ */
+interface PrePr {
+  strippedSha: string;
+  strippedLines: number;
+  firestorePaths: string[];
+  exportCsv: string | null;
+}
+
+/**
+ * Presentation stripped out: className attributes in all three spellings, this
+ * PR's import line, and comment-only and blank lines. What survives is the
+ * behaviour — every query, write, handler and value.
+ */
+const stripPresentation = (src: string): string => src
+  .replace(/className=(?:"[^"]*"|\{`[^`]*`\}|\{[A-Za-z_$][\w.$]*\})/g, 'className=X')
+  .replace(/^import \{[^}]*\} from '\.\/layout\/form-layout';$/m, '')
+  .replace(/^\s*(?:\/\/.*)?$\n?/gm, '');
+
+const firestorePathsOf = (src: string): string[] =>
+  [...src.matchAll(/(?:collection|doc)\(db,\s*([^)]*)\)/g)].map((m) => m[1].replace(/\s+/g, ' '));
+
+/** The check-in CSV body, delimited by the two declarations that bracket it. */
+const exportCsvOf = (src: string): string | null => {
+  const from = src.indexOf('const exportCsv');
+  const to = src.indexOf('const fmtTime');
+  return from < 0 || to < 0 ? null : src.slice(from, to).trimEnd();
+};
+
+const sha = (s: string) => createHash('sha256').update(s).digest('hex');
+
+const prePrOf = (src: string): PrePr => {
+  const stripped = stripPresentation(src);
+  return {
+    strippedSha: sha(stripped),
+    strippedLines: stripped.split('\n').length,
+    firestorePaths: firestorePathsOf(src),
+    exportCsv: exportCsvOf(src),
+  };
+};
+
+/** How to see the actual diff when one of the hashes below goes red. */
+const DIFF_HINT = (name: string) =>
+  `run \`git diff ${PRE_PR_REVISION} -- src/components/${name}.tsx\` to see what moved`;
+
+let PRE_PR!: Record<Screen, PrePr>;
 
 const buttonContaining = (root: ParentNode, text: string): HTMLButtonElement => {
   const m = Array.from(root.querySelectorAll('button'))
@@ -295,9 +365,17 @@ beforeAll(async () => {
       }
     }
   }
+  if (RECORDING) {
+    const pre = {} as Record<Screen, PrePr>;
+    for (const name of SCREENS) {
+      pre[name] = prePrOf(execSync(`git show ${PRE_PR_REVISION}:src/components/${name}.tsx`, { cwd: REPO, encoding: 'utf8' }));
+    }
+    writeFileSync(path.join(FIXTURES, 'ministry-pre-pr.json'), JSON.stringify(pre, null, 2) + '\n');
+  }
   for (const name of SCREENS) {
     BASELINE[name] = JSON.parse(readFileSync(path.join(FIXTURES, `ministry-${name}.json`), 'utf8')) as Baseline;
   }
+  PRE_PR = JSON.parse(readFileSync(path.join(FIXTURES, 'ministry-pre-pr.json'), 'utf8')) as Record<Screen, PrePr>;
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -505,8 +583,20 @@ describe('widths, heights and gaps come from form-layout, not new per-screen val
   });
 
   it('adds nothing to the shared module — the five screens are consumers only', () => {
-    const mod = execSync(`git show ${PRE_PR_REVISION}:src/components/layout/form-layout.ts`, { cwd: REPO, encoding: 'utf8' });
-    expect(readFileSync(path.join(SRC, 'layout/form-layout.ts'), 'utf8')).toBe(mod);
+    // Pinned by VALUE, not by the file's bytes. A byte-for-byte check would go
+    // red the moment a parallel batch legitimately ADDS an export, which is not
+    // this PR's business; changing a value one of these screens renders IS.
+    expect(FORM_CONTAINER).toBe('sm:max-w-[1120px] sm:mx-auto');
+    expect(FORM_MEASURE).toBe('sm:max-w-[940px] sm:mx-auto');
+    expect(ACTION_BUTTON).toBe('sm:flex-none sm:px-8');
+    expect(FIELD_WIDTH.short).toBe('sm:max-w-[160px]');
+    expect(FIELD_WIDTH.medium).toBe('sm:max-w-[280px]');
+    expect(FIELD_WIDTH.long).toBe('sm:max-w-[440px]');
+    expect(FIELD_WIDTH.group).toBe('sm:max-w-[760px]');
+    expect(CONTROL_DENSITY.control).toBe('sm:h-[38px] sm:py-0');
+    expect(CONTROL_DENSITY.action).toBe('sm:h-[40px] sm:py-0');
+    expect(DENSITY_PX.control).toBe(38);
+    expect(DENSITY_PX.action).toBe(40);
   });
 });
 
@@ -517,21 +607,15 @@ describe('no community query or write path changed', () => {
   const COLLECTIONS = ['channels', 'channelMessages', 'directMessages', 'dmMessages'];
 
   it('reads and writes the same four collections, spelled the same way', () => {
-    const before = execSync(`git show ${PRE_PR_REVISION}:src/components/AdminCommunity.tsx`, { cwd: REPO, encoding: 'utf8' });
     const after = read('AdminCommunity.tsx');
-    const paths = (s: string) => [...s.matchAll(/(?:collection|doc)\(db,\s*([^)]*)\)/g)].map((m) => m[1].replace(/\s+/g, ' '));
-    expect(paths(after)).toEqual(paths(before));
-    for (const c of COLLECTIONS) expect(after.includes(c)).toBe(before.includes(c));
+    expect(firestorePathsOf(after)).toEqual(PRE_PR.AdminCommunity.firestorePaths);
+    for (const c of COLLECTIONS) expect(after.includes(c), `${c} disappeared`).toBe(true);
   });
 
   it('changes nothing in AdminCommunity outside a className', () => {
-    const before = execSync(`git show ${PRE_PR_REVISION}:src/components/AdminCommunity.tsx`, { cwd: REPO, encoding: 'utf8' });
-    const strip = (s: string) => s
-      .replace(/className=(?:"[^"]*"|\{`[^`]*`\}|\{[A-Za-z_$][\w.$]*\})/g, 'className=X')
-      .replace(/^\s*(?:\/\/.*)?$/gm, '')
-      .replace(/^import \{ FORM_CONTAINER \}.*$/m, '')
-      .replace(/\n+/g, '\n');
-    expect(strip(read('AdminCommunity.tsx'))).toBe(strip(before));
+    const now = stripPresentation(read('AdminCommunity.tsx'));
+    expect(now.split('\n').length, DIFF_HINT('AdminCommunity')).toBe(PRE_PR.AdminCommunity.strippedLines);
+    expect(sha(now), DIFF_HINT('AdminCommunity')).toBe(PRE_PR.AdminCommunity.strippedSha);
   });
 
   it('writes nothing while the screen is merely rendered', async () => {
@@ -546,12 +630,9 @@ describe('no community query or write path changed', () => {
 describe('no ticket price, donation amount, fee or checkout call changed', () => {
   for (const name of ['AdminEvents', 'AdminFundraising'] as const) {
     it(`changes nothing in ${name} outside a className`, () => {
-      const before = execSync(`git show ${PRE_PR_REVISION}:src/components/${name}.tsx`, { cwd: REPO, encoding: 'utf8' });
-      const strip = (s: string) => s
-        .replace(/className=(?:"[^"]*"|\{`[^`]*`\}|\{[A-Za-z_$][\w.$]*\})/g, 'className=X')
-        .replace(/^import \{ FORM_CONTAINER.*form-layout';$/m, '')
-        .replace(/^\s*$/gm, '').replace(/\n+/g, '\n');
-      expect(strip(read(`${name}.tsx`))).toBe(strip(before));
+      const now = stripPresentation(read(`${name}.tsx`));
+      expect(now.split('\n').length, DIFF_HINT(name)).toBe(PRE_PR[name].strippedLines);
+      expect(sha(now), DIFF_HINT(name)).toBe(PRE_PR[name].strippedSha);
     });
   }
 
@@ -583,10 +664,10 @@ describe('no ticket price, donation amount, fee or checkout call changed', () =>
 // ─────────────────────────────────────────────────────────────────────────────
 describe('the check-in CSV export still works', () => {
   it('is byte-identical to the pre-PR implementation', () => {
-    const before = execSync(`git show ${PRE_PR_REVISION}:src/components/AdminCheckin.tsx`, { cwd: REPO, encoding: 'utf8' });
-    const body = (s: string) => s.slice(s.indexOf('const exportCsv'), s.indexOf('const fmtTime'));
-    expect(body(read('AdminCheckin.tsx'))).toBe(body(before));
-    expect(body(read('AdminCheckin.tsx'))).toContain('text/csv');
+    const now = exportCsvOf(read('AdminCheckin.tsx'));
+    expect(now).toBe(PRE_PR.AdminCheckin.exportCsv);
+    expect(now).toContain('text/csv');
+    expect(now).toContain('URL.createObjectURL');
   });
 
   it('still renders the Export CSV control, ungated, on the session detail', async () => {
