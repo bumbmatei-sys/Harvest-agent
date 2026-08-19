@@ -584,6 +584,10 @@ describe('widths, heights and gaps come from form-layout, not new per-screen val
     // AdminDashboard is in that batch's scope and is deliberately absent: it is
     // the shell every other admin screen renders inside, so a measure on it is
     // a measure on all of them at once.
+    //
+    // Batch F (the five admin ministry screens) adds the last five. Batches E,
+    // F and G ran in parallel and each added only its own, so this list is the
+    // UNION of the three — kept byte-for-byte equal to the other one.
     const importers = execSync(
       "grep -rl \"from '.*form-layout'\" src --include=*.tsx --include=*.ts || true",
       { encoding: 'utf8' },
@@ -591,10 +595,15 @@ describe('widths, heights and gaps come from form-layout, not new per-screen val
     expect(importers).toEqual([
       'src/components/AdminBlog.tsx',
       'src/components/AdminCRM.tsx',
+      'src/components/AdminCheckin.tsx',
       'src/components/AdminChurches.tsx',
+      'src/components/AdminCommunity.tsx',
       'src/components/AdminCourseEditor.tsx',
       'src/components/AdminCourses.tsx',
       'src/components/AdminDocs.tsx',
+      'src/components/AdminEvents.tsx',
+      'src/components/AdminForms.tsx',
+      'src/components/AdminFundraising.tsx',
       'src/components/AdminGivingStatements.tsx',
       'src/components/AdminRAG.tsx',
       'src/components/AdminSettings.tsx',
