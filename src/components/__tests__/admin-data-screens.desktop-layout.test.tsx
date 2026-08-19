@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeAll } from 'vitest';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { execSync } from 'node:child_process';
 import path from 'node:path';
 
@@ -77,8 +78,10 @@ const {
   mobileLayer, colourTokens, allTokens, maxWidthPx, maxWidthTokens,
   isResponsive, breakpointOf, heightTokens, heightPx, isColourToken,
 } = await import('../../test/support/class-inventory');
-const { FORM_CONTAINER, FORM_MEASURE, FIELD_WIDTH, FIELD_WIDTHS, ACTION_BUTTON, CONTAINERS } =
-  await import('../layout/form-layout');
+const {
+  FORM_CONTAINER, FORM_MEASURE, FIELD_WIDTH, FIELD_WIDTHS, ACTION_BUTTON, CONTAINERS,
+  CONTROL_DENSITY, CONTROL_DENSITY_TOKENS, DENSITY_PX, DESKTOP_CONTROL_MAX_PX,
+} = await import('../layout/form-layout');
 
 const REPO = path.resolve(__dirname, '../../..');
 const SRC = path.resolve(__dirname, '..');
@@ -97,9 +100,58 @@ const stripComments = (src: string) =>
  * The revision this batch started from — `git log -1` on origin/main at the
  * time, and the "before" side of every measurement in the PR description.
  */
-const PRE_PR_REVISION = '29769c6';
+const PRE_PR_REVISION = 'ef557af';
+
+/**
+ * The pre-PR source of a file, from git.
+ *
+ * ONLY EVER CALLED WHILE RECORDING. CI checks out with `fetch-depth: 1`, so the
+ * runner's object store holds exactly one commit and any `git show <sha>` there
+ * dies with "fatal: invalid object name" — which is how the first version of
+ * this file turned ten assertions into ten errors on an otherwise-passing
+ * branch. A squash-merge would break it a second way, by retiring the sha.
+ *
+ * So the pre-PR side is RECORDED into a fixture on a full clone, deliberately,
+ * and every assertion below reads that fixture. Same discipline as
+ * AdminCourseEditor.desktop-layout.test.tsx, which also confines `git show` to
+ * its recording block. Nothing in this file shells out to git at run time.
+ */
 const atPrePr = (rel: string) =>
   execSync(`git show ${PRE_PR_REVISION}:src/components/${rel}`, { cwd: REPO, encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 });
+
+const sha256 = (text: string) => createHash('sha256').update(text, 'utf8').digest('hex');
+
+/** Raw colour literals in a source file — the pin for "no colour was added". */
+const colourLiterals = (src: string): string[] =>
+  (src.match(/#[0-9a-fA-F]{3,8}\b|rgba?\(|hsla?\(/g) ?? []).sort();
+
+/**
+ * Files this batch must not have opened: the shell and the shared module, plus
+ * every screen the batch brief put out of scope by name. Recorded as digests,
+ * so "touches no file outside this batch" is a fact about content rather than
+ * about a git range that CI cannot resolve.
+ */
+const MUST_NOT_CHANGE = [
+  'AdminDashboard.tsx', 'layout/form-layout.ts',
+  'AdminDocs.tsx', 'AdminBlog.tsx', 'AdminCourses.tsx', 'NewsletterEditor.tsx',
+  'AdminCommunity.tsx', 'AdminEvents.tsx', 'AdminFundraising.tsx', 'AdminForms.tsx',
+  'AdminCheckin.tsx', 'NewsTab.tsx', 'MainApp.tsx', 'BiblePage.tsx',
+  'UserMessages.tsx', 'AllNews.tsx', 'AIChat.tsx', 'LivestreamView.tsx',
+];
+
+/** The in-scope files, and the pre-PR facts recorded about each. */
+const TOUCHED_FILES = ['AdminRAG.tsx', 'AdminTenants.tsx', 'AdminSms.tsx', 'AdminGivingStatements.tsx'];
+
+/** Behaviour the batch promised not to move, named and pinned by extract. */
+const BEHAVIOUR_EXTRACTS: { file: string; label: string; decl: string }[] = [
+  { file: 'AdminTenants.tsx', label: 'the super-admin tenant subscription', decl: "const q = collection(db, 'tenants');" },
+  { file: 'AdminSms.tsx', label: 'the broadcast send path', decl: 'const send = async' },
+  { file: 'AdminSms.tsx', label: 'the template save path', decl: 'const saveTemplates = async' },
+  { file: 'AdminSms.tsx', label: 'the Text-to-Give save path', decl: 'const saveT2g = async' },
+  { file: 'AdminGivingStatements.tsx', label: 'the money formatter', decl: 'const fmtMoney =' },
+  { file: 'AdminGivingStatements.tsx', label: 'the statement query', decl: 'const loadStatuses =' },
+  { file: 'AdminGivingStatements.tsx', label: 'the generate path', decl: 'const generate = async' },
+];
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Mounting.
@@ -208,6 +260,54 @@ const RECORDING = !!process.env.UPDATE_LAYOUT_BASELINE;
 interface Baseline { [screen: string]: { mobileLayer: string[]; colours: string[]; allTokens: string[] } }
 let BASELINE!: Baseline;
 
+/**
+ * The pre-PR SOURCE facts, recorded alongside the rendered baseline. Every
+ * assertion about "what the file used to be" reads this, so the suite is
+ * hermetic: no git, no network, no dependence on clone depth.
+ */
+interface SourceBaseline {
+  recordedFrom: string;
+  digests: Record<string, string>;
+  /** Occurrences of each per-screen value this batch retired. */
+  retired: Record<string, Record<string, number>>;
+  /** Named behaviour extracts, keyed "file::label". */
+  behaviour: Record<string, string>;
+  /** Raw colour literals per in-scope file. */
+  colours: Record<string, string[]>;
+  /** The shell's per-tab wrappers, verbatim. */
+  shellWrappers: string[];
+}
+const SOURCE_FIXTURE = path.join(FIXTURES, 'admin-data-screens-source.json');
+let SOURCE!: SourceBaseline;
+
+/**
+ * Per-screen values this batch retired, and how many spellings may remain.
+ *
+ * `remaining` is not always zero, and that is the point. AdminRAG's three
+ * `padding:"10px 13px"` objects are not one decision: `input` and `select` gave
+ * their vertical padding up so `CONTROL_DENSITY.control` could own the height
+ * honestly, while the paste composer keeps its own because it takes no density
+ * rule at all. A blanket "must be zero" could not express that; a count can.
+ */
+const RETIRED: Record<string, { value: string; remaining: number; because: string }[]> = {
+  'AdminRAG.tsx': [
+    { value: 'maxWidth:1160', remaining: 0, because: 'all three container caps are FORM_CONTAINER now' },
+    { value: 'width:160', remaining: 0, because: "the type filter's width is FIELD_WIDTH.short" },
+    { value: 'padding:"10px 13px"', remaining: 1,
+      because: 'the paste composer keeps its padding (it takes no density rule); the input and select gave theirs up so sm:py-0 is not shadowed' },
+  ],
+  'AdminTenants.tsx': [
+    { value: 'max-w-6xl', remaining: 0, because: 'FORM_CONTAINER replaces it, without the rem-base split' },
+  ],
+};
+
+/** The per-tab wrappers the shell mounts each screen in. */
+const SHELL_WRAPPERS = [
+  '<div className="p-4 lg:p-0"><AdminRAG /></div>',
+  '<div className="p-4 lg:p-0"><AdminTenants /></div>',
+  '<div className="p-4 lg:p-0"><AdminSms /></div>',
+];
+
 beforeAll(async () => {
   if (RECORDING) {
     const targets = ['AdminRAG.tsx', 'AdminTenants.tsx', 'AdminSms.tsx', 'AdminGivingStatements.tsx'];
@@ -221,6 +321,31 @@ beforeAll(async () => {
         out[s.name] = { mobileLayer: mobileLayer(c), colours: colourTokens(c), allTokens: allTokens(c) };
       }
       writeFileSync(FIXTURE, JSON.stringify(out, null, 2) + '\n');
+
+      // The source side. Recorded from git HERE, on a full clone, and never
+      // read from git again — see the note on `atPrePr`.
+      const src: SourceBaseline = {
+        recordedFrom: PRE_PR_REVISION,
+        digests: {}, retired: {}, behaviour: {}, colours: {}, shellWrappers: SHELL_WRAPPERS,
+      };
+      for (const f of MUST_NOT_CHANGE) {
+        if (!existsSync(path.join(SRC, f))) continue;
+        src.digests[f] = sha256(atPrePr(f));
+      }
+      for (const [f, entries] of Object.entries(RETIRED)) {
+        const before = atPrePr(f);
+        src.retired[f] = Object.fromEntries(
+          entries.map(({ value }) => [value, before.split(value).length - 1]));
+      }
+      for (const { file, label, decl } of BEHAVIOUR_EXTRACTS) {
+        src.behaviour[`${file}::${label}`] = fnBody(atPrePr(file), decl);
+      }
+      for (const f of TOUCHED_FILES) src.colours[f] = colourLiterals(atPrePr(f));
+      const shell = atPrePr('AdminDashboard.tsx');
+      for (const w of SHELL_WRAPPERS) {
+        if (!shell.includes(w)) throw new Error(`the shell no longer spells ${w} — test needs updating`);
+      }
+      writeFileSync(SOURCE_FIXTURE, JSON.stringify(src, null, 2) + '\n');
     } finally {
       for (const [t, body] of backups) writeFileSync(path.join(SRC, t), body);
       vi.resetModules();
@@ -228,6 +353,7 @@ beforeAll(async () => {
     }
   }
   BASELINE = JSON.parse(readFileSync(FIXTURE, 'utf8')) as Baseline;
+  SOURCE = JSON.parse(readFileSync(SOURCE_FIXTURE, 'utf8')) as SourceBaseline;
 });
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -291,7 +417,7 @@ describe('the sub-640px rendering of each file is unchanged', () => {
   });
 
   it('gates every rule this batch spends at sm: or above — nothing can reach a phone', async () => {
-    const spent = [FORM_CONTAINER, FORM_MEASURE, ACTION_BUTTON, ...FIELD_WIDTHS];
+    const spent = [FORM_CONTAINER, FORM_MEASURE, ACTION_BUTTON, ...FIELD_WIDTHS, ...CONTROL_DENSITY_TOKENS];
     const ungated = spent.flatMap((r) => r.split(/\s+/).filter(Boolean)).filter((t) => !isResponsive(t));
     expect(ungated, 'these tokens would apply at every width, mobile included').toEqual([]);
   });
@@ -323,13 +449,48 @@ describe('no touch target got smaller', () => {
     }
   });
 
-  it('introduces no desktop height token at all — this batch spends no density rule', async () => {
+  it('takes every desktop height it does add from the module, never a number of its own', async () => {
+    // Rule 4 IS spent in this batch, on AdminRAG: measured at 1440px it drew a
+    // 41px text input and a 47px submit against a band whose top is 40px. That
+    // makes those controls SMALLER on a desktop, which is the rule working —
+    // every token in CONTROL_DENSITY is `sm:`-gated, so a phone cannot see it.
+    // What must not happen is a height invented at the call site.
+    const fromModule = new Set(CONTROL_DENSITY_TOKENS.flatMap((t) => t.split(/\s+/)));
     for (const s of SCREENS) {
       const c = await s.open();
-      const added = allTokens(c).filter((t) => isResponsive(t) && /(?:^|:)h-/.test(t));
       const already = new Set(BASELINE[s.name].allTokens);
-      expect(added.filter((t) => !already.has(t)), `${s.name} gained a desktop height`).toEqual([]);
+      const added = allTokens(c)
+        .filter((t) => isResponsive(t) && /(?:^|:)h-/.test(t))
+        .filter((t) => !already.has(t));
+      expect(added.filter((t) => !fromModule.has(t)), `${s.name} invented a desktop height`).toEqual([]);
     }
+  });
+
+  it('shrinks a control only above sm, and only one the module names a height for', async () => {
+    const c = await ragSources();
+    for (const label of ['Search sources...']) {
+      const el = byPlaceholder(c, label.slice(0, 8));
+      const tokens = el.className.split(/\s+/);
+      expect(tokens, `${label} carries no density rule`).toContain('sm:h-[38px]');
+      // The unprefixed layer keeps no height at all, so the phone is untouched.
+      expect(heightTokens(el).filter((t) => !isResponsive(t))).toEqual([]);
+    }
+  });
+
+  it('leaves the composer, the tabs and the row delete button out of the density rule', async () => {
+    const add = await ragAdd();
+    // A 220px composing box is not a density problem; 38px would break it.
+    const composer = byPlaceholder(add, 'Paste sermons, Bible');
+    expect(heightTokens(composer)).toEqual([]);
+    expect((composer as HTMLTextAreaElement).style.minHeight).toBe('220px');
+    // The underline tabs are navigation, not a text-entry control or an action.
+    expect(heightTokens(buttonByText(add, '+ Add Knowledge'))).toEqual([]);
+    // The row delete button is already under the band — nothing may shrink it.
+    const sources = await ragSources();
+    const del = Array.from(sources.querySelectorAll('button'))
+      .find((b) => b.getAttribute('title') === 'Delete source' && b.style.width === '32px');
+    expect(del, 'the desktop delete target lost its explicit size').toBeDefined();
+    expect(heightTokens(del!)).toEqual([]);
   });
 
   it('keeps the AI Knowledge delete button at the size it already had', async () => {
@@ -439,14 +600,15 @@ describe('each surface is constrained at desktop widths', () => {
 describe('conflicting inline widths are removed, not overridden', () => {
   it('no longer spells the 1160px cap, or the centring that came with it, anywhere in AdminRAG', () => {
     const src = readCode('AdminRAG.tsx');
-    expect(atPrePr('AdminRAG.tsx'), 'the pre-PR file should contain the cap being removed').toContain('maxWidth:1160');
+    expect(SOURCE.retired['AdminRAG.tsx']['maxWidth:1160'],
+      'the recorded pre-PR file should contain the cap being removed').toBe(3);
     expect(src).not.toContain('maxWidth:1160');
     expect(src.match(/margin:"0 auto", width:"100%"/g) ?? []).toEqual([]);
     expect(src.match(/maxWidth:\s*1160/g) ?? []).toEqual([]);
   });
 
   it('no longer spells the type filter\'s inline width either', () => {
-    expect(atPrePr('AdminRAG.tsx')).toContain('width:160');
+    expect(SOURCE.retired['AdminRAG.tsx']['width:160']).toBe(1);
     expect(readCode('AdminRAG.tsx')).not.toContain('width:160');
   });
 
@@ -473,6 +635,42 @@ describe('conflicting inline widths are removed, not overridden', () => {
     }
   });
 
+  it('retires each per-screen value it took over, and only as far as it claimed to', () => {
+    for (const [file, entries] of Object.entries(RETIRED)) {
+      const code = readCode(file);
+      for (const { value, remaining, because } of entries) {
+        const before = SOURCE.retired[file][value];
+        expect(before, `${file} never spelled ${value} — test needs updating`).toBeGreaterThan(remaining);
+        expect(code.split(value).length - 1, `${file}: ${value} — ${because}`).toBe(remaining);
+      }
+    }
+  });
+
+  it('leaves no density rule shadowed by an inline padding on the same element', async () => {
+    // `sm:py-0` loses to an inline `padding` shorthand exactly the way the
+    // container rule loses to an inline `maxWidth`, so it gets the same guard.
+    //
+    // The invariant is AGREEMENT, not silence: the submit spreads
+    // `s.publishBtn`, whose `padding:"7px 20px"` shorthand has to be
+    // neutralised at the call site, and writing `0` there says the same thing
+    // the class says. A NON-ZERO inline vertical padding is the shadowing
+    // case — that is what the rule would have lost to.
+    const density = new Set(CONTROL_DENSITY_TOKENS.flatMap((t) => t.split(/\s+/)));
+    for (const open of [ragAdd, ragSources]) {
+      const c = await open();
+      const ruled = Array.from(c.querySelectorAll<HTMLElement>('*'))
+        .filter((e) => e.className?.split?.(/\s+/).some((t: string) => density.has(t)));
+      expect(ruled.length, 'no element carries a density rule').toBeGreaterThan(0);
+      for (const el of ruled) {
+        const label = el.getAttribute('placeholder') ?? el.tagName;
+        const agrees = (v: string) => v === '' || parseFloat(v) === 0;
+        expect(agrees(el.style.paddingTop), `${label} shadows sm:py-0 with ${el.style.paddingTop}`).toBe(true);
+        expect(agrees(el.style.paddingBottom), `${label} shadows sm:py-0 with ${el.style.paddingBottom}`).toBe(true);
+        expect(el.style.height, `${label} shadows its height inline`).toBe('');
+      }
+    }
+  });
+
   it('keeps the inline widths that are NOT a layout rule — the modal, the blurb, the cell clamp', () => {
     // maxWidth:400 (delete modal), 560 (header blurb) and 110 (error cell) are
     // content clamps this batch has no business touching. They must survive, or
@@ -493,7 +691,7 @@ describe('conflicting inline widths are removed, not overridden', () => {
 // ═════════════════════════════════════════════════════════════════════════════
 describe("the admin shell's container is unchanged", () => {
   it('is byte-for-byte the file it was before this batch', () => {
-    expect(readSrc('AdminDashboard.tsx')).toBe(atPrePr('AdminDashboard.tsx'));
+    expect(sha256(readSrc('AdminDashboard.tsx'))).toBe(SOURCE.digests['AdminDashboard.tsx']);
   });
 
   it('spends no rule from the shared layout module', () => {
@@ -504,9 +702,7 @@ describe("the admin shell's container is unchanged", () => {
     const src = readSrc('AdminDashboard.tsx');
     // The wrapper each screen is mounted in. If a cap ever lands here it lands
     // on all of them at once, which is exactly what was declined.
-    expect(src).toContain('<div className="p-4 lg:p-0"><AdminRAG /></div>');
-    expect(src).toContain('<div className="p-4 lg:p-0"><AdminTenants /></div>');
-    expect(src).toContain('<div className="p-4 lg:p-0"><AdminSms /></div>');
+    for (const wrapper of SOURCE.shellWrappers) expect(src).toContain(wrapper);
     expect(src.match(/max-w-/g) ?? []).toEqual(['max-w-']); // the sole `lg:max-w-none` on the nav
   });
 });
@@ -516,33 +712,28 @@ describe("the admin shell's container is unchanged", () => {
 // ═════════════════════════════════════════════════════════════════════════════
 describe('no tenant query, SMS send path or statement figure changed', () => {
   it('leaves the super-admin tenant subscription exactly as it was', () => {
-    const before = atPrePr('AdminTenants.tsx');
     const after = readSrc('AdminTenants.tsx');
-    const listener = /const q = collection\(db, 'tenants'\);[\s\S]*?return \(\) => unsubscribe\(\);/;
-    expect(before.match(listener), 'the tenant listener moved — test needs updating').not.toBeNull();
-    expect(after.match(listener)![0]).toBe(before.match(listener)![0]);
+    expect(fnBody(after, "const q = collection(db, 'tenants');"))
+      .toBe(SOURCE.behaviour['AdminTenants.tsx::the super-admin tenant subscription']);
     // It runs unscoped, i.e. all tenants, and this batch did not scope it.
     expect(after).not.toMatch(/collection\(db, 'tenants'\),\s*where\(/);
   });
 
   it('leaves every SMS write path byte-identical, Text-to-Give included', () => {
-    const before = atPrePr('AdminSms.tsx');
     const after = readSrc('AdminSms.tsx');
-    for (const fn of ['const send = async', 'const saveTemplates = async', 'const saveT2g = async']) {
-      expect(before.includes(fn), `${fn} moved — test needs updating`).toBe(true);
-      expect(fnBody(after, fn)).toBe(fnBody(before, fn));
+    for (const { file, label, decl } of BEHAVIOUR_EXTRACTS.filter((b) => b.file === 'AdminSms.tsx')) {
+      expect(fnBody(after, decl), `${label} moved`).toBe(SOURCE.behaviour[`${file}::${label}`]);
     }
   });
 
   it('leaves every giving-statement figure and its formatter byte-identical', () => {
-    const before = atPrePr('AdminGivingStatements.tsx');
     const after = readSrc('AdminGivingStatements.tsx');
-    for (const fn of ['const fmtMoney =', 'const loadStatuses =', 'const generate = async']) {
-      expect(before.includes(fn), `${fn} moved — test needs updating`).toBe(true);
-      expect(fnBody(after, fn)).toBe(fnBody(before, fn));
+    for (const { file, label, decl } of BEHAVIOUR_EXTRACTS.filter((b) => b.file === 'AdminGivingStatements.tsx')) {
+      expect(fnBody(after, decl), `${label} moved`).toBe(SOURCE.behaviour[`${file}::${label}`]);
     }
-    // Money stays in cents and is divided in exactly one place.
-    expect((after.match(/\/ 100\)/g) ?? []).length).toBe((before.match(/\/ 100\)/g) ?? []).length);
+    // Money stays in cents, and the cents-to-dollars division is inside the
+    // formatter extract above — so a changed divisor fails there, by name.
+    expect(after).toContain('/ 100)');
   });
 
   it('changes no field, option or handler on any screen — only class attributes moved', async () => {
@@ -563,7 +754,9 @@ describe('widths, heights and gaps come from form-layout, not new per-screen val
   const TOUCHED = ['AdminRAG.tsx', 'AdminTenants.tsx', 'AdminSms.tsx', 'AdminGivingStatements.tsx'];
 
   it('introduces no arbitrary width, height or gap token that the module does not export', async () => {
-    const known = new Set([...CONTAINERS, ACTION_BUTTON, ...FIELD_WIDTHS].flatMap((r) => r.split(/\s+/)));
+    const known = new Set(
+      [...CONTAINERS, ACTION_BUTTON, ...FIELD_WIDTHS, ...CONTROL_DENSITY_TOKENS]
+        .flatMap((r) => r.split(/\s+/)));
     for (const s of SCREENS) {
       const c = await s.open();
       const already = new Set(BASELINE[s.name].allTokens);
@@ -576,16 +769,15 @@ describe('widths, heights and gaps come from form-layout, not new per-screen val
   });
 
   it('adds nothing to the shared module — no export moved and no value was invented in it', () => {
-    const modulePath = path.join(SRC, 'layout/form-layout.ts');
-    const before = execSync(`git show ${PRE_PR_REVISION}:src/components/layout/form-layout.ts`, { cwd: REPO, encoding: 'utf8' });
-    expect(readFileSync(modulePath, 'utf8')).toBe(before);
+    expect(sha256(readFileSync(path.join(SRC, 'layout/form-layout.ts'), 'utf8')))
+      .toBe(SOURCE.digests['layout/form-layout.ts']);
   });
 
   it('leaves the old per-screen caps behind rather than layering the rule on top of them', () => {
     // A rule that merely sits next to `max-w-6xl` is a second definition of the
     // same measure, and one of them has the rem-base split the module exists to
     // avoid: 72rem is 1152px on a tablet and 1044px on a monitor.
-    expect(atPrePr('AdminTenants.tsx')).toContain('max-w-6xl');
+    expect(SOURCE.retired['AdminTenants.tsx']['max-w-6xl']).toBe(2);
     expect(readCode('AdminTenants.tsx')).not.toContain('max-w-6xl');
   });
 
@@ -601,24 +793,24 @@ describe('widths, heights and gaps come from form-layout, not new per-screen val
     }
   });
 
-  it('touches no file outside this batch', () => {
-    const changed = execSync(`git diff --name-only ${PRE_PR_REVISION} -- src functions firestore.rules`, {
-      cwd: REPO, encoding: 'utf8',
-    }).split('\n').filter(Boolean);
-    const allowed = new Set([
-      ...TOUCHED.map((f) => `src/components/${f}`),
-      'src/components/__tests__/admin-data-screens.desktop-layout.test.tsx',
-      'src/components/__tests__/__fixtures__/admin-data-screens-mobile.json',
-      // Two existing tests pin the roster of files that import the shared
-      // module, deliberately, so an adopter has to be written down twice. Batch
-      // G is adopter six and adds four names to each. NOTE FOR THE MERGE: three
-      // other batches are running in parallel and each will add ITS screens to
-      // these same two lists, so this is a guaranteed textual conflict — take
-      // the union of the names, keep them sorted, and both lists stay equal.
-      'src/components/__tests__/ChurchEnrollment.desktop-layout.test.tsx',
-      'src/components/__tests__/AdminCRM.desktop-layout.test.tsx',
-    ]);
-    expect(changed.filter((f) => !allowed.has(f))).toEqual([]);
+  it('touches no file outside this batch — the shell, the shared module, and every screen the brief put out of scope', () => {
+    // Recorded digests rather than a git range: three other batches were in
+    // flight, and "did this branch open AdminDocs?" is a question about content,
+    // not about a revision the CI runner's shallow clone cannot resolve.
+    const moved = Object.entries(SOURCE.digests)
+      .filter(([f]) => existsSync(path.join(SRC, f)))
+      .filter(([f, digest]) => sha256(readSrc(f)) !== digest)
+      .map(([f]) => f);
+    expect(moved, 'these files are out of scope for this batch and changed anyway').toEqual([]);
+  });
+
+  it('records a digest for every out-of-scope file the brief named that exists', () => {
+    // Guards the guard: a typo'd filename would silently check nothing.
+    const missing = MUST_NOT_CHANGE
+      .filter((f) => existsSync(path.join(SRC, f)))
+      .filter((f) => !(f in SOURCE.digests));
+    expect(missing, 'these files exist but carry no recorded digest').toEqual([]);
+    expect(Object.keys(SOURCE.digests).length).toBeGreaterThanOrEqual(6);
   });
 });
 
@@ -633,20 +825,57 @@ describe('no colour is hardcoded, and all four palettes resolve', () => {
   }
 
   it('spells no raw colour in anything the batch added', () => {
-    const rules = [...CONTAINERS, ACTION_BUTTON, ...FIELD_WIDTHS];
+    const rules = [...CONTAINERS, ACTION_BUTTON, ...FIELD_WIDTHS, ...CONTROL_DENSITY_TOKENS];
     expect(rules.flatMap((r) => r.split(/\s+/)).filter(isColourToken)).toEqual([]);
   });
 
   it('leaves every colour on these screens expressed through a theme token, so all four palettes resolve', () => {
     // Harvest and Classic x light and dark are switched by CSS custom
-    // properties on <html>; a literal hex in the diff would render the same in
-    // all four. There is none — the class layer is unchanged (above) and the
-    // source gained no colour of its own.
-    for (const f of ['AdminRAG.tsx', 'AdminTenants.tsx', 'AdminSms.tsx', 'AdminGivingStatements.tsx']) {
-      const addedLines = execSync(`git diff -U0 ${PRE_PR_REVISION} -- src/components/${f}`, { cwd: REPO, encoding: 'utf8' })
-        .split('\n').filter((l) => l.startsWith('+') && !l.startsWith('+++'));
-      const colours = addedLines.join('\n').match(/#[0-9a-fA-F]{3,8}\b|rgba?\(|hsla?\(/g) ?? [];
-      expect(colours, `${f} introduced a raw colour`).toEqual([]);
+    // properties on <html>; a literal hex in the source would render the same
+    // in all four. The multiset of raw colour literals per file is recorded
+    // from the pre-PR revision and must be unchanged — a stronger claim than
+    // "the diff added none", because it also catches a swap.
+    for (const f of TOUCHED_FILES) {
+      expect(colourLiterals(readSrc(f)), `${f} changed a raw colour literal`).toEqual(SOURCE.colours[f]);
     }
+  });
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+// 9. The guard on this file itself.
+//
+// The first version of this suite shelled out to `git show <sha>` from ten
+// run-time assertions. It passed locally on a full clone and errored on every
+// one of them in CI, where `actions/checkout` fetches a single commit:
+// "fatal: invalid object name". A squash-merge would have broken it a second
+// way. The pre-PR side is a recorded fixture now, and this keeps it that way.
+// ═════════════════════════════════════════════════════════════════════════════
+describe('this suite is hermetic — it reads no git history at run time', () => {
+  const SELF = readFileSync(__filename, 'utf8');
+
+  it('shells out only from the recording helper, never from an assertion', () => {
+    const lines = SELF.split('\n');
+    const shellingLines = lines
+      .map((l, i) => ({ l, n: i + 1 }))
+      .filter(({ l }) => /execSync\(/.test(l) && !/^\s*(\/\/|\*)/.test(l));
+    // One call site: `atPrePr`, which section "Baseline" only reaches under
+    // UPDATE_LAYOUT_BASELINE. Anything else is a run-time git dependency.
+    expect(shellingLines.map(({ n }) => n).length,
+      'a second execSync appeared — CI clones shallow, so it will fail there').toBe(1);
+    expect(shellingLines[0].l).toContain('git show');
+  });
+
+  it('reaches the only git-dependent helper from the recording block alone', () => {
+    const calls = [...SELF.matchAll(/atPrePr\(/g)].length;
+    const recordingBlock = SELF.slice(SELF.indexOf('if (RECORDING) {'), SELF.indexOf('BASELINE = JSON.parse'));
+    const inRecording = [...recordingBlock.matchAll(/atPrePr\(/g)].length;
+    expect(calls, 'atPrePr should be exercised by the recorder').toBeGreaterThan(0);
+    expect(calls - inRecording, 'atPrePr is called outside the recording block').toBe(0);
+  });
+
+  it('depends on both fixtures existing, so a missing one fails loudly rather than silently passing', () => {
+    expect(existsSync(FIXTURE), 'the rendered baseline is missing').toBe(true);
+    expect(existsSync(SOURCE_FIXTURE), 'the source baseline is missing').toBe(true);
+    expect(SOURCE.recordedFrom).toBe(PRE_PR_REVISION);
   });
 });

@@ -18,7 +18,27 @@ import { MAX_PDF_UPLOAD_BYTES, limitMb } from '../utils/upload-limits';
 // from its `style` object first rather than layered over. The three removals
 // are marked at their call sites; nothing else in this file's 88 inline style
 // objects is touched.
-import { FORM_CONTAINER, FIELD_WIDTH } from './layout/form-layout';
+//
+// Rule 4 (desktop control density) applies here too, and for the same reason
+// the widths did: measured at 1440px this screen drew a 41px text input and a
+// 47px submit, against the module's 38px/40px band whose top is 40px. It is
+// spent on the four controls that are genuinely form controls, and it SHRINKS
+// them — which is exactly what it is for, and safe here because every token in
+// it is `sm:`-gated, so a phone keeps the 41px and 47px it has today.
+//
+// Three things are deliberately left alone:
+//   • the paste TEXTAREA — it is a 220px composer, and a 38px composing box is
+//     not a density fix, it is a broken control;
+//   • the "+ Add Knowledge"/"Sources" underline TABS (45px) — navigation, not a
+//     text-entry control or a primary action, so outside what Rule 4 names;
+//   • the 32px row delete button — already under the band, and nothing here may
+//     make a target smaller than it already is.
+//
+// `s.publishBtn` and `s.draftBtn` are NOT edited, because the delete-confirm
+// modal spells them too and that modal renders at every width — changing the
+// shared object would reach a phone. The one desktop caller overrides its own
+// padding at the call site instead.
+import { FORM_CONTAINER, FIELD_WIDTH, CONTROL_DENSITY } from './layout/form-layout';
 
 
 // Gemini API calls are proxied through /api/gemini to keep the API key server-side
@@ -648,7 +668,7 @@ export default function AdminRAG() {
  <div style={{ ...s.card, display:"flex", flexDirection:"column" }}>
  <div style={s.sectionHeading}>Paste Text</div>
  <div style={{ ...s.cardBody, flex:1 }}>
- <input className={FIELD_WIDTH.long} style={s.input} value={pasteTitle} onChange={e=>setPasteTitle(e.target.value)}
+ <input className={`${FIELD_WIDTH.long} ${CONTROL_DENSITY.control}`} style={s.input} value={pasteTitle} onChange={e=>setPasteTitle(e.target.value)}
  placeholder="Source title (optional) — e.g. Romans Commentary" />
  <textarea
  style={{ ...s.textarea, flex:1, minHeight:220, fontSize:14, lineHeight:1.7 }}
@@ -660,7 +680,7 @@ export default function AdminRAG() {
  ~{pasteText.trim().split(/\s+/).length} words · ~{chunkText(pasteText).length} chunks will be created
  </div>
  )}
- <button style={{ ...s.publishBtn, padding:"13px", fontSize:14, borderRadius:12, display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}
+ <button className={CONTROL_DENSITY.action} style={{ ...s.publishBtn, padding:"0 13px", fontSize:14, borderRadius:12, display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}
  onClick={handlePasteSubmit} disabled={!pasteText.trim() || pasteLoading}>
  <Sparkles size={16} /> {pasteLoading ? "Processing…" : "Chunk & Embed"}
  </button>
@@ -740,11 +760,11 @@ export default function AdminRAG() {
  <div className="hidden lg:flex" style={{ gap:10 }}>
  <div className={FIELD_WIDTH.long} style={{ flex:1, position:"relative", display:"flex", alignItems:"center" }}>
  <Search size={16} color={TEXT2} style={{ position:"absolute", left:13, top:"50%", transform:"translateY(-50%)" }} />
- <input style={{ ...s.input, paddingLeft:38 }} value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search sources..." />
+ <input className={CONTROL_DENSITY.control} style={{ ...s.input, paddingLeft:38 }} value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search sources..." />
  </div>
  {/* Rule 2: inline `width:160` removed — `sm:w-full` + the `short` cap render
      the same 160px through the rule instead of around it. */}
- <select className={`sm:w-full ${FIELD_WIDTH.short}`} style={s.select} value={filterType} onChange={e=>setFilterType(e.target.value)}>
+ <select className={`sm:w-full ${FIELD_WIDTH.short} ${CONTROL_DENSITY.control}`} style={s.select} value={filterType} onChange={e=>setFilterType(e.target.value)}>
  <option value="all">All types</option>
  {Object.entries(TYPE_META).map(([k,v])=>(
  <option key={k} value={k}>{v.label}</option>
@@ -946,9 +966,13 @@ const s: Record<string, React.CSSProperties> = {
  cardBody: { padding:"16px", display:"flex", flexDirection:"column", gap:14 },
  sectionHeading: { padding:"14px 16px", fontSize:11, fontWeight:700, color:GOLD, letterSpacing:"0.14em", textTransform:"uppercase", borderBottom:`1px solid ${BORDER}` },
  label: { fontSize:12, fontWeight:700, color:TEXT2, letterSpacing:"0.04em", textTransform:"uppercase" },
- input: { background:"var(--surface)", border:`1.5px solid ${BORDER}`, borderRadius:10, color:TEXT, padding:"10px 13px", fontSize:14, width:"100%", fontFamily:"inherit" },
+ // Rule 4: vertical padding removed so `CONTROL_DENSITY.control` can own the
+ // height honestly — an inline `padding` shorthand would shadow `sm:py-0`.
+ // Desktop-only object: every caller sits inside a `hidden lg:*` wrapper.
+ input: { background:"var(--surface)", border:`1.5px solid ${BORDER}`, borderRadius:10, color:TEXT, paddingLeft:13, paddingRight:13, fontSize:14, width:"100%", fontFamily:"inherit" },
  textarea: { background:"var(--surface)", border:`1.5px solid ${BORDER}`, borderRadius:10, color:TEXT, padding:"10px 13px", fontSize:14, width:"100%", resize:"vertical", fontFamily:"inherit", lineHeight:1.6 },
- select: { background:"var(--surface)", border:`1.5px solid ${BORDER}`, borderRadius:10, color:TEXT, padding:"10px 13px", fontSize:14, cursor:"pointer", fontFamily:"inherit" },
+ // Rule 4: same removal as `input` above, and the same desktop-only caller.
+ select: { background:"var(--surface)", border:`1.5px solid ${BORDER}`, borderRadius:10, color:TEXT, paddingLeft:13, paddingRight:13, fontSize:14, cursor:"pointer", fontFamily:"inherit" },
  draftBtn: { background:"transparent", border:`1.5px solid ${BORDER}`, color:TEXT2, padding:"10px 20px", borderRadius:10, cursor:"pointer", fontSize:13, fontFamily:"inherit", fontWeight:600, flex:1 },
  publishBtn: { background:GOLD_BTN, border:"none", color:"var(--surface-raised)", fontWeight:700, padding:"7px 20px", borderRadius:10, cursor:"pointer", fontSize:13, fontFamily:"inherit", boxShadow:"0 2px 8px rgba(201,150,58,0.35)", width:"100%" },
  uploadTypeBtn: { background:"var(--surface)", border:`1.5px solid ${BORDER}`, color:TEXT, padding:"11px 8px", borderRadius:12, cursor:"pointer", fontSize:13, fontFamily:"inherit", fontWeight:600, textAlign:"center" },
