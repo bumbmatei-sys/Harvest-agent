@@ -182,36 +182,74 @@ async function screen(name: Screen): Promise<HTMLDivElement> {
 }
 
 /**
- * The sub-view each screen opens into, keyed by the label that gets there.
- * `null` is the surface a fresh mount already lands on.
+ * Every surface of every screen this PR's rules reach, each as a navigation
+ * from a fresh mount.
+ *
+ * Covering only the surface a mount lands on is what let an ungated width on
+ * the Check-In create form, and an unprefixed height on the Forms field editor,
+ * both pass a full green run. A rule is only pinned on markup that renders, so
+ * a sub-form that opens behind a toggle has to be opened.
  */
-const SUB_VIEW: Record<Screen, [string, string] | null> = {
-  AdminCommunity: null,
-  AdminEvents: ['form', 'Create event'],
-  AdminFundraising: null,
-  AdminForms: ['builder', 'Create form'],
-  AdminCheckin: ['create', 'New session'],
+type Nav = (c: HTMLDivElement) => Promise<void>;
+const NOOP: Nav = async () => {};
+
+const clickRoleButton = (c: ParentNode, text: string) => {
+  const el = Array.from(c.querySelectorAll('[role="button"]'))
+    .find((d) => (d.textContent ?? '').includes(text));
+  if (!el) throw new Error(`no card containing "${text}" — the markup changed`);
+  return el as HTMLElement;
 };
 
-/**
- * Every surface of a screen, each on its OWN mount.
- *
- * Navigating one container and handing the same node back under two keys would
- * record and assert the post-navigation DOM twice, which is how the default
- * surface silently stopped being covered at all.
- */
+const SURFACES: Record<Screen, Record<string, Nav>> = {
+  AdminCommunity: { default: NOOP },
+  AdminEvents: {
+    default: NOOP,
+    form: async (c) => { await click(buttonContaining(c, 'Create event')); },
+    // Ticket types and discount codes live behind the registrations toggle.
+    formExpanded: async (c) => {
+      await click(buttonContaining(c, 'Create event'));
+      await click(c.querySelectorAll('button[aria-pressed]')[0] as HTMLElement);
+      await click(buttonContaining(c, 'Add Ticket Type'));
+      await click(buttonContaining(c, 'Add Discount Code'));
+    },
+    attendees: async (c) => { await click(clickRoleButton(c, 'Sunday Worship Gathering')); },
+  },
+  AdminFundraising: {
+    default: NOOP,
+    detail: async (c) => { await click(buttonContaining(c, 'Building Fund 2026')); },
+    pledge: async (c) => {
+      await click(buttonContaining(c, 'Building Fund 2026'));
+      await click(buttonContaining(c, 'Add Pledge'));
+    },
+  },
+  AdminForms: {
+    default: NOOP,
+    builder: async (c) => { await click(buttonContaining(c, 'Create form')); },
+    // A new form starts with no fields, so the field EDITOR — three of the
+    // controls this PR sizes — renders only once one is added.
+    builderFields: async (c) => {
+      await click(buttonContaining(c, 'Create form'));
+      await click(buttonContaining(c, 'Short Text'));
+      await click(buttonContaining(c, 'Dropdown'));
+    },
+    submissions: async (c) => { await click(buttonContaining(c, 'Volunteer Sign-Up')); },
+  },
+  AdminCheckin: {
+    default: NOOP,
+    create: async (c) => { await click(buttonContaining(c, 'New session')); },
+    detail: async (c) => { await click(buttonContaining(c, 'Sunday Service — September 6')); },
+  },
+};
+
+/** Every surface of a screen, each on its OWN mount. */
 async function surfaces(name: Screen): Promise<Record<string, HTMLDivElement>> {
   const Comp = (await import(`../${name}.tsx`)).default;
-  const first = await mountScreen(<Comp />);
-  open.push(first);
-  const out: Record<string, HTMLDivElement> = { default: first.container };
-  const sub = SUB_VIEW[name];
-  if (sub) {
-    const [view, label] = sub;
-    const second = await mountScreen(<Comp />);
-    open.push(second);
-    await click(buttonContaining(second.container, label));
-    out[view] = second.container;
+  const out: Record<string, HTMLDivElement> = {};
+  for (const [view, nav] of Object.entries(SURFACES[name])) {
+    const m = await mountScreen(<Comp />);
+    open.push(m);
+    await nav(m.container);
+    out[view] = m.container;
   }
   return out;
 }
@@ -447,12 +485,16 @@ describe('widths, heights and gaps come from form-layout, not new per-screen val
       // already spells it for its own full-width buttons.
       'sm:w-auto',
     ]);
+    // Only tokens this PR ADDED are in scope: the screens carry pre-existing
+    // responsive tokens (a `sm:grid-cols-[auto_1fr]` template on the attendees
+    // roster, for one) that are not sizes and are not this PR's to justify.
     for (const name of SCREENS) {
-      for (const [, c] of Object.entries(await surfaces(name))) {
-        const sized = allTokens(c).filter((t) => breakpointOf(t) === 'sm' && /-\[|max-w-|^sm:h-/.test(t));
-        for (const t of sized) expect(defined.has(t), `${name} renders undefined ${t}`).toBe(true);
+      for (const [view, c] of Object.entries(await surfaces(name))) {
+        const before = new Set(BASELINE[name]![view].mobileLayer.flatMap((l) => l.split('\t')[2]?.split(' ') ?? []));
+        const added = allTokens(c).filter((t) => !before.has(t) && breakpointOf(t) === 'sm');
+        const sized = added.filter((t) => /^sm:(?:max-w|w|h|gap|space-[xy]|p[xytblr]?|m[xytblr]?)-/.test(t));
+        for (const t of sized) expect(defined.has(t), `${name}/${view} renders undefined ${t}`).toBe(true);
       }
-      mounted?.unmount(); mounted = null;
     }
   });
 
