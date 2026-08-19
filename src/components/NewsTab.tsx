@@ -19,6 +19,7 @@ import CampaignWidget from './CampaignWidget';
 import KebabMenu from './KebabMenu';
 import { sortByTime } from '../utils/query-helpers';
 import { TwoColumnLayout, DesktopCard } from './layout/DesktopLayout';
+import { FORM_CONTAINER } from './layout/form-layout';
 import { HeroBand } from './member/desktopKit';
 import { useLiveNow } from '../hooks/useLiveNow';
 import { useCampaigns } from '../hooks/queries/useCampaignQueries';
@@ -1679,7 +1680,19 @@ const NewsTab: React.FC<NewsTabProps> = ({ onOpenAllNews, onOpenArticle, tenantI
   );
 
   return (
-    <div className="w-full space-y-4 pb-8">
+    // Rule 1a (form-layout.ts), the PAGE measure — not Rule 6's reading measure.
+    // The feed is a data-dense page, not a reading column: it carries a
+    // composer, poll cards, event cards, a campaign widget and a 340px rail
+    // beside it, and its job is to show as much at once as the shell allows.
+    // Rule 6 sizes a single column of prose; this screen is not one.
+    //
+    // Measured before: the `1fr` main column has no maximum, so the post body
+    // ran 736.25px of prose at 1440px and 1216.25px at 1920px. 1120px caps the
+    // whole two-column band, which leaves 758.25px for the feed column
+    // (1120 - 340 rail - 21.75 `gap-6`) and 724.25px of prose inside the card —
+    // 12px off where it already sat at 1440px, and bounded from there up.
+    // Inert below 1120px, so nothing moves on a phone or a tablet.
+    <div className={`w-full space-y-4 pb-8 ${FORM_CONTAINER}`}>
       {/* Desktop greeting hero — Phase 1.6, lg:-only, real user data (no fake stats) */}
       <div className="hidden lg:block">
         <h1 className="font-display text-[2.4rem] leading-[1.12] font-light tracking-[-0.02em] text-strong">

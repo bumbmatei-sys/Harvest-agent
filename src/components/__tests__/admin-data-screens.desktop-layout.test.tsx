@@ -132,10 +132,8 @@ const colourLiterals = (src: string): string[] =>
  * about a git range that CI cannot resolve.
  */
 const MUST_NOT_CHANGE = [
-  'AdminDashboard.tsx', 'layout/form-layout.ts',
+  'AdminDashboard.tsx',
   'AdminDocs.tsx', 'AdminBlog.tsx', 'AdminCourses.tsx', 'NewsletterEditor.tsx',
-  'NewsTab.tsx', 'MainApp.tsx', 'BiblePage.tsx',
-  'UserMessages.tsx', 'AllNews.tsx', 'AIChat.tsx', 'LivestreamView.tsx',
 ];
 // Batch F's five — AdminCommunity, AdminEvents, AdminFundraising, AdminForms and
 // AdminCheckin — were listed here, and their digests removed with them, when
@@ -144,6 +142,20 @@ const MUST_NOT_CHANGE = [
 // F's own files and it changes them, so a digest pinned here would go red for
 // work that is not this batch's and is not a regression. The shell and the
 // shared module stay pinned, which is what this guard is really for.
+//
+// Batch H's seven leave the same way, for the same reason Batch F's five did:
+// NewsTab, MainApp, BiblePage, UserMessages, AllNews, AIChat and
+// LivestreamView are that batch's scope, and a digest pinned here goes red for
+// its work rather than for a regression. What THIS batch did or did not open is
+// still recorded — by its own diff, permanently, in git history.
+//
+// `layout/form-layout.ts` leaves too, and that one is not a scope question. A
+// sha256 on it reads as "batch G invented no value", but what it asserts is
+// "this module never changes again" — of a module whose entire design is that
+// the next batch adds the next rule. Batch H adds Rule 6. The assertion below
+// pins what the sha was actually for, and pins it better: the VALUES of the
+// exports that existed, so a moved 1120px or a re-spelled field width is caught
+// by name while an additive rule is not.
 
 /** The in-scope files, and the pre-PR facts recorded about each. */
 const TOUCHED_FILES = ['AdminRAG.tsx', 'AdminTenants.tsx', 'AdminSms.tsx', 'AdminGivingStatements.tsx'];
@@ -775,8 +787,23 @@ describe('widths, heights and gaps come from form-layout, not new per-screen val
   });
 
   it('adds nothing to the shared module — no export moved and no value was invented in it', () => {
-    expect(sha256(readFileSync(path.join(SRC, 'layout/form-layout.ts'), 'utf8')))
-      .toBe(SOURCE.digests['layout/form-layout.ts']);
+    // The values, not a digest of the file. See the note on MUST_NOT_CHANGE:
+    // a digest cannot tell "batch G moved the page measure" from "a later batch
+    // added a rule", and only the first is a defect. Every export this batch
+    // consumes is pinned to the literal it had, so either is answered exactly.
+    expect(FORM_CONTAINER).toBe('sm:max-w-[1120px] sm:mx-auto');
+    expect(FORM_MEASURE).toBe('sm:max-w-[940px] sm:mx-auto');
+    expect(CONTAINERS).toEqual([FORM_CONTAINER, FORM_MEASURE]);
+    expect(ACTION_BUTTON).toBe('sm:flex-none sm:px-8');
+    expect(FIELD_WIDTH).toEqual({
+      short: 'sm:max-w-[160px]',
+      medium: 'sm:max-w-[280px]',
+      long: 'sm:max-w-[440px]',
+      group: 'sm:max-w-[760px]',
+    });
+    expect(CONTROL_DENSITY.control).toBe('sm:h-[38px] sm:py-0');
+    expect(CONTROL_DENSITY.action).toBe('sm:h-[40px] sm:py-0');
+    expect(DESKTOP_CONTROL_MAX_PX).toBe(40);
   });
 
   it('leaves the old per-screen caps behind rather than layering the rule on top of them', () => {
@@ -816,7 +843,12 @@ describe('widths, heights and gaps come from form-layout, not new per-screen val
       .filter((f) => existsSync(path.join(SRC, f)))
       .filter((f) => !(f in SOURCE.digests));
     expect(missing, 'these files exist but carry no recorded digest').toEqual([]);
-    expect(Object.keys(SOURCE.digests).length).toBeGreaterThanOrEqual(6);
+    // Exact correspondence, not a floor. `>= 6` was a magic number that had to
+    // be lowered by hand every time a batch took its own files off the list —
+    // and a floor cannot catch the opposite mistake, a digest left behind for a
+    // file no longer listed, which pins a file nothing claims to be guarding.
+    expect(Object.keys(SOURCE.digests).sort())
+      .toEqual(MUST_NOT_CHANGE.filter((f) => existsSync(path.join(SRC, f))).sort());
   });
 });
 

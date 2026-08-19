@@ -10,6 +10,7 @@ import { getTenantScope, isPlatformContext, PLATFORM_TENANT_ID } from '../utils/
 import { isSuperAdminEmail } from '../utils/super-admins';
 import { sortByTime } from '../utils/query-helpers';
 import { getOrCreateDm } from '../lib/dm';
+import { READING_MEASURE } from './layout/form-layout';
 
 interface MessageAttachment {
   type: 'doc' | 'contact' | 'campaign' | 'form';
@@ -351,7 +352,13 @@ const DmThread: React.FC<{
       {/* min-h-0 lets this flex child shrink below its content height so it
           scrolls internally; without it the list grows and pushes the composer
           down instead of the composer staying pinned above the bottom nav. */}
-      <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-3">
+      {/* Rule 6 (form-layout.ts). This thread had NO desktop maximum: it filled
+          whatever the conversation list left over, so a bubble ran 619.67px of
+          prose at 1440px and 994.08px at 1920px, and the composer 732.88px and
+          1212.88px. The reading measure caps it at 680px like the other three
+          member reading surfaces. `lg:`-gated, so the mobile full-screen thread
+          is untouched. */}
+      <div className={`flex-1 min-h-0 overflow-y-auto p-4 space-y-3 lg:w-full ${READING_MEASURE}`}>
         {messages.length === 0 && (
           <div className="text-center py-12 text-faint">
             <MessageSquare size={32} className="mx-auto mb-2 opacity-30" />
@@ -412,7 +419,7 @@ const DmThread: React.FC<{
           here double-stacks and leaves a dead gap. Standalone still needs it. */}
       <div className="bg-surface-raised border-t border-line-hairline flex-shrink-0 px-4 pt-3" style={{ paddingBottom: embedded ? '8px' : 'calc(env(safe-area-inset-bottom) + 8px)' }}>
         {attachments.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-2">
+          <div className={`flex flex-wrap gap-2 mb-2 lg:w-full ${READING_MEASURE}`}>
             {attachments.map((a, i) => (
               <div key={i} className="flex items-center gap-1.5 bg-[color-mix(in_srgb,var(--brand-color)_12%,transparent)] border border-[color-mix(in_srgb,var(--brand-color)_30%,transparent)] rounded-lg px-2.5 py-1 text-xs font-medium text-gold">
                 <span className="text-sm">📝</span>
@@ -424,7 +431,10 @@ const DmThread: React.FC<{
             ))}
           </div>
         )}
-        <div className="flex gap-2 items-center bg-surface-tint rounded-2xl px-3 py-2.5 border border-line-hairline focus-within:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] transition-colors">
+        {/* Rule 6 — the composer tracks the thread. The measure goes on the
+            pill and not on the bar around it, so the bar's top border and
+            surface stay full-bleed exactly as they are today. */}
+        <div className={`flex gap-2 items-center bg-surface-tint rounded-2xl px-3 py-2.5 border border-line-hairline focus-within:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] transition-colors lg:w-full ${READING_MEASURE}`}>
           <button
             onClick={() => setShowPicker(true)}
             className="flex-shrink-0 p-1 rounded-lg hover:bg-[var(--border-hairline)] transition-colors"
@@ -529,7 +539,9 @@ const ChannelView: React.FC<{
         </div>
       </div>
 
-      <div className="flex-1 min-h-0 overflow-y-auto px-4 pt-4 pb-4 space-y-3">
+      {/* Rule 6 — a channel is the same reading surface as a DM, so it takes
+          the same measure. Was unbounded here too. */}
+      <div className={`flex-1 min-h-0 overflow-y-auto px-4 pt-4 pb-4 space-y-3 lg:w-full ${READING_MEASURE}`}>
         {messages.length === 0 && (
           <div className="text-center py-12 text-faint">
             <Megaphone size={32} className="mx-auto mb-2 opacity-30" />
@@ -577,7 +589,8 @@ const ChannelView: React.FC<{
           the composer only needs a small pad — adding the safe-area inset again
           here double-stacks and leaves a dead gap. Standalone still needs it. */}
       <div className="bg-surface-raised border-t border-line-hairline flex-shrink-0 px-4 pt-3" style={{ paddingBottom: embedded ? '8px' : 'calc(env(safe-area-inset-bottom) + 8px)' }}>
-        <div className="flex gap-2 items-center bg-surface-tint rounded-2xl px-3 py-2.5 border border-line-hairline focus-within:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] transition-colors">
+        {/* Rule 6 — same as the DM composer: the pill, not the bar. */}
+        <div className={`flex gap-2 items-center bg-surface-tint rounded-2xl px-3 py-2.5 border border-line-hairline focus-within:border-[color-mix(in_srgb,var(--brand-color)_40%,transparent)] transition-colors lg:w-full ${READING_MEASURE}`}>
           <input
             value={text}
             onChange={e => setText(e.target.value)}
