@@ -15,6 +15,7 @@ import {
   AdminPageHeader, AdminPrimaryButton, AdminSecondaryButton, AdminEditorHeader,
   AdminCard, AdminBadge,
 } from './admin/AdminUI';
+import { FORM_CONTAINER, FORM_MEASURE, FIELD_WIDTH, CONTROL_DENSITY } from './layout/form-layout';
 
 const GOLD = 'var(--brand-color, #B8962E)';
 
@@ -251,7 +252,7 @@ const AdminForms: React.FC<AdminFormsProps> = () => {
   // ════════════════════════════════════════════════════════════════
   if (view === 'builder') {
     return (
-      <div className="max-w-3xl mx-auto" style={{ paddingBottom: 120 }}>
+      <div className={FORM_MEASURE} style={{ paddingBottom: 120 }}>
         <AdminEditorHeader
           onBack={() => setView('list')}
           backLabel="All forms"
@@ -287,8 +288,8 @@ const AdminForms: React.FC<AdminFormsProps> = () => {
         ) : (
           <div className="space-y-4">
             <div className="bg-surface-raised rounded-2xl border border-line p-5 space-y-3">
-              <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Form title" className="w-full text-lg font-bold px-0 py-1 border-0 border-b border-line focus:outline-none focus:border-gold" />
-              <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Description (optional)" rows={2} className="w-full text-sm px-0 py-1 border-0 focus:outline-none resize-none text-muted" />
+              <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Form title" className={`w-full text-lg font-bold px-0 py-1 border-0 border-b border-line focus:outline-none focus:border-gold ${FIELD_WIDTH.long}`} />
+              <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Description (optional)" rows={2} className={`w-full text-sm px-0 py-1 border-0 focus:outline-none resize-none text-muted ${FIELD_WIDTH.long}`} />
             </div>
 
             {fields.map((f, i) => (
@@ -297,11 +298,11 @@ const AdminForms: React.FC<AdminFormsProps> = () => {
                   <GripVertical size={16} className="text-stone-300 mt-2.5 shrink-0" />
                   <div className="flex-1 min-w-0 space-y-2">
                     <div className="flex items-center gap-2">
-                      <input value={f.label} onChange={e => updateField(f.id, { label: e.target.value })} placeholder="Field label" className="flex-1 px-3 py-2 border border-line rounded-lg text-sm focus:outline-none focus:border-gold" />
+                      <input value={f.label} onChange={e => updateField(f.id, { label: e.target.value })} placeholder="Field label" className={`flex-1 px-3 py-2 border border-line rounded-lg text-sm focus:outline-none focus:border-gold ${FIELD_WIDTH.long} ${CONTROL_DENSITY.control}`} />
                       <span className="text-[10px] font-semibold px-2 py-1 rounded-full bg-surface-sunken text-muted whitespace-nowrap">{FIELD_TYPES.find(t => t.type === f.type)?.label}</span>
                     </div>
                     {(f.type !== 'dropdown' && f.type !== 'radio' && f.type !== 'checkbox') && (
-                      <input value={f.placeholder || ''} onChange={e => updateField(f.id, { placeholder: e.target.value })} placeholder="Placeholder (optional)" className="w-full px-3 py-2 border border-line rounded-lg text-sm focus:outline-none focus:border-gold" />
+                      <input value={f.placeholder || ''} onChange={e => updateField(f.id, { placeholder: e.target.value })} placeholder="Placeholder (optional)" className={`w-full px-3 py-2 border border-line rounded-lg text-sm focus:outline-none focus:border-gold ${FIELD_WIDTH.long} ${CONTROL_DENSITY.control}`} />
                     )}
                     {(f.type === 'dropdown' || f.type === 'radio' || f.type === 'checkbox') && (
                       <textarea
@@ -309,7 +310,7 @@ const AdminForms: React.FC<AdminFormsProps> = () => {
                         onChange={e => updateField(f.id, { options: e.target.value.split('\n').filter(Boolean) })}
                         placeholder="One option per line"
                         rows={3}
-                        className="w-full px-3 py-2 border border-line rounded-lg text-sm focus:outline-none focus:border-gold"
+                        className={`w-full px-3 py-2 border border-line rounded-lg text-sm focus:outline-none focus:border-gold ${FIELD_WIDTH.long}`}
                       />
                     )}
                     <label className="flex items-center gap-2 text-xs text-muted">
@@ -358,7 +359,7 @@ const AdminForms: React.FC<AdminFormsProps> = () => {
   if (view === 'submissions' && selectedForm) {
     const cols = [...selectedForm.fields].sort((a, b) => a.order - b.order);
     return (
-      <div className="max-w-4xl mx-auto" style={{ paddingBottom: 120 }}>
+      <div className={FORM_CONTAINER} style={{ paddingBottom: 120 }}>
         <AdminEditorHeader
           onBack={() => setView('list')}
           backLabel="All forms"
@@ -410,7 +411,7 @@ const AdminForms: React.FC<AdminFormsProps> = () => {
 
   // ── List view ────────────────────────────────────────────────────
   return (
-    <div className="w-full max-w-3xl mx-auto space-y-6" style={{ paddingBottom: 120 }}>
+    <div className={`w-full ${FORM_CONTAINER} space-y-6`} style={{ paddingBottom: 120 }}>
       <AdminPageHeader
         eyebrow="Ministry"
         title={`${forms.length} form${forms.length === 1 ? '' : 's'}`}
