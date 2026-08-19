@@ -410,8 +410,10 @@ const AdminForms: React.FC<AdminFormsProps> = () => {
   }
 
   // ── List view ────────────────────────────────────────────────────
+  // Rule 1b — the FORM measure, not the page one. A stack of form cards is not
+  // a data-dense surface; the submissions TABLE is, and keeps FORM_CONTAINER.
   return (
-    <div className={`w-full ${FORM_CONTAINER} space-y-6`} style={{ paddingBottom: 120 }}>
+    <div className={`w-full ${FORM_MEASURE} space-y-6`} style={{ paddingBottom: 120 }}>
       <AdminPageHeader
         eyebrow="Ministry"
         title={`${forms.length} form${forms.length === 1 ? '' : 's'}`}

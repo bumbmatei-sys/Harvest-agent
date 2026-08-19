@@ -414,15 +414,21 @@ const AdminCheckin: React.FC<AdminCheckinProps> = ({ canCheckin = true, canQR = 
   // ── List view ────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div className={FORM_CONTAINER}>
+      // Same surface as the list below, so it takes the same measure — a
+      // different one here would jump the page as the sessions arrive.
+      <div className={FORM_MEASURE}>
         {subTabBar}
         <div className="flex items-center justify-center h-40"><Loader2 size={28} className="animate-spin" style={{ color: GOLD }} /></div>
       </div>
     );
   }
 
+  // Rule 1b — the FORM measure, not the page one. This is a stack of session
+  // cards, not a data-dense table: at the 1120px page measure each card ran the
+  // full width of a 1440px monitor. The QR tab and the session detail keep the
+  // page measure; they carry a generator and a live roster respectively.
   return (
-    <div className={FORM_CONTAINER} style={{ paddingBottom: 120 }}>
+    <div className={FORM_MEASURE} style={{ paddingBottom: 120 }}>
       {subTabBar}
       <div className="flex items-start justify-between gap-4 mb-6">
         <p className="text-sm text-muted leading-relaxed max-w-lg">
