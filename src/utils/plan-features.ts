@@ -615,6 +615,33 @@ export const PLAN_DISPLAY_NAMES: Record<TenantPlan, string> = {
   max: 'Ministry',
 };
 
+/**
+ * The one-line blurb under a tier's name — who the plan is FOR, not what it
+ * contains.
+ *
+ * These are the only strings on a plan card that are typed rather than derived.
+ * Everything else a card prints comes out of `PLAN_FEATURES` above, because a
+ * hand-written list of what a tier includes is how this product once advertised
+ * "keeps 100%" against a real 2.5% fee. A blurb has nothing in the matrix to
+ * derive from — "for solo evangelists" is an audience, not a capability — so it
+ * is written down, once, HERE rather than in a component, so the in-app card and
+ * anything else that ever wants it read the same sentence.
+ *
+ * ⚠️ CROSS-REPO, same shape as `ANNUAL_BILLED_MONTHS` above: the marketing site
+ * (harvest-presentation-site) carries its OWN copy of these three sentences in
+ * src/components/Pricing.tsx. The two repos cannot share code, so a reworded
+ * tagline here does NOT reach theharvest.site and the two will drift. That
+ * drift is cosmetic — a tagline is a description of an audience, not a claim
+ * about what the plan does, so a stale one cannot mis-sell the way a stale
+ * price or a stale feature list can — but it is real, and changing one of these
+ * means changing it there too if the two are meant to read alike.
+ */
+export const PLAN_BLURBS: Record<TenantPlan, string> = {
+  plus: 'For solo evangelists and missionaries.',
+  pro:  'For small ministries growing as a team.',
+  max:  'For established churches going deeper.',
+};
+
 /** Get the display name for a given plan. Defaults to 'Individual' if unknown. */
 export function getPlanDisplayName(plan: TenantPlan): string {
   return PLAN_DISPLAY_NAMES[plan] || PLAN_DISPLAY_NAMES.plus;

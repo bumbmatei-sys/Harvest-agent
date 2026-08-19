@@ -621,6 +621,11 @@ describe('widths, heights and gaps come from form-layout, not new per-screen val
       'src/components/AllNews.tsx',
       'src/components/AnalyticsAndRoles.tsx',
       'src/components/BiblePage.tsx',
+      // THE-192: the billing screen takes Rule 1a's page measure. It is a page —
+      // an invoice table and a three-up plan comparison — and it adopted the
+      // rule because the width it had invented (`max-w-3xl`, 696px at the
+      // desktop rem base) clipped the third plan card by 209.25px.
+      'src/components/BillingAndPayments.tsx',
       'src/components/ChurchEnrollment.tsx',
       'src/components/EnterpriseContactModal.tsx',
       'src/components/NewsTab.tsx',
