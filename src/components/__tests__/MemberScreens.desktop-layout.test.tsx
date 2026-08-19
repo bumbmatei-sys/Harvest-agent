@@ -167,10 +167,45 @@ const stripComments = (s: string) => s
   .replace(/(^|[^:])\/\/[^\n]*/g, '$1');
 const code = (rel: string) => stripComments(read(rel));
 
-/** The revision this PR branched from — the "before" every baseline is taken at. */
+/**
+ * The revision this PR branched from — the "before" every baseline is taken at.
+ *
+ * ⚠️ This needs real git history, which CI does not have by default:
+ * `actions/checkout@v4` makes a depth-1 clone, so `git show <older-rev>` dies
+ * with `fatal: invalid object name` and a suite that is green locally is red on
+ * CI for a reason nothing in the diff explains. `.github/workflows/test.yml`
+ * therefore sets `fetch-depth: 0`, and `revisionIsReachable` below turns a
+ * missing history into ONE named failure that says so, rather than a wall of
+ * raw git errors from every assertion that happens to need the before.
+ */
 const PRE_PR_REVISION = '29769c6';
-const at = (rel: string) =>
-  execSync(`git show ${PRE_PR_REVISION}:src/components/${rel}`, { cwd: ROOT, encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 });
+
+const revisionIsReachable = (): boolean => {
+  try {
+    execSync(`git cat-file -e ${PRE_PR_REVISION}^{commit}`, { cwd: ROOT, stdio: 'ignore' });
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+const at = (rel: string) => {
+  try {
+    return execSync(`git show ${PRE_PR_REVISION}:src/components/${rel}`, {
+      cwd: ROOT, encoding: 'utf8', maxBuffer: 32 * 1024 * 1024,
+    });
+  } catch (e) {
+    if (!revisionIsReachable()) {
+      throw new Error(
+        `This suite diffs the working tree against ${PRE_PR_REVISION}, which is not in this ` +
+        `clone. That is a CHECKOUT problem, not a code one: a depth-1 clone holds a single ` +
+        `commit. Set 'fetch-depth: 0' on actions/checkout in .github/workflows/test.yml, or ` +
+        `run 'git fetch --unshallow' locally.`,
+      );
+    }
+    throw e;
+  }
+};
 
 /**
  * The seven files in scope, and how each is mounted. Order is the brief's.
@@ -287,6 +322,21 @@ beforeAll(async () => {
   }
   BASELINE = JSON.parse(readFileSync(FIXTURE, 'utf8')) as Baseline;
   SURFACES = await surfaces();
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+// 0. The precondition every "before" assertion in this file rests on.
+// ═════════════════════════════════════════════════════════════════════════════
+describe('the revision this suite diffs against is reachable', () => {
+  it('can read the pre-PR revision — a shallow clone fails HERE, once, and says why', () => {
+    expect(
+      revisionIsReachable(),
+      `${PRE_PR_REVISION} is not in this clone. actions/checkout@v4 defaults to a depth-1 ` +
+      `shallow clone, which holds one commit and no history; .github/workflows/test.yml sets ` +
+      `fetch-depth: 0 for exactly this. Locally: git fetch --unshallow.`,
+    ).toBe(true);
+    expect(at('MainApp.tsx').length).toBeGreaterThan(0);
+  });
 });
 
 // ═════════════════════════════════════════════════════════════════════════════

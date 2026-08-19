@@ -48,6 +48,22 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          # Full history, not the action's default depth-1 shallow clone.
+          #
+          # The desktop-layout suites diff the working tree against the revision
+          # their PR branched from — `git show <rev>:src/components/X.tsx` — so
+          # that "mobile is unchanged" and "no behaviour changed" are checked
+          # against the real before, not a hand-typed copy of it. A depth-1
+          # clone contains exactly one commit, so every one of those calls dies
+          # with `fatal: invalid object name`, and the whole job fails for a
+          # reason that has nothing to do with the code under test. It passes
+          # locally, where the clone is complete, which is the worst version of
+          # this bug: green on the machine that wrote it, red only on CI.
+          #
+          # Cost is a slower checkout on a repo this size; the alternative is
+          # every such suite carrying a copy of the source it is diffing.
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
