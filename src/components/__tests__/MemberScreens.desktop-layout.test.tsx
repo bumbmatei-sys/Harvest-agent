@@ -367,14 +367,35 @@ describe('each surface is constrained at desktop widths', () => {
     expect(capped.length, 'the feed and the sticky header both take it').toBe(2);
   });
 
-  it('BiblePage caps the chapter, the chapter pager AND the search tab', () => {
+  it('BiblePage caps the chapter and the chapter pager', () => {
     const c = SURFACES.BiblePage;
     const capped = [...c.querySelectorAll('div')].filter((d) => d.className.includes(READING_MEASURE));
     expect(capped.length, 'read tab column + pager are capped').toBeGreaterThanOrEqual(2);
-    // The search tab is behind a tab switch, and it had NO cap before this PR.
-    const src = read('BiblePage.tsx');
-    const searchBlock = src.slice(src.indexOf('── SEARCH TAB ──'));
-    expect(searchBlock).toContain('READING_MEASURE');
+  });
+
+  it('BiblePage caps the search tab too — BOTH of its blocks, which had no cap at all', async () => {
+    // Asserted on the rendered DOM behind the real tab switch, not on a
+    // substring of the source. A `toContain('READING_MEASURE')` over the search
+    // block passes while only ONE of the two blocks carries the rule, which is
+    // exactly the half-fix this test exists to catch: the search FIELD and the
+    // RESULTS list are separate children and both run the full column width
+    // without it.
+    const BiblePage = (await import('../BiblePage')).default;
+    const m = await mount(<BiblePage />);
+    try {
+      const search = [...m.container.querySelectorAll('button')]
+        .find((b) => b.getAttribute('aria-label') === 'Search');
+      expect(search, 'no Search button — Bible markup changed, test needs updating').toBeDefined();
+      await click(search!);
+      const capped = [...m.container.querySelectorAll('div')]
+        .filter((d) => d.className.includes(READING_MEASURE));
+      expect(capped.length, 'the search field row AND the results list both take the measure').toBe(2);
+      // And it really is new here: the pre-PR search tab carried no maximum.
+      const before = at('BiblePage.tsx');
+      expect(before.slice(before.indexOf('── SEARCH TAB ──'))).not.toMatch(/max-w/);
+    } finally {
+      m.unmount();
+    }
   });
 
   it('the Ask Harvest thread and its composer are capped at the reading measure', () => {
