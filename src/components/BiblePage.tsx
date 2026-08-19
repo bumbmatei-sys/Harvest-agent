@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useSavedItems } from "../contexts/SavedItemsContext";
 import { verseKey } from "../types/saved.types";
+import { READING_MEASURE } from "./layout/form-layout";
 
 // ─────────────────────────────────────────────
 // HARVEST — Bible Page
@@ -773,7 +774,14 @@ export default function BiblePage() {
               </div>
 
               {/* ── DESKTOP reading — existing layout, preserved (lg only) ── */}
-              <div className="hidden lg:block px-4 pt-3 pb-2 flex-1 lg:max-w-[760px] lg:mx-auto lg:w-full lg:px-10">
+              {/* Rule 6 (form-layout.ts): a chapter is the reading surface this
+                  app has most of. 760px was this screen's own invented number,
+                  the widest of the four the member app had; 680px is the named
+                  one. At 1440px the verse column goes 634.5px -> 607.5px of
+                  prose (113 -> 108 characters of Crimson Pro at 17px), and the
+                  cap stays inert at 1024px, where the book nav already leaves
+                  less than 680px. */}
+              <div className={`hidden lg:block px-4 pt-3 pb-2 flex-1 lg:w-full lg:px-10 ${READING_MEASURE}`}>
                 {/* Desktop reader heading — translation eyebrow + Fraunces-light
                     "Book Chapter" title, matching the Harvest Member App design. */}
                 <div className="mb-6 mt-2">
@@ -796,8 +804,10 @@ export default function BiblePage() {
             </>
           )}
 
+          {/* Rule 6 — the chapter pager tracks the column it pages, so the
+              two stay flush. Same 760px -> 680px move as the column above. */}
           {!loading && !error && (
-            <div className="flex gap-2.5 px-4 py-3 pb-24 lg:pb-6 flex-shrink-0 lg:max-w-[760px] lg:mx-auto lg:w-full lg:px-10">
+            <div className={`flex gap-2.5 px-4 py-3 pb-24 lg:pb-6 flex-shrink-0 lg:w-full lg:px-10 ${READING_MEASURE}`}>
               <button onClick={() => goToChapter(-1)} disabled={chapter === 1}
                 className={`flex-1 py-3 rounded-xl text-sm font-bold cursor-pointer flex items-center justify-center gap-1.5 transition-colors ${chapter > 1 ? "bg-surface-raised border-[1.5px] border-line text-muted hover:border-line-strong" : "bg-surface-sunken border border-line text-faint cursor-not-allowed"}`}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m15 18-6-6 6-6" /></svg>
@@ -816,7 +826,11 @@ export default function BiblePage() {
       {/* ── SEARCH TAB ── */}
       {tab === "search" && (
         <div className="flex-1 overflow-y-auto flex flex-col">
-          <div className="px-4 py-3 flex-shrink-0">
+          {/* Rule 6 — the search tab had NO desktop cap at all, so the search
+              field and every result card ran the full width of the main column.
+              Results are verse text, so they are the same reading surface as the
+              chapter, and take the same measure. */}
+          <div className={`px-4 py-3 flex-shrink-0 lg:w-full ${READING_MEASURE}`}>
             <div className="flex items-center gap-2 bg-surface-raised rounded-full border-[1.5px] border-line px-4 py-3">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text-faint)" strokeWidth="2.5"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
               <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder='Try "John 3:16" or "Romans 8:28"...' autoFocus className="flex-1 border-none bg-transparent text-sm outline-none text-strong" />
@@ -832,7 +846,7 @@ export default function BiblePage() {
             </div>
           </div>
 
-          <div className="flex-1 px-4 pb-8 flex flex-col gap-3">
+          <div className={`flex-1 px-4 pb-8 flex flex-col gap-3 lg:w-full ${READING_MEASURE}`}>
             {!searchQuery && (
               <div className="text-center py-12 text-faint">
                 <svg className="mx-auto mb-3 text-faint" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" /><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" /></svg>

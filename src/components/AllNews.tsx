@@ -14,6 +14,7 @@ import { usePlanGate } from '../hooks/usePlanGate';
 import KebabMenu from './KebabMenu';
 import { FeedEmbedCard, type PostEmbed } from './EmbedCard';
 import { ImageLightbox, PostImageGrid, postImages } from './feed/PostMedia';
+import { READING_MEASURE } from './layout/form-layout';
 
 interface Comment {
   id: string;
@@ -486,7 +487,12 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages }) => {
 
   return (
     <div className="flex flex-col h-screen bg-surface ">
-      <div className="sticky top-0 z-20 bg-[color-mix(in_srgb,var(--surface-raised)_80%,transparent)] backdrop-blur-md border-b border-line px-4 py-3 flex items-center gap-3 lg:max-w-2xl lg:mx-auto w-full">
+      {/* Rule 6 (form-layout.ts): the header tracks the feed's measure so the
+          back arrow stays flush with the first card's left edge. `lg:max-w-2xl`
+          was the same intent written in rem — and rem is why it rendered 609px
+          and not the 672px its name says (globals.css trims the base to 14.5px
+          above 1024px). Same gate, a named px value. */}
+      <div className={`sticky top-0 z-20 bg-[color-mix(in_srgb,var(--surface-raised)_80%,transparent)] backdrop-blur-md border-b border-line px-4 py-3 flex items-center gap-3 w-full ${READING_MEASURE}`}>
         <button 
           onClick={onBack}
           className="p-2 -ml-2 text-muted hover:bg-surface-sunken rounded-full transition-colors"
@@ -496,7 +502,9 @@ const AllNews: React.FC<AllNewsProps> = ({ onBack, onOpenMessages }) => {
         <span className="font-medium text-strong truncate font-display">News & Updates</span>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-24 lg:max-w-2xl lg:mx-auto w-full">
+      {/* Rule 6 — the feed itself. A news feed is read, so it takes the reading
+          measure rather than a page or form measure. 609px -> 680px. */}
+      <div className={`flex-1 overflow-y-auto p-4 space-y-4 pb-24 w-full ${READING_MEASURE}`}>
         {errorMessage && (
           <div className="bg-red-50 text-red-600 p-3 rounded-xl text-sm font-medium border border-red-100 mb-4">
             {errorMessage}

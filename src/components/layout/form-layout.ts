@@ -307,3 +307,70 @@ export const COLUMN_RULES = [COLUMN_SPLIT, COLUMN_GROUP];
  * it is `DENSITY_PX.rowGap` / `DENSITY_PX.columnGap`, which are already 16.
  */
 export const SPLIT_MIN_PX = 1024;
+
+/**
+ * Rule 6 — the reading measure, for a surface whose content is PROSE.
+ *
+ * Rules 1a and 1b size a page and a form. Neither sizes a Bible chapter, a chat
+ * thread or a news feed: those are read rather than scanned or filled in, and
+ * the thing that decides their width is the line, not the room available or the
+ * widest field going into them. The member app had no name for that, so its
+ * four reading surfaces each invented one and none of them agreed:
+ *
+ *   AllNews feed        `lg:max-w-2xl`      609.0px on a monitor
+ *   Ask Harvest thread  `lg:max-w-3xl`      696.0px on a monitor
+ *   Bible chapter       `lg:max-w-[760px]`  760.0px
+ *   Messages thread     — none —            unbounded: 994px of prose at 1920px
+ *
+ * ── The rem trap, live ───────────────────────────────────────────────────────
+ * Two of those three numbers are not the numbers their class names say. Tailwind
+ * spells `max-w-2xl` as 42rem and `max-w-3xl` as 48rem, and globals.css trims
+ * the rem base to 14.5px above 1024px — so they render 609px and 696px, not the
+ * 672px and 768px the scale is documented as. This rule is in px, like every
+ * other width in this module, for exactly that reason.
+ *
+ * ── 680px, and how it was arrived at ─────────────────────────────────────────
+ * ⚠️ The usual typographic rule — 60-75 characters — does NOT yield a 640-720px
+ * measure in THIS app, and assuming it does is how a reading measure gets set
+ * twice as wide as intended. Measured in headless Chromium against the real
+ * compiled CSS at 1440px, the member app's desktop body text runs 12.69px
+ * (`text-sm` at the 14.5px base) to 13px, at 6.33-6.80px per character:
+ *
+ *   NewsTab post body      13px       6.489px/char    65ch = 422px
+ *   AllNews post body      12.69px    6.326px/char    65ch = 411px
+ *   Messages bubble        12.69px    6.326px/char    65ch = 411px
+ *   Bible verse            17px CP    6.748px/char    65ch = 439px
+ *
+ * So 680px is 100-107 characters here, not 65. A true 65-character measure
+ * would be ~420px, which is a TYPE decision — it only reads as too wide because
+ * the body text is small — and the type scale is explicitly a separate
+ * programme (769 one-off sizes). Narrowing four shipped screens to 420px on the
+ * strength of a rule of thumb whose premise (a ~16px body) this app does not
+ * meet is not a layout fix; it is a redesign, and it is not this rule's to make.
+ *
+ * What this rule DOES fix is that there were four answers and no name. 680px is
+ * the one value that sits inside the band the member screens already occupy
+ * (609-760) while moving each of them least — AllNews +71px, Ask Harvest -16px,
+ * the Bible -80px, none of them more than 11% — and it gives the Messages
+ * thread, which had no cap at all, the same measure as the other three.
+ *
+ * ── Why `lg:` and not `sm:`, unlike Rules 1-4 ────────────────────────────────
+ * Rule 5's reason, and the same one: `lg` (1024px) is where the member shell
+ * becomes desktop. Below it there is no sidebar, no history rail, no Bible book
+ * nav and no conversation list — every reading surface here is a single
+ * full-width column by design, and capping it at 640px would centre a narrow
+ * column inside mobile chrome that is still full-bleed. It is also where all
+ * four surfaces already gate their existing desktop layer, so this rule changes
+ * nothing between 640px and 1023px, and nothing at all below 640px.
+ *
+ * Consequently this token is NOT in `CONTAINERS`: that array is the two `sm:`
+ * measures, and two tests range over it asserting every token in it is gated at
+ * `sm`. A reading measure is a third measure, not a third member of that pair.
+ */
+export const READING_MEASURE = 'lg:max-w-[680px] lg:mx-auto';
+
+/** Rule 6's number as plain px, for the tests that must not re-parse the class. */
+export const READING_MEASURE_PX = 680;
+
+/** The viewport Rule 6 begins at — the same `lg` cliff Rule 5 splits on. */
+export const READING_MIN_PX = SPLIT_MIN_PX;
