@@ -22,6 +22,7 @@ import {
 import { CoursePreview } from './course/CoursePreview';
 import type { AdoptedCourse, Author, LibraryCourse } from '../types/course.types';
 import { AdminPageHeader, AdminPrimaryButton, AdminSearchBar, AdminCard, AdminBadge, statusTone } from './admin/AdminUI';
+import { FORM_CONTAINER } from './layout/form-layout';
 
 /**
  * A tenant could not be resolved for a WRITE. Distinct from a generic failure
@@ -358,7 +359,7 @@ const AdminCourses: React.FC = () => {
     const previewAdoption = adopted.find((a) => a.libraryCourseId === previewCourse.id) ?? null;
     const previewIsAdopted = Boolean(previewAdoption);
     return (
-      <div className="w-full space-y-4">
+      <div className={`w-full ${FORM_CONTAINER} space-y-4`}>
         {errorMessage && (
           <div className="max-w-4xl mx-auto bg-red-50 text-red-600 p-3 rounded-brand text-sm font-medium border border-red-100">
             {errorMessage}
@@ -382,7 +383,7 @@ const AdminCourses: React.FC = () => {
   }
 
   return (
-    <div className="w-full max-w-6xl mx-auto space-y-6">
+    <div className={`w-full ${FORM_CONTAINER} space-y-6`}>
       {errorMessage && (
         <div className="bg-red-50 text-red-600 p-3 rounded-brand text-sm font-medium border border-red-100">
           {errorMessage}

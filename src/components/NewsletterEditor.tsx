@@ -10,6 +10,7 @@ import Placeholder from '@tiptap/extension-placeholder';
 import { authFetch } from '../utils/auth-fetch';
 import { useTenantCapability } from '../hooks/useTenantCapability';
 import { ARCHIVED_ACTION_MESSAGE } from '../lib/tenant-lifecycle';
+import { FORM_MEASURE } from './layout/form-layout';
 
 interface NewsletterEditorProps {
   tenantId: string;
@@ -202,7 +203,7 @@ const NewsletterEditor: React.FC<NewsletterEditorProps> = ({
   const hasContent = subject.trim() && editor && editor.getText().trim().length > 0;
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6 pb-32">
+    <div className={`w-full ${FORM_MEASURE} space-y-6 pb-32`}>
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-3">

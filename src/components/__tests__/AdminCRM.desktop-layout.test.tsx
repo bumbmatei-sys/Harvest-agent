@@ -572,18 +572,25 @@ describe('widths, heights and gaps come from form-layout, not new per-screen val
     // without adding them here, which left this red; THE-183 adds its own
     // AdminSettings.tsx and the two that were missed, so the two lists agree
     // again.
+    //
+    // Batch E (admin content screens) adds four more, all container-only: see
+    // the matching note in ChurchEnrollment.desktop-layout.test.tsx.
     const importers = execSync(
       "grep -rl \"from '.*form-layout'\" src --include=*.tsx --include=*.ts || true",
       { encoding: 'utf8' },
     ).split('\n').filter(Boolean).filter((f) => !f.includes('__tests__')).sort();
     expect(importers).toEqual([
+      'src/components/AdminBlog.tsx',
       'src/components/AdminCRM.tsx',
       'src/components/AdminChurches.tsx',
       'src/components/AdminCourseEditor.tsx',
+      'src/components/AdminCourses.tsx',
+      'src/components/AdminDocs.tsx',
       'src/components/AdminSettings.tsx',
       'src/components/AnalyticsAndRoles.tsx',
       'src/components/ChurchEnrollment.tsx',
       'src/components/EnterpriseContactModal.tsx',
+      'src/components/NewsletterEditor.tsx',
       'src/components/PersonalInformationModal.tsx',
     ]);
   });

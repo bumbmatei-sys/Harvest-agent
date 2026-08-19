@@ -13,6 +13,7 @@ import { getPlanFeatures } from '../utils/plan-features';
 import { authFetch } from '../utils/auth-fetch';
 import { notifyError } from '../utils/notify';
 import { MAX_CONSECUTIVE_FAILURES } from '../lib/blog-automation';
+import { FORM_CONTAINER } from './layout/form-layout';
 
 const GOLD = 'var(--brand-color, #B8962E)';
 
@@ -228,7 +229,7 @@ const AdminBlog: React.FC = () => {
  }
 
  return (
- <div className="w-full max-w-6xl mx-auto space-y-6">
+ <div className={`w-full ${FORM_CONTAINER} space-y-6`}>
  {errorMessage && (
  <div className="bg-red-50 text-red-600 p-3 rounded-brand text-sm font-medium border border-red-100">
  {errorMessage}
