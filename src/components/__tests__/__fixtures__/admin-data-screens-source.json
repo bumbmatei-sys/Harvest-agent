@@ -1,0 +1,85 @@
+{
+  "recordedFrom": "ef557af",
+  "digests": {
+    "AdminDashboard.tsx": "ddd48ae0c60221815867187b040457869cc9225096ff8613686bc98832bbb6ab",
+    "layout/form-layout.ts": "ea1ffd53c31bce808df51afd40d3c2407461598e9a77a067b21738a16712ba64",
+    "AdminDocs.tsx": "c560be13588f3213861668b2346a4f7b43902e6ff232402e398b5dabd9c9c967",
+    "AdminBlog.tsx": "be97533c6ac82452d17021e9911f391c8129381a7f3e1f0da44f7edc8e1e6656",
+    "AdminCourses.tsx": "bf5fbb36159e248be80d0a6dfc36a6bb5a3fb63c09f5b4f5572b0790b6d38ae3",
+    "NewsletterEditor.tsx": "81185164d5aca31c5155c5a17ff99f44b6cae7d87ec6657920baa22746f44006",
+    "AdminCommunity.tsx": "93111ff2abb1e6801e2edc23bd2d2540af40f44f0c03b9dc46df926b9d76d214",
+    "AdminEvents.tsx": "3be6d66076f11c5b980d9db83efba3b81bc39db45b0c2f23697750d8d89f9501",
+    "AdminFundraising.tsx": "e22824988eacba18b3ca17ebed789a4fbb878b2292ad808f6fab525acf5e40a2",
+    "AdminForms.tsx": "adbc4aff06a17ae7fa528bcfd74d26d60bacc5881049999f89c96838a323a493",
+    "AdminCheckin.tsx": "10d2f5969ab6b0ae10bd94fa8b3dfeef9713acd64717145f3b17928ad7eb56e1",
+    "NewsTab.tsx": "dcdebd75ce6329ab41931be01e97e68200169317c3dfb06937cbf8572f323b61",
+    "MainApp.tsx": "3091e628a5579937c010600f78e5355f3ed18211cb69f1723774a437c434e6ad",
+    "BiblePage.tsx": "3cc7e6146fbd4db6ab9e179b542c10afe837a2c506a8afe78ee608b2e435c469",
+    "UserMessages.tsx": "442699006bc0edf0f0371536c7b4ffc85550cf28765e96bd32484588abf8eb77",
+    "AllNews.tsx": "af3e653b660bc00f312abae3f2a6ac8fbd382687f8b4794996051f719362c78d",
+    "AIChat.tsx": "30693308c746e68c867a5bed898e70d92028a7fa2139f00c45a02042cf5ab838",
+    "LivestreamView.tsx": "7ef3ee8a60ea1d27928f53c4ee4f71e9f49f9ebc9832add1635ddc6ddbaa631e"
+  },
+  "retired": {
+    "AdminRAG.tsx": {
+      "maxWidth:1160": 3,
+      "width:160": 1,
+      "padding:\"10px 13px\"": 3
+    },
+    "AdminTenants.tsx": {
+      "max-w-6xl": 2
+    }
+  },
+  "behaviour": {
+    "AdminTenants.tsx::the super-admin tenant subscription": "const q = collection(db, 'tenants');\n    const unsubscribe = onSnapshot(q, (snapshot) => {\n      const data: Tenant[] = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Tenant));\n      setTenants(data);\n      setLoading(false);\n    }, (err) => {\n      try { handleFirestoreError(err, OperationType.GET, 'tenants'); } catch (e) { console.error(e); }\n      setLoading(false);\n    });\n    return () => unsubscribe();\n  }, []);\n\n  const filtered = tenants.filter(t =>\n    t.name.toLowerCase().includes(searchTerm.toLowerCase()) ||\n    t.subdomain.toLowerCase().includes(searchTerm.toLowerCase())\n  );\n\n  const openCreate = () => {\n    setForm(EMPTY_FORM);\n    setEditingId(null);\n    setError('');\n    setShowForm(true);",
+    "AdminSms.tsx::the broadcast send path": "const send = async () => {\n    if (!message.trim()) { setSendMsg({ ok: false, text: 'Message is required.' }); return; }\n    if (!tenantId) { setSendMsg({ ok: false, text: 'Could not determine your workspace. Please refresh and try again.' }); return; }\n    setSending(true);\n    setSendMsg(null);\n    try {\n      // Send-now only. Scheduling was removed: the API wrote a `scheduled`\n      // broadcast doc and reported success, but nothing has ever processed that\n      // collection (no cron, no worker) — the message was never sent. The route\n      // now rejects `scheduledAt` outright so the UI and the API agree.\n      const resp = await authFetch('/api/sms/broadcast', {\n        method: 'POST',\n        body: JSON.stringify({ recipientGroup: group, tag, message }),\n      });\n      const d = await resp.json();\n      if (!resp.ok) { setSendMsg({ ok: false, text: d.error || 'Failed to send.' }); return; }\n\n      // Report exactly what happened, including the two partial outcomes: a\n      // broadcast that ran out of segments part-way through, and recipients\n      // skipped because their number is not a US number. Neither is silent.\n      const parts = [`Sent ${d.delivered}`];\n      if (d.failed) parts.push(`${d.failed} failed`);\n      if (d.skippedNonUs) parts.push(`${d.skippedNonUs} skipped (non-US number)`);\n      if (d.capReached) parts.push(`${d.skipped} not sent — monthly SMS limit reached`);\n      setSendMsg({\n        ok: !d.failed && !d.capReached && !d.skippedNonUs,\n        text: parts.join(' • ') + '.',\n      });\n      if (!d.capReached) setMessage('');\n    } catch (e: any) {\n      setSendMsg({ ok: false, text: e?.message || 'Failed to send.' });\n    } finally {\n      setSending(false);\n      setUsageRefresh(n => n + 1);\n    }",
+    "AdminSms.tsx::the template save path": "const saveTemplates = async () => {\n    setSavingTpl(true);\n    setTplSaved(false);\n    try {\n      await authFetch('/api/sms/config', { method: 'POST', body: JSON.stringify({ templates }) });\n      setTplSaved(true);\n      setTimeout(() => setTplSaved(false), 2500);\n    } finally {\n      setSavingTpl(false);\n    }",
+    "AdminSms.tsx::the Text-to-Give save path": "const saveT2g = async () => {\n    setSavingT2g(true);\n    setT2gSaved(false);\n    try {\n      await authFetch('/api/sms/config', { method: 'POST', body: JSON.stringify({ text2give: t2g }) });\n      setT2gSaved(true);\n      setTimeout(() => setT2gSaved(false), 2500);\n    } finally {\n      setSavingT2g(false);\n    }",
+    "AdminGivingStatements.tsx::the money formatter": "const fmtMoney = (cents: number) =>\n  new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format((cents || 0) / 100);\n\nconst AdminGivingStatements: React.FC = () => {\n  const { currentTenantId, isAuthReady, isSuperAdmin } = useAppStore();\n  const tenantId = currentTenantId || (isSuperAdmin ? PLATFORM_TENANT_ID : null);\n  const { setHeaderAction } = useAdminHeader();\n\n  const thisYear = new Date().getFullYear();\n  const [year, setYear] = useState(thisYear);\n  const [donorEmail, setDonorEmail] = useState('');\n  const [singleDonor, setSingleDonor] = useState(false);\n  const [generating, setGenerating] = useState(false);\n  const [results, setResults] = useState<GenerationResult | null>(null);\n  const [statuses, setStatuses] = useState<StatementStatus[]>([]);\n  const [loadingStatuses, setLoadingStatuses] = useState(false);\n  const [showConfig, setShowConfig] = useState(false);\n  const [config, setConfig] = useState({ ein: '', address: '', footer: '', country: 'US' });\n  const [savingConfig, setSavingConfig] = useState(false);\n  const [configSaved, setConfigSaved] = useState(false);\n\n  // Header \"Settings\" action toggles the config card.\n  useEffect(() => {\n    setHeaderAction(<HeaderActionButton label=\"Settings\" icon={<Settings size={15} />} onClick={() => setShowConfig(v => !v)} />);\n    return () => setHeaderAction(null);\n  }, [setHeaderAction]);\n\n  // Load config on mount.\n  useEffect(() => {\n    authFetch('/api/giving-statements/config')\n      .then(r => r.json())\n      .then(d => setConfig({ ein: d.ein || '', address: d.address || '', footer: d.footer || '', country: d.country || 'US' }))\n      .catch(() => {});\n  }, []);\n\n  const loadStatuses = useCallback(async () => {\n    if (!tenantId) return;\n    setLoadingStatuses(true);\n    try {\n      // Single-field query (year); sort client-side to avoid a composite index.\n      const snap = await getDocs(query(\n        collection(db, 'tenants', tenantId, 'givingStatements'),\n        where('year', '==', year),\n        limit(2000),\n      ));\n      const rows = snap.docs.map(d => ({ id: d.id, ...d.data() }) as StatementStatus);\n      rows.sort((a, b) => (b.generatedAt || '').localeCompare(a.generatedAt || ''));\n      setStatuses(rows);\n    } catch {\n      setStatuses([]);\n    } finally {\n      setLoadingStatuses(false);\n    }\n  }, [tenantId, year]);\n\n  useEffect(() => {\n    if (isAuthReady && tenantId) loadStatuses();\n  }, [isAuthReady, tenantId, loadStatuses]);\n\n  const saveConfig = async () => {\n    setSavingConfig(true);\n    setConfigSaved(false);\n    try {\n      await authFetch('/api/giving-statements/config', { method: 'PUT', body: JSON.stringify(config) });\n      setConfigSaved(true);\n      setTimeout(() => setConfigSaved(false), 2500);\n    } catch { /* ignore */ }\n    finally { setSavingConfig(false); }",
+    "AdminGivingStatements.tsx::the statement query": "const loadStatuses = useCallback(async () => {\n    if (!tenantId) return;\n    setLoadingStatuses(true);\n    try {\n      // Single-field query (year); sort client-side to avoid a composite index.\n      const snap = await getDocs(query(\n        collection(db, 'tenants', tenantId, 'givingStatements'),\n        where('year', '==', year),\n        limit(2000),\n      ));\n      const rows = snap.docs.map(d => ({ id: d.id, ...d.data() }) as StatementStatus);\n      rows.sort((a, b) => (b.generatedAt || '').localeCompare(a.generatedAt || ''));\n      setStatuses(rows);\n    } catch {\n      setStatuses([]);\n    } finally {\n      setLoadingStatuses(false);\n    }\n  }, [tenantId, year]);\n\n  useEffect(() => {\n    if (isAuthReady && tenantId) loadStatuses();\n  }, [isAuthReady, tenantId, loadStatuses]);\n\n  const saveConfig = async () => {\n    setSavingConfig(true);\n    setConfigSaved(false);\n    try {\n      await authFetch('/api/giving-statements/config', { method: 'PUT', body: JSON.stringify(config) });\n      setConfigSaved(true);\n      setTimeout(() => setConfigSaved(false), 2500);\n    } catch { /* ignore */ }\n    finally { setSavingConfig(false); }",
+    "AdminGivingStatements.tsx::the generate path": "const generate = async () => {\n    setGenerating(true);\n    setResults(null);\n    try {\n      const resp = await authFetch('/api/giving-statements/generate', {\n        method: 'POST',\n        body: JSON.stringify({ year, donorEmail: singleDonor ? (donorEmail.trim() || undefined) : undefined, send: true }),\n      });\n      const d = await resp.json();\n      if (!resp.ok) { setResults({ generated: 0, sent: 0, totalDonors: 0, message: d.error || 'Failed to generate.', isError: true }); return; }\n      setResults({ ...d, isError: false });\n      await loadStatuses();\n    } catch (e: any) {\n      setResults({ generated: 0, sent: 0, totalDonors: 0, message: e?.message || 'Failed to generate.', isError: true });\n    } finally {\n      setGenerating(false);\n    }"
+  },
+  "colours": {
+    "AdminRAG.tsx": [
+      "#27AE60",
+      "#92610A",
+      "#B9770E",
+      "#BBBBBB",
+      "#C0392B",
+      "#C9963A",
+      "#C9963A",
+      "#C9963A",
+      "#C9963A",
+      "#DDD",
+      "#E67E22",
+      "#E74C3C",
+      "#E74C3C",
+      "#EAFAF1",
+      "#F87171",
+      "#FAF8F5",
+      "#FDECEA",
+      "#FDECEA",
+      "#ffffff",
+      "rgba(",
+      "rgba(",
+      "rgba(",
+      "rgba(",
+      "rgba("
+    ],
+    "AdminTenants.tsx": [],
+    "AdminSms.tsx": [
+      "#B8962E",
+      "#B9770E",
+      "#DC2626",
+      "#E67E22"
+    ],
+    "AdminGivingStatements.tsx": [
+      "#B8962E"
+    ]
+  },
+  "shellWrappers": [
+    "<div className=\"p-4 lg:p-0\"><AdminRAG /></div>",
+    "<div className=\"p-4 lg:p-0\"><AdminTenants /></div>",
+    "<div className=\"p-4 lg:p-0\"><AdminSms /></div>"
+  ]
+}

@@ -9,6 +9,15 @@ import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { AdminPageHeader, AdminPrimaryButton, AdminSearchBar } from './admin/AdminUI';
 import TenantUsagePanel from './admin/TenantUsagePanel';
 import AdminAffiliates from './AdminAffiliates';
+// Rule 1 (form-layout.ts). This is a data-dense PAGE — a list of every tenant
+// on the platform — so it takes FORM_CONTAINER's 1120px page measure.
+//
+// It replaces a `max-w-6xl`, which is 72rem and therefore has exactly the split
+// form-layout.ts's own note warns about: 1152px below 1024px and 1044px above
+// it, because globals.css trims the rem base to 14.5px for desktop density. The
+// cap was 108px narrower on a monitor than on a tablet. 1120px is 1120px at
+// every width.
+import { FORM_CONTAINER } from './layout/form-layout';
 
 const PLAN_LABELS: Record<TenantPlan, string> = {
   plus: 'Plus',
@@ -296,7 +305,7 @@ const AdminTenants: React.FC = () => {
 
   if (section === 'affiliates') {
     return (
-      <div className="w-full max-w-6xl mx-auto space-y-6">
+      <div className={`w-full space-y-6 ${FORM_CONTAINER}`}>
         <AdminPageHeader
           eyebrow="Super-admin"
           title="Affiliates"
@@ -309,7 +318,7 @@ const AdminTenants: React.FC = () => {
   }
 
   return (
-    <div className="w-full max-w-6xl mx-auto space-y-6">
+    <div className={`w-full space-y-6 ${FORM_CONTAINER}`}>
       <AdminPageHeader
         eyebrow="Super-admin"
         title="Tenants"
@@ -328,7 +337,22 @@ const AdminTenants: React.FC = () => {
       ) : (
         <div className="grid gap-4">
           {filtered.map(tenant => (
-            <div key={tenant.id} className="bg-surface-raised rounded-2xl border border-line p-5 hover:shadow-md transition-shadow">
+            /* MEASURED, in Chromium against the compiled CSS and the real admin
+               shell: a tenant card whose name is long enough overflowed the
+               scroll box by 41px at 639px and 76px at 768px (300px at 380px).
+               A grid item's `min-width` is `auto`, i.e. its min-content — and
+               the name's `truncate` sets `white-space: nowrap`, which makes the
+               h3's min-content equal its MAX-content, so the whole card was
+               sized to the untruncated name and `truncate` never got to
+               truncate. `min-w-0` lets the card take the track width; the
+               ellipsis then does its job. Not a width from form-layout.ts and
+               not a new one either — zero is the absence of a minimum.
+
+               Gated at `sm:` and no lower. The same overflow is there below
+               640px and the fix would work there too, but this batch pins the
+               sub-640px rendering unchanged, so the phone keeps what it has and
+               that half is reported rather than fixed here. */
+            <div key={tenant.id} className="bg-surface-raised rounded-2xl border border-line p-5 hover:shadow-md transition-shadow sm:min-w-0">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-3 mb-1">

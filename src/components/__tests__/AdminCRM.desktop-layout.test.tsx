@@ -575,6 +575,15 @@ describe('widths, heights and gaps come from form-layout, not new per-screen val
     //
     // Batch E (admin content screens) adds four more, all container-only: see
     // the matching note in ChurchEnrollment.desktop-layout.test.tsx.
+    //
+    // Batch G (the admin data screens) is adopter six, and adds four at once:
+    // AdminRAG and AdminTenants take FORM_CONTAINER's page measure, and
+    // AdminSms and AdminGivingStatements take FIELD_WIDTH, ACTION_BUTTON and
+    // CONTROL_DENSITY — but not Rule 1, because both already render inside
+    // FORM_MEASURE and taking it would have WIDENED them by 331px.
+    // AdminDashboard is in that batch's scope and is deliberately absent: it is
+    // the shell every other admin screen renders inside, so a measure on it is
+    // a measure on all of them at once.
     const importers = execSync(
       "grep -rl \"from '.*form-layout'\" src --include=*.tsx --include=*.ts || true",
       { encoding: 'utf8' },
@@ -586,7 +595,11 @@ describe('widths, heights and gaps come from form-layout, not new per-screen val
       'src/components/AdminCourseEditor.tsx',
       'src/components/AdminCourses.tsx',
       'src/components/AdminDocs.tsx',
+      'src/components/AdminGivingStatements.tsx',
+      'src/components/AdminRAG.tsx',
       'src/components/AdminSettings.tsx',
+      'src/components/AdminSms.tsx',
+      'src/components/AdminTenants.tsx',
       'src/components/AnalyticsAndRoles.tsx',
       'src/components/ChurchEnrollment.tsx',
       'src/components/EnterpriseContactModal.tsx',
