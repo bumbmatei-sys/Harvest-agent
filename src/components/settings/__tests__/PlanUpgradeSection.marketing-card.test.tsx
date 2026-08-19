@@ -159,6 +159,14 @@ interface Emitted { cls: string; minWidth: number; decls: Record<string, string>
 let emitted: Emitted[] = [];
 let rootPx: Array<{ minWidth: number; size: number }> = [];
 let baseline: Baseline;
+/**
+ * The chain AS THE SOURCE SPELLS IT TODAY. Every "after" measurement is made
+ * against this, never against the fixture — a fixture measures the intent, and
+ * the intent is not what clipped. `baseline.after` is a pin ON this, asserted
+ * once below, so a deliberate change to the chain is visible in the diff and an
+ * accidental one is a failure.
+ */
+let live: Baseline['after'];
 
 beforeAll(async () => {
   rootPx = [{ minWidth: 0, size: 16 }];
@@ -176,12 +184,14 @@ beforeAll(async () => {
   rootPx.sort((a, b) => a.minWidth - b.minWidth);
 
   baseline = recordOrRead();
+  live = currentChain();
 
   // Every class the chain uses, on both sides of the change, so `effective()`
   // can resolve any of them.
   const raw = [
     ...Object.values(baseline.before),
     ...Object.values(baseline.after),
+    ...Object.values(live),
   ].join(' ');
 
   const tailwind = (await import('tailwindcss')).default;
@@ -295,9 +305,25 @@ function currentChain(): Baseline['after'] {
     if (!m) throw new Error(`could not find ${label}`);
     return m[1].replace(/\s+/g, ' ').trim();
   };
+  // 🔴 The container is read out of BillingAndPayments.tsx, NOT taken from the
+  // imported constant. Reading the constant would measure what form-layout.ts
+  // says while the screen quietly went back to a width of its own — which is
+  // the exact defect being fixed, so it is the one thing this must not do. The
+  // interpolation is expanded from the real export afterwards.
+  const billing = readFileSync(BILLING, 'utf8');
+  const rootClass = billing.match(
+    /<div className=(?:"([^"]*space-y-6[^"]*)"|\{`([^`]*space-y-6[^`]*)`\})>/,
+  );
+  if (!rootClass) throw new Error('could not find the billing container');
+  const container = (rootClass[1] ?? rootClass[2])
+    .replace(/\$\{FORM_CONTAINER\}/g, FORM_CONTAINER)
+    .replace(/\$\{[^}]*\}/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
   return {
     overlay: grab(SHELL, /className="(flex-1 overflow-y-auto p-4[^"]*)">\s*<BillingAndPayments/, 'the billing overlay'),
-    container: `${FORM_CONTAINER} space-y-6`,
+    container,
     panel: grab(BILLING, /\{\/\* 3: Upgrade[\s\S]{0,200}?<div className="([^"]*)">\s*<PlanUpgradeSection/, 'the card panel'),
     track: grab(COMPONENT, /className="(flex overflow-x-auto[^"]*)"/, 'the plan track'),
     card: grab(COMPONENT, /className=\{`(relative rounded-brand-xl[^`]*)`\}/, 'the plan card').replace(/\$\{[^}]*\}/g, ' '),
@@ -438,9 +464,17 @@ describe('1 — three plan cards fit without horizontal clipping at desktop widt
     expect(round(at1440.trackPx - 2 * at1440.cardPx - 2 * 14.5)).toBe(70.75);
   });
 
+  it('is still the chain the fixture was recorded against', () => {
+    // The pin. Every measurement above and below is made against `live`, so a
+    // rewrite of any link in the chain changes what is being measured; this
+    // makes that visible as a diff to the fixture rather than as a silently
+    // different screen that still happens to fit.
+    expect(live).toEqual(baseline.after);
+  });
+
   it('fits three cards at every desktop width now', () => {
     for (const viewport of DESKTOP_VIEWPORTS) {
-      const m = measure(baseline.after, viewport);
+      const m = measure(live, viewport);
       expect(
         round(m.overflowPx),
         `${viewport}px: ${round(m.rowPx)}px of cards in a ${round(m.trackPx)}px track`,
@@ -458,7 +492,7 @@ describe('1 — three plan cards fit without horizontal clipping at desktop widt
   it('leaves the phone carousel exactly as it was', () => {
     for (const viewport of MOBILE_VIEWPORTS) {
       const before = measure(baseline.before, viewport);
-      const after = measure(baseline.after, viewport);
+      const after = measure(live, viewport);
       expect(after.display, `${viewport}px`).toBe('flex');
       expect(after.cardPx, `${viewport}px card width`).toBe(before.cardPx);
       expect(after.rowPx, `${viewport}px row width`).toBe(before.rowPx);
@@ -475,7 +509,7 @@ describe('1 — three plan cards fit without horizontal clipping at desktop widt
     // of any of the above, and readable in the fixture regardless.
     const table = VIEWPORTS.map((w) => {
       const b = measure(baseline.before, w);
-      const a = measure(baseline.after, w);
+      const a = measure(live, w);
       return { w, trackBefore: round(b.trackPx), cardBefore: round(b.cardPx), overflowBefore: round(b.overflowPx),
                trackAfter: round(a.trackPx), cardAfter: round(a.cardPx), overflowAfter: round(a.overflowPx) };
     });
