@@ -6,6 +6,7 @@ import { getPlanDisplayName, TOP_PLAN } from '../utils/plan-features';
 import type { TenantPlan } from '../types/tenant.types';
 import PlanUpgradeSection from './settings/PlanUpgradeSection';
 import AddOnsSection from './settings/AddOnsSection';
+import { FORM_CONTAINER } from './layout/form-layout';
 
 const GOLD = 'var(--brand-color, #B8962E)';
 
@@ -145,14 +146,29 @@ const BillingAndPayments: React.FC<BillingAndPaymentsProps> = ({ currentPlan, te
 
   if (loading) {
     return (
-      <div className="max-w-3xl mx-auto flex items-center justify-center h-40">
+      <div className={`${FORM_CONTAINER} flex items-center justify-center h-40`}>
         <Loader2 size={28} className="animate-spin" style={{ color: GOLD }} />
       </div>
     );
   }
 
+  /* ── The container ────────────────────────────────────────────────────────
+     This screen is a full-viewport overlay (AdminDashboard renders it inside a
+     `fixed inset-0` panel with `p-4 lg:p-6`), NOT the sidebar shell, so at
+     1440px it has 1396.5px to lay out in.
+
+     It used to cap itself at `max-w-3xl` — an invented width, and one whose
+     number is not the number it reads as: 48rem is 768px on a tablet but 696px
+     from 1024px up, where globals.css trims the rem base to 14.5px. 696px is
+     what clipped the third plan card (see PlanUpgradeSection). Rule 1a's page
+     measure is what this screen actually is — a data-dense page, an invoice
+     table and a three-up plan comparison — so it takes FORM_CONTAINER rather
+     than minting a fourth width. Below `sm:` the rule applies nothing, and the
+     classes it replaces were already inert there (`max-w-3xl` is wider than any
+     phone, `mx-auto` on a full-width block does nothing), so the phone
+     rendering is untouched. */
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
+    <div className={`${FORM_CONTAINER} space-y-6`}>
       {error && (
         <div className="p-3 rounded-xl text-sm flex items-center gap-2 bg-amber-50 text-amber-700 border border-amber-100">
           <AlertCircle size={14} /> {error}

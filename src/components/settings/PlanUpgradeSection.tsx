@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useRef, useCallback } from 'react';
-import { Zap, Crown, Building2, Check } from 'lucide-react';
+import { Check } from 'lucide-react';
 import { TenantPlan } from '../../types/tenant.types';
 import {
   getPlanFeatures,
@@ -15,7 +15,9 @@ import {
   ANNUAL_BILLED_MONTHS,
   ANNUAL_FREE_MONTHS,
   PlanFeatures,
+  PLAN_BLURBS,
 } from '../../utils/plan-features';
+import { PLATFORM_FEE_MAP } from '../../lib/stripe-connect';
 import { authFetch } from '../../utils/auth-fetch';
 import { fetchBillingProcessor, runDodoPlanChange, subscriptionProcessorAttribution, PlanChangeProcessor } from '../../utils/plan-change';
 import { getTenantId } from './useTenantId';
@@ -38,16 +40,31 @@ interface PlanUpgradeSectionProps {
   processor?: PlanChangeProcessor;
 }
 
-// Presentation only — icon, colour, "Popular" badge. Prices are NOT listed here:
-// this table used to carry `monthlyPrice`/`yearlyPrice` literals ('$59/mo',
-// '$2,990/yr') that the card actually rendered while `formatPlanPrice` sat
-// imported and unused two lines above it, so a repricing in PLAN_PRICING left
-// the in-app comparison showing the old numbers. The card now renders
-// formatPlanPrice(planId, billingPeriod). Do not reintroduce price literals.
-const PLANS: { id: TenantPlan; name: string; icon: any; color: string; popular?: boolean; comingSoon: string[] }[] = [
-  { id: 'plus', name: 'Individual', icon: Zap, color: '#6366f1', comingSoon: [] },
-  { id: 'pro', name: 'Small Team', icon: Crown, color: '#d4a017', popular: true, comingSoon: [] },
-  { id: 'max', name: 'Ministry', icon: Building2, color: '#b45309', comingSoon: [] },
+/**
+ * Presentation only — the display name and which tier carries the RECOMMENDED
+ * badge. Prices are NOT listed here: this table used to carry
+ * `monthlyPrice`/`yearlyPrice` literals ('$59/mo', '$2,990/yr') that the card
+ * actually rendered while `formatPlanPrice` sat imported and unused two lines
+ * above it, so a repricing in PLAN_PRICING left the in-app comparison showing
+ * the old numbers. The card renders formatPlanPrice(planId, billingPeriod). Do
+ * not reintroduce price literals.
+ *
+ * `icon` and `color` are gone with the icon disc they fed. `color` held the
+ * only colour literals in this file — three raw hexes, one per tier, that
+ * belonged to no palette in this app and themed in none of the four, painting a
+ * tinted 48px disc at the top of each card. The marketing card has no icon, and
+ * removing them is what lets "no colour is hardcoded" be literally true here
+ * rather than true-with-an-exemption: there is now no colour literal in this
+ * file at all.
+ *
+ * `recommended` moved from `pro` to `max`: on the marketing site the
+ * recommended card is Ministry, and it is the dark one. This is the flag that
+ * decides the card TREATMENT, not just a badge.
+ */
+const PLANS: { id: TenantPlan; name: string; recommended?: boolean; comingSoon: string[] }[] = [
+  { id: 'plus', name: 'Individual', comingSoon: [] },
+  { id: 'pro',  name: 'Small Team', comingSoon: [] },
+  { id: 'max',  name: 'Ministry', recommended: true, comingSoon: [] },
 ];
 
 // Keyed lookup so we can resolve plan metadata by id (icon/color/popular).
@@ -150,6 +167,124 @@ function cardLine(feature: CardFeature, features: PlanFeatures): string | null {
     return `${n.toLocaleString()} ${n === 1 ? one : many}`;
   }
   return value ? feature.label! : null;
+}
+
+/**
+ * 🔴 THE DARK CARD, IN FOUR PALETTES.
+ *
+ * The marketing card paints the recommended tier with a navy border over a dark
+ * ground and a deep navy-tinted drop shadow, both written there as raw literals
+ * against that repo's own variables. This app has four palettes — Harvest and
+ * Classic,
+ * each light and dark — so a navy hex copied across would be a dark card on a
+ * cream page in two of them and a dark card on an ALREADY-DARK page in the
+ * other two, where it stops reading as a distinct card at all. Every value
+ * below is a token instead, and each was chosen because it already solves that
+ * exact problem:
+ *
+ *   --surface-night   The "dark hero band" ground. It is the brand navy in
+ *                     light AND it is deliberately LIGHTENED in dark, for
+ *                     the documented reason that "on a dark page a dark band
+ *                     has almost no contrast and the section visually
+ *                     disappears". Classic overrides neither value — the block
+ *                     in globals.css lists --surface-night among the tokens it
+ *                     leaves alone, because it is fixed brand structure rather
+ *                     than part of the neutral ramp. So one token gives a navy
+ *                     card that separates from the ground in all four.
+ *   --border-gold     The accent hairline. Fixed-alpha gold is weak on a dark
+ *                     ground, so this token is already lifted 40% → 52% in
+ *                     dark, and Classic leaves it alone for the same reason.
+ *                     It is what gives the card an edge in Classic dark, where
+ *                     navy-on-neutral-grey is the least separated of the four.
+ *   --ds-sh-lg        The elevation ramp's top step. In light it is a warm drop
+ *                     shadow; in dark it becomes a hairline top highlight plus
+ *                     a deeper black, because a warm shadow on a dark ground is
+ *                     not subtle, it is absent.
+ *
+ * The ink is `text-cream` and `text-cream/70..80` rather than the inverting
+ * --text-* ramp, and that is the point: --text-strong is near-black in light,
+ * and this card is dark in light. Cream on navy is the same pairing the
+ * member Profile's night band and the design kit's HeroBand already ship, and
+ * it is correct in all four because the GROUND is navy in all four.
+ *
+ * NO NEW TOKEN WAS NEEDED. That was the thing most likely to go wrong here.
+ */
+const RECOMMENDED_CARD_STYLE: React.CSSProperties = {
+  background: 'var(--surface-night)',
+  borderColor: 'var(--border-gold)',
+  boxShadow: 'var(--ds-sh-lg)',
+};
+
+/** A plain card: the raised surface it already used, one step down the ramp. */
+const PLAIN_CARD_STYLE: React.CSSProperties = { boxShadow: 'var(--ds-sh-md)' };
+
+/**
+ * The check mark on the dark card. `text-green-600` is the ink the plain cards
+ * use and it resolves to a mid green that falls under AA on navy in the light
+ * theme. The accent does not: globals.css records Harvest gold at 6.77:1 on the
+ * dark ground, and --brand-color-on-dark is the tenant-corrected accent a
+ * white-label tenant gets injected, so a tenant whose colour would vanish on
+ * navy keeps a readable check.
+ */
+const RECOMMENDED_CHECK_STYLE: React.CSSProperties = {
+  color: 'var(--brand-color-on-dark, var(--brand-color))',
+};
+
+/** One derived line on a card: the matrix cell it came from, and its text. */
+type RenderedLine = { key: keyof PlanFeatures; text: string };
+
+/**
+ * Every line a tier's card COULD print, derived from its own matrix row and
+ * nothing else. `cardLine` decides both the wording and whether there is a line
+ * at all, so this is a filter, not a second definition.
+ */
+function linesFor(features: PlanFeatures): RenderedLine[] {
+  return VISIBLE_CARD_FEATURES
+    .map((feature) => {
+      const text = cardLine(feature, features);
+      return text === null ? null : { key: feature.key, text };
+    })
+    .filter((line): line is RenderedLine => line !== null);
+}
+
+/**
+ * 🔴 THE ROLLUP, COMPUTED.
+ *
+ * What a tier adds over the tier below it — Small Team's card is what is true
+ * on `pro` and not on `plus`, Ministry's is `max` minus `pro`. That is a
+ * DERIVATION, not a curated list: a cell flipped in PLAN_FEATURES moves the
+ * rollup with no edit here, exactly as the full list already moved.
+ *
+ * Comparing the rendered TEXT rather than the raw cell is what makes numeric
+ * cells fall out correctly. `maxContacts` goes 150 → 500 → 2,000, so its line
+ * differs at every tier and is re-printed each time (the cap is the thing that
+ * moved, and a church reading "Everything in Individual" must still be told the
+ * new number). `maxChurches` is 1 on every tier, so its line is identical and
+ * is inherited silently rather than repeated three times under a heading that
+ * already says it is inherited.
+ */
+function rollupLines(features: PlanFeatures, below: PlanFeatures): RenderedLine[] {
+  const inherited = new Map(linesFor(below).map((line) => [line.key, line.text]));
+  return linesFor(features).filter((line) => inherited.get(line.key) !== line.text);
+}
+
+/**
+ * The platform's cut of a donation or a paid ticket, as the card prints it.
+ *
+ * 🔴 READ FROM `PLATFORM_FEE_MAP`, NOT TYPED. The previous card had no fee line
+ * at all, on the reading that the map is server-only — it is not. It is a
+ * 36-line module with no imports, no `server-only` marker, no env access and no
+ * SDK: a bare `Record<string, number>` and its documentation. So the number can
+ * reach a client component directly, which is the ONLY acceptable way to put it
+ * on a card. A `0%` typed into this file would be the exact duplication that
+ * once let the app advertise "keeps 100%" against a real 2.5% charge.
+ *
+ * Formatted rather than interpolated raw so a future 2.5% prints as "2.5%" and
+ * not "2.5000000000000004%".
+ */
+function platformFeeLabel(plan: TenantPlan): string {
+  const pct = (PLATFORM_FEE_MAP[plan] ?? 0) * 100;
+  return `${Number(pct.toFixed(2))}%`;
 }
 
 const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, tenantId, email, hideUpgrade, processor }) => {
@@ -304,20 +439,45 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
         </p>
       )}
 
-      {/* Plan Cards Carousel */}
+      {/* ── The plan cards ───────────────────────────────────────────────────
+          Below `sm:` this is the horizontal snap carousel it has always been:
+          fixed-width cards, one scroll track, dots underneath. From `sm:` up it
+          becomes a grid, which is the fix for the clip — see the note on the
+          container in BillingAndPayments.tsx.
+
+          🔴 WHAT WAS CLIPPED. The row is `overflow-x-auto` with the scrollbar
+          hidden, so on a desktop it did not scroll, it simply ended: three
+          `min-w-[280px]` cards and two `gap-4`s need 869px at the 14.5px
+          desktop rem base, inside a track that the old `max-w-3xl` left 659.75px
+          of. 209.25px over, and what a founder saw of the third card was the
+          70.75px that fit — a column of checkmarks against "2,00…", "15 a…".
+
+          The grid is `sm:grid-cols-2 lg:grid-cols-3` rather than three columns
+          everywhere. Three across a 768px tablet is a 221px card; two is 332px
+          and the third wraps, which is what "fit or wrap" is for. `lg` is also
+          where the rem base changes and where the app's other desktop rules
+          gate, so nothing new reflows at a width nothing else reflows at.
+
+          Every token added here is breakpoint-prefixed, so the carousel — and
+          the phone rendering of it — is untouched. */}
       <style>{`.scrollbar-hide::-webkit-scrollbar { display: none; }`}</style>
       <div
         ref={planScrollRef}
         onScroll={handlePlanScroll}
-        className="flex overflow-x-auto gap-4 pb-4 snap-x snap-mandatory scrollbar-hide"
+        data-testid="plan-card-track"
+        className="flex overflow-x-auto gap-4 pb-4 snap-x snap-mandatory scrollbar-hide sm:grid sm:grid-cols-2 sm:overflow-x-visible sm:pb-0 lg:grid-cols-3"
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
-        {PLAN_ORDER.map((planId) => {
+        {PLAN_ORDER.map((planId, planIndex) => {
           const meta = PLAN_META[planId];
           const plan = meta;
           const features = getPlanFeatures(planId);
           const name = PLAN_DISPLAY_NAMES[planId];
           const displayPrice = formatPlanPrice(planId, billingPeriod);
+          // "$49/mo" → a large "$49" and a small "/mo" beside it. Split rather
+          // than reassembled, so the element's text is still exactly what
+          // formatPlanPrice returned and no period suffix is written here.
+          const [priceAmount, pricePeriod] = displayPrice.split('/');
           // Annual bills monthly × ANNUAL_BILLED_MONTHS, same math as the marketing site's
           // Pricing.tsx — derived from the shared constant so the two never show different
           // numbers. The rounding lives in annualMonthlyEquivalent(), not here.
@@ -325,70 +485,154 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
           const isCurrent = planId === currentPlan;
           const isDowngrade = PLAN_ORDER.indexOf(planId) < PLAN_ORDER.indexOf(currentPlan ?? 'plus');
 
+          // The tier below this one, and therefore whether this card rolls up.
+          // Individual is the floor and prints its list whole.
+          const below = planIndex > 0 ? PLAN_ORDER[planIndex - 1] : null;
+          const lines = below ? rollupLines(features, getPlanFeatures(below)) : linesFor(features);
+          const rollup = below ? `Everything in ${PLAN_DISPLAY_NAMES[below]}` : null;
+
+          // The recommended card is DARK, and the badge is suppressed when this
+          // is the tenant's own plan — see the note above the badge below.
+          const isRecommended = !!meta.recommended;
+
           return (
             <div
               key={planId}
               data-testid="plan-card"
               data-plan={planId}
-              className={`relative bg-surface-raised rounded-2xl border-2 p-5 transition-all min-w-[280px] max-w-[320px] flex-shrink-0 snap-center flex flex-col ${
-                isCurrent ? 'border-gold shadow-lg' : 'border-line-subtle hover:border-line'
+              data-recommended={isRecommended ? 'true' : undefined}
+              /* 24px radius and 24px padding, in px rather than `rounded-2xl`
+                 / `p-6`, because both are load-bearing for the width arithmetic
+                 above and `p-6` is 24px on a phone but 21.75px from 1024px up.
+                 `rounded-brand-xl` IS 24px and is the token for it. */
+              className={`relative rounded-brand-xl p-[24px] transition-all min-w-[280px] max-w-[320px] flex-shrink-0 snap-center flex flex-col sm:min-w-0 sm:max-w-none ${
+                isRecommended ? 'border' : 'bg-surface-raised border border-line-subtle'
               }`}
+              /* Colour comes from tokens only — see the block comment on
+                 RECOMMENDED_CARD_STYLE. */
+              style={isRecommended ? RECOMMENDED_CARD_STYLE : PLAIN_CARD_STYLE}
             >
-              {meta.popular && !isCurrent && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-gold text-white text-xs font-bold rounded-full">
-                  Popular
-                </div>
-              )}
-              {isCurrent && (
-                <div
+              {/* ── The badge slot ──────────────────────────────────────────
+                  ONE badge, top-right, and the current-plan marker WINS it.
+
+                  RECOMMENDED is an advertisement aimed at somebody choosing a
+                  plan. The current-plan marker is a statement of fact about
+                  this account, and on a billing screen it is the only thing
+                  telling a customer where they stand. Selling a church the
+                  plan it is already paying for reads as a nag; the button
+                  under it already says "Current Plan", so a RECOMMENDED badge
+                  on the same card contradicts it outright. The marker wins,
+                  and the card keeps its dark treatment either way — that is
+                  the tier's identity, not a badge. */}
+              {isCurrent ? (
+                <span
                   data-testid="plan-card-current"
-                  className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-green-500 text-white text-xs font-bold rounded-full"
+                  className="absolute top-[18px] right-[18px] px-2.5 py-1 rounded-full text-[11px] font-bold tracking-wide bg-gold text-white"
                 >
-                  Current
-                </div>
+                  Current plan
+                </span>
+              ) : isRecommended ? (
+                <span
+                  data-testid="plan-card-recommended"
+                  className="absolute top-[18px] right-[18px] px-2.5 py-1 rounded-full text-[11px] font-bold tracking-wide bg-gold text-white"
+                >
+                  RECOMMENDED
+                </span>
+              ) : null}
+
+              {/* Plan name — small and left-aligned, not a centred heading. */}
+              <h3
+                className={`font-display text-[13px] font-bold tracking-wide ${
+                  isRecommended ? 'text-cream' : 'text-strong'
+                }`}
+              >
+                {name}
+              </h3>
+
+              {/* Price — large, with a small period beside it. */}
+              <p
+                data-testid="plan-card-price"
+                className={`mt-2 flex items-baseline ${isRecommended ? 'text-cream' : 'text-strong'}`}
+              >
+                <span className="text-[34px] font-bold leading-none">{priceAmount}</span>
+                <span className="text-[13px] font-semibold">/{pricePeriod}</span>
+              </p>
+              {billingPeriod === 'yearly' && (
+                <p className={`mt-1 text-[11.5px] ${isRecommended ? 'text-cream/70' : 'text-faint'}`}>
+                  ${yearlyMonthlyEquivalent}/mo billed annually — save {ANNUAL_FREE_MONTHS} months
+                </p>
               )}
 
-              <div className="text-center mb-4">
-                <div className="w-12 h-12 mx-auto rounded-xl flex items-center justify-center mb-3" style={{ backgroundColor: `${meta.color}15` }}>
-                  <meta.icon size={24} style={{ color: meta.color }} />
-                </div>
-                <h3 className="font-display text-lg font-bold text-strong">{name}</h3>
-                {billingPeriod === 'yearly' && (
-                  <p className="text-sm text-faint">${yearlyMonthlyEquivalent}/mo billed annually</p>
-                )}
-                <p data-testid="plan-card-price" className="text-2xl font-bold text-strong mt-1">
-                  {displayPrice}
-                </p>
-                {billingPeriod === 'yearly' && (
-                  <p className="text-xs text-green-600 font-medium mt-1">Save {ANNUAL_FREE_MONTHS} months</p>
-                )}
+              {/* Blurb — one line, and `min-h` reserves the row whether it
+                  wraps to two or not, so the three cards stay aligned. */}
+              <p
+                data-testid="plan-card-blurb"
+                className={`mt-2 text-[12.5px] leading-snug min-h-[34px] ${
+                  isRecommended ? 'text-cream/70' : 'text-muted'
+                }`}
+              >
+                {PLAN_BLURBS[planId]}
+              </p>
+
+              {/* The donation-fee callout — the strongest line on the
+                  marketing card, and the number is READ, never typed. */}
+              <div
+                data-testid="plan-card-fee"
+                className={`mt-3 flex items-center gap-2.5 rounded-brand py-[10px] px-[12px] ${
+                  isRecommended ? 'bg-cream/10' : 'bg-surface-sunken'
+                }`}
+              >
+                <span
+                  className={`text-[22px] font-bold leading-none ${isRecommended ? 'text-cream' : 'text-strong'}`}
+                >
+                  {platformFeeLabel(planId)}
+                </span>
+                <span
+                  className={`text-[11px] leading-tight ${isRecommended ? 'text-cream/70' : 'text-muted'}`}
+                >
+                  Platform donation fee
+                  <br />
+                  on every gift and paid ticket
+                </span>
               </div>
 
               {/* What this tier includes. Every line is derived from `features`
                   above — the card names no feature the matrix did not hand it,
                   and omits what the tier does not have rather than printing a
-                  row of ✗ against it. */}
-              <div className="mb-5 flex-1">
+                  row of ✗ against it. On the two upper tiers the list is the
+                  DELTA over the tier below, headed by the rollup line. */}
+              <div className="mt-4 mb-5 flex-1">
+                {rollup && (
+                  <p
+                    data-testid="plan-card-rollup"
+                    className={`mb-2 text-[12.5px] font-bold ${
+                      isRecommended ? 'text-cream' : 'text-strong'
+                    }`}
+                  >
+                    {rollup}
+                  </p>
+                )}
                 <ul data-testid="plan-card-features" data-plan={planId} className="space-y-2">
-                  {VISIBLE_CARD_FEATURES.map((feature) => {
-                    const line = cardLine(feature, features);
-                    if (!line) return null;
-                    return (
-                      <li
-                        key={feature.key}
-                        data-feature={feature.key}
-                        className="flex items-start gap-2 text-sm"
-                      >
-                        <Check size={16} aria-hidden="true" className="text-green-600 shrink-0 mt-0.5" />
-                        <span className="text-body">{line}</span>
-                      </li>
-                    );
-                  })}
+                  {lines.map((line) => (
+                    <li
+                      key={line.key}
+                      data-feature={line.key}
+                      className="flex items-start gap-2 text-[12.5px]"
+                    >
+                      <Check
+                        size={15}
+                        aria-hidden="true"
+                        className={`shrink-0 mt-0.5 ${isRecommended ? '' : 'text-green-600'}`}
+                        style={isRecommended ? RECOMMENDED_CHECK_STYLE : undefined}
+                      />
+                      <span className={isRecommended ? 'text-cream/80' : 'text-body'}>{line.text}</span>
+                    </li>
+                  ))}
                 </ul>
 
                 {plan.comingSoon.length > 0 && (
-                  <div className="pt-2 mt-2 border-t border-amber-100">
-                    <p className="text-[10px] font-semibold text-amber-500 uppercase tracking-wider mb-1.5">Coming Soon</p>
+                  <div className="pt-2 mt-2 border-t border-line-subtle">
+                    <p className="text-[11px] font-semibold text-amber-500 uppercase tracking-wider mb-1.5">Coming Soon</p>
                     {plan.comingSoon.map((item) => (
                       <div key={item} className="flex items-center justify-between text-sm">
                         <span className="text-muted">{item}</span>
@@ -399,6 +643,12 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
                 )}
               </div>
 
+              {/* 🔴 UNCHANGED. The click still goes to `handlePlanSelect`, which
+                  still routes Dodo in place and Stripe to checkout or the
+                  portal; the labels are still Current Plan / Upgrade to /
+                  Downgrade to, because these are existing customers and this
+                  card is not a "Start free trial". Nothing below this line was
+                  touched by the marketing match, including the touch target. */}
               <button
                 onClick={() => {
                   if (!isCurrent) handlePlanSelect(plan.id, isDowngrade);
@@ -426,8 +676,11 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
         })}
       </div>
 
-      {/* Carousel Dot Indicators */}
-      <div className="flex justify-center gap-2 py-2">
+      {/* Carousel Dot Indicators. A scroll affordance for a track that only
+          scrolls below `sm:` — from there up the cards are a grid and there is
+          nothing to page through, so the row is hidden. `sm:hidden` is
+          breakpoint-gated, so the phone keeps its dots exactly as they are. */}
+      <div className="flex justify-center gap-2 py-2 sm:hidden">
         {PLAN_ORDER.map((_, index) => (
           <button
             key={index}

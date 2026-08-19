@@ -11,6 +11,7 @@ import {
   PLAN_PRICING,
   PLAN_DISPLAY_NAMES,
   ANNUAL_BILLED_MONTHS,
+  PLAN_BLURBS,
 } from '../../../utils/plan-features';
 import type { TenantPlan } from '../../../types/tenant.types';
 
@@ -105,13 +106,69 @@ describe('PlanUpgradeSection plan cards', () => {
     for (const plan of PLAN_ORDER) shownCells(plan).forEach((cell) => nameable.add(cell));
     expect(nameable.size).toBeGreaterThan(0);
 
-    // Each card must then print exactly the nameable cells ITS tier unlocks —
-    // no more (an unearned claim) and no fewer (a silently dropped one).
-    for (const plan of PLAN_ORDER) {
+    // Each card must then print exactly the nameable cells ITS tier unlocks AND
+    // the tier below it does not — no more (an unearned claim, or a line the
+    // rollup already covers) and no fewer (a silently dropped one). The bottom
+    // tier has nothing below it and prints its list whole.
+    //
+    // 🔴 The delta is recomputed here from `getPlanFeatures` alone. Nothing in
+    // this test knows which lines Small Team or Ministry are supposed to show;
+    // flip a cell in the matrix and both sides of the comparison move together,
+    // which is the guarantee — a hand-written list would fail the moment the
+    // matrix and the JSX disagreed.
+    for (const [index, plan] of PLAN_ORDER.entries()) {
       const features = getPlanFeatures(plan) as unknown as Record<string, unknown>;
-      const expected = [...nameable].filter((cell) => unlocked(features[cell])).sort();
+      const below = index > 0
+        ? (getPlanFeatures(PLAN_ORDER[index - 1]) as unknown as Record<string, unknown>)
+        : null;
+      const expected = [...nameable]
+        .filter((cell) => unlocked(features[cell]))
+        // A cell is inherited when the tier below already has it AT THE SAME
+        // VALUE. A cap that grew (150 → 500 contacts) is a new line; a cap that
+        // did not (1 church on every tier) is not.
+        .filter((cell) => below === null || below[cell] !== features[cell])
+        .sort();
       expect(shownCells(plan).slice().sort(), PLAN_DISPLAY_NAMES[plan]).toEqual(expected);
     }
+  });
+
+  it('opens Small Team and Ministry with a rollup line instead of repeating the tier below', () => {
+    mount();
+
+    const rollupOf = (plan: TenantPlan): string | null =>
+      card(plan).querySelector('[data-testid="plan-card-rollup"]')?.textContent?.trim() ?? null;
+
+    // Individual is the floor: nothing to roll up, so no line.
+    expect(rollupOf('plus')).toBeNull();
+    expect(rollupOf('pro')).toBe(`Everything in ${PLAN_DISPLAY_NAMES.plus}`);
+    expect(rollupOf('max')).toBe(`Everything in ${PLAN_DISPLAY_NAMES.pro}`);
+
+    // And the rollup is load-bearing, not decoration: each upper card is
+    // strictly shorter than the full list its tier unlocks, because the shared
+    // lines are the ones the rollup stands in for.
+    const nameable = new Set<string>();
+    for (const plan of PLAN_ORDER) shownCells(plan).forEach((cell) => nameable.add(cell));
+    for (const plan of ['pro', 'max'] as const) {
+      const features = getPlanFeatures(plan) as unknown as Record<string, unknown>;
+      const whole = [...nameable].filter((cell) => unlocked(features[cell]));
+      expect(shownCells(plan).length, PLAN_DISPLAY_NAMES[plan]).toBeLessThan(whole.length);
+      expect(shownCells(plan).length, PLAN_DISPLAY_NAMES[plan]).toBeGreaterThan(0);
+    }
+  });
+
+  it('renders the blurb for each tier from plan-features, not from the component', () => {
+    mount();
+    for (const plan of PLAN_ORDER) {
+      const blurb = card(plan).querySelector('[data-testid="plan-card-blurb"]');
+      expect(blurb, `no blurb on the ${PLAN_DISPLAY_NAMES[plan]} card`).toBeTruthy();
+      expect(blurb!.textContent!.trim(), PLAN_DISPLAY_NAMES[plan]).toBe(PLAN_BLURBS[plan]);
+    }
+    // Three distinct sentences — a card printing the same one three times would
+    // otherwise satisfy the loop above.
+    expect(new Set(PLAN_ORDER.map((p) => PLAN_BLURBS[p])).size).toBe(PLAN_ORDER.length);
+    // And the component does not carry its own copy of any of them.
+    const src = readFileSync(COMPONENT, 'utf8');
+    for (const plan of PLAN_ORDER) expect(src).not.toContain(PLAN_BLURBS[plan]);
   });
 
   it('hardcodes no feature copy in the card list', () => {
@@ -146,10 +203,17 @@ describe('PlanUpgradeSection plan cards', () => {
   });
 
   it('shows CRM on every tier, Individual included', () => {
-    // The change, seen from the surface a church actually reads.
+    // The change, seen from the surface a church actually reads. CRM is on the
+    // BOTTOM tier's card, which under the rollup is what puts it on all three:
+    // Small Team opens "Everything in Individual" and Ministry opens
+    // "Everything in Small Team", so a line on Individual is carried up rather
+    // than repeated. Asserting it three times would be asserting that the
+    // rollup does NOT work.
     mount();
+    expect(shownCells('plus')).toContain('crm');
     for (const plan of PLAN_ORDER) {
-      expect(shownCells(plan), PLAN_DISPLAY_NAMES[plan]).toContain('crm');
+      expect(getPlanFeatures(plan).crm, PLAN_DISPLAY_NAMES[plan]).toBe(true);
+      expect(shownCells(plan), PLAN_DISPLAY_NAMES[plan]).not.toHaveLength(0);
     }
     // …and Notes still only above Individual, on the same surface.
     expect(shownCells('plus')).not.toContain('docs');
@@ -215,18 +279,16 @@ describe('PlanUpgradeSection plan cards', () => {
   it('hardcodes no colour', () => {
     const src = readFileSync(COMPONENT, 'utf8');
 
-    // The only colour literals in the file are the per-plan swatches on the
-    // PLANS table, which the cards read through `meta.color`. A hex anywhere
-    // else — in the card markup, in a style prop — fails here.
+    // There used to be exactly three: the per-plan swatches on the PLANS table,
+    // which painted a tinted icon disc at the top of each card. They belonged
+    // to no palette in this app and themed in none of the four, and the icon
+    // they coloured is not on the marketing card — so they are gone, and this
+    // assertion is now the flat one rather than one with an exemption carved
+    // into it. A hex anywhere in this file fails here.
     const hexLines = src
       .split('\n')
       .filter((line) => /#[0-9a-fA-F]{3,8}\b/.test(line));
-    expect(hexLines.length).toBeGreaterThan(0);
-    for (const line of hexLines) {
-      expect(line, `colour literal outside the PLANS table: ${line.trim()}`).toMatch(
-        /\bid: '(plus|pro|max)'/
-      );
-    }
+    expect(hexLines, `colour literal in the plan cards: ${hexLines.join(' | ')}`).toEqual([]);
 
     // No raw rgb()/hsl() either — those theme no better than a hex does.
     expect(src).not.toMatch(/\b(rgb|hsl)a?\(/);
