@@ -14,6 +14,7 @@ import { isSuperAdminEmail } from '../utils/super-admins';
 import { notifyError } from '../utils/notify';
 import { sortByTime } from '../utils/query-helpers';
 import { useAdminHeader } from './AdminScreenHeader';
+import { FORM_CONTAINER } from './layout/form-layout';
 
 /**
  * Fetch documents in a flat collection scoped by a `tenantId` field, using only
@@ -1241,8 +1242,13 @@ const AdminCommunity: React.FC<AdminCommunityProps> = ({ onOpenAttachment }) => 
     m.email?.toLowerCase().includes(memberSearch.toLowerCase())
   );
 
+  // Rule 1a — the PAGE measure. This screen is a rail of conversations beside
+  // an open thread, i.e. as data-dense as the shell allows, so it takes
+  // FORM_CONTAINER and not the form measure. `max-w-6xl` was 1152px at the 16px
+  // rem base and 1044px at the 14.5px desktop one, so it bound only at 1440px
+  // and left the page uncapped at 1024px and at 1280px.
   return (
-    <div className="max-w-6xl mx-auto h-full lg:h-[calc(100dvh-140px)]">
+    <div className={`${FORM_CONTAINER} h-full lg:h-[calc(100dvh-140px)]`}>
       <div className="flex flex-col h-full lg:flex-row lg:gap-5">
 
       {/* ── Left rail: tabs + conversation list ── */}
