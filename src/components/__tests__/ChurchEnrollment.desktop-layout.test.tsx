@@ -735,18 +735,31 @@ describe('the layout rules live in one shared place and have a caller', () => {
     // on a monitor). It takes no FIELD_WIDTH, because it renders no input of its
     // own — every field on that screen lives inside a settings section
     // component, and those were out of scope.
+    //
+    // Batch E (admin content screens) adds four more, all container-only: the
+    // Notes list (AdminDocs.tsx) and the blog and course lists (AdminBlog.tsx,
+    // AdminCourses.tsx — both its own-courses list and its read-only library
+    // preview) take FORM_CONTAINER, the page measure, in place of an unprefixed
+    // max-w-5xl/-6xl guess. NewsletterEditor.tsx takes FORM_MEASURE — it is a
+    // form, not a list — retiring its own unprefixed max-w-6xl. None of the
+    // four takes FIELD_WIDTH, ACTION_BUTTON or CONTROL_DENSITY: no field,
+    // button or control in any of them was touched.
     const importers = execSync(
       "grep -rl \"from '.*form-layout'\" src --include=*.tsx --include=*.ts || true",
       { encoding: 'utf8' },
     ).split('\n').filter(Boolean).filter((f) => !f.includes('__tests__')).sort();
     expect(importers).toEqual([
+      'src/components/AdminBlog.tsx',
       'src/components/AdminCRM.tsx',
       'src/components/AdminChurches.tsx',
       'src/components/AdminCourseEditor.tsx',
+      'src/components/AdminCourses.tsx',
+      'src/components/AdminDocs.tsx',
       'src/components/AdminSettings.tsx',
       'src/components/AnalyticsAndRoles.tsx',
       'src/components/ChurchEnrollment.tsx',
       'src/components/EnterpriseContactModal.tsx',
+      'src/components/NewsletterEditor.tsx',
       'src/components/PersonalInformationModal.tsx',
     ]);
   });

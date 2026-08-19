@@ -21,6 +21,7 @@ import { markdownToHtml, titleFromMarkdown } from '../utils/markdown-import';
 import RichTextEditor from './RichTextEditor';
 import { useAdminHeader, HeaderActionButton } from './AdminScreenHeader';
 import { AdminPageHeader, AdminPrimaryButton, AdminSecondaryButton, AdminBadge } from './admin/AdminUI';
+import { FORM_CONTAINER } from './layout/form-layout';
 
 import type { Doc, DocFolder } from '../hooks/queries/useDocsQueries';
 
@@ -1177,7 +1178,7 @@ const AdminDocs: React.FC<AdminDocsProps> = ({ initialDocId, onItemConsumed }) =
   }
 
   return (
-    <div className="max-w-5xl mx-auto">
+    <div className={`w-full ${FORM_CONTAINER}`}>
       <input
         ref={importInputRef}
         type="file"
