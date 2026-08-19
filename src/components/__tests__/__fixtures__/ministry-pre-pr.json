@@ -1,0 +1,85 @@
+{
+  "AdminCommunity": {
+    "strippedSha": "3d54f2eb01122a18900f911b2077f84ff9b69df10278988470018724c1bbf61c",
+    "strippedLines": 1529,
+    "firestorePaths": [
+      "collName",
+      "collName",
+      "'users'",
+      "'users'",
+      "'users', senderId",
+      "'tenants', tenantId, 'forms'",
+      "'tenants', tenantId, 'channels', channelId",
+      "'tenants', tenantId, 'channels', channelId",
+      "'tenants', tenantId, 'channelMessages'",
+      "'tenants', tenantId, 'channelMessages'",
+      "'tenants', tenantId, 'channels', channel.id",
+      "'tenants', tenantId, 'dmMessages'",
+      "'tenants', tenantId, 'dmMessages'",
+      "'tenants', tenantId, 'directMessages', dm.id",
+      "'users', user.uid",
+      "'tenants', tenantId, 'channels'",
+      "'tenants', tenantId, 'directMessages'",
+      "'tenants', tenantId, 'channels'",
+      "'tenants', tenantId, 'directMessages'",
+      "'tenants', tenantId, 'directMessages'"
+    ],
+    "exportCsv": null
+  },
+  "AdminEvents": {
+    "strippedSha": "c55bcf76ad9d0c1421b94f6d46a39eee9c3c9c3b696c60a07e9793a5607a9430",
+    "strippedLines": 867,
+    "firestorePaths": [
+      "'tenants', tenantId, 'registrations'",
+      "'tenants', tenantId, 'events', selected.id",
+      "'tenants', tenantId, 'events'",
+      "'tenants', tenantId, 'events', deleteId",
+      "'tenants', tenantId, 'events', ev.id",
+      "'tenants', tenantId, 'registrations', reg.id"
+    ],
+    "exportCsv": null
+  },
+  "AdminFundraising": {
+    "strippedSha": "cccd107ec349bfef7d1b96444f0949318e1a3c61042d9e10cffd7a11ea2ee5f3",
+    "strippedLines": 635,
+    "firestorePaths": [
+      "'tenants', tenantId, 'pledges'",
+      "'campaigns', editing.id",
+      "'campaigns'",
+      "'campaigns', other.id",
+      "'campaigns', c.id",
+      "'campaigns', deleteId",
+      "'tenants', tenantId, 'pledges'",
+      "'tenants', tenantId, 'pledges', editPledge.id",
+      "'tenants', tenantId, 'pledges', id"
+    ],
+    "exportCsv": null
+  },
+  "AdminForms": {
+    "strippedSha": "5cb2667f1e4c8a353d907b9b9f9b8c7cf9f8edef14277645e7ed0d905468395e",
+    "strippedLines": 462,
+    "firestorePaths": [
+      "'tenants', tenantId, 'forms'",
+      "'tenants', tenantId, 'forms', editingId",
+      "'tenants', tenantId, 'forms'",
+      "'tenants', tenantId, 'forms', form.id",
+      "'tenants', tenantId, 'forms', form.id",
+      "'tenants', tenantId, 'forms', form.id, 'submissions'"
+    ],
+    "exportCsv": null
+  },
+  "AdminCheckin": {
+    "strippedSha": "f31bc43ee6b4a23fb41154f623f40a978d230b9a5a0e408bb19adab3255da84c",
+    "strippedLines": 435,
+    "firestorePaths": [
+      "'tenants', tenantId, 'checkinSessions'",
+      "'tenants', tenantId, 'events'",
+      "'tenants', tenantId, 'checkinSessions', selected.id, 'attendees'",
+      "'tenants', tenantId, 'checkinSessions'",
+      "'tenants', tenantId, 'checkinSessions', ref.id",
+      "'tenants', tenantId, 'checkinSessions', s.id",
+      "'tenants', tenantId, 'checkinSessions', s.id"
+    ],
+    "exportCsv": "const exportCsv = () => {\n    if (!selected) return;\n    const header = ['First Name', 'Last Name', 'Email', 'Check-in Time'];\n    const rows = attendees.map(a => [\n      a.firstName, a.lastName || '', a.email || '',\n      a.checkedInAt?.toDate ? a.checkedInAt.toDate().toISOString() : '',\n    ]);\n    const csv = [header, ...rows].map(r => r.map(c => `\"${String(c).replace(/\"/g, '\"\"')}\"`).join(',')).join('\\n');\n    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));\n    const a = document.createElement('a');\n    a.href = url; a.download = `${selected.name.replace(/[^a-z0-9]/gi, '_')}_attendees.csv`; a.click();\n    URL.revokeObjectURL(url);\n  };"
+  }
+}

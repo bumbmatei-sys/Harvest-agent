@@ -21,6 +21,7 @@ import { useAppStore } from '../store/useAppStore';
 import { PLATFORM_TENANT_ID } from '../utils/tenant-scope';
 import { useEvents } from '../hooks/queries/useEventQueries';
 import { HeroBand } from './member/desktopKit';
+import { FORM_CONTAINER, FORM_MEASURE, FIELD_WIDTH, ACTION_BUTTON, CONTROL_DENSITY } from './layout/form-layout';
 
 import type { Event, Registration, TicketType, DiscountCode } from '../hooks/queries/useEventQueries';
 
@@ -398,18 +399,18 @@ const AdminEvents: React.FC = () => {
   // ── Form View ──
   if (view === 'create' || view === 'edit') {
     return (
-      <div className="max-w-2xl mx-auto pb-32">
+      <div className={`${FORM_MEASURE} pb-32`}>
         <div className="bg-surface-raised rounded-2xl border border-line shadow-sm p-6 space-y-5">
           <div className="grid grid-cols-1 gap-5">
             <div>
               <label className="text-xs font-semibold text-body mb-1.5 block">Event Title *</label>
               <input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })}
-                className="w-full border border-line bg-surface-sunken rounded-xl px-3 py-2.5 text-sm text-strong focus:outline-none focus:border-gold focus:bg-surface-raised transition-colors" placeholder="Event name" />
+                className={`w-full border border-line bg-surface-sunken rounded-xl px-3 py-2.5 text-sm text-strong focus:outline-none focus:border-gold focus:bg-surface-raised transition-colors ${FIELD_WIDTH.long} ${CONTROL_DENSITY.control}`} placeholder="Event name" />
             </div>
             <div>
               <label className="text-xs font-semibold text-body mb-1.5 block">Description</label>
               <textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })}
-                rows={3} className="w-full border border-line bg-surface-sunken rounded-xl px-3 py-2.5 text-sm text-strong focus:outline-none focus:border-gold focus:bg-surface-raised transition-colors resize-none"
+                rows={3} className={`w-full border border-line bg-surface-sunken rounded-xl px-3 py-2.5 text-sm text-strong focus:outline-none focus:border-gold focus:bg-surface-raised transition-colors resize-none ${FIELD_WIDTH.long}`}
                 placeholder="What is this event about?" />
             </div>
             <div>
@@ -420,12 +421,12 @@ const AdminEvents: React.FC = () => {
               <div>
                 <label className="text-xs font-semibold text-body mb-1.5 block">Start Date & Time *</label>
                 <input type="datetime-local" value={form.startDate} onChange={e => setForm({ ...form, startDate: e.target.value })}
-                  className="w-full border border-line bg-surface-sunken rounded-xl px-3 py-2.5 text-sm text-strong focus:outline-none focus:border-gold focus:bg-surface-raised transition-colors" />
+                  className={`w-full border border-line bg-surface-sunken rounded-xl px-3 py-2.5 text-sm text-strong focus:outline-none focus:border-gold focus:bg-surface-raised transition-colors ${FIELD_WIDTH.medium} ${CONTROL_DENSITY.control}`} />
               </div>
               <div>
                 <label className="text-xs font-semibold text-body mb-1.5 block">End Date & Time</label>
                 <input type="datetime-local" value={form.endDate} onChange={e => setForm({ ...form, endDate: e.target.value })}
-                  className="w-full border border-line bg-surface-sunken rounded-xl px-3 py-2.5 text-sm text-strong focus:outline-none focus:border-gold focus:bg-surface-raised transition-colors" />
+                  className={`w-full border border-line bg-surface-sunken rounded-xl px-3 py-2.5 text-sm text-strong focus:outline-none focus:border-gold focus:bg-surface-raised transition-colors ${FIELD_WIDTH.medium} ${CONTROL_DENSITY.control}`} />
               </div>
             </div>
             <div>
@@ -439,28 +440,28 @@ const AdminEvents: React.FC = () => {
               </div>
               {form.isOnline ? (
                 <input value={form.onlineLink} onChange={e => setForm({ ...form, onlineLink: e.target.value })}
-                  className="w-full border border-line bg-surface-sunken rounded-xl px-3 py-2.5 text-sm text-strong focus:outline-none focus:border-gold focus:bg-surface-raised transition-colors" placeholder="Meeting link (Zoom, Google Meet...)" />
+                  className={`w-full border border-line bg-surface-sunken rounded-xl px-3 py-2.5 text-sm text-strong focus:outline-none focus:border-gold focus:bg-surface-raised transition-colors ${FIELD_WIDTH.long} ${CONTROL_DENSITY.control}`} placeholder="Meeting link (Zoom, Google Meet...)" />
               ) : (
                 <input value={form.location} onChange={e => setForm({ ...form, location: e.target.value })}
-                  className="w-full border border-line bg-surface-sunken rounded-xl px-3 py-2.5 text-sm text-strong focus:outline-none focus:border-gold focus:bg-surface-raised transition-colors" placeholder="Event location / address" />
+                  className={`w-full border border-line bg-surface-sunken rounded-xl px-3 py-2.5 text-sm text-strong focus:outline-none focus:border-gold focus:bg-surface-raised transition-colors ${FIELD_WIDTH.long} ${CONTROL_DENSITY.control}`} placeholder="Event location / address" />
               )}
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-xs font-semibold text-body mb-1.5 block">Capacity (blank = unlimited)</label>
                 <input type="number" min={0} value={form.capacity} onChange={e => setForm({ ...form, capacity: e.target.value })}
-                  className="w-full border border-line bg-surface-sunken rounded-xl px-3 py-2.5 text-sm text-strong focus:outline-none focus:border-gold focus:bg-surface-raised transition-colors" placeholder="e.g. 100" />
+                  className={`w-full border border-line bg-surface-sunken rounded-xl px-3 py-2.5 text-sm text-strong focus:outline-none focus:border-gold focus:bg-surface-raised transition-colors ${FIELD_WIDTH.short} ${CONTROL_DENSITY.control}`} placeholder="e.g. 100" />
               </div>
               <div>
                 <label className="text-xs font-semibold text-body mb-1.5 block">Ticket Price ($)</label>
                 <input type="number" min={0} value={form.price} onChange={e => setForm({ ...form, price: e.target.value })}
-                  className="w-full border border-line bg-surface-sunken rounded-xl px-3 py-2.5 text-sm text-strong focus:outline-none focus:border-gold focus:bg-surface-raised transition-colors" placeholder="0 = free" />
+                  className={`w-full border border-line bg-surface-sunken rounded-xl px-3 py-2.5 text-sm text-strong focus:outline-none focus:border-gold focus:bg-surface-raised transition-colors ${FIELD_WIDTH.short} ${CONTROL_DENSITY.control}`} placeholder="0 = free" />
               </div>
             </div>
             <div>
               <label className="text-xs font-semibold text-body mb-1.5 block">Registration Deadline</label>
               <input type="datetime-local" value={form.registrationDeadline} onChange={e => setForm({ ...form, registrationDeadline: e.target.value })}
-                className="w-full border border-line bg-surface-sunken rounded-xl px-3 py-2.5 text-sm text-strong focus:outline-none focus:border-gold focus:bg-surface-raised transition-colors" />
+                className={`w-full border border-line bg-surface-sunken rounded-xl px-3 py-2.5 text-sm text-strong focus:outline-none focus:border-gold focus:bg-surface-raised transition-colors ${FIELD_WIDTH.medium} ${CONTROL_DENSITY.control}`} />
             </div>
 
             {/* ── Registration engine ── */}
@@ -517,19 +518,19 @@ const AdminEvents: React.FC = () => {
                     {showTicketForm && (
                       <div className="mt-2 bg-surface-sunken rounded-xl p-3 space-y-2.5">
                         <input value={ticketDraft.name} onChange={e => setTicketDraft({ ...ticketDraft, name: e.target.value })}
-                          placeholder="Name (e.g. Adult)" className="w-full border border-line rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold" />
+                          placeholder="Name (e.g. Adult)" className={`w-full border border-line rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold ${FIELD_WIDTH.medium} ${CONTROL_DENSITY.control}`} />
                         <input value={ticketDraft.description} onChange={e => setTicketDraft({ ...ticketDraft, description: e.target.value })}
-                          placeholder="Description (optional)" className="w-full border border-line rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold" />
+                          placeholder="Description (optional)" className={`w-full border border-line rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold ${FIELD_WIDTH.long} ${CONTROL_DENSITY.control}`} />
                         <div className="grid grid-cols-2 gap-2">
                           <input type="number" min={0} step="0.01" value={ticketDraft.price} onChange={e => setTicketDraft({ ...ticketDraft, price: e.target.value })}
-                            placeholder="Price ($) — 0 = Free" className="w-full border border-line rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold" />
+                            placeholder="Price ($) — 0 = Free" className={`w-full border border-line rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold ${FIELD_WIDTH.short} ${CONTROL_DENSITY.control}`} />
                           <input type="number" min={0} value={ticketDraft.capacity} onChange={e => setTicketDraft({ ...ticketDraft, capacity: e.target.value })}
-                            placeholder="Capacity (blank = ∞)" className="w-full border border-line rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold" />
+                            placeholder="Capacity (blank = ∞)" className={`w-full border border-line rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold ${FIELD_WIDTH.short} ${CONTROL_DENSITY.control}`} />
                         </div>
                         <div className="flex gap-2">
-                          <button onClick={() => { setShowTicketForm(false); setTicketDraft(emptyTicket); }} className="flex-1 py-2 rounded-lg border border-line text-xs font-semibold text-muted">Cancel</button>
+                          <button onClick={() => { setShowTicketForm(false); setTicketDraft(emptyTicket); }} className={`flex-1 py-2 rounded-lg border border-line text-xs font-semibold text-muted ${ACTION_BUTTON} ${CONTROL_DENSITY.action}`}>Cancel</button>
                           <button onClick={saveTicketDraft} disabled={!ticketDraft.name.trim()}
-                            className="flex-1 py-2 rounded-lg text-xs font-semibold text-white disabled:opacity-50" style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}>Add</button>
+                            className={`flex-1 py-2 rounded-lg text-xs font-semibold text-white disabled:opacity-50 ${ACTION_BUTTON} ${CONTROL_DENSITY.action}`} style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}>Add</button>
                         </div>
                       </div>
                     )}
@@ -571,7 +572,7 @@ const AdminEvents: React.FC = () => {
                     {showDiscountForm && (
                       <div className="mt-2 bg-surface-sunken rounded-xl p-3 space-y-2.5">
                         <input value={discountDraft.code} onChange={e => setDiscountDraft({ ...discountDraft, code: e.target.value.toUpperCase() })}
-                          placeholder="CODE (e.g. SCHOLAR50)" className="w-full border border-line rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-gold" />
+                          placeholder="CODE (e.g. SCHOLAR50)" className={`w-full border border-line rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-gold ${FIELD_WIDTH.medium} ${CONTROL_DENSITY.control}`} />
                         <div className="flex gap-3">
                           <label className="flex items-center gap-1.5 text-sm text-body">
                             <input type="radio" name="discountType" checked={discountDraft.type === 'percent'} onChange={() => setDiscountDraft({ ...discountDraft, type: 'percent' })} /> Percent off
@@ -582,14 +583,14 @@ const AdminEvents: React.FC = () => {
                         </div>
                         <div className="grid grid-cols-2 gap-2">
                           <input type="number" min={0} step={discountDraft.type === 'percent' ? '1' : '0.01'} value={discountDraft.value} onChange={e => setDiscountDraft({ ...discountDraft, value: e.target.value })}
-                            placeholder={discountDraft.type === 'percent' ? 'Percent (0–100)' : 'Amount ($)'} className="w-full border border-line rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold" />
+                            placeholder={discountDraft.type === 'percent' ? 'Percent (0–100)' : 'Amount ($)'} className={`w-full border border-line rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold ${FIELD_WIDTH.short} ${CONTROL_DENSITY.control}`} />
                           <input type="number" min={0} value={discountDraft.maxUses} onChange={e => setDiscountDraft({ ...discountDraft, maxUses: e.target.value })}
-                            placeholder="Max uses (blank = ∞)" className="w-full border border-line rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold" />
+                            placeholder="Max uses (blank = ∞)" className={`w-full border border-line rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold ${FIELD_WIDTH.short} ${CONTROL_DENSITY.control}`} />
                         </div>
                         <div className="flex gap-2">
-                          <button onClick={() => { setShowDiscountForm(false); setDiscountDraft(emptyDiscount); }} className="flex-1 py-2 rounded-lg border border-line text-xs font-semibold text-muted">Cancel</button>
+                          <button onClick={() => { setShowDiscountForm(false); setDiscountDraft(emptyDiscount); }} className={`flex-1 py-2 rounded-lg border border-line text-xs font-semibold text-muted ${ACTION_BUTTON} ${CONTROL_DENSITY.action}`}>Cancel</button>
                           <button onClick={saveDiscountDraft} disabled={!discountDraft.code.trim()}
-                            className="flex-1 py-2 rounded-lg text-xs font-semibold text-white disabled:opacity-50" style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}>Add</button>
+                            className={`flex-1 py-2 rounded-lg text-xs font-semibold text-white disabled:opacity-50 ${ACTION_BUTTON} ${CONTROL_DENSITY.action}`} style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}>Add</button>
                         </div>
                       </div>
                     )}
@@ -610,7 +611,7 @@ const AdminEvents: React.FC = () => {
             <div>
               <label className="text-xs font-semibold text-body mb-1.5 block">Status</label>
               <select value={form.status} onChange={e => setForm({ ...form, status: e.target.value as Event['status'] })}
-                className="w-full border border-line bg-surface-sunken rounded-xl px-3 py-2.5 text-sm text-strong focus:outline-none focus:border-gold focus:bg-surface-raised transition-colors">
+                className={`w-full border border-line bg-surface-sunken rounded-xl px-3 py-2.5 text-sm text-strong focus:outline-none focus:border-gold focus:bg-surface-raised transition-colors ${FIELD_WIDTH.medium} ${CONTROL_DENSITY.control}`}>
                 <option value="draft">Draft</option>
                 <option value="published">Published</option>
                 <option value="cancelled">Cancelled</option>
@@ -619,9 +620,9 @@ const AdminEvents: React.FC = () => {
             </div>
           </div>
           <div className="flex gap-3 pt-2">
-            <button onClick={() => setView('list')} className="flex-1 py-2.5 rounded-xl border border-line text-sm font-semibold text-muted">Cancel</button>
+            <button onClick={() => setView('list')} className={`flex-1 py-2.5 rounded-xl border border-line text-sm font-semibold text-muted ${ACTION_BUTTON} ${CONTROL_DENSITY.action}`}>Cancel</button>
             <button onClick={handleSave} disabled={saving || !form.title.trim()}
-              className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
+              className={`flex-1 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50 ${ACTION_BUTTON} ${CONTROL_DENSITY.action}`}
               style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}>
               {saving ? 'Saving...' : view === 'edit' ? 'Save Changes' : 'Create Event'}
             </button>
@@ -644,7 +645,7 @@ const AdminEvents: React.FC = () => {
       r.ticketCode.toLowerCase().includes(regSearch.toLowerCase())
     );
     return (
-      <div className="max-w-3xl mx-auto">
+      <div className={FORM_CONTAINER}>
         <div className="flex items-center justify-between mb-5">
           <div>
             <h2 className="text-xl font-bold text-strong truncate font-display">{selected.title}</h2>
@@ -737,7 +738,7 @@ const AdminEvents: React.FC = () => {
           <div className="relative flex-1">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-faint" />
             <input value={regSearch} onChange={e => setRegSearch(e.target.value)}
-              placeholder="Search attendees..." className="w-full pl-9 pr-3 py-2 text-sm border border-line rounded-xl focus:outline-none focus:border-gold" />
+              placeholder="Search attendees..." className={`w-full pl-9 pr-3 py-2 text-sm border border-line rounded-xl focus:outline-none focus:border-gold ${FIELD_WIDTH.long} ${CONTROL_DENSITY.control}`} />
           </div>
           {registrations.length > 0 && (
             <button onClick={exportCSV} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border border-line text-muted hover:bg-surface-sunken">
@@ -795,7 +796,7 @@ const AdminEvents: React.FC = () => {
     try { await navigator.clipboard.writeText(calendarUrl); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { /* ignore */ }
   };
   return (
-    <div className="w-full max-w-6xl mx-auto space-y-6">
+    <div className={`w-full ${FORM_CONTAINER} space-y-6`}>
       <AdminPageHeader
         eyebrow="Broadcasting"
         title={`${events.length} event${events.length === 1 ? '' : 's'}`}

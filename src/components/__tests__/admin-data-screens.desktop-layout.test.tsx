@@ -134,10 +134,16 @@ const colourLiterals = (src: string): string[] =>
 const MUST_NOT_CHANGE = [
   'AdminDashboard.tsx', 'layout/form-layout.ts',
   'AdminDocs.tsx', 'AdminBlog.tsx', 'AdminCourses.tsx', 'NewsletterEditor.tsx',
-  'AdminCommunity.tsx', 'AdminEvents.tsx', 'AdminFundraising.tsx', 'AdminForms.tsx',
-  'AdminCheckin.tsx', 'NewsTab.tsx', 'MainApp.tsx', 'BiblePage.tsx',
+  'NewsTab.tsx', 'MainApp.tsx', 'BiblePage.tsx',
   'UserMessages.tsx', 'AllNews.tsx', 'AIChat.tsx', 'LivestreamView.tsx',
 ];
+// Batch F's five — AdminCommunity, AdminEvents, AdminFundraising, AdminForms and
+// AdminCheckin — were listed here, and their digests removed with them, when
+// that batch landed. They were out of scope for THIS batch, which is what the
+// list records, and that remains true of this batch's diff; but they are Batch
+// F's own files and it changes them, so a digest pinned here would go red for
+// work that is not this batch's and is not a regression. The shell and the
+// shared module stay pinned, which is what this guard is really for.
 
 /** The in-scope files, and the pre-PR facts recorded about each. */
 const TOUCHED_FILES = ['AdminRAG.tsx', 'AdminTenants.tsx', 'AdminSms.tsx', 'AdminGivingStatements.tsx'];

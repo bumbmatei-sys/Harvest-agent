@@ -20,6 +20,7 @@ import { useAppStore } from '../store/useAppStore';
 import { PLATFORM_TENANT_ID, hasPlatformOverride } from '../utils/tenant-scope';
 import { getPlanFeatures } from '../utils/plan-features';
 import { useCampaigns, type Campaign } from '../hooks/queries/useCampaignQueries';
+import { FORM_CONTAINER, FIELD_WIDTH, ACTION_BUTTON, CONTROL_DENSITY } from './layout/form-layout';
 
 const empty: Omit<Campaign, 'id'> = {
   title: '',
@@ -275,7 +276,7 @@ const AdminFundraising: React.FC<AdminFundraisingProps> = ({ initialCampaignId, 
     const fulfillment = totalPledged > 0 ? Math.min(100, Math.round((totalPaid / totalPledged) * 100)) : 0;
 
     return (
-      <div className="max-w-3xl mx-auto">
+      <div className={FORM_CONTAINER}>
         <button onClick={() => setDetailCampaign(null)} className="flex items-center gap-1.5 text-sm text-muted mb-4 hover:text-body">
           <ArrowLeft size={15} /> Back to campaigns
         </button>
@@ -341,18 +342,18 @@ const AdminFundraising: React.FC<AdminFundraisingProps> = ({ initialCampaignId, 
             {showPledgeForm && (
               <div className="bg-surface-sunken rounded-2xl p-4 mb-3 space-y-2.5">
                 <div className="grid grid-cols-2 gap-2">
-                  <input value={pledgeForm.donorName} onChange={e => setPledgeForm({ ...pledgeForm, donorName: e.target.value })} placeholder="Donor name *" className="w-full border border-line rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold" />
-                  <input value={pledgeForm.donorEmail} onChange={e => setPledgeForm({ ...pledgeForm, donorEmail: e.target.value })} placeholder="Email *" type="email" className="w-full border border-line rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold" />
+                  <input value={pledgeForm.donorName} onChange={e => setPledgeForm({ ...pledgeForm, donorName: e.target.value })} placeholder="Donor name *" className={`w-full border border-line rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold ${FIELD_WIDTH.long} ${CONTROL_DENSITY.control}`} />
+                  <input value={pledgeForm.donorEmail} onChange={e => setPledgeForm({ ...pledgeForm, donorEmail: e.target.value })} placeholder="Email *" type="email" className={`w-full border border-line rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold ${FIELD_WIDTH.long} ${CONTROL_DENSITY.control}`} />
                 </div>
                 <div className="grid grid-cols-2 gap-2">
-                  <input value={pledgeForm.donorPhone} onChange={e => setPledgeForm({ ...pledgeForm, donorPhone: e.target.value })} placeholder="Phone (optional)" className="w-full border border-line rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold" />
-                  <input value={pledgeForm.pledgeAmount} onChange={e => setPledgeForm({ ...pledgeForm, pledgeAmount: e.target.value })} placeholder="Pledge amount ($) *" type="number" min={0} className="w-full border border-line rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold" />
+                  <input value={pledgeForm.donorPhone} onChange={e => setPledgeForm({ ...pledgeForm, donorPhone: e.target.value })} placeholder="Phone (optional)" className={`w-full border border-line rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold ${FIELD_WIDTH.medium} ${CONTROL_DENSITY.control}`} />
+                  <input value={pledgeForm.pledgeAmount} onChange={e => setPledgeForm({ ...pledgeForm, pledgeAmount: e.target.value })} placeholder="Pledge amount ($) *" type="number" min={0} className={`w-full border border-line rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold ${FIELD_WIDTH.short} ${CONTROL_DENSITY.control}`} />
                 </div>
-                <input value={pledgeForm.dueDate} onChange={e => setPledgeForm({ ...pledgeForm, dueDate: e.target.value })} type="date" className="w-full border border-line rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold" />
-                <textarea value={pledgeForm.notes} onChange={e => setPledgeForm({ ...pledgeForm, notes: e.target.value })} placeholder="Notes (optional)" rows={2} className="w-full border border-line rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold resize-none" />
+                <input value={pledgeForm.dueDate} onChange={e => setPledgeForm({ ...pledgeForm, dueDate: e.target.value })} type="date" className={`w-full border border-line rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold ${FIELD_WIDTH.medium} ${CONTROL_DENSITY.control}`} />
+                <textarea value={pledgeForm.notes} onChange={e => setPledgeForm({ ...pledgeForm, notes: e.target.value })} placeholder="Notes (optional)" rows={2} className={`w-full border border-line rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold resize-none ${FIELD_WIDTH.long}`} />
                 <div className="flex gap-2">
-                  <button onClick={() => { setShowPledgeForm(false); setPledgeForm(emptyPledge); }} className="flex-1 py-2 rounded-lg border border-line text-xs font-semibold text-muted">Cancel</button>
-                  <button onClick={savePledge} disabled={savingPledge} className="flex-1 py-2 rounded-lg text-xs font-semibold text-white disabled:opacity-50" style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}>{savingPledge ? 'Saving…' : 'Add Pledge'}</button>
+                  <button onClick={() => { setShowPledgeForm(false); setPledgeForm(emptyPledge); }} className={`flex-1 py-2 rounded-lg border border-line text-xs font-semibold text-muted ${ACTION_BUTTON} ${CONTROL_DENSITY.action}`}>Cancel</button>
+                  <button onClick={savePledge} disabled={savingPledge} className={`flex-1 py-2 rounded-lg text-xs font-semibold text-white disabled:opacity-50 ${ACTION_BUTTON} ${CONTROL_DENSITY.action}`} style={{ backgroundColor: 'var(--brand-color, #d4a017)' }}>{savingPledge ? 'Saving…' : 'Add Pledge'}</button>
                 </div>
               </div>
             )}
@@ -420,7 +421,7 @@ const AdminFundraising: React.FC<AdminFundraisingProps> = ({ initialCampaignId, 
 
   // ── List view ──
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
+    <div className={`${FORM_CONTAINER} space-y-6`}>
       {/* Payment Setup — Stripe Connect for receiving donations (moved from Settings) */}
       <div className="bg-surface-raised rounded-brand-lg border border-line shadow-[var(--ds-sh-sm)] overflow-hidden">
         <button

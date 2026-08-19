@@ -16,6 +16,7 @@ import {
   AdminPrimaryButton, AdminSecondaryButton, AdminEditorHeader, AdminCard, AdminBadge,
 } from './admin/AdminUI';
 import AdminQR from './AdminQR';
+import { FORM_CONTAINER, FORM_MEASURE, FIELD_WIDTH, ACTION_BUTTON, CONTROL_DENSITY } from './layout/form-layout';
 
 const GOLD = 'var(--brand-color, #B8962E)';
 
@@ -262,7 +263,7 @@ const AdminCheckin: React.FC<AdminCheckinProps> = ({ canCheckin = true, canQR = 
   // QR Codes sub-tab — the standalone QR generator.
   if (activeSubTab === 'qr') {
     return (
-      <div className="max-w-2xl mx-auto">
+      <div className={FORM_CONTAINER}>
         {subTabBar}
         <AdminQR />
       </div>
@@ -271,8 +272,12 @@ const AdminCheckin: React.FC<AdminCheckinProps> = ({ canCheckin = true, canQR = 
 
   // ════════════════════════════════════════════════════════════════
   if (view === 'create') {
+    // Rule 1b — the FORM measure. `max-w-xl` is kept unprefixed on purpose: it
+    // is 576px at the 16px mobile rem base, and the content box is 591px at a
+    // 639px viewport, so this cap BINDS below 640px — measured, not assumed.
+    // Replacing it would move the phone. The sm: rule out-ranks it above 640px.
     return (
-      <div className="max-w-xl mx-auto" style={{ paddingBottom: 120 }}>
+      <div className={`max-w-xl mx-auto ${FORM_MEASURE}`} style={{ paddingBottom: 120 }}>
         <AdminEditorHeader
           onBack={() => setView('list')}
           backLabel="All sessions"
@@ -280,26 +285,26 @@ const AdminCheckin: React.FC<AdminCheckinProps> = ({ canCheckin = true, canQR = 
           subtitle="Generate a QR code attendees can scan to check in."
         />
         <div className="bg-surface-raised rounded-brand-lg border border-line shadow-[var(--ds-sh-sm)] p-5 space-y-4">
-          <div>
+          <div className={FIELD_WIDTH.long}>
             <label className="block text-sm font-medium text-body mb-1.5">Session Name</label>
-            <input value={name} onChange={e => setName(e.target.value)} placeholder="Sunday Service — June 29" className="w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:outline-none focus:border-gold" />
+            <input value={name} onChange={e => setName(e.target.value)} placeholder="Sunday Service — June 29" className={`w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:outline-none focus:border-gold ${CONTROL_DENSITY.control}`} />
           </div>
-          <div>
+          <div className={FIELD_WIDTH.medium}>
             <label className="block text-sm font-medium text-body mb-1.5">Date &amp; Time</label>
-            <input type="datetime-local" value={date} onChange={e => setDate(e.target.value)} className="w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:outline-none focus:border-gold" />
+            <input type="datetime-local" value={date} onChange={e => setDate(e.target.value)} className={`w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:outline-none focus:border-gold ${CONTROL_DENSITY.control}`} />
           </div>
-          <div>
+          <div className={FIELD_WIDTH.long}>
             <label className="block text-sm font-medium text-body mb-1.5">Location <span className="text-faint font-normal">(optional)</span></label>
-            <input value={location} onChange={e => setLocation(e.target.value)} placeholder="Main Auditorium" className="w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:outline-none focus:border-gold" />
+            <input value={location} onChange={e => setLocation(e.target.value)} placeholder="Main Auditorium" className={`w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:outline-none focus:border-gold ${CONTROL_DENSITY.control}`} />
           </div>
-          <div>
+          <div className={FIELD_WIDTH.long}>
             <label className="block text-sm font-medium text-body mb-1.5">Linked Event <span className="text-faint font-normal">(optional)</span></label>
-            <select value={linkedEventId} onChange={e => setLinkedEventId(e.target.value)} className="w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:outline-none focus:border-gold bg-surface-raised">
+            <select value={linkedEventId} onChange={e => setLinkedEventId(e.target.value)} className={`w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:outline-none focus:border-gold bg-surface-raised ${CONTROL_DENSITY.control}`}>
               <option value="">No linked event</option>
               {events.map(ev => <option key={ev.id} value={ev.id}>{ev.title}</option>)}
             </select>
           </div>
-          <button onClick={handleCreate} disabled={saving} className="w-full py-2.5 rounded-xl text-white text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: GOLD }}>
+          <button onClick={handleCreate} disabled={saving} className={`w-full sm:w-auto py-2.5 rounded-xl text-white text-sm font-semibold disabled:opacity-50 ${ACTION_BUTTON} ${CONTROL_DENSITY.action}`} style={{ backgroundColor: GOLD }}>
             {saving ? 'Creating…' : 'Generate QR & Save'}
           </button>
         </div>
@@ -310,7 +315,7 @@ const AdminCheckin: React.FC<AdminCheckinProps> = ({ canCheckin = true, canQR = 
   if (view === 'detail' && selected) {
     const status = sessionStatus(selected);
     return (
-      <div className="max-w-3xl mx-auto" style={{ paddingBottom: 120 }}>
+      <div className={FORM_CONTAINER} style={{ paddingBottom: 120 }}>
         <AdminEditorHeader
           onBack={() => setView('list')}
           backLabel="All sessions"
@@ -409,15 +414,21 @@ const AdminCheckin: React.FC<AdminCheckinProps> = ({ canCheckin = true, canQR = 
   // ── List view ────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="max-w-3xl mx-auto">
+      // Same surface as the list below, so it takes the same measure — a
+      // different one here would jump the page as the sessions arrive.
+      <div className={FORM_MEASURE}>
         {subTabBar}
         <div className="flex items-center justify-center h-40"><Loader2 size={28} className="animate-spin" style={{ color: GOLD }} /></div>
       </div>
     );
   }
 
+  // Rule 1b — the FORM measure, not the page one. This is a stack of session
+  // cards, not a data-dense table: at the 1120px page measure each card ran the
+  // full width of a 1440px monitor. The QR tab and the session detail keep the
+  // page measure; they carry a generator and a live roster respectively.
   return (
-    <div className="max-w-3xl mx-auto" style={{ paddingBottom: 120 }}>
+    <div className={FORM_MEASURE} style={{ paddingBottom: 120 }}>
       {subTabBar}
       <div className="flex items-start justify-between gap-4 mb-6">
         <p className="text-sm text-muted leading-relaxed max-w-lg">
