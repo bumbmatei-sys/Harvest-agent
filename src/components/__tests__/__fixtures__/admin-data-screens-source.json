@@ -2,18 +2,10 @@
   "recordedFrom": "ef557af",
   "digests": {
     "AdminDashboard.tsx": "ddd48ae0c60221815867187b040457869cc9225096ff8613686bc98832bbb6ab",
-    "layout/form-layout.ts": "ea1ffd53c31bce808df51afd40d3c2407461598e9a77a067b21738a16712ba64",
     "AdminDocs.tsx": "c560be13588f3213861668b2346a4f7b43902e6ff232402e398b5dabd9c9c967",
     "AdminBlog.tsx": "be97533c6ac82452d17021e9911f391c8129381a7f3e1f0da44f7edc8e1e6656",
     "AdminCourses.tsx": "bf5fbb36159e248be80d0a6dfc36a6bb5a3fb63c09f5b4f5572b0790b6d38ae3",
-    "NewsletterEditor.tsx": "81185164d5aca31c5155c5a17ff99f44b6cae7d87ec6657920baa22746f44006",
-    "NewsTab.tsx": "dcdebd75ce6329ab41931be01e97e68200169317c3dfb06937cbf8572f323b61",
-    "MainApp.tsx": "3091e628a5579937c010600f78e5355f3ed18211cb69f1723774a437c434e6ad",
-    "BiblePage.tsx": "3cc7e6146fbd4db6ab9e179b542c10afe837a2c506a8afe78ee608b2e435c469",
-    "UserMessages.tsx": "442699006bc0edf0f0371536c7b4ffc85550cf28765e96bd32484588abf8eb77",
-    "AllNews.tsx": "af3e653b660bc00f312abae3f2a6ac8fbd382687f8b4794996051f719362c78d",
-    "AIChat.tsx": "30693308c746e68c867a5bed898e70d92028a7fa2139f00c45a02042cf5ab838",
-    "LivestreamView.tsx": "7ef3ee8a60ea1d27928f53c4ee4f71e9f49f9ebc9832add1635ddc6ddbaa631e"
+    "NewsletterEditor.tsx": "81185164d5aca31c5155c5a17ff99f44b6cae7d87ec6657920baa22746f44006"
   },
   "retired": {
     "AdminRAG.tsx": {
