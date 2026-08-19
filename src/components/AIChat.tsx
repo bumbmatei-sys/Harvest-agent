@@ -6,6 +6,7 @@ import { collection, query, where, getDocs } from 'firebase/firestore';
 import { OperationType, handleFirestoreError } from '../utils/firestore-errors';
 import { getTenantScope, PLATFORM_TENANT_ID } from '../utils/tenant-scope';
 import { useTenant } from '../contexts/TenantContext';
+import { READING_MEASURE } from './layout/form-layout';
 
 // AI API calls are proxied through /api/gemini to keep API keys server-side
 // Embeddings: Gemini | Chat: Xiaomi MiMo
@@ -650,8 +651,15 @@ Friendly neighbor, not a corporate chatbot. Short. Helpful. Human.`;
  )}
 
  {/* Messages */}
+ {/* Rule 6 (form-layout.ts). Was `lg:max-w-3xl` — 48rem, which is 696px here
+     and not the 768px the scale's name implies, because globals.css trims the
+     rem base to 14.5px above 1024px. Same intent, now a named px value shared
+     with the Bible, the news feed and the Messages thread.
+     `lg:self-center` goes with it: READING_MEASURE's own `lg:mx-auto` centres
+     a flex-column child by the same auto margins, so keeping both would be two
+     spellings of one thing. */}
  {!isEmpty && (
- <div className="lg:w-full lg:max-w-3xl lg:self-center" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+ <div className={`lg:w-full ${READING_MEASURE}`} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
  {messages.map((msg) => (
  <div key={msg.id} style={{ animation: "fadeSlideUp 0.3s ease" }}>
  <MessageBubble message={msg} logoSrc={displayLogo} logoAlt={displayName} />
@@ -672,7 +680,8 @@ Friendly neighbor, not a corporate chatbot. Short. Helpful. Human.`;
  : "Resting for a little while — spend some time with God directly. The chat will be ready again soon."}
  </div>
  )}
- <div className="lg:max-w-3xl lg:mx-auto lg:w-full" style={{ display: "flex", alignItems: "center", gap: 8, background: BG, borderRadius: 99, border: `1.5px solid ${BORDER}`, padding: "0 6px 0 16px", minHeight: 44 }}>
+ {/* Rule 6 — the composer tracks the thread above it. */}
+ <div className={`lg:w-full ${READING_MEASURE}`} style={{ display: "flex", alignItems: "center", gap: 8, background: BG, borderRadius: 99, border: `1.5px solid ${BORDER}`, padding: "0 6px 0 16px", minHeight: 44 }}>
  <textarea
  ref={inputRef}
  value={input}
@@ -689,8 +698,15 @@ Friendly neighbor, not a corporate chatbot. Short. Helpful. Human.`;
  </svg>
  </button>
  </div>
- {/* Desktop-only disclaimer line, per the Harvest Member App design. */}
- <p className="hidden lg:block" style={{ textAlign: "center", fontSize: 11, color: TEXT2, margin: "8px auto 0", maxWidth: "48rem", lineHeight: 1.5 }}>
+ {/* Desktop-only disclaimer line, per the Harvest Member App design.
+     ⚠️ This line carried its measure INLINE — `maxWidth: "48rem"` — which is a
+     second, competing copy of the composer's cap written in the one syntax no
+     class can override. It has been REMOVED rather than layered over: adding
+     READING_MEASURE while the inline value stayed would have left the class
+     inert and the disclaimer 16px wider than the composer it sits under. The
+     `auto` side margins that shorthand also carried come from the rule's own
+     `lg:mx-auto`, so only `marginTop` remains inline. */}
+ <p className={`hidden lg:block ${READING_MEASURE}`} style={{ textAlign: "center", fontSize: 11, color: TEXT2, marginTop: 8, lineHeight: 1.5 }}>
  {`Ask ${askBrandName} can make mistakes. Verify important details with Scripture.`}
  </p>
  </div>

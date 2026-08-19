@@ -747,11 +747,27 @@ describe('the layout rules live in one shared place and have a caller', () => {
     // AdminDashboard is in that batch's scope and is deliberately absent: it is
     // the shell every other admin screen renders inside, so a measure on it is
     // a measure on all of them at once.
+    //
+    // THE-190 batch H is the first adopter from the MEMBER app rather than the
+    // admin one. Five member screens take a rule: NewsTab takes Rule 1a's page
+    // measure, and AllNews, BiblePage, AIChat and UserMessages take Rule 6, the
+    // reading measure that batch adds. Between them they retired three more rem
+    // measures — `lg:max-w-2xl` (609px) and `lg:max-w-3xl` (696px), plus an
+    // inline `maxWidth: "48rem"` COPY of the latter that no class could have
+    // overridden. MainApp.tsx (the shell) and LivestreamView.tsx were in that
+    // batch's scope and deliberately take nothing — see
+    // MemberScreens.desktop-layout.test.tsx for why each.
     const importers = execSync(
-      "grep -rl \"from '.*form-layout'\" src --include=*.tsx --include=*.ts || true",
+      // ⚠️ Both quote styles. The pattern was single-quote-only, which made a
+      // double-quoted adopter invisible to this gate rather than red —
+      // BiblePage.tsx imports as `from "./layout/form-layout"`, matching its own
+      // file's style, and slipped straight through. Widening it is what makes
+      // this a registry of adopters rather than of one import convention.
+      "grep -rlE \"from ['\\\"].*form-layout['\\\"]\" src --include=*.tsx --include=*.ts || true",
       { encoding: 'utf8' },
     ).split('\n').filter(Boolean).filter((f) => !f.includes('__tests__')).sort();
     expect(importers).toEqual([
+      'src/components/AIChat.tsx',
       'src/components/AdminBlog.tsx',
       'src/components/AdminCRM.tsx',
       'src/components/AdminCheckin.tsx',
@@ -768,11 +784,15 @@ describe('the layout rules live in one shared place and have a caller', () => {
       'src/components/AdminSettings.tsx',
       'src/components/AdminSms.tsx',
       'src/components/AdminTenants.tsx',
+      'src/components/AllNews.tsx',
       'src/components/AnalyticsAndRoles.tsx',
+      'src/components/BiblePage.tsx',
       'src/components/ChurchEnrollment.tsx',
       'src/components/EnterpriseContactModal.tsx',
+      'src/components/NewsTab.tsx',
       'src/components/NewsletterEditor.tsx',
       'src/components/PersonalInformationModal.tsx',
+      'src/components/UserMessages.tsx',
     ]);
   });
 });

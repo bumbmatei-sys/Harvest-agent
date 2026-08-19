@@ -588,11 +588,20 @@ describe('widths, heights and gaps come from form-layout, not new per-screen val
     // Batch F (the five admin ministry screens) adds the last five. Batches E,
     // F and G ran in parallel and each added only its own, so this list is the
     // UNION of the three — kept byte-for-byte equal to the other one.
+    //
+    // THE-190 batch H is the first adopter from the MEMBER app rather than the
+    // admin one — five member screens, the same matching note.
     const importers = execSync(
-      "grep -rl \"from '.*form-layout'\" src --include=*.tsx --include=*.ts || true",
+      // ⚠️ Both quote styles. The pattern was single-quote-only, which made a
+      // double-quoted adopter invisible to this gate rather than red —
+      // BiblePage.tsx imports as `from "./layout/form-layout"`, matching its own
+      // file's style, and slipped straight through. Widening it is what makes
+      // this a registry of adopters rather than of one import convention.
+      "grep -rlE \"from ['\\\"].*form-layout['\\\"]\" src --include=*.tsx --include=*.ts || true",
       { encoding: 'utf8' },
     ).split('\n').filter(Boolean).filter((f) => !f.includes('__tests__')).sort();
     expect(importers).toEqual([
+      'src/components/AIChat.tsx',
       'src/components/AdminBlog.tsx',
       'src/components/AdminCRM.tsx',
       'src/components/AdminCheckin.tsx',
@@ -609,11 +618,15 @@ describe('widths, heights and gaps come from form-layout, not new per-screen val
       'src/components/AdminSettings.tsx',
       'src/components/AdminSms.tsx',
       'src/components/AdminTenants.tsx',
+      'src/components/AllNews.tsx',
       'src/components/AnalyticsAndRoles.tsx',
+      'src/components/BiblePage.tsx',
       'src/components/ChurchEnrollment.tsx',
       'src/components/EnterpriseContactModal.tsx',
+      'src/components/NewsTab.tsx',
       'src/components/NewsletterEditor.tsx',
       'src/components/PersonalInformationModal.tsx',
+      'src/components/UserMessages.tsx',
     ]);
   });
 });
