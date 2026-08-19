@@ -8,6 +8,9 @@ import { useAppStore } from '../store/useAppStore';
 import { PLATFORM_TENANT_ID } from '../utils/tenant-scope';
 import { authFetch } from '../utils/auth-fetch';
 import { AdminSectionLabel, AdminBadge, statusTone } from './admin/AdminUI';
+// Rules 2 and 3 (form-layout.ts). Rule 1 is deliberately NOT applied here — see
+// the note on the page root below.
+import { FIELD_WIDTH, ACTION_BUTTON } from './layout/form-layout';
 
 const GOLD = 'var(--brand-color, #B8962E)';
 
@@ -312,6 +315,16 @@ const AdminSms: React.FC = () => {
 
   const fmtDate = (s?: string) => s ? new Date(s).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—';
 
+  // Rule 1 is NOT applied to this container, deliberately. Measured in
+  // Chromium against the compiled CSS and the real admin shell, this screen
+  // already renders 609px wide at 1024px and above — well inside
+  // FORM_MEASURE's 940px form measure — so adopting FORM_MEASURE would
+  // WIDEN it by 331px, which is the opposite of what this programme is for.
+  // The one real defect in `max-w-2xl` is that 42rem is 672px below 1024px
+  // and 609px above it (globals.css trims the rem base for desktop
+  // density), so the cap silently loses 63px crossing that breakpoint.
+  // Fixing that needs a measure form-layout.ts does not have, and minting a
+  // third one is a change to the shared module — reported instead.
   return (
     <div className="max-w-2xl mx-auto" style={{ paddingBottom: 120 }}>
       <div className="flex gap-1 bg-surface-sunken rounded-xl p-1 mb-6 w-fit mx-auto">
@@ -328,14 +341,14 @@ const AdminSms: React.FC = () => {
           <div className="bg-surface-raised rounded-brand-lg border border-line shadow-[var(--ds-sh-sm)] p-5 space-y-3">
             <div>
               <label className="block text-sm font-medium text-body mb-1.5">Recipients</label>
-              <select value={group} onChange={e => setGroup(e.target.value as Group)} className="w-full px-4 py-2.5 border border-line rounded-xl text-sm bg-surface-raised focus:outline-none focus:border-gold">
+              <select value={group} onChange={e => setGroup(e.target.value as Group)} className={`w-full px-4 py-2.5 border border-line rounded-xl text-sm bg-surface-raised focus:outline-none focus:border-gold ${FIELD_WIDTH.medium}`}>
                 <option value="all_members">All Members</option>
                 <option value="all_donors">All Donors</option>
                 <option value="tag">Custom Tag</option>
               </select>
             </div>
             {group === 'tag' && (
-              <input value={tag} onChange={e => setTag(e.target.value)} placeholder="Tag name" className="w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:outline-none focus:border-gold" />
+              <input value={tag} onChange={e => setTag(e.target.value)} placeholder="Tag name" className={`w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:outline-none focus:border-gold ${FIELD_WIDTH.medium}`} />
             )}
             <p className="text-xs text-muted">Will send to <strong>{recipientCount ?? '…'}</strong> contact(s) with a phone number.</p>
             {/* The US-only limit is stated up front, not discovered from a
@@ -357,7 +370,7 @@ const AdminSms: React.FC = () => {
                 refuses the request (403 from the broadcast route), so this is a
                 courtesy, not the enforcement. The upgrade CTA lives in the
                 usage meter above. */}
-            <button onClick={send} disabled={sending || capReached} className="w-full flex items-center justify-center gap-2 py-2.5 rounded-brand text-white text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: GOLD }}>
+            <button onClick={send} disabled={sending || capReached} className={`w-full sm:w-auto flex items-center justify-center gap-2 py-2.5 rounded-brand text-white text-sm font-semibold disabled:opacity-50 ${ACTION_BUTTON}`} style={{ backgroundColor: GOLD }}>
               {sending ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
               {capReached ? 'Monthly SMS limit reached' : 'Send now'}
             </button>
@@ -455,7 +468,7 @@ const AdminSms: React.FC = () => {
                 <div>
                   <label className="block text-xs font-semibold text-body mb-1">Keyword</label>
                   <input value={t2g.keyword} onChange={e => setT2g({ ...t2g, keyword: e.target.value.toUpperCase() })}
-                    placeholder="GIVE" className="w-full px-3 py-2 border border-line rounded-xl text-sm font-mono focus:outline-none focus:border-gold" />
+                    placeholder="GIVE" className={`w-full px-3 py-2 border border-line rounded-xl text-sm font-mono focus:outline-none focus:border-gold ${FIELD_WIDTH.short}`} />
                   <p className="text-[11px] text-faint mt-1">People text this word to receive a giving link.</p>
                 </div>
                 <div>

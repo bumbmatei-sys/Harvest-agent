@@ -8,6 +8,10 @@ import { PLATFORM_TENANT_ID } from '../utils/tenant-scope';
 import { authFetch } from '../utils/auth-fetch';
 import { openStatementPdf } from '../utils/open-statement-pdf';
 import { useAdminHeader, HeaderActionButton } from './AdminScreenHeader';
+// Rules 2 and 3 (form-layout.ts). Rule 1 is deliberately NOT applied — see the
+// note on the page root below. No figure on this screen is touched: the rules
+// below change the WIDTH a control is drawn at and nothing else.
+import { FIELD_WIDTH, ACTION_BUTTON } from './layout/form-layout';
 
 const GOLD = 'var(--brand-color, #B8962E)';
 
@@ -130,6 +134,12 @@ const AdminGivingStatements: React.FC = () => {
     return <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-surface-sunken text-muted">{s}</span>;
   };
 
+  // Rule 1 is NOT applied to this container, deliberately — same reasoning
+  // as AdminSms.tsx, and the same measurement: 609px at 1024px and above,
+  // already well inside FORM_MEASURE's 940px, so adopting it would widen
+  // this screen by 331px. `max-w-2xl` does carry the rem-base split (672px
+  // below 1024px, 609px above), which is reported rather than papered over
+  // with a third measure invented in the shared module.
   return (
     <div className="max-w-2xl mx-auto" style={{ paddingBottom: 120 }}>
       {/* Section A — Configuration */}
@@ -139,7 +149,7 @@ const AdminGivingStatements: React.FC = () => {
           <div>
             <label className="block text-xs font-semibold text-body mb-1">EIN / Registration Number</label>
             <input value={config.ein} onChange={e => setConfig({ ...config, ein: e.target.value })}
-              className="w-full px-3 py-2 border border-line rounded-xl text-sm focus:outline-none focus:border-gold" />
+              className={`w-full px-3 py-2 border border-line rounded-xl text-sm focus:outline-none focus:border-gold ${FIELD_WIDTH.medium}`} />
           </div>
           <div>
             <label className="block text-xs font-semibold text-body mb-1">Organization Address</label>
@@ -149,7 +159,7 @@ const AdminGivingStatements: React.FC = () => {
           <div>
             <label className="block text-xs font-semibold text-body mb-1">Country</label>
             <select value={config.country} onChange={e => setConfig({ ...config, country: e.target.value })}
-              className="w-full px-3 py-2 border border-line rounded-xl text-sm bg-surface-raised focus:outline-none focus:border-gold">
+              className={`w-full px-3 py-2 border border-line rounded-xl text-sm bg-surface-raised focus:outline-none focus:border-gold ${FIELD_WIDTH.medium}`}>
               <option value="US">United States</option>
               <option value="CA">Canada</option>
               <option value="AU">Australia</option>
@@ -179,7 +189,7 @@ const AdminGivingStatements: React.FC = () => {
         <div>
           <label className="block text-xs font-semibold text-body mb-1">Tax Year</label>
           <select value={year} onChange={e => setYear(Number(e.target.value))}
-            className="w-full px-3 py-2 border border-line rounded-xl text-sm bg-surface-raised focus:outline-none focus:border-gold">
+            className={`w-full px-3 py-2 border border-line rounded-xl text-sm bg-surface-raised focus:outline-none focus:border-gold ${FIELD_WIDTH.short}`}>
             {years.map(y => <option key={y} value={y}>{y}</option>)}
           </select>
         </div>
@@ -192,10 +202,10 @@ const AdminGivingStatements: React.FC = () => {
         </div>
         {singleDonor && (
           <input value={donorEmail} onChange={e => setDonorEmail(e.target.value)} placeholder="donor@email.com" type="email"
-            className="w-full px-3 py-2 border border-line rounded-xl text-sm focus:outline-none focus:border-gold" />
+            className={`w-full px-3 py-2 border border-line rounded-xl text-sm focus:outline-none focus:border-gold ${FIELD_WIDTH.long}`} />
         )}
         <button onClick={generate} disabled={generating || (singleDonor && !donorEmail.trim())}
-          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-white text-sm font-semibold disabled:opacity-50" style={{ backgroundColor: GOLD }}>
+          className={`w-full sm:w-auto flex items-center justify-center gap-2 py-2.5 rounded-xl text-white text-sm font-semibold disabled:opacity-50 ${ACTION_BUTTON}`} style={{ backgroundColor: GOLD }}>
           {generating ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
           {generating ? 'Generating…' : 'Generate & Send'}
         </button>

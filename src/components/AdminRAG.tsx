@@ -9,6 +9,16 @@ import { getTenantScope, getWriteTenantScope } from '../utils/tenant-scope';
 // "add to AI Knowledge" reuses this EXACT tenant-scoped write path.
 import { chunkText, chunkAndEmbed, finalizeSource, markSourceError } from '../utils/rag-ingest';
 import { MAX_PDF_UPLOAD_BYTES, limitMb } from '../utils/upload-limits';
+// Rules 1 and 2 (form-layout.ts). This screen is a data-dense PAGE — a sources
+// table and a two-column add grid — so it takes FORM_CONTAINER's 1120px page
+// measure, not FORM_MEASURE's 940px form measure.
+//
+// Every rule below arrives as a `className`, and an inline `style` beats a
+// class in the cascade, so each width these rules now own had to be REMOVED
+// from its `style` object first rather than layered over. The three removals
+// are marked at their call sites; nothing else in this file's 88 inline style
+// objects is touched.
+import { FORM_CONTAINER, FIELD_WIDTH } from './layout/form-layout';
 
 
 // Gemini API calls are proxied through /api/gemini to keep the API key server-side
@@ -499,7 +509,9 @@ export default function AdminRAG() {
      renders the "AI Knowledge" screen title, so this in-page title band is
      hidden to avoid a duplicate; the mobile view starts at the tabs below. */}
  <div className="hidden lg:block">
- <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:16, padding:"18px 20px 0", maxWidth:1160, margin:"0 auto", width:"100%" }}>
+ {/* Rule 1: `maxWidth:1160, margin:"0 auto"` removed from this style object —
+     an inline width would shadow FORM_CONTAINER entirely. */}
+ <div className={FORM_CONTAINER} style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:16, padding:"18px 20px 0", width:"100%" }}>
  <div style={{ minWidth:0 }}>
  <p style={{ fontSize:11, fontWeight:600, letterSpacing:"0.16em", textTransform:"uppercase", color:GOLD, marginBottom:6 }}>Content</p>
  <h1 style={{ fontFamily:"var(--font-display), Georgia, serif", fontSize:28, fontWeight:300, color:TEXT, letterSpacing:"-0.02em" }}>AI Knowledge Base</h1>
@@ -523,7 +535,8 @@ export default function AdminRAG() {
 
  {/* Tabs — desktop underline tabs. On mobile the same add|sources modes render
      as the segmented control below (responsive split); tab/setTab is shared. */}
- <div className="hidden lg:block" style={{ maxWidth:1160, margin:"0 auto", width:"100%", padding:"0 20px" }}>
+ {/* Rule 1: `maxWidth:1160, margin:"0 auto"` removed — see the header band above. */}
+ <div className={`hidden lg:block ${FORM_CONTAINER}`} style={{ width:"100%", padding:"0 20px" }}>
  <div style={s.tabBar}>
  <button style={{ ...s.tab, ...(tab==="add"?s.tabActive:{}) }} onClick={()=>setTab("add")}>+ Add Knowledge</button>
  <button style={{ ...s.tab, ...(tab==="sources"?s.tabActive:{}) }} onClick={()=>setTab("sources")}>
@@ -547,7 +560,7 @@ export default function AdminRAG() {
  </div>
  </div>
 
- <div style={s.content}>
+ <div className={FORM_CONTAINER} style={s.content}>
 
  {/* Usage meter — always visible above the tabs so admins see the caps
      before they hit them. Renders nothing for unmetered (super-admin) accounts. */}
@@ -635,7 +648,7 @@ export default function AdminRAG() {
  <div style={{ ...s.card, display:"flex", flexDirection:"column" }}>
  <div style={s.sectionHeading}>Paste Text</div>
  <div style={{ ...s.cardBody, flex:1 }}>
- <input style={s.input} value={pasteTitle} onChange={e=>setPasteTitle(e.target.value)}
+ <input className={FIELD_WIDTH.long} style={s.input} value={pasteTitle} onChange={e=>setPasteTitle(e.target.value)}
  placeholder="Source title (optional) — e.g. Romans Commentary" />
  <textarea
  style={{ ...s.textarea, flex:1, minHeight:220, fontSize:14, lineHeight:1.7 }}
@@ -725,11 +738,13 @@ export default function AdminRAG() {
  {/* Search + filter — desktop only. On mobile the mockup shows every source with
      no filter bar, so this is hidden (search/filterType stay at their defaults). */}
  <div className="hidden lg:flex" style={{ gap:10 }}>
- <div style={{ flex:1, position:"relative", display:"flex", alignItems:"center" }}>
+ <div className={FIELD_WIDTH.long} style={{ flex:1, position:"relative", display:"flex", alignItems:"center" }}>
  <Search size={16} color={TEXT2} style={{ position:"absolute", left:13, top:"50%", transform:"translateY(-50%)" }} />
  <input style={{ ...s.input, paddingLeft:38 }} value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search sources..." />
  </div>
- <select style={{ ...s.select, width:160 }} value={filterType} onChange={e=>setFilterType(e.target.value)}>
+ {/* Rule 2: inline `width:160` removed — `sm:w-full` + the `short` cap render
+     the same 160px through the rule instead of around it. */}
+ <select className={`sm:w-full ${FIELD_WIDTH.short}`} style={s.select} value={filterType} onChange={e=>setFilterType(e.target.value)}>
  <option value="all">All types</option>
  {Object.entries(TYPE_META).map(([k,v])=>(
  <option key={k} value={k}>{v.label}</option>
@@ -922,7 +937,9 @@ const s: Record<string, React.CSSProperties> = {
  tabBar: { display:"flex", paddingTop:16, borderBottom:`1px solid ${BORDER}` },
  tab: { background:"none", border:"none", color:TEXT2, cursor:"pointer", padding:"10px 4px 12px", marginRight:24, fontSize:14, fontWeight:600, fontFamily:"inherit", borderBottom:"2.5px solid transparent" },
  tabActive: { color:GOLD, borderBottom:`2.5px solid ${GOLD}` },
- content: { padding:"20px", maxWidth:1160, margin:"0 auto", width:"100%" },
+ // Rule 1: `maxWidth:1160, margin:"0 auto"` removed — the cap and the centring
+ // are FORM_CONTAINER's now, applied as a className where `s.content` is spread.
+ content: { padding:"20px", width:"100%" },
  panel: { display:"flex", flexDirection:"column", gap:14 },
  addGrid: { display:"grid", gridTemplateColumns:"1fr 1fr", gap:16, alignItems:"stretch" },
  card: { background:CARD, borderRadius:16, boxShadow:"0 1px 6px rgba(0,0,0,0.07)", overflow:"hidden" },
