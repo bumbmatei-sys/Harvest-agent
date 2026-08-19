@@ -157,7 +157,7 @@ const RECORDING = !!process.env.UPDATE_LAYOUT_BASELINE;
 /** The five screens, and the revision their pre-PR form is read from. */
 const SCREENS = ['AdminCommunity', 'AdminEvents', 'AdminFundraising', 'AdminForms', 'AdminCheckin'] as const;
 type Screen = typeof SCREENS[number];
-const PRE_PR_REVISION = 'ef557af';
+const PRE_PR_REVISION = '974ae1d';
 
 /**
  * The pre-PR shape of each screen, as a FIXTURE rather than a `git show` at
