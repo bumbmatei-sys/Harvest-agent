@@ -165,8 +165,13 @@ const buttonContaining = (root: ParentNode, text: string): HTMLButtonElement => 
   return m as HTMLButtonElement;
 };
 
+const open: { unmount: () => void }[] = [];
 let mounted: { unmount: () => void } | null = null;
-afterEach(() => { mounted?.unmount(); mounted = null; writes.length = 0; });
+afterEach(() => {
+  mounted?.unmount(); mounted = null;
+  while (open.length) open.pop()!.unmount();
+  writes.length = 0;
+});
 
 /** Mount a screen fresh, tracking it for teardown. */
 async function screen(name: Screen): Promise<HTMLDivElement> {
@@ -176,24 +181,43 @@ async function screen(name: Screen): Promise<HTMLDivElement> {
   return m.container;
 }
 
-/** Each screen's default surface plus the sub-views this PR's rules reach. */
+/**
+ * The sub-view each screen opens into, keyed by the label that gets there.
+ * `null` is the surface a fresh mount already lands on.
+ */
+const SUB_VIEW: Record<Screen, [string, string] | null> = {
+  AdminCommunity: null,
+  AdminEvents: ['form', 'Create event'],
+  AdminFundraising: null,
+  AdminForms: ['builder', 'Create form'],
+  AdminCheckin: ['create', 'New session'],
+};
+
+/**
+ * Every surface of a screen, each on its OWN mount.
+ *
+ * Navigating one container and handing the same node back under two keys would
+ * record and assert the post-navigation DOM twice, which is how the default
+ * surface silently stopped being covered at all.
+ */
 async function surfaces(name: Screen): Promise<Record<string, HTMLDivElement>> {
-  const c = await screen(name);
-  const out: Record<string, HTMLDivElement> = { default: c };
-  if (name === 'AdminEvents') {
-    await click(buttonContaining(c, 'Create event'));
-    out.form = c;
-  } else if (name === 'AdminForms') {
-    await click(buttonContaining(c, 'Create form'));
-    out.builder = c;
-  } else if (name === 'AdminCheckin') {
-    await click(buttonContaining(c, 'New session'));
-    out.create = c;
+  const Comp = (await import(`../${name}.tsx`)).default;
+  const first = await mountScreen(<Comp />);
+  open.push(first);
+  const out: Record<string, HTMLDivElement> = { default: first.container };
+  const sub = SUB_VIEW[name];
+  if (sub) {
+    const [view, label] = sub;
+    const second = await mountScreen(<Comp />);
+    open.push(second);
+    await click(buttonContaining(second.container, label));
+    out[view] = second.container;
   }
   return out;
 }
 
-interface Baseline { mobileLayer: string[]; colours: string[] }
+interface ViewBaseline { mobileLayer: string[]; colours: string[] }
+type Baseline = Record<string, ViewBaseline>;
 
 /**
  * Baselines are extracted mechanically from 29769c6 — the unmodified files
@@ -217,11 +241,16 @@ beforeAll(async () => {
       try {
         writeFileSync(file, execSync(`git show ${PRE_PR_REVISION}:src/components/${name}.tsx`, { cwd: REPO, encoding: 'utf8' }));
         vi.resetModules();
-        const Pre = (await import(`../${name}.tsx`)).default;
-        const m = await mountScreen(<Pre />);
-        writeFileSync(path.join(FIXTURES, `ministry-${name}.json`),
-          JSON.stringify({ mobileLayer: mobileLayer(m.container), colours: colourTokens(m.container) } satisfies Baseline, null, 2) + '\n');
-        m.unmount();
+        // Record EVERY surface, not just the one a fresh mount lands on: a rule
+        // spelled on a sub-view is invisible to a default-surface-only pin, which
+        // is exactly how an ungated width on the Check-In create form slipped
+        // through the first cut of this file.
+        const recorded: Baseline = {};
+        for (const [view, c] of Object.entries(await surfaces(name))) {
+          recorded[view] = { mobileLayer: mobileLayer(c), colours: colourTokens(c) };
+        }
+        while (open.length) open.pop()!.unmount();
+        writeFileSync(path.join(FIXTURES, `ministry-${name}.json`), JSON.stringify(recorded, null, 2) + '\n');
       } finally {
         writeFileSync(file, backup);
         vi.resetModules();
@@ -259,24 +288,28 @@ describe('the sub-640px rendering of each file is unchanged', () => {
   /** This PR adds no unprefixed token at all: every rule it spells is sm:-gated. */
   const ALLOWED_ADDITIONS: Record<string, string> = {};
 
-  const tokensOf = (root: ParentNode) =>
-    [...new Set(mobileLayer(root).flatMap((l) => (l.split('\t')[2] ?? '').split(' ').filter(Boolean)))];
-  const baselineTokens = (name: Screen) =>
-    [...new Set(BASELINE[name]!.mobileLayer.flatMap((l) => (l.split('\t')[2] ?? '').split(' ').filter(Boolean)))];
+  const toTokens = (layer: string[]) =>
+    [...new Set(layer.flatMap((l) => (l.split('\t')[2] ?? '').split(' ').filter(Boolean)))];
 
   for (const name of SCREENS) {
     it(`puts no undocumented token on the ${name} mobile layer`, async () => {
-      const before = new Set(baselineTokens(name));
-      const added = tokensOf(await screen(name)).filter((t) => !before.has(t));
-      expect(added.filter((t) => !(t in ALLOWED_ADDITIONS)), `${name} gained a token that reaches a phone`).toEqual([]);
+      for (const [view, c] of Object.entries(await surfaces(name))) {
+        const before = new Set(toTokens(BASELINE[name]![view].mobileLayer));
+        const added = toTokens(mobileLayer(c)).filter((t) => !before.has(t));
+        expect(added.filter((t) => !(t in ALLOWED_ADDITIONS)),
+          `${name}/${view} gained a token that reaches a phone`).toEqual([]);
+      }
     });
   }
 
   for (const name of SCREENS) {
     it(`takes nothing off the ${name} mobile layer that could have bound below 640px`, async () => {
-      const now = new Set(tokensOf(await screen(name)));
-      for (const t of baselineTokens(name).filter((t) => !now.has(t))) {
-        expect(t in ALLOWED_REMOVALS, `${name} dropped "${t}", which is not documented as phone-neutral`).toBe(true);
+      for (const [view, c] of Object.entries(await surfaces(name))) {
+        const now = new Set(toTokens(mobileLayer(c)));
+        for (const t of toTokens(BASELINE[name]![view].mobileLayer).filter((t) => !now.has(t))) {
+          expect(t in ALLOWED_REMOVALS,
+            `${name}/${view} dropped "${t}", which is not documented as phone-neutral`).toBe(true);
+        }
       }
     });
   }
@@ -314,10 +347,12 @@ describe('the sub-640px rendering of each file is unchanged', () => {
 describe('no touch target got smaller', () => {
   it('adds no unprefixed height anywhere, so no tap target can shrink', async () => {
     for (const name of SCREENS) {
-      const added = allTokens(await screen(name)).filter((t) => /(?:^|:)h-/.test(t) && !isResponsive(t));
-      const base = new Set(BASELINE[name]!.mobileLayer.flatMap((l) => l.split('\t')[2]?.split(' ') ?? []));
-      for (const t of added) expect(base.has(t), `${name} gained unprefixed ${t}`).toBe(true);
-      mounted?.unmount(); mounted = null;
+      for (const [view, c] of Object.entries(await surfaces(name))) {
+        const base = new Set(BASELINE[name]![view].mobileLayer.flatMap((l) => l.split('\t')[2]?.split(' ') ?? []));
+        for (const t of allTokens(c).filter((t) => /(?:^|:)h-/.test(t) && !isResponsive(t))) {
+          expect(base.has(t), `${name}/${view} gained unprefixed ${t}`).toBe(true);
+        }
+      }
     }
   });
 
@@ -529,16 +564,19 @@ describe('the check-in CSV export still works', () => {
 describe('no colour is hardcoded, and all four palettes resolve', () => {
   for (const name of SCREENS) {
     it(`renders exactly the baseline colour tokens in ${name}`, async () => {
-      expect(colourTokens(await screen(name))).toEqual(BASELINE[name]!.colours);
+      for (const [view, c] of Object.entries(await surfaces(name))) {
+        expect(colourTokens(c), `${name}/${view} colours moved`).toEqual(BASELINE[name]![view].colours);
+      }
     });
   }
 
   it('adds no colour-bearing class — every token this PR adds is structural', async () => {
     const added = new Set<string>();
     for (const name of SCREENS) {
-      const base = new Set(BASELINE[name]!.colours);
-      for (const t of colourTokens(await screen(name))) if (!base.has(t)) added.add(t);
-      mounted?.unmount(); mounted = null;
+      for (const [view, c] of Object.entries(await surfaces(name))) {
+        const base = new Set(BASELINE[name]![view].colours);
+        for (const t of colourTokens(c)) if (!base.has(t)) added.add(`${name}/${view}:${t}`);
+      }
     }
     expect([...added]).toEqual([]);
   });
