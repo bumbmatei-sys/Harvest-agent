@@ -163,8 +163,21 @@ describe('no price literal appears outside the single source', () => {
 
   const modules = walk(SRC).filter((f) => !PRICE_BEARING.some((a) => f.endsWith(a)));
   const CURRENT = [...new Set(PLAN_ORDER.flatMap((p) => BILLING_TERMS.map((t) => String(planPriceUsd(p, t)))))];
-  /** Prices THE-195 retired. None may survive anywhere outside a test. */
-  const RETIRED = ['441', '891', '1791', '37', '74', '149'];
+  /**
+   * Prices THE-195 retired. None may survive in executable source.
+   *
+   * ⚠️ `99` AND `199` ARE DELIBERATELY ABSENT, and their absence is the subtle
+   * part. Both were old MONTHLY prices, and both are now real QUARTERLY prices
+   * — Individual is $99 a quarter and Small Team is $199 a quarter — so banning
+   * the string would ban the current catalogue. They are distinguished by
+   * CONTEXT, not by string match: the `CURRENT` sweep above pins where each is
+   * allowed to appear, and the cross-repo contract pins what each means.
+   *
+   * `49` has no such collision — it is not a price on any tier or any term any
+   * more — so it is banned outright. A mutation that put `$49/mo` back into the
+   * AdminTenants labels went undetected until this entry existed.
+   */
+  const RETIRED = ['49', '441', '891', '1791', '37', '74', '149'];
 
   it('finds the modules to scan at all', () => {
     expect(modules.length).toBeGreaterThan(50);
