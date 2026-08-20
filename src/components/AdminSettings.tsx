@@ -11,6 +11,7 @@ import GivingStatementsSection from './settings/GivingStatementsSection';
 import SmsSection from './settings/SmsSection';
 import AiAssistantSection from './settings/AiAssistantSection';
 import IntegrationsSection from './settings/IntegrationsSection';
+import { hasAnyIntegrationProvider } from './settings/integration-providers';
 import ThemeToggle from './ThemeToggle';
 import PaletteFamilyToggle from './PaletteFamilyToggle';
 import SectionHeading from './settings/SectionHeading';
@@ -234,8 +235,15 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
       group: 'Connected Services',
       label: 'Integrations',
       icon: <Plug size={18} />,
-      content: <IntegrationsSection />,
-      hidden: !platformOverride && !currentFeatures?.newsletterAutomation,
+      content: <IntegrationsSection currentPlan={currentPlan} platformOverride={platformOverride} />,
+      // THE-193 — derived from the providers the section holds, not from a
+      // hardcoded flag. It used to read `!currentFeatures?.newsletterAutomation`,
+      // which hid Gmail — a CRM provider — from every tier without the
+      // newsletter, so Individual's CRM "Connect your email" button routed here
+      // and found nothing. Each provider now declares the feature it serves
+      // (integration-providers.ts) and the section shows when any of them is
+      // available. No plan flag changed.
+      hidden: !platformOverride && !hasAnyIntegrationProvider(currentFeatures),
     },
     {
       // THE-183 — the Danger Zone. A destructive action was sitting in the same

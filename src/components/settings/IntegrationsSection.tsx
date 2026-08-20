@@ -2,8 +2,39 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Instagram, Mail, Star, Send } from 'lucide-react';
 import { authFetch } from '../../utils/auth-fetch';
+import { TenantPlan } from '../../types/tenant.types';
+import { getPlanFeatures } from '../../utils/plan-features';
+import { hasPlatformOverride } from '../../utils/tenant-scope';
+import {
+  INTEGRATION_PROVIDERS,
+  IntegrationProviderId,
+  getIntegrationProvider,
+  isProviderAvailable,
+} from './integration-providers';
 
-const IntegrationsSection: React.FC = () => {
+interface IntegrationsSectionProps {
+  /** The tenant's tier. Each provider card is gated on the feature it serves —
+   *  Gmail on `crm`, Instagram and Mailchimp on `newsletterAutomation` — so a
+   *  tenant is never offered a connection its plan cannot use. Absent means no
+   *  entitlement is known, and only a platform super admin sees the cards. */
+  currentPlan?: TenantPlan;
+  /** Platform-context super admin: sees every provider regardless of plan.
+   *  Defaults to the real check so the component is safe to render bare. */
+  platformOverride?: boolean;
+}
+
+const IntegrationsSection: React.FC<IntegrationsSectionProps> = ({ currentPlan, platformOverride }) => {
+  const features = currentPlan ? getPlanFeatures(currentPlan) : null;
+  const isPlatformOverride = platformOverride ?? hasPlatformOverride();
+  /** One gate, applied per provider, keeping the `platformOverride || …` shape
+   *  at every card. */
+  const showProvider = (id: IntegrationProviderId): boolean =>
+    isPlatformOverride || isProviderAvailable(getIntegrationProvider(id), features);
+  const showInstagram = showProvider('instagram');
+  const showMailchimp = showProvider('mailchimp');
+  const showGmail = showProvider('gmail');
+  const visibleProviders = INTEGRATION_PROVIDERS.filter(p => showProvider(p.id));
+
   const [instagramStatus, setInstagramStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected');
   const [instagramAccount, setInstagramAccount] = useState<string | null>(null);
   const [isPrimaryInstagram, setIsPrimaryInstagram] = useState(false);
@@ -49,13 +80,15 @@ const IntegrationsSection: React.FC = () => {
   const loadIntegrations = useCallback(async () => {
     if (loaded) return;
     try {
+      // Only ask about providers this tenant can actually see. The routes are
+      // untouched; a hidden card simply has nothing to report.
       const [igResp, mcResp, gmResp] = await Promise.all([
-        authFetch('/api/composio/instagram/status'),
-        authFetch('/api/composio/mailchimp/status'),
-        authFetch('/api/composio/gmail/status'),
+        showInstagram ? authFetch('/api/composio/instagram/status') : null,
+        showMailchimp ? authFetch('/api/composio/mailchimp/status') : null,
+        showGmail ? authFetch('/api/composio/gmail/status') : null,
       ]);
 
-      if (igResp.ok) {
+      if (igResp?.ok) {
         const igData = await igResp.json();
         if (igData.connected) {
           setInstagramStatus('connected');
@@ -64,7 +97,7 @@ const IntegrationsSection: React.FC = () => {
         setIsPrimaryInstagram(igData.isPrimary || false);
       }
 
-      if (mcResp.ok) {
+      if (mcResp?.ok) {
         const mcData = await mcResp.json();
         if (mcData.connected) {
           setMailchimpStatus('connected');
@@ -73,7 +106,7 @@ const IntegrationsSection: React.FC = () => {
         setIsPrimaryMailchimp(mcData.isPrimary || false);
       }
 
-      if (gmResp.ok) {
+      if (gmResp?.ok) {
         const gmData = await gmResp.json();
         if (gmData.connected) setGmailStatus('connected');
         setGmailSender(gmData.senderEmail || null);
@@ -83,15 +116,17 @@ const IntegrationsSection: React.FC = () => {
       // one click. It is only a prefill: an admin who authorises a different
       // Google account must be able to say so, which is the whole point of
       // asking rather than assuming.
-      try {
-        const { auth } = await import('../../firebase');
-        if (auth.currentUser?.email) setGmailSenderDraft(auth.currentUser.email);
-      } catch { /* prefill is a convenience, not a requirement */ }
+      if (showGmail) {
+        try {
+          const { auth } = await import('../../firebase');
+          if (auth.currentUser?.email) setGmailSenderDraft(auth.currentUser.email);
+        } catch { /* prefill is a convenience, not a requirement */ }
+      }
     } catch (e) {
       console.error('Failed to load integrations:', e);
     }
     setLoaded(true);
-  }, [loaded]);
+  }, [loaded, showInstagram, showMailchimp, showGmail]);
 
   useEffect(() => { loadIntegrations(); }, [loadIntegrations]);
 
@@ -315,11 +350,17 @@ const IntegrationsSection: React.FC = () => {
 
   return (
     <div className="space-y-4">
+      {/* The intro describes the cards that are actually on screen. Derived
+          from the visible providers' own concern, so a tenant with only the
+          CRM provider is not told about newsletter distribution. */}
       <p className="text-sm text-body">
-        Connect your social media and email marketing platforms to automate newsletter distribution.
+        {visibleProviders.some(p => p.concern === 'newsletter')
+          ? 'Connect your social media and email marketing platforms to automate newsletter distribution.'
+          : 'Connect your own Gmail account so you can email a CRM contact from Harvest.'}
       </p>
 
       {/* Instagram Card */}
+      {showInstagram && (
       <div className="bg-surface-tint rounded-xl p-4">
         <div className="flex items-center gap-4">
           <Instagram size={20} className="text-faint" />
@@ -368,8 +409,10 @@ const IntegrationsSection: React.FC = () => {
           </div>
         </div>
       </div>
+      )}
 
       {/* Mailchimp Card */}
+      {showMailchimp && (
       <div className="bg-surface-tint rounded-xl p-4">
         <div className="flex items-center gap-4">
           <Mail size={20} className="text-faint" />
@@ -418,8 +461,10 @@ const IntegrationsSection: React.FC = () => {
           </div>
         </div>
       </div>
+      )}
 
       {/* Gmail Card */}
+      {showGmail && (
       <div className="bg-surface-tint rounded-xl p-4">
         <div className="flex items-center gap-4">
           <Send size={20} className="text-faint" />
@@ -512,6 +557,7 @@ const IntegrationsSection: React.FC = () => {
           </div>
         </div>
       </div>
+      )}
 
       <p className="text-xs text-faint">
         Powered by Composio — secure OAuth connections. Your credentials are never stored on our servers.

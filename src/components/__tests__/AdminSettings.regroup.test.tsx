@@ -787,7 +787,11 @@ describe('THE-183 — admin Settings', () => {
       'src/components/settings/PaymentSection.tsx',
       'src/components/settings/SmsSection.tsx',
       'src/components/settings/OnboardingSection.tsx',
-      'src/components/settings/IntegrationsSection.tsx',
+      // IntegrationsSection is NOT diffed as a whole any more. THE-193 gates its
+      // three provider cards individually (Gmail is a CRM provider, not a
+      // newsletter one), which is a deliberate edit to this file. What THE-183
+      // actually guards — that no integration PATH moved — is asserted on the
+      // file's contents just below instead, which is the stronger check anyway.
       'src/components/settings/GivingStatementsSection.tsx',
       'src/components/settings/AiAssistantSection.tsx',
       'src/components/settings/useStripeReturn.ts',
@@ -798,6 +802,23 @@ describe('THE-183 — admin Settings', () => {
       const diff = execSync(`git diff --stat ${base} -- ${OWNED.join(' ')}`, { cwd: ROOT }).toString().trim();
       expect(diff, 'a settings section that owns an integration path was modified').toBe('');
     }
+
+    // (a2) Every integration endpoint IntegrationsSection owns is still called
+    //      from it, unchanged, for all three providers.
+    const integrations = readFileSync(path.join(SRC, 'components/settings/IntegrationsSection.tsx'), 'utf8');
+    for (const endpoint of [
+      '/api/composio/instagram/status', '/api/composio/instagram/connect', '/api/composio/instagram/disconnect',
+      '/api/composio/mailchimp/status', '/api/composio/mailchimp/connect', '/api/composio/mailchimp/disconnect',
+      '/api/composio/gmail/status', '/api/composio/gmail/connect', '/api/composio/gmail/disconnect',
+      '/api/composio/gmail/address',
+    ]) {
+      expect(integrations, `${endpoint} is no longer called from IntegrationsSection`).toContain(endpoint);
+    }
+    // And the two tenant-wide "Primary" writes are still the Mailchimp and
+    // Instagram ones only — Gmail has never had a primary.
+    expect(integrations).toContain('primaryInstagramAdmin');
+    expect(integrations).toContain('primaryMailchimpAdmin');
+    expect(integrations, 'Gmail grew a tenant-wide primary').not.toMatch(/primaryGmail/i);
 
     // (b) AdminSettings' own wiring is intact, whether or not git is available:
     //     the billing portal call, the Stripe return handling that force-opens
