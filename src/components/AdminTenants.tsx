@@ -18,6 +18,7 @@ import AdminAffiliates from './AdminAffiliates';
 // cap was 108px narrower on a monitor than on a tablet. 1120px is 1120px at
 // every width.
 import { FORM_CONTAINER } from './layout/form-layout';
+import { PLAN_DISPLAY_NAMES, PLAN_ORDER, formatPlanPrice } from '../utils/plan-features';
 
 const PLAN_LABELS: Record<TenantPlan, string> = {
   plus: 'Plus',
@@ -27,11 +28,16 @@ const PLAN_LABELS: Record<TenantPlan, string> = {
 
 // Marketing labels with price, shown in the (read-only) edit view. Intentionally
 // different from PLAN_LABELS — these match what customers see in checkout.
-const PLAN_DISPLAY: Record<TenantPlan, string> = {
-  plus: 'Individual — $49/mo',
-  pro: 'Small Team — $99/mo',
-  max: 'Ministry — $199/mo',
-};
+//
+// 🔴 DERIVED, not typed. These three strings carried `$49` / `$99` / `$199` as
+// literals and went stale the moment the plans were repriced: an admin picking a
+// tenant's tier was reading last quarter's prices off a dropdown. They are the
+// same class of defect as the three disconnected `$49`s the marketing site
+// fixed in PR 56. `formatPlanPrice` is the one formatter and PLAN_PRICING the
+// one table, so a reprice reaches this list with no edit here.
+const PLAN_DISPLAY: Record<TenantPlan, string> = Object.fromEntries(
+  PLAN_ORDER.map((id) => [id, `${PLAN_DISPLAY_NAMES[id]} — ${formatPlanPrice(id, 'monthly')}`]),
+) as Record<TenantPlan, string>;
 
 const PLAN_COLORS: Record<TenantPlan, string> = {
   plus: 'bg-blue-100 text-blue-700',
@@ -570,9 +576,12 @@ const AdminTenants: React.FC = () => {
                     onChange={e => setForm({ ...form, plan: e.target.value as TenantPlan })}
                     className="w-full px-4 py-2.5 border border-line rounded-xl text-sm focus:ring-2 focus:ring-gold focus:border-gold outline-none bg-surface-raised"
                   >
-                    <option value="plus">Individual — $49/mo</option>
-                    <option value="pro">Small Team — $99/mo</option>
-                    <option value="max">Ministry — $199/mo</option>
+                    {/* The same derived labels the read-only view shows —
+                        rendered from PLAN_DISPLAY rather than typed out again,
+                        which is how these two lists drifted apart before. */}
+                    {PLAN_ORDER.map((id) => (
+                      <option key={id} value={id}>{PLAN_DISPLAY[id]}</option>
+                    ))}
                   </select>
                 )}
               </div>

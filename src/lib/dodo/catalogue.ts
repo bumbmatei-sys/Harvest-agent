@@ -1,5 +1,5 @@
 import type { TenantPlan } from '@/types/tenant.types';
-import { ANNUAL_BILLED_MONTHS, PLAN_PRICING } from '@/utils/plan-features';
+import { BILLING_TERMS, PLAN_PRICING, TERM_MONTHS, planPriceUsd } from '@/utils/plan-features';
 import { DODO_LIVE_MODE, DODO_TEST_MODE, dodoConfig, type DodoEnvironment } from './config';
 import type { BillingPeriod } from './provider';
 
@@ -7,8 +7,8 @@ import type { BillingPeriod } from './provider';
  * The Dodo Payments subscription catalogue — the `(plan, period) → product` map.
  *
  * ⚠️ DODO PUTS THE PRICE ON THE PRODUCT. There is no separate price object, so
- * ANNUAL IS A DIFFERENT PRODUCT, not a second price on the same one. This map has
- * SIX entries and no price-ID concept. Do NOT model it on Stripe's product/price
+ * EACH TERM IS A DIFFERENT PRODUCT, not another price on the same one. This map
+ * has NINE entries and no price-ID concept. Do NOT model it on Stripe's product/price
  * split (`billing.ts`'s `{ monthly, yearly }` under one plan key): that split is
  * the single biggest structural difference between the two processors, and
  * carrying it over is how you end up looking for a price that does not exist.
@@ -37,10 +37,24 @@ import type { BillingPeriod } from './provider';
  * contains no fallback; it consumes the one already-validated value.
  */
 
+/**
+ * Dodo's own word for a billing period. `annual` is where it differs from the
+ * app's `yearly`; `quarterly` is the same word on both sides.
+ */
+export type DodoBillingPeriod = 'monthly' | 'quarterly' | 'annual';
+
 /** One Dodo product: an id, and the amount Dodo will actually charge for it. */
 export interface DodoCatalogueEntry {
-  /** Dodo product id. Dodo's own price lives on this product. */
-  readonly productId: string;
+  /**
+   * Dodo product id — Dodo's own price lives on this product.
+   *
+   * `DODO_PRODUCT_UNMAPPED` (null) where a term is NOT sellable in this mode.
+   * Not "no such product" and not a fallback: it says in words that this build
+   * cannot name a product for the term, so `productIdFor` returns null and every
+   * purchase path must refuse rather than substitute another term. The same
+   * idiom, and the same reasoning, as `DODO_ADDON_UNMAPPED` below.
+   */
+  readonly productId: string | null;
   /** Price in whole USD, as published by the app. */
   readonly priceUsd: number;
   /**
@@ -55,7 +69,7 @@ export interface DodoCatalogueEntry {
    * vocabularies are reconciled HERE, in the one module that knows both, rather
    * than leaking `annual` into app code or `yearly` into the product metadata.
    */
-  readonly dodoBillingPeriod: 'monthly' | 'annual';
+  readonly dodoBillingPeriod: DodoBillingPeriod;
   /** Trial length configured on the product, in days. */
   readonly trialDays: number;
 }
@@ -71,24 +85,23 @@ export interface DodoCatalogueEntry {
 export const DODO_TRIAL_DAYS = 14;
 
 /**
- * Annual price of a plan in whole USD.
+ * The price of a plan on a term, in whole USD.
  *
- * DERIVED, never typed. `ANNUAL_BILLED_MONTHS` (9) is the one constant every
- * annual figure in this app comes from — prices, the monthly-equivalent line,
- * the "months free" badge. An annual price written as a literal here would be a
- * second source of truth that drifts silently, and a drifted figure paired with
- * a real product id is a checkout that succeeds at the wrong price.
+ * READ FROM THE TABLE, never typed here. `PLAN_PRICING` (utils/plan-features)
+ * is the one place the nine plan prices exist; a price written as a literal in
+ * this file would be a second source of truth that drifts silently, and a
+ * drifted figure paired with a real product id is a checkout that SUCCEEDS at
+ * the wrong price.
  *
- * `dodo-catalogue.test.ts` scans this file's source for bare annual literals, so
- * retyping `441` in place of this call fails the suite rather than shipping.
+ * This used to derive the annual figure as `monthly × ANNUAL_BILLED_MONTHS`.
+ * That constant is gone: the discounts no longer divide into whole months
+ * (30% off a year is ×8.4), so the prices are a stored table and this reads it.
+ *
+ * `dodo-catalogue.test.ts` scans this file's source for bare price literals, so
+ * retyping `329` in place of this call fails the suite rather than shipping.
  */
-export function annualPriceUsd(plan: TenantPlan): number {
-  return PLAN_PRICING[plan].monthlyUsd * ANNUAL_BILLED_MONTHS;
-}
-
-/** Monthly price of a plan in whole USD — the published figure, unmodified. */
-export function monthlyPriceUsd(plan: TenantPlan): number {
-  return PLAN_PRICING[plan].monthlyUsd;
+export function termPriceUsd(plan: TenantPlan, term: BillingPeriod): number {
+  return planPriceUsd(plan, term);
 }
 
 /** Whole USD → the currency's smallest unit. USD has 100 cents; nothing rounds. */
@@ -96,45 +109,85 @@ function toMinorUnits(usd: number): number {
   return usd * 100;
 }
 
-function monthlyEntry(plan: TenantPlan, productId: string): DodoCatalogueEntry {
-  const priceUsd = monthlyPriceUsd(plan);
+/**
+ * The `billing_period` each term carries in the product's Dodo metadata.
+ *
+ * Dodo's catalogue says `annual` where the app says `yearly`; it has no separate
+ * word for quarterly, which it expresses as three monthly cycles, so `quarterly`
+ * is the app's word carried through unchanged. The whole reconciliation is these
+ * three lines — it does not leak either way.
+ */
+const DODO_BILLING_PERIOD: Readonly<Record<BillingPeriod, DodoBillingPeriod>> = Object.freeze({
+  monthly: 'monthly',
+  quarterly: 'quarterly',
+  yearly: 'annual',
+});
+
+/**
+ * How Dodo cycles each term: `payment_frequency_count` of `payment_frequency_interval`.
+ *
+ * Quarterly is `3 × Month` and NOT a "quarter" interval — Dodo has no such
+ * interval — which is also why a quarterly product carries the MONTHLY add-on
+ * ids: an add-on attached to a product that bills in months is charged in
+ * months. See `addonIdFor`.
+ */
+export const DODO_TERM_FREQUENCY: Readonly<
+  Record<BillingPeriod, { readonly count: number; readonly interval: 'Month' | 'Year' }>
+> = Object.freeze({
+  monthly: Object.freeze({ count: 1, interval: 'Month' as const }),
+  quarterly: Object.freeze({ count: 3, interval: 'Month' as const }),
+  yearly: Object.freeze({ count: 1, interval: 'Year' as const }),
+});
+
+function entry(plan: TenantPlan, term: BillingPeriod, productId: string | null): DodoCatalogueEntry {
+  const priceUsd = termPriceUsd(plan, term);
   return {
     productId,
     priceUsd,
     priceMinorUnits: toMinorUnits(priceUsd),
-    dodoBillingPeriod: 'monthly',
+    dodoBillingPeriod: DODO_BILLING_PERIOD[term],
     trialDays: DODO_TRIAL_DAYS,
   };
 }
 
-function annualEntry(plan: TenantPlan, productId: string): DodoCatalogueEntry {
-  const priceUsd = annualPriceUsd(plan);
-  return {
-    productId,
-    priceUsd,
-    priceMinorUnits: toMinorUnits(priceUsd),
-    dodoBillingPeriod: 'annual',
-    trialDays: DODO_TRIAL_DAYS,
-  };
-}
+/**
+ * 🔴 A term that is NOT sellable in this mode, said in words.
+ *
+ * The product counterpart of `DODO_ADDON_UNMAPPED`, and it exists for the same
+ * reason: an absent key is indistinguishable from a forgotten one, and the
+ * difference between "deliberately unmapped" and "someone dropped a line" is
+ * the difference between a known gap and a silent defect. Every purchase path
+ * must REFUSE a null; none may substitute a different term.
+ */
+export const DODO_PRODUCT_UNMAPPED = null;
 
 /** The full `(plan, period) → product` map — the shape both catalogues share. */
 export type DodoCatalogue = Readonly<Record<TenantPlan, Readonly<Record<BillingPeriod, DodoCatalogueEntry>>>>;
 
 /**
- * The six products, in Dodo TEST MODE.
+ * The products, in Dodo TEST MODE. Six of the nine.
  *
  * Created 2026-08-11 with a 14-day trial on every product and `plan_key` /
  * `billing_period` in metadata. `plan_key` carries the app's internal plan id
  * (plus / pro / max), not the display name, so the reverse lookup below and the
  * product metadata agree on one vocabulary.
  *
- *   Individual (plus)   $49/mo    $441/yr
- *   Small Team (pro)    $99/mo    $891/yr
- *   Ministry   (max)   $199/mo   $1,791/yr
+ * ⚠️ NOTE ON THE PRICES. These six test products were created against the OLD
+ * price list ($49 / $99 / $199 monthly, 9-of-12 annual). The entries below take
+ * their `priceUsd` from the CURRENT table like every other entry, so under test
+ * mode the app's published figure and Dodo's stored figure disagree by design
+ * until the test catalogue is recreated. That is a test-mode-only artifact —
+ * `dodoConfig.environment` is `live_mode` for anything a real card touches —
+ * and it is recorded here rather than papered over with a second price table.
  *
- * Every annual figure above is `monthly × ANNUAL_BILLED_MONTHS`, computed by
- * `annualEntry`. None of them appears as a literal in this file.
+ * 🔴 QUARTERLY IS DELIBERATELY UNMAPPED HERE. The three quarterly products were
+ * created in LIVE mode only (2026-08-20); no test-mode quarterly product exists,
+ * so there is no id to write down and one must NOT be invented — a made-up
+ * product id is a checkout that fails at the processor with nothing in the diff
+ * to explain it. `DODO_PRODUCT_UNMAPPED` says so in words, `productIdFor`
+ * returns null, and `offerableTerms` drops quarterly from what test mode sells.
+ * Creating the three test products and pasting their ids here makes quarterly
+ * work in test mode with no other edit anywhere.
  *
  * NO ADD-ON PRODUCTS. Dodo supports them natively — products carry an `addons`
  * array and `subscriptions.create` accepts `addons: [{ addon_id, quantity }]` —
@@ -143,25 +196,44 @@ export type DodoCatalogue = Readonly<Record<TenantPlan, Readonly<Record<BillingP
  */
 export const DODO_TEST_CATALOGUE: DodoCatalogue = Object.freeze({
   plus: Object.freeze({
-    monthly: monthlyEntry('plus', 'pdt_0NlAMMZk44L0tL8lcLX6M'),
-    yearly: annualEntry('plus', 'pdt_0NlAMMeWwZDSlfNdti8FD'),
+    monthly: entry('plus', 'monthly', 'pdt_0NlAMMZk44L0tL8lcLX6M'),
+    quarterly: entry('plus', 'quarterly', DODO_PRODUCT_UNMAPPED),
+    yearly: entry('plus', 'yearly', 'pdt_0NlAMMeWwZDSlfNdti8FD'),
   }),
   pro: Object.freeze({
-    monthly: monthlyEntry('pro', 'pdt_0NlAMMhi90q5Ovk6QBzcf'),
-    yearly: annualEntry('pro', 'pdt_0NlAMMlsVKeYG8ukapmzE'),
+    monthly: entry('pro', 'monthly', 'pdt_0NlAMMhi90q5Ovk6QBzcf'),
+    quarterly: entry('pro', 'quarterly', DODO_PRODUCT_UNMAPPED),
+    yearly: entry('pro', 'yearly', 'pdt_0NlAMMlsVKeYG8ukapmzE'),
   }),
   max: Object.freeze({
-    monthly: monthlyEntry('max', 'pdt_0NlAMMp4QndR3qPzlD8sG'),
-    yearly: annualEntry('max', 'pdt_0NlAMMsQBzMvRVNCY7zws'),
+    monthly: entry('max', 'monthly', 'pdt_0NlAMMp4QndR3qPzlD8sG'),
+    quarterly: entry('max', 'quarterly', DODO_PRODUCT_UNMAPPED),
+    yearly: entry('max', 'yearly', 'pdt_0NlAMMsQBzMvRVNCY7zws'),
   }),
 });
 
 /**
- * The six products, in Dodo LIVE MODE.
+ * The nine products, in Dodo LIVE MODE.
  *
- * Created 2026-08-13 and verified field-by-field against the authenticated live
- * API: same names, prices, 14-day trial, `tax_category`, and `plan_key` /
- * `billing_period` metadata as the test products above, id for id.
+ * Monthly and annual were created 2026-08-13; the three QUARTERLY products were
+ * created 2026-08-20 in the same repricing that produced the current table, and
+ * all nine were verified field-by-field against the authenticated live API:
+ * `USD`, `saas` tax category, a 14-day free trial, and the period-matched add-on
+ * set attached to each.
+ *
+ * Quarterly bills as `payment_frequency_count: 3, payment_frequency_interval:
+ * Month` — three monthly cycles, not a "quarter" interval, which Dodo does not
+ * have. `DODO_TERM_FREQUENCY` above records that, and it is the reason a
+ * quarterly product carries the MONTHLY add-on ids (see `addonIdFor`).
+ *
+ * ⚠️ ONE VERIFIED DIVERGENCE, recorded rather than hidden: the three quarterly
+ * products carry EMPTY Dodo metadata, where the six older products carry
+ * `plan_key` and `billing_period`. Nothing in this app reads that metadata —
+ * `resolvePlanFromProductId` walks the table below by id, which is why the
+ * lookup still works — so this is a housekeeping gap in the Dodo dashboard, not
+ * a defect here. It is noted because the paragraph above used to claim all
+ * products carry it, and a comment that overstates what was checked is worse
+ * than no comment.
  *
  * 🔴 These ids are what a real card is charged against. They are pinned
  * character-for-character in `dodo-catalogue.test.ts`; a wrong id here is a
@@ -169,16 +241,19 @@ export const DODO_TEST_CATALOGUE: DodoCatalogue = Object.freeze({
  */
 export const DODO_LIVE_CATALOGUE: DodoCatalogue = Object.freeze({
   plus: Object.freeze({
-    monthly: monthlyEntry('plus', 'pdt_0NlJZKKU2AQSSH7E4ziKA'),
-    yearly: annualEntry('plus', 'pdt_0NlJZMLLKZ5SVGEoSGDdk'),
+    monthly: entry('plus', 'monthly', 'pdt_0NlJZKKU2AQSSH7E4ziKA'),
+    quarterly: entry('plus', 'quarterly', 'pdt_0NloCamoWgvgYDih2UETS'),
+    yearly: entry('plus', 'yearly', 'pdt_0NlJZMLLKZ5SVGEoSGDdk'),
   }),
   pro: Object.freeze({
-    monthly: monthlyEntry('pro', 'pdt_0NlJZMOMhmZWiG6UVDl8I'),
-    yearly: annualEntry('pro', 'pdt_0NlJZMRWL8tuAZseUIRTP'),
+    monthly: entry('pro', 'monthly', 'pdt_0NlJZMOMhmZWiG6UVDl8I'),
+    quarterly: entry('pro', 'quarterly', 'pdt_0NloCaqg1QPMAlkfDnlOe'),
+    yearly: entry('pro', 'yearly', 'pdt_0NlJZMRWL8tuAZseUIRTP'),
   }),
   max: Object.freeze({
-    monthly: monthlyEntry('max', 'pdt_0NlJZMUUiT36FGMoiFXgl'),
-    yearly: annualEntry('max', 'pdt_0NlJZMXTnpRBAwTfBVpPs'),
+    monthly: entry('max', 'monthly', 'pdt_0NlJZMUUiT36FGMoiFXgl'),
+    quarterly: entry('max', 'quarterly', 'pdt_0NloCatUWEkEUq1usWJ0n'),
+    yearly: entry('max', 'yearly', 'pdt_0NlJZMXTnpRBAwTfBVpPs'),
   }),
 });
 
@@ -196,14 +271,53 @@ const CATALOGUES_BY_ENVIRONMENT: Readonly<Record<DodoEnvironment, DodoCatalogue>
 
 export const DODO_ACTIVE_CATALOGUE: DodoCatalogue = CATALOGUES_BY_ENVIRONMENT[dodoConfig.environment];
 
-/** The active catalogue's entry for a plan on a billing period. */
+/** The active catalogue's entry for a plan on a billing period. Total. */
 export function catalogueEntry(plan: TenantPlan, period: BillingPeriod): DodoCatalogueEntry {
   return DODO_ACTIVE_CATALOGUE[plan][period];
 }
 
-/** The Dodo product id to put in a checkout cart for `(plan, period)`. */
-export function productIdFor(plan: TenantPlan, period: BillingPeriod): string {
+/**
+ * The Dodo product id to put in a checkout cart for `(plan, period)`, or `null`
+ * when this build cannot sell that term in this mode.
+ *
+ * 🔴 `null` is not "the lookup failed", it is "this build cannot sell that", and
+ * a caller must refuse rather than fall back to another term. Falling back is
+ * the specific disaster: a church that chose quarterly and was charged yearly
+ * has been overcharged fourfold by a line of defensive code.
+ */
+export function productIdFor(plan: TenantPlan, period: BillingPeriod): string | null {
   return catalogueEntry(plan, period).productId;
+}
+
+/**
+ * The product id for `(plan, period)`, or a thrown error naming the gap.
+ *
+ * For the checkout paths, which have no sensible way to continue without one.
+ * Throwing beats returning a placeholder for the same reason the module reads no
+ * env var: a wrong id succeeds at the wrong price, and a missing id must fail
+ * loudly and early instead.
+ */
+export function requireProductId(plan: TenantPlan, period: BillingPeriod): string {
+  const id = productIdFor(plan, period);
+  if (id === DODO_PRODUCT_UNMAPPED) {
+    throw new Error(
+      `Dodo catalogue: no ${period} product for plan "${plan}" in ${dodoConfig.environment}. ` +
+      `That term is not sellable in this mode — it must not be offered, and it must never ` +
+      `fall back to another term.`,
+    );
+  }
+  return id;
+}
+
+/**
+ * The terms this build can actually SELL for a plan, in the active mode.
+ *
+ * 🔴 DERIVED FROM THE TABLE, NEVER LISTED — the same rule as
+ * `offerableAddonMeanings`. A hardcoded list is how an unmapped term becomes a
+ * sale: the table would say "unmapped" and the term picker would say "buy me".
+ */
+export function offerableTerms(plan: TenantPlan): BillingPeriod[] {
+  return BILLING_TERMS.filter((term) => productIdFor(plan, term) !== DODO_PRODUCT_UNMAPPED);
 }
 
 /**
@@ -229,16 +343,23 @@ export function resolvePlanFromProductId(
     Record<BillingPeriod, DodoCatalogueEntry>,
   ][]) {
     for (const [period, entry] of Object.entries(periods) as [BillingPeriod, DodoCatalogueEntry][]) {
-      if (entry.productId === productId) return { plan, period };
+      // An unmapped term has a null id; `productId` is a non-empty string from a
+      // Dodo payload, so the null check is what stops two unmapped terms from
+      // "matching" each other. Never resolve a gap into a plan.
+      if (entry.productId !== DODO_PRODUCT_UNMAPPED && entry.productId === productId) {
+        return { plan, period };
+      }
     }
   }
   return null;
 }
 
-/** Every product id in the active catalogue. Six of them. */
+/** Every product id the active catalogue can name. Nine in live, six in test. */
 export function allCatalogueProductIds(): string[] {
   return Object.values(DODO_ACTIVE_CATALOGUE).flatMap((periods) =>
-    Object.values(periods).map((entry) => entry.productId),
+    Object.values(periods)
+      .map((entry) => entry.productId)
+      .filter((id): id is string => id !== DODO_PRODUCT_UNMAPPED),
   );
 }
 
@@ -296,8 +417,25 @@ export type DodoAddonMeaning = (typeof DODO_ADDON_MEANINGS)[number];
  */
 export const DODO_ADDON_UNMAPPED = null;
 
+/**
+ * The billing periods an ADD-ON is actually sold on. Two, not three.
+ *
+ * 🔴 THIS IS THE ADD-ON SIDE OF THE THREE-TERM CHANGE, AND IT DELIBERATELY DID
+ * NOT GROW. Dodo attaches an add-on to a PRODUCT, and it charges that add-on on
+ * the product's own cycle. A quarterly product bills as three MONTHLY cycles
+ * (`DODO_TERM_FREQUENCY`), and the live quarterly products were verified to
+ * carry exactly the monthly add-on ids — so there is no quarterly add-on to map,
+ * and inventing a third column here would be inventing six ids Dodo does not
+ * have.
+ *
+ * A quarterly church therefore pays the MONTHLY add-on price: an admin seat is
+ * $10 a month, the same $10 a monthly church pays. `addonIdFor` performs that
+ * one-line reconciliation and is the only place it happens.
+ */
+export type AddonBillingPeriod = Extract<BillingPeriod, 'monthly' | 'yearly'>;
+
 /** The two ids one meaning is sold under. `null` names a deliberate gap. */
-export type DodoAddonIds = Readonly<Record<BillingPeriod, string | null>>;
+export type DodoAddonIds = Readonly<Record<AddonBillingPeriod, string | null>>;
 
 /** meaning → its ids, in one mode. Total over the five meanings, by type. */
 export type DodoAddonTable = Readonly<Record<DodoAddonMeaning, DodoAddonIds>>;
@@ -428,7 +566,20 @@ export function resolveAddonMeaning(addonId: string): DodoAddonMeaning | null {
  * be understood are, structurally, one set.
  */
 export function addonIdFor(meaning: DodoAddonMeaning, period: BillingPeriod): string | null {
-  return DODO_ACTIVE_ADDONS[meaning][period];
+  return DODO_ACTIVE_ADDONS[meaning][addonPeriodFor(period)];
+}
+
+/**
+ * The add-on column a plan term buys from — the whole quarterly reconciliation.
+ *
+ * Quarterly maps to MONTHLY because Dodo charges an add-on on its product's
+ * cycle and a quarterly product cycles in months. This is a mapping, not a
+ * fallback: it is what Dodo actually does, verified on the live quarterly
+ * products, and it is why `ADD_ON_BILLED_MONTHS` on the marketing site is still
+ * 12 and add-ons are still undiscounted on every term.
+ */
+export function addonPeriodFor(period: BillingPeriod): AddonBillingPeriod {
+  return period === 'yearly' ? 'yearly' : 'monthly';
 }
 
 /**

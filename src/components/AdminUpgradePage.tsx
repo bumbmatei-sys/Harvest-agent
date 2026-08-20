@@ -5,14 +5,17 @@ import { TenantPlan } from '../types/tenant.types';
 import {
   PLAN_DISPLAY_NAMES,
   PLAN_ORDER,
-  PLAN_PRICING,
+  TERM_MONTHS,
+  TERM_PRICE_SUFFIX,
+  planPriceUsd,
+  planTermMonthlyEquivalent,
   formatPlanPrice,
-  ANNUAL_BILLED_MONTHS,
-  ANNUAL_FREE_MONTHS,
+  type BillingTerm,
 } from '../utils/plan-features';
 import { authFetch } from '../utils/auth-fetch';
 import { fetchBillingProcessor, runDodoPlanChange, subscriptionProcessorAttribution, type PlanChangeProcessor } from '../utils/plan-change';
 import { getTenantId } from './settings/useTenantId';
+import { BillingTermToggle } from './settings/BillingTermToggle';
 
 interface AdminUpgradePageProps {
   currentPlan?: TenantPlan;
@@ -29,7 +32,7 @@ const PLAN_HIGHLIGHTS: Record<TenantPlan, string[]> = {
 };
 
 const AdminUpgradePage: React.FC<AdminUpgradePageProps> = ({ currentPlan, tenantId, email }) => {
-  const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly');
+  const [billingPeriod, setBillingPeriod] = useState<BillingTerm>('monthly');
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);
   // Which processor owns this tenant's subscription. Unlike PlanUpgradeSection
@@ -193,33 +196,9 @@ const AdminUpgradePage: React.FC<AdminUpgradePageProps> = ({ currentPlan, tenant
         </div>
       )}
 
-      {/* Billing period toggle */}
-      <div className="flex flex-col items-center gap-2">
-        <div className="flex items-center gap-2 bg-surface-sunken rounded-lg p-1">
-          <button
-            onClick={() => setBillingPeriod('monthly')}
-            className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
-              billingPeriod === 'monthly' ? 'bg-surface-raised text-strong shadow-sm' : 'text-muted hover:text-body'
-            }`}
-          >
-            Monthly
-          </button>
-          <button
-            onClick={() => setBillingPeriod('yearly')}
-            className={`relative px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
-              billingPeriod === 'yearly' ? 'bg-surface-raised text-strong shadow-sm' : 'text-muted hover:text-body'
-            }`}
-          >
-            Yearly
-            <span className="absolute -top-2 -right-2 px-1.5 py-0.5 bg-green-500 text-white text-[10px] font-bold rounded-full">
-              {ANNUAL_FREE_MONTHS}mo free
-            </span>
-          </button>
-        </div>
-        {billingPeriod === 'yearly' && (
-          <p className="text-xs text-green-600 font-medium">Pay for {ANNUAL_BILLED_MONTHS} months, get 12.</p>
-        )}
-      </div>
+      {/* Billing period toggle — three terms, shared with PlanUpgradeSection so
+          the in-app surfaces cannot offer different terms or different badges. */}
+      <BillingTermToggle value={billingPeriod} onChange={setBillingPeriod} />
 
       {/* Plan cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -228,8 +207,8 @@ const AdminUpgradePage: React.FC<AdminUpgradePageProps> = ({ currentPlan, tenant
           const isCurrent = planId === currentPlan;
           const isDowngrade = currentIdx >= 0 && PLAN_ORDER.indexOf(planId) < currentIdx;
           const isRecommended = !isCurrent && !isDowngrade && planId === recommendedId;
-          const monthly = PLAN_PRICING[planId].monthlyUsd;
-          const yearly = PLAN_PRICING[planId].yearlyUsd;
+          // The CHARGED figure for the selected term, read from the table.
+          const termPrice = planPriceUsd(planId, billingPeriod);
 
           return (
             <div
@@ -252,12 +231,20 @@ const AdminUpgradePage: React.FC<AdminUpgradePageProps> = ({ currentPlan, tenant
                 )}
               </div>
 
-              <div className="flex items-baseline gap-1 mb-4">
-                <span className="text-2xl font-bold text-strong">
-                  ${billingPeriod === 'monthly' ? monthly.toLocaleString() : yearly.toLocaleString()}
-                </span>
-                <span className="text-xs text-faint">/{billingPeriod === 'monthly' ? 'mo' : 'yr'}</span>
+              <div className="flex items-baseline gap-1 mb-1">
+                <span className="text-2xl font-bold text-strong">${termPrice.toLocaleString()}</span>
+                <span className="text-xs text-faint">/{TERM_PRICE_SUFFIX[billingPeriod]}</span>
               </div>
+              {/* The per-month equivalent, and the amount actually charged, on
+                  one line. $329/yr is $27/mo — a figure no church is ever billed
+                  — so it never appears without the charge that produces it. */}
+              {billingPeriod !== 'monthly' && (
+                <p className="text-[11px] text-faint mb-4">
+                  {`$${planTermMonthlyEquivalent(planId, billingPeriod)}/mo equivalent — billed as ` +
+                   `$${termPrice.toLocaleString()} every ${TERM_MONTHS[billingPeriod]} months`}
+                </p>
+              )}
+              {billingPeriod === 'monthly' && <div className="mb-4" />}
 
               <ul className="space-y-2 mb-5 flex-1">
                 {PLAN_HIGHLIGHTS[planId].map((feature) => (

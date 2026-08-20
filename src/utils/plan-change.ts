@@ -1,4 +1,5 @@
 import { authFetch } from './auth-fetch';
+import type { BillingTerm } from './plan-features';
 
 /**
  * Client-side routing for the existing-tenant plan change (THE-89).
@@ -74,7 +75,7 @@ const fmtMinor = (minor: number, currency: string) =>
 export async function runDodoPlanChange(args: {
   tenantId: string;
   plan: string;
-  billing: 'monthly' | 'yearly';
+  billing: BillingTerm;
 }): Promise<{ ok: boolean; message: string }> {
   const previewResp = await authFetch('/api/dodo/change-plan', {
     method: 'POST',

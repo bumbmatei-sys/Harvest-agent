@@ -6,6 +6,7 @@ import { Church, ArrowRight, Sparkles, Loader2, AlertCircle } from 'lucide-react
 import { TenantPlan } from '../types/tenant.types';
 import { PLAN_DISPLAY_NAMES, PLAN_ORDER } from '../utils/plan-features';
 import { SIGNUP_CHECKOUT_ENDPOINT, WALLET_FALLBACK_LINE, resolveSignupBillingPeriod } from '../utils/signup-checkout';
+import { TERM_BILLED_PHRASE } from '../utils/plan-features';
 
 const BRAND = 'var(--brand-color, #B8962E)';
 const HARVEST_LOGO = 'https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png';
@@ -206,7 +207,7 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ signupPlan }) => {
         >
           <Sparkles size={14} /> {PLAN_DISPLAY_NAMES[selectedPlan]} plan
           <span aria-hidden style={{ opacity: 0.55 }}>·</span>
-          {selectedBilling === 'yearly' ? 'billed annually' : 'billed monthly'}
+          {TERM_BILLED_PHRASE[selectedBilling]}
         </span>
       </div>
 

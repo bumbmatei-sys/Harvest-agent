@@ -1,7 +1,7 @@
 import DodoPayments from 'dodopayments';
 import type { TenantPlan } from '@/types/tenant.types';
 import { dodoConfig } from './config';
-import { catalogueEntry, resolvePlanFromProductId } from './catalogue';
+import { catalogueEntry, requireProductId, resolvePlanFromProductId } from './catalogue';
 import type {
   BillingPeriod,
   BillingSubscription,
@@ -174,13 +174,18 @@ export const dodoBillingProvider: SubscriptionBillingProvider = {
   id: 'dodo',
 
   async createPlanCheckout(request: PlanCheckoutRequest): Promise<PlanCheckout> {
+    // `requireProductId`, not `entry.productId`: a term this mode cannot sell
+    // has a null id, and the one thing checkout must never do is quietly cart a
+    // different term than the church chose. Throwing here fails the request
+    // with the gap named; substituting would charge the wrong price.
+    const productId = requireProductId(request.plan, request.period);
     const entry = catalogueEntry(request.plan, request.period);
 
     const session = await (client().checkoutSessions.create as (body: unknown) => Promise<{
       session_id: string;
       checkout_url: string;
     }>)({
-      product_cart: [{ product_id: entry.productId, quantity: 1 }],
+      product_cart: [{ product_id: productId, quantity: 1 }],
       customer: { email: request.customer.email, name: request.customer.name },
       return_url: request.returnUrl,
       cancel_url: request.cancelUrl,
@@ -387,7 +392,7 @@ export async function planDodoAddonCarryOver(
   const held = readHeldDodoAddons(subscription);
   if (held.length === 0) return { carried: [], removed: [] };
 
-  const offered = await retrieveDodoProductAddonIds(catalogueEntry(plan, period).productId);
+  const offered = await retrieveDodoProductAddonIds(requireProductId(plan, period));
   const carried: DodoAddonSelection[] = [];
   const removed: DodoAddonSelection[] = [];
   for (const addon of held) {
@@ -473,9 +478,9 @@ export async function previewDodoPlanChange(
   period: BillingPeriod,
   addons: readonly DodoAddonSelection[],
 ): Promise<DodoPlanChangePreview> {
-  const entry = catalogueEntry(plan, period);
+  const productId = requireProductId(plan, period);
   const preview = await client().subscriptions.previewChangePlan(subscriptionId, {
-    product_id: entry.productId,
+    product_id: productId,
     // `quantity` is the count of the BASE PRODUCT — one subscription, one plan.
     // It is not, and never becomes, an add-on quantity: those travel per add-on
     // in `addons` below.
@@ -512,9 +517,9 @@ export async function executeDodoPlanChange(
   period: BillingPeriod,
   addons: readonly DodoAddonSelection[],
 ): Promise<void> {
-  const entry = catalogueEntry(plan, period);
+  const productId = requireProductId(plan, period);
   await client().subscriptions.changePlan(subscriptionId, {
-    product_id: entry.productId,
+    product_id: productId,
     // The base product's count, not an add-on's. See `previewDodoPlanChange`.
     quantity: 1,
     proration_billing_mode: DODO_PLAN_CHANGE_PRORATION_MODE,
