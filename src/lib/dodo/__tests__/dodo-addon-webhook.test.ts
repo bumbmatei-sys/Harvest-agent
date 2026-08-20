@@ -116,15 +116,15 @@ vi.mock('@/lib/money-path-sentry', () => ({ captureMoneyPathError: mockCapture }
 
 import { applyDodoPlanChange } from '../plan-change';
 import { receiveDodoWebhookEvent } from '../webhook-dispatch';
-import { DODO_TEST_ADDONS, productIdFor } from '../catalogue';
+import { DODO_TEST_ADDONS, requireProductId } from '../catalogue';
 import { NO_ADDONS } from '@/utils/plan-features';
 import type { DodoWebhookEvent } from '../events';
 
 const T = {
   tenant: 'grace-chapel',
   sub: 'sub_live_1',
-  plusMonthly: productIdFor('plus', 'monthly'),
-  proMonthly: productIdFor('pro', 'monthly'),
+  plusMonthly: requireProductId('plus', 'monthly'),
+  proMonthly: requireProductId('pro', 'monthly'),
 };
 
 /**

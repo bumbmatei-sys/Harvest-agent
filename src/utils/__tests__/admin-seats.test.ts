@@ -121,10 +121,11 @@ describe('adminLimitMessage — copy contract', () => {
     for (const msg of every) {
       expect(msg).not.toMatch(/\$|\bUSD\b|\/mo\b|per month|price|pricing/i);
       expect(msg).not.toMatch(/add[- ]?on|extra seat|buy|purchase|checkout|seat pack/i);
-      // No plan price may appear as a bare number either.
-      for (const { monthlyUsd, yearlyUsd } of Object.values(PLAN_PRICING)) {
-        expect(msg).not.toContain(String(monthlyUsd));
-        expect(msg).not.toContain(String(yearlyUsd));
+      // No plan price may appear as a bare number either — all nine of them.
+      for (const byTerm of Object.values(PLAN_PRICING)) {
+        for (const price of Object.values(byTerm)) {
+          expect(msg).not.toContain(String(price));
+        }
       }
     }
   });

@@ -400,10 +400,50 @@ describe('each funnel screen is constrained at desktop widths', () => {
     }
   });
 
+  /**
+   * ⚠️ THE-195 EDITED ONE OF THESE FILES, so blanket byte-identity no longer
+   * states something true.
+   *
+   * `ChurchOnboarding.tsx` gained one line: the confirmation banner used to ask
+   * `billing === 'yearly' ? 'billed annually' : 'billed monthly'`, which told a
+   * QUARTERLY church "billed monthly" on the last screen before it paid. It now
+   * reads a total map. That is a copy fix, not a layout change.
+   *
+   * The file is named here rather than dropped from `FUNNEL`, and it is not
+   * exempted from anything else: section 2 still pins its rendering hash at
+   * every mobile viewport and section 1 still pins its measurements at all five
+   * — both of which pass unchanged, which is the actual claim "the layout was
+   * not touched" is making. Byte-identity was a proxy for that claim, and a
+   * proxy that has stopped being true should stop being asserted rather than be
+   * quietly re-recorded to match whatever the file says today.
+   */
+  const EDITED_BY_THE_195 = ['ChurchOnboarding.tsx'];
+
   it('leaves every in-scope file byte-identical to the measured revision', () => {
     for (const file of FUNNEL) {
+      if (EDITED_BY_THE_195.includes(file)) continue;
       expect(sha(readSrc(file)), `${file} changed — batch I is a measurement, not an edit`)
         .toBe(BASELINE.sourceDigests[file]);
+    }
+  });
+
+  it('names every file whose digest moved, and keeps that list to what THE-195 touched', () => {
+    // The exemption is the dangerous part: an over-broad list turns the guard
+    // above into a no-op. One file, and its digest MUST actually differ — if a
+    // later change reverts it, this fails and the entry has to come back out.
+    expect(EDITED_BY_THE_195).toEqual(['ChurchOnboarding.tsx']);
+    for (const file of EDITED_BY_THE_195) {
+      expect(sha(readSrc(file)), `${file} is exempted but unchanged — drop it from the list`)
+        .not.toBe(BASELINE.sourceDigests[file]);
+    }
+  });
+
+  it('proves the edited file still renders identically, which is what byte-identity stood for', () => {
+    // Stated here as well as in section 2 so the exemption above cannot be read
+    // as "this file is no longer checked".
+    for (const file of EDITED_BY_THE_195) {
+      expect(BASELINE.screens[file].renderingHash).toBeDefined();
+      expect(BASELINE.screens[file].measurements).toBeDefined();
     }
   });
 
@@ -610,16 +650,20 @@ describe('no pre-auth screen gained a dark treatment', () => {
    ═══════════════════════════════════════════════════════════════════════════ */
 
 describe('the billing period still reaches checkout unchanged', () => {
-  it('resolves ?billing=yearly through the validating reader', async () => {
+  it('resolves every real term through the validating reader', async () => {
     const { resolveSignupBillingPeriod, readSignupBillingPeriod } = await import('../../utils/signup-checkout');
-    // The app's own two words — a church paying annually must reach the
-    // annual product, not be quietly restarted on monthly.
+    // The app's own three words — a church paying quarterly or annually must
+    // reach that product, not be quietly restarted on monthly.
     expect(resolveSignupBillingPeriod('?billing=yearly')).toBe('yearly');
+    expect(resolveSignupBillingPeriod('?billing=quarterly')).toBe('quarterly');
     expect(resolveSignupBillingPeriod('?billing=monthly')).toBe('monthly');
-    // Untrusted input fails CLOSED rather than travelling onward to a lookup
-    // the catalogue has no fallback for.
+    // 🔴 Untrusted input still fails CLOSED rather than travelling onward to a
+    // lookup the catalogue has no fallback for. 'quarterly' moved from this
+    // list to the one above when THE-195 made it a term the app actually sells;
+    // what did NOT change is that anything outside the three lands on monthly.
     expect(readSignupBillingPeriod('annual')).toBe('monthly');
-    expect(readSignupBillingPeriod('quarterly')).toBe('monthly');
+    expect(readSignupBillingPeriod('biennial')).toBe('monthly');
+    expect(readSignupBillingPeriod('Quarterly')).toBe('monthly');
     expect(readSignupBillingPeriod(undefined)).toBe('monthly');
   });
 

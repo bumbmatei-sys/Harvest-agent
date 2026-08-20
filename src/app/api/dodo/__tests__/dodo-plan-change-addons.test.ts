@@ -11,7 +11,7 @@ import { NextRequest } from 'next/server';
  * which keeps tier availability enforced by Dodo structurally, instead of by a
  * Harvest gate that one bug could open.
  *
- * Driven through the REAL route, the REAL catalogue (`productIdFor`) and the
+ * Driven through the REAL route, the REAL catalogue (`requireProductId`) and the
  * REAL provider functions. Only the Dodo SDK client and Firebase are mocked.
  *
  * ⚠️ Guarded by these tests ONLY. No subscription in either mode currently holds
@@ -116,7 +116,7 @@ vi.mock('@/lib/money-path-sentry', () => ({
 }));
 
 import { POST as dodoChangePlan } from '@/app/api/dodo/change-plan/route';
-import { productIdFor } from '@/lib/dodo/catalogue';
+import { requireProductId } from '@/lib/dodo/catalogue';
 import { __setDodoClientForTests } from '@/lib/dodo/dodo-provider';
 
 // ── The add-on catalogue these tests reason about ────────────────────────────
@@ -133,9 +133,9 @@ const ADD_ON = {
   unlimitedContacts: { id: 'adn_9Mg6RhAcUk2Xp7Yr4', name: 'Unlimited Contacts - Monthly' },
 } as const;
 
-const INDIVIDUAL = productIdFor('plus', 'monthly');
-const SMALL_TEAM = productIdFor('pro', 'monthly');
-const MINISTRY = productIdFor('max', 'monthly');
+const INDIVIDUAL = requireProductId('plus', 'monthly');
+const SMALL_TEAM = requireProductId('pro', 'monthly');
+const MINISTRY = requireProductId('max', 'monthly');
 
 /** Which product offers which add-ons — what `products.retrieve` reports. */
 const OFFERED_BY_PRODUCT: Record<string, string[]> = {

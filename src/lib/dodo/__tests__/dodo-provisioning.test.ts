@@ -108,7 +108,7 @@ const {
   DodoProvisioningError,
 } = await import('../provisioning');
 const { receiveDodoWebhookEvent } = await import('../webhook-dispatch');
-const { productIdFor } = await import('../catalogue');
+const { requireProductId } = await import('../catalogue');
 const { TENANT_PRIVATE_FIELDS } = await import('@/lib/tenant-private');
 const { NO_ADDONS } = await import('@/utils/plan-features');
 
@@ -120,7 +120,7 @@ const OWNER_EMAIL = 'pastor@grace.example';
 function subscription(over: Record<string, any> = {}) {
   return {
     subscription_id: 'sub_dodo_1',
-    product_id: productIdFor('max', 'monthly'),
+    product_id: requireProductId('max', 'monthly'),
     status: 'active',
     created_at: '2026-08-11T12:00:00Z',
     customer: { customer_id: 'cus_dodo_1', email: OWNER_EMAIL, name: 'Grace Community Church' },
@@ -213,7 +213,7 @@ describe('a completed Dodo checkout creates a tenant with every field the Stripe
       adminEmails: [OWNER_EMAIL],
       dodoCustomerId: 'cus_dodo_1',
       dodoSubscriptionId: 'sub_dodo_1',
-      dodoProductId: productIdFor('max', 'monthly'),
+      dodoProductId: requireProductId('max', 'monthly'),
       // 🔴 THE-79: who owns this subscription, stated rather than inferred. Every
       // billing write path routes on it; without it a later plan change would
       // open a SECOND subscription on Stripe and bill this church twice.
@@ -585,12 +585,12 @@ describe('an unknown product id fails loudly and provisions nothing', () => {
   });
 
   it('resolves every product in the catalogue and nothing else', () => {
-    expect(requirePlanForProduct(productIdFor('plus', 'monthly'))).toEqual({ plan: 'plus', period: 'monthly' });
-    expect(requirePlanForProduct(productIdFor('plus', 'yearly'))).toEqual({ plan: 'plus', period: 'yearly' });
-    expect(requirePlanForProduct(productIdFor('pro', 'monthly'))).toEqual({ plan: 'pro', period: 'monthly' });
-    expect(requirePlanForProduct(productIdFor('pro', 'yearly'))).toEqual({ plan: 'pro', period: 'yearly' });
-    expect(requirePlanForProduct(productIdFor('max', 'monthly'))).toEqual({ plan: 'max', period: 'monthly' });
-    expect(requirePlanForProduct(productIdFor('max', 'yearly'))).toEqual({ plan: 'max', period: 'yearly' });
+    expect(requirePlanForProduct(requireProductId('plus', 'monthly'))).toEqual({ plan: 'plus', period: 'monthly' });
+    expect(requirePlanForProduct(requireProductId('plus', 'yearly'))).toEqual({ plan: 'plus', period: 'yearly' });
+    expect(requirePlanForProduct(requireProductId('pro', 'monthly'))).toEqual({ plan: 'pro', period: 'monthly' });
+    expect(requirePlanForProduct(requireProductId('pro', 'yearly'))).toEqual({ plan: 'pro', period: 'yearly' });
+    expect(requirePlanForProduct(requireProductId('max', 'monthly'))).toEqual({ plan: 'max', period: 'monthly' });
+    expect(requirePlanForProduct(requireProductId('max', 'yearly'))).toEqual({ plan: 'max', period: 'yearly' });
   });
 
   it('takes the plan from the PRODUCT even when metadata claims another one', async () => {
@@ -598,7 +598,7 @@ describe('an unknown product id fails loudly and provisions nothing', () => {
     // actually charge. If they ever disagree, the charge wins.
     await provisionTenantFromDodoSubscription(
       subscription({
-        product_id: productIdFor('max', 'yearly'),
+        product_id: requireProductId('max', 'yearly'),
         metadata: { ...subscription().metadata, plan: 'plus', billing: 'monthly' },
       }),
     );

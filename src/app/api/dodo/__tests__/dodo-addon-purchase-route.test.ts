@@ -124,7 +124,7 @@ import {
   DODO_ADDON_MEANINGS,
   DODO_TEST_ADDONS,
   addonIdFor,
-  productIdFor,
+  requireProductId,
   type DodoAddonMeaning,
 } from '@/lib/dodo/catalogue';
 import type { BillingPeriod } from '@/lib/dodo/provider';
@@ -156,10 +156,10 @@ const ADDON_NAMES: Record<string, string> = {
   [DODO_TEST_ADDONS.unlimitedContacts.yearly as string]: 'Unlimited Contacts - Annual',
 };
 
-const PLUS_MONTHLY = productIdFor('plus', 'monthly');
-const PLUS_YEARLY = productIdFor('plus', 'yearly');
-const PRO_MONTHLY = productIdFor('pro', 'monthly');
-const MAX_MONTHLY = productIdFor('max', 'monthly');
+const PLUS_MONTHLY = requireProductId('plus', 'monthly');
+const PLUS_YEARLY = requireProductId('plus', 'yearly');
+const PRO_MONTHLY = requireProductId('pro', 'monthly');
+const MAX_MONTHLY = requireProductId('max', 'monthly');
 
 // ── 🔴 THE TIER LADDER, AS DODO HOLDS IT (THE-160) ───────────────────────────
 //
@@ -186,7 +186,7 @@ function attachmentByProduct(): Map<string, string[]> {
   for (const plan of Object.keys(ATTACHED_MEANINGS) as TenantPlan[]) {
     for (const period of ['monthly', 'yearly'] as BillingPeriod[]) {
       byProduct.set(
-        productIdFor(plan, period),
+        requireProductId(plan, period),
         ATTACHED_MEANINGS[plan].map((meaning) => addonIdFor(meaning, period) as string),
       );
     }

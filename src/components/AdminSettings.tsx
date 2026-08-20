@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Crown, Settings2, Bot, Plug, AlertTriangle, Check, FileText, MessageSquare, SlidersHorizontal, ChevronRight, DollarSign, CreditCard, Palette } from 'lucide-react';
 import { TenantPlan } from '../types/tenant.types';
-import { getPlanFeatures, AI_TELEGRAM_ASSISTANT_ENABLED } from '../utils/plan-features';
+import { getPlanFeatures, AI_TELEGRAM_ASSISTANT_ENABLED, PLAN_DISPLAY_NAMES, PLAN_ORDER, formatPlanPrice } from '../utils/plan-features';
 import { hasPlatformOverride } from '../utils/tenant-scope';
 import SettingsAccordion from './settings/SettingsAccordion';
 import PaymentSection from './settings/PaymentSection';
@@ -453,11 +453,35 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
   );
 };
 
-// Display constants (needed for current plan summary)
-const PLANS_DISPLAY = [
-  { id: 'plus' as TenantPlan, name: 'Individual', monthlyPrice: '$49/mo',  icon: Crown, color: '#6366f1' },
-  { id: 'pro'  as TenantPlan, name: 'Small Team', monthlyPrice: '$99/mo',  icon: Crown, color: '#d4a017' },
-  { id: 'max'  as TenantPlan, name: 'Ministry',   monthlyPrice: '$199/mo', icon: Crown, color: '#b45309' },
-];
+// Display constants (needed for current plan summary).
+//
+// 🔴 The NAME and the PRICE are derived; only the swatch colour is typed. Both
+// carried literals — `$49` / `$99` / `$199` — and both went stale at the
+// reprice, so the plan summary quoted a price the church was not paying. Colour
+// has nothing in the price table to derive from, so it stays written down.
+const PLAN_SWATCH: Record<TenantPlan, string> = {
+  plus: '#6366f1',
+  pro: '#d4a017',
+  max: '#b45309',
+};
+
+/** Shape of a plan summary row. Annotated rather than inferred: the array is
+ *  declared at the foot of the file and read from a component above it, and an
+ *  inferred type would not be available at that use site. */
+interface PlanDisplayRow {
+  id: TenantPlan;
+  name: string;
+  monthlyPrice: string;
+  icon: typeof Crown;
+  color: string;
+}
+
+const PLANS_DISPLAY: PlanDisplayRow[] = PLAN_ORDER.map((id) => ({
+  id,
+  name: PLAN_DISPLAY_NAMES[id],
+  monthlyPrice: formatPlanPrice(id, 'monthly'),
+  icon: Crown,
+  color: PLAN_SWATCH[id],
+}));
 
 export default AdminSettings;

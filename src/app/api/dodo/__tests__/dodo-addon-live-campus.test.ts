@@ -96,16 +96,16 @@ import {
   DODO_LIVE_ADDONS,
   addonIdFor,
   offerableAddonMeanings,
-  productIdFor,
+  requireProductId,
 } from '@/lib/dodo/catalogue';
 import { __setDodoClientForTests } from '@/lib/dodo/dodo-provider';
 
-const PLUS_MONTHLY = productIdFor('plus', 'monthly');
+const PLUS_MONTHLY = requireProductId('plus', 'monthly');
 
 /**
  * 🔴 WHAT THE LIVE INDIVIDUAL PRODUCT CARRIES, as Dodo reports it (THE-160).
  *
- * Read from the live `pdt_…` behind `productIdFor('plus', 'monthly')` on
+ * Read from the live `pdt_…` behind `requireProductId('plus', 'monthly')` on
  * 2026-08-16: AI Assistant, Admin Seat and Campus — and NOT Contacts +500 or
  * Unlimited Contacts, which is the attachment THE-160 exists to respect.
  *

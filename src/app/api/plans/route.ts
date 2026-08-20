@@ -3,6 +3,7 @@ import {
   getPlanFeatures,
   PLAN_DISPLAY_NAMES,
   PLAN_PRICING,
+  TERM_MONTHS,
   PLAN_ORDER,
   AI_ASSISTANT_ADDON_PRICING,
   AI_TELEGRAM_ASSISTANT_ENABLED,
@@ -29,10 +30,16 @@ export async function GET() {
     return {
       id,
       name: PLAN_DISPLAY_NAMES[id],
+      // One entry per billing term, plus what the same service would cost bought
+      // a month at a time — the figure a saving is measured against. Both are
+      // read from the price table; nothing here recomputes a discount, because
+      // the discounts no longer divide into whole months (see PLAN_PRICING).
       pricing: {
-        monthlyUsd: pricing.monthlyUsd,
-        yearlyUsd: pricing.yearlyUsd,
-        yearlyOriginalUsd: pricing.monthlyUsd * 12,
+        monthlyUsd: pricing.monthly,
+        quarterlyUsd: pricing.quarterly,
+        yearlyUsd: pricing.yearly,
+        quarterlyOriginalUsd: pricing.monthly * TERM_MONTHS.quarterly,
+        yearlyOriginalUsd: pricing.monthly * TERM_MONTHS.yearly,
       },
       // `donationRetentionPct` is intentionally absent. Every tier now charges
       // a 0% platform fee on donations, so the number it published was the

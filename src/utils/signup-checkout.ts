@@ -1,4 +1,4 @@
-import { DODO_BILLING_ENABLED } from './plan-features';
+import { BILLING_TERMS, DODO_BILLING_ENABLED, type BillingTerm } from './plan-features';
 
 /**
  * Where new-ministry signup posts to start a checkout.
@@ -42,10 +42,14 @@ export const WALLET_FALLBACK_LINE =
  * Structurally identical to `BillingPeriod` in `src/lib/dodo/provider.ts`, and
  * deliberately NOT imported from there: client components may not import the
  * Dodo module (`dodo-billing-flag.test.ts` pins that boundary), and the period
- * is processor-neutral anyway — the Stripe signup route reads the same two
+ * is processor-neutral anyway — the Stripe signup route reads the same three
  * words. A test pins the two types mutually assignable so they cannot drift.
+ *
+ * Aliased to `BillingTerm` rather than restated, so the set of terms a signup
+ * may carry is the same set the price table prices. Restating it is how
+ * 'quarterly' would end up sellable on the site and unrecognised here.
  */
-export type SignupBillingPeriod = 'monthly' | 'yearly';
+export type SignupBillingPeriod = BillingTerm;
 
 /**
  * Validate an untrusted billing period — `?billing=` from a URL, or the
@@ -56,9 +60,29 @@ export type SignupBillingPeriod = 'monthly' | 'yearly';
  * fallback by design, so a bad period reaching a product lookup is a hole this
  * validator exists to close. 'monthly' is the safe floor because a signup
  * carrying no period is exactly the signup the app sold before annual existed.
+ *
+ * ─── Why adding 'quarterly' is not a revenue hole ────────────────────────────
+ *
+ * This is an ALLOWLIST OF PURCHASABLE TERMS, not a discount grant, and widening
+ * it to the three terms the product actually sells does not let a forged value
+ * buy anything cheaply. A term selects a PRICE AND A DURATION TOGETHER, from one
+ * table: `?billing=quarterly` charges $99 for three months of Individual, which
+ * is precisely what the quarterly card offers anyone who clicks it. There is no
+ * term whose price can be had without its commitment, so there is nothing for a
+ * forged value to steal — the same reason `yearly` has been accepted here since
+ * the annual term shipped, even though $329 is the lowest per-month figure the
+ * product sells.
+ *
+ * What must NOT change, and does not: anything OUTSIDE the three real terms
+ * still lands on 'monthly', the most expensive per-month term. `BILLING_TERMS`
+ * is read rather than restated so this list cannot drift from the catalogue's,
+ * and a fourth term added there without products behind it would be caught by
+ * the catalogue's total lookup, not silently sold here.
  */
 export function readSignupBillingPeriod(raw: unknown): SignupBillingPeriod {
-  return raw === 'monthly' || raw === 'yearly' ? raw : 'monthly';
+  return (BILLING_TERMS as readonly string[]).includes(raw as string)
+    ? (raw as SignupBillingPeriod)
+    : 'monthly';
 }
 
 /**

@@ -11,9 +11,9 @@ import {
   AI_TELEGRAM_ASSISTANT_ENABLED,
   UNLIMITED_CAP,
   formatPlanPrice,
-  annualMonthlyEquivalent,
-  ANNUAL_BILLED_MONTHS,
-  ANNUAL_FREE_MONTHS,
+  planTermMonthlyEquivalent,
+  TERM_MONTHS,
+  type BillingTerm,
   PlanFeatures,
   PLAN_BLURBS,
 } from '../../utils/plan-features';
@@ -21,6 +21,7 @@ import { PLATFORM_FEE_MAP } from '../../lib/stripe-connect';
 import { authFetch } from '../../utils/auth-fetch';
 import { fetchBillingProcessor, runDodoPlanChange, subscriptionProcessorAttribution, PlanChangeProcessor } from '../../utils/plan-change';
 import { getTenantId } from './useTenantId';
+import { BillingTermToggle } from './BillingTermToggle';
 
 interface PlanUpgradeSectionProps {
   currentPlan?: TenantPlan;
@@ -288,7 +289,7 @@ function platformFeeLabel(plan: TenantPlan): string {
 }
 
 const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, tenantId, email, hideUpgrade, processor }) => {
-  const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly');
+  const [billingPeriod, setBillingPeriod] = useState<BillingTerm>('monthly');
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);
   const [activePlanIndex, setActivePlanIndex] = useState(0);
@@ -410,34 +411,10 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
       <h2 className="font-display text-2xl font-bold text-strong">Upgrade Your Plan</h2>
       <p className="text-muted">Choose the plan that best fits your ministry&apos;s needs.</p>
 
-      {/* Billing Period Toggle */}
-      <div className="flex items-center justify-center gap-3 bg-surface-tint rounded-2xl p-2 max-w-xs mx-auto">
-        <button
-          onClick={() => setBillingPeriod('monthly')}
-          className={`px-5 py-2 rounded-xl text-sm font-semibold transition-all ${
-            billingPeriod === 'monthly' ? 'bg-surface-raised text-strong shadow-sm' : 'text-muted hover:text-body'
-          }`}
-        >
-          Monthly
-        </button>
-        <button
-          onClick={() => setBillingPeriod('yearly')}
-          className={`px-5 py-2 rounded-xl text-sm font-semibold transition-all relative ${
-            billingPeriod === 'yearly' ? 'bg-surface-raised text-strong shadow-sm' : 'text-muted hover:text-body'
-          }`}
-        >
-          Yearly
-          <span className="absolute -top-2 -right-2 px-1.5 py-0.5 bg-green-500 text-white text-[10px] font-bold rounded-full">
-            -{ANNUAL_FREE_MONTHS}mo
-          </span>
-        </button>
-      </div>
-
-      {billingPeriod === 'yearly' && (
-        <p className="text-center text-sm text-green-600 font-medium">
-          🎉 {ANNUAL_FREE_MONTHS} months free! Pay for {ANNUAL_BILLED_MONTHS} months, get 12.
-        </p>
-      )}
+      {/* Billing term toggle — three segments, shared with AdminUpgradePage.
+          The badge is INSIDE each segment rather than hung off it; see the
+          component for why an absolutely-positioned badge is what clips. */}
+      <BillingTermToggle value={billingPeriod} onChange={setBillingPeriod} />
 
       {/* ── The plan cards ───────────────────────────────────────────────────
           Below `sm:` this is the horizontal snap carousel it has always been:
@@ -478,10 +455,10 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
           // than reassembled, so the element's text is still exactly what
           // formatPlanPrice returned and no period suffix is written here.
           const [priceAmount, pricePeriod] = displayPrice.split('/');
-          // Annual bills monthly × ANNUAL_BILLED_MONTHS, same math as the marketing site's
-          // Pricing.tsx — derived from the shared constant so the two never show different
-          // numbers. The rounding lives in annualMonthlyEquivalent(), not here.
-          const yearlyMonthlyEquivalent = annualMonthlyEquivalent(planId);
+          // The per-month equivalent of the selected term, read through the one
+          // helper that rounds it. Never a charged figure — see the line below,
+          // which always states the amount actually taken beside it.
+          const termMonthlyEquivalent = planTermMonthlyEquivalent(planId, billingPeriod);
           const isCurrent = planId === currentPlan;
           const isDowngrade = PLAN_ORDER.indexOf(planId) < PLAN_ORDER.indexOf(currentPlan ?? 'plus');
 
@@ -557,9 +534,19 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
                 <span className="text-[34px] font-bold leading-none">{priceAmount}</span>
                 <span className="text-[13px] font-semibold">/{pricePeriod}</span>
               </p>
-              {billingPeriod === 'yearly' && (
-                <p className={`mt-1 text-[11.5px] ${isRecommended ? 'text-cream/70' : 'text-faint'}`}>
-                  ${yearlyMonthlyEquivalent}/mo billed annually — save {ANNUAL_FREE_MONTHS} months
+              {/* 🔴 The per-month figure NEVER travels alone. $329/yr is $27/mo
+                  and no church is ever charged $27, so the amount actually taken
+                  and the cycle it is taken on are on the same line as the
+                  equivalent. The saving is claimed by the toggle, once, in the
+                  one wording `discountClaim` allows — not restated per card,
+                  where it would have to be a per-tier number. */}
+              {billingPeriod !== 'monthly' && (
+                <p
+                  data-testid="plan-card-term-note"
+                  className={`mt-1 text-[11.5px] ${isRecommended ? 'text-cream/70' : 'text-faint'}`}
+                >
+                  {`$${termMonthlyEquivalent}/mo equivalent — billed as ${displayPrice.split('/')[0]} ` +
+                   `every ${TERM_MONTHS[billingPeriod]} months`}
                 </p>
               )}
 

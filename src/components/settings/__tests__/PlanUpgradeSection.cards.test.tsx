@@ -10,7 +10,8 @@ import {
   PLAN_ORDER,
   PLAN_PRICING,
   PLAN_DISPLAY_NAMES,
-  ANNUAL_BILLED_MONTHS,
+  BILLING_TERMS,
+  planPriceUsd,
   PLAN_BLURBS,
 } from '../../../utils/plan-features';
 import type { TenantPlan } from '../../../types/tenant.types';
@@ -220,7 +221,7 @@ describe('PlanUpgradeSection plan cards', () => {
     expect(shownCells('pro')).toContain('docs');
   });
 
-  it('keeps the monthly/annual toggle working and the current plan marked', () => {
+  it('keeps the three-term toggle working and the current plan marked', () => {
     mount({ currentPlan: 'pro' });
 
     const marked = () =>
@@ -237,13 +238,23 @@ describe('PlanUpgradeSection plan cards', () => {
     for (const plan of PLAN_ORDER) {
       expect(priceOf(plan), PLAN_DISPLAY_NAMES[plan]).toBe(formatPlanPrice(plan, 'monthly'));
     }
-    expect(container.textContent).not.toContain('billed annually');
+    expect(container.textContent).not.toContain('equivalent');
+
+    // 🔴 Every term, including the new middle one. The card headline is the
+    // CHARGED figure with the CHARGED cycle — "$99/qtr", never "$33/mo".
+    clickButtonWithText('Quarterly');
+    for (const plan of PLAN_ORDER) {
+      expect(priceOf(plan), PLAN_DISPLAY_NAMES[plan]).toBe(formatPlanPrice(plan, 'quarterly'));
+    }
+    // …and the per-month equivalent never appears without the total and cadence.
+    expect(container.textContent).toContain('/mo equivalent');
+    expect(container.textContent).toContain('every 3 months');
 
     clickButtonWithText('Yearly');
     for (const plan of PLAN_ORDER) {
       expect(priceOf(plan), PLAN_DISPLAY_NAMES[plan]).toBe(formatPlanPrice(plan, 'yearly'));
     }
-    expect(container.textContent).toContain('billed annually');
+    expect(container.textContent).toContain('every 12 months');
     // The marker survives the toggle — the two are independent state.
     expect(marked()).toEqual(['pro']);
 
@@ -254,15 +265,17 @@ describe('PlanUpgradeSection plan cards', () => {
     expect(marked()).toEqual(['pro']);
   });
 
-  it('leaves every tier price unchanged', () => {
-    // The published numbers, and the annual identity that derives from them.
-    expect(PLAN_PRICING.plus.monthlyUsd).toBe(49);
-    expect(PLAN_PRICING.pro.monthlyUsd).toBe(99);
-    expect(PLAN_PRICING.max.monthlyUsd).toBe(199);
+  it('renders the repriced tiers on every term', () => {
+    // The nine published numbers. There is no annual identity to derive any
+    // more — the prices ARE the source, so each is asserted outright.
+    expect(PLAN_PRICING.plus.monthly).toBe(39);
+    expect(PLAN_PRICING.pro.monthly).toBe(79);
+    expect(PLAN_PRICING.max.monthly).toBe(159);
     for (const plan of PLAN_ORDER) {
-      expect(PLAN_PRICING[plan].yearlyUsd, PLAN_DISPLAY_NAMES[plan]).toBe(
-        PLAN_PRICING[plan].monthlyUsd * ANNUAL_BILLED_MONTHS
-      );
+      for (const term of BILLING_TERMS) {
+        expect(planPriceUsd(plan, term), `${PLAN_DISPLAY_NAMES[plan]} ${term}`)
+          .toBe(PLAN_PRICING[plan][term]);
+      }
     }
 
     // And the cards render those, rather than a literal of their own.

@@ -1,4 +1,5 @@
 import type { TenantPlan } from '@/types/tenant.types';
+import type { BillingTerm } from '@/utils/plan-features';
 
 /**
  * The subscription-billing seam: what Harvest needs from a payment processor,
@@ -33,8 +34,17 @@ import type { TenantPlan } from '@/types/tenant.types';
  * Dodo.
  */
 
-/** Billing cadence, in the app's own vocabulary. Dodo's catalogue says 'annual'. */
-export type BillingPeriod = 'monthly' | 'yearly';
+/**
+ * Billing cadence, in the app's own vocabulary. Dodo's catalogue says 'annual'
+ * where this says 'yearly'; 'quarterly' is Dodo's
+ * `payment_frequency_count: 3, interval: Month`.
+ *
+ * Aliased to `BillingTerm` (utils/plan-features) rather than restated: the set
+ * of cadences a subscription can be sold on IS the set the price table prices,
+ * and two hand-kept copies of it is how a term ends up purchasable on one side
+ * and unresolvable on the other.
+ */
+export type BillingPeriod = BillingTerm;
 
 /**
  * Subscription state, in Harvest's vocabulary.

@@ -292,56 +292,171 @@ const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
 // ─── Pricing (source of truth) ────────────────────────────────────────────────
 
 /**
- * Months charged for a year of service. Annual = monthly × this.
+ * The billing terms a church can buy a plan on. Order is cheapest-commitment
+ * first, and it is the order every term picker renders in.
  *
- * This is a PRICING DECISION, not a rounding convention — do NOT "simplify" it
- * back to a literal, and do not fold it into the yearlyUsd numbers below as a
- * one-off. Churches budget annually and prefer a single invoice, and a year
- * paid up front is worth materially more to Harvest than twelve monthly
- * payments, so the discount is deliberately generous: 9 of 12 months = 25% off.
+ * ⚠️ CROSS-REPO VOCABULARY. Dodo's catalogue says `annual` where this app says
+ * `yearly`; the reconciliation lives in src/lib/dodo/catalogue.ts and nowhere
+ * else. Quarterly needs no reconciliation — Dodo bills it as
+ * `payment_frequency_count: 3, interval: Month`, and "quarterly" is this app's
+ * word for that.
+ */
+export const BILLING_TERMS = ['monthly', 'quarterly', 'yearly'] as const;
+
+export type BillingTerm = (typeof BILLING_TERMS)[number];
+
+/**
+ * Months of service ONE charge on a term buys.
  *
- * EVERY annual figure and every discount claim in this app derives from this
- * constant — prices, the monthly-equivalent line, the "months free" badges.
- * Nothing computes an annual number from a literal.
+ * This is what makes a saving computable at all: a term's real discount is its
+ * price against `monthly × TERM_MONTHS[term]`, which is what the same service
+ * would have cost bought a month at a time.
+ */
+export const TERM_MONTHS: Readonly<Record<BillingTerm, number>> = Object.freeze({
+  monthly: 1,
+  quarterly: 3,
+  yearly: 12,
+});
+
+/**
+ * Base plan pricing in USD — the STORED TABLE. Nine numbers, one per
+ * (tier, term), and every plan price in this app is one of these nine.
+ *
+ * ─── Why this is a table and no longer a multiplier ──────────────────────────
+ *
+ * This used to be `ANNUAL_BILLED_MONTHS = 9` — "pay 9 months, get 12", which is
+ * exactly 25% — with `yearlyUsd` derived from it. That abstraction is GONE and
+ * must not come back, because the discounts it has to express no longer divide
+ * into whole months: 30% off a year is ×8.4 months and 15% off a quarter is
+ * ×2.55 months. There is no integer to name.
+ *
+ * The founder chose ROUNDED PRICES OVER EXACT PERCENTAGES, deliberately:
+ * $405.45 on a pricing page reads like a spreadsheet error. So the prices are
+ * the primitive and the percentages fall out of them, rather than the other way
+ * round. The savings these nine numbers actually produce are:
+ *
+ *              Quarterly   Yearly
+ *   Individual    15.4%     29.7%
+ *   Small Team    16.0%     30.5%
+ *   Ministry      16.4%     30.3%
+ *
+ * 🔴 DO NOT COMPUTE A BADGE FROM THIS TABLE. See `ADVERTISED_DISCOUNT_PCT`.
  *
  * ⚠️ CROSS-REPO: the marketing site (harvest-presentation-site) carries its own
- * copy of this constant in src/components/Pricing.tsx — the two repos cannot
- * share code, so they are kept in sync by hand. Changing this value here means
- * changing it there IN THE SAME BREATH, or the app and the public pricing page
- * quote different prices for the same plan.
+ * copy of these nine numbers in src/components/Pricing.tsx, and a module-scope
+ * contract there compares the TABLE — tier by tier, term by term — against the
+ * numbers this file publishes. The two repos cannot share code, so changing a
+ * price here means changing it there IN THE SAME BREATH or the site's build
+ * fails and names the disagreement.
  */
-export const ANNUAL_BILLED_MONTHS = 9;
+export const PLAN_PRICING: Readonly<Record<TenantPlan, Readonly<Record<BillingTerm, number>>>> =
+  Object.freeze({
+    plus: Object.freeze({ monthly: 39,  quarterly: 99,  yearly: 329  }),
+    pro:  Object.freeze({ monthly: 79,  quarterly: 199, yearly: 659  }),
+    max:  Object.freeze({ monthly: 159, quarterly: 399, yearly: 1329 }),
+  });
 
-/** Months of service received free on annual billing (12 − billed months). */
-export const ANNUAL_FREE_MONTHS = 12 - ANNUAL_BILLED_MONTHS;
-
-/** Annual discount against twelve monthly payments, as a whole percent (25). */
-export const ANNUAL_DISCOUNT_PCT = Math.round((1 - ANNUAL_BILLED_MONTHS / 12) * 100);
+/** What Dodo charges for `plan` on `term`, in whole USD. The one read. */
+export function planPriceUsd(plan: TenantPlan, term: BillingTerm): number {
+  return PLAN_PRICING[plan][term];
+}
 
 /**
- * Base plan pricing in USD.
+ * What a term works out to per month, rounded to whole dollars — a DISPLAY
+ * figure and never a charged one.
  *
- * `yearlyUsd` is `monthlyUsd * ANNUAL_BILLED_MONTHS`, written out as literals
- * rather than computed, so the published price of each tier is readable at a
- * glance in the one table that defines it. The literals are NOT left
- * unguarded: plan-features.test.ts pins the identity
- * `yearlyUsd === monthlyUsd * ANNUAL_BILLED_MONTHS` on every tier, so a
- * literal that drifts from the multiplier fails the suite instead of shipping.
+ * $329 a year is $27.42 a month and no church is ever billed $27. Every surface
+ * that prints this must print the term total beside it; `formatPlanPrice`
+ * returns the charged figure and this is the secondary line under it.
  */
-export const PLAN_PRICING: Record<TenantPlan, { monthlyUsd: number; yearlyUsd: number }> = {
-  plus: { monthlyUsd: 49,  yearlyUsd: 441  },
-  pro:  { monthlyUsd: 99,  yearlyUsd: 891  },
-  max:  { monthlyUsd: 199, yearlyUsd: 1791 },
-};
+export function planTermMonthlyEquivalent(plan: TenantPlan, term: BillingTerm): number {
+  return Math.round(planPriceUsd(plan, term) / TERM_MONTHS[term]);
+}
 
 /**
- * Monthly-equivalent price of a plan on annual billing, e.g. 199 -> 149.
- *
- * The one place this rounding lives. Math.round(199 * 9 / 12) is exactly 149 —
- * that is a consequence of choosing 9, not a special case to hard-code.
+ * What `plan` on `term` actually saves against paying monthly, as an exact
+ * percentage. Used by the honesty guard below, NOT by any badge.
  */
-export function annualMonthlyEquivalent(plan: TenantPlan): number {
-  return Math.round((PLAN_PRICING[plan].monthlyUsd * ANNUAL_BILLED_MONTHS) / 12);
+export function actualSavingPct(plan: TenantPlan, term: BillingTerm): number {
+  const atMonthlyRate = planPriceUsd(plan, 'monthly') * TERM_MONTHS[term];
+  if (atMonthlyRate === 0) return 0;
+  return (1 - planPriceUsd(plan, term) / atMonthlyRate) * 100;
+}
+
+/** The two terms that carry a discount — every term except the monthly base. */
+export const DISCOUNTED_TERMS = BILLING_TERMS.filter((t) => t !== 'monthly');
+
+export type DiscountedTerm = Exclude<BillingTerm, 'monthly'>;
+
+/**
+ * The percentages the product ADVERTISES. Stored, deliberately.
+ *
+ * 🔴 NOT COMPUTED FROM `PLAN_PRICING`, and this is the whole point. Rounded
+ * prices produce a different real saving on every tier — 15.4 / 16.0 / 16.4 on
+ * quarterly — so a computed badge would read "16%" beside the Ministry card and
+ * "15%" beside the Individual one, on a toggle that sits above all three at
+ * once. One number for the toggle is the only honest presentation, and one
+ * number cannot be derived from three.
+ */
+export const ADVERTISED_DISCOUNT_PCT: Readonly<Record<DiscountedTerm, number>> = Object.freeze({
+  quarterly: 15,
+  yearly: 30,
+});
+
+/**
+ * How a term's advertised percentage may be WORDED — derived, never typed.
+ *
+ * ⚠️ THE HONESTY RULE: no copy may claim a saving larger than the smallest
+ * actual one. A flat "save 30%" is a claim about every tier, so it is only true
+ * when the WORST tier saves at least 30%.
+ *
+ *   quarterly  advertises 15, worst tier saves 15.4  → 'flat'  → "Save 15%"
+ *   yearly     advertises 30, worst tier saves 29.7  → 'upTo'  → "Save up to 30%"
+ *
+ * 🔴 Yearly is the case this derivation exists for. The brief that set these
+ * prices asserted 15% and 30% were both safe; 30 is not — Individual saves
+ * 29.70%, three tenths of a point short — so a flat "save 30%" overstates what
+ * the cheapest tier actually saves. "Up to" is true of every tier (the best is
+ * 30.5%) and keeps 30 on the badge, which is what was actually wanted. Nothing
+ * here decides the NUMBER; it decides only whether the number can be stated
+ * bare, and it decides that from the prices so the copy cannot outlive them.
+ */
+export type DiscountClaimShape = 'flat' | 'upTo';
+
+/** Every priced tier, read off the table itself. `PLAN_ORDER` is declared far
+ *  below this block and referencing it here would be a temporal-dead-zone
+ *  error at module load; the table's own keys are the same three tiers. */
+const PRICED_PLANS = Object.keys(PLAN_PRICING) as TenantPlan[];
+
+export function discountClaimShape(term: DiscountedTerm): DiscountClaimShape {
+  const worst = Math.min(...PRICED_PLANS.map((plan) => actualSavingPct(plan, term)));
+  return ADVERTISED_DISCOUNT_PCT[term] <= worst ? 'flat' : 'upTo';
+}
+
+/** The advertised saving for a term, in words. The one phrasing, app-wide. */
+export function discountClaim(term: DiscountedTerm): string {
+  const pct = ADVERTISED_DISCOUNT_PCT[term];
+  return discountClaimShape(term) === 'flat' ? `Save ${pct}%` : `Save up to ${pct}%`;
+}
+
+/**
+ * 🔴 MODULE-SCOPE HONESTY GUARD. An advertised percentage that exceeds what the
+ * BEST tier saves is false under any wording — "up to 40%" when nothing reaches
+ * 40% is not a hedge, it is a lie — so it fails the build rather than shipping.
+ *
+ * Deliberately checked here, at the table, and not in a test: the marketing
+ * site runs the identical check at module scope during its prerender, and a
+ * claim this app cannot make is a claim that site must not print either.
+ */
+for (const term of DISCOUNTED_TERMS) {
+  const best = Math.max(...PRICED_PLANS.map((plan) => actualSavingPct(plan, term)));
+  if (ADVERTISED_DISCOUNT_PCT[term] > best) {
+    throw new Error(
+      `plan-features: ${term} advertises ${ADVERTISED_DISCOUNT_PCT[term]}% off, but the best ` +
+      `tier only saves ${best.toFixed(1)}%. No wording makes that true — lower the advertised ` +
+      `percentage or reprice PLAN_PRICING.`,
+    );
+  }
 }
 
 // `PLAN_DONATION_RETENTION` was removed alongside the `donationRetention`
@@ -786,10 +901,39 @@ export function hasBrandingAccess(features: PlanFeatures): boolean {
   return features.customBranding || features.customDomain;
 }
 
-/** Format a plan price as a display string, e.g. "$49/mo" */
-export function formatPlanPrice(plan: TenantPlan, billing: 'monthly' | 'yearly'): string {
+/**
+ * The suffix each term's CHARGED figure carries — "$329/yr", not "$329/mo".
+ *
+ * 🔴 The suffix names the billing cycle, so the amount beside it is the amount
+ * that leaves the church's account on that cycle. A quarterly plan is charged
+ * $99 every three months and says so; the per-month arithmetic is a separate,
+ * clearly-labelled line (`planTermMonthlyEquivalent`), never this one.
+ */
+export const TERM_PRICE_SUFFIX: Readonly<Record<BillingTerm, string>> = Object.freeze({
+  monthly: 'mo',
+  quarterly: 'qtr',
+  yearly: 'yr',
+});
+
+/**
+ * How a term is described in running prose — "billed quarterly".
+ *
+ * A total map rather than a ternary, deliberately. The confirmation banner on
+ * signup asked `billing === 'yearly' ? 'billed annually' : 'billed monthly'`,
+ * which was correct while there were two terms and silently WRONG the moment
+ * there were three: a church that chose quarterly was shown "billed monthly" on
+ * the last screen before it paid. A record over the union cannot fall into an
+ * else-branch that way — a new term is a type error here, not a wrong sentence.
+ */
+export const TERM_BILLED_PHRASE: Readonly<Record<BillingTerm, string>> = Object.freeze({
+  monthly: 'billed monthly',
+  quarterly: 'billed quarterly',
+  yearly: 'billed annually',
+});
+
+/** Format a plan's CHARGED price for a term, e.g. "$39/mo", "$99/qtr", "$329/yr". */
+export function formatPlanPrice(plan: TenantPlan, term: BillingTerm): string {
   const pricing = PLAN_PRICING[plan];
   if (!pricing) return 'Custom';
-  const amount = billing === 'monthly' ? pricing.monthlyUsd : pricing.yearlyUsd;
-  return `$${amount.toLocaleString()}/${billing === 'monthly' ? 'mo' : 'yr'}`;
+  return `$${planPriceUsd(plan, term).toLocaleString()}/${TERM_PRICE_SUFFIX[term]}`;
 }

@@ -52,7 +52,7 @@ describe('PlanUpgradeSection yearly pricing copy', () => {
   it('shows no struck-through price anywhere on the monthly view', () => {
     mount();
     expect(container.querySelectorAll('.line-through').length).toBe(0);
-    expect(container.textContent).not.toContain('billed annually');
+    expect(container.textContent).not.toContain('/mo equivalent');
   });
 
   it('shows no struck-through price on the yearly view, for any plan', () => {
@@ -61,36 +61,47 @@ describe('PlanUpgradeSection yearly pricing copy', () => {
     expect(container.querySelectorAll('.line-through').length).toBe(0);
   });
 
-  it('derives the yearly monthly-equivalent copy from PLAN_PRICING for Community (max)', () => {
+  it('derives the yearly copy from PLAN_PRICING for Ministry (max)', () => {
     mount();
     clickButtonWithText('Yearly');
-    // max: monthlyUsd 199 -> Math.round(199 * 9 / 12) = 149, exactly.
-    expect(container.textContent).toContain('$149/mo billed annually');
-    // The real annual total comes from PLAN_PRICING.max.yearlyUsd.
-    expect(container.textContent).toContain('$1,791/yr');
+    // 🔴 The CHARGED figure headlines the card: $1,329 a year, on the yearly
+    // cycle. $1329/12 is $110.75, so the equivalent rounds to $111 — and it
+    // never appears without the total and the cadence that produce it.
+    expect(container.textContent).toContain('$1,329/yr');
+    expect(container.textContent).toContain('$111/mo equivalent — billed as $1,329 every 12 months');
   });
 
-  it('derives the yearly monthly-equivalent copy from PLAN_PRICING for Individual (plus)', () => {
+  it('derives the yearly copy from PLAN_PRICING for Individual (plus)', () => {
     mount();
     clickButtonWithText('Yearly');
-    // plus: monthlyUsd 49 -> Math.round(49 * 9 / 12) = 37
-    expect(container.textContent).toContain('$37/mo billed annually');
-    expect(container.textContent).toContain('$441/yr');
+    expect(container.textContent).toContain('$329/yr');
+    // $329/12 is $27.42 — the figure that must never stand on its own.
+    expect(container.textContent).toContain('$27/mo equivalent — billed as $329 every 12 months');
+  });
+
+  it('derives the quarterly copy, the term this change added', () => {
+    mount();
+    clickButtonWithText('Quarterly');
+    expect(container.textContent).toContain('$99/qtr');
+    expect(container.textContent).toContain('$33/mo equivalent — billed as $99 every 3 months');
+    expect(container.textContent).toContain('$399/qtr');
   });
 
   it('leaves the monthly view unchanged', () => {
     mount();
     // Monthly is the default tab; assert the monthly prices render and no
-    // yearly-only copy (old strikethrough or new annotation) leaks in.
-    expect(container.textContent).toContain('$49/mo');
-    expect(container.textContent).toContain('$199/mo');
-    expect(container.textContent).not.toContain('billed annually');
+    // longer-term copy (old strikethrough or the equivalent line) leaks in.
+    expect(container.textContent).toContain('$39/mo');
+    expect(container.textContent).toContain('$159/mo');
+    expect(container.textContent).not.toContain('equivalent');
     expect(container.querySelectorAll('.line-through').length).toBe(0);
 
-    // Round-trip back from yearly confirms the monthly view stays clean too.
+    // Round-trip back through both longer terms confirms the monthly view
+    // stays clean too.
     clickButtonWithText('Yearly');
+    clickButtonWithText('Quarterly');
     clickButtonWithText('Monthly');
-    expect(container.textContent).not.toContain('billed annually');
+    expect(container.textContent).not.toContain('equivalent');
     expect(container.querySelectorAll('.line-through').length).toBe(0);
   });
 });

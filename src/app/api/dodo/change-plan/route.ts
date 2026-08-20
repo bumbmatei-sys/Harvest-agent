@@ -17,6 +17,7 @@ import {
 import type { BillingPeriod } from '@/lib/dodo/provider';
 import { PLAN_ORDER } from '@/utils/plan-features';
 import type { TenantPlan } from '@/types/tenant.types';
+import { BILLING_TERMS } from '@/utils/plan-features';
 
 /**
  * POST /api/dodo/change-plan — the existing-tenant plan change, on Dodo (THE-89).
@@ -82,8 +83,17 @@ function readPlan(raw: unknown): TenantPlan | null {
     : null;
 }
 
+/**
+ * Validate the requested term, REFUSING anything unrecognised.
+ *
+ * Deliberately returns null rather than falling back the way
+ * `readSignupBillingPeriod` falls back to monthly: this route changes what an
+ * existing subscription is charged, so "we could not read your term" must be a
+ * 400 the owner sees, never a silent choice made on their behalf. Reads
+ * `BILLING_TERMS` so the accepted set is the priced set.
+ */
 function readPeriod(raw: unknown): BillingPeriod | null {
-  return raw === 'monthly' || raw === 'yearly' ? raw : null;
+  return (BILLING_TERMS as readonly string[]).includes(raw as string) ? (raw as BillingPeriod) : null;
 }
 
 export async function POST(request: NextRequest) {
@@ -136,10 +146,13 @@ export async function POST(request: NextRequest) {
     const subscriptionId = context.subscriptionId;
 
     if (period !== current.period) {
-      // Annual products are separate Dodo products, so this call COULD switch
-      // billing period — but that is THE-88, its own decision, not a side door.
+      // Each term is a separate Dodo product, so this call COULD switch term —
+      // but that is THE-88, its own decision, not a side door. Now that there
+      // are three terms the message names neither pair: a quarterly church told
+      // "monthly and annual" would reasonably think the refusal was not about
+      // them.
       return NextResponse.json(
-        { error: 'Switching between monthly and annual billing is not available yet. Please contact support.' },
+        { error: 'Switching billing terms is not available yet. Please contact support.' },
         { status: 400 },
       );
     }
