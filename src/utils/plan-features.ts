@@ -362,16 +362,128 @@ export function planPriceUsd(plan: TenantPlan, term: BillingTerm): number {
 }
 
 /**
- * What a term works out to per month, rounded to whole dollars — a DISPLAY
- * figure and never a charged one.
- *
- * $329 a year is $27.42 a month and no church is ever billed $27. Every surface
- * that prints this must print the term total beside it; `formatPlanPrice`
- * returns the charged figure and this is the secondary line under it.
+ * What a term works out to per month, exactly, unrounded. The arithmetic only —
+ * nothing renders this. It is the reference the displayed figure is checked
+ * against.
  */
-export function planTermMonthlyEquivalent(plan: TenantPlan, term: BillingTerm): number {
-  return Math.round(planPriceUsd(plan, term) / TERM_MONTHS[term]);
+export function planTermMonthlyExact(plan: TenantPlan, term: BillingTerm): number {
+  return planPriceUsd(plan, term) / TERM_MONTHS[term];
 }
+
+/**
+ * The per-month figure a card HEADLINES, as a number, CEILED AT THE CENT.
+ *
+ * ─── 🔴 WHY CEILING, AND WHY AT THE CENT (THE-196) ───────────────────────────
+ *
+ * This was `Math.round(price / months)` while it was a secondary line, and that
+ * was defensible there: the charged total sat beside it in the same sentence,
+ * so a dollar of rounding either way could not be mistaken for a bill.
+ *
+ * THE-196 makes it the headline — the biggest number on the card, the one a
+ * church reads as "what this costs me". Rounding to nearest then becomes a
+ * claim, and on two of the six discounted cells it is a claim that is too low:
+ *
+ *     Individual yearly    $329/12 = $27.4167  →  round = $27  → implies $324
+ *     Small Team quarterly $199/3  = $66.3333  →  round = $66  → implies $198
+ *
+ * A church reading "$27/mo" reasonably expects $324 a year and is charged $329.
+ * That is the whole of this ticket, and it is a pricing misrepresentation
+ * rather than a rounding preference. (The brief named the Individual yearly
+ * cell; Small Team quarterly understates too, by $1.)
+ *
+ * So the headline must never imply less than the charged total. Two roundings
+ * satisfy that, and the choice between them is not aesthetic:
+ *
+ *   CEIL TO THE DOLLAR — $28, $55, $111 yearly. Clean, never understates, but
+ *     $28 x 12 = $336 against a charged $329. The headline and the line
+ *     directly beneath it would then disagree by $7, and a church that
+ *     multiplies the one to check the other finds they do not reconcile. The
+ *     fix for a card whose two numbers contradict each other cannot be a card
+ *     whose two numbers contradict each other by a different amount.
+ *
+ *   CEIL TO THE CENT — $27.42, $54.92, $110.75. Never understates (the ceiling
+ *     guarantees it) and reconciles: x12 lands within four cents of the charged
+ *     total, which is the rounding itself and nothing else.
+ *
+ * The cent it is. `$27.42` is two characters uglier than `$28` and it is the
+ * only figure on the card that is actually true.
+ *
+ * ⚠️ An exact division keeps its whole-dollar form — $99/3 is $33.00 and prints
+ * as `$33`, not `$33.00`. See `formatPlanMonthlyHeadline`.
+ *
+ * The `toFixed(6)` before the ceiling is not decoration. `Math.ceil` on a
+ * binary-float product turns an exact $33.00 into $33.01 the moment the
+ * division lands a hair above the integer, which is precisely the direction
+ * this function must not drift.
+ */
+export function ceilToCent(exact: number): number {
+  const cents = Number((exact * 100).toFixed(6));
+  return Math.ceil(cents) / 100;
+}
+
+export function planTermMonthlyDisplayed(plan: TenantPlan, term: BillingTerm): number {
+  return ceilToCent(planTermMonthlyExact(plan, term));
+}
+
+/**
+ * The headline string — `$27.42`, `$33`, `$159`. Carries no period suffix; the
+ * card writes `/mo` beside it, the same split `formatPlanPrice` gets.
+ */
+export function formatPlanMonthlyHeadline(plan: TenantPlan, term: BillingTerm): string {
+  const v = planTermMonthlyDisplayed(plan, term);
+  return `$${v.toLocaleString('en-US', {
+    minimumFractionDigits: Number.isInteger(v) ? 0 : 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
+/**
+ * 🔴 THE HONESTY GUARD. Runs at module scope, below.
+ *
+ * For every tier and every term, the headline figure multiplied back out by the
+ * months in the term must not come to LESS than what Dodo actually charges.
+ * Equal is fine, a few cents over is the ceiling doing its job, under is a
+ * price the product advertises and does not honour.
+ *
+ * This is deliberately stated as the invariant rather than as the six expected
+ * strings: a table of expected figures goes stale with the prices, and the
+ * thing that must stay true is not "the Individual yearly headline is $27.42",
+ * it is "no headline promises less than the bill".
+ *
+ * ⚠️ IT TAKES THE ROUNDING RULE AS AN ARGUMENT, and that is the whole point.
+ * Checked against `ceilToCent` alone it could never fail — a ceiling cannot
+ * round down, so the assertion would be true by construction and would guard
+ * nothing. What can actually regress is the RULE: someone restores
+ * `Math.round` here, or "tidies" the cents away to whole dollars. Passing the
+ * rule in means the contract is a statement about the rule, and swapping in
+ * the old `Math.round` makes it throw and names the tier it lied about. The
+ * module-scope call below binds it to the rule the cards actually render.
+ */
+export function monthlyHeadlineContract(
+  round: (exact: number) => number = ceilToCent,
+  pricing: Readonly<Record<TenantPlan, Readonly<Record<BillingTerm, number>>>> = PLAN_PRICING,
+): void {
+  // Keys off the pricing table rather than PLAN_ORDER: this runs at module
+  // scope and PLAN_ORDER is declared several hundred lines further down, so
+  // naming it here is a temporal-dead-zone crash on import rather than a guard.
+  for (const plan of Object.keys(pricing) as TenantPlan[]) {
+    for (const term of BILLING_TERMS) {
+      const charged = pricing[plan][term];
+      const months = TERM_MONTHS[term];
+      const displayed = round(charged / months);
+      const implied = displayed * months;
+      if (implied < charged - 1e-9) {
+        throw new Error(
+          `Plan pricing: the ${plan} ${term} headline of $${displayed}/mo implies ` +
+            `$${implied.toFixed(2)} over ${months} months, but Dodo charges $${charged}. ` +
+            `A headline may never promise less than the bill.`,
+        );
+      }
+    }
+  }
+}
+
+monthlyHeadlineContract();
 
 /**
  * What `plan` on `term` actually saves against paying monthly, as an exact
