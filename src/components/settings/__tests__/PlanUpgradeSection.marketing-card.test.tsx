@@ -77,6 +77,7 @@ import {
   PLAN_BLURBS,
   PLAN_PRICING,
   formatPlanPrice,
+  formatPlanMonthlyHeadline,
 } from '../../../utils/plan-features';
 import { PLATFORM_FEE_MAP } from '../../../lib/stripe-connect';
 import { FORM_CONTAINER } from '../../layout/form-layout';
@@ -976,6 +977,8 @@ describe('7 — prices, the toggle and the blurbs', () => {
     expect(PLAN_PRICING.max.monthly).toBe(159);
     mount();
     for (const plan of PLAN_ORDER) {
+      // Monthly: the per-month headline and the charged price are the same
+      // figure on the same cycle, so this still matches formatPlanPrice.
       expect(card(plan).querySelector('[data-testid="plan-card-price"]')!.textContent!.trim(), PLAN_DISPLAY_NAMES[plan])
         .toBe(formatPlanPrice(plan, 'monthly'));
     }
@@ -997,10 +1000,11 @@ describe('7 — prices, the toggle and the blurbs', () => {
       const label = term === 'yearly' ? 'Yearly' : term === 'quarterly' ? 'Quarterly' : 'Monthly';
       act(() => { toggle(label).click(); });
       for (const plan of PLAN_ORDER) {
+        // THE-196: the headline is the per-month figure on every term.
         expect(
           card(plan).querySelector('[data-testid="plan-card-price"]')!.textContent!.trim(),
           `${PLAN_DISPLAY_NAMES[plan]} on ${term}`,
-        ).toBe(formatPlanPrice(plan, term));
+        ).toBe(`${formatPlanMonthlyHeadline(plan, term)}/mo`);
       }
     }
   });

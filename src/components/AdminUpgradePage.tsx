@@ -6,9 +6,8 @@ import {
   PLAN_DISPLAY_NAMES,
   PLAN_ORDER,
   TERM_MONTHS,
-  TERM_PRICE_SUFFIX,
   planPriceUsd,
-  planTermMonthlyEquivalent,
+  formatPlanMonthlyHeadline,
   formatPlanPrice,
   type BillingTerm,
 } from '../utils/plan-features';
@@ -231,20 +230,27 @@ const AdminUpgradePage: React.FC<AdminUpgradePageProps> = ({ currentPlan, tenant
                 )}
               </div>
 
+              {/* 🔴 THE-196: per-month headline, charged total beneath — the
+                  same hierarchy as the settings plan cards, deliberately. These
+                  are two routes to the same decision and a church may see both
+                  in one session. */}
               <div className="flex items-baseline gap-1 mb-1">
-                <span className="text-2xl font-bold text-strong">${termPrice.toLocaleString()}</span>
-                <span className="text-xs text-faint">/{TERM_PRICE_SUFFIX[billingPeriod]}</span>
+                <span className="text-2xl font-bold text-strong">
+                  {formatPlanMonthlyHeadline(planId, billingPeriod)}
+                </span>
+                <span className="text-xs text-faint">/mo</span>
               </div>
-              {/* The per-month equivalent, and the amount actually charged, on
-                  one line. $329/yr is $27/mo — a figure no church is ever billed
-                  — so it never appears without the charge that produces it. */}
-              {billingPeriod !== 'monthly' && (
-                <p className="text-[11px] text-faint mb-4">
-                  {`$${planTermMonthlyEquivalent(planId, billingPeriod)}/mo equivalent — billed as ` +
-                   `$${termPrice.toLocaleString()} every ${TERM_MONTHS[billingPeriod]} months`}
+              {/* The charged amount. 12.5px and `text-muted` (7.02:1) for the
+                  reason given at length on the settings card: this is the
+                  number that leaves the account and it is no longer the big
+                  one, so it must not also be the faint one. */}
+              {billingPeriod !== 'monthly' ? (
+                <p data-testid="upgrade-card-term-note" className="text-[12.5px] font-medium text-muted mb-4">
+                  {`billed as $${termPrice.toLocaleString()} every ${TERM_MONTHS[billingPeriod]} months`}
                 </p>
+              ) : (
+                <div className="mb-4" />
               )}
-              {billingPeriod === 'monthly' && <div className="mb-4" />}
 
               <ul className="space-y-2 mb-5 flex-1">
                 {PLAN_HIGHLIGHTS[planId].map((feature) => (

@@ -11,7 +11,7 @@ import {
   AI_TELEGRAM_ASSISTANT_ENABLED,
   UNLIMITED_CAP,
   formatPlanPrice,
-  planTermMonthlyEquivalent,
+  formatPlanMonthlyHeadline,
   TERM_MONTHS,
   type BillingTerm,
   PlanFeatures,
@@ -450,15 +450,17 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
           const plan = meta;
           const features = getPlanFeatures(planId);
           const name = PLAN_DISPLAY_NAMES[planId];
+          // 🔴 THE-196 FLIPPED THESE TWO. The headline is now the PER-MONTH
+          // figure and the charged total sits beneath it. Both still come from
+          // the one formatter each, so neither is assembled here.
           const displayPrice = formatPlanPrice(planId, billingPeriod);
-          // "$49/mo" → a large "$49" and a small "/mo" beside it. Split rather
-          // than reassembled, so the element's text is still exactly what
-          // formatPlanPrice returned and no period suffix is written here.
-          const [priceAmount, pricePeriod] = displayPrice.split('/');
-          // The per-month equivalent of the selected term, read through the one
-          // helper that rounds it. Never a charged figure — see the line below,
-          // which always states the amount actually taken beside it.
-          const termMonthlyEquivalent = planTermMonthlyEquivalent(planId, billingPeriod);
+          // The charged figure without its suffix — "$329" out of "$329/yr" —
+          // for the line beneath, which names its own cadence in words.
+          const chargedTotal = displayPrice.split('/')[0];
+          // The headline. Ceiled at the cent, so it can never imply less than
+          // `chargedTotal`; see planTermMonthlyDisplayed for why that matters
+          // more as a headline than it did as a footnote.
+          const monthlyHeadline = formatPlanMonthlyHeadline(planId, billingPeriod);
           const isCurrent = planId === currentPlan;
           const isDowngrade = PLAN_ORDER.indexOf(planId) < PLAN_ORDER.indexOf(currentPlan ?? 'plus');
 
@@ -531,22 +533,37 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
                 data-testid="plan-card-price"
                 className={`mt-2 flex items-baseline ${isRecommended ? 'text-cream' : 'text-strong'}`}
               >
-                <span className="text-[34px] font-bold leading-none">{priceAmount}</span>
-                <span className="text-[13px] font-semibold">/{pricePeriod}</span>
+                <span className="text-[34px] font-bold leading-none">{monthlyHeadline}</span>
+                <span className="text-[13px] font-semibold">/mo</span>
               </p>
-              {/* 🔴 The per-month figure NEVER travels alone. $329/yr is $27/mo
-                  and no church is ever charged $27, so the amount actually taken
-                  and the cycle it is taken on are on the same line as the
-                  equivalent. The saving is claimed by the toggle, once, in the
-                  one wording `discountClaim` allows — not restated per card,
-                  where it would have to be a per-tier number. */}
+              {/* ── 🔴 THE CHARGED TOTAL (THE-196) ─────────────────────────
+                  The headline above is a per-month EQUIVALENT. This is the
+                  amount that actually leaves the account, and now that it is
+                  the smaller of the two it has to carry its own weight:
+
+                    12.5px, not `text-xs`. The desktop rem base is 14.5px from
+                    1024px up, where `text-xs` computes to 10.875px — under the
+                    11px floor. An explicit px size cannot drift with the base.
+
+                    `text-muted` (7.02:1 on white) rather than `text-faint`
+                    (5.28:1), and `cream/80` (11.23:1 on navy) rather than
+                    `cream/70`. Both were already AA; the point is that the
+                    number a church is billed should not be the quietest ink on
+                    the card while a figure nobody is billed is the loudest.
+
+                  On MONTHLY this renders nothing at all — no element and no
+                  reserved space. The headline is already the charged amount on
+                  the charged cycle, so "billed as $39 every 1 month" underneath
+                  "$39/mo" is the same sentence twice. No spacer is needed
+                  either: the toggle is global, so all three cards are on the
+                  same term at the same time and the row cannot go missing from
+                  one card while its neighbour keeps it. */}
               {billingPeriod !== 'monthly' && (
                 <p
                   data-testid="plan-card-term-note"
-                  className={`mt-1 text-[11.5px] ${isRecommended ? 'text-cream/70' : 'text-faint'}`}
+                  className={`mt-1 text-[12.5px] font-medium ${isRecommended ? 'text-cream/80' : 'text-muted'}`}
                 >
-                  {`$${termMonthlyEquivalent}/mo equivalent — billed as ${displayPrice.split('/')[0]} ` +
-                   `every ${TERM_MONTHS[billingPeriod]} months`}
+                  {`billed as ${chargedTotal} every ${TERM_MONTHS[billingPeriod]} months`}
                 </p>
               )}
 

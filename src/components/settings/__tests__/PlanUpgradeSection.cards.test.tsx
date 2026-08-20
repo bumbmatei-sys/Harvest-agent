@@ -7,6 +7,7 @@ import PlanUpgradeSection from '../PlanUpgradeSection';
 import {
   getPlanFeatures,
   formatPlanPrice,
+  formatPlanMonthlyHeadline,
   PLAN_ORDER,
   PLAN_PRICING,
   PLAN_DISPLAY_NAMES,
@@ -234,25 +235,29 @@ describe('PlanUpgradeSection plan cards', () => {
     expect(currentButton.textContent).toContain('Current Plan');
     expect((currentButton as HTMLButtonElement).disabled).toBe(true);
 
-    // Monthly is the default.
+    // Monthly is the default. On monthly the headline and the charged price
+    // coincide, so it still reads exactly what formatPlanPrice returns.
     for (const plan of PLAN_ORDER) {
       expect(priceOf(plan), PLAN_DISPLAY_NAMES[plan]).toBe(formatPlanPrice(plan, 'monthly'));
     }
     expect(container.textContent).not.toContain('equivalent');
+    expect(container.textContent).not.toContain('billed as');
 
-    // 🔴 Every term, including the new middle one. The card headline is the
-    // CHARGED figure with the CHARGED cycle — "$99/qtr", never "$33/mo".
+    // 🔴 THE-196: every term, including the new middle one. The headline is now
+    // the PER-MONTH figure — "$33/mo" — and the charged total sits beneath it.
     clickButtonWithText('Quarterly');
     for (const plan of PLAN_ORDER) {
-      expect(priceOf(plan), PLAN_DISPLAY_NAMES[plan]).toBe(formatPlanPrice(plan, 'quarterly'));
+      expect(priceOf(plan), PLAN_DISPLAY_NAMES[plan])
+        .toBe(`${formatPlanMonthlyHeadline(plan, 'quarterly')}/mo`);
     }
-    // …and the per-month equivalent never appears without the total and cadence.
-    expect(container.textContent).toContain('/mo equivalent');
+    // …and the per-month headline never appears without the charged total.
+    expect(container.textContent).toContain('billed as');
     expect(container.textContent).toContain('every 3 months');
 
     clickButtonWithText('Yearly');
     for (const plan of PLAN_ORDER) {
-      expect(priceOf(plan), PLAN_DISPLAY_NAMES[plan]).toBe(formatPlanPrice(plan, 'yearly'));
+      expect(priceOf(plan), PLAN_DISPLAY_NAMES[plan])
+        .toBe(`${formatPlanMonthlyHeadline(plan, 'yearly')}/mo`);
     }
     expect(container.textContent).toContain('every 12 months');
     // The marker survives the toggle — the two are independent state.
@@ -285,7 +290,14 @@ describe('PlanUpgradeSection plan cards', () => {
     }
     clickButtonWithText('Yearly');
     for (const plan of PLAN_ORDER) {
-      expect(priceOf(plan), PLAN_DISPLAY_NAMES[plan]).toBe(formatPlanPrice(plan, 'yearly'));
+      // The headline is the per-month figure; the charged yearly total is on
+      // the line beneath, asserted just below.
+      expect(priceOf(plan), PLAN_DISPLAY_NAMES[plan])
+        .toBe(`${formatPlanMonthlyHeadline(plan, 'yearly')}/mo`);
+      expect(
+        card(plan).querySelector('[data-testid="plan-card-term-note"]')!.textContent,
+        PLAN_DISPLAY_NAMES[plan],
+      ).toBe(`billed as ${formatPlanPrice(plan, 'yearly').split('/')[0]} every 12 months`);
     }
   });
 

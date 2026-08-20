@@ -4,7 +4,6 @@ import {
   getPlanDisplayName,
   hasFeature,
   hasBrandingAccess,
-  PLAN_PRICING,
   BILLING_TERMS,
   TERM_MONTHS,
   TERM_BILLED_PHRASE,
@@ -14,7 +13,10 @@ import {
   discountClaim,
   discountClaimShape,
   planPriceUsd,
-  planTermMonthlyEquivalent,
+  formatPlanMonthlyHeadline,
+  planTermMonthlyDisplayed,
+  monthlyHeadlineContract,
+  PLAN_PRICING,
   AI_ASSISTANT_ADDON_PRICING,
   formatPlanPrice,
   getFeatureMinPlan,
@@ -677,13 +679,73 @@ describe('PLAN_PRICING — the stored nine-price table (THE-195)', () => {
     expect(formatPlanPrice('max', 'yearly')).toBe('$1,329/yr');
   });
 
-  it('keeps the per-month equivalent a rounded DISPLAY figure, never a charge', () => {
-    // $329/12 is $27.42 and nobody is billed $27. The helper rounds; the UI is
-    // required to print the charged total beside whatever this returns.
-    expect(planTermMonthlyEquivalent('plus', 'yearly')).toBe(27);
-    expect(planTermMonthlyEquivalent('plus', 'quarterly')).toBe(33);
-    expect(planTermMonthlyEquivalent('max', 'yearly')).toBe(111);
-    expect(planTermMonthlyEquivalent('plus', 'monthly')).toBe(planPriceUsd('plus', 'monthly'));
+  it('the headline is the per-month figure on every term and tier', () => {
+    // Ceiled at the cent. An exact division keeps its whole-dollar form.
+    expect(formatPlanMonthlyHeadline('plus', 'yearly')).toBe('$27.42');
+    expect(formatPlanMonthlyHeadline('pro', 'yearly')).toBe('$54.92');
+    expect(formatPlanMonthlyHeadline('max', 'yearly')).toBe('$110.75');
+    expect(formatPlanMonthlyHeadline('plus', 'quarterly')).toBe('$33');
+    expect(formatPlanMonthlyHeadline('pro', 'quarterly')).toBe('$66.34');
+    expect(formatPlanMonthlyHeadline('max', 'quarterly')).toBe('$133');
+  });
+
+  it('monthly renders as decided: the headline IS the charged price, no note', () => {
+    // The decided behaviour, named. On monthly the per-month figure and the
+    // charged figure are the same number on the same cycle, so the card shows
+    // the headline alone and the note is suppressed (the card test asserts the
+    // suppression; this asserts the two figures really do coincide).
+    for (const plan of PLAN_ORDER) {
+      expect(formatPlanMonthlyHeadline(plan, 'monthly')).toBe(
+        `$${planPriceUsd(plan, 'monthly').toLocaleString()}`,
+      );
+      expect(planTermMonthlyDisplayed(plan, 'monthly')).toBe(planPriceUsd(plan, 'monthly'));
+    }
+  });
+
+  it('the per-month headline never states a figure that implies less than the charged total', () => {
+    // 🔴 THE HONESTY GUARD — one assertion per tier per term, nine in all.
+    //
+    // This is the defect THE-196 exists to remove. Under the old
+    // `Math.round` the Individual yearly headline was $27 (implying $324
+    // against a charged $329) and Small Team quarterly was $66 (implying $198
+    // against $199). Both would fail here.
+    for (const plan of PLAN_ORDER) {
+      for (const term of BILLING_TERMS) {
+        const charged = planPriceUsd(plan, term);
+        const implied = planTermMonthlyDisplayed(plan, term) * TERM_MONTHS[term];
+        expect(
+          implied,
+          `${plan} ${term}: headline implies $${implied.toFixed(2)}, Dodo charges $${charged}`,
+        ).toBeGreaterThanOrEqual(charged);
+      }
+    }
+  });
+
+  it('the headline reconciles with the charged total, not merely exceeds it', () => {
+    // Ceiling to the DOLLAR would also pass the guard above while putting $336
+    // beside a charged $329. The cent bounds the gap at the rounding itself.
+    for (const plan of PLAN_ORDER) {
+      for (const term of BILLING_TERMS) {
+        const charged = planPriceUsd(plan, term);
+        const implied = planTermMonthlyDisplayed(plan, term) * TERM_MONTHS[term];
+        expect(implied - charged).toBeLessThan(0.05);
+      }
+    }
+  });
+
+  it('the honesty guard throws when the rounding rule would understate the bill', () => {
+    // Verified by MUTATION, and the mutation is the realistic one: the rule
+    // regressing to what it was before THE-196. Checked against the shipped
+    // ceiling the guard could never fail, so it takes the rule as its subject.
+    expect(() => monthlyHeadlineContract()).not.toThrow();
+    // The old rule. $329/12 rounds to $27, which implies $324 against $329.
+    expect(() => monthlyHeadlineContract(Math.round)).toThrow(/never promise less than the bill/);
+    expect(() => monthlyHeadlineContract(Math.round)).toThrow(/plus yearly/);
+    // Ceiling to the DOLLAR does not understate, so the guard accepts it — it
+    // is bounded by the reconciliation test above, not by this one.
+    expect(() => monthlyHeadlineContract(Math.ceil)).not.toThrow();
+    // Flooring understates almost everywhere.
+    expect(() => monthlyHeadlineContract(Math.floor)).toThrow(/never promise less than the bill/);
   });
 
   it('describes each term in prose without falling into an else-branch', () => {
