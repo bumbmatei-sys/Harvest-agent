@@ -5,10 +5,16 @@ import {
   hasFeature,
   hasBrandingAccess,
   PLAN_PRICING,
-  ANNUAL_BILLED_MONTHS,
-  ANNUAL_FREE_MONTHS,
-  ANNUAL_DISCOUNT_PCT,
-  annualMonthlyEquivalent,
+  BILLING_TERMS,
+  TERM_MONTHS,
+  TERM_BILLED_PHRASE,
+  DISCOUNTED_TERMS,
+  ADVERTISED_DISCOUNT_PCT,
+  actualSavingPct,
+  discountClaim,
+  discountClaimShape,
+  planPriceUsd,
+  planTermMonthlyEquivalent,
   AI_ASSISTANT_ADDON_PRICING,
   formatPlanPrice,
   getFeatureMinPlan,
@@ -21,6 +27,7 @@ import {
   getMinPlanForFeatureCell,
   type FeatureKey,
 } from '../plan-features';
+import type { TenantPlan } from '@/types/tenant.types';
 import * as planFeaturesModule from '../plan-features';
 // The rate actually charged. This import used to carry a warning: the fee map
 // shared a module with the STRIPE_PRICE_* env reads, so pulling it in was only
@@ -554,71 +561,150 @@ describe('customDomain tier (Ministry / max only)', () => {
 // that names it, so reverting any one of them fails here by name rather than
 // silently shipping.
 
-describe('PLAN_PRICING (repriced)', () => {
-  const EXPECTED = {
-    plus: { monthlyUsd: 49,  yearlyUsd: 441  },
-    pro:  { monthlyUsd: 99,  yearlyUsd: 891  },
-    max:  { monthlyUsd: 199, yearlyUsd: 1791 },
+describe('PLAN_PRICING — the stored nine-price table (THE-195)', () => {
+  /* 🔴 TEST 1: the nine plan prices, per tier and per term, against the Dodo
+     catalogue. Written out rather than derived from the table under test: a
+     test that reads its subject asserts only that the subject equals itself.
+     These are the figures verified against the authenticated live Dodo API on
+     2026-08-20 — 3900 / 9900 / 32900 minor units on Individual, and so on. */
+  const DODO_CATALOGUE_USD = {
+    plus: { monthly: 39,  quarterly: 99,  yearly: 329  },
+    pro:  { monthly: 79,  quarterly: 199, yearly: 659  },
+    max:  { monthly: 159, quarterly: 399, yearly: 1329 },
   } as const;
 
-  it.each(Object.keys(EXPECTED) as (keyof typeof EXPECTED)[])(
-    '%s is priced at the repriced monthly rate',
-    (plan) => {
-      expect(PLAN_PRICING[plan].monthlyUsd).toBe(EXPECTED[plan].monthlyUsd);
+  it.each(
+    (Object.keys(DODO_CATALOGUE_USD) as TenantPlan[]).flatMap((plan) =>
+      BILLING_TERMS.map((term) => [plan, term] as const),
+    ),
+  )('%s on %s matches the Dodo catalogue exactly', (plan, term) => {
+    expect(planPriceUsd(plan, term)).toBe(DODO_CATALOGUE_USD[plan][term]);
+  });
+
+  it('prices every tier on every term, in whole dollars', () => {
+    for (const plan of PLAN_ORDER) {
+      for (const term of BILLING_TERMS) {
+        expect(Number.isInteger(planPriceUsd(plan, term))).toBe(true);
+        expect(planPriceUsd(plan, term)).toBeGreaterThan(0);
+      }
     }
-  );
-
-  it('prices the three tiers at 49 / 99 / 199 per month', () => {
-    expect(PLAN_ORDER.map((p) => PLAN_PRICING[p].monthlyUsd)).toEqual([49, 99, 199]);
   });
 
-  it('prices the three tiers at 441 / 891 / 1791 per year', () => {
-    expect(PLAN_ORDER.map((p) => PLAN_PRICING[p].yearlyUsd)).toEqual([441, 891, 1791]);
+  it('prices the tiers in ascending order on every term', () => {
+    for (const term of BILLING_TERMS) {
+      const figures = PLAN_ORDER.map((p) => planPriceUsd(p, term));
+      expect(figures, `${term} prices are not ascending`).toEqual([...figures].sort((a, b) => a - b));
+    }
   });
 
-  // The identity guard. `yearlyUsd` is written as a literal above, so this is
-  // what stops it drifting from the multiplier: change ANNUAL_BILLED_MONTHS
-  // without repricing the table (or reprice without moving the constant) and
-  // this fails by name instead of shipping a wrong annual price.
-  it('bills annual as monthly × ANNUAL_BILLED_MONTHS on every tier', () => {
-    PLAN_ORDER.forEach((plan) => {
-      expect(PLAN_PRICING[plan].yearlyUsd).toBe(PLAN_PRICING[plan].monthlyUsd * ANNUAL_BILLED_MONTHS);
-      expect(PLAN_PRICING[plan].yearlyUsd).toBe(EXPECTED[plan].yearlyUsd);
-    });
+  it('🔴 no longer derives a price from a billed-months multiplier', () => {
+    // ANNUAL_BILLED_MONTHS is gone and must not come back. 30% off a year is
+    // x8.4 months and 15% off a quarter is x2.55 — there is no integer to name,
+    // which is exactly why the prices became a table.
+    const mod = planFeaturesModule as unknown as Record<string, unknown>;
+    expect(mod.ANNUAL_BILLED_MONTHS).toBeUndefined();
+    expect(mod.ANNUAL_FREE_MONTHS).toBeUndefined();
+    expect(mod.annualMonthlyEquivalent).toBeUndefined();
+    // And no term's price IS a whole number of months at the monthly rate.
+    for (const p of PLAN_ORDER) {
+      for (const term of DISCOUNTED_TERMS) {
+        const inMonths = planPriceUsd(p, term) / planPriceUsd(p, 'monthly');
+        expect(Number.isInteger(inMonths), `${p} ${term} is exactly ${inMonths} months`).toBe(false);
+      }
+    }
   });
 
-  it('bills nine months for twelve — a 25% discount, three months free', () => {
-    expect(ANNUAL_BILLED_MONTHS).toBe(9);
-    expect(ANNUAL_FREE_MONTHS).toBe(3);
-    expect(ANNUAL_DISCOUNT_PCT).toBe(25);
+  it('makes every longer term cheaper than the same span bought monthly', () => {
+    for (const p of PLAN_ORDER) {
+      for (const term of DISCOUNTED_TERMS) {
+        expect(planPriceUsd(p, term)).toBeLessThan(planPriceUsd(p, 'monthly') * TERM_MONTHS[term]);
+      }
+    }
   });
 
-  // The monthly-equivalent figure every upgrade surface renders, and the one
-  // the marketing site must agree with. Math.round(199 * 9 / 12) is exactly
-  // 149 — a consequence of the multiplier, not a special case.
-  it('derives the monthly-equivalent annual price as 37 / 74 / 149', () => {
-    expect(PLAN_ORDER.map((p) => annualMonthlyEquivalent(p))).toEqual([37, 74, 149]);
+  /* 🔴 TEST 3: the badges are stored, not computed. */
+  it('advertises exactly 15% and 30%, stored rather than computed', () => {
+    expect(ADVERTISED_DISCOUNT_PCT).toEqual({ quarterly: 15, yearly: 30 });
+    // Quarterly proves a computed badge is impossible: the tiers round to
+    // different whole percentages, and the toggle sits above all three at once.
+    expect(Math.round(actualSavingPct('plus', 'quarterly'))).toBe(15);
+    expect(Math.round(actualSavingPct('max', 'quarterly'))).toBe(16);
   });
 
-  it('leaves the monthly prices untouched at 49 / 99 / 199', () => {
-    expect(PLAN_ORDER.map((p) => PLAN_PRICING[p].monthlyUsd)).toEqual([49, 99, 199]);
+  /* 🔴 TEST 4: no copy claims a saving larger than the smallest actual one. */
+  it('states a percentage flat only when the WORST tier actually reaches it', () => {
+    for (const term of DISCOUNTED_TERMS) {
+      const worst = Math.min(...PLAN_ORDER.map((p) => actualSavingPct(p, term)));
+      if (discountClaimShape(term) === 'flat') {
+        expect(ADVERTISED_DISCOUNT_PCT[term]).toBeLessThanOrEqual(worst);
+      }
+    }
   });
 
-  it('renders the repriced values through formatPlanPrice — the string the UI shows', () => {
-    expect(formatPlanPrice('plus', 'monthly')).toBe('$49/mo');
-    expect(formatPlanPrice('pro', 'monthly')).toBe('$99/mo');
-    expect(formatPlanPrice('max', 'monthly')).toBe('$199/mo');
-    expect(formatPlanPrice('max', 'yearly')).toBe('$1,791/yr');
+  it('quarterly is claimed flat — worst tier saves 15.38% against an advertised 15%', () => {
+    expect(actualSavingPct('plus', 'quarterly')).toBeCloseTo(15.3846, 3);
+    expect(discountClaimShape('quarterly')).toBe('flat');
+    expect(discountClaim('quarterly')).toBe('Save 15%');
+  });
+
+  it('🔴 yearly is claimed "up to" — worst tier saves 29.70% against an advertised 30%', () => {
+    // The brief that set these prices said 15% and 30% were both safe to claim
+    // flat. 30 is not: Individual is $329 against $468 at the monthly rate,
+    // which is 29.70% — three tenths short. "Up to" is true of every tier.
+    expect(actualSavingPct('plus', 'yearly')).toBeCloseTo(29.7008, 3);
+    expect(actualSavingPct('plus', 'yearly')).toBeLessThan(30);
+    expect(discountClaimShape('yearly')).toBe('upTo');
+    expect(discountClaim('yearly')).toBe('Save up to 30%');
+  });
+
+  it('never advertises more than even the BEST tier saves, under any wording', () => {
+    for (const term of DISCOUNTED_TERMS) {
+      const best = Math.max(...PLAN_ORDER.map((p) => actualSavingPct(p, term)));
+      expect(ADVERTISED_DISCOUNT_PCT[term]).toBeLessThanOrEqual(best);
+    }
+    // The per-tier savings this change actually produces, pinned.
+    expect(PLAN_ORDER.map((p) => Number(actualSavingPct(p, 'quarterly').toFixed(1)))).toEqual([15.4, 16.0, 16.4]);
+    expect(PLAN_ORDER.map((p) => Number(actualSavingPct(p, 'yearly').toFixed(1)))).toEqual([29.7, 30.5, 30.3]);
+  });
+
+  it('renders the charged figure and cycle through formatPlanPrice', () => {
+    // 🔴 The suffix names the BILLING CYCLE, so the amount beside it is what
+    // actually leaves the account. "$99/qtr" is never "$33/mo".
+    expect(formatPlanPrice('plus', 'monthly')).toBe('$39/mo');
+    expect(formatPlanPrice('plus', 'quarterly')).toBe('$99/qtr');
+    expect(formatPlanPrice('plus', 'yearly')).toBe('$329/yr');
+    expect(formatPlanPrice('pro', 'quarterly')).toBe('$199/qtr');
+    expect(formatPlanPrice('max', 'yearly')).toBe('$1,329/yr');
+  });
+
+  it('keeps the per-month equivalent a rounded DISPLAY figure, never a charge', () => {
+    // $329/12 is $27.42 and nobody is billed $27. The helper rounds; the UI is
+    // required to print the charged total beside whatever this returns.
+    expect(planTermMonthlyEquivalent('plus', 'yearly')).toBe(27);
+    expect(planTermMonthlyEquivalent('plus', 'quarterly')).toBe(33);
+    expect(planTermMonthlyEquivalent('max', 'yearly')).toBe(111);
+    expect(planTermMonthlyEquivalent('plus', 'monthly')).toBe(planPriceUsd('plus', 'monthly'));
+  });
+
+  it('describes each term in prose without falling into an else-branch', () => {
+    // The signup banner asked `billing === 'yearly' ? ... : 'billed monthly'`,
+    // which told a quarterly church "billed monthly" on the last screen before
+    // it paid. A total map cannot do that.
+    expect(TERM_BILLED_PHRASE.monthly).toBe('billed monthly');
+    expect(TERM_BILLED_PHRASE.quarterly).toBe('billed quarterly');
+    expect(TERM_BILLED_PHRASE.yearly).toBe('billed annually');
+    expect(Object.keys(TERM_BILLED_PHRASE).sort()).toEqual([...BILLING_TERMS].sort());
   });
 
   it('leaves the retired AI Assistant add-on at $200 — not swept up in the repricing', () => {
     // THE-13: dormant code, intact by design. It is an ADD-ON price, not a plan
-    // price, and shares the `monthlyUsd` field name with PLAN_PRICING — which is
-    // exactly how a bulk repricing would catch it by accident.
+    // price, and shares the `monthlyUsd` field name PLAN_PRICING used to use —
+    // which is exactly how a bulk repricing would catch it by accident.
     expect(AI_ASSISTANT_ADDON_PRICING.monthlyUsd).toBe(200);
-    expect(Object.values(PLAN_PRICING).map((p) => p.monthlyUsd)).not.toContain(200);
+    expect(Object.values(PLAN_PRICING).flatMap((p) => Object.values(p))).not.toContain(200);
   });
 });
+
 
 describe('PLAN_DISPLAY_NAMES (repriced)', () => {
   it('is Individual / Small Team / Ministry', () => {

@@ -2,10 +2,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
-import { catalogueEntry, productIdFor, resolvePlanFromProductId, annualPriceUsd } from '../catalogue';
+import { catalogueEntry, productIdFor, resolvePlanFromProductId, termPriceUsd } from '../catalogue';
 import type { BillingPeriod } from '../provider';
 import { readSignupBillingPeriod, type SignupBillingPeriod } from '@/utils/signup-checkout';
-import { PLAN_ORDER } from '@/utils/plan-features';
+import { BILLING_TERMS, PLAN_ORDER } from '@/utils/plan-features';
 
 /**
  * THE-88 (app half), server side: an annual signup buys the annual PRODUCT.
@@ -167,16 +167,45 @@ describe("the client-side period vocabulary IS the provider's BillingPeriod", ()
     expect(fromProvider).toBe('yearly');
   });
 
-  it('readSignupBillingPeriod passes exactly the two real periods and fails everything else closed', () => {
+  /* ─── THE-195 TEST 6 ──────────────────────────────────────────────────── */
+  it('the billing lane accepts monthly, quarterly and yearly', () => {
     expect(readSignupBillingPeriod('monthly')).toBe('monthly');
+    expect(readSignupBillingPeriod('quarterly')).toBe('quarterly');
     expect(readSignupBillingPeriod('yearly')).toBe('yearly');
-    for (const bad of ['annual', 'weekly', 'YEARLY', '', null, undefined, 9, {}]) {
-      expect(readSignupBillingPeriod(bad)).toBe('monthly');
+    // The accepted set IS the priced set — read, never restated.
+    for (const term of BILLING_TERMS) expect(readSignupBillingPeriod(term)).toBe(term);
+  });
+
+  /* ─── 🔴 THE-195 TEST 7: THE REVENUE GUARD ────────────────────────────────
+     Widening the allowlist to a third term must not widen what an UNTRUSTED
+     value can select. Everything outside the three real terms still lands on
+     monthly — the most expensive per-month term, and the one a signup carrying
+     no period has always meant. */
+  it('an untrusted billing value still falls back to monthly', () => {
+    const forged = [
+      'annual',        // Dodo's vocabulary — the original silent mis-sell
+      'quarter', 'Quarterly', 'QUARTERLY', ' quarterly', 'quarterly ',
+      'weekly', 'daily', 'lifetime', 'free', 'YEARLY', 'yearly ',
+      '', null, undefined, 9, 0, {}, [], ['quarterly'], true, NaN,
+    ];
+    for (const bad of forged) {
+      expect(readSignupBillingPeriod(bad), `"${String(bad)}" did not fail closed`).toBe('monthly');
     }
+  });
+
+  it('never lets a forged value select the cheapest per-month term', () => {
+    // The shape of the hazard, stated as an invariant rather than a list: the
+    // fallback must be the term with the HIGHEST per-month cost, so that
+    // failing closed can never be cheaper than choosing honestly.
+    const perMonth = (term: (typeof BILLING_TERMS)[number]) =>
+      termPriceUsd('plus', term) / (term === 'monthly' ? 1 : term === 'quarterly' ? 3 : 12);
+    const dearest = [...BILLING_TERMS].sort((a, b) => perMonth(b) - perMonth(a))[0];
+    expect(readSignupBillingPeriod('definitely-not-a-term')).toBe(dearest);
+    expect(dearest).toBe('monthly');
   });
 });
 
-describe('no annual price appears as a literal in the signup surfaces', () => {
+describe('no plan price appears as a literal in the signup surfaces', () => {
   const touched = [
     'components/ChurchOnboarding.tsx',
     'components/OnboardingGate.tsx',
@@ -185,10 +214,9 @@ describe('no annual price appears as a literal in the signup surfaces', () => {
 
   // The forbidden figures are DERIVED from the catalogue, not typed here — the
   // same discipline this test enforces. Whole-USD and minor-unit forms both.
-  const forbidden = (PLAN_ORDER as readonly ('plus' | 'pro' | 'max')[]).flatMap((plan) => [
-    annualPriceUsd(plan),
-    annualPriceUsd(plan) * 100,
-  ]);
+  const forbidden = (PLAN_ORDER as readonly ('plus' | 'pro' | 'max')[]).flatMap((plan) =>
+    BILLING_TERMS.flatMap((term) => [termPriceUsd(plan, term), termPriceUsd(plan, term) * 100]),
+  );
 
   it.each(touched)('%s derives every figure it needs and writes none', (rel) => {
     const codeOnly = readFileSync(join(SRC, rel), 'utf8')
@@ -198,7 +226,7 @@ describe('no annual price appears as a literal in the signup surfaces', () => {
       const asLiteral = new RegExp(`(?<![\\w.])${literal}(?![\\w.])`);
       expect(
         asLiteral.test(codeOnly),
-        `${rel} writes ${literal} as a literal — annual figures derive from ANNUAL_BILLED_MONTHS, always`,
+        `${rel} writes ${literal} as a literal — every plan price is read from PLAN_PRICING, always`,
       ).toBe(false);
     }
   });

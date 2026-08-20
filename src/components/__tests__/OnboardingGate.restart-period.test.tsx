@@ -137,8 +137,28 @@ describe('the restarted checkout after an abandoned payment keeps the chosen per
   });
 
   it('an unrecognised period on the marker fails closed to monthly, never onward', async () => {
-    await abandonAndRestart({ signupPlan: 'plus', signupBilling: 'quarterly', signupMinistryName: 'Hope' });
+    // ⚠️ This case used to use 'quarterly' as its unrecognised value. Quarterly
+    // is a REAL term now (THE-195), so the example had to move to something the
+    // allowlist genuinely rejects — otherwise the test would have kept passing
+    // while asserting the opposite of the truth.
+    await abandonAndRestart({ signupPlan: 'plus', signupBilling: 'biennial', signupMinistryName: 'Hope' });
     expect(restartBody().billing).toBe('monthly');
-    expect(fetchMock.mock.calls[0][1].body).not.toContain('quarterly');
+    expect(fetchMock.mock.calls[0][1].body).not.toContain('biennial');
+  });
+
+  it("Dodo's own word for the annual term is still refused", async () => {
+    // The original silent mis-sell: 'annual' is Dodo's vocabulary, not the
+    // app's, and it must fail closed rather than start an annual subscription.
+    await abandonAndRestart({ signupPlan: 'plus', signupBilling: 'annual', signupMinistryName: 'Hope' });
+    expect(restartBody().billing).toBe('monthly');
+  });
+
+  it('a quarterly restart keeps quarterly, now that it is a term the app sells', async () => {
+    // 🔴 The other half of the guard. Failing closed must not mean failing
+    // ALWAYS: a church that chose quarterly and abandoned checkout has to
+    // restart on quarterly, or the restart charges it a different way than the
+    // card it clicked.
+    await abandonAndRestart({ signupPlan: 'plus', signupBilling: 'quarterly', signupMinistryName: 'Hope' });
+    expect(restartBody().billing).toBe('quarterly');
   });
 });

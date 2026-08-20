@@ -34,10 +34,13 @@ import type { TenantPlan } from '@/types/tenant.types';
 
 const LEDGER_SKUS: Record<`${TenantPlan}:${BillingPeriod}`, string> = {
   'plus:monthly': 'SKU-IND-M',
+  'plus:quarterly': 'SKU-IND-Q',
   'plus:yearly': 'SKU-IND-Y',
   'pro:monthly': 'SKU-TEAM-M',
+  'pro:quarterly': 'SKU-TEAM-Q',
   'pro:yearly': 'SKU-TEAM-Y',
   'max:monthly': 'SKU-MIN-M',
+  'max:quarterly': 'SKU-MIN-Q',
   'max:yearly': 'SKU-MIN-Y',
 };
 

@@ -95,7 +95,7 @@ const PRICING_BANNED: readonly BannedPhrase[] = [
   },
   {
     name: 'a per-month price',
-    pattern: new RegExp(`\\b(${Object.values(PLAN_PRICING).flatMap((p) => [p.monthlyUsd, p.yearlyUsd]).join('|')})\\s*(?:usd|dollars|/\\s*mo|per\\s+month|a\\s+month)`, 'i'),
+    pattern: new RegExp(`\\b(${Object.values(PLAN_PRICING).flatMap((p) => Object.values(p)).join('|')})\\s*(?:usd|dollars|/\\s*mo|per\\s+month|a\\s+month)`, 'i'),
     because: 'Same reason, without the currency symbol.',
   },
   ...Object.values(PLAN_DISPLAY_NAMES)

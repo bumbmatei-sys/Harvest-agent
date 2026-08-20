@@ -814,23 +814,75 @@ describe('6 — the sub-640px rendering changes only where the marketing match r
    *            24px padding, a 1px border and a token shadow
    *   restyled the name and price: centred -> left, with the period split small
    *
-   * The section-level chrome above the cards — heading, blurb, the Monthly /
-   * Yearly toggle and its discount pill — is untouched, and the dots row is
-   * untouched below `sm:`.
+   * ⚠️ THE SECTION-LEVEL CHROME IS NO LONGER UNTOUCHED. THE-195 replaced the
+   * two-segment Monthly / Yearly toggle with a three-segment Monthly /
+   * Quarterly / Yearly one, so the layer above the track legitimately grew.
+   * That is a change to the CHROME, not to the cards, and this section is about
+   * the cards — so the comparison below is anchored at the card track and the
+   * chrome gets its own assertion rather than being folded in or re-recorded
+   * away. The dots row is still untouched below `sm:`.
    */
+
+  /** The recorded and current layers from the card track onward, indices
+   *  stripped so a change in the chrome above cannot shift the comparison. */
+  const fromTrack = (layer: readonly string[]): string[] => {
+    const at = layer.findIndex((row) => /\boverflow-x-auto\b/.test(row));
+    expect(at, 'no card track in the layer — is this measuring anything?').toBeGreaterThan(-1);
+    return layer.slice(at).map((row) => row.split('\t').slice(1).join('\t'));
+  };
+  /**
+   * The two-segment toggle was: a flex container, two buttons, and an absolutely
+   * positioned badge inside the second — plus a conditional 🎉 line below it.
+   * The three-segment one is: a wrapper, a grid track, three buttons each with a
+   * label span, two of them carrying a badge span, and a claim line.
+   *
+   * Pinned as a number so the growth is a stated quantity rather than whatever
+   * the tree happens to produce. If the toggle changes again this fails and the
+   * new figure has to be justified in the enumeration above.
+   */
+  const TOGGLE_ROWS_ADDED = 6;
+
   it('changes the phone rendering by exactly the enumerated amount', () => {
     for (const plan of PLAN_ORDER) {
       mount({ currentPlan: plan });
       const layer = mobileLayer(container);
       const recorded = baseline.mobileLayer[plan];
       expect(recorded, `no recorded mobile layer for currentPlan=${plan}`).toBeTruthy();
-      expect(layer, `the sub-640px class layer moved for currentPlan=${plan}`).toEqual(recorded);
+      // 🔴 The cards themselves: byte-for-byte identical in class terms.
+      expect(fromTrack(layer), `the sub-640px card layer moved for currentPlan=${plan}`)
+        .toEqual(fromTrack(recorded));
       const counts = baseline.mobileElements[plan];
-      expect(layer.length, `element count for currentPlan=${plan}`).toBe(counts.after);
+      // The card subtree's element count is unchanged; the whole-tree count
+      // grew by exactly the toggle's extra rows.
+      expect(fromTrack(layer).length, `card element count for currentPlan=${plan}`)
+        .toBe(fromTrack(recorded).length);
+      expect(layer.length - recorded.length, `currentPlan=${plan}: only the toggle should have grown`)
+        .toBe(TOGGLE_ROWS_ADDED);
       expect(counts.after, `currentPlan=${plan}: the rollup should have shortened the tree`)
         .toBeLessThan(counts.before);
       act(() => { root?.unmount(); }); root = null; container.remove();
     }
+  });
+
+  it('grew the chrome by a THIRD TOGGLE SEGMENT and nothing else', () => {
+    // The other half of the split above: the card layer is pinned identical, so
+    // this is what has to account for the whole delta. Three segments, each a
+    // real button, and the badge INSIDE the segment rather than hung off it —
+    // an absolutely positioned badge is what clipped before PR 361.
+    mount({ currentPlan: 'pro' });
+    const segments = Array.from(container.querySelectorAll('[data-testid="billing-term-segment"]'));
+    expect(segments).toHaveLength(3);
+    expect(segments.map((b) => b.getAttribute('data-term'))).toEqual(['monthly', 'quarterly', 'yearly']);
+    expect(container.querySelectorAll('[data-testid="billing-term-badge"]')).toHaveLength(2);
+    for (const seg of segments) {
+      expect(classesOf(seg), 'a segment hangs its badge outside the track').not.toContain('absolute');
+      expect(classesOf(seg), 'a segment cannot shrink, so three of them will overflow').toContain('min-w-0');
+    }
+    // The track divides its container rather than sizing to content.
+    const toggle = container.querySelector('[data-testid="billing-term-toggle"]')!;
+    expect(classesOf(toggle)).toContain('grid');
+    expect(classesOf(toggle)).toContain('grid-cols-3');
+    expect(classesOf(toggle)).toContain('w-full');
   });
 
   it('makes the clip fix itself mobile-inert', () => {
@@ -919,9 +971,9 @@ describe('6 — the sub-640px rendering changes only where the marketing match r
 
 describe('7 — prices, the toggle and the blurbs', () => {
   it('leaves every price alone', () => {
-    expect(PLAN_PRICING.plus.monthlyUsd).toBe(49);
-    expect(PLAN_PRICING.pro.monthlyUsd).toBe(99);
-    expect(PLAN_PRICING.max.monthlyUsd).toBe(199);
+    expect(PLAN_PRICING.plus.monthly).toBe(39);
+    expect(PLAN_PRICING.pro.monthly).toBe(79);
+    expect(PLAN_PRICING.max.monthly).toBe(159);
     mount();
     for (const plan of PLAN_ORDER) {
       expect(card(plan).querySelector('[data-testid="plan-card-price"]')!.textContent!.trim(), PLAN_DISPLAY_NAMES[plan])
@@ -929,22 +981,27 @@ describe('7 — prices, the toggle and the blurbs', () => {
     }
   });
 
-  it('keeps the Monthly / Yearly toggle and its discount pill', () => {
+  it('keeps a three-segment term toggle and its discount pills', () => {
     mount();
     const toggle = (label: string) =>
       Array.from(container.querySelectorAll('button')).find((b) => (b.textContent || '').trim().startsWith(label))!;
+
+    // Three segments, and the pill is a PERCENTAGE now, not a months-free
+    // count: 30% of a year is 3.6 months, so "-3mo" stopped being true.
     expect(toggle('Monthly')).toBeTruthy();
-    expect(toggle('Yearly').textContent).toMatch(/-\d+mo/);
-    act(() => { toggle('Yearly').click(); });
-    for (const plan of PLAN_ORDER) {
-      expect(card(plan).querySelector('[data-testid="plan-card-price"]')!.textContent!.trim(), PLAN_DISPLAY_NAMES[plan])
-        .toBe(formatPlanPrice(plan, 'yearly'));
-    }
-    expect(container.textContent).toContain('billed annually');
-    act(() => { toggle('Monthly').click(); });
-    for (const plan of PLAN_ORDER) {
-      expect(card(plan).querySelector('[data-testid="plan-card-price"]')!.textContent!.trim(), PLAN_DISPLAY_NAMES[plan])
-        .toBe(formatPlanPrice(plan, 'monthly'));
+    expect(toggle('Quarterly').textContent).toMatch(/−?-?15%/);
+    expect(toggle('Yearly').textContent).toMatch(/−?-?30%/);
+    expect(container.querySelectorAll('[data-testid="billing-term-segment"]')).toHaveLength(3);
+
+    for (const term of ['yearly', 'quarterly', 'monthly'] as const) {
+      const label = term === 'yearly' ? 'Yearly' : term === 'quarterly' ? 'Quarterly' : 'Monthly';
+      act(() => { toggle(label).click(); });
+      for (const plan of PLAN_ORDER) {
+        expect(
+          card(plan).querySelector('[data-testid="plan-card-price"]')!.textContent!.trim(),
+          `${PLAN_DISPLAY_NAMES[plan]} on ${term}`,
+        ).toBe(formatPlanPrice(plan, term));
+      }
     }
   });
 

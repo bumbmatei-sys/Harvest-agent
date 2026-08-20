@@ -332,14 +332,45 @@ describe('a Dodo tenant can change plan', () => {
     );
   });
 
-  it('refuses a monthly→annual switch — THE-88 stays a separate decision', async () => {
+  it('refuses ANY term switch — THE-88 stays a separate decision', async () => {
     seedDodoTenant();
     asOwner();
     pastTrialSubscription();
 
     const res = await post(dodoChangePlan, { tenantId: T.tenant, plan: 'pro', billing: 'yearly' });
     expect(res.status).toBe(400);
-    expect((await res.json()).error).toContain('monthly and annual');
+    // ⚠️ The message no longer names "monthly and annual". With three terms
+    // that phrasing would tell a QUARTERLY church the refusal was about some
+    // other pair — so it names neither pair.
+    expect((await res.json()).error).toContain('Switching billing terms is not available yet');
+    expect(dodoStub.changePlan).not.toHaveBeenCalled();
+  });
+
+  it('refuses a switch to QUARTERLY the same way, rather than accepting it', async () => {
+    // 🔴 The new term must land on the same refusal, not slip through as an
+    // unrecognised value the route happens to ignore.
+    seedDodoTenant();
+    asOwner();
+    pastTrialSubscription();
+
+    const res = await post(dodoChangePlan, { tenantId: T.tenant, plan: 'pro', billing: 'quarterly' });
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toContain('Switching billing terms is not available yet');
+    expect(dodoStub.changePlan).not.toHaveBeenCalled();
+  });
+
+  it('rejects an unrecognised term outright rather than failing closed to monthly', async () => {
+    // This route CHANGES what an existing subscription is charged, so "we could
+    // not read your term" must be a 400 the owner sees — never a silent choice
+    // made on their behalf. That is the opposite of the signup lane's fallback,
+    // deliberately.
+    seedDodoTenant();
+    asOwner();
+    pastTrialSubscription();
+
+    const res = await post(dodoChangePlan, { tenantId: T.tenant, plan: 'pro', billing: 'biennial' });
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toContain('Invalid plan/billing');
     expect(dodoStub.changePlan).not.toHaveBeenCalled();
   });
 

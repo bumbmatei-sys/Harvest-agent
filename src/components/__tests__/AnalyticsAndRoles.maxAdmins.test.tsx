@@ -327,9 +327,12 @@ describe('AnalyticsAndRoles — maxAdmins enforcement', () => {
     for (const text of surfaces) {
       expect(text).not.toMatch(/add[- ]?on|extra seat|seat pack|buy |purchase|checkout/i);
       expect(text).not.toMatch(/\$\d|\/mo\b|per month/i);
-      for (const { monthlyUsd, yearlyUsd } of Object.values(PLAN_PRICING)) {
-        expect(text).not.toContain(`$${monthlyUsd}`);
-        expect(text).not.toContain(`$${yearlyUsd}`);
+      // All NINE prices now, not just two per tier — three terms means three
+      // figures a seat-limit message must still never quote.
+      for (const byTerm of Object.values(PLAN_PRICING)) {
+        for (const price of Object.values(byTerm)) {
+          expect(text).not.toContain(`$${price}`);
+        }
       }
       expect(text).not.toContain('$10');
     }
