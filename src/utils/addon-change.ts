@@ -39,7 +39,20 @@ export const ADDON_MEANINGS = [
 
 export type AddonMeaning = (typeof ADDON_MEANINGS)[number];
 
-/** Which period a tenant is billed on. The tenant's own, read server-side. */
+/**
+ * The period an ADD-ON's price recurs on. Two, not three — deliberately.
+ *
+ * ⚠️ DO NOT ADD 'quarterly' HERE. This is not the plan's term; it is the cycle
+ * Dodo charges an add-on on, and Dodo charges an add-on on its PRODUCT's cycle.
+ * A quarterly product bills as three MONTHLY cycles, and the live quarterly
+ * products were verified to carry exactly the monthly add-on ids — so a
+ * quarterly church pays the monthly add-on price, monthly, and 'monthly' is the
+ * honest word beside it. The reconciliation is `addonPeriodFor` in
+ * `lib/dodo/catalogue.ts`, which is server-side and stays server-side
+ * (`dodo-billing-flag.test.ts` keeps the Dodo module off the client), so
+ * `/api/dodo/addons` performs it and this file only reads the answer. The
+ * client mirror of `AddonBillingPeriod` there.
+ */
 export type AddonBillingPeriod = 'monthly' | 'yearly';
 
 /** One add-on a church can be offered: named and priced by Dodo, never by code. */
@@ -70,6 +83,10 @@ export async function fetchOfferableAddons(
     }
     return {
       addons: Array.isArray(data?.addons) ? data.addons : [],
+      // The two add-on columns, and `null` for anything else — never a guess.
+      // The server sends the reconciled add-on cycle (see `AddonBillingPeriod`),
+      // so a quarterly tenant arrives here as 'monthly'; a value this cannot read
+      // costs the card its price line rather than putting a wrong period on it.
       billing: data?.billing === 'yearly' ? 'yearly' : data?.billing === 'monthly' ? 'monthly' : null,
       error: null,
     };
