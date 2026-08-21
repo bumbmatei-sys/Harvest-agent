@@ -23,6 +23,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 import AdminDashboard from './components/AdminDashboard';
 import OnboardingGate from './components/OnboardingGate';
 import PWAInstallManager from './components/PWAInstallManager';
+import AnalyticsBridge from './components/AnalyticsBridge';
 import PostPurchaseWizard from './components/PostPurchaseWizard';
 import { OperationType, handleFirestoreError } from './utils/firestore-errors';
 import { TenantPlan } from './types/tenant.types';
@@ -577,6 +578,12 @@ const App: React.FC = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
+        {/* THE-36 — PostHog. Mounted HERE, inside the router, rather than in
+            layout.tsx: the pre-paint theme script in that file must not move,
+            and the SPA serves every path from one document, so route changes
+            are only visible from inside BrowserRouter. Renders nothing, and
+            does nothing at all without NEXT_PUBLIC_POSTHOG_KEY. */}
+        <AnalyticsBridge />
         <TenantProvider>
           <SavedItemsProvider>
             <AppInner />
