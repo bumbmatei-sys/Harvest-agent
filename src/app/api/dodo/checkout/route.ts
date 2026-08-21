@@ -5,7 +5,7 @@ import { captureMoneyPathError } from '@/lib/money-path-sentry';
 import { logReferralCapture, resolveAffiliateReferrer } from '@/lib/affiliate-referrer';
 import { dodoBillingProvider } from '@/lib/dodo/dodo-provider';
 import type { BillingPeriod } from '@/lib/dodo/provider';
-import { DODO_BILLING_ENABLED, PLAN_ORDER } from '@/utils/plan-features';
+import { BILLING_TERMS, DODO_BILLING_ENABLED, PLAN_ORDER } from '@/utils/plan-features';
 import type { TenantPlan } from '@/types/tenant.types';
 
 /**
@@ -43,8 +43,41 @@ function readPlan(raw: unknown): TenantPlan | null {
     : null;
 }
 
+/**
+ * Validate the requested term, REFUSING anything unrecognised.
+ *
+ * 🔴 THE-199. This compared against the string literals 'monthly' and 'yearly'
+ * — a hand-kept copy of the term list that was never updated when quarterly
+ * shipped (THE-195). Every quarterly signup therefore resolved to `null`, fell
+ * into the `!plan || !period` branch below, and was answered `400 Invalid
+ * plan/billing: plus/quarterly`: a church that chose the term the site was
+ * selling could not buy it, and never reached a payment page at all.
+ *
+ * ⚠️ IT TYPECHECKED THROUGHOUT, which is why nothing caught it. `BillingPeriod`
+ * is an alias for `BillingTerm`, so widening that union from two members to
+ * three made this function's `null` arm more reachable without making it
+ * ill-typed — `null` is a valid `BillingPeriod | null` whatever the union holds.
+ * Only a test that drives the term list can see the difference; see
+ * `dodo-checkout-quarterly-term.test.ts`.
+ *
+ * Reads `BILLING_TERMS` for the same reason `readPlan` above reads `PLAN_ORDER`,
+ * and the same reason `provider.ts` aliases `BillingPeriod` to `BillingTerm`
+ * rather than restating it: the set of terms a signup may carry IS the set the
+ * price table prices. `/api/dodo/change-plan` validates through the same
+ * constant, so there is one term list in this repo read from two routes rather
+ * than two copies to keep in step, and a fourth term added there cannot go
+ * silently unpurchasable here.
+ *
+ * ⚠️ STILL FAILS CLOSED, and deliberately NOT the way `readSignupBillingPeriod`
+ * does. That validator floors an unreadable value to 'monthly' because a signup
+ * carrying no period at all is a real and harmless case. This is the last gate
+ * before a product lookup and a charge, so an unrecognised value must become the
+ * 400 below and must NEVER be substituted with a term — least of all a cheaper
+ * one, which would hand a church a term it did not choose at a price nobody
+ * agreed to. `null` here is "we could not read it", not "assume the default".
+ */
 function readPeriod(raw: unknown): BillingPeriod | null {
-  return raw === 'monthly' || raw === 'yearly' ? raw : null;
+  return (BILLING_TERMS as readonly string[]).includes(raw as string) ? (raw as BillingPeriod) : null;
 }
 
 export async function POST(request: NextRequest) {

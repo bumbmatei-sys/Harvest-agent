@@ -24,6 +24,7 @@ import {
   type DodoNamedAddon,
   type DodoSubscriptionLike,
 } from '@/lib/dodo/dodo-provider';
+import { addonPeriodFor } from '@/lib/dodo/catalogue';
 
 /**
  * `/api/dodo/addons` — buying, re-quantifying and dropping an add-on (REP-5b).
@@ -223,7 +224,20 @@ export async function GET(request: NextRequest) {
       offeredByProduct,
     );
     return NextResponse.json({
-      billing: context.period,
+      // 🔴 THE ADD-ON's OWN CYCLE, NOT THE PLAN'S TERM (THE-199). Every price in
+      // `offerable` was read from the add-on this build resolves for the tenant's
+      // term, and `addonIdFor` resolves that through `addonPeriodFor` — so a
+      // quarterly church is quoted the MONTHLY add-on, charged monthly, exactly
+      // as `catalogue.ts` records. This field is the period those figures recur
+      // on, and the client renders it as the "/month" or "/year" beside each one;
+      // sending the plan's own term put 'quarterly' into a field the add-on
+      // vocabulary has no such word for, and the client — correctly typed to the
+      // two columns add-ons are actually sold on — read it as "unknown" and
+      // dropped the price from the card and the button entirely. Reconciled here,
+      // through the one function that reconciles it, rather than restated
+      // client-side: `dodo-billing-flag.test.ts` keeps the Dodo module off the
+      // client, so a copy over there could not read this table at all.
+      billing: addonPeriodFor(context.period),
       plan: context.plan,
       addons: offerable,
     });
