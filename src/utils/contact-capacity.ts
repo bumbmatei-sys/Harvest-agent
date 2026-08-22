@@ -32,13 +32,14 @@
  * 🔴 HOW THIS MODULE BEHAVES: SOFT, AND ADMIN-ONLY.
  *
  * ⚠️ POLICY REVERSED BY THE-201 — READ THIS BEFORE QUOTING THE PARAGRAPH THAT
- * USED TO BE HERE. This header previously stated, as a design principle, that
- * "IT NEVER BLOCKS SIGNUP" and that member self-signup ALWAYS works. That is no
- * longer true of the product. Since THE-201 there IS a hard, server-side member
- * signup cap: `src/lib/member-capacity.ts` counts `users` documents scoped to
- * the tenant and `POST /api/auth/set-claims` withholds the `tenantId` custom
- * claim — a 409 — when a NEW applicant would put the tenant past its effective
- * `maxContacts`.
+ * USED TO BE HERE. This header previously stated, as a live design principle,
+ * that the cap never stood in the way of a signup and that member self-signup
+ * ALWAYS works. That is no longer true of the product. Since THE-201 there IS a
+ * hard, server-side member signup cap: `src/lib/member-capacity.ts` counts
+ * `users` documents scoped to the tenant and `POST /api/auth/set-claims`
+ * withholds the `tenantId` custom claim — a 403 carrying
+ * `code: 'member_cap_reached'` — when a NEW applicant would put the tenant past
+ * its effective `maxContacts`.
  *
  * WHY IT REVERSED: the original reasoning (a refused visitor cannot fix it,
  * cannot upgrade the plan, and never finds out why) was sound when every tenant
@@ -85,7 +86,8 @@
  * THE-201 built it. The one server hop every new account makes is
  * POST /api/auth/set-claims, so that is where the member cap is enforced
  * (`src/lib/member-capacity.ts` counts `users where tenantId == t` with the
- * Admin SDK; the route returns 409 and withholds the `tenantId` claim). The
+ * Admin SDK; the route returns 403 with `code: 'member_cap_reached'` and
+ * withholds the `tenantId` claim). The
  * paragraph that used to stand here said such a gate "must not refuse the
  * account" — that constraint was lifted by THE-201, see the policy note above.
  *

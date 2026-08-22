@@ -180,7 +180,9 @@ describe('a tier upgrade lifts the gate with no migration and no cached value (A
       applicantTenantId: 'gracechurch',
       existingClaimTenantId: null,
     };
-    h.countGet.mockResolvedValue(countsTo(501)); // othersCount 500
+    // 500 members on the tenant. The applicant's own doc is one of them (D4),
+    // so othersCount = 499: under `pro`'s 500, far over `plus`'s 150.
+    h.countGet.mockResolvedValue(countsTo(500)); // othersCount 499
 
     h.tenantGet.mockResolvedValue(tenantDoc({ plan: 'plus' }));
     expect((await decideMemberCapacity(applicant)).status).toBe('refused');
