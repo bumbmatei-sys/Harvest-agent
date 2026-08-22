@@ -4,7 +4,7 @@ import { auth, db } from '../firebase';
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { Church, ArrowRight, Sparkles, Loader2, AlertCircle } from 'lucide-react';
 import { TenantPlan } from '../types/tenant.types';
-import { PLAN_DISPLAY_NAMES, PLAN_ORDER } from '../utils/plan-features';
+import { PLAN_DISPLAY_NAMES, PRICED_PLAN_ORDER } from '../utils/plan-features';
 import { SIGNUP_CHECKOUT_ENDPOINT, WALLET_FALLBACK_LINE, resolveSignupBillingPeriod } from '../utils/signup-checkout';
 import { TERM_BILLED_PHRASE } from '../utils/plan-features';
 
@@ -54,10 +54,18 @@ const ChurchOnboarding: React.FC<ChurchOnboardingProps> = ({ signupPlan }) => {
   const urlPlan = typeof window !== 'undefined'
     ? new URLSearchParams(window.location.search).get('plan') as TenantPlan | null
     : null;
-  // `?plan=` is URL-controlled — validate against PLAN_ORDER so a deleted tier
-  // can never be selected, and fail closed to 'plus'.
+  // `?plan=` is URL-controlled — validate so a deleted tier can never be
+  // selected, and fail closed to 'plus'.
+  //
+  // 🔴 AGAINST `PRICED_PLAN_ORDER`, NOT `PLAN_ORDER`. This screen is the church
+  // signup funnel and every plan it can select ends in a Dodo checkout. The
+  // Forever Free tier is in `PLAN_ORDER` and has no product, so validating
+  // against that list would let `?plan=free` through to a checkout that cannot
+  // be built — the same hole the two Dodo routes had (see the note on
+  // `readPlan` in /api/dodo/checkout). A free tenant is provisioned by the free
+  // signup path (THE-203), never through here.
   const selectedPlan: TenantPlan =
-    signupPlan || (urlPlan && (PLAN_ORDER as readonly string[]).includes(urlPlan) ? urlPlan : 'plus');
+    signupPlan || (urlPlan && (PRICED_PLAN_ORDER as readonly string[]).includes(urlPlan) ? urlPlan : 'plus');
 
   // The period is chosen upstream on the pricing page (where the prices are
   // shown), validated here, displayed read-only. THE-135: by the time this
