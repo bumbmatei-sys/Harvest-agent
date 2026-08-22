@@ -408,8 +408,9 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
           headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({ uid: result.user.uid }),
         });
-        // THE-201 — a 409 means the claim was withheld because the ministry is
-        // at its member cap. Previously this response was ignored entirely.
+        // THE-201 — a 403 with code `member_cap_reached` means the claim was
+        // withheld because the ministry is at its member cap (a 503 means the
+        // check could not run). Previously this response was ignored entirely.
         const capRefusal = await readCapRefusal(claimsRes);
         if (capRefusal) {
           setSuccess('');
@@ -544,10 +545,10 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
             headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({ uid: result.user.uid }),
           });
-          // THE-201 — belt and braces behind the pre-flight: a 409 here means the
-          // claim was withheld, so the "Account created successfully!" line must
-          // be cleared before the refusal is shown. Two green-and-red messages at
-          // once would be worse than either alone.
+          // THE-201 — belt and braces behind the pre-flight: a 403 with our cap
+          // code here means the claim was withheld, so the "Account created
+          // successfully!" line must be cleared before the refusal is shown.
+          // Two green-and-red messages at once would be worse than either alone.
           const claimsCapRefusal = await readCapRefusal(claimsRes);
           if (claimsCapRefusal) {
             setSuccess('');
