@@ -272,9 +272,9 @@ describe('paying for room lifts the gate at the enforcement point itself', () =>
     h.verifyIdToken.mockResolvedValue({ uid: APPLICANT, superAdmin: false });
     asNewApplicantOf('gracechurch');
     h.countGet.mockResolvedValue(countsTo(651));
-    // enterprise caps at 2,000 (plan-features.ts:366). No migration, no
+    // `max` (Ministry) caps at 2,000 (plan-features.ts:366). No migration, no
     // backfill, no cached value between the two requests.
-    h.tenantGet.mockResolvedValue({ exists: true, data: () => ({ plan: 'enterprise' }) });
+    h.tenantGet.mockResolvedValue({ exists: true, data: () => ({ plan: 'max' }) });
 
     expect((await POST(post())).status).toBe(200);
     expect(h.setCustomClaims).toHaveBeenCalledWith(APPLICANT);
