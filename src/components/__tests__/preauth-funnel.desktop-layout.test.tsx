@@ -401,47 +401,91 @@ describe('each funnel screen is constrained at desktop widths', () => {
   });
 
   /**
-   * ⚠️ THE-195 EDITED ONE OF THESE FILES, so blanket byte-identity no longer
-   * states something true.
+   * ⚠️ LATER TICKETS HAVE EDITED SOME OF THESE FILES, so blanket byte-identity
+   * no longer states something true.
    *
-   * `ChurchOnboarding.tsx` gained one line: the confirmation banner used to ask
-   * `billing === 'yearly' ? 'billed annually' : 'billed monthly'`, which told a
-   * QUARTERLY church "billed monthly" on the last screen before it paid. It now
-   * reads a total map. That is a copy fix, not a layout change.
+   * Each edit is named here with the ticket that made it and why it is not a
+   * layout change. The files are named rather than dropped from `FUNNEL`, and
+   * they are not exempted from anything else: section 2 still pins each
+   * rendering hash at every mobile viewport and section 1 still pins each set
+   * of measurements at all five — all of which pass unchanged, which is the
+   * actual claim "the layout was not touched" is making. Byte-identity was a
+   * proxy for that claim, and a proxy that has stopped being true should stop
+   * being asserted rather than be quietly re-recorded to match whatever the
+   * file says today.
    *
-   * The file is named here rather than dropped from `FUNNEL`, and it is not
-   * exempted from anything else: section 2 still pins its rendering hash at
-   * every mobile viewport and section 1 still pins its measurements at all five
-   * — both of which pass unchanged, which is the actual claim "the layout was
-   * not touched" is making. Byte-identity was a proxy for that claim, and a
-   * proxy that has stopped being true should stop being asserted rather than be
-   * quietly re-recorded to match whatever the file says today.
+   * An entry here buys exemption from ONE assertion — the digest — and nothing
+   * else. Adding a file whose layout genuinely moved does not help: the
+   * measurement and rendering-hash pins below and in section 2 have no
+   * exemption list at all and will fail regardless.
    */
-  const EDITED_BY_THE_195 = ['ChurchOnboarding.tsx'];
+  const EDITED_SINCE_MEASUREMENT: ReadonlyArray<{ file: string; ticket: string; why: string }> = [
+    {
+      file: 'ChurchOnboarding.tsx',
+      ticket: 'THE-195',
+      why:
+        'Gained one line: the confirmation banner used to ask ' +
+        "`billing === 'yearly' ? 'billed annually' : 'billed monthly'`, which told a " +
+        'QUARTERLY church "billed monthly" on the last screen before it paid. It now ' +
+        'reads a total map. That is a copy fix, not a layout change.',
+    },
+    {
+      file: 'AuthPage.tsx',
+      ticket: 'THE-201',
+      why:
+        'Gained a server-checked member-cap pre-flight in the signup handlers: before ' +
+        'either signup path calls Firebase Auth it asks /api/tenants/member-capacity ' +
+        'whether the ministry can take one more account, and it now reads the ' +
+        'set-claims response for a withheld-claim refusal instead of ignoring it. ' +
+        'Every refusal is rendered through the EXISTING error banner via setError — ' +
+        'the same element an invalid password already used. No element, class or ' +
+        'inline style was added, removed or reordered, and the render is unchanged ' +
+        'until a handler runs. The proof is not this paragraph: AuthPage.tsx keeps ' +
+        'its 452px cap, its measurements at all five viewports (section 1) and its ' +
+        'rendering hash at every mobile viewport (section 2), all pinned to the ' +
+        'measured revision and all still passing unedited. That is the real claim; ' +
+        'only the byte-identity proxy for it moved.',
+    },
+  ];
+
+  const EXEMPT_FILES = EDITED_SINCE_MEASUREMENT.map((e) => e.file);
 
   it('leaves every in-scope file byte-identical to the measured revision', () => {
     for (const file of FUNNEL) {
-      if (EDITED_BY_THE_195.includes(file)) continue;
+      if (EXEMPT_FILES.includes(file)) continue;
       expect(sha(readSrc(file)), `${file} changed — batch I is a measurement, not an edit`)
         .toBe(BASELINE.sourceDigests[file]);
     }
   });
 
-  it('names every file whose digest moved, and keeps that list to what THE-195 touched', () => {
+  it('names every file whose digest moved, with its ticket, and keeps that list to exactly those', () => {
     // The exemption is the dangerous part: an over-broad list turns the guard
-    // above into a no-op. One file, and its digest MUST actually differ — if a
-    // later change reverts it, this fails and the entry has to come back out.
-    expect(EDITED_BY_THE_195).toEqual(['ChurchOnboarding.tsx']);
-    for (const file of EDITED_BY_THE_195) {
+    // above into a no-op. So the list is pinned whole — file AND ticket — and
+    // widening it is an edit to this line, visible in review, not a silent
+    // side effect of touching a funnel file.
+    expect(EDITED_SINCE_MEASUREMENT.map((e) => `${e.ticket} ${e.file}`)).toEqual([
+      'THE-195 ChurchOnboarding.tsx',
+      'THE-201 AuthPage.tsx',
+    ]);
+
+    for (const { file, why } of EDITED_SINCE_MEASUREMENT) {
+      // An entry naming a file this batch never measured exempts nothing and
+      // only disguises the list's real length.
+      expect(FUNNEL as readonly string[], `${file} is exempted but is not in scope`).toContain(file);
+      // Each digest MUST actually differ — if a later change reverts one, this
+      // fails and the entry has to come back out. This is what stops the list
+      // from outliving the edits that justified it.
       expect(sha(readSrc(file)), `${file} is exempted but unchanged — drop it from the list`)
         .not.toBe(BASELINE.sourceDigests[file]);
+      // A bare filename explains nothing to whoever reads this next.
+      expect(why.length, `${file} is exempted without a stated reason`).toBeGreaterThan(80);
     }
   });
 
-  it('proves the edited file still renders identically, which is what byte-identity stood for', () => {
-    // Stated here as well as in section 2 so the exemption above cannot be read
-    // as "this file is no longer checked".
-    for (const file of EDITED_BY_THE_195) {
+  it('proves each edited file still renders identically, which is what byte-identity stood for', () => {
+    // Stated here as well as in section 2 so the exemptions above cannot be
+    // read as "these files are no longer checked".
+    for (const file of EXEMPT_FILES) {
       expect(BASELINE.screens[file].renderingHash).toBeDefined();
       expect(BASELINE.screens[file].measurements).toBeDefined();
     }
