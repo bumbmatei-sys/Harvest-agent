@@ -212,14 +212,15 @@ describe('THE-200 — what a free tenant gets', () => {
     // seat count still means something.
     expect(free.maxAdmins).toBe(1);
 
-    // Belt and braces on the enumeration itself: exactly the two entitlements
-    // free carries are truthy. This DERIVED check is allowed only because every
+    // Belt and braces on the enumeration itself: exactly the entitlements free
+    // carries are truthy. This DERIVED check is allowed only because every
     // cell above is also asserted by name — it catches a NEW cell added to the
     // interface and defaulted true on free, which the named list cannot see.
+    // `pwaApp` joined this set in THE-205 (asserted by name in test 7b).
     const truthy = (Object.keys(free) as (keyof PlanFeatures)[])
       .filter((k) => hasFeature('free', k))
       .sort();
-    expect(truthy).toEqual(['crm', 'maxContacts', 'maxCourses', 'maxAdmins'].sort());
+    expect(truthy).toEqual(['crm', 'maxContacts', 'maxCourses', 'maxAdmins', 'pwaApp'].sort());
   });
 });
 
