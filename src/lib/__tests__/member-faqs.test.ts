@@ -150,7 +150,11 @@ describe('member FAQ — nothing about price, plans or billing', () => {
     // the FAQ silently stopped being checked for a plan name.
     expect(AMBIGUOUS_PLAN_NAME).toBe('Ministry');
     const banned = Object.values(PLAN_DISPLAY_NAMES).filter((n) => n !== AMBIGUOUS_PLAN_NAME);
-    expect(banned.sort()).toEqual(['Individual', 'Small Team']);
+    // 🔴 'Free' joined the list with THE-200. It is the plan name MOST likely to
+    // drift into member-facing copy ("it's free!"), so it being banned here —
+    // the member FAQ must say nothing about price, plans or billing — is the
+    // carve-out working, not an oversight.
+    expect(banned.sort()).toEqual(['Free', 'Individual', 'Small Team']);
   });
 });
 

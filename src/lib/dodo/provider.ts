@@ -1,4 +1,4 @@
-import type { TenantPlan } from '@/types/tenant.types';
+import type { PricedPlan } from '@/types/tenant.types';
 import type { BillingTerm } from '@/utils/plan-features';
 
 /**
@@ -87,7 +87,19 @@ export interface BillingSubscription {
   readonly id: string;
   readonly status: BillingSubscriptionStatus;
   /** Null when the subscription is not selling a plan this build knows about. */
-  readonly plan: TenantPlan | null;
+  /**
+   * Null when the subscription is not selling a plan this build knows about.
+   *
+   * 🔴 `PricedPlan`, so this can never be `'free'`. A subscription exists
+   * because money changes hands; the Forever Free tier has no subscription at
+   * all (no product, no card, no trial, no webhook), so "a subscription selling
+   * the free plan" is not a state that exists. Typing it on the full union
+   * would invite a webhook handler to write `plan: 'free'` from a processor
+   * payload, which is the one direction the free tier must never be reachable
+   * from — the webhook stays the single writer of `plan`, and a free tenant
+   * gets there by provisioning, not by billing.
+   */
+  readonly plan: PricedPlan | null;
   readonly period: BillingPeriod | null;
   /** True when it will end at the current period's end rather than renewing. */
   readonly cancelAtPeriodEnd: boolean;
@@ -103,7 +115,8 @@ export interface BillingSubscription {
 
 /** What the app must supply to start a plan checkout. */
 export interface PlanCheckoutRequest {
-  readonly plan: TenantPlan;
+  /** 🔴 A checkout sells a PRICED tier. Free has no product to cart. */
+  readonly plan: PricedPlan;
   readonly period: BillingPeriod;
   /** Where the customer lands after paying. */
   readonly returnUrl: string;
@@ -206,5 +219,5 @@ export interface SubscriptionBillingProvider {
    * Returns null for anything the running build does not sell. Callers must treat
    * null as "unknown, do nothing" and never as a default plan.
    */
-  resolvePlanFromProductRef(productRef: string): { plan: TenantPlan; period: BillingPeriod } | null;
+  resolvePlanFromProductRef(productRef: string): { plan: PricedPlan; period: BillingPeriod } | null;
 }

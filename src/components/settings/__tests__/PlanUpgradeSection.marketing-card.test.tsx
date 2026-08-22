@@ -1,3 +1,7 @@
+// 🔴 PRICED tiers only. This suite is about prices and rendered plan CARDS,
+// and the Forever Free tier has neither a price nor a card (it has no Dodo
+// product to check out with). PLAN_ORDER now includes it; PRICED_PLAN_ORDER is
+// the list this file has always meant. See plan-features.ts.
 import { describe, it, expect, vi, beforeAll, beforeEach, afterEach } from 'vitest';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
@@ -72,7 +76,7 @@ vi.mock('../useTenantId', () => ({ getTenantId: async () => 'grace' }));
 
 import PlanUpgradeSection from '../PlanUpgradeSection';
 import {
-  PLAN_ORDER,
+  PRICED_PLAN_ORDER,
   PLAN_DISPLAY_NAMES,
   PLAN_BLURBS,
   PLAN_PRICING,
@@ -81,7 +85,7 @@ import {
 } from '../../../utils/plan-features';
 import { PLATFORM_FEE_MAP } from '../../../lib/stripe-connect';
 import { FORM_CONTAINER } from '../../layout/form-layout';
-import type { TenantPlan } from '../../../types/tenant.types';
+import type { TenantPlan, PricedPlan } from '../../../types/tenant.types';
 import {
   mobileLayer, classInventory, allTokens, isFontSizeToken, fontSizePx, isResponsive, breakpointOf,
   REM_PX_DESKTOP, BREAKPOINT_MIN_PX,
@@ -147,7 +151,7 @@ function mount(props: { currentPlan?: TenantPlan; processor?: 'stripe' | 'dodo' 
 
 const classesOf = (el: Element): string[] => (el.getAttribute('class') || '').split(/\s+/).filter(Boolean);
 
-const card = (plan: TenantPlan): HTMLElement => {
+const card = (plan: PricedPlan): HTMLElement => {
   const el = container.querySelector<HTMLElement>(`[data-testid="plan-card"][data-plan="${plan}"]`);
   if (!el) throw new Error(`No plan card for ${PLAN_DISPLAY_NAMES[plan]}`);
   return el;
@@ -268,7 +272,7 @@ function recordOrRead(): Baseline {
   // re-rendering a revision of it is not something a recorder should do.
   const mobileLayerNow: Record<string, string[]> = {};
   const elements: Record<string, { before: number; after: number }> = {};
-  for (const plan of PLAN_ORDER) {
+  for (const plan of PRICED_PLAN_ORDER) {
     const host = document.createElement('div');
     document.body.appendChild(host);
     let r: Root;
@@ -407,7 +411,7 @@ function measure(chain: Baseline['after'], viewport: number): Measured {
     const columns = Number(trackDecls['grid-template-columns']?.match(/repeat\((\d+)/)?.[1] ?? 1);
     const share = (trackPx - (columns - 1) * gap) / columns;
     const cardPx = Math.min(Math.max(share, cardMin), cardMax);
-    const perRow = Math.min(columns, PLAN_ORDER.length);
+    const perRow = Math.min(columns, PRICED_PLAN_ORDER.length);
     const rowPx = perRow * cardPx + (perRow - 1) * gap;
     return { viewport, trackPx, display, columns, cardPx, rowPx, overflowPx: Math.max(0, rowPx - trackPx) };
   }
@@ -417,7 +421,7 @@ function measure(chain: Baseline['after'], viewport: number): Measured {
   // real cards sit nearer their max — so an overflow computed here is a floor
   // on the real one, never an exaggeration of it.
   const cardPx = cardMin;
-  const rowPx = PLAN_ORDER.length * cardPx + (PLAN_ORDER.length - 1) * gap;
+  const rowPx = PRICED_PLAN_ORDER.length * cardPx + (PRICED_PLAN_ORDER.length - 1) * gap;
   return { viewport, trackPx, display, columns: 1, cardPx, rowPx, overflowPx: Math.max(0, rowPx - trackPx) };
 }
 
@@ -486,7 +490,7 @@ describe('1 — three plan cards fit without horizontal clipping at desktop widt
       // Three across, or wrapped — never a fourth column, never one long line.
       expect(m.display, `${viewport}px`).toBe('grid');
       expect(m.columns, `${viewport}px`).toBeGreaterThanOrEqual(2);
-      expect(m.columns, `${viewport}px`).toBeLessThanOrEqual(PLAN_ORDER.length);
+      expect(m.columns, `${viewport}px`).toBeLessThanOrEqual(PRICED_PLAN_ORDER.length);
     }
   });
 
@@ -533,13 +537,13 @@ describe('1 — three plan cards fit without horizontal clipping at desktop widt
 describe('2 — the recommended plan renders a distinct card treatment in all four palettes', () => {
   it('marks exactly one tier recommended, and it is the dark one', () => {
     mount();
-    const flagged = PLAN_ORDER.filter((p) => card(p).getAttribute('data-recommended') === 'true');
+    const flagged = PRICED_PLAN_ORDER.filter((p) => card(p).getAttribute('data-recommended') === 'true');
     expect(flagged).toHaveLength(1);
     const [recommended] = flagged;
     // Named by the badge it renders, not by which tier it happens to be.
     expect(card(recommended).querySelector('[data-testid="plan-card-recommended"]')?.textContent?.trim())
       .toBe('RECOMMENDED');
-    for (const plan of PLAN_ORDER) {
+    for (const plan of PRICED_PLAN_ORDER) {
       if (plan === recommended) continue;
       expect(card(plan).querySelector('[data-testid="plan-card-recommended"]'), PLAN_DISPLAY_NAMES[plan]).toBeNull();
     }
@@ -547,7 +551,7 @@ describe('2 — the recommended plan renders a distinct card treatment in all fo
 
   it('paints it from tokens that resolve in every palette, and never from a literal', () => {
     mount();
-    const recommended = PLAN_ORDER.find((p) => card(p).getAttribute('data-recommended') === 'true')!;
+    const recommended = PRICED_PLAN_ORDER.find((p) => card(p).getAttribute('data-recommended') === 'true')!;
     const el = card(recommended);
     const style = el.getAttribute('style') ?? '';
 
@@ -604,7 +608,7 @@ describe('2 — the recommended plan renders a distinct card treatment in all fo
       document.documentElement.setAttribute('data-theme', mode);
       if (mode === 'dark') document.documentElement.classList.add('dark');
       mount();
-      const recommended = PLAN_ORDER.find((p) => card(p).getAttribute('data-recommended') === 'true')!;
+      const recommended = PRICED_PLAN_ORDER.find((p) => card(p).getAttribute('data-recommended') === 'true')!;
       seen.add(card(recommended).outerHTML);
       act(() => { root?.unmount(); });
       root = null;
@@ -616,8 +620,8 @@ describe('2 — the recommended plan renders a distinct card treatment in all fo
 
   it('gives the plain cards a different treatment, so "distinct" means something', () => {
     mount();
-    const recommended = PLAN_ORDER.find((p) => card(p).getAttribute('data-recommended') === 'true')!;
-    const plain = PLAN_ORDER.filter((p) => p !== recommended);
+    const recommended = PRICED_PLAN_ORDER.find((p) => card(p).getAttribute('data-recommended') === 'true')!;
+    const plain = PRICED_PLAN_ORDER.filter((p) => p !== recommended);
     expect(plain.length).toBeGreaterThan(0);
     for (const plan of plain) {
       expect(card(plan).getAttribute('style') ?? '', PLAN_DISPLAY_NAMES[plan]).not.toContain('var(--surface-night)');
@@ -632,7 +636,7 @@ describe('2 — the recommended plan renders a distinct card treatment in all fo
 describe('3 — the donation fee reaches the card without a second copy of the number', () => {
   it('prints the fee PLATFORM_FEE_MAP holds, whatever it holds', () => {
     mount();
-    for (const plan of PLAN_ORDER) {
+    for (const plan of PRICED_PLAN_ORDER) {
       const callout = card(plan).querySelector('[data-testid="plan-card-fee"]');
       expect(callout, `no fee callout on the ${PLAN_DISPLAY_NAMES[plan]} card`).toBeTruthy();
       const expected = `${Number(((PLATFORM_FEE_MAP[plan] ?? 0) * 100).toFixed(2))}%`;
@@ -732,7 +736,7 @@ describe('4 — the plan-change call, the trial refusal and the processor gate a
 describe('5 — the current-plan marker wins the badge slot on the recommended card', () => {
   it('shows the marker and suppresses RECOMMENDED when they collide', () => {
     mount();
-    const recommended = PLAN_ORDER.find((p) => card(p).getAttribute('data-recommended') === 'true')!;
+    const recommended = PRICED_PLAN_ORDER.find((p) => card(p).getAttribute('data-recommended') === 'true')!;
     // Nobody on it: the badge shows.
     expect(card(recommended).querySelector('[data-testid="plan-card-recommended"]')).toBeTruthy();
     expect(card(recommended).querySelector('[data-testid="plan-card-current"]')).toBeNull();
@@ -746,9 +750,9 @@ describe('5 — the current-plan marker wins the badge slot on the recommended c
   });
 
   it('marks the current plan on every tier, recommended or not', () => {
-    for (const plan of PLAN_ORDER) {
+    for (const plan of PRICED_PLAN_ORDER) {
       mount({ currentPlan: plan });
-      const marked = PLAN_ORDER.filter((p) => card(p).querySelector('[data-testid="plan-card-current"]'));
+      const marked = PRICED_PLAN_ORDER.filter((p) => card(p).querySelector('[data-testid="plan-card-current"]'));
       expect(marked, `currentPlan=${plan}`).toEqual([plan]);
       act(() => { root?.unmount(); }); root = null; container.remove();
     }
@@ -759,7 +763,7 @@ describe('5b — no font size below 11px as rendered at desktop density', () => 
   it('holds for every size the cards render', () => {
     mount({ currentPlan: 'pro' });
     const offenders: string[] = [];
-    for (const plan of PLAN_ORDER) {
+    for (const plan of PRICED_PLAN_ORDER) {
       for (const token of allTokens(card(plan))) {
         if (!isFontSizeToken(token)) continue;
         const px = fontSizePx(token, REM_PX_DESKTOP);
@@ -781,7 +785,7 @@ describe('5b — no font size below 11px as rendered at desktop density', () => 
     // floor assertion, so this pins what it actually is instead: unchanged
     // padding and unchanged type, i.e. the same box it has always drawn.
     mount({ currentPlan: 'pro' });
-    for (const plan of PLAN_ORDER) {
+    for (const plan of PRICED_PLAN_ORDER) {
       const button = card(plan).querySelector('button')!;
       const tokens = classesOf(button);
       expect(tokens, PLAN_DISPLAY_NAMES[plan]).toContain('py-2.5');
@@ -844,7 +848,7 @@ describe('6 — the sub-640px rendering changes only where the marketing match r
   const TOGGLE_ROWS_ADDED = 6;
 
   it('changes the phone rendering by exactly the enumerated amount', () => {
-    for (const plan of PLAN_ORDER) {
+    for (const plan of PRICED_PLAN_ORDER) {
       mount({ currentPlan: plan });
       const layer = mobileLayer(container);
       const recorded = baseline.mobileLayer[plan];
@@ -976,7 +980,7 @@ describe('7 — prices, the toggle and the blurbs', () => {
     expect(PLAN_PRICING.pro.monthly).toBe(79);
     expect(PLAN_PRICING.max.monthly).toBe(159);
     mount();
-    for (const plan of PLAN_ORDER) {
+    for (const plan of PRICED_PLAN_ORDER) {
       // Monthly: the per-month headline and the charged price are the same
       // figure on the same cycle, so this still matches formatPlanPrice.
       expect(card(plan).querySelector('[data-testid="plan-card-price"]')!.textContent!.trim(), PLAN_DISPLAY_NAMES[plan])
@@ -999,7 +1003,7 @@ describe('7 — prices, the toggle and the blurbs', () => {
     for (const term of ['yearly', 'quarterly', 'monthly'] as const) {
       const label = term === 'yearly' ? 'Yearly' : term === 'quarterly' ? 'Quarterly' : 'Monthly';
       act(() => { toggle(label).click(); });
-      for (const plan of PLAN_ORDER) {
+      for (const plan of PRICED_PLAN_ORDER) {
         // THE-196: the headline is the per-month figure on every term.
         expect(
           card(plan).querySelector('[data-testid="plan-card-price"]')!.textContent!.trim(),
@@ -1011,7 +1015,7 @@ describe('7 — prices, the toggle and the blurbs', () => {
 
   it('gives every card its blurb, from the one source in this repo', () => {
     mount();
-    for (const plan of PLAN_ORDER) {
+    for (const plan of PRICED_PLAN_ORDER) {
       expect(card(plan).querySelector('[data-testid="plan-card-blurb"]')!.textContent!.trim(), PLAN_DISPLAY_NAMES[plan])
         .toBe(PLAN_BLURBS[plan]);
     }

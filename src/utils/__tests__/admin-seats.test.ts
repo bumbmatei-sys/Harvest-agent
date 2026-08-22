@@ -8,7 +8,8 @@ import {
   adminLimitMessage,
   wouldSpendNewSeat,
 } from '../admin-seats';
-import { PLAN_ORDER, getPlanFeatures, PLAN_PRICING } from '../plan-features';
+import { PLAN_ORDER,
+  PRICED_PLAN_ORDER, getPlanFeatures, PLAN_PRICING } from '../plan-features';
 import { SUPER_ADMIN_EMAILS } from '../super-admins';
 
 /**
@@ -20,14 +21,18 @@ import { SUPER_ADMIN_EMAILS } from '../super-admins';
 const admin = (id: string, email = `${id}@church.org`) => ({ id, role: 'admin', email });
 
 describe('resolveAdminLimit — caps come from PLAN_FEATURES, never a literal', () => {
-  it('resolves 2 / 5 / 15 across PLAN_ORDER from the matrix itself', () => {
+  it('resolves 1 / 2 / 5 / 15 across PLAN_ORDER from the matrix itself', () => {
     // Compared against getPlanFeatures rather than hardcoded, so a matrix change
     // moves this test with it instead of leaving a stale literal behind.
     expect(PLAN_ORDER.map((p) => resolveAdminLimit(p))).toEqual(
       PLAN_ORDER.map((p) => getPlanFeatures(p).maxAdmins)
     );
-    // And the published numbers really are 2 / 5 / 15 today.
-    expect(PLAN_ORDER.map((p) => resolveAdminLimit(p))).toEqual([2, 5, 15]);
+    // The published numbers today. 🔴 THE-200 put the Forever Free tier at the
+    // front of PLAN_ORDER with maxAdmins: 1 — one evangelist is one admin, and
+    // a tier with no card must not become a free shared workspace. The three
+    // PAID seat counts are unchanged.
+    expect(PLAN_ORDER.map((p) => resolveAdminLimit(p))).toEqual([1, 2, 5, 15]);
+    expect(PRICED_PLAN_ORDER.map((p) => resolveAdminLimit(p))).toEqual([2, 5, 15]);
   });
 
   it('fails closed to Individual (2) on an unknown, null or still-loading plan', () => {

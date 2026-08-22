@@ -4,7 +4,8 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import AnalyticsAndRoles from '../AnalyticsAndRoles';
 import { AdminHeaderContext } from '../AdminScreenHeader';
-import { PLAN_ORDER, getPlanFeatures, PLAN_PRICING } from '../../utils/plan-features';
+import { PLAN_ORDER,
+  PRICED_PLAN_ORDER, getPlanFeatures, PLAN_PRICING } from '../../utils/plan-features';
 import { SUPER_ADMIN_EMAILS } from '../../utils/super-admins';
 
 /**
@@ -341,8 +342,14 @@ describe('AnalyticsAndRoles — maxAdmins enforcement', () => {
 
   // ── 7. caps come from PLAN_FEATURES, not literals ────────────────────────
 
-  it("each plan's cap resolves from PLAN_FEATURES — 2 / 5 / 15", async () => {
-    expect(PLAN_ORDER.map((p) => getPlanFeatures(p).maxAdmins)).toEqual([2, 5, 15]);
+  it("each plan's cap resolves from PLAN_FEATURES — 1 / 2 / 5 / 15", async () => {
+    // 🔴 THE-200 put the Forever Free tier at the front of PLAN_ORDER with
+    // maxAdmins: 1 — one evangelist is one admin, and a tier with no card must
+    // not become a free shared workspace for an arbitrary number of people.
+    // The three PAID seat counts are unchanged, asserted separately so a
+    // regression on a plan a church pays for cannot hide inside the new list.
+    expect(PLAN_ORDER.map((p) => getPlanFeatures(p).maxAdmins)).toEqual([1, 2, 5, 15]);
+    expect(PRICED_PLAN_ORDER.map((p) => getPlanFeatures(p).maxAdmins)).toEqual([2, 5, 15]);
 
     for (const plan of PLAN_ORDER) {
       const cap = getPlanFeatures(plan).maxAdmins;
@@ -357,7 +364,12 @@ describe('AnalyticsAndRoles — maxAdmins enforcement', () => {
         mockUsers = Array.from({ length: seats }, (_, i) => fullAdmin(`a${i}`));
         await mount();
 
-        expect(seatUsageText()).toBe(`${seats} of ${cap} admins used`);
+        // ⚠️ The component pluralises on the CAP, and THE-200's free tier is
+        // the first cap of 1 this suite has ever seen — it renders "1 admin
+        // used", not "1 admins used". The component was already correct; the
+        // template here simply had no singular case to exercise before.
+        const noun = cap === 1 ? 'admin' : 'admins';
+        expect(seatUsageText()).toBe(`${seats} of ${cap} ${noun} used`);
         expect(addAdminButton().disabled).toBe(expectedDisabled);
       }
     }

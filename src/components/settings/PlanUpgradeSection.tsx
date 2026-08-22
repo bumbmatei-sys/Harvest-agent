@@ -7,6 +7,7 @@ import {
   getPlanDisplayName,
   PLAN_DISPLAY_NAMES,
   PLAN_ORDER,
+  PRICED_PLAN_ORDER,
   PLAN_PRICING,
   AI_TELEGRAM_ASSISTANT_ENABLED,
   UNLIMITED_CAP,
@@ -445,7 +446,12 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
         className="flex overflow-x-auto gap-4 pb-4 snap-x snap-mandatory scrollbar-hide sm:grid sm:grid-cols-2 sm:overflow-x-visible sm:pb-0 lg:grid-cols-3"
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
-        {PLAN_ORDER.map((planId, planIndex) => {
+        {/* 🔴 PRICED tiers only — see PRICED_PLAN_ORDER. Each card below ends in
+            a checkout, and the Forever Free tier has no price and no Dodo
+            product. `isDowngrade` still compares against PLAN_ORDER, because a
+            tenant's CURRENT plan can be 'free'. Renders the same three cards it
+            rendered before this tier existed. */}
+        {PRICED_PLAN_ORDER.map((planId, planIndex) => {
           const meta = PLAN_META[planId];
           const plan = meta;
           const features = getPlanFeatures(planId);
@@ -466,7 +472,12 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
 
           // The tier below this one, and therefore whether this card rolls up.
           // Individual is the floor and prints its list whole.
-          const below = planIndex > 0 ? PLAN_ORDER[planIndex - 1] : null;
+          // The tier below THIS card in the priced ladder, so Individual stays
+          // the floor that prints its list whole. Reading PLAN_ORDER here would
+          // make Individual roll up as "Everything in Free", which is both a
+          // downgrade of its own pitch and, since free has almost nothing, a
+          // rollup that hides the features it is actually selling.
+          const below = planIndex > 0 ? PRICED_PLAN_ORDER[planIndex - 1] : null;
           const lines = below ? rollupLines(features, getPlanFeatures(below)) : linesFor(features);
           const rollup = below ? `Everything in ${PLAN_DISPLAY_NAMES[below]}` : null;
 
@@ -685,7 +696,7 @@ const PlanUpgradeSection: React.FC<PlanUpgradeSectionProps> = ({ currentPlan, te
           nothing to page through, so the row is hidden. `sm:hidden` is
           breakpoint-gated, so the phone keeps its dots exactly as they are. */}
       <div className="flex justify-center gap-2 py-2 sm:hidden">
-        {PLAN_ORDER.map((_, index) => (
+        {PRICED_PLAN_ORDER.map((_, index) => (
           <button
             key={index}
             onClick={() => {

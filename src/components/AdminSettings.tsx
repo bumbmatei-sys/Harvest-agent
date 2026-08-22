@@ -460,6 +460,9 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onBack, currentPlan, onCh
 // reprice, so the plan summary quoted a price the church was not paying. Colour
 // has nothing in the price table to derive from, so it stays written down.
 const PLAN_SWATCH: Record<TenantPlan, string> = {
+  // Neutral grey — the paid swatches (indigo / gold / bronze) are a value
+  // ladder and free is not a rung on it.
+  free: '#64748b',
   plus: '#6366f1',
   pro: '#d4a017',
   max: '#b45309',

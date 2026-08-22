@@ -1,3 +1,7 @@
+// 🔴 PRICED tiers only. This suite is about prices and rendered plan CARDS,
+// and the Forever Free tier has neither a price nor a card (it has no Dodo
+// product to check out with). PLAN_ORDER now includes it; PRICED_PLAN_ORDER is
+// the list this file has always meant. See plan-features.ts.
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
@@ -8,13 +12,13 @@ import {
   formatPlanPrice,
   formatPlanMonthlyHeadline,
   planTermMonthlyDisplayed,
-  PLAN_ORDER,
+  PRICED_PLAN_ORDER,
   PLAN_DISPLAY_NAMES,
   BILLING_TERMS,
   TERM_MONTHS,
   planPriceUsd,
 } from '../../../utils/plan-features';
-import type { TenantPlan } from '../../../types/tenant.types';
+import type { PricedPlan } from '../../../types/tenant.types';
 
 /**
  * THE-196 — the in-app plan card leads with the per-month figure.
@@ -48,11 +52,11 @@ function clickTerm(text: string) {
   act(() => { button.click(); });
 }
 
-const card = (plan: TenantPlan) =>
+const card = (plan: PricedPlan) =>
   container.querySelector<HTMLElement>(`[data-testid="plan-card"][data-plan="${plan}"]`)!;
-const headlineOf = (plan: TenantPlan) =>
+const headlineOf = (plan: PricedPlan) =>
   card(plan).querySelector('[data-testid="plan-card-price"]')!.textContent!.trim();
-const noteOf = (plan: TenantPlan) =>
+const noteOf = (plan: PricedPlan) =>
   card(plan).querySelector('[data-testid="plan-card-term-note"]');
 
 const TERM_LABEL = { monthly: 'Monthly', quarterly: 'Quarterly', yearly: 'Yearly' } as const;
@@ -71,7 +75,7 @@ describe('THE-196 — the per-month headline on the in-app card', () => {
     mount();
     for (const term of BILLING_TERMS) {
       clickTerm(TERM_LABEL[term]);
-      for (const plan of PLAN_ORDER) {
+      for (const plan of PRICED_PLAN_ORDER) {
         expect(headlineOf(plan), `${PLAN_DISPLAY_NAMES[plan]} ${term}`)
           .toBe(`${formatPlanMonthlyHeadline(plan, term)}/mo`);
       }
@@ -82,7 +86,7 @@ describe('THE-196 — the per-month headline on the in-app card', () => {
     mount();
     for (const term of ['quarterly', 'yearly'] as const) {
       clickTerm(TERM_LABEL[term]);
-      for (const plan of PLAN_ORDER) {
+      for (const plan of PRICED_PLAN_ORDER) {
         const note = noteOf(plan);
         expect(note, `${PLAN_DISPLAY_NAMES[plan]} ${term}`).not.toBeNull();
         expect(note!.textContent).toBe(
@@ -98,7 +102,7 @@ describe('THE-196 — the per-month headline on the in-app card', () => {
     // global, so all three cards lose the row together and cannot misalign.
     mount();
     clickTerm('Monthly');
-    for (const plan of PLAN_ORDER) {
+    for (const plan of PRICED_PLAN_ORDER) {
       expect(noteOf(plan)).toBeNull();
       expect(headlineOf(plan)).toBe(formatPlanPrice(plan, 'monthly'));
     }
@@ -112,7 +116,7 @@ describe('THE-196 — the per-month headline on the in-app card', () => {
     mount();
     for (const term of BILLING_TERMS) {
       clickTerm(TERM_LABEL[term]);
-      for (const plan of PLAN_ORDER) {
+      for (const plan of PRICED_PLAN_ORDER) {
         const headline = Number(headlineOf(plan).replace(/[^0-9.]/g, ''));
         const implied = headline * TERM_MONTHS[term];
         const charged = planPriceUsd(plan, term);
@@ -143,7 +147,7 @@ describe('THE-196 — the per-month headline on the in-app card', () => {
        whose loudest figure is one nobody is billed. */
     mount();
     clickTerm('Yearly');
-    for (const plan of PLAN_ORDER) {
+    for (const plan of PRICED_PLAN_ORDER) {
       const cls = noteOf(plan)!.className;
       expect(cls, PLAN_DISPLAY_NAMES[plan]).toContain('text-[12.5px]');
       expect(cls).not.toMatch(/\btext-xs\b/);
@@ -176,7 +180,7 @@ describe('THE-196 — the per-month headline on the in-app card', () => {
          headline   formatMonthlyHeadline(price, term) + "/mo"
          beneath    `billed as $${price} every ${TERM_MONTHS[term]} months`
          monthly    headline alone, no line beneath                            */
-    const SITE_HEADLINES: Record<TenantPlan, Record<string, string>> = {
+    const SITE_HEADLINES: Record<PricedPlan, Record<string, string>> = {
       plus: { monthly: '$39',  quarterly: '$33',    yearly: '$27.42'  },
       pro:  { monthly: '$79',  quarterly: '$66.34', yearly: '$54.92'  },
       max:  { monthly: '$159', quarterly: '$133',   yearly: '$110.75' },
@@ -184,7 +188,7 @@ describe('THE-196 — the per-month headline on the in-app card', () => {
     mount();
     for (const term of BILLING_TERMS) {
       clickTerm(TERM_LABEL[term]);
-      for (const plan of PLAN_ORDER) {
+      for (const plan of PRICED_PLAN_ORDER) {
         expect(formatPlanMonthlyHeadline(plan, term), `${plan} ${term}`)
           .toBe(SITE_HEADLINES[plan][term]);
         expect(headlineOf(plan)).toBe(`${SITE_HEADLINES[plan][term]}/mo`);
@@ -194,11 +198,11 @@ describe('THE-196 — the per-month headline on the in-app card', () => {
 
   it('the nine prices are unchanged and still match the Dodo catalogue', () => {
     // Presentation only. Nothing in THE-196 may move a price.
-    expect(PLAN_ORDER.map((p) => planPriceUsd(p, 'monthly'))).toEqual([39, 79, 159]);
-    expect(PLAN_ORDER.map((p) => planPriceUsd(p, 'quarterly'))).toEqual([99, 199, 399]);
-    expect(PLAN_ORDER.map((p) => planPriceUsd(p, 'yearly'))).toEqual([329, 659, 1329]);
+    expect(PRICED_PLAN_ORDER.map((p) => planPriceUsd(p, 'monthly'))).toEqual([39, 79, 159]);
+    expect(PRICED_PLAN_ORDER.map((p) => planPriceUsd(p, 'quarterly'))).toEqual([99, 199, 399]);
+    expect(PRICED_PLAN_ORDER.map((p) => planPriceUsd(p, 'yearly'))).toEqual([329, 659, 1329]);
     // …and the displayed figure is derived from them, never stored beside them.
-    for (const plan of PLAN_ORDER) {
+    for (const plan of PRICED_PLAN_ORDER) {
       for (const term of BILLING_TERMS) {
         expect(planTermMonthlyDisplayed(plan, term) * TERM_MONTHS[term])
           .toBeGreaterThanOrEqual(planPriceUsd(plan, term));

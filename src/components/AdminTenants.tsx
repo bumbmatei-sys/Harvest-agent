@@ -21,6 +21,7 @@ import { FORM_CONTAINER } from './layout/form-layout';
 import { PLAN_DISPLAY_NAMES, PLAN_ORDER, formatPlanPrice } from '../utils/plan-features';
 
 const PLAN_LABELS: Record<TenantPlan, string> = {
+  free: 'Free',
   plus: 'Plus',
   pro: 'Pro',
   max: 'Max',
@@ -40,6 +41,17 @@ const PLAN_DISPLAY: Record<TenantPlan, string> = Object.fromEntries(
 ) as Record<TenantPlan, string>;
 
 const PLAN_COLORS: Record<TenantPlan, string> = {
+  // Neutral, deliberately. The three paid tiers ascend blue → purple → amber;
+  // a free tenant is not a step on that ladder and must not read as one in a
+  // super admin's tenant list.
+  //
+  // ⚠️ THEME TOKENS, not a Tailwind cool-grey utility. Those scales are
+  // off-palette in light and do not invert in dark — the design-system tests
+  // (`theming-gaps`, `theming-colour-maps`) fail the build on one, and they
+  // scan raw source text, so naming the forbidden class even inside a comment
+  // trips them. This is the same pair `cancelled`/`archived` use below, for the
+  // same reason.
+  free: 'bg-surface-sunken text-muted',
   plus: 'bg-blue-100 text-blue-700',
   pro: 'bg-purple-100 text-purple-700',
   max: 'bg-amber-100 text-amber-700',

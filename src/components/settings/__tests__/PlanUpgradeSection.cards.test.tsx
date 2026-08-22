@@ -1,3 +1,7 @@
+// 🔴 PRICED tiers only. This suite is about prices and rendered plan CARDS,
+// and the Forever Free tier has neither a price nor a card (it has no Dodo
+// product to check out with). PLAN_ORDER now includes it; PRICED_PLAN_ORDER is
+// the list this file has always meant. See plan-features.ts.
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
@@ -8,14 +12,14 @@ import {
   getPlanFeatures,
   formatPlanPrice,
   formatPlanMonthlyHeadline,
-  PLAN_ORDER,
+  PRICED_PLAN_ORDER,
   PLAN_PRICING,
   PLAN_DISPLAY_NAMES,
   BILLING_TERMS,
   planPriceUsd,
   PLAN_BLURBS,
 } from '../../../utils/plan-features';
-import type { TenantPlan } from '../../../types/tenant.types';
+import type { TenantPlan, PricedPlan } from '../../../types/tenant.types';
 
 /**
  * THE-161 — the billing page's plan cards.
@@ -56,20 +60,20 @@ function clickButtonWithText(text: string) {
 }
 
 /** The card for one tier, found by its plan label rather than by position. */
-function card(plan: TenantPlan): HTMLElement {
+function card(plan: PricedPlan): HTMLElement {
   const el = container.querySelector<HTMLElement>(`[data-testid="plan-card"][data-plan="${plan}"]`);
   if (!el) throw new Error(`No plan card for ${PLAN_DISPLAY_NAMES[plan]}`);
   return el;
 }
 
 /** The feature lines a tier's card prints, as the matrix cells they name. */
-function shownCells(plan: TenantPlan): string[] {
+function shownCells(plan: PricedPlan): string[] {
   return Array.from(
     container.querySelectorAll(`[data-testid="plan-card-features"][data-plan="${plan}"] > *`)
   ).map((li) => li.getAttribute('data-feature') ?? '');
 }
 
-function priceOf(plan: TenantPlan): string {
+function priceOf(plan: PricedPlan): string {
   return card(plan).querySelector('[data-testid="plan-card-price"]')!.textContent!.trim();
 }
 
@@ -96,7 +100,7 @@ describe('PlanUpgradeSection plan cards', () => {
     expect(container.textContent).not.toContain('Full Feature Comparison');
     expect(container.querySelector('table')).toBeNull();
     // The cards survived the deletion — this must not pass by rendering nothing.
-    expect(container.querySelectorAll('[data-testid="plan-card"]')).toHaveLength(PLAN_ORDER.length);
+    expect(container.querySelectorAll('[data-testid="plan-card"]')).toHaveLength(PRICED_PLAN_ORDER.length);
   });
 
   it('derives every card feature list from getPlanFeatures', () => {
@@ -105,7 +109,7 @@ describe('PlanUpgradeSection plan cards', () => {
     // The cells the cards are willing to name, taken from the DOM itself so this
     // test never restates the component's own list.
     const nameable = new Set<string>();
-    for (const plan of PLAN_ORDER) shownCells(plan).forEach((cell) => nameable.add(cell));
+    for (const plan of PRICED_PLAN_ORDER) shownCells(plan).forEach((cell) => nameable.add(cell));
     expect(nameable.size).toBeGreaterThan(0);
 
     // Each card must then print exactly the nameable cells ITS tier unlocks AND
@@ -118,10 +122,10 @@ describe('PlanUpgradeSection plan cards', () => {
     // flip a cell in the matrix and both sides of the comparison move together,
     // which is the guarantee — a hand-written list would fail the moment the
     // matrix and the JSX disagreed.
-    for (const [index, plan] of PLAN_ORDER.entries()) {
+    for (const [index, plan] of PRICED_PLAN_ORDER.entries()) {
       const features = getPlanFeatures(plan) as unknown as Record<string, unknown>;
       const below = index > 0
-        ? (getPlanFeatures(PLAN_ORDER[index - 1]) as unknown as Record<string, unknown>)
+        ? (getPlanFeatures(PRICED_PLAN_ORDER[index - 1]) as unknown as Record<string, unknown>)
         : null;
       const expected = [...nameable]
         .filter((cell) => unlocked(features[cell]))
@@ -137,7 +141,7 @@ describe('PlanUpgradeSection plan cards', () => {
   it('opens Small Team and Ministry with a rollup line instead of repeating the tier below', () => {
     mount();
 
-    const rollupOf = (plan: TenantPlan): string | null =>
+    const rollupOf = (plan: PricedPlan): string | null =>
       card(plan).querySelector('[data-testid="plan-card-rollup"]')?.textContent?.trim() ?? null;
 
     // Individual is the floor: nothing to roll up, so no line.
@@ -149,7 +153,7 @@ describe('PlanUpgradeSection plan cards', () => {
     // strictly shorter than the full list its tier unlocks, because the shared
     // lines are the ones the rollup stands in for.
     const nameable = new Set<string>();
-    for (const plan of PLAN_ORDER) shownCells(plan).forEach((cell) => nameable.add(cell));
+    for (const plan of PRICED_PLAN_ORDER) shownCells(plan).forEach((cell) => nameable.add(cell));
     for (const plan of ['pro', 'max'] as const) {
       const features = getPlanFeatures(plan) as unknown as Record<string, unknown>;
       const whole = [...nameable].filter((cell) => unlocked(features[cell]));
@@ -160,24 +164,24 @@ describe('PlanUpgradeSection plan cards', () => {
 
   it('renders the blurb for each tier from plan-features, not from the component', () => {
     mount();
-    for (const plan of PLAN_ORDER) {
+    for (const plan of PRICED_PLAN_ORDER) {
       const blurb = card(plan).querySelector('[data-testid="plan-card-blurb"]');
       expect(blurb, `no blurb on the ${PLAN_DISPLAY_NAMES[plan]} card`).toBeTruthy();
       expect(blurb!.textContent!.trim(), PLAN_DISPLAY_NAMES[plan]).toBe(PLAN_BLURBS[plan]);
     }
     // Three distinct sentences — a card printing the same one three times would
     // otherwise satisfy the loop above.
-    expect(new Set(PLAN_ORDER.map((p) => PLAN_BLURBS[p])).size).toBe(PLAN_ORDER.length);
+    expect(new Set(PRICED_PLAN_ORDER.map((p) => PLAN_BLURBS[p])).size).toBe(PRICED_PLAN_ORDER.length);
     // And the component does not carry its own copy of any of them.
     const src = readFileSync(COMPONENT, 'utf8');
-    for (const plan of PLAN_ORDER) expect(src).not.toContain(PLAN_BLURBS[plan]);
+    for (const plan of PRICED_PLAN_ORDER) expect(src).not.toContain(PLAN_BLURBS[plan]);
   });
 
   it('hardcodes no feature copy in the card list', () => {
     mount();
     const cells = new Set(Object.keys(getPlanFeatures('max')));
 
-    for (const plan of PLAN_ORDER) {
+    for (const plan of PRICED_PLAN_ORDER) {
       const list = container.querySelector(
         `[data-testid="plan-card-features"][data-plan="${plan}"]`
       );
@@ -213,7 +217,7 @@ describe('PlanUpgradeSection plan cards', () => {
     // rollup does NOT work.
     mount();
     expect(shownCells('plus')).toContain('crm');
-    for (const plan of PLAN_ORDER) {
+    for (const plan of PRICED_PLAN_ORDER) {
       expect(getPlanFeatures(plan).crm, PLAN_DISPLAY_NAMES[plan]).toBe(true);
       expect(shownCells(plan), PLAN_DISPLAY_NAMES[plan]).not.toHaveLength(0);
     }
@@ -237,7 +241,7 @@ describe('PlanUpgradeSection plan cards', () => {
 
     // Monthly is the default. On monthly the headline and the charged price
     // coincide, so it still reads exactly what formatPlanPrice returns.
-    for (const plan of PLAN_ORDER) {
+    for (const plan of PRICED_PLAN_ORDER) {
       expect(priceOf(plan), PLAN_DISPLAY_NAMES[plan]).toBe(formatPlanPrice(plan, 'monthly'));
     }
     expect(container.textContent).not.toContain('equivalent');
@@ -246,7 +250,7 @@ describe('PlanUpgradeSection plan cards', () => {
     // 🔴 THE-196: every term, including the new middle one. The headline is now
     // the PER-MONTH figure — "$33/mo" — and the charged total sits beneath it.
     clickButtonWithText('Quarterly');
-    for (const plan of PLAN_ORDER) {
+    for (const plan of PRICED_PLAN_ORDER) {
       expect(priceOf(plan), PLAN_DISPLAY_NAMES[plan])
         .toBe(`${formatPlanMonthlyHeadline(plan, 'quarterly')}/mo`);
     }
@@ -255,7 +259,7 @@ describe('PlanUpgradeSection plan cards', () => {
     expect(container.textContent).toContain('every 3 months');
 
     clickButtonWithText('Yearly');
-    for (const plan of PLAN_ORDER) {
+    for (const plan of PRICED_PLAN_ORDER) {
       expect(priceOf(plan), PLAN_DISPLAY_NAMES[plan])
         .toBe(`${formatPlanMonthlyHeadline(plan, 'yearly')}/mo`);
     }
@@ -264,7 +268,7 @@ describe('PlanUpgradeSection plan cards', () => {
     expect(marked()).toEqual(['pro']);
 
     clickButtonWithText('Monthly');
-    for (const plan of PLAN_ORDER) {
+    for (const plan of PRICED_PLAN_ORDER) {
       expect(priceOf(plan), PLAN_DISPLAY_NAMES[plan]).toBe(formatPlanPrice(plan, 'monthly'));
     }
     expect(marked()).toEqual(['pro']);
@@ -276,7 +280,7 @@ describe('PlanUpgradeSection plan cards', () => {
     expect(PLAN_PRICING.plus.monthly).toBe(39);
     expect(PLAN_PRICING.pro.monthly).toBe(79);
     expect(PLAN_PRICING.max.monthly).toBe(159);
-    for (const plan of PLAN_ORDER) {
+    for (const plan of PRICED_PLAN_ORDER) {
       for (const term of BILLING_TERMS) {
         expect(planPriceUsd(plan, term), `${PLAN_DISPLAY_NAMES[plan]} ${term}`)
           .toBe(PLAN_PRICING[plan][term]);
@@ -285,11 +289,11 @@ describe('PlanUpgradeSection plan cards', () => {
 
     // And the cards render those, rather than a literal of their own.
     mount();
-    for (const plan of PLAN_ORDER) {
+    for (const plan of PRICED_PLAN_ORDER) {
       expect(priceOf(plan), PLAN_DISPLAY_NAMES[plan]).toBe(formatPlanPrice(plan, 'monthly'));
     }
     clickButtonWithText('Yearly');
-    for (const plan of PLAN_ORDER) {
+    for (const plan of PRICED_PLAN_ORDER) {
       // The headline is the per-month figure; the charged yearly total is on
       // the line beneath, asserted just below.
       expect(priceOf(plan), PLAN_DISPLAY_NAMES[plan])

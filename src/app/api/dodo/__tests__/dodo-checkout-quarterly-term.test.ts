@@ -11,7 +11,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { NextRequest } from 'next/server';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { BILLING_TERMS, PLAN_ORDER } from '@/utils/plan-features';
+import { BILLING_TERMS, PRICED_PLAN_ORDER } from '@/utils/plan-features';
 
 /* ═══════════════════════════════════════════════════════════════════════════
    THE-199 — `/api/dodo/checkout` refused every quarterly signup with a 400.
@@ -150,11 +150,26 @@ describe('a quarterly checkout request is accepted', () => {
     expect(body.url).toBe('https://test.checkout.dodopayments.com/session/cks_quarterly');
   });
 
-  it.each(PLAN_ORDER)('every tier can be bought quarterly, not just one — %s', async (plan) => {
+  // 🔴 PRICED_PLAN_ORDER, not PLAN_ORDER. "Every tier can be bought" is a claim
+  // about tiers that CAN be bought; the Forever Free tier has no Dodo product,
+  // and this endpoint now refuses it with a 400 by design (see readPlan). That
+  // refusal is asserted in its own test directly below.
+  it.each(PRICED_PLAN_ORDER)('every priced tier can be bought quarterly, not just one — %s', async (plan) => {
     const res = await POST(request({ ...QUARTERLY_SIGNUP, plan }));
 
     expect(res.status).toBe(200);
     expect(checkoutArg()).toMatchObject({ plan, period: 'quarterly' });
+  });
+
+  it('🔴 REFUSES the Forever Free tier — it has no product to check out (THE-200)', async () => {
+    // The signup body is untrusted and names the plan. `free` is a real member
+    // of TenantPlan and is in PLAN_ORDER, so a validator reading PLAN_ORDER
+    // would have accepted it and carried it into requireProductId('free', …) —
+    // a 500 at best. It must be refused at the boundary, with the same 400 any
+    // other unsellable value gets.
+    const res = await POST(request({ ...QUARTERLY_SIGNUP, plan: 'free' }));
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toMatch(/Invalid plan\/billing/);
   });
 
   it('stamps the quarterly term into subscription metadata, where the webhook reads it', async () => {

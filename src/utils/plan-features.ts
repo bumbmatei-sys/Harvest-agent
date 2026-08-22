@@ -1,4 +1,4 @@
-import { TenantAddons, TenantPlan } from '../types/tenant.types';
+import { TenantAddons, TenantPlan, PricedPlan } from '../types/tenant.types';
 
 export interface PlanFeatures {
   /** Show blog tab in user app + blog management in admin */
@@ -160,6 +160,108 @@ export interface PlanFeatures {
 // matrix changes without an explicit update to that test.
 
 const PLAN_FEATURES: Record<TenantPlan, PlanFeatures> = {
+  // ─── Forever Free — no price, no billing term, no Dodo subscription ────────
+  //
+  // For an EVANGELIST doing personal discipleship: one person leads another to
+  // faith, needs somewhere to disciple them and a way to remember who they are.
+  // That is the whole unit of value, and it is why this block is almost
+  // entirely `false`.
+  //
+  // 🔴 FREE IS ABSENT FROM `PLAN_PRICING` BY DESIGN. It is not a $0 row — it has
+  // no price and no `BillingTerm`, so `PLAN_PRICING` is keyed on `PricedPlan`
+  // and `planPriceUsd('free', …)` does not compile. Three zeros would have made
+  // free look like a term-billable product to every discount, headline and
+  // catalogue calculation that walks that table.
+  //
+  // ⚠️ `maxContacts: 500` is deliberately GENEROUS AGAINST INDIVIDUAL'S 150, and
+  // that is not a mistake in the ladder. The founder chose a capped-but-generous
+  // free tier (option A of three) over an unlimited one precisely so the ladder
+  // stays honest in the other direction: an unlimited free tier would mean an
+  // evangelist with 800 disciples gets a WORSE product by paying $39. The cap is
+  // what bounds free; the paid tiers sell capability, not just capacity.
+  //
+  // ⚠️ THERE IS NO `analytics` CELL IN THIS MATRIX, on free or on any tier.
+  // Analytics is not a plan flag today — it is a PERMISSION (`analytics` in
+  // AnalyticsAndRoles) on a sub-tab of the CRM screen. "Free gets analytics"
+  // is therefore expressed by `crm: true` and nothing else; inventing an
+  // `analytics` cell here would add a flag that nothing reads, which is the
+  // exact defect that removed `churchDirectory`, `customBackground` and
+  // `publicCalendar` from this interface.
+  free: {
+    blog: false,
+    aiChat: false,
+    aiKnowledge: false,
+    map: false,
+    // 0 = hidden. A free tenant is one evangelist, not a multi-campus ministry.
+    // Keeps `getMinPlanForFeatureCell('maxChurches')` at Individual, since
+    // `hasFeature` reads 0 as false.
+    maxChurches: 0,
+    // The hard cap, and the number the pricing card must state. Existing members
+    // are NEVER removed when a tenant crosses a cap — enforcement of that is
+    // THE-201, not this PR. Nothing enforces this cell today.
+    maxContacts: 500,
+    // One discipleship course, adopted from the shared library. The whole
+    // product for the member side.
+    maxCourses: 1,
+    // 🔴 ONE. Argued rather than copied: one evangelist is one admin, and this
+    // tier costs nothing and requires no card, so every additional seat is an
+    // abuse surface (a free tenant is otherwise a free shared workspace for an
+    // arbitrary number of people). 2 would match Individual and make the
+    // cheapest PAID tier's headline seat count worthless. The Admin Seats add-on
+    // raises it through `getEffectiveFeatures` if a free tenant ever holds one —
+    // see the note there.
+    maxAdmins: 1,
+    customDomain: false,
+    customBranding: false,
+    newsletterAutomation: false,
+    automatedNewsletter: false,
+    // 🔴 FALSE, and this is the ONE cell where free departs from the "true on
+    // every tier, BYO-only" reasoning written on `smsAutomation` and
+    // `textToGive` in the interface above. That reasoning is about not selling
+    // SMS as a differentiator BETWEEN PAID TIERS — a plan cell gating a
+    // capability the plan does not supply gates nothing. Free is not buying
+    // anything, so there is no differentiator to distort, and the cells are read
+    // by real nav gates (`AdminDashboard` line ~500 for SMS). Leaving them true
+    // would put a working send surface on a tier that pays nothing and holds no
+    // card. Both stay at Individual as their minimum plan either way, so no
+    // upgrade screen's copy moves.
+    smsAutomation: false,
+    aiAssistant: 0,
+    // 🔴 NO DONATE PAGE. `fundraising` was `true` on every tier before this
+    // block, so free is the first tier to carry it false — the founder's
+    // explicit call: "they get a public subdomain… but not a donate page."
+    // It is a MONEY surface, so the route itself must refuse for a free tenant;
+    // that server-side gate is THE-202, and this cell alone does not build it.
+    fundraising: false,
+    eventRegistration: false,
+    docs: false,
+    // 🔴 TRUE — the second of the two things free actually does. The evangelist
+    // must be able to see WHO enrolled, with contact records, and export them.
+    // This also carries analytics (see the note above the block).
+    //
+    // VISIBILITY ONLY, exactly as on `plus`/`pro`: no rule, route or query keys
+    // off this cell. Firestore scopes `contacts` on the `manageCRM` permission
+    // and `isTenantAdmin`, never on plan.
+    crm: true,
+    accountingTools: false,
+    taxReceipt: false,
+    communityGroups: false,
+    customForms: false,
+    checkInSystem: false,
+    livestream: false,
+    sermonNotes: false,
+    automatedBlog: false,
+    givingStatements: false,
+    pledgeCampaigns: false,
+    // False for the same reason as `smsAutomation` directly above — see there.
+    textToGive: false,
+    // False. The installable PWA is a paid-tier capability; a free tenant's
+    // member reaches the discipleship page in a browser. ⚠️ This is the cell in
+    // this block least forced by the brief and most worth the founder
+    // confirming — it costs Harvest nothing to serve and is a retention
+    // surface. Reported rather than quietly flipped.
+    pwaApp: false,
+  },
   // Individual — $49/mo
   plus: {
     blog: true,
@@ -349,16 +451,36 @@ export const TERM_MONTHS: Readonly<Record<BillingTerm, number>> = Object.freeze(
  * price here means changing it there IN THE SAME BREATH or the site's build
  * fails and names the disagreement.
  */
-export const PLAN_PRICING: Readonly<Record<TenantPlan, Readonly<Record<BillingTerm, number>>>> =
+export const PLAN_PRICING: Readonly<Record<PricedPlan, Readonly<Record<BillingTerm, number>>>> =
   Object.freeze({
     plus: Object.freeze({ monthly: 39,  quarterly: 99,  yearly: 329  }),
     pro:  Object.freeze({ monthly: 79,  quarterly: 199, yearly: 659  }),
     max:  Object.freeze({ monthly: 159, quarterly: 399, yearly: 1329 }),
   });
 
-/** What Dodo charges for `plan` on `term`, in whole USD. The one read. */
-export function planPriceUsd(plan: TenantPlan, term: BillingTerm): number {
+/**
+ * What Dodo charges for `plan` on `term`, in whole USD. The one read.
+ *
+ * 🔴 TAKES A `PricedPlan`, NOT A `TenantPlan`. `planPriceUsd('free', 'monthly')`
+ * is a compile error, which is the entire point of the split: free has no price,
+ * and the alternative — a `TenantPlan` parameter returning `undefined` — renders
+ * as `$NaN/mo` on a card and fails nowhere. A caller holding a `TenantPlan` must
+ * narrow with `isPricedPlan` first and decide what a free tenant sees.
+ */
+export function planPriceUsd(plan: PricedPlan, term: BillingTerm): number {
   return PLAN_PRICING[plan][term];
+}
+
+/**
+ * Is this tier one that has a price, a term and a Dodo product?
+ *
+ * The one narrowing from `TenantPlan` to `PricedPlan`, and it asks the PRICING
+ * TABLE rather than comparing against `'free'`. A literal comparison would need
+ * editing the next time a tier stops being sold; this cannot fall out of step
+ * with the table it guards.
+ */
+export function isPricedPlan(plan: TenantPlan): plan is PricedPlan {
+  return Object.prototype.hasOwnProperty.call(PLAN_PRICING, plan);
 }
 
 /**
@@ -366,7 +488,7 @@ export function planPriceUsd(plan: TenantPlan, term: BillingTerm): number {
  * nothing renders this. It is the reference the displayed figure is checked
  * against.
  */
-export function planTermMonthlyExact(plan: TenantPlan, term: BillingTerm): number {
+export function planTermMonthlyExact(plan: PricedPlan, term: BillingTerm): number {
   return planPriceUsd(plan, term) / TERM_MONTHS[term];
 }
 
@@ -421,7 +543,7 @@ export function ceilToCent(exact: number): number {
   return Math.ceil(cents) / 100;
 }
 
-export function planTermMonthlyDisplayed(plan: TenantPlan, term: BillingTerm): number {
+export function planTermMonthlyDisplayed(plan: PricedPlan, term: BillingTerm): number {
   return ceilToCent(planTermMonthlyExact(plan, term));
 }
 
@@ -429,7 +551,7 @@ export function planTermMonthlyDisplayed(plan: TenantPlan, term: BillingTerm): n
  * The headline string — `$27.42`, `$33`, `$159`. Carries no period suffix; the
  * card writes `/mo` beside it, the same split `formatPlanPrice` gets.
  */
-export function formatPlanMonthlyHeadline(plan: TenantPlan, term: BillingTerm): string {
+export function formatPlanMonthlyHeadline(plan: PricedPlan, term: BillingTerm): string {
   const v = planTermMonthlyDisplayed(plan, term);
   return `$${v.toLocaleString('en-US', {
     minimumFractionDigits: Number.isInteger(v) ? 0 : 2,
@@ -461,12 +583,12 @@ export function formatPlanMonthlyHeadline(plan: TenantPlan, term: BillingTerm): 
  */
 export function monthlyHeadlineContract(
   round: (exact: number) => number = ceilToCent,
-  pricing: Readonly<Record<TenantPlan, Readonly<Record<BillingTerm, number>>>> = PLAN_PRICING,
+  pricing: Readonly<Record<PricedPlan, Readonly<Record<BillingTerm, number>>>> = PLAN_PRICING,
 ): void {
   // Keys off the pricing table rather than PLAN_ORDER: this runs at module
   // scope and PLAN_ORDER is declared several hundred lines further down, so
   // naming it here is a temporal-dead-zone crash on import rather than a guard.
-  for (const plan of Object.keys(pricing) as TenantPlan[]) {
+  for (const plan of Object.keys(pricing) as PricedPlan[]) {
     for (const term of BILLING_TERMS) {
       const charged = pricing[plan][term];
       const months = TERM_MONTHS[term];
@@ -489,7 +611,7 @@ monthlyHeadlineContract();
  * What `plan` on `term` actually saves against paying monthly, as an exact
  * percentage. Used by the honesty guard below, NOT by any badge.
  */
-export function actualSavingPct(plan: TenantPlan, term: BillingTerm): number {
+export function actualSavingPct(plan: PricedPlan, term: BillingTerm): number {
   const atMonthlyRate = planPriceUsd(plan, 'monthly') * TERM_MONTHS[term];
   if (atMonthlyRate === 0) return 0;
   return (1 - planPriceUsd(plan, term) / atMonthlyRate) * 100;
@@ -537,8 +659,14 @@ export type DiscountClaimShape = 'flat' | 'upTo';
 
 /** Every priced tier, read off the table itself. `PLAN_ORDER` is declared far
  *  below this block and referencing it here would be a temporal-dead-zone
- *  error at module load; the table's own keys are the same three tiers. */
-const PRICED_PLANS = Object.keys(PLAN_PRICING) as TenantPlan[];
+ *  error at module load; the table's own keys are the same three tiers.
+ *
+ *  🔴 THE SEAM THE FREE TIER IS BUILT ON. This is `PLAN_ORDER` minus `free`,
+ *  arrived at from the other direction — and it existed, for its own unrelated
+ *  ordering reason, before there was a free tier to exclude. Every discount and
+ *  headline calculation walks THIS, so adding a tier with no price to
+ *  `PLAN_ORDER` cannot make an unpriced tier appear in a saving percentage. */
+const PRICED_PLANS = Object.keys(PLAN_PRICING) as PricedPlan[];
 
 export function discountClaimShape(term: DiscountedTerm): DiscountClaimShape {
   const worst = Math.min(...PRICED_PLANS.map((plan) => actualSavingPct(plan, term)));
@@ -837,6 +965,13 @@ export function toTenantPlan(plan: string | null | undefined): TenantPlan {
  * it was always called.
  */
 export const PLAN_DISPLAY_NAMES: Record<TenantPlan, string> = {
+  // 'Free' rather than a product-ish name ('Starter', 'Evangelist'). The
+  // differentiator on the pricing page is the AUDIENCE (the blurb carries it)
+  // and the price; a church comparing cards should read the one word that says
+  // it costs nothing. Capitalised because every other entry here is a proper
+  // noun rendered mid-sentence in upgrade copy — `FEATURE_MIN_PLAN` puts this
+  // string directly into "Available on Free and above".
+  free: 'Free',
   plus: 'Individual',
   pro: 'Small Team',
   max: 'Ministry',
@@ -864,6 +999,11 @@ export const PLAN_DISPLAY_NAMES: Record<TenantPlan, string> = {
  * means changing it there too if the two are meant to read alike.
  */
 export const PLAN_BLURBS: Record<TenantPlan, string> = {
+  // Names the audience and the ONE thing the tier does, in that order. It has
+  // to sit beside "For solo evangelists and missionaries." (Individual) without
+  // reading as the same product, which is why it says PERSONAL discipleship
+  // and one course rather than repeating "evangelists" alone.
+  free: 'For evangelists discipling one person at a time.',
   plus: 'For solo evangelists and missionaries.',
   pro:  'For small ministries growing as a team.',
   max:  'For established churches going deeper.',
@@ -893,8 +1033,41 @@ export function hasFeature(plan: TenantPlan, feature: keyof PlanFeatures): boole
 
 // ─── Feature gates & minimum plan (derived) ───────────────────────────────────
 
-/** Plan tiers cheapest → most expensive. Upgrade order; do not reorder. */
-export const PLAN_ORDER: readonly TenantPlan[] = ['plus', 'pro', 'max'] as const;
+/**
+ * Plan tiers cheapest → most expensive. Upgrade order; do not reorder.
+ *
+ * 🔴 `free` IS FIRST, and the position is load-bearing rather than tidy.
+ * `getMinPlanForFeatureCell` walks this array and returns the FIRST tier whose
+ * cell is truthy, so the array's order IS the definition of "cheapest tier that
+ * has this feature" — the string shown to a paying church in every upgrade
+ * prompt. Free costs nothing, so it is the cheapest, so it goes first. Putting
+ * it anywhere else would make an upgrade screen name Individual for `crm` when
+ * a free tenant already has it.
+ *
+ * ⚠️ EVERY TIER, not every SELLABLE tier. `PRICED_PLANS` (above, derived from
+ * `PLAN_PRICING`) is the one to walk for anything about money. Contrast the two
+ * before adding a consumer.
+ */
+export const PLAN_ORDER: readonly TenantPlan[] = ['free', 'plus', 'pro', 'max'] as const;
+
+/**
+ * The tiers a church can BUY, cheapest → most expensive — `PLAN_ORDER` minus
+ * the free one.
+ *
+ * 🔴 THIS IS WHAT A PLAN-CARD GRID ITERATES, not `PLAN_ORDER`. Every surface
+ * that sells (the settings plan cards, the admin upgrade page, the marketing
+ * pricing table) is offering a purchase, and a card for a tier with no price
+ * and no Dodo product is a checkout button that cannot work. Adding `free` to
+ * `PLAN_ORDER` therefore changes NO rendered plan grid — those grids moved to
+ * this list in the same commit, and their output is byte-identical to before.
+ *
+ * ⚠️ `PLAN_ORDER` remains the right list for anything about ENTITLEMENT — which
+ * tier is cheapest for a feature, whether a plan change is a downgrade — because
+ * free is a real tier a tenant can genuinely be on.
+ *
+ * Derived by filtering, so a tier cannot appear here without a pricing row.
+ */
+export const PRICED_PLAN_ORDER: readonly PricedPlan[] = PLAN_ORDER.filter(isPricedPlan);
 
 /**
  * The most expensive tier — the last entry in `PLAN_ORDER`.
@@ -1043,8 +1216,19 @@ export const TERM_BILLED_PHRASE: Readonly<Record<BillingTerm, string>> = Object.
   yearly: 'billed annually',
 });
 
-/** Format a plan's CHARGED price for a term, e.g. "$39/mo", "$99/qtr", "$329/yr". */
+/**
+ * Format a plan's CHARGED price for a term, e.g. "$39/mo", "$99/qtr", "$329/yr".
+ *
+ * 🔴 Returns **'Free'** for the free tier, not `$0/mo`. It has no price and no
+ * billing term, so a `/mo` suffix on it would be a claim about a billing cycle
+ * that does not exist — and `$0/qtr` on a quarterly toggle reads as a product
+ * you are billed nothing for quarterly, which is a different (and wrong) thing.
+ * The `!pricing` 'Custom' branch is kept for the Enterprise/unknown case it
+ * always covered; free is checked BY NAME through `isPricedPlan` so a missing
+ * pricing row can never silently render as free.
+ */
 export function formatPlanPrice(plan: TenantPlan, term: BillingTerm): string {
+  if (!isPricedPlan(plan)) return 'Free';
   const pricing = PLAN_PRICING[plan];
   if (!pricing) return 'Custom';
   return `$${planPriceUsd(plan, term).toLocaleString()}/${TERM_PRICE_SUFFIX[term]}`;

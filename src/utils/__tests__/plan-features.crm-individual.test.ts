@@ -35,11 +35,18 @@ describe('Individual includes CRM', () => {
     expect(getPlanFeatures('plus').crm).toBe(true);
   });
 
-  it('names Individual as the cheapest plan that unlocks CRM', () => {
+  it('names Free as the cheapest plan that unlocks CRM (THE-200)', () => {
     // Derived from the matrix, so no upgrade-screen label was edited to say so.
-    expect(getFeatureMinPlan('crm')).toBe('plus');
-    expect(getMinPlanForFeatureCell('crm')).toBe('plus');
-    expect(FEATURE_MIN_PLAN.crm).toBe('Individual');
+    // 🔴 This moved when THE-200 added the Forever Free tier, which also has
+    // CRM — the evangelist must be able to see who enrolled. Individual keeping
+    // `crm: true` is the claim THIS file exists to protect, and it is asserted
+    // directly above and below; the LABEL naming a cheaper tier that genuinely
+    // has the feature is correct, not a regression.
+    expect(getFeatureMinPlan('crm')).toBe('free');
+    expect(getMinPlanForFeatureCell('crm')).toBe('free');
+    expect(FEATURE_MIN_PLAN.crm).toBe('Free');
+    // Individual still has it — that is what this suite is really about.
+    expect(getPlanFeatures('plus').crm).toBe(true);
   });
 
   it('leaves no tier without CRM', () => {
@@ -241,7 +248,7 @@ describe('no rule, route or query gates on the crm flag', () => {
     // `FEATURE_MAP.crm` and `<PlanUpgradeScreen featureKey="crm" />` are the
     // remaining references. They resolve a plan NAME for upgrade copy — the
     // screen shown when the render decisions above have already said no.
-    expect(FEATURE_MIN_PLAN.crm).toBe(PLAN_DISPLAY_NAMES.plus);
+    expect(FEATURE_MIN_PLAN.crm).toBe(PLAN_DISPLAY_NAMES.free);
     expect(unlocked(getPlanFeatures('plus').crm)).toBe(true);
   });
 });

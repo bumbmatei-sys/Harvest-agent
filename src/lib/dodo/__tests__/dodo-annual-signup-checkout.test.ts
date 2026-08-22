@@ -5,7 +5,7 @@ import { join, resolve } from 'node:path';
 import { catalogueEntry, productIdFor, resolvePlanFromProductId, termPriceUsd } from '../catalogue';
 import type { BillingPeriod } from '../provider';
 import { readSignupBillingPeriod, type SignupBillingPeriod } from '@/utils/signup-checkout';
-import { BILLING_TERMS, PLAN_ORDER } from '@/utils/plan-features';
+import { BILLING_TERMS, PRICED_PLAN_ORDER } from '@/utils/plan-features';
 
 /**
  * THE-88 (app half), server side: an annual signup buys the annual PRODUCT.
@@ -214,7 +214,14 @@ describe('no plan price appears as a literal in the signup surfaces', () => {
 
   // The forbidden figures are DERIVED from the catalogue, not typed here — the
   // same discipline this test enforces. Whole-USD and minor-unit forms both.
-  const forbidden = (PLAN_ORDER as readonly ('plus' | 'pro' | 'max')[]).flatMap((plan) =>
+  // 🔴 PRICED_PLAN_ORDER, and NOT a cast. This read
+  // `(PLAN_ORDER as readonly ('plus'|'pro'|'max')[])` — a hand-written copy of
+  // the tier list, asserted over the real one. THE-200 added the Forever Free
+  // tier to PLAN_ORDER, the cast went on lying about the element type, and
+  // `termPriceUsd('free', …)` threw at COLLECTION time on a tier that has no
+  // price row. The cast is what turned a compile error into a crash; the
+  // derived list cannot drift from the pricing table it indexes.
+  const forbidden = PRICED_PLAN_ORDER.flatMap((plan) =>
     BILLING_TERMS.flatMap((term) => [termPriceUsd(plan, term), termPriceUsd(plan, term) * 100]),
   );
 

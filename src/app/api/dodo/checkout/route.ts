@@ -5,8 +5,8 @@ import { captureMoneyPathError } from '@/lib/money-path-sentry';
 import { logReferralCapture, resolveAffiliateReferrer } from '@/lib/affiliate-referrer';
 import { dodoBillingProvider } from '@/lib/dodo/dodo-provider';
 import type { BillingPeriod } from '@/lib/dodo/provider';
-import { BILLING_TERMS, DODO_BILLING_ENABLED, PLAN_ORDER } from '@/utils/plan-features';
-import type { TenantPlan } from '@/types/tenant.types';
+import { BILLING_TERMS, DODO_BILLING_ENABLED, PRICED_PLAN_ORDER } from '@/utils/plan-features';
+import type { PricedPlan } from '@/types/tenant.types';
 
 /**
  * POST /api/dodo/checkout — the new-ministry signup checkout, on Dodo.
@@ -37,9 +37,28 @@ export const dynamic = 'force-dynamic';
 
 /** The 14-day trial is configured on the Dodo products; nothing overrides it here. */
 
-function readPlan(raw: unknown): TenantPlan | null {
-  return typeof raw === 'string' && (PLAN_ORDER as readonly string[]).includes(raw)
-    ? (raw as TenantPlan)
+/**
+ * Validate the requested plan, REFUSING anything that is not a tier this
+ * endpoint can actually sell.
+ *
+ * 🔴 VALIDATES AGAINST `PRICED_PLAN_ORDER`, NOT `PLAN_ORDER`, and the
+ * difference is a real hole rather than a nicety. This body is untrusted: the
+ * request names the plan. `PLAN_ORDER` gained the Forever Free tier, and had
+ * this kept reading it, a POST of `{ plan: 'free' }` would have passed
+ * validation, been carried into `createPlanCheckout`, and hit
+ * `requireProductId('free', …)` — a thrown 500 at best, and at worst (had the
+ * catalogue been given a placeholder row) a checkout for a product that must
+ * not exist. A free tenant is PROVISIONED, never checked out.
+ *
+ * ⚠️ EXACTLY THE SHAPE OF THE-199 ONE FUNCTION BELOW, inverted. That bug was a
+ * hand-kept term list that went STALE when the union widened, refusing a term
+ * the site sold. This is a derived plan list that would have gone TOO WIDE when
+ * the union widened, accepting a tier the app cannot sell. Both are "a
+ * validator and its union drifted apart", and both typecheck perfectly.
+ */
+function readPlan(raw: unknown): PricedPlan | null {
+  return typeof raw === 'string' && (PRICED_PLAN_ORDER as readonly string[]).includes(raw)
+    ? (raw as PricedPlan)
     : null;
 }
 
@@ -60,7 +79,8 @@ function readPlan(raw: unknown): TenantPlan | null {
  * Only a test that drives the term list can see the difference; see
  * `dodo-checkout-quarterly-term.test.ts`.
  *
- * Reads `BILLING_TERMS` for the same reason `readPlan` above reads `PLAN_ORDER`,
+ * Reads `BILLING_TERMS` for the same reason `readPlan` above reads
+ * `PRICED_PLAN_ORDER`,
  * and the same reason `provider.ts` aliases `BillingPeriod` to `BillingTerm`
  * rather than restating it: the set of terms a signup may carry IS the set the
  * price table prices. `/api/dodo/change-plan` validates through the same

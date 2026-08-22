@@ -99,9 +99,31 @@ const PINNED: ReadonlyArray<readonly [string, string]> = [
   // which cost a quarterly church the price on every add-on card; it now
   // reconciles through `addonPeriodFor`. Nothing else in this list moved —
   // `change-plan` below is untouched and already validated correctly.
+  //
+  // ─── THE-200 REGENERATED SIX OF THESE, deliberately and with reason ────────
+  //
+  // Widening `TenantPlan` with a `free` member that has NO price and NO Dodo
+  // product made the compiler demand a decision at every money boundary. Each
+  // of the six now types on `PricedPlan` (= TenantPlan minus 'free') so that
+  // "a free tenant reached a checkout" is a COMPILE error rather than a runtime
+  // `undefined` product id. No behaviour changed for any paying church; the
+  // narrowing is what proves it cannot.
+  //
+  //   provider.ts / dodo-provider.ts  — a subscription's plan, a checkout's
+  //     plan, and the product→plan reverse lookup can never be 'free'.
+  //   catalogue.ts                    — DodoCatalogue is keyed on PricedPlan,
+  //     so free has no product row and cannot be given one by accident.
+  //   billing-context.ts              — the live-subscription context resolves
+  //     FROM a Dodo product id, so it is structurally never free.
+  //   checkout/route.ts, change-plan/route.ts — 🔴 THE REAL ONE. Both validate
+  //     an UNTRUSTED body's `plan` against a list. That list was `PLAN_ORDER`,
+  //     which now contains 'free' — so a POST of `{ plan: 'free' }` would have
+  //     passed validation and reached `requireProductId('free', …)`. They now
+  //     validate against `PRICED_PLAN_ORDER` and answer 400, which is asserted
+  //     in dodo-checkout-quarterly-term.test.ts.
   ['src/app/api/dodo/addons/route.ts', '0a7f2bcae18c89f25f4eefa8fc6ccd263a0e45d46ad968ca934465d9ab659322'],
-  ['src/app/api/dodo/change-plan/route.ts', '7da7e3c12fd3b922aa0109a080b90c98615ce1822350b4ecbdada618d4a1f803'],
-  ['src/app/api/dodo/checkout/route.ts', 'd7326d278f4a6167c3738627e25b3f68cd32dc7802458337d695f002ad1029a8'],
+  ['src/app/api/dodo/change-plan/route.ts', 'ce58d2d14de760b95608ba65797198b934b07423a1ac9437b5ff24a6e4c448f3'],
+  ['src/app/api/dodo/checkout/route.ts', '0e992294895880a5148b61f864869326fd6092c31fe8169cb878a8eee4a08776'],
   ['src/app/api/dodo/webhook/route.ts', '0a30ca691739b717a65aa9dfe0f4c168ad2ec6ae12510b1a574847fd8ede9270'],
   ['src/lib/donation-webhook.ts', 'f835ce195029a246a06d00e4202f8149c54b3a37b4ad9e425a7c1081a317aeed'],
   ['src/lib/donation-receipt.ts', 'a7d4872a73e7eb3518d47c264373428d1663afd43032506e5402123cdab1723a'],
@@ -115,14 +137,14 @@ const PINNED: ReadonlyArray<readonly [string, string]> = [
   ['src/lib/event-registration-webhook.ts', 'bfc03590515a98f72ef87571c6e11146f78270b170bc04eb22d2fd3b2966d184'],
   ['src/lib/dodo/addon-purchase.ts', '8a71a8bdcf4640c4296a70197f079356545652e9b651e9672c3246bba022b488'],
   ['src/lib/dodo/addons.ts', '46b254f7dc59b9a3fbe5056f6600741c355e52ab43e19b8bd63716c52e584557'],
-  ['src/lib/dodo/billing-context.ts', 'cd6f3ea0981e90d185c617da57c3b7ff934a2ce6837a269620de89b8453e4be8'],
-  ['src/lib/dodo/catalogue.ts', '9fe209578e092bccae5ff520326bf065e492448915a39f85f3a830421df3c771'],
+  ['src/lib/dodo/billing-context.ts', '0b6305b0e1db2eefb126ed6663d2ca808e2e2a1951b36b971339a8e186bb4e61'],
+  ['src/lib/dodo/catalogue.ts', '63819b7313479a5b351f56e10c6f43752453ac40cd743fdca2389ab6e5b193d7'],
   ['src/lib/dodo/config.ts', '1ecb3d021960e7b4c09f0a1d15324e74978cda97799830709ae6f6f3cfdfb26a'],
-  ['src/lib/dodo/dodo-provider.ts', '16f53a2a645cdf88c4394dfe1b48e2868395859c833e4ca2654dd10235cfda98'],
+  ['src/lib/dodo/dodo-provider.ts', '2b3e0b168d87b8b88c231fe49a450bc9416561f1a32a7668bd207bd7861d125d'],
   ['src/lib/dodo/events.ts', '0b94d1275c6120a0ccb5c4dfeb3f5c68545e6ecbccf7c276ad87910985034ea9'],
   ['src/lib/dodo/lifecycle.ts', 'cbb85d69d7fccf88f6cf41598f64e5a24e4d4f723c5eab46071fdea9c8aaf1c2'],
   ['src/lib/dodo/plan-change.ts', '7f583417d59d476ddc41c6530acbfe3cd9dcaaf9e8d15279842b9d3db984ce9f'],
-  ['src/lib/dodo/provider.ts', '9038f0a582fcdfd06790b07e086232f46c639144a4cdb069aefedfc8cda990e5'],
+  ['src/lib/dodo/provider.ts', '81a795086eee9b9c0d9599bf1cbdf65ceb6820dcd3453629bad5c2838d187bb9'],
   ['src/lib/dodo/provisioning.ts', '31c5f1929fa17bcd8fa841910647f241cb2d29f64af6296c0567366b5c503ab4'],
   ['src/lib/dodo/renewal.ts', 'fe7fb940ac15edfafd53bca346526e3a43266ad57c29a791a049ef8c512fc6a9'],
   ['src/lib/dodo/subscription-convergence.ts', 'b047d54e588b939ffe5f35e138cf02771033fffb2644a202726098061c3376b4'],

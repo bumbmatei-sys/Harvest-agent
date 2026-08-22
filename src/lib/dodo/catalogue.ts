@@ -1,4 +1,4 @@
-import type { TenantPlan } from '@/types/tenant.types';
+import type { TenantPlan, PricedPlan } from '@/types/tenant.types';
 import { BILLING_TERMS, PLAN_PRICING, TERM_MONTHS, planPriceUsd } from '@/utils/plan-features';
 import { DODO_LIVE_MODE, DODO_TEST_MODE, dodoConfig, type DodoEnvironment } from './config';
 import type { BillingPeriod } from './provider';
@@ -99,8 +99,13 @@ export const DODO_TRIAL_DAYS = 14;
  *
  * `dodo-catalogue.test.ts` scans this file's source for bare price literals, so
  * retyping `329` in place of this call fails the suite rather than shipping.
+ *
+ * 🔴 `PricedPlan`, NOT `TenantPlan`. The Forever Free tier has no Dodo product,
+ * no price and no billing period, and this signature is what makes that a
+ * compile error rather than a runtime `undefined` reaching a checkout body. A
+ * free tenant never transits this file at all — see `DodoCatalogue` below.
  */
-export function termPriceUsd(plan: TenantPlan, term: BillingPeriod): number {
+export function termPriceUsd(plan: PricedPlan, term: BillingPeriod): number {
   return planPriceUsd(plan, term);
 }
 
@@ -139,7 +144,7 @@ export const DODO_TERM_FREQUENCY: Readonly<
   yearly: Object.freeze({ count: 1, interval: 'Year' as const }),
 });
 
-function entry(plan: TenantPlan, term: BillingPeriod, productId: string | null): DodoCatalogueEntry {
+function entry(plan: PricedPlan, term: BillingPeriod, productId: string | null): DodoCatalogueEntry {
   const priceUsd = termPriceUsd(plan, term);
   return {
     productId,
@@ -161,8 +166,22 @@ function entry(plan: TenantPlan, term: BillingPeriod, productId: string | null):
  */
 export const DODO_PRODUCT_UNMAPPED = null;
 
-/** The full `(plan, period) → product` map — the shape both catalogues share. */
-export type DodoCatalogue = Readonly<Record<TenantPlan, Readonly<Record<BillingPeriod, DodoCatalogueEntry>>>>;
+/**
+ * The full `(plan, period) → product` map — the shape both catalogues share.
+ *
+ * 🔴 KEYED ON `PricedPlan`, so the Forever Free tier has NO ROW HERE and cannot
+ * be given one by accident. That is the design, not an omission: a free tenant
+ * is provisioned with `plan: 'free'` and NO Dodo subscription at all (no card,
+ * no trial, no webhook), so there is no product to map it to. An `undefined`
+ * entry reaching `productIdFor` would become a checkout that fails at the
+ * processor with nothing in the diff explaining why — the same failure mode
+ * `DODO_PRODUCT_UNMAPPED` exists to prevent for test-mode quarterly.
+ *
+ * ⚠️ If free is ever to appear in Dodo for REPORTING purposes, that is a $0
+ * product with no trial and no card, and it changes the free signup path
+ * (THE-203) — not just this type.
+ */
+export type DodoCatalogue = Readonly<Record<PricedPlan, Readonly<Record<BillingPeriod, DodoCatalogueEntry>>>>;
 
 /**
  * The products, in Dodo TEST MODE. Six of the nine.
@@ -272,7 +291,7 @@ const CATALOGUES_BY_ENVIRONMENT: Readonly<Record<DodoEnvironment, DodoCatalogue>
 export const DODO_ACTIVE_CATALOGUE: DodoCatalogue = CATALOGUES_BY_ENVIRONMENT[dodoConfig.environment];
 
 /** The active catalogue's entry for a plan on a billing period. Total. */
-export function catalogueEntry(plan: TenantPlan, period: BillingPeriod): DodoCatalogueEntry {
+export function catalogueEntry(plan: PricedPlan, period: BillingPeriod): DodoCatalogueEntry {
   return DODO_ACTIVE_CATALOGUE[plan][period];
 }
 
@@ -285,7 +304,7 @@ export function catalogueEntry(plan: TenantPlan, period: BillingPeriod): DodoCat
  * the specific disaster: a church that chose quarterly and was charged yearly
  * has been overcharged fourfold by a line of defensive code.
  */
-export function productIdFor(plan: TenantPlan, period: BillingPeriod): string | null {
+export function productIdFor(plan: PricedPlan, period: BillingPeriod): string | null {
   return catalogueEntry(plan, period).productId;
 }
 
@@ -297,7 +316,7 @@ export function productIdFor(plan: TenantPlan, period: BillingPeriod): string | 
  * env var: a wrong id succeeds at the wrong price, and a missing id must fail
  * loudly and early instead.
  */
-export function requireProductId(plan: TenantPlan, period: BillingPeriod): string {
+export function requireProductId(plan: PricedPlan, period: BillingPeriod): string {
   const id = productIdFor(plan, period);
   if (id === DODO_PRODUCT_UNMAPPED) {
     throw new Error(
@@ -316,7 +335,7 @@ export function requireProductId(plan: TenantPlan, period: BillingPeriod): strin
  * `offerableAddonMeanings`. A hardcoded list is how an unmapped term becomes a
  * sale: the table would say "unmapped" and the term picker would say "buy me".
  */
-export function offerableTerms(plan: TenantPlan): BillingPeriod[] {
+export function offerableTerms(plan: PricedPlan): BillingPeriod[] {
   return BILLING_TERMS.filter((term) => productIdFor(plan, term) !== DODO_PRODUCT_UNMAPPED);
 }
 
@@ -337,9 +356,9 @@ export function offerableTerms(plan: TenantPlan): BillingPeriod[] {
  */
 export function resolvePlanFromProductId(
   productId: string,
-): { plan: TenantPlan; period: BillingPeriod } | null {
+): { plan: PricedPlan; period: BillingPeriod } | null {
   for (const [plan, periods] of Object.entries(DODO_ACTIVE_CATALOGUE) as [
-    TenantPlan,
+    PricedPlan,
     Record<BillingPeriod, DodoCatalogueEntry>,
   ][]) {
     for (const [period, entry] of Object.entries(periods) as [BillingPeriod, DodoCatalogueEntry][]) {

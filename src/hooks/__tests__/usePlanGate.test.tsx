@@ -109,8 +109,13 @@ describe('FEATURE_MIN_PLAN — minimum plan labels', () => {
   // `crm` has since moved a THIRD time, in THE-161: it is on every tier now, so
   // the cheapest plan that unlocks it is the cheapest plan there is. Derived
   // again, so again no label was edited to make it true.
-  it('names Individual as the minimum plan for CRM', () => {
-    expect(FEATURE_MIN_PLAN.crm).toBe('Individual');
+  // And a FOURTH time, in THE-200: the Forever Free tier also carries CRM and
+  // sits at the front of PLAN_ORDER, so the cheapest tier that unlocks CRM is
+  // now Free. Derived again, so again no label was edited to make it true — and
+  // it is a TRUE claim, which is the bar: free really does have CRM, so no
+  // church is shown a tier name for something that tier lacks.
+  it('names Free as the minimum plan for CRM (moved by THE-200)', () => {
+    expect(FEATURE_MIN_PLAN.crm).toBe('Free');
   });
 
   it('names Ministry as the minimum plan for tax receipts', () => {

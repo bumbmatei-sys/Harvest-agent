@@ -3,6 +3,7 @@ import {
   CONTACTS_PER_PACK,
   NO_ADDONS,
   PLAN_ORDER,
+  PRICED_PLAN_ORDER,
   getEffectiveFeatures,
   getPlanFeatures,
   readTenantAddons,
@@ -102,18 +103,31 @@ describe('getPlanFeatures is unchanged for every plan', () => {
 
 // ── Test 15 ──────────────────────────────────────────────────────────────────
 
-describe('maxChurches is still 1 on every plan before add-ons', () => {
-  it.each(PLAN_ORDER)('%s is capped at one church', (plan) => {
+describe('maxChurches is still 1 on every PAID plan before add-ons', () => {
+  it.each(PRICED_PLAN_ORDER)('%s is capped at one church', (plan) => {
     expect(getPlanFeatures(plan).maxChurches).toBe(1);
     expect(getEffectiveFeatures(plan).maxChurches).toBe(1);
   });
 
-  it('makes the Campus add-on the ONLY path to a second church', () => {
+  it('gives the Forever Free tier ZERO churches, not one (THE-200)', () => {
+    // 0 = hidden, and `hasFeature` reads 0 as falsy — which is what keeps
+    // getMinPlanForFeatureCell('maxChurches') answering 'plus' rather than
+    // naming Free for a capability free does not have. A free tenant is one
+    // evangelist, not a campus.
+    expect(getPlanFeatures('free').maxChurches).toBe(0);
+    expect(getEffectiveFeatures('free').maxChurches).toBe(0);
+  });
+
+  it('makes the Campus add-on the ONLY path past a plan\u2019s own church cap', () => {
     // Not an omission — the design. No tier buys a second campus; the add-on
     // does, and that is why an unmapped live Campus is a real loss of function.
-    for (const plan of PLAN_ORDER) {
+    for (const plan of PRICED_PLAN_ORDER) {
       expect(getEffectiveFeatures(plan, owning({ campuses: 1 })).maxChurches).toBe(2);
     }
+    // On free it raises 0 → 1, the same +1. Reported, not built: nothing can
+    // sell an add-on to a free tenant today (add-ons attach to Dodo products
+    // and free has none). See plan-features.free-tier.test.ts.
+    expect(getEffectiveFeatures('free', owning({ campuses: 1 })).maxChurches).toBe(1);
   });
 });
 

@@ -12,7 +12,7 @@ import type {
   PlanCheckoutRequest,
   SubscriptionBillingProvider,
 } from '../provider';
-import type { TenantPlan } from '@/types/tenant.types';
+import type { PricedPlan } from '@/types/tenant.types';
 
 /**
  * Test 9 — the interface is satisfiable by a second implementation.
@@ -32,7 +32,7 @@ import type { TenantPlan } from '@/types/tenant.types';
 
 // ── A second implementation, with no knowledge of Dodo ───────────────────────
 
-const LEDGER_SKUS: Record<`${TenantPlan}:${BillingPeriod}`, string> = {
+const LEDGER_SKUS: Record<`${PricedPlan}:${BillingPeriod}`, string> = {
   'plus:monthly': 'SKU-IND-M',
   'plus:quarterly': 'SKU-IND-Q',
   'plus:yearly': 'SKU-IND-Y',
@@ -108,10 +108,10 @@ class LedgerBillingProvider implements SubscriptionBillingProvider {
     return { url: `https://ledger.example/portal?ticket=${request.customerId}&back=${encodeURIComponent(request.returnUrl)}` };
   }
 
-  resolvePlanFromProductRef(productRef: string): { plan: TenantPlan; period: BillingPeriod } | null {
+  resolvePlanFromProductRef(productRef: string): { plan: PricedPlan; period: BillingPeriod } | null {
     for (const [key, sku] of Object.entries(LEDGER_SKUS)) {
       if (sku === productRef) {
-        const [plan, period] = key.split(':') as [TenantPlan, BillingPeriod];
+        const [plan, period] = key.split(':') as [PricedPlan, BillingPeriod];
         return { plan, period };
       }
     }

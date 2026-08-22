@@ -1,10 +1,11 @@
 "use client";
 import React, { useEffect, useState } from 'react';
 import { Check, ChevronRight, Crown } from 'lucide-react';
-import { TenantPlan } from '../types/tenant.types';
+import { TenantPlan, PricedPlan } from '../types/tenant.types';
 import {
   PLAN_DISPLAY_NAMES,
   PLAN_ORDER,
+  PRICED_PLAN_ORDER,
   TERM_MONTHS,
   planPriceUsd,
   formatPlanMonthlyHeadline,
@@ -24,7 +25,12 @@ interface AdminUpgradePageProps {
 }
 
 // Curated 4–5 key highlights per plan (kept short, no rainbow icons).
-const PLAN_HIGHLIGHTS: Record<TenantPlan, string[]> = {
+//
+// `PricedPlan`, not `TenantPlan`: this map feeds the checkout card grid below,
+// which offers only tiers that can be bought. Typing it on the full union would
+// force a `free` entry that nothing renders — a dead cell that later reads as
+// the free tier's advertised feature list and drifts from the matrix unnoticed.
+const PLAN_HIGHLIGHTS: Record<PricedPlan, string[]> = {
   plus: ['Blog & Posts', 'Fundraising campaigns', 'Mobile app (PWA)', '150 contacts', '2 admins'],
   pro: ['Everything in Individual', 'AI Chat & Knowledge', 'CRM & Check-In', '500 contacts', '5 admins'],
   max: ['Everything in Small Team', 'Custom domain & branding', 'Accounting & Giving Statements', '2,000 contacts', '15 admins'],
@@ -201,7 +207,13 @@ const AdminUpgradePage: React.FC<AdminUpgradePageProps> = ({ currentPlan, tenant
 
       {/* Plan cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {PLAN_ORDER.map((planId) => {
+        {/* 🔴 PRICED tiers only. Every card here carries a checkout button, and
+            the Forever Free tier has no price and no Dodo product to check out
+            with. The index arithmetic above still uses PLAN_ORDER, because
+            `currentPlan` CAN be 'free' and "is this a downgrade" must be
+            answered against every tier a tenant can actually be on. This grid
+            renders exactly the three cards it rendered before. */}
+        {PRICED_PLAN_ORDER.map((planId) => {
           const name = PLAN_DISPLAY_NAMES[planId];
           const isCurrent = planId === currentPlan;
           const isDowngrade = currentIdx >= 0 && PLAN_ORDER.indexOf(planId) < currentIdx;
