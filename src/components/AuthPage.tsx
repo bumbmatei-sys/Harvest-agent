@@ -10,6 +10,7 @@ import { useTenant } from '../contexts/TenantContext';
 import { Eye, EyeOff, Mail, Lock, ArrowLeft } from 'lucide-react';
 import { Turnstile } from '@marsidev/react-turnstile';
 import { PRIVACY_URL, TERMS_URL } from '../lib/legal-links';
+import { memberCapMessage } from '../utils/member-capacity-copy';
 
 const HARVEST_GOLD = 'var(--brand-color, #B8962E)';
 const HARVEST_LOGO = 'https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png';
@@ -244,6 +245,66 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
     }
   }, []);
 
+  /**
+   * THE-201 — the member-signup pre-flight.
+   *
+   * Asks `/api/tenants/member-capacity` whether this ministry can take one more
+   * account, and returns the refusal copy to show, or null to proceed.
+   *
+   * ⚠️ THIS IS NOT THE GATE. The gate is POST /api/auth/set-claims, which
+   * withholds the `tenantId` claim server-side. This call only exists so a real
+   * person never ends up with a half-created account, so it FAILS OPEN on every
+   * error: a blip here must not stop the whole world signing up, and a refusal
+   * that should have happened still happens one hop later. That is why the catch
+   * below returns null rather than a refusal — it is a deliberate, documented
+   * fail-open on a non-authoritative check, not a swallowed error.
+   *
+   * `tenantId === null` (main site, non-tenant subdomain) → no cap applies and
+   * no call is made. Never runs on the sign-in path.
+   */
+  const memberCapRefusal = async (targetTenantId: string | null): Promise<string | null> => {
+    if (!targetTenantId) return null;
+    try {
+      const res = await fetch('/api/tenants/member-capacity', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenantId: targetTenantId }),
+      });
+      if (!res.ok) return null; // 400/429/500 → proceed; the gate still applies.
+      const data = await res.json();
+      if (data?.allowed === false) {
+        return typeof data.title === 'string' && typeof data.body === 'string'
+          ? `${data.title} ${data.body}`
+          : memberCapMessage(tenantName);
+      }
+      return null;
+    } catch (err) {
+      console.warn('member-capacity pre-flight unavailable; deferring to /api/auth/set-claims', err);
+      return null;
+    }
+  };
+
+  /**
+   * THE-201 — read a 409 from /api/auth/set-claims. That status means the
+   * ministry is at its member cap and the claim was withheld. Returns the copy
+   * to show, or null when the response was anything else.
+   */
+  const readCapRefusal = async (res: Response): Promise<string | null> => {
+    if (res.status !== 409) return null;
+    try {
+      const data = await res.json();
+      if (data?.code === 'member_cap_reached') {
+        return typeof data.title === 'string' && typeof data.body === 'string'
+          ? `${data.title} ${data.body}`
+          : memberCapMessage(tenantName);
+      }
+    } catch {
+      // A 409 with an unreadable body is still a refusal — say so in the
+      // canonical words rather than rendering nothing.
+    }
+    return memberCapMessage(tenantName);
+  };
+
   const handleGoogleSignIn = async () => {
     try {
       setLoading(true);
@@ -265,6 +326,18 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
 
       if (!userSnap.exists()) {
         try {
+          // THE-201 — the Google button is ONE handler for sign-in and sign-up,
+          // so the pre-flight cannot run before the popup: doing so would refuse
+          // an EXISTING member who happened to be on the sign-up view. It runs
+          // here instead — after the existence check, before any `users` doc is
+          // written for a new person, which is what the rule actually protects.
+          const capRefusal = await memberCapRefusal(tenantId);
+          if (capRefusal) {
+            setSuccess('');
+            setError(capRefusal);
+            return;
+          }
+
           const userData: any = {
             uid: result.user.uid,
             email: result.user.email,
@@ -298,11 +371,19 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
       // Set custom claims on server, then force-refresh token to pick them up
       try {
         const token = await result.user.getIdToken();
-        await fetch('/api/auth/set-claims', {
+        const claimsRes = await fetch('/api/auth/set-claims', {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({ uid: result.user.uid }),
         });
+        // THE-201 — a 409 means the claim was withheld because the ministry is
+        // at its member cap. Previously this response was ignored entirely.
+        const capRefusal = await readCapRefusal(claimsRes);
+        if (capRefusal) {
+          setSuccess('');
+          setError(capRefusal);
+          return;
+        }
         // Force token refresh so subsequent Firestore/API calls have the new claims
         await result.user.getIdToken(true);
       } catch (claimsErr) {
@@ -390,6 +471,18 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
           return;
         }
 
+        // THE-201 — ask whether this ministry can take one more account BEFORE
+        // any Firebase Auth call fires. On the email path the signup intent is
+        // unambiguous, so the refusal lands before an account exists at all: no
+        // Auth user, no `users` doc, nothing to clean up. Sign-in never gets
+        // here — this is the `else` branch of `isLogin`.
+        const capRefusal = await memberCapRefusal(tenantId);
+        if (capRefusal) {
+          setError(capRefusal);
+          setLoading(false);
+          return;
+        }
+
         const result = await createUserWithEmailAndPassword(auth, email, password);
 
         // Store user in Firestore
@@ -414,11 +507,21 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
         // Set custom claims for Firestore security rules, then force-refresh token
         try {
           const token = await result.user.getIdToken();
-          await fetch('/api/auth/set-claims', {
+          const claimsRes = await fetch('/api/auth/set-claims', {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({ uid: result.user.uid }),
           });
+          // THE-201 — belt and braces behind the pre-flight: a 409 here means the
+          // claim was withheld, so the "Account created successfully!" line must
+          // be cleared before the refusal is shown. Two green-and-red messages at
+          // once would be worse than either alone.
+          const claimsCapRefusal = await readCapRefusal(claimsRes);
+          if (claimsCapRefusal) {
+            setSuccess('');
+            setError(claimsCapRefusal);
+            return;
+          }
           await result.user.getIdToken(true);
         } catch (claimsErr) {
           console.error('Failed to set custom claims:', claimsErr);
