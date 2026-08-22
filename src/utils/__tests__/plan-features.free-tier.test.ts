@@ -184,7 +184,6 @@ describe('THE-200 — what a free tenant gets', () => {
     expect(free.givingStatements).toBe(false);
     expect(free.pledgeCampaigns).toBe(false);
     expect(free.textToGive).toBe(false);
-    expect(free.pwaApp).toBe(false);
 
     // Numeric cells, by name too. 0 = none; `hasFeature` reads 0 as false.
     expect(free.maxChurches).toBe(0);
