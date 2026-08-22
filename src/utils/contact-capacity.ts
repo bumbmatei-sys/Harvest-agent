@@ -29,20 +29,42 @@
  * only ADJUSTS that figure (see countContactAccounts) and compares it.
  *
  * ─────────────────────────────────────────────────────────────────────────────
- * 🔴 HOW IT BEHAVES: SOFT. IT NEVER BLOCKS SIGNUP.
+ * 🔴 HOW THIS MODULE BEHAVES: SOFT, AND ADMIN-ONLY.
  *
- * Accounts arrive by member SELF-SIGNUP (AuthPage). A hard block there would
- * reject a visitor who cannot fix it, cannot upgrade the plan, and has no idea
- * why they were turned away — the worst outcome available. Nothing in this
- * module is reachable from the signup path, and it must stay that way.
+ * ⚠️ POLICY REVERSED BY THE-201 — READ THIS BEFORE QUOTING THE PARAGRAPH THAT
+ * USED TO BE HERE. This header previously stated, as a live design principle,
+ * that the cap never stood in the way of a signup and that member self-signup
+ * ALWAYS works. That is no longer true of the product. Since THE-201 there IS a
+ * hard, server-side member signup cap: `src/lib/member-capacity.ts` counts
+ * `users` documents scoped to the tenant and `POST /api/auth/set-claims`
+ * withholds the `tenantId` custom claim — a 403 carrying
+ * `code: 'member_cap_reached'` — when a NEW applicant would put the tenant past
+ * its effective `maxContacts`.
+ *
+ * WHY IT REVERSED: the original reasoning (a refused visitor cannot fix it,
+ * cannot upgrade the plan, and never finds out why) was sound when every tenant
+ * was paying. The Forever Free tier changed the arithmetic: an unbounded member
+ * count on a tier nobody pays for is an existential cost problem, not a pricing
+ * nicety. So the block was accepted and the objection was answered in the COPY
+ * instead — `src/utils/member-cap-copy.ts` names the ministry, points the
+ * person at whoever invited them, says it is not their fault, and promises the
+ * same email will work once room is made. Nobody is left guessing.
+ *
+ * WHAT DID NOT CHANGE, AND WHY THIS MODULE IS STILL SOFT: this file is the
+ * ADMIN CRM's contact cap — a different cap, over different rows, for a
+ * different audience. It gates the admin's manual "Add contact" form and
+ * nothing else. Nothing in this module is reachable from the signup path and it
+ * must stay that way; the signup gate lives in `lib/member-capacity.ts`, is
+ * server-side, and shares no code with this one.
  *
  *   | over the cap                       | behaviour                          |
  *   |------------------------------------|------------------------------------|
- *   | a member signs up                  | ALWAYS works. Nothing is blocked.  |
- *   | an admin adds a contact manually   | blocked, with a reason             |
+ *   | a member signs up                  | refused by THE-201, server-side,   |
+ *   |                                    | via /api/auth/set-claims — NOT here|
+ *   | an admin adds a contact manually   | blocked here, with a reason        |
  *   | the admin                          | told clearly, once — not nagged    |
  *
- * The principle: gate what the ADMIN controls, never what a VISITOR does.
+ * The principle that survives: THIS module gates only what the ADMIN controls.
  *
  * (There is no CSV import anywhere in the app — every CSV path in the codebase
  * is an EXPORT. The manual add form in AdminCRM is the only admin-initiated
@@ -60,16 +82,20 @@
  * `maxCourses` (course-adoption.ts) and `maxAdmins` (admin-seats.ts) already
  * carry.
  *
- * Where real enforcement would belong: the count is over `users`, and the one
- * server hop every new account makes is POST /api/auth/set-claims. A count
- * there could make the ACCOUNT figure authoritative — but it must not refuse
- * the account (see "never blocks signup" above), so the only honest server-side
- * gate is on the ADMIN write path, which today has no server hop at all: the
- * manual add is a direct client `addDoc`. Making the cap real therefore means
- * introducing POST /api/crm/contacts (Admin SDK: read tenants/{id}.plan, count
- * `users` where tenantId == t, refuse a NEW contact past the cap) and
- * tightening `contacts` creation in firestore.rules to server-only. That is an
- * auth/rules change and is deliberately NOT done here.
+ * Where real enforcement lives — and it now EXISTS, for the member count:
+ * THE-201 built it. The one server hop every new account makes is
+ * POST /api/auth/set-claims, so that is where the member cap is enforced
+ * (`src/lib/member-capacity.ts` counts `users where tenantId == t` with the
+ * Admin SDK; the route returns 403 with `code: 'member_cap_reached'` and
+ * withholds the `tenantId` claim). The
+ * paragraph that used to stand here said such a gate "must not refuse the
+ * account" — that constraint was lifted by THE-201, see the policy note above.
+ *
+ * What is still NOT enforced server-side is THIS module's cap: the admin's
+ * manual contact add is a direct client `addDoc` with no server hop at all.
+ * Making that one real would mean introducing POST /api/crm/contacts and
+ * tightening `contacts` creation in firestore.rules to server-only. That is a
+ * rules change and is deliberately NOT done here.
  *
  * ⚠️ BLOCKS NEW MANUAL ADDS ONLY. A tenant already over its cap — after a
  * downgrade, or because the cap never existed until now — keeps every contact

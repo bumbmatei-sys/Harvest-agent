@@ -10,6 +10,12 @@ import { useTenant } from '../contexts/TenantContext';
 import { Eye, EyeOff, Mail, Lock, ArrowLeft } from 'lucide-react';
 import { Turnstile } from '@marsidev/react-turnstile';
 import { PRIVACY_URL, TERMS_URL } from '../lib/legal-links';
+import {
+  MEMBER_CAP_REFUSED_CODE,
+  MEMBER_CAP_UNAVAILABLE_CODE,
+  MEMBER_CAP_UNAVAILABLE_MESSAGE,
+  memberCapRefusalMessage,
+} from '../utils/member-cap-copy';
 
 const HARVEST_GOLD = 'var(--brand-color, #B8962E)';
 const HARVEST_LOGO = 'https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png';
@@ -244,11 +250,110 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
     }
   }, []);
 
+  /**
+   * THE-201 — the member-signup pre-flight (D9).
+   *
+   * Asks `/api/tenants/member-capacity` whether this ministry can take one more
+   * account. Returns the copy to show, or null to proceed.
+   *
+   * ⚠️ THIS IS NOT THE GATE. The gate is POST /api/auth/set-claims, which
+   * withholds the `tenantId` claim server-side. This exists so a real person
+   * never ends up with a half-created account — a Firebase Auth user and a
+   * `users` doc, but no claim and therefore no access to anything.
+   *
+   * 🔴 IT FAILS CLOSED, DELIBERATELY. A 400, a network error or an unreadable
+   * body all return the unavailable copy and STOP the signup. A
+   * `catch { /* proceed *\/ }` here is the Silent-Failure Rule violation this
+   * spec is most likely to be implemented with: the set-claims gate would then
+   * refuse the person AFTER creating their account, which is precisely the
+   * half-account this pre-flight exists to avoid.
+   *
+   * `tenantId === null` (main site, non-tenant subdomain) → no cap applies and
+   * no call is made. Never runs on the sign-in path.
+   */
+  const memberCapRefusal = async (targetTenantId: string | null): Promise<string | null> => {
+    if (!targetTenantId) return null;
+    try {
+      const res = await fetch('/api/tenants/member-capacity', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenantId: targetTenantId }),
+      });
+      const data = await res.json();
+
+      // 503 — the capacity check could not run. We do NOT know the ministry is
+      // full, so we render the server's unavailable copy and stop.
+      if (res.status === 503) {
+        return typeof data?.message === 'string' ? data.message : MEMBER_CAP_UNAVAILABLE_MESSAGE;
+      }
+      // 400 or any other non-200 — malformed request. Not an answer, so not a yes.
+      if (!res.ok) return MEMBER_CAP_UNAVAILABLE_MESSAGE;
+
+      if (data?.canAccept === false) {
+        return typeof data.message === 'string'
+          ? data.message
+          : memberCapRefusalMessage(tenantName);
+      }
+      if (data?.canAccept === true) return null;
+
+      // A 200 whose body carries no `canAccept` is not a yes either.
+      return MEMBER_CAP_UNAVAILABLE_MESSAGE;
+    } catch {
+      // Network failure or unparseable body. Stop — do not fall through.
+      return MEMBER_CAP_UNAVAILABLE_MESSAGE;
+    }
+  };
+
+  /**
+   * THE-201 — read the refusal out of a `/api/auth/set-claims` response.
+   *
+   * 403 + `code: 'member_cap_reached'` means the ministry is at its member cap
+   * and the claim was withheld. 503 + `code: 'capacity_check_unavailable'`
+   * means the check itself could not run. Both must clear `success` and show
+   * the server's copy; previously this response was ignored entirely, which
+   * left the screen saying "Account created successfully!" to someone who had
+   * no claims and therefore no access at all.
+   *
+   * Returns null for every other response, including 200.
+   */
+  const readCapRefusal = async (res: Response): Promise<string | null> => {
+    if (res.status !== 403 && res.status !== 503) return null;
+    try {
+      const data = await res.json();
+      if (data?.code === MEMBER_CAP_REFUSED_CODE) {
+        return typeof data.error === 'string' ? data.error : memberCapRefusalMessage(tenantName);
+      }
+      if (data?.code === MEMBER_CAP_UNAVAILABLE_CODE) {
+        return typeof data.error === 'string' ? data.error : MEMBER_CAP_UNAVAILABLE_MESSAGE;
+      }
+      // A 403 without our code is the pre-existing uid-mismatch `Forbidden`.
+      // Not ours; leave it to the existing handling.
+      return null;
+    } catch {
+      return null;
+    }
+  };
+
   const handleGoogleSignIn = async () => {
     try {
       setLoading(true);
       setError('');
       setEmailInUse(false);
+
+      // THE-201 — the pre-flight, on the SIGNUP path only. In `isLogin` mode
+      // this button reads "Continue with Google" and belongs to an existing
+      // member, who is never gated (D3). Asking before the popup is what keeps
+      // a refused person from ending up with a Firebase Auth account they can
+      // do nothing with.
+      if (!isLogin) {
+        const capRefusal = await memberCapRefusal(tenantId);
+        if (capRefusal) {
+          setSuccess('');
+          setError(capRefusal);
+          setLoading(false);
+          return;
+        }
+      }
 
       const provider = new GoogleAuthProvider();
       const result = await signInWithPopup(auth, provider);
@@ -298,11 +403,20 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
       // Set custom claims on server, then force-refresh token to pick them up
       try {
         const token = await result.user.getIdToken();
-        await fetch('/api/auth/set-claims', {
+        const claimsRes = await fetch('/api/auth/set-claims', {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({ uid: result.user.uid }),
         });
+        // THE-201 — a 403 with code `member_cap_reached` means the claim was
+        // withheld because the ministry is at its member cap (a 503 means the
+        // check could not run). Previously this response was ignored entirely.
+        const capRefusal = await readCapRefusal(claimsRes);
+        if (capRefusal) {
+          setSuccess('');
+          setError(capRefusal);
+          return;
+        }
         // Force token refresh so subsequent Firestore/API calls have the new claims
         await result.user.getIdToken(true);
       } catch (claimsErr) {
@@ -390,6 +504,18 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
           return;
         }
 
+        // THE-201 — ask whether this ministry can take one more account BEFORE
+        // any Firebase Auth call fires. On the email path the signup intent is
+        // unambiguous, so the refusal lands before an account exists at all: no
+        // Auth user, no `users` doc, nothing to clean up. Sign-in never gets
+        // here — this is the `else` branch of `isLogin`.
+        const capRefusal = await memberCapRefusal(tenantId);
+        if (capRefusal) {
+          setError(capRefusal);
+          setLoading(false);
+          return;
+        }
+
         const result = await createUserWithEmailAndPassword(auth, email, password);
 
         // Store user in Firestore
@@ -414,11 +540,21 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
         // Set custom claims for Firestore security rules, then force-refresh token
         try {
           const token = await result.user.getIdToken();
-          await fetch('/api/auth/set-claims', {
+          const claimsRes = await fetch('/api/auth/set-claims', {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({ uid: result.user.uid }),
           });
+          // THE-201 — belt and braces behind the pre-flight: a 403 with our cap
+          // code here means the claim was withheld, so the "Account created
+          // successfully!" line must be cleared before the refusal is shown.
+          // Two green-and-red messages at once would be worse than either alone.
+          const claimsCapRefusal = await readCapRefusal(claimsRes);
+          if (claimsCapRefusal) {
+            setSuccess('');
+            setError(claimsCapRefusal);
+            return;
+          }
           await result.user.getIdToken(true);
         } catch (claimsErr) {
           console.error('Failed to set custom claims:', claimsErr);

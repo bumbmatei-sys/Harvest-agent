@@ -1,15 +1,55 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { setCustomClaims } from '@/lib/set-custom-claims';
-import { adminAuth } from '@/lib/firebase-admin';
+import { adminAuth, adminDb } from '@/lib/firebase-admin';
 import { captureHandledError } from '@/lib/money-path-sentry';
+import { decideMemberCapacity, stampRefusal } from '@/lib/member-capacity';
+import {
+  MEMBER_CAP_REFUSED_CODE,
+  MEMBER_CAP_UNAVAILABLE_CODE,
+  MEMBER_CAP_UNAVAILABLE_MESSAGE,
+  memberCapRefusalMessage,
+} from '@/utils/member-cap-copy';
 
 /**
  * POST /api/auth/set-claims
  * Sets custom claims on a user's Firebase Auth token.
  * Called after user registration or role change.
- * 
+ *
  * Body: { uid: string }
  * Auth: Bearer token required (the user themselves or a super admin)
+ *
+ * ───────────────────────────────────────────────────────────────────────────
+ * THE-201 — this route is THE ENFORCEMENT POINT of the member-signup cap.
+ *
+ * `setCustomClaims` is the ONLY issuer of `claims.tenantId` in the codebase, it
+ * runs server-side with the Admin SDK, and `firestore.rules` gate every piece
+ * of tenant content on that claim. So refusing to CALL it is a real gate, not
+ * decoration — no client can mint a custom claim for itself.
+ *
+ * 🔴 The check lives HERE, in the route, and NOT inside `setCustomClaims`.
+ * That function wraps its whole body in `try { … } catch { console.error }` and
+ * returns `void`. A refusal thrown inside it would be swallowed, logged to a
+ * console nobody reads, and this route would answer 200 success to a person who
+ * was actually refused — exactly the shape AGENTS.md's Silent-Failure Rule
+ * forbids. `set-custom-claims.ts` is therefore not modified at all; this route
+ * short-circuits before ever reaching it.
+ *
+ * Statuses this route can now answer:
+ *
+ *   200  allowed, or the cap did not apply (super admin / no tenant / existing
+ *        member / unlimited add-on). Claims minted, unchanged behaviour.
+ *   403  `Forbidden`                — uid mismatch and not a super admin (existing).
+ *   403  `member_cap_reached`       — the tenant is at its member cap. Claims
+ *        WITHHELD. The two 403s are distinguished by `code`, which is why
+ *        `code` is mandatory on the new one.
+ *   503  `capacity_check_unavailable` — the capacity check itself could not run.
+ *        NOT an allow and NOT a refusal: we do not know whether the ministry is
+ *        full, so the copy does not claim it is. Claims withheld, retry invited.
+ *   500  anything else throws (existing).
+ *
+ * 🔴 Nothing on the refusal path deletes, disables, detaches or demotes
+ * anybody. Refusing a NEW account is the whole action; every existing member
+ * keeps everything.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -27,6 +67,74 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
+    // ── THE-201 member-signup cap ──────────────────────────────────────────
+    // The tenant comes from the TARGET uid's own `users` doc, read server-side.
+    // Never from the request body, never from the Host header. When a super
+    // admin calls this route for someone else, "self" is the target uid.
+    const [applicantSnap, authUser] = await Promise.all([
+      adminDb.collection('users').doc(uid).get(),
+      adminAuth.getUser(uid),
+    ]);
+
+    const rawApplicantTenantId = (applicantSnap.data() as { tenantId?: unknown } | undefined)
+      ?.tenantId;
+    // 🔴 Narrow ONCE, here, and use the narrowed value everywhere below.
+    // `String(undefined)` is the string `"undefined"` — non-empty, so it sails
+    // straight through `assertConcreteTenantId` and would write
+    // `capRefusedTenantId: "undefined"`. That is the "default that hides an
+    // error" shape AGENTS.md forbids, in the one module whose whole job is
+    // refusing to write against a non-concrete tenant. No coercion, ever.
+    const applicantTenantId: string | null =
+      typeof rawApplicantTenantId === 'string' && rawApplicantTenantId !== ''
+        ? rawApplicantTenantId
+        : null;
+    // D3 — "is this person already a member?" is answered from the Auth custom
+    // claim, NOT the `users` doc: the doc is client-writable (rules:144), the
+    // claim is not.
+    const existingClaimTenantId = (authUser.customClaims as { tenantId?: unknown } | undefined)
+      ?.tenantId;
+
+    const capacity = await decideMemberCapacity({
+      uid,
+      applicantTenantId,
+      existingClaimTenantId:
+        typeof existingClaimTenantId === 'string' ? existingClaimTenantId : null,
+    });
+
+    if (capacity.status === 'refused') {
+      // C2 — stamp the ghost so the follow-up sweep can find it. Best-effort
+      // and non-throwing by contract; it must not turn a clean 403 into a 500.
+      //
+      // 🔴 `applicantTenantId` is the NARROWED value and is non-null on every
+      // path that can reach a refusal (the gate is skipped entirely when it is
+      // null — see D7). The `if` is belt-and-braces so a future edit to the
+      // decision cannot silently start stamping a coerced string.
+      if (applicantTenantId) {
+        await stampRefusal(uid, applicantTenantId);
+      }
+
+      return NextResponse.json(
+        {
+          error: memberCapRefusalMessage(capacity.ministryName),
+          code: MEMBER_CAP_REFUSED_CODE,
+        },
+        { status: 403 },
+      );
+    }
+
+    if (capacity.status === 'unavailable') {
+      // Neither an allow nor a refusal. `captureHandledError` already fired
+      // inside the decision with the specific failing step.
+      return NextResponse.json(
+        {
+          error: MEMBER_CAP_UNAVAILABLE_MESSAGE,
+          code: MEMBER_CAP_UNAVAILABLE_CODE,
+        },
+        { status: 503 },
+      );
+    }
+
+    // 'allowed' and every 'skipped' reason fall through to the unchanged path.
     await setCustomClaims(uid);
 
     return NextResponse.json({ success: true, forceRefresh: true });

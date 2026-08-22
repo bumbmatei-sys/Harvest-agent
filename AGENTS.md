@@ -172,12 +172,26 @@ out to gate nothing anywhere in the app and was later removed — see below.)
 `max` did **not** inherit ultra's unlimited campuses/courses/admins: every cap
 is finite now, and extra capacity is sold as add-ons instead.
 
-`maxContacts` is **published but NOT enforced** — no contact cap exists anywhere
-in the app. It lives in `PLAN_FEATURES` (not `PLAN_LIMITS`, which holds metered
-token/segment flows) because it is a static entity count like `maxCourses` /
-`maxAdmins` / `maxChurches`. Enforcement will mirror `maxCourses`: client-side,
-blocking new creation only, with tenants already over the limit keeping what they
-have.
+`maxContacts` is **published and now enforced in two different places, with two
+different strengths.** It lives in `PLAN_FEATURES` (not `PLAN_LIMITS`, which holds
+metered token/segment flows) because it is a static entity count like `maxCourses` /
+`maxAdmins` / `maxChurches`.
+
+- **New member signup is a hard, server-side gate** (THE-201). `src/lib/member-capacity.ts`
+  counts `users` documents whose `tenantId` equals the tenant and compares that against
+  the tenant's **effective** `maxContacts` (`getEffectiveFeatures`, so Contacts +500 and
+  Unlimited Contacts lift it). Enforcement is at custom-claim issuance in
+  `POST /api/auth/set-claims`: a NEW applicant over the cap gets **403** with
+  `code: 'member_cap_reached'` and `setCustomClaims` is never called, so no `tenantId`
+  claim is minted and `firestore.rules` grant no tenant content. A capacity check that
+  itself fails answers **503 `capacity_check_unavailable`** — fail-closed, claims
+  withheld, and the copy does not claim the ministry is full. Existing members (already
+  holding the tenant's claim) skip the check entirely and always sign in; nothing is ever
+  removed, disabled or demoted.
+- **The admin's manual contact add is still a client-side gate only** — `src/utils/contact-capacity.ts`,
+  over `contacts` rows, blocking new creation only, the same shape as `maxCourses`.
+  Tenants already over the limit keep what they have. It shares no code with the signup
+  gate; only `AdminCRM.tsx` may import it.
 
 Five features — **Check-In, Livestream, Sermon Notes, Notes/Docs and CRM** — moved
 down from the top tier to **Small Team (pro)**. The move is visibility only: no
