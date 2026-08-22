@@ -170,7 +170,12 @@ const MainApp: React.FC<MainAppProps> = ({ onNavigate }) => {
     coursesStatus === 'present' && { id: 'courses', label: 'Courses' },
     hasCommunityGroups && { id: 'messages', label: 'Messages' },  // Ministry (max) only
     { id: 'prayer', label: 'Prayer' },        // all plans, all users
-    { id: 'partner', label: 'Give' },
+    // Give — plan-gated. A free tenant has `fundraising: false` and the donate
+    // route refuses it server-side (THE-202), so an always-on Give tab would be
+    // a member-facing link to a 403. `=== true` deliberately, not `!== false`:
+    // `features` is null before the plan loads and `!== false` is truthy then.
+    // `isMainSite` keeps the tab on theharvest.app, which is not a tenant.
+    (isMainSite || (isPlanReady && features?.fundraising === true)) && { id: 'partner', label: 'Give' },
   ].filter(Boolean) as { id: string; label: string }[];
 
   const bottomTabs = [

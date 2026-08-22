@@ -6,6 +6,8 @@ import {
   PLAN_ORDER,
   PLAN_DISPLAY_NAMES,
   formatPlanPrice,
+  getMinPlanForFeatureCell,
+  type PlanFeatures,
 } from '../utils/plan-features';
 
 // Both the tier ladder and the minimum-plan labels are derived from the feature
@@ -48,7 +50,22 @@ const PlanUpgradeScreen: React.FC<PlanUpgradeScreenProps> = ({
   audience = 'admin',
 }) => {
   const isMember = audience === 'member';
-  const minPlanName = FEATURE_MIN_PLAN_NAME[featureKey] || 'Community';
+  // `featureKey` is a `FeatureKey` gate name for the seven features fronted by
+  // usePlanGate (FEATURE_MIN_PLAN), but THE-202 added upgrade screens for cells
+  // that have NO gate key — blog, aiKnowledge, newsletterAutomation, maxCourses.
+  // Looking those up in FEATURE_MIN_PLAN misses, and the old `|| 'Community'`
+  // fallback then named a plan chosen by nothing: it told a free admin to buy
+  // Community for the Blog, which Individual already carries. So: gate-key map
+  // first, then the same DERIVATION over the raw matrix cell, and only then the
+  // fallback. A wrong plan name on the screen where someone decides what to buy
+  // is the #242 defect class, not a nit.
+  const minPlanName =
+    FEATURE_MIN_PLAN_NAME[featureKey] ||
+    (() => {
+      const cell = getMinPlanForFeatureCell(featureKey as keyof PlanFeatures);
+      return cell ? PLAN_DISPLAY_NAMES[cell] : '';
+    })() ||
+    'Community';
   const minIdx = PLANS.findIndex(p => p.name === minPlanName);
   const requiredPlans = minIdx >= 0 ? PLANS.slice(minIdx) : PLANS;
   const minPlan = requiredPlans[0];
