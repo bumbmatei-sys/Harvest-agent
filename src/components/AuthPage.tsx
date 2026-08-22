@@ -10,7 +10,12 @@ import { useTenant } from '../contexts/TenantContext';
 import { Eye, EyeOff, Mail, Lock, ArrowLeft } from 'lucide-react';
 import { Turnstile } from '@marsidev/react-turnstile';
 import { PRIVACY_URL, TERMS_URL } from '../lib/legal-links';
-import { memberCapMessage } from '../utils/member-capacity-copy';
+import {
+  MEMBER_CAP_REFUSED_CODE,
+  MEMBER_CAP_UNAVAILABLE_CODE,
+  MEMBER_CAP_UNAVAILABLE_MESSAGE,
+  memberCapRefusalMessage,
+} from '../utils/member-cap-copy';
 
 const HARVEST_GOLD = 'var(--brand-color, #B8962E)';
 const HARVEST_LOGO = 'https://raw.githubusercontent.com/bumbmatei-sys/pictures/main/doar%20spic.png';
@@ -246,18 +251,22 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
   }, []);
 
   /**
-   * THE-201 — the member-signup pre-flight.
+   * THE-201 — the member-signup pre-flight (D9).
    *
    * Asks `/api/tenants/member-capacity` whether this ministry can take one more
-   * account, and returns the refusal copy to show, or null to proceed.
+   * account. Returns the copy to show, or null to proceed.
    *
    * ⚠️ THIS IS NOT THE GATE. The gate is POST /api/auth/set-claims, which
-   * withholds the `tenantId` claim server-side. This call only exists so a real
-   * person never ends up with a half-created account, so it FAILS OPEN on every
-   * error: a blip here must not stop the whole world signing up, and a refusal
-   * that should have happened still happens one hop later. That is why the catch
-   * below returns null rather than a refusal — it is a deliberate, documented
-   * fail-open on a non-authoritative check, not a swallowed error.
+   * withholds the `tenantId` claim server-side. This exists so a real person
+   * never ends up with a half-created account — a Firebase Auth user and a
+   * `users` doc, but no claim and therefore no access to anything.
+   *
+   * 🔴 IT FAILS CLOSED, DELIBERATELY. A 400, a network error or an unreadable
+   * body all return the unavailable copy and STOP the signup. A
+   * `catch { /* proceed *\/ }` here is the Silent-Failure Rule violation this
+   * spec is most likely to be implemented with: the set-claims gate would then
+   * refuse the person AFTER creating their account, which is precisely the
+   * half-account this pre-flight exists to avoid.
    *
    * `tenantId === null` (main site, non-tenant subdomain) → no cap applies and
    * no call is made. Never runs on the sign-in path.
@@ -270,39 +279,59 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tenantId: targetTenantId }),
       });
-      if (!res.ok) return null; // 400/429/500 → proceed; the gate still applies.
       const data = await res.json();
-      if (data?.allowed === false) {
-        return typeof data.title === 'string' && typeof data.body === 'string'
-          ? `${data.title} ${data.body}`
-          : memberCapMessage(tenantName);
+
+      // 503 — the capacity check could not run. We do NOT know the ministry is
+      // full, so we render the server's unavailable copy and stop.
+      if (res.status === 503) {
+        return typeof data?.message === 'string' ? data.message : MEMBER_CAP_UNAVAILABLE_MESSAGE;
       }
-      return null;
-    } catch (err) {
-      console.warn('member-capacity pre-flight unavailable; deferring to /api/auth/set-claims', err);
-      return null;
+      // 400 or any other non-200 — malformed request. Not an answer, so not a yes.
+      if (!res.ok) return MEMBER_CAP_UNAVAILABLE_MESSAGE;
+
+      if (data?.canAccept === false) {
+        return typeof data.message === 'string'
+          ? data.message
+          : memberCapRefusalMessage(tenantName);
+      }
+      if (data?.canAccept === true) return null;
+
+      // A 200 whose body carries no `canAccept` is not a yes either.
+      return MEMBER_CAP_UNAVAILABLE_MESSAGE;
+    } catch {
+      // Network failure or unparseable body. Stop — do not fall through.
+      return MEMBER_CAP_UNAVAILABLE_MESSAGE;
     }
   };
 
   /**
-   * THE-201 — read a 409 from /api/auth/set-claims. That status means the
-   * ministry is at its member cap and the claim was withheld. Returns the copy
-   * to show, or null when the response was anything else.
+   * THE-201 — read the refusal out of a `/api/auth/set-claims` response.
+   *
+   * 403 + `code: 'member_cap_reached'` means the ministry is at its member cap
+   * and the claim was withheld. 503 + `code: 'capacity_check_unavailable'`
+   * means the check itself could not run. Both must clear `success` and show
+   * the server's copy; previously this response was ignored entirely, which
+   * left the screen saying "Account created successfully!" to someone who had
+   * no claims and therefore no access at all.
+   *
+   * Returns null for every other response, including 200.
    */
   const readCapRefusal = async (res: Response): Promise<string | null> => {
-    if (res.status !== 409) return null;
+    if (res.status !== 403 && res.status !== 503) return null;
     try {
       const data = await res.json();
-      if (data?.code === 'member_cap_reached') {
-        return typeof data.title === 'string' && typeof data.body === 'string'
-          ? `${data.title} ${data.body}`
-          : memberCapMessage(tenantName);
+      if (data?.code === MEMBER_CAP_REFUSED_CODE) {
+        return typeof data.error === 'string' ? data.error : memberCapRefusalMessage(tenantName);
       }
+      if (data?.code === MEMBER_CAP_UNAVAILABLE_CODE) {
+        return typeof data.error === 'string' ? data.error : MEMBER_CAP_UNAVAILABLE_MESSAGE;
+      }
+      // A 403 without our code is the pre-existing uid-mismatch `Forbidden`.
+      // Not ours; leave it to the existing handling.
+      return null;
     } catch {
-      // A 409 with an unreadable body is still a refusal — say so in the
-      // canonical words rather than rendering nothing.
+      return null;
     }
-    return memberCapMessage(tenantName);
   };
 
   const handleGoogleSignIn = async () => {
@@ -310,6 +339,21 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
       setLoading(true);
       setError('');
       setEmailInUse(false);
+
+      // THE-201 — the pre-flight, on the SIGNUP path only. In `isLogin` mode
+      // this button reads "Continue with Google" and belongs to an existing
+      // member, who is never gated (D3). Asking before the popup is what keeps
+      // a refused person from ending up with a Firebase Auth account they can
+      // do nothing with.
+      if (!isLogin) {
+        const capRefusal = await memberCapRefusal(tenantId);
+        if (capRefusal) {
+          setSuccess('');
+          setError(capRefusal);
+          setLoading(false);
+          return;
+        }
+      }
 
       const provider = new GoogleAuthProvider();
       const result = await signInWithPopup(auth, provider);
@@ -326,18 +370,6 @@ const AuthPage: React.FC<AuthPageProps> = ({ onNavigate }) => {
 
       if (!userSnap.exists()) {
         try {
-          // THE-201 — the Google button is ONE handler for sign-in and sign-up,
-          // so the pre-flight cannot run before the popup: doing so would refuse
-          // an EXISTING member who happened to be on the sign-up view. It runs
-          // here instead — after the existence check, before any `users` doc is
-          // written for a new person, which is what the rule actually protects.
-          const capRefusal = await memberCapRefusal(tenantId);
-          if (capRefusal) {
-            setSuccess('');
-            setError(capRefusal);
-            return;
-          }
-
           const userData: any = {
             uid: result.user.uid,
             email: result.user.email,

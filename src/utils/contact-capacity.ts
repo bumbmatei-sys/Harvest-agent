@@ -45,7 +45,7 @@
  * was paying. The Forever Free tier changed the arithmetic: an unbounded member
  * count on a tier nobody pays for is an existential cost problem, not a pricing
  * nicety. So the block was accepted and the objection was answered in the COPY
- * instead — `src/utils/member-capacity-copy.ts` names the ministry, points the
+ * instead — `src/utils/member-cap-copy.ts` names the ministry, points the
  * person at whoever invited them, says it is not their fault, and promises the
  * same email will work once room is made. Nobody is left guessing.
  *
